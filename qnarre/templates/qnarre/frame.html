@@ -1,0 +1,24 @@
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+	      <meta charset="utf-8">
+	      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	      <title>{{ QWEB_TITLE }}</title>
+	      <meta name="author" content="{{ QWEB_SITE }}">
+	      <meta name="description" content="{{ QWEB_DESCRIPTION }}">
+	      <link href="http://quantapix.com/static/images/{{ QWEB_FAVICON }}" rel="icon">
+	      <link href="http://quantapix.com/static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="{% static "open/custom.css" %}" rel="stylesheet">
+    </head>
+    <body>
+	      {% block frame_content %}
+	      {% endblock %}
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+	      <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script> -->
+	      <script src="http://quantapix.com/static/js/bootstrap.min.js"></script>
+    </body>
+</html>

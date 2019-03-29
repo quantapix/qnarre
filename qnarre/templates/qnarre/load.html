@@ -1,0 +1,6 @@
+
+<form action="{% url 'qnarre:load' %}" method="post">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" value="Load" />
+</form>

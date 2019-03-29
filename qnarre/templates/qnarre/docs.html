@@ -1,0 +1,22 @@
+
+{% extends "qnarre/base.html" %}
+
+{% block base_content %}
+    <div class="container mx-2">
+	      <div class="row">
+            <div class="col-sm-3 docs-left-bar px-0">
+		            {% include "qnarre/left-bar.html" %}
+            </div>
+            <div class="col-sm-7 docs-main">
+		            {% if parts %}
+		                {% include "qnarre/parts/parts.html" %}
+		            {% elif part %}
+		                {% include subtemplate %}
+		            {% endif %}
+	          </div>
+            <div class="col-sm-2 docs-right-bar px-0">
+		            {% include "qnarre/right-bar.html" %}
+            </div>
+	      </div>
+    </div>
+{% endblock %}

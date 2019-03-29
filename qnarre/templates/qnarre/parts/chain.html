@@ -1,0 +1,31 @@
+
+<div class="chain">
+    <h3>
+        <a href="{{ part.get_absolute_url }}?section={{ section }}">
+	          {% if part.title %}{{ part.title }}
+	          {% else %}{{ part.name }}
+	          {% endif %}
+        </a>
+    </h3>
+    <div class="container">
+	      {% for note in part.notes %}
+	          <div class="row {{ note.justify }}">
+		            <div class="col-10">
+		                <div class="card with-margin" style="{{ note.background }}">
+			                  <div class="card-block">
+			                      <h6 class="text-muted {{ note.text_justify }}">
+                                {{ note.date }}
+                                <strong>{{ note.froms.0 }}:</strong>
+                                <a href="{{ note.get_absolute_url }}?section={{ section }}">
+                                </a>
+                            </h6>
+			                      {% autoescape off %}
+				                        {{ note.body.html }}
+			                      {% endautoescape %}
+			                  </div>
+		                </div>
+		            </div>
+	          </div>
+	      {% endfor %}
+    </div>
+</div>

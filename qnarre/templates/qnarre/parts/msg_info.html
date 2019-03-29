@@ -1,0 +1,33 @@
+
+<footer class="post-info">
+    <span class="label label-default">Date</span>
+    <span class="published">
+	      <i class="fa fa-calendar"></i>
+	      {{ msg.date }}
+    </span>
+    {% if msg.froms %}
+	      <span class="label label-default">From</span>
+	      {% for agent in msg.froms %}
+	          <a href="{{ agent.get_absolute_url }}">
+		            <i class="fa fa-user"></i>
+		            {{ agent }}
+	          </a>
+	          {% if not loop.last %} , {% endif %}
+	      {% endfor %}
+    {% endif %}
+    {% if msg.category %}
+	      <span class="label label-default">Category</span>
+	      <a href="{{ msg.category.get_absolute_url }}">
+	          {{ msg.category }}
+	      </a>
+    {% endif %}
+    {% if msg.tags %}
+	      <span class="label label-default">Tags</span>
+	      {% for tag in msg.tags %}
+	          <a href="{{ tag.get_absolute_url }}">
+		            {{ tag }}
+	          </a>
+	          {% if not loop.last %} / {% endif %}
+	      {% endfor %}
+    {% endif %}
+</footer>

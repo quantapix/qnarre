@@ -1,0 +1,13 @@
+
+{% load static %}
+
+<div class="part">
+    <h3>
+        <a href="{{ part.get_absolute_url }}?section={{ section }}">
+	      {{ part.subject }}
+        </a>
+    </h3>
+    {% autoescape off %}
+	      {{ part.body.html }}
+    {% endautoescape %}
+</div>

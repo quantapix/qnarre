@@ -1,0 +1,23 @@
+
+{% extends "qnarre/blog.html" %}
+
+{% block blog_content %}
+    {% if msgs %}
+	      {% for msg in msgs %}
+	          <article>
+		            <h2><a href="{{ msg.get_absolute_url }}">
+		                {{ msg.title }}
+		            </a>
+		            </h2>
+		            <div class="well well-sm">
+		                {% include "qnarre/parts/msg_info.html" %}
+		            </div>
+		            <div class="summary">{{ msg.summary }}
+		                <a class="btn btn-default btn-xs"
+		                   href="{{ msg.get_absolute_url }}">more ...</a>
+		            </div>
+	          </article>
+	          <hr/>
+	      {% endfor %}
+    {% endif %}
+{% endblock %}

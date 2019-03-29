@@ -1,0 +1,22 @@
+
+{% for part in parts %}
+    <div class="parts">
+	      <h3>
+            <a href="{{ part.get_absolute_url }}?section={{ section }}">
+                {{ part.name }}
+            </a>
+        </h3>
+	      <div class="well well-sm">
+	          <footer class="post-info">
+	          </footer>
+	      </div>
+	      <div class="part-summary">{{ part.summary }}
+	          <a class="btn btn-default btn-xs"
+                <a href="{{ part.get_absolute_url }}?section={{ section }}">
+                    more ...
+                </a>
+            </a>
+	      </div>
+    </div>
+    <hr/>
+{% endfor %}

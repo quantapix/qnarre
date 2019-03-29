@@ -1,0 +1,46 @@
+
+{% for part in parts %}
+    {% if not part.hide %}
+	      <div class="parts">
+	          <h2>
+                <a href="{{ part.get_absolute_url }}?section={{ section }}">
+		                {% if part.title %}
+		                    {{ part.title }}
+		                {% elif part.subgroup %}
+		                    {{ part.subgroup }}
+		                {% endif %}
+                </a>
+            </h2>
+	          <div class="well well-sm">
+		            <footer class="post-info">
+		                <span class="label label-default">
+                        Date
+                    </span>
+		                <span class="published">
+			                  <i class="fa fa-calendar"></i>
+                        {{ part.date }}
+		                </span>
+		                <span class="label label-default">
+                        Tags
+                    </span>
+		                {% for tag in part.tags %}
+			                  <a href="{{ tag.get_absolute_url }}?section={{ section }}">
+                            {{ tag }}
+                        </a>
+			                  {% if not loop.last %}
+			                      /
+			                  {% endif %}
+		                {% endfor %}
+		            </footer>
+	          </div>
+	          <div class="part-summary">{{ part.summary }}
+		            <a class="btn btn-default btn-xs"
+                    <a href="{{ part.get_absolute_url }}?section={{ section }}">
+                        more ...
+                    </a>
+                </a>
+	          </div>
+	      </div>
+	      <hr/>
+    {% endif %}
+{% endfor %}

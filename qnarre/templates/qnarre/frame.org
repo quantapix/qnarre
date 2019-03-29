@@ -1,0 +1,4 @@
+#+STARTUP: inlineimages
+
+{% block frame_content %}
+

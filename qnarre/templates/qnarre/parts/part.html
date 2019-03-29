@@ -1,0 +1,54 @@
+
+{% load static %}
+
+<div class="part">
+    <h3>
+        <a href="{{ part.get_absolute_url }}?section={{ section }}">
+	          {% if part.title %}
+	              {{ part.title }}
+	          {% elif part.subject %}
+	              {{ part.subject }}
+	          {% else %}
+	              {{ part.name }}
+	          {% endif %}
+        </a>
+    </h3>
+    {% if part.froms %}
+	      <h6>By
+	          {% for fr in part.froms %}
+		            <a href="{{ fr.get_absolute_url }}?section={{ section }}">
+		                {{ fr.name }}
+		                {% if not forloop.last %}, {% endif %}
+		            </a>
+	          {% endfor %}
+	          On {{ part.date }}
+	      </h6>
+    {% endif %}
+    <hr>
+    {% if part.body %}
+	      {% autoescape off %}
+	          {{ part.body.html }}
+	      {% endautoescape %}
+    {% elif part.summary %}
+	      {{ part.summary }}
+    {% endif %}
+    <hr>
+    {% if part.sources %}
+	      <div id="part-carousel" class="carousel slide" data-ride="carousel">
+	          <div class="carousel-inner">
+		            {% for source in part.sources %}
+		                <div class="carousel-item {% if forloop.counter < 2 %} active {% endif %}">
+			                  <img class="d-block img-fluid" src="{% static source|safe %}"
+                             alt="{{ forloop.counter }} Slide" align="middle">
+		                </div>
+		            {% endfor %}
+	          </div>
+	          <a class="carousel-control-prev" href="#part-carousel" data-slide="prev">
+		            <span class="carousel-control-prev-icon"></span>
+	          </a>
+	          <a class="carousel-control-next" href="#part-carousel" data-slide="next">
+		            <span class="carousel-control-next-icon"></span>
+	          </a>
+	      </div>
+    {% endif %}
+</div>

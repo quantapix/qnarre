@@ -1,0 +1,62 @@
+
+{% load qnarre_extras %}
+
+{% with nssection='qnarre:'|add:section %}
+    <div class="sidebar-module">
+	      {% if groups|length > 1 %}
+	          <a href="{% url nssection %}">
+                All {{ groups_name }}
+            </a>
+	          <div id="accordion">
+		            {% for group in groups %}
+		                <div class="card">
+			                  <div class="card-header">
+			                      <p class="mb-0">
+				                        <a data-toggle="collapse" data-parent="#accordion"
+                                   href="#collapse{{ forloop.counter }}">
+                                    {{ group }}
+                                </a>
+			                      </p>
+			                  </div>
+			                  <div id="collapse{{ forloop.counter }}"
+                             class="collapse {{ actives|get_show:group }}"
+                             data-parent="#accordion">
+			                      <div class="card-body">
+				                        <ol class="list-unstyled">
+				                            {% for subgroup in subgroups|get_item:group %}
+					                              <li>
+                                            <a href="{{ subgroup.get_absolute_url }}?section={{ section }}&show={{ group }}">
+                                                {{ subgroup }}
+                                            </a>
+                                        </li>
+				                            {% endfor %}
+				                        </ol>
+			                      </div>
+			                  </div>
+		                </div>
+		            {% endfor %}
+	          </div>
+	      {% elif subgroups|length > 0 %}
+	          <a href="{% url nssection %}">
+                All {{ subgroups_name }}
+            </a>
+	          <ol class="list-unstyled">
+		            {% for subgroup in subgroups %}
+		                <li>
+                        <a href="{{ subgroup.get_absolute_url }}?section={{ section }}">
+                            {{ subgroup }}
+                        </a>
+                    </li>
+		            {% endfor %}
+	          </ol>
+	      {% elif parts|length > 1 %}
+	          <a href="{% url nssection %}">
+                All Entries
+            </a>
+	      {% else %}
+	          <a href="{% url nssection %}">
+                No Entries
+            </a>
+	      {% endif %}
+    </div>
+{% endwith %}
