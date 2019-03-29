@@ -1,0 +1,249 @@
+# Copyright 2019 Quantapix Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
+from collections import defaultdict
+
+
+class Params:
+    def __init__(self, name=None, *, flags, **kw):
+        ps = _profiles[name].copy()
+        ps.update(**kw)
+        fs = {}
+        for k, v in ps.items():
+            if hasattr(flags, k):
+                v = getattr(flags, k)
+                if v:
+                    fs[k] = v
+        ps.update(**fs)
+        self.update(**ps)
+
+    @property
+    def hparams(self):
+        return {}
+
+    def update(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
+def load_flags():
+    from official.utils.flags import core as fu
+    fu.define_base()
+    fu.define_performance(
+        # all_reduce_alg=True,
+        # dtype=False,
+        # inter_op=False,
+        # intra_op=False,
+        # max_train_steps=False,
+        num_parallel_calls=False,
+        # synthetic_data=True,
+    )
+    fu.define_image()
+    # fu.define_benchmark()
+    from absl import flags
+    flags.adopt_module_key_flags(fu)
+    flags.DEFINE_string('save_dir', None, 'Save dir')
+    flags.DEFINE_string('model_name', 'mlp', 'Model name')
+    fu.set_defaults(
+        data_dir='.data/roc',
+        model_dir='.model/quess',
+        log_dir='.model/quess/logs',
+        save_dir='.model/quess/save')
+
+
+_profiles = {
+    'squad':
+    defaultdict(
+        lambda: None,
+        bert_config_file=None,
+        do_predict=False,
+        do_train=False,
+        doc_stride=128,
+        init_checkpoint=None,
+        iterations_per_loop=1000,
+        max_ans_len=30,
+        max_qry_len=64,
+        n_best_size=20,
+        null_score_diff_threshold=0.0,
+        num_train_epochs=3.0,
+        output_dir=None,
+        predict_batch_size=8,
+        predict_file=None,
+        save_checkpoints_steps=1000,
+        # train_file=None,
+        use_fp16=False,
+        use_xla=False,
+        warmup_proportion=0.1,
+    ),
+    'bert':
+    defaultdict(
+        lambda: None,
+        attn_drop=0.1,
+        attn_heads=4,  # bert 12
+        batch_size=4,  # 4096
+        data_dir=None,
+        decode_layers=0,
+        dupe_factor=10,
+        embed_drop=0.6,
+        encode_layers=0,
+        ffn_drop=0.2,
+        ffn_units=64,  # bert 3072
+        hidden_act='gelu',
+        hidden_drop=0.1,
+        stacks_layers=2,  # bert 12
+        hidden_size=512,  # bert 768,
+        init_stddev=0.02,  # stdev truncated_normal for all weights
+        log_dir=None,
+        max_pos_len=512,
+        max_seq_len=128,  # squad 384,
+        model_dir=None,
+        post_drop=0.1,
+        prepost_drop=0.1,
+        random_seed=12345,
+        save_dir=None,
+        symbol_drop=0.0,
+        vocab_size=None,
+        num_types=16,
+        l2_penalty=None,  # 1e-6, 1e-4
+        pos_embed='timing',  # timing, none
+        attn_k_size=0,
+        attn_v_size=0,
+        param_attn_k_size=0,
+        param_attn_v_size=0,
+    ),
+    None:
+    defaultdict(
+        lambda: None,
+        # epochs_between_evals=None,
+        # len_bucket_step=1.1,
+        # vocab_divisor=1,
+        # input_file=None,
+        # output_file=None,
+        add_relative=False,
+        all_reduce_alg=None,
+        alpha=0.6,
+        attn_bdims='',
+        attn_type='dot_product',
+        beam_size=4,
+        causal_self_attn=True,
+        clip_grad_norm=2.0,  # 0.0 no gradient clipping,
+        compress_steps=0,
+        conv_first_kernel=3,
+        daisy_chain_vars=True,
+        data_format=None,
+        dataset=None,
+        dist_strategy=None,
+        drop_long_seqs=False,
+        ds_src_len=0,
+        ds_tgt_len=0,
+        dtype=None,
+        eval_frequency=100,
+        eval_steps=1,
+        extra_decode_len=50,
+        factored_logits=False,
+        ffn_bdims='',
+        ffn_layer='dense_relu_dense',
+        fixed_batch_size=False,
+        full_predict=False,
+        gpu_thread_mode=None,
+        grad_noise_scale=0.0,
+        group_epsilon=1e-5,
+        heads_share_embed=False,
+        init_gain=1.5,  # 1.0
+        initializer='uniform_unit_scaling',  # 'orthogonal',
+        input_frames=1,
+        inter_op=None,
+        intra_op=None,
+        kernel_height=3,
+        kernel_width=1,
+        label_smoothing=0.1,
+        learn_rate=2e-4,  # 2.0, squad 5e-6,
+        loss_scale=None,
+        lower_case=True,
+        lr_constant=0.1,
+        lr_schedule='constant*linear_warmup*rsqrt_decay',
+        lr_warmup_steps=200,
+        max_position=0,
+        max_train_steps=None,
+        min_len_bucket=8,
+        min_length=0,
+        mixed_precision_loss=32768,
+        mixed_precision_loss_scaler='exponential',
+        mlm_preds=20,
+        mlm_prob=0.15,
+        model=None,
+        multiply_mode='sqrt_depth',
+        no_data_parallel=False,
+        norm_epsilon=1e-6,
+        norm_type='layer',  # 'batch', layer', 'noam', 'none'.
+        num_gpu=None,
+        num_groups=8,
+        num_parallel_calls=None,
+        num_sampled_classes=0,
+        adam_beta1=0.9,
+        adam_beta2=0.997,  # 0.999
+        adam_epsilon=1e-9,  # 1e-6
+        adamw_decay=0.0,
+        weight_decay=1e-6,
+        opt_multistep_accumulate_steps=None,
+        opt_zero_grads=False,
+        overload_metric='',
+        pack_dataset=False,
+        pad_batch=False,
+        pad_remover=True,
+        parallel_batches=None,
+        params_profile=None,
+        penalty=0.1,
+        post_cmd='dan',
+        pre_cmd='n',
+        prepend_mode='none',
+        prepost_bdims='',
+        private_threads=None,
+        prox_bias=False,
+        run_autoregressive=False,
+        sampl_gold_mixin_prob=0.5,
+        sampl_method='argmax',  # 'argmax' or 'random'
+        sampl_prob=0.0,
+        sampl_temp=1.0,
+        sampl_warmup_steps=50000,
+        self_attn_type='dot_product',
+        shared_embed=False,
+        shared_weights=True,
+        short_seq_prob=0.1,
+        shuffle_size=512,
+        split_tgts_chunk_len=0,
+        split_tgts_max_chunks=100,
+        split_to_len=0,
+        src_len=0,
+        steps_between_evals=None,
+        stop_threshold=None,
+        summarize_grads=False,
+        summarize_vars=False,
+        symbol_modality_shards=16,
+        synthetic_data=None,
+        target_frames=1,
+        tgt_len=0,
+        train_epochs=None,
+        train_steps=1000,
+        unidirectional_encoder=False,
+        use_custom_ops=True,
+        use_target_embed=True,
+        # vocab_file=None,
+        warm_start_from='',
+        warmup_steps=16000,
+        weight_noise=0.0,
+        weights_fn={},
+    ),
+}
