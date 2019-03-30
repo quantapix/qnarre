@@ -24,7 +24,7 @@ build() {
          git clean -xfd)
         cp cuda_configure_fix.bzl upstream/third_party/gpus/cuda_configure.bzl
         cp protobuf_cuda10.1_fix.patch upstream/third_party
-        patch -d upstream -Np1 -i ../protobuf_cuda10.1_fix_apply.patch
+        patch -d upstream -Np1 -i ../protobuf_cuda10.1_fix_apply.patch || true
     fi
     if [ ! -e std.build ]; then
         mkdir std.build std.install
@@ -88,13 +88,17 @@ build() {
      fi
      (cd ../upstream || exit
       if [ "$2" ]; then
-          bazel build --config=opt --config=v2 \
+          bazel build --config=v2 --config=opt  \
+                --config=noaws --config=nohdfs \
+                --config=noignite --config=nokafka \
                 //tensorflow:libtensorflow.so \
                 //tensorflow:libtensorflow_cc.so \
                 //tensorflow:install_headers \
                 //tensorflow/tools/pip_package:build_pip_package
       else
-          bazel build --config=opt --config=mkl --config=v2 \
+          bazel build --config=v2 --config=opt --config=mkl \
+                --config=noaws --config=nohdfs \
+                --config=noignite --config=nokafka \
                 //tensorflow:libtensorflow.so \
                 //tensorflow:libtensorflow_cc.so \
                 //tensorflow:install_headers \

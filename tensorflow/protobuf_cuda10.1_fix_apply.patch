@@ -22,7 +22,7 @@ index dff151246a..d3fe95ec04 100755
              "//third_party/systemlibs:protobuf.bzl": "protobuf.bzl",
          },
          urls = PROTOBUF_URLS,
-+        patch_file = clean_dep("//third_party:protobuf_temp_fix_cuda10.1.patch"),
++        patch_file = clean_dep("//third_party:protobuf_cuda10.1_fix.patch"),
      )
  
      # We need to import the protobuf library under the names com_google_protobuf
@@ -30,7 +30,7 @@ index dff151246a..d3fe95ec04 100755
              "//third_party/systemlibs:protobuf.bzl": "protobuf.bzl",
          },
          urls = PROTOBUF_URLS,
-+        patch_file = clean_dep("//third_party:protobuf_temp_fix_cuda10.1.patch"),
++        patch_file = clean_dep("//third_party:protobuf_cuda10.1_fix.patc"),
      )
  
      tf_http_archive(
@@ -38,7 +38,7 @@ index dff151246a..d3fe95ec04 100755
              "//third_party/systemlibs:protobuf.bzl": "protobuf.bzl",
          },
          urls = PROTOBUF_URLS,
-+        patch_file = clean_dep("//third_party:protobuf_temp_fix_cuda10.1.patch"),
++        patch_file = clean_dep("//third_party:protobuf_cuda10.1_fix.patc"),
      )
  
      tf_http_archive(
