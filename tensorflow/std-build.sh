@@ -91,23 +91,20 @@ build() {
           bazel build --config=v2 --config=opt  \
                 --config=noaws --config=nohdfs \
                 --config=noignite --config=nokafka \
-                //tensorflow:libtensorflow.so \
-                //tensorflow:libtensorflow_cc.so \
-                //tensorflow:install_headers \
                 //tensorflow/tools/pip_package:build_pip_package
       else
           bazel build --config=v2 --config=opt --config=mkl \
                 --config=noaws --config=nohdfs \
                 --config=noignite --config=nokafka \
-                //tensorflow:libtensorflow.so \
-                //tensorflow:libtensorflow_cc.so \
-                //tensorflow:install_headers \
                 //tensorflow/tools/pip_package:build_pip_package
-      fi
+          # //tensorflow:libtensorflow.so \
+          # //tensorflow:libtensorflow_cc.so \
+          # //tensorflow:install_headers \
+fi
       bazel-bin/tensorflow/tools/pip_package/build_pip_package --nightly_flag ../std.install)
      )
     (cd std.install || exit
-     pip install -I tensorflow-*.whl)
+     pip install -I tf_nightly-*.whl)
 }
 
 show_usage() {
