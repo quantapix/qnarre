@@ -104,7 +104,7 @@ build() {
                 //tensorflow:install_headers \
                 //tensorflow/tools/pip_package:build_pip_package
       fi
-      bazel-bin/tensorflow/tools/pip_package/build_pip_package ../std.install)
+      bazel-bin/tensorflow/tools/pip_package/build_pip_package --nightly_flag ../std.install)
      )
     (cd std.install || exit
      pip install -I tensorflow-*.whl)
