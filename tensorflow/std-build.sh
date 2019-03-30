@@ -22,6 +22,9 @@ build() {
         (cd upstream || exit
          git reset --hard
          git clean -xfd)
+        cp cuda_configure_fix.bzl upstream/third_party/gpus/cuda_configure.bzl
+        cp protobuf_cuda10.1_fix.patch upstream/third_party
+        patch -d upstream -Np1 -i ../protobuf_cuda10.1_fix_apply.patch
     fi
     if [ ! -e std.build ]; then
         mkdir std.build std.install
