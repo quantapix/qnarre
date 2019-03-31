@@ -1,3 +1,12 @@
 [submodule "tensorflow/upstream"]
 	path = tensorflow/upstream
 	url = https://github.com/tensorflow/tensorflow.git
+[submodule "tensorflow/tensorboard"]
+	path = tensorflow/tensorboard
+	url = https://github.com/tensorflow/tensorboard.git
+[submodule "tensorflow/lingvo"]
+	path = tensorflow/lingvo
+	url = https://github.com/tensorflow/lingvo.git
+[submodule "tensorflow/probability"]
+	path = tensorflow/probability
+	url = https://github.com/tensorflow/probability.git
