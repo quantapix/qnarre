@@ -50,7 +50,13 @@ class Embeds:
         self._chars = tuple(v)
 
 
+def _span_len(self):
+    return self.end - self.begin
+
+
 Span = co.namedtuple('Span', 'begin end')
+Span.__len__ = _span_len
+
 Token = co.namedtuple('Token', 'word span pos lemma ner embeds')
 
 
@@ -157,7 +163,7 @@ Context = co.namedtuple('Context', 'text tokens questions')
 Question = co.namedtuple('Question', 'text tokens answers unfit viables qid')
 # Question.__new__.__defaults__ = ('', '', None, False, ())
 
-Answer = co.namedtuple('Answer', 'text tokens span')
+Answer = co.namedtuple('Answer', 'text tokens span uid')
 
 
 class Topics(co.abc.Sequence):

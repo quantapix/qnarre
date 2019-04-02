@@ -63,66 +63,40 @@ def load_flags():
         save_dir='.model/quess/save')
 
 
+def load_qnarre_flags():
+    from official.utils.flags import core as fu
+    fu.define_base()
+    fu.define_performance(
+        # all_reduce_alg=True,
+        # dtype=False,
+        # inter_op=False,
+        # intra_op=False,
+        # max_train_steps=False,
+        num_parallel_calls=False,
+        # synthetic_data=True,
+    )
+    fu.define_image()
+    # fu.define_benchmark()
+    from absl import flags
+    flags.adopt_module_key_flags(fu)
+    flags.DEFINE_string('data_dir', None, 'Data dir')
+    flags.DEFINE_string('model_dir', None, 'Model dir')
+    flags.DEFINE_string('log_dir', None, 'Log dir')
+    flags.DEFINE_string('save_dir', None, 'Save dir')
+    flags.DEFINE_string('model_name', 'mlp', 'Model name')
+    flags.DEFINE_float("train_epochs", 0, "Number of training epochs")
+    flags.DEFINE_integer("batch_size", 0, "Batch size for training")
+    flags.DEFINE_integer("eval_batch_size", 0, "Batch size for eval")
+    flags.DEFINE_bool("do_train", False, "Run training")
+    flags.DEFINE_bool("do_eval", False, "Run eval")
+    flags.DEFINE_integer("train_steps", 0, "Training steps")
+    flags.DEFINE_integer("warmup_steps", 0, "Warmup steps")
+    flags.DEFINE_integer("eval_steps", 0, "Eval steps")
+    flags.DEFINE_integer("checkpoint_steps", 0, "How often to save checkpoint")
+    flags.DEFINE_integer("iters_per_loop", 0, "How many steps in estimator")
+
+
 _profiles = {
-    'squad':
-    defaultdict(
-        lambda: None,
-        bert_config_file=None,
-        do_predict=False,
-        do_train=False,
-        doc_stride=128,
-        init_checkpoint=None,
-        iterations_per_loop=1000,
-        max_ans_len=30,
-        max_qry_len=64,
-        n_best_size=20,
-        null_score_diff_threshold=0.0,
-        num_train_epochs=3.0,
-        output_dir=None,
-        predict_batch_size=8,
-        predict_file=None,
-        save_checkpoints_steps=1000,
-        # train_file=None,
-        use_fp16=False,
-        use_xla=False,
-        warmup_proportion=0.1,
-    ),
-    'bert':
-    defaultdict(
-        lambda: None,
-        attn_drop=0.1,
-        attn_heads=4,  # bert 12
-        batch_size=4,  # 4096
-        data_dir=None,
-        decode_layers=0,
-        dupe_factor=10,
-        embed_drop=0.6,
-        encode_layers=0,
-        ffn_drop=0.2,
-        ffn_units=64,  # bert 3072
-        hidden_act='gelu',
-        hidden_drop=0.1,
-        stacks_layers=2,  # bert 12
-        hidden_size=512,  # bert 768,
-        init_stddev=0.02,  # stdev truncated_normal for all weights
-        log_dir=None,
-        max_pos_len=512,
-        max_seq_len=128,  # squad 384,
-        model_dir=None,
-        post_drop=0.1,
-        prepost_drop=0.1,
-        random_seed=12345,
-        save_dir=None,
-        symbol_drop=0.0,
-        vocab_size=None,
-        num_types=16,
-        l2_penalty=None,  # 1e-6, 1e-4
-        pos_embed='timing',  # timing, none
-        attn_k_size=0,
-        attn_v_size=0,
-        param_attn_k_size=0,
-        param_attn_v_size=0,
-    ),
     None:
     defaultdict(
         lambda: None,
@@ -131,6 +105,11 @@ _profiles = {
         # vocab_divisor=1,
         # input_file=None,
         # output_file=None,
+        # vocab_file=None,
+        adam_beta1=0.9,
+        adam_beta2=0.997,  # 0.999
+        adam_epsilon=1e-9,  # 1e-6
+        adamw_decay=0.0,
         add_relative=False,
         all_reduce_alg=None,
         alpha=0.6,
@@ -192,11 +171,6 @@ _profiles = {
         num_groups=8,
         num_parallel_calls=None,
         num_sampled_classes=0,
-        adam_beta1=0.9,
-        adam_beta2=0.997,  # 0.999
-        adam_epsilon=1e-9,  # 1e-6
-        adamw_decay=0.0,
-        weight_decay=1e-6,
         opt_multistep_accumulate_steps=None,
         opt_zero_grads=False,
         overload_metric='',
@@ -240,9 +214,9 @@ _profiles = {
         unidirectional_encoder=False,
         use_custom_ops=True,
         use_target_embed=True,
-        # vocab_file=None,
         warm_start_from='',
         warmup_steps=16000,
+        weight_decay=1e-6,
         weight_noise=0.0,
         weights_fn={},
     ),
