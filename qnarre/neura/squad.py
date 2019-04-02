@@ -23,9 +23,25 @@ import optimization
 import tensorflow as tf
 import tokenization
 
-from qfeeds.model.squad_ds import read_squad_examples, convert_examples_to_features
+from collections import defaultdict
+
+from absl import flags
+
+from qnarre.neura.params import Params, load_flags
+from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
 PS = None
+
+
+def dataset_for(kind, params):
+    ds = squad_ds(kind, params)
+    if kind == 'train':
+        ds = ds.shuffle(buffer_size=50000)
+        ds = ds.batch(params.batch_size)
+        # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    else:
+        ds = ds
+    return ds
 
 
 def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
@@ -778,119 +794,64 @@ def main(_):
                           output_nbest_file, output_null_log_odds_file)
 
 
+params = defaultdict(
+    lambda: None,
+    seq_stride=128,
+    max_ans_len=30,
+    max_qry_len=64,
+    max_seq_len=384,
+    n_best_size=20,
+    null_score_diff_threshold=0.0,
+    train_epochs=2.0,
+    use_fp16=False,
+    use_xla=False,
+    warmup_split=0.1,
+    batch_size=8,
+    learn_rate=5e-6,
+)
+
+params.update(
+    data_dir='.data/squad',
+    log_dir='.model/squad/logs',
+    model_dir='.model/squad',
+    save_dir='.model/squad/save',
+)
+
+
+def main(_):
+    fs = flags.FLAGS
+    # print(fs)
+    f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
+    ps = Params(params, flags=fs, data_format=fs.data_format or f)
+    nus = [16, 32, 512]
+    drs = [0.1, 0.2]
+    opts = ['adam', 'sgd']
+    writer = tf.summary.create_file_writer(ps.log_dir + '/train')
+    with writer.as_default():
+        s = _to_summary_pb(nus, drs, opts)
+        e = tf.compat.v1.Event(summary=s).SerializeToString()
+        tf.summary.import_event(e)
+    for nu in nus:
+        for dr in drs:
+            for opt in opts:
+                kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
+                sess = datetime.now().strftime('%Y%m%d-%H%M%S')
+                print(f'--- Running session {sess}:', kw)
+                ps.update(**kw)
+                run_mnist(sess, ps)
+
+
+if __name__ == '__main__':
+    # tf.logging.set_verbosity(tf.logging.INFO)
+    load_flags()
+    flags.DEFINE_float("null_score_diff_threshold", 0.0, "null_score")
+    flags.DEFINE_float("warmup_split", 0.0, "Proportion of warmup")
+    flags.DEFINE_integer("max_ans_len", 0, "Max tokens for answer")
+    flags.DEFINE_integer("max_qry_len", 0, "Max tokens for question")
+    flags.DEFINE_integer("n_best_size", 0, "n-best preds json file")
+    flags.DEFINE_integer("seq_stride", 0, "Stride between chunks")
+    from absl import app
+    app.run(main)
 """
-
-#!/usr/bin/env bash
-
-export SQUAD_DIR=data/squad/v1.1
-export BERT_DIR=data/pretrained_models_google/uncased_L-24_H-1024_A-16
-
-
-echo "Container nvidia build = " $NVIDIA_BUILD_ID
-
-batch_size=${1:-"8"}
-learning_rate=${2:-"5e-6"}
-precision=${3:-"fp16"}
-use_xla=${4:-"true"}
-num_gpu=${5:-"8"}
-init_checkpoint=${6:-"$BERT_DIR/bert_model.ckpt"}
-epochs="2.0"
-
-use_fp16=""
-if [ "$precision" = "fp16" ] ; then
-        echo "fp16 activated!"
-        export TF_ENABLE_AUTO_MIXED_PRECISION_GRAPH_REWRITE=1
-        use_fp16="--use_fp16"
-fi
-
-if [ "$use_xla" = "true" ] ; then
-    use_xla_tag="--use_xla"
-    echo "XLA activated"
-else
-    use_xla_tag=""
-fi
-
-if [ "$num_gpu" = "0" ] ; then
-    mpi_command=""
-    use_hvd=""
-else
-    mpi_command="mpirun -np $num_gpu -H localhost:$num_gpu \
-    --allow-run-as-root -bind-to none -map-by slot \
-    -x NCCL_DEBUG=INFO \
-    -x LD_LIBRARY_PATH \
-    -x PATH -mca pml ob1 -mca btl ^openib"
-    use_hvd="--horovod"
-fi
-
-
-    $mpi_command python run_squad.py \
-    --vocab_file=$BERT_DIR/vocab.txt \
-    --bert_config_file=$BERT_DIR/bert_config.json \
-    --init_checkpoint=$init_checkpoint \
-    --do_train=True \
-    --train_file=$SQUAD_DIR/train-v1.1.json \
-    --do_predict=True \
-    --predict_file=$SQUAD_DIR/dev-v1.1.json \
-    --train_batch_size=$batch_size \
-    --learning_rate=$learning_rate \
-    --num_train_epochs=$epochs \
-    --max_seq_length=384 \
-    --doc_stride=128 \
-    --save_checkpoints_steps 1000 \
-    --output_dir=/results \
-    "$use_hvd" \
-    "$use_fp16" \
-    $use_xla_tag 
-
 python $SQUAD_DIR/evaluate-v1.1.py $SQUAD_DIR/dev-v1.1.json /results/predictions.json
-
-
-#!/usr/bin/env bash
-
-export SQUAD_DIR=data/squad/v1.1
-export BERT_DIR=data/pretrained_models_google/uncased_L-24_H-1024_A-16
-
-echo "Container nvidia build = " $NVIDIA_BUILD_ID
-
-init_checkpoint=${1:-"/results/model.ckpt"}
-batch_size=${2:-"8"}
-precision=${3:-"fp16"}
-use_xla=${4:-"true"}
-
-use_fp16=""
-if [ "$precision" = "fp16" ] ; then
-        echo "fp16 activated!"
-        export TF_ENABLE_AUTO_MIXED_PRECISION_GRAPH_REWRITE=1
-        use_fp16="--fast_math"
-elif [ "$precision" = "fast_math" ] ; then
-        echo "fastmath activated!"
-        export TF_ENABLE_CUBLAS_TENSOR_OP_MATH_FP32=1
-        export TF_ENABLE_CUDNN_TENSOR_OP_MATH_FP32=1
-        export TF_ENABLE_CUDNN_RNN_TENSOR_OP_MATH_FP32=1
-        export TF_USE_DEFAULT_LOSS_SCALING=1
-fi
-
-if [ "$use_xla" = "true" ] ; then
-    use_xla_tag="--use_xla"
-    echo "XLA activated"
-else
-    use_xla_tag=""
-fi
-
-
-python run_squad.py \
---vocab_file=$BERT_DIR/vocab.txt \
---bert_config_file=$BERT_DIR/bert_config.json \
---init_checkpoint=$init_checkpoint \
---do_predict=True \
---predict_file=$SQUAD_DIR/dev-v1.1.json \
---max_seq_length=384 \
---doc_stride=128 \
---predict_batch_size=$batch_size \
---output_dir=/results \
-"$use_fp16" \
-$use_xla_tag
-
-python $SQUAD_DIR/evaluate-v1.1.py $SQUAD_DIR/dev-v1.1.json /results/predictions.json
-
 """

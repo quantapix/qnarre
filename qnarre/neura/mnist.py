@@ -28,11 +28,13 @@ import matplotlib.pyplot as plt
 
 import sklearn.metrics
 
+from absl import flags
 from google.protobuf import struct_pb2
 from tensorboard.plugins.hparams import api_pb2
 from tensorboard.plugins.hparams import summary as hparams
 
-from qfeeds.mnist.dataset import dataset as mnist_ds
+from qnarre.neura.params import Params, load_flags
+from qnarre.feeds.dset.mnist_ds import dataset as mnist_ds
 
 ks = tf.keras
 kls = ks.layers
@@ -220,71 +222,31 @@ def _to_image(fig):
     return img
 
 
-class Params:
-    def __init__(self, *, flags, **kw):
-        ps = defaultdict(
-            lambda: None,
-            model_name=None,
-            data_dir=None,
-            model_dir=None,
-            save_dir=None,
-            log_dir=None,
-            batch_size=None,
-            train_epochs=None,
-            num_classes=10,
-            epochs_between_evals=1,
-            num_units=512,
-            dropout_rate=0.2,
-            optimizer='adam',
-        )
-        ps.update(**kw)
-        fs = {}
-        for k, v in ps.items():
-            if hasattr(flags, k):
-                v = getattr(flags, k)
-                if v:
-                    fs[k] = v
-        ps.update(**fs)
-        self.update(**ps)
+params = defaultdict(
+    lambda: None,
+    model_name='mlp',
+    batch_size=64,
+    train_epochs=2,
+    num_classes=10,
+    epochs_between_evals=1,
+    num_units=512,
+    dropout_rate=0.2,
+    optimizer='adam',
+)
 
-    @property
-    def hparams(self):
-        return {
-            'num_units': self.num_units,
-            'dropout_rate': self.dropout_rate,
-            'optimizer': self.optimizer
-        }
-
-    def update(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-
-def load_flags():
-    from official.utils.flags import core as fu
-    fu.define_base()
-    fu.define_performance(num_parallel_calls=False)
-    fu.define_image()
-    from absl import flags
-    flags.adopt_module_key_flags(fu)
-    flags.DEFINE_string('save_dir', None, 'Save dir')
-    flags.DEFINE_string('model_name', 'mlp', 'Model name')
-    flags.DEFINE_integer('num_classes', 10, 'Number of classes')
-    fu.set_defaults(
-        data_dir='.data/mnist',
-        model_dir='.model/mnist',
-        log_dir='.model/mnist/logs',
-        save_dir='.model/mnist/save',
-        batch_size=64,
-        train_epochs=2)
+params.update(
+    data_dir='.data/mnist',
+    log_dir='.model/mnist/logs',
+    model_dir='.model/mnist',
+    save_dir='.model/mnist/save',
+)
 
 
 def main(_):
-    from absl import flags
     fs = flags.FLAGS
     # print(fs)
     f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
-    ps = Params(flags=fs, data_format=fs.data_format or f)
+    ps = Params(params, flags=fs, data_format=fs.data_format or f)
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     opts = ['adam', 'sgd']
@@ -338,5 +300,6 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
     load_flags()
+    flags.DEFINE_integer('num_classes', 0, 'Number of classes')
     from absl import app
     app.run(main)

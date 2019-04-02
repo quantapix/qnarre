@@ -17,8 +17,8 @@ from collections import defaultdict
 
 
 class Params:
-    def __init__(self, name=None, *, flags, **kw):
-        ps = _profiles[name].copy()
+    def __init__(self, params, *, flags, **kw):
+        ps = params.copy()
         ps.update(**kw)
         fs = {}
         for k, v in ps.items():
@@ -31,7 +31,7 @@ class Params:
 
     @property
     def hparams(self):
-        return {}
+        return {'optimizer': self.optimizer}
 
     def update(self, **kw):
         for k, v in kw.items():
@@ -54,46 +54,21 @@ def load_flags():
     # fu.define_benchmark()
     from absl import flags
     flags.adopt_module_key_flags(fu)
-    flags.DEFINE_string('save_dir', None, 'Save dir')
-    flags.DEFINE_string('model_name', 'mlp', 'Model name')
-    fu.set_defaults(
-        data_dir='.data/roc',
-        model_dir='.model/quess',
-        log_dir='.model/quess/logs',
-        save_dir='.model/quess/save')
-
-
-def load_qnarre_flags():
-    from official.utils.flags import core as fu
-    fu.define_base()
-    fu.define_performance(
-        # all_reduce_alg=True,
-        # dtype=False,
-        # inter_op=False,
-        # intra_op=False,
-        # max_train_steps=False,
-        num_parallel_calls=False,
-        # synthetic_data=True,
-    )
-    fu.define_image()
-    # fu.define_benchmark()
-    from absl import flags
-    flags.adopt_module_key_flags(fu)
-    flags.DEFINE_string('data_dir', None, 'Data dir')
-    flags.DEFINE_string('model_dir', None, 'Model dir')
-    flags.DEFINE_string('log_dir', None, 'Log dir')
-    flags.DEFINE_string('save_dir', None, 'Save dir')
-    flags.DEFINE_string('model_name', 'mlp', 'Model name')
+    flags.DEFINE_bool("do_eval", False, "Run eval")
+    flags.DEFINE_bool("do_train", False, "Run training")
     flags.DEFINE_float("train_epochs", 0, "Number of training epochs")
     flags.DEFINE_integer("batch_size", 0, "Batch size for training")
+    flags.DEFINE_integer("checkpoint_steps", 0, "How often to save checkpoint")
     flags.DEFINE_integer("eval_batch_size", 0, "Batch size for eval")
-    flags.DEFINE_bool("do_train", False, "Run training")
-    flags.DEFINE_bool("do_eval", False, "Run eval")
+    flags.DEFINE_integer("eval_steps", 0, "Eval steps")
+    flags.DEFINE_integer("iters_per_loop", 0, "How many steps in estimator")
     flags.DEFINE_integer("train_steps", 0, "Training steps")
     flags.DEFINE_integer("warmup_steps", 0, "Warmup steps")
-    flags.DEFINE_integer("eval_steps", 0, "Eval steps")
-    flags.DEFINE_integer("checkpoint_steps", 0, "How often to save checkpoint")
-    flags.DEFINE_integer("iters_per_loop", 0, "How many steps in estimator")
+    flags.DEFINE_string('data_dir', None, 'Data dir')
+    flags.DEFINE_string('log_dir', None, 'Log dir')
+    flags.DEFINE_string('model_dir', None, 'Model dir')
+    flags.DEFINE_string('model_name', None, 'Model name')
+    flags.DEFINE_string('save_dir', None, 'Save dir')
 
 
 _profiles = {
