@@ -39,36 +39,38 @@ class Params:
 
 
 def load_flags():
-    from official.utils.flags import core as fu
-    fu.define_base()
-    fu.define_performance(
-        # all_reduce_alg=True,
-        # dtype=False,
-        # inter_op=False,
-        # intra_op=False,
-        # max_train_steps=False,
-        num_parallel_calls=False,
-        # synthetic_data=True,
-    )
-    fu.define_image()
+    # from official.utils.flags import core as fu
+    # fu.define_base()
+    # fu.define_performance(
+    # all_reduce_alg=True,
+    # dtype=False,
+    # inter_op=False,
+    # intra_op=False,
+    # max_train_steps=False,
+    # num_parallel_calls=False,
+    # synthetic_data=True,
+    # )
+    # fu.define_image()
     # fu.define_benchmark()
     from absl import flags
-    flags.adopt_module_key_flags(fu)
-    flags.DEFINE_bool("do_eval", False, "Run eval")
-    flags.DEFINE_bool("do_train", False, "Run training")
-    flags.DEFINE_float("train_epochs", 0, "Number of training epochs")
-    flags.DEFINE_integer("batch_size", 0, "Batch size for training")
-    flags.DEFINE_integer("checkpoint_steps", 0, "How often to save checkpoint")
-    flags.DEFINE_integer("eval_batch_size", 0, "Batch size for eval")
-    flags.DEFINE_integer("eval_steps", 0, "Eval steps")
-    flags.DEFINE_integer("iters_per_loop", 0, "How many steps in estimator")
-    flags.DEFINE_integer("train_steps", 0, "Training steps")
-    flags.DEFINE_integer("warmup_steps", 0, "Warmup steps")
-    flags.DEFINE_string('data_dir', None, 'Data dir')
-    flags.DEFINE_string('log_dir', None, 'Log dir')
-    flags.DEFINE_string('model_dir', None, 'Model dir')
-    flags.DEFINE_string('model_name', None, 'Model name')
-    flags.DEFINE_string('save_dir', None, 'Save dir')
+    # flags.adopt_module_key_flags(fu)
+    flags.DEFINE_bool('do_eval', False, '')
+    flags.DEFINE_bool('do_train', False, '')
+    flags.DEFINE_float('stop_threshold', None, '')
+    flags.DEFINE_float('train_epochs', None, '')
+    flags.DEFINE_integer('batch_size', None, '')
+    flags.DEFINE_integer('checkpoint_steps', None, '')
+    flags.DEFINE_integer('epochs_between_evals', None, '')
+    flags.DEFINE_integer('eval_batch_size', None, '')
+    flags.DEFINE_integer('eval_steps', None, '')
+    flags.DEFINE_integer('iters_per_loop', None, '')
+    flags.DEFINE_integer('train_steps', None, '')
+    flags.DEFINE_integer('warmup_steps', None, '')
+    flags.DEFINE_string('data_dir', None, '')
+    # flags.DEFINE_string('log_dir', None, '')
+    flags.DEFINE_string('model_dir', None, '')
+    flags.DEFINE_string('model_name', None, '')
+    flags.DEFINE_string('save_dir', None, '')
 
 
 _profiles = {

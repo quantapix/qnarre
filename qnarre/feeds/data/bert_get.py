@@ -18,7 +18,7 @@ import pathlib as pth
 
 from absl import flags
 
-from qfeeds.data.shell import Shell
+from qnarre.feeds.data.shell import Shell
 
 files = {
     'https://storage.googleapis.com/bert_models/2018_10_18/': {
@@ -121,25 +121,9 @@ def download(sh):
             sh.run(
                 'wget -q -c -N {}'.format(u + f + suff),
                 'unzip -quo {}'.format(f + suff),
-                # 'mv {} {}'.format(s, d),
             )
             for p, s in ss.items():
                 assert s == sh.sha256sum(f + '/' + p)
-            """
-            import urllib.request
-            r = urllib.request.urlopen(u + f + suff)
-            with open(f + suff, "wb") as h:
-                h.write(r.read())
-            import zipfile
-            z = zipfile.ZipFile(f + suff, 'r')
-            z.extractall()
-            z.close()
-            """
-
-
-def define_download_flags():
-    flags.DEFINE_string(
-        name='data_dir', default='.model/bert', help='Data dir')
 
 
 def main(_):
@@ -150,6 +134,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-    define_download_flags()
+    flags.DEFINE_string(name='data_dir', default='.model/bert', help='')
     from absl import app
     app.run(main)

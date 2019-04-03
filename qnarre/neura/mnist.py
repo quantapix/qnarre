@@ -149,7 +149,7 @@ def run_mnist(sess, params):
         cm = sklearn.metrics.confusion_matrix(labels, preds)
         img = _to_image(_to_plot(cm, names))
         with writer.as_default():
-            tf.summary.image("Confusion Matrix", img, step=epoch)
+            tf.summary.image('Confusion Matrix', img, step=epoch)
 
     cbacks = [
         kcb.LambdaCallback(on_epoch_end=log_confusion_matrix),
@@ -186,7 +186,7 @@ def run_mnist(sess, params):
     with writer.as_default():
         e = tf.compat.v1.Event(summary=sum_s).SerializeToString()
         tf.summary.import_event(e)
-        tf.summary.scalar('accuracy', acc, step=1, description="Accuracy")
+        tf.summary.scalar('accuracy', acc, step=1, description='Accuracy')
         sum_e = hparams.session_end_pb(api_pb2.STATUS_SUCCESS)
         e = tf.compat.v1.Event(summary=sum_e).SerializeToString()
         tf.summary.import_event(e)
@@ -195,7 +195,7 @@ def run_mnist(sess, params):
 def _to_plot(cm, names):
     fig = plt.figure(figsize=(8, 8))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title("Confusion Matrix")
+    plt.title('Confusion Matrix')
     plt.colorbar()
     ticks = np.arange(len(names))
     plt.xticks(ticks, names, rotation=45)
@@ -204,8 +204,8 @@ def _to_plot(cm, names):
         cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
     threshold = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        color = "white" if cm[i, j] > threshold else "black"
-        plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+        color = 'white' if cm[i, j] > threshold else 'black'
+        plt.text(j, i, cm[i, j], horizontalalignment='center', color=color)
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
@@ -300,6 +300,8 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
     load_flags()
-    flags.DEFINE_integer('num_classes', 0, 'Number of classes')
+    flags.DEFINE_integer('num_classes', 0, '')
+    flags.DEFINE_enum('data_format', None, ['channels_first', 'channels_last'],
+                      '')
     from absl import app
     app.run(main)

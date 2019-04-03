@@ -13,6 +13,8 @@
 # limitations under the License.
 # =============================================================================
 
+import lzma
+
 import numpy as np
 import pathlib as pth
 import tensorflow as tf
@@ -21,6 +23,48 @@ from tensorflow import keras as ks
 
 
 def dataset(kind, params):
+    PS = params
+    return tf.data.Dataset.from_generator(
+        lambda: _reader(kind, PS),
+        (tf.float32, tf.int32),
+        (tf.TensorShape([None]), tf.TensorShape([])),
+    )
+
+
+def _reader(kind, params):
+    PS = params
+    p = pth.Path(PS.data_dir)
+    x, y = _names[kind]
+    with lzma.open(p / (x + '.xz'), mode='rb') as xf:
+        assert _read32(xf) == 2051
+        _, r, c = _read32(xf), _read32(xf), _read32(xf)
+        with lzma.open(p / (y + '.xz'), mode='rb') as yf:
+            assert _read32(yf) == 2049
+            _ = _read32(yf)
+            while True:
+                x, y = _read32(xf, r * c * 4), _read32(yf, 1)
+                if x is None or y is None:
+                    break
+                yield x / 255.0, int(y)
+
+
+def _read32(f, count=4):
+    b = f.read(count)
+    if b:
+        dt = np.uint8 if count == 1 else np.dtype(np.uint32).newbyteorder('>')
+        rs = np.frombuffer(b, dtype=dt)
+        if count <= 4:
+            return rs[0]
+        return np.array(rs, dtype=np.float)
+
+
+_names = {
+    'train': ('train_images', 'train_labels'),
+    'test': ('test_images', 'test_labels'),
+}
+
+
+def cached_dset(kind, params):
     path = pth.Path(params.data_dir)
     p, r, c = _check_images(path / '{}_images'.format(kind))
 
@@ -77,8 +121,3 @@ def _check_labels(path):
         if _read32(f) != 2049:
             raise ValueError('Invalid magic number {}'.format(f.name))
     return str(path)
-
-
-def _read32(bstream):
-    dt = np.dtype(np.uint32).newbyteorder('>')
-    return np.frombuffer(bstream.read(4), dtype=dt)[0]
