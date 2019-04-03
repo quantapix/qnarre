@@ -15,9 +15,9 @@
 
 import numpy as np
 import tensorflow as tf
-import tf_addons as tfa
+# import tf_addons as tfa
 
-import qneura.quess.utils as qu
+import qnarre.neura.utils as qu
 
 ks = tf.keras
 K = ks.backend
@@ -83,7 +83,8 @@ class Transformer(kls.Layer):
             p = PosEmbedding(PS) if PS.pos_embed == 'embedding' else None
             p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
-        self.norm = tfa.layers.normalizations.LayerNormalization()
+        self.norm = LayerNorm()
+        # tfa.layers.normalizations.LayerNormalization()
         self.drop = kls.Dropout(PS.hidden_drop)
         pre, post = PreProcessor(PS), PostProcessor(PS)
         self.e_stack = EncodeStack(PS, pre, post)
@@ -118,6 +119,32 @@ class Transformer(kls.Layer):
         c = super().get_config()
         c['PS'] = self.PS
         return c
+
+
+class LayerNorm(kls.Layer):
+    def __init__(self, axis=-1, **kwargs):
+        self.axis = axis
+        super().__init__(**kwargs)
+
+    def get_config(self):
+        c = super().get_config()
+        c['axis'] = self.axis
+        return c
+
+    def build(self, input_shape):
+        d = input_shape[-1]
+        self.gain = self.add_weight(
+            name='gain', shape=(d, ), initializer='ones', trainable=True)
+        self.bias = self.add_weight(
+            name='bias', shape=(d, ), initializer='zeros', trainable=True)
+        return super().build(input_shape)
+
+    def call(self, inputs, **kwargs):
+        m = K.mean(inputs, axis=self.axis, keepdims=True)
+        v = K.mean(K.square(inputs - m), axis=self.axis, keepdims=True)
+        e = K.constant(1e-5, dtype=K.floatx())
+        y = (inputs - m) / K.sqrt(v + e)
+        return self.gain * y + self.bias
 
 
 class Embedding(kls.Embedding):
@@ -571,7 +598,7 @@ class PostProcessor(Processor):
 
 
 def _get_initer(stddev):
-    return ks.initializers.truncated_normal(stddev=stddev)
+    return ks.initializers.TruncatedNormal(stddev=stddev)
 
 
 def _gelu_act(x):

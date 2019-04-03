@@ -13,13 +13,14 @@
 # limitations under the License.
 # =============================================================================
 
-import asyncio as aio
+# import asyncio as aio
 
-from aiohttp import ClientSession
-from async_timeout import timeout
+# from aiohttp import ClientSession
+# from async_timeout import timeout
 
-from qfeeds.prep import CoreNLP, server
-from qfeeds.prep.layout import Span, Token
+from qnarre.feeds.prep.layout import Span, Token
+
+# from qnarre.feeds.prep.corenlp import CoreNLP, server
 
 
 class Tokenizer:
@@ -42,6 +43,7 @@ class Tokenizer:
         pass
 
 
+"""
 class BatchTokenize:
 
     timeout = 5000
@@ -129,3 +131,4 @@ class BatchTokenize:
             if h:
                 w, p, m, n = h(w), h(p), h(m), h(n)
             yield Token(word=w, span=s, pos=p, lemma=m, ner=n)
+"""

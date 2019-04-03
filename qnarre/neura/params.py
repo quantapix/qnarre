@@ -71,6 +71,8 @@ def load_flags():
     flags.DEFINE_string('model_dir', None, '')
     flags.DEFINE_string('model_name', None, '')
     flags.DEFINE_string('save_dir', None, '')
+    df = ['channels_first', 'channels_last']
+    flags.DEFINE_enum('data_format', None, df, '')
 
 
 _profiles = {

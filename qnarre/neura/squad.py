@@ -13,15 +13,14 @@
 # limitations under the License.
 # =============================================================================
 
-import collections
 import json
 import math
-import tokenization
-import datetime
-
-from collections import defaultdict
 
 import pathlib as pth
+import collections as co
+
+from datetime import datetime
+
 import tensorflow as tf
 
 from absl import flags
@@ -30,7 +29,8 @@ from tensorboard.plugins.hparams import api_pb2
 from tensorboard.plugins.hparams import summary as hparams
 
 from qnarre.neura.layers import Squad
-from qnarre.neura.params import Params, load_flags
+from qnarre.neura.params import Params
+from qnarre.neura.bert import params, load_bert_flags
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
 ks = tf.keras
@@ -62,8 +62,8 @@ def dataset_for(kind, params):
     return ds
 
 
-RawResult = collections.namedtuple("RawResult",
-                                   ["unique_id", "start_logits", "end_logits"])
+RawResult = co.namedtuple("RawResult",
+                          ["unique_id", "start_logits", "end_logits"])
 
 
 def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
@@ -73,7 +73,7 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
     tf.logging.info("Writing predictions to: %s" % (output_prediction_file))
     tf.logging.info("Writing nbest to: %s" % (output_nbest_file))
 
-    example_index_to_features = collections.defaultdict(list)
+    example_index_to_features = co.defaultdict(list)
     for feature in all_features:
         example_index_to_features[feature.example_index].append(feature)
 
@@ -81,15 +81,15 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
     for result in all_results:
         unique_id_to_result[result.unique_id] = result
 
-    _PrelimPrediction = collections.namedtuple(  # pylint: disable=invalid-name
+    _PrelimPrediction = co.namedtuple(  # pylint: disable=invalid-name
         "PrelimPrediction", [
             "feature_index", "start_index", "end_index", "start_logit",
             "end_logit"
         ])
 
-    all_predictions = collections.OrderedDict()
-    all_nbest_json = collections.OrderedDict()
-    scores_diff_json = collections.OrderedDict()
+    all_predictions = co.OrderedDict()
+    all_nbest_json = co.OrderedDict()
+    scores_diff_json = co.OrderedDict()
 
     for (example_index, example) in enumerate(all_examples):
         features = example_index_to_features[example_index]
@@ -155,7 +155,7 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
             key=lambda x: (x.start_logit + x.end_logit),
             reverse=True)
 
-        _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
+        _NbestPrediction = co.namedtuple(  # pylint: disable=invalid-name
             "NbestPrediction", ["text", "start_logit", "end_logit"])
 
         seen_predictions = {}
@@ -225,7 +225,7 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
 
         nbest_json = []
         for (i, entry) in enumerate(nbest):
-            output = collections.OrderedDict()
+            output = co.OrderedDict()
             output["text"] = entry.text
             output["probability"] = probs[i]
             output["start_logit"] = entry.start_logit
@@ -262,7 +262,7 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
 def get_final_text(PS, pred_text, orig_text, do_lower_case):
     def _strip_spaces(text):
         ns_chars = []
-        ns_to_s_map = collections.OrderedDict()
+        ns_to_s_map = co.OrderedDict()
         for (i, c) in enumerate(text):
             if c == " ":
                 continue
@@ -421,21 +421,22 @@ def run_squad(sess, params):
         tf.summary.import_event(e)
 
 
-params = defaultdict(
-    lambda: None,
-    seq_stride=128,
-    max_ans_len=30,
-    max_qry_len=64,
-    max_seq_len=384,
-    n_best_size=20,
-    null_score_diff_threshold=0.0,
-    train_epochs=2.0,
-    use_fp16=False,
-    use_xla=False,
-    warmup_split=0.1,
-    batch_size=8,
-    learn_rate=5e-6,
-)
+params.update(
+    co.defaultdict(
+        lambda: None,
+        seq_stride=128,
+        max_ans_len=30,
+        max_qry_len=64,
+        max_seq_len=384,
+        n_best_size=20,
+        null_score_diff_threshold=0.0,
+        train_epochs=2.0,
+        use_fp16=False,
+        use_xla=False,
+        warmup_split=0.1,
+        batch_size=8,
+        learn_rate=5e-6,
+    ))
 
 params.update(
     data_dir='.data/squad',
@@ -454,7 +455,7 @@ def main(_):
     drs = [0.1, 0.2]
     writer = tf.summary.create_file_writer(ps.log_dir + '/train')
     with writer.as_default():
-        s = _to_summary_pb(nus, drs)
+        s = _to_summary_pb(nus, drs, '')
         e = tf.compat.v1.Event(summary=s).SerializeToString()
         tf.summary.import_event(e)
     for nu in nus:
@@ -500,7 +501,7 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 
 if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
-    load_flags()
+    load_bert_flags()
     flags.DEFINE_float("null_score_diff_threshold", 0.0, "null_score")
     flags.DEFINE_float("warmup_split", 0.0, "Proportion of warmup")
     flags.DEFINE_integer("max_ans_len", 0, "Max tokens for answer")

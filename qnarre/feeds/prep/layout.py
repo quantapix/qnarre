@@ -16,17 +16,18 @@
 import copy
 
 import collections as co
+import collections.abc as abc
 
 
-def _init_cache(d, fs, v=None):
+def _init_cache(cls, fs, v=None):
     for f in fs:
-        d[f] = v
+        setattr(cls, f, v)
 
 
-def _del_cache(d, fs):
+def _del_cache(cls, fs):
     for f in fs:
-        if f in d:
-            del d[f]
+        if hasattr(cls, f):
+            delattr(cls, f)
 
 
 class Embeds:
@@ -60,7 +61,7 @@ Span.__len__ = _span_len
 Token = co.namedtuple('Token', 'word span pos lemma ner embeds')
 
 
-class Tokens(co.abc.Sequence):
+class Tokens(abc.Sequence):
 
     elems = offsets = ()
     fields = ('_words', '_spans', '_poss', '_lemmas', ' _ners')
@@ -152,7 +153,7 @@ class Tokens(co.abc.Sequence):
         return ns
 
 
-_init_cache(Tokens.__dict__, Tokens.fields)
+_init_cache(Tokens, Tokens.fields)
 
 Topic = co.namedtuple('Topic', 'title contexts')
 # Topic.__new__.__defaults__ = ('', ())
@@ -166,7 +167,7 @@ Question = co.namedtuple('Question', 'text tokens answers unfit viables qid')
 Answer = co.namedtuple('Answer', 'text tokens span uid')
 
 
-class Topics(co.abc.Sequence):
+class Topics(abc.Sequence):
 
     fields = ('_contexts', '_questions', '_answers')
 
@@ -216,7 +217,7 @@ class Topics(co.abc.Sequence):
         return self._viables
 
 
-_init_cache(Topics.__dict__, Topics.fields)
+_init_cache(Topics, Topics.fields)
 
 
 def span__str__(self):

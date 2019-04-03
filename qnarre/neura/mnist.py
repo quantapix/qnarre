@@ -301,7 +301,5 @@ if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
     load_flags()
     flags.DEFINE_integer('num_classes', 0, '')
-    flags.DEFINE_enum('data_format', None, ['channels_first', 'channels_last'],
-                      '')
     from absl import app
     app.run(main)
