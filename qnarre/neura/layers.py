@@ -24,7 +24,53 @@ K = ks.backend
 kls = ks.layers
 
 
-class Quess(kls.Layer):
+class Squad(kls.Layer):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.PS = PS
+        self.bert = Bert(PS)
+        self.trans = self.bert.transformer
+
+    def build(self, input_shape):
+        PS = self.params
+        assert self.trans.output_shape[2] == PS.hidden_size
+        wi = _get_initer(PS.init_stddev)
+        kw = dict(shape=(2, PS.hidden_size), trainable=True)
+        self.out_w = self.add_weight(name='out_w', initializer=wi, **kw)
+        kw.update(shape=(2, ))
+        self.out_b = self.add_weight(name='out_b', initializer='zeros', **kw)
+        return super().build(input_shape)
+
+    def call(self, inputs, **kw):
+        y = self.trans(inputs, **kw)
+        PS = self.params
+        y = tf.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
+        y = tf.matmul(y, self.out_w, transpose_b=True)
+        y = tf.nn.bias_add(y, self.out_b)
+        y = tf.reshape(y, [PS.batch_size, PS.max_seq_len, 2])
+        y = tf.transpose(y, [2, 0, 1])
+        y = tf.unstack(y, axis=0)
+        return y[0], y[1]
+
+
+class Bert(kls.Layer):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.PS = PS
+        self.transformer = Transformer(PS)
+        ki = _get_initer(PS.init_stddev)
+        self.dense = kls.Dense(PS.hidden_size, tf.tanh, kernel_initializer=ki)
+
+    def compute_output_shape(self, _):
+        return self.dense.output_shape
+
+    def call(self, inputs, **kw):
+        y = self.transformer(inputs, **kw)
+        y = tf.squeeze(y[:, 0:1, :], axis=1)
+        return self.dense(y, **kw)
+
+
+class Transformer(kls.Layer):
     typ_embed, pos_embed = None, None
 
     def __init__(self, PS, **kw):

@@ -125,7 +125,6 @@ _profiles = {
         label_smoothing=0.1,
         learn_rate=2e-4,  # 2.0, squad 5e-6,
         loss_scale=None,
-        lower_case=True,
         lr_constant=0.1,
         lr_schedule='constant*linear_warmup*rsqrt_decay',
         lr_warmup_steps=200,

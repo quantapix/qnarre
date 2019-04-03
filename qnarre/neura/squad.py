@@ -16,21 +16,38 @@
 import collections
 import json
 import math
-import os
-import random
-import modeling
-import optimization
-import tensorflow as tf
 import tokenization
+import datetime
 
 from collections import defaultdict
 
-from absl import flags
+import pathlib as pth
+import tensorflow as tf
 
+from absl import flags
+from google.protobuf import struct_pb2
+from tensorboard.plugins.hparams import api_pb2
+from tensorboard.plugins.hparams import summary as hparams
+
+from qnarre.neura.layers import Squad
 from qnarre.neura.params import Params, load_flags
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
-PS = None
+ks = tf.keras
+kls = ks.layers
+kcb = ks.callbacks
+
+
+def model_for(params):
+    PS = params
+    sh = (PS.max_seq_len, )
+    toks = kls.Input(shape=sh, dtype='int32', name='tokens')
+    segs = kls.Input(shape=sh, dtype='int32', name='segments')
+    opts = kls.Input(shape=sh, dtype='int32', name='optimals')
+    spans = kls.Input(shape=(2, ), dtype='int32', name='optimals')
+    ins = [toks, segs, opts, spans]
+    y = Squad(PS)(ins)
+    return ks.Model(inputs=ins, outputs=[y])
 
 
 def dataset_for(kind, params):
@@ -41,205 +58,15 @@ def dataset_for(kind, params):
         # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     else:
         ds = ds
+        ds = ds.batch(params.batch_size)
     return ds
-
-
-def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
-                 use_one_hot_embeddings):
-    """Creates a classification model."""
-    model = modeling.BertModel(
-        config=bert_config,
-        is_training=is_training,
-        input_ids=input_ids,
-        input_mask=input_mask,
-        token_type_ids=segment_ids,
-        use_one_hot_embeddings=use_one_hot_embeddings)
-
-    final_hidden = model.get_sequence_output()
-
-    final_hidden_shape = modeling.get_shape_list(final_hidden, expected_rank=3)
-    batch_size = final_hidden_shape[0]
-    seq_length = final_hidden_shape[1]
-    hidden_size = final_hidden_shape[2]
-
-    output_weights = tf.get_variable(
-        "cls/squad/output_weights", [2, hidden_size],
-        initializer=tf.truncated_normal_initializer(stddev=0.02))
-
-    output_bias = tf.get_variable(
-        "cls/squad/output_bias", [2], initializer=tf.zeros_initializer())
-
-    final_hidden_matrix = tf.reshape(final_hidden,
-                                     [batch_size * seq_length, hidden_size])
-    logits = tf.matmul(final_hidden_matrix, output_weights, transpose_b=True)
-    logits = tf.nn.bias_add(logits, output_bias)
-
-    logits = tf.reshape(logits, [batch_size, seq_length, 2])
-    logits = tf.transpose(logits, [2, 0, 1])
-
-    unstacked_logits = tf.unstack(logits, axis=0)
-
-    (start_logits, end_logits) = (unstacked_logits[0], unstacked_logits[1])
-
-    return (start_logits, end_logits)
-
-
-def model_fn_builder(bert_config, init_checkpoint, learning_rate,
-                     num_train_steps, num_warmup_steps, use_tpu,
-                     use_one_hot_embeddings):
-    """Returns `model_fn` closure for TPUEstimator."""
-
-    def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
-        """The `model_fn` for TPUEstimator."""
-
-        tf.logging.info("*** Features ***")
-        for name in sorted(features.keys()):
-            tf.logging.info(
-                "  name = %s, shape = %s" % (name, features[name].shape))
-
-        unique_ids = features["unique_ids"]
-        input_ids = features["input_ids"]
-        input_mask = features["input_mask"]
-        segment_ids = features["segment_ids"]
-
-        is_training = (mode == tf.estimator.ModeKeys.TRAIN)
-
-        (start_logits, end_logits) = create_model(
-            bert_config=bert_config,
-            is_training=is_training,
-            input_ids=input_ids,
-            input_mask=input_mask,
-            segment_ids=segment_ids,
-            use_one_hot_embeddings=use_one_hot_embeddings)
-
-        tvars = tf.trainable_variables()
-
-        initialized_variable_names = {}
-        scaffold_fn = None
-        if init_checkpoint:
-            (assignment_map, initialized_variable_names
-             ) = modeling.get_assignment_map_from_checkpoint(
-                 tvars, init_checkpoint)
-            if use_tpu:
-
-                def tpu_scaffold():
-                    tf.train.init_from_checkpoint(init_checkpoint,
-                                                  assignment_map)
-                    return tf.train.Scaffold()
-
-                scaffold_fn = tpu_scaffold
-            else:
-                tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
-
-        tf.logging.info("**** Trainable Variables ****")
-        for var in tvars:
-            init_string = ""
-            if var.name in initialized_variable_names:
-                init_string = ", *INIT_FROM_CKPT*"
-            tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
-                            init_string)
-
-        output_spec = None
-        if mode == tf.estimator.ModeKeys.TRAIN:
-            seq_length = modeling.get_shape_list(input_ids)[1]
-
-            def compute_loss(logits, positions):
-                one_hot_positions = tf.one_hot(
-                    positions, depth=seq_length, dtype=tf.float32)
-                log_probs = tf.nn.log_softmax(logits, axis=-1)
-                loss = -tf.reduce_mean(
-                    tf.reduce_sum(one_hot_positions * log_probs, axis=-1))
-                return loss
-
-            start_positions = features["start_positions"]
-            end_positions = features["end_positions"]
-
-            start_loss = compute_loss(start_logits, start_positions)
-            end_loss = compute_loss(end_logits, end_positions)
-
-            total_loss = (start_loss + end_loss) / 2.0
-
-            train_op = optimization.create_optimizer(total_loss, learning_rate,
-                                                     num_train_steps,
-                                                     num_warmup_steps, use_tpu)
-
-            output_spec = tf.contrib.tpu.TPUEstimatorSpec(
-                mode=mode,
-                loss=total_loss,
-                train_op=train_op,
-                scaffold_fn=scaffold_fn)
-        elif mode == tf.estimator.ModeKeys.PREDICT:
-            predictions = {
-                "unique_ids": unique_ids,
-                "start_logits": start_logits,
-                "end_logits": end_logits,
-            }
-            output_spec = tf.contrib.tpu.TPUEstimatorSpec(
-                mode=mode, predictions=predictions, scaffold_fn=scaffold_fn)
-        else:
-            raise ValueError(
-                "Only TRAIN and PREDICT modes are supported: %s" % (mode))
-
-        return output_spec
-
-    return model_fn
-
-
-def input_fn_builder(input_file, seq_length, is_training, drop_remainder):
-    """Creates an `input_fn` closure to be passed to TPUEstimator."""
-
-    name_to_features = {
-        "unique_ids": tf.FixedLenFeature([], tf.int64),
-        "input_ids": tf.FixedLenFeature([seq_length], tf.int64),
-        "input_mask": tf.FixedLenFeature([seq_length], tf.int64),
-        "segment_ids": tf.FixedLenFeature([seq_length], tf.int64),
-    }
-
-    if is_training:
-        name_to_features["start_positions"] = tf.FixedLenFeature([], tf.int64)
-        name_to_features["end_positions"] = tf.FixedLenFeature([], tf.int64)
-
-    def _decode_record(record, name_to_features):
-        """Decodes a record to a TensorFlow example."""
-        example = tf.parse_single_example(record, name_to_features)
-
-        # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
-        # So cast all int64 to int32.
-        for name in list(example.keys()):
-            t = example[name]
-            if t.dtype == tf.int64:
-                t = tf.to_int32(t)
-            example[name] = t
-
-        return example
-
-    def input_fn(params):
-        """The actual input function."""
-        batch_size = params["batch_size"]
-
-        # For training, we want a lot of parallel reading and shuffling.
-        # For eval, we want no shuffling and parallel reading doesn't matter.
-        d = tf.data.TFRecordDataset(input_file)
-        if is_training:
-            d = d.repeat()
-            d = d.shuffle(buffer_size=100)
-
-        d = d.apply(
-            tf.contrib.data.map_and_batch(
-                lambda record: _decode_record(record, name_to_features),
-                batch_size=batch_size,
-                drop_remainder=drop_remainder))
-
-        return d
-
-    return input_fn
 
 
 RawResult = collections.namedtuple("RawResult",
                                    ["unique_id", "start_logits", "end_logits"])
 
 
-def write_predictions(all_examples, all_features, all_results, n_best_size,
+def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
                       max_answer_length, do_lower_case, output_prediction_file,
                       output_nbest_file, output_null_log_odds_file):
     """Write final predictions to the json file and log-odds of null if needed."""
@@ -432,34 +259,7 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
             writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
 
 
-def get_final_text(pred_text, orig_text, do_lower_case):
-    """Project the tokenized prediction back to the original text."""
-
-    # When we created the data, we kept track of the alignment between original
-    # (whitespace tokenized) tokens and our WordPiece tokenized tokens. So
-    # now `orig_text` contains the span of our original text corresponding to the
-    # span that we predicted.
-    #
-    # However, `orig_text` may contain extra characters that we don't want in
-    # our prediction.
-    #
-    # For example, let's say:
-    #   pred_text = steve smith
-    #   orig_text = Steve Smith's
-    #
-    # We don't want to return `orig_text` because it contains the extra "'s".
-    #
-    # We don't want to return `pred_text` because it's already been normalized
-    # (the SQuAD eval script also does punctuation stripping/lower casing but
-    # our tokenizer does additional normalization like stripping accent
-    # characters).
-    #
-    # What we really want to return is "Steve Smith".
-    #
-    # Therefore, we have to apply a semi-complicated alignment heruistic between
-    # `pred_text` and `orig_text` to get a character-to-charcter alignment. This
-    # can fail in certain cases in which case we just return `orig_text`.
-
+def get_final_text(PS, pred_text, orig_text, do_lower_case):
     def _strip_spaces(text):
         ns_chars = []
         ns_to_s_map = collections.OrderedDict()
@@ -471,10 +271,6 @@ def get_final_text(pred_text, orig_text, do_lower_case):
         ns_text = "".join(ns_chars)
         return (ns_text, ns_to_s_map)
 
-    # We first tokenize `orig_text`, strip whitespace from the result
-    # and `pred_text`, and check if they are the same length. If they are
-    # NOT the same length, the heuristic has failed. If they are the same
-    # length, we assume the characters are one-to-one aligned.
     tokenizer = tokenization.BasicTokenizer(do_lower_case=do_lower_case)
 
     tok_text = " ".join(tokenizer.tokenize(orig_text))
@@ -530,7 +326,6 @@ def get_final_text(pred_text, orig_text, do_lower_case):
 
 
 def _get_best_indexes(logits, n_best_size):
-    """Get the n-best logits from a list."""
     index_and_score = sorted(
         enumerate(logits), key=lambda x: x[1], reverse=True)
 
@@ -543,7 +338,6 @@ def _get_best_indexes(logits, n_best_size):
 
 
 def _compute_softmax(scores):
-    """Compute softmax probability over raw logits."""
     if not scores:
         return []
 
@@ -565,233 +359,66 @@ def _compute_softmax(scores):
     return probs
 
 
-class FeatureWriter(object):
-    """Writes InputFeature to TF example file."""
+def run_squad(sess, params):
+    # with tf.distribute.MirroredStrategy().scope():
+    model = model_for(params)
+    model.compile(
+        optimizer=params.optimizer,
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy'])
 
-    def __init__(self, filename, is_training):
-        self.filename = filename
-        self.is_training = is_training
-        self.num_features = 0
-        self._writer = tf.python_io.TFRecordWriter(filename)
+    ds_train = dataset_for('train', params)
+    ds_test = dataset_for('test', params)
 
-    def process_feature(self, feature):
-        """Write a InputFeature to the TFRecordWriter as a tf.train.Example."""
-        self.num_features += 1
+    save_p = pth.Path(params.save_dir)
+    if save_p.exists():
+        model.train_on_batch(ds_train[:1])
+        model.load_weights(save_p)
 
-        def create_int_feature(values):
-            feature = tf.train.Feature(
-                int64_list=tf.train.Int64List(value=list(values)))
-            return feature
+    model.summary()
 
-        features = collections.OrderedDict()
-        features["unique_ids"] = create_int_feature([feature.unique_id])
-        features["input_ids"] = create_int_feature(feature.input_ids)
-        features["input_mask"] = create_int_feature(feature.input_mask)
-        features["segment_ids"] = create_int_feature(feature.segment_ids)
+    p = params.log_dir + '/train/' + sess
+    writer = tf.summary.create_file_writer(p)
+    sum_s = hparams.session_start_pb(hparams=params.hparams)
 
-        if self.is_training:
-            features["start_positions"] = create_int_feature(
-                [feature.start_position])
-            features["end_positions"] = create_int_feature(
-                [feature.end_position])
-            impossible = 0
-            if feature.is_impossible:
-                impossible = 1
-            features["is_impossible"] = create_int_feature([impossible])
+    cbacks = [
+        kcb.TensorBoard(
+            log_dir=p,
+            histogram_freq=1,
+            embeddings_freq=0,
+            update_freq='epoch'),
+        # kcb.EarlyStopping(
+        #     monitor='val_loss', min_delta=1e-2, patience=2, verbose=True),
+    ]
 
-        tf_example = tf.train.Example(
-            features=tf.train.Features(feature=features))
-        self._writer.write(tf_example.SerializeToString())
+    if save_p.exists():
+        cbacks.append(
+            kcb.ModelCheckpoint(
+                model_save_path=save_p,
+                save_best_only=True,
+                monitor='val_loss',
+                verbose=True))
 
-    def close(self):
-        self._writer.close()
+    hist = model.fit(
+        ds_train,
+        callbacks=cbacks,
+        epochs=params.train_epochs,
+        validation_data=ds_test)
+    print(f'History: {hist.history}')
 
+    if save_p.exists():
+        model.save_weights(save_p, save_format='tf')
 
-def validate_flags_or_throw(bert_config):
-    """Validate the input FLAGS or throw an exception."""
-    tokenization.validate_case_matches_checkpoint(PS.do_lower_case,
-                                                  PS.init_checkpoint)
+    loss, acc = model.evaluate(ds_test)
+    print(f'\nTest loss, acc: {loss}, {acc}')
 
-    if not PS.do_train and not PS.do_predict:
-        raise ValueError(
-            "At least one of `do_train` or `do_predict` must be True.")
-
-    if PS.do_train:
-        if not PS.train_file:
-            raise ValueError(
-                "If `do_train` is True, then `train_file` must be specified.")
-    if PS.do_predict:
-        if not PS.predict_file:
-            raise ValueError(
-                "If `do_predict` is True, then `predict_file` must be specified."
-            )
-
-    if PS.max_seq_length > bert_config.max_position_embeddings:
-        raise ValueError(
-            "Cannot use sequence length %d because the BERT model "
-            "was only trained up to sequence length %d" %
-            (PS.max_seq_length, bert_config.max_position_embeddings))
-
-    if PS.max_seq_length <= PS.max_query_length + 3:
-        raise ValueError(
-            "The max_seq_length (%d) must be greater than max_query_length "
-            "(%d) + 3" % (PS.max_seq_length, PS.max_query_length))
-
-
-def main(_):
-    tf.logging.set_verbosity(tf.logging.INFO)
-
-    bert_config = modeling.BertConfig.from_json_file(PS.bert_config_file)
-
-    validate_flags_or_throw(bert_config)
-
-    tf.gfile.MakeDirs(PS.output_dir)
-
-    tokenizer = tokenization.FullTokenizer(
-        vocab_file=PS.vocab_file, do_lower_case=PS.do_lower_case)
-
-    tpu_cluster_resolver = None
-    if PS.use_tpu and PS.tpu_name:
-        tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-            PS.tpu_name, zone=PS.tpu_zone, project=PS.gcp_project)
-
-    is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-    run_config = tf.contrib.tpu.RunConfig(
-        cluster=tpu_cluster_resolver,
-        master=PS.master,
-        model_dir=PS.output_dir,
-        save_checkpoints_steps=PS.save_checkpoints_steps,
-        tpu_config=tf.contrib.tpu.TPUConfig(
-            iterations_per_loop=PS.iterations_per_loop,
-            num_shards=PS.num_tpu_cores,
-            per_host_input_for_training=is_per_host))
-
-    train_examples = None
-    num_train_steps = None
-    num_warmup_steps = None
-    if PS.do_train:
-        train_examples = read_squad_examples(
-            input_file=PS.train_file, is_training=True)
-        num_train_steps = int(
-            len(train_examples) / PS.train_batch_size * PS.num_train_epochs)
-        num_warmup_steps = int(num_train_steps * PS.warmup_proportion)
-
-        # Pre-shuffle the input to avoid having to make a very large shuffle
-        # buffer in in the `input_fn`.
-        rng = random.Random(12345)
-        rng.shuffle(train_examples)
-
-    model_fn = model_fn_builder(
-        bert_config=bert_config,
-        init_checkpoint=PS.init_checkpoint,
-        learning_rate=PS.learning_rate,
-        num_train_steps=num_train_steps,
-        num_warmup_steps=num_warmup_steps,
-        use_tpu=PS.use_tpu,
-        use_one_hot_embeddings=PS.use_tpu)
-
-    # If TPU is not available, this will fall back to normal Estimator on CPU
-    # or GPU.
-    estimator = tf.contrib.tpu.TPUEstimator(
-        use_tpu=PS.use_tpu,
-        model_fn=model_fn,
-        config=run_config,
-        train_batch_size=PS.train_batch_size,
-        predict_batch_size=PS.predict_batch_size)
-
-    if PS.do_train:
-        # We write to a temporary file to avoid storing very large constant tensors
-        # in memory.
-        train_writer = FeatureWriter(
-            filename=os.path.join(PS.output_dir, "train.tf_record"),
-            is_training=True)
-        convert_examples_to_features(
-            examples=train_examples,
-            tokenizer=tokenizer,
-            max_seq_length=PS.max_seq_length,
-            doc_stride=PS.doc_stride,
-            max_query_length=PS.max_query_length,
-            is_training=True,
-            output_fn=train_writer.process_feature)
-        train_writer.close()
-
-        tf.logging.info("***** Running training *****")
-        tf.logging.info("  Num orig examples = %d", len(train_examples))
-        tf.logging.info("  Num split examples = %d", train_writer.num_features)
-        tf.logging.info("  Batch size = %d", PS.train_batch_size)
-        tf.logging.info("  Num steps = %d", num_train_steps)
-        del train_examples
-
-        train_input_fn = input_fn_builder(
-            input_file=train_writer.filename,
-            seq_length=PS.max_seq_length,
-            is_training=True,
-            drop_remainder=True)
-        estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
-
-    if PS.do_predict:
-        eval_examples = read_squad_examples(
-            input_file=PS.predict_file, is_training=False)
-
-        eval_writer = FeatureWriter(
-            filename=os.path.join(PS.output_dir, "eval.tf_record"),
-            is_training=False)
-        eval_features = []
-
-        def append_feature(feature):
-            eval_features.append(feature)
-            eval_writer.process_feature(feature)
-
-        convert_examples_to_features(
-            examples=eval_examples,
-            tokenizer=tokenizer,
-            max_seq_length=PS.max_seq_length,
-            doc_stride=PS.doc_stride,
-            max_query_length=PS.max_query_length,
-            is_training=False,
-            output_fn=append_feature)
-        eval_writer.close()
-
-        tf.logging.info("***** Running predictions *****")
-        tf.logging.info("  Num orig examples = %d", len(eval_examples))
-        tf.logging.info("  Num split examples = %d", len(eval_features))
-        tf.logging.info("  Batch size = %d", PS.predict_batch_size)
-
-        all_results = []
-
-        predict_input_fn = input_fn_builder(
-            input_file=eval_writer.filename,
-            seq_length=PS.max_seq_length,
-            is_training=False,
-            drop_remainder=False)
-
-        # If running eval on the TPU, you will need to specify the number of
-        # steps.
-        all_results = []
-        for result in estimator.predict(
-                predict_input_fn, yield_single_examples=True):
-            if len(all_results) % 1000 == 0:
-                tf.logging.info("Processing example: %d" % (len(all_results)))
-            unique_id = int(result["unique_ids"])
-            start_logits = [float(x) for x in result["start_logits"].flat]
-            end_logits = [float(x) for x in result["end_logits"].flat]
-            all_results.append(
-                RawResult(
-                    unique_id=unique_id,
-                    start_logits=start_logits,
-                    end_logits=end_logits))
-
-        output_prediction_file = os.path.join(PS.output_dir,
-                                              "predictions.json")
-        output_nbest_file = os.path.join(PS.output_dir,
-                                         "nbest_predictions.json")
-        output_null_log_odds_file = os.path.join(PS.output_dir,
-                                                 "null_odds.json")
-
-        write_predictions(eval_examples, eval_features, all_results,
-                          PS.n_best_size, PS.max_answer_length,
-                          PS.do_lower_case, output_prediction_file,
-                          output_nbest_file, output_null_log_odds_file)
+    with writer.as_default():
+        e = tf.compat.v1.Event(summary=sum_s).SerializeToString()
+        tf.summary.import_event(e)
+        tf.summary.scalar('accuracy', acc, step=1, description="Accuracy")
+        sum_e = hparams.session_end_pb(api_pb2.STATUS_SUCCESS)
+        e = tf.compat.v1.Event(summary=sum_e).SerializeToString()
+        tf.summary.import_event(e)
 
 
 params = defaultdict(
@@ -825,20 +452,50 @@ def main(_):
     ps = Params(params, flags=fs, data_format=fs.data_format or f)
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
-    opts = ['adam', 'sgd']
     writer = tf.summary.create_file_writer(ps.log_dir + '/train')
     with writer.as_default():
-        s = _to_summary_pb(nus, drs, opts)
+        s = _to_summary_pb(nus, drs)
         e = tf.compat.v1.Event(summary=s).SerializeToString()
         tf.summary.import_event(e)
     for nu in nus:
         for dr in drs:
-            for opt in opts:
-                kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
-                sess = datetime.now().strftime('%Y%m%d-%H%M%S')
-                print(f'--- Running session {sess}:', kw)
-                ps.update(**kw)
-                run_mnist(sess, ps)
+            kw = {'num_units': nu, 'dropout_rate': dr}
+            sess = datetime.now().strftime('%Y%m%d-%H%M%S')
+            print(f'--- Running session {sess}:', kw)
+            ps.update(**kw)
+            run_squad(sess, ps)
+
+
+def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
+    nus_val = struct_pb2.ListValue()
+    nus_val.extend(num_units_list)
+    drs_val = struct_pb2.ListValue()
+    drs_val.extend(dropout_rate_list)
+    opts_val = struct_pb2.ListValue()
+    opts_val.extend(optimizer_list)
+    return hparams.experiment_pb(
+        hparam_infos=[
+            api_pb2.HParamInfo(
+                name='num_units',
+                display_name='Number of units',
+                type=api_pb2.DATA_TYPE_FLOAT64,
+                domain_discrete=nus_val),
+            api_pb2.HParamInfo(
+                name='dropout_rate',
+                display_name='Dropout rate',
+                type=api_pb2.DATA_TYPE_FLOAT64,
+                domain_discrete=drs_val),
+            api_pb2.HParamInfo(
+                name='optimizer',
+                display_name='Optimizer',
+                type=api_pb2.DATA_TYPE_STRING,
+                domain_discrete=opts_val)
+        ],
+        metric_infos=[
+            api_pb2.MetricInfo(
+                name=api_pb2.MetricName(tag='accuracy'),
+                display_name='Accuracy'),
+        ])
 
 
 if __name__ == '__main__':
