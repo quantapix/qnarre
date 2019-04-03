@@ -16,18 +16,16 @@
 import os
 
 # import pathlib as pth
-import collections as co
-
 from datetime import datetime
 
 import tensorflow as tf
 
-from absl import flags
 from google.protobuf import struct_pb2
 from tensorboard.plugins.hparams import api_pb2
 from tensorboard.plugins.hparams import summary as hparams
 
-from qnarre.neura.params import Params, load_flags
+from qnarre.feeds.prep.tokenizer import Tokenizer
+from qnarre.neura.params import load_flags, load_params
 from qnarre.feeds.dset.bert_ds import dataset as bert_ds
 
 
@@ -424,17 +422,7 @@ def main(_):
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
 
-def load_bert_flags():
-    load_flags()
-    from absl import flags
-    flags.DEFINE_string("bert_config", None, "Config json")
-    flags.DEFINE_bool("lower_case", True, "Lower case input text")
-    flags.DEFINE_integer("max_preds_per_seq", 20, "Max masked LM preds")
-    flags.DEFINE_string("init_checkpoint", None, "Initial checkpoint")
-
-
-params = co.defaultdict(
-    lambda: None,
+_params = dict(
     attn_drop=0.1,
     attn_heads=12,  # bert 12
     attn_k_size=0,
@@ -449,6 +437,7 @@ params = co.defaultdict(
     eval_steps=100,
     ffn_drop=0.2,
     ffn_units=3072,
+    ffn_act='gelu',
     hidden_act='gelu',
     hidden_drop=0.1,
     hidden_size=768,  # 512
@@ -457,7 +446,7 @@ params = co.defaultdict(
     iters_per_loop=1000,
     l2_penalty=None,  # 1e-6, 1e-4
     learn_rate=5e-5,
-    lower_case=True,
+    lower_case=None,
     max_pos_len=512,
     max_preds_per_seq=20,
     max_seq_len=128,
@@ -475,19 +464,31 @@ params = co.defaultdict(
     warmup_steps=10000,
 )
 
-params.update(
+_params.update(
     data_dir='.data/bert',
     log_dir='.model/bert/logs',
     model_dir='.model/bert',
     save_dir='.model/bert/save',
+    model_name='uncased_L-12_H-768_A-12',
 )
 
 
+def load_bert_flags():
+    load_flags()
+    from absl import flags
+    flags.DEFINE_string("bert_config", None, "Config json")
+    flags.DEFINE_bool("lower_case", True, "Lower case input text")
+    flags.DEFINE_integer("max_preds_per_seq", 20, "Max masked LM preds")
+    flags.DEFINE_string("init_checkpoint", None, "Initial checkpoint")
+
+
+def load_bert_params():
+    ps = load_params().override(_params)
+    return ps.update(tokenizer=Tokenizer(ps))
+
+
 def b_main(_):
-    fs = flags.FLAGS
-    # print(fs)
-    f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
-    ps = Params(params, flags=fs, data_format=fs.data_format or f)
+    ps = load_bert_params()
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     writer = tf.summary.create_file_writer(ps.log_dir + '/train')

@@ -32,7 +32,7 @@ class Squad(kls.Layer):
         self.trans = self.bert.transformer
 
     def build(self, input_shape):
-        PS = self.params
+        PS = self.PS
         assert self.trans.output_shape[2] == PS.hidden_size
         wi = _get_initer(PS.init_stddev)
         kw = dict(shape=(2, PS.hidden_size), trainable=True)
@@ -43,7 +43,7 @@ class Squad(kls.Layer):
 
     def call(self, inputs, **kw):
         y = self.trans(inputs, **kw)
-        PS = self.params
+        PS = self.PS
         y = tf.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
         y = tf.matmul(y, self.out_w, transpose_b=True)
         y = tf.nn.bias_add(y, self.out_b)
@@ -244,7 +244,7 @@ class Stack(kls.Layer):
         self.PS = PS
         self.pre = pre
         self.post = post
-        self.drop = pre.dropout
+        self.drop = pre.drop
 
     @staticmethod
     def attn_mask(mask):
@@ -481,7 +481,7 @@ class DenseDense(FForward):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         PS = self.PS
-        a = _get_act()
+        a = _get_act(PS.ffn_act)
         ki = _get_initer(PS.init_stddev)
         self.dense_1 = kls.Dense(
             PS.ffn_units, activation=a, kernel_initializer=ki, use_bias=True)
@@ -497,7 +497,7 @@ class DenseDense(FForward):
             y = K.reshape(y, K.concatenate([[-1], sh[2:]], axis=0))
             y = K.expand_dims(pad_remover.remove(y), axis=0)
         y = self.dense_1(y, **kw)
-        y = self.dropout(y, **kw)
+        y = self.drop(y, **kw)
         y = self.dense_2(y, **kw)
         if pad_remover:
             y = K.reshape(pad_remover.restore(K.squeeze(y, axis=0)), sh)

@@ -94,13 +94,15 @@ class BertEncoder(Splitter):
     _by_ids = None
 
     @classmethod
-    def load(cls, params):
+    def load(cls, params, **kw):
         PS = params
-        p = pth.Path(PS.mdl_dir) / 'bert' / PS.model
+        p = pth.Path(PS.model_dir) / PS.model_name
         with open(p / 'vocab.txt', mode='rt') as f:
             v = {t.strip(): i for i, t in enumerate(f)}
-        PS.vocab_size = len(v)
-        return cls(v, lower_case=PS.lower_case)
+        PS.update(PAD=v[PAD], UNK=v[UNK], CLS=v[CLS], SEP=v[SEP], MASK=v[MASK])
+        PS.update(vocab_size=len(v))
+        lc = PS.lower_case or PS.model_name.startswith('uncased')
+        return cls(v, lower_case=lc, **kw)
 
     def __init__(self, vocab, max_chars=None, **kw):
         super().__init__(**kw)
@@ -170,7 +172,7 @@ class BPEncoder(Splitter):
     @classmethod
     def load(cls, params):
         PS = params
-        p = pth.Path(PS.mdl_dir)
+        p = pth.Path(PS.model_dir)
         with lzma.open(p / 'tokens.json.xz', mode='rt') as f:
             v = json.load(f)
         PS.vocab_size = len(v)

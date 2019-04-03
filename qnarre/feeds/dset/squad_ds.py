@@ -18,20 +18,24 @@ import lzma
 import unicodedata
 
 import pathlib as pth
-
 import tensorflow as tf
 
-from qnarre.feeds.prep.tokenizer import Tokenizer
 from qnarre.feeds.prep.layout import (Span, Tokens, Topic, Topics, Context,
                                       Question, Answer)
 
 
 def dataset(kind, params):
     PS = params
-    ts = Topics(Tokenizer(PS)(_reader(kind, PS)))
-    return tf.data.Dataset.from_generator(
+    ts = Topics(PS.tokenizer(_reader(kind, PS)))
+    ds = tf.data.Dataset.from_generator(
         lambda: _converter(kind, PS, ts),
-        (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32),
+        (
+            tf.int32,
+            tf.int32,
+            tf.int32,
+            tf.int32,
+            tf.int32,
+        ),
         (
             tf.TensorShape([None]),
             tf.TensorShape([None]),
@@ -40,6 +44,7 @@ def dataset(kind, params):
             tf.TensorShape([1]),
         ),
     )
+    return ts, ds
 
 
 def _reader(kind, params):
@@ -63,7 +68,8 @@ def _reader(kind, params):
                                         text=tx,
                                         tokens=Tokens(),
                                         span=Span(s, s + len(tx)),
-                                        uid=_next_uid()))
+                                        uid=_next_uid(),
+                                    ))
                             else:
                                 print('Mismatched', ctx[:20], tx[:20])
                         vs = []
@@ -76,7 +82,8 @@ def _reader(kind, params):
                                         text=tx,
                                         tokens=Tokens(),
                                         span=Span(s, s + len(tx)),
-                                        uid=_next_uid()))
+                                        uid=_next_uid(),
+                                    ))
                             else:
                                 print('Mismatched', ctx[:20], tx[:20])
                         qs.append(
@@ -85,12 +92,19 @@ def _reader(kind, params):
                                 text=_normalize(q['question']),
                                 unfit=q.get('is_impossible', False),
                                 tokens=Tokens(),
-                                answers=tuple(ans),
-                                viables=tuple(vs)))
+                                answers=ans,
+                                viables=vs,
+                            ))
                     cs.append(
                         Context(
-                            text=ctx, tokens=Tokens(), questions=tuple(qs)))
-                yield Topic(title=_normalize(t['title']), contexts=tuple(cs))
+                            text=ctx,
+                            tokens=Tokens(),
+                            questions=qs,
+                        ))
+                yield Topic(
+                    title=_normalize(t['title']),
+                    contexts=cs,
+                )
 
 
 def _normalize(txt):

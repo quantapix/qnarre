@@ -13,29 +13,9 @@
 # limitations under the License.
 # =============================================================================
 
-from collections import defaultdict
+from absl import flags
 
-
-class Params:
-    def __init__(self, params, *, flags, **kw):
-        ps = params.copy()
-        ps.update(**kw)
-        fs = {}
-        for k, v in ps.items():
-            if hasattr(flags, k):
-                v = getattr(flags, k)
-                if v:
-                    fs[k] = v
-        ps.update(**fs)
-        self.update(**ps)
-
-    @property
-    def hparams(self):
-        return {'optimizer': self.optimizer}
-
-    def update(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
+import tensorflow as tf
 
 
 def load_flags():
@@ -52,7 +32,6 @@ def load_flags():
     # )
     # fu.define_image()
     # fu.define_benchmark()
-    from absl import flags
     # flags.adopt_module_key_flags(fu)
     flags.DEFINE_bool('do_eval', False, '')
     flags.DEFINE_bool('do_train', False, '')
@@ -75,127 +54,154 @@ def load_flags():
     flags.DEFINE_enum('data_format', None, df, '')
 
 
-_profiles = {
-    None:
-    defaultdict(
-        lambda: None,
-        # epochs_between_evals=None,
-        # len_bucket_step=1.1,
-        # vocab_divisor=1,
-        # input_file=None,
-        # output_file=None,
-        # vocab_file=None,
-        adam_beta1=0.9,
-        adam_beta2=0.997,  # 0.999
-        adam_epsilon=1e-9,  # 1e-6
-        adamw_decay=0.0,
-        add_relative=False,
-        all_reduce_alg=None,
-        alpha=0.6,
-        attn_bdims='',
-        attn_type='dot_product',
-        beam_size=4,
-        causal_self_attn=True,
-        clip_grad_norm=2.0,  # 0.0 no gradient clipping,
-        compress_steps=0,
-        conv_first_kernel=3,
-        daisy_chain_vars=True,
-        data_format=None,
-        dataset=None,
-        dist_strategy=None,
-        drop_long_seqs=False,
-        ds_src_len=0,
-        ds_tgt_len=0,
-        dtype=None,
-        eval_frequency=100,
-        eval_steps=1,
-        extra_decode_len=50,
-        factored_logits=False,
-        ffn_bdims='',
-        ffn_layer='dense_relu_dense',
-        fixed_batch_size=False,
-        full_predict=False,
-        gpu_thread_mode=None,
-        grad_noise_scale=0.0,
-        group_epsilon=1e-5,
-        heads_share_embed=False,
-        init_gain=1.5,  # 1.0
-        initializer='uniform_unit_scaling',  # 'orthogonal',
-        input_frames=1,
-        inter_op=None,
-        intra_op=None,
-        kernel_height=3,
-        kernel_width=1,
-        label_smoothing=0.1,
-        learn_rate=2e-4,  # 2.0, squad 5e-6,
-        loss_scale=None,
-        lr_constant=0.1,
-        lr_schedule='constant*linear_warmup*rsqrt_decay',
-        lr_warmup_steps=200,
-        max_position=0,
-        max_train_steps=None,
-        min_len_bucket=8,
-        min_length=0,
-        mixed_precision_loss=32768,
-        mixed_precision_loss_scaler='exponential',
-        mlm_preds=20,
-        mlm_prob=0.15,
-        model=None,
-        multiply_mode='sqrt_depth',
-        no_data_parallel=False,
-        norm_epsilon=1e-6,
-        norm_type='layer',  # 'batch', layer', 'noam', 'none'.
-        num_gpu=None,
-        num_groups=8,
-        num_parallel_calls=None,
-        num_sampled_classes=0,
-        opt_multistep_accumulate_steps=None,
-        opt_zero_grads=False,
-        overload_metric='',
-        pack_dataset=False,
-        pad_batch=False,
-        pad_remover=True,
-        parallel_batches=None,
-        params_profile=None,
-        penalty=0.1,
-        post_cmd='dan',
-        pre_cmd='n',
-        prepend_mode='none',
-        prepost_bdims='',
-        private_threads=None,
-        prox_bias=False,
-        run_autoregressive=False,
-        sampl_gold_mixin_prob=0.5,
-        sampl_method='argmax',  # 'argmax' or 'random'
-        sampl_prob=0.0,
-        sampl_temp=1.0,
-        sampl_warmup_steps=50000,
-        self_attn_type='dot_product',
-        shared_embed=False,
-        shared_weights=True,
-        short_seq_prob=0.1,
-        shuffle_size=512,
-        split_tgts_chunk_len=0,
-        split_tgts_max_chunks=100,
-        split_to_len=0,
-        src_len=0,
-        steps_between_evals=None,
-        stop_threshold=None,
-        summarize_grads=False,
-        summarize_vars=False,
-        symbol_modality_shards=16,
-        synthetic_data=None,
-        target_frames=1,
-        tgt_len=0,
-        train_epochs=None,
-        train_steps=1000,
-        unidirectional_encoder=False,
-        use_custom_ops=True,
-        use_target_embed=True,
-        warm_start_from='',
-        warmup_steps=16000,
-        weight_decay=1e-6,
-        weight_noise=0.0,
-        weights_fn={},
-    ),
-}
+class Params:
+    def __init__(self, params, **kw):
+        self.override(params, **kw)
+
+    @property
+    def hparams(self):
+        return {'optimizer': self.optimizer}
+
+    def override(self, params, **kw):
+        ps = params.copy()
+        ps.update(**kw)
+        f = flags.FLAGS
+        for k, v in ps.items():
+            if hasattr(f, k):
+                v = getattr(f, k)
+                if v:
+                    ps[k] = v
+        self.update(**ps)
+        return self
+
+    def update(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+        return self
+
+
+def load_params():
+    f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
+    return Params(_params, data_format=flags.FLAGS.data_format or f)
+
+
+_params = dict(
+    # epochs_between_evals=None,
+    # len_bucket_step=1.1,
+    # vocab_divisor=1,
+    # input_file=None,
+    # output_file=None,
+    # vocab_file=None,
+    adam_beta1=0.9,
+    adam_beta2=0.997,  # 0.999
+    adam_epsilon=1e-9,  # 1e-6
+    adamw_decay=0.0,
+    add_relative=False,
+    all_reduce_alg=None,
+    alpha=0.6,
+    attn_bdims='',
+    attn_type='dot_product',
+    beam_size=4,
+    causal_self_attn=True,
+    clip_grad_norm=2.0,  # 0.0 no gradient clipping,
+    compress_steps=0,
+    conv_first_kernel=3,
+    daisy_chain_vars=True,
+    data_format=None,
+    dataset=None,
+    dist_strategy=None,
+    drop_long_seqs=False,
+    ds_src_len=0,
+    ds_tgt_len=0,
+    dtype=None,
+    eval_frequency=100,
+    eval_steps=1,
+    extra_decode_len=50,
+    factored_logits=False,
+    ffn_bdims='',
+    ffn_layer='dense_dense',
+    fixed_batch_size=False,
+    full_predict=False,
+    gpu_thread_mode=None,
+    grad_noise_scale=0.0,
+    group_epsilon=1e-5,
+    heads_share_embed=False,
+    init_gain=1.5,  # 1.0
+    initializer='uniform_unit_scaling',  # 'orthogonal',
+    input_frames=1,
+    inter_op=None,
+    intra_op=None,
+    kernel_height=3,
+    kernel_width=1,
+    label_smoothing=0.1,
+    learn_rate=2e-4,  # 2.0, squad 5e-6,
+    loss_scale=None,
+    lr_constant=0.1,
+    lr_schedule='constant*linear_warmup*rsqrt_decay',
+    lr_warmup_steps=200,
+    max_position=0,
+    max_train_steps=None,
+    min_len_bucket=8,
+    min_length=0,
+    mixed_precision_loss=32768,
+    mixed_precision_loss_scaler='exponential',
+    mlm_preds=20,
+    mlm_prob=0.15,
+    model=None,
+    multiply_mode='sqrt_depth',
+    no_data_parallel=False,
+    norm_epsilon=1e-6,
+    norm_type='layer',  # 'batch', layer', 'noam', 'none'.
+    num_gpu=None,
+    num_groups=8,
+    num_parallel_calls=None,
+    num_sampled_classes=0,
+    opt_multistep_accumulate_steps=None,
+    opt_zero_grads=False,
+    overload_metric='',
+    pack_dataset=False,
+    pad_batch=False,
+    pad_remover=True,
+    parallel_batches=None,
+    params_profile=None,
+    penalty=0.1,
+    post_cmd='dan',
+    pre_cmd='n',
+    prepend_mode='none',
+    prepost_bdims='',
+    private_threads=None,
+    prox_bias=False,
+    run_autoregressive=False,
+    sampl_gold_mixin_prob=0.5,
+    sampl_method='argmax',  # 'argmax' or 'random'
+    sampl_prob=0.0,
+    sampl_temp=1.0,
+    sampl_warmup_steps=50000,
+    self_attn_type='dot_product',
+    shared_embed=False,
+    shared_weights=True,
+    short_seq_prob=0.1,
+    shuffle_size=512,
+    split_tgts_chunk_len=0,
+    split_tgts_max_chunks=100,
+    split_to_len=0,
+    src_len=0,
+    steps_between_evals=None,
+    stop_threshold=None,
+    summarize_grads=False,
+    summarize_vars=False,
+    symbol_modality_shards=16,
+    synthetic_data=None,
+    target_frames=1,
+    tgt_len=0,
+    train_epochs=None,
+    train_steps=1000,
+    unidirectional_encoder=False,
+    use_custom_ops=True,
+    use_target_embed=True,
+    warm_start_from='',
+    warmup_steps=16000,
+    weight_decay=1e-6,
+    weight_noise=0.0,
+    weights_fn={},
+)

@@ -23,15 +23,13 @@ from datetime import datetime
 
 import tensorflow as tf
 
-from absl import flags
 from google.protobuf import struct_pb2
 from tensorboard.plugins.hparams import api_pb2
 from tensorboard.plugins.hparams import summary as hparams
 
 from qnarre.neura.layers import Squad
-from qnarre.neura.params import Params
-from qnarre.neura.bert import params, load_bert_flags
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
+from qnarre.neura.bert import load_bert_flags, load_bert_params
 
 ks = tf.keras
 kls = ks.layers
@@ -421,24 +419,22 @@ def run_squad(sess, params):
         tf.summary.import_event(e)
 
 
-params.update(
-    co.defaultdict(
-        lambda: None,
-        seq_stride=128,
-        max_ans_len=30,
-        max_qry_len=64,
-        max_seq_len=384,
-        n_best_size=20,
-        null_score_diff_threshold=0.0,
-        train_epochs=2.0,
-        use_fp16=False,
-        use_xla=False,
-        warmup_split=0.1,
-        batch_size=8,
-        learn_rate=5e-6,
-    ))
+_params = dict(
+    seq_stride=128,
+    max_ans_len=30,
+    max_qry_len=64,
+    max_seq_len=384,
+    n_best_size=20,
+    null_score_diff_threshold=0.0,
+    train_epochs=2.0,
+    use_fp16=False,
+    use_xla=False,
+    warmup_split=0.1,
+    batch_size=8,
+    learn_rate=5e-6,
+)
 
-params.update(
+_params.update(
     data_dir='.data/squad',
     log_dir='.model/squad/logs',
     model_dir='.model/squad',
@@ -447,10 +443,7 @@ params.update(
 
 
 def main(_):
-    fs = flags.FLAGS
-    # print(fs)
-    f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
-    ps = Params(params, flags=fs, data_format=fs.data_format or f)
+    ps = load_bert_params().override(_params)
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     writer = tf.summary.create_file_writer(ps.log_dir + '/train')
@@ -502,6 +495,7 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
     load_bert_flags()
+    from absl import flags
     flags.DEFINE_float("null_score_diff_threshold", 0.0, "null_score")
     flags.DEFINE_float("warmup_split", 0.0, "Proportion of warmup")
     flags.DEFINE_integer("max_ans_len", 0, "Max tokens for answer")

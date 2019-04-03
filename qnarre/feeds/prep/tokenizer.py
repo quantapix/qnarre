@@ -18,29 +18,35 @@
 # from aiohttp import ClientSession
 # from async_timeout import timeout
 
-from qnarre.feeds.prep.layout import Span, Token
+from qnarre.feeds.prep.encoder import BertEncoder
 
 # from qnarre.feeds.prep.corenlp import CoreNLP, server
 
 
 class Tokenizer:
     def __init__(self, params):
-        self.params = params
-        self.encoder = None
+        self.PS = PS = params
+        self.encoder = BertEncoder.load(PS)
 
     def __call__(self, items):
         for i in items:
-            # i.tokens.reset(*zip(*self.encoder(c.text)))
-            yield i
+            yield self.encode(i)
 
-    def encode(self, txt):
-        pass
+    def encode(self, item):
+        if hasattr(item, 'text') and hasattr(item, 'tokens'):
+            print(item.text[:20], len(item.text))
+            item.tokens.reset(*zip(*self.encoder(item.text)))
+            print(len(item.tokens.elems), len(item.tokens.offsets))
+        elif isinstance(item, list) or isinstance(item, tuple):
+            for i in item:
+                self.encode(i)
+        return item
 
     def decode(self, ids, offsets):
-        pass
+        return self.encoder.decode(ids, offsets)
 
-    def test(self, layout):
-        pass
+    def test(self, txt):
+        self.encoder.test(txt)
 
 
 """
