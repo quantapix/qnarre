@@ -33,9 +33,9 @@ class Squad(kls.Layer):
 
     def build(self, input_shape):
         PS = self.PS
-        assert self.trans.output_shape[2] == PS.hidden_size
+        # assert self.trans.output_shape[2] == PS.hidden_size
         wi = _get_initer(PS.init_stddev)
-        kw = dict(shape=(2, PS.hidden_size), trainable=True)
+        kw = dict(dtype='float32', shape=(2, PS.hidden_size), trainable=True)
         self.out_w = self.add_weight(name='out_w', initializer=wi, **kw)
         kw.update(shape=(2, ))
         self.out_b = self.add_weight(name='out_b', initializer='zeros', **kw)

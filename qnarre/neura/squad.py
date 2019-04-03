@@ -27,9 +27,9 @@ from google.protobuf import struct_pb2
 from tensorboard.plugins.hparams import api_pb2
 from tensorboard.plugins.hparams import summary as hparams
 
+from qnarre.neura import bert
 from qnarre.neura.layers import Squad
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
-from qnarre.neura.bert import load_bert_flags, load_bert_params
 
 ks = tf.keras
 kls = ks.layers
@@ -60,16 +60,15 @@ def dataset_for(kind, params):
     return ds
 
 
-RawResult = co.namedtuple("RawResult",
-                          ["unique_id", "start_logits", "end_logits"])
+RawResult = co.namedtuple('RawResult',
+                          ['unique_id', 'start_logits', 'end_logits'])
 
 
 def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
                       max_answer_length, do_lower_case, output_prediction_file,
                       output_nbest_file, output_null_log_odds_file):
-    """Write final predictions to the json file and log-odds of null if needed."""
-    tf.logging.info("Writing predictions to: %s" % (output_prediction_file))
-    tf.logging.info("Writing nbest to: %s" % (output_nbest_file))
+    tf.logging.info('Writing predictions to: %s' % (output_prediction_file))
+    tf.logging.info('Writing nbest to: %s' % (output_nbest_file))
 
     example_index_to_features = co.defaultdict(list)
     for feature in all_features:
@@ -80,9 +79,9 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
         unique_id_to_result[result.unique_id] = result
 
     _PrelimPrediction = co.namedtuple(  # pylint: disable=invalid-name
-        "PrelimPrediction", [
-            "feature_index", "start_index", "end_index", "start_logit",
-            "end_logit"
+        'PrelimPrediction', [
+            'feature_index', 'start_index', 'end_index', 'start_logit',
+            'end_logit'
         ])
 
     all_predictions = co.OrderedDict()
@@ -154,7 +153,7 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
             reverse=True)
 
         _NbestPrediction = co.namedtuple(  # pylint: disable=invalid-name
-            "NbestPrediction", ["text", "start_logit", "end_logit"])
+            'NbestPrediction', ['text', 'start_logit', 'end_logit'])
 
         seen_predictions = {}
         nbest = []
@@ -169,16 +168,16 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
                 orig_doc_end = feature.token_to_orig_map[pred.end_index]
                 orig_tokens = example.doc_tokens[orig_doc_start:(
                     orig_doc_end + 1)]
-                tok_text = " ".join(tok_tokens)
+                tok_text = ' '.join(tok_tokens)
 
                 # De-tokenize WordPieces that have been split off.
-                tok_text = tok_text.replace(" ##", "")
-                tok_text = tok_text.replace("##", "")
+                tok_text = tok_text.replace(' ##', '')
+                tok_text = tok_text.replace('##', '')
 
                 # Clean whitespace
                 tok_text = tok_text.strip()
-                tok_text = " ".join(tok_text.split())
-                orig_text = " ".join(orig_tokens)
+                tok_text = ' '.join(tok_text.split())
+                orig_text = ' '.join(orig_tokens)
 
                 final_text = get_final_text(tok_text, orig_text, do_lower_case)
                 if final_text in seen_predictions:
@@ -186,7 +185,7 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
 
                 seen_predictions[final_text] = True
             else:
-                final_text = ""
+                final_text = ''
                 seen_predictions[final_text] = True
 
             nbest.append(
@@ -197,17 +196,17 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
 
         # if we didn't inlude the empty option in the n-best, inlcude it
         if PS.version_2_with_negative:
-            if "" not in seen_predictions:
+            if '' not in seen_predictions:
                 nbest.append(
                     _NbestPrediction(
-                        text="",
+                        text='',
                         start_logit=null_start_logit,
                         end_logit=null_end_logit))
         # In very rare edge cases we could have no valid predictions. So we
         # just create a nonce prediction in this case to avoid failure.
         if not nbest:
             nbest.append(
-                _NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0))
+                _NbestPrediction(text='empty', start_logit=0.0, end_logit=0.0))
 
         assert len(nbest) >= 1
 
@@ -224,37 +223,37 @@ def write_predictions(PS, all_examples, all_features, all_results, n_best_size,
         nbest_json = []
         for (i, entry) in enumerate(nbest):
             output = co.OrderedDict()
-            output["text"] = entry.text
-            output["probability"] = probs[i]
-            output["start_logit"] = entry.start_logit
-            output["end_logit"] = entry.end_logit
+            output['text'] = entry.text
+            output['probability'] = probs[i]
+            output['start_logit'] = entry.start_logit
+            output['end_logit'] = entry.end_logit
             nbest_json.append(output)
 
         assert len(nbest_json) >= 1
 
         if not PS.version_2_with_negative:
-            all_predictions[example.qas_id] = nbest_json[0]["text"]
+            all_predictions[example.qas_id] = nbest_json[0]['text']
         else:
-            # predict "" iff the null score - the score of best non-null > threshold
+            # predict '' iff the null score - the score of best non-null > threshold
             score_diff = score_null - best_non_null_entry.start_logit - (
                 best_non_null_entry.end_logit)
             scores_diff_json[example.qas_id] = score_diff
             if score_diff > PS.null_score_diff_threshold:
-                all_predictions[example.qas_id] = ""
+                all_predictions[example.qas_id] = ''
             else:
                 all_predictions[example.qas_id] = best_non_null_entry.text
 
         all_nbest_json[example.qas_id] = nbest_json
 
-    with tf.gfile.GFile(output_prediction_file, "w") as writer:
-        writer.write(json.dumps(all_predictions, indent=4) + "\n")
+    with tf.gfile.GFile(output_prediction_file, 'w') as writer:
+        writer.write(json.dumps(all_predictions, indent=4) + '\n')
 
-    with tf.gfile.GFile(output_nbest_file, "w") as writer:
-        writer.write(json.dumps(all_nbest_json, indent=4) + "\n")
+    with tf.gfile.GFile(output_nbest_file, 'w') as writer:
+        writer.write(json.dumps(all_nbest_json, indent=4) + '\n')
 
     if PS.version_2_with_negative:
-        with tf.gfile.GFile(output_null_log_odds_file, "w") as writer:
-            writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
+        with tf.gfile.GFile(output_null_log_odds_file, 'w') as writer:
+            writer.write(json.dumps(scores_diff_json, indent=4) + '\n')
 
 
 def get_final_text(PS, pred_text, orig_text, do_lower_case):
@@ -262,16 +261,16 @@ def get_final_text(PS, pred_text, orig_text, do_lower_case):
         ns_chars = []
         ns_to_s_map = co.OrderedDict()
         for (i, c) in enumerate(text):
-            if c == " ":
+            if c == ' ':
                 continue
             ns_to_s_map[len(ns_chars)] = i
             ns_chars.append(c)
-        ns_text = "".join(ns_chars)
+        ns_text = ''.join(ns_chars)
         return (ns_text, ns_to_s_map)
 
     tokenizer = tokenization.BasicTokenizer(do_lower_case=do_lower_case)
 
-    tok_text = " ".join(tokenizer.tokenize(orig_text))
+    tok_text = ' '.join(tokenizer.tokenize(orig_text))
 
     start_position = tok_text.find(pred_text)
     if start_position == -1:
@@ -413,7 +412,7 @@ def run_squad(sess, params):
     with writer.as_default():
         e = tf.compat.v1.Event(summary=sum_s).SerializeToString()
         tf.summary.import_event(e)
-        tf.summary.scalar('accuracy', acc, step=1, description="Accuracy")
+        tf.summary.scalar('accuracy', acc, step=1, description='Accuracy')
         sum_e = hparams.session_end_pb(api_pb2.STATUS_SUCCESS)
         e = tf.compat.v1.Event(summary=sum_e).SerializeToString()
         tf.summary.import_event(e)
@@ -443,10 +442,10 @@ _params.update(
 
 
 def main(_):
-    ps = load_bert_params().override(_params)
+    PS = bert.load_params().override(_params)
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
-    writer = tf.summary.create_file_writer(ps.log_dir + '/train')
+    writer = tf.summary.create_file_writer(PS.log_dir + '/train')
     with writer.as_default():
         s = _to_summary_pb(nus, drs, '')
         e = tf.compat.v1.Event(summary=s).SerializeToString()
@@ -456,8 +455,8 @@ def main(_):
             kw = {'num_units': nu, 'dropout_rate': dr}
             sess = datetime.now().strftime('%Y%m%d-%H%M%S')
             print(f'--- Running session {sess}:', kw)
-            ps.update(**kw)
-            run_squad(sess, ps)
+            PS.update(**kw)
+            run_squad(sess, PS)
 
 
 def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
@@ -494,16 +493,16 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 
 if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
-    load_bert_flags()
+    bert.load_flags()
     from absl import flags
-    flags.DEFINE_float("null_score_diff_threshold", 0.0, "null_score")
-    flags.DEFINE_float("warmup_split", 0.0, "Proportion of warmup")
-    flags.DEFINE_integer("max_ans_len", 0, "Max tokens for answer")
-    flags.DEFINE_integer("max_qry_len", 0, "Max tokens for question")
-    flags.DEFINE_integer("n_best_size", 0, "n-best preds json file")
-    flags.DEFINE_integer("seq_stride", 0, "Stride between chunks")
+    flags.DEFINE_float('null_score_diff_threshold', None, '')
+    flags.DEFINE_float('warmup_split', None, '')
+    flags.DEFINE_integer('max_ans_len', None, '')
+    flags.DEFINE_integer('max_qry_len', None, '')
+    flags.DEFINE_integer('n_best_size', None, '')
+    flags.DEFINE_integer('seq_stride', None, '')
     from absl import app
     app.run(main)
-"""
+'''
 python $SQUAD_DIR/evaluate-v1.1.py $SQUAD_DIR/dev-v1.1.json /results/predictions.json
-"""
+'''

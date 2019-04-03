@@ -24,8 +24,8 @@ from google.protobuf import struct_pb2
 from tensorboard.plugins.hparams import api_pb2
 from tensorboard.plugins.hparams import summary as hparams
 
+from qnarre.neura import params
 from qnarre.feeds.prep.tokenizer import Tokenizer
-from qnarre.neura.params import load_flags, load_params
 from qnarre.feeds.dset.bert_ds import dataset as bert_ds
 
 
@@ -422,6 +422,20 @@ def main(_):
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
 
+def load_flags():
+    params.load_flags()
+    from absl import flags
+    flags.DEFINE_bool('lower_case', None, '')
+    flags.DEFINE_integer('max_preds_per_seq', None, '')
+    flags.DEFINE_string('bert_config', None, '')
+    flags.DEFINE_string('init_checkpoint', None, '')
+
+
+def load_params():
+    ps = params.load_params().override(_params)
+    return ps.update(tokenizer=Tokenizer(ps))
+
+
 _params = dict(
     attn_drop=0.1,
     attn_heads=12,  # bert 12
@@ -473,25 +487,11 @@ _params.update(
 )
 
 
-def load_bert_flags():
-    load_flags()
-    from absl import flags
-    flags.DEFINE_string("bert_config", None, "Config json")
-    flags.DEFINE_bool("lower_case", True, "Lower case input text")
-    flags.DEFINE_integer("max_preds_per_seq", 20, "Max masked LM preds")
-    flags.DEFINE_string("init_checkpoint", None, "Initial checkpoint")
-
-
-def load_bert_params():
-    ps = load_params().override(_params)
-    return ps.update(tokenizer=Tokenizer(ps))
-
-
 def b_main(_):
-    ps = load_bert_params()
+    PS = load_params()
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
-    writer = tf.summary.create_file_writer(ps.log_dir + '/train')
+    writer = tf.summary.create_file_writer(PS.log_dir + '/train')
     with writer.as_default():
         s = _to_summary_pb(nus, drs, '')
         e = tf.compat.v1.Event(summary=s).SerializeToString()
@@ -501,8 +501,8 @@ def b_main(_):
             kw = {'num_units': nu, 'dropout_rate': dr}
             sess = datetime.now().strftime('%Y%m%d-%H%M%S')
             print(f'--- Running session {sess}:', kw)
-            ps.update(**kw)
-            run_bert(sess, ps)
+            PS.update(**kw)
+            run_bert(sess, PS)
 
 
 def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
@@ -539,6 +539,6 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 
 if __name__ == '__main__':
     # tf.logging.set_verbosity(tf.logging.INFO)
-    load_bert_flags()
+    load_flags()
     from absl import app
     app.run(main)
