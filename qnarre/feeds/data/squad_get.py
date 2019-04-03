@@ -18,7 +18,7 @@ import pathlib as pth
 
 from absl import flags
 
-from qfeeds.data.shell import Shell
+from qnarre.feeds.data.shell import Shell
 
 
 def download(sh):
@@ -36,7 +36,7 @@ def download(sh):
     ):
         sh.run(
             'wget -q -c -N {}'.format(url + f + suff),
-            'xz -qk -9 -T0  {}'.format(f + suff),
+            'xz -qk -9 -T0 {}'.format(f + suff),
         )
         assert s == sh.sha256sum(f + suff)
 
@@ -56,11 +56,6 @@ def download(sh):
         assert s == sh.sha256sum(f)
 
 
-def define_download_flags():
-    flags.DEFINE_string(
-        name='data_dir', default='.data/squad', help='Data dir')
-
-
 def main(_):
     path = pth.Path.cwd() / flags.FLAGS.data_dir
     if not path.exists():
@@ -69,6 +64,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-    define_download_flags()
+    flags.DEFINE_string(name='data_dir', default='.data/squad', help='')
     from absl import app
     app.run(main)

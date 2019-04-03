@@ -18,16 +18,16 @@ import pathlib as pth
 
 from absl import flags
 
-from official.utils.flags import core as fu
-
-from ..shell import Shell
+from qnarre.feeds.data.shell import Shell
 
 
 def download(sh):
-    files = (('train-images-idx3-ubyte',
-              'train_images'), ('train-labels-idx1-ubyte', 'train_labels'),
-             ('t10k-images-idx3-ubyte',
-              'test_images'), ('t10k-labels-idx1-ubyte', 'test_labels'))
+    files = (
+        ('train-images-idx3-ubyte', 'train_images'),
+        ('train-labels-idx1-ubyte', 'train_labels'),
+        ('t10k-images-idx3-ubyte', 'test_images'),
+        ('t10k-labels-idx1-ubyte', 'test_labels'),
+    )
     url = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/'
     suff = '.gz'
     for s, d in files:
@@ -35,13 +35,8 @@ def download(sh):
             'wget -q -c -N {}'.format(url + s + suff),
             'gunzip -q -k {}'.format(s + suff),
             'mv {} {}'.format(s, d),
+            'xz -q -9 -T0 {}'.format(d),
         )
-
-
-def define_download_flags():
-    fu.define_base()
-    flags.adopt_module_key_flags(fu)
-    fu.set_defaults(data_dir='.data/mnist-fashion')
 
 
 def main(_):
@@ -52,6 +47,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-    define_download_flags()
+    flags.DEFINE_string(
+        name='data_dir', default='.data/mnist-fashion', help='')
     from absl import app
     app.run(main)
