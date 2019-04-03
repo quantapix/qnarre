@@ -10,21 +10,16 @@ set -e -u -o pipefail
 
 nvenv() {
     mkdir .nvenv
-
     (cd nvidia
      sh ./cuda_* --extract="$OLDPWD"/.nvenv)
-
     mv .nvenv/cuda-toolkit .nvenv/cuda
     mv .nvenv/cuda-samples .nvenv/cuda/samples
-
     (cd nvidia
      tar xf cudnn_* -C "$OLDPWD"/.nvenv
      tar xf nccl_* -C "$OLDPWD"/.nvenv
      tar xf tensorrt_* -C "$OLDPWD"/.nvenv)
-
     mv .nvenv/nccl_* .nvenv/nccl
     mv .nvenv/TensorRT-* .nvenv/tensorrt
-
     (cd /usr/local
      sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
      sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
@@ -39,41 +34,48 @@ keras() {
 
 spacy() {
     (cd spacy/blis
-     # ../../.qenv/bin/pip install -r requirements.txt
-     # ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
-     # ../../.qenv/bin/pip install -e .
-     # ../../.qenv/bin/python -m pytest thinc/
+     ../../.qenv/bin/pip install -r requirements.txt
+     ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
+     ../../.qenv/bin/pip install -e .
+     ../../.qenv/bin/python -m pytest thinc/
     )
     (cd spacy/thinc
-     # ../../.qenv/bin/pip install -r requirements.txt
-     # ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
-     # ../../.qenv/bin/pip install -e .
-     # ../../.qenv/bin/python -m pytest thinc/
+     ../../.qenv/bin/pip install -r requirements.txt
+     ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
+     ../../.qenv/bin/pip install -e .
+     ../../.qenv/bin/python -m pytest thinc/
     )
     (cd spacy/upstream
-     # ../../.qenv/bin/pip install -r requirements.txt
-     # ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
-     # ../../.qenv/bin/pip install -e .
-     # ../../.qenv/bin/python -m pytest spacy/
+     ../../.qenv/bin/pip install -r requirements.txt
+     ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
+     ../../.qenv/bin/pip install -e .
+     ../../.qenv/bin/python -m pytest spacy/
     )
+    (cd spacy/stanford
+     ../../.qenv/bin/pip install -r requirements.txt
+     ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
+     ../../.qenv/bin/pip install -e .
+    )
+}
+
+spacy_en() {
     .qenv/bin/python -m spacy download en_core_web_sm
     .qenv/bin/python -m spacy download en_core_web_md
     .qenv/bin/python -m spacy download en_core_web_lg
     .qenv/bin/python -m spacy download en_vectors_web_lg
-    (cd spacy/stanford
-     # ../../.qenv/bin/pip install -r requirements.txt
-     # ../../.qenv/bin/python setup.py build_ext -i -j "$(nproc)"
-     # ../../.qenv/bin/pip install -e .
-    )
 }
 
 tflow() {
-    if $1; then
-        .qenv/bin/pip install -U tf-nightly-gpu-2.0-preview
+    if ls tensorflow/std.install/tf_nightly-*.whl 1> /dev/null 2>&1; then
+	      .qenv/bin/pip install -I tensorflow/std.install/tf_nightly-*.whl
     else
-        .qenv/bin/pip install -U tf-nightly-2.0-preview
+        if $1; then
+            .qenv/bin/pip install -U tf-nightly-gpu-2.0-preview
+        else
+            .qenv/bin/pip install -U tf-nightly-2.0-preview
+        fi
+        # .qenv/bin/pip install -U tb-nightly
     fi
-    # .qenv/bin/pip install -U tb-nightly
 }
 
 ptorch() {
@@ -108,11 +110,11 @@ main() {
 	      rm -rf .nvenv .qenv
     fi
 
-    # if [ ! -e .nvenv ]; then
-    #     if "$GPU"; then
-	  #         # nvenv
-    #     fi
-    # fi
+    if [ ! -e .nvenv ]; then
+        if "$GPU"; then
+	          nvenv
+        fi
+    fi
 
     if [ ! -e .qenv ]; then
 	      python3.7 -m venv .qenv
@@ -125,13 +127,15 @@ main() {
     .qenv/bin/pip install -U dash dash-html-components dash-core-components
     .qenv/bin/pip install -U dash-table dash-daq
 
-	  keras
-    spacy
+	  # keras
+    # spacy
+    # spacy_en
     tflow "$GPU"
-    ptorch "$GPU"
+    # ptorch "$GPU"
 
-    .qenv/bin/pip install -U mesh-tensorflow
-    .qenv/bin/pip install -U tensorflow-probability tensorflow-datasets
+    # .qenv/bin/pip install -U mesh-tensorflow
+    # .qenv/bin/pip install -U tensorflow-datasets
+    .qenv/bin/pip install -U tensorflow-probability
 }
 
 main "$@"
