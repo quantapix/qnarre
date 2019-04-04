@@ -522,8 +522,7 @@ class Processor(kls.Layer):
         self.batch = kls.BatchNormalization(epsilon=PS.norm_epsilon)
 
     def build(self, input_shape):
-        print(input_shape)
-        prev, x = input_shape
+        _, x = input_shape
         kw = dict(shape=x[-1], trainable=True)
         self.gain = self.add_weight(initializer='ones', **kw)
         self.bias = self.add_weight(initializer='zeros', **kw)
@@ -578,6 +577,12 @@ class PreProc(Processor):
         self.cmd = self.PS.pre_cmd
         assert 'a' not in self.cmd
         assert 'z' not in self.cmd
+
+    def build(self, input_shape):
+        return super().build((None, input_shape))
+
+    def compute_output_shape(self, input_shape):
+        return input_shape,
 
     def call(self, inputs, **kw):
         return super().call([None, inputs], **kw)
