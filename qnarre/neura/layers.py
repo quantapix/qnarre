@@ -40,8 +40,8 @@ class Squad(kls.Layer):
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
-        s, typ = inputs[:2]
-        y = self.bert.trans([[s, typ], None], **kw)
+        seq, typ = inputs[:2]
+        y = self.bert.tformer([[seq, typ], None], **kw)
         PS = self.PS
         y = K.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
         y = tf.matmul(y, self.gain, transpose_b=True)
@@ -56,7 +56,7 @@ class Bert(kls.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.trans = Transformer(PS)
+        self.tformer = Tformer(PS)
         ki = _get_initer(PS.init_stddev)
         self.dense = kls.Dense(PS.hidden_size, tf.tanh, kernel_initializer=ki)
 
@@ -64,13 +64,13 @@ class Bert(kls.Layer):
         return self.dense.output_shape
 
     def call(self, inputs, **kw):
-        s, typ = inputs[:2]
-        y = self.trans([[s, typ], None], **kw)
+        seq, typ = inputs[:2]
+        y = self.tformer([[seq, typ], None], **kw)
         y = tf.squeeze(y[:, 0:1, :], axis=1)
         return self.dense(y, **kw)
 
 
-class Transformer(kls.Layer):
+class Tformer(kls.Layer):
     typ_embed, pos_embed = None, None
 
     def __init__(self, PS, **kw):
@@ -86,7 +86,7 @@ class Transformer(kls.Layer):
         self.norm = LayerNorm()
         # tfa.layers.normalizations.LayerNormalization()
         self.drop = kls.Dropout(PS.hidden_drop)
-        pre, post = PreProcessor(PS), PostProcessor(PS)
+        pre, post = PreProc(PS), PostProc(PS)
         self.e_stack = EncodeStack(PS, pre, post)
         self.d_stack = DecodeStack(PS, pre, post)
         self.dense = kls.Dense(PS.vocab_size, activation=None)
@@ -127,11 +127,9 @@ class LayerNorm(kls.Layer):
         self.supports_masking = True
 
     def build(self, input_shape):
-        sh = input_shape[-1]
-        self.gain = self.add_weight(
-            shape=sh, initializer='ones', trainable=True)
-        self.bias = self.add_weight(
-            shape=sh, initializer='zeros', trainable=True)
+        kw = dict(shape=input_shape[-1], trainable=True)
+        self.gain = self.add_weight(initializer='ones', **kw)
+        self.bias = self.add_weight(initializer='zeros', **kw)
         return super().build(input_shape)
 
     def call(self, inputs, **_):
@@ -170,8 +168,8 @@ class TypEmbed(kls.Layer):
         assert xlen == tlen
         PS = self.PS
         sh = (PS.token_types, hsize)
-        ei = _get_initer(PS.init_stddev)
-        self.gain = self.add_weight(shape=sh, initializer=ei, trainable=True)
+        wi = _get_initer(PS.init_stddev)
+        self.gain = self.add_weight(shape=sh, initializer=wi, trainable=True)
         return super().build(input_shape)
 
     def call(self, inputs, **_):
@@ -192,8 +190,8 @@ class PosEmbed(kls.Layer):
         plen = max(PS.max_pos_len, PS.max_seq_len)
         assert xlen <= plen
         sh = (plen, hsize)
-        ei = _get_initer(PS.init_stddev)
-        b = self.add_weight(shape=sh, initializer=ei, trainable=True)
+        wi = _get_initer(PS.init_stddev)
+        b = self.add_weight(shape=sh, initializer=wi, trainable=True)
         self.bias = tf.slice(b, [0, 0], [xlen, -1])
         return super().build(input_shape)
 
@@ -236,10 +234,17 @@ class Stack(kls.Layer):
     prox_bias = None
 
     @staticmethod
-    def prox(length):
-        p = K.arange(length, dtype=K.floatx())
-        d = K.expand_dims(p, 0) - K.expand_dims(p, 1)
-        return K.expand_dims(K.expand_dims(-tf.log1p(K.abs(d)), 0), 0)
+    def proximity(slen):
+        p = K.arange(slen, dtype=K.floatx())
+        p = K.expand_dims(p, 0) - K.expand_dims(p, 1)
+        return K.expand_dims(K.expand_dims(-tf.log1p(K.abs(p)), 0), 0)
+
+    @staticmethod
+    def attn_mask(mask):
+        f = K.floatx()
+        fmin = tf.float16.min if f == 'float16' else tf.float32.min
+        m = K.cast(mask, f) * fmin
+        return K.expand_dims(K.expand_dims(m, axis=1), axis=1)
 
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
@@ -247,13 +252,6 @@ class Stack(kls.Layer):
         self.PS = PS
         self.pre = pre
         self.post = post
-        self.drop = pre.drop
-
-    @staticmethod
-    def attn_mask(mask):
-        m = K.cast(mask, K.floatx())
-        m *= qu.min_for(m)
-        return K.expand_dims(K.expand_dims(m, axis=1), axis=1)
 
 
 class EncodeStack(Stack):
@@ -261,15 +259,12 @@ class EncodeStack(Stack):
         super().__init__(*args, **kw)
         PS = self.PS
         a = (PS, self.pre, self.post)
-        n = PS.encode_layers or PS.stacks_layers
-        self.encoders = [Encoder(*a, name=f'encoder_{i}') for i in range(n)]
+        n = PS.encode_layers or PS.stack_layers
+        self.encs = [Encoder(*a, name=f'enc_{i}') for i in range(n)]
 
     def build(self, input_shape):
-        _, slen, hsize = input_shape
-        PS = self.PS
-        assert hsize == PS.hidden_size
-        if PS.prox_bias:
-            self.prox_bias = self.prox(input_shape[1])
+        if self.PS.prox_bias:
+            self.prox_bias = self.proximity(input_shape[1])
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
@@ -281,11 +276,9 @@ class EncodeStack(Stack):
         if self.prox_bias:
             sam += self.prox_bias
         if self.PS.pad_remover:
-            p = K.cast(K.less(sam, -1.0), K.floatx())
-            p = K.squeeze(K.squeeze(p, axis=1), axis=1)
-            kw.update(pad_remover=qu.PadRemover(p))
-        s = self.drop(s, **kw)
-        for e in self.encoders:
+            kw.update(pad_remover=qu.PadRemover(mask))
+        s = self.pre.drop(s, **kw)
+        for e in self.encs:
             s = e([s, sam], **kw)
         return self.pre(s), am
 
@@ -295,14 +288,11 @@ class DecodeStack(Stack):
         super().__init__(*args, **kw)
         PS = self.PS
         a = (PS, self.pre, self.post)
-        n = PS.decode_layers or PS.stacks_layers
-        self.decoders = [Decoder(*a, name=f'decoder_{i}') for i in range(n)]
+        n = PS.decode_layers or PS.stack_layers
+        self.decs = [Decoder(*a, name=f'dec_{i}') for i in range(n)]
 
     def build(self, input_shape):
-        _, slen, hsize = input_shape
-        PS = self.PS
-        assert hsize == PS.hidden_size
-        if PS.prox_bias:
+        if self.PS.prox_bias:
             self.prox_bias = self.proximity(input_shape[2][1])
         return super().build(input_shape)
 
@@ -323,14 +313,12 @@ class DecodeStack(Stack):
                 sh = (1, 1, ln, ln)
                 b = qu.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 sam = -1e9 * (1.0 - b)
-        else:
-            sam = K.expand_dims(K.expand_dims(p, axis=1), axis=1)
         if self.prox_bias:
             sam += self.prox_bias
         t = tf.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
         # t = tf.concat([pad_value, t], axis=1)[:, :-1, :]
-        t = self.drop(t, **kw)
-        for d in self.decoders:
+        t = self.pre.drop(t, **kw)
+        for d in self.decs:
             t = d([s, am, t, sam], **kw)
         return K.expand_dims(self.pre(t), axis=2)
 
@@ -339,34 +327,34 @@ class Encoder(kls.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.reflection = _attentions[PS.self_attn_type](*a)
-        self.fforward = _fforwards[PS.ffn_layer](*a)
+        self.refl = _attns[PS.self_attn_type](*a)
+        self.ffn = _ffns[PS.ffn_layer](*a)
 
     def compute_output_shape(self, _):
-        return self.fforward.output_shape
+        return self.ffn.output_shape
 
     def call(self, inputs, **kw):
         s, sam = inputs
-        s = self.reflection([s, s, sam], **kw)
-        return self.fforward(s, **kw)
+        y = self.refl([s, s, sam], **kw)
+        return self.ffn(y, **kw)
 
 
 class Decoder(kls.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.reflection = _attentions[PS.self_attn_type](*a)
-        self.attention = _attentions[PS.attn_type](*a)
-        self.fforward = _fforwards[PS.ffn_layer](*a, conv_padding='LEFT')
+        self.refl = _attns[PS.self_attn_type](*a)
+        self.attn = _attns[PS.attn_type](*a)
+        self.ffn = _ffns[PS.ffn_layer](*a, conv_pad='LEFT')
 
     def compute_output_shape(self, _):
-        return self.fforward.output_shape
+        return self.ffn.output_shape
 
     def call(self, inputs, **kw):
         s, am, t, sam = inputs
-        t = self.reflection([t, t, sam], **kw)
-        t = self.attention([t, s, am], **kw)
-        return self.fforward(t, **kw)
+        y = self.refl([t, t, sam], **kw)
+        y = self.attn([y, s, am], **kw)
+        return self.fforward(y, **kw)
 
 
 class Attention(kls.Layer):
@@ -451,7 +439,7 @@ class ConvComp(kls.Layer):
         return self.conv(x)
 
 
-class DotProductAttn(Attention):
+class DotAttn(Attention):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         PS = self.PS
@@ -464,34 +452,33 @@ class DotProductAttn(Attention):
         return tf.matmul(y, v)
 
 
-_attentions = {
-    'dot_product': DotProductAttn,
+_attns = {
+    'dot_attn': DotAttn,
 }
 
 
 class FForward(kls.Layer):
-    conv_padding = 'SAME'
+    conv_pad = 'SAME'
 
-    def __init__(self, PS, pre, post, conv_padding=None, **kw):
+    def __init__(self, PS, pre, post, conv_pad=None, **kw):
         super().__init__(**kw)
         self.PS = PS
         self.pre = pre
         self.post = post
-        if conv_padding:
-            self.conv_padding = conv_padding
+        if conv_pad:
+            self.conv_pad = conv_pad
 
 
 class DenseDense(FForward):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         PS = self.PS
-        a = _get_act(PS.ffn_act)
+        ac = _get_act(PS.ffn_act)
         ki = _get_initer(PS.init_stddev)
-        self.dense_1 = kls.Dense(
-            PS.ffn_units, activation=a, kernel_initializer=ki, use_bias=True)
+        kw = dict(kernel_initializer=ki, use_bias=True)
+        self.dense1 = kls.Dense(PS.ffn_units, activation=ac, **kw)
         self.drop = kls.Dropout(PS.ffn_drop)
-        self.dense_2 = kls.Dense(
-            PS.hidden_size, kernel_initializer=ki, use_bias=True)
+        self.dense2 = kls.Dense(PS.hidden_size, **kw)
 
     def call(self, inputs, pad_remover=None, **kw):
         x = inputs
@@ -500,21 +487,21 @@ class DenseDense(FForward):
         if pad_remover:
             y = K.reshape(y, K.concatenate([[-1], sh[2:]], axis=0))
             y = K.expand_dims(pad_remover.remove(y), axis=0)
-        y = self.dense_1(y, **kw)
+        y = self.dense1(y, **kw)
         y = self.drop(y, **kw)
-        y = self.dense_2(y, **kw)
+        y = self.dense2(y, **kw)
         if pad_remover:
             y = K.reshape(pad_remover.restore(K.squeeze(y, axis=0)), sh)
         return self.post(x, y)
 
 
-_fforwards = {
+_ffns = {
     'dense_dense': DenseDense,
 }
 
 
 class Processor(kls.Layer):
-    cmd = 'none'
+    cmd = None
 
     @staticmethod
     def _dropout(rate, shape, bdims):
@@ -530,62 +517,58 @@ class Processor(kls.Layer):
         self.supports_masking = True
         self.PS = PS
         self.drop = self._dropout(PS.prepost_drop, (), PS.prepost_bdims)
-        self.batch_norm = kls.BatchNormalization(epsilon=PS.norm_epsilon)
-        self.norm_type = PS.norm_type
-        self.num_groups = PS.num_groups
-        self.norm_epsilon = PS.norm_epsilon
-        self.group_epsilon = PS.group_epsilon
+        self.batch = kls.BatchNormalization(epsilon=PS.norm_epsilon)
 
     def build(self, input_shape):
-        filters = input_shape[-1]
-        kw = dict(shape=(filters, ), trainable=True)
-        self.kern = self.add_weight(name='kern', initializer='ones', **kw)
-        self.bias = self.add_weight(name='bias', initializer='zeros', **kw)
+        kw = dict(shape=input_shape[-1], trainable=True)
+        self.gain = self.add_weight(initializer='ones', **kw)
+        self.bias = self.add_weight(initializer='zeros', **kw)
+        # kw.update(shape=())
+        self.gamma = self.add_weight(initializer='zeros', **kw)
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
         prev, x = inputs
-        if self.cmd != 'none':
+        if self.cmd:
+            PS = self.PS
             for c in self.cmd:
                 if c == 'a':
                     x += prev
                 elif c == 'z':
-                    self.gamma = tf.get_variable(
-                        'gamma', (), initializer=tf.zeros_initializer())
                     x = prev + self.gamma * x
                 elif c == 'n':
-                    if self.norm_type == 'layer':
+                    if PS.norm_type == 'layer':
                         m = K.mean(x, axis=-1, keepdims=True)
                         v = K.mean(K.square(x - m), axis=-1, keepdims=True)
-                        x = (x - m) / K.sqrt(v + self.norm_epsilon)
-                        x = x * self.kern + self.bias
-                    elif self.norm_type == 'group':
-                        sh = K.int_shape(x)
-                        assert len(sh) == 4 and sh[-1] % self.num_groups == 0
-                        gsh = [self.num_groups, sh[-1] // self.num_groups]
-                        x = tf.reshape(x, sh[:-1] + gsh)
-                        m, v = tf.nn.moments(x, [1, 2, 4], keep_dims=True)
-                        x = (x - m) / K.sqrt(v + self.group_epsilon)
-                        x = tf.reshape(x, sh) * self.kern + self.bias
-                    elif self.norm_type == 'batch':
-                        x = self.batch_norm(x, **kw)
-                    elif self.norm_type == 'noam':
-                        d = K.cast_to_floatx(K.int_shape(x)[-1])
-                        x = K.l2_normalize(x, axis=-1) * K.sqrt(d)
-                    elif self.norm_type == 'l2':
+                        x = (x - m) / K.sqrt(v + PS.norm_epsilon)
+                        x = x * self.gain + self.bias
+                    elif PS.norm_type == 'batch':
+                        x = self.batch(x, **kw)
+                    elif PS.norm_type == 'l2':
                         m = K.mean(x, axis=-1, keepdims=True)
                         n = K.sum(K.square(x - m), axis=-1, keepdims=True)
-                        x = (x - m) / K.sqrt(n + self.epsilon)
-                        x = x * self.kern + self.bias
+                        x = (x - m) / K.sqrt(n + PS.norm_epsilon)
+                        x = x * self.gain + self.bias
+                    elif PS.norm_type == 'group':
+                        sh = K.int_shape(x)
+                        assert len(sh) == 4 and sh[-1] % PS.num_groups == 0
+                        gsh = (PS.num_groups, sh[-1] // PS.num_groups)
+                        x = K.reshape(x, sh[:-1] + gsh)
+                        m, v = tf.nn.moments(x, [1, 2, 4], keep_dims=True)
+                        x = (x - m) / K.sqrt(v + PS.group_epsilon)
+                        x = K.reshape(x, sh) * self.gain + self.bias
+                    elif PS.norm_type == 'noam':
+                        d = K.cast_to_floatx(K.int_shape(x)[-1])
+                        x = K.l2_normalize(x, axis=-1) * K.sqrt(d)
                     else:
-                        assert self.norm_type == 'none'
+                        assert PS.norm_type == 'none'
                 else:
                     assert c == 'd'
                     x = self.drop(x, **kw)
         return x
 
 
-class PreProcessor(Processor):
+class PreProc(Processor):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.cmd = self.PS.pre_cmd
@@ -596,7 +579,7 @@ class PreProcessor(Processor):
         return super().call([None, inputs], **kw)
 
 
-class PostProcessor(Processor):
+class PostProc(Processor):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.cmd = self.PS.post_cmd
@@ -606,23 +589,22 @@ def _get_initer(stddev):
     return ks.initializers.TruncatedNormal(stddev=stddev)
 
 
-def _gelu_act(x):
-    cdf = K.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3))))
-    cdf = (cdf + 1.0) * 0.5
-    return x * cdf
+def _gelu(x):
+    c = K.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3))))
+    c = (c + 1.0) * 0.5
+    return x * c
 
 
 def _get_act(name):
-    a = name
-    if isinstance(a, str):
-        a = a.lower()
-        if a == "relu":
-            a = ks.activations.relu
-        elif a == "gelu":
-            a = _gelu_act
-        elif a == "tanh":
-            a = ks.activations.tanh
+    if isinstance(name, str):
+        n = name.lower()
+        if n == 'gelu':
+            return _gelu
+        elif n == 'relu':
+            return ks.activations.relu
+        elif n == 'tanh':
+            return ks.activations.tanh
         else:
-            assert a == "linear"
-            a = None
-    return a
+            assert n == 'linear'
+            name = None
+    return name

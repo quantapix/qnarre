@@ -75,10 +75,6 @@ class LRSchedule(ks.optimizers.schedules.LearningRateSchedule):
         }
 
 
-def min_for(dtype):
-    return tf.float16.min if dtype == tf.float16 else -1e9
-
-
 def ones_band_part(rows, cols, num_lower, num_upper, out_shape=None):
     if all([isinstance(el, int) for el in [rows, cols, num_lower, num_upper]]):
         if num_lower < 0:
