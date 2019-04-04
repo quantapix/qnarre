@@ -280,7 +280,7 @@ class EncodeStack(Stack):
         s = self.pre.drop(s, **kw)
         for e in self.encs:
             s = e([s, sam], **kw)
-        return self.pre(s), am
+        return self.pre(s, **kw), am
 
 
 class DecodeStack(Stack):
@@ -320,7 +320,7 @@ class DecodeStack(Stack):
         t = self.pre.drop(t, **kw)
         for d in self.decs:
             t = d([s, am, t, sam], **kw)
-        return K.expand_dims(self.pre(t), axis=2)
+        return K.expand_dims(self.pre(t, **kw), axis=2)
 
 
 class Encoder(kls.Layer):
@@ -358,29 +358,31 @@ class Decoder(kls.Layer):
 
 
 class Attention(kls.Layer):
-    @staticmethod
-    def dense_comp(units, **kw):
-        return kls.Dense(units, use_bias=False, **kw)
-
     def __init__(self, PS, pre, post, comp=None, **kw):
         super().__init__(**kw)
         self.PS = PS
         self.pre = pre
         self.post = post
+        self.comp = comp or self.dense_comp
+        self.dense = self.dense_comp(PS.hidden_size)
+
+    def build(self, input_shape):
+        src, tgt, _ = input_shape
+        _, slen, hsize = src
+        _, tlen, hs2 = tgt
+        assert hsize == hs2
+        PS = self.PS
         n = PS.attn_heads
-        q_size = PS.hidden_size
-        assert q_size % n == 0
-        comp = comp or self.dense_comp
-        ki = _get_initer(PS.init_stddev)
-        self.q_comp = comp(q_size, name='Q', kernel_initializer=ki)
-        k_size = PS.attn_k_size or PS.hidden_size
+        assert hsize % n == 0
+        self.q_comp = self.comp(hsize, name='Q')
+        k_size = PS.attn_k_size or hsize
         assert k_size % n == 0
         self.k_size = k_size
-        self.k_comp = comp(k_size, name='K', kernel_initializer=ki)
-        v_size = PS.attn_v_size or PS.hidden_size
+        self.k_comp = self.comp(k_size, name='K')
+        v_size = PS.attn_v_size or hsize
         assert v_size % n == 0
-        self.v_comp = comp(v_size, name='V', kernel_initializer=ki)
-        self.dense = kls.Dense(q_size, use_bias=False, kernel_initializer=ki)
+        self.v_comp = self.comp(v_size, name='V')
+        return super().build(input_shape)
 
     def compute_output_shape(self, _):
         return self.dense.output_shape
@@ -393,23 +395,23 @@ class Attention(kls.Layer):
         v = self.split_heads(self.v_comp(t, **kw))
         y = self.calc_scores(q, k, v, am, **kw)
         y = self.join_heads(y)
-        return self.post(s, self.dense(y))
+        return self.post([s, self.dense(y)], **kw)
+
+    def dense_comp(self, units, **kw):
+        ki = _get_initer(self.PS.init_stddev)
+        return kls.Dense(units, use_bias=False, kernel_initializer=ki, **kw)
 
     def split_heads(self, x):
-        print(x)
         sh = K.int_shape(x)
-        s = sh[-1]
         n = self.PS.attn_heads
-        assert s % n == 0
-        y = K.reshape(x, sh[:-1] + (n, s // n))
+        y = K.reshape(x, (-1, sh[1], n, sh[-1] // n))
         return K.permute_dimensions(y, [0, 2, 1, 3])
 
     @staticmethod
     def join_heads(x):
         y = K.permute_dimensions(x, [0, 2, 1, 3])
         sh = K.int_shape(y)
-        n, s = sh[-2:]
-        return K.reshape(y, sh[:-2] + (n * s))
+        return K.reshape(y, (-1, sh[1], sh[2] * sh[3]))
 
 
 class ConvComp(kls.Layer):
@@ -482,7 +484,7 @@ class DenseDense(FForward):
 
     def call(self, inputs, pad_remover=None, **kw):
         x = inputs
-        y = self.pre(x)
+        y = self.pre(x, **kw)
         sh = K.int_shape(y)
         if pad_remover:
             y = K.reshape(y, K.concatenate([[-1], sh[2:]], axis=0))
@@ -492,7 +494,7 @@ class DenseDense(FForward):
         y = self.dense2(y, **kw)
         if pad_remover:
             y = K.reshape(pad_remover.restore(K.squeeze(y, axis=0)), sh)
-        return self.post(x, y)
+        return self.post([x, y], **kw)
 
 
 _ffns = {
@@ -520,7 +522,9 @@ class Processor(kls.Layer):
         self.batch = kls.BatchNormalization(epsilon=PS.norm_epsilon)
 
     def build(self, input_shape):
-        kw = dict(shape=input_shape[-1], trainable=True)
+        print(input_shape)
+        prev, x = input_shape
+        kw = dict(shape=x[-1], trainable=True)
         self.gain = self.add_weight(initializer='ones', **kw)
         self.bias = self.add_weight(initializer='zeros', **kw)
         # kw.update(shape=())
