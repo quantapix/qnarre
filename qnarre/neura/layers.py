@@ -29,25 +29,24 @@ class Squad(kls.Layer):
         super().__init__(**kw)
         self.PS = PS
         self.bert = Bert(PS)
-        self.trans = self.bert.transformer
 
     def build(self, input_shape):
         PS = self.PS
-        # assert self.trans.output_shape[2] == PS.hidden_size
+        sh = (2, PS.hidden_size)
         wi = _get_initer(PS.init_stddev)
-        kw = dict(dtype='float32', shape=(2, PS.hidden_size), trainable=True)
-        self.out_w = self.add_weight(name='out_w', initializer=wi, **kw)
-        kw.update(shape=(2, ))
-        self.out_b = self.add_weight(name='out_b', initializer='zeros', **kw)
+        kw = dict(dtype='float32', trainable=True)
+        self.gain = self.add_weight(shape=sh, initializer=wi, **kw)
+        self.bias = self.add_weight(shape=2, initializer='zeros', **kw)
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
-        y = self.trans(inputs, **kw)
+        s, typ = inputs[:2]
+        y = self.bert.trans([[s, typ], None], **kw)
         PS = self.PS
-        y = tf.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
-        y = tf.matmul(y, self.out_w, transpose_b=True)
-        y = tf.nn.bias_add(y, self.out_b)
-        y = tf.reshape(y, [PS.batch_size, PS.max_seq_len, 2])
+        y = K.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
+        y = tf.matmul(y, self.gain, transpose_b=True)
+        y = K.bias_add(y, self.bias)
+        y = K.reshape(y, [PS.batch_size, PS.max_seq_len, 2])
         y = tf.transpose(y, [2, 0, 1])
         y = tf.unstack(y, axis=0)
         return y[0], y[1]
@@ -57,7 +56,7 @@ class Bert(kls.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.transformer = Transformer(PS)
+        self.trans = Transformer(PS)
         ki = _get_initer(PS.init_stddev)
         self.dense = kls.Dense(PS.hidden_size, tf.tanh, kernel_initializer=ki)
 
@@ -65,7 +64,8 @@ class Bert(kls.Layer):
         return self.dense.output_shape
 
     def call(self, inputs, **kw):
-        y = self.transformer(inputs, **kw)
+        s, typ = inputs[:2]
+        y = self.trans([[s, typ], None], **kw)
         y = tf.squeeze(y[:, 0:1, :], axis=1)
         return self.dense(y, **kw)
 
@@ -76,11 +76,11 @@ class Transformer(kls.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.embedding = Embedding(PS)
-        if PS.num_types:
-            self.typ_embed = TypeEmbedding(PS)
+        self.tok_embed = TokEmbed(PS)
+        if PS.token_types:
+            self.typ_embed = TypEmbed(PS)
         if PS.pos_embed:
-            p = PosEmbedding(PS) if PS.pos_embed == 'embedding' else None
+            p = PosEmbed(PS) if PS.pos_embed == 'embed' else None
             p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
         self.norm = LayerNorm()
@@ -96,23 +96,23 @@ class Transformer(kls.Layer):
 
     def call(self, inputs, **kw):
         src, tgt = inputs
-        s, st = src
-        s = self.embedding(s, **kw)
+        s, typ = src
+        s = self.tok_embed(s, **kw)
         if self.typ_embed:
-            s = self.typ_embed([s, st], **kw)
+            s = self.typ_embed([s, typ], **kw)
         if self.pos_embed:
             s = self.pos_embed(s, **kw)
         s = self.drop(self.norm(s, **kw), **kw)
-        y, a = self.e_stack(s, **kw)
+        y, attn = self.e_stack(s, **kw)
         if tgt:
-            t, tt = tgt
-            t = self.embedding(t, **kw)
+            t, typ = tgt
+            t = self.tok_embed(t, **kw)
             if self.typ_embed:
-                t = self.typ_embed([t, tt], **kw)
+                t = self.typ_embed([t, typ], **kw)
             if self.pos_embed:
                 t = self.pos_embed(t, **kw)
             t = self.drop(self.norm(t, **kw), **kw)
-            y = self.d_stack([y, a, t], **kw)
+            y = self.d_stack([y, attn, t], **kw)
         return self.dense(y, **kw)  # tf.squeeze(y, axis=2), **kw)
 
     def get_config(self):
@@ -122,32 +122,28 @@ class Transformer(kls.Layer):
 
 
 class LayerNorm(kls.Layer):
-    def __init__(self, axis=-1, **kwargs):
-        self.axis = axis
-        super().__init__(**kwargs)
-
-    def get_config(self):
-        c = super().get_config()
-        c['axis'] = self.axis
-        return c
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.supports_masking = True
 
     def build(self, input_shape):
-        d = input_shape[-1]
+        sh = input_shape[-1]
         self.gain = self.add_weight(
-            name='gain', shape=(d, ), initializer='ones', trainable=True)
+            shape=sh, initializer='ones', trainable=True)
         self.bias = self.add_weight(
-            name='bias', shape=(d, ), initializer='zeros', trainable=True)
+            shape=sh, initializer='zeros', trainable=True)
         return super().build(input_shape)
 
-    def call(self, inputs, **kwargs):
-        m = K.mean(inputs, axis=self.axis, keepdims=True)
-        v = K.mean(K.square(inputs - m), axis=self.axis, keepdims=True)
+    def call(self, inputs, **_):
+        x = inputs
+        m = K.mean(x, axis=-1, keepdims=True)
+        v = K.mean(K.square(x - m), axis=-1, keepdims=True)
         e = K.constant(1e-5, dtype=K.floatx())
-        y = (inputs - m) / K.sqrt(v + e)
+        y = (x - m) / K.sqrt(v + e)
         return self.gain * y + self.bias
 
 
-class Embedding(kls.Embedding):
+class TokEmbed(kls.Embedding):
     def __init__(self, PS, **_):
         ei = _get_initer(PS.init_stddev)
         er = ks.regularizers.l2(PS.l2_penalty) if PS.l2_penalty else None
@@ -161,72 +157,79 @@ class Embedding(kls.Embedding):
         )
 
 
-class TypeEmbedding(kls.Layer):
+class TypEmbed(kls.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
         self.PS = PS
 
     def build(self, input_shape):
-        s, t = input_shape
-        _, slen, hsize = s
-        _, tlen = t
-        assert slen == tlen
+        x, typ = input_shape
+        _, xlen, hsize = x
+        _, tlen = typ
+        assert xlen == tlen
         PS = self.PS
+        sh = (PS.token_types, hsize)
         ei = _get_initer(PS.init_stddev)
-        sh = (PS.num_types, hsize)
-        self.embeds = self.add_weight(initializer=ei, shape=sh, trainable=True)
+        self.gain = self.add_weight(shape=sh, initializer=ei, trainable=True)
         return super().build(input_shape)
 
     def call(self, inputs, **_):
-        s, t = inputs
-        t = K.one_hot(t, self.PS.num_types)
-        return s + K.dot(t, self.embeds)
+        x, typ = inputs
+        typ = K.one_hot(typ, self.PS.token_types)
+        return x + K.dot(typ, self.gain)
 
 
-class PosEmbedding(kls.Layer):
+class PosEmbed(kls.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
         self.PS = PS
-        self.pos_len = max(PS.max_pos_len, PS.max_seq_len)
 
     def build(self, input_shape):
-        _, slen, hsize = input_shape
+        _, xlen, hsize = input_shape
         PS = self.PS
-        assert slen <= self.pos_len
+        plen = max(PS.max_pos_len, PS.max_seq_len)
+        assert xlen <= plen
+        sh = (plen, hsize)
         ei = _get_initer(PS.init_stddev)
-        sh = (self.pos_len, hsize)
-        full = self.add_weight(initializer=ei, shape=sh, trainable=True)
-        self.embeds = tf.slice(full, [0, 0], [slen, -1])
+        b = self.add_weight(shape=sh, initializer=ei, trainable=True)
+        self.bias = tf.slice(b, [0, 0], [xlen, -1])
         return super().build(input_shape)
 
     def call(self, inputs, **_):
-        return inputs + K.expand_dims(self.embeds, 0)
+        return inputs + K.expand_dims(self.bias, 0)
 
 
 class PosTiming(kls.Layer):
-    def __init__(self, _, min_scale=1.0, max_scale=1.0e4, start=0, **kw):
+    start = 0
+    min_scale = 1.0
+    max_scale = 1.0e4
+
+    def __init__(self, _, start=None, min_scale=None, max_scale=None, **kw):
         super().__init__(**kw)
         self.supports_masking = True
-        self.min_scale = float(min_scale)
-        self.max_scale = float(max_scale)
-        self.start = start
+        if start:
+            self.start = start
+        if min_scale:
+            self.min_scale = float(min_scale)
+        if max_scale:
+            self.max_scale = float(max_scale)
 
     def build(self, input_shape):
-        _, slen, hsize = input_shape
+        _, xlen, hsize = input_shape
         assert hsize % 2 == 0
         n = hsize // 2
         s = np.log(self.max_scale / self.min_scale) / max(n - 1, 1)
         s = self.min_scale * K.exp(K.arange(n, dtype=K.floatx()) * -s)
-        p = K.arange(slen, dtype=K.floatx()) + self.start
+        p = K.arange(xlen, dtype=K.floatx()) + self.start
         p = K.expand_dims(p, 1) * K.expand_dims(s, 0)
         p = K.concatenate([K.sin(p), K.cos(p)], axis=1)
-        self.timing = K.expand_dims(p, axis=0)
+        self.bias = K.expand_dims(p, axis=0)
         return super().build(input_shape)
 
     def call(self, inputs, **_):
-        return inputs + self.timing
+        return inputs + self.bias
 
 
 class Stack(kls.Layer):
@@ -396,20 +399,21 @@ class Attention(kls.Layer):
 
     def call(self, inputs, **kw):
         s, t, am = inputs
-        s = self.pre(s)
-        q = self.split_heads(self.q_comp(s))
-        k = self.split_heads(self.k_comp(t))
-        v = self.split_heads(self.v_comp(t))
+        s = self.pre(s, **kw)
+        q = self.split_heads(self.q_comp(s, **kw))
+        k = self.split_heads(self.k_comp(t, **kw))
+        v = self.split_heads(self.v_comp(t, **kw))
         y = self.calc_scores(q, k, v, am, **kw)
         y = self.join_heads(y)
         return self.post(s, self.dense(y))
 
     def split_heads(self, x):
+        print(x)
         sh = K.int_shape(x)
         s = sh[-1]
         n = self.PS.attn_heads
         assert s % n == 0
-        y = K.reshape(x, sh[:-1] + [n, s // n])
+        y = K.reshape(x, sh[:-1] + (n, s // n))
         return K.permute_dimensions(y, [0, 2, 1, 3])
 
     @staticmethod
@@ -417,7 +421,7 @@ class Attention(kls.Layer):
         y = K.permute_dimensions(x, [0, 2, 1, 3])
         sh = K.int_shape(y)
         n, s = sh[-2:]
-        return K.reshape(y, sh[:-2] + [n * s])
+        return K.reshape(y, sh[:-2] + (n * s))
 
 
 class ConvComp(kls.Layer):
@@ -523,6 +527,7 @@ class Processor(kls.Layer):
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
+        self.supports_masking = True
         self.PS = PS
         self.drop = self._dropout(PS.prepost_drop, (), PS.prepost_bdims)
         self.batch_norm = kls.BatchNormalization(epsilon=PS.norm_epsilon)
@@ -588,7 +593,7 @@ class PreProcessor(Processor):
         assert 'z' not in self.cmd
 
     def call(self, inputs, **kw):
-        super().call([None, inputs], **kw)
+        return super().call([None, inputs], **kw)
 
 
 class PostProcessor(Processor):

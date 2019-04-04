@@ -86,12 +86,9 @@ def load_params():
 
 
 _params = dict(
-    # epochs_between_evals=None,
+    epochs_between_evals=None,
     # len_bucket_step=1.1,
     # vocab_divisor=1,
-    # input_file=None,
-    # output_file=None,
-    # vocab_file=None,
     adam_beta1=0.9,
     adam_beta2=0.997,  # 0.999
     adam_epsilon=1e-9,  # 1e-6
@@ -161,7 +158,7 @@ _params = dict(
     overload_metric='',
     pack_dataset=False,
     pad_batch=False,
-    pad_remover=True,
+    pad_remover=False,  # True,
     parallel_batches=None,
     params_profile=None,
     penalty=0.1,

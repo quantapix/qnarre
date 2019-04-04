@@ -104,10 +104,9 @@ class PadRemover:
     def __init__(self, mask):
         self.ids = None
         self.origin = None
-
         with tf.name_scope("pad_reduce/get_ids"):
             mask = tf.reshape(mask, [-1])
-            self.ids = tf.to_int32(tf.where(mask < 1e-9))
+            self.ids = K.cast(tf.where(mask < 1e-9), 'int32')
             self.origin = tf.shape(mask)[:1]
 
     def remove(self, x):
