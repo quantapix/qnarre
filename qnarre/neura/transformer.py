@@ -18,7 +18,7 @@ from datetime import datetime
 import tensorflow as tf
 
 from qnarre.neura import bert, utils
-from qnarre.neura.layers import Squad
+from qnarre.neura.layers import Transformer
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
 ks = tf.keras
@@ -30,13 +30,11 @@ kls = ks.layers
 def model_for(params):
     PS = params
     sh = (PS.max_seq_len, )
-    toks = kls.Input(shape=sh, dtype='int32', name='tokens')
-    typs = kls.Input(shape=sh, dtype='int32', name='types')
-    opts = kls.Input(shape=sh, dtype='int32', name='optimals')
-    spans = kls.Input(shape=(2, ), dtype='int32', name='spans')
-    ins = [toks, typs, opts, spans]
-    y = Squad(PS)(ins)
-    m = ks.Model(inputs=ins, outputs=[y])
+    src = kls.Input(shape=sh, dtype='int32', name='src')
+    tgt = kls.Input(shape=sh, dtype='int32', name='tgt')
+    ins = [[src, None], [tgt, None]]
+    outs = Transformer(PS)(ins)
+    m = ks.Model(inputs=ins, outputs=outs)
     m.compile(
         optimizer=utils.adam_opt(PS),
         loss='sparse_categorical_crossentropy',
@@ -95,8 +93,3 @@ if __name__ == '__main__':
     flags.DEFINE_integer('seq_stride', None, '')
     from absl import app
     app.run(main)
-
-###
-"""
-python $SQUAD_DIR/evaluate-v1.1.py $SQUAD_DIR/dev-v1.1.json /results/predictions.json
-"""

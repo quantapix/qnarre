@@ -88,9 +88,9 @@ def dataset(layout, params):
                 sgB.pop(0 if r < 0.5 else -1)
                 bl -= 1
         toks = [CLS] + sgA + [SEP] + sgB + [SEP]
-        segs = [0] * (len(sgA) + 2) + [1] * (len(sgB) + 1)
+        typs = [0] * (len(sgA) + 2) + [1] * (len(sgB) + 1)
         toks, idxs, vals = _mask(toks)
-        yield toks, segs, fit, idxs, vals
+        yield toks, typs, fit, idxs, vals
 
     def _mask(toks):
         idxs = []

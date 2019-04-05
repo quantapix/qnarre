@@ -85,7 +85,9 @@ def load_params():
     return Params(_params, data_format=flags.FLAGS.data_format or f)
 
 
-_params = dict(
+_params = dict()
+
+_params2 = dict(
     epochs_between_evals=None,
     # len_bucket_step=1.1,
     # vocab_divisor=1,

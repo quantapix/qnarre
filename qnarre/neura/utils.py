@@ -16,6 +16,8 @@
 import io
 import itertools
 
+import pathlib as pth
+
 from datetime import datetime
 
 import numpy as np
@@ -34,6 +36,77 @@ kls = ks.layers
 kcb = ks.callbacks
 
 
+def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
+    PS = params
+    # with tf.distribute.MirroredStrategy().scope():
+    m = model_fn(PS)
+    ds_train = dset_fn('train', PS)
+    ds_test = dset_fn('test', PS)
+    sp = pth.Path(PS.save_dir)
+    if sp.exists():
+        m.train_on_batch(ds_train[:1])
+        m.load_weights(sp)
+    m.summary()
+    p = PS.log_dir + '/train/' + sid
+    writer = tf.summary.create_file_writer(p)
+    sum_s = hparams.session_start_pb(hparams=PS.hparams)
+    cbacks = cbacks or []
+    cbacks.append(
+        kcb.TensorBoard(
+            log_dir=p,
+            histogram_freq=1,
+            embeddings_freq=0,
+            update_freq='epoch'))
+    # cbacks.append(
+    #     kcb.EarlyStopping(
+    #         monitor='val_loss', min_delta=1e-2, patience=2, verbose=True))
+    if sp.exists():
+        cbacks.append(
+            kcb.ModelCheckpoint(
+                model_save_path=sp,
+                save_best_only=True,
+                monitor='val_loss',
+                verbose=True))
+    hist = m.fit(
+        ds_train,
+        callbacks=cbacks,
+        epochs=PS.train_epochs,
+        validation_data=ds_test)
+    print(f'History: {hist.history}')
+    if sp.exists():
+        m.save_weights(sp, save_format='tf')
+    loss, acc = m.evaluate(ds_test)
+    print(f'\nTest loss, acc: {loss}, {acc}')
+
+    with writer.as_default():
+        e = tf.compat.v1.Event(summary=sum_s).SerializeToString()
+        tf.summary.import_event(e)
+        tf.summary.scalar('accuracy', acc, step=1, description='Accuracy')
+        sum_e = hparams.session_end_pb(api_pb2.STATUS_SUCCESS)
+        e = tf.compat.v1.Event(summary=sum_e).SerializeToString()
+        tf.summary.import_event(e)
+
+
+def train_loop(params, model_fn, dset_fn, cbacks=None):
+    PS = params
+    nus = [16, 32, 512]
+    drs = [0.1, 0.2]
+    opts = ['adam', 'sgd']
+    writer = tf.summary.create_file_writer(PS.log_dir + '/train')
+    with writer.as_default():
+        s = _to_summary_pb(nus, drs, opts)
+        e = tf.compat.v1.Event(summary=s).SerializeToString()
+        tf.summary.import_event(e)
+    for nu in nus:
+        for dr in drs:
+            for opt in opts:
+                kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
+                sid = datetime.now().strftime('%Y%m%d-%H%M%S')
+                print(f'--- Running session {sid}:', kw)
+                PS.update(**kw)
+                train_sess(sid, PS, model_fn, dset_fn, cbacks)
+
+
 def adam_opt(params):
     PS = params
     return ks.Adam(
@@ -44,7 +117,7 @@ def adam_opt(params):
 
 
 def xent_loss(y, x):
-    return ks.backend.sparse_categorical_crossentropy(y, x, from_logits=True)
+    return K.sparse_categorical_crossentropy(y, x, from_logits=True)
 
 
 class LRSchedule(ks.optimizers.schedules.LearningRateSchedule):
@@ -155,30 +228,6 @@ def _to_image(fig):
     return img
 
 
-def main(_):
-    from absl import flags
-    fs = flags.FLAGS
-    # print(fs)
-    f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
-    ps = Params(flags=fs, data_format=fs.data_format or f)
-    nus = [16, 32, 512]
-    drs = [0.1, 0.2]
-    opts = ['adam', 'sgd']
-    writer = tf.summary.create_file_writer(ps.log_dir + '/train')
-    with writer.as_default():
-        s = _to_summary_pb(nus, drs, opts)
-        e = tf.compat.v1.Event(summary=s).SerializeToString()
-        tf.summary.import_event(e)
-    for nu in nus:
-        for dr in drs:
-            for opt in opts:
-                kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
-                sess = datetime.now().strftime('%Y%m%d-%H%M%S')
-                print(f'--- Running session {sess}:', kw)
-                ps.update(**kw)
-                # run_quess(sess, ps)
-
-
 def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
     nus_val = struct_pb2.ListValue()
     nus_val.extend(num_units_list)
@@ -209,3 +258,32 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
                 name=api_pb2.MetricName(tag='accuracy'),
                 display_name='Accuracy'),
         ])
+
+
+def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
+    import re
+    import collections as co
+    """Compute the union of the current variables and checkpoint variables."""
+    assignment_map = {}
+    initialized_variable_names = {}
+
+    name_to_variable = co.OrderedDict()
+    for var in tvars:
+        name = var.name
+        m = re.match("^(.*):\\d+$", name)
+        if m is not None:
+            name = m.group(1)
+        name_to_variable[name] = var
+
+    init_vars = tf.train.list_variables(init_checkpoint)
+
+    assignment_map = co.OrderedDict()
+    for x in init_vars:
+        (name, var) = (x[0], x[1])
+        if name not in name_to_variable:
+            continue
+        assignment_map[name] = name
+        initialized_variable_names[name] = 1
+        initialized_variable_names[name + ":0"] = 1
+
+    return (assignment_map, initialized_variable_names)

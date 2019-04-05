@@ -41,7 +41,7 @@ class Squad(kls.Layer):
 
     def call(self, inputs, **kw):
         seq, typ = inputs[:2]
-        y = self.bert.tformer([[seq, typ], None], **kw)
+        y = self.bert.transformer([[seq, typ], None], **kw)
         PS = self.PS
         y = K.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
         y = tf.matmul(y, self.gain, transpose_b=True)
@@ -56,21 +56,35 @@ class Bert(kls.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.tformer = Tformer(PS)
-        ki = _get_initer(PS.init_stddev)
-        self.dense = kls.Dense(PS.hidden_size, tf.tanh, kernel_initializer=ki)
+        self.transformer = Transformer(PS)
+        kw = dict(kernel_initializer=_get_initer(PS.init_stddev))
+        self.cls_dense = kls.Dense(PS.hidden_size, tf.tanh, **kw)
+        self.mlm_dense = kls.Dense(PS.hidden_size, PS.hidden_act, **kw)
+        self.norm = LayerNorm()
+
+    def build(self, input_shape):
+        PS = self.PS
+        sh = PS.vocab_size
+        self.bias = self.add_weight(
+            shape=sh, initializer='zeros', trainable=True)
+        return super().build(input_shape)
 
     def compute_output_shape(self, _):
         return self.dense.output_shape
 
     def call(self, inputs, **kw):
-        seq, typ = inputs[:2]
-        y = self.tformer([[seq, typ], None], **kw)
-        y = tf.squeeze(y[:, 0:1, :], axis=1)
-        return self.dense(y, **kw)
+        seq, typ, fit, idx, val, ws = inputs
+        y = self.transformer([[seq, typ], None], **kw)
+        cls = tf.squeeze(y[:, 0:1, :], axis=1)
+        y = self.norm(self.mlm_dense(y, **kw), **kw)
+        es = self.transformer.tok_embed.embeddings
+        y = tf.matmul(y, es, transpose_b=True)
+        y = K.bias_add(y, self.bias)
+        y = tf.nn.log_softmax(y, axis=-1)
+        return self.cls_dense(cls, **kw)
 
 
-class Tformer(kls.Layer):
+class Transformer(kls.Layer):
     typ_embed, pos_embed = None, None
 
     def __init__(self, PS, **kw):
@@ -84,15 +98,16 @@ class Tformer(kls.Layer):
             p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
         self.norm = LayerNorm()
-        # tfa.layers.normalizations.LayerNormalization()
         self.drop = kls.Dropout(PS.hidden_drop)
         pre, post = PreProc(PS), PostProc(PS)
         self.e_stack = EncodeStack(PS, pre, post)
         self.d_stack = DecodeStack(PS, pre, post)
         self.dense = kls.Dense(PS.vocab_size, activation=None)
 
-    def compute_output_shape(self, _):
-        return self.dense.output_shape
+    def compute_output_shape(self, input_shape):
+        src, tgt = input_shape
+        s, _ = src
+        return (s, self.dense.output_shape) if tgt else s
 
     def call(self, inputs, **kw):
         src, tgt = inputs
@@ -113,32 +128,16 @@ class Tformer(kls.Layer):
                 t = self.pos_embed(t, **kw)
             t = self.drop(self.norm(t, **kw), **kw)
             y = self.d_stack([y, attn, t], **kw)
-        return self.dense(y, **kw)  # tf.squeeze(y, axis=2), **kw)
+            return y, self.dense(y, **kw)
+        return y
 
+
+"""
     def get_config(self):
         c = super().get_config()
         c['PS'] = self.PS
         return c
-
-
-class LayerNorm(kls.Layer):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-
-    def build(self, input_shape):
-        kw = dict(shape=input_shape[-1], trainable=True)
-        self.gain = self.add_weight(initializer='ones', **kw)
-        self.bias = self.add_weight(initializer='zeros', **kw)
-        return super().build(input_shape)
-
-    def call(self, inputs, **_):
-        x = inputs
-        m = K.mean(x, axis=-1, keepdims=True)
-        v = K.mean(K.square(x - m), axis=-1, keepdims=True)
-        e = K.constant(1e-5, dtype=K.floatx())
-        y = (x - m) / K.sqrt(v + e)
-        return self.gain * y + self.bias
+"""
 
 
 class TokEmbed(kls.Embedding):
@@ -230,6 +229,26 @@ class PosTiming(kls.Layer):
         return inputs + self.bias
 
 
+class LayerNorm(kls.Layer):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.supports_masking = True
+
+    def build(self, input_shape):
+        kw = dict(shape=input_shape[-1], trainable=True)
+        self.gain = self.add_weight(initializer='ones', **kw)
+        self.bias = self.add_weight(initializer='zeros', **kw)
+        return super().build(input_shape)
+
+    def call(self, inputs, **_):
+        x = inputs
+        m = K.mean(x, axis=-1, keepdims=True)
+        v = K.mean(K.square(x - m), axis=-1, keepdims=True)
+        e = K.constant(1e-5, dtype=K.floatx())
+        y = (x - m) / K.sqrt(v + e)
+        return self.gain * y + self.bias
+
+
 class Stack(kls.Layer):
     prox_bias = None
 
@@ -277,10 +296,10 @@ class EncodeStack(Stack):
             sam += self.prox_bias
         if self.PS.pad_remover:
             kw.update(pad_remover=qu.PadRemover(mask))
-        s = self.pre.drop(s, **kw)
+        y = self.pre.drop(s, **kw)
         for e in self.encs:
-            s = e([s, sam], **kw)
-        return self.pre(s, **kw), am
+            y = e([y, sam], **kw)
+        return self.post([s, y], **kw), am
 
 
 class DecodeStack(Stack):
@@ -317,10 +336,10 @@ class DecodeStack(Stack):
             sam += self.prox_bias
         t = tf.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
         # t = tf.concat([pad_value, t], axis=1)[:, :-1, :]
-        t = self.pre.drop(t, **kw)
+        y = self.pre.drop(t, **kw)
         for d in self.decs:
-            t = d([s, am, t, sam], **kw)
-        return K.expand_dims(self.pre(t, **kw), axis=2)
+            y = d([s, am, y, sam], **kw)
+        return K.expand_dims(self.post([t, y], **kw), axis=2)
 
 
 class Encoder(kls.Layer):
