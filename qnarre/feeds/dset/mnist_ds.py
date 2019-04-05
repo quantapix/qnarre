@@ -26,13 +26,18 @@ def dataset(kind, params):
     PS = params
     return tf.data.Dataset.from_generator(
         lambda: _reader(kind, PS),
-        (tf.float32, tf.int32),
-        (tf.TensorShape([None]), tf.TensorShape([])),
+        (
+            tf.float32,
+            tf.int32,
+        ),
+        (
+            tf.TensorShape([None]),
+            tf.TensorShape([]),
+        ),
     )
 
 
-def _reader(kind, params):
-    PS = params
+def _reader(kind, PS):
     p = pth.Path(PS.data_dir)
     x, y = _names[kind]
     with lzma.open(p / (x + '.xz'), mode='rb') as xf:

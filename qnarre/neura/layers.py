@@ -35,24 +35,26 @@ class Squad(kls.Layer):
 
     def build(self, input_shape):
         PS = self.PS
-        sh = (2, PS.hidden_size)
         wi = _get_initer(PS.init_stddev)
-        kw = dict(dtype='float32', trainable=True)
-        self.gain = self.add_weight(shape=sh, initializer=wi, **kw)
-        self.bias = self.add_weight(shape=2, initializer='zeros', **kw)
+        kw = dict(initializer=wi, dtype='float32', trainable=True)
+        self.gain = self.add_weight(shape=(2, PS.hidden_size), **kw)
+        kw.update(initializer='zeros')
+        self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
-        seq, typ = inputs[:2]
+        seq, typ, optim, span, uid = inputs
+        _, slen, hsize = seq
         y = self.bert.transformer([[seq, typ], None], **kw)
-        PS = self.PS
-        y = K.reshape(y, [PS.batch_size * PS.max_seq_len, PS.hidden_size])
-        y = tf.matmul(y, self.gain, transpose_b=True)
-        y = K.bias_add(y, self.bias)
-        y = K.reshape(y, [PS.batch_size, PS.max_seq_len, 2])
-        y = tf.transpose(y, [2, 0, 1])
-        y = tf.unstack(y, axis=0)
-        return y[0], y[1]
+        y = K.bias_add(tf.matmul(y, self.gain, transpose_b=True), self.bias)
+        span_y = tf.unstack(tf.transpose(y, [2, 0, 1]), axis=0)
+
+        def _loss(i):
+            ps = tf.nn.log_softmax(span_y[i], axis=-1)
+            return -K.mean(K.sum(K.one_hot(span[:, i], slen) * ps, axis=-1))
+
+        loss = (_loss(0) + _loss(1)) / 2.0
+        return span_y, loss
 
 
 class Bert(kls.Layer):
@@ -61,30 +63,39 @@ class Bert(kls.Layer):
         self.PS = PS
         self.transformer = Transformer(PS)
         kw = dict(kernel_initializer=_get_initer(PS.init_stddev))
-        self.cls_dense = kls.Dense(PS.hidden_size, tf.tanh, **kw)
+        self.pool = kls.Dense(PS.hidden_size, tf.tanh, **kw)
         self.mlm_dense = kls.Dense(PS.hidden_size, PS.hidden_act, **kw)
+        self.embed = self.transformer.tok_embed.embeddings
         self.norm = LayerNorm()
 
     def build(self, input_shape):
         PS = self.PS
-        sh = PS.vocab_size
-        self.bias = self.add_weight(
-            shape=sh, initializer='zeros', trainable=True)
+        wi = _get_initer(PS.init_stddev)
+        kw = dict(initializer=wi, dtype='float32', trainable=True)
+        self.gain = self.add_weight(shape=(2, PS.hidden_size), **kw)
+        kw.update(initializer='zeros')
+        self.mlm_bias = self.add_weight(shape=PS.vocab_size, **kw)
+        self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
         return self.dense.output_shape
 
     def call(self, inputs, **kw):
-        seq, typ, fit, idx, val, ws = inputs
-        y = self.transformer([[seq, typ], None], **kw)
-        cls = tf.squeeze(y[:, 0:1, :], axis=1)
+        PS = self.PS
+        seq, typ, idx, val, fit, mlm = inputs
+        seq = y = self.transformer([[seq, typ], None], **kw)
+        fit_y = self.pool(tf.squeeze(y[:, 0:1, :], axis=1), **kw)
+        y = tf.gather(y, idx, axis=1)
         y = self.norm(self.mlm_dense(y, **kw), **kw)
-        es = self.transformer.tok_embed.embeddings
-        y = tf.matmul(y, es, transpose_b=True)
-        y = K.bias_add(y, self.bias)
-        y = tf.nn.log_softmax(y, axis=-1)
-        return self.cls_dense(cls, **kw)
+        y = tf.matmul(y, self.embed, transpose_b=True)
+        y = tf.nn.log_softmax(K.bias_add(y, self.mlm_bias), axis=-1)
+        mlm_loss = -K.sum(y * K.one_hot(val, PS.vocab_size), axis=-1)
+        y = tf.matmul(fit_y, self.gain, transpose_b=True)
+        y = tf.nn.log_softmax(K.bias_add(y, self.bias), axis=-1)
+        fit_loss = -K.sum(y * K.one_hot(fit, 2), axis=-1)
+        loss = K.sum(mlm * mlm_loss) / (K.sum(mlm) + 1e-5) + K.mean(fit_loss)
+        return seq, loss
 
 
 class Transformer(kls.Layer):

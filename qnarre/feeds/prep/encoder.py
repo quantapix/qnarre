@@ -100,7 +100,7 @@ class BertEncoder(Splitter):
         with open(p / 'vocab.txt', mode='rt') as f:
             v = {t.strip(): i for i, t in enumerate(f)}
         PS.update(PAD=v[PAD], UNK=v[UNK], CLS=v[CLS], SEP=v[SEP], MASK=v[MASK])
-        PS.update(vocab_size=len(v))
+        PS.update(vocab=v, vocab_size=len(v))
         lc = PS.lower_case or PS.model_name.startswith('uncased')
         return cls(v, lower_case=lc, **kw)
 

@@ -26,29 +26,28 @@ from qnarre.feeds.prep.layout import (Span, Tokens, Topic, Topics, Context,
 
 def dataset(kind, params):
     PS = params
-    ts = Topics(PS.tokenizer(_reader(kind, PS)))
+    data = Topics(PS.tokenizer(_reader(kind, PS)))
     ds = tf.data.Dataset.from_generator(
-        lambda: _converter(kind, PS, ts),
+        lambda: _converter(kind, PS, data),
         (
-            tf.int32,
-            tf.int32,
-            tf.int32,
-            tf.int32,
-            tf.int32,
+            tf.int32,  # seq
+            tf.int32,  # typ
+            tf.int32,  # optim
+            tf.int32,  # span
+            tf.int32,  # uid
         ),
         (
             tf.TensorShape([None]),
             tf.TensorShape([None]),
             tf.TensorShape([None]),
             tf.TensorShape([2]),
-            tf.TensorShape([1]),
+            tf.TensorShape([]),
         ),
     )
-    return ts, ds
+    return ds, data
 
 
-def _reader(kind, params):
-    PS = params
+def _reader(kind, PS):
     p = pth.Path(PS.data_dir)
     for n in _names[kind]:
         with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
@@ -111,8 +110,7 @@ def _normalize(txt):
     return ' '.join(unicodedata.normalize('NFD', txt).split())
 
 
-def _converter(kind, params, topics):
-    PS = params
+def _converter(kind, PS, topics):
     for _, c, q, ans in topics.answers():
         cs, qs = c.tokens, q.tokens
         if PS.max_qry_len:
@@ -129,8 +127,8 @@ def _converter(kind, params, topics):
             b = min(e, b + PS.doc_stride)
         ql += 2
         for si, s in enumerate(ss):
-            toks = [PS.CLS] + qs + [PS.SEP] + cs[s.begin:s.end] + [PS.SEP]
-            segs = [0] * ql + [1] * (len(s) + 1)
+            seq = [PS.CLS] + qs + [PS.SEP] + cs[s.begin:s.end] + [PS.SEP]
+            typ = [0] * ql + [1] * (len(s) + 1)
 
             def _optim(i):
                 o, oi = None, -1
@@ -143,8 +141,8 @@ def _converter(kind, params, topics):
                             o, oi = o2, s2i
                 return 1 if si == oi else 0
 
-            optims = [0] * ql
-            optims += [_optim(idx) for idx in range(s.begin, s.end)] + [0]
+            optim = [0] * ql
+            optim += [_optim(idx) for idx in range(s.begin, s.end)] + [0]
             span = 0, 0
             if kind == 'train':
                 if not q.unfit:
@@ -153,7 +151,7 @@ def _converter(kind, params, topics):
                         b += ql - s.begin
                         e += ql - s.end
                         span = b, e
-            yield toks, segs, optims, span, ans.uid
+            yield seq, typ, optim, span, ans.uid
 
 
 def _next_uid():
@@ -167,8 +165,7 @@ _names = {
     'train': ('train-v2.0', 'train-v1.1'),
     'test': ('dev-v2.0', 'dev-v1.1'),
 }
-
-
+"""
 class FeatureWriter:
     def __init__(self, filename, is_training):
         self.filename = filename
@@ -206,3 +203,4 @@ class FeatureWriter:
 
     def close(self):
         self._writer.close()
+"""

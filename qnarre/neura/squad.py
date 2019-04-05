@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1810.04805.pdf
+# https://arxiv.org/pdf/1806.03822.pdf
+# https://arxiv.org/pdf/1606.05250.pdf
 
 from datetime import datetime
 
@@ -30,11 +33,12 @@ kls = ks.layers
 def model_for(params):
     PS = params
     sh = (PS.max_seq_len, )
-    toks = kls.Input(shape=sh, dtype='int32', name='tokens')
-    typs = kls.Input(shape=sh, dtype='int32', name='types')
-    opts = kls.Input(shape=sh, dtype='int32', name='optimals')
-    spans = kls.Input(shape=(2, ), dtype='int32', name='spans')
-    ins = [toks, typs, opts, spans]
+    seq = kls.Input(shape=sh, dtype='int32', name='seq')
+    typ = kls.Input(shape=sh, dtype='int32', name='typ')
+    optim = kls.Input(shape=sh, dtype='int32', name='opt')
+    span = kls.Input(shape=(2, ), dtype='int32', name='span')
+    uid = kls.Input(shape=1, dtype='int32', name='uid')
+    ins = [seq, typ, optim, span, uid]
     y = Squad(PS)(ins)
     m = ks.Model(inputs=ins, outputs=[y])
     m.compile(
@@ -46,12 +50,12 @@ def model_for(params):
 
 def dset_for(kind, params):
     PS = params
-    ds = squad_ds(kind, PS)
+    ds, data = squad_ds(kind, PS)
     if kind == 'train':
         ds = ds.shuffle(buffer_size=50000)
     ds = ds.batch(PS.batch_size)
     # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-    return ds
+    return ds, data
 
 
 _params = dict(

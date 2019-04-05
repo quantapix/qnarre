@@ -338,203 +338,37 @@ def _decode_record(record, name_to_features):
 
 
 def main(_):
-    PS = params
-    tf.logging.set_verbosity(tf.logging.INFO)
+    result = estimator.evaluate(input_fn=eval_input_fn, steps=PS.eval_steps)
 
-    if not PS.do_train and not PS.do_eval:
-        raise ValueError(
-            "At least one of `do_train` or `do_eval` must be True.")
+    output_eval_file = os.path.join(PS.save_dir, "eval_results.txt")
+    with tf.gfile.GFile(output_eval_file, "w") as writer:
+        tf.logging.info("***** Eval results *****")
+        for key in sorted(result.keys()):
+            tf.logging.info("  %s = %s", key, str(result[key]))
+            writer.write("%s = %s\n" % (key, str(result[key])))
 
-    bert_config = modeling.BertConfig.from_json_file(PS.bert_config)
-
-    tf.gfile.MakeDirs(PS.save_dir)
-
-    xxx_input_files = []
-    for input_pattern in PS.xxx_input_file.split(","):
-        xxx_input_files.extend(tf.gfile.Glob(input_pattern))
-
-    tf.logging.info("*** Input Files ***")
-    for xxx_input_file in xxx_input_files:
-        tf.logging.info("  %s" % xxx_input_file)
-
-    tpu_cluster_resolver = None
-    if PS.use_tpu and PS.tpu_name:
-        tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-            PS.tpu_name, zone=PS.tpu_zone, project=PS.gcp_project)
-
-    is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-    run_config = tf.contrib.tpu.RunConfig(
-        cluster=tpu_cluster_resolver,
-        master=PS.master,
-        model_dir=PS.save_dir,
-        checkpoint_steps=PS.checkpoint_steps,
-        tpu_config=tf.contrib.tpu.TPUConfig(
-            iters_per_loop=PS.iters_per_loop,
-            num_shards=PS.num_tpu_cores,
-            per_host_input_for_training=is_per_host))
-
-    model_fn = model_fn_builder(
-        bert_config=bert_config,
-        init_checkpoint=PS.init_checkpoint,
-        learn_rate=PS.learn_rate,
-        train_steps=PS.train_steps,
-        warmup_steps=PS.warmup_steps,
-        use_tpu=PS.use_tpu,
-        use_one_hot_embeddings=PS.use_tpu)
-
-    # If TPU is not available, this will fall back to normal Estimator on CPU
-    # or GPU.
-    estimator = tf.contrib.tpu.TPUEstimator(
-        use_tpu=PS.use_tpu,
-        model_fn=model_fn,
-        config=run_config,
-        batch_size=PS.batch_size,
-        eval_batch_size=PS.eval_batch_size)
-
-    if PS.do_train:
-        tf.logging.info("***** Running training *****")
-        tf.logging.info("  Batch size = %d", PS.batch_size)
-        train_input_fn = input_fn_builder(
-            xxx_input_files=xxx_input_files,
-            max_seq_len=PS.max_seq_len,
-            max_preds_per_seq=PS.max_preds_per_seq,
-            is_training=True)
-        estimator.train(input_fn=train_input_fn, max_steps=PS.train_steps)
-
-    if PS.do_eval:
-        tf.logging.info("***** Running evaluation *****")
-        tf.logging.info("  Batch size = %d", PS.eval_batch_size)
-
-        eval_input_fn = input_fn_builder(
-            xxx_input_files=xxx_input_files,
-            max_seq_len=PS.max_seq_len,
-            max_preds_per_seq=PS.max_preds_per_seq,
-            is_training=False)
-
-        result = estimator.evaluate(
-            input_fn=eval_input_fn, steps=PS.eval_steps)
-
-        output_eval_file = os.path.join(PS.save_dir, "eval_results.txt")
-        with tf.gfile.GFile(output_eval_file, "w") as writer:
-            tf.logging.info("***** Eval results *****")
-            for key in sorted(result.keys()):
-                tf.logging.info("  %s = %s", key, str(result[key]))
-                writer.write("%s = %s\n" % (key, str(result[key])))
-
-
-def load_flags():
-    params.load_flags()
-    from absl import flags
-    flags.DEFINE_bool('lower_case', None, '')
-    flags.DEFINE_integer('max_preds_per_seq', None, '')
-    flags.DEFINE_string('bert_config', None, '')
-    flags.DEFINE_string('init_checkpoint', None, '')
-
-
-def load_params():
-    ps = params.load_params().override(_params)
-    return ps.update(tokenizer=Tokenizer(ps))
-
-
-_params = dict(
-    attn_drop=0.1,
-    attn_heads=12,  # bert 12
-    attn_k_size=0,
-    attn_v_size=0,
-    batch_size=32,
-    checkpoint_steps=1000,
-    decode_layers=0,
-    dupe_factor=10,
-    embed_drop=0.6,
-    encode_layers=0,
-    eval_batch_size=8,
-    eval_steps=100,
-    ffn_act='gelu',
-    ffn_drop=0.2,
-    ffn_units=3072,
-    hidden_act='gelu',
-    hidden_drop=0.1,
-    hidden_size=768,  # 512
-    init_checkpoint=None,
-    init_stddev=0.02,  # stdev truncated_normal for all weights
-    iters_per_loop=1000,
-    l2_penalty=None,  # 1e-6, 1e-4
-    learn_rate=5e-5,
-    lower_case=None,
-    max_pos_len=512,
-    max_preds_per_seq=20,
-    max_seq_len=128,
-    token_types=16,
-    param_attn_k_size=0,
-    param_attn_v_size=0,
-    pos_embed='timing',  # embed
-    post_drop=0.1,
-    prepost_drop=0.1,
-    random_seed=12345,
-    stack_layers=12,
-    symbol_drop=0.0,
-    train_steps=100000,
-    vocab_size=None,
-    warmup_steps=10000,
-)
-
-_params.update(
-    data_dir='.data/bert',
-    log_dir='.model/bert/logs',
-    model_dir='.model/bert',
-    save_dir='.model/bert/save',
-    model_name='uncased_L-12_H-768_A-12',
-)
-
-
-def b_main(_):
-    PS = load_params()
-    nus = [16, 32, 512]
-    drs = [0.1, 0.2]
-    writer = tf.summary.create_file_writer(PS.log_dir + '/train')
-    with writer.as_default():
-        s = _to_summary_pb(nus, drs, '')
-        e = tf.compat.v1.Event(summary=s).SerializeToString()
-        tf.summary.import_event(e)
-    for nu in nus:
-        for dr in drs:
-            kw = {'num_units': nu, 'dropout_rate': dr}
-            sess = datetime.now().strftime('%Y%m%d-%H%M%S')
-            print(f'--- Running session {sess}:', kw)
-            PS.update(**kw)
-            run_bert(sess, PS)
-
-
-def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
-    nus_val = struct_pb2.ListValue()
-    nus_val.extend(num_units_list)
-    drs_val = struct_pb2.ListValue()
-    drs_val.extend(dropout_rate_list)
-    opts_val = struct_pb2.ListValue()
-    opts_val.extend(optimizer_list)
-    return hparams.experiment_pb(
-        hparam_infos=[
-            api_pb2.HParamInfo(
-                name='num_units',
-                display_name='Number of units',
-                type=api_pb2.DATA_TYPE_FLOAT64,
-                domain_discrete=nus_val),
-            api_pb2.HParamInfo(
-                name='dropout_rate',
-                display_name='Dropout rate',
-                type=api_pb2.DATA_TYPE_FLOAT64,
-                domain_discrete=drs_val),
-            api_pb2.HParamInfo(
-                name='optimizer',
-                display_name='Optimizer',
-                type=api_pb2.DATA_TYPE_STRING,
-                domain_discrete=opts_val)
-        ],
-        metric_infos=[
-            api_pb2.MetricInfo(
-                name=api_pb2.MetricName(tag='accuracy'),
-                display_name='Accuracy'),
-        ])
+    for result in estimator.predict(input_fn, yield_single_examples=True):
+        unique_id = int(result["unique_id"])
+        feature = unique_id_to_feature[unique_id]
+        output_json = collections.OrderedDict()
+        output_json["linex_index"] = unique_id
+        all_features = []
+        for (i, token) in enumerate(feature.tokens):
+            all_layers = []
+            for (j, layer_index) in enumerate(layer_indexes):
+                layer_output = result["layer_output_%d" % j]
+                layers = collections.OrderedDict()
+                layers["index"] = layer_index
+                layers["values"] = [
+                    round(float(x), 6) for x in layer_output[i:(i + 1)].flat
+                ]
+                all_layers.append(layers)
+            features = collections.OrderedDict()
+            features["token"] = token
+            features["layers"] = all_layers
+            all_features.append(features)
+        output_json["features"] = all_features
+        writer.write(json.dumps(output_json) + "\n")
 
 
 if __name__ == '__main__':
