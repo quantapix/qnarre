@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1801.10198.pdf
+# https://arxiv.org/pdf/1701.06548.pdf
 
 import pathlib as pth
 
 from absl import flags
 
-from qfeeds.data.shell import Shell
+from qnarre.feeds.data.shell import Shell
 
 
 def download(sh):

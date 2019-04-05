@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1810.04805.pdf
+# https://github.com/google-research/bert
 
 # import pathlib as pth
 from datetime import datetime

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1806.03822.pdf
+# https://arxiv.org/pdf/1606.05250.pdf
 
 import pathlib as pth
 

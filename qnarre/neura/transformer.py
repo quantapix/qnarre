@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1706.03762.pdf
+# https://github.com/tensorflow/tensor2tensor
 
 from datetime import datetime
 

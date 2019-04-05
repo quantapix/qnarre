@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# http://www.statmt.org/wmt18/translation-task.html
 
 import pathlib as pth
 

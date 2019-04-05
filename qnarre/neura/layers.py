@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1701.06548.pdf
+# https://arxiv.org/pdf/1607.06450.pdf
+# https://arxiv.org/pdf/1606.08415.pdf
 
 import numpy as np
 import tensorflow as tf
