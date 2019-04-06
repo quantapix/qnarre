@@ -13,7 +13,15 @@
 # limitations under the License.
 # =============================================================================
 
-from collections import abc
+from collections import abc, defaultdict
+
+
+def next_uid(key=None):
+    _uids[key] += 1
+    return _uids[key]
+
+
+_uids = defaultdict(int)
 
 
 class Words(abc.Mapping):

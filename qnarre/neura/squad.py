@@ -18,31 +18,34 @@
 
 from datetime import datetime
 
-import tensorflow as tf
+import tensorflow as T
 
-from qnarre.neura import bert, utils
+from qnarre.neura import bert
 from qnarre.neura.layers import Squad
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
-ks = tf.keras
-kls = ks.layers
+from qnarre.neura import utils as U
 
-# kcb = ks.callbacks
+KS = T.keras
+
+# KL = KS.layers
+# KC = KS.callbacks
 
 
 def model_for(params):
     PS = params
-    sh = (PS.max_seq_len, )
-    seq = kls.Input(shape=sh, dtype='int32', name='seq')
-    typ = kls.Input(shape=sh, dtype='int32', name='typ')
-    optim = kls.Input(shape=sh, dtype='int32', name='opt')
-    span = kls.Input(shape=(2, ), dtype='int32', name='span')
-    uid = kls.Input(shape=1, dtype='int32', name='uid')
-    ins = [seq, typ, optim, span, uid]
+    FS = PS.features
+    seq = KS.Input(**FS.input_kw(FS.SEQ))
+    typ = KS.Input(**FS.input_kw(FS.TYP))
+    opt = KS.Input(**FS.input_kw(FS.OPT))
+    beg = KS.Input(**FS.input_kw(FS.BEG))
+    end = KS.Input(**FS.input_kw(FS.END))
+    uid = KS.Input(**FS.input_kw(FS.UID))
+    ins = [seq, typ, opt, beg, end, uid]
     y = Squad(PS)(ins)
-    m = ks.Model(inputs=ins, outputs=[y])
+    m = KS.Model(inputs=ins, outputs=[y])
     m.compile(
-        optimizer=utils.adam_opt(PS),
+        optimizer=U.adam_opt(PS),
         loss='sparse_categorical_crossentropy',
         metrics=['accuracy'])
     return m
@@ -54,8 +57,14 @@ def dset_for(kind, params):
     if kind == 'train':
         ds = ds.shuffle(buffer_size=50000)
     ds = ds.batch(PS.batch_size)
-    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    # ds = ds.prefetch(buffer_size=T.data.experimental.AUTOTUNE)
     return ds, data
+
+
+def main(_):
+    sid = datetime.now().strftime('%Y%m%d-%H%M%S')
+    PS = bert.load_params().override(_params)
+    U.train_sess(sid, PS, model_for, dset_for)
 
 
 _params = dict(
@@ -73,30 +82,68 @@ _params = dict(
     warmup_split=0.1,
 )
 
+_fspecs = {
+    'SEQ': {
+        'name': 'sequence',
+        'dtype': 'int32',
+        'shape': (None, ),
+    },
+    'TYP': {
+        'name': 'types',
+        'dtype': 'int32',
+        'shape': (None, ),
+    },
+    'OPT': {
+        'name': 'optimal',
+        'dtype': 'int32',
+        'shape': (None, ),
+    },
+    'BEG': {
+        'name': 'begin',
+        'dtype': 'int32',
+        'shape': (),
+    },
+    'END': {
+        'name': 'end',
+        'dtype': 'int32',
+        'shape': (),
+    },
+    'UID': {
+        'name': 'uid',
+        'dtype': 'int32',
+        'shape': (),
+    },
+}
+
+
+class Features(U.Features):
+    def __init__(self, params, **kw):
+        super().__init__(**kw)
+        PS = params
+        sh = (PS.max_seq_len, )
+        self.shapes[self.SEQ] = sh
+        self.shapes[self.TYP] = sh
+        self.shapes[self.OPT] = sh
+
+
 _params.update(
+    features=Features(_params, specs=_fspecs),
     data_dir='.data/squad',
     log_dir='.model/squad/logs',
     model_dir='.model/squad',
     save_dir='.model/squad/save',
 )
 
-
-def main(_):
-    sid = datetime.now().strftime('%Y%m%d-%H%M%S')
-    PS = bert.load_params().override(_params)
-    utils.train_sess(sid, PS, model_for, dset_for)
-
-
 if __name__ == '__main__':
-    # tf.logging.set_verbosity(tf.logging.INFO)
+    # T.logging.set_verbosity(T.logging.INFO)
     bert.load_flags()
-    from absl import flags
-    flags.DEFINE_float('null_score_diff_threshold', None, '')
-    flags.DEFINE_float('warmup_split', None, '')
-    flags.DEFINE_integer('max_ans_len', None, '')
-    flags.DEFINE_integer('max_qry_len', None, '')
-    flags.DEFINE_integer('n_best_size', None, '')
-    flags.DEFINE_integer('seq_stride', None, '')
+    from absl import flags as F
+    F.DEFINE_float('null_score_diff_threshold', None, '')
+    F.DEFINE_float('warmup_split', None, '')
+    F.DEFINE_integer('max_ans_len', None, '')
+    F.DEFINE_integer('max_qry_len', None, '')
+    F.DEFINE_integer('n_best_size', None, '')
+    F.DEFINE_integer('seq_stride', None, '')
     from absl import app
     app.run(main)
 

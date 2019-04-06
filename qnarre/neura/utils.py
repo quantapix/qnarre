@@ -16,53 +16,107 @@
 import io
 import itertools
 
-import pathlib as pth
+import pathlib as P
 
 from datetime import datetime
 
-import numpy as np
-import tensorflow as tf
-import matplotlib.pyplot as plt
-
 import sklearn.metrics
 
-from google.protobuf import struct_pb2
-from tensorboard.plugins.hparams import api_pb2
-from tensorboard.plugins.hparams import summary as hparams
+import numpy as N
+import tensorflow as T
+import matplotlib.pyplot as plt
 
-ks = tf.keras
-K = ks.backend
-kls = ks.layers
-kcb = ks.callbacks
+from absl import flags as F
+from google.protobuf import struct_pb2
+from tensorboard.plugins import hparams
+
+KS = T.keras
+K = KS.backend
+KL = KS.layers
+KC = KS.callbacks
+
+
+class Params:
+    def __init__(self, params, **kw):
+        self.override(params, **kw)
+
+    @property
+    def hparams(self):
+        return {'optimizer': self.optimizer}
+
+    def override(self, params, **kw):
+        ps = params.copy()
+        ps.update(**kw)
+        f = F.FLAGS
+        for k, v in ps.items():
+            if hasattr(f, k):
+                v = getattr(f, k)
+                if v:
+                    ps[k] = v
+        self.update(**ps)
+        return self
+
+    def update(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+        return self
+
+
+class Features:
+    def __init__(self, specs, **kw):
+        self.names = []
+        self.dtypes = {}
+        self.shapes = {}
+        for k, v in kw.items():
+            assert not hasattr(self, k)
+            self.names.append(v['name'])
+            setattr(self, k, v['name'])
+            self.dtypes[k] = v['dtype']
+            self.shapes[k] = v['shape']
+
+    @property
+    def tf_dtypes(self):
+        return {k: T.as_dtype(v['dtype']) for k, v in self.dtypes.items()}
+
+    @property
+    def tf_shapes(self):
+        return {k: T.TensorShape(v['shape']) for k, v in self.shapes.items()}
+
+    def input_kw(self, key):
+        return dict(
+            name=self.names[key],
+            shape=self.shapes[key],
+            dtype=self.dtypes[key],
+        )
 
 
 def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
     PS = params
-    # with tf.distribute.MirroredStrategy().scope():
+    # with T.distribute.MirroredStrategy().scope():
     m = model_fn(PS)
     ds_train = dset_fn('train', PS)
     ds_test = dset_fn('test', PS)
-    sp = pth.Path(PS.save_dir)
+    sp = P.Path(PS.save_dir)
     if sp.exists():
         m.train_on_batch(ds_train[:1])
         m.load_weights(sp)
     m.summary()
     p = PS.log_dir + '/train/' + sid
-    writer = tf.summary.create_file_writer(p)
-    sum_s = hparams.session_start_pb(hparams=PS.hparams)
-    cbacks = cbacks or []
-    cbacks.append(
-        kcb.TensorBoard(
+    writer = T.summary.create_file_writer(p)
+    sum_s = hparams.summary.session_start_pb(hparams=PS.hparams)
+    cbs = cbacks or []
+    cbs.append(
+        KC.TensorBoard(
             log_dir=p,
             histogram_freq=1,
             embeddings_freq=0,
             update_freq='epoch'))
-    # cbacks.append(
-    #     kcb.EarlyStopping(
+    # cbacKS.append(
+    #     KC.EarlyStopping(
     #         monitor='val_loss', min_delta=1e-2, patience=2, verbose=True))
     if sp.exists():
-        cbacks.append(
-            kcb.ModelCheckpoint(
+        cbs.append(
+            KC.ModelCheckpoint(
                 model_save_path=sp,
                 save_best_only=True,
                 monitor='val_loss',
@@ -79,12 +133,12 @@ def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
     print(f'\nTest loss, acc: {loss}, {acc}')
 
     with writer.as_default():
-        e = tf.compat.v1.Event(summary=sum_s).SerializeToString()
-        tf.summary.import_event(e)
-        tf.summary.scalar('accuracy', acc, step=1, description='Accuracy')
-        sum_e = hparams.session_end_pb(api_pb2.STATUS_SUCCESS)
-        e = tf.compat.v1.Event(summary=sum_e).SerializeToString()
-        tf.summary.import_event(e)
+        e = T.compat.v1.Event(summary=sum_s).SerializeToString()
+        T.summary.import_event(e)
+        T.summary.scalar('accuracy', acc, step=1, description='Accuracy')
+        sum_e = hparams.summary.session_end_pb(hparams.api_pb2.STATUS_SUCCESS)
+        e = T.compat.v1.Event(summary=sum_e).SerializeToString()
+        T.summary.import_event(e)
 
 
 def train_loop(params, model_fn, dset_fn, cbacks=None):
@@ -92,11 +146,11 @@ def train_loop(params, model_fn, dset_fn, cbacks=None):
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     opts = ['adam', 'sgd']
-    writer = tf.summary.create_file_writer(PS.log_dir + '/train')
+    writer = T.summary.create_file_writer(PS.log_dir + '/train')
     with writer.as_default():
         s = _to_summary_pb(nus, drs, opts)
-        e = tf.compat.v1.Event(summary=s).SerializeToString()
-        tf.summary.import_event(e)
+        e = T.compat.v1.Event(summary=s).SerializeToString()
+        T.summary.import_event(e)
     for nu in nus:
         for dr in drs:
             for opt in opts:
@@ -109,7 +163,7 @@ def train_loop(params, model_fn, dset_fn, cbacks=None):
 
 def adam_opt(params):
     PS = params
-    return ks.Adam(
+    return KS.Adam(
         learning_rate=LRSchedule(),
         beta_1=PS.adam_beta1,
         beta_2=PS.adam_beta2,
@@ -120,7 +174,7 @@ def xent_loss(y, x):
     return K.sparse_categorical_crossentropy(y, x, from_logits=True)
 
 
-class LRSchedule(ks.optimizers.schedules.LearningRateSchedule):
+class LRSchedule(KS.optimizers.schedules.LearningRateSchedule):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.constant = PS.lr_constant
@@ -128,16 +182,16 @@ class LRSchedule(ks.optimizers.schedules.LearningRateSchedule):
         self.warmup_steps = PS.lr_warmup_steps
 
     def __call__(self, step):
-        lr = tf.constant(1.0)
+        lr = T.constant(1.0)
         for name in [n.strip() for n in self.schedule.split('*')]:
             if name == 'constant':
                 lr *= self.constant
             elif name == 'linear_warmup':
-                lr *= tf.minimum(1.0, step / self.warmup_steps)
+                lr *= T.minimum(1.0, step / self.warmup_steps)
             else:
                 assert name == 'rsqrt_decay'
-                lr *= tf.rsqrt(tf.maximum(step, self.warmup_steps))
-        tf.contrib.summary.scalar('learning_rate', lr)
+                lr *= T.rsqrt(T.maximum(step, self.warmup_steps))
+        T.contrib.summary.scalar('learning_rate', lr)
         return lr
 
     def get_config(self):
@@ -154,18 +208,18 @@ def ones_band_part(rows, cols, num_lower, num_upper, out_shape=None):
             num_lower = rows - 1
         if num_upper < 0:
             num_upper = cols - 1
-        lower_mask = np.tri(cols, rows, num_lower).T
-        upper_mask = np.tri(rows, cols, num_upper)
-        band = np.ones((rows, cols)) * lower_mask * upper_mask
+        lower_mask = N.tri(cols, rows, num_lower).T
+        upper_mask = N.tri(rows, cols, num_upper)
+        band = N.ones((rows, cols)) * lower_mask * upper_mask
         if out_shape:
             band = band.reshape(out_shape)
-        band = tf.constant(band, tf.float32)
+        band = T.constant(band, T.float32)
     else:
-        band = tf.matrix_band_part(
-            tf.ones([rows, cols]), tf.cast(num_lower, tf.int64),
-            tf.cast(num_upper, tf.int64))
+        band = T.matrix_band_part(
+            T.ones([rows, cols]), T.cast(num_lower, T.int64),
+            T.cast(num_upper, T.int64))
         if out_shape:
-            band = tf.reshape(band, out_shape)
+            band = T.reshape(band, out_shape)
     return band
 
 
@@ -173,29 +227,29 @@ class PadRemover:
     def __init__(self, mask):
         self.ids = None
         self.origin = None
-        with tf.name_scope("pad_reduce/get_ids"):
-            mask = tf.reshape(mask, [-1])
-            self.ids = K.cast(tf.where(mask < 1e-9), 'int32')
-            self.origin = tf.shape(mask)[:1]
+        with T.name_scope("pad_reduce/get_ids"):
+            mask = T.reshape(mask, [-1])
+            self.ids = K.cast(T.where(mask < 1e-9), 'int32')
+            self.origin = T.shape(mask)[:1]
 
     def remove(self, x):
-        with tf.name_scope("pad_reduce/remove"):
-            return tf.gather_nd(x, indices=self.ids)
+        with T.name_scope("pad_reduce/remove"):
+            return T.gather_nd(x, indices=self.ids)
 
     def restore(self, x):
-        sh = tf.concat([self.origin, K.int_shape(x)[1:]], axis=0),
-        with tf.name_scope("pad_reduce/restore"):
-            return tf.scatter_nd(indices=self.ids, updates=x, shape=sh)
+        sh = T.concat([self.origin, K.int_shape(x)[1:]], axis=0),
+        with T.name_scope("pad_reduce/restore"):
+            return T.scatter_nd(indices=self.ids, updates=x, shape=sh)
 
 
 def log_confusion_matrix(epoch, logs):
     names = [str(i) for i in range(params.num_classes)]
     labels = [lb.numpy() for _, lb in ds_test]
-    preds = np.argmax(model.predict(ds_test), axis=1)
+    preds = N.argmax(model.predict(ds_test), axis=1)
     cm = sklearn.metrics.confusion_matrix(labels, preds)
     img = _to_image(_to_plot(cm, names))
     with writer.as_default():
-        tf.summary.image("Confusion Matrix", img, step=epoch)
+        T.summary.image("Confusion Matrix", img, step=epoch)
 
 
 def _to_plot(cm, names):
@@ -203,11 +257,11 @@ def _to_plot(cm, names):
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title("Confusion Matrix")
     plt.colorbar()
-    ticks = np.arange(len(names))
+    ticks = N.arange(len(names))
     plt.xticks(ticks, names, rotation=45)
     plt.yticks(ticks, names)
-    cm = np.around(
-        cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+    cm = N.around(
+        cm.astype('float') / cm.sum(axis=1)[:, N.newaxis], decimals=2)
     threshold = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         color = "white" if cm[i, j] > threshold else "black"
@@ -223,8 +277,8 @@ def _to_image(fig):
     plt.savefig(buf, format='png')
     plt.close(fig)
     buf.seek(0)
-    img = tf.image.decode_png(buf.getvalue(), channels=4)
-    img = tf.expand_dims(img, 0)
+    img = T.image.decode_png(buf.getvalue(), channels=4)
+    img = T.expand_dims(img, 0)
     return img
 
 
@@ -235,27 +289,27 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
     drs_val.extend(dropout_rate_list)
     opts_val = struct_pb2.ListValue()
     opts_val.extend(optimizer_list)
-    return hparams.experiment_pb(
+    return hparams.summary.experiment_pb(
         hparam_infos=[
-            api_pb2.HParamInfo(
+            hparams.api_pb2.HParamInfo(
                 name='num_units',
                 display_name='Number of units',
-                type=api_pb2.DATA_TYPE_FLOAT64,
+                type=hparams.api_pb2.DATA_TYPE_FLOAT64,
                 domain_discrete=nus_val),
-            api_pb2.HParamInfo(
+            hparams.api_pb2.HParamInfo(
                 name='dropout_rate',
                 display_name='Dropout rate',
-                type=api_pb2.DATA_TYPE_FLOAT64,
+                type=hparams.api_pb2.DATA_TYPE_FLOAT64,
                 domain_discrete=drs_val),
-            api_pb2.HParamInfo(
+            hparams.api_pb2.HParamInfo(
                 name='optimizer',
                 display_name='Optimizer',
-                type=api_pb2.DATA_TYPE_STRING,
+                type=hparams.api_pb2.DATA_TYPE_STRING,
                 domain_discrete=opts_val)
         ],
         metric_infos=[
-            api_pb2.MetricInfo(
-                name=api_pb2.MetricName(tag='accuracy'),
+            hparams.api_pb2.MetricInfo(
+                name=hparams.api_pb2.MetricName(tag='accuracy'),
                 display_name='Accuracy'),
         ])
 
@@ -275,7 +329,7 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
             name = m.group(1)
         name_to_variable[name] = var
 
-    init_vars = tf.train.list_variables(init_checkpoint)
+    init_vars = T.train.list_variables(init_checkpoint)
 
     assignment_map = co.OrderedDict()
     for x in init_vars:

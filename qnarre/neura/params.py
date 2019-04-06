@@ -13,9 +13,11 @@
 # limitations under the License.
 # =============================================================================
 
-from absl import flags
+import tensorflow as T
 
-import tensorflow as tf
+from absl import flags as F
+
+from qnarre.neura import utils as U
 
 
 def load_flags():
@@ -32,60 +34,37 @@ def load_flags():
     # )
     # fu.define_image()
     # fu.define_benchmark()
-    # flags.adopt_module_key_flags(fu)
-    flags.DEFINE_bool('do_eval', None, '')
-    flags.DEFINE_bool('do_train', None, '')
-    flags.DEFINE_float('stop_threshold', None, '')
-    flags.DEFINE_float('train_epochs', None, '')
-    flags.DEFINE_integer('batch_size', None, '')
-    flags.DEFINE_integer('checkpoint_steps', None, '')
-    flags.DEFINE_integer('epochs_between_evals', None, '')
-    flags.DEFINE_integer('eval_batch_size', None, '')
-    flags.DEFINE_integer('eval_steps', None, '')
-    flags.DEFINE_integer('iters_per_loop', None, '')
-    flags.DEFINE_integer('train_steps', None, '')
-    flags.DEFINE_integer('warmup_steps', None, '')
-    flags.DEFINE_string('data_dir', None, '')
-    # flags.DEFINE_string('log_dir', None, '')
-    flags.DEFINE_string('model_dir', None, '')
-    flags.DEFINE_string('model_name', None, '')
-    flags.DEFINE_string('save_dir', None, '')
+    # F.adopt_module_key_flags(fu)
+    F.DEFINE_bool('do_eval', None, '')
+    F.DEFINE_bool('do_train', None, '')
+    F.DEFINE_float('stop_threshold', None, '')
+    F.DEFINE_float('train_epochs', None, '')
+    F.DEFINE_integer('batch_size', None, '')
+    F.DEFINE_integer('checkpoint_steps', None, '')
+    F.DEFINE_integer('epochs_between_evals', None, '')
+    F.DEFINE_integer('eval_batch_size', None, '')
+    F.DEFINE_integer('eval_steps', None, '')
+    F.DEFINE_integer('iters_per_loop', None, '')
+    F.DEFINE_integer('train_steps', None, '')
+    F.DEFINE_integer('warmup_steps', None, '')
+    F.DEFINE_string('data_dir', None, '')
+    # F.DEFINE_string('log_dir', None, '')
+    F.DEFINE_string('model_dir', None, '')
+    F.DEFINE_string('model_name', None, '')
+    F.DEFINE_string('save_dir', None, '')
     df = ['channels_first', 'channels_last']
-    flags.DEFINE_enum('data_format', None, df, '')
-
-
-class Params:
-    def __init__(self, params, **kw):
-        self.override(params, **kw)
-
-    @property
-    def hparams(self):
-        return {'optimizer': self.optimizer}
-
-    def override(self, params, **kw):
-        ps = params.copy()
-        ps.update(**kw)
-        f = flags.FLAGS
-        for k, v in ps.items():
-            if hasattr(f, k):
-                v = getattr(f, k)
-                if v:
-                    ps[k] = v
-        self.update(**ps)
-        return self
-
-    def update(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-        return self
+    F.DEFINE_enum('data_format', None, df, '')
 
 
 def load_params():
-    f = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
-    return Params(_params, data_format=flags.FLAGS.data_format or f)
+    f = 'channels_first' if T.test.is_built_with_cuda() else 'channels_last'
+    return U.Params(_params, data_format=F.FLAGS.data_format or f)
 
 
-_params = dict()
+_params = dict(
+    layout=None,
+    features=None,
+)
 
 _params2 = dict(
     epochs_between_evals=None,

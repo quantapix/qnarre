@@ -17,8 +17,8 @@ import json
 import lzma
 import unicodedata
 
-import regex as re
-import pathlib as pth
+import regex as R
+import pathlib as P
 
 
 class Splitter:
@@ -96,7 +96,7 @@ class BertEncoder(Splitter):
     @classmethod
     def load(cls, params, **kw):
         PS = params
-        p = pth.Path(PS.model_dir) / PS.model_name
+        p = P.Path(PS.model_dir) / PS.model_name
         with open(p / 'vocab.txt', mode='rt') as f:
             v = {t.strip(): i for i, t in enumerate(f)}
         PS.update(PAD=v[PAD], UNK=v[UNK], CLS=v[CLS], SEP=v[SEP], MASK=v[MASK])
@@ -166,13 +166,13 @@ _pat += r' ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+'
 class BPEncoder(Splitter):
 
     from_byte, from_code = _bytes_to_code()
-    pattern = re.compile(_pat)
+    pattern = R.compile(_pat)
     _by_ids = None
 
     @classmethod
     def load(cls, params):
         PS = params
-        p = pth.Path(PS.model_dir)
+        p = P.Path(PS.model_dir)
         with lzma.open(p / 'tokens.json.xz', mode='rt') as f:
             v = json.load(f)
         PS.vocab_size = len(v)
@@ -191,7 +191,7 @@ class BPEncoder(Splitter):
         unk = self.vocab[UNK]
         for w, offset in super()(txt, offset):
             o = 0
-            for t in re.findall(self.pattern, w):
+            for t in R.findall(self.pattern, w):
                 o = w.find(t, o)
                 sw = ''.join(self.from_byte[b] for b in t.encode())
                 for st in self.segment(sw):
@@ -261,10 +261,10 @@ def normalize(txt):
     txt = txt.replace('―', '-')
     txt = txt.replace('…', '...')
     txt = txt.replace('´', "'")
-    txt = re.sub(
+    txt = R.sub(
         r'(-+|~+|!+|"+|;+|\?+|\++|,+|\)+|\(+|\\+|\/+|\*+|\[+|\]+|}+|{+|\|+|_+)',
         r' \1 ', txt)
-    txt = re.sub(r'\s*\n\s*', ' \n ', txt)
-    txt = re.sub(r'[^\S\n]+', ' ', txt)
+    txt = R.sub(r'\s*\n\s*', ' \n ', txt)
+    txt = R.sub(r'[^\S\n]+', ' ', txt)
     return txt.strip()
 """
