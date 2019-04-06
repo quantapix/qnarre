@@ -21,7 +21,7 @@ from datetime import datetime
 import tensorflow as T
 
 from qnarre.neura import bert
-from qnarre.neura.layers import Squad
+from qnarre.neura.layers import Squad, SquadLoss
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
 from qnarre.neura import utils as U
@@ -42,7 +42,8 @@ def model_for(params):
     end = KS.Input(**FS.input_kw(FS.END))
     uid = KS.Input(**FS.input_kw(FS.UID))
     ins = [seq, typ, opt, beg, end, uid]
-    y = Squad(PS)(ins)
+    y = Squad(PS)([seq, typ])
+    y = SquadLoss(PS)([beg, end], y)
     m = KS.Model(inputs=ins, outputs=[y])
     m.compile(
         optimizer=U.adam_opt(PS),

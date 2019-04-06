@@ -29,39 +29,32 @@ KL = KS.layers
 
 class Squad(KL.Layer):
     def __init__(self, PS, **kw):
-        super().__init__(**kw)
+        super().__init__(dtype='float32', **kw)
         self.PS = PS
         self.bert = Bert(PS)
 
     def build(self, input_shape):
+        _, slen, hsize = input_shape[0]
         PS = self.PS
-        wi = _get_initer(PS.init_stddev)
-        kw = dict(initializer=wi, dtype='float32', trainable=True)
-        self.gain = self.add_weight(shape=(2, PS.hidden_size), **kw)
+        assert slen == PS.max_seq_len
+        assert hsize == PS.hidden_size
+        kw = dict(initializer=_get_initer(PS.init_stddev))
+        self.gain = self.add_weight(shape=(2, hsize), **kw)
         kw.update(initializer='zeros')
         self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
-        seq, typ, optim, span, uid = inputs
-        _, slen, hsize = seq
-        y = self.bert.transformer([[seq, typ], None], **kw)
+        y = self.bert.transformer([inputs, None], **kw)
         y = K.bias_add(T.matmul(y, self.gain, transpose_b=True), self.bias)
-        span_y = T.unstack(T.transpose(y, [2, 0, 1]), axis=0)
-
-        def _loss(i):
-            ps = T.nn.log_softmax(span_y[i], axis=-1)
-            return -K.mean(K.sum(K.one_hot(span[:, i], slen) * ps, axis=-1))
-
-        loss = (_loss(0) + _loss(1)) / 2.0
-        return span_y, loss
+        return list(T.unstack(T.transpose(y, [2, 0, 1]), axis=0))
 
 
 class SquadLoss(KL.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.bert = Bert(PS)
+        self.slen = PS.max_seq_len
 
     def build(self, input_shape):
         PS = self.PS
@@ -72,19 +65,16 @@ class SquadLoss(KL.Layer):
         self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
 
-    def call(self, inputs, **kw):
-        seq, typ, optim, span, uid = inputs
-        _, slen, hsize = seq
-        y = self.bert.transformer([[seq, typ], None], **kw)
-        y = K.bias_add(T.matmul(y, self.gain, transpose_b=True), self.bias)
-        span_y = T.unstack(T.transpose(y, [2, 0, 1]), axis=0)
+    def call(self, inputs, **_):
+        span, pred = inputs
 
         def _loss(i):
-            ps = T.nn.log_softmax(span_y[i], axis=-1)
-            return -K.mean(K.sum(K.one_hot(span[:, i], slen) * ps, axis=-1))
+            y = T.nn.log_softmax(pred[i], axis=-1)
+            y = K.one_hot(span[:, i], self.slen) * y
+            return -K.mean(K.sum(y, axis=-1))
 
-        loss = (_loss(0) + _loss(1)) / 2.0
-        return span_y, loss
+        self.add_loss((_loss(0) + _loss(1)) / 2.0)
+        return pred
 
 
 class Bert(KL.Layer):
