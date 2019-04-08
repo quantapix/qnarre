@@ -24,17 +24,17 @@ from qnarre.feeds.prep import utils as U
 from qnarre.feeds.prep import layout as L
 
 
-def dataset(kind, params):
+def dataset(params, kind):
     PS = params
-    PS.update(layout=L.Topics(PS.tokenizer(_reader(kind, PS))))
-    return T.data.Dataset(
-        lambda: _converter(kind, PS),
+    PS.update(layout=L.Topics(PS.tokenizer(_reader(PS, kind))))
+    return T.data.Dataset.from_generator(
+        lambda: _converter(PS, kind),
         PS.features.tf_dtypes,
         PS.features.tf_shapes,
     )
 
 
-def _reader(kind, PS):
+def _reader(PS, kind):
     p = P.Path(PS.data_dir)
     for n in _names[kind]:
         with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
@@ -97,7 +97,7 @@ def _normalize(txt):
     return ' '.join(unicodedata.normalize('NFD', txt).split())
 
 
-def _converter(kind, PS):
+def _converter(PS, kind):
     FS = PS.features
     for _, c, q, ans in PS.layout.answers():
         cs, qs = c.tokens, q.tokens
@@ -144,14 +144,7 @@ def _converter(kind, PS):
                     if b >= s.begin and e <= s.end:
                         beg += ql - s.begin
                         end += ql - s.end
-            yield {
-                FS.SEQ: seq,
-                FS.TYP: typ,
-                FS.OPT: opt,
-                FS.BEG: beg,
-                FS.END: end,
-                FS.UID: ans.uid,
-            }
+            yield seq, typ, opt, beg, end, ans.uid
 
 
 _names = {

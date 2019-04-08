@@ -52,9 +52,9 @@ def model_for(params):
     return m
 
 
-def dset_for(kind, params):
+def dset_for(params, kind):
     PS = params
-    ds, data = squad_ds(kind, PS)
+    ds, data = squad_ds(PS, kind)
     if kind == 'train':
         ds = ds.shuffle(buffer_size=50000)
     ds = ds.batch(PS.batch_size)

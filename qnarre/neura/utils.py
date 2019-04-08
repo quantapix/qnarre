@@ -64,30 +64,27 @@ class Params:
 
 class Features:
     def __init__(self, specs, **kw):
-        self.names = []
+        self.keys = []
         self.dtypes = {}
         self.shapes = {}
-        for k, v in kw.items():
+        for k, v in specs.items():
             assert not hasattr(self, k)
-            self.names.append(v['name'])
             setattr(self, k, v['name'])
+            k = v['name']
+            self.keys.append(k)
             self.dtypes[k] = v['dtype']
             self.shapes[k] = v['shape']
 
     @property
     def tf_dtypes(self):
-        return {k: T.as_dtype(v['dtype']) for k, v in self.dtypes.items()}
+        return tuple([T.as_dtype(self.dtypes[k]) for k in self.keys])
 
     @property
     def tf_shapes(self):
-        return {k: T.TensorShape(v['shape']) for k, v in self.shapes.items()}
+        return tuple([T.TensorShape(self.shapes[k]) for k in self.keys])
 
     def input_kw(self, key):
-        return dict(
-            name=self.names[key],
-            shape=self.shapes[key],
-            dtype=self.dtypes[key],
-        )
+        return dict(shape=self.shapes[key], dtype=self.dtypes[key])
 
 
 def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
