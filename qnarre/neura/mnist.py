@@ -127,13 +127,15 @@ def model_for(params):
         KL.Input(**FS.input_kw(FS.LBL)),
     ]
     print(ins)
-    outs = [Mnist_3(PS)(ins)]
+    outs = [Mnist_3(PS)(ins[:5])]
     # outs = [Mnist_1(PS)(ins), Mnist_2(PS)(ins), Mnist_3(PS)(ins)]
-    m = KS.Model(inputs=ins, outputs=outs)
+    m = KS.Model(inputs=ins[:5], outputs=outs)
     m.compile(
         optimizer=KS.optimizers.SGD(learning_rate=0.01),
         loss='sparse_categorical_crossentropy',
-        metrics=['accuracy'])
+        metrics=['accuracy'],
+        target_tensors=[ins[5]],
+    )
     """
         loss={
             'mnist_1': None,
@@ -202,7 +204,7 @@ _params.update(
 def main(_):
     sid = datetime.now().strftime('%Y%m%d-%H%M%S')
     PS = load_params().override(_params)
-    train_sess2(sid, PS, model_for, dset_for)
+    train_sess(sid, PS, model_for, dset_for)
 
 
 def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
