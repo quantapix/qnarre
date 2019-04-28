@@ -136,34 +136,42 @@ class Transformer(KL.Layer):
         pre, post = PreProc(PS), PostProc(PS)
         self.e_stack = EncodeStack(PS, pre, post)
         self.d_stack = DecodeStack(PS, pre, post)
-        self.dense = KL.Dense(PS.vocab_size, activation=None)
+        self.logits = KL.Dense(PS.vocab_size, activation=None)
 
     def compute_output_shape(self, input_shape):
+        e, d = None, None
         src, tgt = input_shape
-        s, _ = src
-        return (s, self.dense.output_shape) if tgt else s
+        if src:
+            e, _ = self.e_stack.output_shape
+        if tgt:
+            d = self.logits.output_shape
+        return e, d
 
     def call(self, inputs, **kw):
+        e, a, d = None, None, None
         src, tgt = inputs
-        s, typ = src
-        s = self.tok_embed(s, **kw)
-        if self.typ_embed:
-            s = self.typ_embed([s, typ], **kw)
-        if self.pos_embed:
-            s = self.pos_embed(s, **kw)
-        s = self.drop(self.norm(s, **kw), **kw)
-        y, attn = self.e_stack(s, **kw)
-        if tgt:
-            t, typ = tgt
-            t = self.tok_embed(t, **kw)
+        if src:
+            x, typ = src
+            y = self.tok_embed(x, **kw)
             if self.typ_embed:
-                t = self.typ_embed([t, typ], **kw)
+                y = self.typ_embed([y, typ], **kw)
             if self.pos_embed:
-                t = self.pos_embed(t, **kw)
-            t = self.drop(self.norm(t, **kw), **kw)
-            y = self.d_stack([y, attn, t], **kw)
-            return y, self.dense(y, **kw)
-        return y
+                y = self.pos_embed(y, **kw)
+            y = self.norm(y, **kw)
+            y = self.drop(y, **kw)
+            e, a = self.e_stack(y, **kw)
+        if tgt:
+            x, typ = tgt
+            y = self.tok_embed(x, **kw)
+            if self.typ_embed:
+                y = self.typ_embed([y, typ], **kw)
+            if self.pos_embed:
+                y = self.pos_embed(y, **kw)
+            y = self.norm(y, **kw)
+            y = self.drop(y, **kw)
+            d = self.d_stack([e, a, y], **kw)
+            d = self.logits(d, **kw)
+        return e, d
 
 
 """
@@ -183,8 +191,8 @@ class TokEmbed(KL.Embedding):
             output_dim=PS.hidden_size,
             embeddings_initializer=ei,
             embeddings_regularizer=er,
-            mask_zero=True,
             input_length=PS.max_seq_len,
+            mask_zero=True,
         )
 
 
@@ -290,14 +298,14 @@ class Stack(KL.Layer):
     def proximity(slen):
         p = K.arange(slen, dtype=K.floatx())
         p = K.expand_dims(p, 0) - K.expand_dims(p, 1)
-        return K.expand_dims(K.expand_dims(-T.log1p(K.abs(p)), 0), 0)
+        return K.expand_dims(K.expand_dims(-T.math.log1p(K.abs(p)), 0), 0)
 
     @staticmethod
-    def attn_mask(mask):
+    def attn_bias(mask):
         f = K.floatx()
         fmin = T.float16.min if f == 'float16' else T.float32.min
-        m = K.cast(mask, f) * fmin
-        return K.expand_dims(K.expand_dims(m, axis=1), axis=1)
+        b = K.cast(mask, f) * fmin
+        return K.expand_dims(K.expand_dims(b, axis=1), axis=1)
 
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
@@ -321,19 +329,19 @@ class EncodeStack(Stack):
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
-        return self.encoders[-1].output_shape
+        return self.encs[-1].output_shape
 
     def call(self, inputs, mask, **kw):
-        s = inputs
-        sam = am = self.attn_mask(mask)
+        x = inputs
+        b = self.attn_bias(mask)
         if self.prox_bias:
-            sam += self.prox_bias
-        if self.PS.pad_remover:
-            kw.update(pad_remover=U.PadRemover(mask))
-        y = self.pre.drop(s, **kw)
+            b += self.prox_bias
+        # if self.PS.pad_remover:
+        #     kw.update(pad_remover=U.PadRemover(mask))
+        y = self.pre.drop(x, **kw)
         for e in self.encs:
-            y = e([y, sam], **kw)
-        return self.post([s, y], **kw), am
+            y = e([y, b], **kw)
+        return self.post([x, y], **kw), b
 
 
 class DecodeStack(Stack):
@@ -350,29 +358,29 @@ class DecodeStack(Stack):
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
-        return self.decoders[-1].output_shape
+        return self.decs[-1].output_shape
 
     def call(self, inputs, mask, **kw):
-        s, am, t = inputs
-        sam = self.attn_mask(mask[2])
+        x, b, t = inputs
+        sb = self.attn_bias(mask[2])
         PS = self.PS
         if PS.causal_self_attn:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
-                p = K.cumsum(K.cumsum(sam, axis=1), axis=1)
+                p = K.cumsum(K.cumsum(sb, axis=1), axis=1)
                 p = K.greater(K.expand_dims(p, 1), K.expand_dims(p, 2))
-                sam = K.expand_dims(K.cast(p, K.floatx()) * -1e9, 1)
+                sb = K.expand_dims(K.cast(p, K.floatx()) * -1e9, 1)
             else:
                 ln = K.int_shape(t)[1]
                 sh = (1, 1, ln, ln)
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
-                sam = -1e9 * (1.0 - b)
+                sb = -1e9 * (1.0 - b)
         if self.prox_bias:
-            sam += self.prox_bias
-        t = T.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
+            sb += self.prox_bias
+        # y = T.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
         # t = T.concat([pad_value, t], axis=1)[:, :-1, :]
         y = self.pre.drop(t, **kw)
         for d in self.decs:
-            y = d([s, am, y, sam], **kw)
+            y = d([x, b, y, sb], **kw)
         return K.expand_dims(self.post([t, y], **kw), axis=2)
 
 
@@ -380,15 +388,15 @@ class Encoder(KL.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.refl = _attns[PS.self_attn_type](*a)
+        self.reflection = _attentions[PS.self_attn_type](*a)
         self.ffn = _ffns[PS.ffn_layer](*a)
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
 
     def call(self, inputs, **kw):
-        s, sam = inputs
-        y = self.refl([s, s, sam], **kw)
+        x, b = inputs
+        y = self.reflection([x, x, b], **kw)
         return self.ffn(y, **kw)
 
 
@@ -396,18 +404,18 @@ class Decoder(KL.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.refl = _attns[PS.self_attn_type](*a)
-        self.attn = _attns[PS.attn_type](*a)
+        self.reflection = _attentions[PS.self_attn_type](*a)
+        self.attention = _attentions[PS.attn_type](*a)
         self.ffn = _ffns[PS.ffn_layer](*a, conv_pad='LEFT')
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
 
     def call(self, inputs, **kw):
-        s, am, t, sam = inputs
-        y = self.refl([t, t, sam], **kw)
-        y = self.attn([y, s, am], **kw)
-        return self.fforward(y, **kw)
+        x, b, t, sb = inputs
+        y = self.reflection([t, t, sb], **kw)
+        y = self.attention([y, x, b], **kw)
+        return self.ffn(y, **kw)
 
 
 class Attention(KL.Layer):
@@ -417,48 +425,51 @@ class Attention(KL.Layer):
         self.pre = pre
         self.post = post
         self.comp = comp or self.dense_comp
-        self.dense = self.dense_comp(PS.hidden_size)
 
     def build(self, input_shape):
         src, tgt, _ = input_shape
-        _, slen, hsize = src
-        _, tlen, hs2 = tgt
-        assert hsize == hs2
+        hs = src[2]
+        assert hs == tgt[2]
         PS = self.PS
+        assert hs == PS.hidden_size
         n = PS.attn_heads
-        assert hsize % n == 0
-        self.q_comp = self.comp(hsize, name='Q')
-        k_size = PS.attn_k_size or hsize
-        assert k_size % n == 0
-        self.k_size = k_size
-        self.k_comp = self.comp(k_size, name='K')
-        v_size = PS.attn_v_size or hsize
-        assert v_size % n == 0
-        self.v_comp = self.comp(v_size, name='V')
+        assert hs % n == 0
+        self.q_comp = self.comp(hs, name='Q')
+        self.k_size = ks = PS.attn_k_size or hs
+        assert ks % n == 0
+        self.k_comp = self.comp(ks, name='K')
+        vs = PS.attn_v_size or hs
+        assert vs % n == 0
+        self.v_comp = self.comp(vs, name='V')
+        self.out = self.dense_comp(hs, name='out')
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
-        return self.dense.output_shape
+        return self.out.output_shape
 
     def call(self, inputs, **kw):
-        s, t, am = inputs
+        s, t, b = inputs
         s = self.pre(s, **kw)
         q = self.split_heads(self.q_comp(s, **kw))
         k = self.split_heads(self.k_comp(t, **kw))
         v = self.split_heads(self.v_comp(t, **kw))
-        y = self.calc_scores(q, k, v, am, **kw)
+        y = self.scores(q, k, v, b, **kw)
         y = self.join_heads(y)
-        return self.post([s, self.dense(y)], **kw)
+        y = self.out(y)
+        return self.post([s, y], **kw)
 
-    def dense_comp(self, units, **kw):
+    def dense_comp(self, size, **kw):
         ki = _get_initer(self.PS.init_stddev)
-        return KL.Dense(units, use_bias=False, kernel_initializer=ki, **kw)
+        return KL.Dense(size, use_bias=False, kernel_initializer=ki, **kw)
 
     def split_heads(self, x):
         sh = K.int_shape(x)
         n = self.PS.attn_heads
         y = K.reshape(x, (-1, sh[1], n, sh[-1] // n))
         return K.permute_dimensions(y, [0, 2, 1, 3])
+
+    def scores(self, q, k, v, b, **kw):
+        raise NotImplementedError()
 
     @staticmethod
     def join_heads(x):
@@ -497,17 +508,16 @@ class ConvComp(KL.Layer):
 class DotAttn(Attention):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        PS = self.PS
-        self.drop = KL.Dropout(PS.attn_drop)
+        self.drop = KL.Dropout(self.PS.attn_drop)
 
-    def calc_scores(self, q, k, v, am, **kw):
+    def scores(self, q, k, v, b, **kw):
         y = T.matmul(q, k, transpose_b=True)
         y *= (self.k_size // self.PS.attn_heads)**-0.5
-        y = self.drop(KS.activations.softmax(y + am, **kw), **kw)
+        y = self.drop(KS.activations.softmax(y + b, **kw), **kw)
         return T.matmul(y, v)
 
 
-_attns = {
+_attentions = {
     'dot_attn': DotAttn,
 }
 

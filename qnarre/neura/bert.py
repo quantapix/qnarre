@@ -15,9 +15,6 @@
 # https://arxiv.org/pdf/1810.04805.pdf
 # https://github.com/google-research/bert
 
-# import pathlib as pth
-from datetime import datetime
-
 import tensorflow as T
 
 from qnarre.neura.layers import Bert
@@ -27,8 +24,6 @@ from qnarre.feeds.dset.bert_ds import dataset as bert_ds
 
 KS = T.keras
 KL = KS.layers
-
-# KC = KS.callbacks
 
 
 def model_for(params):
@@ -44,10 +39,9 @@ def model_for(params):
     ins = [seq, typ, fit, idx, val, mlm]
     outs = Bert(PS)(ins)
     m = KS.Model(inputs=ins, outputs=outs)
-    m.compile(
-        optimizer=utils.adam_opt(PS),
-        loss='sparse_categorical_crossentropy',
-        metrics=['accuracy'])
+    m.compile(optimizer=utils.adam_opt(PS),
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
     return m
 
 
@@ -112,6 +106,11 @@ _params.update(
 )
 
 
+def load_params():
+    PS = transformer.load_params().override(_params)
+    return PS.update(tokenizer=Tokenizer(PS))
+
+
 def load_flags():
     transformer.load_flags()
     from absl import flags
@@ -121,16 +120,9 @@ def load_flags():
     flags.DEFINE_string('init_checkpoint', None, '')
 
 
-def load_params():
-    PS = transformer.load_params().override(_params)
-    return PS.update(tokenizer=Tokenizer(PS))
-
-
 def main(_):
     # bert_config = modeling.BertConfig.from_json_file(PS.bert_config)
-    sid = datetime.now().strftime('%Y%m%d-%H%M%S')
-    PS = load_params().override(_params)
-    utils.train_sess(sid, PS, model_for, dset_for)
+    utils.train_sess(load_params(), model_for, dset_for)
 
 
 if __name__ == '__main__':

@@ -16,20 +16,14 @@
 # https://arxiv.org/pdf/1806.03822.pdf
 # https://arxiv.org/pdf/1606.05250.pdf
 
-from datetime import datetime
-
 import tensorflow as T
 
 from qnarre.neura import bert
+from qnarre.neura import utils as U
 from qnarre.neura.layers import Squad, SquadLoss
 from qnarre.feeds.dset.squad_ds import dataset as squad_ds
 
-from qnarre.neura import utils as U
-
 KS = T.keras
-
-# KL = KS.layers
-# KC = KS.callbacks
 
 
 def model_for(params):
@@ -128,10 +122,9 @@ class Features(U.Features):
 
 
 def main(_):
-    sid = datetime.now().strftime('%Y%m%d-%H%M%S')
     PS = bert.load_params().override(_params)
     PS.update(features=Features(PS, specs=_fspecs))
-    U.train_sess(sid, PS, model_for, dset_for)
+    U.train_sess(PS, model_for, dset_for)
 
 
 if __name__ == '__main__':

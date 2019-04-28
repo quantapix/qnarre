@@ -56,6 +56,8 @@ def dset_for(kind, params):
 
 _params = dict(
     batch_size=8,
+    ffn_units=2048,
+    hidden_size=512,
     learn_rate=5e-6,
     max_ans_len=30,
     max_qry_len=64,
@@ -66,14 +68,22 @@ _params = dict(
     train_epochs=2.0,
     use_fp16=False,
     use_xla=False,
+    vocab_size=None,
     warmup_split=0.1,
+    hidden_drop=0.1,
+    decode_layers=0,
+    encode_layers=0,
+    stack_layers=6,
+    attn_k_size=64,
+    attn_v_size=64,
+    attn_heads=8,
 )
 
 _params.update(
-    data_dir='.data/squad',
-    log_dir='.model/squad/logs',
-    model_dir='.model/squad',
-    save_dir='.model/squad/save',
+    data_dir='.data/transformer',
+    log_dir='.model/transformer/logs',
+    model_dir='.model/transformer',
+    save_dir='.model/transformer/save',
 )
 
 

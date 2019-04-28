@@ -87,7 +87,7 @@ class Features:
         return dict(shape=self.shapes[key], dtype=self.dtypes[key])
 
 
-def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
+def train_sess(params, model_fn, dset_fn, cbacks=None, sid=None):
     PS = params
     # with T.distribute.MirroredStrategy().scope():
     m = model_fn(PS)
@@ -98,6 +98,7 @@ def train_sess(sid, params, model_fn, dset_fn, cbacks=None):
         m.train_on_batch(ds_train[:1])
         m.load_weights(sp)
     m.summary()
+    sid = sid or datetime.now().strftime('%Y%m%d-%H%M%S')
     p = PS.log_dir + '/train/' + sid
     writer = T.summary.create_file_writer(p)
     sum_s = hparams.summary.session_start_pb(hparams=PS.hparams)
@@ -155,7 +156,7 @@ def train_loop(params, model_fn, dset_fn, cbacks=None):
                 sid = datetime.now().strftime('%Y%m%d-%H%M%S')
                 print(f'--- Running session {sid}:', kw)
                 PS.update(**kw)
-                train_sess(sid, PS, model_fn, dset_fn, cbacks)
+                train_sess(PS, model_fn, dset_fn, cbacks, sid=sid)
 
 
 def adam_opt(params):
