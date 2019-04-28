@@ -45,10 +45,9 @@ def model_for(params):
     y = Squad(PS)([seq, typ])
     y = SquadLoss(PS)([beg, end], y)
     m = KS.Model(inputs=ins, outputs=[y])
-    m.compile(
-        optimizer=U.adam_opt(PS),
-        loss='sparse_categorical_crossentropy',
-        metrics=['accuracy'])
+    m.compile(optimizer=U.adam_opt(PS),
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
     return m
 
 
@@ -60,12 +59,6 @@ def dset_for(params, kind):
     ds = ds.batch(PS.batch_size)
     # ds = ds.prefetch(buffer_size=T.data.experimental.AUTOTUNE)
     return ds, data
-
-
-def main(_):
-    sid = datetime.now().strftime('%Y%m%d-%H%M%S')
-    PS = bert.load_params().override(_params)
-    U.train_sess(sid, PS, model_for, dset_for)
 
 
 _params = dict(
@@ -81,6 +74,13 @@ _params = dict(
     use_fp16=False,
     use_xla=False,
     warmup_split=0.1,
+)
+
+_params.update(
+    data_dir='.data/squad',
+    log_dir='.model/squad/logs',
+    model_dir='.model/squad',
+    save_dir='.model/squad/save',
 )
 
 _fspecs = {
@@ -127,13 +127,12 @@ class Features(U.Features):
         self.shapes[self.OPT] = sh
 
 
-_params.update(
-    features=Features(_params, specs=_fspecs),
-    data_dir='.data/squad',
-    log_dir='.model/squad/logs',
-    model_dir='.model/squad',
-    save_dir='.model/squad/save',
-)
+def main(_):
+    sid = datetime.now().strftime('%Y%m%d-%H%M%S')
+    PS = bert.load_params().override(_params)
+    PS.update(features=Features(PS, specs=_fspecs))
+    U.train_sess(sid, PS, model_for, dset_for)
+
 
 if __name__ == '__main__':
     # T.logging.set_verbosity(T.logging.INFO)

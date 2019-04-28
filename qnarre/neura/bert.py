@@ -18,32 +18,32 @@
 # import pathlib as pth
 from datetime import datetime
 
-import tensorflow as tf
+import tensorflow as T
 
 from qnarre.neura.layers import Bert
 from qnarre.neura import transformer, utils
 from qnarre.feeds.prep.tokenizer import Tokenizer
 from qnarre.feeds.dset.bert_ds import dataset as bert_ds
 
-ks = tf.keras
-kls = ks.layers
+KS = T.keras
+KL = KS.layers
 
-# kcb = ks.callbacks
+# KC = KS.callbacks
 
 
 def model_for(params):
     PS = params
     sh = (PS.max_seq_len, )
-    seq = kls.Input(shape=sh, dtype='int32', name='seq')
-    typ = kls.Input(shape=sh, dtype='int32', name='typ')
+    seq = KL.Input(shape=sh, dtype='int32', name='seq')
+    typ = KL.Input(shape=sh, dtype='int32', name='typ')
     sh = (PS.max_seq_preds, )
-    idx = kls.Input(shape=sh, dtype='int32', name='mlm_idx')
-    val = kls.Input(shape=sh, dtype='int32', name='mlm_val')
-    fit = kls.Input(shape=sh, dtype='bool', name='fit')
-    mlm = kls.Input(shape=sh, dtype='float32', name='mlm')
+    idx = KL.Input(shape=sh, dtype='int32', name='mlm_idx')
+    val = KL.Input(shape=sh, dtype='int32', name='mlm_val')
+    fit = KL.Input(shape=sh, dtype='bool', name='fit')
+    mlm = KL.Input(shape=sh, dtype='float32', name='mlm')
     ins = [seq, typ, fit, idx, val, mlm]
     outs = Bert(PS)(ins)
-    m = ks.Model(inputs=ins, outputs=outs)
+    m = KS.Model(inputs=ins, outputs=outs)
     m.compile(
         optimizer=utils.adam_opt(PS),
         loss='sparse_categorical_crossentropy',
@@ -57,7 +57,7 @@ def dset_for(kind, params):
     if kind == 'train':
         ds = ds.shuffle(buffer_size=50000)
     ds = ds.batch(PS.batch_size)
-    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    # ds = ds.prefetch(buffer_size=T.data.experimental.AUTOTUNE)
     return ds, data
 
 
@@ -134,7 +134,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-    # tf.logging.set_verbosity(tf.logging.INFO)
+    # T.logging.set_verbosity(T.logging.INFO)
     load_flags()
     from absl import app
     app.run(main)
@@ -145,31 +145,31 @@ def metric_fn(masked_lm_example_loss, masked_lm_log_probs,
               val, masked_lm_weights,
               next_sentence_example_loss, next_sentence_log_probs,
               fit):
-    masked_lm_log_probs = tf.reshape(
+    masked_lm_log_probs = T.reshape(
         masked_lm_log_probs, [-1, masked_lm_log_probs.shape[-1]])
-    masked_lm_predictions = tf.argmax(
-        masked_lm_log_probs, axis=-1, output_type=tf.int32)
-    masked_lm_example_loss = tf.reshape(masked_lm_example_loss,
+    masked_lm_predictions = T.argmax(
+        masked_lm_log_probs, axis=-1, output_type=T.int32)
+    masked_lm_example_loss = T.reshape(masked_lm_example_loss,
                                         [-1])
-    val = tf.reshape(val, [-1])
-    masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
-    masked_lm_accuracy = tf.metrics.accuracy(
+    val = T.reshape(val, [-1])
+    masked_lm_weights = T.reshape(masked_lm_weights, [-1])
+    masked_lm_accuracy = T.metrics.accuracy(
         labels=val,
         predictions=masked_lm_predictions,
         weights=masked_lm_weights)
-    masked_lm_mean_loss = tf.metrics.mean(
+    masked_lm_mean_loss = T.metrics.mean(
         values=masked_lm_example_loss, weights=masked_lm_weights)
 
-    next_sentence_log_probs = tf.reshape(
+    next_sentence_log_probs = T.reshape(
         next_sentence_log_probs,
         [-1, next_sentence_log_probs.shape[-1]])
-    next_sentence_predictions = tf.argmax(
-        next_sentence_log_probs, axis=-1, output_type=tf.int32)
-    fit = tf.reshape(fit, [-1])
-    next_sentence_accuracy = tf.metrics.accuracy(
+    next_sentence_predictions = T.argmax(
+        next_sentence_log_probs, axis=-1, output_type=T.int32)
+    fit = T.reshape(fit, [-1])
+    next_sentence_accuracy = T.metrics.accuracy(
         labels=fit,
         predictions=next_sentence_predictions)
-    next_sentence_mean_loss = tf.metrics.mean(
+    next_sentence_mean_loss = T.metrics.mean(
         values=next_sentence_example_loss)
 
     return {
