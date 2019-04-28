@@ -34,12 +34,11 @@ class Squad(KL.Layer):
         self.bert = Bert(PS)
 
     def build(self, input_shape):
-        _, slen, hsize = input_shape[0]
+        _, slen = input_shape[0]
         PS = self.PS
         assert slen == PS.max_seq_len
-        assert hsize == PS.hidden_size
         kw = dict(initializer=_get_initer(PS.init_stddev))
-        self.gain = self.add_weight(shape=(2, hsize), **kw)
+        self.gain = self.add_weight(shape=(2, PS.hidden_size), **kw)
         kw.update(initializer='zeros')
         self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
@@ -84,8 +83,8 @@ class Bert(KL.Layer):
         self.transformer = Transformer(PS)
         kw = dict(kernel_initializer=_get_initer(PS.init_stddev))
         self.pool = KL.Dense(PS.hidden_size, T.tanh, **kw)
-        self.mlm_dense = KL.Dense(PS.hidden_size, PS.hidden_act, **kw)
-        self.embed = self.transformer.tok_embed.embeddings
+        ac = _get_act(PS.hidden_act)
+        self.mlm_dense = KL.Dense(PS.hidden_size, ac, **kw)
         self.norm = LayerNorm()
 
     def build(self, input_shape):
@@ -99,7 +98,7 @@ class Bert(KL.Layer):
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
-        return self.dense.output_shape
+        return self.mlm_dense.output_shape
 
     def call(self, inputs, **kw):
         PS = self.PS
@@ -108,7 +107,8 @@ class Bert(KL.Layer):
         fit_y = self.pool(T.squeeze(y[:, 0:1, :], axis=1), **kw)
         y = T.gather(y, idx, axis=1)
         y = self.norm(self.mlm_dense(y, **kw), **kw)
-        y = T.matmul(y, self.embed, transpose_b=True)
+        e = self.transformer.tok_embed.embeddings
+        y = T.matmul(y, e, transpose_b=True)
         y = T.nn.log_softmax(K.bias_add(y, self.mlm_bias), axis=-1)
         mlm_loss = -K.sum(y * K.one_hot(val, PS.vocab_size), axis=-1)
         y = T.matmul(fit_y, self.gain, transpose_b=True)
@@ -364,7 +364,7 @@ class DecodeStack(Stack):
         x, b, t = inputs
         sb = self.attn_bias(mask[2])
         PS = self.PS
-        if PS.causal_self_attn:
+        if PS.causal_refl:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
                 p = K.cumsum(K.cumsum(sb, axis=1), axis=1)
                 p = K.greater(K.expand_dims(p, 1), K.expand_dims(p, 2))
@@ -388,15 +388,15 @@ class Encoder(KL.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.reflection = _attentions[PS.self_attn_type](*a)
-        self.ffn = _ffns[PS.ffn_layer](*a)
+        self.refl = _attns[PS.refl_type](*a)
+        self.ffn = _ffns[PS.ffn_type](*a)
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
 
     def call(self, inputs, **kw):
         x, b = inputs
-        y = self.reflection([x, x, b], **kw)
+        y = self.refl([x, x, b], **kw)
         return self.ffn(y, **kw)
 
 
@@ -404,17 +404,17 @@ class Decoder(KL.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.reflection = _attentions[PS.self_attn_type](*a)
-        self.attention = _attentions[PS.attn_type](*a)
-        self.ffn = _ffns[PS.ffn_layer](*a, conv_pad='LEFT')
+        self.refl = _attns[PS.refl_type](*a)
+        self.attn = _attns[PS.attn_type](*a)
+        self.ffn = _ffns[PS.ffn_type](*a, conv_pad='LEFT')
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
 
     def call(self, inputs, **kw):
         x, b, t, sb = inputs
-        y = self.reflection([t, t, sb], **kw)
-        y = self.attention([y, x, b], **kw)
+        y = self.refl([t, t, sb], **kw)
+        y = self.attn([y, x, b], **kw)
         return self.ffn(y, **kw)
 
 
@@ -455,7 +455,7 @@ class Attention(KL.Layer):
         v = self.split_heads(self.v_comp(t, **kw))
         y = self.scores(q, k, v, b, **kw)
         y = self.join_heads(y)
-        y = self.out(y)
+        y = self.out(y, **kw)
         return self.post([s, y], **kw)
 
     def dense_comp(self, size, **kw):
@@ -517,7 +517,7 @@ class DotAttn(Attention):
         return T.matmul(y, v)
 
 
-_attentions = {
+_attns = {
     'dot_attn': DotAttn,
 }
 
@@ -566,7 +566,7 @@ _ffns = {
 
 
 class Processor(KL.Layer):
-    cmd = None
+    cmd = ''
 
     @staticmethod
     def _dropout(rate, shape, bdims):
@@ -645,7 +645,7 @@ class PreProc(Processor):
         return super().build((None, input_shape))
 
     def compute_output_shape(self, input_shape):
-        return input_shape,
+        return (input_shape,)
 
     def call(self, inputs, **kw):
         return super().call([None, inputs], **kw)
@@ -672,11 +672,10 @@ def _get_act(name):
         n = name.lower()
         if n == 'gelu':
             return _gelu
-        elif n == 'relu':
+        if n == 'relu':
             return KS.activations.relu
-        elif n == 'tanh':
+        if n == 'tanh':
             return KS.activations.tanh
-        else:
-            assert n == 'linear'
-            name = None
+        assert n == 'linear'
+        name = None
     return name

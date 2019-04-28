@@ -18,7 +18,8 @@
 import tensorflow as T
 
 from qnarre.neura.layers import Bert
-from qnarre.neura import transformer, utils
+from qnarre.neura import utils as U
+from qnarre.neura import transformer
 from qnarre.feeds.prep.tokenizer import Tokenizer
 from qnarre.feeds.dset.bert_ds import dataset as bert_ds
 
@@ -39,7 +40,7 @@ def model_for(params):
     ins = [seq, typ, fit, idx, val, mlm]
     outs = Bert(PS)(ins)
     m = KS.Model(inputs=ins, outputs=outs)
-    m.compile(optimizer=utils.adam_opt(PS),
+    m.compile(optimizer=U.adam_opt(PS),
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
     return m
@@ -122,7 +123,7 @@ def load_flags():
 
 def main(_):
     # bert_config = modeling.BertConfig.from_json_file(PS.bert_config)
-    utils.train_sess(load_params(), model_for, dset_for)
+    U.train_sess(load_params(), model_for, dset_for)
 
 
 if __name__ == '__main__':
