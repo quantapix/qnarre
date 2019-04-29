@@ -10,3 +10,6 @@
 [submodule "tensorflow/probability"]
 	path = tensorflow/probability
 	url = https://github.com/tensorflow/probability.git
+[submodule "tensor2tensor/upstream"]
+	path = tensor2tensor/upstream
+	url = https://github.com/tensorflow/tensor2tensor.git
