@@ -120,6 +120,7 @@ class Bert(KL.Layer):
 
 class Transformer(KL.Layer):
     typ_embed, pos_embed = None, None
+    unks, eos = None, None
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
@@ -134,9 +135,19 @@ class Transformer(KL.Layer):
         self.norm = LayerNorm()
         self.drop = KL.Dropout(PS.hidden_drop)
         pre, post = PreProc(PS), PostProc(PS)
-        self.e_stack = EncodeStack(PS, pre, post)
-        self.d_stack = DecodeStack(PS, pre, post)
+        self.enc_stack = EncodeStack(PS, pre, post)
+        self.dec_stack = DecodeStack(PS, pre, post)
         self.logits = KL.Dense(PS.vocab_size, activation=None)
+
+    def build(self, input_shape):
+        _, tgt = input_shape
+        kw = dict(dtype='int32', trainable=False)
+        self.tok_out = self.add_weight(shape=tgt[:2], **kw)
+        kw.update(dtype='bool')
+        kw.update(initializer='zeros')
+        self.mlm_bias = self.add_weight(shape=self.PS.vocab_size, **kw)
+        self.bias = self.add_weight(shape=2, **kw)
+        return super().build(input_shape)
 
     def compute_output_shape(self, input_shape):
         e, d = None, None
@@ -147,34 +158,170 @@ class Transformer(KL.Layer):
             d = self.logits.output_shape
         return e, d
 
-    def call(self, inputs, **kw):
-        e, a, d = None, None, None
+    def embed(self, toks, **kw):
+        t, typ = toks
+        y = self.tok_embed(t, **kw)
+        if self.typ_embed:
+            y = self.typ_embed([y, typ], **kw)
+        if self.pos_embed:
+            y = self.pos_embed(y, **kw)
+        y = self.norm(y, **kw)
+        return self.drop(y, **kw)
+
+    def encode(self, toks, **kw):
+        y, b = None, None
+        if toks:
+            y = self.embed(toks, **kw)
+            y, b = self.enc_stack(y, **kw)
+        return y, b
+
+    def decode(self, toks, ctxt, bias, **kw):
+        y = None
+        if toks:
+            y = self.embed(toks, **kw)
+            y = self.dec_stack([ctxt, bias, y], **kw)
+        return y
+
+    def to_logits(self, x, **kw):
+        xs = K.int_shape(x)
+        y = K.reshape(x, (-1, xs[-1]))
+        y = self.logits(y, **kw)
+        ys = K.int_shape(y)
+        y = K.reshape(y, xs[:-1] + ys[-1:])
+        if self.unks:
+            y = T.where(self.unks, y, self.fixed)
+        return y
+
+    def to_log_prob(logits, reduce_axis=-1):
+        return logits - T.reduce_logsumexp(
+            logits, axis=reduce_axis, keepdims=True)
+
+    def to_toks(self, x, **kw):
+        pass
+
+    def not_done(self, i, *_):
+        d = i >= K.int_shape(self.unks)[-1]
+        if self.eos:
+            d |= T.reduce_all(self.eos)
+        return T.logical_not(d)
+
+    def dec_loop(self, i, next_id, decoded_ids, log_prob):
+        logits, cache = symbols_to_logits_fn(next_id, i, cache)
+        log_probs = common_layers.log_prob_from_logits(logits)
+        temperature = getattr(hparams, "sampling_temp", 0.0)
+        keep_top = getattr(hparams, "sampling_keep_top_k", -1)
+        if hparams.sampling_method == "argmax":
+            temperature = 0.0
+        next_id = common_layers.sample_with_temperature(
+            logits, temperature, keep_top)
+        hit_eos |= T.equal(next_id, eos_id)
+
+        log_prob_indices = T.stack(
+            [T.range(T.to_int64(PS.batch_size)), next_id], axis=1)
+        log_prob += T.gather_nd(log_probs, log_prob_indices)
+
+        next_id = T.expand_dims(next_id, axis=1)
+        decoded_ids = T.concat([decoded_ids, next_id], axis=1)
+        return i + 1, next_id, decoded_ids, log_prob
+
+    def call(self, inputs, training=None, **kw):
         src, tgt = inputs
-        if src:
-            x, typ = src
-            y = self.tok_embed(x, **kw)
-            if self.typ_embed:
-                y = self.typ_embed([y, typ], **kw)
-            if self.pos_embed:
-                y = self.pos_embed(y, **kw)
-            y = self.norm(y, **kw)
-            y = self.drop(y, **kw)
-            e, a = self.e_stack(y, **kw)
+        ctxt, bias = self.encode(src, **kw)
+        if training:
+            y = self.decode(tgt, ctxt, bias, **kw)
+            if y:
+                y = self.to_logits(y, **kw)
+                return self.to_toks(y, tgt, **kw)
+            return ctxt, bias
         if tgt:
-            x, typ = tgt
-            y = self.tok_embed(x, **kw)
-            if self.typ_embed:
-                y = self.typ_embed([y, typ], **kw)
-            if self.pos_embed:
-                y = self.pos_embed(y, **kw)
-            y = self.norm(y, **kw)
-            y = self.drop(y, **kw)
-            d = self.d_stack([e, a, y], **kw)
-            d = self.logits(d, **kw)
-        return e, d
+            PS = self.PS
+            self.fixed = T.one_hot(tgt[0], PS.vocab_size, 0.0, -1e9)
+            self.unks = T.equal(tgt[0], PS.UNK)
+            self.eos = T.fill(tgt[0][:1], False)
+            if PS.beam_size > 1:
+                return
+            else:
+                decoded_ids = T.zeros([PS.batch_size, 0], dtype=T.int64)
+                next_id = sos_id * T.ones([PS.batch_size, 1], dtype=T.int64)
+                initial_log_prob = T.zeros([PS.batch_size], dtype=T.float32)
+                _, _, decoded_ids, log_prob = T.while_loop(
+                    lambda *a: self.not_done(*a),
+                    lambda *a: self.dec_loop(*a),
+                    [T.constant(0), next_id, decoded_ids, initial_log_prob],
+                    shape_invariants=[
+                        T.TensorShape([]),
+                        T.TensorShape([None, None]),
+                        T.TensorShape([None, None]),
+                        T.TensorShape([None]),
+                    ],
+                )
+                scores = log_prob
+            return {"outputs": decoded_ids, "scores": scores, "cache": cache}
+
+    def symbols_to_logits_fn(self, ids, i, cache):
+        ids = ids[:, -1:]
+        targets = T.expand_dims(T.expand_dims(ids, axis=2), axis=3)
+        targets = preprocess_targets(targets, i)
+
+        bias = decoder_self_attention_bias[:, :, i:i + 1, :i + 1]
+
+        with T.variable_scope("body"):
+            body_outputs = dp(self.decode,
+                              targets,
+                              cache.get("encoder_output"),
+                              cache.get("encoder_decoder_attention_bias"),
+                              bias,
+                              hparams,
+                              cache,
+                              nonpadding=features_to_nonpadding(
+                                  features, "targets"))
+
+        modality_name = hparams.name.get("targets",
+                                         modalities.get_name(target_modality))(
+                                             hparams, target_vocab_size)
+        with T.variable_scope(modality_name):
+            top = hparams.top.get("targets",
+                                  modalities.get_top(target_modality))
+            logits = dp(top, body_outputs, None, hparams, target_vocab_size)[0]
+
+        ret = T.squeeze(logits, axis=[1, 2, 3])
+        if partial_targets is not None:
+            # If the position is within the given partial targets, we alter the
+            # logits to always return those values.
+            # A faster approach would be to process the partial targets in one
+            # iteration in order to fill the corresponding parts of the cache.
+            # This would require broader changes, though.
+            vocab_size = T.shape(ret)[1]
+
+            def forced_logits():
+                return T.one_hot(T.tile(partial_targets[:, i], [beam_size]),
+                                 vocab_size, 0.0, -1e9)
+
+            ret = T.cond(T.less(i, partial_targets_length),
+                         forced_logits, lambda: ret)
+        return ret, cache
 
 
 """
+            initial_ids = sos_id * T.ones([PS.batch_size], dtype=T.int32)
+            decoded_ids, scores, cache = beam_search.beam_search(
+                symbols_to_logits_fn,
+                initial_ids,
+                PS.beam_size,
+                decode_length,
+                vocab_size,
+                alpha,
+                states=cache,
+                eos_id=eos_id,
+                stop_early=(PS.top_beams == 1))
+            if PS.top_beams == 1:
+                decoded_ids = decoded_ids[:, 0, 1:]
+                scores = scores[:, 0]
+            else:
+                decoded_ids = decoded_ids[:, :PS.top_beams, 1:]
+                scores = scores[:, :PS.top_beams]
+
+
     def get_config(self):
         c = super().get_config()
         c['PS'] = self.PS
@@ -187,7 +334,7 @@ class TokEmbed(KL.Embedding):
         ei = _get_initer(PS.init_stddev)
         er = KS.regularizers.l2(PS.l2_penalty) if PS.l2_penalty else None
         super().__init__(
-            input_dim=PS.vocab_size + 1,
+            input_dim=PS.vocab_size,
             output_dim=PS.hidden_size,
             embeddings_initializer=ei,
             embeddings_regularizer=er,
@@ -645,7 +792,7 @@ class PreProc(Processor):
         return super().build((None, input_shape))
 
     def compute_output_shape(self, input_shape):
-        return (input_shape,)
+        return (input_shape, )
 
     def call(self, inputs, **kw):
         return super().call([None, inputs], **kw)
