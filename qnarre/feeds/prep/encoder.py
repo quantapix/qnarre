@@ -86,7 +86,8 @@ class Splitter:
         return unicodedata.category(char).startswith('P')
 
 
-PAD, UNK, CLS, SEP, MASK = '[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]'
+PAD, UNK, CLS, SEP, MASK, SOS, EOS = ('[PAD]', '[UNK]', '[CLS]', '[SEP]',
+                                      '[MASK]', '[SOS]', '[EOS]')
 
 
 class BertEncoder(Splitter):

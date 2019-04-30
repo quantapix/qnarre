@@ -120,7 +120,6 @@ class Bert(KL.Layer):
 
 class Transformer(KL.Layer):
     typ_embed, pos_embed = None, None
-    unks, eos = None, None
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
@@ -158,9 +157,9 @@ class Transformer(KL.Layer):
             d = self.logits.output_shape
         return e, d
 
-    def embed(self, toks, **kw):
-        t, typ = toks
-        y = self.tok_embed(t, **kw)
+    def embed(self, ins, **kw):
+        tok, typ = ins
+        y = self.tok_embed(tok, **kw)
         if self.typ_embed:
             y = self.typ_embed([y, typ], **kw)
         if self.pos_embed:
@@ -168,138 +167,112 @@ class Transformer(KL.Layer):
         y = self.norm(y, **kw)
         return self.drop(y, **kw)
 
-    def encode(self, toks, **kw):
+    def encode(self, ins, **kw):
         y, b = None, None
-        if toks:
-            y = self.embed(toks, **kw)
+        if ins:
+            y = self.embed(ins, **kw)
             y, b = self.enc_stack(y, **kw)
         return y, b
 
-    def decode(self, toks, ctxt, bias, **kw):
+    def decode(self, ins, ctx, att, **kw):
         y = None
-        if toks:
-            y = self.embed(toks, **kw)
-            y = self.dec_stack([ctxt, bias, y], **kw)
+        if ins:
+            y = self.embed(ins, **kw)
+            y = self.dec_stack([ctx, att, y], **kw)
         return y
 
-    def to_logits(self, x, **kw):
+    def to_logits(self, x, unks=None, prior=None, **kw):
         xs = K.int_shape(x)
         y = K.reshape(x, (-1, xs[-1]))
         y = self.logits(y, **kw)
         ys = K.int_shape(y)
         y = K.reshape(y, xs[:-1] + ys[-1:])
-        if self.unks:
-            y = T.where(self.unks, y, self.fixed)
+        if unks:
+            y = T.where(unks, y, prior)
         return y
-
-    def to_log_prob(logits, reduce_axis=-1):
-        return logits - T.reduce_logsumexp(
-            logits, axis=reduce_axis, keepdims=True)
 
     def to_toks(self, x, **kw):
         pass
 
-    def not_done(self, i, *_):
-        d = i >= K.int_shape(self.unks)[-1]
-        if self.eos:
-            d |= T.reduce_all(self.eos)
-        return T.logical_not(d)
+    def sample(self, x):
+        t = self.PS.sampling_temp or 0.0
+        if self.PS.sampling_method == 'argmax':
+            t = 0.0
+        keep_top_k = self.PS.keep_top_k or -1
+        if t == 0.0:
+            # TF argmax doesn't handle >5 dimensions, so we reshape here.
+            sh = K.int_shape(x)
+            argmax = T.argmax(T.reshape(x, [-1, sh[-1]]), axis=1)
+            return T.reshape(argmax, sh[:-1])
+        assert t > 0.0
+        if keep_top_k != -1:
+            if keep_top_k <= 0:
+                raise ValueError("keep_top_k must either be -1 or positive.")
 
-    def dec_loop(self, i, next_id, decoded_ids, log_prob):
-        logits, cache = symbols_to_logits_fn(next_id, i, cache)
-        log_probs = common_layers.log_prob_from_logits(logits)
-        temperature = getattr(hparams, "sampling_temp", 0.0)
-        keep_top = getattr(hparams, "sampling_keep_top_k", -1)
-        if hparams.sampling_method == "argmax":
-            temperature = 0.0
-        next_id = common_layers.sample_with_temperature(
-            logits, temperature, keep_top)
-        hit_eos |= T.equal(next_id, eos_id)
+            vocab_size = shape_list(logits)[1]
 
-        log_prob_indices = T.stack(
-            [T.range(T.to_int64(PS.batch_size)), next_id], axis=1)
-        log_prob += T.gather_nd(log_probs, log_prob_indices)
+            k_largest = T.contrib.nn.nth_element(logits,
+                                                 n=keep_top_k,
+                                                 reverse=True)
+            k_largest = T.tile(T.reshape(k_largest, [-1, 1]), [1, vocab_size])
 
-        next_id = T.expand_dims(next_id, axis=1)
-        decoded_ids = T.concat([decoded_ids, next_id], axis=1)
-        return i + 1, next_id, decoded_ids, log_prob
+            # Force every position that is not in the top k to have probability near
+            # 0 by setting the logit to be very negative.
+            logits = T.where(T.less_equal(logits, k_largest),
+                             T.ones_like(logits) * -1e6, logits)
+
+        reshaped_logits = (T.reshape(logits, [-1, shape_list(logits)[-1]]) / t)
+        choices = T.multinomial(reshaped_logits, 1)
+        choices = T.reshape(choices,
+                            shape_list(logits)[:logits.get_shape().ndims - 1])
+        return choices
 
     def call(self, inputs, training=None, **kw):
         src, tgt = inputs
-        ctxt, bias = self.encode(src, **kw)
+        ctx, att = self.encode(src, **kw)
         if training:
-            y = self.decode(tgt, ctxt, bias, **kw)
+            y = self.decode(tgt, ctx, att, **kw)
             if y:
                 y = self.to_logits(y, **kw)
-                return self.to_toks(y, tgt, **kw)
-            return ctxt, bias
+                return self.to_toks(y, **kw)
+            return ctx, att
         if tgt:
             PS = self.PS
-            self.fixed = T.one_hot(tgt[0], PS.vocab_size, 0.0, -1e9)
-            self.unks = T.equal(tgt[0], PS.UNK)
-            self.eos = T.fill(tgt[0][:1], False)
             if PS.beam_size > 1:
+                toks = T.identity(tgt)
                 return
             else:
-                decoded_ids = T.zeros([PS.batch_size, 0], dtype=T.int64)
-                next_id = sos_id * T.ones([PS.batch_size, 1], dtype=T.int64)
-                initial_log_prob = T.zeros([PS.batch_size], dtype=T.float32)
-                _, _, decoded_ids, log_prob = T.while_loop(
-                    lambda *a: self.not_done(*a),
-                    lambda *a: self.dec_loop(*a),
-                    [T.constant(0), next_id, decoded_ids, initial_log_prob],
-                    shape_invariants=[
-                        T.TensorShape([]),
-                        T.TensorShape([None, None]),
-                        T.TensorShape([None, None]),
-                        T.TensorShape([None]),
-                    ],
-                )
-                scores = log_prob
-            return {"outputs": decoded_ids, "scores": scores, "cache": cache}
+                toks = tgt[0]
+                unks = T.equal(toks, PS.UNK)
+                prior = T.one_hot(toks, PS.vocab_size, 0.0, -1e9)
+                eos = T.fill(toks[:1], False)
+                scores = T.zeros(toks[:1])
 
-    def symbols_to_logits_fn(self, ids, i, cache):
-        ids = ids[:, -1:]
-        targets = T.expand_dims(T.expand_dims(ids, axis=2), axis=3)
-        targets = preprocess_targets(targets, i)
+                def not_done(i):
+                    d = i >= K.int_shape(tgt)[-1]
+                    if eos:
+                        d |= T.reduce_all(eos)
+                    return T.logical_not(d)
 
-        bias = decoder_self_attention_bias[:, :, i:i + 1, :i + 1]
+                def loop(i):
+                    y = self.decode(tgt, ctx, att, **kw)
+                    y = self.to_logits(y, unks, prior)
+                    lprb = y - T.reduce_logsumexp(y, axis=-1, keepdims=True)
+                    t = self.sample(y[:, i, :])
+                    nonlocal toks, unks, eos
+                    toks = T.tensor_scatter_nd_update(toks, indices, t)
+                    unks = T.tensor_scatter_nd_update(unks, indices, t)
+                    eos |= T.equal(t, PS.EOS)
+                    idx = T.stack([T.range(T.to_int64(PS.batch_size)), t],
+                                  axis=1)
+                    lprb += T.gather_nd(lprb, idx)
+                    return i + 1
 
-        with T.variable_scope("body"):
-            body_outputs = dp(self.decode,
-                              targets,
-                              cache.get("encoder_output"),
-                              cache.get("encoder_decoder_attention_bias"),
-                              bias,
-                              hparams,
-                              cache,
-                              nonpadding=features_to_nonpadding(
-                                  features, "targets"))
-
-        modality_name = hparams.name.get("targets",
-                                         modalities.get_name(target_modality))(
-                                             hparams, target_vocab_size)
-        with T.variable_scope(modality_name):
-            top = hparams.top.get("targets",
-                                  modalities.get_top(target_modality))
-            logits = dp(top, body_outputs, None, hparams, target_vocab_size)[0]
-
-        ret = T.squeeze(logits, axis=[1, 2, 3])
-        if partial_targets is not None:
-            # If the position is within the given partial targets, we alter the
-            # logits to always return those values.
-            # A faster approach would be to process the partial targets in one
-            # iteration in order to fill the corresponding parts of the cache.
-            # This would require broader changes, though.
-            vocab_size = T.shape(ret)[1]
-
-            def forced_logits():
-                return T.one_hot(T.tile(partial_targets[:, i], [beam_size]),
-                                 vocab_size, 0.0, -1e9)
-
-            ret = T.cond(T.less(i, partial_targets_length),
-                         forced_logits, lambda: ret)
-        return ret, cache
+                _, toks, scores = T.while_loop(
+                    not_done,
+                    loop, [T.constant(0)],
+                    shape_invariants=[T.TensorShape([])])
+            return {"outputs": toks, "scores": scores}
 
 
 """
