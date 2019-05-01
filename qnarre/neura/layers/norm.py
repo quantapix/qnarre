@@ -14,10 +14,9 @@
 # =============================================================================
 
 import qnarre.neura as Q
-import qnarre.neura.layers as L
 
 
-class LayerNorm(L.Layer):
+class LayerNorm(Q.Layer):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.supports_masking = True

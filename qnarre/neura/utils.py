@@ -73,6 +73,7 @@ class Params:
         ls = Q.SparseCategoricalCrossentropy(from_logits=True)
         ms = Q.SparseCategoricalAccuracy()
         ffn_act = _activation(self.ffn_act)
+        hidden_act = _activation(self.hidden_act)
         self.update(
             initializer=ir,
             regularizer=rr,
@@ -80,6 +81,7 @@ class Params:
             losses=ls,
             metrics=ms,
             ffn_act=ffn_act,
+            hidden_act=hidden_act,
         )
         return self
 

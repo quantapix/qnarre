@@ -16,10 +16,9 @@
 import numpy as np
 
 import qnarre.neura as Q
-import qnarre.neura.layers as L
 
 
-class TokEmbed(L.Embedding):
+class TokEmbed(Q.Embedding):
     def __init__(self, PS, **_):
         super().__init__(
             input_dim=PS.vocab_size,
@@ -31,7 +30,7 @@ class TokEmbed(L.Embedding):
         )
 
 
-class TypEmbed(L.Layer):
+class TypEmbed(Q.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -52,7 +51,7 @@ class TypEmbed(L.Layer):
         return tok + Q.dot(typ, self.gain)
 
 
-class PosEmbed(L.Layer):
+class PosEmbed(Q.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -72,7 +71,7 @@ class PosEmbed(L.Layer):
         return inputs + Q.expand_dims(self.bias, 0)
 
 
-class PosTiming(L.Layer):
+class PosTiming(Q.Layer):
     start = 0
     min_scale = 1.0
     max_scale = 1.0e4

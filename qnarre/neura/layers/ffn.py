@@ -14,10 +14,9 @@
 # =============================================================================
 
 import qnarre.neura as Q
-import qnarre.neura.layers as L
 
 
-class FFN(L.Layer):
+class FFN(Q.Layer):
     conv_pad = 'SAME'
 
     def __init__(self, PS, pre, post, conv_pad=None, **kw):
@@ -34,9 +33,9 @@ class DenseDense(FFN):
         super().__init__(*args, **kw)
         PS = self.PS
         kw = dict(kernel_initializer=PS.initializer, use_bias=True)
-        self.dense1 = L.Dense(PS.ffn_units, activation=PS.ffn_act, **kw)
-        self.drop = L.Dropout(PS.ffn_drop)
-        self.dense2 = L.Dense(PS.hidden_size, **kw)
+        self.dense1 = Q.Dense(PS.ffn_units, activation=PS.ffn_act, **kw)
+        self.drop = Q.Dropout(PS.ffn_drop)
+        self.dense2 = Q.Dense(PS.hidden_size, **kw)
 
     def call(self, inputs, pad_remover=None, **kw):
         x = inputs

@@ -13,15 +13,10 @@
 # limitations under the License.
 # =============================================================================
 
-import tensorflow as tf
-
+from qnarre.neura.layers.norm import LayerNorm
 from qnarre.neura.layers.ffn import ffns, DenseDense
 from qnarre.neura.layers.attent import attents, DotAttent
-from qnarre.neura.layers.norm import LayerNorm
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
-
-Layer = tf.keras.layers.Layer
-Embedding = tf.keras.layers.Embedding
 
 __all__ = (
     DenseDense,

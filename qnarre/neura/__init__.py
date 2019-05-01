@@ -14,10 +14,18 @@
 # =============================================================================
 
 import tensorflow as tf
+import tensorflow.summary as ts
 
+Conv1D = tf.keras.layers.Conv1D
 Adam = tf.keras.optimizers.Adam
+Dense = tf.keras.layers.Dense
+Embedding = tf.keras.layers.Embedding
 Event = tf.compat.v1.Event
+GradientTape = tf.GradientTape
+Input = tf.keras.Input
 L1L2 = tf.keras.regularizers.L1L2
+Layer = tf.keras.layers.Layer
+Model = tf.keras.Model
 ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint
 Relu = tf.keras.activations.relu
 SparseCategoricalAccuracy = tf.keras.metrics.SparseCategoricalAccuracy
@@ -35,16 +43,18 @@ cast_to_floatx = tf.keras.backend.cast_to_floatx
 concatenate = tf.keras.backend.concatenate
 constant = tf.keras.backend.constant
 cos = tf.keras.backend.cos
-create_file_writer = tf.summary.create_file_writer
+create_file_writer = ts.create_file_writer
 cumsum = tf.keras.backend.cumsum
 dot = tf.keras.backend.dot
+equal = tf.equal
 exp = tf.keras.backend.exp
 expand_dims = tf.keras.backend.expand_dims
 float16 = tf.float16
 float32 = tf.float32
 floatx = tf.keras.backend.floatx
+function = tf.function
 greater = tf.keras.backend.greater
-import_event = tf.summary.import_event
+import_event = None  # ts.import_event
 int_shape = tf.keras.backend.int_shape
 is_built_with_cuda = tf.test.is_built_with_cuda
 l2_normalize = tf.keras.backend.l2_normalize
@@ -55,8 +65,9 @@ moments = tf.nn.moments
 one_hot = tf.keras.backend.one_hot
 permute_dimensions = tf.keras.backend.permute_dimensions
 pow = tf.keras.backend.pow
+print = tf.print
 reshape = tf.keras.backend.reshape
-scalar = tf.summary.scalar
+scalar = ts.scalar
 sin = tf.keras.backend.sin
 softmax = tf.keras.activations.softmax
 sqrt = tf.keras.backend.sqrt

@@ -14,10 +14,9 @@
 # =============================================================================
 
 import qnarre.neura as Q
-import qnarre.neura.layers as L
 
 
-class Attent(L.Layer):
+class Attent(Q.Layer):
     def __init__(self, PS, pre, post, comp=None, **kw):
         super().__init__(**kw)
         self.PS = PS
@@ -58,7 +57,7 @@ class Attent(L.Layer):
         return self.post([s, y], **kw)
 
     def dense_comp(self, size, **kw):
-        return L.Dense(size,
+        return Q.Dense(size,
                        use_bias=False,
                        kernel_initializer=self.PS.initializer,
                        **kw)
@@ -79,7 +78,7 @@ class Attent(L.Layer):
         return Q.reshape(y, (-1, sh[1], sh[2] * sh[3]))
 
 
-class ConvComp(L.Layer):
+class ConvComp(Q.Layer):
     dilation_rate = (1, 1)
     padding = 'VALID'
 
@@ -92,7 +91,7 @@ class ConvComp(L.Layer):
         if padding:
             self.padding = padding
         kw = dict(dilation_rate=self.dilation_rate, padding='VALID')
-        self.conv = L.Conv1D(filters, ksize, **kw)
+        self.conv = Q.Conv1D(filters, ksize, **kw)
 
     def call(self, inputs, **kw):
         x = inputs
@@ -109,7 +108,7 @@ class ConvComp(L.Layer):
 class DotAttent(Attent):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self.drop = L.Dropout(self.PS.attn_drop)
+        self.drop = Q.Dropout(self.PS.attn_drop)
 
     def scores(self, q, k, v, b, **kw):
         y = Q.matmul(q, k, transpose_b=True)
