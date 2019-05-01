@@ -13,38 +13,30 @@
 # limitations under the License.
 # =============================================================================
 
-import numpy as N
-import tensorflow as T
-
+import qnarre.neura as Q
+import qnarre.neura.layers as L
 import qnarre.neura.utils as U
 
-from qnarre.neura.layers.norm import LayerNorm
-from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
-KS = T.keras
-K = KS.backend
-KL = KS.layers
-
-
-class Trafo(KL.Layer):
+class Trafo(L.Layer):
     typ_embed, pos_embed = None, None
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.tok_embed = TokEmbed(PS)
+        self.tok_embed = L.TokEmbed(PS)
         if PS.token_types:
-            self.typ_embed = TypEmbed(PS)
+            self.typ_embed = L.TypEmbed(PS)
         if PS.pos_embed:
-            p = PosEmbed(PS) if PS.pos_embed == 'embed' else None
-            p = PosTiming(PS) if PS.pos_embed == 'timing' else p
+            p = L.PosEmbed(PS) if PS.pos_embed == 'embed' else None
+            p = L.PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
-        self.norm = LayerNorm()
-        self.drop = KL.Dropout(PS.hidden_drop)
-        pre, post = PreProc(PS), PostProc(PS)
+        self.norm = L.LayerNorm()
+        self.drop = L.Dropout(PS.hidden_drop)
+        pre, post = L.PreProc(PS), L.PostProc(PS)
         self.enc_stack = EncodeStack(PS, pre, post)
         self.dec_stack = DecodeStack(PS, pre, post)
-        self.logits = KL.Dense(PS.vocab_size, activation=None)
+        self.logits = L.Dense(PS.vocab_size, activation=None)
 
     def build(self, input_shape):
         _, tgt = input_shape
@@ -90,13 +82,13 @@ class Trafo(KL.Layer):
         return y
 
     def to_logits(self, x, unks=None, prior=None, **kw):
-        xs = K.int_shape(x)
-        y = K.reshape(x, (-1, xs[-1]))
+        xs = Q.int_shape(x)
+        y = Q.reshape(x, (-1, xs[-1]))
         y = self.logits(y, **kw)
-        ys = K.int_shape(y)
-        y = K.reshape(y, xs[:-1] + ys[-1:])
+        ys = Q.int_shape(y)
+        y = Q.reshape(y, xs[:-1] + ys[-1:])
         if unks:
-            y = T.where(unks, y, prior)
+            y = Q.where(unks, y, prior)
         return y
 
     def to_toks(self, x, **kw):
@@ -107,10 +99,11 @@ class Trafo(KL.Layer):
         if self.PS.sampling_method == 'argmax':
             t = 0.0
         keep_top_k = self.PS.keep_top_k or -1
+        """
         if t == 0.0:
             # TF argmax doesn't handle >5 dimensions, so we reshape here.
-            sh = K.int_shape(x)
-            argmax = T.argmax(T.reshape(x, [-1, sh[-1]]), axis=1)
+            sh = Q.int_shape(x)
+            argmax = Q.argmax(T.reshape(x, [-1, sh[-1]]), axis=1)
             return T.reshape(argmax, sh[:-1])
         assert t > 0.0
         if keep_top_k != -1:
@@ -134,6 +127,7 @@ class Trafo(KL.Layer):
         choices = T.reshape(choices,
                             shape_list(logits)[:logits.get_shape().ndims - 1])
         return choices
+        """
 
     def call(self, inputs, training=None, **kw):
         src, tgt = inputs
@@ -157,7 +151,7 @@ class Trafo(KL.Layer):
                 scores = T.zeros(toks[:1])
 
                 def not_done(i):
-                    d = i >= K.int_shape(tgt)[-1]
+                    d = i >= Q.int_shape(tgt)[-1]
                     if eos:
                         d |= T.reduce_all(eos)
                     return T.logical_not(d)
@@ -210,21 +204,21 @@ class Trafo(KL.Layer):
 """
 
 
-class Stack(KL.Layer):
+class Stack(L.Layer):
     prox_bias = None
 
     @staticmethod
     def proximity(slen):
-        p = K.arange(slen, dtype=K.floatx())
-        p = K.expand_dims(p, 0) - K.expand_dims(p, 1)
-        return K.expand_dims(K.expand_dims(-T.math.log1p(K.abs(p)), 0), 0)
+        p = Q.arange(slen, dtype=Q.floatx())
+        p = Q.expand_dims(p, 0) - Q.expand_dims(p, 1)
+        return Q.expand_dims(Q.expand_dims(-Q.log1p(Q.abs(p)), 0), 0)
 
     @staticmethod
     def attn_bias(mask):
-        f = K.floatx()
-        fmin = T.float16.min if f == 'float16' else T.float32.min
-        b = K.cast(mask, f) * fmin
-        return K.expand_dims(K.expand_dims(b, axis=1), axis=1)
+        f = Q.floatx()
+        fmin = Q.float16.min if f == 'float16' else Q.float32.min
+        b = Q.cast(mask, f) * fmin
+        return Q.expand_dims(Q.expand_dims(b, axis=1), axis=1)
 
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
@@ -285,11 +279,11 @@ class DecodeStack(Stack):
         PS = self.PS
         if PS.causal_refl:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
-                p = K.cumsum(K.cumsum(sb, axis=1), axis=1)
-                p = K.greater(K.expand_dims(p, 1), K.expand_dims(p, 2))
-                sb = K.expand_dims(K.cast(p, K.floatx()) * -1e9, 1)
+                p = Q.cumsum(Q.cumsum(sb, axis=1), axis=1)
+                p = Q.greater(Q.expand_dims(p, 1), Q.expand_dims(p, 2))
+                sb = Q.expand_dims(Q.cast(p, Q.floatx()) * -1e9, 1)
             else:
-                ln = K.int_shape(t)[1]
+                ln = Q.int_shape(t)[1]
                 sh = (1, 1, ln, ln)
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 sb = -1e9 * (1.0 - b)
@@ -300,15 +294,15 @@ class DecodeStack(Stack):
         y = self.pre.drop(t, **kw)
         for d in self.decs:
             y = d([x, b, y, sb], **kw)
-        return K.expand_dims(self.post([t, y], **kw), axis=2)
+        return Q.expand_dims(self.post([t, y], **kw), axis=2)
 
 
-class Encoder(KL.Layer):
+class Encoder(L.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.refl = _attns[PS.refl_type](*a)
-        self.ffn = _ffns[PS.ffn_type](*a)
+        self.refl = L.attents[PS.refl_type](*a)
+        self.ffn = L.ffns[PS.ffn_type](*a)
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
@@ -319,13 +313,13 @@ class Encoder(KL.Layer):
         return self.ffn(y, **kw)
 
 
-class Decoder(KL.Layer):
+class Decoder(L.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.refl = _attns[PS.refl_type](*a)
-        self.attn = _attns[PS.attn_type](*a)
-        self.ffn = _ffns[PS.ffn_type](*a, conv_pad='LEFT')
+        self.refl = L.attents[PS.refl_type](*a)
+        self.attn = L.attents[PS.attn_type](*a)
+        self.ffn = L.ffns[PS.ffn_type](*a, conv_pad='LEFT')
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape

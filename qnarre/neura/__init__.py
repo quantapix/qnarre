@@ -12,3 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+
+import tensorflow as tf
+
+Adam = tf.keras.optimizers.Adam
+Event = tf.compat.v1.Event
+L1L2 = tf.keras.regularizers.L1L2
+ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint
+Relu = tf.keras.activations.relu
+SparseCategoricalAccuracy = tf.keras.metrics.SparseCategoricalAccuracy
+SparseCategoricalCrossentropy = tf.keras.losses.SparseCategoricalCrossentropy
+Tanh = tf.keras.activations.tanh
+TensorBoard = tf.keras.callbacks.TensorBoard
+TensorShape = tf.TensorShape
+TruncatedNormal = tf.keras.initializers.TruncatedNormal
+abs = tf.keras.backend.abs
+arange = tf.keras.backend.arange
+argmax = tf.argmax
+as_dtype = tf.as_dtype
+cast = tf.keras.backend.cast
+cast_to_floatx = tf.keras.backend.cast_to_floatx
+concatenate = tf.keras.backend.concatenate
+constant = tf.keras.backend.constant
+cos = tf.keras.backend.cos
+create_file_writer = tf.summary.create_file_writer
+cumsum = tf.keras.backend.cumsum
+dot = tf.keras.backend.dot
+exp = tf.keras.backend.exp
+expand_dims = tf.keras.backend.expand_dims
+float16 = tf.float16
+float32 = tf.float32
+floatx = tf.keras.backend.floatx
+greater = tf.keras.backend.greater
+import_event = tf.summary.import_event
+int_shape = tf.keras.backend.int_shape
+is_built_with_cuda = tf.test.is_built_with_cuda
+l2_normalize = tf.keras.backend.l2_normalize
+log1p = tf.math.log1p
+matmul = tf.matmul
+mean = tf.keras.backend.mean
+moments = tf.nn.moments
+one_hot = tf.keras.backend.one_hot
+permute_dimensions = tf.keras.backend.permute_dimensions
+pow = tf.keras.backend.pow
+reshape = tf.keras.backend.reshape
+scalar = tf.summary.scalar
+sin = tf.keras.backend.sin
+softmax = tf.keras.activations.softmax
+sqrt = tf.keras.backend.sqrt
+square = tf.keras.backend.square
+squeeze = tf.keras.backend.squeeze
+sum = tf.keras.backend.sum
+tanh = tf.keras.backend.tanh
+where = tf.where

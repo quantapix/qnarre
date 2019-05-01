@@ -83,14 +83,6 @@ def model_for(params):
     return m
 
 
-def optimizer_for(params):
-    PS = params
-    return KS.optimizers.Adam(learning_rate=PS.adam_beta1,
-                              beta_1=PS.adam_beta1,
-                              beta_2=PS.adam_beta2,
-                              epsilon=PS.adam_epsilon)
-
-
 _params = dict(
     batch_size=4,
     hidden_size=8,
@@ -99,13 +91,6 @@ _params = dict(
     tgt_len=0,
     max_pos=0,
     vocab_size=20,
-    adam_lr=0.001,
-    adam_beta1=0.9,
-    adam_beta2=0.999,
-    adam_epsilon=1e-7,
-    initer_stddev=0.02,
-    regular_l1=0,
-    regular_l2=0,
     token_types=8,
 )
 
@@ -117,33 +102,18 @@ _params.update(
 )
 
 
-def load_params():
-    # f = 'channels_first' if T.test.is_built_with_cuda() else 'channels_last'
-    # U.Params(_params, data_format=f)
-    PS = U.Params(_params)
-    i = KS.initializers.TruncatedNormal(stddev=PS.initer_stddev)
-    r = None
-    if PS.regular_l1 or PS.regular_l2:
-        r = KS.regularizers.L1L2(PS.regular_l1, PS.regular_l2)
-    return PS.update(initializer=i, regularizer=r)
-
-
 def main(_):
-    PS = load_params()
-
+    PS = U.Params(_params).init_comps()
     model = model_for(PS)
-    optimizer = optimizer_for(PS)
-    losses = KS.losses.SparseCategoricalCrossentropy(from_logits=True)
-    metrics = KS.metrics.SparseCategoricalAccuracy()
 
     @T.function
     def train_step(x, y):
         with T.GradientTape() as tape:
             logits = model(x)
-            loss = losses(y, logits)
-            acc = metrics(y, logits)
+            loss = PS.losses(y, logits)
+            acc = PS.metrics(y, logits)
         grads = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+        PS.optimizer.apply_gradients(zip(grads, model.trainable_variables))
         return loss, acc
 
     def train():
@@ -152,12 +122,12 @@ def main(_):
             step += 1
             loss, acc = train_step(x, y)
             if T.equal(step % 10, 0):
-                m = metrics.result()
+                m = PS.metrics.result()
                 T.print('Step:', step, ', loss:', loss, ', acc:', m)
         return step, loss, acc
 
     step, loss, acc = train()
-    print('Final step:', step, ', loss:', loss, ', acc:', metrics.result())
+    print('Final step:', step, ', loss:', loss, ', acc:', PS.metrics.result())
 
 
 if __name__ == '__main__':

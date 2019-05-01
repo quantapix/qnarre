@@ -13,16 +13,13 @@
 # limitations under the License.
 # =============================================================================
 
-import numpy as N
-import tensorflow as T
+import numpy as np
+
+import qnarre.neura as Q
+import qnarre.neura.layers as L
 
 
-KS = T.keras
-K = KS.backend
-KL = KS.layers
-
-
-class TokEmbed(KL.Embedding):
+class TokEmbed(L.Embedding):
     def __init__(self, PS, **_):
         super().__init__(
             input_dim=PS.vocab_size,
@@ -34,7 +31,7 @@ class TokEmbed(KL.Embedding):
         )
 
 
-class TypEmbed(KL.Layer):
+class TypEmbed(L.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -51,11 +48,11 @@ class TypEmbed(KL.Layer):
 
     def call(self, inputs, **_):
         tok, typ = inputs
-        typ = K.one_hot(typ, self.PS.token_types)
-        return tok + K.dot(typ, self.gain)
+        typ = Q.one_hot(typ, self.PS.token_types)
+        return tok + Q.dot(typ, self.gain)
 
 
-class PosEmbed(KL.Layer):
+class PosEmbed(L.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -72,10 +69,10 @@ class PosEmbed(KL.Layer):
         return super().build(input_shape)
 
     def call(self, inputs, **_):
-        return inputs + K.expand_dims(self.bias, 0)
+        return inputs + Q.expand_dims(self.bias, 0)
 
 
-class PosTiming(KL.Layer):
+class PosTiming(L.Layer):
     start = 0
     min_scale = 1.0
     max_scale = 1.0e4
@@ -94,12 +91,12 @@ class PosTiming(KL.Layer):
         _, tlen, hsize = input_shape
         assert hsize % 2 == 0
         n = hsize // 2
-        s = N.log(self.max_scale / self.min_scale) / max(n - 1, 1)
-        s = self.min_scale * K.exp(K.arange(n, dtype=K.floatx()) * -s)
-        p = K.arange(tlen, dtype=K.floatx()) + self.start
-        p = K.expand_dims(p, 1) * K.expand_dims(s, 0)
-        p = K.concatenate([K.sin(p), K.cos(p)], axis=1)
-        self.bias = K.expand_dims(p, axis=0)
+        s = np.log(self.max_scale / self.min_scale) / max(n - 1, 1)
+        s = self.min_scale * Q.exp(Q.arange(n, dtype=Q.floatx()) * -s)
+        p = Q.arange(tlen, dtype=Q.floatx()) + self.start
+        p = Q.expand_dims(p, 1) * Q.expand_dims(s, 0)
+        p = Q.concatenate([Q.sin(p), Q.cos(p)], axis=1)
+        self.bias = Q.expand_dims(p, axis=0)
         return super().build(input_shape)
 
     def call(self, inputs, **_):

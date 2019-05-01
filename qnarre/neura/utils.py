@@ -13,41 +13,41 @@
 # limitations under the License.
 # =============================================================================
 
-import io
-import itertools
+import numpy as np
+import pathlib as pth
+import datetime as dt
 
-import pathlib as P
-
-from datetime import datetime
-
-import sklearn.metrics
-
-import numpy as N
-import tensorflow as T
-import matplotlib.pyplot as plt
-
-from absl import flags as F
-from google.protobuf import struct_pb2
+from absl import flags
 from tensorboard.plugins import hparams
 
-KS = T.keras
-K = KS.backend
-KL = KS.layers
-KC = KS.callbacks
+import qnarre.neura as Q
+
+_params = dict(
+    adam_beta1=0.9,
+    adam_beta2=0.999,
+    adam_epsilon=1e-7,
+    adam_lr=0.001,
+    initer_stddev=0.02,
+    regular_l1=0,
+    regular_l2=0,
+)
 
 
 class Params:
     def __init__(self, params, **kw):
-        self.override(params, **kw)
+        f = 'channels_' + 'first' if Q.is_built_with_cuda() else 'last'
+        f = kw.pop('data_format', f)
+        self.override(params, data_format=f, **kw)
 
     @property
     def hparams(self):
         return {'optimizer': self.optimizer}
 
     def override(self, params, **kw):
-        ps = params.copy()
+        ps = _params.copy()
+        ps.update(**params)
         ps.update(**kw)
-        f = F.FLAGS
+        f = flags.FLAGS
         for k, v in ps.items():
             if hasattr(f, k):
                 v = getattr(f, k)
@@ -60,6 +60,48 @@ class Params:
         for k, v in kw.items():
             setattr(self, k, v)
         return self
+
+    def init_comps(self):
+        ir = Q.TruncatedNormal(stddev=self.initer_stddev)
+        rr = None
+        if self.regular_l1 or self.regular_l2:
+            rr = Q.L1L2(self.regular_l1, self.regular_l2)
+        op = Q.Adam(learning_rate=self.adam_beta1,
+                    beta_1=self.adam_beta1,
+                    beta_2=self.adam_beta2,
+                    epsilon=self.adam_epsilon)
+        ls = Q.SparseCategoricalCrossentropy(from_logits=True)
+        ms = Q.SparseCategoricalAccuracy()
+        ffn_act = _activation(self.ffn_act)
+        self.update(
+            initializer=ir,
+            regularizer=rr,
+            optimizer=op,
+            losses=ls,
+            metrics=ms,
+            ffn_act=ffn_act,
+        )
+        return self
+
+
+def _gelu(x):
+    c = Q.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * Q.pow(x, 3))))
+    c = (c + 1.0) * 0.5
+    return x * c
+
+
+def _activation(name):
+    if isinstance(name, str):
+        n = name.lower()
+        if n == 'gelu':
+            return _gelu
+        if n == 'relu':
+            return Q.Relu
+        if n == 'tanh':
+            return Q.Tanh
+        assert n == 'linear'
+        name = None
+    return name
 
 
 class Features:
@@ -77,11 +119,11 @@ class Features:
 
     @property
     def tf_dtypes(self):
-        return tuple([T.as_dtype(self.dtypes[k]) for k in self.keys])
+        return tuple([Q.as_dtype(self.dtypes[k]) for k in self.keys])
 
     @property
     def tf_shapes(self):
-        return tuple([T.TensorShape(self.shapes[k]) for k in self.keys])
+        return tuple([Q.TensorShape(self.shapes[k]) for k in self.keys])
 
     def input_kw(self, key):
         return dict(shape=self.shapes[key], dtype=self.dtypes[key])
@@ -93,37 +135,34 @@ def train_sess(params, model_fn, dset_fn, cbacks=None, sid=None):
     m = model_fn(PS)
     ds_train = dset_fn('train', PS)
     ds_test = dset_fn('test', PS)
-    sp = P.Path(PS.save_dir)
+    sp = pth.Path(PS.save_dir)
     if sp.exists():
         m.train_on_batch(ds_train[:1])
         m.load_weights(sp)
     m.summary()
-    sid = sid or datetime.now().strftime('%Y%m%d-%H%M%S')
+    sid = sid or dt.datetime.now().strftime('%Y%m%d-%H%M%S')
     p = PS.log_dir + '/train/' + sid
-    writer = T.summary.create_file_writer(p)
+    writer = Q.summary.create_file_writer(p)
     sum_s = hparams.summary.session_start_pb(hparams=PS.hparams)
     cbs = cbacks or []
     cbs.append(
-        KC.TensorBoard(
-            log_dir=p,
-            histogram_freq=1,
-            embeddings_freq=0,
-            update_freq='epoch'))
+        Q.TensorBoard(log_dir=p,
+                      histogram_freq=1,
+                      embeddings_freq=0,
+                      update_freq='epoch'))
     # cbacKS.append(
     #     KC.EarlyStopping(
     #         monitor='val_loss', min_delta=1e-2, patience=2, verbose=True))
     if sp.exists():
         cbs.append(
-            KC.ModelCheckpoint(
-                model_save_path=sp,
-                save_best_only=True,
-                monitor='val_loss',
-                verbose=True))
-    hist = m.fit(
-        ds_train,
-        callbacks=cbacks,
-        epochs=PS.train_epochs,
-        validation_data=ds_test)
+            Q.ModelCheckpoint(model_save_path=sp,
+                              save_best_only=True,
+                              monitor='val_loss',
+                              verbose=True))
+    hist = m.fit(ds_train,
+                 callbacks=cbacks,
+                 epochs=PS.train_epochs,
+                 validation_data=ds_test)
     print(f'History: {hist.history}')
     if sp.exists():
         m.save_weights(sp, save_format='tf')
@@ -131,12 +170,12 @@ def train_sess(params, model_fn, dset_fn, cbacks=None, sid=None):
     print(f'\nTest loss, acc: {loss}, {acc}')
 
     with writer.as_default():
-        e = T.compat.v1.Event(summary=sum_s).SerializeToString()
-        T.summary.import_event(e)
-        T.summary.scalar('accuracy', acc, step=1, description='Accuracy')
+        e = Q.Event(summary=sum_s).SerializeToString()
+        Q.import_event(e)
+        Q.scalar('accuracy', acc, step=1, description='Accuracy')
         sum_e = hparams.summary.session_end_pb(hparams.api_pb2.STATUS_SUCCESS)
-        e = T.compat.v1.Event(summary=sum_e).SerializeToString()
-        T.summary.import_event(e)
+        e = Q.Event(summary=sum_e).SerializeToString()
+        Q.import_event(e)
 
 
 def train_loop(params, model_fn, dset_fn, cbacks=None):
@@ -144,34 +183,23 @@ def train_loop(params, model_fn, dset_fn, cbacks=None):
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     opts = ['adam', 'sgd']
-    writer = T.summary.create_file_writer(PS.log_dir + '/train')
+    writer = Q.create_file_writer(PS.log_dir + '/train')
     with writer.as_default():
-        s = _to_summary_pb(nus, drs, opts)
-        e = T.compat.v1.Event(summary=s).SerializeToString()
-        T.summary.import_event(e)
+        s = None  # _to_summary_pb(nus, drs, opts)
+        e = Q.Event(summary=s).SerializeToString()
+        Q.import_event(e)
     for nu in nus:
         for dr in drs:
             for opt in opts:
                 kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
-                sid = datetime.now().strftime('%Y%m%d-%H%M%S')
+                sid = dt.datetime.now().strftime('%Y%m%d-%H%M%S')
                 print(f'--- Running session {sid}:', kw)
                 PS.update(**kw)
                 train_sess(PS, model_fn, dset_fn, cbacks, sid=sid)
+    return
 
 
-def adam_opt(params):
-    PS = params
-    return KS.Adam(
-        learning_rate=LRSchedule(),
-        beta_1=PS.adam_beta1,
-        beta_2=PS.adam_beta2,
-        epsilon=PS.adam_epsilon)
-
-
-def xent_loss(y, x):
-    return K.sparse_categorical_crossentropy(y, x, from_logits=True)
-
-
+"""
 class LRSchedule(KS.optimizers.schedules.LearningRateSchedule):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
@@ -213,9 +241,9 @@ def ones_band_part(rows, cols, num_lower, num_upper, out_shape=None):
             band = band.reshape(out_shape)
         band = T.constant(band, T.float32)
     else:
-        band = T.matrix_band_part(
-            T.ones([rows, cols]), T.cast(num_lower, T.int64),
-            T.cast(num_upper, T.int64))
+        band = T.matrix_band_part(T.ones([rows, cols]),
+                                  T.cast(num_lower, T.int64),
+                                  T.cast(num_upper, T.int64))
         if out_shape:
             band = T.reshape(band, out_shape)
     return band
@@ -227,7 +255,7 @@ class PadRemover:
         self.origin = None
         with T.name_scope("pad_reduce/get_ids"):
             mask = T.reshape(mask, [-1])
-            self.ids = K.cast(T.where(mask < 1e-9), 'int32')
+            self.ids = Q.cast(T.where(mask < 1e-9), 'int32')
             self.origin = T.shape(mask)[:1]
 
     def remove(self, x):
@@ -235,7 +263,7 @@ class PadRemover:
             return T.gather_nd(x, indices=self.ids)
 
     def restore(self, x):
-        sh = T.concat([self.origin, K.int_shape(x)[1:]], axis=0),
+        sh = T.concat([self.origin, Q.int_shape(x)[1:]], axis=0),
         with T.name_scope("pad_reduce/restore"):
             return T.scatter_nd(indices=self.ids, updates=x, shape=sh)
 
@@ -258,8 +286,8 @@ def _to_plot(cm, names):
     ticks = N.arange(len(names))
     plt.xticks(ticks, names, rotation=45)
     plt.yticks(ticks, names)
-    cm = N.around(
-        cm.astype('float') / cm.sum(axis=1)[:, N.newaxis], decimals=2)
+    cm = N.around(cm.astype('float') / cm.sum(axis=1)[:, N.newaxis],
+                  decimals=2)
     threshold = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         color = "white" if cm[i, j] > threshold else "black"
@@ -289,21 +317,18 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
     opts_val.extend(optimizer_list)
     return hparams.summary.experiment_pb(
         hparam_infos=[
-            hparams.api_pb2.HParamInfo(
-                name='num_units',
-                display_name='Number of units',
-                type=hparams.api_pb2.DATA_TYPE_FLOAT64,
-                domain_discrete=nus_val),
-            hparams.api_pb2.HParamInfo(
-                name='dropout_rate',
-                display_name='Dropout rate',
-                type=hparams.api_pb2.DATA_TYPE_FLOAT64,
-                domain_discrete=drs_val),
-            hparams.api_pb2.HParamInfo(
-                name='optimizer',
-                display_name='Optimizer',
-                type=hparams.api_pb2.DATA_TYPE_STRING,
-                domain_discrete=opts_val)
+            hparams.api_pb2.HParamInfo(name='num_units',
+                                       display_name='Number of units',
+                                       type=hparams.api_pb2.DATA_TYPE_FLOAT64,
+                                       domain_discrete=nus_val),
+            hparams.api_pb2.HParamInfo(name='dropout_rate',
+                                       display_name='Dropout rate',
+                                       type=hparams.api_pb2.DATA_TYPE_FLOAT64,
+                                       domain_discrete=drs_val),
+            hparams.api_pb2.HParamInfo(name='optimizer',
+                                       display_name='Optimizer',
+                                       type=hparams.api_pb2.DATA_TYPE_STRING,
+                                       domain_discrete=opts_val)
         ],
         metric_infos=[
             hparams.api_pb2.MetricInfo(
@@ -315,7 +340,6 @@ def _to_summary_pb(num_units_list, dropout_rate_list, optimizer_list):
 def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
     import re
     import collections as co
-    """Compute the union of the current variables and checkpoint variables."""
     assignment_map = {}
     initialized_variable_names = {}
 
@@ -339,3 +363,4 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
         initialized_variable_names[name + ":0"] = 1
 
     return (assignment_map, initialized_variable_names)
+"""

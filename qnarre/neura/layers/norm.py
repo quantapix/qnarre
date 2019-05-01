@@ -13,28 +13,25 @@
 # limitations under the License.
 # =============================================================================
 
-import tensorflow as T
-
-KS = T.keras
-K = KS.backend
-KL = KS.layers
+import qnarre.neura as Q
+import qnarre.neura.layers as L
 
 
-class LayerNorm(KL.Layer):
+class LayerNorm(L.Layer):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.supports_masking = True
 
     def build(self, input_shape):
-        kw = dict(shape=input_shape[-1], trainable=True)
-        self.gain = self.add_weight(initializer='ones', **kw)
-        self.bias = self.add_weight(initializer='zeros', **kw)
+        sh = input_shape[-1]
+        self.gain = self.add_weight(shape=sh, initializer='ones')
+        self.bias = self.add_weight(shape=sh, initializer='zeros')
         return super().build(input_shape)
 
     def call(self, inputs, **_):
         x = inputs
-        m = K.mean(x, axis=-1, keepdims=True)
-        v = K.mean(K.square(x - m), axis=-1, keepdims=True)
-        e = K.constant(1e-5, dtype=K.floatx())
-        y = (x - m) / K.sqrt(v + e)
+        m = Q.mean(x, axis=-1, keepdims=True)
+        v = Q.mean(Q.square(x - m), axis=-1, keepdims=True)
+        e = Q.constant(1e-5, dtype=Q.floatx())
+        y = (x - m) / Q.sqrt(v + e)
         return self.gain * y + self.bias
