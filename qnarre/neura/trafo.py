@@ -24,24 +24,6 @@ K = KS.backend
 KL = KS.layers
 
 
-def _get_initer(stddev):
-    return KS.initializers.TruncatedNormal(stddev=stddev)
-
-
-class TokEmbed(KL.Embedding):
-    def __init__(self, PS, **_):
-        ei = _get_initer(PS.init_stddev)
-        er = KS.regularizers.l2(PS.l2_penalty) if PS.l2_penalty else None
-        super().__init__(
-            input_dim=PS.vocab_size,
-            output_dim=PS.hidden_size,
-            embeddings_initializer=ei,
-            embeddings_regularizer=er,
-            input_length=PS.ctx_len,
-            mask_zero=True,
-        )
-
-
 class Trafo(KL.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
@@ -69,7 +51,7 @@ class Trafo(KL.Layer):
         y = K.reshape(x, (-1, xs[-1]))
         y = self.logits(y, **kw)
         ys = K.int_shape(y)
-        y = K.reshape(y, (-1,) + xs[1:-1] + ys[-1:])
+        y = K.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
         if unks:
             y = T.where(unks, y, prior)
         return y
@@ -115,13 +97,16 @@ _params = dict(
     learn_rate=5e-6,
     ctx_len=16,
     tgt_len=0,
+    max_pos=0,
     vocab_size=20,
     adam_lr=0.001,
     adam_beta1=0.9,
     adam_beta2=0.999,
     adam_epsilon=1e-7,
-    init_stddev=0.02,
-    l2_penalty=0,
+    initer_stddev=0.02,
+    regular_l1=0,
+    regular_l2=0,
+    token_types=8,
 )
 
 _params.update(
@@ -132,8 +117,19 @@ _params.update(
 )
 
 
-def main(_):
+def load_params():
+    # f = 'channels_first' if T.test.is_built_with_cuda() else 'channels_last'
+    # U.Params(_params, data_format=f)
     PS = U.Params(_params)
+    i = KS.initializers.TruncatedNormal(stddev=PS.initer_stddev)
+    r = None
+    if PS.regular_l1 or PS.regular_l2:
+        r = KS.regularizers.L1L2(PS.regular_l1, PS.regular_l2)
+    return PS.update(initializer=i, regularizer=r)
+
+
+def main(_):
+    PS = load_params()
 
     model = model_for(PS)
     optimizer = optimizer_for(PS)
