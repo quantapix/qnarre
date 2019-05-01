@@ -20,18 +20,19 @@ import tensorflow as T
 
 def dataset(params, _):
     PS = params
-    PS.update(PAD=0, UNK=1, BEG=2, END=3, vocab_size=20, tgt_len=PS.src_len)
+    PS.update(PAD=0, UNK=1, BEG=2, END=3, vocab_size=20, tgt_len=PS.ctx_len)
+    t, sh = T.int32, T.TensorShape((PS.ctx_len, ))
     return T.data.Dataset.from_generator(
         lambda: _generator(PS),
-        PS.features.tf_dtypes,
-        PS.features.tf_shapes,
+        ((t, t, t), t),
+        ((sh, sh, sh), sh),
     )
 
 
 def _generator(PS):
-    sl = PS.src_len
-    for _ in range(1000):
+    sl = PS.ctx_len
+    for _ in range(10000):
         n = randint(1, sl - 2)
         c = randint(0, 9) + 10
         s = [PS.BEG] + [c] * n + [PS.END] + [PS.PAD] * (sl - n - 2)
-        yield s, [0] * sl, s
+        yield (s, [0] * sl, [PS.UNK] * sl), s

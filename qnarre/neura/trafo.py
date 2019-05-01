@@ -16,16 +16,69 @@
 import tensorflow as T
 
 from qnarre.neura import utils as U
-from qnarre.neura.layers import Squad, SquadLoss
+# from qnarre.neura.layers import Trafo
 from qnarre.feeds.dset.trafo_ds import dataset as trafo_ds
 
 KS = T.keras
+K = KS.backend
+KL = KS.layers
+
+
+def _get_initer(stddev):
+    return KS.initializers.TruncatedNormal(stddev=stddev)
+
+
+class TokEmbed(KL.Embedding):
+    def __init__(self, PS, **_):
+        ei = _get_initer(PS.init_stddev)
+        er = KS.regularizers.l2(PS.l2_penalty) if PS.l2_penalty else None
+        super().__init__(
+            input_dim=PS.vocab_size,
+            output_dim=PS.hidden_size,
+            embeddings_initializer=ei,
+            embeddings_regularizer=er,
+            input_length=PS.ctx_len,
+            mask_zero=True,
+        )
+
+
+class Trafo(KL.Layer):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.PS = PS
+        self.tok_embed = TokEmbed(PS)
+        self.enc_stack = KL.Dense(2 * PS.hidden_size, activation='relu')
+        self.dec_stack = KL.Dense(PS.hidden_size, activation='relu')
+        self.logits = KL.Dense(PS.vocab_size, activation=None)
+
+    def build(self, input_shape):
+        ctx, _, tgt = input_shape
+        return super().build(input_shape)
+
+    def call(self, inputs, training=None, **kw):
+        ctx, _, tgt = inputs
+        y = self.tok_embed(ctx, **kw)
+        y = self.enc_stack(y, **kw)
+        y = self.dec_stack(y, **kw)
+        if training:
+            print('training...')
+        return self.to_logits(y, **kw)
+
+    def to_logits(self, x, unks=None, prior=None, **kw):
+        xs = K.int_shape(x)
+        y = K.reshape(x, (-1, xs[-1]))
+        y = self.logits(y, **kw)
+        ys = K.int_shape(y)
+        y = K.reshape(y, (-1,) + xs[1:-1] + ys[-1:])
+        if unks:
+            y = T.where(unks, y, prior)
+        return y
 
 
 def dataset_for(params, kind):
     PS = params
     ds = trafo_ds(PS, kind)
-    n = 100
+    n = 1000
     ds = ds.take(n)
     if kind == 'train':
         ds = ds.shuffle(n)
@@ -35,18 +88,13 @@ def dataset_for(params, kind):
 
 def model_for(params):
     PS = params
-    FS = PS.features
-    seq = KS.Input(**FS.input_kw(FS.SEQ))
-    typ = KS.Input(**FS.input_kw(FS.TYP))
-    opt = KS.Input(**FS.input_kw(FS.OPT))
-    beg = KS.Input(**FS.input_kw(FS.BEG))
-    end = KS.Input(**FS.input_kw(FS.END))
-    uid = KS.Input(**FS.input_kw(FS.UID))
-    ins = [seq, typ, opt, beg, end, uid]
-    y = Squad(PS)([seq, typ])
-    y = SquadLoss(PS)([beg, end], y)
+    ctx = KS.Input(shape=(PS.ctx_len, ), dtype='int32')
+    typ = KS.Input(shape=(PS.ctx_len, ), dtype='int32')
+    tgt = KS.Input(shape=(PS.tgt_len, ), dtype='int32')
+    ins = [ctx, typ, tgt]
+    y = Trafo(PS)(ins)
     m = KS.Model(inputs=ins, outputs=[y])
-    m.build()
+    # m.build()
     # m.compile(optimizer=optimizer_for(PS),
     #           loss='sparse_categorical_crossentropy',
     #           metrics=['accuracy'])
@@ -63,14 +111,17 @@ def optimizer_for(params):
 
 _params = dict(
     batch_size=4,
+    hidden_size=8,
     learn_rate=5e-6,
-    src_len=16,
+    ctx_len=16,
     tgt_len=0,
-    vocab_size=0,
+    vocab_size=20,
     adam_lr=0.001,
     adam_beta1=0.9,
     adam_beta2=0.999,
     adam_epsilon=1e-7,
+    init_stddev=0.02,
+    l2_penalty=0,
 )
 
 _params.update(
@@ -80,45 +131,16 @@ _params.update(
     save_dir='.model/trafo/save',
 )
 
-_fspecs = {
-    'SRC': {
-        'name': 'source',
-        'dtype': 'int32',
-        'shape': (None, ),
-    },
-    'TYP': {
-        'name': 'types',
-        'dtype': 'int32',
-        'shape': (None, ),
-    },
-    'TGT': {
-        'name': 'target',
-        'dtype': 'int32',
-        'shape': (None, ),
-    },
-}
-
-
-class Features(U.Features):
-    def __init__(self, params, **kw):
-        super().__init__(**kw)
-        PS = params
-        sh = (PS.src_len, )
-        self.shapes[self.SRC] = sh
-        self.shapes[self.TYP] = sh
-        sh = (PS.tgt_len, )
-        self.shapes[self.TGT] = sh
-
 
 def main(_):
     PS = U.Params(_params)
-    PS.update(features=Features(PS, specs=_fspecs))
 
     model = model_for(PS)
     optimizer = optimizer_for(PS)
     losses = KS.losses.SparseCategoricalCrossentropy(from_logits=True)
     metrics = KS.metrics.SparseCategoricalAccuracy()
 
+    @T.function
     def train_step(x, y):
         with T.GradientTape() as tape:
             logits = model(x)
@@ -128,7 +150,6 @@ def main(_):
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
         return loss, acc
 
-    @T.function
     def train():
         step, loss, acc = 0, 0.0, 0.0
         for x, y in dataset_for(PS, 'train'):

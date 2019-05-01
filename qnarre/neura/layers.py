@@ -152,7 +152,7 @@ class Transformer(KL.Layer):
         e, d = None, None
         src, tgt = input_shape
         if src:
-            e, _ = self.e_stack.output_shape
+            e, _ = self.enc_stack.output_shape
         if tgt:
             d = self.logits.output_shape
         return e, d
