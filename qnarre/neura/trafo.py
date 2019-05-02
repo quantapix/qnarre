@@ -12,50 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1701.06548.pdf
+# https://arxiv.org/pdf/1607.06450.pdf
+# https://arxiv.org/pdf/1606.08415.pdf
 
 import qnarre.neura as Q
 import qnarre.neura.utils as U
 import qnarre.neura.layers as L
 
-from qnarre.feeds.dset.trafo_ds import dataset as trafo_ds
+from qnarre.feeds.dset.trafo import dset as dset
 
 
-class Trafo(Q.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.PS = PS
-        self.tok_embed = L.TokEmbed(PS)
-        self.enc_stack = Q.Dense(2 * PS.hidden_size, activation='relu')
-        self.dec_stack = Q.Dense(PS.hidden_size, activation='relu')
-        self.logits = Q.Dense(PS.vocab_size, activation=None)
-
-    def build(self, input_shape):
-        ctx, _, tgt = input_shape
-        return super().build(input_shape)
-
-    def call(self, inputs, training=None, **kw):
-        ctx, _, tgt = inputs
-        y = self.tok_embed(ctx, **kw)
-        y = self.enc_stack(y, **kw)
-        y = self.dec_stack(y, **kw)
-        if training:
-            print('training...')
-        return self.to_logits(y, **kw)
-
-    def to_logits(self, x, unks=None, prior=None, **kw):
-        xs = Q.int_shape(x)
-        y = Q.reshape(x, (-1, xs[-1]))
-        y = self.logits(y, **kw)
-        ys = Q.int_shape(y)
-        y = Q.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
-        if unks:
-            y = Q.where(unks, y, prior)
-        return y
-
-
-def dataset_for(params, kind):
-    PS = params
-    ds = trafo_ds(PS, kind)
+def dset_for(PS, kind):
+    ds = dset(PS, kind)
     n = 1000
     ds = ds.take(n)
     if kind == 'train':
@@ -64,35 +33,33 @@ def dataset_for(params, kind):
     return ds
 
 
-def model_for(params):
-    PS = params
+def model_for(PS, full=False):
     ctx = Q.Input(shape=(PS.ctx_len, ), dtype='int32')
     typ = Q.Input(shape=(PS.ctx_len, ), dtype='int32')
     tgt = Q.Input(shape=(PS.tgt_len, ), dtype='int32')
     ins = [ctx, typ, tgt]
-    y = Trafo(PS)(ins)
+    y = L.Trafo(PS)(ins)
     m = Q.Model(inputs=ins, outputs=[y])
-    # m.build()
-    # m.compile(optimizer=optimizer_for(PS),
-    #           loss='sparse_categorical_crossentropy',
-    #           metrics=['accuracy'])
+    if full:
+        m.compile(optimizer=PS.optimizer,
+                  loss=PS.losses,
+                  metrics=[PS.metrics])
     return m
 
 
-_params = dict(
+params = dict(
     batch_size=4,
-    hidden_size=8,
-    learn_rate=5e-6,
     ctx_len=16,
-    tgt_len=0,
-    max_pos=0,
-    vocab_size=20,
-    token_types=8,
-    hidden_act='gelu',
     ffn_act='gelu',
+    hidden_act='gelu',
+    hidden_size=8,
+    max_pos=0,
+    tgt_len=0,
+    token_types=8,
+    vocab_size=20,
 )
 
-_params.update(
+params.update(
     data_dir='.data/trafo',
     log_dir='.model/trafo/logs',
     model_dir='.model/trafo',
@@ -101,7 +68,7 @@ _params.update(
 
 
 def main(_):
-    PS = U.Params(_params).init_comps()
+    PS = U.Params(params).init_comps()
     model = model_for(PS)
 
     @Q.function
@@ -116,7 +83,7 @@ def main(_):
 
     def train():
         step, loss, acc = 0, 0.0, 0.0
-        for x, y in dataset_for(PS, 'train'):
+        for x, y in dset_for(PS, 'train'):
             step += 1
             loss, acc = train_step(x, y)
             if Q.equal(step % 10, 0):

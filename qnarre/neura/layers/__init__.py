@@ -13,18 +13,26 @@
 # limitations under the License.
 # =============================================================================
 
-from qnarre.neura.layers.norm import LayerNorm
+from qnarre.neura.layers.bert import Bert
+from qnarre.neura.layers.squad import Squad
+from qnarre.neura.layers.trafo import Trafo
 from qnarre.neura.layers.ffn import ffns, DenseDense
 from qnarre.neura.layers.attent import attents, DotAttent
+from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 __all__ = (
+    Bert,
     DenseDense,
     DotAttent,
     LayerNorm,
     PosEmbed,
     PosTiming,
+    PostProc,
+    PreProc,
+    Squad,
     TokEmbed,
+    Trafo,
     TypEmbed,
     attents,
     ffns,

@@ -18,7 +18,7 @@ from random import randint
 import tensorflow as T
 
 
-def dataset(params, _):
+def dset(params, _):
     PS = params
     PS.update(PAD=0, UNK=1, BEG=2, END=3, vocab_size=20, tgt_len=PS.ctx_len)
     t, sh = T.int32, T.TensorShape((PS.ctx_len, ))

@@ -14,29 +14,66 @@
 # =============================================================================
 
 import qnarre.neura as Q
-import qnarre.neura.layers as L
 import qnarre.neura.utils as U
 
+from qnarre.neura.layers.ffn import ffns
+from qnarre.neura.layers.attent import attents
+from qnarre.neura.layers.norm import PreProc, PostProc
+from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
-class Trafo(L.Layer):
+
+class Trafo(Q.Layer):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.PS = PS
+        self.tok_embed = TokEmbed(PS)
+        self.enc_stack = Q.Dense(2 * PS.hidden_size, activation='relu')
+        self.dec_stack = Q.Dense(PS.hidden_size, activation='relu')
+        self.logits = Q.Dense(PS.vocab_size, activation=None)
+
+    def build(self, input_shape):
+        ctx, _, tgt = input_shape
+        return super().build(input_shape)
+
+    def call(self, inputs, training=None, **kw):
+        ctx, _, tgt = inputs
+        y = self.tok_embed(ctx, **kw)
+        y = self.enc_stack(y, **kw)
+        y = self.dec_stack(y, **kw)
+        if training:
+            print('training...')
+        return self.to_logits(y, **kw)
+
+    def to_logits(self, x, unks=None, prior=None, **kw):
+        xs = Q.int_shape(x)
+        y = Q.reshape(x, (-1, xs[-1]))
+        y = self.logits(y, **kw)
+        ys = Q.int_shape(y)
+        y = Q.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
+        if unks:
+            y = Q.where(unks, y, prior)
+        return y
+
+
+class Trafo_new(Q.Layer):
     typ_embed, pos_embed = None, None
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.tok_embed = L.TokEmbed(PS)
+        self.tok_embed = TokEmbed(PS)
         if PS.token_types:
-            self.typ_embed = L.TypEmbed(PS)
+            self.typ_embed = TypEmbed(PS)
         if PS.pos_embed:
-            p = L.PosEmbed(PS) if PS.pos_embed == 'embed' else None
-            p = L.PosTiming(PS) if PS.pos_embed == 'timing' else p
+            p = PosEmbed(PS) if PS.pos_embed == 'embed' else None
+            p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
-        self.norm = L.LayerNorm()
-        self.drop = L.Dropout(PS.hidden_drop)
-        pre, post = L.PreProc(PS), L.PostProc(PS)
+        self.norm = Q.LayerNorm()
+        self.drop = Q.Dropout(PS.hidden_drop)
+        pre, post = PreProc(PS), PostProc(PS)
         self.enc_stack = EncodeStack(PS, pre, post)
         self.dec_stack = DecodeStack(PS, pre, post)
-        self.logits = L.Dense(PS.vocab_size, activation=None)
+        self.logits = Q.Dense(PS.vocab_size, activation=None)
 
     def build(self, input_shape):
         _, tgt = input_shape
@@ -138,6 +175,7 @@ class Trafo(L.Layer):
                 y = self.to_logits(y, **kw)
                 return self.to_toks(y, **kw)
             return ctx, att
+        """
         if tgt:
             PS = self.PS
             if PS.beam_size > 1:
@@ -175,6 +213,7 @@ class Trafo(L.Layer):
                     loop, [T.constant(0)],
                     shape_invariants=[T.TensorShape([])])
             return {"outputs": toks, "scores": scores}
+        """
 
 
 """
@@ -204,7 +243,7 @@ class Trafo(L.Layer):
 """
 
 
-class Stack(L.Layer):
+class Stack(Q.Layer):
     prox_bias = None
 
     @staticmethod
@@ -297,12 +336,12 @@ class DecodeStack(Stack):
         return Q.expand_dims(self.post([t, y], **kw), axis=2)
 
 
-class Encoder(L.Layer):
+class Encoder(Q.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.refl = L.attents[PS.refl_type](*a)
-        self.ffn = L.ffns[PS.ffn_type](*a)
+        self.refl = attents[PS.refl_type](*a)
+        self.ffn = ffns[PS.ffn_type](*a)
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
@@ -313,13 +352,13 @@ class Encoder(L.Layer):
         return self.ffn(y, **kw)
 
 
-class Decoder(L.Layer):
+class Decoder(Q.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
-        self.refl = L.attents[PS.refl_type](*a)
-        self.attn = L.attents[PS.attn_type](*a)
-        self.ffn = L.ffns[PS.ffn_type](*a, conv_pad='LEFT')
+        self.refl = attents[PS.refl_type](*a)
+        self.attn = attents[PS.attn_type](*a)
+        self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
