@@ -118,5 +118,6 @@ class DotAttent(Attent):
 
 
 attents = {
+    None: DotAttent,
     'dot_attent': DotAttent,
 }

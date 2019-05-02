@@ -53,5 +53,6 @@ class DenseDense(FFN):
 
 
 ffns = {
+    None: DenseDense,
     'dense_dense': DenseDense,
 }

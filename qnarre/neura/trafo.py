@@ -53,10 +53,20 @@ params = dict(
     ffn_act='gelu',
     hidden_act='gelu',
     hidden_size=8,
-    max_pos=0,
-    tgt_len=0,
+    max_pos=None,
+    tgt_len=None,
     token_types=8,
     vocab_size=20,
+    pos_embed='timing',
+    hidden_drop=0.1,
+    enc_layers=None,
+    dec_layers=None,
+    stack_layers=2,
+    prox_bias=True,
+    refl_type=None,
+    attn_type=None,
+    ffn_type=None,
+    causal_refl=False,
 )
 
 params.update(

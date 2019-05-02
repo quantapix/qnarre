@@ -18,11 +18,11 @@ import qnarre.neura.utils as U
 
 from qnarre.neura.layers.ffn import ffns
 from qnarre.neura.layers.attent import attents
-from qnarre.neura.layers.norm import PreProc, PostProc
+from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
-class Trafo(Q.Layer):
+class Trafo_old(Q.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
@@ -55,7 +55,7 @@ class Trafo(Q.Layer):
         return y
 
 
-class Trafo_new(Q.Layer):
+class Trafo(Q.Layer):
     typ_embed, pos_embed = None, None
 
     def __init__(self, PS, **kw):
@@ -68,62 +68,61 @@ class Trafo_new(Q.Layer):
             p = PosEmbed(PS) if PS.pos_embed == 'embed' else None
             p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
-        self.norm = Q.LayerNorm()
+        self.norm = LayerNorm()
         self.drop = Q.Dropout(PS.hidden_drop)
-        pre, post = PreProc(PS), PostProc(PS)
-        self.enc_stack = EncodeStack(PS, pre, post)
+        pre, post = None, None  # PreProc(PS), PostProc(PS)
+        self.enc_stack = EncStack(PS, pre, post)
         self.dec_stack = DecodeStack(PS, pre, post)
         self.logits = Q.Dense(PS.vocab_size, activation=None)
 
     def build(self, input_shape):
-        _, tgt = input_shape
+        ctx, _, tgt = input_shape
         kw = dict(dtype='int32', trainable=False)
-        self.tok_out = self.add_weight(shape=tgt[:2], **kw)
-        kw.update(dtype='bool')
-        kw.update(initializer='zeros')
-        self.mlm_bias = self.add_weight(shape=self.PS.vocab_size, **kw)
-        self.bias = self.add_weight(shape=2, **kw)
+        # self.tok_out = self.add_weight(shape=tgt[:2], **kw)
+        kw.update(dtype='bool', initializer='zeros')
+        # self.mlm_bias = self.add_weight(shape=self.PS.vocab_size, **kw)
+        # self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
 
     def compute_output_shape(self, input_shape):
-        e, d = None, None
-        src, tgt = input_shape
-        if src:
-            e, _ = self.enc_stack.output_shape
+        s = None
+        ctx, _, tgt = input_shape
+        if ctx:
+            s = self.enc_stack.output_shape
         if tgt:
-            d = self.logits.output_shape
-        return e, d
+            s = self.logits.output_shape
+        return s
 
-    def embed(self, ins, **kw):
-        tok, typ = ins
+    def embed(self, tok, typ=None, **kw):
         y = self.tok_embed(tok, **kw)
-        if self.typ_embed:
+        if typ is not None and self.typ_embed:
             y = self.typ_embed([y, typ], **kw)
         if self.pos_embed:
             y = self.pos_embed(y, **kw)
         y = self.norm(y, **kw)
         return self.drop(y, **kw)
 
-    def encode(self, ins, **kw):
-        y, b = None, None
-        if ins:
-            y = self.embed(ins, **kw)
-            y, b = self.enc_stack(y, **kw)
-        return y, b
+    def encode(self, tok, typ, **kw):
+        c, a = None, None
+        if tok is not None:
+            y = self.embed(tok, typ, **kw)
+            c, a = self.enc_stack(y, **kw), None
+        return c, a
 
-    def decode(self, ins, ctx, att, **kw):
-        y = None
-        if ins:
-            y = self.embed(ins, **kw)
-            y = self.dec_stack([ctx, att, y], **kw)
-        return y
+    def decode(self, tok, ctx, att, **kw):
+        d = None
+        if tok is not None:
+            y = self.embed(tok, **kw)
+            print('decode', y)
+            d = self.dec_stack([y, ctx, att], **kw)
+        return d
 
     def to_logits(self, x, unks=None, prior=None, **kw):
         xs = Q.int_shape(x)
         y = Q.reshape(x, (-1, xs[-1]))
         y = self.logits(y, **kw)
         ys = Q.int_shape(y)
-        y = Q.reshape(y, xs[:-1] + ys[-1:])
+        y = Q.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
         if unks:
             y = Q.where(unks, y, prior)
         return y
@@ -167,14 +166,16 @@ class Trafo_new(Q.Layer):
         """
 
     def call(self, inputs, training=None, **kw):
-        src, tgt = inputs
-        ctx, att = self.encode(src, **kw)
+        ctx, typ, tgt = inputs
+        c, a = self.encode(ctx, typ, **kw)
+        d = self.decode(tgt, c, a, **kw)
+        if d:
+            y = self.to_logits(d, **kw)
+            if training:
+                return y
+            return self.to_toks(y, **kw)
         if training:
-            y = self.decode(tgt, ctx, att, **kw)
-            if y:
-                y = self.to_logits(y, **kw)
-                return self.to_toks(y, **kw)
-            return ctx, att
+            return c
         """
         if tgt:
             PS = self.PS
@@ -247,17 +248,18 @@ class Stack(Q.Layer):
     prox_bias = None
 
     @staticmethod
-    def proximity(slen):
-        p = Q.arange(slen, dtype=Q.floatx())
+    def proximity(max_len):
+        p = Q.arange(max_len, dtype=Q.floatx())
         p = Q.expand_dims(p, 0) - Q.expand_dims(p, 1)
-        return Q.expand_dims(Q.expand_dims(-Q.log1p(Q.abs(p)), 0), 0)
+        p = -Q.log1p(Q.abs(p))
+        return p  # Q.expand_dims(Q.expand_dims(p, 0), 0)
 
     @staticmethod
     def attn_bias(mask):
         f = Q.floatx()
         fmin = Q.float16.min if f == 'float16' else Q.float32.min
         b = Q.cast(mask, f) * fmin
-        return Q.expand_dims(Q.expand_dims(b, axis=1), axis=1)
+        return b  # Q.expand_dims(Q.expand_dims(b, axis=1), axis=1)
 
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
@@ -267,15 +269,16 @@ class Stack(Q.Layer):
         self.post = post
 
 
-class EncodeStack(Stack):
+class EncStack(Stack):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         PS = self.PS
         a = (PS, self.pre, self.post)
-        n = PS.encode_layers or PS.stack_layers
+        n = PS.enc_layers or PS.stack_layers
         self.encs = [Encoder(*a, name=f'enc_{i}') for i in range(n)]
 
     def build(self, input_shape):
+        print('enc_stack', input_shape)
         if self.PS.prox_bias:
             self.prox_bias = self.proximity(input_shape[1])
         return super().build(input_shape)
@@ -284,16 +287,15 @@ class EncodeStack(Stack):
         return self.encs[-1].output_shape
 
     def call(self, inputs, mask, **kw):
-        x = inputs
         b = self.attn_bias(mask)
         if self.prox_bias:
             b += self.prox_bias
         # if self.PS.pad_remover:
         #     kw.update(pad_remover=U.PadRemover(mask))
-        y = self.pre.drop(x, **kw)
+        y = inputs  # self.pre.drop(inputs, **kw)
         for e in self.encs:
             y = e([y, b], **kw)
-        return self.post([x, y], **kw), b
+        return y  # self.post(inputs, y, **kw)
 
 
 class DecodeStack(Stack):
@@ -301,70 +303,74 @@ class DecodeStack(Stack):
         super().__init__(*args, **kw)
         PS = self.PS
         a = (PS, self.pre, self.post)
-        n = PS.decode_layers or PS.stack_layers
+        n = PS.dec_layers or PS.stack_layers
         self.decs = [Decoder(*a, name=f'dec_{i}') for i in range(n)]
 
     def build(self, input_shape):
+        print('dec_stack', input_shape)
         if self.PS.prox_bias:
-            self.prox_bias = self.proximity(input_shape[2][1])
+            self.prox_bias = self.proximity(input_shape[0][1])
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
         return self.decs[-1].output_shape
 
     def call(self, inputs, mask, **kw):
-        x, b, t = inputs
-        sb = self.attn_bias(mask[2])
+        print('inputs', inputs)
+        tgt, ctx, att = inputs
+        b = self.attn_bias(mask[0])
         PS = self.PS
         if PS.causal_refl:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
-                p = Q.cumsum(Q.cumsum(sb, axis=1), axis=1)
+                p = Q.cumsum(Q.cumsum(b, axis=1), axis=1)
                 p = Q.greater(Q.expand_dims(p, 1), Q.expand_dims(p, 2))
-                sb = Q.expand_dims(Q.cast(p, Q.floatx()) * -1e9, 1)
+                b = Q.expand_dims(Q.cast(p, Q.floatx()) * -1e9, 1)
             else:
-                ln = Q.int_shape(t)[1]
+                ln = Q.int_shape(tgt)[1]
                 sh = (1, 1, ln, ln)
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
-                sb = -1e9 * (1.0 - b)
+                b = -1e9 * (1.0 - b)
         if self.prox_bias:
-            sb += self.prox_bias
+            b += self.prox_bias
         # y = T.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
         # t = T.concat([pad_value, t], axis=1)[:, :-1, :]
-        y = self.pre.drop(t, **kw)
+        y = tgt  # self.pre.drop(tgt, **kw)
         for d in self.decs:
-            y = d([x, b, y, sb], **kw)
-        return Q.expand_dims(self.post([t, y], **kw), axis=2)
+            y = d([tgt, b, ctx, att], **kw)
+        return y  # Q.expand_dims(self.post([tgt, y], **kw), axis=2)
 
 
 class Encoder(Q.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
-        a = (PS, pre, post)
-        self.refl = attents[PS.refl_type](*a)
-        self.ffn = ffns[PS.ffn_type](*a)
+        # a = (PS, pre, post)
+        # self.refl = attents[PS.refl_type](*a)
+        # self.ffn = ffns[PS.ffn_type](*a)
+        self.ffn = Q.Dense(2 * PS.hidden_size, activation='relu')
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
 
     def call(self, inputs, **kw):
-        x, b = inputs
-        y = self.refl([x, x, b], **kw)
+        ctx, b = inputs
+        y = ctx  # self.refl([ctx, ctx, b], **kw)
         return self.ffn(y, **kw)
 
 
 class Decoder(Q.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
-        a = (PS, pre, post)
-        self.refl = attents[PS.refl_type](*a)
-        self.attn = attents[PS.attn_type](*a)
-        self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
+        # a = (PS, pre, post)
+        # self.refl = attents[PS.refl_type](*a)
+        # self.attn = attents[PS.attn_type](*a)
+        # self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
+        self.ffn = Q.Dense(PS.hidden_size, activation='relu')
 
     def compute_output_shape(self, _):
         return self.ffn.output_shape
 
     def call(self, inputs, **kw):
-        x, b, t, sb = inputs
-        y = self.refl([t, t, sb], **kw)
-        y = self.attn([y, x, b], **kw)
+        tgt, b, ctx, att = inputs
+        # y = self.refl([tgt, tgt, b], **kw)
+        y = ctx  # self.attn([ctx, att, y], **kw)
         return self.ffn(y, **kw)
