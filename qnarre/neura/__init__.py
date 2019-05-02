@@ -86,3 +86,5 @@ tanh = K.tanh
 transpose = tf.transpose
 unstack = tf.unstack
 where = tf.where
+logical_not = tf.math.logical_not
+tensor_scatter_nd_update = tf.tensor_scatter_nd_update

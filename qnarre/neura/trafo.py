@@ -39,11 +39,12 @@ def model_for(PS, full=False):
     tgt = Q.Input(shape=(PS.tgt_len, ), dtype='int32')
     ins = [ctx, typ, tgt]
     y = L.Trafo(PS)(ins)
-    m = Q.Model(inputs=ins, outputs=[y])
+    m = Q.Model(name='TrafoModel', inputs=ins, outputs=[y])
     if full:
         m.compile(optimizer=PS.optimizer,
                   loss=PS.losses,
                   metrics=[PS.metrics])
+    print(m.summary())
     return m
 
 
@@ -54,7 +55,7 @@ params = dict(
     hidden_act='gelu',
     hidden_size=8,
     max_pos=None,
-    tgt_len=None,
+    tgt_len=16,
     token_types=8,
     vocab_size=20,
     pos_embed='timing',

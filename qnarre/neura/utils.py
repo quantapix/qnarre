@@ -82,8 +82,14 @@ class Params:
             metrics=ms,
             ffn_act=ffn_act,
             hidden_act=hidden_act,
+            float_min=_float_min(),
         )
         return self
+
+
+def _float_min():
+    f = Q.floatx()
+    return Q.float16.min if f == 'float16' else Q.float32.min
 
 
 def _gelu(x):

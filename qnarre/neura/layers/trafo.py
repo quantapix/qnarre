@@ -80,7 +80,6 @@ class Trafo(Q.Layer):
         d = None
         if tok is not None:
             y = self.embed(tok, **kw)
-            print('decode', y)
             d = self.dec_stack([y, ctx, att], **kw)
         return d
 
@@ -221,19 +220,16 @@ class Stack(Q.Layer):
         p = -Q.log1p(Q.abs(p))
         return p  # Q.expand_dims(Q.expand_dims(p, 0), 0)
 
-    @staticmethod
-    def attn_bias(mask):
-        f = Q.floatx()
-        fmin = Q.float16.min if f == 'float16' else Q.float32.min
-        b = Q.cast(mask, f) * fmin
-        return b  # Q.expand_dims(Q.expand_dims(b, axis=1), axis=1)
-
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         self.supports_masking = True
         self.PS = PS
         self.pre = pre
         self.post = post
+
+    def attn_bias(self, mask):
+        b = Q.cast(mask, Q.floatx()) * self.PS.float_min
+        return b  # Q.expand_dims(Q.expand_dims(b, axis=1), axis=1)
 
 
 class EncStack(Stack):
@@ -245,7 +241,6 @@ class EncStack(Stack):
         self.encs = [Encoder(*a, name=f'enc_{i}') for i in range(n)]
 
     def build(self, input_shape):
-        print('enc_stack', input_shape)
         # if self.PS.prox_bias:
         #     self.prox_bias = self.proximity(input_shape[1])
         return super().build(input_shape)
@@ -284,7 +279,6 @@ class DecodeStack(Stack):
         return self.decs[-1].output_shape
 
     def call(self, inputs, mask, **kw):
-        print('inputs', inputs)
         tgt, ctx, att = inputs
         b = self.attn_bias(mask[0])
         PS = self.PS

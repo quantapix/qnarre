@@ -45,10 +45,11 @@ class TypEmbed(Q.Layer):
         self.gain = self.add_weight(shape=sh, initializer=PS.initializer)
         return super().build(input_shape)
 
-    def call(self, inputs, **_):
+    def call(self, inputs, mask, **_):
         tok, typ = inputs
-        typ = Q.one_hot(typ, self.PS.token_types)
-        return tok + Q.dot(typ, self.gain)
+        y = typ * Q.cast(mask[0], typ.dtype)
+        y = Q.one_hot(y, self.PS.token_types)
+        return tok + Q.dot(y, self.gain)
 
 
 class PosEmbed(Q.Layer):
@@ -60,15 +61,18 @@ class PosEmbed(Q.Layer):
     def build(self, input_shape):
         _, tlen, hsize = input_shape
         PS = self.PS
-        plen = max(PS.max_pos, PS.ctx_len, PS.tgt_len)
+        plen = max(PS.max_pos or 0, PS.ctx_len, PS.tgt_len)
         assert tlen <= plen
         sh = (plen, hsize)
         b = self.add_weight(shape=sh, initializer=PS.initializer)
-        self.bias = b[:tlen, :]
+        b = b[:tlen, :]
+        self.bias = Q.expand_dims(b, axis=0)
         return super().build(input_shape)
 
-    def call(self, inputs, **_):
-        return inputs + Q.expand_dims(self.bias, 0)
+    def call(self, inputs, mask, **_):
+        y = Q.cast(mask, self.bias.dtype)
+        y = self.bias * Q.expand_dims(y, axis=2)
+        return inputs + y
 
 
 class PosTiming(Q.Layer):
@@ -98,5 +102,7 @@ class PosTiming(Q.Layer):
         self.bias = Q.expand_dims(p, axis=0)
         return super().build(input_shape)
 
-    def call(self, inputs, **_):
-        return inputs + self.bias
+    def call(self, inputs, mask, **_):
+        y = Q.cast(mask, self.bias.dtype)
+        y = self.bias * Q.expand_dims(y, axis=2)
+        return inputs + y
