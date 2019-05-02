@@ -22,39 +22,6 @@ from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
-class Trafo_old(Q.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.PS = PS
-        self.tok_embed = TokEmbed(PS)
-        self.enc_stack = Q.Dense(2 * PS.hidden_size, activation='relu')
-        self.dec_stack = Q.Dense(PS.hidden_size, activation='relu')
-        self.logits = Q.Dense(PS.vocab_size, activation=None)
-
-    def build(self, input_shape):
-        ctx, _, tgt = input_shape
-        return super().build(input_shape)
-
-    def call(self, inputs, training=None, **kw):
-        ctx, _, tgt = inputs
-        y = self.tok_embed(ctx, **kw)
-        y = self.enc_stack(y, **kw)
-        y = self.dec_stack(y, **kw)
-        if training:
-            print('training...')
-        return self.to_logits(y, **kw)
-
-    def to_logits(self, x, unks=None, prior=None, **kw):
-        xs = Q.int_shape(x)
-        y = Q.reshape(x, (-1, xs[-1]))
-        y = self.logits(y, **kw)
-        ys = Q.int_shape(y)
-        y = Q.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
-        if unks:
-            y = Q.where(unks, y, prior)
-        return y
-
-
 class Trafo(Q.Layer):
     typ_embed, pos_embed = None, None
 
@@ -169,13 +136,13 @@ class Trafo(Q.Layer):
         ctx, typ, tgt = inputs
         c, a = self.encode(ctx, typ, **kw)
         d = self.decode(tgt, c, a, **kw)
-        if d:
-            y = self.to_logits(d, **kw)
-            if training:
-                return y
-            return self.to_toks(y, **kw)
-        if training:
-            return c
+        # if d:
+        y = self.to_logits(d, **kw)
+        # if training:
+        return y
+        # return self.to_toks(y, **kw)
+        # if training:
+        #    return c
         """
         if tgt:
             PS = self.PS
@@ -279,8 +246,8 @@ class EncStack(Stack):
 
     def build(self, input_shape):
         print('enc_stack', input_shape)
-        if self.PS.prox_bias:
-            self.prox_bias = self.proximity(input_shape[1])
+        # if self.PS.prox_bias:
+        #     self.prox_bias = self.proximity(input_shape[1])
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
@@ -308,8 +275,9 @@ class DecodeStack(Stack):
 
     def build(self, input_shape):
         print('dec_stack', input_shape)
-        if self.PS.prox_bias:
-            self.prox_bias = self.proximity(input_shape[0][1])
+        # print(self.get_input_shape_at(0))
+        # if self.PS.prox_bias:
+        # self.prox_bias = self.proximity(input_shape[0][1])
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
