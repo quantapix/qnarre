@@ -215,10 +215,10 @@ class Stack(Q.Layer):
 
     @staticmethod
     def proximity(max_len):
-        p = Q.arange(max_len, dtype=Q.floatx())
-        p = Q.expand_dims(p, 0) - Q.expand_dims(p, 1)
-        p = -Q.log1p(Q.abs(p))
-        return p  # Q.expand_dims(Q.expand_dims(p, 0), 0)
+        y = Q.arange(max_len, dtype=Q.floatx())
+        y = Q.expand_dims(y, 0) - Q.expand_dims(y, 1)
+        y = -Q.log1p(Q.abs(y))
+        return Q.expand_dims(Q.expand_dims(y, 0), 0)
 
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
@@ -228,8 +228,9 @@ class Stack(Q.Layer):
         self.post = post
 
     def attn_bias(self, mask):
-        b = Q.cast(mask, Q.floatx()) * self.PS.float_min
-        return b  # Q.expand_dims(Q.expand_dims(b, axis=1), axis=1)
+        y = Q.logical_not(mask)
+        y = Q.cast(y, Q.floatx()) * self.PS.float_min
+        return Q.expand_dims(Q.expand_dims(y, axis=2), axis=2)
 
 
 class EncStack(Stack):
@@ -241,8 +242,8 @@ class EncStack(Stack):
         self.encs = [Encoder(*a, name=f'enc_{i}') for i in range(n)]
 
     def build(self, input_shape):
-        # if self.PS.prox_bias:
-        #     self.prox_bias = self.proximity(input_shape[1])
+        if self.PS.prox_bias:
+            self.prox_bias = self.proximity(input_shape[1])
         return super().build(input_shape)
 
     def compute_output_shape(self, _):
@@ -250,7 +251,9 @@ class EncStack(Stack):
 
     def call(self, inputs, mask, **kw):
         b = self.attn_bias(mask)
+        print('***b', Q.int_shape(b))
         if self.prox_bias:
+            print('***pro_bias', Q.int_shape(self.prox_bias))
             b += self.prox_bias
         # if self.PS.pad_remover:
         #     kw.update(pad_remover=U.PadRemover(mask))
