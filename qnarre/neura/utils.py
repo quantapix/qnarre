@@ -89,7 +89,7 @@ class Params:
 
 def _float_min():
     f = Q.floatx()
-    return Q.float16.min if f == 'float16' else Q.float32.min
+    return Q.float16.min if f == 'float16' else Q.float32.min  # -1e9
 
 
 def _gelu(x):

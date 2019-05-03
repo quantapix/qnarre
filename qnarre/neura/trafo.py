@@ -68,6 +68,10 @@ params = dict(
     attn_type=None,
     ffn_type=None,
     causal_refl=False,
+    attn_drop=0.1,
+    attn_heads=2,
+    attn_k_size=4,
+    attn_v_size=4,
 )
 
 params.update(

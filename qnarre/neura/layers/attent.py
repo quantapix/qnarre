@@ -19,54 +19,55 @@ import qnarre.neura as Q
 class Attent(Q.Layer):
     def __init__(self, PS, pre, post, comp=None, **kw):
         super().__init__(**kw)
+        self.supports_masking = True
         self.PS = PS
         self.pre = pre
         self.post = post
         self.comp = comp or self.dense_comp
 
     def build(self, input_shape):
-        src, tgt, _ = input_shape
-        hs = src[2]
-        assert hs == tgt[2]
+        qry, mem, _ = input_shape
+        qs = qry[2]
+        assert qs == mem[2]
         PS = self.PS
-        assert hs == PS.hidden_size
+        assert qs == PS.hidden_size
         n = PS.attn_heads
-        assert hs % n == 0
-        self.q_comp = self.comp(hs, name='Q')
-        self.k_size = ks = PS.attn_k_size or hs
+        assert qs % n == 0
+        self.k_size = ks = PS.attn_k_size or qs
         assert ks % n == 0
+        self.q_comp = self.comp(ks, name='Q')
         self.k_comp = self.comp(ks, name='K')
-        vs = PS.attn_v_size or hs
+        vs = PS.attn_v_size or qs
         assert vs % n == 0
         self.v_comp = self.comp(vs, name='V')
-        self.out = self.dense_comp(hs, name='out')
+        self.dense = self.dense_comp(qs, name='dense')
         return super().build(input_shape)
 
-    def compute_output_shape(self, _):
-        return self.out.output_shape
+    # def compute_output_shape(self, _):
+    #     return self.dense.output_shape
 
     def call(self, inputs, **kw):
-        s, t, b = inputs
-        s = self.pre(s, **kw)
-        q = self.split_heads(self.q_comp(s, **kw))
-        k = self.split_heads(self.k_comp(t, **kw))
-        v = self.split_heads(self.v_comp(t, **kw))
-        y = self.scores(q, k, v, b, **kw)
+        qry, mem, bias = inputs
+        # qry = self.pre(qry, **kw)
+        q = self.split_heads(self.q_comp(qry, **kw))
+        k = self.split_heads(self.k_comp(mem, **kw))
+        v = self.split_heads(self.v_comp(mem, **kw))
+        y = self.scores(q, k, v, bias, **kw)
         y = self.join_heads(y)
-        y = self.out(y, **kw)
-        return self.post([s, y], **kw)
+        y = self.dense(y, **kw)
+        # y = self.post([qry, y], **kw)
+        return y
 
     def dense_comp(self, size, **kw):
-        return Q.Dense(size,
-                       use_bias=False,
-                       kernel_initializer=self.PS.initializer,
-                       **kw)
+        kw.update(kernel_initializer=self.PS.initializer)
+        return Q.Dense(size, use_bias=False, **kw)
 
     def split_heads(self, x):
         sh = Q.int_shape(x)
         n = self.PS.attn_heads
         y = Q.reshape(x, (-1, sh[1], n, sh[-1] // n))
-        return Q.permute_dimensions(y, [0, 2, 1, 3])
+        y = Q.permute_dimensions(y, [0, 2, 1, 3])
+        return y
 
     def scores(self, q, k, v, b, **kw):
         raise NotImplementedError()
@@ -75,7 +76,8 @@ class Attent(Q.Layer):
     def join_heads(x):
         y = Q.permute_dimensions(x, [0, 2, 1, 3])
         sh = Q.int_shape(y)
-        return Q.reshape(y, (-1, sh[1], sh[2] * sh[3]))
+        y = Q.reshape(y, (-1, sh[1], sh[2] * sh[3]))
+        return y
 
 
 class ConvComp(Q.Layer):
@@ -113,11 +115,13 @@ class DotAttent(Attent):
     def scores(self, q, k, v, b, **kw):
         y = Q.matmul(q, k, transpose_b=True)
         y *= (self.k_size // self.PS.attn_heads)**-0.5
-        y = self.drop(Q.softmax(y + b, **kw), **kw)
-        return Q.matmul(y, v)
+        y = Q.softmax(y + b, **kw)
+        y = self.drop(y, **kw)
+        y = Q.matmul(y, v)
+        return y
 
 
-attents = {
+attns = {
     None: DotAttent,
     'dot_attent': DotAttent,
 }
