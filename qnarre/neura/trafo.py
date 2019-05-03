@@ -75,9 +75,9 @@ params = dict(
     prox_bias=True,
     refl_type=None,
     stack_layers=2,
-    tgt_len=16,
+    tgt_len=None,
     token_types=8,
-    vocab_size=20,
+    vocab_size=None,
 )
 
 params.update(
@@ -90,9 +90,9 @@ params.update(
 
 def main(_):
     PS = U.Params(params).init_comps()
+    dset = dset_for(PS, 'train')
     model = model_for(PS)
 
-    @Q.function
     def train_step(x, y):
         with Q.GradientTape() as tape:
             logits = model(x)
@@ -102,9 +102,10 @@ def main(_):
         PS.optimizer.apply_gradients(zip(grads, model.trainable_variables))
         return loss, acc
 
+    @Q.function
     def train():
         step, loss, acc = 0, 0.0, 0.0
-        for x, y in dset_for(PS, 'train'):
+        for x, y in dset:
             step += 1
             loss, acc = train_step(x, y)
             if Q.equal(step % 10, 0):
@@ -119,6 +120,6 @@ def main(_):
 if __name__ == '__main__':
     # T.logging.set_verbosity(T.logging.INFO)
     from absl import flags as F
-    F.DEFINE_integer('src_len', None, '')
+    F.DEFINE_integer('ctx_len', None, '')
     from absl import app
     app.run(main)
