@@ -51,6 +51,7 @@ class Trafo(Q.Layer):
         # self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
 
+    """
     def compute_output_shape(self, input_shape):
         s = None
         src, _, tgt = input_shape
@@ -59,6 +60,7 @@ class Trafo(Q.Layer):
         if tgt:
             s = self.logits.output_shape
         return s
+    """
 
     def embed(self, tok, typ=None, **kw):
         y = self.tok_embed(tok, **kw)
@@ -67,21 +69,22 @@ class Trafo(Q.Layer):
         if self.pos_embed:
             y = self.pos_embed(y, **kw)
         y = self.norm(y, **kw)
-        return self.drop(y, **kw)
+        y = self.drop(y, **kw)
+        return y
 
     def encode(self, src, typ, **kw):
-        c, a = None, None
+        ctx, bias = None, None
         if src is not None:
             y = self.embed(src, typ, **kw)
-            c, a = self.enc_stack(y, **kw), None
-        return c, a
+            ctx, bias = self.enc_stack(y, **kw)
+        return ctx, bias
 
-    def decode(self, tgt, ctx, att, **kw):
-        d = None
+    def decode(self, tgt, ctx, bias, **kw):
+        y = None
         if tgt is not None:
             y = self.embed(tgt, **kw)
-            d = self.dec_stack([y, ctx, att], **kw)
-        return d
+            y = self.dec_stack([y, ctx, bias], **kw)
+        return y
 
     def to_logits(self, x, unks=None, prior=None, **kw):
         xs = Q.int_shape(x)
@@ -133,10 +136,10 @@ class Trafo(Q.Layer):
 
     def call(self, inputs, training=None, **kw):
         src, typ, tgt = inputs
-        ctx, att = self.encode(src, typ, **kw)
-        d = self.decode(tgt, ctx, att, **kw)
+        ctx, bias = self.encode(src, typ, **kw)
+        y = self.decode(tgt, ctx, bias, **kw)
         # if d:
-        y = self.to_logits(d, **kw)
+        y = self.to_logits(y, **kw)
         # if training:
         return y
         # return self.to_toks(y, **kw)
@@ -218,7 +221,8 @@ class Stack(Q.Layer):
         y = Q.arange(max_len, dtype=Q.floatx())
         y = Q.expand_dims(y, 0) - Q.expand_dims(y, 1)
         y = -Q.log1p(Q.abs(y))
-        return Q.expand_dims(Q.expand_dims(y, 0), 0)
+        y = Q.expand_dims(Q.expand_dims(y, 0), 0)
+        return y
 
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
@@ -229,8 +233,9 @@ class Stack(Q.Layer):
 
     def attn_bias(self, mask):
         y = Q.logical_not(mask)
-        y = Q.cast(y, Q.floatx()) * self.PS.float_min
-        return Q.expand_dims(Q.expand_dims(y, axis=1), axis=3)
+        y = Q.cast(y, Q.floatx()) * self.PS.big_neg
+        y = Q.expand_dims(Q.expand_dims(y, axis=1), axis=3)
+        return y
 
 
 class EncStack(Stack):
@@ -246,19 +251,16 @@ class EncStack(Stack):
         #     self.prox_bias = self.proximity(input_shape[1])
         return super().build(input_shape)
 
-    def compute_output_shape(self, _):
-        return self.encs[-1].output_shape
-
     def call(self, inputs, mask, **kw):
         x = inputs
-        b = self.attn_bias(mask)
+        ab = rb = self.attn_bias(mask)
         if self.prox_bias:
-            b += self.prox_bias
+            rb += self.prox_bias
         y = x  # self.pre.drop(x, **kw)
         for e in self.encs:
-            y = e([y, b], **kw)
+            y = e([y, rb], **kw)
         # y = self.post(x, y, **kw)
-        return y
+        return y, ab
 
 
 class DecodeStack(Stack):
@@ -274,16 +276,13 @@ class DecodeStack(Stack):
         #     self.prox_bias = self.proximity(input_shape[0][1])
         return super().build(input_shape)
 
-    def compute_output_shape(self, _):
-        return self.decs[-1].output_shape
-
     def call(self, inputs, mask, **kw):
-        x, ctx, att = inputs
-        b = self.attn_bias(mask[0])
+        x, ctx, ab = inputs
+        rb = self.attn_bias(mask[0])
         PS = self.PS
         if PS.causal_refl:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
-                p = Q.cumsum(Q.cumsum(b, axis=1), axis=1)
+                p = Q.cumsum(Q.cumsum(rb, axis=1), axis=1)
                 p = Q.greater(Q.expand_dims(p, 1), Q.expand_dims(p, 2))
                 b = Q.expand_dims(Q.cast(p, Q.floatx()) * -1e9, 1)
             else:
@@ -292,12 +291,12 @@ class DecodeStack(Stack):
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 b = -1e9 * (1.0 - b)
         if self.prox_bias:
-            b += self.prox_bias
+            rb += self.prox_bias
         # y = T.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
         # t = T.concat([pad_value, t], axis=1)[:, :-1, :]
         y = x  # self.pre.drop(tgt, **kw)
         for d in self.decs:
-            y = d([x, b, ctx, att], **kw)
+            y = d([y, rb, ctx, ab], **kw)
         # y = Q.expand_dims(self.post([tgt, y], **kw), axis=2)
         return y
 
@@ -310,12 +309,9 @@ class Encoder(Q.Layer):
         # self.ffn = ffns[PS.ffn_type](*a)
         self.ffn = Q.Dense(PS.hidden_size, activation='relu')
 
-    def compute_output_shape(self, _):
-        return self.ffn.output_shape
-
     def call(self, inputs, **kw):
-        x, b = inputs
-        y = self.refl([x, x, b], **kw)
+        x, rb = inputs
+        y = self.refl([x, x, rb], **kw)
         y = self.ffn(y, **kw)
         return y
 
@@ -323,17 +319,15 @@ class Encoder(Q.Layer):
 class Decoder(Q.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
-        # a = (PS, pre, post)
-        # self.refl = attents[PS.refl_type](*a)
-        # self.attn = attents[PS.attn_type](*a)
+        a = (PS, pre, post)
+        self.refl = attns[PS.refl_type](*a)
+        self.attn = attns[PS.attn_type](*a)
         # self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
         self.ffn = Q.Dense(PS.hidden_size, activation='relu')
 
-    def compute_output_shape(self, _):
-        return self.ffn.output_shape
-
     def call(self, inputs, **kw):
-        x, b, ctx, att = inputs
-        # y = self.refl([x, x, b], **kw)
-        y = ctx  # self.attn([y, ctx, att], **kw)
-        return self.ffn(y, **kw)
+        x, rb, ctx, ab = inputs
+        y = self.refl([x, x, rb], **kw)
+        y = self.attn([y, ctx, ab], **kw)
+        y = self.ffn(y, **kw)
+        return y

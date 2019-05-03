@@ -26,9 +26,9 @@ class Attent(Q.Layer):
         self.comp = comp or self.dense_comp
 
     def build(self, input_shape):
-        qry, mem, _ = input_shape
+        qry, ctx, _ = input_shape
         qs = qry[2]
-        assert qs == mem[2]
+        assert qs == ctx[2]
         PS = self.PS
         assert qs == PS.hidden_size
         n = PS.attn_heads
@@ -43,15 +43,12 @@ class Attent(Q.Layer):
         self.dense = self.dense_comp(qs, name='dense')
         return super().build(input_shape)
 
-    # def compute_output_shape(self, _):
-    #     return self.dense.output_shape
-
     def call(self, inputs, **kw):
-        qry, mem, bias = inputs
+        qry, ctx, bias = inputs
         # qry = self.pre(qry, **kw)
         q = self.split_heads(self.q_comp(qry, **kw))
-        k = self.split_heads(self.k_comp(mem, **kw))
-        v = self.split_heads(self.v_comp(mem, **kw))
+        k = self.split_heads(self.k_comp(ctx, **kw))
+        v = self.split_heads(self.v_comp(ctx, **kw))
         y = self.scores(q, k, v, bias, **kw)
         y = self.join_heads(y)
         y = self.dense(y, **kw)
@@ -69,7 +66,7 @@ class Attent(Q.Layer):
         y = Q.permute_dimensions(y, [0, 2, 1, 3])
         return y
 
-    def scores(self, q, k, v, b, **kw):
+    def scores(self, q, k, v, bias, **kw):
         raise NotImplementedError()
 
     @staticmethod
@@ -81,18 +78,18 @@ class Attent(Q.Layer):
 
 
 class ConvComp(Q.Layer):
-    dilation_rate = (1, 1)
+    dilation = (1, 1)
     padding = 'VALID'
 
-    def __init__(self, filters, ksize, dilation_rate=None, padding=None, **kw):
+    def __init__(self, filters, ksize, dilation=None, padding=None, **kw):
         super().__init__(**kw)
         assert ksize % 2 == 1
-        self.ksize = ksize
-        if dilation_rate:
-            self.dilation_rate = dilation_rate
+        self.k_size = ksize
+        if dilation:
+            self.dilation = dilation
         if padding:
             self.padding = padding
-        kw = dict(dilation_rate=self.dilation_rate, padding='VALID')
+        kw = dict(dilation_rate=self.dilation, padding='VALID')
         self.conv = Q.Conv1D(filters, ksize, **kw)
 
     def call(self, inputs, **kw):
@@ -107,21 +104,21 @@ class ConvComp(Q.Layer):
         return self.conv(x)
 
 
-class DotAttent(Attent):
+class DotProdAttn(Attent):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.drop = Q.Dropout(self.PS.attn_drop)
 
-    def scores(self, q, k, v, b, **kw):
+    def scores(self, q, k, v, bias, **kw):
         y = Q.matmul(q, k, transpose_b=True)
         y *= (self.k_size // self.PS.attn_heads)**-0.5
-        y = Q.softmax(y + b, **kw)
+        y = Q.softmax(y + bias, **kw)
         y = self.drop(y, **kw)
         y = Q.matmul(y, v)
         return y
 
 
 attns = {
-    None: DotAttent,
-    'dot_attent': DotAttent,
+    None: DotProdAttn,
+    'dot_prod_attn': DotProdAttn,
 }
