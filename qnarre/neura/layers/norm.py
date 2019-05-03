@@ -57,7 +57,7 @@ class LayerProc(Q.Layer):
         _, x = input_shape
         self.gain = self.add_weight(shape=x[-1], initializer='ones')
         self.bias = self.add_weight(shape=x[-1], initializer='zeros')
-        self.gamma = self.add_weight(shape=(), initializer='zeros')
+        # self.gamma = self.add_weight(shape=(), initializer='zeros')
         return super().build(input_shape)
 
     def call(self, inputs, **kw):

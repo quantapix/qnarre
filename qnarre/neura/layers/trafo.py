@@ -37,9 +37,10 @@ class Trafo(Q.Layer):
             self.pos_embed = p
         self.norm = LayerNorm(PS)
         self.drop = Q.Dropout(PS.hidden_drop)
-        pre, post = PreProc(PS), PostProc(PS)
-        self.enc_stack = EncStack(PS, pre, post)
-        self.dec_stack = DecodeStack(PS, pre, post)
+        self.pre = PreProc(PS)
+        self.post = PostProc(PS)
+        self.enc_stack = EncStack(PS, self.pre, self.post)
+        self.dec_stack = DecodeStack(PS, self.pre, self.post)
         self.logits = Q.Dense(PS.vocab_size, activation=None)
 
     def build(self, input_shape):

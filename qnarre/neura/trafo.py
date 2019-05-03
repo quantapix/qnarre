@@ -70,14 +70,14 @@ params = dict(
     pos_embed='timing',
     post_cmd='dan',
     pre_cmd='n',
+    prepost_bdims='',
+    prepost_drop=None,
     prox_bias=True,
     refl_type=None,
     stack_layers=2,
     tgt_len=16,
     token_types=8,
     vocab_size=20,
-    prepost_bdims='',
-    prepost_drop=None,
 )
 
 params.update(
