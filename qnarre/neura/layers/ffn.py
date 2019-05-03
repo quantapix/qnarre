@@ -40,11 +40,11 @@ class DenseDense(Ffn):
 
     def call(self, inputs, **kw):
         x = inputs
-        y = x  # self.pre(x, **kw)
-        y = self.dense1(y, **kw)
+        x = self.pre([x, x], **kw)
+        y = self.dense1(x, **kw)
         y = self.drop(y, **kw)
         y = self.dense2(y, **kw)
-        # y = self.post([x, y], **kw)
+        y = self.post([x, y], **kw)
         return y
 
 

@@ -47,7 +47,7 @@ def model_for(PS, full=False):
 
 
 params = dict(
-    attn_drop=0.1,
+    attn_drop=None,
     attn_heads=2,
     attn_k_size=4,
     attn_type=None,
@@ -65,13 +65,19 @@ params = dict(
     hidden_drop=0.1,
     hidden_size=8,
     max_pos=None,
+    norm_epsilon=1e-6,
+    norm_type='layer',
     pos_embed='timing',
+    post_cmd='dan',
+    pre_cmd='n',
     prox_bias=True,
     refl_type=None,
     stack_layers=2,
     tgt_len=16,
     token_types=8,
     vocab_size=20,
+    prepost_bdims='',
+    prepost_drop=None,
 )
 
 params.update(

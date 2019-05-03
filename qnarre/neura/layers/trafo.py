@@ -35,9 +35,9 @@ class Trafo(Q.Layer):
             p = PosEmbed(PS) if PS.pos_embed == 'embed' else None
             p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
-        self.norm = LayerNorm()
+        self.norm = LayerNorm(PS)
         self.drop = Q.Dropout(PS.hidden_drop)
-        pre, post = None, None  # PreProc(PS), PostProc(PS)
+        pre, post = PreProc(PS), PostProc(PS)
         self.enc_stack = EncStack(PS, pre, post)
         self.dec_stack = DecodeStack(PS, pre, post)
         self.logits = Q.Dense(PS.vocab_size, activation=None)
@@ -256,10 +256,10 @@ class EncStack(Stack):
         ab = rb = self.attn_bias(mask)
         if self.prox_bias:
             rb += self.prox_bias
-        y = x  # self.pre.drop(x, **kw)
+        y = self.pre.drop(x, **kw)
         for e in self.encs:
             y = e([y, rb], **kw)
-        # y = self.post(x, y, **kw)
+        y = self.post([x, y], **kw)
         return y, ab
 
 
@@ -292,12 +292,10 @@ class DecodeStack(Stack):
                 b = -1e9 * (1.0 - b)
         if self.prox_bias:
             rb += self.prox_bias
-        # y = T.pad(t, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
-        # t = T.concat([pad_value, t], axis=1)[:, :-1, :]
-        y = x  # self.pre.drop(tgt, **kw)
+        y = self.pre.drop(x, **kw)
         for d in self.decs:
             y = d([y, rb, ctx, ab], **kw)
-        # y = Q.expand_dims(self.post([tgt, y], **kw), axis=2)
+        y = self.post([x, y], **kw)
         return y
 
 

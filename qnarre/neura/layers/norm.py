@@ -16,10 +16,20 @@
 import qnarre.neura as Q
 
 
+def _layer_norm(self, inputs, **_):
+    x = inputs
+    m = Q.mean(x, axis=-1, keepdims=True)
+    v = Q.mean(Q.square(x - m), axis=-1, keepdims=True)
+    y = (x - m) / Q.sqrt(v + self.PS.norm_epsilon)
+    y = self.gain * y + self.bias
+    return y
+
+
 class LayerNorm(Q.Layer):
-    def __init__(self, **kw):
+    def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
+        self.PS = PS
 
     def build(self, input_shape):
         sh = input_shape[-1]
@@ -27,102 +37,88 @@ class LayerNorm(Q.Layer):
         self.bias = self.add_weight(shape=sh, initializer='zeros')
         return super().build(input_shape)
 
-    def call(self, inputs, **_):
-        x = inputs
-        m = Q.mean(x, axis=-1, keepdims=True)
-        v = Q.mean(Q.square(x - m), axis=-1, keepdims=True)
-        e = Q.constant(1e-5, dtype=Q.floatx())
-        y = (x - m) / Q.sqrt(v + e)
-        return self.gain * y + self.bias
+    def call(self, inputs, **kw):
+        return _layer_norm(self, inputs, **kw)
 
 
-class Proc(Q.Layer):
+class LayerProc(Q.Layer):
     cmd = ''
-
-    @staticmethod
-    def _drop(rate, shape, bdims):
-        ns, bds = None, [int(i) for i in bdims.split(',') if i]
-        if bds:
-            n = len(shape)
-            bds = [d + n if d < 0 else d for d in bds]
-            ns = [1 if i in bds else shape[i] for i in range(n)]
-        return Q.Dropout(rate, noise_shape=ns)
+    batch = None
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
         self.PS = PS
-        self.drop = self._drop(PS.prepost_drop, (), PS.prepost_bdims)
-        self.batch = Q.BatchNormalization(epsilon=PS.norm_epsilon)
+        self.drop = self.dropout()
+        if PS.norm_type == 'batch':
+            self.batch = Q.BatchNormalization(epsilon=PS.norm_epsilon)
 
     def build(self, input_shape):
         _, x = input_shape
-        kw = dict(shape=x[-1], trainable=True)
-        self.gain = self.add_weight(initializer='ones', **kw)
-        self.bias = self.add_weight(initializer='zeros', **kw)
-        # kw.update(shape=())
-        self.gamma = self.add_weight(initializer='zeros', **kw)
+        self.gain = self.add_weight(shape=x[-1], initializer='ones')
+        self.bias = self.add_weight(shape=x[-1], initializer='zeros')
+        self.gamma = self.add_weight(shape=(), initializer='zeros')
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
         prev, x = inputs
+        y = x
         if self.cmd:
             PS = self.PS
             for c in self.cmd:
                 if c == 'a':
-                    x += prev
+                    y = prev + x
                 elif c == 'z':
-                    x = prev + self.gamma * x
+                    y = prev + x * self.gamma
                 elif c == 'n':
                     if PS.norm_type == 'layer':
-                        m = Q.mean(x, axis=-1, keepdims=True)
-                        v = Q.mean(Q.square(x - m), axis=-1, keepdims=True)
-                        x = (x - m) / Q.sqrt(v + PS.norm_epsilon)
-                        x = x * self.gain + self.bias
+                        y = _layer_norm(self, x, **kw)
                     elif PS.norm_type == 'batch':
-                        x = self.batch(x, **kw)
+                        y = self.batch(x, **kw)
                     elif PS.norm_type == 'l2':
                         m = Q.mean(x, axis=-1, keepdims=True)
                         n = Q.sum(Q.square(x - m), axis=-1, keepdims=True)
-                        x = (x - m) / Q.sqrt(n + PS.norm_epsilon)
-                        x = x * self.gain + self.bias
+                        y = (x - m) / Q.sqrt(n + PS.norm_epsilon)
+                        y = y * self.gain + self.bias
                     elif PS.norm_type == 'group':
                         sh = Q.int_shape(x)
                         assert len(sh) == 4 and sh[-1] % PS.num_groups == 0
-                        gsh = (PS.num_groups, sh[-1] // PS.num_groups)
-                        x = Q.reshape(x, sh[:-1] + gsh)
+                        gs = (PS.num_groups, sh[-1] // PS.num_groups)
+                        x = Q.reshape(x, sh[:-1] + gs)
                         m, v = Q.moments(x, [1, 2, 4], keep_dims=True)
-                        x = (x - m) / Q.sqrt(v + PS.group_epsilon)
-                        x = Q.reshape(x, sh) * self.gain + self.bias
+                        y = (x - m) / Q.sqrt(v + PS.group_epsilon)
+                        y = Q.reshape(y, sh) * self.gain + self.bias
                     elif PS.norm_type == 'noam':
-                        d = Q.cast_to_floatx(Q.int_shape(x)[-1])
-                        x = Q.l2_normalize(x, axis=-1) * Q.sqrt(d)
+                        y = Q.cast_to_floatx(Q.int_shape(x)[-1])
+                        y = Q.l2_normalize(x, axis=-1) * Q.sqrt(y)
                     else:
                         assert PS.norm_type == 'none'
                 else:
                     assert c == 'd'
-                    x = self.drop(x, **kw)
-        return x
+                    y = self.drop(x, **kw)
+                x = y
+        return y
+
+    def dropout(self):
+        PS = self.PS
+        ns, ds = None, [int(i) for i in PS.prepost_bdims.split(',') if i]
+        if ds:
+            sh = ()
+            n = len(sh)
+            ds = [d + n if d < 0 else d for d in ds]
+            ns = [1 if i in ds else sh[i] for i in range(n)]
+        return Q.Dropout(PS.prepost_drop or PS.hidden_drop, noise_shape=ns)
 
 
-class PreProc(Proc):
+class PreProc(LayerProc):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.cmd = self.PS.pre_cmd
         assert 'a' not in self.cmd
         assert 'z' not in self.cmd
 
-    def build(self, input_shape):
-        return super().build((None, input_shape))
 
-    def compute_output_shape(self, input_shape):
-        return (input_shape, )
-
-    def call(self, inputs, **kw):
-        return super().call([None, inputs], **kw)
-
-
-class PostProc(Proc):
+class PostProc(LayerProc):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.cmd = self.PS.post_cmd

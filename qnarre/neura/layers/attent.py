@@ -45,14 +45,14 @@ class Attent(Q.Layer):
 
     def call(self, inputs, **kw):
         qry, ctx, bias = inputs
-        # qry = self.pre(qry, **kw)
-        q = self.split_heads(self.q_comp(qry, **kw))
+        x = self.pre([qry, qry], **kw)
+        q = self.split_heads(self.q_comp(x, **kw))
         k = self.split_heads(self.k_comp(ctx, **kw))
         v = self.split_heads(self.v_comp(ctx, **kw))
         y = self.scores(q, k, v, bias, **kw)
         y = self.join_heads(y)
         y = self.dense(y, **kw)
-        # y = self.post([qry, y], **kw)
+        y = self.post([x, y], **kw)
         return y
 
     def dense_comp(self, size, **kw):
@@ -107,7 +107,8 @@ class ConvComp(Q.Layer):
 class DotProdAttn(Attent):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self.drop = Q.Dropout(self.PS.attn_drop)
+        PS = self.PS
+        self.drop = Q.Dropout(PS.attn_drop or PS.hidden_drop)
 
     def scores(self, q, k, v, bias, **kw):
         y = Q.matmul(q, k, transpose_b=True)
