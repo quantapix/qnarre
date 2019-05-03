@@ -41,37 +41,37 @@ def model_for(PS, full=False):
     y = L.Trafo(PS)(ins)
     m = Q.Model(name='TrafoModel', inputs=ins, outputs=[y])
     if full:
-        m.compile(optimizer=PS.optimizer,
-                  loss=PS.losses,
-                  metrics=[PS.metrics])
+        m.compile(optimizer=PS.optimizer, loss=PS.losses, metrics=[PS.metrics])
     print(m.summary())
     return m
 
 
 params = dict(
-    batch_size=4,
-    ctx_len=16,
-    ffn_act='gelu',
-    hidden_act='gelu',
-    hidden_size=8,
-    max_pos=None,
-    tgt_len=16,
-    token_types=8,
-    vocab_size=20,
-    pos_embed='timing',
-    hidden_drop=0.1,
-    enc_layers=None,
-    dec_layers=None,
-    stack_layers=2,
-    prox_bias=True,
-    refl_type=None,
-    attn_type=None,
-    ffn_type=None,
-    causal_refl=False,
     attn_drop=0.1,
     attn_heads=2,
     attn_k_size=4,
+    attn_type=None,
     attn_v_size=4,
+    batch_size=4,
+    causal_refl=False,
+    ctx_len=16,
+    dec_layers=None,
+    enc_layers=None,
+    ffn_act='gelu',
+    ffn_drop=None,
+    ffn_size=256,
+    ffn_type=None,
+    hidden_act='gelu',
+    hidden_drop=0.1,
+    hidden_size=8,
+    max_pos=None,
+    pos_embed='timing',
+    prox_bias=True,
+    refl_type=None,
+    stack_layers=2,
+    tgt_len=16,
+    token_types=8,
+    vocab_size=20,
 )
 
 params.update(

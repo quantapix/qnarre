@@ -306,8 +306,7 @@ class Encoder(Q.Layer):
         super().__init__(**kw)
         a = (PS, pre, post)
         self.refl = attns[PS.refl_type](*a)
-        # self.ffn = ffns[PS.ffn_type](*a)
-        self.ffn = Q.Dense(PS.hidden_size, activation='relu')
+        self.ffn = ffns[PS.ffn_type](*a)
 
     def call(self, inputs, **kw):
         x, rb = inputs
@@ -322,8 +321,7 @@ class Decoder(Q.Layer):
         a = (PS, pre, post)
         self.refl = attns[PS.refl_type](*a)
         self.attn = attns[PS.attn_type](*a)
-        # self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
-        self.ffn = Q.Dense(PS.hidden_size, activation='relu')
+        self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
 
     def call(self, inputs, **kw):
         x, rb, ctx, ab = inputs

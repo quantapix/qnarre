@@ -16,11 +16,12 @@
 import qnarre.neura as Q
 
 
-class FFN(Q.Layer):
+class Ffn(Q.Layer):
     conv_pad = 'SAME'
 
     def __init__(self, PS, pre, post, conv_pad=None, **kw):
         super().__init__(**kw)
+        self.supports_masking = True
         self.PS = PS
         self.pre = pre
         self.post = post
@@ -28,28 +29,23 @@ class FFN(Q.Layer):
             self.conv_pad = conv_pad
 
 
-class DenseDense(FFN):
+class DenseDense(Ffn):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         PS = self.PS
         kw = dict(kernel_initializer=PS.initializer, use_bias=True)
-        self.dense1 = Q.Dense(PS.ffn_units, activation=PS.ffn_act, **kw)
-        self.drop = Q.Dropout(PS.ffn_drop)
+        self.dense1 = Q.Dense(PS.ffn_size, activation=PS.ffn_act, **kw)
+        self.drop = Q.Dropout(PS.ffn_drop or PS.hidden_drop)
         self.dense2 = Q.Dense(PS.hidden_size, **kw)
 
-    def call(self, inputs, pad_remover=None, **kw):
+    def call(self, inputs, **kw):
         x = inputs
-        y = self.pre(x, **kw)
-        sh = Q.int_shape(y)
-        if pad_remover:
-            y = Q.reshape(y, Q.concatenate([[-1], sh[2:]], axis=0))
-            y = Q.expand_dims(pad_remover.remove(y), axis=0)
+        y = x  # self.pre(x, **kw)
         y = self.dense1(y, **kw)
         y = self.drop(y, **kw)
         y = self.dense2(y, **kw)
-        if pad_remover:
-            y = Q.reshape(pad_remover.restore(Q.squeeze(y, axis=0)), sh)
-        return self.post([x, y], **kw)
+        # y = self.post([x, y], **kw)
+        return y
 
 
 ffns = {
