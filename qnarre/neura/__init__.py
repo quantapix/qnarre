@@ -16,6 +16,9 @@
 import tensorflow as tf
 import tensorflow.summary as ts
 
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import math_ops
+
 ks = tf.keras
 K = ks.backend
 
@@ -41,7 +44,7 @@ TensorBoard = ks.callbacks.TensorBoard
 TensorShape = tf.TensorShape
 TruncatedNormal = ks.initializers.TruncatedNormal
 abs = K.abs
-arange = K.arange
+range = math_ops.range
 argmax = tf.argmax
 as_dtype = tf.as_dtype
 bias_add = K.bias_add
@@ -55,10 +58,10 @@ cumsum = K.cumsum
 dot = K.dot
 equal = tf.equal
 exp = K.exp
-expand_dims = K.expand_dims
+expand_dims = array_ops.expand_dims
 float16 = tf.float16
 float32 = tf.float32
-floatx = K.floatx
+floatx = K.floatx  # g
 function = tf.function
 gather = tf.gather
 greater = K.greater
@@ -76,7 +79,7 @@ one_hot = K.one_hot
 permute_dimensions = K.permute_dimensions
 pow = K.pow
 print = tf.print
-reshape = K.reshape
+reshape = array_ops.reshape
 scalar = ts.scalar
 sin = K.sin
 softmax = tf.nn.softmax
@@ -89,3 +92,4 @@ tensor_scatter_nd_update = tf.tensor_scatter_nd_update
 transpose = tf.transpose
 unstack = tf.unstack
 where = tf.where
+tile = array_ops.tile

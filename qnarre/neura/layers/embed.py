@@ -95,9 +95,9 @@ class PosTiming(Q.Layer):
         assert hsize % 2 == 0
         n = hsize // 2
         s = np.log(self.max_scale / self.min_scale) / max(n - 1, 1)
-        s = self.min_scale * Q.exp(Q.arange(n, dtype=Q.floatx()) * -s)
-        p = Q.arange(tlen, dtype=Q.floatx()) + self.start
-        p = Q.expand_dims(p, 1) * Q.expand_dims(s, 0)
+        s = self.min_scale * Q.exp(Q.range(n, dtype=Q.floatx()) * -s)
+        p = Q.range(tlen, dtype=Q.floatx()) + self.start
+        p = Q.expand_dims(p, axis=1) * Q.expand_dims(s, axis=0)
         p = Q.concatenate([Q.sin(p), Q.cos(p)], axis=1)
         self.bias = Q.expand_dims(p, axis=0)
         return super().build(input_shape)

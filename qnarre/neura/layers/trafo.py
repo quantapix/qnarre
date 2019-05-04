@@ -219,10 +219,10 @@ class Stack(Q.Layer):
 
     @staticmethod
     def proximity(max_len):
-        y = Q.arange(max_len, dtype=Q.floatx())
-        y = Q.expand_dims(y, 0) - Q.expand_dims(y, 1)
+        y = Q.range(max_len, dtype=Q.floatx())
+        y = Q.expand_dims(y, axis=0) - Q.expand_dims(y, axis=1)
         y = -Q.log1p(Q.abs(y))
-        y = Q.expand_dims(Q.expand_dims(y, 0), 0)
+        y = Q.expand_dims(Q.expand_dims(y, axis=0), axis=0)
         return y
 
     def __init__(self, PS, pre, post, **kw):
@@ -283,9 +283,10 @@ class DecodeStack(Stack):
         PS = self.PS
         if PS.causal_refl:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
-                p = Q.cumsum(Q.cumsum(rb, axis=1), axis=1)
-                p = Q.greater(Q.expand_dims(p, 1), Q.expand_dims(p, 2))
-                b = Q.expand_dims(Q.cast(p, Q.floatx()) * -1e9, 1)
+                y = Q.cumsum(Q.cumsum(rb, axis=1), axis=1)
+                y2 = Q.expand_dims(y, axis=1)
+                y = Q.greater(y2, Q.expand_dims(y, axis=2))
+                b = Q.expand_dims(Q.cast(y, Q.floatx()) * -1e9, axis=1)
             else:
                 ln = Q.int_shape(x)[1]
                 sh = (1, 1, ln, ln)

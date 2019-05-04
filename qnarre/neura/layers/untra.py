@@ -248,7 +248,7 @@ class Stack(Q.Layer):
 
     @staticmethod
     def proximity(slen):
-        p = Q.arange(slen, dtype=Q.floatx())
+        p = Q.range(slen, dtype=Q.floatx())
         p = Q.expand_dims(p, 0) - Q.expand_dims(p, 1)
         return Q.expand_dims(Q.expand_dims(-Q.log1p(Q.abs(p)), 0), 0)
 
