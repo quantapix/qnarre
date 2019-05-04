@@ -18,6 +18,7 @@ import qnarre.neura.utils as U
 
 from qnarre.neura.layers.ffn import ffns
 from qnarre.neura.layers.attent import attns
+from qnarre.neura.layers.beam import beam_search
 from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
@@ -51,6 +52,11 @@ class Trafo(Q.Layer):
         # self.mlm_bias = self.add_weight(shape=self.PS.vocab_size, **kw)
         # self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
+
+    def get_config(self):
+        c = super().get_config()
+        c['PS'] = self.PS
+        return c
 
     """
     def compute_output_shape(self, input_shape):
@@ -105,113 +111,67 @@ class Trafo(Q.Layer):
         if self.PS.sampling_method == 'argmax':
             t = 0.0
         keep_top_k = self.PS.keep_top_k or -1
-        """
         if t == 0.0:
             # TF argmax doesn't handle >5 dimensions, so we reshape here.
             sh = Q.int_shape(x)
-            argmax = Q.argmax(T.reshape(x, [-1, sh[-1]]), axis=1)
-            return T.reshape(argmax, sh[:-1])
+            argmax = Q.argmax(Q.reshape(x, [-1, sh[-1]]), axis=1)
+            return Q.reshape(argmax, sh[:-1])
         assert t > 0.0
         if keep_top_k != -1:
             if keep_top_k <= 0:
                 raise ValueError("keep_top_k must either be -1 or positive.")
-
             vocab_size = shape_list(logits)[1]
-
             k_largest = T.contrib.nn.nth_element(logits,
                                                  n=keep_top_k,
                                                  reverse=True)
-            k_largest = T.tile(T.reshape(k_largest, [-1, 1]), [1, vocab_size])
-
+            k_largest = Q.tile(Q.reshape(k_largest, [-1, 1]), [1, vocab_size])
             # Force every position that is not in the top k to have probability near
             # 0 by setting the logit to be very negative.
-            logits = T.where(T.less_equal(logits, k_largest),
-                             T.ones_like(logits) * -1e6, logits)
-
-        reshaped_logits = (T.reshape(logits, [-1, shape_list(logits)[-1]]) / t)
-        choices = T.multinomial(reshaped_logits, 1)
-        choices = T.reshape(choices,
+            logits = Q.where(Q.less_equal(logits, k_largest),
+                             Q.ones_like(logits) * -1e6, logits)
+        reshaped_logits = (Q.reshape(logits, [-1, shape_list(logits)[-1]]) / t)
+        choices = Q.multinomial(reshaped_logits, 1)
+        choices = Q.reshape(choices,
                             shape_list(logits)[:logits.get_shape().ndims - 1])
         return choices
-        """
 
     def call(self, inputs, training=None, **kw):
         src, typ, tgt = inputs
         ctx, bias = self.encode(src, typ, **kw)
         y = self.decode(tgt, ctx, bias, **kw)
-        # if d:
-        y = self.to_logits(y, **kw)
-        # if training:
-        return y
-        # return self.to_toks(y, **kw)
-        # if training:
-        #    return c
-        """
-        if tgt:
+        if y is not None:
+            y = self.to_logits(y, **kw)
             PS = self.PS
             if PS.beam_size > 1:
-                toks = T.identity(tgt)
-                return
+                y = beam_search(self)
             else:
-                toks = tgt[0]
-                unks = T.equal(toks, PS.UNK)
-                prior = T.one_hot(toks, PS.vocab_size, 0.0, -1e9)
-                eos = T.fill(toks[:1], False)
-                scores = T.zeros(toks[:1])
+                sh = Q.int_shape(tgt)
+                for i in range(sh[-1]):
+                    scores = Q.zeros(toks[:1])
 
-                def not_done(i):
-                    d = i >= Q.int_shape(tgt)[-1]
-                    if eos:
-                        d |= T.reduce_all(eos)
-                    return T.logical_not(d)
+                    e = Q.equal(tgt, PS.EOS)
+                    e = Q.reduce_any(e, axis=1)
+                    if Q.reduce_all(e):
+                        break
 
-                def loop(i):
-                    y = self.decode(tgt, ctx, att, **kw)
+                    unks = Q.equal(tgt, PS.UNK)
+                    prior = Q.one_hot(toks, PS.vocab_size, 0.0, -1e9)
+                    y = self.decode(tgt, ctx, bias, **kw)
                     y = self.to_logits(y, unks, prior)
-                    lprb = y - T.reduce_logsumexp(y, axis=-1, keepdims=True)
+                    lprb = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
                     t = self.sample(y[:, i, :])
-                    nonlocal toks, unks, eos
-                    toks = T.tensor_scatter_nd_update(toks, indices, t)
-                    unks = T.tensor_scatter_nd_update(unks, indices, t)
-                    eos |= T.equal(t, PS.EOS)
-                    idx = T.stack([T.range(T.to_int64(PS.batch_size)), t],
+                    toks = Q.tensor_scatter_nd_update(toks, indices, t)
+                    unks = Q.tensor_scatter_nd_update(unks, indices, t)
+                    idx = Q.stack([Q.range(T.to_int64(PS.batch_size)), t],
                                   axis=1)
-                    lprb += T.gather_nd(lprb, idx)
+                    lprb += Q.gather_nd(lprb, idx)
                     return i + 1
 
-                _, toks, scores = T.while_loop(
-                    not_done,
-                    loop, [T.constant(0)],
-                    shape_invariants=[T.TensorShape([])])
-            return {"outputs": toks, "scores": scores}
-        """
 
-
-"""
-            initial_ids = sos_id * T.ones([PS.batch_size], dtype=T.int32)
-            decoded_ids, scores, cache = beam_search.beam_search(
-                symbols_to_logits_fn,
-                initial_ids,
-                PS.beam_size,
-                decode_length,
-                vocab_size,
-                alpha,
-                states=cache,
-                eos_id=eos_id,
-                stop_early=(PS.top_beams == 1))
-            if PS.top_beams == 1:
-                decoded_ids = decoded_ids[:, 0, 1:]
-                scores = scores[:, 0]
-            else:
-                decoded_ids = decoded_ids[:, :PS.top_beams, 1:]
-                scores = scores[:, :PS.top_beams]
-
-
-    def get_config(self):
-        c = super().get_config()
-        c['PS'] = self.PS
-        return c
-"""
+            # return {"outputs": toks, "scores": scores}
+            if not training:
+                y = self.to_toks(y, **kw)
+        return y
 
 
 class Stack(Q.Layer):

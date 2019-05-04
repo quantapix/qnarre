@@ -28,6 +28,29 @@ EOS_ID = 1
 INF = 1. * 1e7
 
 
+"""
+    toks = Q.identity(tgt)
+    initial_ids = sos_id * Q.ones([PS.batch_size], dtype=Q.int32)
+    decoded_ids, scores, cache = beam_search.beam_search(
+        symbols_to_logits_fn,
+        initial_ids,
+        PS.beam_size,
+        decode_length,
+        vocab_size,
+        alpha,
+        states=cache,
+        eos_id=eos_id,
+        stop_early=(PS.top_beams == 1))
+    if PS.top_beams == 1:
+        decoded_ids = decoded_ids[:, 0, 1:]
+        scores = scores[:, 0]
+    else:
+        decoded_ids = decoded_ids[:, :PS.top_beams, 1:]
+        scores = scores[:, :PS.top_beams]
+        return
+"""
+
+
 def _merge_beam_dim(tensor):
     shape = Q.int_shape(tensor)
     shape[0] *= shape[1]  # batch -> batch * beam_size

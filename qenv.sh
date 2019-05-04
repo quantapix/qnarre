@@ -74,7 +74,8 @@ tflow() {
         else
             .qenv/bin/pip install -U tf-nightly-2.0-preview
         fi
-        # .qenv/bin/pip install -U tb-nightly
+        .qenv/bin/pip install -U tfp-nightly
+        .qenv/bin/pip install -U tb-nightly
     fi
 }
 

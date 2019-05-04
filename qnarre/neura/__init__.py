@@ -15,6 +15,7 @@
 
 import tensorflow as tf
 import tensorflow.summary as ts
+import tensorflow_probability as tfp
 
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
@@ -92,13 +93,16 @@ logical_or = math_ops.logical_or
 logical_xor = math_ops.logical_xor
 matmul = math_ops.matmul
 moments = tf.nn.moments
+multinomial = tfp.distributions.multinomial
 one_hot = array_ops.one_hot
 ones = array_ops.ones
+ones_like = array_ops.ones_like
 pow = math_ops.pow
 print = tf.print
 range = math_ops.range
 reduce_all = math_ops.reduce_all
 reduce_any = math_ops.reduce_any
+reduce_logsumexp = math_ops.reduce_logsumexp
 reduce_max = math_ops.reduce_max
 reduce_mean = math_ops.reduce_mean
 reduce_min = math_ops.reduce_min
