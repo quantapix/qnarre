@@ -16,7 +16,7 @@
 import qnarre.neura as Q
 
 
-class Ffn(Q.Layer):
+class FFN(Q.Layer):
     conv_pad = 'SAME'
 
     def __init__(self, PS, pre, post, conv_pad=None, **kw):
@@ -29,7 +29,7 @@ class Ffn(Q.Layer):
             self.conv_pad = conv_pad
 
 
-class DenseDense(Ffn):
+class DenseDenseFFN(FFN):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         PS = self.PS
@@ -49,6 +49,6 @@ class DenseDense(Ffn):
 
 
 ffns = {
-    None: DenseDense,
-    'dense_dense': DenseDense,
+    None: DenseDenseFFN,
+    'dense_dense_ffn': DenseDenseFFN,
 }

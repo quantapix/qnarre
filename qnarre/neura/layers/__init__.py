@@ -16,14 +16,14 @@
 from qnarre.neura.layers.bert import Bert
 from qnarre.neura.layers.squad import Squad
 from qnarre.neura.layers.trafo import Trafo
-from qnarre.neura.layers.ffn import ffns, DenseDense
+from qnarre.neura.layers.ffn import ffns, DenseDenseFFN
 from qnarre.neura.layers.attent import attns, DotProdAttn
 from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 __all__ = (
     Bert,
-    DenseDense,
+    DenseDenseFFN,
     DotProdAttn,
     LayerNorm,
     PosEmbed,

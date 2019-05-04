@@ -13,3 +13,6 @@
 [submodule "tensor2tensor/upstream"]
 	path = tensor2tensor/upstream
 	url = https://github.com/tensorflow/tensor2tensor.git
+[submodule "tensorflow/bazel"]
+	path = tensorflow/bazel
+	url = https://github.com/bazelbuild/bazel.git
