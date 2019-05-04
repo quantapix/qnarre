@@ -103,23 +103,23 @@ def _create_make_unique(inputs):
     log2_ceiling = int(math.ceil(math.log(int(width), 2)))
     next_power_of_two = 1 << log2_ceiling
     count_mask = ~(next_power_of_two - 1)
-    count_mask_r0 = tf.constant(count_mask)
+    count_mask_r0 = Q.constant(count_mask)
     count_mask_r2 = tf.fill([height, width], count_mask_r0)
 
     # Smallest_normal is the bit representation of the smallest positive normal
     # floating point number. The sign is zero, exponent is one, and the fraction
     # is zero.
     smallest_normal = 1 << 23
-    smallest_normal_r0 = tf.constant(smallest_normal, dtype=tf.int32)
+    smallest_normal_r0 = Q.constant(smallest_normal, dtype=tf.int32)
     smallest_normal_r2 = tf.fill([height, width], smallest_normal_r0)
 
     # Low_bit_mask is used to mask away the sign bit when computing the absolute
     # value.
     low_bit_mask = ~(1 << 31)
-    low_bit_mask_r0 = tf.constant(low_bit_mask, dtype=tf.int32)
+    low_bit_mask_r0 = Q.constant(low_bit_mask, dtype=tf.int32)
     low_bit_mask_r2 = tf.fill([height, width], low_bit_mask_r0)
 
-    iota = tf.tile(tf.expand_dims(tf.range(width, dtype=tf.int32), 0),
+    iota = Q.tile(Q.expand_dims(Q.range(width, dtype=tf.int32), 0),
                    [height, 1])
 
     # Compare the absolute value with positive zero to handle negative zero.
@@ -150,7 +150,7 @@ def _create_topk_unique(inputs, k):
   """
     height = inputs.shape[0]
     width = inputs.shape[1]
-    neg_inf_r0 = tf.constant(-np.inf, dtype=tf.float32)
+    neg_inf_r0 = Q.constant(-np.inf, dtype=tf.float32)
     ones = tf.ones([height, width], dtype=tf.float32)
     neg_inf_r2 = ones * neg_inf_r0
     inputs = tf.where(tf.is_nan(inputs), neg_inf_r2, inputs)
@@ -162,19 +162,19 @@ def _create_topk_unique(inputs, k):
     topk_r2 = tf.zeros([height, k], dtype=tf.float32)
     for i in range(k):
         kth_order_statistic = tf.reduce_max(tmp, axis=1, keepdims=True)
-        k_mask = tf.tile(
-            tf.expand_dims(tf.equal(tf.range(k), tf.fill([k], i)), 0),
+        k_mask = Q.tile(
+            Q.expand_dims(tf.equal(Q.range(k), tf.fill([k], i)), 0),
             [height, 1])
-        topk_r2 = tf.where(k_mask, tf.tile(kth_order_statistic, [1, k]),
+        topk_r2 = tf.where(k_mask, Q.tile(kth_order_statistic, [1, k]),
                            topk_r2)
         ge_r2 = tf.greater_equal(inputs,
-                                 tf.tile(kth_order_statistic, [1, width]))
+                                 Q.tile(kth_order_statistic, [1, width]))
         tmp = tf.where(ge_r2, neg_inf_r2, inputs)
 
     log2_ceiling = int(math.ceil(math.log(float(int(width)), 2)))
     next_power_of_two = 1 << log2_ceiling
     count_mask = next_power_of_two - 1
-    mask_r0 = tf.constant(count_mask)
+    mask_r0 = Q.constant(count_mask)
     mask_r2 = tf.fill([height, k], mask_r0)
     topk_r2_s32 = tf.bitcast(topk_r2, tf.int32)
     topk_indices_r2 = tf.bitwise.bitwise_and(topk_r2_s32, mask_r2)
@@ -347,13 +347,13 @@ def beam_search(symbols_to_logits_fn,
     batch_size = Q.int_shape(initial_ids)[0]
 
     # Assume initial_ids are prob 1.0
-    initial_log_probs = tf.constant([[0.] + [-INF] * (beam_size - 1)])
+    initial_log_probs = Q.constant([[0.] + [-INF] * (beam_size - 1)])
     # Expand to beam_size (batch_size, beam_size)
-    alive_log_probs = tf.tile(initial_log_probs, [batch_size, 1])
+    alive_log_probs = Q.tile(initial_log_probs, [batch_size, 1])
 
     # Expand each batch and state to beam_size
     alive_seq = _expand_to_beam_size(initial_ids, beam_size)
-    alive_seq = tf.expand_dims(alive_seq, axis=2)  # (batch_size, beam_size, 1)
+    alive_seq = Q.expand_dims(alive_seq, axis=2)  # (batch_size, beam_size, 1)
     if states:
         states = nest.map_structure(
             lambda state: _expand_to_beam_size(state, beam_size), states)
@@ -496,7 +496,7 @@ def beam_search(symbols_to_logits_fn,
 
         # Multiply the probabilities by the current probabilities of the beam.
         # (batch_size, beam_size, vocab_size) + (batch_size, beam_size, 1)
-        log_probs = candidate_log_probs + tf.expand_dims(alive_log_probs,
+        log_probs = candidate_log_probs + Q.expand_dims(alive_log_probs,
                                                          axis=2)
 
         length_penalty = tf.pow(((5. + tf.to_float(i + 1)) / 6.), alpha)
@@ -535,7 +535,7 @@ def beam_search(symbols_to_logits_fn,
 
         # Append the most probable alive
         topk_seq = tf.concat(
-            [topk_seq, tf.expand_dims(topk_ids, axis=2)], axis=2)
+            [topk_seq, Q.expand_dims(topk_ids, axis=2)], axis=2)
 
         topk_finished = tf.equal(topk_ids, eos_id)
 
@@ -659,7 +659,7 @@ def beam_search(symbols_to_logits_fn,
      finished_flags, states) = tf.while_loop(
          _is_finished,
          inner_loop, [
-             tf.constant(0), alive_seq, alive_log_probs, finished_seq,
+             Q.constant(0), alive_seq, alive_log_probs, finished_seq,
              finished_scores, finished_flags, states
          ],
          shape_invariants=[

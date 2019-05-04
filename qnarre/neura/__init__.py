@@ -18,6 +18,7 @@ import tensorflow.summary as ts
 
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
+from tensorflow.python.framework import constant_op
 
 ks = tf.keras
 K = ks.backend
@@ -51,7 +52,7 @@ bias_add = K.bias_add
 cast = K.cast
 cast_to_floatx = K.cast_to_floatx
 concatenate = K.concatenate
-constant = K.constant
+constant = constant_op.constant
 cos = K.cos
 create_file_writer = ts.create_file_writer
 cumsum = K.cumsum
