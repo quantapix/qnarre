@@ -992,10 +992,10 @@ def universal_transformer_highway(layer_inputs,
     new_state = state * carry_gate + transformed_state * transform_gate
 
     tf.contrib.summary.scalar("highway_transform_gate_layer",
-                              tf.reduce_mean(transform_gate))
+                              Q.reduce_mean(transform_gate))
 
     tf.contrib.summary.scalar("highway_carry_gate_layer",
-                              tf.reduce_mean(carry_gate))
+                              Q.reduce_mean(carry_gate))
 
     return new_state, inputs, memory
 
@@ -1085,10 +1085,10 @@ def universal_transformer_skip(layer_inputs,
             postprocess=True)
 
     tf.contrib.summary.scalar("skip_transform_gate_layer",
-                              tf.reduce_mean(transform_gate))
+                              Q.reduce_mean(transform_gate))
 
     tf.contrib.summary.scalar("skip_carry_gate_layer",
-                              tf.reduce_mean(carry_gate))
+                              Q.reduce_mean(carry_gate))
 
     new_state = inputs * carry_gate + transformed_state * transform_gate
     return new_state, inputs, memory
@@ -1206,7 +1206,7 @@ def universal_transformer_with_gru_as_transition_function(
             postprocess=False)
 
         tf.contrib.summary.scalar(
-            "gru_update_gate", tf.reduce_mean(transition_function_update_gate))
+            "gru_update_gate", Q.reduce_mean(transition_function_update_gate))
 
         # gru reset gate: r_t = sigmoid(W_r.x_t + U_r.h_{t-1})
         transition_function_reset_gate = _ffn_layer_multi_inputs(
@@ -1220,7 +1220,7 @@ def universal_transformer_with_gru_as_transition_function(
             postprocess=False)
 
         tf.contrib.summary.scalar(
-            "gru_reset_gate", tf.reduce_mean(transition_function_reset_gate))
+            "gru_reset_gate", Q.reduce_mean(transition_function_reset_gate))
         reset_state = transition_function_reset_gate * state
 
         # gru_candidate_activation: h' = tanh(W_{x_t} + U (r_t h_{t-1})
@@ -1303,7 +1303,7 @@ def universal_transformer_with_lstm_as_transition_function(
             postprocess=False)
 
         tf.contrib.summary.scalar(
-            "lstm_input_gate", tf.reduce_mean(transition_function_input_gate))
+            "lstm_input_gate", Q.reduce_mean(transition_function_input_gate))
 
         # lstm forget gate: f_t = sigmoid(W_f.x_t + U_f.h_{t-1})
         transition_function_forget_gate = _ffn_layer_multi_inputs(
@@ -1321,7 +1321,7 @@ def universal_transformer_with_lstm_as_transition_function(
 
         tf.contrib.summary.scalar(
             "lstm_forget_gate",
-            tf.reduce_mean(transition_function_forget_gate))
+            Q.reduce_mean(transition_function_forget_gate))
 
         # lstm output gate: o_t = sigmoid(W_o.x_t + U_o.h_{t-1})
         transition_function_output_gate = _ffn_layer_multi_inputs(
@@ -1336,7 +1336,7 @@ def universal_transformer_with_lstm_as_transition_function(
 
         tf.contrib.summary.scalar(
             "lstm_output_gate",
-            tf.reduce_mean(transition_function_output_gate))
+            Q.reduce_mean(transition_function_output_gate))
 
         # lstm input modulation
         transition_function_input_modulation = _ffn_layer_multi_inputs(
@@ -1451,7 +1451,7 @@ def universal_transformer_act(x, hparams, ffn_unit, attention_unit):
 
                 if hparams.act_type == "global":
                     # average over all positions (as a global halting prob)
-                    p = tf.reduce_mean(p, axis=1)
+                    p = Q.reduce_mean(p, axis=1)
                     p = tf.squeeze(p)
                 else:
                     # maintain position-wise probabilities
@@ -1534,7 +1534,7 @@ def universal_transformer_act(x, hparams, ffn_unit, attention_unit):
     ponder_times = n_updates
     remainders = remainder
 
-    tf.contrib.summary.scalar("ponder_times", tf.reduce_mean(ponder_times))
+    tf.contrib.summary.scalar("ponder_times", Q.reduce_mean(ponder_times))
 
     return new_state, (ponder_times, remainders)
 

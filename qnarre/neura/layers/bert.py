@@ -52,9 +52,10 @@ class Bert(Q.Layer):
         e = self.trafo.tok_embed.embeddings
         y = Q.matmul(y, e, transpose_b=True)
         y = Q.log_softmax(Q.bias_add(y, self.mlm_bias), axis=-1)
-        mlm_loss = -Q.sum(y * Q.one_hot(val, PS.vocab_size), axis=-1)
+        mlm_loss = -Q.reduce_sum(y * Q.one_hot(val, PS.vocab_size), axis=-1)
         y = Q.matmul(fit_y, self.gain, transpose_b=True)
         y = Q.log_softmax(Q.bias_add(y, self.bias), axis=-1)
-        fit_loss = -Q.sum(y * Q.one_hot(fit, 2), axis=-1)
-        loss = Q.sum(mlm * mlm_loss) / (Q.sum(mlm) + 1e-5) + Q.mean(fit_loss)
+        fit_loss = -Q.reduce_sum(y * Q.one_hot(fit, 2), axis=-1)
+        loss = Q.reduce_sum(mlm * mlm_loss)
+        loss /= (Q.reduce_sum(mlm) + 1e-5) + Q.reduce_mean(fit_loss)
         return seq, loss

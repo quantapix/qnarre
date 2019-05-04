@@ -63,7 +63,7 @@ class Attent(Q.Layer):
         sh = Q.int_shape(x)
         n = self.PS.attn_heads
         y = Q.reshape(x, (-1, sh[1], n, sh[-1] // n))
-        y = Q.permute_dimensions(y, [0, 2, 1, 3])
+        y = Q.transpose(y, perm=[0, 2, 1, 3])
         return y
 
     def scores(self, q, k, v, bias, **kw):
@@ -71,7 +71,7 @@ class Attent(Q.Layer):
 
     @staticmethod
     def join_heads(x):
-        y = Q.permute_dimensions(x, [0, 2, 1, 3])
+        y = Q.transpose(x, perm=[0, 2, 1, 3])
         sh = Q.int_shape(y)
         y = Q.reshape(y, (-1, sh[1], sh[2] * sh[3]))
         return y

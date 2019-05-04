@@ -80,7 +80,7 @@ def _create_make_unique(inputs):
   make each element unique to break ties.
 
   Args:
-    inputs: A tensor with rank of 2 and dtype of tf.float32.
+    inputs: A tensor with rank of 2 and dtype of Q.float32.
       [batch_size, original_size].
 
   Returns:
@@ -96,7 +96,7 @@ def _create_make_unique(inputs):
 
     height = inputs.shape[0]
     width = inputs.shape[1]
-    zeros = tf.zeros([height, width], dtype=tf.int32)
+    zeros = Q.zeros([height, width], dtype=Q.int32)
 
     # Count_mask is used to mask away the low order bits to ensure that every
     # element is distinct.
@@ -104,37 +104,36 @@ def _create_make_unique(inputs):
     next_power_of_two = 1 << log2_ceiling
     count_mask = ~(next_power_of_two - 1)
     count_mask_r0 = Q.constant(count_mask)
-    count_mask_r2 = tf.fill([height, width], count_mask_r0)
+    count_mask_r2 = Q.fill([height, width], count_mask_r0)
 
     # Smallest_normal is the bit representation of the smallest positive normal
     # floating point number. The sign is zero, exponent is one, and the fraction
     # is zero.
     smallest_normal = 1 << 23
-    smallest_normal_r0 = Q.constant(smallest_normal, dtype=tf.int32)
-    smallest_normal_r2 = tf.fill([height, width], smallest_normal_r0)
+    smallest_normal_r0 = Q.constant(smallest_normal, dtype=Q.int32)
+    smallest_normal_r2 = Q.fill([height, width], smallest_normal_r0)
 
     # Low_bit_mask is used to mask away the sign bit when computing the absolute
     # value.
     low_bit_mask = ~(1 << 31)
-    low_bit_mask_r0 = Q.constant(low_bit_mask, dtype=tf.int32)
-    low_bit_mask_r2 = tf.fill([height, width], low_bit_mask_r0)
+    low_bit_mask_r0 = Q.constant(low_bit_mask, dtype=Q.int32)
+    low_bit_mask_r2 = Q.fill([height, width], low_bit_mask_r0)
 
-    iota = Q.tile(Q.expand_dims(Q.range(width, dtype=tf.int32), 0),
-                   [height, 1])
+    iota = Q.tile(Q.expand_dims(Q.range(width, dtype=Q.int32), 0), [height, 1])
 
     # Compare the absolute value with positive zero to handle negative zero.
-    input_r2 = tf.bitcast(inputs, tf.int32)
-    abs_r2 = tf.bitwise.bitwise_and(input_r2, low_bit_mask_r2)
-    if_zero_r2 = tf.equal(abs_r2, zeros)
-    smallest_normal_preserving_sign_r2 = tf.bitwise.bitwise_or(
-        input_r2, smallest_normal_r2)
-    input_no_zeros_r2 = tf.where(if_zero_r2,
-                                 smallest_normal_preserving_sign_r2, input_r2)
+    input_r2 = Q.bitcast(inputs, Q.int32)
+    abs_r2 = Q.bitwise_and(input_r2, low_bit_mask_r2)
+    if_zero_r2 = Q.equal(abs_r2, zeros)
+    smallest_normal_preserving_sign_r2 = Q.bitwise_or(input_r2,
+                                                      smallest_normal_r2)
+    input_no_zeros_r2 = Q.where(if_zero_r2, smallest_normal_preserving_sign_r2,
+                                input_r2)
 
     # Discard the low-order bits and replace with iota.
-    and_r2 = tf.bitwise.bitwise_and(input_no_zeros_r2, count_mask_r2)
-    or_r2 = tf.bitwise.bitwise_or(and_r2, iota)
-    return tf.bitcast(or_r2, tf.float32)
+    and_r2 = Q.bitwise_and(input_no_zeros_r2, count_mask_r2)
+    or_r2 = Q.bitwise_or(and_r2, iota)
+    return Q.bitcast(or_r2, Q.float32)
 
 
 def _create_topk_unique(inputs, k):
@@ -150,34 +149,32 @@ def _create_topk_unique(inputs, k):
   """
     height = inputs.shape[0]
     width = inputs.shape[1]
-    neg_inf_r0 = Q.constant(-np.inf, dtype=tf.float32)
-    ones = tf.ones([height, width], dtype=tf.float32)
+    neg_inf_r0 = Q.constant(-np.inf, dtype=Q.float32)
+    ones = Q.ones([height, width], dtype=Q.float32)
     neg_inf_r2 = ones * neg_inf_r0
-    inputs = tf.where(tf.is_nan(inputs), neg_inf_r2, inputs)
+    inputs = Q.where(Q.is_nan(inputs), neg_inf_r2, inputs)
 
     # Select the current largest value k times and keep them in topk_r2. The
     # selected largest values are marked as the smallest value to avoid being
     # selected again.
     tmp = inputs
-    topk_r2 = tf.zeros([height, k], dtype=tf.float32)
+    topk_r2 = Q.zeros([height, k], dtype=Q.float32)
     for i in range(k):
-        kth_order_statistic = tf.reduce_max(tmp, axis=1, keepdims=True)
-        k_mask = Q.tile(
-            Q.expand_dims(tf.equal(Q.range(k), tf.fill([k], i)), 0),
-            [height, 1])
-        topk_r2 = tf.where(k_mask, Q.tile(kth_order_statistic, [1, k]),
-                           topk_r2)
-        ge_r2 = tf.greater_equal(inputs,
-                                 Q.tile(kth_order_statistic, [1, width]))
-        tmp = tf.where(ge_r2, neg_inf_r2, inputs)
+        kth_order_statistic = Q.reduce_max(tmp, axis=1, keepdims=True)
+        k_mask = Q.tile(Q.expand_dims(Q.equal(Q.range(k), Q.fill([k], i)), 0),
+                        [height, 1])
+        topk_r2 = Q.where(k_mask, Q.tile(kth_order_statistic, [1, k]), topk_r2)
+        ge_r2 = Q.greater_equal(inputs, Q.tile(kth_order_statistic,
+                                               [1, width]))
+        tmp = Q.where(ge_r2, neg_inf_r2, inputs)
 
     log2_ceiling = int(math.ceil(math.log(float(int(width)), 2)))
     next_power_of_two = 1 << log2_ceiling
     count_mask = next_power_of_two - 1
     mask_r0 = Q.constant(count_mask)
-    mask_r2 = tf.fill([height, k], mask_r0)
-    topk_r2_s32 = tf.bitcast(topk_r2, tf.int32)
-    topk_indices_r2 = tf.bitwise.bitwise_and(topk_r2_s32, mask_r2)
+    mask_r2 = Q.fill([height, k], mask_r0)
+    topk_r2_s32 = Q.bitcast(topk_r2, Q.int32)
+    topk_indices_r2 = Q.bitwise_and(topk_r2_s32, mask_r2)
     return topk_r2, topk_indices_r2
 
 
@@ -200,9 +197,9 @@ def top_k_with_unique(inputs, k):
       [batch_size, k].
     indices: A tensor, indices of the top_values. [batch_size, k].
   """
-    unique_inputs = _create_make_unique(tf.cast(inputs, tf.float32))
+    unique_inputs = _create_make_unique(Q.cast(inputs, Q.float32))
     top_values, indices = _create_topk_unique(unique_inputs, k)
-    top_values = tf.cast(top_values, inputs.dtype)
+    top_values = Q.cast(top_values, inputs.dtype)
     return top_values, indices
 
 
@@ -254,7 +251,7 @@ def compute_topk_scores_and_seq(sequences,
      topk_gathered_scores [batch_size, beam_size],
      topk_finished_flags[batch_size, beam_size])
   """
-    _, topk_indexes = tf.nn.top_k(scores, k=beam_size)
+    _, topk_indexes = Q.top_k(scores, k=beam_size)
     # The next three steps are to create coordinates for tf.gather_nd to pull
     # out the topk sequences from sequences based on scores.
     # batch pos is a tensor like [[0,0,0,0,],[1,1,1,1],..]. It says which
@@ -265,13 +262,13 @@ def compute_topk_scores_and_seq(sequences,
     # top coordinates will give us the actual coordinates to do the gather.
     # stacking will create a tensor of dimension batch * beam * 2, where the
     # last dimension contains the i,j gathering coordinates.
-    top_coordinates = tf.stack([batch_pos, topk_indexes], axis=2)
+    top_coordinates = Q.stack([batch_pos, topk_indexes], axis=2)
 
     # Gather up the highest scoring sequences.  For each operation added, give
     # it a concrete name to simplify observing these operations with tfdbg.
     # Clients can capture these tensors by watching these node names.
     def gather(tensor, name):
-        return tf.gather_nd(tensor, top_coordinates, name=(prefix + name))
+        return Q.gather_nd(tensor, top_coordinates, name=(prefix + name))
 
     topk_seq = gather(sequences, "_topk_seq")
     topk_flags = gather(flags, "_topk_flags")
@@ -363,10 +360,10 @@ def beam_search(symbols_to_logits_fn,
     # Finished will keep track of all the sequences that have finished so far
     # Finished log probs will be negative infinity in the beginning
     # finished_flags will keep track of booleans
-    finished_seq = tf.zeros(Q.int_shape(alive_seq), tf.int32)
+    finished_seq = Q.zeros(Q.int_shape(alive_seq), Q.int32)
     # Setting the scores of the initial to negative infinity.
-    finished_scores = tf.ones([batch_size, beam_size]) * -INF
-    finished_flags = tf.zeros([batch_size, beam_size], tf.bool)
+    finished_scores = Q.ones([batch_size, beam_size]) * -INF
+    finished_flags = Q.zeros([batch_size, beam_size], Q.bool)
 
     def grow_finished(finished_seq, finished_scores, finished_flags, curr_seq,
                       curr_scores, curr_finished):
@@ -392,20 +389,18 @@ def beam_search(symbols_to_logits_fn,
     """
         # First append a column of 0'ids to finished to make the same length with
         # finished scores
-        finished_seq = tf.concat(
+        finished_seq = Q.concat(
             [finished_seq,
-             tf.zeros([batch_size, beam_size, 1], tf.int32)],
+             Q.zeros([batch_size, beam_size, 1], Q.int32)],
             axis=2)
 
         # Set the scores of the unfinished seq in curr_seq to large negative
         # values
-        curr_scores += (1. - tf.to_float(curr_finished)) * -INF
+        curr_scores += (1. - Q.cast(curr_finished, Q.floatx())) * -INF
         # concatenating the sequences and scores along beam axis
-        curr_finished_seq = tf.concat([finished_seq, curr_seq], axis=1)
-        curr_finished_scores = tf.concat([finished_scores, curr_scores],
-                                         axis=1)
-        curr_finished_flags = tf.concat([finished_flags, curr_finished],
-                                        axis=1)
+        curr_finished_seq = Q.concat([finished_seq, curr_seq], axis=1)
+        curr_finished_scores = Q.concat([finished_scores, curr_scores], axis=1)
+        curr_finished_flags = Q.concat([finished_flags, curr_finished], axis=1)
         return compute_topk_scores_and_seq(
             curr_finished_seq,
             curr_finished_scores,
@@ -438,7 +433,7 @@ def beam_search(symbols_to_logits_fn,
     """
         # Set the scores of the finished seq in curr_seq to large negative
         # values
-        curr_scores += tf.to_float(curr_finished) * -INF
+        curr_scores += Q.cast(curr_finished, Q.floatx()) * -INF
         return compute_topk_scores_and_seq(curr_seq,
                                            curr_scores,
                                            curr_log_probs,
@@ -476,7 +471,7 @@ def beam_search(symbols_to_logits_fn,
          dict of transformed decoding states)
     """
         # Get the logits for all the possible next symbols
-        flat_ids = tf.reshape(alive_seq, [batch_size * beam_size, -1])
+        flat_ids = Q.reshape(alive_seq, [batch_size * beam_size, -1])
 
         # (batch_size * beam_size, decoded_length)
         if states:
@@ -489,7 +484,7 @@ def beam_search(symbols_to_logits_fn,
         else:
             flat_logits = symbols_to_logits_fn(flat_ids)
 
-        logits = tf.reshape(flat_logits, [batch_size, beam_size, -1])
+        logits = Q.reshape(flat_logits, [batch_size, beam_size, -1])
 
         # Convert logits to normalized log probs
         candidate_log_probs = common_layers.log_prob_from_logits(logits)
@@ -497,16 +492,15 @@ def beam_search(symbols_to_logits_fn,
         # Multiply the probabilities by the current probabilities of the beam.
         # (batch_size, beam_size, vocab_size) + (batch_size, beam_size, 1)
         log_probs = candidate_log_probs + Q.expand_dims(alive_log_probs,
-                                                         axis=2)
+                                                        axis=2)
 
-        length_penalty = tf.pow(((5. + tf.to_float(i + 1)) / 6.), alpha)
+        length_penalty = Q.pow(((5. + Q.cast(i + 1, Q.floatx())) / 6.), alpha)
 
         curr_scores = log_probs / length_penalty
         # Flatten out (beam_size, vocab_size) probs in to a list of possibilities
-        flat_curr_scores = tf.reshape(curr_scores,
-                                      [-1, beam_size * vocab_size])
+        flat_curr_scores = Q.reshape(curr_scores, [-1, beam_size * vocab_size])
 
-        topk_scores, topk_ids = tf.nn.top_k(flat_curr_scores, k=beam_size * 2)
+        topk_scores, topk_ids = Q.top_k(flat_curr_scores, k=beam_size * 2)
 
         # Recovering the log probs because we will need to send them back
         topk_log_probs = topk_scores * length_penalty
@@ -524,20 +518,20 @@ def beam_search(symbols_to_logits_fn,
         # top beams will give us the actual coordinates to do the gather.
         # stacking will create a tensor of dimension batch * beam * 2, where the
         # last dimension contains the i,j gathering coordinates.
-        topk_coordinates = tf.stack([batch_pos, topk_beam_index], axis=2)
+        topk_coordinates = Q.stack([batch_pos, topk_beam_index], axis=2)
 
         # Gather up the most probable 2*beams both for the ids and
         # finished_in_alive bools
-        topk_seq = tf.gather_nd(alive_seq, topk_coordinates)
+        topk_seq = Q.gather_nd(alive_seq, topk_coordinates)
         if states:
             states = nest.map_structure(
-                lambda state: tf.gather_nd(state, topk_coordinates), states)
+                lambda state: Q.gather_nd(state, topk_coordinates), states)
 
         # Append the most probable alive
-        topk_seq = tf.concat(
+        topk_seq = Q.concat(
             [topk_seq, Q.expand_dims(topk_ids, axis=2)], axis=2)
 
-        topk_finished = tf.equal(topk_ids, eos_id)
+        topk_finished = Q.equal(topk_ids, eos_id)
 
         return topk_seq, topk_log_probs, topk_scores, topk_finished, states
 
@@ -620,8 +614,8 @@ def beam_search(symbols_to_logits_fn,
     Returns:
       Bool.
     """
-        max_length_penalty = tf.pow(((5. + tf.to_float(decode_length)) / 6.),
-                                    alpha)
+        max_length_penalty = Q.pow(
+            ((5. + Q.cast(decode_length, Q.floatx())) / 6.), alpha)
         # The best possible score of the most likely alive sequence.
         lower_bound_alive_scores = alive_log_probs[:, 0] / max_length_penalty
 
@@ -632,7 +626,7 @@ def beam_search(symbols_to_logits_fn,
             # any unfinished beam will have score -INF - thus the min
             # will always be -INF if there is at least one unfinished beam -
             # which means the bound_is_met condition cannot be true in this case.
-            lowest_score_of_finished_in_finished = tf.reduce_min(
+            lowest_score_of_finished_in_finished = Q.reduce_min(
                 finished_scores)
         else:
             # by taking the max score we only care about the first beam;
@@ -643,27 +637,27 @@ def beam_search(symbols_to_logits_fn,
             # bound_is_met condition. (i.e., decoder will keep going on).
             # note we need to find the max for every sequence eparately - so, we need
             # to keep the batch dimension (see axis=1)
-            lowest_score_of_finished_in_finished = tf.reduce_max(
+            lowest_score_of_finished_in_finished = Q.reduce_max(
                 finished_scores, axis=1)
 
-        bound_is_met = tf.reduce_all(
-            tf.greater(lowest_score_of_finished_in_finished,
-                       lower_bound_alive_scores))
+        bound_is_met = Q.reduce_all(
+            Q.greater(lowest_score_of_finished_in_finished,
+                      lower_bound_alive_scores))
 
-        return tf.logical_and(tf.less(i, decode_length),
-                              tf.logical_not(bound_is_met))
+        return Q.logical_and(Q.less(i, decode_length),
+                             Q.logical_not(bound_is_met))
 
-    inner_shape = tf.TensorShape([None, None, None])
+    inner_shape = Q.TensorShape([None, None, None])
     state_struc = nest.map_structure(get_state_shape_invariants, states)
     (_, alive_seq, alive_log_probs, finished_seq, finished_scores,
-     finished_flags, states) = tf.while_loop(
+     finished_flags, states) = Q.while_loop(
          _is_finished,
          inner_loop, [
              Q.constant(0), alive_seq, alive_log_probs, finished_seq,
              finished_scores, finished_flags, states
          ],
          shape_invariants=[
-             tf.TensorShape([]), inner_shape,
+             Q.TensorShape([]), inner_shape,
              alive_log_probs.get_shape(), inner_shape,
              finished_scores.get_shape(),
              finished_flags.get_shape(), state_struc
@@ -676,11 +670,11 @@ def beam_search(symbols_to_logits_fn,
 
     # Accounting for corner case: It's possible that no sequence in alive for a
     # particular batch item ever reached EOS. In that case, we should just copy
-    # the contents of alive for that batch item. tf.reduce_any(finished_flags, 1)
+    # the contents of alive for that batch item. Q.reduce_any(finished_flags, 1)
     # if 0, means that no sequence for that batch index had reached EOS. We need
     # to do the same for the scores as well.
-    finished_seq = tf.where(tf.reduce_any(finished_flags, 1), finished_seq,
-                            alive_seq)
-    finished_scores = tf.where(tf.reduce_any(finished_flags, 1),
-                               finished_scores, alive_log_probs)
+    finished_seq = Q.where(Q.reduce_any(finished_flags, 1), finished_seq,
+                           alive_seq)
+    finished_scores = Q.where(Q.reduce_any(finished_flags, 1), finished_scores,
+                              alive_log_probs)
     return finished_seq, finished_scores, states

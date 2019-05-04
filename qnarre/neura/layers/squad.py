@@ -58,7 +58,7 @@ class SquadLoss(Q.Layer):
         def _loss(i):
             y = Q.log_softmax(pred[i], axis=-1)
             y = Q.one_hot(span[:, i], self.slen) * y
-            return -Q.mean(Q.sum(y, axis=-1))
+            return -Q.reduce_mean(Q.reduce_sum(y, axis=-1))
 
         self.add_loss((_loss(0) + _loss(1)) / 2.0)
         return pred

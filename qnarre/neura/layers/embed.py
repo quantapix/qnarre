@@ -49,7 +49,7 @@ class TypEmbed(Q.Layer):
         tok, typ = inputs
         y = typ * Q.cast(mask[0], typ.dtype)
         y = Q.one_hot(y, self.PS.token_types)
-        return tok + Q.dot(y, self.gain)
+        return tok + Q.matmul(y, self.gain)
 
 
 class PosEmbed(Q.Layer):
@@ -98,7 +98,7 @@ class PosTiming(Q.Layer):
         s = self.min_scale * Q.exp(Q.range(n, dtype=Q.floatx()) * -s)
         p = Q.range(tlen, dtype=Q.floatx()) + self.start
         p = Q.expand_dims(p, axis=1) * Q.expand_dims(s, axis=0)
-        p = Q.concatenate([Q.sin(p), Q.cos(p)], axis=1)
+        p = Q.concat([Q.sin(p), Q.cos(p)], axis=1)
         self.bias = Q.expand_dims(p, axis=0)
         return super().build(input_shape)
 

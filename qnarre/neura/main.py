@@ -61,7 +61,7 @@ def model_for(params):
     o, y = Quess(PS)([s, t])
     y = kls.Softmax(name='preds')(y)
     m = ks.Model(inputs=[s, t], outputs=[y])
-    # m.add_loss(K.mean(PS.penalty * K.sum(y * K.log(y), axis=-1)))
+    # m.add_loss(Q.reduce_mean(PS.penalty * K.sum(y * K.log(y), axis=-1)))
     # m.add_loss(tf.reduce_sum(x1) * 0.1)
     # m.add_metric(K.std(x1), name='std_of_activation', aggregation='mean')
     return m

@@ -18,8 +18,8 @@ import qnarre.neura as Q
 
 def _layer_norm(self, inputs, **_):
     x = inputs
-    m = Q.mean(x, axis=-1, keepdims=True)
-    v = Q.mean(Q.square(x - m), axis=-1, keepdims=True)
+    m = Q.reduce_mean(x, axis=-1, keepdims=True)
+    v = Q.reduce_mean(Q.square(x - m), axis=-1, keepdims=True)
     y = (x - m) / Q.sqrt(v + self.PS.norm_epsilon)
     y = self.gain * y + self.bias
     return y
@@ -76,8 +76,9 @@ class LayerProc(Q.Layer):
                     elif PS.norm_type == 'batch':
                         y = self.batch(x, **kw)
                     elif PS.norm_type == 'l2':
-                        m = Q.mean(x, axis=-1, keepdims=True)
-                        n = Q.sum(Q.square(x - m), axis=-1, keepdims=True)
+                        m = Q.reduce_mean(x, axis=-1, keepdims=True)
+                        n = Q.square(x - m)
+                        n = Q.reduce_sum(n, axis=-1, keepdims=True)
                         y = (x - m) / Q.sqrt(n + PS.norm_epsilon)
                         y = y * self.gain + self.bias
                     elif PS.norm_type == 'group':
