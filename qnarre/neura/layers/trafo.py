@@ -93,15 +93,17 @@ class Trafo(Q.Layer):
             y = self.dec_stack([y, ctx, bias], **kw)
         return y
 
-    def to_logits(self, x, unks=None, prior=None, **kw):
+    def to_logits(self, x, prior, **kw):
         xs = Q.int_shape(x)
         y = Q.reshape(x, (-1, xs[-1]))
         y = self.logits(y, **kw)
         ys = Q.int_shape(y)
         y = Q.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
-        if unks:
-            y = Q.where(unks, y, prior)
-        return y
+        PS = self.PS
+        unk = Q.equal(prior, PS.UNK)
+        prior = Q.one_hot(prior, PS.vocab_size, 0.0, PS.big_neg)
+        y = Q.where(unk, y, prior)
+        return y, unk
 
     def to_toks(self, x, **kw):
         pass
@@ -140,33 +142,28 @@ class Trafo(Q.Layer):
         ctx, bias = self.encode(src, typ, **kw)
         y = self.decode(tgt, ctx, bias, **kw)
         if y is not None:
-            y = self.to_logits(y, **kw)
+            y, unk = self.to_logits(y, tgt, **kw)
             PS = self.PS
             if PS.beam_size > 1:
                 y = beam_search(self)
             else:
-                sh = Q.int_shape(tgt)
-                for i in range(sh[-1]):
-                    scores = Q.zeros(toks[:1])
+                for i in range(Q.int_shape(tgt)[-1]):
+                    if Q.reduce_any(unk[:, i]):
+                        lprb = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
+                        scores = Q.zeros(toks[:1])
+                        t = self.sample(y[:, i, :])
+                        toks = Q.tensor_scatter_nd_update(toks, indices, t)
+                        unks = Q.tensor_scatter_nd_update(unks, indices, t)
+                        idx = Q.stack([Q.range(T.to_int64(PS.batch_size)), t],
+                                      axis=1)
+                        lprb += Q.gather_nd(lprb, idx)
 
-                    e = Q.equal(tgt, PS.EOS)
-                    e = Q.reduce_any(e, axis=1)
-                    if Q.reduce_all(e):
-                        break
-
-                    unks = Q.equal(tgt, PS.UNK)
-                    prior = Q.one_hot(toks, PS.vocab_size, 0.0, -1e9)
-                    y = self.decode(tgt, ctx, bias, **kw)
-                    y = self.to_logits(y, unks, prior)
-                    lprb = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-                    t = self.sample(y[:, i, :])
-                    toks = Q.tensor_scatter_nd_update(toks, indices, t)
-                    unks = Q.tensor_scatter_nd_update(unks, indices, t)
-                    idx = Q.stack([Q.range(T.to_int64(PS.batch_size)), t],
-                                  axis=1)
-                    lprb += Q.gather_nd(lprb, idx)
-                    return i + 1
-
+                        e = Q.equal(tgt, PS.EOS)
+                        e = Q.reduce_any(e, axis=1)
+                        if Q.reduce_all(e):
+                            break
+                        y = self.decode(tgt, ctx, bias, **kw)
+                        y, unk = self.to_logits(y, tgt)
 
             # return {"outputs": toks, "scores": scores}
             if not training:
