@@ -105,10 +105,7 @@ class Trafo(Q.Layer):
         y = Q.where(unk, y, prior)
         return y, unk
 
-    def to_toks(self, x, **kw):
-        pass
-
-    def sample(self, x):
+    def to_toks(self, x):
         t = self.PS.sampling_temp or 0.0
         if self.PS.sampling_method == 'argmax':
             t = 0.0
@@ -149,22 +146,16 @@ class Trafo(Q.Layer):
             else:
                 for i in range(Q.int_shape(tgt)[-1]):
                     if Q.reduce_any(unk[:, i]):
-                        lprb = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-                        scores = Q.zeros(toks[:1])
-                        t = self.sample(y[:, i, :])
-                        toks = Q.tensor_scatter_nd_update(toks, indices, t)
-                        unks = Q.tensor_scatter_nd_update(unks, indices, t)
-                        idx = Q.stack([Q.range(T.to_int64(PS.batch_size)), t],
-                                      axis=1)
-                        lprb += Q.gather_nd(lprb, idx)
-
+                        y = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
+                        t = self.to_toks(y[:, i, :])
+                        idx = Q.stack([Q.range(PS.batch_size), t], axis=1)
+                        tgt = Q.tensor_scatter_nd_update(tgt, idx, t)
                         e = Q.equal(tgt, PS.EOS)
                         e = Q.reduce_any(e, axis=1)
                         if Q.reduce_all(e):
                             break
                         y = self.decode(tgt, ctx, bias, **kw)
-                        y, unk = self.to_logits(y, tgt)
-
+                        y, unk = self.to_logits(y, tgt, **kw)
             # return {"outputs": toks, "scores": scores}
             if not training:
                 y = self.to_toks(y, **kw)
