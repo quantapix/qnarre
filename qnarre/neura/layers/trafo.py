@@ -103,18 +103,10 @@ class Trafo(Q.Layer):
         unk = Q.equal(prior, PS.UNK)
         prior = Q.one_hot(prior, PS.vocab_size, 0.0, PS.big_neg)
         y = Q.where(unk, y, prior)
+        lp = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
         return y, unk
 
     def to_toks(self, x):
-        t = self.PS.sampling_temp or 0.0
-        if self.PS.sampling_method == 'argmax':
-            t = 0.0
-        keep_top_k = self.PS.keep_top_k or -1
-        if t == 0.0:
-            # TF argmax doesn't handle >5 dimensions, so we reshape here.
-            sh = Q.int_shape(x)
-            argmax = Q.argmax(Q.reshape(x, [-1, sh[-1]]), axis=1)
-            return Q.reshape(argmax, sh[:-1])
         assert t > 0.0
         if keep_top_k != -1:
             if keep_top_k <= 0:
@@ -144,15 +136,16 @@ class Trafo(Q.Layer):
             if PS.beam_size > 1:
                 y = beam_search(self)
             else:
-                for i in range(Q.int_shape(tgt)[-1]):
+                sh = Q.int_shape(tgt)
+                bi = Q.range(sh[0])
+                for i in range(sh[-1]):
                     if Q.reduce_any(unk[:, i]):
                         y = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-                        t = self.to_toks(y[:, i, :])
-                        idx = Q.stack([Q.range(PS.batch_size), t], axis=1)
-                        tgt = Q.tensor_scatter_nd_update(tgt, idx, t)
-                        e = Q.equal(tgt, PS.EOS)
-                        e = Q.reduce_any(e, axis=1)
-                        if Q.reduce_all(e):
+                        y = Q.argmax(y[:, i, :], axis=1, output_type=Q.int32)
+                        yi = Q.stack([bi, Q.constant(i, shape=sh[:1])])
+                        tgt = Q.tensor_scatter_nd_update(tgt, yi, y)
+                        e = Q.equal(tgt, PS.END)
+                        if Q.reduce_all(Q.reduce_any(e, axis=1)):
                             break
                         y = self.decode(tgt, ctx, bias, **kw)
                         y, unk = self.to_logits(y, tgt, **kw)

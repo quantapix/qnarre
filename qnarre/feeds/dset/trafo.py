@@ -35,4 +35,6 @@ def _generator(PS):
         n = randint(1, sl - 2)
         c = randint(0, 9) + 10
         s = [PS.BEG] + [c] * n + [PS.END] + [PS.PAD] * (sl - n - 2)
-        yield (s, [0] * sl, [PS.UNK] * sl), s
+        t = [PS.BEG] + [PS.UNK] * (sl - 1)
+        o = s[:n + 2] + t[n + 2:]
+        yield (s, [0] * sl, t), o
