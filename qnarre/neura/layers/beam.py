@@ -22,12 +22,316 @@ from tensor2tensor.layers import common_layers
 
 from tensorflow.python.util import nest
 
-# Assuming EOS_ID is 1
-EOS_ID = 1
 # Default value for INF
 INF = 1. * 1e7
 
 
+class Keys:
+    # Score = log probability / length norm
+    DONE_SCORES = 'DONE_SCORES'
+    # Flags indicating which sequences in the finished sequences are finished.
+    # At the beginning, all of the sequences in DONE_SEQ are filler values.
+    # True -> finished sequence, False -> filler. Shape [batch_size, beam_size]
+    DONE_FLAGS = 'DONE_FLAGS'
+
+
+class Beam(Q.Layer):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.PS = PS
+        self.symbols_to_logits_fn = symbols_to_logits_fn
+        # self.vocab_size = vocab_size
+        # PS.batch_size = batch_size
+        #  PS.beam_size = beam_size
+        # self.alpha = alpha
+        # PS.tgt_len = tgt_len
+        # self.eos_id = eos_id
+
+    def inflate_beam(self, x):
+        y = Q.expand_dims(x, axis=1)
+        dims = [1] * x.shape.ndims
+        dims[1] = self.PS.beam_size
+        y = Q.tile(y, dims)
+        return y
+
+    def build(self, input_shape):
+        PS = self.PS
+        logps = Q.constant([[0.] + [PS.big_neg] * (PS.beam_size - 1)])
+        self.logps = Q.tile(logps, [input_shape[:1], 1])
+        return super().build(input_shape)
+
+    def call(self, inputs, **kw):
+        tgt = inputs
+        PS = self.PS
+        self.alive = Q.expand_dims(self.inflate_beam(tgt), axis=2)
+        self.cache = nest.map_structure(lambda t: self.inflate_beam(t))
+        self.done = Q.zeros(Q.shape(self.alive), Q.int32)
+        self.scores = Q.ones([PS.batch_size, PS.beam_size]) * -INF
+        self.flags = Q.zeros([PS.batch_size, PS.beam_size], Q.bool)
+        i = 0
+        while self.not_done(i):
+            seq, logps = self._grow_alive()
+            alive = self._get_new_alive_state(seq, logps)
+            done = self._get_new_finished_state(seq, logps)
+            i += 1
+        done = Q.where(Q.reduce_any(self.flags, 1), self.done, self.alive)
+        scores = Q.where(Q.reduce_any(self.flags, 1), self.scores, self.logps)
+        return done, scores
+
+    def not_done(self, i):
+        PS = self.PS
+        new = self.logps[:, 0] / self.len_penalty(PS.tgt_len)
+        self.scores *= Q.cast(self.flags, Q.floatx())
+        old = Q.reduce_min(self.scores, axis=1)
+        fs = Q.reduce_any(self.flags, axis=1)
+        old += (1. - Q.cast(fs, Q.floatx())) * self.PS.big_neg
+        old_better = Q.reduce_all(Q.greater(old, new))
+        return Q.logical_and(Q.less(i, PS.tgt_len), Q.logical_not(old_better))
+
+    def _grow_alive(self, state):
+        """Grow alive sequences by one token, and collect top 2*beam_size sequences.
+    2*beam_size sequences are collected because some sequences may have reached
+    the EOS token. 2*beam_size ensures that at least beam_size sequences are
+    still alive.
+    Args:
+      state: A dictionary with the current loop state.
+    Returns:
+      Tuple of
+      (Top 2*beam_size sequences [batch_size, 2 * beam_size, cur_index + 1],
+       Scores of returned sequences [batch_size, 2 * beam_size],
+       New alive cache, for each of the 2 * beam_size sequences)
+    """
+        i = state[Keys.CUR_IDX]
+        alive = state[Keys.ALIVE_SEQ]
+        logps = state[Keys.ALIVE_LPS]
+        cache = state[Keys.ALIVE_CACHE]
+
+        beams_to_keep = 2 * PS.beam_size
+
+        # Get logits for the next candidate IDs for the alive sequences. Get the new
+        # cache values at the same time.
+        flat_ids = flatten_beam_dim(alive)  # [batch_size * beam_size]
+        flat_cache = nest.map_structure(_flatten_beam_dim, cache)
+
+        flat_logits, flat_cache = self.symbols_to_logits_fn(
+            flat_ids, i, flat_cache)
+
+        # Unflatten logits to shape [batch_size, beam_size, vocab_size]
+        logits = unflatten_beam_dim(flat_logits, PS.batch_size, PS.beam_size)
+        new_cache = nest.map_structure(
+            lambda t: unflatten_beam_dim(t, PS.batch_size, PS.beam_size),
+            flat_cache)
+
+        # Convert logits to normalized log probs
+        candidate_log_probs = lps_from_logits(logits)
+
+        # Calculate new log probabilities if each of the alive sequences were
+        # extended # by the the candidate IDs.
+        # Shape [batch_size, beam_size, vocab_size]
+        log_probs = candidate_log_probs + tf.expand_dims(logps, axis=2)
+
+        # Each batch item has beam_size * vocab_size candidate sequences. For each
+        # batch item, get the k candidates with the highest log probabilities.
+        flat_log_probs = tf.reshape(log_probs,
+                                    [-1, PS.beam_size * self.vocab_size])
+        topk_log_probs, topk_indices = tf.nn.top_k(flat_log_probs,
+                                                   k=beams_to_keep)
+
+        # Extract the alive sequences that generate the highest log probabilities
+        # after being extended.
+        topk_beam_indices = topk_indices // self.vocab_size
+        topk_seq, new_cache = _gather_beams([alive, new_cache],
+                                            topk_beam_indices, PS.batch_size,
+                                            beams_to_keep)
+
+        # Append the most probable IDs to the topk sequences
+        topk_ids = topk_indices % self.vocab_size
+        topk_ids = tf.expand_dims(topk_ids, axis=2)
+        topk_seq = tf.concat([topk_seq, topk_ids], axis=2)
+        return topk_seq, topk_log_probs, new_cache
+
+    def _get_new_alive_state(self, new_seq, new_log_probs, new_cache):
+        """Gather the top k sequences that are still alive.
+    Args:
+      new_seq: New sequences generated by growing the current alive sequences
+        int32 tensor with shape [batch_size, 2 * beam_size, cur_index + 1]
+      new_log_probs: Log probabilities of new sequences
+        float32 tensor with shape [batch_size, beam_size]
+      new_cache: Dict of cached values for each sequence.
+    Returns:
+      Dictionary with alive keys from Keys:
+        {Top beam_size sequences that are still alive (don't end with eos_id)
+         Log probabilities of top alive sequences
+         Dict cache storing decoder states for top alive sequences}
+    """
+        # To prevent finished sequences from being considered, set log probs to -INF
+        new_flags = tf.equal(new_seq[:, :, -1], self.eos_id)
+        new_log_probs += tf.to_float(new_flags) * -INF
+
+        top_alive, top_logps, top_cache = _gather_topk_beams(
+            [new_seq, new_log_probs, new_cache], new_log_probs, PS.batch_size,
+            PS.beam_size)
+
+        return {
+            Keys.ALIVE_SEQ: top_alive,
+            Keys.ALIVE_LPS: top_logps,
+            Keys.ALIVE_CACHE: top_cache
+        }
+
+    def _get_new_finished_state(self, state, new_seq, new_log_probs):
+        """Combine new and old finished sequences, and gather the top k sequences.
+    Args:
+      state: A dictionary with the current loop state.
+      new_seq: New sequences generated by growing the current alive sequences
+        int32 tensor with shape [batch_size, beam_size, i + 1]
+      new_log_probs: Log probabilities of new sequences
+        float32 tensor with shape [batch_size, beam_size]
+    Returns:
+      Dictionary with finished keys from Keys:
+        {Top beam_size finished sequences based on score,
+         Scores of finished sequences,
+         Finished flags of finished sequences}
+    """
+        i = state[Keys.CUR_IDX]
+        done = state[Keys.DONE_SEQ]
+        scores = state[Keys.DONE_SCORES]
+        flags = state[Keys.DONE_FLAGS]
+
+        # First append a column of 0-ids to done to increment the length.
+        # New shape of done: [batch_size, beam_size, i + 1]
+        done = tf.concat(
+            [done, Q.zeros([PS.batch_size, PS.beam_size, 1], Q.int32)], axis=2)
+
+        # Calculate new seq scores from log probabilities.
+        length_norm = self.len_penalty(i + 1)
+        new_scores = new_log_probs / length_norm
+
+        # Set the scores of the still-alive seq in new_seq to large negative values.
+        new_flags = tf.equal(new_seq[:, :, -1], self.eos_id)
+        new_scores += (1. - tf.to_float(new_flags)) * -INF
+
+        # Combine sequences, scores, and flags.
+        done = tf.concat([done, new_seq], axis=1)
+        scores = tf.concat([scores, new_scores], axis=1)
+        flags = tf.concat([flags, new_flags], axis=1)
+
+        # Return the finished sequences with the best scores.
+        top_done, top_scores, top_flags = (_gather_topk_beams(
+            [done, scores, flags], scores, PS.batch_size, PS.beam_size))
+
+        return {
+            Keys.DONE_SEQ: top_done,
+            Keys.DONE_SCORES: top_scores,
+            Keys.DONE_FLAGS: top_flags
+        }
+
+
+def sequence_beam_search(symbols_to_logits_fn, initial_ids, initial_cache,
+                         vocab_size, beam_size, alpha, tgt_len, eos_id):
+    """Search for sequence of subtoken ids with the largest probability.
+  Args:
+    symbols_to_logits_fn: A function that takes in ids, index, and cache as
+      arguments. The passed in arguments will have shape:
+        ids -> [batch_size * beam_size, index]
+        index -> [] (scalar)
+        cache -> nested dictionary of tensors [batch_size * beam_size, ...]
+      The function must return logits and new cache.
+        logits -> [batch * beam_size, vocab_size]
+        new cache -> same shape/structure as inputted cache
+    initial_ids: Starting ids for each batch item.
+      int32 tensor with shape [batch_size]
+    initial_cache: dict containing starting decoder variables information
+    vocab_size: int size of tokens
+    beam_size: int number of beams
+    alpha: float defining the strength of length normalization
+    tgt_len: maximum length to decoded sequence
+    eos_id: int id of eos token, used to determine when a sequence has finished
+  Returns:
+    Top decoded sequences [batch_size, beam_size, tgt_len]
+    sequence scores [batch_size, beam_size]
+  """
+    batch_size = tf.shape(initial_ids)[0]
+    sbs = SequenceBeamSearch(symbols_to_logits_fn, vocab_size, batch_size,
+                             beam_size, alpha, tgt_len, eos_id)
+    return sbs.search(initial_ids, initial_cache)
+
+
+def lps_from_logits(ls):
+    return ls - Q.reduce_logsumexp(ls, axis=2, keep_dims=True)
+
+
+def len_penalty(self, n):
+    return Q.pow(((5. + Q.cast(n, Q.floatx())) / 6.), self.PS.alpha)
+
+
+def _get_shape_keep_last_dim(tensor):
+    shape_list = Q.int_shape(tensor)
+
+    # Only the last
+    for i in range(len(shape_list) - 1):
+        shape_list[i] = None
+
+    if isinstance(shape_list[-1], tf.Tensor):
+        shape_list[-1] = None
+    return tf.TensorShape(shape_list)
+
+
+def flatten_beam_dim(x):
+    sh = list(Q.int_shape(x))
+    sh[0] *= sh[1]
+    sh.pop(1)
+    return Q.reshape(x, sh)
+
+
+def unflatten_beam_dim(self, x):
+    PS = self.PS
+    sh = Q.int_shape(x)
+    return Q.reshape(x, [PS.batch_size, PS.beam_size] + sh[1:])
+
+
+def _gather_beams(nested, beam_indices, batch_size, new_beam_size):
+    """Gather beams from nested structure of tensors.
+  Each tensor in nested represents a batch of beams, where beam refers to a
+  single search state (beam search involves searching through multiple states
+  in parallel).
+  This function is used to gather the top beams, specified by
+  beam_indices, from the nested tensors.
+  Args:
+    nested: Nested structure (tensor, list, tuple or dict) containing tensors
+      with shape [batch_size, beam_size, ...].
+    beam_indices: int32 tensor with shape [batch_size, new_beam_size]. Each
+     value in beam_indices must be between [0, beam_size), and are not
+     necessarily unique.
+    batch_size: int size of batch
+    new_beam_size: int number of beams to be pulled from the nested tensors.
+  Returns:
+    Nested structure containing tensors with shape
+      [batch_size, new_beam_size, ...]
+  """
+    # Computes the i'th coodinate that contains the batch index for gather_nd.
+    # Batch pos is a tensor like [[0,0,0,0,],[1,1,1,1],..].
+    batch_pos = tf.range(batch_size * new_beam_size) // new_beam_size
+    batch_pos = tf.reshape(batch_pos, [batch_size, new_beam_size])
+
+    # Create coordinates to be passed to tf.gather_nd. Stacking creates a tensor
+    # with shape [batch_size, beam_size, 2], where the last dimension contains
+    # the (i, j) gathering coordinates.
+    coordinates = tf.stack([batch_pos, beam_indices], axis=2)
+
+    return nest.map_structure(lambda state: tf.gather_nd(state, coordinates),
+                              nested)
+
+
+def _gather_topk_beams(nested, score_or_log_prob, batch_size, beam_size):
+    """Gather top beams from nested structure."""
+    _, topk_indexes = tf.nn.top_k(score_or_log_prob, k=beam_size)
+    return _gather_beams(nested, topk_indexes, batch_size, beam_size)
+
+
+# Assuming EOS_ID is 1
+EOS_ID = 1
+# Default value for INF
+INF = 1. * 1e7
 """
     toks = Q.identity(tgt)
     initial_ids = sos_id * Q.ones([PS.batch_size], dtype=Q.int32)
@@ -49,26 +353,6 @@ INF = 1. * 1e7
         scores = scores[:, :PS.top_beams]
         return
 """
-
-
-def _merge_beam_dim(tensor):
-    shape = Q.int_shape(tensor)
-    shape[0] *= shape[1]  # batch -> batch * beam_size
-    shape.pop(1)  # Remove beam dim
-    return Q.reshape(tensor, shape)
-
-
-def _unmerge_beam_dim(tensor, batch_size, beam_size):
-    shape = Q.int_shape(tensor)
-    new_shape = [batch_size] + [beam_size] + shape[1:]
-    return Q.reshape(tensor, new_shape)
-
-
-def _expand_to_beam_size(tensor, beam_size):
-    tensor = Q.expand_dims(tensor, axis=1)
-    tile_dims = [1] * tensor.shape.ndims
-    tile_dims[1] = beam_size
-    return Q.tile(tensor, tile_dims)
 
 
 def get_state_shape_invariants(tensor):
@@ -245,7 +529,7 @@ def compute_topk_scores_and_seq(sequences,
   This method permits easy introspection using tfdbg.  It adds three named ops
   that are prefixed by `prefix`:
     - _topk_seq: the tensor for topk_seq returned by this method.
-    - _topk_flags: the tensor for topk_finished_flags returned by this method.
+    - _topk_flags: the tensor for topk_flags returned by this method.
     - _topk_scores: the tensor for tokp_gathered_scores returned by this method.
 
   Args:
@@ -272,7 +556,7 @@ def compute_topk_scores_and_seq(sequences,
     Tuple of
     (topk_seq [batch_size, beam_size, decode_length],
      topk_gathered_scores [batch_size, beam_size],
-     topk_finished_flags[batch_size, beam_size])
+     topk_flags[batch_size, beam_size])
   """
     _, topk_indexes = Q.top_k(scores, k=beam_size)
     # The next three steps are to create coordinates for tf.gather_nd to pull
@@ -369,35 +653,35 @@ def beam_search(symbols_to_logits_fn,
     # Assume initial_ids are prob 1.0
     initial_log_probs = Q.constant([[0.] + [-INF] * (beam_size - 1)])
     # Expand to beam_size (batch_size, beam_size)
-    alive_log_probs = Q.tile(initial_log_probs, [batch_size, 1])
+    logps = Q.tile(initial_log_probs, [batch_size, 1])
 
     # Expand each batch and state to beam_size
-    alive_seq = _expand_to_beam_size(initial_ids, beam_size)
-    alive_seq = Q.expand_dims(alive_seq, axis=2)  # (batch_size, beam_size, 1)
+    alive = inflate_beam(initial_ids, beam_size)
+    alive = Q.expand_dims(alive, axis=2)  # (batch_size, beam_size, 1)
     if states:
         states = nest.map_structure(
-            lambda state: _expand_to_beam_size(state, beam_size), states)
+            lambda state: inflate_beam(state, beam_size), states)
     else:
         states = {}
 
     # Finished will keep track of all the sequences that have finished so far
     # Finished log probs will be negative infinity in the beginning
-    # finished_flags will keep track of booleans
-    finished_seq = Q.zeros(Q.int_shape(alive_seq), Q.int32)
+    # flags will keep track of booleans
+    done = Q.zeros(Q.int_shape(alive), Q.int32)
     # Setting the scores of the initial to negative infinity.
-    finished_scores = Q.ones([batch_size, beam_size]) * -INF
-    finished_flags = Q.zeros([batch_size, beam_size], Q.bool)
+    scores = Q.ones([batch_size, beam_size]) * -INF
+    flags = Q.zeros([batch_size, beam_size], Q.bool)
 
-    def grow_finished(finished_seq, finished_scores, finished_flags, curr_seq,
-                      curr_scores, curr_finished):
+    def grow_finished(done, scores, flags, curr_seq, curr_scores,
+                      curr_finished):
         """Given sequences and scores, will gather the top k=beam size sequences.
 
     Args:
-      finished_seq: Current finished sequences.
+      done: Current finished sequences.
         [batch_size, beam_size, current_decoded_length]
-      finished_scores: scores for each of these sequences.
+      scores: scores for each of these sequences.
         [batch_size, beam_size]
-      finished_flags: finished bools for each of these sequences.
+      flags: finished bools for each of these sequences.
         [batch_size, beam_size]
       curr_seq: current topk sequence that has been grown by one position.
         [batch_size, beam_size, current_decoded_length]
@@ -412,23 +696,21 @@ def beam_search(symbols_to_logits_fn,
     """
         # First append a column of 0'ids to finished to make the same length with
         # finished scores
-        finished_seq = Q.concat(
-            [finished_seq,
-             Q.zeros([batch_size, beam_size, 1], Q.int32)],
-            axis=2)
+        done = Q.concat(
+            [done, Q.zeros([batch_size, beam_size, 1], Q.int32)], axis=2)
 
         # Set the scores of the unfinished seq in curr_seq to large negative
         # values
         curr_scores += (1. - Q.cast(curr_finished, Q.floatx())) * -INF
         # concatenating the sequences and scores along beam axis
-        curr_finished_seq = Q.concat([finished_seq, curr_seq], axis=1)
-        curr_finished_scores = Q.concat([finished_scores, curr_scores], axis=1)
-        curr_finished_flags = Q.concat([finished_flags, curr_finished], axis=1)
+        curr_done = Q.concat([done, curr_seq], axis=1)
+        curr_scores = Q.concat([scores, curr_scores], axis=1)
+        curr_flags = Q.concat([flags, curr_finished], axis=1)
         return compute_topk_scores_and_seq(
-            curr_finished_seq,
-            curr_finished_scores,
-            curr_finished_scores,
-            curr_finished_flags,
+            curr_done,
+            curr_scores,
+            curr_scores,
+            curr_flags,
             beam_size,
             batch_size,
             "grow_finished",
@@ -467,7 +749,7 @@ def beam_search(symbols_to_logits_fn,
                                            states,
                                            use_tpu=use_tpu)
 
-    def grow_topk(i, alive_seq, alive_log_probs, states):
+    def grow_topk(i, alive, logps, states):
         r"""Inner beam search loop.
 
     This function takes the current alive sequences, and grows them to topk
@@ -482,8 +764,8 @@ def beam_search(symbols_to_logits_fn,
 
     Args:
       i: loop index
-      alive_seq: Topk sequences decoded so far [batch_size, beam_size, i+1]
-      alive_log_probs: probabilities of these sequences. [batch_size, beam_size]
+      alive: Topk sequences decoded so far [batch_size, beam_size, i+1]
+      logps: probabilities of these sequences. [batch_size, beam_size]
       states: dict (possibly nested) of decoding states.
     Returns:
       Tuple of
@@ -494,15 +776,15 @@ def beam_search(symbols_to_logits_fn,
          dict of transformed decoding states)
     """
         # Get the logits for all the possible next symbols
-        flat_ids = Q.reshape(alive_seq, [batch_size * beam_size, -1])
+        flat_ids = Q.reshape(alive, [batch_size * beam_size, -1])
 
         # (batch_size * beam_size, decoded_length)
         if states:
-            flat_states = nest.map_structure(_merge_beam_dim, states)
+            flat_states = nest.map_structure(_flatten_beam_dim, states)
             flat_logits, flat_states = symbols_to_logits_fn(
                 flat_ids, i, flat_states)
             states = nest.map_structure(
-                lambda t: _unmerge_beam_dim(t, batch_size, beam_size),
+                lambda t: unflatten_beam_dim(t, batch_size, beam_size),
                 flat_states)
         else:
             flat_logits = symbols_to_logits_fn(flat_ids)
@@ -514,10 +796,9 @@ def beam_search(symbols_to_logits_fn,
 
         # Multiply the probabilities by the current probabilities of the beam.
         # (batch_size, beam_size, vocab_size) + (batch_size, beam_size, 1)
-        log_probs = candidate_log_probs + Q.expand_dims(alive_log_probs,
-                                                        axis=2)
+        log_probs = candidate_log_probs + Q.expand_dims(logps, axis=2)
 
-        length_penalty = Q.pow(((5. + Q.cast(i + 1, Q.floatx())) / 6.), alpha)
+        length_penalty = self.len_penalty(i + 1)
 
         curr_scores = log_probs / length_penalty
         # Flatten out (beam_size, vocab_size) probs in to a list of possibilities
@@ -545,7 +826,7 @@ def beam_search(symbols_to_logits_fn,
 
         # Gather up the most probable 2*beams both for the ids and
         # finished_in_alive bools
-        topk_seq = Q.gather_nd(alive_seq, topk_coordinates)
+        topk_seq = Q.gather_nd(alive, topk_coordinates)
         if states:
             states = nest.map_structure(
                 lambda state: Q.gather_nd(state, topk_coordinates), states)
@@ -558,8 +839,7 @@ def beam_search(symbols_to_logits_fn,
 
         return topk_seq, topk_log_probs, topk_scores, topk_finished, states
 
-    def inner_loop(i, alive_seq, alive_log_probs, finished_seq,
-                   finished_scores, finished_flags, states):
+    def inner_loop(i, alive, logps, done, scores, flags, states):
         """Inner beam search loop.
 
     There are three groups of tensors, alive, finished, and topk.
@@ -583,13 +863,13 @@ def beam_search(symbols_to_logits_fn,
 
     Args:
       i: loop index
-      alive_seq: Topk sequences decoded so far [batch_size, beam_size, i+1]
-      alive_log_probs: probabilities of the beams. [batch_size, beam_size]
-      finished_seq: Current finished sequences.
+      alive: Topk sequences decoded so far [batch_size, beam_size, i+1]
+      logps: probabilities of the beams. [batch_size, beam_size]
+      done: Current finished sequences.
         [batch_size, beam_size, i+1]
-      finished_scores: scores for each of these sequences.
+      scores: scores for each of these sequences.
         [batch_size, beam_size]
-      finished_flags: finished bools for each of these sequences.
+      flags: finished bools for each of these sequences.
         [batch_size, beam_size]
       states: dict (possibly nested) of decoding states.
 
@@ -609,95 +889,38 @@ def beam_search(symbols_to_logits_fn,
         # 2. Extract the ones that have finished and haven't finished
         # 3. Recompute the contents of finished based on scores.
         topk_seq, topk_log_probs, topk_scores, topk_finished, states = grow_topk(
-            i, alive_seq, alive_log_probs, states)
-        alive_seq, alive_log_probs, _, states = grow_alive(
-            topk_seq, topk_scores, topk_log_probs, topk_finished, states)
-        finished_seq, finished_scores, finished_flags, _ = grow_finished(
-            finished_seq, finished_scores, finished_flags, topk_seq,
-            topk_scores, topk_finished)
+            i, alive, logps, states)
+        alive, logps, _, states = grow_alive(topk_seq, topk_scores,
+                                             topk_log_probs, topk_finished,
+                                             states)
+        done, scores, flags, _ = grow_finished(done, scores, flags, topk_seq,
+                                               topk_scores, topk_finished)
 
-        return (i + 1, alive_seq, alive_log_probs, finished_seq,
-                finished_scores, finished_flags, states)
+        return (i + 1, alive, logps, done, scores, flags, states)
 
-    def _is_finished(i, unused_alive_seq, alive_log_probs, unused_finished_seq,
-                     finished_scores, unused_finished_in_finished,
-                     unused_states):
-        """Checking termination condition.
-
-    We terminate when we decoded up to decode_length or the lowest scoring item
-    in finished has a greater score that the highest prob item in alive divided
-    by the max length penalty
-
-    Args:
-      i: loop index
-      alive_log_probs: probabilities of the beams. [batch_size, beam_size]
-      finished_scores: scores for each of these sequences.
-        [batch_size, beam_size]
-
-    Returns:
-      Bool.
-    """
-        max_length_penalty = Q.pow(
-            ((5. + Q.cast(decode_length, Q.floatx())) / 6.), alpha)
-        # The best possible score of the most likely alive sequence.
-        lower_bound_alive_scores = alive_log_probs[:, 0] / max_length_penalty
-
-        if not stop_early:
-            # by considering the min score (in the top N beams) we ensure that
-            # the decoder will keep decoding until there is at least one beam
-            # (in the top N) that can be improved (w.r.t. the alive beams).
-            # any unfinished beam will have score -INF - thus the min
-            # will always be -INF if there is at least one unfinished beam -
-            # which means the bound_is_met condition cannot be true in this case.
-            lowest_score_of_finished_in_finished = Q.reduce_min(
-                finished_scores)
-        else:
-            # by taking the max score we only care about the first beam;
-            # as soon as this first beam cannot be beaten from the alive beams
-            # the beam decoder can stop.
-            # similarly to the above, if the top beam is not completed, its
-            # finished_score is -INF, thus it will not activate the
-            # bound_is_met condition. (i.e., decoder will keep going on).
-            # note we need to find the max for every sequence eparately - so, we need
-            # to keep the batch dimension (see axis=1)
-            lowest_score_of_finished_in_finished = Q.reduce_max(
-                finished_scores, axis=1)
-
-        bound_is_met = Q.reduce_all(
-            Q.greater(lowest_score_of_finished_in_finished,
-                      lower_bound_alive_scores))
-
-        return Q.logical_and(Q.less(i, decode_length),
-                             Q.logical_not(bound_is_met))
 
     inner_shape = Q.TensorShape([None, None, None])
     state_struc = nest.map_structure(get_state_shape_invariants, states)
-    (_, alive_seq, alive_log_probs, finished_seq, finished_scores,
-     finished_flags, states) = Q.while_loop(
-         _is_finished,
-         inner_loop, [
-             Q.constant(0), alive_seq, alive_log_probs, finished_seq,
-             finished_scores, finished_flags, states
-         ],
-         shape_invariants=[
-             Q.TensorShape([]), inner_shape,
-             alive_log_probs.get_shape(), inner_shape,
-             finished_scores.get_shape(),
-             finished_flags.get_shape(), state_struc
-         ],
-         parallel_iterations=1,
-         back_prop=False)
+    (_, alive, logps, done, scores, flags, states) = Q.while_loop(
+        _is_finished,
+        inner_loop, [Q.constant(0), alive, logps, done, scores, flags, states],
+        shape_invariants=[
+            Q.TensorShape([]), inner_shape,
+            logps.get_shape(), inner_shape,
+            scores.get_shape(),
+            flags.get_shape(), state_struc
+        ],
+        parallel_iterations=1,
+        back_prop=False)
 
-    alive_seq.set_shape((None, beam_size, None))
-    finished_seq.set_shape((None, beam_size, None))
+    alive.set_shape((None, beam_size, None))
+    done.set_shape((None, beam_size, None))
 
     # Accounting for corner case: It's possible that no sequence in alive for a
     # particular batch item ever reached EOS. In that case, we should just copy
-    # the contents of alive for that batch item. Q.reduce_any(finished_flags, 1)
+    # the contents of alive for that batch item. Q.reduce_any(flags, 1)
     # if 0, means that no sequence for that batch index had reached EOS. We need
     # to do the same for the scores as well.
-    finished_seq = Q.where(Q.reduce_any(finished_flags, 1), finished_seq,
-                           alive_seq)
-    finished_scores = Q.where(Q.reduce_any(finished_flags, 1), finished_scores,
-                              alive_log_probs)
-    return finished_seq, finished_scores, states
+    done = Q.where(Q.reduce_any(flags, 1), done, alive)
+    scores = Q.where(Q.reduce_any(flags, 1), scores, logps)
+    return done, scores, states

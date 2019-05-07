@@ -79,7 +79,6 @@ greater_equal = math_ops.greater_equal
 identity = array_ops.identity
 import_event = None  # ts.import_event
 int32 = tf.int32
-int_shape = K.int_shape
 is_built_with_cuda = tf.test.is_built_with_cuda
 is_nan = math_ops.is_nan
 l2_normalize = tf.nn.l2_normalize
@@ -124,3 +123,19 @@ transpose = array_ops.transpose
 unstack = array_ops.unstack
 where = array_ops.where
 zeros = array_ops.zeros
+shape = array_ops.shape
+
+
+def int_shape(x):
+    sh = x.shape
+    if not isinstance(sh, tuple):
+        sh = sh.as_list()
+
+    def elems(dsh=None):
+        for i, e in enumerate(sh):
+            if e is None:
+                dsh = dsh or shape(x)
+                e = dsh[i]
+            yield e
+
+    return tuple(elems())
