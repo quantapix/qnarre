@@ -45,7 +45,7 @@ class Trafo(Q.Layer):
         self.dec_stack = DecodeStack(PS, self.pre, self.post)
         self.logits = Q.Dense(PS.vocab_size, activation=None)
         if PS.beam_size:
-            self.beam = Beam(PS, lambda *a, **kw: self.to_logits(*a, **kw))
+            self.beam = Beam(PS, lambda *a, **kw: self.to_logps(*a, **kw))
 
     def build(self, input_shape):
         src, _, tgt = input_shape
@@ -94,7 +94,7 @@ class Trafo(Q.Layer):
         y = self.dec_stack([y, ctx, bias], **kw)
         return y
 
-    def to_logits(self, tgt, ctx, bias, i=None, **kw):
+    def to_logps(self, tgt, ctx, bias, i=None, **kw):
         PS = self.PS
         unk = Q.equal(tgt, PS.UNK)
         prior = Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
@@ -102,7 +102,7 @@ class Trafo(Q.Layer):
             unk = unk[:, i]
             prior = prior[:, i, :]
         if Q.reduce_all(unk):
-            y = prior
+            lgs = prior
         else:
             y = self.decode(tgt, ctx, bias, **kw)
             if i is not None:
@@ -111,9 +111,9 @@ class Trafo(Q.Layer):
             y = Q.reshape(y, (-1, sh[-1]))
             y = self.logits(y, **kw)
             y = Q.reshape(y, sh[:-1] + Q.int_shape(y)[-1:])
-            y = Q.where(unk, y, prior)
+            lgs = Q.where(unk, y, prior)
         lps = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-        return y, lps, unk
+        return lps, lgs, unk
 
     def to_toks(self, x):
         assert t > 0.0
@@ -142,7 +142,7 @@ class Trafo(Q.Layer):
             if not training and self.beam:
                 y = self.beam([tgt, ctx, bias], **kw)
             else:
-                y, lps, unk = self.to_logits(tgt, ctx, bias, **kw)
+                lps, lgs, unk = self.to_logps(tgt, ctx, bias, **kw)
                 sh = Q.int_shape(tgt)
                 bi = Q.range(sh[0])
                 for i in range(sh[-1]):

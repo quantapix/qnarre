@@ -21,10 +21,10 @@ from tensorflow.python.util import nest
 
 
 class Beam(Q.Layer):
-    def __init__(self, PS, to_logits, **kw):
+    def __init__(self, PS, to_logps, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.to_logits = to_logits
+        self.to_logps = to_logps
 
     def build(self, input_shape):
         PS = self.PS
@@ -36,7 +36,7 @@ class Beam(Q.Layer):
         init = Q.constant_initializer(PS.UNK)
         self.settled = self.add_variable(initializer=init, **kw)
         kw.update(shape=sh[:-1], dtype=Q.floatx())
-        init = np.array([0., PS.big_neg]).reshape([1, 2])
+        init = np.array([0., -float('inf')]).reshape([1, 2])
         init = Q.constant_initializer(init)
         self.logps = self.add_variable(initializer=init, **kw)
         init = Q.constant_initializer(PS.big_neg)
@@ -52,7 +52,8 @@ class Beam(Q.Layer):
         tgt = Q.tile(tgt, [1, PS.beam_size, 1])
         i = 1
         while self.not_done(i):
-            y, lps = self.expand(*inputs, i, **kw)
+            lps, idx = self.topk(*inputs, i, **kw)
+            y = self.append(idx, i, **kw)
             self.active, self.logps = self.new_active(y, lps)
             self.settled, self.scores, self.flags = self.new_settled(i, y, lps)
             i += 1
@@ -70,25 +71,41 @@ class Beam(Q.Layer):
         done = Q.reduce_all(Q.greater(old, new))
         return Q.logical_and(Q.less(i, n), Q.logical_not(done))
 
-    def expand(self, tgt, ctx, bias, i, **kw):
+    def topk(self, tgt, ctx, bias, i, **kw):
+        PS = self.PS
+        sh = Q.int_shape(self.logps)
+        assert sh[0] == PS.batch_size
+        assert sh[1] == PS.beam_size
+        lps = Q.zeros(sh[:2] + (PS.vocab_size,))
+        lps += Q.expand_dims(self.logps, axis=2)
+        b = Q.range(PS.batch_size)
+        ii = Q.constant(i, shape=sh[:1])
+        for j in range(PS.beam_size):
+            jj = Q.constant(j, shape=sh[:1])
+            idx = Q.stack([b, jj, ii])
+            lp = self.to_logps(self.active[:, j, :], ctx, bias, i, **kw)[1]
+            lps = Q.tensor_scatter_nd_add(lps, idx, lp)
+        lps = Q.reshape(lps, (-1, PS.beam_size * PS.vocab_size))
+        return Q.top_k(lps, k=2 * PS.beam_size)
+
+    def append(self, idx, i, **kw):
         PS = self.PS
         sh = Q.int_shape(self.active)
-        lps = Q.zeros(sh[:2] + (PS.vocab_size,))
-        b = Q.range(sh[0])
-        ii = Q.constant(i, shape=sh[:1])
-        for j in range(sh[1]):
-            jj = Q.constant(j, shape=sh[:1])
-            lp = self.to_logits(self.active[:, j, :], ctx, bias, i, **kw)[1]
-            lps = Q.tensor_scatter_nd_update(lps, Q.stack([b, jj, ii]), lp)
-        lps = Q.reshape(lps, (-1, sh[1] * PS.vocab_size))
+        assert sh[0] == PS.batch_size
+        assert sh[1] == PS.beam_size
+        bidx = idx // PS.vocab_size
         k = 2 * PS.beam_size
-        lps, idx = Q.top_k(lps, k=k)
-        y = self.gather_beams([self.active], idx // PS.vocab_size, k)
-        y2 = Q.expand_dims(idx % PS.vocab_size, axis=2)
-        y = Q.concat([y, y2], axis=2)
-        return y, lps
+        b = Q.range(PS.batch_size * k) // k
+        b = Q.reshape(b, (PS.batch_size, k))
+        idx = Q.stack([b, bidx], axis=2)
+        y = Q.gather_nd(self.active, idx)
+        ii = Q.constant(i, shape=sh[:1])
+        idx = Q.stack([b, bidx, ii])
+        new = Q.expand_dims(idx % PS.vocab_size, axis=2)
+        y = Q.tensor_scatter_nd_update(y, idx, new)
+        return y
 
-    def new_alive(self, x, lps):
+    def new_active(self, x, lps):
         PS = self.PS
         fs = Q.equal(x[:, :, -1], PS.END)
         lps += Q.cast(fs, Q.floatx()) * self.PS.big_neg
@@ -106,11 +123,11 @@ class Beam(Q.Layer):
         fs = Q.concat([self.flags, fs], axis=1)
         return self.top_beams([y, ss, fs], ss)
 
-    def gather_beams(self, xs, bidx, k):
+    def gather_beams(self, xs, beam, k):
         PS = self.PS
         idx = Q.range(PS.batch_size * k) // k
         idx = Q.reshape(idx, (PS.batch_size, k))
-        idx = Q.stack([idx, bidx], axis=2)
+        idx = Q.stack([idx, beam], axis=2)
         return nest.map_structure(lambda x: Q.gather_nd(x, idx), xs)
 
     def top_beams(self, xs, vs):
