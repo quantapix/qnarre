@@ -59,6 +59,7 @@ cast = math_ops.cast
 cast_to_floatx = K.cast_to_floatx
 concat = array_ops.concat
 constant = constant_op.constant
+constant_initializer = tf.constant_initializer
 cos = math_ops.cos
 create_file_writer = ts.create_file_writer
 cumprod = math_ops.cumprod

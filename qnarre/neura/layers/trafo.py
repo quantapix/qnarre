@@ -16,15 +16,16 @@
 import qnarre.neura as Q
 import qnarre.neura.utils as U
 
-from qnarre.neura.layers.ffn import ffns
-from qnarre.neura.layers.attent import attns
-from qnarre.neura.layers.beam import beam_search
+from qnarre.neura.layers.search import Beam
 from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
+from qnarre.neura.layers.ffn import ffns
+from qnarre.neura.layers.attent import attns
+
 
 class Trafo(Q.Layer):
-    typ_embed, pos_embed = None, None
+    typ_embed, pos_embed, beam = None, None, None
 
     def __init__(self, PS, **kw):
         super().__init__(**kw)
@@ -43,6 +44,8 @@ class Trafo(Q.Layer):
         self.enc_stack = EncStack(PS, self.pre, self.post)
         self.dec_stack = DecodeStack(PS, self.pre, self.post)
         self.logits = Q.Dense(PS.vocab_size, activation=None)
+        if PS.beam_size:
+            self.beam = Beam(PS, lambda *a, **kw: self.to_logits(*a, **kw))
 
     def build(self, input_shape):
         src, _, tgt = input_shape
@@ -87,24 +90,30 @@ class Trafo(Q.Layer):
         return ctx, bias
 
     def decode(self, tgt, ctx, bias, **kw):
-        y = None
-        if tgt is not None:
-            y = self.embed(tgt, **kw)
-            y = self.dec_stack([y, ctx, bias], **kw)
+        y = self.embed(tgt, **kw)
+        y = self.dec_stack([y, ctx, bias], **kw)
         return y
 
-    def to_logits(self, x, prior, **kw):
-        xs = Q.int_shape(x)
-        y = Q.reshape(x, (-1, xs[-1]))
-        y = self.logits(y, **kw)
-        ys = Q.int_shape(y)
-        y = Q.reshape(y, (-1, ) + xs[1:-1] + ys[-1:])
+    def to_logits(self, tgt, ctx, bias, i=None, **kw):
         PS = self.PS
-        unk = Q.equal(prior, PS.UNK)
-        prior = Q.one_hot(prior, PS.vocab_size, 0.0, PS.big_neg)
-        y = Q.where(unk, y, prior)
-        lp = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-        return y, unk
+        unk = Q.equal(tgt, PS.UNK)
+        prior = Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
+        if i is not None:
+            unk = unk[:, i]
+            prior = prior[:, i, :]
+        if Q.reduce_all(unk):
+            y = prior
+        else:
+            y = self.decode(tgt, ctx, bias, **kw)
+            if i is not None:
+                y = y[:, i, :]
+            sh = Q.int_shape(y)
+            y = Q.reshape(y, (-1, sh[-1]))
+            y = self.logits(y, **kw)
+            y = Q.reshape(y, sh[:-1] + Q.int_shape(y)[-1:])
+            y = Q.where(unk, y, prior)
+        lps = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
+        return y, lps, unk
 
     def to_toks(self, x):
         assert t > 0.0
@@ -129,26 +138,22 @@ class Trafo(Q.Layer):
     def call(self, inputs, training=None, **kw):
         src, typ, tgt = inputs
         ctx, bias = self.encode(src, typ, **kw)
-        y = self.decode(tgt, ctx, bias, **kw)
-        if y is not None:
-            y, unk = self.to_logits(y, tgt, **kw)
-            PS = self.PS
-            if PS.beam_size > 1:
-                y = beam_search(self)
+        if tgt is not None:
+            if not training and self.beam:
+                y = self.beam([tgt, ctx, bias], **kw)
             else:
+                y, lps, unk = self.to_logits(tgt, ctx, bias, **kw)
                 sh = Q.int_shape(tgt)
                 bi = Q.range(sh[0])
                 for i in range(sh[-1]):
                     if Q.reduce_any(unk[:, i]):
-                        y = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-                        y = Q.argmax(y[:, i, :], axis=1, output_type=Q.int32)
+                        y = Q.argmax(lps[:, i, :], axis=1, output_type=Q.int32)
                         yi = Q.stack([bi, Q.constant(i, shape=sh[:1])])
                         tgt = Q.tensor_scatter_nd_update(tgt, yi, y)
-                        e = Q.equal(tgt, PS.END)
+                        e = Q.equal(tgt, self.PS.END)
                         if Q.reduce_all(Q.reduce_any(e, axis=1)):
                             break
-                        y = self.decode(tgt, ctx, bias, **kw)
-                        y, unk = self.to_logits(y, tgt, **kw)
+                        y, lps, unk = self.to_logits(tgt, ctx, bias, **kw)
             # return {"outputs": toks, "scores": scores}
             if not training:
                 y = self.to_toks(y, **kw)

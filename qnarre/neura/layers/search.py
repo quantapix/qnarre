@@ -13,6 +13,8 @@
 # limitations under the License.
 # =============================================================================
 
+import numpy as np
+
 import qnarre.neura as Q
 
 from tensorflow.python.util import nest
@@ -24,49 +26,64 @@ class Beam(Q.Layer):
         self.PS = PS
         self.to_logits = to_logits
 
+    def build(self, input_shape):
+        PS = self.PS
+        tgt = input_shape[0]
+        sh = tgt[:1] + (PS.beam_size, ) + tgt[1:]
+        kw = dict(shape=sh, dtype='int32', trainable=False)
+        init = Q.constant_initializer(PS.PAD)
+        self.active = self.add_variable(initializer=init, **kw)
+        init = Q.constant_initializer(PS.UNK)
+        self.settled = self.add_variable(initializer=init, **kw)
+        kw.update(shape=sh[:-1], dtype=Q.floatx())
+        init = np.array([0., PS.big_neg]).reshape([1, 2])
+        init = Q.constant_initializer(init)
+        self.logps = self.add_variable(initializer=init, **kw)
+        init = Q.constant_initializer(PS.big_neg)
+        self.scores = self.add_variable(initializer=init, **kw)
+        kw.update(dtype='bool')
+        self.flags = self.add_variable(initializer='zeros', **kw)
+        return super().build(input_shape)
+
     def call(self, inputs, **kw):
         PS = self.PS
-        y = Q.expand_dims(inputs, axis=1)
-        y = Q.tile(y, [1, PS.beam_size, 1])
-        tgt = Q.reshape(y, (PS.batch_size * PS.beam_size, -1))
-        sh = (PS.batch_size, PS.beam_size, 0)
-        self.alive = Q.zeros(sh, Q.int32)
-        self.done = Q.zeros(sh, Q.int32)
-        lps = Q.constant([[0.] + [PS.big_neg] * (PS.beam_size - 1)])
-        self.logps = Q.tile(lps, [PS.batch_size, 1])
-        self.scores = Q.ones(sh[:-1]) * self.PS.big_neg
-        self.flags = Q.zeros(sh[:-1], Q.bool)
-        i = 0
+        tgt = inputs[0]
+        tgt = Q.expand_dims(tgt, axis=1)
+        tgt = Q.tile(tgt, [1, PS.beam_size, 1])
+        i = 1
         while self.not_done(i):
-            y, lps = self.grow_alive(i, tgt)
-            self.alive, self.logps = self.new_alive(y, lps)
-            self.done, self.scores, self.flags = self.new_done(i, y, lps)
+            y, lps = self.expand(*inputs, i, **kw)
+            self.active, self.logps = self.new_active(y, lps)
+            self.settled, self.scores, self.flags = self.new_settled(i, y, lps)
             i += 1
         done = Q.where(Q.reduce_any(self.flags, 1), self.done, self.alive)
         scores = Q.where(Q.reduce_any(self.flags, 1), self.scores, self.logps)
         return done, scores
 
     def not_done(self, i):
-        PS = self.PS
         y = self.scores * Q.cast(self.flags, Q.floatx())
         old = Q.reduce_min(y, axis=1)
         fs = Q.reduce_any(self.flags, axis=1)
-        old += (1. - Q.cast(fs, Q.floatx())) * PS.big_neg
-        new = self.logps[:, 0] / self.penalty(PS.tgt_len)
+        old += (1. - Q.cast(fs, Q.floatx())) * self.PS.big_neg
+        n = Q.int_shape(self.active)[-1]
+        new = self.logps[:, 0] / self.penalty(n)
         done = Q.reduce_all(Q.greater(old, new))
-        return Q.logical_and(Q.less(i, PS.tgt_len), Q.logical_not(done))
+        return Q.logical_and(Q.less(i, n), Q.logical_not(done))
 
-    def grow_alive(self, i, tgt):
+    def expand(self, tgt, ctx, bias, i, **kw):
         PS = self.PS
-        y = Q.reshape(self.alive, (PS.batch_size * PS.beam_size, -1))
-        y = self.to_logits(i, y, tgt)
-        y = Q.reshape(y, (PS.batch_size, PS.beam_size, -1))
-        y = y - Q.reduce_logsumexp(y, axis=2, keep_dims=True)
-        y += Q.expand_dims(self.logps, axis=2)
-        lps = Q.reshape(y, (-1, PS.beam_size * PS.vocab_size))
+        sh = Q.int_shape(self.active)
+        lps = Q.zeros(sh[:2] + (PS.vocab_size,))
+        b = Q.range(sh[0])
+        ii = Q.constant(i, shape=sh[:1])
+        for j in range(sh[1]):
+            jj = Q.constant(j, shape=sh[:1])
+            lp = self.to_logits(self.active[:, j, :], ctx, bias, i, **kw)[1]
+            lps = Q.tensor_scatter_nd_update(lps, Q.stack([b, jj, ii]), lp)
+        lps = Q.reshape(lps, (-1, sh[1] * PS.vocab_size))
         k = 2 * PS.beam_size
         lps, idx = Q.top_k(lps, k=k)
-        y = self.gather_beams([self.alive], idx // PS.vocab_size, k)
+        y = self.gather_beams([self.active], idx // PS.vocab_size, k)
         y2 = Q.expand_dims(idx % PS.vocab_size, axis=2)
         y = Q.concat([y, y2], axis=2)
         return y, lps

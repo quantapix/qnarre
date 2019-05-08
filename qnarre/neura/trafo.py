@@ -53,6 +53,7 @@ params = dict(
     attn_type=None,
     attn_v_size=4,
     batch_size=4,
+    beam_size=None,
     causal_refl=False,
     ctx_len=16,
     dec_layers=None,
