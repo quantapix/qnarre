@@ -48,29 +48,37 @@ class Trafo(Q.Layer):
             self.beam = Beam(PS, lambda *a, **kw: self.to_logp(*a, **kw))
 
     def build(self, input_shape):
-        src, _, tgt = input_shape
-        kw = dict(dtype='int32', trainable=False)
-        # self.tok_out = self.add_weight(shape=tgt[:2], **kw)
-        kw.update(dtype='bool', initializer='zeros')
-        # self.mlm_bias = self.add_weight(shape=self.PS.vocab_size, **kw)
-        # self.bias = self.add_weight(shape=2, **kw)
         return super().build(input_shape)
+
+    def call(self, inputs, training=None, **kw):
+        PS = self.PS
+        src, typ, tgt = inputs
+        ctx, bias = self.encode(src, typ, **kw)
+        if tgt is not None:
+            if training is not None and self.beam is not None:
+                tgt, score = self.beam([tgt, ctx, bias], **kw)
+            else:
+                logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
+                sh = Q.int_shape(tgt)
+                b = Q.range(PS.batch_size)
+                for i in range(sh[-1]):
+                    if Q.reduce_any(unk[:, i]):
+                        y = Q.argmax(logp[:, i, :],
+                                     axis=1,
+                                     output_type=Q.int32)
+                        ii = Q.constant([i] * PS.batch_size)
+                        sel = Q.stack([b, ii])
+                        tgt = Q.tensor_scatter_nd_update(tgt, sel, y)
+                        e = Q.equal(tgt, PS.END)
+                        if Q.reduce_all(Q.reduce_any(e, axis=1)) is True:
+                            break
+                        logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
+        return tgt
 
     def get_config(self):
         c = super().get_config()
         c['PS'] = self.PS
         return c
-
-    """
-    def compute_output_shape(self, input_shape):
-        s = None
-        src, _, tgt = input_shape
-        if src:
-            s = self.enc_stack.output_shape
-        if tgt:
-            s = self.logits.output_shape
-        return s
-    """
 
     def embed(self, tok, typ=None, **kw):
         y = self.tok_embed(tok, **kw)
@@ -101,7 +109,7 @@ class Trafo(Q.Layer):
         if i is not None:
             unk = unk[:, i]
             prior = prior[:, i, :]
-        if Q.reduce_all(unk):
+        if Q.reduce_all(unk) is True:
             logi = prior
         else:
             y = self.decode(tgt, ctx, bias, **kw)
@@ -114,29 +122,6 @@ class Trafo(Q.Layer):
             logi = Q.where(unk, y, prior)
         logp = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
         return logp, logi, unk
-
-    def call(self, inputs, training=None, **kw):
-        PS = self.PS
-        src, typ, tgt = inputs
-        ctx, bias = self.encode(src, typ, **kw)
-        if tgt is not None:
-            if not training and self.beam:
-                tgt, score = self.beam([tgt, ctx, bias], **kw)
-            else:
-                logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-                sh = Q.int_shape(tgt)
-                b = Q.range(PS.batch_size)
-                for i in range(sh[-1]):
-                    if Q.reduce_any(unk[:, i]):
-                        y = Q.argmax(logp[:, i, :], axis=1, output_type=Q.int32)
-                        ii = Q.constant([i] * PS.batch_size)
-                        sel = Q.stack([b, ii])
-                        tgt = Q.tensor_scatter_nd_update(tgt, sel, y)
-                        e = Q.equal(tgt, PS.END)
-                        if Q.reduce_all(Q.reduce_any(e, axis=1)):
-                            break
-                        logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-        return tgt
 
 
 class Stack(Q.Layer):

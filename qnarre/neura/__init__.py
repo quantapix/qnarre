@@ -128,15 +128,13 @@ shape = array_ops.shape
 
 
 def int_shape(x):
-    sh = x.shape
-    if not isinstance(sh, tuple):
+    sh, dsh = x.shape, None
+    if isinstance(sh, tuple):
+        sh = list(sh)
+    else:
         sh = sh.as_list()
-
-    def elems(dsh=None):
-        for i, e in enumerate(sh):
-            if e is None:
-                dsh = dsh or shape(x)
-                e = dsh[i]
-            yield e
-
-    return tuple(elems())
+    for i, e in enumerate(sh):
+        if e is None:
+            dsh = dsh or shape(x)
+            sh[i] = dsh[i]
+    return tuple(sh)
