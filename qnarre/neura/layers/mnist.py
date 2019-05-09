@@ -16,7 +16,30 @@
 import qnarre.neura as Q
 
 
-class Mnist_1(Q.Layer):
+class Mnist(Q.Layer):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.PS = PS
+        f = PS.data_format
+        self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
+
+    def build(self, input_shape):
+        PS = self.PS
+        self.d1 = Q.Dense(PS.hidden_size, activation=PS.hidden_act)
+        self.d2 = Q.Dense(PS.num_classes, activation='softmax')
+        return super().build(input_shape)
+
+    def call(self, inputs, **kw):
+        x = inputs[0]
+        y = Q.Reshape(self.shape)(x)
+        y = Q.Flatten()(y)
+        y = self.d1(y)
+        y = Q.Dropout(self.PS.hidden_drop)(y)
+        y = self.d2(y)
+        return y
+
+
+class Mnist_2(Q.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         f = PS.data_format
@@ -53,7 +76,7 @@ class Mnist_1(Q.Layer):
         return [y1, y2]
 
 
-class Mnist_2(Q.Layer):
+class Mnist_3(Q.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         f = PS.data_format
@@ -78,26 +101,3 @@ class Mnist_2(Q.Layer):
         y1, y2 = Q.Dropout(0.1)(y1), Q.Dropout(0.1)(y2)
         y1, y2 = self.d2_1(y1), self.d2_2(y2)
         return [y1, y2]
-
-
-class Mnist_3(Q.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        f = PS.data_format
-        self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
-
-    def build(self, input_shape):
-        x = input_shape[4]
-        _, hsize = x
-        self.d1 = Q.Dense(hsize, activation='relu')
-        self.d2 = Q.Dense(10, activation='softmax')
-        return super().build(input_shape)
-
-    def call(self, inputs, **kw):
-        x = inputs[4]
-        y = Q.Reshape(self.shape)(x)
-        y = Q.Flatten()(y)
-        y = self.d1(y)
-        y = Q.Dropout(0.1)(y)
-        y = self.d2(y)
-        return y

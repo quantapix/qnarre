@@ -42,6 +42,7 @@ Model = ks.Model
 ModelCheckpoint = ks.callbacks.ModelCheckpoint
 Relu = ks.activations.relu
 Reshape = ks.layers.Reshape
+SGD = ks.optimizers.SGD
 Softmax = ks.activations.softmax
 SparseCategoricalAccuracy = ks.metrics.SparseCategoricalAccuracy
 SparseCategoricalCrossentropy = ks.losses.SparseCategoricalCrossentropy

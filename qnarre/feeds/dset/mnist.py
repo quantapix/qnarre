@@ -22,11 +22,10 @@ import qnarre.neura as Q
 
 
 def dset(PS, kind):
-    t, si, sl = Q.float32, Q.TensorShape((28 * 28, )), Q.TensorShape(())
     return Q.Dataset.from_generator(
         lambda: _reader(PS, kind),
-        (t, t),
-        (si, sl),
+        (Q.float32, Q.int32),
+        (Q.TensorShape((28 * 28, )), Q.TensorShape(())),
     )
 
 

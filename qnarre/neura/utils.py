@@ -28,8 +28,12 @@ _params = dict(
     adam_epsilon=1e-7,
     adam_lr=0.001,
     initer_stddev=0.02,
+    loss_from_logits=True,
     regular_l1=0,
     regular_l2=0,
+    sgd_lr=0.001,
+    sgd_momentum=0.0,
+    sgd_nesterov=False,
 )
 
 
@@ -66,25 +70,47 @@ class Params:
         rr = None
         if self.regular_l1 or self.regular_l2:
             rr = Q.L1L2(self.regular_l1, self.regular_l2)
-        op = Q.Adam(learning_rate=self.adam_beta1,
-                    beta_1=self.adam_beta1,
-                    beta_2=self.adam_beta2,
-                    epsilon=self.adam_epsilon)
-        ls = Q.SparseCategoricalCrossentropy(from_logits=True)
-        ms = Q.SparseCategoricalAccuracy()
-        ffn_act = _activation(self.ffn_act)
-        hidden_act = _activation(self.hidden_act)
         self.update(
             initializer=ir,
             regularizer=rr,
-            optimizer=op,
-            losses=ls,
-            metrics=ms,
-            ffn_act=ffn_act,
-            hidden_act=hidden_act,
+            optimizer=self._optimizer(self.optimizer),
+            losses=Q.SparseCategoricalCrossentropy(
+                from_logits=self.loss_from_logits),
+            metrics=Q.SparseCategoricalAccuracy(),
+            ffn_act=self._activation(self.ffn_act),
+            hidden_act=self._activation(self.hidden_act),
             big_neg=_big_neg(),
         )
         return self
+
+    @staticmethod
+    def _activation(name):
+        if isinstance(name, str):
+            n = name.lower()
+            if n == 'gelu':
+                return _gelu
+            if n == 'relu':
+                return Q.Relu
+            if n == 'tanh':
+                return Q.Tanh
+            assert n == 'linear'
+            name = None
+        return name
+
+    def _optimizer(self, name):
+        if isinstance(name, str):
+            n = name.lower()
+            if n == 'adam':
+                return Q.Adam(learning_rate=self.adam_lr,
+                              beta_1=self.adam_beta1,
+                              beta_2=self.adam_beta2,
+                              epsilon=self.adam_epsilon)
+            if n == 'sgd':
+                return Q.SGD(learning_rate=self.sgd_lr,
+                             momentum=self.sgd_momentum,
+                             nesterov=self.sgd_nesterov)
+            name = None
+        return name
 
 
 def _big_neg():
@@ -96,20 +122,6 @@ def _gelu(x):
     c = Q.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * Q.pow(x, 3))))
     c = (c + 1.0) * 0.5
     return x * c
-
-
-def _activation(name):
-    if isinstance(name, str):
-        n = name.lower()
-        if n == 'gelu':
-            return _gelu
-        if n == 'relu':
-            return Q.Relu
-        if n == 'tanh':
-            return Q.Tanh
-        assert n == 'linear'
-        name = None
-    return name
 
 
 class Features:
@@ -255,25 +267,6 @@ def ones_band_part(rows, cols, num_lower, num_upper, out_shape=None):
         if out_shape:
             band = T.reshape(band, out_shape)
     return band
-
-
-class PadRemover:
-    def __init__(self, mask):
-        self.ids = None
-        self.origin = None
-        with T.name_scope("pad_reduce/get_ids"):
-            mask = T.reshape(mask, [-1])
-            self.ids = Q.cast(T.where(mask < 1e-9), 'int32')
-            self.origin = T.shape(mask)[:1]
-
-    def remove(self, x):
-        with T.name_scope("pad_reduce/remove"):
-            return T.gather_nd(x, indices=self.ids)
-
-    def restore(self, x):
-        sh = T.concat([self.origin, Q.int_shape(x)[1:]], axis=0),
-        with T.name_scope("pad_reduce/restore"):
-            return T.scatter_nd(indices=self.ids, updates=x, shape=sh)
 
 
 def log_confusion_matrix(epoch, logs):

@@ -32,7 +32,7 @@ def dset_for(PS, kind):
         ds_2 = ds_2.shuffle(n)
         ds_3 = ds_3.shuffle(n)
     ds = Q.Dataset.zip((ds_1, ds_2, ds_3))
-    ds = ds.map(lambda *ts: (tuple([v for t in ts for v in t]), ))
+    ds = ds.map(lambda s, s2, s3: ((s[0], s2[0], s2[1], s3[0], s3[1]), s[1]))
     ds = ds.batch(PS.batch_size)
     # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return ds
@@ -41,21 +41,20 @@ def dset_for(PS, kind):
 def model_for(PS, full=False):
     ins = [
         Q.Input(shape=(28, 28), dtype='float32'),
-        Q.Input(shape=(1,), dtype='float32'),
         Q.Input(shape=(28, 28), dtype='float32'),
-        Q.Input(shape=(1,), dtype='float32'),
+        Q.Input(shape=(1, ), dtype='int32'),
         Q.Input(shape=(28, 28), dtype='float32'),
-        Q.Input(shape=(1,), dtype='float32'),
+        Q.Input(shape=(1, ), dtype='int32'),
     ]
-    outs = [L.Mnist_3(PS)(ins[:5])]
+    outs = [L.Mnist(PS)(ins)]
     # outs = [Mnist_1(PS)(ins), Mnist_2(PS)(ins), Mnist_3(PS)(ins)]
-    m = Q.Model(inputs=ins[:5], outputs=outs)
+    m = Q.Model(inputs=ins, outputs=outs)
     if full:
         m.compile(
-            optimizer=Q.optimizers.SGD(learning_rate=0.01),
-            loss='sparse_categorical_crossentropy',
-            metrics=['accuracy'],
-            target_tensors=[ins[5]],
+            optimizer=PS.optimizer,
+            loss=PS.losses,
+            metrics=[PS.metrics],
+            target_tensors=[ins[4]],
         )
         """
             loss={
@@ -75,15 +74,16 @@ def model_for(PS, full=False):
 
 params = dict(
     batch_size=64,
-    dropout_rate=0.2,
     epochs_between_evals=1,
+    ffn_act=None,
+    hidden_act='relu',
+    hidden_drop=0.2,
+    hidden_size=512,
     model_name='mlp',
     num_classes=10,
-    num_units=512,
-    optimizer='adam',
+    optimizer='sgd',
+    seq_len=28 * 28,
     train_epochs=2,
-    ffn_act=None,
-    hidden_act=None,
 )
 
 params.update(
