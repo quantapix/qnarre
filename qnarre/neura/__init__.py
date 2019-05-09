@@ -55,6 +55,7 @@ bitwise_and = tf.bitwise.bitwise_and
 bitwise_or = tf.bitwise.bitwise_or
 bitwise_xor = tf.bitwise.bitwise_xor
 bool = tf.bool
+broadcast_to = array_ops.broadcast_to
 cast = math_ops.cast
 cast_to_floatx = K.cast_to_floatx
 concat = array_ops.concat
@@ -110,6 +111,7 @@ reduce_prod = math_ops.reduce_prod
 reduce_sum = math_ops.reduce_sum
 reshape = array_ops.reshape
 scalar = ts.scalar
+shape = array_ops.shape
 sin = math_ops.sin
 softmax = tf.nn.softmax
 sqrt = math_ops.sqrt
@@ -124,7 +126,6 @@ transpose = array_ops.transpose
 unstack = array_ops.unstack
 where = array_ops.where
 zeros = array_ops.zeros
-shape = array_ops.shape
 
 
 def int_shape(x):

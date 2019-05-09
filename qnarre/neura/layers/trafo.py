@@ -59,10 +59,11 @@ class Trafo(Q.Layer):
                 tgt, score = self.beam([tgt, ctx, bias], **kw)
             else:
                 logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
+                return logi
                 sh = Q.int_shape(tgt)
                 b = Q.range(PS.batch_size)
                 for i in range(sh[-1]):
-                    if Q.reduce_any(unk[:, i]):
+                    if Q.reduce_any(unk[:, i]) is True:
                         y = Q.argmax(logp[:, i, :],
                                      axis=1,
                                      output_type=Q.int32)
@@ -73,7 +74,7 @@ class Trafo(Q.Layer):
                         if Q.reduce_all(Q.reduce_any(e, axis=1)) is True:
                             break
                         logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-        return tgt
+            return Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
 
     def get_config(self):
         c = super().get_config()
@@ -119,7 +120,9 @@ class Trafo(Q.Layer):
             y = Q.reshape(y, (-1, sh[-1]))
             y = self.logits(y, **kw)
             y = Q.reshape(y, sh[:-1] + Q.int_shape(y)[-1:])
-            logi = Q.where(unk, y, prior)
+            u = Q.expand_dims(unk, axis=2)
+            u = Q.broadcast_to(u, Q.int_shape(y))
+            logi = Q.where(u, y, prior)
         logp = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
         return logp, logi, unk
 
