@@ -15,24 +15,23 @@
 
 import lzma
 
-import numpy as N
-import pathlib as P
-import tensorflow as T
+import numpy as np
+import pathlib as pth
 
-KS = T.keras
+import qnarre.neura as Q
 
 
-def dataset(params, kind):
-    PS = params
-    return T.data.Dataset.from_generator(
+def dset(PS, kind):
+    t, si, sl = Q.float32, Q.TensorShape((28 * 28, )), Q.TensorShape(())
+    return Q.Dataset.from_generator(
         lambda: _reader(PS, kind),
-        PS.features.tf_dtypes,
-        PS.features.tf_shapes,
+        (t, t),
+        (si, sl),
     )
 
 
 def _reader(PS, kind):
-    p = P.Path(PS.data_dir)
+    p = pth.Path(PS.data_dir)
     x, y = _names[kind]
     with lzma.open(p / (x + '.xz'), mode='rb') as xf:
         assert _read32(xf) == 2051
@@ -50,11 +49,11 @@ def _reader(PS, kind):
 def _read32(f, count=4):
     b = f.read(count)
     if b:
-        dt = N.uint8 if count == 1 else N.dtype(N.uint32).newbyteorder('>')
-        rs = N.frombuffer(b, dtype=dt)
+        dt = np.uint8 if count == 1 else np.dtype(np.uint32).newbyteorder('>')
+        rs = np.frombuffer(b, dtype=dt)
         if count <= 4:
             return rs[0]
-        return N.array(rs, dtype=N.float)
+        return np.array(rs, dtype=np.float)
 
 
 _names = {
@@ -64,44 +63,44 @@ _names = {
 
 
 def cached_dset(kind, params):
-    path = P.Path(params.data_dir)
+    path = pth.Path(params.data_dir)
     p, r, c = _check_images(path / '{}_images'.format(kind))
 
     def _img(x):
-        x = T.io.decode_raw(x, T.uint8)
-        x = T.cast(x, T.float32)
-        x = T.reshape(x, [r * c])
+        x = Q.decode_raw(x, Q.uint8)
+        x = Q.cast(x, Q.float32)
+        x = Q.reshape(x, [r * c])
         return x / 255.0
 
-    x = T.data.FixedLengthRecordDataset(p, r * c, header_bytes=16).map(_img)
+    x = Q.FixedLengthRecordDataset(p, r * c, header_bytes=16).map(_img)
     p = _check_labels(path / '{}_labels'.format(kind))
 
     def _lbl(y):
-        y = T.io.decode_raw(y, T.uint8)
-        y = T.reshape(y, [])
-        return T.cast(y, T.int32)
+        y = Q.decode_raw(y, Q.uint8)
+        y = Q.reshape(y, [])
+        return Q.cast(y, Q.int32)
 
-    y = T.data.FixedLengthRecordDataset(p, 1, header_bytes=8).map(_lbl)
-    return T.data.Dataset.zip((x, y))
+    y = Q.FixedLengthRecordDataset(p, 1, header_bytes=8).map(_lbl)
+    return Q.Dataset.zip((x, y))
 
 
 def np_dataset(kind, params):
-    path = P.Path(params.data_dir)
-    with N.load(path / 'combined') as d:
+    path = pth.Path(params.data_dir)
+    with np.load(path / 'combined') as d:
         x, y = d['x_{}'.format(kind)], d['y_{}'.format(kind)]
-    x = x.astype(N.float32) / 255
-    x = N.expand_dims(x, -1)
-    y = T.one_hot(y, params.num_classes)
-    return T.data.Dataset.from_tensor_slices((x, y))
+    x = x.astype(np.float32) / 255
+    x = np.expand_dims(x, -1)
+    y = Q.one_hot(y, params.num_classes)
+    return Q.Dataset.from_tensor_slices((x, y))
 
 
 def np_data(kind, params):
-    path = P.Path(params.data_dir)
-    with N.load(path / 'combined') as d:
+    path = pth.Path(params.data_dir)
+    with np.load(path / 'combined') as d:
         x, y = d['x_{}'.format(kind)], d['y_{}'.format(kind)]
     r, c = x.shape[1:]
     x = x.reshape((-1, r * c)).astype('float32') / 255
-    y = KS.utils.to_categorical(y, params.num_classes)
+    y = Q.to_categorical(y, params.num_classes)
     return x, y
 
 

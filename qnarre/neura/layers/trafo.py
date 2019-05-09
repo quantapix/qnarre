@@ -55,11 +55,19 @@ class Trafo(Q.Layer):
         src, typ, tgt = inputs
         ctx, bias = self.encode(src, typ, **kw)
         if tgt is not None:
+            logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
+            return logi
+
+    """
+    def call(self, inputs, training=None, **kw):
+        PS = self.PS
+        src, typ, tgt = inputs
+        ctx, bias = self.encode(src, typ, **kw)
+        if tgt is not None:
             if training is not None and self.beam is not None:
                 tgt, score = self.beam([tgt, ctx, bias], **kw)
             else:
                 logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-                return logi
                 sh = Q.int_shape(tgt)
                 b = Q.range(PS.batch_size)
                 for i in range(sh[-1]):
@@ -75,6 +83,7 @@ class Trafo(Q.Layer):
                             break
                         logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
             return Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
+    """
 
     def get_config(self):
         c = super().get_config()

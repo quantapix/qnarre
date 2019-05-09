@@ -15,14 +15,13 @@
 
 from random import randint
 
-import tensorflow as T
+import qnarre.neura as Q
 
 
-def dset(params, _):
-    PS = params
+def dset(PS, _):
     PS.update(PAD=0, UNK=1, BEG=2, END=3, vocab_size=20, tgt_len=PS.ctx_len)
-    t, sh = T.int32, T.TensorShape((PS.ctx_len, ))
-    return T.data.Dataset.from_generator(
+    t, sh = Q.int32, Q.TensorShape((PS.ctx_len, ))
+    return Q.Dataset.from_generator(
         lambda: _generator(PS),
         ((t, t, t), t),
         ((sh, sh, sh), sh),
