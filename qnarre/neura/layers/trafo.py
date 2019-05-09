@@ -45,7 +45,7 @@ class Trafo(Q.Layer):
         self.dec_stack = DecodeStack(PS, self.pre, self.post)
         self.logits = Q.Dense(PS.vocab_size, activation=None)
         if PS.beam_size:
-            self.beam = Beam(PS, lambda *a, **kw: self.to_logps(*a, **kw))
+            self.beam = Beam(PS, lambda *a, **kw: self.to_logp(*a, **kw))
 
     def build(self, input_shape):
         src, _, tgt = input_shape
@@ -94,7 +94,7 @@ class Trafo(Q.Layer):
         y = self.dec_stack([y, ctx, bias], **kw)
         return y
 
-    def to_logps(self, tgt, ctx, bias, i=None, **kw):
+    def to_logp(self, tgt, ctx, bias, i=None, **kw):
         PS = self.PS
         unk = Q.equal(tgt, PS.UNK)
         prior = Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
@@ -102,7 +102,7 @@ class Trafo(Q.Layer):
             unk = unk[:, i]
             prior = prior[:, i, :]
         if Q.reduce_all(unk):
-            lgs = prior
+            logi = prior
         else:
             y = self.decode(tgt, ctx, bias, **kw)
             if i is not None:
@@ -111,53 +111,32 @@ class Trafo(Q.Layer):
             y = Q.reshape(y, (-1, sh[-1]))
             y = self.logits(y, **kw)
             y = Q.reshape(y, sh[:-1] + Q.int_shape(y)[-1:])
-            lgs = Q.where(unk, y, prior)
-        lps = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
-        return lps, lgs, unk
-
-    def to_toks(self, x):
-        assert t > 0.0
-        if keep_top_k != -1:
-            if keep_top_k <= 0:
-                raise ValueError("keep_top_k must either be -1 or positive.")
-            vocab_size = shape_list(logits)[1]
-            k_largest = T.contrib.nn.nth_element(logits,
-                                                 n=keep_top_k,
-                                                 reverse=True)
-            k_largest = Q.tile(Q.reshape(k_largest, [-1, 1]), [1, vocab_size])
-            # Force every position that is not in the top k to have probability near
-            # 0 by setting the logit to be very negative.
-            logits = Q.where(Q.less_equal(logits, k_largest),
-                             Q.ones_like(logits) * -1e6, logits)
-        reshaped_logits = (Q.reshape(logits, [-1, shape_list(logits)[-1]]) / t)
-        choices = Q.multinomial(reshaped_logits, 1)
-        choices = Q.reshape(choices,
-                            shape_list(logits)[:logits.get_shape().ndims - 1])
-        return choices
+            logi = Q.where(unk, y, prior)
+        logp = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
+        return logp, logi, unk
 
     def call(self, inputs, training=None, **kw):
+        PS = self.PS
         src, typ, tgt = inputs
         ctx, bias = self.encode(src, typ, **kw)
         if tgt is not None:
             if not training and self.beam:
-                y = self.beam([tgt, ctx, bias], **kw)
+                tgt, score = self.beam([tgt, ctx, bias], **kw)
             else:
-                lps, lgs, unk = self.to_logps(tgt, ctx, bias, **kw)
+                logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
                 sh = Q.int_shape(tgt)
-                bi = Q.range(sh[0])
+                b = Q.range(PS.batch_size)
                 for i in range(sh[-1]):
                     if Q.reduce_any(unk[:, i]):
-                        y = Q.argmax(lps[:, i, :], axis=1, output_type=Q.int32)
-                        yi = Q.stack([bi, Q.constant(i, shape=sh[:1])])
-                        tgt = Q.tensor_scatter_nd_update(tgt, yi, y)
-                        e = Q.equal(tgt, self.PS.END)
+                        y = Q.argmax(logp[:, i, :], axis=1, output_type=Q.int32)
+                        ii = Q.constant([i] * PS.batch_size)
+                        sel = Q.stack([b, ii])
+                        tgt = Q.tensor_scatter_nd_update(tgt, sel, y)
+                        e = Q.equal(tgt, PS.END)
                         if Q.reduce_all(Q.reduce_any(e, axis=1)):
                             break
-                        y, lps, unk = self.to_logits(tgt, ctx, bias, **kw)
-            # return {"outputs": toks, "scores": scores}
-            if not training:
-                y = self.to_toks(y, **kw)
-        return y
+                        logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
+        return tgt
 
 
 class Stack(Q.Layer):
