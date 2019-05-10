@@ -22,10 +22,11 @@ import qnarre.neura as Q
 
 
 def dset(PS, kind):
+    w, h = PS.img_width, PS.img_height
     return Q.Dataset.from_generator(
         lambda: _reader(PS, kind),
         (Q.float32, Q.int32),
-        (Q.TensorShape((28 * 28, )), Q.TensorShape(())),
+        (Q.TensorShape((w * h, )), Q.TensorShape(())),
     )
 
 

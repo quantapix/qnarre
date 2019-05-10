@@ -14,26 +14,62 @@
 # =============================================================================
 
 import numpy as np
-import pathlib as pth
-import datetime as dt
 
 from absl import flags
-from tensorboard.plugins import hparams
+# from tensorboard.plugins import hparams
 
 import qnarre.neura as Q
 
-_params = dict(
+
+def load_flags():
+    # flags.DEFINE_float('stop_threshold', None, '')
+    # flags.DEFINE_integer('checkpoint_steps', None, '')
+    # flags.DEFINE_integer('epochs_between_evals', None, '')
+    # flags.DEFINE_integer('eval_batch_size', None, '')
+    # flags.DEFINE_integer('eval_steps', None, '')
+    # flags.DEFINE_integer('iters_per_loop', None, '')
+    # flags.DEFINE_integer('warmup_steps', None, '')
+    df = ['channels_first', 'channels_last']
+    flags.DEFINE_bool('eager_mode', False, '')
+    flags.DEFINE_bool('eval_only', False, '')
+    flags.DEFINE_bool('predict_run', False, '')
+    flags.DEFINE_enum('data_format', None, df, '')
+    flags.DEFINE_integer('batch_size', None, '')
+    flags.DEFINE_integer('train_epochs', None, '')
+    flags.DEFINE_integer('train_steps', None, '')
+    flags.DEFINE_string('data_dir', None, '')
+    # flags.DEFINE_string('log_dir', None, '')
+    flags.DEFINE_string('model_dir', None, '')
+    flags.DEFINE_string('model_name', None, '')
+    flags.DEFINE_string('save_dir', None, '')
+
+
+root = dict(
     adam_beta1=0.9,
     adam_beta2=0.999,
     adam_epsilon=1e-7,
     adam_lr=0.001,
+    eager_mode=False,
+    epochs_between_evals=1,
+    eval_batch_size=None,
+    eval_only=False,
+    ffn_act=None,
+    hidden_act=None,
     initer_stddev=0.02,
     loss_from_logits=True,
+    lr_constant=None,
+    lr_schedule=None,
+    lr_warmup=None,
+    model_name=None,
+    optimizer=None,
+    predict_run=False,
     regular_l1=0,
     regular_l2=0,
     sgd_lr=0.001,
     sgd_momentum=0.0,
     sgd_nesterov=False,
+    train_epochs=2,
+    train_steps=None,
 )
 
 
@@ -45,10 +81,10 @@ class Params:
 
     @property
     def hparams(self):
-        return {'optimizer': self.optimizer}
+        return {}  # 'optimizer': self.optimizer}
 
     def override(self, params, **kw):
-        ps = _params.copy()
+        ps = root.copy()
         ps.update(**params)
         ps.update(**kw)
         f = flags.FLAGS
@@ -66,12 +102,11 @@ class Params:
         return self
 
     def init_comps(self):
-        ir = Q.TruncatedNormal(stddev=self.initer_stddev)
         rr = None
         if self.regular_l1 or self.regular_l2:
             rr = Q.L1L2(self.regular_l1, self.regular_l2)
         self.update(
-            initializer=ir,
+            initializer=Q.TruncatedNormal(stddev=self.initer_stddev),
             regularizer=rr,
             optimizer=self._optimizer(self.optimizer),
             losses=Q.SparseCategoricalCrossentropy(
@@ -124,6 +159,34 @@ def _gelu(x):
     return x * c
 
 
+class LearningRateSchedule(Q.LearningRateSchedule):
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.constant = PS.lr_constant
+        self.schedule = PS.lr_schedule
+        self.warmup = PS.lr_warmup
+
+    def __call__(self, step):
+        lr = Q.constant(1.0)
+        for name in [n.strip() for n in self.schedule.split('*')]:
+            if name == 'constant':
+                lr *= self.constant
+            elif name == 'linear_warmup':
+                lr *= Q.minimum(1.0, step / self.warmup_steps)
+            else:
+                assert name == 'rsqrt_decay'
+                lr *= Q.rsqrt(Q.maximum(step, self.warmup_steps))
+        Q.scalar('learning_rate', lr)
+        return lr
+
+    def get_config(self):
+        return {
+            'constant': self.constant,
+            'schedule': self.schedule,
+            'warmup': self.warmup,
+        }
+
+
 class Features:
     def __init__(self, specs, **kw):
         self.keys = []
@@ -149,105 +212,7 @@ class Features:
         return dict(shape=self.shapes[key], dtype=self.dtypes[key])
 
 
-def train_sess(params, model_fn, dset_fn, cbacks=None, sid=None):
-    PS = params
-    # with T.distribute.MirroredStrategy().scope():
-    m = model_fn(PS)
-    ds_train = dset_fn('train', PS)
-    ds_test = dset_fn('test', PS)
-    sp = pth.Path(PS.save_dir)
-    if sp.exists():
-        m.train_on_batch(ds_train[:1])
-        m.load_weights(sp)
-    m.summary()
-    sid = sid or dt.datetime.now().strftime('%Y%m%d-%H%M%S')
-    p = PS.log_dir + '/train/' + sid
-    writer = Q.summary.create_file_writer(p)
-    sum_s = hparams.summary.session_start_pb(hparams=PS.hparams)
-    cbs = cbacks or []
-    cbs.append(
-        Q.TensorBoard(log_dir=p,
-                      histogram_freq=1,
-                      embeddings_freq=0,
-                      update_freq='epoch'))
-    # cbacKS.append(
-    #     KC.EarlyStopping(
-    #         monitor='val_loss', min_delta=1e-2, patience=2, verbose=True))
-    if sp.exists():
-        cbs.append(
-            Q.ModelCheckpoint(model_save_path=sp,
-                              save_best_only=True,
-                              monitor='val_loss',
-                              verbose=True))
-    hist = m.fit(ds_train,
-                 callbacks=cbacks,
-                 epochs=PS.train_epochs,
-                 validation_data=ds_test)
-    print(f'History: {hist.history}')
-    if sp.exists():
-        m.save_weights(sp, save_format='tf')
-    loss, acc = m.evaluate(ds_test)
-    print(f'\nTest loss, acc: {loss}, {acc}')
-
-    with writer.as_default():
-        e = Q.Event(summary=sum_s).SerializeToString()
-        Q.import_event(e)
-        Q.scalar('accuracy', acc, step=1, description='Accuracy')
-        sum_e = hparams.summary.session_end_pb(hparams.api_pb2.STATUS_SUCCESS)
-        e = Q.Event(summary=sum_e).SerializeToString()
-        Q.import_event(e)
-
-
-def train_loop(params, model_fn, dset_fn, cbacks=None):
-    PS = params
-    nus = [16, 32, 512]
-    drs = [0.1, 0.2]
-    opts = ['adam', 'sgd']
-    writer = Q.create_file_writer(PS.log_dir + '/train')
-    with writer.as_default():
-        s = None  # _to_summary_pb(nus, drs, opts)
-        e = Q.Event(summary=s).SerializeToString()
-        Q.import_event(e)
-    for nu in nus:
-        for dr in drs:
-            for opt in opts:
-                kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
-                sid = dt.datetime.now().strftime('%Y%m%d-%H%M%S')
-                print(f'--- Running session {sid}:', kw)
-                PS.update(**kw)
-                train_sess(PS, model_fn, dset_fn, cbacks, sid=sid)
-    return
-
-
 """
-class LRSchedule(KS.optimizers.schedules.LearningRateSchedule):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.constant = PS.lr_constant
-        self.schedule = PS.lr_schedule
-        self.warmup_steps = PS.lr_warmup_steps
-
-    def __call__(self, step):
-        lr = T.constant(1.0)
-        for name in [n.strip() for n in self.schedule.split('*')]:
-            if name == 'constant':
-                lr *= self.constant
-            elif name == 'linear_warmup':
-                lr *= T.minimum(1.0, step / self.warmup_steps)
-            else:
-                assert name == 'rsqrt_decay'
-                lr *= T.rsqrt(T.maximum(step, self.warmup_steps))
-        T.contrib.summary.scalar('learning_rate', lr)
-        return lr
-
-    def get_config(self):
-        return {
-            'constant': self.constant,
-            'schedule': self.schedule,
-            'warmup_steps': self.warmup_steps,
-        }
-
-
 def ones_band_part(rows, cols, num_lower, num_upper, out_shape=None):
     if all([isinstance(el, int) for el in [rows, cols, num_lower, num_upper]]):
         if num_lower < 0:
@@ -287,7 +252,7 @@ def _to_plot(cm, names):
     ticks = N.arange(len(names))
     plt.xticks(ticks, names, rotation=45)
     plt.yticks(ticks, names)
-    cm = N.around(cm.astype('float') / cm.sum(axis=1)[:, N.newaxis],
+    cm = N.around(cm.astype('float') / cm.sum(axis=1)[:, N.psaxis],
                   decimals=2)
     threshold = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
