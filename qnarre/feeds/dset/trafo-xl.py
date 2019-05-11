@@ -1,0 +1,1045 @@
+import math
+import os
+from functools import partial
+
+from collections import Counter, OrderedDict
+import pickle
+import json
+import multiprocessing as mp
+
+import numpy as np
+
+from absl import flags
+import tensorflow as tf
+from vocabulary import Vocab
+
+from tensorflow.gfile import Exists as exists
+from tensorflow.gfile import MakeDirs as makedirs
+from tensorflow.gfile import Glob as glob
+
+import os
+import sys
+import zipfile
+
+from io import open
+
+if os.path.exists('train.txt'):
+    print('Tokenized text8 already exists - skipping processing')
+    sys.exit()
+
+data = zipfile.ZipFile('text8.zip').extractall()
+data = open('text8', 'r', encoding='utf-8').read()
+
+print('Length of text8: {}'.format(len(data)))
+
+num_test_chars = 5000000
+
+train_data = data[:-2 * num_test_chars]
+valid_data = data[-2 * num_test_chars:-num_test_chars]
+test_data = data[-num_test_chars:]
+
+for fn, part in [('train.txt', train_data), ('valid.txt', valid_data),
+                 ('test.txt', test_data)]:
+    print('{} will have {} bytes'.format(fn, len(part)))
+    print('- Tokenizing...')
+    # Change space ' ' to underscore '_'
+    part_str = ' '.join(['_' if c == ' ' else c for c in part.strip()])
+    print('- Writing...')
+    f = open(fn, 'w').write(part_str)
+    f = open(fn + '.raw', 'w', encoding='utf-8').write(part)
+
+
+def _preprocess(shard, train, vocab, save_dir, cutoffs, bin_sizes, bsz,
+                tgt_len, num_core_per_host, use_tpu, num_shuffle):
+    file_names = []
+    num_batch = 0
+
+    path = train[shard]
+    data_shard = vocab.encode_file(path, ordered=False, add_double_eos=True)
+
+    for shuffle in range(num_shuffle):
+        basename = "train-{:03d}-{:02d}".format(shard, shuffle)
+        print("Processing shard {} shuffle {}".format(shard, shuffle))
+
+        np.random.shuffle(data_shard)
+        file_name, num_batch_shuffle = create_ordered_tfrecords(
+            save_dir,
+            basename,
+            np.concatenate(data_shard),
+            bsz,
+            tgt_len,
+            num_core_per_host,
+            cutoffs,
+            bin_sizes,
+            use_tpu=use_tpu)
+        file_names.append(file_name)
+        num_batch += num_batch_shuffle
+
+    return file_names, num_batch
+
+
+class Corpus(object):
+    def __init__(self, path, dataset, *args, **kwargs):
+        self.dataset = dataset
+        self.vocab = Vocab(*args, **kwargs)
+
+        if self.dataset in ["ptb", "wt2", "enwik8", "text8"]:
+            self.vocab.count_file(os.path.join(path, "train.txt"))
+            self.vocab.count_file(os.path.join(path, "valid.txt"))
+            self.vocab.count_file(os.path.join(path, "test.txt"))
+        elif self.dataset == "wt103":
+            self.vocab.count_file(os.path.join(path, "train.txt"))
+        elif self.dataset == "lm1b":
+            train_path_pattern = os.path.join(
+                path, "1-billion-word-language-modeling-benchmark-r13output",
+                "training-monolingual.tokenized.shuffled", "news.en-*")
+            train_paths = glob(train_path_pattern)
+
+            # the vocab will load from file when build_vocab() is called
+            # for train_path in sorted(train_paths):
+            #   self.vocab.count_file(train_path, verbose=True)
+
+        self.vocab.build_vocab()
+
+        if self.dataset in ["ptb", "wt2", "wt103"]:
+            self.train = self.vocab.encode_file(os.path.join(
+                path, "train.txt"),
+                                                ordered=True)
+            self.valid = self.vocab.encode_file(os.path.join(
+                path, "valid.txt"),
+                                                ordered=True)
+            self.test = self.vocab.encode_file(os.path.join(path, "test.txt"),
+                                               ordered=True)
+        elif self.dataset in ["enwik8", "text8"]:
+            self.train = self.vocab.encode_file(os.path.join(
+                path, "train.txt"),
+                                                ordered=True,
+                                                add_eos=False)
+            self.valid = self.vocab.encode_file(os.path.join(
+                path, "valid.txt"),
+                                                ordered=True,
+                                                add_eos=False)
+            self.test = self.vocab.encode_file(os.path.join(path, "test.txt"),
+                                               ordered=True,
+                                               add_eos=False)
+        elif self.dataset == "lm1b":
+            self.train = train_paths
+            valid_path = os.path.join(path, "valid.txt")
+            test_path = valid_path
+            self.valid = self.vocab.encode_file(valid_path,
+                                                ordered=True,
+                                                add_double_eos=True)
+            self.test = self.vocab.encode_file(test_path,
+                                               ordered=True,
+                                               add_double_eos=True)
+
+        if self.dataset == "wt103":
+            self.cutoffs = [0, 20000, 40000, 200000] + [len(self.vocab)]
+        elif self.dataset == "lm1b":
+            self.cutoffs = [0, 60000, 100000, 640000] + [len(self.vocab)]
+        else:
+            self.cutoffs = []
+
+    def convert_to_tfrecords(self, split, save_dir, bsz, tgt_len,
+                             num_core_per_host, **kwargs):
+        FLAGS = kwargs.get('FLAGS')
+
+        file_names = []
+        use_tpu = FLAGS.use_tpu and not (split == "test"
+                                         and num_core_per_host == 1)
+
+        if use_tpu:
+            record_name = "record_info-{}.bsz-{}.tlen-{}.core-{}.json".format(
+                split, bsz, tgt_len, num_core_per_host)
+        else:
+            record_name = "record_info-{}.bsz-{}.tlen-{}.json".format(
+                split, bsz, tgt_len)
+
+        record_info_path = os.path.join(save_dir, record_name)
+
+        if self.dataset in ["ptb", "wt2", "wt103", "enwik8", "text8"]:
+            data = getattr(self, split)
+            bin_sizes = get_bin_sizes(data, bsz // num_core_per_host, tgt_len,
+                                      self.cutoffs)
+            file_name, num_batch = create_ordered_tfrecords(
+                save_dir,
+                split,
+                data,
+                bsz,
+                tgt_len,
+                num_core_per_host,
+                self.cutoffs,
+                bin_sizes,
+                num_passes=FLAGS.num_passes
+                if split == 'train' and use_tpu else 1,
+                use_tpu=use_tpu)
+            file_names.append(file_name)
+        elif self.dataset == "lm1b":
+            bin_sizes = get_bin_sizes(self.valid, bsz // num_core_per_host,
+                                      tgt_len, self.cutoffs)
+            if split == "train":
+                np.random.seed(123456)
+                num_batch = 0
+
+                if FLAGS.num_procs > 1:
+                    _preprocess_wrapper = partial(
+                        _preprocess,
+                        train=self.train,
+                        vocab=self.vocab,
+                        save_dir=save_dir,
+                        cutoffs=self.cutoffs,
+                        bin_sizes=bin_sizes,
+                        bsz=bsz,
+                        tgt_len=tgt_len,
+                        num_core_per_host=num_core_per_host,
+                        use_tpu=use_tpu,
+                        num_shuffle=FLAGS.num_shuffle)
+
+                    pool = mp.Pool(processes=FLAGS.num_procs)
+                    results = pool.map(_preprocess_wrapper,
+                                       range(len(self.train)))
+                    for res in results:
+                        file_names.extend(res[0])
+                        num_batch += res[1]
+                else:
+                    for shard, path in enumerate(self.train):
+                        data_shard = self.vocab.encode_file(
+                            path, ordered=False, add_double_eos=True)
+
+                        num_shuffle = FLAGS.num_shuffle
+
+                        for shuffle in range(num_shuffle):
+                            print("Processing shard {} shuffle {}".format(
+                                shard, shuffle))
+                            basename = "train-{:03d}-{:02d}".format(
+                                shard, shuffle)
+                            np.random.shuffle(data_shard)
+                            file_name, num_batch_ = create_ordered_tfrecords(
+                                save_dir,
+                                basename,
+                                np.concatenate(data_shard),
+                                bsz,
+                                tgt_len,
+                                num_core_per_host,
+                                self.cutoffs,
+                                bin_sizes,
+                                use_tpu=use_tpu)
+                            file_names.append(file_name)
+                            num_batch += num_batch_
+
+            else:
+                file_name, num_batch = create_ordered_tfrecords(
+                    save_dir,
+                    split,
+                    getattr(self, split),
+                    bsz,
+                    tgt_len,
+                    num_core_per_host,
+                    self.cutoffs,
+                    bin_sizes,
+                    use_tpu=use_tpu)
+                file_names.append(file_name)
+
+        with open(record_info_path, "w") as fp:
+            record_info = {
+                "filenames": file_names,
+                "bin_sizes": bin_sizes,
+                "num_batch": num_batch
+            }
+            json.dump(record_info, fp)
+
+
+def get_bin_sizes(data, batch_size, tgt_len, cutoffs, std_mult=[2.5, 2.5,
+                                                                2.5]):
+    """
+    Note: the `batch_size` here should be per-core batch size
+  """
+    bin_sizes = []
+
+    def _nearest_to_eight(x):  # so that it's faster on TPUs
+        y = x - x % 8
+        return y + 8 if x % 8 >= 4 else max(8, y)
+
+    if cutoffs:
+        num_batch = len(data) // batch_size // tgt_len
+
+        data = data[:batch_size * num_batch * tgt_len]
+        data = data.reshape(batch_size, num_batch, tgt_len)
+
+        tot = batch_size * tgt_len
+        for b, (left, right) in enumerate(zip(cutoffs[1:-1], cutoffs[2:])):
+            mask = (data >= left) * (data < right)
+            percents = mask.astype(np.float64).sum(2).sum(0) / tot
+            mean = np.mean(percents)
+            std = np.std(percents)
+
+            bin_size = int(
+                math.ceil(tgt_len * batch_size * (mean + std_mult[b] * std)))
+            bin_size = _nearest_to_eight(bin_size)
+            bin_sizes.append(bin_size)
+
+    return bin_sizes
+
+
+def _int64_feature(values):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
+
+
+def _float_feature(values):
+    return tf.train.Feature(float_list=tf.train.FloatList(value=values))
+
+
+def batchify(data, batch_size, num_passes):
+    """
+    if use_tpu = True: num_passes > 1 
+    
+    Since TPU training requires entire [bsz x tgt_len] chunks, it can discard
+    as many as `bsz * tgt_len` tokens in training. When `bsz` and `tgt_len` are 
+    both large, as in the case of TPU training for Transformer-XL, the problem
+    may lead to detectable performance drop. 
+
+    Here, we use multiple randomly shifted copies to deal with this problem.
+  """
+    if num_passes > 1:
+        data_len = len(data)
+        double_data = np.concatenate([data, data])
+        data_list = []
+        for i in range(num_passes):
+            start = np.random.randint(0, data_len)
+            data_list.append(double_data[start:start + data_len])
+        data = np.concatenate(data_list)
+
+    num_step = len(data) // batch_size
+    data = data[:batch_size * num_step]
+    data = data.reshape(batch_size, num_step)
+
+    return data
+
+
+def create_ordered_tfrecords(save_dir,
+                             basename,
+                             data,
+                             batch_size,
+                             tgt_len,
+                             num_core_per_host,
+                             cutoffs=[],
+                             bin_sizes=[],
+                             num_passes=1,
+                             use_tpu=False):
+
+    if use_tpu:
+        file_name = "{}.bsz-{}.tlen-{}.core-{}.tfrecords".format(
+            basename, batch_size, tgt_len, num_core_per_host)
+    else:
+        file_name = "{}.bsz-{}.tlen-{}.tfrecords".format(
+            basename, batch_size, tgt_len)
+
+    save_path = os.path.join(save_dir, file_name)
+    record_writer = tf.python_io.TFRecordWriter(save_path)
+
+    batched_data = batchify(data, batch_size, num_passes)
+
+    num_batch = 0
+    # for t in range(0, batched_data.shape[1] - tgt_len - 1, tgt_len):
+    for t in range(0, batched_data.shape[1] - 1, tgt_len):
+        cur_tgt_len = min(batched_data.shape[1] - 1 - t, tgt_len)
+        # drop the remainder if use tpu
+        if use_tpu and cur_tgt_len < tgt_len:
+            break
+        if num_batch % 500 == 0:
+            print("  processing batch {}".format(num_batch))
+        for idx in range(batch_size):
+            inputs = batched_data[idx, t:t + cur_tgt_len]
+            labels = batched_data[idx, t + 1:t + cur_tgt_len + 1]
+
+            # features dict
+            feature = {
+                "inputs": _int64_feature(inputs),
+                "labels": _int64_feature(labels),
+            }
+
+            if len(cutoffs) > 0 and use_tpu:
+                # validate `bin_sizes` and `cutoffs`
+                assert len(cutoffs) - len(bin_sizes) == 2, \
+                  "len(cutoffs) - len(bin_sizes) != 2"
+
+                # mask for bin 0
+                left, right = cutoffs[:2]
+                inp_mask = ((inputs >= left) * (inputs < right)).astype(
+                    np.float32)
+                tgt_mask = ((labels >= left) * (labels < right)).astype(
+                    np.float32)
+
+                feature["inp_mask"] = _float_feature(inp_mask)
+                feature["tgt_mask"] = _float_feature(tgt_mask)
+
+                # refresh `inp_cnts` and `tgt_cnts` for each TPU core
+                if idx % (batch_size // num_core_per_host) == 0:
+                    inp_cnts = [0] * len(bin_sizes)
+                    tgt_cnts = [0] * len(bin_sizes)
+
+                head_labels = np.copy(labels)
+                inp_pos_per_bin, tgt_pos_per_bin = [], []
+                for b, (left,
+                        right) in enumerate(zip(cutoffs[1:-1], cutoffs[2:])):
+                    inp_pos = np.where((inputs >= left) * (inputs < right))[0]
+                    tgt_pos = np.where((labels >= left) * (labels < right))[0]
+                    inp_pos_per_bin.append(inp_pos)
+                    tgt_pos_per_bin.append(tgt_pos)
+
+                    head_labels[tgt_pos] = cutoffs[1] + b
+
+                feature["head_labels"] = _int64_feature(head_labels)
+
+                # permutation feature
+                def _add_perm_feature(feature, pos_per_bin, cnts, prefix):
+                    for b, pos in enumerate(pos_per_bin):
+                        idx_tuple = []
+                        for p in pos:
+                            if cnts[b] < bin_sizes[b]:
+                                idx_tuple.append([p, cnts[b]])
+                                cnts[b] += 1
+                            else:
+                                break
+
+                        n_tup = len(idx_tuple)
+                        tup = np.array(idx_tuple).reshape(n_tup * 2)
+
+                        feature["{}_cnt_{}".format(
+                            prefix, b)] = _int64_feature([n_tup])
+                        feature["{}_tup_{}".format(prefix,
+                                                   b)] = _int64_feature(tup)
+
+                _add_perm_feature(feature, inp_pos_per_bin, inp_cnts, "inp")
+                _add_perm_feature(feature, tgt_pos_per_bin, tgt_cnts, "tgt")
+
+            example = tf.train.Example(features=tf.train.Features(
+                feature=feature))
+            record_writer.write(example.SerializeToString())
+
+        num_batch += 1
+
+    record_writer.close()
+    print("Done writing {}. batches: {}".format(file_name, num_batch))
+
+    return file_name, num_batch
+
+
+def get_lm_corpus(data_dir, dataset):
+    fn = os.path.join(data_dir, "cache.pkl")
+
+    if exists(fn):
+        print("Loading cached dataset...")
+        with open(fn, "rb") as fp:
+            corpus = pickle.load(fp)
+    else:
+        print("Producing dataset...")
+        kwargs = {}
+        if dataset in ["wt103", "wt2"]:
+            kwargs["special"] = ["<eos>"]
+            kwargs["lower_case"] = False
+        elif dataset == "ptb":
+            kwargs["special"] = ["<eos>"]
+            kwargs["lower_case"] = True
+        elif dataset == "lm1b":
+            kwargs["special"] = []
+            kwargs["lower_case"] = False
+            kwargs["vocab_file"] = os.path.join(data_dir, "1b_word_vocab.txt")
+        elif dataset in ["enwik8", "text8"]:
+            pass
+
+        corpus = Corpus(data_dir, dataset, **kwargs)
+
+        print("Saving dataset...")
+        with open(fn, "wb") as fp:
+            pickle.dump(corpus, fp, protocol=2)
+
+        corpus_info = {
+            "vocab_size": len(corpus.vocab),
+            "cutoffs": corpus.cutoffs,
+            "dataset": corpus.dataset
+        }
+        with open(os.path.join(data_dir, "corpus-info.json"), "w") as fp:
+            json.dump(corpus_info, fp)
+
+    return corpus
+
+
+def main(unused_argv):
+    del unused_argv  # Unused
+
+    corpus = get_lm_corpus(FLAGS.data_dir, FLAGS.dataset)
+
+    save_dir = os.path.join(FLAGS.data_dir, "tfrecords")
+    if not exists(save_dir):
+        makedirs(save_dir)
+
+    # test mode
+    if FLAGS.per_host_test_bsz > 0:
+        corpus.convert_to_tfrecords("test",
+                                    save_dir,
+                                    FLAGS.per_host_test_bsz,
+                                    FLAGS.tgt_len,
+                                    FLAGS.num_core_per_host,
+                                    FLAGS=FLAGS)
+        return
+
+    for split, batch_size in zip(
+        ["train", "valid"],
+        [FLAGS.per_host_train_bsz, FLAGS.per_host_valid_bsz]):
+
+        if batch_size <= 0: continue
+        print("Converting {} set...".format(split))
+        corpus.convert_to_tfrecords(split,
+                                    save_dir,
+                                    batch_size,
+                                    FLAGS.tgt_len,
+                                    FLAGS.num_core_per_host,
+                                    FLAGS=FLAGS)
+
+
+def load_record_info(record_info_dir, split, per_host_bsz, tgt_len,
+                     num_core_per_host, use_tpu):
+    if use_tpu:
+        record_name = "record_info-{}.bsz-{}.tlen-{}.core-{}.json".format(
+            split, per_host_bsz, tgt_len, num_core_per_host)
+    else:
+        record_name = "record_info-{}.bsz-{}.tlen-{}.json".format(
+            split, per_host_bsz, tgt_len)
+
+    record_info_path = os.path.join(record_info_dir, record_name)
+    with open(record_info_path, "r") as fp:
+        record_info = json.load(fp)
+
+    return record_info
+
+
+def get_input_fn(record_info_dir,
+                 split,
+                 per_host_bsz,
+                 tgt_len,
+                 num_core_per_host,
+                 num_hosts=1,
+                 use_tpu=False):
+    """Creates input function."""
+    record_info = load_record_info(record_info_dir,
+                                   split,
+                                   per_host_bsz,
+                                   tgt_len,
+                                   num_core_per_host,
+                                   use_tpu=use_tpu)
+
+    file_names = record_info["filenames"]
+    bin_sizes = record_info["bin_sizes"]
+    num_batch = record_info["num_batch"]
+
+    tf.logging.info("[{}] File names {}".format(split, file_names))
+
+    def input_fn(params):
+        # per-core batch size
+        per_core_bsz = params["batch_size"]
+
+        # data_dir could be a remote path, e.g., a google storage url
+        data_dir = params["data_dir"]
+
+        def parser(record):
+            # preprocess "inp_perm" and "tgt_perm"
+            def _process_perm_feature(example, prefix):
+                for b in range(len(bin_sizes)):
+                    cnt = example.pop("{}_cnt_{}".format(prefix, b))[0]
+                    tup = example.pop("{}_tup_{}".format(prefix, b))
+
+                    tup = tf.reshape(tf.sparse_tensor_to_dense(tup),
+                                     shape=[cnt, 2])
+
+                    # tf.float32
+                    perm = tf.sparse_to_dense(
+                        sparse_indices=tup,
+                        output_shape=[tgt_len, bin_sizes[b]],
+                        sparse_values=1.0,
+                        default_value=0.0)
+
+                    example["{}_perm_{}".format(prefix, b)] = perm
+
+            # whether allow the last batch with a potentially shorter length
+            if use_tpu:
+                record_spec = {
+                    "inputs": tf.FixedLenFeature([tgt_len], tf.int64),
+                    "labels": tf.FixedLenFeature([tgt_len], tf.int64),
+                }
+            else:
+                record_spec = {
+                    "inputs": tf.VarLenFeature(tf.int64),
+                    "labels": tf.VarLenFeature(tf.int64),
+                }
+
+            # permutation related features
+            if bin_sizes and use_tpu:
+                # tf.float32
+                record_spec["inp_mask"] = tf.FixedLenFeature([tgt_len],
+                                                             tf.float32)
+                record_spec["tgt_mask"] = tf.FixedLenFeature([tgt_len],
+                                                             tf.float32)
+
+                record_spec["head_labels"] = tf.FixedLenFeature([tgt_len],
+                                                                tf.int64)
+
+                for b in range(len(bin_sizes)):
+                    record_spec["inp_cnt_{}".format(b)] = tf.FixedLenFeature(
+                        [1], tf.int64)
+                    record_spec["inp_tup_{}".format(b)] = tf.VarLenFeature(
+                        tf.int64)
+                    record_spec["tgt_cnt_{}".format(b)] = tf.FixedLenFeature(
+                        [1], tf.int64)
+                    record_spec["tgt_tup_{}".format(b)] = tf.VarLenFeature(
+                        tf.int64)
+
+            # retrieve serialized example
+            example = tf.parse_single_example(serialized=record,
+                                              features=record_spec)
+
+            # transform permutation tuples to permutation matrices
+            if bin_sizes and use_tpu:
+                _process_perm_feature(example, "inp")
+                _process_perm_feature(example, "tgt")
+
+            # cast int64 into int32
+            # cast sparse to dense
+            for key in list(example.keys()):
+                val = example[key]
+                if tf.keras.backend.is_sparse(val):
+                    val = tf.sparse.to_dense(val)
+                if val.dtype == tf.int64:
+                    val = tf.to_int32(val)
+                example[key] = val
+
+            if use_tpu:
+                return example
+            else:
+                return example["inputs"], example["labels"]
+
+        file_paths = []
+        for file_name in file_names:
+            file_path = os.path.join(data_dir, file_name)
+            file_paths.append(file_path)
+
+        if split == "train":
+            dataset = tf.data.Dataset.from_tensor_slices(file_paths)
+            if len(file_paths) > 1:
+                dataset = dataset.shuffle(len(file_paths)).repeat()
+                dataset = tf.data.TFRecordDataset(dataset)
+            elif num_hosts > 1:
+                host_id = params["context"].current_host
+                # drop the remaining batches
+                num_batch_per_host = num_batch // num_hosts
+
+                my_start_sample_id = (host_id * num_batch_per_host *
+                                      num_core_per_host * per_core_bsz)
+                my_sample_num = num_batch_per_host * num_core_per_host * per_core_bsz
+                dataset = tf.data.TFRecordDataset(dataset).skip(
+                    my_start_sample_id).take(my_sample_num)
+            else:
+                dataset = tf.data.TFRecordDataset(dataset)
+
+            dataset = dataset.map(parser).cache().repeat()
+            dataset = dataset.batch(per_core_bsz, drop_remainder=True)
+            dataset = dataset.prefetch(num_core_per_host * per_core_bsz)
+        else:
+            # do not shuffle, repeat or cache in evaluation
+            dataset = tf.data.Dataset.from_tensor_slices(file_paths)
+            dataset = tf.data.TFRecordDataset(dataset)
+            dataset = dataset.map(parser)
+            dataset = dataset.batch(per_core_bsz, drop_remainder=True)
+
+        return dataset
+
+    if split == "train" and num_hosts > 1:
+        record_info["num_batch"] = num_batch // num_hosts
+
+    return input_fn, record_info
+
+
+def get_corpus_info(corpus_info_path):
+    with open(corpus_info_path, "r") as fp:
+        corpus_info = json.load(fp)
+    return corpus_info
+
+
+if __name__ == "__main__":
+    FLAGS = flags.FLAGS
+    flags.DEFINE_string("data_dir", None, help="Location of the data corpus")
+    flags.DEFINE_enum("dataset",
+                      "wt103",
+                      ["ptb", "wt2", "wt103", "lm1b", "enwik8", "text8"],
+                      help="Dataset name.")
+    flags.DEFINE_integer("per_host_train_bsz",
+                         60,
+                         help="train batch size each host")
+    flags.DEFINE_integer("per_host_valid_bsz",
+                         60,
+                         help="valid batch size each host")
+    flags.DEFINE_integer(
+        "per_host_test_bsz",
+        0,
+        help="If > 0, enter test mode and process test set only."
+        "Otherwise, process train and dev sets only.")
+    flags.DEFINE_integer("tgt_len", 70, help="number of tokens to predict")
+    flags.DEFINE_integer("max_batch", -1, help="run in debug mode")
+    flags.DEFINE_integer("num_core_per_host", 8, help="8 for TPU v2.")
+    flags.DEFINE_bool(
+        "debug",
+        default=False,
+        help="Process only the first batch without shuffle for lm1b.")
+    flags.DEFINE_integer("num_procs", 1, help="number of processes")
+    flags.DEFINE_integer("num_passes",
+                         10,
+                         help="number of passes when use_tpu=True")
+    flags.DEFINE_integer("num_shuffle", 4, help="number of shuffles for lm1b")
+    flags.DEFINE_bool("use_tpu", True, help="use tpu")
+
+    tf.app.run(main)
+
+
+
+"""Data loading utilities."""
+
+import glob
+import os
+
+import numpy as np
+import portalocker
+import torch
+
+from utils.vocabulary import OpenAIVocab, Vocab
+
+
+class LMOrderedIterator:
+    def __init__(self, data, bsz, bptt, device='cpu', ext_len=None):
+        """
+            data -- LongTensor -- the LongTensor is strictly ordered
+        """
+        self.bsz = bsz
+        self.bptt = bptt
+        self.ext_len = ext_len if ext_len is not None else 0
+
+        self.device = device
+
+        # Work out how cleanly we can divide the dataset into bsz parts.
+        self.n_step = data.size(0) // bsz
+
+        # Trim off any extra elements that wouldn't cleanly fit (remainders).
+        data = data.narrow(0, 0, self.n_step * bsz)
+
+        # Evenly divide the data across the bsz batches.
+        self.data = data.view(bsz, -1).t().contiguous().to(device)
+
+        # Number of mini-batches
+        self.n_batch = (self.n_step + self.bptt - 1) // self.bptt
+
+    def get_batch(self, i, bptt=None):
+        if bptt is None: bptt = self.bptt
+        seq_len = min(bptt, self.data.size(0) - 1 - i)
+
+        end_idx = i + seq_len
+        beg_idx = max(0, i - self.ext_len)
+
+        data = self.data[beg_idx:end_idx]
+        target = self.data[i+1:i+1+seq_len]
+
+        return data, target, seq_len
+
+    def get_fixlen_iter(self, start=0):
+        for i in range(start, self.data.size(0) - 1, self.bptt):
+            yield self.get_batch(i)
+    
+    def get_varlen_iter(self, start=0, std=5, min_len=5, max_deviation=3):
+        max_len = self.bptt + max_deviation * std
+        i = start
+        while True:
+            bptt = self.bptt if np.random.random() < 0.95 else self.bptt / 2.
+            bptt = min(max_len, max(min_len, int(np.random.normal(bptt, std))))
+            data, target, seq_len = self.get_batch(i, bptt)
+            i += seq_len
+            yield data, target, seq_len
+            if i >= self.data.size(0) - 2:
+                break
+
+    def __iter__(self):
+        """Wrapper for get_fixlen_iter."""
+        return self.get_fixlen_iter()
+
+
+class LMShuffledIterator:
+    def __init__(self, data, bsz, bptt, device='cpu', ext_len=None, shuffle=False):
+        """
+            data -- list[LongTensor] -- there is no order among the LongTensors
+        """
+        self.data = data
+
+        self.bsz = bsz
+        self.bptt = bptt
+        self.ext_len = ext_len if ext_len is not None else 0
+
+        self.device = device
+        self.shuffle = shuffle
+
+    def get_sent_stream(self):
+        # index iterator
+        epoch_indices = np.random.permutation(len(self.data)) if self.shuffle \
+            else np.array(range(len(self.data)))
+
+        # sentence iterator
+        for idx in epoch_indices:
+            yield self.data[idx]
+
+    def stream_iterator(self, sent_stream):
+        # streams for each data in the batch
+        streams = [None] * self.bsz
+
+        data = torch.LongTensor(self.bptt, self.bsz)
+        target = torch.LongTensor(self.bptt, self.bsz)
+
+        n_retain = 0
+
+        while True:
+            # data   : [n_retain+bptt x bsz]
+            # target : [bptt x bsz]
+            data[n_retain:].fill_(-1)
+            target.fill_(-1)
+
+            valid_batch = True
+
+            for i in range(self.bsz):
+                n_filled = 0
+                try:
+                    while n_filled < self.bptt:
+                        if streams[i] is None or len(streams[i]) <= 1:
+                            streams[i] = next(sent_stream)
+                        # number of new tokens to fill in
+                        n_new = min(len(streams[i]) - 1, self.bptt - n_filled)
+                        # first n_retain tokens are retained from last batch
+                        data[n_retain+n_filled:n_retain+n_filled+n_new, i] = \
+                            streams[i][:n_new]
+                        target[n_filled:n_filled+n_new, i] = \
+                            streams[i][1:n_new+1]
+                        streams[i] = streams[i][n_new:]
+                        n_filled += n_new
+                except StopIteration:
+                    valid_batch = False
+                    break
+
+            if not valid_batch:
+                return
+
+            data = data.to(self.device)
+            target = target.to(self.device)
+
+            yield data, target, self.bptt
+
+            n_retain = min(data.size(0), self.ext_len)
+            if n_retain > 0:
+                data[:n_retain] = data[-n_retain:]
+            data.resize_(n_retain + self.bptt, data.size(1))
+
+    def __iter__(self):
+        # sent_stream is an iterator
+        sent_stream = self.get_sent_stream()
+
+        for batch in self.stream_iterator(sent_stream):
+            yield batch
+
+
+class LMMultiFileIterator(LMShuffledIterator):
+    def __init__(self, paths, vocab, bsz, bptt, device='cpu', ext_len=None,
+        shuffle=False):
+
+        self.paths = paths
+        self.vocab = vocab
+
+        self.bsz = bsz
+        self.bptt = bptt
+        self.ext_len = ext_len if ext_len is not None else 0
+
+        self.device = device
+        self.shuffle = shuffle
+
+    def get_sent_stream(self, path):
+        sents = self.vocab.encode_file(path, add_double_eos=True)
+        if self.shuffle:
+            np.random.shuffle(sents)
+        # Create virtual sentences for wikipedia data.
+        if type(sents) == torch.Tensor:
+            return iter(sents.split(len(sents) // self.bsz))
+        return iter(sents)
+
+    def __iter__(self):
+        if self.shuffle:
+            np.random.shuffle(self.paths)
+
+        for path in self.paths:
+            # sent_stream is an iterator
+            sent_stream = self.get_sent_stream(path)
+            for batch in self.stream_iterator(sent_stream):
+                yield batch
+
+
+class Corpus:
+    def __init__(self, path, dataset, use_bpe, *args, **kwargs):
+        self.dataset = dataset
+        if use_bpe:
+            self.vocab = OpenAIVocab(kwargs['max_size'], kwargs.get('vocab_file'))
+        else:
+            self.vocab = Vocab(*args, **kwargs)
+
+        if self.dataset in ['ptb', 'wt2', 'enwik8', 'text8']:
+            self.vocab.count_file(os.path.join(path, 'train.txt'))
+            self.vocab.count_file(os.path.join(path, 'valid.txt'))
+            self.vocab.count_file(os.path.join(path, 'test.txt'))
+        elif self.dataset == 'wt103' or self.dataset == 'wt2':
+            self.vocab.count_file(os.path.join(path, 'train.txt'))
+        elif self.dataset == 'wt103-normal':
+            self.vocab.count_file(os.path.join(path, 'wiki.train.tokens'))
+        elif self.dataset == 'lm1b':
+            train_path_pattern = os.path.join(
+                path, '1-billion-word-language-modeling-benchmark-r13output',
+                'training-monolingual.tokenized.shuffled', 'news.en-*')
+            train_paths = glob.glob(train_path_pattern)
+        elif self.dataset == 'wiki':
+            file_path_pattern = os.path.join(path, '*/wiki_*.txt')
+            file_paths = glob.glob(file_path_pattern)
+            assert file_paths, f'Nothing found at {file_path_pattern}' 
+
+        # the vocab will load from file when build_vocab() is called
+        self.vocab.build_vocab()
+
+        if self.dataset in ['ptb', 'wt2', 'wt103']:
+            self.train = self.vocab.encode_file(
+                os.path.join(path, 'train.txt'), ordered=True)
+            self.valid = self.vocab.encode_file(
+                os.path.join(path, 'valid.txt'), ordered=True)
+            self.test = self.vocab.encode_file(
+                os.path.join(path, 'test.txt'), ordered=True)
+        elif self.dataset in ['enwik8', 'text8']:
+            self.train = self.vocab.encode_file(
+                os.path.join(path, 'train.txt'), ordered=True, add_eos=False)
+            self.valid = self.vocab.encode_file(
+                os.path.join(path, 'valid.txt'), ordered=True, add_eos=False)
+            self.test = self.vocab.encode_file(
+                os.path.join(path, 'test.txt'), ordered=True, add_eos=False)
+        elif self.dataset == 'lm1b':
+            self.train = train_paths
+            self.valid = self.vocab.encode_file(
+                os.path.join(path, 'valid.txt'), ordered=False, add_double_eos=True)
+            self.test = self.vocab.encode_file(
+                os.path.join(path, 'test.txt'), ordered=False, add_double_eos=True)
+        elif self.dataset == 'wiki':
+            valid_path = sorted(file_paths)[42]
+            test_path = sorted(file_paths)[1337]
+            self.valid = self.vocab.encode_file(valid_path, ordered=True)
+            self.test = self.vocab.encode_file(test_path, ordered=True)
+            self.train = list(set(file_paths) - set((valid_path, test_path)))
+        elif self.dataset in ['wt103-normal']:
+            self.train = self.vocab.encode_file(
+                os.path.join(path, 'wiki.train.tokens'), ordered=True, add_eos=False)
+            self.valid = self.vocab.encode_file(
+                os.path.join(path, 'wiki.valid.tokens'), ordered=True, add_eos=False)
+            self.test = self.vocab.encode_file(
+                os.path.join(path, 'wiki.test.tokens'), ordered=True, add_eos=False)
+
+    def get_dist_iterator(self, split: str, rank: int, max_rank: int, *args, **kwargs):
+        """Get an iterator that only operates on rank//max_rank independent subset of the data."""
+        data = self.__getattribute__(split)
+        subset = list(chunk(data, max_rank))[rank]
+        if self.dataset in ['lm1b', 'wiki']:
+            if split == 'train':
+                return LMMultiFileIterator(subset, self.vocab, *args, **kwargs)
+        
+        return LMOrderedIterator(subset, *args, **kwargs)
+
+    def get_iterator(self, split: str, *args, **kwargs):
+        """Get an iterator over the corpus.
+
+        Each next() returns (data, target, seq_length).
+        data and target have shape (bptt, bsz) and seq_length is a scalar.
+        """
+        data = self.__getattribute__(split)
+        if self.dataset in ['ptb', 'wt2', 'wt103', 'enwik8', 'text8', 'wt103-normal']:
+            return LMOrderedIterator(data, *args, **kwargs)
+        if self.dataset == 'lm1b':
+            if split in ['valid', 'test']:
+                return LMShuffledIterator(data, *args, **kwargs)
+            
+            kwargs['shuffle'] = True
+            return LMMultiFileIterator(data, self.vocab, *args, **kwargs)
+        if self.dataset == 'wiki':
+            if split == 'train':
+                return LMMultiFileIterator(data, self.vocab, *args, **kwargs)
+            return LMOrderedIterator(data, *args, **kwargs)
+
+
+def get_lm_corpus(datadir: str, dataset: str, use_bpe=False, max_size=None) -> Corpus:
+    """Factory method for Corpus.
+
+    Arguments:
+        datadir: Where does the data live?
+        dataset: eg 'wt103' which tells the Corpus how to parse the data.
+    """
+    cache_filepath = os.path.join(datadir, 'cache.pt.bpe' if use_bpe else 'cache.pt')
+    # Don't cache dataset for wiki, it's just a file list.
+    if os.path.exists(cache_filepath) and dataset != 'wiki':
+        print('Loading cached dataset...')
+        corpus = torch.load(cache_filepath)
+    else:
+        print('Producing dataset {}...'.format(dataset))
+        kwargs = {'max_size': max_size}
+        if dataset in ['wt103', 'wt2', 'wt103-normal']:
+            kwargs['special'] = ['<eos>']
+            kwargs['lower_case'] = False
+        elif dataset == 'ptb':
+            kwargs['special'] = ['<eos>']
+            kwargs['lower_case'] = True
+        elif dataset == 'lm1b':
+            kwargs['special'] = []
+            kwargs['lower_case'] = False
+            kwargs['vocab_file'] = os.path.join(datadir, '1b_word_vocab.txt')
+        elif dataset in ['enwik8', 'text8']:
+            pass
+
+        corpus = Corpus(datadir, dataset, use_bpe, **kwargs)
+        with portalocker.Lock(cache_filepath, timeout=60) as _:
+            torch.save(corpus, cache_filepath)
+
+    return corpus
+
+def chunk(a: list, n: int):
+    """Split `a` into `n` chunks, with the last bucket taking the remaining.
+    
+    https://stackoverflow.com/a/2135920
+    """
+    k, m = divmod(len(a), n)
+    return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description='unit test')
+    parser.add_argument('--datadir', type=str, default='../data/text8',
+                        help='location of the data corpus')
+    parser.add_argument('--dataset', type=str, default='text8',
+                        choices=['ptb', 'wt2', 'wt103', 'lm1b', 'enwik8', 'text8', 'wt103-normal', 'wiki'],
+                        help='dataset name')
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
+
+    corpus = get_lm_corpus(args.datadir, args.dataset, use_bpe=True)
+    print(f'Vocab size : {len(corpus.vocab)}')
+    #tr_iter = corpus.get_iterator('train', 16, 150, 'cpu', ext_len=0)
+    # Loop through all the data to force caching.
+    for split in ('train', 'valid', 'test'):
+        tr_iter = corpus.get_dist_iterator(split, rank=0, max_rank=1, bsz=16, bptt=150, device='cpu', ext_len=0)
+        for data, target, seq_len in tr_iter:
+            if args.debug:
+                print(data.shape, target.shape, seq_len, len(list(tr_iter)))
+                break
+
+if __name__ == '__main__':
+    main()
