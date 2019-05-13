@@ -17,7 +17,6 @@ import qnarre.neura as Q
 import qnarre.neura.utils as U
 import qnarre.neura.layers as L
 
-
 ########
 
 logger = logging.getLogger(__name__)
@@ -380,7 +379,6 @@ class PositionwiseFF(nn.Module):
 
 
 class RelMultiHeadAttn(nn.Module):
-
     def _parallelogram_mask(self, h, w, left=False):
         mask = torch.ones((h, w)).byte()
         m = min(h, w)
@@ -426,6 +424,7 @@ class RelMultiHeadAttn(nn.Module):
             x = x * torch.tril(ones, x.size(1) - x.size(0))[:, :, None, None]
 
         return x
+
 
 class RelLearnableMultiHeadAttn(RelMultiHeadAttn):
     def __init__(self, *args, **kwargs):
@@ -550,77 +549,6 @@ class RelPartialLearnableDecoderLayer(nn.Module):
         output = self.pos_ff(output)
 
         return output
-
-
-class AdaptiveEmbedding(nn.Module):
-    def __init__(self,
-                 n_token,
-                 d_embed,
-                 d_proj,
-                 cutoffs,
-                 div_val=1,
-                 sample_softmax=False):
-        super(AdaptiveEmbedding, self).__init__()
-
-        self.n_token = n_token
-        self.d_embed = d_embed
-
-        self.cutoffs = cutoffs + [n_token]
-        self.div_val = div_val
-        self.d_proj = d_proj
-
-        self.emb_scale = d_proj**0.5
-
-        self.cutoff_ends = [0] + self.cutoffs
-
-        self.emb_layers = nn.ModuleList()
-        self.emb_projs = nn.ParameterList()
-        if div_val == 1:
-            self.emb_layers.append(
-                nn.Embedding(n_token, d_embed, sparse=sample_softmax > 0))
-            if d_proj != d_embed:
-                self.emb_projs.append(
-                    nn.Parameter(torch.Tensor(d_proj, d_embed)))
-        else:
-            for i in range(len(self.cutoffs)):
-                l_idx, r_idx = self.cutoff_ends[i], self.cutoff_ends[i + 1]
-                d_emb_i = d_embed // (div_val**i)
-                self.emb_layers.append(nn.Embedding(r_idx - l_idx, d_emb_i))
-                self.emb_projs.append(
-                    nn.Parameter(torch.Tensor(d_proj, d_emb_i)))
-
-    def forward(self, inp):
-        if self.div_val == 1:
-            embed = self.emb_layers[0](inp)
-            if self.d_proj != self.d_embed:
-                embed = F.linear(embed, self.emb_projs[0])
-        else:
-            param = next(self.parameters())
-            inp_flat = inp.view(-1)
-            emb_flat = torch.zeros([inp_flat.size(0), self.d_proj],
-                                   dtype=param.dtype,
-                                   device=param.device)
-            for i in range(len(self.cutoffs)):
-                l_idx, r_idx = self.cutoff_ends[i], self.cutoff_ends[i + 1]
-
-                mask_i = (inp_flat >= l_idx) & (inp_flat < r_idx)
-                indices_i = mask_i.nonzero().squeeze()
-
-                if indices_i.numel() == 0:
-                    continue
-
-                inp_i = inp_flat.index_select(0, indices_i) - l_idx
-                emb_i = self.emb_layers[i](inp_i)
-                emb_i = F.linear(emb_i, self.emb_projs[i])
-
-                emb_flat.index_copy_(0, indices_i, emb_i)
-
-            embed_shape = inp.size() + (self.d_proj, )
-            embed = emb_flat.view(embed_shape)
-
-        embed.mul_(self.emb_scale)
-
-        return embed
 
 
 class TransfoXLPreTrainedModel(nn.Module):
@@ -1251,6 +1179,7 @@ class TransfoXLLMHeadModel(TransfoXLPreTrainedModel):
 
 ########
 
+
 def positional_embedding(pos_seq, inv_freq, bsz=None):
     sinusoid_inp = Q.einsum('i,j->ij', pos_seq, inv_freq)
     pos_emb = Q.concat([Q.sin(sinusoid_inp), Q.cos(sinusoid_inp)], -1)
@@ -1288,234 +1217,6 @@ def positionwise_FF(inp,
                                   name='drop_2')
         output = Q.contrib.layers.layer_norm(output + inp, begin_norm_axis=-1)
     return output
-
-
-def rel_shift(x):
-    x_size = Q.shape(x)
-
-    x = Q.pad(x, [[0, 0], [1, 0], [0, 0], [0, 0]])
-    x = Q.reshape(x, [x_size[1] + 1, x_size[0], x_size[2], x_size[3]])
-    x = Q.slice(x, [1, 0, 0, 0], [-1, -1, -1, -1])
-    x = Q.reshape(x, x_size)
-
-    return x
-
-
-def rel_multihead_attn(w,
-                       r,
-                       r_w_bias,
-                       r_r_bias,
-                       attn_mask,
-                       mems,
-                       d_model,
-                       n_head,
-                       d_head,
-                       dropout,
-                       dropatt,
-                       is_training,
-                       kernel_initializer,
-                       scope='rel_attn'):
-    scale = 1 / (d_head**0.5)
-    with Q.variable_scope(scope):
-        qlen = Q.shape(w)[0]
-        rlen = Q.shape(r)[0]
-        bsz = Q.shape(w)[1]
-
-        cat = Q.concat([mems, w],
-                       0) if mems is not None and mems.shape.ndims > 1 else w
-        w_heads = Q.layers.dense(cat,
-                                 3 * n_head * d_head,
-                                 use_bias=False,
-                                 kernel_initializer=kernel_initializer,
-                                 name='qkv')
-        r_head_k = Q.layers.dense(r,
-                                  n_head * d_head,
-                                  use_bias=False,
-                                  kernel_initializer=kernel_initializer,
-                                  name='r')
-
-        w_head_q, w_head_k, w_head_v = Q.split(w_heads, 3, -1)
-        w_head_q = w_head_q[-qlen:]
-
-        klen = Q.shape(w_head_k)[0]
-
-        w_head_q = Q.reshape(w_head_q, [qlen, bsz, n_head, d_head])
-        w_head_k = Q.reshape(w_head_k, [klen, bsz, n_head, d_head])
-        w_head_v = Q.reshape(w_head_v, [klen, bsz, n_head, d_head])
-
-        r_head_k = Q.reshape(r_head_k, [rlen, n_head, d_head])
-
-        rw_head_q = w_head_q + r_w_bias
-        rr_head_q = w_head_q + r_r_bias
-
-        AC = Q.einsum('ibnd,jbnd->ijbn', rw_head_q, w_head_k)
-        BD = Q.einsum('ibnd,jnd->ijbn', rr_head_q, r_head_k)
-        BD = rel_shift(BD)
-
-        attn_score = (AC + BD) * scale
-        attn_mask_t = attn_mask[:, :, None, None]
-        attn_score = attn_score * (1 - attn_mask_t) - 1e30 * attn_mask_t
-
-        attn_prob = Q.nn.softmax(attn_score, 1)
-        attn_prob = Q.layers.dropout(attn_prob, dropatt, training=is_training)
-
-        attn_vec = Q.einsum('ijbn,jbnd->ibnd', attn_prob, w_head_v)
-        size_t = Q.shape(attn_vec)
-        attn_vec = Q.reshape(attn_vec, [size_t[0], size_t[1], n_head * d_head])
-
-        attn_out = Q.layers.dense(attn_vec,
-                                  d_model,
-                                  use_bias=False,
-                                  kernel_initializer=kernel_initializer,
-                                  name='o')
-        attn_out = Q.layers.dropout(attn_out, dropout, training=is_training)
-
-        output = Q.contrib.layers.layer_norm(attn_out + w, begin_norm_axis=-1)
-    return output
-
-
-def mask_adaptive_embedding_lookup(x,
-                                   n_token,
-                                   d_embed,
-                                   d_proj,
-                                   cutoffs,
-                                   initializer,
-                                   proj_initializer,
-                                   div_val=1,
-                                   proj_same_dim=True,
-                                   scope='adaptive_embed',
-                                   **kwargs):
-    emb_scale = d_proj**0.5
-    with Q.variable_scope(scope):
-        if div_val == 1:
-            lookup_table = Q.get_variable('lookup_table', [n_token, d_embed],
-                                          initializer=initializer)
-            y = embedding_lookup(lookup_table, x, use_tpu=False)
-            if d_proj != d_embed:
-                proj_W = Q.get_variable('proj_W', [d_embed, d_proj],
-                                        initializer=proj_initializer)
-                y = Q.einsum('ibe,ed->ibd', y, proj_W)
-            else:
-                proj_W = None
-            ret_params = [lookup_table, proj_W]
-        else:
-            tables, projs = [], []
-            cutoff_ends = [0] + cutoffs + [n_token]
-            x_size = Q.shape(x)
-            y = Q.zeros([x_size[0], x_size[1], d_proj])
-            for i in range(len(cutoff_ends) - 1):
-                with Q.variable_scope('cutoff_{}'.format(i)):
-                    l_idx, r_idx = cutoff_ends[i], cutoff_ends[i + 1]
-                    mask = (x >= l_idx) & (x < r_idx)
-                    cur_x = Q.boolean_mask(x, mask) - l_idx
-                    cur_d_embed = d_embed // (div_val**i)
-                    lookup_table = Q.get_variable('lookup_table',
-                                                  [r_idx - l_idx, cur_d_embed],
-                                                  initializer=initializer)
-                    cur_y = embedding_lookup(lookup_table,
-                                             cur_x,
-                                             use_tpu=False)
-                    if d_proj == cur_d_embed and not proj_same_dim:
-                        proj_W = None
-                    else:
-                        proj_W = Q.get_variable('proj_W',
-                                                [cur_d_embed, d_proj],
-                                                initializer=proj_initializer)
-                        cur_y = Q.einsum('id,de->ie', cur_y, proj_W)
-                    mask_idx = Q.to_int64(Q.where(mask))
-                    y += Q.scatter_nd(mask_idx, cur_y, Q.to_int64(Q.shape(y)))
-                    tables.append(lookup_table)
-                    projs.append(proj_W)
-            ret_params = [tables, projs]
-
-    y *= emb_scale
-    return y, ret_params
-
-
-def mul_adaptive_embedding_lookup(x,
-                                  n_token,
-                                  d_embed,
-                                  d_proj,
-                                  cutoffs,
-                                  initializer,
-                                  proj_initializer,
-                                  div_val=1,
-                                  perms=None,
-                                  proj_same_dim=True,
-                                  scope='adaptive_embed'):
-    """
-  perms: If None, first compute W = W1 x W2 (projection for each bin),
-      and then compute X x W (embedding lookup). If not None,
-      use bin-based embedding lookup with max_bin_size defined by
-      the shape of perms.
-  """
-    emb_scale = d_proj**0.5
-    with Q.variable_scope(scope):
-        if div_val == 1:
-            lookup_table = Q.get_variable('lookup_table', [n_token, d_embed],
-                                          initializer=initializer)
-            y = embedding_lookup(lookup_table, x)
-            if d_proj != d_embed:
-                proj_W = Q.get_variable('proj_W', [d_embed, d_proj],
-                                        initializer=proj_initializer)
-                y = Q.einsum('ibe,ed->ibd', y, proj_W)
-            else:
-                proj_W = None
-            ret_params = [lookup_table, proj_W]
-        else:
-            tables, projs = [], []
-            cutoff_ends = [0] + cutoffs + [n_token]
-            x_size = Q.shape(x)
-            if perms is None:
-                cat_lookup = []
-            else:
-                cat_lookup = Q.zeros([x_size[0], x_size[1], d_proj])
-            for i in range(len(cutoff_ends) - 1):
-                with Q.variable_scope('cutoff_{}'.format(i)):
-                    l_idx, r_idx = cutoff_ends[i], cutoff_ends[i + 1]
-                    cur_d_embed = d_embed // (div_val**i)
-                    lookup_table = Q.get_variable('lookup_table',
-                                                  [r_idx - l_idx, cur_d_embed],
-                                                  initializer=initializer)
-                    if cur_d_embed == d_proj and not proj_same_dim:
-                        proj_W = None
-                    else:
-                        proj_W = Q.get_variable('proj_W',
-                                                [cur_d_embed, d_proj],
-                                                initializer=proj_initializer)
-                    if perms is None:
-                        cat_lookup.append(
-                            Q.einsum('ie,ed->id', lookup_table, proj_W))
-                    else:
-                        # speed up the computation of the first bin
-                        # also save some meory
-                        if i == 0:
-                            cur_y = embedding_lookup(lookup_table,
-                                                     Q.minimum(x, r_idx - 1))
-                            if proj_W is not None:
-                                cur_y = Q.einsum('ibe,ed->ibd', cur_y, proj_W)
-                            cur_y *= perms[i][:, :, None]
-                            cat_lookup += cur_y
-                        else:
-                            cur_x = Q.einsum('ib,ibk->k',
-                                             Q.to_float(x - l_idx), perms[i])
-                            cur_x = Q.to_int32(cur_x)
-                            cur_y = embedding_lookup(lookup_table, cur_x)
-                            if proj_W is not None:
-                                cur_y = Q.einsum('ke,ed->kd', cur_y, proj_W)
-                            cat_lookup += Q.einsum('kd,ibk->ibd', cur_y,
-                                                   perms[i])
-                    tables.append(lookup_table)
-                    projs.append(proj_W)
-            if perms is None:
-                cat_lookup = Q.concat(cat_lookup, 0)
-                y = embedding_lookup(cat_lookup, x)
-            else:
-                y = cat_lookup
-            ret_params = [tables, projs]
-
-    y *= emb_scale
-    return y, ret_params
 
 
 def mask_adaptive_logsoftmax(hidden,

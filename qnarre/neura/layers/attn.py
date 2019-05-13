@@ -21,12 +21,12 @@ class Attn(tf.Layer):
 
     def __init__(self, PS, owner=None, **kw):
         super().__init__(**kw)
-        self.supports_masking = True
         self.PS = PS
         self.pre = owner.pre if owner else None
         self.post = owner.post if owner else None
         self.src_b = owner.src_b if owner else None
         self.mem_b = owner.mem_b if owner else None
+        self.supports_masking = True
 
     def build(self, input_shape):
         src = input_shape[0]

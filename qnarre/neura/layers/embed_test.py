@@ -19,7 +19,8 @@ import qnarre.neura.layers as L
 from qnarre.neura import tf
 
 params = dict(
-    num_tokens=None,
+    num_toks=None,
+    brackets=None,
     dim_hidden=16,
     dim_embed=None,
     initializer='uniform',

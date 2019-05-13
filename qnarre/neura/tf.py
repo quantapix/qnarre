@@ -64,6 +64,7 @@ bitwise_and = tf.bitwise.bitwise_and
 bitwise_or = tf.bitwise.bitwise_or
 bitwise_xor = tf.bitwise.bitwise_xor
 bool = tf.bool
+boolean_mask = array_ops.boolean_mask
 broadcast_to = array_ops.broadcast_to
 cast = math_ops.cast
 cast_to_floatx = K.cast_to_floatx
