@@ -19,8 +19,13 @@ import qnarre.neura.layers as L
 from qnarre.neura import tf
 
 params = dict(
-    dim_attn=8,
+    num_tokens=None,
     dim_hidden=16,
+    dim_embed=None,
+    initializer='uniform',
+    emb_one_hot=True,
+
+    dim_attn=8,
     dim_k=None,
     dim_v=None,
     drop_attn=None,
@@ -48,9 +53,11 @@ class Owner:
         self.pre = None
         self.post = None
         i = tf.constant([0.] * (4 * 10), shape=(4, 10))
-        self.src_b = tf.Variable(initial_value=i)
+        i = tf.expand_dims(tf.expand_dims(i, axis=1), axis=3)
+        self.src_bias = tf.Variable(initial_value=i)
         i = tf.constant([0.] * (4 * 10), shape=(4, 10))
-        self.mem_b = tf.Variable(initial_value=i)
+        i = tf.expand_dims(tf.expand_dims(i, axis=1), axis=3)
+        self.mem_bias = tf.Variable(initial_value=i)
 
 
 def test_with_owner():

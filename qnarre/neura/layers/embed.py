@@ -18,12 +18,73 @@ import numpy as np
 from qnarre.neura import tf
 
 
-class TokEmbed(tf.Embedding):
+class TokEmbed(tf.Layer):
+    emb_g = None
+
+    def __init__(self, PS, **kw):
+        super().__init__(**kw)
+        self.supports_masking = True
+        self.PS = PS
+
+    def build(self, input_shape):
+        PS = self.PS
+        self.emb_one_hot = PS.emb_one_hot
+        h = PS.dim_hidden
+        e = PS.dim_embed or h
+        kw = dict(initializer=PS.initializer)
+        if e != h:
+            self.emb_g = self.add_weight('emb_g', (e, h), **kw)
+        kw.update(regularizer=PS.regularizer)
+        self.table = self.add_weight('table', (PS.num_tokens, e), **kw)
+        return super().build(input_shape)
+
+    def compute_mask(self, inputs, mask=None):
+        return tf.not_equal(inputs, 0)
+
+    def call(self, inputs, mask, **_):
+        tok, typ = inputs
+        if self.emb_one_hot:
+            i = tf.one_hot(tok, tf.shape(self.table)[0], axis=-1)
+            y = tf.einsum('ne,bin->bie', self.table, i)
+        else:
+            y = tf.embedding_lookup(self.table, tok)
+        if self.emb_g is not None:
+            y = tf.einsum('bie,eh->bih', y, self.emb_g)
+        y *= tf.shape(y)[-1]**0.5
+
+        y = typ * tf.cast(mask[0], typ.dtype)
+        y = tf.one_hot(y, self.PS.token_types)
+        return tok + tf.matmul(y, self.gain)
+
+    def compute_output_shape(self, input_shape):
+        if self.input_length is None:
+          return input_shape + (self.output_dim,)
+        else:
+          # input_length can be tuple if input is 3D or higher
+          if isinstance(self.input_length, (list, tuple)):
+            in_lens = list(self.input_length)
+          else:
+            in_lens = [self.input_length]
+          if len(in_lens) != len(input_shape) - 1:
+            raise ValueError('"input_length" is %s, '
+                             'but received input has shape %s' % (str(
+                                 self.input_length), str(input_shape)))
+          else:
+            for i, (s1, s2) in enumerate(zip(in_lens, input_shape[1:])):
+              if s1 is not None and s2 is not None and s1 != s2:
+                raise ValueError('"input_length" is %s, '
+                                 'but received input has shape %s' % (str(
+                                     self.input_length), str(input_shape)))
+              elif s1 is None:
+                in_lens[i] = s2
+          return (input_shape[0],) + tuple(in_lens) + (self.output_dim,)
+
+class TokEmbed2(tf.Embedding):
     def __init__(self, PS, **_):
         super().__init__(
-            input_dim=PS.vocab_size,
+            input_dim=PS.num_tokens,
             input_length=PS.ctx_len,
-            output_dim=PS.hidden_size,
+            output_dim=PS.dim_hidden,
             embeddings_initializer=PS.initializer,
             embeddings_regularizer=PS.regularizer,
             mask_zero=True,

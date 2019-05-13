@@ -25,29 +25,35 @@ class Attn(tf.Layer):
         self.PS = PS
         self.pre = owner.pre if owner else None
         self.post = owner.post if owner else None
-        self.src_bias = owner.src_bias if owner else None
-        self.mem_bias = owner.mem_bias if owner else None
+        self.src_b = owner.src_b if owner else None
+        self.mem_b = owner.mem_b if owner else None
 
     def build(self, input_shape):
         src = input_shape[0]
-        d = src[2]
+        h = src[2]
         PS = self.PS
-        assert d == PS.dim_hidden
+        assert h == PS.dim_hidden
         n = PS.num_heads
-        assert d % n == 0
-        kd = PS.dim_k or PS.dim_attn or d
-        assert kd % n == 0
-        self.scale = 1 / (kd**0.5)
-        vd = PS.dim_v or kd
-        assert vd % n == 0
+        assert h % n == 0
+        k = PS.dim_k or PS.dim_attn or h
+        assert k % n == 0
+        self.scale = 1 / (k**0.5)
+        v = PS.dim_v or k
+        assert v % n == 0
         kw = dict(kernel_initializer=PS.initializer, use_bias=False)
-        if kd == vd:
-            self.qkv_net = tf.Dense(n * kd, name='qkv', **kw)
+        if k == v:
+            self.qkv_net = tf.Dense(n * k, name='qkv_net', **kw)
         else:
-            self.qk_net = tf.Dense(n * kd, name='qk', **kw)
-            self.v_net = tf.Dense(n * vd, name='v', **kw)
+            self.qk_net = tf.Dense(n * k, name='qk_net', **kw)
+            self.v_net = tf.Dense(n * v, name='v_net', **kw)
+        self.o_net = tf.Dense(h, name='out_net', **kw)
+        if len(input_shape) > 2 and input_shape[2]:
+            kw = dict(initializer=PS.initializer)
+            if self.src_b is None:
+                self.src_b = self.add_weight('src_b', (n, k), **kw)
+            if self.mem_b is None:
+                self.mem_b = self.add_weight('mem_b', (n, k), **kw)
         self.drop = tf.Dropout(PS.drop_attn or PS.drop_hidden)
-        self.o_net = tf.Dense(d, name='out', **kw)
         return super().build(input_shape)
 
     @tf.function
@@ -56,10 +62,10 @@ class Attn(tf.Layer):
         slen = tf.shape(src)[1]
         ctx = src if ctx is None else ctx
         clen = tf.shape(ctx)[1]
-        if self.pre is not None:
-            src = self.pre([src], **kw)
         y = [ctx, src] if mem is None else [mem, ctx, src]
         y = tf.concat(y, axis=1)
+        if self.pre is not None:
+            y = self.pre([y], **kw)
         if self.v_net is None:
             y = self.qkv_net(y, **kw)
             v = y[:, -clen - slen:-slen, :]
@@ -69,11 +75,13 @@ class Attn(tf.Layer):
         q = self.split_heads(y[:, -slen:, :])
         k = self.split_heads(y[:, -clen - slen:-slen, :])
         if mem is None:
-            y = tf.matmul(q, k, transpose_b=True)
+            y = tf.einsum('bnik,bnjk->bnij', q, k)
         else:
             m = self.split_heads(y[:, :clen, :])
-            y = tf.matmul(q + self.src_bias, k, transpose_b=True)
-            m = tf.matmul(q + self.mem_bias, m, transpose_b=True)
+            b = tf.expand_dims(tf.expand_dims(self.src_b, axis=1), axis=3)
+            y = tf.einsum('bnik,bnjk->bnij', q + b, k)
+            b = tf.expand_dims(tf.expand_dims(self.mem_b, axis=1), axis=3)
+            m = tf.einsum('bnik,bnjk->bnij', q + b, m)
             y = y + self.shift(m)
         v = self.split_heads(v)
         y = self.scores(y, bias, v, **kw)
@@ -111,5 +119,5 @@ class Attn(tf.Layer):
             y = y + bias
         y = tf.softmax(y, **kw)
         y = self.drop(y, **kw)
-        y = tf.matmul(y, v)
+        y = tf.einsum('bnij,bnjv->bniv', y, v)
         return y
