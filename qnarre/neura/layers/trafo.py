@@ -13,7 +13,8 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura as Q
+from qnarre.neura import tf
+
 import qnarre.neura.utils as U
 
 from qnarre.neura.layers.search import Beam
@@ -21,10 +22,10 @@ from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 from qnarre.neura.layers.ffn import ffns
-from qnarre.neura.layers.attent import attns
+from qnarre.neura.layers.attn import attns
 
 
-class Trafo(Q.Layer):
+class Trafo(tf.Layer):
     typ_embed, pos_embed, beam = None, None, None
 
     def __init__(self, PS, **kw):
@@ -38,12 +39,12 @@ class Trafo(Q.Layer):
             p = PosTiming(PS) if PS.pos_embed == 'timing' else p
             self.pos_embed = p
         self.norm = LayerNorm(PS)
-        self.drop = Q.Dropout(PS.hidden_drop)
+        self.drop = tf.Dropout(PS.hidden_drop)
         self.pre = PreProc(PS)
         self.post = PostProc(PS)
         self.enc_stack = EncStack(PS, self.pre, self.post)
         self.dec_stack = DecodeStack(PS, self.pre, self.post)
-        self.logits = Q.Dense(PS.vocab_size, activation=None)
+        self.logits = tf.Dense(PS.vocab_size, activation=None)
         if PS.beam_size:
             self.beam = Beam(PS, lambda *a, **kw: self.to_logp(*a, **kw))
 
@@ -68,21 +69,21 @@ class Trafo(Q.Layer):
                 tgt, score = self.beam([tgt, ctx, bias], **kw)
             else:
                 logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-                sh = Q.int_shape(tgt)
-                b = Q.range(PS.batch_size)
+                sh = tf.int_shape(tgt)
+                b = tf.range(PS.batch_size)
                 for i in range(sh[-1]):
-                    if Q.reduce_any(unk[:, i]) is True:
-                        y = Q.argmax(logp[:, i, :],
+                    if tf.reduce_any(unk[:, i]) is True:
+                        y = tf.argmax(logp[:, i, :],
                                      axis=1,
-                                     output_type=Q.int32)
-                        ii = Q.constant([i] * PS.batch_size)
-                        sel = Q.stack([b, ii])
-                        tgt = Q.tensor_scatter_nd_update(tgt, sel, y)
-                        e = Q.equal(tgt, PS.END)
-                        if Q.reduce_all(Q.reduce_any(e, axis=1)) is True:
+                                     output_type=tf.int32)
+                        ii = tf.constant([i] * PS.batch_size)
+                        sel = tf.stack([b, ii])
+                        tgt = tf.tensor_scatter_nd_update(tgt, sel, y)
+                        e = tf.equal(tgt, PS.END)
+                        if tf.reduce_all(tf.reduce_any(e, axis=1)) is True:
                             break
                         logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-            return Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
+            return tf.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
     """
 
     def get_config(self):
@@ -114,37 +115,37 @@ class Trafo(Q.Layer):
 
     def to_logp(self, tgt, ctx, bias, i=None, **kw):
         PS = self.PS
-        unk = Q.equal(tgt, PS.UNK)
-        prior = Q.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
+        unk = tf.equal(tgt, PS.UNK)
+        prior = tf.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
         if i is not None:
             unk = unk[:, i]
             prior = prior[:, i, :]
-        if Q.reduce_all(unk) is True:
+        if tf.reduce_all(unk) is True:
             logi = prior
         else:
             y = self.decode(tgt, ctx, bias, **kw)
             if i is not None:
                 y = y[:, i, :]
-            sh = Q.int_shape(y)
-            y = Q.reshape(y, (-1, sh[-1]))
+            sh = tf.int_shape(y)
+            y = tf.reshape(y, (-1, sh[-1]))
             y = self.logits(y, **kw)
-            y = Q.reshape(y, sh[:-1] + Q.int_shape(y)[-1:])
-            u = Q.expand_dims(unk, axis=2)
-            u = Q.broadcast_to(u, Q.int_shape(y))
-            logi = Q.where(u, y, prior)
-        logp = y - Q.reduce_logsumexp(y, axis=-1, keepdims=True)
+            y = tf.reshape(y, sh[:-1] + tf.int_shape(y)[-1:])
+            u = tf.expand_dims(unk, axis=2)
+            u = tf.broadcast_to(u, tf.int_shape(y))
+            logi = tf.where(u, y, prior)
+        logp = y - tf.reduce_logsumexp(y, axis=-1, keepdims=True)
         return logp, logi, unk
 
 
-class Stack(Q.Layer):
+class Stack(tf.Layer):
     prox_bias = None
 
     @staticmethod
     def proximity(max_len):
-        y = Q.range(max_len, dtype=Q.floatx())
-        y = Q.expand_dims(y, axis=0) - Q.expand_dims(y, axis=1)
-        y = -Q.log1p(Q.abs(y))
-        y = Q.expand_dims(Q.expand_dims(y, axis=0), axis=0)
+        y = tf.range(max_len, dtype=tf.floatx())
+        y = tf.expand_dims(y, axis=0) - tf.expand_dims(y, axis=1)
+        y = -tf.log1p(tf.abs(y))
+        y = tf.expand_dims(tf.expand_dims(y, axis=0), axis=0)
         return y
 
     def __init__(self, PS, pre, post, **kw):
@@ -155,9 +156,9 @@ class Stack(Q.Layer):
         self.post = post
 
     def attn_bias(self, mask):
-        y = Q.logical_not(mask)
-        y = Q.cast(y, Q.floatx()) * self.PS.big_neg
-        y = Q.expand_dims(Q.expand_dims(y, axis=1), axis=3)
+        y = tf.logical_not(mask)
+        y = tf.cast(y, tf.floatx()) * self.PS.big_neg
+        y = tf.expand_dims(tf.expand_dims(y, axis=1), axis=3)
         return y
 
 
@@ -205,12 +206,12 @@ class DecodeStack(Stack):
         PS = self.PS
         if PS.causal_refl:
             if PS.prepend_mode == 'prepend_inputs_full_attention':
-                y = Q.cumsum(Q.cumsum(rb, axis=1), axis=1)
-                y2 = Q.expand_dims(y, axis=1)
-                y = Q.greater(y2, Q.expand_dims(y, axis=2))
-                b = Q.expand_dims(Q.cast(y, Q.floatx()) * -1e9, axis=1)
+                y = tf.cumsum(tf.cumsum(rb, axis=1), axis=1)
+                y2 = tf.expand_dims(y, axis=1)
+                y = tf.greater(y2, tf.expand_dims(y, axis=2))
+                b = tf.expand_dims(tf.cast(y, tf.floatx()) * -1e9, axis=1)
             else:
-                ln = Q.int_shape(x)[1]
+                ln = tf.int_shape(x)[1]
                 sh = (1, 1, ln, ln)
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 b = -1e9 * (1.0 - b)
@@ -223,7 +224,7 @@ class DecodeStack(Stack):
         return y
 
 
-class Encoder(Q.Layer):
+class Encoder(tf.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)
@@ -237,7 +238,7 @@ class Encoder(Q.Layer):
         return y
 
 
-class Decoder(Q.Layer):
+class Decoder(tf.Layer):
     def __init__(self, PS, pre, post, **kw):
         super().__init__(**kw)
         a = (PS, pre, post)

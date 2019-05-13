@@ -18,7 +18,7 @@ import numpy as np
 from absl import flags
 # from tensorboard.plugins import hparams
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
 def load_flags():
@@ -75,7 +75,7 @@ root = dict(
 
 class Params:
     def __init__(self, params, **kw):
-        f = 'channels_' + 'first' if Q.is_built_with_cuda() else 'last'
+        f = 'channels_' + 'first' if tf.is_built_with_cuda() else 'last'
         f = kw.pop('data_format', f)
         self.override(params, data_format=f, **kw)
 
@@ -104,14 +104,14 @@ class Params:
     def init_comps(self):
         rr = None
         if self.regular_l1 or self.regular_l2:
-            rr = Q.L1L2(self.regular_l1, self.regular_l2)
+            rr = tf.L1L2(self.regular_l1, self.regular_l2)
         self.update(
-            initializer=Q.TruncatedNormal(stddev=self.initer_stddev),
+            initializer=tf.TruncatedNormal(stddev=self.initer_stddev),
             regularizer=rr,
             optimizer=self._optimizer(self.optimizer),
-            losses=Q.SparseCategoricalCrossentropy(
+            losses=tf.SparseCategoricalCrossentropy(
                 from_logits=self.loss_from_logits),
-            metrics=Q.SparseCategoricalAccuracy(),
+            metrics=tf.SparseCategoricalAccuracy(),
             ffn_act=self._activation(self.ffn_act),
             hidden_act=self._activation(self.hidden_act),
             big_neg=_big_neg(),
@@ -125,9 +125,9 @@ class Params:
             if n == 'gelu':
                 return _gelu
             if n == 'relu':
-                return Q.Relu
+                return tf.Relu
             if n == 'tanh':
-                return Q.Tanh
+                return tf.Tanh
             assert n == 'linear'
             name = None
         return name
@@ -136,12 +136,12 @@ class Params:
         if isinstance(name, str):
             n = name.lower()
             if n == 'adam':
-                return Q.Adam(learning_rate=self.adam_lr,
+                return tf.Adam(learning_rate=self.adam_lr,
                               beta_1=self.adam_beta1,
                               beta_2=self.adam_beta2,
                               epsilon=self.adam_epsilon)
             if n == 'sgd':
-                return Q.SGD(learning_rate=self.sgd_lr,
+                return tf.SGD(learning_rate=self.sgd_lr,
                              momentum=self.sgd_momentum,
                              nesterov=self.sgd_nesterov)
             name = None
@@ -149,17 +149,17 @@ class Params:
 
 
 def _big_neg():
-    f = Q.floatx()
-    return Q.float16.min if f == 'float16' else -1e9
+    f = tf.floatx()
+    return tf.float16.min if f == 'float16' else -1e9
 
 
 def _gelu(x):
-    c = Q.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * Q.pow(x, 3))))
+    c = tf.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3))))
     c = (c + 1.0) * 0.5
     return x * c
 
 
-class LearningRateSchedule(Q.LearningRateSchedule):
+class LearningRateSchedule(tf.LearningRateSchedule):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.constant = PS.lr_constant
@@ -167,16 +167,16 @@ class LearningRateSchedule(Q.LearningRateSchedule):
         self.warmup = PS.lr_warmup
 
     def __call__(self, step):
-        lr = Q.constant(1.0)
+        lr = tf.constant(1.0)
         for name in [n.strip() for n in self.schedule.split('*')]:
             if name == 'constant':
                 lr *= self.constant
             elif name == 'linear_warmup':
-                lr *= Q.minimum(1.0, step / self.warmup_steps)
+                lr *= tf.minimum(1.0, step / self.warmup_steps)
             else:
                 assert name == 'rsqrt_decay'
-                lr *= Q.rsqrt(Q.maximum(step, self.warmup_steps))
-        Q.scalar('learning_rate', lr)
+                lr *= tf.rsqrt(tf.maximum(step, self.warmup_steps))
+        tf.scalar('learning_rate', lr)
         return lr
 
     def get_config(self):
@@ -216,11 +216,11 @@ class Features:
 
     @property
     def tf_dtypes(self):
-        return tuple([Q.as_dtype(self.dtypes[k]) for k in self.keys])
+        return tuple([tf.as_dtype(self.dtypes[k]) for k in self.keys])
 
     @property
     def tf_shapes(self):
-        return tuple([Q.TensorShape(self.shapes[k]) for k in self.keys])
+        return tuple([tf.TensorShape(self.shapes[k]) for k in self.keys])
 
     def input_kw(self, key):
         return dict(shape=self.shapes[key], dtype=self.dtypes[key])

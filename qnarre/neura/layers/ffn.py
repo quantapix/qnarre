@@ -13,10 +13,10 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
-class FFN(Q.Layer):
+class FFN(tf.Layer):
     conv_pad = 'SAME'
 
     def __init__(self, PS, pre, post, conv_pad=None, **kw):
@@ -34,9 +34,9 @@ class DenseDenseFFN(FFN):
         super().__init__(*args, **kw)
         PS = self.PS
         kw = dict(kernel_initializer=PS.initializer, use_bias=True)
-        self.dense1 = Q.Dense(PS.ffn_size, activation=PS.ffn_act, **kw)
-        self.drop = Q.Dropout(PS.ffn_drop or PS.hidden_drop)
-        self.dense2 = Q.Dense(PS.hidden_size, **kw)
+        self.dense1 = tf.Dense(PS.ffn_size, activation=PS.ffn_act, **kw)
+        self.drop = tf.Dropout(PS.ffn_drop or PS.hidden_drop)
+        self.dense2 = tf.Dense(PS.hidden_size, **kw)
 
     def call(self, inputs, **kw):
         x = inputs

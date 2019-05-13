@@ -13,21 +13,21 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 from qnarre.neura.layers.trafo import Trafo
 from qnarre.neura.layers.norm import LayerNorm
 
 
-class Bert(Q.Layer):
+class Bert(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         self.PS = PS
         self.trafo = Trafo(PS)
-        self.pool = Q.Dense(PS.hidden_size,
-                            Q.Tanh,
-                            kernel_initializer=PS.initializer)
-        self.mlm_dense = Q.Dense(PS.hidden_size, PS.hidden_act, **kw)
+        self.pool = tf.Dense(PS.hidden_size,
+                             tf.Tanh,
+                             kernel_initializer=PS.initializer)
+        self.mlm_dense = tf.Dense(PS.hidden_size, PS.hidden_act, **kw)
         self.norm = LayerNorm()
 
     def build(self, input_shape):
@@ -46,16 +46,16 @@ class Bert(Q.Layer):
         PS = self.PS
         seq, typ, idx, val, fit, mlm = inputs
         seq = y = self.trafo([[seq, typ], None], **kw)
-        fit_y = self.pool(Q.squeeze(y[:, 0:1, :], axis=1), **kw)
-        y = Q.gather(y, idx, axis=1)
+        fit_y = self.pool(tf.squeeze(y[:, 0:1, :], axis=1), **kw)
+        y = tf.gather(y, idx, axis=1)
         y = self.norm(self.mlm_dense(y, **kw), **kw)
         e = self.trafo.tok_embed.embeddings
-        y = Q.matmul(y, e, transpose_b=True)
-        y = Q.log_softmax(Q.bias_add(y, self.mlm_bias), axis=-1)
-        mlm_loss = -Q.reduce_sum(y * Q.one_hot(val, PS.vocab_size), axis=-1)
-        y = Q.matmul(fit_y, self.gain, transpose_b=True)
-        y = Q.log_softmax(Q.bias_add(y, self.bias), axis=-1)
-        fit_loss = -Q.reduce_sum(y * Q.one_hot(fit, 2), axis=-1)
-        loss = Q.reduce_sum(mlm * mlm_loss)
-        loss /= (Q.reduce_sum(mlm) + 1e-5) + Q.reduce_mean(fit_loss)
+        y = tf.matmul(y, e, transpose_b=True)
+        y = tf.log_softmax(tf.bias_add(y, self.mlm_bias), axis=-1)
+        mlm_loss = -tf.reduce_sum(y * tf.one_hot(val, PS.vocab_size), axis=-1)
+        y = tf.matmul(fit_y, self.gain, transpose_b=True)
+        y = tf.log_softmax(tf.bias_add(y, self.bias), axis=-1)
+        fit_loss = -tf.reduce_sum(y * tf.one_hot(fit, 2), axis=-1)
+        loss = tf.reduce_sum(mlm * mlm_loss)
+        loss /= (tf.reduce_sum(mlm) + 1e-5) + tf.reduce_mean(fit_loss)
         return seq, loss

@@ -15,10 +15,10 @@
 
 import numpy as np
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
-class TokEmbed(Q.Embedding):
+class TokEmbed(tf.Embedding):
     def __init__(self, PS, **_):
         super().__init__(
             input_dim=PS.vocab_size,
@@ -30,7 +30,7 @@ class TokEmbed(Q.Embedding):
         )
 
 
-class TypEmbed(Q.Layer):
+class TypEmbed(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -47,12 +47,12 @@ class TypEmbed(Q.Layer):
 
     def call(self, inputs, mask, **_):
         tok, typ = inputs
-        y = typ * Q.cast(mask[0], typ.dtype)
-        y = Q.one_hot(y, self.PS.token_types)
-        return tok + Q.matmul(y, self.gain)
+        y = typ * tf.cast(mask[0], typ.dtype)
+        y = tf.one_hot(y, self.PS.token_types)
+        return tok + tf.matmul(y, self.gain)
 
 
-class PosEmbed(Q.Layer):
+class PosEmbed(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -66,16 +66,16 @@ class PosEmbed(Q.Layer):
         sh = (plen, hsize)
         b = self.add_weight(shape=sh, initializer=PS.initializer)
         b = b[:tlen, :]
-        self.bias = Q.expand_dims(b, axis=0)
+        self.bias = tf.expand_dims(b, axis=0)
         return super().build(input_shape)
 
     def call(self, inputs, mask, **_):
-        y = Q.cast(mask, self.bias.dtype)
-        y = self.bias * Q.expand_dims(y, axis=2)
+        y = tf.cast(mask, self.bias.dtype)
+        y = self.bias * tf.expand_dims(y, axis=2)
         return inputs + y
 
 
-class PosTiming(Q.Layer):
+class PosTiming(tf.Layer):
     start = 0
     min_scale = 1.0
     max_scale = 1.0e4
@@ -95,14 +95,14 @@ class PosTiming(Q.Layer):
         assert hsize % 2 == 0
         n = hsize // 2
         s = np.log(self.max_scale / self.min_scale) / max(n - 1, 1)
-        s = self.min_scale * Q.exp(Q.range(n, dtype=Q.floatx()) * -s)
-        p = Q.range(tlen, dtype=Q.floatx()) + self.start
-        p = Q.expand_dims(p, axis=1) * Q.expand_dims(s, axis=0)
-        p = Q.concat([Q.sin(p), Q.cos(p)], axis=1)
-        self.bias = Q.expand_dims(p, axis=0)
+        s = self.min_scale * tf.exp(tf.range(n, dtype=tf.floatx()) * -s)
+        p = tf.range(tlen, dtype=tf.floatx()) + self.start
+        p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
+        p = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
+        self.bias = tf.expand_dims(p, axis=0)
         return super().build(input_shape)
 
     def call(self, inputs, mask, **_):
-        y = Q.cast(mask, self.bias.dtype)
-        y = self.bias * Q.expand_dims(y, axis=2)
+        y = tf.cast(mask, self.bias.dtype)
+        y = self.bias * tf.expand_dims(y, axis=2)
         return inputs + y

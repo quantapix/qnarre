@@ -13,12 +13,12 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 from qnarre.neura.layers.bert import Bert
 
 
-class Squad(Q.Layer):
+class Squad(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         self.PS = PS
@@ -35,11 +35,11 @@ class Squad(Q.Layer):
 
     def call(self, inputs, **kw):
         y = self.bert.transformer([inputs, None], **kw)
-        y = Q.bias_add(Q.matmul(y, self.gain, transpose_b=True), self.bias)
-        return list(Q.unstack(Q.transpose(y, [2, 0, 1]), axis=0))
+        y = tf.bias_add(tf.matmul(y, self.gain, transpose_b=True), self.bias)
+        return list(tf.unstack(tf.transpose(y, [2, 0, 1]), axis=0))
 
 
-class SquadLoss(Q.Layer):
+class SquadLoss(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         self.PS = PS
@@ -56,9 +56,9 @@ class SquadLoss(Q.Layer):
         span, pred = inputs
 
         def _loss(i):
-            y = Q.log_softmax(pred[i], axis=-1)
-            y = Q.one_hot(span[:, i], self.slen) * y
-            return -Q.reduce_mean(Q.reduce_sum(y, axis=-1))
+            y = tf.log_softmax(pred[i], axis=-1)
+            y = tf.one_hot(span[:, i], self.slen) * y
+            return -tf.reduce_mean(tf.reduce_sum(y, axis=-1))
 
         self.add_loss((_loss(0) + _loss(1)) / 2.0)
         return pred

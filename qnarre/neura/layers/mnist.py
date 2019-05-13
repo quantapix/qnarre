@@ -13,10 +13,10 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
-class Mnist(Q.Layer):
+class Mnist(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.PS = PS
@@ -25,21 +25,21 @@ class Mnist(Q.Layer):
 
     def build(self, input_shape):
         PS = self.PS
-        self.d1 = Q.Dense(PS.hidden_size, activation=PS.hidden_act)
-        self.d2 = Q.Dense(PS.num_classes, activation='softmax')
+        self.d1 = tf.Dense(PS.hidden_size, activation=PS.hidden_act)
+        self.d2 = tf.Dense(PS.num_classes, activation='softmax')
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
         x = inputs[0]
-        y = Q.Reshape(self.shape)(x)
-        y = Q.Flatten()(y)
+        y = tf.Reshape(self.shape)(x)
+        y = tf.Flatten()(y)
         y = self.d1(y)
-        y = Q.Dropout(self.PS.hidden_drop)(y)
+        y = tf.Dropout(self.PS.hidden_drop)(y)
         y = self.d2(y)
         return y
 
 
-class Mnist_2(Q.Layer):
+class Mnist_2(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         f = PS.data_format
@@ -51,32 +51,32 @@ class Mnist_2(Q.Layer):
         _, hsize = x1
         _, hs = x2
         assert hsize == hs
-        self.d1_1 = Q.Dense(hsize, activation='relu')
-        self.d1_2 = Q.Dense(hsize, activation='relu')
-        self.d2_1 = Q.Dense(10, activation='softmax')
-        self.d2_2 = Q.Dense(10, activation='softmax')
+        self.d1_1 = tf.Dense(hsize, activation='relu')
+        self.d1_2 = tf.Dense(hsize, activation='relu')
+        self.d2_1 = tf.Dense(10, activation='softmax')
+        self.d2_2 = tf.Dense(10, activation='softmax')
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
         x1, yt1, x2, yt2 = inputs[:4]
-        y1, y2 = Q.Reshape(self.shape)(x1), Q.Reshape(self.shape)(x2)
-        y1, y2 = Q.Flatten()(y1), Q.Flatten()(y2)
+        y1, y2 = tf.Reshape(self.shape)(x1), tf.Reshape(self.shape)(x2)
+        y1, y2 = tf.Flatten()(y1), tf.Flatten()(y2)
         y1, y2 = self.d1_1(y1), self.d1_2(y2)
-        y1, y2 = Q.Dropout(0.1)(y1), Q.Dropout(0.1)(y2)
+        y1, y2 = tf.Dropout(0.1)(y1), tf.Dropout(0.1)(y2)
         y1, y2 = self.d2_1(y1), self.d2_2(y2)
-        l1 = Q.SparseCategoricalAccuracy(Q.cast(yt1, Q.floatx()),
-                                         y1,
-                                         from_logits=False,
-                                         axis=-1)
-        l2 = Q.SparseCategoricalAccuracy(Q.cast(yt2, Q.floatx()),
-                                         y2,
-                                         from_logits=False,
-                                         axis=-1)
+        l1 = tf.SparseCategoricalAccuracy(tf.cast(yt1, tf.floatx()),
+                                          y1,
+                                          from_logits=False,
+                                          axis=-1)
+        l2 = tf.SparseCategoricalAccuracy(tf.cast(yt2, tf.floatx()),
+                                          y2,
+                                          from_logits=False,
+                                          axis=-1)
         self.add_loss((l1 + l2) / 2.0)
         return [y1, y2]
 
 
-class Mnist_3(Q.Layer):
+class Mnist_3(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(dtype='float32', **kw)
         f = PS.data_format
@@ -87,17 +87,17 @@ class Mnist_3(Q.Layer):
         _, hsize = x1
         _, hs = x2
         assert hsize == hs
-        self.d1_1 = Q.Dense(hsize, activation='relu')
-        self.d1_2 = Q.Dense(hsize, activation='relu')
-        self.d2_1 = Q.Dense(10, activation='softmax')
-        self.d2_2 = Q.Dense(10, activation='softmax')
+        self.d1_1 = tf.Dense(hsize, activation='relu')
+        self.d1_2 = tf.Dense(hsize, activation='relu')
+        self.d2_1 = tf.Dense(10, activation='softmax')
+        self.d2_2 = tf.Dense(10, activation='softmax')
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
         x1, _, x2 = inputs[:3]
-        y1, y2 = Q.Reshape(self.shape)(x1), Q.Reshape(self.shape)(x2)
-        y1, y2 = Q.Flatten()(y1), Q.Flatten()(y2)
+        y1, y2 = tf.Reshape(self.shape)(x1), tf.Reshape(self.shape)(x2)
+        y1, y2 = tf.Flatten()(y1), tf.Flatten()(y2)
         y1, y2 = self.d1_1(y1), self.d1_2(y2)
-        y1, y2 = Q.Dropout(0.1)(y1), Q.Dropout(0.1)(y2)
+        y1, y2 = tf.Dropout(0.1)(y1), tf.Dropout(0.1)(y2)
         y1, y2 = self.d2_1(y1), self.d2_2(y2)
         return [y1, y2]

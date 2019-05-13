@@ -13,19 +13,19 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
 def _layer_norm(self, inputs, **_):
     x = inputs
-    m = Q.reduce_mean(x, axis=-1, keepdims=True)
-    v = Q.reduce_mean(Q.square(x - m), axis=-1, keepdims=True)
-    y = (x - m) / Q.sqrt(v + self.PS.norm_epsilon)
+    m = tf.reduce_mean(x, axis=-1, keepdims=True)
+    v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
+    y = (x - m) / tf.sqrt(v + self.PS.norm_epsilon)
     y = self.gain * y + self.bias
     return y
 
 
-class LayerNorm(Q.Layer):
+class LayerNorm(tf.Layer):
     def __init__(self, PS, **kw):
         super().__init__(**kw)
         self.supports_masking = True
@@ -41,7 +41,7 @@ class LayerNorm(Q.Layer):
         return _layer_norm(self, inputs, **kw)
 
 
-class LayerProc(Q.Layer):
+class LayerProc(tf.Layer):
     cmd = ''
     batch = None
 
@@ -51,7 +51,7 @@ class LayerProc(Q.Layer):
         self.PS = PS
         self.drop = self.dropout()
         if PS.norm_type == 'batch':
-            self.batch = Q.BatchNormalization(epsilon=PS.norm_epsilon)
+            self.batch = tf.BatchNormalization(epsilon=PS.norm_epsilon)
 
     def build(self, input_shape):
         _, x = input_shape
@@ -76,22 +76,22 @@ class LayerProc(Q.Layer):
                     elif PS.norm_type == 'batch':
                         y = self.batch(x, **kw)
                     elif PS.norm_type == 'l2':
-                        m = Q.reduce_mean(x, axis=-1, keepdims=True)
-                        n = Q.square(x - m)
-                        n = Q.reduce_sum(n, axis=-1, keepdims=True)
-                        y = (x - m) / Q.sqrt(n + PS.norm_epsilon)
+                        m = tf.reduce_mean(x, axis=-1, keepdims=True)
+                        n = tf.square(x - m)
+                        n = tf.reduce_sum(n, axis=-1, keepdims=True)
+                        y = (x - m) / tf.sqrt(n + PS.norm_epsilon)
                         y = y * self.gain + self.bias
                     elif PS.norm_type == 'group':
-                        sh = Q.int_shape(x)
+                        sh = tf.int_shape(x)
                         assert len(sh) == 4 and sh[-1] % PS.num_groups == 0
                         gs = (PS.num_groups, sh[-1] // PS.num_groups)
-                        x = Q.reshape(x, sh[:-1] + gs)
-                        m, v = Q.moments(x, [1, 2, 4], keep_dims=True)
-                        y = (x - m) / Q.sqrt(v + PS.group_epsilon)
-                        y = Q.reshape(y, sh) * self.gain + self.bias
+                        x = tf.reshape(x, sh[:-1] + gs)
+                        m, v = tf.moments(x, [1, 2, 4], keep_dims=True)
+                        y = (x - m) / tf.sqrt(v + PS.group_epsilon)
+                        y = tf.reshape(y, sh) * self.gain + self.bias
                     elif PS.norm_type == 'noam':
-                        y = Q.cast_to_floatx(Q.int_shape(x)[-1])
-                        y = Q.l2_normalize(x, axis=-1) * Q.sqrt(y)
+                        y = tf.cast_to_floatx(tf.int_shape(x)[-1])
+                        y = tf.l2_normalize(x, axis=-1) * tf.sqrt(y)
                     else:
                         assert PS.norm_type == 'none'
                 else:
@@ -108,7 +108,7 @@ class LayerProc(Q.Layer):
             n = len(sh)
             ds = [d + n if d < 0 else d for d in ds]
             ns = [1 if i in ds else sh[i] for i in range(n)]
-        return Q.Dropout(PS.prepost_drop or PS.hidden_drop, noise_shape=ns)
+        return tf.Dropout(PS.prepost_drop or PS.hidden_drop, noise_shape=ns)
 
 
 class PreProc(LayerProc):
