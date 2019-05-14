@@ -85,76 +85,78 @@ class TokEmbed(base.Layer):
 
 
 class TypEmbed(base.Layer):
-    def __init__(self, params, **kw):
-        super().__init__(params, **kw)
+    @staticmethod
+    def cfg_items(params):
+        return dict(
+            params.cfg_items(
+                'tok_types',
+            ))
 
     def build(self, input_shape):
         cfg = self.cfg
-        tok, typ = input_shape
-        _, tlen, hsize = tok
+        src, typ = input_shape
+        _, tlen, h = src
         assert tlen == typ[1]
-        sh = (cfg.token_types, hsize)
-        self.gain = self.add_weight(shape=sh, initializer=cfg.initializer)
+        self.typ_w = self.add_weight('typ_w', (cfg.tok_types, h))
         return super().build(input_shape)
 
     @tf.function
     def call(self, inputs, mask):
-        tok, typ = inputs
+        src, typ = inputs
         y = typ * tf.cast(mask[0], typ.dtype)
-        y = tf.one_hot(y, self.cfg.token_types)
-        return tok + tf.matmul(y, self.gain)
+        y = tf.one_hot(y, self.cfg.tok_types)
+        return src + tf.einsum('bihj,h->bih', y, self.typ_w)
 
 
 class PosEmbed(base.Layer):
-    def __init__(self, params, **kw):
-        super().__init__(params, **kw)
+    @staticmethod
+    def cfg_items(params):
+        return dict(
+            params.cfg_items(
+                'pos_max',
+                'ctx_len',
+                'tgt_len',
+            ))
 
     def build(self, input_shape):
         cfg = self.cfg
-        _, tlen, hsize = input_shape
-        plen = max(cfg.max_pos or 0, cfg.ctx_len, cfg.tgt_len)
+        _, tlen, h = input_shape
+        plen = max(cfg.pos_max or 0, cfg.ctx_len, cfg.tgt_len)
         assert tlen <= plen
-        sh = (plen, hsize)
-        b = self.add_weight(shape=sh, initializer=cfg.initializer)
-        b = b[:tlen, :]
-        self.bias = tf.expand_dims(b, axis=0)
+        self.pos_b = self.add_weight('pos_b', (plen, h))[:tlen, :]
         return super().build(input_shape)
 
     @tf.function
     def call(self, inputs, mask):
-        y = tf.cast(mask, self.bias.dtype)
-        y = self.bias * tf.expand_dims(y, axis=2)
+        y = tf.cast(mask, self.pos_b.dtype)
+        y = tf.einsum('bihj,h->bih', self.pos_b, y)
         return inputs + y
 
 
 class PosTiming(base.Layer):
-    start = 0
-    min_scale = 1.0
-    max_scale = 1.0e4
-
-    def __init__(self, params, start=None, min_scale=None, max_scale=None, **kw):
-        super().__init__(params, **kw)
-        if start:
-            self.start = start
-        if min_scale:
-            self.min_scale = float(min_scale)
-        if max_scale:
-            self.max_scale = float(max_scale)
+    @staticmethod
+    def cfg_items(params):
+        return dict(
+            params.cfg_items(
+                'start',  # 0
+                'min_scale',  # 1.0
+                'max_scale',  # 1.0e4
+            ))
 
     def build(self, input_shape):
-        _, tlen, hsize = input_shape
-        assert hsize % 2 == 0
-        n = hsize // 2
-        s = np.log(self.max_scale / self.min_scale) / max(n - 1, 1)
-        s = self.min_scale * tf.exp(tf.range(n, dtype=tf.floatx()) * -s)
-        p = tf.range(tlen, dtype=tf.floatx()) + self.start
+        cfg = self.cfg
+        _, tlen, h = input_shape
+        assert h % 2 == 0
+        n = h // 2
+        s = np.log(cfg.max_scale / cfg.min_scale) / max(n - 1, 1)
+        s = cfg.min_scale * tf.exp(tf.range(float(n)) * -s)
+        p = tf.range(float(tlen)) + cfg.start
         p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
-        p = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
-        self.bias = tf.expand_dims(p, axis=0)
+        self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
         return super().build(input_shape)
 
     @tf.function
     def call(self, inputs, mask):
-        y = tf.cast(mask, self.bias.dtype)
-        y = self.bias * tf.expand_dims(y, axis=2)
+        y = tf.cast(mask, self.pos_b.dtype)
+        y = tf.einsum('bihj,h->bih', self.pos_b, y)
         return inputs + y
