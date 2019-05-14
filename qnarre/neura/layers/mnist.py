@@ -14,19 +14,33 @@
 # =============================================================================
 
 from qnarre.neura import tf
+from qnarre.neura.layers import base
 
 
-class Mnist(tf.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.PS = PS
-        f = PS.data_format
+class Mnist(base.Layer):
+    @staticmethod
+    def cfg_items(params):
+        return dict(
+            params.cfg_items(
+                'data_format',
+                'act_hidden',
+                'drop_hidden',
+                'dim_hidden',
+                'img_height',
+                'img_width',
+                'num_classes',
+            ))
+
+    def __init__(self, params, **kw):
+        super().__init__(params, **kw)
+        cfg = self.cfg
+        f = cfg.data_format
         self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
 
     def build(self, input_shape):
-        PS = self.PS
-        self.d1 = tf.Dense(PS.hidden_size, activation=PS.hidden_act)
-        self.d2 = tf.Dense(PS.num_classes, activation='softmax')
+        cfg = self.cfg
+        self.d1 = tf.Dense(cfg.dim_hidden, activation=cfg.act_hidden)
+        self.d2 = tf.Dense(cfg.num_classes, activation='softmax')
         return super().build(input_shape)
 
     def call(self, inputs, **kw):
@@ -34,15 +48,15 @@ class Mnist(tf.Layer):
         y = tf.Reshape(self.shape)(x)
         y = tf.Flatten()(y)
         y = self.d1(y)
-        y = tf.Dropout(self.PS.hidden_drop)(y)
+        y = tf.Dropout(self.cfg.drop_hidden)(y)
         y = self.d2(y)
         return y
 
 
-class Mnist_2(tf.Layer):
-    def __init__(self, PS, **kw):
+class Mnist_2(base.Layer):
+    def __init__(self, cfg, **kw):
         super().__init__(dtype='float32', **kw)
-        f = PS.data_format
+        f = cfg.data_format
         self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
 
     def build(self, input_shape):
@@ -76,10 +90,10 @@ class Mnist_2(tf.Layer):
         return [y1, y2]
 
 
-class Mnist_3(tf.Layer):
-    def __init__(self, PS, **kw):
+class Mnist_3(base.Layer):
+    def __init__(self, cfg, **kw):
         super().__init__(dtype='float32', **kw)
-        f = PS.data_format
+        f = cfg.data_format
         self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
 
     def build(self, input_shape):

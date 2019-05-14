@@ -18,87 +18,86 @@ from datetime import datetime
 import pathlib as pth
 import datetime as dt
 
+from qnarre.neura import tf
 from tensorboard.plugins import hparams
 from tensorboard.plugins.hparams import summary as tb_summary
 
-import qnarre.neura as Q
 
-
-def session_for(PS, sid=None):
-    if PS.predict_run:
-        sess = eager_pred if PS.eager_mode else predict
+def session_for(ps, sid=None):
+    if ps.predict_run:
+        sess = eager_pred if ps.eager_mode else predict
     else:
-        if PS.eval_only:
-            sess = eager_eval if PS.eager_mode else evaluate
+        if ps.eval_only:
+            sess = eager_eval if ps.eager_mode else evaluate
         else:
-            sess = eager_train if PS.eager_mode else train
+            sess = eager_train if ps.eager_mode else train
     sid = sid or datetime.now().strftime('%Y%m%d-%H%M%S')
-    return lambda *args, **kw: sess(sid, PS, *args, **kw)
+    return lambda *args, **kw: sess(sid, ps, *args, **kw)
 
 
-def eager_train(sid, PS, dset_fn, model_fn, cbacks=None):
-    dset = dset_fn(PS, 'train')
-    # dset_test = dset_fn(PS, 'test')
-    model = model_fn(PS)
+def eager_train(sid, ps, dset_fn, model_fn, cbacks=None):
+    dset = dset_fn(ps, 'train')
+    # dset_test = dset_fn(ps, 'test')
+    model = model_fn(ps)
 
     def step(x, y):
-        with Q.GradientTape() as tape:
+        with tf.GradientTape() as tape:
             logits = model(x)
-            loss = PS.losses(y, logits)
+            loss = ps.losses(y, logits)
             loss += sum(model.losses)
-            acc = PS.metrics(y, logits)
+            acc = ps.metrics(y, logits)
         grads = tape.gradient(loss, model.trainable_variables)
-        PS.optimizer.apply_gradients(zip(grads, model.trainable_variables))
+        ps.optimizer.apply_gradients(zip(grads, model.trainable_variables))
         return loss, acc
 
-    @Q.function
+    @tf.function
     def epoch():
         s, loss, acc = 0, 0.0, 0.0
         for x, y in dset:
             s += 1
             loss, acc = step(x, y)
-            if Q.equal(s % 10, 0):
-                m = PS.metrics.result()
-                Q.print('Step:', s, ', loss:', loss, ', acc:', m)
+            if tf.equal(s % 10, 0):
+                m = ps.metrics.result()
+                tf.print('Step:', s, ', loss:', loss, ', acc:', m)
         return loss, acc
 
-    for e in range(PS.train_epochs):
+    for e in range(ps.train_epochs):
         loss, acc = epoch()
         print(f'Epoch {e} loss:', loss, ', acc:', acc)
 
 
-def train(sid, PS, dset_fn, model_fn, cbacks=None):
-    dset = dset_fn(PS, 'train')
-    ds_test = dset_fn(PS, 'test')
+def train(sid, ps, dset_fn, model_fn, cbacks=None):
+    dset = dset_fn(ps, 'train')
+    ds_test = dset_fn(ps, 'test')
     # with T.distribute.MirroredStrategy().scope():
-    model = model_fn(PS, compiled=True)
-    sp = pth.Path(PS.save_dir)
+    model = model_fn(ps, compiled=True)
+    sp = pth.Path(ps.save_dir)
     if sp.exists():
         model.train_on_batch(dset[:1])
         model.load_weights(sp)
-    p = PS.log_dir + '/train/' + sid
-    writer = Q.create_file_writer(p)
-    sum_s = tb_summary.session_start_pb(hparams=PS.hparams)
+    p = ps.log_dir + '/train/' + sid
+    writer = tf.create_file_writer(p)
+    sum_s = tb_summary.session_start_pb(hparams=ps.hparams)
     cbs = cbacks or []
     cbs.append(
-        Q.TensorBoard(log_dir=p,
-                      histogram_freq=1,
-                      embeddings_freq=0,
-                      update_freq='epoch'))
+        tf.TensorBoard(log_dir=p,
+                       histogram_freq=1,
+                       embeddings_freq=0,
+                       update_freq='epoch'))
     cbs.append(
-        Q.EarlyStopping(monitor='val_loss',
-                        min_delta=1e-2,
-                        patience=2,
-                        verbose=True))
+        tf.EarlyStopping(monitor='val_loss',
+                         min_delta=1e-2,
+                         patience=2,
+                         verbose=True))
     if sp.exists():
         cbs.append(
-            Q.ModelCheckpoint(model_save_path=sp,
-                              save_best_only=True,
-                              monitor='val_loss',
-                              verbose=True))
+            tf.ModelCheckpoint(model_save_path=sp,
+                               save_best_only=True,
+                               monitor='val_loss',
+                               verbose=True))
     hist = model.fit(dset,
                      callbacks=cbacks,
-                     epochs=PS.train_epochs,
+                     epochs=ps.train_epochs,
                      validation_data=ds_test)
     print(f'History: {hist.history}')
     if sp.exists():
@@ -107,38 +106,38 @@ def train(sid, PS, dset_fn, model_fn, cbacks=None):
     print(f'\nEval loss, acc: {loss}, {acc}')
     """
     with writer.as_default():
-        e = Q.Event(summary=sum_s).SerializeToString()
-        Q.import_event(e)
-        Q.scalar('accuracy', acc, step=1, description='Accuracy')
+        e = tf.Event(summary=sum_s).SerializeToString()
+        tf.import_event(e)
+        tf.scalar('accuracy', acc, step=1, description='Accuracy')
         sum_e = tb_summary.session_end_pb(hparams.api_pb2.STATUS_SUCCESS)
-        e = Q.Event(summary=sum_e).SerializeToString()
-        Q.import_event(e)
+        e = tf.Event(summary=sum_e).SerializeToString()
+        tf.import_event(e)
     """
 
 
 def train_loop(params, model_fn, dset_fn, cbacks=None):
-    PS = params
+    ps = params
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     opts = ['adam', 'sgd']
-    writer = Q.create_file_writer(PS.log_dir + '/train')
+    writer = tf.create_file_writer(ps.log_dir + '/train')
     with writer.as_default():
         s = None  # _to_summary_pb(nus, drs, opts)
-        e = Q.Event(summary=s).SerializeToString()
-        Q.import_event(e)
+        e = tf.Event(summary=s).SerializeToString()
+        tf.import_event(e)
     for nu in nus:
         for dr in drs:
             for opt in opts:
                 kw = {'num_units': nu, 'dropout_rate': dr, 'optimizer': opt}
                 sid = dt.datetime.now().strftime('%Y%m%d-%H%M%S')
                 print(f'--- Running session {sid}:', kw)
-                PS.update(**kw)
-                train_sess(PS, model_fn, dset_fn, cbacks, sid=sid)
+                ps.update(**kw)
+                train_sess(ps, model_fn, dset_fn, cbacks, sid=sid)
     return
 
 
 """
-names = [str(i) for i in range(PS.num_classes)]
+names = [str(i) for i in range(ps.num_classes)]
 labels = [lb.numpy() for _, lb in ds_test]
 
 def log_confusion_matrix(epoch, logs):

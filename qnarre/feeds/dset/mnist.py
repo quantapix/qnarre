@@ -18,20 +18,20 @@ import lzma
 import numpy as np
 import pathlib as pth
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
-def dset(PS, kind):
-    w, h = PS.img_width, PS.img_height
-    return Q.Dataset.from_generator(
-        lambda: _reader(PS, kind),
-        (Q.float32, Q.int32),
-        (Q.TensorShape((w * h, )), Q.TensorShape(())),
+def dset(ps, kind):
+    w, h = ps.img_width, ps.img_height
+    return tf.Dataset.from_generator(
+        lambda: _reader(ps, kind),
+        (tf.float32, tf.int32),
+        (tf.TensorShape((w * h, )), tf.TensorShape(())),
     )
 
 
-def _reader(PS, kind):
-    p = pth.Path(PS.data_dir)
+def _reader(ps, kind):
+    p = pth.Path(ps.data_dir)
     x, y = _names[kind]
     with lzma.open(p / (x + '.xz'), mode='rb') as xf:
         assert _read32(xf) == 2051
@@ -59,48 +59,49 @@ def _read32(f, count=4):
 _names = {
     'train': ('train_images', 'train_labels'),
     'test': ('test_images', 'test_labels'),
+    'try': ('test_images', 'test_labels'),
 }
 
 
-def cached_dset(kind, params):
-    path = pth.Path(params.data_dir)
+def cached_dset(ps, kind):
+    path = pth.Path(ps.data_dir)
     p, r, c = _check_images(path / '{}_images'.format(kind))
 
     def _img(x):
-        x = Q.decode_raw(x, Q.uint8)
-        x = Q.cast(x, Q.float32)
-        x = Q.reshape(x, [r * c])
+        x = tf.decode_raw(x, tf.uint8)
+        x = tf.cast(x, tf.float32)
+        x = tf.reshape(x, [r * c])
         return x / 255.0
 
-    x = Q.FixedLengthRecordDataset(p, r * c, header_bytes=16).map(_img)
+    x = tf.FixedLengthRecordDataset(p, r * c, header_bytes=16).map(_img)
     p = _check_labels(path / '{}_labels'.format(kind))
 
     def _lbl(y):
-        y = Q.decode_raw(y, Q.uint8)
-        y = Q.reshape(y, [])
-        return Q.cast(y, Q.int32)
+        y = tf.decode_raw(y, tf.uint8)
+        y = tf.reshape(y, [])
+        return tf.cast(y, tf.int32)
 
-    y = Q.FixedLengthRecordDataset(p, 1, header_bytes=8).map(_lbl)
-    return Q.Dataset.zip((x, y))
+    y = tf.FixedLengthRecordDataset(p, 1, header_bytes=8).map(_lbl)
+    return tf.Dataset.zip((x, y))
 
 
-def np_dataset(kind, params):
-    path = pth.Path(params.data_dir)
+def np_dataset(ps, kind):
+    path = pth.Path(ps.data_dir)
     with np.load(path / 'combined') as d:
         x, y = d['x_{}'.format(kind)], d['y_{}'.format(kind)]
     x = x.astype(np.float32) / 255
     x = np.expand_dims(x, -1)
-    y = Q.one_hot(y, params.num_classes)
-    return Q.Dataset.from_tensor_slices((x, y))
+    y = tf.one_hot(y, ps.num_classes)
+    return tf.Dataset.from_tensor_slices((x, y))
 
 
-def np_data(kind, params):
-    path = pth.Path(params.data_dir)
+def np_data(ps, kind):
+    path = pth.Path(ps.data_dir)
     with np.load(path / 'combined') as d:
         x, y = d['x_{}'.format(kind)], d['y_{}'.format(kind)]
     r, c = x.shape[1:]
     x = x.reshape((-1, r * c)).astype('float32') / 255
-    y = Q.to_categorical(y, params.num_classes)
+    y = tf.to_categorical(y, ps.num_classes)
     return x, y
 
 
