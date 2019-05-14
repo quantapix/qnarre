@@ -16,45 +16,53 @@
 import numpy as np
 
 from qnarre.neura import tf
+from qnarre.neura.layers import base
 
 
-class TokEmbed(tf.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.PS = PS
-        self.tbls = []
-        self.nets = []
-        self.supports_masking = True
+class TokEmbed(base.Layer):
+    @staticmethod
+    def cfg_items(params):
+        return dict(
+            params.cfg_items(
+                'brackets',
+                'dim_embed',
+                'dim_hidden',
+                'emb_one_hot',
+                'num_toks',
+            ))
+
+    def __init__(self, params, **kw):
+        super().__init__(params, **kw)
+        self.tbl_ws = []
+        self.out_ws = []
 
     def build(self, input_shape):
-        PS = self.PS
-        h = PS.dim_hidden
-        d = PS.dim_embed or h
-        bs = (PS.brackets or []) + [PS.num_toks]
-        kwt = dict(initializer=PS.initializer, regularizer=PS.regularizer)
-        kwn = dict(kernel_initializer=PS.initializer, use_bias=False)
+        cfg = self.cfg
+        h = cfg.dim_hidden
+        d = cfg.dim_embed or h
+        bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
         for i, e in enumerate(bs):
             t = d // (len(bs)**i)
-            self.tbls.append(self.add_weight(f'tbl_{i}', (e - b, t), **kwt))
-            n = tf.Dense(h, name=f'net_{i}', **kwn) if t != h else None
-            self.nets.append(n)
+            self.tbl_ws.append(self.add_weight(f'tbl_w{i}', (e - b, t)))
+            o = self.add_weight(f'out_w{i}', (t, h)) if t != h else None
+            self.out_ws.append(o)
             b = e
-        self.emb_one_hot = PS.emb_one_hot
+        self.one_hot = cfg.emb_one_hot
         return super().build(input_shape)
 
     def compute_output_shape(self, input_shape):
-        return input_shape + (self.PS.dim_hidden, )
+        return input_shape + (self.cfg.dim_hidden, )
 
     def compute_mask(self, inputs, mask=None):
         return tf.not_equal(inputs, 0)
 
     @tf.function
     def call(self, inputs, **_):
+        cfg = self.cfg
         x = inputs
-        PS = self.PS
-        y = tf.zeros(tf.int_shape(x) + (PS.dim_hidde, ))
-        bs = (PS.brackets or []) + [PS.num_toks]
+        y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidde, ))
+        bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
         for i, e in enumerate(bs):
             m = (x >= (b or 1)) & (x < e)
@@ -64,71 +72,68 @@ class TokEmbed(tf.Layer):
         return y
 
     def lookup(self, x, i):
-        t = self.tbls[i]
-        if self.emb_one_hot:
+        t = self.tbl_ws[i]
+        if self.one_hot:
             y = tf.one_hot(x, tf.shape(t)[0], axis=-1)
             y = tf.einsum('ne,bin->bie', t, y)
         else:
             y = tf.embedding_lookup(t, x)
-        n = self.nets[i]
-        if n is not None:
-            y = tf.einsum('bie,eh->bih', y, n)
+        o = self.out_ws[i]
+        if o is not None:
+            y = tf.einsum('bie,eh->bih', y, o)
         return y
 
 
-class TypEmbed(tf.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-        self.PS = PS
+class TypEmbed(base.Layer):
+    def __init__(self, params, **kw):
+        super().__init__(params, **kw)
 
     def build(self, input_shape):
+        cfg = self.cfg
         tok, typ = input_shape
         _, tlen, hsize = tok
         assert tlen == typ[1]
-        PS = self.PS
-        sh = (PS.token_types, hsize)
-        self.gain = self.add_weight(shape=sh, initializer=PS.initializer)
+        sh = (cfg.token_types, hsize)
+        self.gain = self.add_weight(shape=sh, initializer=cfg.initializer)
         return super().build(input_shape)
 
-    def call(self, inputs, mask, **_):
+    @tf.function
+    def call(self, inputs, mask):
         tok, typ = inputs
         y = typ * tf.cast(mask[0], typ.dtype)
-        y = tf.one_hot(y, self.PS.token_types)
+        y = tf.one_hot(y, self.cfg.token_types)
         return tok + tf.matmul(y, self.gain)
 
 
-class PosEmbed(tf.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-        self.PS = PS
+class PosEmbed(base.Layer):
+    def __init__(self, params, **kw):
+        super().__init__(params, **kw)
 
     def build(self, input_shape):
+        cfg = self.cfg
         _, tlen, hsize = input_shape
-        PS = self.PS
-        plen = max(PS.max_pos or 0, PS.ctx_len, PS.tgt_len)
+        plen = max(cfg.max_pos or 0, cfg.ctx_len, cfg.tgt_len)
         assert tlen <= plen
         sh = (plen, hsize)
-        b = self.add_weight(shape=sh, initializer=PS.initializer)
+        b = self.add_weight(shape=sh, initializer=cfg.initializer)
         b = b[:tlen, :]
         self.bias = tf.expand_dims(b, axis=0)
         return super().build(input_shape)
 
-    def call(self, inputs, mask, **_):
+    @tf.function
+    def call(self, inputs, mask):
         y = tf.cast(mask, self.bias.dtype)
         y = self.bias * tf.expand_dims(y, axis=2)
         return inputs + y
 
 
-class PosTiming(tf.Layer):
+class PosTiming(base.Layer):
     start = 0
     min_scale = 1.0
     max_scale = 1.0e4
 
-    def __init__(self, _, start=None, min_scale=None, max_scale=None, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
+    def __init__(self, params, start=None, min_scale=None, max_scale=None, **kw):
+        super().__init__(params, **kw)
         if start:
             self.start = start
         if min_scale:
@@ -148,7 +153,8 @@ class PosTiming(tf.Layer):
         self.bias = tf.expand_dims(p, axis=0)
         return super().build(input_shape)
 
-    def call(self, inputs, mask, **_):
+    @tf.function
+    def call(self, inputs, mask):
         y = tf.cast(mask, self.bias.dtype)
         y = self.bias * tf.expand_dims(y, axis=2)
         return inputs + y

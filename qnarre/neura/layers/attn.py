@@ -30,13 +30,11 @@ class Attn(base.Layer):
                 'dim_v',
                 'drop_attn',
                 'drop_hidden',
-                'init_stddev',
                 'num_heads',
             ))
 
     def __init__(self, params, owner=None, **kw):
         super().__init__(params, **kw)
-        self.supports_masking = True
         if owner:
             self.pre = owner.pre
             self.post = owner.post
@@ -44,9 +42,9 @@ class Attn(base.Layer):
             self.mem_b = owner.mem_b
 
     def build(self, input_shape):
+        cfg = self.cfg
         src = input_shape[0]
         h = src[2]
-        cfg = self.cfg
         assert h == cfg.dim_hidden
         n = cfg.num_heads
         assert h % n == 0
@@ -126,20 +124,12 @@ class Attn(base.Layer):
         y = tf.reshape(y, s)
         return y
 
-    def scores(self, x, bias, v, **kw):
+    def scores(self, x, bias, v):
         y = x * self.scale
         if bias is not None:
             y = y + bias
-        y = tf.softmax(y, **kw)
-        y = self.dropout(y)
+        y = tf.softmax(y)
+        r = self.cfg.drop_attn or self.cfg.drop_hidden
+        y = self.dropout(y, r)
         y = tf.einsum('bnij,bnjv->bniv', y, v)
         return y
-
-    def add_weight(self, name, shape):
-        init = tf.TruncatedNormal(stddev=self.cfg.init_stddev)
-        return super().add_weight(name, shape, initializer=init)
-
-    def dropout(self, x):
-        if tf.learning_phase():
-            return tf.dropout(x, self.cfg.drop_attn or self.cfg.drop_hidden)
-        return x

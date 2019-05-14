@@ -33,6 +33,7 @@ class Layer(tf.Layer):
 
     def __init__(self, params, **kw):
         super().__init__(**kw)
+        self.supports_masking = True
         if isinstance(params, Config):
             self.cfg = params
         else:
@@ -45,3 +46,18 @@ class Layer(tf.Layer):
         s = super().get_config().items()
         c = self.cfg.items()
         return dict(list(s) + list(c))
+
+    def add_weight(self, name, shape, **kw):
+        cfg = self.cfg
+        if hasattr(cfg, 'init_stddev'):
+            kw.setdefault('initializer',
+                          tf.TruncatedNormal(stddev=cfg.init_stddev))
+        if hasattr(cfg, 'regular_l1') and hasattr(cfg, 'regular_l2'):
+            kw.setdefault('regularizer',
+                          tf.L1L2(cfg.regular_l1, cfg.regular_l2))
+        return super().add_weight(name, shape, **kw)
+
+    def dropout(self, x, rate):
+        if tf.learning_phase():
+            return tf.dropout(x, rate)
+        return x
