@@ -21,47 +21,44 @@ from qnarre.neura.layers.search import Beam
 from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
-from qnarre.neura.layers.ffn import ffns
-from qnarre.neura.layers.attn import attns
+from qnarre.neura.layers.attn import Attn
+from qnarre.neura.layers.ffnet import FFNet
 
 
-class Trafo(tf.Layer):
-    typ_embed, pos_embed, beam = None, None, None
+class Trafo:
+    typ_emb, pos_embed, beam = None, None, None
 
-    def __init__(self, PS, **kw):
-        super().__init__(**kw)
-        self.PS = PS
-        self.tok_embed = TokEmbed(PS)
-        if PS.token_types:
-            self.typ_embed = TypEmbed(PS)
-        if PS.pos_embed:
-            p = PosEmbed(PS) if PS.pos_embed == 'embed' else None
-            p = PosTiming(PS) if PS.pos_embed == 'timing' else p
+    def __init__(self, ps):
+        self.ps = ps
+        self.tok_emb = TokEmbed(ps)
+        if ps.tok_types:
+            self.typ_emb = TypEmbed(ps)
+        if ps.pos_embed:
+            p = PosEmbed(ps) if ps.pos_embed == 'embed' else None
+            p = PosTiming(ps) if ps.pos_embed == 'timing' else p
             self.pos_embed = p
-        self.norm = LayerNorm(PS)
-        self.drop = tf.Dropout(PS.hidden_drop)
-        self.pre = PreProc(PS)
-        self.post = PostProc(PS)
-        self.enc_stack = EncStack(PS, self.pre, self.post)
-        self.dec_stack = DecodeStack(PS, self.pre, self.post)
-        self.logits = tf.Dense(PS.vocab_size, activation=None)
-        if PS.beam_size:
-            self.beam = Beam(PS, lambda *a, **kw: self.to_logp(*a, **kw))
+        self.norm = LayerNorm(ps)
+        self.drop = tf.Dropout(ps.drop_hidden)
+        self.pre = PreProc(ps)
+        self.post = PostProc(ps)
+        self.enc_stack = EncStack(ps, self.pre, self.post)
+        self.dec_stack = DecodeStack(ps, self.pre, self.post)
+        self.logits = tf.Dense(ps.num_toks, activation=None)
+        if ps.beam_size:
+            self.beam = Beam(ps, lambda *a, **kw: self.to_logp(*a, **kw))
 
-    def build(self, input_shape):
-        return super().build(input_shape)
-
-    def call(self, inputs, training=None, **kw):
-        PS = self.PS
+    @tf.function
+    def __call__(self, inputs):
+        ps = self.ps
         src, typ, tgt = inputs
-        ctx, bias = self.encode(src, typ, **kw)
+        ctx, bias = self.encode(src, typ)
         if tgt is not None:
-            logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
+            logp, logi, unk = self.to_logp(tgt, ctx, bias)
             return logi
 
     """
     def call(self, inputs, training=None, **kw):
-        PS = self.PS
+        ps = self.ps
         src, typ, tgt = inputs
         ctx, bias = self.encode(src, typ, **kw)
         if tgt is not None:
@@ -70,31 +67,31 @@ class Trafo(tf.Layer):
             else:
                 logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
                 sh = tf.int_shape(tgt)
-                b = tf.range(PS.batch_size)
+                b = tf.range(ps.batch_size)
                 for i in range(sh[-1]):
                     if tf.reduce_any(unk[:, i]) is True:
                         y = tf.argmax(logp[:, i, :],
                                      axis=1,
                                      output_type=tf.int32)
-                        ii = tf.constant([i] * PS.batch_size)
+                        ii = tf.constant([i] * ps.batch_size)
                         sel = tf.stack([b, ii])
                         tgt = tf.tensor_scatter_nd_update(tgt, sel, y)
-                        e = tf.equal(tgt, PS.END)
+                        e = tf.equal(tgt, ps.END)
                         if tf.reduce_all(tf.reduce_any(e, axis=1)) is True:
                             break
                         logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-            return tf.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
+            return tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
     """
 
     def get_config(self):
         c = super().get_config()
-        c['PS'] = self.PS
+        c['ps'] = self.ps
         return c
 
     def embed(self, tok, typ=None, **kw):
-        y = self.tok_embed(tok, **kw)
-        if typ is not None and self.typ_embed:
-            y = self.typ_embed([y, typ], **kw)
+        y = self.tok_emb(tok, **kw)
+        if typ is not None and self.typ_emb:
+            y = self.typ_emb([y, typ], **kw)
         if self.pos_embed:
             y = self.pos_embed(y, **kw)
         y = self.norm(y, **kw)
@@ -114,9 +111,9 @@ class Trafo(tf.Layer):
         return y
 
     def to_logp(self, tgt, ctx, bias, i=None, **kw):
-        PS = self.PS
-        unk = tf.equal(tgt, PS.UNK)
-        prior = tf.one_hot(tgt, PS.vocab_size, 0.0, PS.big_neg)
+        ps = self.ps
+        unk = tf.equal(tgt, ps.UNK)
+        prior = tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
         if i is not None:
             unk = unk[:, i]
             prior = prior[:, i, :]
@@ -137,7 +134,7 @@ class Trafo(tf.Layer):
         return logp, logi, unk
 
 
-class Stack(tf.Layer):
+class Stack:
     prox_bias = None
 
     @staticmethod
@@ -148,64 +145,54 @@ class Stack(tf.Layer):
         y = tf.expand_dims(tf.expand_dims(y, axis=0), axis=0)
         return y
 
-    def __init__(self, PS, pre, post, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-        self.PS = PS
+    def __init__(self, ps, pre, post):
+        self.ps = ps
         self.pre = pre
         self.post = post
 
     def attn_bias(self, mask):
         y = tf.logical_not(mask)
-        y = tf.cast(y, tf.floatx()) * self.PS.big_neg
+        y = tf.cast(y, tf.floatx()) * self.ps.big_neg
         y = tf.expand_dims(tf.expand_dims(y, axis=1), axis=3)
         return y
 
 
 class EncStack(Stack):
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
-        PS = self.PS
-        a = (PS, self.pre, self.post)
-        n = PS.enc_layers or PS.stack_layers
-        self.encs = [Encoder(*a, name=f'enc_{i}') for i in range(n)]
+    def __init__(self, ps):
+        super().__init__(ps)
+        ps = self.ps
+        n = ps.enc_layers or ps.stack_layers
+        self.encs = [Encoder(ps, f'enc_{i}') for i in range(n)]
+        if ps.prox_bias:
+            self.prox_bias = self.proximity(ps.src_len)
 
-    def build(self, input_shape):
-        # if self.PS.prox_bias:
-        #     self.prox_bias = self.proximity(input_shape[1])
-        return super().build(input_shape)
-
-    def call(self, inputs, mask, **kw):
+    def __call__(self, inputs, mask):
         x = inputs
         ab = rb = self.attn_bias(mask)
         if self.prox_bias:
             rb += self.prox_bias
-        y = self.pre.drop(x, **kw)
+        y = self.pre.drop(x)
         for e in self.encs:
-            y = e([y, rb], **kw)
-        y = self.post([x, y], **kw)
+            y = e([y, rb])
+        y = self.post([x, y])
         return y, ab
 
 
 class DecodeStack(Stack):
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
-        PS = self.PS
-        a = (PS, self.pre, self.post)
-        n = PS.dec_layers or PS.stack_layers
-        self.decs = [Decoder(*a, name=f'dec_{i}') for i in range(n)]
+    def __init__(self, ps):
+        super().__init__(ps)
+        ps = self.ps
+        n = ps.dec_layers or ps.stack_layers
+        self.decs = [Decoder(ps, f'dec_{i}') for i in range(n)]
+        if ps.prox_bias:
+            self.prox_bias = self.proximity(ps.tgt_len)
 
-    def build(self, input_shape):
-        # if self.PS.prox_bias:
-        #     self.prox_bias = self.proximity(input_shape[0][1])
-        return super().build(input_shape)
-
-    def call(self, inputs, mask, **kw):
+    def __call__(self, inputs, mask):
         x, ctx, ab = inputs
         rb = self.attn_bias(mask[0])
-        PS = self.PS
-        if PS.causal_refl:
-            if PS.prepend_mode == 'prepend_inputs_full_attention':
+        ps = self.ps
+        if ps.causal_refl:
+            if ps.prepend_mode == 'prepend_inputs_full_attention':
                 y = tf.cumsum(tf.cumsum(rb, axis=1), axis=1)
                 y2 = tf.expand_dims(y, axis=1)
                 y = tf.greater(y2, tf.expand_dims(y, axis=2))
@@ -217,38 +204,36 @@ class DecodeStack(Stack):
                 b = -1e9 * (1.0 - b)
         if self.prox_bias:
             rb += self.prox_bias
-        y = self.pre.drop(x, **kw)
+        y = self.pre.drop(x)
         for d in self.decs:
-            y = d([y, rb, ctx, ab], **kw)
-        y = self.post([x, y], **kw)
+            y = d([y, rb, ctx, ab])
+        y = self.post([x, y])
         return y
 
 
-class Encoder(tf.Layer):
-    def __init__(self, PS, pre, post, **kw):
-        super().__init__(**kw)
-        a = (PS, pre, post)
-        self.refl = attns[PS.refl_type](*a)
-        self.ffn = ffns[PS.ffn_type](*a)
+class Encoder:
+    def __init__(self, ps, name):
+        self.name = name
+        self.refl = Attn(ps)
+        self.ffnet = FFNet(ps)
 
-    def call(self, inputs, **kw):
+    def __call__(self, inputs):
         x, rb = inputs
-        y = self.refl([x, x, rb], **kw)
-        y = self.ffn(y, **kw)
+        y = self.refl([x, x, rb])
+        y = self.ffnet(y)
         return y
 
 
-class Decoder(tf.Layer):
-    def __init__(self, PS, pre, post, **kw):
-        super().__init__(**kw)
-        a = (PS, pre, post)
-        self.refl = attns[PS.refl_type](*a)
-        self.attn = attns[PS.attn_type](*a)
-        self.ffn = ffns[PS.ffn_type](*a, conv_pad='LEFT')
+class Decoder:
+    def __init__(self, ps, name):
+        self.name = name
+        self.refl = Attn(ps)
+        self.attn = Attn(ps)
+        self.ffnet = FFNet(ps, conv_pad='LEFT')
 
-    def call(self, inputs, **kw):
+    def __call__(self, inputs):
         x, rb, ctx, ab = inputs
-        y = self.refl([x, x, rb], **kw)
-        y = self.attn([y, ctx, ab], **kw)
-        y = self.ffn(y, **kw)
+        y = self.refl([x, x, rb])
+        y = self.attn([y, ctx, ab])
+        y = self.ffnet(y)
         return y

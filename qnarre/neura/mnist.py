@@ -40,14 +40,14 @@ def dset_for(ps, kind):
 def model_for(ps, compiled=False):
     w, h = ps.img_width, ps.img_height
     ins = [
-        tf.Input(shape=(w * h), dtype='float32'),
-        tf.Input(shape=(w * h), dtype='float32'),
+        tf.Input(shape=(w * h, ), dtype='float32'),
+        tf.Input(shape=(w * h, ), dtype='float32'),
         tf.Input(shape=(1, ), dtype='int32'),
-        tf.Input(shape=(w * h), dtype='float32'),
+        tf.Input(shape=(w * h, ), dtype='float32'),
         tf.Input(shape=(1, ), dtype='int32'),
     ]
     outs = [L.Mnist(ps)(ins)]
-    m = tf.Model(inputs=ins, outputs=outs)
+    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
     if compiled:
         m.compile(
             optimizer=ps.optimizer,

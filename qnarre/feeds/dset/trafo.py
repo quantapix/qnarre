@@ -15,25 +15,25 @@
 
 from random import randint
 
-import qnarre.neura as Q
+from qnarre.neura import tf
 
 
-def dset(PS, _):
-    PS.update(PAD=0, UNK=1, BEG=2, END=3, vocab_size=20, tgt_len=PS.ctx_len)
-    t, sh = Q.int32, Q.TensorShape((PS.ctx_len, ))
-    return Q.Dataset.from_generator(
-        lambda: _generator(PS),
+def dset(ps, _):
+    ps.update(PAD=0, UNK=1, BEG=2, END=3, vocab_size=20, tgt_len=ps.ctx_len)
+    t, sh = tf.int32, tf.TensorShape((ps.ctx_len, ))
+    return tf.Dataset.from_generator(
+        lambda: _generator(ps),
         ((t, t, t), t),
         ((sh, sh, sh), sh),
     )
 
 
-def _generator(PS):
-    sl = PS.ctx_len
+def _generator(ps):
+    sl = ps.ctx_len
     for _ in range(10000):
         n = randint(1, sl - 2)
         c = randint(0, 9) + 10
-        s = [PS.BEG] + [c] * n + [PS.END] + [PS.PAD] * (sl - n - 2)
-        t = [PS.BEG] + [PS.UNK] * (sl - 1)
+        s = [ps.BEG] + [c] * n + [ps.END] + [ps.PAD] * (sl - n - 2)
+        t = [ps.BEG] + [ps.UNK] * (sl - 1)
         o = s[:n + 2] + t[n + 2:]
         yield (s, [0] * sl, t), o

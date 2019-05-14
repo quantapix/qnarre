@@ -15,9 +15,9 @@
 
 # from qnarre.neura.layers.bert import Bert
 # from qnarre.neura.layers.squad import Squad
-# from qnarre.neura.layers.trafo import Trafo
-# from qnarre.neura.layers.ffn import ffns, DenseDenseFFN
 from qnarre.neura.layers.attn import Attn
+from qnarre.neura.layers.ffnet import FFNet
+from qnarre.neura.layers.trafo import Trafo
 from qnarre.neura.layers.mnist import Mnist, Mnist_2, Mnist_3
 # from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
@@ -26,12 +26,14 @@ __all__ = (
     # Bert,
     # DenseDenseFFN,
     Attn,
+    FFNet,
     Mnist,
     Mnist_2,
     Mnist_3,
     PosEmbed,
     PosTiming,
     TokEmbed,
+    Trafo,
     TypEmbed,
 )
 """
@@ -39,6 +41,4 @@ __all__ = (
     PostProc,
     PreProc,
     Squad,
-    Trafo,
-    ffns,
 """

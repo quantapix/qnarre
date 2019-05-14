@@ -138,9 +138,9 @@ class PosTiming(base.Layer):
     def cfg_items(params):
         return dict(
             params.cfg_items(
-                'start',  # 0
-                'min_scale',  # 1.0
-                'max_scale',  # 1.0e4
+                'pos_start',
+                'pos_min',
+                'pos_max',
             ))
 
     def build(self, input_shape):
@@ -148,9 +148,9 @@ class PosTiming(base.Layer):
         _, tlen, h = input_shape
         assert h % 2 == 0
         n = h // 2
-        s = np.log(cfg.max_scale / cfg.min_scale) / max(n - 1, 1)
-        s = cfg.min_scale * tf.exp(tf.range(float(n)) * -s)
-        p = tf.range(float(tlen)) + cfg.start
+        s = np.log(cfg.pos_max / cfg.pos_min) / max(n - 1, 1)
+        s = cfg.pos_min * tf.exp(tf.range(float(n)) * -s)
+        p = tf.range(float(tlen)) + cfg.pos_start
         p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
         self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
         return super().build(input_shape)

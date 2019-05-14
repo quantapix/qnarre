@@ -16,72 +16,83 @@
 # https://arxiv.org/pdf/1607.06450.pdf
 # https://arxiv.org/pdf/1606.08415.pdf
 
-import qnarre.neura as Q
 import qnarre.neura.utils as U
 import qnarre.neura.layers as L
 
+from qnarre.neura import tf
 from qnarre.feeds.dset.trafo import dset as dset
+from qnarre.neura.session import session_for
 
 
-def dset_for(PS, kind):
-    ds = dset(PS, kind)
+def dset_for(ps, kind):
+    ds = dset(ps, kind)
     n = 1000
     ds = ds.take(n)
     if kind == 'train':
         ds = ds.shuffle(n)
-    ds = ds.batch(PS.batch_size)
+    ds = ds.batch(ps.batch_size)
     return ds
 
 
-def model_for(PS, full=False):
-    ctx = Q.Input(shape=(PS.ctx_len, ), dtype='int32')
-    typ = Q.Input(shape=(PS.ctx_len, ), dtype='int32')
-    tgt = Q.Input(shape=(PS.tgt_len, ), dtype='int32')
+def model_for(ps, compiled=False):
+    ctx = tf.Input(shape=(ps.ctx_len, ), dtype='int32')
+    typ = tf.Input(shape=(ps.ctx_len, ), dtype='int32')
+    tgt = tf.Input(shape=(ps.tgt_len, ), dtype='int32')
     ins = [ctx, typ, tgt]
-    y = L.Trafo(PS)(ins)
-    m = Q.Model(name='TrafoModel', inputs=ins, outputs=[y])
-    if full:
-        m.compile(optimizer=PS.optimizer, loss=PS.losses, metrics=[PS.metrics])
+    outs = [L.Trafo(ps)(ins)]
+    m = tf.Model(name='TrafoModel', inputs=ins, outputs=outs)
+    if compiled:
+        m.compile(
+            optimizer=ps.optimizer,
+            loss=ps.losses,
+            metrics=[ps.metrics],
+        )
     print(m.summary())
     return m
 
 
-params = dict(
-    attn_drop=None,
+_params = dict(
+    act_hidden='gelu',
     attn_heads=2,
-    attn_k_size=4,
-    attn_type=None,
-    attn_v_size=4,
     batch_size=4,
     beam_size=None,
+    brackets=None,
     causal_refl=False,
     ctx_len=16,
     dec_layers=None,
+    dim_attn=8,
+    dim_embed=None,
+    dim_hidden=16,
+    dim_attn_k=None,
+    dim_attn_v=None,
+    drop_attn=None,
+    drop_hidden=0.1,
+    emb_one_hot=None,
     enc_layers=None,
     ffn_act='gelu',
     ffn_drop=None,
     ffn_size=256,
     ffn_type=None,
-    hidden_act='gelu',
-    hidden_drop=0.1,
-    hidden_size=8,
     max_pos=None,
     norm_epsilon=1e-6,
     norm_type='layer',
+    num_heads=4,
+    num_toks=None,
     pos_embed='timing',
+    pos_max=1.0e4,
+    pos_min=1.0,
+    pos_start=0,
     post_cmd='dan',
     pre_cmd='n',
     prepost_bdims='',
     prepost_drop=None,
     prox_bias=True,
-    refl_type=None,
     stack_layers=2,
     tgt_len=None,
-    token_types=8,
-    vocab_size=None,
+    tok_types=8,
 )
 
-params.update(
+_params.update(
     data_dir='.data/trafo',
     log_dir='.model/trafo/logs',
     model_dir='.model/trafo',
@@ -90,32 +101,8 @@ params.update(
 
 
 def main(_):
-    PS = U.Params(params).init_comps()
-    dset = dset_for(PS, 'train')
-    model = model_for(PS)
-
-    def train_step(x, y):
-        with Q.GradientTape() as tape:
-            logits = model(x)
-            loss = PS.losses(y, logits)
-            acc = PS.metrics(y, logits)
-        grads = tape.gradient(loss, model.trainable_variables)
-        PS.optimizer.apply_gradients(zip(grads, model.trainable_variables))
-        return loss, acc
-
-    @Q.function
-    def train():
-        step, loss, acc = 0, 0.0, 0.0
-        for x, y in dset:
-            step += 1
-            loss, acc = train_step(x, y)
-            if Q.equal(step % 10, 0):
-                m = PS.metrics.result()
-                Q.print('Step:', step, ', loss:', loss, ', acc:', m)
-        return step, loss, acc
-
-    step, loss, acc = train()
-    print('Final step:', step, ', loss:', loss, ', acc:', PS.metrics.result())
+    ps = U.Params(_params).init_comps()
+    session_for(ps)(dset_for, model_for)
 
 
 if __name__ == '__main__':

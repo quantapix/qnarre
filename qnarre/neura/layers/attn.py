@@ -25,9 +25,9 @@ class Attn(base.Layer):
         return dict(
             params.cfg_items(
                 'dim_attn',
+                'dim_attn_k',
+                'dim_attn_v',
                 'dim_hidden',
-                'dim_k',
-                'dim_v',
                 'drop_attn',
                 'drop_hidden',
                 'num_heads',
@@ -48,10 +48,10 @@ class Attn(base.Layer):
         assert h == cfg.dim_hidden
         n = cfg.num_heads
         assert h % n == 0
-        k = cfg.dim_k or cfg.dim_attn or h
+        k = cfg.dim_attn_k or cfg.dim_attn or h
         assert k % n == 0
         self.scale = 1 / (k**0.5)
-        v = cfg.dim_v or k
+        v = cfg.dim_attn_v or k
         assert v % n == 0
         if k == v:
             self.qkv_w = self.add_weight('qkv_w', (h, n * k))

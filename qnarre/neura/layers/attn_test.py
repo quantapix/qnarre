@@ -20,9 +20,9 @@ from qnarre.neura import tf
 
 params = dict(
     dim_attn=8,
+    dim_attn_k=None,
+    dim_attn_v=None,
     dim_hidden=16,
-    dim_k=None,
-    dim_v=None,
     drop_attn=None,
     drop_hidden=0.1,
     num_heads=4,
