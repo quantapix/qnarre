@@ -55,7 +55,7 @@ root = dict(
     eval_only=False,
     ffn_act=None,
     hidden_act=None,
-    initer_stddev=0.02,
+    init_stddev=0.02,
     loss_from_logits=True,
     lr_constant=None,
     lr_schedule=None,
@@ -83,6 +83,11 @@ class Params:
     def hparams(self):
         return {}  # 'optimizer': self.optimizer}
 
+    def update(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+        return self
+
     def override(self, params, **kw):
         ps = root.copy()
         ps.update(**params)
@@ -96,17 +101,16 @@ class Params:
         self.update(**ps)
         return self
 
-    def update(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-        return self
+    def cfg_items(self, *keys):
+        for k in keys:
+            yield k, getattr(self, k)
 
     def init_comps(self):
         rr = None
         if self.regular_l1 or self.regular_l2:
             rr = tf.L1L2(self.regular_l1, self.regular_l2)
         self.update(
-            initializer=tf.TruncatedNormal(stddev=self.initer_stddev),
+            initializer=tf.TruncatedNormal(stddev=self.init_stddev),
             regularizer=rr,
             optimizer=self._optimizer(self.optimizer),
             losses=tf.SparseCategoricalCrossentropy(
@@ -137,13 +141,13 @@ class Params:
             n = name.lower()
             if n == 'adam':
                 return tf.Adam(learning_rate=self.adam_lr,
-                              beta_1=self.adam_beta1,
-                              beta_2=self.adam_beta2,
-                              epsilon=self.adam_epsilon)
+                               beta_1=self.adam_beta1,
+                               beta_2=self.adam_beta2,
+                               epsilon=self.adam_epsilon)
             if n == 'sgd':
                 return tf.SGD(learning_rate=self.sgd_lr,
-                             momentum=self.sgd_momentum,
-                             nesterov=self.sgd_nesterov)
+                              momentum=self.sgd_momentum,
+                              nesterov=self.sgd_nesterov)
             name = None
         return name
 

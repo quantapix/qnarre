@@ -14,50 +14,62 @@
 # =============================================================================
 
 from qnarre.neura import tf
+from qnarre.neura.layers import base
 
 
-class Attn(tf.Layer):
-    v_net = None
+class Attn(base.Layer):
+    pre = post = src_b = mem_b = v_w = None
 
-    def __init__(self, PS, owner=None, **kw):
-        super().__init__(**kw)
-        self.PS = PS
-        self.pre = owner.pre if owner else None
-        self.post = owner.post if owner else None
-        self.src_b = owner.src_b if owner else None
-        self.mem_b = owner.mem_b if owner else None
+    @staticmethod
+    def cfg_items(params):
+        return dict(
+            params.cfg_items(
+                'dim_attn',
+                'dim_hidden',
+                'dim_k',
+                'dim_v',
+                'drop_attn',
+                'drop_hidden',
+                'init_stddev',
+                'num_heads',
+            ))
+
+    def __init__(self, params, owner=None, **kw):
+        super().__init__(params, **kw)
         self.supports_masking = True
+        if owner:
+            self.pre = owner.pre
+            self.post = owner.post
+            self.src_b = owner.src_b
+            self.mem_b = owner.mem_b
 
     def build(self, input_shape):
         src = input_shape[0]
         h = src[2]
-        PS = self.PS
-        assert h == PS.dim_hidden
-        n = PS.num_heads
+        cfg = self.cfg
+        assert h == cfg.dim_hidden
+        n = cfg.num_heads
         assert h % n == 0
-        k = PS.dim_k or PS.dim_attn or h
+        k = cfg.dim_k or cfg.dim_attn or h
         assert k % n == 0
         self.scale = 1 / (k**0.5)
-        v = PS.dim_v or k
+        v = cfg.dim_v or k
         assert v % n == 0
-        kw = dict(kernel_initializer=PS.initializer, use_bias=False)
         if k == v:
-            self.qkv_net = tf.Dense(n * k, name='qkv_net', **kw)
+            self.qkv_w = self.add_weight('qkv_w', (h, n * k))
         else:
-            self.qk_net = tf.Dense(n * k, name='qk_net', **kw)
-            self.v_net = tf.Dense(n * v, name='v_net', **kw)
-        self.o_net = tf.Dense(h, name='out_net', **kw)
+            self.qk_w = self.add_weight('qk_w', (h, n * k))
+            self.v_w = self.add_weight('v_w', (h, n * v))
+        self.out_w = self.add_weight('out_w', (n * v, h))
         if len(input_shape) > 2 and input_shape[2]:
-            kw = dict(initializer=PS.initializer)
             if self.src_b is None:
-                self.src_b = self.add_weight('src_b', (n, k), **kw)
+                self.src_b = self.add_weight('src_b', (n, k))
             if self.mem_b is None:
-                self.mem_b = self.add_weight('mem_b', (n, k), **kw)
-        self.drop = tf.Dropout(PS.drop_attn or PS.drop_hidden)
+                self.mem_b = self.add_weight('mem_b', (n, k))
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs, **kw):
+    def call(self, inputs):
         src, bias, mem, ctx = inputs + [None] * (4 - len(inputs))
         slen = tf.shape(src)[1]
         ctx = src if ctx is None else ctx
@@ -65,13 +77,14 @@ class Attn(tf.Layer):
         y = [ctx, src] if mem is None else [mem, ctx, src]
         y = tf.concat(y, axis=1)
         if self.pre is not None:
-            y = self.pre([y], **kw)
-        if self.v_net is None:
-            y = self.qkv_net(y, **kw)
+            y = self.pre([y])
+        if self.v_w is None:
+            y = tf.einsum('bih,hk->bik', y, self.qkv_w)
             v = y[:, -clen - slen:-slen, :]
         else:
-            y = self.qk_net(y, **kw)
-            v = self.v_net(y[:, -clen - slen:-slen, :], **kw)
+            y = tf.einsum('bih,hk->bik', y, self.qk_w)
+            v = y[:, -clen - slen:-slen, :]
+            v = tf.einsum('bih,hv->biv', v, self.v_w)
         q = self.split_heads(y[:, -slen:, :])
         k = self.split_heads(y[:, -clen - slen:-slen, :])
         if mem is None:
@@ -84,16 +97,16 @@ class Attn(tf.Layer):
             m = tf.einsum('bnik,bnjk->bnij', q + b, m)
             y = y + self.shift(m)
         v = self.split_heads(v)
-        y = self.scores(y, bias, v, **kw)
+        y = self.scores(y, bias, v)
         y = self.join_heads(y)
-        y = self.o_net(y, **kw)
+        y = tf.einsum('biv,vh->bih', y, self.out_w)
         if self.post is not None:
-            y = self.post([src, y], **kw)
+            y = self.post([src, y])
         return y
 
     def split_heads(self, x):
         s = tf.int_shape(x)
-        n = self.PS.num_heads
+        n = self.cfg.num_heads
         y = tf.reshape(x, (-1, s[1], n, s[-1] // n))
         y = tf.transpose(y, perm=[0, 2, 1, 3])
         return y
@@ -118,6 +131,15 @@ class Attn(tf.Layer):
         if bias is not None:
             y = y + bias
         y = tf.softmax(y, **kw)
-        y = self.drop(y, **kw)
+        y = self.dropout(y)
         y = tf.einsum('bnij,bnjv->bniv', y, v)
         return y
+
+    def add_weight(self, name, shape):
+        init = tf.TruncatedNormal(stddev=self.cfg.init_stddev)
+        return super().add_weight(name, shape, initializer=init)
+
+    def dropout(self, x):
+        if tf.learning_phase():
+            return tf.dropout(x, self.cfg.drop_attn or self.cfg.drop_hidden)
+        return x

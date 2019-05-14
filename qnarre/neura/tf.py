@@ -24,7 +24,6 @@ from tensorflow.python.framework import constant_op
 ks = tf.keras
 K = ks.backend
 
-embedding_lookup = tf.nn.embedding_lookup
 Adam = ks.optimizers.Adam
 BatchNormalization = ks.layers.BatchNormalization
 Conv1D = ks.layers.Conv1D
@@ -77,6 +76,9 @@ cumprod = math_ops.cumprod
 cumsum = math_ops.cumsum
 decode_raw = tf.io.decode_raw
 dot = K.dot
+dropout = tf.nn.dropout
+einsum = tf.einsum
+embedding_lookup = tf.nn.embedding_lookup
 equal = math_ops.equal
 exp = math_ops.exp
 expand_dims = array_ops.expand_dims
@@ -95,6 +97,7 @@ int32 = tf.int32
 is_built_with_cuda = tf.test.is_built_with_cuda
 is_nan = math_ops.is_nan
 l2_normalize = tf.nn.l2_normalize
+learning_phase = K.learning_phase
 less = math_ops.less
 less_equal = math_ops.less_equal
 log1p = math_ops.log1p
