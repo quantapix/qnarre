@@ -19,26 +19,25 @@ from qnarre.neura.layers.attn import Attn
 from qnarre.neura.layers.ffnet import FFNet
 from qnarre.neura.layers.trafo import Trafo
 from qnarre.neura.layers.mnist import Mnist, Mnist_2, Mnist_3
-# from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
+from qnarre.neura.layers.norm import LayerNorm, PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 __all__ = (
-    # Bert,
-    # DenseDenseFFN,
     Attn,
     FFNet,
+    LayerNorm,
     Mnist,
     Mnist_2,
     Mnist_3,
     PosEmbed,
     PosTiming,
+    PostProc,
+    PreProc,
     TokEmbed,
     Trafo,
     TypEmbed,
 )
 """
-    LayerNorm,
-    PostProc,
-    PreProc,
+    Bert,
     Squad,
 """

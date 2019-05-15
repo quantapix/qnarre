@@ -21,9 +21,9 @@ class Attn(base.Layer):
     v_w = None
 
     @staticmethod
-    def cfg_items(params):
+    def cfg_items(ps):
         return dict(
-            params.cfg_items(
+            ps.cfg_items(
                 'dim_attn',
                 'dim_attn_k',
                 'dim_attn_v',

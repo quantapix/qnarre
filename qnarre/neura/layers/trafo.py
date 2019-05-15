@@ -179,8 +179,8 @@ class DecStack(Stack):
         ps = self.ps
         n = ps.layers_dec or ps.layers_stack
         self.decs = [Decoder(f'dec_{i}', owner) for i in range(n)]
-        if ps.prox_bias:
-            self.prox_bias = self.proximity(ps.len_tgt)
+        if ps.bias_prox:
+            self.prox_b = self.proximity(ps.len_tgt)
 
     def __call__(self, inputs, mask):
         x, ctx, ab = inputs
@@ -197,8 +197,8 @@ class DecStack(Stack):
                 sh = (1, 1, ln, ln)
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 b = -1e9 * (1.0 - b)
-        if self.prox_bias:
-            rb += self.prox_bias
+        if self.bias_prox:
+            rb += self.prox_b
         y = self.pre.drop(x)
         for d in self.decs:
             y = d([y, rb, ctx, ab])

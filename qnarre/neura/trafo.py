@@ -51,14 +51,17 @@ def model_for(ps, compiled=False):
     return m
 
 
-_params = dict(
+params = dict(
     act_ffnet='gelu',
     act_hidden='gelu',
     batch_size=4,
+    bdims_prepost='',
     beam_size=None,
     bias_prox=True,
     brackets=None,
     causal_refl=False,
+    cmd_post='dan',
+    cmd_pre='n',
     dim_attn=8,
     dim_attn_k=None,
     dim_attn_v=None,
@@ -68,6 +71,7 @@ _params = dict(
     drop_attn=None,
     drop_ffnet=None,
     drop_hidden=0.1,
+    drop_prepost=None,
     emb_one_hot=None,
     layers_dec=None,
     layers_enc=None,
@@ -84,14 +88,10 @@ _params = dict(
     pos_max=1.0e4,
     pos_min=1.0,
     pos_start=0,
-    post_cmd='dan',
-    pre_cmd='n',
-    prepost_bdims='',
-    prepost_drop=None,
     tok_types=8,
 )
 
-_params.update(
+params.update(
     data_dir='.data/trafo',
     log_dir='.model/trafo/logs',
     model_dir='.model/trafo',
@@ -100,7 +100,7 @@ _params.update(
 
 
 def main(_):
-    ps = U.Params(_params).init_comps()
+    ps = U.Params(params).init_comps()
     session_for(ps)(dset_for, model_for)
 
 

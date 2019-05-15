@@ -61,7 +61,7 @@ class TokEmbed(base.Layer):
     def call(self, inputs, **_):
         cfg = self.cfg
         x = inputs
-        y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidde, ))
+        y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidden, ))
         bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
         for i, e in enumerate(bs):
