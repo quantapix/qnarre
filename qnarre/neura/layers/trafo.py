@@ -83,26 +83,26 @@ class Trafo:
             return tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
     """
 
-    def embed(self, tok, typ=None):
-        y = self.tok_emb(tok)
+    def embed(self, src, typ=None):
+        y, m = self.tok_emb(src)
         if typ is not None and self.typ_emb:
-            y = self.typ_emb([y, typ])
+            y = self.typ_emb([y, typ, m])
         if self.pos_emb:
-            y = self.pos_emb(y)
+            y = self.pos_emb([y, m])
         y = self.norm(y)
         y = self.dropout(y)
-        return y
+        return y, m
 
     def encode(self, src, typ):
         ctx, bias = None, None
         if src is not None:
-            y = self.embed(src, typ)
-            ctx, bias = self.enc_stack(y)
+            y, m = self.embed(src, typ)
+            ctx, bias = self.enc_stack([y, m])
         return ctx, bias
 
     def decode(self, tgt, ctx, bias):
-        y = self.embed(tgt)
-        y = self.dec_stack([y, ctx, bias])
+        y, m = self.embed(tgt)
+        y = self.dec_stack([y, m, ctx, bias])
         return y
 
     def to_logp(self, tgt, ctx, bias, i=None):
@@ -161,12 +161,12 @@ class EncStack(Stack):
         if ps.bias_prox:
             self.prox_b = self.proximity(ps.len_src)
 
-    def __call__(self, inputs, mask):
-        x = inputs
-        ab = rb = self.attn_bias(mask)
+    def __call__(self, inputs):
+        x, m = inputs
+        ab = rb = self.attn_bias(m)
         if self.prox_b is not None:
             rb += self.prox_b
-        y = self.pre.drop(x)
+        y = self.pre.dropout(x)
         for e in self.encs:
             y = e([y, rb])
         y = self.post([x, y])
@@ -182,9 +182,9 @@ class DecStack(Stack):
         if ps.bias_prox:
             self.prox_b = self.proximity(ps.len_tgt)
 
-    def __call__(self, inputs, mask):
-        x, ctx, ab = inputs
-        rb = self.attn_bias(mask[0])
+    def __call__(self, inputs):
+        x, m, ctx, ab = inputs
+        rb = self.attn_bias(m)
         ps = self.ps
         if ps.causal_refl:
             if ps.prepend_mode == 'prepend_inputs_full_attention':
@@ -199,7 +199,7 @@ class DecStack(Stack):
                 b = -1e9 * (1.0 - b)
         if self.bias_prox:
             rb += self.prox_b
-        y = self.pre.drop(x)
+        y = self.pre.dropout(x)
         for d in self.decs:
             y = d([y, rb, ctx, ab])
         y = self.post([x, y])

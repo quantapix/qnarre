@@ -20,8 +20,8 @@ import qnarre.neura.utils as U
 import qnarre.neura.layers as L
 
 from qnarre.neura import tf
-from qnarre.feeds.dset.trafo import dset as dset
 from qnarre.neura.session import session_for
+from qnarre.feeds.dset.trafo import dset as dset
 
 
 def dset_for(ps, kind):
@@ -35,10 +35,11 @@ def dset_for(ps, kind):
 
 
 def model_for(ps, compiled=False):
-    ctx = tf.Input(shape=(ps.len_ctx, ), dtype='int32')
-    typ = tf.Input(shape=(ps.len_ctx, ), dtype='int32')
-    tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    ins = [ctx, typ, tgt]
+    ins = [
+        tf.Input(shape=(ps.len_src, ), dtype='int32'),
+        tf.Input(shape=(ps.len_src, ), dtype='int32'),
+        tf.Input(shape=(ps.len_tgt, ), dtype='int32'),
+    ]
     outs = [L.Trafo(ps)(ins)]
     m = tf.Model(name='TrafoModel', inputs=ins, outputs=outs)
     if compiled:
@@ -76,8 +77,8 @@ params = dict(
     layers_dec=None,
     layers_enc=None,
     layers_stack=2,
-    len_ctx=16,
-    len_src=8,
+    len_ctx=None,
+    len_src=16,
     len_tgt=None,
     max_pos=None,
     norm_epsilon=1e-6,

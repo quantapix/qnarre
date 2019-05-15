@@ -33,7 +33,7 @@ class Layer(tf.Layer):
 
     def __init__(self, params, **kw):
         super().__init__(**kw)
-        self.supports_masking = True
+        # self.supports_masking = True
         if isinstance(params, Config):
             self.cfg = params
         else:

@@ -111,6 +111,7 @@ maximum = math_ops.maximum
 minimum = math_ops.minimum
 moments = tf.nn.moments
 multinomial = tfp.distributions.multinomial
+not_equal = math_ops.not_equal
 one_hot = array_ops.one_hot
 ones = array_ops.ones
 ones_like = array_ops.ones_like

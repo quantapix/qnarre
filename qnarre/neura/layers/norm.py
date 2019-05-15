@@ -22,7 +22,7 @@ def _layer_norm(self, inputs):
     m = tf.reduce_mean(x, axis=-1, keepdims=True)
     v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
     y = (x - m) / tf.sqrt(v + self.cfg.norm_epsilon)
-    y = self.gain * y + self.bias
+    y = y * self.norm_w + self.norm_b
     return y
 
 
@@ -33,8 +33,8 @@ class LayerNorm(base.Layer):
 
     def build(self, input_shape):
         s = input_shape[-1]
-        self.gain = self.add_weight(shape=s, initializer='ones')
-        self.bias = self.add_weight(shape=s, initializer='zeros')
+        self.norm_w = self.add_weight('norm_w', s, initializer='ones')
+        self.norm_b = self.add_weight('norm_b', s, initializer='zeros')
         return super().build(input_shape)
 
     def call(self, inputs):
@@ -66,8 +66,8 @@ class LayerProc(base.Layer):
 
     def build(self, input_shape):
         s = input_shape[-1]
-        self.gain = self.add_weight(shape=s, initializer='ones')
-        self.bias = self.add_weight(shape=s, initializer='zeros')
+        self.norm_w = self.add_weight('norm_w', s, initializer='ones')
+        self.norm_b = self.add_weight('norm_b', s, initializer='zeros')
         # self.gamma = self.add_weight(shape=(), initializer='zeros')
         return super().build(input_shape)
 
@@ -125,14 +125,14 @@ class LayerProc(base.Layer):
 
 
 class PreProc(LayerProc):
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
+    def __init__(self, ps, **kw):
+        super().__init__(ps, **kw)
         self.cmd = self.cfg.cmd_pre
         assert 'a' not in self.cmd
         assert 'z' not in self.cmd
 
 
 class PostProc(LayerProc):
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
+    def __init__(self, ps, **kw):
+        super().__init__(ps, **kw)
         self.cmd = self.cfg.cmd_post

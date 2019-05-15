@@ -32,7 +32,7 @@ class TokEmbed(base.Layer):
             ))
 
     def __init__(self, ps, **kw):
-        super().__init__(ps, **kw)
+        super().__init__(ps, dtype=tf.floatx(), **kw)
         self.tbl_ws = []
         self.out_ws = []
 
@@ -52,13 +52,13 @@ class TokEmbed(base.Layer):
         return super().build(input_shape)
 
     def compute_output_shape(self, input_shape):
-        return input_shape + (self.cfg.dim_hidden, )
+        return input_shape + (self.cfg.dim_hidden, ), input_shape
 
-    def compute_mask(self, inputs, mask=None):
-        return tf.not_equal(inputs, 0)
+    # def compute_mask(self, inputs, mask=None):
+    #     return tf.not_equal(inputs, 0)
 
     @tf.function
-    def call(self, inputs, **_):
+    def call(self, inputs):
         cfg = self.cfg
         x = inputs
         y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidden, ))
@@ -68,8 +68,8 @@ class TokEmbed(base.Layer):
             m = (x >= (b or 1)) & (x < e)
             u = self.lookup(tf.boolean_mask(x, m) - b, i)
             y += tf.tensor_scatter_nd_update(y, tf.where(m), u)
-        y *= tf.shape(y)[-1]**0.5
-        return y
+        y *= tf.int_shape(y)[-1]**0.5
+        return y, m
 
     def lookup(self, x, i):
         t = self.tbl_ws[i]
@@ -87,22 +87,26 @@ class TokEmbed(base.Layer):
 class TypEmbed(base.Layer):
     @staticmethod
     def cfg_items(ps):
-        return dict(ps.cfg_items('tok_types', ))
+        return dict(ps.cfg_items(
+            'dim_hidden',
+            'tok_types',
+        ))
+
+    def __init__(self, ps, **kw):
+        super().__init__(ps, dtype=tf.floatx(), **kw)
 
     def build(self, input_shape):
         cfg = self.cfg
-        src, typ = input_shape
-        _, tlen, h = src
-        assert tlen == typ[1]
-        self.typ_w = self.add_weight('typ_w', (cfg.tok_types, h))
+        self.typ_w = self.add_weight('typ_w', (cfg.tok_types, cfg.dim_hidden))
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs, mask):
-        src, typ = inputs
-        y = typ * tf.cast(mask[0], typ.dtype)
+    def call(self, inputs):
+        tgt, typ, m = inputs
+        m = tf.boolean_mask(typ, m)
+        y = typ * tf.cast(m, typ.dtype)
         y = tf.one_hot(y, self.cfg.tok_types)
-        return src + tf.einsum('bihj,h->bih', y, self.typ_w)
+        return tgt + tf.einsum('bie,eh->bih', y, self.typ_w)
 
 
 class PosEmbed(base.Layer):
@@ -114,19 +118,23 @@ class PosEmbed(base.Layer):
             'tgt_len',
         ))
 
+    def __init__(self, ps, **kw):
+        super().__init__(ps, dtype=tf.floatx(), **kw)
+
     def build(self, input_shape):
         cfg = self.cfg
-        _, tlen, h = input_shape
         plen = max(cfg.pos_max or 0, cfg.ctx_len, cfg.tgt_len)
+        _, tlen, h = input_shape[0]
         assert tlen <= plen
         self.pos_b = self.add_weight('pos_b', (plen, h))[:tlen, :]
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs, mask):
-        y = tf.cast(mask, self.pos_b.dtype)
-        y = tf.einsum('bihj,h->bih', self.pos_b, y)
-        return inputs + y
+    def call(self, inputs):
+        tgt, m = inputs
+        y = tf.cast(m, self.pos_b.dtype)
+        y = tf.einsum('bie,eh->bih', self.pos_b, y)
+        return tgt + y
 
 
 class PosTiming(base.Layer):
@@ -138,9 +146,12 @@ class PosTiming(base.Layer):
             'pos_max',
         ))
 
+    def __init__(self, ps, **kw):
+        super().__init__(ps, dtype=tf.floatx(), **kw)
+
     def build(self, input_shape):
         cfg = self.cfg
-        _, tlen, h = input_shape
+        _, tlen, h = input_shape[0]
         assert h % 2 == 0
         n = h // 2
         s = np.log(cfg.pos_max / cfg.pos_min) / max(n - 1, 1)
@@ -151,7 +162,7 @@ class PosTiming(base.Layer):
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs, mask):
-        y = tf.cast(mask, self.pos_b.dtype)
-        y = tf.einsum('bihj,h->bih', self.pos_b, y)
-        return inputs + y
+    def call(self, inputs):
+        tgt, m = inputs
+        y = tf.cast(m, self.pos_b.dtype)
+        return tgt + (self.pos_b * y)

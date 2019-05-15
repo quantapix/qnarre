@@ -19,8 +19,9 @@ from qnarre.neura import tf
 
 
 def dset(ps, _):
-    ps.update(PAD=0, UNK=1, BEG=2, END=3, num_toks=20, len_tgt=ps.len_ctx)
-    t, sh = tf.int32, tf.TensorShape((ps.len_ctx, ))
+    ps.update(PAD=0, UNK=1, BEG=2, END=3, num_toks=20)
+    ps.update(len_tgt=ps.len_src)
+    t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
     return tf.Dataset.from_generator(
         lambda: _generator(ps),
         ((t, t, t), t),
@@ -29,7 +30,7 @@ def dset(ps, _):
 
 
 def _generator(ps):
-    sl = ps.len_ctx
+    sl = ps.len_src
     for _ in range(10000):
         n = randint(1, sl - 2)
         c = randint(0, 9) + 10
