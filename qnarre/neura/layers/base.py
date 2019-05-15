@@ -31,21 +31,24 @@ class Layer(tf.Layer):
     def from_config(cls, cfg):
         return cls(Config(**cfg))
 
-    def __init__(self, params, **kw):
+    def __init__(self, ps, **kw):
         super().__init__(**kw)
-        # self.supports_masking = True
-        if isinstance(params, Config):
-            self.cfg = params
+        self.supports_masking = True
+        if isinstance(ps, Config):
+            self.cfg = ps
         else:
-            self.cfg = Config(**self.cfg_items(params))
+            self.cfg = Config(**self.cfg_items(ps))
 
-    def cfg_items(self, params):
+    def cfg_items(self, ps):
         return {}
 
     def get_config(self):
         s = super().get_config().items()
         c = self.cfg.items()
         return dict(list(s) + list(c))
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
     def add_weight(self, name, shape, **kw):
         cfg = self.cfg

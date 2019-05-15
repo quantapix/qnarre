@@ -12,69 +12,97 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# pytest -s qnarre/neura/layers/embed_test.py
+
+import numpy as np
+
+from tensorflow.python.framework import test_util as tf_test_util
+from tensorflow.python.keras import keras_parameterized
+from tensorflow.python.keras import testing_utils
+from tensorflow.python.platform import test
+from tensorflow.python.training import adagrad
 
 import qnarre.neura.utils as U
-import qnarre.neura.layers as L
 
 from qnarre.neura import tf
+from qnarre.neura.layers.embed import TokEmbed
 
 params = dict(
-    num_toks=None,
+    PAD=0,
     brackets=None,
-    dim_hidden=16,
-    dim_embed=None,
-    initializer='uniform',
-    emb_one_hot=True,
-
-    dim_attn=8,
-    dim_k=None,
-    dim_v=None,
-    drop_attn=None,
-    drop_hidden=0.1,
-    num_heads=4,
+    dim_embed=4,
+    dim_hidden=8,
+    emb_one_hot=None,
+    num_toks=16,
+    num_types=4,
+    len_src=3,
+    len_tgt=3,
+    pos_max_len=None,
+    pos_max=1.0e4,
+    pos_min=1.0,
+    pos_start=0,
 )
 
-PS = U.Params(params).init_comps()
+ps = U.Params(params).init_comps()
 
 
-def test_owner_none():
-    a = L.Attn(PS)
-    a.build([(4, 10, 16)])
-    src = tf.constant([0.] * (4 * 10 * 16), shape=(4, 10, 16))
-    a.call([src])
-    bias = tf.constant([0.] * (4 * 10), shape=(4, 10))
-    bias = tf.expand_dims(tf.expand_dims(bias, axis=1), axis=3)
-    a.call([src, bias])
-    ctx = tf.constant([0.] * (4 * 15 * 16), shape=(4, 15, 16))
-    a.call([src, bias, None, ctx])
+def test_tokembed():
+    e = TokEmbed(ps)
+    e.build((1, 5))
+    src = tf.constant([1, 2, 0, 3, 0], shape=(1, 5))
+    e.call(src)
+    ps.emb_one_hot = True
+    e = TokEmbed(ps)
+    e.build((1, 5))
+    e.call(src)
 
 
-class Owner:
-    def __init__(self):
-        self.pre = None
-        self.post = None
-        i = tf.constant([0.] * (4 * 10), shape=(4, 10))
-        i = tf.expand_dims(tf.expand_dims(i, axis=1), axis=3)
-        self.src_bias = tf.Variable(initial_value=i)
-        i = tf.constant([0.] * (4 * 10), shape=(4, 10))
-        i = tf.expand_dims(tf.expand_dims(i, axis=1), axis=3)
-        self.mem_bias = tf.Variable(initial_value=i)
+def test_w_grad():
+    e = TokEmbed(ps)
+    e.build((None, 3))
+    ins = tf.constant([[0, 1, 0]], dtype='int32')
+    with tf.GradientTape() as tape:
+        out = e(ins)
+    print('===', out, e.weights)
+    gs = tape.gradient(out, e.weights)
+    opt = adagrad.AdagradOptimizer(0.1)
+    opt.apply_gradients(zip(gs, e.weights))
+    print('###', len(gs), 1)
+
+"""
+class EmbedTest(keras_parameterized.TestCase):
+    @keras_parameterized.run_all_keras_modes
+    def test_embedding(self):
+        if tf_test_util.is_gpu_available():
+            self.skipTest('Only test embedding on CPU.')
+        testing_utils.layer_test(TokEmbed,
+                                 kwargs={'ps': ps},
+                                 input_shape=(1, 3),
+                                 input_dtype='int32',
+                                 expected_output_dtype='float32')
+
+    @keras_parameterized.run_all_keras_modes
+    def test_correctness(self):
+        lay = TokEmbed(ps)
+        mod = tf.Sequential([lay])
+        lay.set_weights([np.array([[1, 1], [2, 2]])])
+        mod.run_eagerly = testing_utils.should_run_eagerly()
+        outputs = mod.predict(np.array([[0, 1, 0]], dtype='int32'))
+        self.assertAllClose(outputs, [[[1, 1], [2, 2], [1, 1]]])
+
+    @tf_test_util.run_in_graph_and_eager_modes
+    def test_eager_gpu_cpu(self):
+        lay = TokEmbed(ps)
+        lay.build((None, 2))
+        ins = tf.constant([[0, 1, 0]], dtype='int32')
+        with tf.GradientTape() as tape:
+            out = lay(ins)
+        gs = tape.gradient(out, lay.weights)
+        opt = adagrad.AdagradOptimizer(0.1)
+        opt.apply_gradients(zip(gs, lay.weights))
+        self.assertAllEqual(len(gs), 1)
 
 
-def test_with_owner():
-    a = L.Attn(PS, owner=Owner())
-    a.build([(4, 10, 16), (), (4, 18, 16), ()])
-    src = tf.constant([0.] * (4 * 10 * 16), shape=(4, 10, 16))
-    bias = tf.constant([0.] * (4 * 10), shape=(4, 10))
-    bias = tf.expand_dims(tf.expand_dims(bias, axis=1), axis=3)
-    mem = tf.constant([0.] * (4 * 15 * 16), shape=(4, 15, 16))
-    ctx = tf.constant([0.] * (4 * 15 * 16), shape=(4, 15, 16))
-    a.call([src, bias, mem, ctx])
-
-
-def test_shift():
-    a = L.Attn(PS, owner=Owner())
-    x = tf.constant([1, 2, 3, 4, 5, 6], shape=(1, 1, 2, 3))
-    tf.print(x)
-    x = a.shift(x)
-    tf.print(x)
+if __name__ == '__main__':
+    test.main()
+"""

@@ -41,6 +41,7 @@ L1L2 = ks.regularizers.L1L2
 Layer = ks.layers.Layer
 LearningRateSchedule = ks.optimizers.schedules.LearningRateSchedule
 Model = ks.Model
+Sequential = ks.Sequential
 ModelCheckpoint = ks.callbacks.ModelCheckpoint
 Relu = ks.activations.relu
 Reshape = ks.layers.Reshape

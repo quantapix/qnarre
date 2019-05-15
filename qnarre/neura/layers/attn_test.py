@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# pytest -s qnarre/neura/layers/attn_test.py
 
 import qnarre.neura.utils as U
 import qnarre.neura.layers as L

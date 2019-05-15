@@ -19,11 +19,17 @@ from qnarre.neura import tf
 from qnarre.neura.layers import base
 
 
-class TokEmbed(base.Layer):
+class Layer(base.Layer):
+    def add_weight(self, *pa, **kw):
+        return super().add_weight(*pa, dtype=tf.floatx(), **kw)
+
+
+class TokEmbed(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(
             ps.cfg_items(
+                'PAD',
                 'brackets',
                 'dim_embed',
                 'dim_hidden',
@@ -32,7 +38,8 @@ class TokEmbed(base.Layer):
             ))
 
     def __init__(self, ps, **kw):
-        super().__init__(ps, dtype=tf.floatx(), **kw)
+        super().__init__(ps, **kw)
+        self._compute_output_and_mask_jointly = True
         self.tbl_ws = []
         self.out_ws = []
 
@@ -51,16 +58,17 @@ class TokEmbed(base.Layer):
         self.one_hot = cfg.emb_one_hot
         return super().build(input_shape)
 
-    def compute_output_shape(self, input_shape):
-        return input_shape + (self.cfg.dim_hidden, ), input_shape
+    def compute_mask(self, inputs, mask=None):
+        return tf.not_equal(inputs, 0)
 
-    # def compute_mask(self, inputs, mask=None):
-    #     return tf.not_equal(inputs, 0)
+    def compute_output_shape(self, input_shape):
+        s = tf.TensorShape((self.cfg.dim_hidden, ))
+        return input_shape.concatenate(s)
 
     @tf.function
     def call(self, inputs):
         cfg = self.cfg
-        x = inputs
+        x, mask = inputs, tf.not_equal(inputs, cfg.PAD)
         y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidden, ))
         bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
@@ -69,100 +77,94 @@ class TokEmbed(base.Layer):
             u = self.lookup(tf.boolean_mask(x, m) - b, i)
             y += tf.tensor_scatter_nd_update(y, tf.where(m), u)
         y *= tf.int_shape(y)[-1]**0.5
-        return y, m
+        y._keras_mask = mask
+        return y
 
     def lookup(self, x, i):
         t = self.tbl_ws[i]
         if self.one_hot:
             y = tf.one_hot(x, tf.shape(t)[0], axis=-1)
-            y = tf.einsum('ne,bin->bie', t, y)
+            y = tf.einsum('ne,in->ie', t, y)
         else:
             y = tf.embedding_lookup(t, x)
         o = self.out_ws[i]
         if o is not None:
-            y = tf.einsum('bie,eh->bih', y, o)
+            y = tf.einsum('ie,eh->ih', y, o)
         return y
 
 
-class TypEmbed(base.Layer):
+class TypEmbed(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(ps.cfg_items(
             'dim_hidden',
-            'tok_types',
+            'num_types',
         ))
-
-    def __init__(self, ps, **kw):
-        super().__init__(ps, dtype=tf.floatx(), **kw)
 
     def build(self, input_shape):
         cfg = self.cfg
-        self.typ_w = self.add_weight('typ_w', (cfg.tok_types, cfg.dim_hidden))
+        self.typ_w = self.add_weight('typ_w', (cfg.num_types, cfg.dim_hidden))
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs):
-        tgt, typ, m = inputs
-        m = tf.boolean_mask(typ, m)
-        y = typ * tf.cast(m, typ.dtype)
-        y = tf.one_hot(y, self.cfg.tok_types)
-        return tgt + tf.einsum('bie,eh->bih', y, self.typ_w)
+    def call(self, inputs, mask=None):
+        x, typ = inputs
+        y = typ * tf.cast(mask, typ.dtype)
+        y = tf.one_hot(y, self.cfg.num_types)
+        return x + tf.einsum('bie,eh->bih', y, self.typ_w)
 
 
-class PosEmbed(base.Layer):
+class PosEmbed(Layer):
     @staticmethod
     def cfg_items(ps):
-        return dict(ps.cfg_items(
-            'pos_max',
-            'ctx_len',
-            'tgt_len',
-        ))
-
-    def __init__(self, ps, **kw):
-        super().__init__(ps, dtype=tf.floatx(), **kw)
+        return dict(
+            ps.cfg_items(
+                'dim_hidden',
+                'len_src',
+                'len_tgt',
+                'pos_max_len',
+            ))
 
     def build(self, input_shape):
         cfg = self.cfg
-        plen = max(cfg.pos_max or 0, cfg.ctx_len, cfg.tgt_len)
-        _, tlen, h = input_shape[0]
-        assert tlen <= plen
-        self.pos_b = self.add_weight('pos_b', (plen, h))[:tlen, :]
+        p = max(cfg.pos_max_len or 0, cfg.len_src, cfg.len_tgt)
+        self.pos_b = self.add_weight('pos_b', (p, cfg.dim_hidden))
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs):
-        tgt, m = inputs
-        y = tf.cast(m, self.pos_b.dtype)
-        y = tf.einsum('bie,eh->bih', self.pos_b, y)
-        return tgt + y
+    def call(self, inputs, mask=None):
+        x = inputs
+        y = self.pos_b[:tf.shape[1], :]
+        y *= tf.cast(mask, self.pos_b.dtype)
+        return x + y
 
 
-class PosTiming(base.Layer):
+class PosTiming(Layer):
     @staticmethod
     def cfg_items(ps):
-        return dict(ps.cfg_items(
-            'pos_start',
-            'pos_min',
-            'pos_max',
-        ))
-
-    def __init__(self, ps, **kw):
-        super().__init__(ps, dtype=tf.floatx(), **kw)
+        return dict(
+            ps.cfg_items(
+                'dim_hidden',
+                'pos_max',
+                'pos_min',
+                'pos_start',
+            ))
 
     def build(self, input_shape):
         cfg = self.cfg
-        _, tlen, h = input_shape[0]
+        h = cfg.dim_hidden
         assert h % 2 == 0
         n = h // 2
         s = np.log(cfg.pos_max / cfg.pos_min) / max(n - 1, 1)
-        s = cfg.pos_min * tf.exp(tf.range(float(n)) * -s)
-        p = tf.range(float(tlen)) + cfg.pos_start
+        s = tf.range(n, dtype=tf.floatx()) * -s
+        s = tf.exp(s) * cfg.pos_min
+        p = tf.range(input_shape[1], dtype=tf.floatx()) + cfg.pos_start
         p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
         self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs):
-        tgt, m = inputs
-        y = tf.cast(m, self.pos_b.dtype)
-        return tgt + (self.pos_b * y)
+    def call(self, inputs, mask=None):
+        x = inputs
+        y = self.pos_b * tf.cast(mask, self.pos_b.dtype)
+        return x + y
