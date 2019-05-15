@@ -26,7 +26,7 @@ from qnarre.neura.layers.ffnet import FFNet
 
 
 class Trafo:
-    typ_emb, pos_embed, beam = None, None, None
+    typ_emb = pos_emb = src_b = mem_b = beam = None
 
     def __init__(self, ps):
         self.ps = ps
@@ -36,13 +36,13 @@ class Trafo:
         if ps.pos_embed:
             p = PosEmbed(ps) if ps.pos_embed == 'embed' else None
             p = PosTiming(ps) if ps.pos_embed == 'timing' else p
-            self.pos_embed = p
+            self.pos_emb = p
         self.norm = LayerNorm(ps)
-        self.drop = tf.Dropout(ps.drop_hidden)
+        self.dropout = tf.Dropout(ps.drop_hidden)
         self.pre = PreProc(ps)
         self.post = PostProc(ps)
-        self.enc_stack = EncStack(ps, self.pre, self.post)
-        self.dec_stack = DecodeStack(ps, self.pre, self.post)
+        self.enc_stack = EncStack(self)
+        self.dec_stack = DecStack(self)
         self.logits = tf.Dense(ps.num_toks, activation=None)
         if ps.beam_size:
             self.beam = Beam(ps, lambda *a, **kw: self.to_logp(*a, **kw))
@@ -83,34 +83,29 @@ class Trafo:
             return tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
     """
 
-    def get_config(self):
-        c = super().get_config()
-        c['ps'] = self.ps
-        return c
-
-    def embed(self, tok, typ=None, **kw):
-        y = self.tok_emb(tok, **kw)
+    def embed(self, tok, typ=None):
+        y = self.tok_emb(tok)
         if typ is not None and self.typ_emb:
-            y = self.typ_emb([y, typ], **kw)
-        if self.pos_embed:
-            y = self.pos_embed(y, **kw)
-        y = self.norm(y, **kw)
-        y = self.drop(y, **kw)
+            y = self.typ_emb([y, typ])
+        if self.pos_emb:
+            y = self.pos_emb(y)
+        y = self.norm(y)
+        y = self.dropout(y)
         return y
 
-    def encode(self, src, typ, **kw):
+    def encode(self, src, typ):
         ctx, bias = None, None
         if src is not None:
-            y = self.embed(src, typ, **kw)
-            ctx, bias = self.enc_stack(y, **kw)
+            y = self.embed(src, typ)
+            ctx, bias = self.enc_stack(y)
         return ctx, bias
 
-    def decode(self, tgt, ctx, bias, **kw):
-        y = self.embed(tgt, **kw)
-        y = self.dec_stack([y, ctx, bias], **kw)
+    def decode(self, tgt, ctx, bias):
+        y = self.embed(tgt)
+        y = self.dec_stack([y, ctx, bias])
         return y
 
-    def to_logp(self, tgt, ctx, bias, i=None, **kw):
+    def to_logp(self, tgt, ctx, bias, i=None):
         ps = self.ps
         unk = tf.equal(tgt, ps.UNK)
         prior = tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
@@ -120,12 +115,12 @@ class Trafo:
         if tf.reduce_all(unk) is True:
             logi = prior
         else:
-            y = self.decode(tgt, ctx, bias, **kw)
+            y = self.decode(tgt, ctx, bias)
             if i is not None:
                 y = y[:, i, :]
             sh = tf.int_shape(y)
             y = tf.reshape(y, (-1, sh[-1]))
-            y = self.logits(y, **kw)
+            y = self.logits(y)
             y = tf.reshape(y, sh[:-1] + tf.int_shape(y)[-1:])
             u = tf.expand_dims(unk, axis=2)
             u = tf.broadcast_to(u, tf.int_shape(y))
@@ -135,7 +130,7 @@ class Trafo:
 
 
 class Stack:
-    prox_bias = None
+    prox_b = None
 
     @staticmethod
     def proximity(max_len):
@@ -145,10 +140,10 @@ class Stack:
         y = tf.expand_dims(tf.expand_dims(y, axis=0), axis=0)
         return y
 
-    def __init__(self, ps, pre, post):
-        self.ps = ps
-        self.pre = pre
-        self.post = post
+    def __init__(self, owner):
+        self.ps = owner.ps
+        self.pre = owner.pre
+        self.post = owner.post
 
     def attn_bias(self, mask):
         y = tf.logical_not(mask)
@@ -158,19 +153,19 @@ class Stack:
 
 
 class EncStack(Stack):
-    def __init__(self, ps):
-        super().__init__(ps)
+    def __init__(self, owner):
+        super().__init__(owner)
         ps = self.ps
-        n = ps.enc_layers or ps.stack_layers
-        self.encs = [Encoder(ps, f'enc_{i}') for i in range(n)]
-        if ps.prox_bias:
-            self.prox_bias = self.proximity(ps.src_len)
+        n = ps.layers_enc or ps.layers_stack
+        self.encs = [Encoder(f'enc_{i}', owner) for i in range(n)]
+        if ps.bias_prox:
+            self.prox_b = self.proximity(ps.len_src)
 
     def __call__(self, inputs, mask):
         x = inputs
         ab = rb = self.attn_bias(mask)
-        if self.prox_bias:
-            rb += self.prox_bias
+        if self.prox_b is not None:
+            rb += self.prox_b
         y = self.pre.drop(x)
         for e in self.encs:
             y = e([y, rb])
@@ -178,14 +173,14 @@ class EncStack(Stack):
         return y, ab
 
 
-class DecodeStack(Stack):
-    def __init__(self, ps):
-        super().__init__(ps)
+class DecStack(Stack):
+    def __init__(self, owner):
+        super().__init__(owner)
         ps = self.ps
-        n = ps.dec_layers or ps.stack_layers
-        self.decs = [Decoder(ps, f'dec_{i}') for i in range(n)]
+        n = ps.layers_dec or ps.layers_stack
+        self.decs = [Decoder(f'dec_{i}', owner) for i in range(n)]
         if ps.prox_bias:
-            self.prox_bias = self.proximity(ps.tgt_len)
+            self.prox_bias = self.proximity(ps.len_tgt)
 
     def __call__(self, inputs, mask):
         x, ctx, ab = inputs
@@ -212,10 +207,9 @@ class DecodeStack(Stack):
 
 
 class Encoder:
-    def __init__(self, ps, name):
-        self.name = name
-        self.refl = Attn(ps)
-        self.ffnet = FFNet(ps)
+    def __init__(self, name, owner):
+        self.refl = Attn(owner, name=name + '_refl')
+        self.ffnet = FFNet(owner, name=name + '_ffnet')
 
     def __call__(self, inputs):
         x, rb = inputs
@@ -225,11 +219,10 @@ class Encoder:
 
 
 class Decoder:
-    def __init__(self, ps, name):
-        self.name = name
-        self.refl = Attn(ps)
-        self.attn = Attn(ps)
-        self.ffnet = FFNet(ps, conv_pad='LEFT')
+    def __init__(self, name, owner):
+        self.refl = Attn(owner, name=name + '_refl')
+        self.attn = Attn(owner, name=name + '_attn')
+        self.ffnet = FFNet(owner, name=name + '_ffnet')
 
     def __call__(self, inputs):
         x, rb, ctx, ab = inputs

@@ -18,7 +18,7 @@ from qnarre.neura.layers import base
 
 
 class Attn(base.Layer):
-    pre = post = src_b = mem_b = v_w = None
+    v_w = None
 
     @staticmethod
     def cfg_items(params):
@@ -33,13 +33,12 @@ class Attn(base.Layer):
                 'num_heads',
             ))
 
-    def __init__(self, params, owner=None, **kw):
-        super().__init__(params, **kw)
-        if owner:
-            self.pre = owner.pre
-            self.post = owner.post
-            self.src_b = owner.src_b
-            self.mem_b = owner.mem_b
+    def __init__(self, owner, **kw):
+        super().__init__(owner.ps, **kw)
+        self.pre = owner.pre
+        self.post = owner.post
+        self.src_b = owner.src_b
+        self.mem_b = owner.mem_b
 
     def build(self, input_shape):
         cfg = self.cfg

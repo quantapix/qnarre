@@ -14,41 +14,36 @@
 # =============================================================================
 
 from qnarre.neura import tf
+from qnarre.neura.layers import base
 
 
-class FFN(tf.Layer):
-    conv_pad = 'SAME'
+class FFNet(base.Layer):
+    @staticmethod
+    def cfg_items(ps):
+        return dict(
+            ps.cfg_items(
+                'dim_ffnet',
+                'dim_hidden',
+                'drop_ffnet',
+                'drop_hidden',
+            ))
 
-    def __init__(self, PS, pre, post, conv_pad=None, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-        self.PS = PS
-        self.pre = pre
-        self.post = post
-        if conv_pad:
-            self.conv_pad = conv_pad
+    def __init__(self, owner, **kw):
+        super().__init__(owner.ps, **kw)
+        self.pre = owner.pre
+        self.post = owner.post
+        cfg = self.cfg
+        kw = dict(kernel_initializer=owner.ps.initializer, use_bias=True)
+        self.dense2 = tf.Dense(cfg.dim_hidden, **kw)
+        kw.update(activation=owner.ps.act_ffnet)
+        self.dense1 = tf.Dense(cfg.dim_ffnet, **kw)
 
-
-class DenseDenseFFN(FFN):
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
-        PS = self.PS
-        kw = dict(kernel_initializer=PS.initializer, use_bias=True)
-        self.dense1 = tf.Dense(PS.ffn_size, activation=PS.ffn_act, **kw)
-        self.drop = tf.Dropout(PS.ffn_drop or PS.hidden_drop)
-        self.dense2 = tf.Dense(PS.hidden_size, **kw)
-
-    def call(self, inputs, **kw):
+    def call(self, inputs):
         x = inputs
-        x = self.pre([x, x], **kw)
-        y = self.dense1(x, **kw)
-        y = self.drop(y, **kw)
-        y = self.dense2(y, **kw)
-        y = self.post([x, y], **kw)
+        x = self.pre([x, x])
+        y = self.dense1(x)
+        r = self.cfg.drop_ffnet or self.cfg.drop_hidden
+        y = self.dropout(y, r)
+        y = self.dense2(y)
+        y = self.post([x, y])
         return y
-
-
-ffns = {
-    None: DenseDenseFFN,
-    'dense_dense_ffn': DenseDenseFFN,
-}

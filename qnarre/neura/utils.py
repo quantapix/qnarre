@@ -53,7 +53,7 @@ root = dict(
     epochs_between_evals=1,
     eval_batch_size=None,
     eval_only=False,
-    act_ffn=None,
+    act_ffnet=None,
     act_hidden=None,
     init_stddev=0.02,
     loss_from_logits=True,
@@ -116,7 +116,7 @@ class Params:
             losses=tf.SparseCategoricalCrossentropy(
                 from_logits=self.loss_from_logits),
             metrics=tf.SparseCategoricalAccuracy(),
-            act_ffn=self._activation(self.act_ffn),
+            act_ffnet=self._activation(self.act_ffnet),
             act_hidden=self._activation(self.act_hidden),
             big_neg=_big_neg(),
         )

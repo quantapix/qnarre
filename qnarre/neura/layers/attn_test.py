@@ -28,11 +28,22 @@ params = dict(
     num_heads=4,
 )
 
-PS = U.Params(params).init_comps()
+
+class Owner:
+    pre = post = None
+
+    def __init__(self):
+        self.ps = U.Params(params).init_comps()
+        self.pre = None
+        self.post = None
+        i = tf.constant([0.] * (4 * 10), shape=(4, 10))
+        self.src_b = tf.Variable(initial_value=i)
+        i = tf.constant([0.] * (4 * 10), shape=(4, 10))
+        self.mem_b = tf.Variable(initial_value=i)
 
 
 def test_owner_none():
-    a = L.Attn(PS)
+    a = L.Attn(Owner())
     a.build([(4, 10, 16)])
     src = tf.constant([0.] * (4 * 10 * 16), shape=(4, 10, 16))
     a.call([src])
@@ -43,18 +54,8 @@ def test_owner_none():
     a.call([src, bias, None, ctx])
 
 
-class Owner:
-    def __init__(self):
-        self.pre = None
-        self.post = None
-        i = tf.constant([0.] * (4 * 10), shape=(4, 10))
-        self.src_b = tf.Variable(initial_value=i)
-        i = tf.constant([0.] * (4 * 10), shape=(4, 10))
-        self.mem_b = tf.Variable(initial_value=i)
-
-
 def test_with_owner():
-    a = L.Attn(PS, owner=Owner())
+    a = L.Attn(Owner())
     a.build([(4, 10, 16), (), (4, 18, 16), ()])
     src = tf.constant([0.] * (4 * 10 * 16), shape=(4, 10, 16))
     bias = tf.constant([0.] * (4 * 10), shape=(4, 10))
@@ -65,7 +66,7 @@ def test_with_owner():
 
 
 def test_shift():
-    a = L.Attn(PS, owner=Owner())
+    a = L.Attn(Owner())
     x = tf.constant([1, 2, 3, 4, 5, 6], shape=(1, 1, 2, 3))
     tf.print(x)
     x = a.shift(x)

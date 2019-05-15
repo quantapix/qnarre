@@ -35,9 +35,9 @@ def dset_for(ps, kind):
 
 
 def model_for(ps, compiled=False):
-    ctx = tf.Input(shape=(ps.ctx_len, ), dtype='int32')
-    typ = tf.Input(shape=(ps.ctx_len, ), dtype='int32')
-    tgt = tf.Input(shape=(ps.tgt_len, ), dtype='int32')
+    ctx = tf.Input(shape=(ps.len_ctx, ), dtype='int32')
+    typ = tf.Input(shape=(ps.len_ctx, ), dtype='int32')
+    tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
     ins = [ctx, typ, tgt]
     outs = [L.Trafo(ps)(ins)]
     m = tf.Model(name='TrafoModel', inputs=ins, outputs=outs)
@@ -52,27 +52,29 @@ def model_for(ps, compiled=False):
 
 
 _params = dict(
+    act_ffnet='gelu',
     act_hidden='gelu',
-    attn_heads=2,
     batch_size=4,
     beam_size=None,
+    bias_prox=True,
     brackets=None,
     causal_refl=False,
-    ctx_len=16,
-    dec_layers=None,
     dim_attn=8,
-    dim_embed=None,
-    dim_hidden=16,
     dim_attn_k=None,
     dim_attn_v=None,
+    dim_embed=None,
+    dim_ffnet=256,
+    dim_hidden=16,
     drop_attn=None,
+    drop_ffnet=None,
     drop_hidden=0.1,
     emb_one_hot=None,
-    enc_layers=None,
-    ffn_act='gelu',
-    ffn_drop=None,
-    ffn_size=256,
-    ffn_type=None,
+    layers_dec=None,
+    layers_enc=None,
+    layers_stack=2,
+    len_ctx=16,
+    len_src=8,
+    len_tgt=None,
     max_pos=None,
     norm_epsilon=1e-6,
     norm_type='layer',
@@ -86,9 +88,6 @@ _params = dict(
     pre_cmd='n',
     prepost_bdims='',
     prepost_drop=None,
-    prox_bias=True,
-    stack_layers=2,
-    tgt_len=None,
     tok_types=8,
 )
 
@@ -108,6 +107,6 @@ def main(_):
 if __name__ == '__main__':
     # T.logging.set_verbosity(T.logging.INFO)
     from absl import flags as F
-    F.DEFINE_integer('ctx_len', None, '')
+    F.DEFINE_integer('len_ctx', None, '')
     from absl import app
     app.run(main)

@@ -21,9 +21,9 @@ from qnarre.neura.layers import base
 
 class TokEmbed(base.Layer):
     @staticmethod
-    def cfg_items(params):
+    def cfg_items(ps):
         return dict(
-            params.cfg_items(
+            ps.cfg_items(
                 'brackets',
                 'dim_embed',
                 'dim_hidden',
@@ -31,8 +31,8 @@ class TokEmbed(base.Layer):
                 'num_toks',
             ))
 
-    def __init__(self, params, **kw):
-        super().__init__(params, **kw)
+    def __init__(self, ps, **kw):
+        super().__init__(ps, **kw)
         self.tbl_ws = []
         self.out_ws = []
 
@@ -86,11 +86,8 @@ class TokEmbed(base.Layer):
 
 class TypEmbed(base.Layer):
     @staticmethod
-    def cfg_items(params):
-        return dict(
-            params.cfg_items(
-                'tok_types',
-            ))
+    def cfg_items(ps):
+        return dict(ps.cfg_items('tok_types', ))
 
     def build(self, input_shape):
         cfg = self.cfg
@@ -110,13 +107,12 @@ class TypEmbed(base.Layer):
 
 class PosEmbed(base.Layer):
     @staticmethod
-    def cfg_items(params):
-        return dict(
-            params.cfg_items(
-                'pos_max',
-                'ctx_len',
-                'tgt_len',
-            ))
+    def cfg_items(ps):
+        return dict(ps.cfg_items(
+            'pos_max',
+            'ctx_len',
+            'tgt_len',
+        ))
 
     def build(self, input_shape):
         cfg = self.cfg
@@ -135,13 +131,12 @@ class PosEmbed(base.Layer):
 
 class PosTiming(base.Layer):
     @staticmethod
-    def cfg_items(params):
-        return dict(
-            params.cfg_items(
-                'pos_start',
-                'pos_min',
-                'pos_max',
-            ))
+    def cfg_items(ps):
+        return dict(ps.cfg_items(
+            'pos_start',
+            'pos_min',
+            'pos_max',
+        ))
 
     def build(self, input_shape):
         cfg = self.cfg
