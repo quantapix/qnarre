@@ -148,6 +148,7 @@ transpose = array_ops.transpose
 unstack = array_ops.unstack
 where = array_ops.where
 zeros = array_ops.zeros
+zeros_initializer = tf.zeros_initializer
 
 
 def int_shape(x):

@@ -60,6 +60,10 @@ class Layer(tf.Layer):
                           tf.L1L2(cfg.regular_l1, cfg.regular_l2))
         return super().add_weight(name, shape, **kw)
 
+    def add_bias(self, name, shape, **kw):
+        kw.setdefault('initializer', tf.zeros_initializer())
+        return super().add_weight(name, shape, **kw)
+
     def dropout(self, x, rate, **kw):
         if tf.learning_phase():
             return tf.dropout(x, rate, **kw)
