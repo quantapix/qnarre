@@ -50,9 +50,12 @@ class TokEmbed(Layer):
         bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
         for i, e in enumerate(bs):
-            t = d // (len(bs)**i)
-            self.table_ws.append(self.add_weight(f'table_w{i}', (e - b, t)))
-            a = self.add_weight(f'adapt_w{i}', (t, h)) if t != h else None
+            p = d // (len(bs)**i)
+            t = self.add_weight(f'table_w{i}', (e - b, p))
+            self.table_ws.append(t)
+            a = None
+            if p != h:
+                a = self.add_weight(f'adapt_w{i}', (p, h))
             self.adapt_ws.append(a)
             b = e
         self.one_hot = cfg.emb_one_hot
@@ -84,12 +87,12 @@ class TokEmbed(Layer):
         t = self.table_ws[i]
         if self.one_hot:
             y = tf.one_hot(x, tf.shape(t)[0], axis=-1)
-            y = tf.einsum('ne,in->ie', t, y)
+            y = tf.einsum('np,in->ip', t, y)
         else:
             y = tf.embedding_lookup(t, x)
         a = self.adapt_ws[i]
         if a is not None:
-            y = tf.einsum('ie,eh->ih', y, a)
+            y = tf.einsum('ip,ph->ih', y, a)
         return y
 
 

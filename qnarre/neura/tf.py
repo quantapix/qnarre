@@ -41,11 +41,11 @@ L1L2 = ks.regularizers.L1L2
 Layer = ks.layers.Layer
 LearningRateSchedule = ks.optimizers.schedules.LearningRateSchedule
 Model = ks.Model
-Sequential = ks.Sequential
 ModelCheckpoint = ks.callbacks.ModelCheckpoint
 Relu = ks.activations.relu
 Reshape = ks.layers.Reshape
 SGD = ks.optimizers.SGD
+Sequential = ks.Sequential
 Softmax = ks.activations.softmax
 SparseCategoricalAccuracy = ks.metrics.SparseCategoricalAccuracy
 SparseCategoricalCrossentropy = ks.losses.SparseCategoricalCrossentropy
@@ -161,3 +161,7 @@ def int_shape(x):
             d = d or shape(x)
             s[i] = d[i]
     return tuple(s)
+
+
+sparse_softmax_cross_entropy_with_logits = \
+    tf.nn.sparse_softmax_cross_entropy_with_logits
