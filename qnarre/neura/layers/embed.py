@@ -16,12 +16,7 @@
 import numpy as np
 
 from qnarre.neura import tf
-from qnarre.neura.layers import base
-
-
-class Layer(base.Layer):
-    def add_weight(self, *pa, **kw):
-        return super().add_weight(*pa, dtype=tf.floatx(), **kw)
+from qnarre.neura.layers.base import Layer
 
 
 class TokEmbed(Layer):
@@ -177,7 +172,7 @@ class PosTiming(Layer):
         return x + y
 
 
-class RelTiming(Layer):
+class RelEmbed(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(

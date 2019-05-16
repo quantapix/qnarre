@@ -129,6 +129,6 @@ class Attn(base.Layer):
             y = y + bias
         y = tf.softmax(y)
         r = self.cfg.drop_attn or self.cfg.drop_hidden
-        y = self.dropout(y, r)
+        y = self.drop(y, r)
         y = tf.einsum('bnij,bnjv->bniv', y, v)
         return y

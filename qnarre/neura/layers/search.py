@@ -19,10 +19,10 @@ from tensorflow.python.util import nest
 
 
 class Beam(tf.Layer):
-    def __init__(self, PS, to_logp, **kw):
+    def __init__(self, PS, owner, **kw):
         super().__init__(**kw)
         self.PS = PS
-        self.to_logp = to_logp
+        self.to_logp = lambda *a, **kw: owner.to_logp(*a, **kw)
 
     def build(self, input_shape):
         PS = self.PS

@@ -51,6 +51,7 @@ class Layer(tf.Layer):
         return input_shape
 
     def add_weight(self, name, shape, **kw):
+        kw.setdefault(dtype=tf.floatx())
         cfg = self.cfg
         if hasattr(cfg, 'init_stddev'):
             kw.setdefault('initializer',
@@ -61,10 +62,11 @@ class Layer(tf.Layer):
         return super().add_weight(name, shape, **kw)
 
     def add_bias(self, name, shape, **kw):
+        kw.setdefault(dtype=tf.floatx())
         kw.setdefault('initializer', tf.zeros_initializer())
         return super().add_weight(name, shape, **kw)
 
-    def dropout(self, x, rate, **kw):
+    def drop(self, x, rate, **kw):
         if tf.learning_phase():
             return tf.dropout(x, rate, **kw)
         return x

@@ -43,7 +43,7 @@ class FFNet(base.Layer):
         x = self.pre([x, x])
         y = self.dense1(x)
         r = self.cfg.drop_ffnet or self.cfg.drop_hidden
-        y = self.dropout(y, r)
+        y = self.drop(y, r)
         y = self.dense2(y)
         y = self.post([x, y])
         return y

@@ -16,10 +16,9 @@
 # https://arxiv.org/pdf/1607.06450.pdf
 # https://arxiv.org/pdf/1606.08415.pdf
 
-import qnarre.neura.utils as U
-import qnarre.neura.layers as L
-
 from qnarre.neura import tf
+from qnarre.neura.utils import Params
+from qnarre.neura.layers import Trafo
 from qnarre.neura.session import session_for
 from qnarre.feeds.dset.trafo import dset as dset
 
@@ -35,12 +34,11 @@ def dset_for(ps, kind):
 
 
 def model_for(ps, compiled=False):
-    ins = [
-        tf.Input(shape=(ps.len_src, ), dtype='int32'),
-        tf.Input(shape=(ps.len_src, ), dtype='int32'),
-        tf.Input(shape=(ps.len_tgt, ), dtype='int32'),
-    ]
-    outs = [L.Trafo(ps)(ins)]
+    src = tf.Input(shape=(ps.len_src, ), dtype='int32')
+    typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
+    tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
+    ins = [src, typ, tgt, None, None]
+    outs = [Trafo(ps)(ins)]
     m = tf.Model(name='TrafoModel', inputs=ins, outputs=outs)
     if compiled:
         m.compile(
@@ -74,9 +72,9 @@ params = dict(
     drop_hidden=0.1,
     drop_prepost=None,
     emb_one_hot=None,
-    layers_dec=None,
-    layers_enc=None,
-    layers_stack=2,
+    num_dec_lays=None,
+    num_enc_lays=None,
+    num_stack_lays=2,
     len_ctx=None,
     len_src=16,
     len_tgt=None,
@@ -85,11 +83,11 @@ params = dict(
     norm_type='layer',
     num_heads=4,
     num_toks=None,
-    pos_embed='timing',
+    pos_emb='timing',
     pos_max=1.0e4,
     pos_min=1.0,
     pos_start=0,
-    tok_types=8,
+    tok_typs=8,
 )
 
 params.update(
@@ -101,7 +99,7 @@ params.update(
 
 
 def main(_):
-    ps = U.Params(params).init_comps()
+    ps = Params(params).init_comps()
     session_for(ps)(dset_for, model_for)
 
 

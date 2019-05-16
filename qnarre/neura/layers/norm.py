@@ -14,7 +14,7 @@
 # =============================================================================
 
 from qnarre.neura import tf
-from qnarre.neura.layers import base
+from qnarre.neura.layers.base import Layer
 
 
 def _layer_norm(self, inputs):
@@ -26,7 +26,7 @@ def _layer_norm(self, inputs):
     return y
 
 
-class LayerNorm(base.Layer):
+class Norm(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(ps.cfg_items('norm_epsilon', ))
@@ -41,7 +41,7 @@ class LayerNorm(base.Layer):
         return _layer_norm(self, inputs)
 
 
-class LayerProc(base.Layer):
+class LayerProc(Layer):
     cmd = ''
     batch = None
 
@@ -108,11 +108,11 @@ class LayerProc(base.Layer):
                         assert cfg.norm_type == 'none'
                 else:
                     assert c == 'd'
-                    y = self.dropout(y)
+                    y = self.drop(y)
                 x = y
         return y
 
-    def dropout(self, x):
+    def drop(self, x):
         cfg = self.cfg
         r = cfg.drop_prepost or cfg.drop_hidden
         ns, ds = None, [int(i) for i in cfg.bdims_prepost.split(',') if i]
@@ -121,7 +121,7 @@ class LayerProc(base.Layer):
             n = len(sh)
             ds = [d + n if d < 0 else d for d in ds]
             ns = [1 if i in ds else sh[i] for i in range(n)]
-        return super().dropout(x, r, noise_shape=ns)
+        return super().drop(x, r, noise_shape=ns)
 
 
 class PreProc(LayerProc):
