@@ -33,8 +33,8 @@ class Attn(base.Layer):
                 'num_heads',
             ))
 
-    def __init__(self, owner, **kw):
-        super().__init__(owner.ps, **kw)
+    def __init__(self, ps, owner, **kw):
+        super().__init__(ps, **kw)
         self.pre = owner.pre
         self.post = owner.post
         self.src_b = owner.src_b
@@ -60,9 +60,9 @@ class Attn(base.Layer):
         self.out_w = self.add_weight('out_w', (n * v, h))
         if len(input_shape) > 2 and input_shape[2]:
             if self.src_b is None:
-                self.src_b = self.add_weight('src_b', (n, k))
+                self.src_b = self.add_bias('src_b', (n, k))
             if self.mem_b is None:
-                self.mem_b = self.add_weight('mem_b', (n, k))
+                self.mem_b = self.add_bias('mem_b', (n, k))
         return super().build(input_shape)
 
     @tf.function

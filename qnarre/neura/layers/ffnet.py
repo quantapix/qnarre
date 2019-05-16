@@ -28,8 +28,8 @@ class FFNet(base.Layer):
                 'drop_hidden',
             ))
 
-    def __init__(self, owner, **kw):
-        super().__init__(owner.ps, **kw)
+    def __init__(self, ps, owner, **kw):
+        super().__init__(ps, **kw)
         self.pre = owner.pre
         self.post = owner.post
         cfg = self.cfg

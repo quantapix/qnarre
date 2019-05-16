@@ -189,7 +189,7 @@ class EncStack(Stack):
         super().__init__(ps, owner, **kw)
         cfg = self.cfg
         n = cfg.num_enc_lays or cfg.num_stack_lays
-        self.encs = [Encoder(ps, owner, name=f'enc_{i}') for i in range(n)]
+        self.encs = [Encoder(ps, owner, f'enc_{i}') for i in range(n)]
 
     def build(self, input_shape):
         cfg = self.cfg
@@ -224,7 +224,7 @@ class DecStack(Stack):
         super().__init__(ps, owner, **kw)
         cfg = self.cfg
         n = cfg.num_dec_lays or cfg.num_stack_lays
-        self.decs = [Decoder(ps, owner, name=f'dec_{i}') for i in range(n)]
+        self.decs = [Decoder(ps, owner, f'dec_{i}') for i in range(n)]
 
     def build(self, input_shape):
         cfg = self.cfg
@@ -260,9 +260,9 @@ class DecStack(Stack):
 
 
 class Encoder:
-    def __init__(self, name, owner):
-        self.refl = Attn(owner, name=name + '_refl')
-        self.ffnet = FFNet(owner, name=name + '_ffnet')
+    def __init__(self, ps, owner, name):
+        self.refl = Attn(ps, owner, name=name + '_refl')
+        self.ffnet = FFNet(ps, owner, name=name + '_ffnet')
 
     def __call__(self, inputs):
         x, rb = inputs
@@ -272,10 +272,10 @@ class Encoder:
 
 
 class Decoder:
-    def __init__(self, name, owner):
-        self.refl = Attn(owner, name=name + '_refl')
-        self.attn = Attn(owner, name=name + '_attn')
-        self.ffnet = FFNet(owner, name=name + '_ffnet')
+    def __init__(self, ps, owner, name):
+        self.refl = Attn(ps, owner, name=name + '_refl')
+        self.attn = Attn(ps, owner, name=name + '_attn')
+        self.ffnet = FFNet(ps, owner, name=name + '_ffnet')
 
     def __call__(self, inputs):
         x, rb, ctx, ab = inputs
