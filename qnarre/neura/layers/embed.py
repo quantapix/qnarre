@@ -40,8 +40,8 @@ class TokEmbed(Layer):
     def __init__(self, ps, **kw):
         super().__init__(ps, **kw)
         self._compute_output_and_mask_jointly = True
-        self.tbl_ws = []
-        self.out_ws = []
+        self.table_ws = []
+        self.adapt_ws = []
 
     def build(self, input_shape):
         cfg = self.cfg
@@ -51,9 +51,9 @@ class TokEmbed(Layer):
         b = 0
         for i, e in enumerate(bs):
             t = d // (len(bs)**i)
-            self.tbl_ws.append(self.add_weight(f'tbl_w{i}', (e - b, t)))
-            o = self.add_weight(f'out_w{i}', (t, h)) if t != h else None
-            self.out_ws.append(o)
+            self.table_ws.append(self.add_weight(f'table_w{i}', (e - b, t)))
+            a = self.add_weight(f'adapt_w{i}', (t, h)) if t != h else None
+            self.adapt_ws.append(a)
             b = e
         self.one_hot = cfg.emb_one_hot
         return super().build(input_shape)
@@ -75,21 +75,21 @@ class TokEmbed(Layer):
         for i, e in enumerate(bs):
             m = (x >= (b or 1)) & (x < e)
             u = self.lookup(tf.boolean_mask(x, m) - b, i)
-            y += tf.tensor_scatter_nd_update(y, tf.where(m), u)
+            y = tf.tensor_scatter_nd_add(y, tf.where(m), u)
         y *= tf.int_shape(y)[-1]**0.5
         y._keras_mask = mask
         return y
 
     def lookup(self, x, i):
-        t = self.tbl_ws[i]
+        t = self.table_ws[i]
         if self.one_hot:
             y = tf.one_hot(x, tf.shape(t)[0], axis=-1)
             y = tf.einsum('ne,in->ie', t, y)
         else:
             y = tf.embedding_lookup(t, x)
-        o = self.out_ws[i]
-        if o is not None:
-            y = tf.einsum('ie,eh->ih', y, o)
+        a = self.adapt_ws[i]
+        if a is not None:
+            y = tf.einsum('ie,eh->ih', y, a)
         return y
 
 
@@ -148,6 +148,9 @@ class PosTiming(Layer):
                 'pos_max',
                 'pos_min',
                 'pos_start',
+                'len_src',
+                'len_tgt',
+                'pos_max_len',
             ))
 
     def build(self, input_shape):
@@ -158,10 +161,41 @@ class PosTiming(Layer):
         s = np.log(cfg.pos_max / cfg.pos_min) / max(n - 1, 1)
         s = tf.range(n, dtype=tf.floatx()) * -s
         s = tf.exp(s) * cfg.pos_min
-        p = tf.range(input_shape[1], dtype=tf.floatx()) + cfg.pos_start
+        p = max(cfg.pos_max_len or 0, cfg.len_src, cfg.len_tgt)
+        p = tf.range(p, dtype=tf.floatx()) + cfg.pos_start
         p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
         self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
         return super().build(input_shape)
+
+    @tf.function
+    def call(self, inputs, mask=None):
+        x = inputs
+        y = self.pos_b * tf.cast(mask, self.pos_b.dtype)
+        return x + y
+
+
+class RelTiming(Layer):
+    @staticmethod
+    def cfg_items(ps):
+        return dict(
+            ps.cfg_items(
+                'dim_hidden',
+                'len_src',
+                'len_tgt',
+                'pos_max_len',
+            ))
+
+    def build(self, input_shape):
+        cfg = self.cfg
+        h = cfg.dim_hidden
+        p = max(cfg.pos_max_len or 0, cfg.len_src, cfg.len_tgt)
+        p = tf.range(p - 1, -1, -1.0, dtype=tf.floatx())
+        if cfg.len_clamp > 0:
+            p = tf.minimum(p, cfg.len_clamp)
+        f = tf.range(0.0, h, 2.0, dtype=tf.floatx())
+        f = 1 / (10000**(f / h))
+        p = tf.einsum('i,j->ij', p, f)
+        self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], -1)[:, None, :]
 
     @tf.function
     def call(self, inputs, mask=None):

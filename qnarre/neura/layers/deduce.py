@@ -24,7 +24,7 @@ class Layer(base.Layer):
         return super().add_weight(*pa, dtype=tf.floatx(), **kw)
 
 
-class TokEmbed(Layer):
+class TokDeduce(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(
@@ -37,11 +37,12 @@ class TokEmbed(Layer):
                 'num_toks',
             ))
 
-    def __init__(self, ps, **kw):
+    def __init__(self, ps, table_ws, adapt_ws=None, **kw):
         super().__init__(ps, **kw)
         self._compute_output_and_mask_jointly = True
-        self.tbl_ws = []
-        self.out_ws = []
+        self.adapt_ws = adapt_ws or []
+        self.table_ws = table_ws
+        self.table_bs = []
 
     def build(self, input_shape):
         cfg = self.cfg
@@ -51,11 +52,11 @@ class TokEmbed(Layer):
         b = 0
         for i, e in enumerate(bs):
             t = d // (len(bs)**i)
-            self.tbl_ws.append(self.add_weight(f'tbl_w{i}', (e - b, t)))
-            o = self.add_weight(f'out_w{i}', (t, h)) if t != h else None
-            self.out_ws.append(o)
+            self.table_bs.append(self.add_bias(f'table_b{i}', (e - b,)))
+            if len(self.adapt_ws) == i:
+                a = self.add_weight(f'adapt_w{i}', (t, h)) if t != h else None
+                self.adapt_ws.append(a)
             b = e
-        self.one_hot = cfg.emb_one_hot
         return super().build(input_shape)
 
     def compute_mask(self, inputs, mask=None):
@@ -68,103 +69,218 @@ class TokEmbed(Layer):
     @tf.function
     def call(self, inputs):
         cfg = self.cfg
-        x, mask = inputs, tf.not_equal(inputs, cfg.PAD)
-        y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidden, ))
+        ctx, x = inputs, tf.not_equal(inputs, cfg.PAD)
+        y = tf.zeros_like(x, dtype=tf.floatx())
         bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
         for i, e in enumerate(bs):
             m = (x >= (b or 1)) & (x < e)
-            u = self.lookup(tf.boolean_mask(x, m) - b, i)
-            y += tf.tensor_scatter_nd_update(y, tf.where(m), u)
+            t = tf.boolean_mask(x, m) - b
+            if i == 0:
+                h = tf.log_softmax(self.logit(ctx, i))
+                mh = tf.boolean_mask(h, m)
+                u = _gather_logprob(mh, t)
+            else:
+                mh = tf.boolean_mask(h, m)
+                mc = tf.boolean_mask(ctx, m)
+                u = self.lookup(, i)
+            y = tf.tensor_scatter_nd_add(y, tf.where(m), -u)
         y *= tf.int_shape(y)[-1]**0.5
         y._keras_mask = mask
         return y
 
-    def lookup(self, x, i):
-        t = self.tbl_ws[i]
-        if self.one_hot:
-            y = tf.one_hot(x, tf.shape(t)[0], axis=-1)
-            y = tf.einsum('ne,in->ie', t, y)
-        else:
-            y = tf.embedding_lookup(t, x)
-        o = self.out_ws[i]
-        if o is not None:
-            y = tf.einsum('ie,eh->ih', y, o)
+    def logit(self, x, i):
+        y = x
+        a = self.adapt_ws[i]
+        if a is not None:
+            y = tf.einsum('ih,eh->ie', y, a)
+        t = self.table_ws[i]
+        b = self.table_bs[i]
+        y = tf.einsum('ie,ne->in', y, t) + b
         return y
 
+def mask_adaptive_logsoftmax(ctx,
+                             tgt,
+                             n_token,
+                             d_embed,
+                             d_proj,
+                             cutoffs,
+                             params,
+                             tie_projs,
+                             initializer=None,
+                             proj_initializer=None,
+                             div_val=1,
+                             scope='adaptive_softmax',
+                             proj_same_dim=True,
+                             return_mean=True,
+                             **kwargs):
 
-class TypEmbed(Layer):
-    @staticmethod
-    def cfg_items(ps):
-        return dict(ps.cfg_items(
-            'dim_hidden',
-            'num_types',
-        ))
+    params_W, params_projs = params[0], params[1]
 
-    def build(self, input_shape):
-        cfg = self.cfg
-        self.typ_w = self.add_weight('typ_w', (cfg.num_types, cfg.dim_hidden))
-        return super().build(input_shape)
+    def _gather_logprob(logprob, tgt):
+        lp_size = tf.shape(logprob)
+        r = tf.range(lp_size[0])
+        idx = tf.stack([r, tgt], 1)
+        return tf.gather_nd(logprob, idx)
 
-    @tf.function
-    def call(self, inputs, mask=None):
-        x, typ = inputs
-        y = typ * tf.cast(mask, typ.dtype)
-        y = tf.one_hot(y, self.cfg.num_types)
-        return x + tf.einsum('bie,eh->bih', y, self.typ_w)
+    with tf.variable_scope(scope):
+        if len(cutoffs) == 0:
+            output = _logit(ctx, params_W, params_projs)
+            nll = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tgt,
+                                                                logits=output)
+        else:
+            cutoff_ends = [0] + cutoffs + [n_token]
+            for i in range(len(cutoff_ends) - 1):
+                with tf.variable_scope('cutoff_{}'.format(i)):
+                    l_idx, r_idx = cutoff_ends[i], cutoff_ends[i + 1]
+                    mask = (tgt >= l_idx) & (tgt < r_idx)
+                    mask_idx = tf.where(mask)
+                    cur_tgt = tf.boolean_mask(tgt, mask) - l_idx
+                    cur_d_embed = d_embed // (div_val**i)
+
+                    if i == 0:
+                        cluster_W = tf.get_variable(
+                            'cluster_W', [len(cutoffs), d_embed],
+                            initializer=tf.zeros_initializer())
+                        cluster_b = tf.get_variable(
+                            'cluster_b', [len(cutoffs)],
+                            initializer=tf.zeros_initializer())
+                        cur_W = tf.concat([cur_W, cluster_W], 0)
+                        cur_b = tf.concat([cur_b, cluster_b], 0)
+
+                        head_logit = _logit(ctx, cur_W, cur_b, cur_proj)
+                        head_logprob = tf.nn.log_softmax(head_logit)
+                        cur_head_logprob = tf.boolean_mask(head_logprob, mask)
+                        cur_logprob = _gather_logprob(cur_head_logprob,
+                                                      cur_tgt)
+                    else:
+                        cur_head_logprob = tf.boolean_mask(head_logprob, mask)
+                        cur_ctx = tf.boolean_mask(ctx, mask)
+                        tail_logit = tf.squeeze(
+                            _logit(cur_ctx[None], cur_W, cur_b, cur_proj),
+                            0)
+                        tail_logprob = tf.nn.log_softmax(tail_logit)
+                        cur_logprob = (
+                            cur_head_logprob[:, cutoff_ends[1] + i - 1] +
+                            _gather_logprob(tail_logprob, cur_tgt))
+                    nll += tf.scatter_nd(mask_idx, -cur_logprob,
+                                        tf.to_int64(tf.shape(nll)))
+    if return_mean:
+        nll = tf.reduce_mean(nll)
+    return nll
 
 
-class PosEmbed(Layer):
-    @staticmethod
-    def cfg_items(ps):
-        return dict(
-            ps.cfg_items(
-                'dim_hidden',
-                'len_src',
-                'len_tgt',
-                'pos_max_len',
-            ))
+def mul_adaptive_logsoftmax(ctx,
+                            tgt,
+                            n_token,
+                            d_embed,
+                            d_proj,
+                            cutoffs,
+                            params,
+                            tie_projs,
+                            initializer=None,
+                            proj_initializer=None,
+                            div_val=1,
+                            perms=None,
+                            proj_same_dim=True,
+                            scope='adaptive_softmax',
+                            **kwargs):
+    def _logit(x, W, b, proj):
+        y = x
+        if x.shape.ndims == 3:
+            if proj is not None:
+                y = tf.einsum('ibd,ed->ibe', y, proj)
+            return tf.einsum('ibd,nd->ibn', y, W) + b
+        else:
+            if proj is not None:
+                y = tf.einsum('id,ed->ie', y, proj)
+            return tf.einsum('id,nd->in', y, W) + b
 
-    def build(self, input_shape):
-        cfg = self.cfg
-        p = max(cfg.pos_max_len or 0, cfg.len_src, cfg.len_tgt)
-        self.pos_b = self.add_weight('pos_b', (p, cfg.dim_hidden))
-        return super().build(input_shape)
+    params_W, params_projs = params[0], params[1]
 
-    @tf.function
-    def call(self, inputs, mask=None):
-        x = inputs
-        y = self.pos_b[:tf.shape[1], :]
-        y *= tf.cast(mask, self.pos_b.dtype)
-        return x + y
+    with tf.variable_scope(scope):
+        if len(cutoffs) == 0:
+            softmax_b = tf.get_variable('bias', [n_token],
+                                       initializer=tf.zeros_initializer())
+            output = _logit(ctx, params_W, softmax_b, params_projs)
+            nll = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tgt,
+                                                                logits=output)
+            nll = tf.reduce_mean(nll)
+        else:
+            total_loss, total_cnt = 0, 0
+            cutoff_ends = [0] + cutoffs + [n_token]
+            for i in range(len(cutoff_ends) - 1):
+                with tf.variable_scope('cutoff_{}'.format(i)):
+                    l_idx, r_idx = cutoff_ends[i], cutoff_ends[i + 1]
 
+                    cur_d_embed = d_embed // (div_val**i)
 
-class PosTiming(Layer):
-    @staticmethod
-    def cfg_items(ps):
-        return dict(
-            ps.cfg_items(
-                'dim_hidden',
-                'pos_max',
-                'pos_min',
-                'pos_start',
-            ))
+                    if div_val == 1:
+                        cur_W = params_W[l_idx:r_idx]
+                    else:
+                        cur_W = params_W[i]
+                    cur_b = tf.get_variable('b', [r_idx - l_idx],
+                                           initializer=tf.zeros_initializer())
+                    if tie_projs[i]:
+                        if div_val == 1:
+                            cur_proj = params_projs
+                        else:
+                            cur_proj = params_projs[i]
+                    else:
+                        if (div_val == 1 or
+                                not proj_same_dim) and d_proj == cur_d_embed:
+                            cur_proj = None
+                        else:
+                            cur_proj = tf.get_variable(
+                                'proj', [cur_d_embed, d_proj],
+                                initializer=proj_initializer)
 
-    def build(self, input_shape):
-        cfg = self.cfg
-        h = cfg.dim_hidden
-        assert h % 2 == 0
-        n = h // 2
-        s = np.log(cfg.pos_max / cfg.pos_min) / max(n - 1, 1)
-        s = tf.range(n, dtype=tf.floatx()) * -s
-        s = tf.exp(s) * cfg.pos_min
-        p = tf.range(input_shape[1], dtype=tf.floatx()) + cfg.pos_start
-        p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
-        self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
-        return super().build(input_shape)
+                    if i == 0:
+                        cluster_W = tf.get_variable(
+                            'cluster_W', [len(cutoffs), d_embed],
+                            initializer=tf.zeros_initializer())
+                        cluster_b = tf.get_variable(
+                            'cluster_b', [len(cutoffs)],
+                            initializer=tf.zeros_initializer())
+                        cur_W = tf.concat([cur_W, cluster_W], 0)
+                        cur_b = tf.concat([cur_b, cluster_b], 0)
 
-    @tf.function
-    def call(self, inputs, mask=None):
-        x = inputs
-        y = self.pos_b * tf.cast(mask, self.pos_b.dtype)
-        return x + y
+                        head_logit = _logit(ctx, cur_W, cur_b, cur_proj)
+
+                        head_tgt = kwargs.get("head_tgt")
+                        head_nll = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                            labels=head_tgt, logits=head_logit)
+
+                        masked_loss = head_nll * perms[i]
+                        total_loss += tf.reduce_sum(masked_loss)
+                        total_cnt += tf.reduce_sum(perms[i])
+
+                        # head_logprob = tf.nn.log_softmax(head_logit)
+
+                        # final_logprob = head_logprob * perms[i][:, :, None]
+                        # final_tgt = tf.one_hot(tgt, tf.shape(head_logprob)[2])
+                        # total_loss -= tf.einsum('ibn,ibn->', final_logprob, final_tgt)
+                        # total_cnt += tf.reduce_sum(perms[i])
+                    else:
+                        cur_head_nll = tf.einsum('ib,ibk->k', head_nll,
+                                                perms[i])
+
+                        cur_ctx = tf.einsum('ibd,ibk->kd', ctx, perms[i])
+                        tail_logit = _logit(cur_ctx, cur_W, cur_b, cur_proj)
+
+                        tail_tgt = tf.einsum('ib,ibk->k',
+                                               tf.to_float(tgt - l_idx),
+                                               perms[i])
+                        tail_nll = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                            labels=tf.to_int32(tail_tgt), logits=tail_logit)
+
+                        sum_nll = cur_head_nll + tail_nll
+                        mask = tf.reduce_sum(perms[i], [0, 1])
+
+                        masked_loss = sum_nll * mask
+                        total_loss += tf.reduce_sum(masked_loss)
+                        total_cnt += tf.reduce_sum(mask)
+
+            nll = total_loss / total_cnt
+
+    return nll
