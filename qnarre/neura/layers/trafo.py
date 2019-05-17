@@ -14,16 +14,12 @@
 # =============================================================================
 
 from qnarre.neura import tf
-
-import qnarre.neura.utils as U
-
 from qnarre.neura.layers.attn import Attn
 from qnarre.neura.layers.base import Layer
 from qnarre.neura.layers.ffnet import FFNet
 from qnarre.neura.layers.search import Beam
-from qnarre.neura.layers.embed import TokEmbed, TypEmbed
 from qnarre.neura.layers.norm import Norm, PreProc, PostProc
-from qnarre.neura.layers.embed import PosEmbed, PosTiming, RelEmbed
+from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
 class Trafo(Layer):
@@ -47,13 +43,11 @@ class Trafo(Layer):
         if cfg.tok_typs:
             self.typ_emb = TypEmbed(ps, name='typ_emb')
         if cfg.pos_emb == 'embed':
-            p = PosEmbed(ps, name='pos_emb')
+            self.pos_emb = PosEmbed(ps, name='pos_emb')
         elif cfg.pos_emb == 'timing':
-            p = PosTiming(ps, name='time_emb')
+            self.pos_emb = PosTiming(ps, name='time_emb')
         else:
-            assert cfg.pos_emb == 'relative'
-            p = RelEmbed(ps, name='rel_emb')
-        self.pos_emb = p
+            assert cfg.pos_emb is None
         self.norm = Norm(ps, name='norm')
         self.pre = PreProc(ps, name='pre_proc')
         self.post = PostProc(ps, name='post_proc')
@@ -76,9 +70,10 @@ class Trafo(Layer):
         src, typ, tgt, ctx, b = inputs
         if src is not None:
             ctx, b = self.encode(src, typ)
+        out = None
         if tgt is not None:
-            logp, logi, unk = self.deduce(tgt, ctx, b)
-            return logi
+            out, ctx, b = self.deduce(tgt, ctx, b)
+        return [out, ctx, b]
 
     """
     def call(self, inputs, training=None, **kw):

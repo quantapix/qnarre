@@ -14,6 +14,7 @@
 # =============================================================================
 
 from qnarre.neura import tf
+from qnarre.neura import utils
 from qnarre.neura.layers import base
 
 
@@ -37,13 +38,13 @@ class Attn(base.Layer):
         super().__init__(ps, **kw)
         self.pre = owner.pre
         self.post = owner.post
-        self.src_b = owner.src_b
-        self.mem_b = owner.mem_b
+        self.pos_x_b = owner.pos_x_b
+        self.pos_p_b = owner.pos_p_b
 
     def build(self, input_shape):
+        x, ctx = input_shape
+        h = x[2]
         cfg = self.cfg
-        src = input_shape[0]
-        h = src[2]
         assert h == cfg.dim_hidden
         n = cfg.num_heads
         assert h % n == 0
@@ -57,48 +58,47 @@ class Attn(base.Layer):
         else:
             self.qk_w = self.add_weight('qk_w', (h, n * k))
             self.v_w = self.add_weight('v_w', (h, n * v))
+        if cfg.pos_emb is None:
+            e = x[1] + (x[1] if ctx is None else ctx[1])
+            self.pos = utils.pos_timing(h, e)
+            self.pos_w = self.add_weight('pos_w', (h, n * k))
+            if self.pos_x_b is None:
+                self.pos_x_b = self.add_bias('pos_x_b', (n, k))
+            if self.pos_p_b is None:
+                self.pos_p_b = self.add_bias('pos_p_b', (n, k))
         self.out_w = self.add_weight('out_w', (n * v, h))
-        if len(input_shape) > 2 and input_shape[2]:
-            if self.src_b is None:
-                self.src_b = self.add_bias('src_b', (n, k))
-            if self.mem_b is None:
-                self.mem_b = self.add_bias('mem_b', (n, k))
         return super().build(input_shape)
 
     @tf.function
-    def call(self, inputs):
-        src, bias, mem, ctx = inputs + [None] * (4 - len(inputs))
-        slen = tf.shape(src)[1]
-        ctx = src if ctx is None else ctx
-        clen = tf.shape(ctx)[1]
-        y = [ctx, src] if mem is None else [mem, ctx, src]
-        y = tf.concat(y, axis=1)
+    def call(self, inputs, mask=None):
+        x, ctx = inputs
+        y = x if ctx is None else tf.concat([ctx, x], axis=1)
         if self.pre is not None:
             y = self.pre([y])
         if self.v_w is None:
-            y = tf.einsum('bih,hk->bik', y, self.qkv_w)
-            v = y[:, -clen - slen:-slen, :]
+            y = v = tf.einsum('bih,hk->bik', y, self.qkv_w)
         else:
             y = tf.einsum('bih,hk->bik', y, self.qk_w)
-            v = y[:, -clen - slen:-slen, :]
             v = tf.einsum('bih,hv->biv', v, self.v_w)
-        q = self.split_heads(y[:, -slen:, :])
-        k = self.split_heads(y[:, -clen - slen:-slen, :])
-        if mem is None:
+        xlen = tf.int_shape(x)[1]
+        q = self.split_heads(y[:, -xlen:, :])
+        k = self.split_heads(y)
+        if self.pos is None:
             y = tf.einsum('bnik,bnjk->bnij', q, k)
         else:
-            m = self.split_heads(y[:, :clen, :])
-            b = tf.expand_dims(tf.expand_dims(self.src_b, axis=1), axis=3)
+            b = tf.expand_dims(tf.expand_dims(self.pos_x_b, axis=1), axis=3)
             y = tf.einsum('bnik,bnjk->bnij', q + b, k)
-            b = tf.expand_dims(tf.expand_dims(self.mem_b, axis=1), axis=3)
-            m = tf.einsum('bnik,bnjk->bnij', q + b, m)
-            y = y + self.shift(m)
+            p = tf.einsum('ih,hk->ik', self.pos, self.pos_w)
+            p = tf.expand_dims(self.split_heads(p), axis=0)
+            b = tf.expand_dims(tf.expand_dims(self.pos_b, axis=1), axis=3)
+            p = tf.einsum('bnik,bnjk->bnij', q + b, p)
+            y += self.shift(p)
         v = self.split_heads(v)
-        y = self.scores(y, bias, v)
+        y = self.to_scores(y, self.to_bias(mask), v)
         y = self.join_heads(y)
         y = tf.einsum('biv,vh->bih', y, self.out_w)
         if self.post is not None:
-            y = self.post([src, y])
+            y = self.post([x, y])
         return y
 
     def split_heads(self, x):
@@ -108,27 +108,30 @@ class Attn(base.Layer):
         y = tf.transpose(y, perm=[0, 2, 1, 3])
         return y
 
-    @staticmethod
-    def join_heads(x):
-        y = tf.transpose(x, perm=[0, 2, 1, 3])
-        s = tf.int_shape(y)
-        y = tf.reshape(y, (-1, s[1], s[2] * s[3]))
-        return y
-
     def shift(self, x):
-        s = tf.shape(x)
+        s = tf.int_shape(x)
         y = tf.pad(x, [[0, 0], [0, 0], [0, 0], [1, 0]])
         y = tf.reshape(y, [s[0], s[1], s[3] + 1, s[2]])
         y = tf.slice(y, [0, 0, 1, 0], [-1, -1, -1, -1])
         y = tf.reshape(y, s)
         return y
 
-    def scores(self, x, bias, v):
-        y = x * self.scale
-        if bias is not None:
-            y = y + bias
-        y = tf.softmax(y)
-        r = self.cfg.drop_attn or self.cfg.drop_hidden
-        y = self.drop(y, r)
+    def to_bias(self, mask):
+        y = tf.logical_not(mask)
+        y = tf.cast(y, tf.floatx()) * utils.big_neg()
+        return y
+
+    def to_scores(self, x, b, v):
+        b = tf.expand_dims(tf.expand_dims(b, axis=1), axis=3)
+        y = tf.softmax(x * self.scale + b)
+        cfg = self.cfg
+        y = self.drop(y, cfg.drop_attn or cfg.drop_hidden)
         y = tf.einsum('bnij,bnjv->bniv', y, v)
+        return y
+
+    @staticmethod
+    def join_heads(x):
+        y = tf.transpose(x, perm=[0, 2, 1, 3])
+        s = tf.int_shape(y)
+        y = tf.reshape(y, (-1, s[1], s[2] * s[3]))
         return y

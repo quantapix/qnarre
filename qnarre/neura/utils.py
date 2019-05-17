@@ -21,6 +21,36 @@ from absl import flags
 from qnarre.neura import tf
 
 
+def big_neg():
+    f = tf.floatx()
+    return tf.float16.min if f == 'float16' else -1e9
+
+
+def gelu(x):
+    c = tf.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3))))
+    c = (c + 1.0) * 0.5
+    return x * c
+
+
+def pos_timing(dim, end):
+    t = tf.range(end - 1, -1, -1, dtype=tf.floatx())
+    f = tf.range(0, dim, 2.0, dtype=tf.floatx())
+    f = 1 / (10000**(f / dim))
+    t = tf.einsum('i,d->id', t, f)
+    return tf.concat([tf.sin(t), tf.cos(t)], axis=-1)
+
+
+def pos_timing_2(dim, end, p_max, p_min, p_start):
+    t = tf.range(end, dtype=tf.floatx()) + p_start
+    assert dim % 2 == 0
+    n = dim // 2
+    f = np.log(p_max / p_min) / max(n - 1, 1)
+    f = tf.range(n, dtype=tf.floatx()) * -f
+    f = tf.exp(f) * p_min
+    t = tf.einsum('i,d->id', t, f)
+    return tf.concat([tf.sin(t), tf.cos(t)], axis=-1)
+
+
 def load_flags():
     # flags.DEFINE_float('stop_threshold', None, '')
     # flags.DEFINE_integer('checkpoint_steps', None, '')
@@ -118,7 +148,6 @@ class Params:
             metrics=tf.SparseCategoricalAccuracy(),
             act_ffnet=self._activation(self.act_ffnet),
             act_hidden=self._activation(self.act_hidden),
-            big_neg=_big_neg(),
         )
         return self
 
@@ -127,7 +156,7 @@ class Params:
         if isinstance(name, str):
             n = name.lower()
             if n == 'gelu':
-                return _gelu
+                return gelu
             if n == 'relu':
                 return tf.Relu
             if n == 'tanh':
@@ -150,17 +179,6 @@ class Params:
                               nesterov=self.sgd_nesterov)
             name = None
         return name
-
-
-def _big_neg():
-    f = tf.floatx()
-    return tf.float16.min if f == 'float16' else -1e9
-
-
-def _gelu(x):
-    c = tf.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3))))
-    c = (c + 1.0) * 0.5
-    return x * c
 
 
 class LearningRateSchedule(tf.LearningRateSchedule):

@@ -37,9 +37,10 @@ def model_for(ps, compiled=False):
     src = tf.Input(shape=(ps.len_src, ), dtype='int32')
     typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
     tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    ins = [src, typ, tgt, None, None]
-    outs = [Trafo(ps)(ins)]
-    m = tf.Model(name='TrafoModel', inputs=ins, outputs=outs)
+    ctx = None
+    b = None
+    ins = [src, typ, tgt, ctx, b]
+    m = tf.Model(name='TrafoModel', inputs=ins, outputs=Trafo(ps)(ins))
     if compiled:
         m.compile(
             optimizer=ps.optimizer,
@@ -72,16 +73,16 @@ params = dict(
     drop_hidden=0.1,
     drop_prepost=None,
     emb_one_hot=None,
-    num_dec_lays=None,
-    num_enc_lays=None,
-    num_stack_lays=2,
     len_ctx=None,
     len_src=16,
     len_tgt=None,
     max_pos=None,
     norm_epsilon=1e-6,
     norm_type='layer',
+    num_dec_lays=None,
+    num_enc_lays=None,
     num_heads=4,
+    num_stack_lays=2,
     num_toks=None,
     pos_emb='timing',
     pos_max=1.0e4,

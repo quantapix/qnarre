@@ -13,9 +13,8 @@
 # limitations under the License.
 # =============================================================================
 
-import numpy as np
-
 from qnarre.neura import tf
+from qnarre.neura import utils
 from qnarre.neura.layers.base import Layer
 
 
@@ -153,16 +152,10 @@ class PosTiming(Layer):
 
     def build(self, input_shape):
         cfg = self.cfg
-        h = cfg.dim_hidden
-        assert h % 2 == 0
-        n = h // 2
-        s = np.log(cfg.pos_max / cfg.pos_min) / max(n - 1, 1)
-        s = tf.range(n, dtype=tf.floatx()) * -s
-        s = tf.exp(s) * cfg.pos_min
+        d = cfg.dim_hidden
         p = max(cfg.pos_max_len or 0, cfg.len_src, cfg.len_tgt)
-        p = tf.range(p, dtype=tf.floatx()) + cfg.pos_start
-        p = tf.expand_dims(p, axis=1) * tf.expand_dims(s, axis=0)
-        self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], axis=1)
+        a = (cfg.pos_max, cfg.pos_min, cfg.pos_start)
+        self.pos_b = utils.pos_timing_2(d, p, *a)
         return super().build(input_shape)
 
     @tf.function
@@ -185,15 +178,8 @@ class RelEmbed(Layer):
 
     def build(self, input_shape):
         cfg = self.cfg
-        h = cfg.dim_hidden
         p = max(cfg.pos_max_len or 0, cfg.len_src, cfg.len_tgt)
-        p = tf.range(p - 1, -1, -1.0, dtype=tf.floatx())
-        if cfg.len_clamp > 0:
-            p = tf.minimum(p, cfg.len_clamp)
-        f = tf.range(0.0, h, 2.0, dtype=tf.floatx())
-        f = 1 / (10000**(f / h))
-        p = tf.einsum('i,j->ij', p, f)
-        self.pos_b = tf.concat([tf.sin(p), tf.cos(p)], -1)[:, None, :]
+        self.pos_b = utils.pos_timing(cfg.dim_hidden, p)
 
     @tf.function
     def call(self, inputs, mask=None):
