@@ -19,7 +19,7 @@ from qnarre.neura.layers import base
 
 
 class Attn(base.Layer):
-    v_w = None
+    v_w = prox_b = None
 
     @staticmethod
     def cfg_items(ps):
@@ -32,6 +32,7 @@ class Attn(base.Layer):
                 'drop_attn',
                 'drop_hidden',
                 'num_heads',
+                'bias_prox',
             ))
 
     def __init__(self, ps, owner, **kw):
@@ -67,7 +68,12 @@ class Attn(base.Layer):
             if self.pos_p_b is None:
                 self.pos_p_b = self.add_bias('pos_p_b', (n, k))
         self.out_w = self.add_weight('out_w', (n * v, h))
+        if cfg.bias_prox:
+            self.prox_b = self.proximity(input_shape[1])
         return super().build(input_shape)
+
+    def compute_mask(self, inputs, mask=None):
+        return mask[0]
 
     @tf.function
     def call(self, inputs, mask=None):
@@ -84,17 +90,11 @@ class Attn(base.Layer):
         q = self.split_heads(y[:, -xlen:, :])
         k = self.split_heads(y)
         if self.pos is None:
-            y = tf.einsum('bnik,bnjk->bnij', q, k)
+            qk = tf.einsum('bnik,bnjk->bnij', q, k)
         else:
-            b = tf.expand_dims(tf.expand_dims(self.pos_x_b, axis=1), axis=3)
-            y = tf.einsum('bnik,bnjk->bnij', q + b, k)
-            p = tf.einsum('ih,hk->ik', self.pos, self.pos_w)
-            p = tf.expand_dims(self.split_heads(p), axis=0)
-            b = tf.expand_dims(tf.expand_dims(self.pos_b, axis=1), axis=3)
-            p = tf.einsum('bnik,bnjk->bnij', q + b, p)
-            y += self.shift(p)
+            qk = self.to_qk_with_pos(q, k)
         v = self.split_heads(v)
-        y = self.to_scores(y, self.to_bias(mask), v)
+        y = self.to_scores(qk, mask[0], v)
         y = self.join_heads(y)
         y = tf.einsum('biv,vh->bih', y, self.out_w)
         if self.post is not None:
@@ -108,6 +108,16 @@ class Attn(base.Layer):
         y = tf.transpose(y, perm=[0, 2, 1, 3])
         return y
 
+    def to_qk_with_pos(self, q, k):
+        b = tf.expand_dims(tf.expand_dims(self.pos_x_b, axis=1), axis=3)
+        y = tf.einsum('bnik,bnjk->bnij', q + b, k)
+        p = tf.einsum('ih,hk->ik', self.pos, self.pos_w)
+        p = tf.expand_dims(self.split_heads(p), axis=0)
+        b = tf.expand_dims(tf.expand_dims(self.pos_b, axis=1), axis=3)
+        p = tf.einsum('bnik,bnjk->bnij', q + b, p)
+        y += self.shift(p)
+        return y
+
     def shift(self, x):
         s = tf.int_shape(x)
         y = tf.pad(x, [[0, 0], [0, 0], [0, 0], [1, 0]])
@@ -116,14 +126,13 @@ class Attn(base.Layer):
         y = tf.reshape(y, s)
         return y
 
-    def to_bias(self, mask):
-        y = tf.logical_not(mask)
-        y = tf.cast(y, tf.floatx()) * utils.big_neg()
-        return y
-
-    def to_scores(self, x, b, v):
+    def to_scores(self, qk, mask, v):
+        b = tf.logical_not(mask)
+        b = tf.cast(b, tf.floatx()) * utils.big_neg()
+        if self.prox_b is not None:
+            b += self.prox_b
         b = tf.expand_dims(tf.expand_dims(b, axis=1), axis=3)
-        y = tf.softmax(x * self.scale + b)
+        y = tf.softmax(qk * self.scale + b)
         cfg = self.cfg
         y = self.drop(y, cfg.drop_attn or cfg.drop_hidden)
         y = tf.einsum('bnij,bnjv->bniv', y, v)
@@ -134,4 +143,12 @@ class Attn(base.Layer):
         y = tf.transpose(x, perm=[0, 2, 1, 3])
         s = tf.int_shape(y)
         y = tf.reshape(y, (-1, s[1], s[2] * s[3]))
+        return y
+
+    @staticmethod
+    def proximity(max_len):
+        y = tf.range(max_len, dtype=tf.floatx())
+        y = tf.expand_dims(y, axis=0) - tf.expand_dims(y, axis=1)
+        y = -tf.log1p(tf.abs(y))
+        y = tf.expand_dims(tf.expand_dims(y, axis=0), axis=0)
         return y

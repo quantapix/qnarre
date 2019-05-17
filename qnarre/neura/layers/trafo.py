@@ -48,10 +48,8 @@ class Trafo(Layer):
             self.pos_emb = PosTiming(ps, name='time_emb')
         else:
             assert cfg.pos_emb is None
-        self.norm = Norm(ps, name='norm')
         self.pre = PreProc(ps, name='pre_proc')
         self.post = PostProc(ps, name='post_proc')
-        self.drop = tf.Dropout(cfg.drop_hidden, name='drop')
         self.enc_stack = EncStack(ps, self, name='enc_stack')
         self.dec_stack = DecStack(ps, self, name='dec_stack')
         self.out = tf.Dense(cfg.num_toks, name='out', activation=None)
@@ -66,14 +64,13 @@ class Trafo(Layer):
 
     @tf.function
     def call(self, inputs):
-        # cfg = self.cfg
-        src, typ, tgt, ctx, b = inputs
+        src, typ, s_mems, tgt, t_mems, ctx = inputs
+        out = s_ms = t_ms = None
         if src is not None:
-            ctx, b = self.encode(src, typ)
-        out = None
+            ctx, s_ms = self.encode(src, typ, s_mems)
         if tgt is not None:
-            out, ctx, b = self.deduce(tgt, ctx, b)
-        return [out, ctx, b]
+            out, t_ms = self.deduce(tgt, t_mems, ctx)
+        return [out, s_ms, t_ms]
 
     """
     def call(self, inputs, training=None, **kw):
@@ -108,20 +105,17 @@ class Trafo(Layer):
             y = self.typ_emb([y, typ])
         if self.pos_emb:
             y = self.pos_emb(y)
-        y = self.drop(self.norm(y))
         return y
 
-    def encode(self, src, typ):
-        ctx, b = None, None
-        if src is not None:
-            y = self.embed(src, typ)
-            ctx, b = self.enc_stack(y)
-        return ctx, b
+    def encode(self, src, typ, mems):
+        y = self.embed(src, typ)
+        y, ms = self.enc_stack([y, mems])
+        return y, ms
 
-    def decode(self, tgt, ctx, b):
+    def decode(self, tgt, mems, ctx):
         y = self.embed(tgt)
-        y = self.dec_stack([y, ctx, b])
-        return y
+        y, ms = self.dec_stack([y, mems, ctx])
+        return y, ms
 
     def deduce(self, tgt, ctx, bias, i=None):
         ps = self.ps
@@ -148,37 +142,38 @@ class Trafo(Layer):
 
 
 class Stack(Layer):
-    prox_b = None
-
-    @staticmethod
-    def proximity(max_len):
-        y = tf.range(max_len, dtype=tf.floatx())
-        y = tf.expand_dims(y, axis=0) - tf.expand_dims(y, axis=1)
-        y = -tf.log1p(tf.abs(y))
-        y = tf.expand_dims(tf.expand_dims(y, axis=0), axis=0)
-        return y
-
     def __init__(self, ps, owner, **kw):
         super().__init__(ps, **kw)
         self.pre = owner.pre
         self.post = owner.post
 
-    def attn_bias(self, mask):
-        y = tf.logical_not(mask)
-        y = tf.cast(y, tf.floatx()) * self.cfg.big_neg
-        y = tf.expand_dims(tf.expand_dims(y, axis=1), axis=3)
-        return y
+    def compute_mask(self, inputs, mask=None):
+        return mask[0]
+
+    def compute_output_shape(self, input_shape):
+        x, ms = input_shape[:2]
+        ms = ([x] * len(self.encs)) if ms is None else ms
+        return [x, ms]
+
+    def new_mem(self, x, old):
+        mlen = self.cfg.len_mem
+        if mlen is None or old is None:
+            m = x
+        elif mlen == 0:
+            return old
+        else:
+            m = tf.concat([old, x], 0)[-mlen:]
+        return tf.stop_gradient(m)
 
 
 class EncStack(Stack):
     @staticmethod
     def cfg_items(ps):
-        return dict(
-            ps.cfg_items(
-                'num_enc_lays',
-                'num_stack_lays',
-                'bias_prox',
-            ))
+        return dict(ps.cfg_items(
+            'len_mem',
+            'num_enc_lays',
+            'num_stack_lays',
+        ))
 
     def __init__(self, ps, owner, **kw):
         super().__init__(ps, owner, **kw)
@@ -186,34 +181,27 @@ class EncStack(Stack):
         n = cfg.num_enc_lays or cfg.num_stack_lays
         self.encs = [Encoder(ps, owner, f'enc_{i}') for i in range(n)]
 
-    def build(self, input_shape):
-        cfg = self.cfg
-        if cfg.bias_prox:
-            self.prox_b = self.proximity(input_shape[1])
-        return super().build(input_shape)
-
     @tf.function
-    def call(self, inputs, mask=None):
-        x = inputs
-        ab = rb = self.attn_bias(mask)
-        if self.prox_b is not None:
-            rb += self.prox_b
-        y = self.pre.drop(x)
-        for e in self.encs:
-            y = e([y, rb])
+    def call(self, inputs):
+        x, mems = inputs
+        y = self.pre(x)
+        ms = []
+        for i, e in enumerate(self.encs):
+            m = None if mems is None else mems[i]
+            ms.append(self.new_mem(y, m))
+            y = e([y, m])
         y = self.post([x, y])
-        return y, ab
+        return y, ms
 
 
 class DecStack(Stack):
     @staticmethod
     def cfg_items(ps):
-        return dict(
-            ps.cfg_items(
-                'num_dec_lays',
-                'num_stack_lays',
-                'bias_prox',
-            ))
+        return dict(ps.cfg_items(
+            'len_mem',
+            'num_dec_lays',
+            'num_stack_lays',
+        ))
 
     def __init__(self, ps, owner, **kw):
         super().__init__(ps, owner, **kw)
@@ -221,16 +209,9 @@ class DecStack(Stack):
         n = cfg.num_dec_lays or cfg.num_stack_lays
         self.decs = [Decoder(ps, owner, f'dec_{i}') for i in range(n)]
 
-    def build(self, input_shape):
-        cfg = self.cfg
-        if cfg.bias_prox:
-            self.prox_b = self.proximity(input_shape[1])
-        return super().build(input_shape)
-
     @tf.function
-    def call(self, inputs, mask=None):
-        x, ctx, ab = inputs
-        rb = self.attn_bias(mask)
+    def call(self, inputs):
+        x, mems, ctx = inputs
         """
         cfg = self.cfg
         if ps.causal_refl:
@@ -245,36 +226,48 @@ class DecStack(Stack):
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 b = -1e9 * (1.0 - b)
         """
-        if self.prox_b is not None:
-            rb += self.prox_b
-        y = self.pre.drop(x)
-        for d in self.decs:
-            y = d([y, rb, ctx, ab])
+        y = self.pre(x)
+        ms = []
+        for i, d in enumerate(self.decs):
+            m = None if mems is None else mems[i]
+            ms.append(self.new_mem(y, m))
+            y = d([y, m, ctx])
         y = self.post([x, y])
-        return y
+        return y, ms
 
 
-class Encoder:
-    def __init__(self, ps, owner, name):
+class EncDec(Layer):
+    def __init__(self, ps, owner, name, **kw):
+        super().__init__(ps, **kw)
         self.refl = Attn(ps, owner, name=name + '_refl')
         self.ffnet = FFNet(ps, owner, name=name + '_ffnet')
 
-    def __call__(self, inputs):
-        x, rb = inputs
-        y = self.refl([x, x, rb])
+    def compute_mask(self, inputs, mask=None):
+        return mask[0]
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0]
+
+
+class Encoder(EncDec):
+
+    @tf.function
+    def call(self, inputs):
+        x, mem = inputs
+        y = self.refl([x, mem])
         y = self.ffnet(y)
         return y
 
 
-class Decoder:
-    def __init__(self, ps, owner, name):
-        self.refl = Attn(ps, owner, name=name + '_refl')
+class Decoder(Layer):
+    def __init__(self, ps, owner, name, **kw):
+        super().__init__(ps, owner, name, **kw)
         self.attn = Attn(ps, owner, name=name + '_attn')
-        self.ffnet = FFNet(ps, owner, name=name + '_ffnet')
 
-    def __call__(self, inputs):
-        x, rb, ctx, ab = inputs
-        y = self.refl([x, x, rb])
-        y = self.attn([y, ctx, ab])
+    @tf.function
+    def call(self, inputs):
+        x, mem, ctx = inputs
+        y = self.refl([x, mem])
+        y = self.attn([y, ctx])
         y = self.ffnet(y)
         return y

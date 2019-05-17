@@ -103,6 +103,9 @@ class TypEmbed(Layer):
         self.typ_w = self.add_weight('typ_w', (cfg.num_types, cfg.dim_hidden))
         return super().build(input_shape)
 
+    def compute_mask(self, inputs, mask=None):
+        return mask[0]
+
     @tf.function
     def call(self, inputs, mask=None):
         x, typ = inputs
