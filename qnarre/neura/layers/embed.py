@@ -44,13 +44,12 @@ class TokEmbed(Layer):
         d = cfg.dim_embed or h
         bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
+        assert b == cfg.PAD
         for i, e in enumerate(bs):
             p = d // (len(bs)**i)
             t = self.add_weight(f'table_w{i}', (e - b, p))
             self.table_ws.append(t)
-            a = None
-            if p != h:
-                a = self.add_weight(f'adapt_w{i}', (p, h))
+            a = None if p == h else self.add_weight(f'adapt_w{i}', (p, h))
             self.adapt_ws.append(a)
             b = e
         self.one_hot = cfg.emb_one_hot
@@ -65,17 +64,19 @@ class TokEmbed(Layer):
 
     @tf.function
     def call(self, inputs):
+        x = inputs
         cfg = self.cfg
-        x, mask = inputs, tf.not_equal(inputs, cfg.PAD)
         y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidden, ))
         bs = (cfg.brackets or []) + [cfg.num_toks]
         b = 0
         for i, e in enumerate(bs):
             m = (x >= (b or 1)) & (x < e)
-            u = self.lookup(tf.boolean_mask(x, m) - b, i)
+            u = tf.boolean_mask(x, m)
+            u = self.lookup(u - b, i)
             y = tf.tensor_scatter_nd_add(y, tf.where(m), u)
+            b = e
         y *= tf.int_shape(y)[-1]**0.5
-        y._keras_mask = mask
+        y._keras_mask = tf.not_equal(x, cfg.PAD)
         return y
 
     def lookup(self, x, i):

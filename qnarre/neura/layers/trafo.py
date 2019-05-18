@@ -20,6 +20,7 @@ from qnarre.neura.layers.base import Layer
 from qnarre.neura.layers.ffnet import FFNet
 from qnarre.neura.layers.search import Beam
 from qnarre.neura.layers.norm import PreProc, PostProc
+from qnarre.neura.layers.deduce import DeduceLoss, DeduceToks
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
@@ -33,26 +34,28 @@ class Trafo(Layer):
                 'beam_size',
                 'drop_hidden',
                 'num_toks',
-                'pos_emb',
+                'pos_type',
                 'tok_typs',
             ))
 
     def __init__(self, ps, **kw):
         super().__init__(ps, **kw)
         cfg = self.cfg
-        self.tok_emb = TokEmbed(ps, name='tok_emb')
+        self.embed = TokEmbed(ps, name='embed')
         if cfg.tok_typs:
             self.typ_emb = TypEmbed(ps, name='typ_emb')
-        if cfg.pos_emb == 'embed':
+        if cfg.pos_type == 'embed':
             self.pos_emb = PosEmbed(ps, name='pos_emb')
-        elif cfg.pos_emb == 'timing':
+        elif cfg.pos_type == 'timing':
             self.pos_emb = PosTiming(ps, name='time_emb')
         else:
-            assert cfg.pos_emb is None
+            assert cfg.pos_type == 'relative'
         self.pre = PreProc(ps, name='pre_proc')
         self.post = PostProc(ps, name='post_proc')
         self.enc_stack = EncStack(ps, self, name='enc_stack')
         self.dec_stack = DecStack(ps, self, name='dec_stack')
+        self.dedu_loss = DeduceLoss(ps, self, name='dedu_loss')
+        self.dedu_toks = DeduceToks(ps, self, name='dedu_toks')
         self.out = tf.Dense(cfg.num_toks, name='out', activation=None)
         if cfg.beam_size:
             self.beam = Beam(ps, self, name='beam')
@@ -65,43 +68,22 @@ class Trafo(Layer):
 
     @tf.function
     def call(self, inputs):
-        src, typ, s_mems, tgt, t_mems, ctx = inputs
-        out = s_ms = t_ms = None
-        if src is not None:
-            ctx, s_ms = self.encode(src, typ, s_mems)
-        if tgt is not None:
-            out, t_ms = self.deduce(tgt, t_mems, ctx)
-        return [out, s_ms, t_ms]
-
-    """
-    def call(self, inputs, training=None, **kw):
-        ps = self.ps
-        src, typ, tgt = inputs
-        ctx, bias = self.encode(src, typ, **kw)
-        if tgt is not None:
-            if training is not None and self.beam is not None:
-                tgt, score = self.beam([tgt, ctx, bias], **kw)
-            else:
-                logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-                sh = tf.int_shape(tgt)
-                b = tf.range(ps.batch_size)
-                for i in range(sh[-1]):
-                    if tf.reduce_any(unk[:, i]) is True:
-                        y = tf.argmax(logp[:, i, :],
-                                     axis=1,
-                                     output_type=tf.int32)
-                        ii = tf.constant([i] * ps.batch_size)
-                        sel = tf.stack([b, ii])
-                        tgt = tf.tensor_scatter_nd_update(tgt, sel, y)
-                        e = tf.equal(tgt, ps.END)
-                        if tf.reduce_all(tf.reduce_any(e, axis=1)) is True:
-                            break
-                        logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-            return tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
-    """
+        enc, dec, ctx, tgt = inputs
+        out = e_ms = d_ms = None
+        if enc is not None:
+            src, typ, mems = enc
+            ctx, e_ms = self.encode(src, typ, mems)
+        if dec is not None:
+            src, typ, mems = dec
+            ctx, d_ms = self.decode(src, typ, mems, ctx)
+        if tf.learning_phase():
+            out = self.dedu_loss([tgt, ctx])
+        else:
+            out = self.dedu_toks([tgt, ctx])
+        return [out, e_ms, d_ms]
 
     def embed(self, x, typ=None):
-        y = self.tok_emb(x)
+        y = self.embed(x)
         if typ is not None and self.typ_emb:
             y = self.typ_emb([y, typ])
         if self.pos_emb:
@@ -113,33 +95,10 @@ class Trafo(Layer):
         y, ms = self.enc_stack([y, mems])
         return y, ms
 
-    def decode(self, tgt, mems, ctx):
-        y = self.embed(tgt)
+    def decode(self, src, typ, mems, ctx):
+        y = self.embed(src, typ)
         y, ms = self.dec_stack([y, mems, ctx])
         return y, ms
-
-    def deduce(self, tgt, ctx, bias, i=None):
-        ps = self.ps
-        unk = tf.equal(tgt, ps.UNK)
-        prior = tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
-        if i is not None:
-            unk = unk[:, i]
-            prior = prior[:, i, :]
-        if tf.reduce_all(unk) is True:
-            logi = prior
-        else:
-            y = self.decode(tgt, ctx, bias)
-            if i is not None:
-                y = y[:, i, :]
-            sh = tf.int_shape(y)
-            y = tf.reshape(y, (-1, sh[-1]))
-            y = self.logits(y)
-            y = tf.reshape(y, sh[:-1] + tf.int_shape(y)[-1:])
-            u = tf.expand_dims(unk, axis=2)
-            u = tf.broadcast_to(u, tf.int_shape(y))
-            logi = tf.where(u, y, prior)
-        logp = y - tf.reduce_logsumexp(y, axis=-1, keepdims=True)
-        return logp, logi, unk
 
 
 class Stack(Layer):
