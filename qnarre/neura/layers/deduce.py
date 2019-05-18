@@ -14,10 +14,11 @@
 # =============================================================================
 
 from qnarre.neura import tf
-from qnarre.neura.layers import base
+
+from qnarre.neura.layers.base import Layer
 
 
-class Layer(base.Layer):
+class Layer(Layer):
     def add_weight(self, *pa, **kw):
         return super().add_weight(*pa, dtype=tf.floatx(), **kw)
 

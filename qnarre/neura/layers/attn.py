@@ -15,10 +15,11 @@
 
 from qnarre.neura import tf
 from qnarre.neura import utils
-from qnarre.neura.layers import base
+
+from qnarre.neura.layers.base import Layer
 
 
-class Attn(base.Layer):
+class Attn(Layer):
     v_w = prox_b = None
 
     @staticmethod

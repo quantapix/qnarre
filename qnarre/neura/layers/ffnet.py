@@ -14,10 +14,11 @@
 # =============================================================================
 
 from qnarre.neura import tf
-from qnarre.neura.layers import base
+
+from qnarre.neura.layers.base import Layer
 
 
-class FFNet(base.Layer):
+class FFNet(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(

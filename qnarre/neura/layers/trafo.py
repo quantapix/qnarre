@@ -14,11 +14,12 @@
 # =============================================================================
 
 from qnarre.neura import tf
+
 from qnarre.neura.layers.attn import Attn
 from qnarre.neura.layers.base import Layer
 from qnarre.neura.layers.ffnet import FFNet
 from qnarre.neura.layers.search import Beam
-from qnarre.neura.layers.norm import Norm, PreProc, PostProc
+from qnarre.neura.layers.norm import PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
@@ -236,7 +237,7 @@ class DecStack(Stack):
         return y, ms
 
 
-class EncDec(Layer):
+class Encoder(Layer):
     def __init__(self, ps, owner, name, **kw):
         super().__init__(ps, **kw)
         self.refl = Attn(ps, owner, name=name + '_refl')
@@ -248,9 +249,6 @@ class EncDec(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape[0]
 
-
-class Encoder(EncDec):
-
     @tf.function
     def call(self, inputs):
         x, mem = inputs
@@ -259,7 +257,7 @@ class Encoder(EncDec):
         return y
 
 
-class Decoder(Layer):
+class Decoder(Encoder):
     def __init__(self, ps, owner, name, **kw):
         super().__init__(ps, owner, name, **kw)
         self.attn = Attn(ps, owner, name=name + '_attn')

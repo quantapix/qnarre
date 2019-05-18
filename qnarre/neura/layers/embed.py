@@ -15,6 +15,7 @@
 
 from qnarre.neura import tf
 from qnarre.neura import utils
+
 from qnarre.neura.layers.base import Layer
 
 
