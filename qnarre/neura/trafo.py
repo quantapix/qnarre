@@ -37,11 +37,11 @@ def model_for(ps, compiled=False):
     src = tf.Input(shape=(ps.len_src, ), dtype='int32')
     typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
     hnt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
+    # mem = None
+    # ctx = None
     tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    mems = [tf.ones((1, ps.len_src)), tf.ones((1, ps.len_tgt))]
-    ctx = None
-    ins = [[src, hnt], [typ, typ], mems, ctx, tgt]
-    m = tf.Model(name='TrafoModel', inputs=ins, outputs=Trafo(ps)(ins))
+    ins = [src, typ, hnt, tgt]
+    m = tf.Model(name='TrafoModel', inputs=ins, outputs=[Trafo(ps)(ins)])
     if compiled:
         m.compile(
             optimizer=ps.optimizer,
@@ -106,6 +106,8 @@ params.update(
 
 def main(_):
     ps = Params(params).init_comps()
+    # tf.autograph.set_verbosity(1)
+    # print(tf.autograph.to_code(Trafo.embed.python_function))
     session_for(ps)(dset_for, model_for)
 
 

@@ -38,9 +38,9 @@ class Deduce(Layer):
     def __init__(self, ps, owner, **kw):
         super().__init__(ps, **kw)
         cfg = self.cfg
-        self.table_ws = owner.embed.table_ws if cfg.share_table else []
+        self.table_ws = owner.tok_emb.table_ws if cfg.share_table else []
         self.table_bs = []
-        self.adapt_ws = owner.embed.adapt_ws if cfg.share_adapt else []
+        self.adapt_ws = owner.tok_emb.adapt_ws if cfg.share_adapt else []
 
     def build(self, input_shape):
         cfg = self.cfg

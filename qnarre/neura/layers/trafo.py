@@ -42,7 +42,7 @@ class Trafo(Layer):
     def __init__(self, ps, **kw):
         super().__init__(ps, **kw)
         cfg = self.cfg
-        self.embed = TokEmbed(ps, name='embed')
+        self.tok_emb = TokEmbed(ps, name='tok_emb')
         if cfg.tok_types:
             self.typ_emb = TypEmbed(ps, name='typ_emb')
         if cfg.pos_type == 'embed':
@@ -67,25 +67,23 @@ class Trafo(Layer):
 
     @tf.function
     def call(self, inputs):
-        srcs, typs, mems, ctx, tgt = inputs
+        src, typ, hnt, tgt = inputs
+        mem = ctx = None
         out = e_ms = d_ms = None
-        """
-        if srcs:
-            if srcs[0] is not None:
-                y = self.embed(srcs[0], typs[0])
-                ctx, e_ms = self.enc_stack([y, mems[0]])
-            if srcs[1] is not None:
-                y = self.embed(srcs[1], typs[1])
-                ctx, d_ms = self.dec_stack([y, mems[1], ctx])
+        if src is not None:
+            y = self.embed(src, typ)
+            ctx, e_ms = self.enc_stack([y, mem])
+        if hnt is not None:
+            y = self.embed(hnt)
+            ctx, d_ms = self.dec_stack([y, mem, ctx])
         if tf.learning_phase():
             out = self.deduce([tgt, ctx])
         else:
             out = self.search([tgt, ctx])
-        """
-        return [out, e_ms, d_ms]
+        return out, e_ms, d_ms
 
     def embed(self, x, typ=None):
-        y = self.embed(x)
+        y = self.tok_emb(x)
         if typ is not None and self.typ_emb:
             y = self.typ_emb([y, typ])
         if self.pos_emb:

@@ -111,7 +111,9 @@ class TypEmbed(Layer):
     @tf.function
     def call(self, inputs, mask=None):
         x, typ = inputs
-        y = typ * tf.cast(mask, typ.dtype)
+        y = typ
+        if mask is not None:
+            y *= tf.cast(mask, typ.dtype)
         y = tf.one_hot(y, self.cfg.tok_types)
         return x + tf.einsum('bie,eh->bih', y, self.typ_w)
 
@@ -137,7 +139,8 @@ class PosEmbed(Layer):
     def call(self, inputs, mask=None):
         x = inputs
         y = self.pos_b[:tf.shape[1], :]
-        y *= tf.cast(mask, self.pos_b.dtype)
+        if mask is not None:
+            y *= tf.cast(mask, self.pos_b.dtype)
         return x + y
 
 
@@ -166,7 +169,9 @@ class PosTiming(Layer):
     @tf.function
     def call(self, inputs, mask=None):
         x = inputs
-        y = self.pos_b * tf.cast(mask, self.pos_b.dtype)
+        y = self.pos_b
+        if mask is not None:
+            y *= tf.cast(mask, self.pos_b.dtype)
         return x + y
 
 
@@ -189,5 +194,7 @@ class RelEmbed(Layer):
     @tf.function
     def call(self, inputs, mask=None):
         x = inputs
-        y = self.pos_b * tf.cast(mask, self.pos_b.dtype)
+        y = self.pos_b
+        if mask is not None:
+            y *= tf.cast(mask, self.pos_b.dtype)
         return x + y
