@@ -25,7 +25,11 @@ class Deduce(Layer):
     def cfg_items(ps):
         return dict(
             ps.cfg_items(
+                'END',
                 'PAD',
+                'UNK',
+                'batch_size',
+                'beam_size',
                 'brackets',
                 'dim_embed',
                 'dim_hidden',
@@ -46,11 +50,12 @@ class Deduce(Layer):
         cfg = self.cfg
         h = cfg.dim_hidden
         d = cfg.dim_embed or h
-        n = len(cfg.brackets)
+        bs = cfg.brackets or []
+        n = len(bs)
         if n:
             self.clust_w = self.add_weight(f'clust_w', (n, d))
             self.clust_b = self.add_bias(f'clust_b', (n, ))
-        bs = (cfg.brackets or []) + [cfg.num_toks]
+        bs += [cfg.num_toks]
         b = 0
         assert b == cfg.PAD
         for i, e in enumerate(bs):
@@ -118,19 +123,6 @@ class Deduce(Layer):
 class Search(Deduce):
     beam = None
 
-    @staticmethod
-    def cfg_items(ps):
-        return dict(
-            ps.cfg_items(
-                'END',
-                'UNK',
-                'batch_size',
-                'beam_size',
-                'num_toks',
-                'share_adapt',
-                'share_table',
-            ))
-
     def __init__(self, ps, owner, **kw):
         super().__init__(ps, owner, **kw)
         cfg = self.cfg
@@ -147,6 +139,8 @@ class Search(Deduce):
     def call(self, inputs):
         x, ctx = inputs
         cfg = self.cfg
+        return x
+    """
         if self.beam is not None:
             tgt, score = self.beam([x, ctx])
         else:
@@ -164,6 +158,7 @@ class Search(Deduce):
                         break
                     logp, logi, unk = self.to_logp(tgt, ctx, i)
         return tf.one_hot(tgt, cfg.num_toks, 0.0, utils.big_neg)
+    """
 
     def search(self, tgt, ctx, i=None):
         cfg = self.cfg
