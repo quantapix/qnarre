@@ -32,11 +32,11 @@ class Trafo(Layer):
             ps.cfg_items(
                 'beam_size',
                 'drop_hidden',
+                'len_src',
+                'len_tgt',
                 'num_toks',
                 'pos_type',
                 'tok_types',
-                'len_src',
-                'len_tgt',
             ))
 
     def __init__(self, ps, **kw):
@@ -67,24 +67,23 @@ class Trafo(Layer):
 
     @tf.function
     def call(self, inputs):
-        src, typ, hnt, tgt = inputs
-        mem = ctx = None
-        out = e_ms = d_ms = None
+        src, typ, hint, tgt = inputs
+        ctx = None
         if src is not None:
             y = self.embed(src, typ)
-            ctx, e_ms = self.enc_stack([y, mem])
-        if hnt is not None:
-            y = self.embed(hnt)
-            ctx, d_ms = self.dec_stack([y, mem, ctx])
+            ctx = self.enc_stack([y])
+        if hint is not None:
+            y = self.embed(hint)
+            ctx = self.dec_stack([y, ctx])
         if tf.learning_phase():
             out = self.deduce([tgt, ctx])
         else:
             out = self.search([tgt, ctx])
-        return out, e_ms, d_ms
+        return out
 
     def embed(self, x, typ=None):
         y = self.tok_emb(x)
-        if typ is not None and self.typ_emb:
+        if self.typ_emb and typ is not None:
             y = self.typ_emb([y, typ])
         if self.pos_emb:
             y = self.pos_emb(y)
@@ -101,26 +100,13 @@ class Stack(Layer):
         return mask[0]
 
     def compute_output_shape(self, input_shape):
-        x, ms = input_shape[:2]
-        ms = ([x] * len(self.encs)) if ms is None else ms
-        return [x, ms]
-
-    def new_mem(self, x, old):
-        mlen = self.cfg.len_mem
-        if mlen is None or old is None:
-            m = x
-        elif mlen == 0:
-            return old
-        else:
-            m = tf.concat([old, x], 0)[-mlen:]
-        return tf.stop_gradient(m)
+        return input_shape[0]
 
 
 class EncStack(Stack):
     @staticmethod
     def cfg_items(ps):
         return dict(ps.cfg_items(
-            'len_mem',
             'num_enc_lays',
             'num_stack_lays',
         ))
@@ -133,22 +119,18 @@ class EncStack(Stack):
 
     @tf.function
     def call(self, inputs):
-        x, mems = inputs
+        x = inputs[0]
         y = self.pre([x, x])
-        ms = []
         for i, e in enumerate(self.encs):
-            m = None if mems is None else mems[i]
-            ms.append(self.new_mem(y, m))
-            y = e([y, m])
+            y = e([y])
         y = self.post([x, y])
-        return y, ms
+        return y
 
 
 class DecStack(Stack):
     @staticmethod
     def cfg_items(ps):
         return dict(ps.cfg_items(
-            'len_mem',
             'num_dec_lays',
             'num_stack_lays',
         ))
@@ -161,7 +143,7 @@ class DecStack(Stack):
 
     @tf.function
     def call(self, inputs):
-        x, mems, ctx = inputs
+        x, ctx = inputs
         """
         cfg = self.cfg
         if ps.causal_refl:
@@ -177,20 +159,31 @@ class DecStack(Stack):
                 b = -1e9 * (1.0 - b)
         """
         y = self.pre([x, x])
-        ms = []
         for i, d in enumerate(self.decs):
-            m = None if mems is None else mems[i]
-            ms.append(self.new_mem(y, m))
-            y = d([y, m, ctx])
+            y = d([y, ctx])
         y = self.post([x, y])
-        return y, ms
+        return y
 
 
 class Encoder(Layer):
+    mem = None
+
+    @staticmethod
+    def cfg_items(ps):
+        return dict(ps.cfg_items('len_mem', ))
+
     def __init__(self, ps, owner, name, **kw):
-        super().__init__(ps, **kw)
+        super().__init__(ps, name=name, **kw)
         self.refl = Attn(ps, owner, name=name + '_refl')
         self.ffnet = FFNet(ps, owner, name=name + '_ffnet')
+
+    def build(self, input_shape):
+        mlen = self.cfg.len_mem
+        if mlen:
+            s = input_shape[0]
+            s = s[:1] + (mlen, ) + s[2:]
+            self.mem = self.add_resource(self.name + '_mem', s)
+        return super().build(input_shape)
 
     def compute_mask(self, inputs, mask=None):
         return mask[0]
@@ -200,9 +193,19 @@ class Encoder(Layer):
 
     @tf.function
     def call(self, inputs):
-        x, mem = inputs
-        y = self.refl([x, mem])
+        x = inputs[0]
+        y = self.reflect(x)
         y = self.ffnet(y)
+        return y
+
+    def reflect(self, x):
+        m = self.mem
+        if m is None:
+            y = self.refl([x])
+        else:
+            y = self.refl([x, m])
+            i = self.cfg.len_mem
+            self.mem.assign(tf.concat([m, x], axis=1)[:, -i:, ])
         return y
 
 
@@ -213,8 +216,9 @@ class Decoder(Encoder):
 
     @tf.function
     def call(self, inputs):
-        x, mem, ctx = inputs
-        y = self.refl([x, mem])
-        y = self.attn([y, ctx])
+        x, ctx = inputs
+        y = self.reflect(x)
+        if ctx is not None:
+            y = self.attn([y, ctx])
         y = self.ffnet(y)
         return y

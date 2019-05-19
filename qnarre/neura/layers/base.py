@@ -57,14 +57,23 @@ class Layer(tf.Layer):
             kw.setdefault('initializer',
                           tf.TruncatedNormal(stddev=cfg.init_stddev))
         if hasattr(cfg, 'regular_l1') and hasattr(cfg, 'regular_l2'):
-            kw.setdefault('regularizer',
-                          tf.L1L2(cfg.regular_l1, cfg.regular_l2))
+            kw.setdefault('regularizer', tf.L1L2(cfg.regular_l1,
+                                                 cfg.regular_l2))
         return super().add_weight(name, shape, **kw)
 
     def add_bias(self, name, shape, **kw):
         kw.setdefault('dtype', tf.floatx())
         kw.setdefault('initializer', tf.zeros_initializer())
         return super().add_weight(name, shape, **kw)
+
+    def add_resource(self, name, shape, **kw):
+        kw.setdefault('dtype', tf.floatx())
+        kw.setdefault('trainable', False)
+        kw.setdefault('use_resource', True)
+        kw.setdefault('initializer', tf.zeros_initializer())
+        kw.setdefault('aggregation', tf.VariableAggregation.NONE)
+        kw.setdefault('synchronization', tf.VariableSynchronization.NONE)
+        return self.add_variable(name, shape, **kw)
 
     def drop(self, x, rate, **kw):
         if tf.learning_phase():

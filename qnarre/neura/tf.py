@@ -24,7 +24,6 @@ from tensorflow.python.framework import constant_op
 ks = tf.keras
 K = ks.backend
 
-stop_gradient = tf.stop_gradient
 Adam = ks.optimizers.Adam
 BatchNormalization = ks.layers.BatchNormalization
 Conv1D = ks.layers.Conv1D
@@ -55,6 +54,8 @@ TensorBoard = ks.callbacks.TensorBoard
 TensorShape = tf.TensorShape
 TruncatedNormal = ks.initializers.TruncatedNormal
 Variable = tf.Variable
+VariableAggregation = tf.VariableAggregation
+VariableSynchronization = tf.VariableSynchronization
 abs = math_ops.abs
 argmax = math_ops.argmax
 argmin = math_ops.argmin
@@ -141,6 +142,7 @@ sqrt = math_ops.sqrt
 square = math_ops.square
 squeeze = array_ops.squeeze
 stack = array_ops.stack
+stop_gradient = tf.stop_gradient
 tanh = math_ops.tanh
 tensor_scatter_nd_add = tf.tensor_scatter_nd_add
 tensor_scatter_nd_update = tf.tensor_scatter_nd_update

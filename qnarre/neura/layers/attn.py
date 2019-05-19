@@ -26,14 +26,16 @@ class Attn(Layer):
     def cfg_items(ps):
         return dict(
             ps.cfg_items(
+                'bias_prox',
                 'dim_attn',
                 'dim_attn_k',
                 'dim_attn_v',
                 'dim_hidden',
                 'drop_attn',
                 'drop_hidden',
+                'len_mem',
                 'num_heads',
-                'bias_prox',
+                'pos_type',
             ))
 
     def __init__(self, ps, owner, **kw):
@@ -44,7 +46,7 @@ class Attn(Layer):
         self.pos_p_b = owner.pos_p_b
 
     def build(self, input_shape):
-        x, ctx = input_shape
+        x = input_shape[0]
         h = x[2]
         cfg = self.cfg
         assert h == cfg.dim_hidden
@@ -60,8 +62,8 @@ class Attn(Layer):
         else:
             self.qk_w = self.add_weight('qk_w', (h, n * k))
             self.v_w = self.add_weight('v_w', (h, n * v))
-        if cfg.pos_emb is None:
-            e = x[1] + (x[1] if ctx is None else ctx[1])
+        if cfg.pos_type == 'relative':
+            e = x[1] + cfg.len_mem if cfg.len_mem else 0
             self.pos = utils.pos_timing(h, e)
             self.pos_w = self.add_weight('pos_w', (h, n * k))
             if self.pos_x_b is None:
@@ -78,7 +80,7 @@ class Attn(Layer):
 
     @tf.function
     def call(self, inputs, mask=None):
-        x, ctx = inputs
+        x, ctx = inputs[0], inputs[1] if len(inputs) > 1 else None
         y = x if ctx is None else tf.concat([ctx, x], axis=1)
         y = self.pre([y, y])
         if self.v_w is None:

@@ -24,8 +24,8 @@ def dset(ps, _):
     t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
     return tf.Dataset.from_generator(
         lambda: _generator(ps),
-        ((t, t, t), t),
-        ((sh, sh, sh), sh),
+        ((t, ) * 4, t),
+        ((sh, ) * 4, sh),
     )
 
 

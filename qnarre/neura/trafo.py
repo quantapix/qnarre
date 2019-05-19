@@ -36,11 +36,9 @@ def dset_for(ps, kind):
 def model_for(ps, compiled=False):
     src = tf.Input(shape=(ps.len_src, ), dtype='int32')
     typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
-    hnt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    # mem = None
-    # ctx = None
+    hint = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
     tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    ins = [src, typ, hnt, tgt]
+    ins = [src, typ, hint, tgt]
     m = tf.Model(name='TrafoModel', inputs=ins, outputs=[Trafo(ps)(ins)])
     if compiled:
         m.compile(
@@ -75,7 +73,7 @@ params = dict(
     drop_prepost=None,
     emb_one_hot=None,
     len_ctx=None,
-    len_mem=16,
+    len_mem=None,
     len_src=16,
     len_tgt=None,
     max_pos=None,
