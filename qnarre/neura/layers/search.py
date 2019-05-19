@@ -49,15 +49,15 @@ class Beam(Layer):
     @tf.function
     def call(self, inputs):
         cfg = self.cfg
-        tgt, ctx, bias = inputs
-        tgt = tf.expand_dims(tgt, axis=1)
-        self.tgt = self.out = tf.tile(tgt, [1, cfg.beam_size, 1])
+        x, ctx = inputs
+        x = x[:, None, ]
+        self.tgt = self.out = tf.tile(x, [1, cfg.beam_size, 1])
         self.logp = self._logp
         self.score = self._score
         self.flag = self._flag
         i = 1
         while self.not_done(i):
-            logp, idx = self.top_logp(ctx, bias, i)
+            logp, idx = self.top_logp(ctx, i)
             tgt = self.append_tgt(idx, i)
             self.tgt, self.logp = self.top_tgt(tgt, logp)
             self.out, self.score, self.flag = self.top_out(tgt, logp, i)
@@ -68,7 +68,6 @@ class Beam(Layer):
         return out, score
 
     def not_done(self, i):
-        cfg = self.cfg
         y = self.score * tf.cast(self.flag, tf.floatx())
         y = tf.reduce_min(y, axis=1)
         fs = tf.reduce_any(self.flags, axis=1)
@@ -78,7 +77,7 @@ class Beam(Layer):
         done = tf.reduce_all(tf.greater(old, new))
         return tf.logical_and(tf.less(i, n), tf.logical_not(done))
 
-    def top_logp(self, ctx, bias, i, **kw):
+    def top_logp(self, ctx, bias, i):
         cfg = self.cfg
         y = tf.zeros((
             cfg.batch_size,
@@ -91,7 +90,7 @@ class Beam(Layer):
         for j in range(cfg.beam_size):
             jj = tf.constant([j] * cfg.batch_size)
             sel = tf.stack([b, jj, ii])
-            yj = self.to_logp(self.tgt[:, j, :], ctx, bias, i, **kw)[1]
+            yj = self.to_logp(self.tgt[:, j, :], ctx, bias, i)[1]
             y = tf.tensor_scatter_nd_add(y, sel, yj)
         y = tf.reshape(y, (-1, cfg.beam_size * cfg.num_toks))
         logp, idx = tf.top_k(y, k=2 * cfg.beam_size)
@@ -108,22 +107,22 @@ class Beam(Layer):
         ii = tf.constant([i] * cfg.batch_size * k)
         ii = tf.reshape(ii, (cfg.batch_size, k))
         sel = tf.stack([b, beam, ii], axis=2)
-        new = tf.expand_dims(idx % cfg.num_toks, axis=2)
-        tgt = tf.tensor_scatter_nd_update(y, sel, new)
+        u = tf.expand_dims(idx % cfg.num_toks, axis=2)
+        tgt = tf.tensor_scatter_nd_update(y, sel, u)
         return tgt
 
-    def top_tgt(self, tgt, logp):
+    def top_tgt(self, x, lp):
         cfg = self.cfg
-        fs = tf.equal(tgt[:, :, -1], cfg.END)
-        logp += tf.cast(fs, tf.floatx()) * utils.big_neg
-        return self.top_beams([tgt, logp], logp)
+        fs = tf.equal(x[:, :, -1], cfg.END)
+        lp += tf.cast(fs, tf.floatx()) * utils.big_neg
+        return self.top_beams([x, lp], lp)
 
-    def top_out(self, tgt, logp, i):
+    def top_out(self, x, lp, i):
         cfg = self.cfg
-        score = logp / self.penalty(i + 1)
-        flag = tf.equal(tgt[:, :, -1], cfg.END)
+        score = lp / self.penalty(i + 1)
+        flag = tf.equal(x[:, :, -1], cfg.END)
         score += (1. - tf.cast(flag, tf.floatx())) * utils.big_neg
-        return self.top_beams([tgt, score, flag], score)
+        return self.top_beams([x, score, flag], score)
 
     def gather_beams(self, xs, beams, k):
         cfg = self.cfg

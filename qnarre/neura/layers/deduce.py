@@ -14,11 +14,13 @@
 # =============================================================================
 
 from qnarre.neura import tf
+from qnarre.neura import utils
 
 from qnarre.neura.layers.base import Layer
+from qnarre.neura.layers.search import Beam
 
 
-class DeduceLoss(Layer):
+class Deduce(Layer):
     @staticmethod
     def cfg_items(ps):
         return dict(
@@ -66,14 +68,14 @@ class DeduceLoss(Layer):
         return super().build(input_shape)
 
     def compute_output_shape(self, input_shape):
-        return tf.TensorShape(())
+        return input_shape[0]
 
     @tf.function
     def call(self, inputs):
         cfg = self.cfg
         x, ctx = inputs
         if cfg.brackets:
-            y = tf.zeros(tf.int_shape(x) + (cfg.dim_hidden, ))
+            y = tf.zeros_like(x, dtype=tf.floatx())
             bs = cfg.brackets + [cfg.num_toks]
             b = 0
             for i, e in enumerate(bs):
@@ -96,7 +98,7 @@ class DeduceLoss(Layer):
         else:
             y = self.logits(ctx)
             y = tf.sparse_softmax_cross_entropy_with_logits(labels=x, logits=y)
-        y = tf.reduce_mean(y)
+        # y = tf.reduce_mean(y)
         return y
 
     def logits(self, x, i=None):
@@ -113,22 +115,68 @@ class DeduceLoss(Layer):
         return y
 
 
-class DeduceToks(DeduceLoss):
+class Search(Deduce):
+    beam = None
+
+    @staticmethod
+    def cfg_items(ps):
+        return dict(
+            ps.cfg_items(
+                'PAD',
+                'brackets',
+                'dim_embed',
+                'dim_hidden',
+                'emb_one_hot',
+                'num_toks',
+                'share_adapt',
+                'share_table',
+            ))
+
+    def __init__(self, ps, owner, **kw):
+        super().__init__(ps, **kw)
+        cfg = self.cfg
+        if cfg.beam_size:
+            self.beam = Beam(ps, self, name='beam')
+
+    def build(self, input_shape):
+        return super().build(input_shape)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
     @tf.function
     def call(self, inputs):
+        x, ctx = inputs
         cfg = self.cfg
+        if self.beam is not None:
+            tgt, score = self.beam([x, ctx])
+        else:
+            logp, logi, unk = self.search(tgt, ctx)
+            sh = tf.int_shape(tgt)
+            b = tf.range(cfg.batch_size)
+            for i in range(sh[-1]):
+                if tf.reduce_any(unk[:, i]) is True:
+                    y = tf.argmax(logp[:, i, :], axis=1, output_type=tf.int32)
+                    ii = tf.constant([i] * cfg.batch_size)
+                    sel = tf.stack([b, ii])
+                    tgt = tf.tensor_scatter_nd_update(tgt, sel, y)
+                    e = tf.equal(tgt, cfg.END)
+                    if tf.reduce_all(tf.reduce_any(e, axis=1)) is True:
+                        break
+                    logp, logi, unk = self.to_logp(tgt, ctx, i)
+        return tf.one_hot(tgt, cfg.num_toks, 0.0, cfg.big_neg)
 
-    def deduce(self, tgt, ctx, bias, i=None):
-        ps = self.ps
-        unk = tf.equal(tgt, ps.UNK)
-        prior = tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
+    def search(self, tgt, ctx, i=None):
+        cfg = self.cfg
+        unk = tf.equal(tgt, cfg.UNK)
+        prior = tf.one_hot(tgt, cfg.num_toks, 0.0, utils.big_neg)
         if i is not None:
             unk = unk[:, i]
             prior = prior[:, i, :]
         if tf.reduce_all(unk) is True:
             logi = prior
         else:
-            y = self.decode(tgt, ctx, bias)
+            y = self.decode(tgt, ctx)
             if i is not None:
                 y = y[:, i, :]
             sh = tf.int_shape(y)
@@ -140,30 +188,3 @@ class DeduceToks(DeduceLoss):
             logi = tf.where(u, y, prior)
         logp = y - tf.reduce_logsumexp(y, axis=-1, keepdims=True)
         return logp, logi, unk
-
-    """
-    def call(self, inputs, training=None, **kw):
-        ps = self.ps
-        src, typ, tgt = inputs
-        ctx, bias = self.encode(src, typ, **kw)
-        if tgt is not None:
-            if training is not None and self.beam is not None:
-                tgt, score = self.beam([tgt, ctx, bias], **kw)
-            else:
-                logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-                sh = tf.int_shape(tgt)
-                b = tf.range(ps.batch_size)
-                for i in range(sh[-1]):
-                    if tf.reduce_any(unk[:, i]) is True:
-                        y = tf.argmax(logp[:, i, :],
-                                     axis=1,
-                                     output_type=tf.int32)
-                        ii = tf.constant([i] * ps.batch_size)
-                        sel = tf.stack([b, ii])
-                        tgt = tf.tensor_scatter_nd_update(tgt, sel, y)
-                        e = tf.equal(tgt, ps.END)
-                        if tf.reduce_all(tf.reduce_any(e, axis=1)) is True:
-                            break
-                        logp, logi, unk = self.to_logp(tgt, ctx, bias, **kw)
-            return tf.one_hot(tgt, ps.num_toks, 0.0, ps.big_neg)
-    """

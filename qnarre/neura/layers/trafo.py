@@ -18,14 +18,13 @@ from qnarre.neura import tf
 from qnarre.neura.layers.attn import Attn
 from qnarre.neura.layers.base import Layer
 from qnarre.neura.layers.ffnet import FFNet
-from qnarre.neura.layers.search import Beam
+from qnarre.neura.layers.deduce import Deduce, Search
 from qnarre.neura.layers.norm import PreProc, PostProc
-from qnarre.neura.layers.deduce import DeduceLoss, DeduceToks
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
 class Trafo(Layer):
-    typ_emb = pos_emb = src_b = mem_b = beam = None
+    typ_emb = pos_emb = enc_stack = dec_stack = src_b = mem_b = None
 
     @staticmethod
     def cfg_items(ps):
@@ -54,11 +53,9 @@ class Trafo(Layer):
         self.post = PostProc(ps, name='post_proc')
         self.enc_stack = EncStack(ps, self, name='enc_stack')
         self.dec_stack = DecStack(ps, self, name='dec_stack')
-        self.dedu_loss = DeduceLoss(ps, self, name='dedu_loss')
-        self.dedu_toks = DeduceToks(ps, self, name='dedu_toks')
+        self.deduce = Deduce(ps, self, name='deduce')
+        self.search = Search(ps, self, name='search')
         self.out = tf.Dense(cfg.num_toks, name='out', activation=None)
-        if cfg.beam_size:
-            self.beam = Beam(ps, self, name='beam')
 
     def build(self, input_shape):
         return super().build(input_shape)
@@ -68,18 +65,19 @@ class Trafo(Layer):
 
     @tf.function
     def call(self, inputs):
-        enc, dec, ctx, tgt = inputs
+        srcs, typs, mems, ctx, tgt = inputs
         out = e_ms = d_ms = None
-        if enc is not None:
-            src, typ, mems = enc
-            ctx, e_ms = self.encode(src, typ, mems)
-        if dec is not None:
-            src, typ, mems = dec
-            ctx, d_ms = self.decode(src, typ, mems, ctx)
+        if srcs:
+            if srcs[0] is not None:
+                y = self.embed(srcs[0], typs[0])
+                ctx, e_ms = self.enc_stack([y, mems[0]])
+            if srcs[1] is not None:
+                y = self.embed(srcs[1], typs[1])
+                ctx, d_ms = self.dec_stack([y, mems[1], ctx])
         if tf.learning_phase():
-            out = self.dedu_loss([tgt, ctx])
+            out = self.deduce([tgt, ctx])
         else:
-            out = self.dedu_toks([tgt, ctx])
+            out = self.search([tgt, ctx])
         return [out, e_ms, d_ms]
 
     def embed(self, x, typ=None):
@@ -89,16 +87,6 @@ class Trafo(Layer):
         if self.pos_emb:
             y = self.pos_emb(y)
         return y
-
-    def encode(self, src, typ, mems):
-        y = self.embed(src, typ)
-        y, ms = self.enc_stack([y, mems])
-        return y, ms
-
-    def decode(self, src, typ, mems, ctx):
-        y = self.embed(src, typ)
-        y, ms = self.dec_stack([y, mems, ctx])
-        return y, ms
 
 
 class Stack(Layer):

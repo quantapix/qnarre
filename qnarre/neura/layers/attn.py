@@ -110,11 +110,11 @@ class Attn(Layer):
         return y
 
     def to_qk_with_pos(self, q, k):
-        b = tf.expand_dims(tf.expand_dims(self.pos_x_b, axis=1), axis=3)
+        b = self.pos_x_b[:, None, :, None]
         y = tf.einsum('bnik,bnjk->bnij', q + b, k)
         p = tf.einsum('ih,hk->ik', self.pos, self.pos_w)
-        p = tf.expand_dims(self.split_heads(p), axis=0)
-        b = tf.expand_dims(tf.expand_dims(self.pos_b, axis=1), axis=3)
+        p = self.split_heads(p)[None, ]
+        b = self.pos_b[:, None, :, None]
         p = tf.einsum('bnik,bnjk->bnij', q + b, p)
         y += self.shift(p)
         return y
@@ -132,7 +132,7 @@ class Attn(Layer):
         b = tf.cast(b, tf.floatx()) * utils.big_neg()
         if self.prox_b is not None:
             b += self.prox_b
-        b = tf.expand_dims(tf.expand_dims(b, axis=1), axis=3)
+        b = b[:, None, :, None]
         y = tf.softmax(qk * self.scale + b)
         cfg = self.cfg
         y = self.drop(y, cfg.drop_attn or cfg.drop_hidden)
@@ -149,7 +149,7 @@ class Attn(Layer):
     @staticmethod
     def proximity(max_len):
         y = tf.range(max_len, dtype=tf.floatx())
-        y = tf.expand_dims(y, axis=0) - tf.expand_dims(y, axis=1)
+        y = y[None, ] - y[:, None]
         y = -tf.log1p(tf.abs(y))
-        y = tf.expand_dims(tf.expand_dims(y, axis=0), axis=0)
+        y = y[None, None, ]
         return y
