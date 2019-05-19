@@ -78,32 +78,36 @@ class Deduce(Layer):
     @tf.function
     def call(self, inputs):
         cfg = self.cfg
-        x, ctx = inputs
+        x, tgt = inputs
         if cfg.brackets:
-            y = tf.zeros_like(x, dtype=tf.floatx())
+            y = tf.zeros_like(tgt, dtype=tf.floatx())
             bs = cfg.brackets + [cfg.num_toks]
             b = 0
             for i, e in enumerate(bs):
-                msk = (x >= (b or 1)) & (x < e)
-                tgt = tf.boolean_mask(x, msk) - b
-                gi = tf.stack([tf.range(tf.shape(tgt)[0]), tgt])
+                msk = (tgt >= (b or 1)) & (tgt < e)
+                mt = tf.boolean_mask(tgt, msk) - b
+                gi = tf.stack([tf.range(tf.shape(mt)[0]), mt])
                 if i == 0:
-                    logp = tf.log_softmax(self.logits(ctx, i))
+                    logp = tf.log_softmax(self.logits(x, i))
                     mp = tf.boolean_mask(logp, msk)
                     u = tf.gather_nd(mp, gi)
                 else:
                     mp = tf.boolean_mask(logp, msk)
                     u = mp[:, bs[i - 1]]
-                    mc = tf.boolean_mask(ctx, msk)[None]
+                    mc = tf.boolean_mask(x, msk)[None]
                     mp = tf.log_softmax(self.logits(mc, i))
                     mp = tf.squeeze(mp, 0)
                     u += tf.gather_nd(mp, gi)
                 y = tf.tensor_scatter_nd_add(y, tf.where(msk), -u)
                 b = e
         else:
-            y = self.logits(ctx)
-            y = tf.sparse_softmax_cross_entropy_with_logits(labels=x, logits=y)
-        # y = tf.reduce_mean(y)
+            y = self.logits(x)
+            # f = tf.SparseCategoricalAccuracy
+            # self.add_metric(f(name='acc')(tgt, y))
+            f = tf.sparse_softmax_cross_entropy_with_logits
+            loss = f(labels=tgt, logits=y)
+        # self.add_loss(tf.reduce_mean(loss))
+        print(y)
         return y
 
     def logits(self, x, i=None):

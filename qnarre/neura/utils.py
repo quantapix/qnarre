@@ -75,6 +75,8 @@ def load_flags():
 
 
 root = dict(
+    act_ffnet=None,
+    act_hidden=None,
     adam_beta1=0.9,
     adam_beta2=0.999,
     adam_epsilon=1e-7,
@@ -83,15 +85,13 @@ root = dict(
     epochs_between_evals=1,
     eval_batch_size=None,
     eval_only=False,
-    act_ffnet=None,
-    act_hidden=None,
     init_stddev=0.02,
     loss_from_logits=True,
     lr_constant=None,
     lr_schedule=None,
     lr_warmup=None,
     model_name=None,
-    optimizer='adam',
+    optimizer=None,
     predict_run=False,
     regular_l1=0,
     regular_l2=0,
@@ -143,6 +143,7 @@ class Params:
             initializer=tf.TruncatedNormal(stddev=self.init_stddev),
             regularizer=rr,
             optimizer=self._optimizer(self.optimizer),
+            # losses=tf.MeanSquaredError(),
             losses=tf.SparseCategoricalCrossentropy(
                 from_logits=self.loss_from_logits),
             metrics=tf.SparseCategoricalAccuracy(),
@@ -152,9 +153,9 @@ class Params:
         return self
 
     @staticmethod
-    def _activation(name):
-        if isinstance(name, str):
-            n = name.lower()
+    def _activation(act):
+        if isinstance(act, str):
+            n = act.lower()
             if n == 'gelu':
                 return gelu
             if n == 'relu':
@@ -162,23 +163,23 @@ class Params:
             if n == 'tanh':
                 return tf.Tanh
             assert n == 'linear'
-            name = None
-        return name
+            return None
+        return act
 
-    def _optimizer(self, name):
-        if isinstance(name, str):
-            n = name.lower()
+    def _optimizer(self, opt):
+        opt = 'sgd' if opt is None else opt
+        if isinstance(opt, str):
+            n = opt.lower()
             if n == 'adam':
                 return tf.Adam(learning_rate=self.adam_lr,
                                beta_1=self.adam_beta1,
                                beta_2=self.adam_beta2,
                                epsilon=self.adam_epsilon)
-            if n == 'sgd':
-                return tf.SGD(learning_rate=self.sgd_lr,
-                              momentum=self.sgd_momentum,
-                              nesterov=self.sgd_nesterov)
-            name = None
-        return name
+            assert n == 'sgd'
+            return tf.SGD(learning_rate=self.sgd_lr,
+                          momentum=self.sgd_momentum,
+                          nesterov=self.sgd_nesterov)
+        return opt
 
 
 class LearningRateSchedule(tf.LearningRateSchedule):

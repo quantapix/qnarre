@@ -63,10 +63,10 @@ class Trafo(Layer):
         return super().build(input_shape)
 
     def compute_output_shape(self, input_shape):
-        return input_shape
+        return input_shape[3]
 
     @tf.function
-    def call(self, inputs):
+    def call(self, inputs, training=None):
         src, typ, hint, tgt = inputs
         ctx = None
         if src is not None:
@@ -75,10 +75,11 @@ class Trafo(Layer):
         if hint is not None:
             y = self.embed(hint)
             ctx = self.dec_stack([y, ctx])
-        if tf.learning_phase():
-            out = self.deduce([tgt, ctx])
+        if training is not None:
+            out = self.deduce([ctx, tgt])
         else:
-            out = self.search([tgt, ctx])
+            # out = self.search([tgt, ctx])
+            pass
         return out
 
     def embed(self, x, typ=None):
