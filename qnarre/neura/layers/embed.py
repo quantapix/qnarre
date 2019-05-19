@@ -97,12 +97,12 @@ class TypEmbed(Layer):
     def cfg_items(ps):
         return dict(ps.cfg_items(
             'dim_hidden',
-            'num_types',
+            'tok_types',
         ))
 
     def build(self, input_shape):
         cfg = self.cfg
-        self.typ_w = self.add_weight('typ_w', (cfg.num_types, cfg.dim_hidden))
+        self.typ_w = self.add_weight('typ_w', (cfg.tok_types, cfg.dim_hidden))
         return super().build(input_shape)
 
     def compute_mask(self, inputs, mask=None):
@@ -112,7 +112,7 @@ class TypEmbed(Layer):
     def call(self, inputs, mask=None):
         x, typ = inputs
         y = typ * tf.cast(mask, typ.dtype)
-        y = tf.one_hot(y, self.cfg.num_types)
+        y = tf.one_hot(y, self.cfg.tok_types)
         return x + tf.einsum('bie,eh->bih', y, self.typ_w)
 
 

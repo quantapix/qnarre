@@ -36,10 +36,11 @@ def dset_for(ps, kind):
 def model_for(ps, compiled=False):
     src = tf.Input(shape=(ps.len_src, ), dtype='int32')
     typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
+    hnt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
     tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
+    mems = [tf.ones((1, ps.len_src)), tf.ones((1, ps.len_tgt))]
     ctx = None
-    b = None
-    ins = [src, typ, tgt, ctx, b]
+    ins = [[src, hnt], [typ, typ], mems, ctx, tgt]
     m = tf.Model(name='TrafoModel', inputs=ins, outputs=Trafo(ps)(ins))
     if compiled:
         m.compile(
@@ -74,6 +75,7 @@ params = dict(
     drop_prepost=None,
     emb_one_hot=None,
     len_ctx=None,
+    len_mem=16,
     len_src=16,
     len_tgt=None,
     max_pos=None,
@@ -84,11 +86,14 @@ params = dict(
     num_heads=4,
     num_stack_lays=2,
     num_toks=None,
-    pos_emb='timing',
     pos_max=1.0e4,
+    pos_max_len=None,
     pos_min=1.0,
     pos_start=0,
-    tok_typs=8,
+    pos_type='timing',
+    share_adapt=True,
+    share_table=True,
+    tok_types=8,
 )
 
 params.update(

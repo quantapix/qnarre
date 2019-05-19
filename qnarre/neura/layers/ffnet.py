@@ -34,9 +34,9 @@ class FFNet(Layer):
         self.pre = owner.pre
         self.post = owner.post
         cfg = self.cfg
-        kw = dict(kernel_initializer=owner.ps.initializer, use_bias=True)
+        kw = dict(kernel_initializer=ps.initializer, use_bias=True)
         self.dense2 = tf.Dense(cfg.dim_hidden, **kw)
-        kw.update(activation=owner.ps.act_ffnet)
+        kw.update(activation=ps.act_ffnet)
         self.dense1 = tf.Dense(cfg.dim_ffnet, **kw)
 
     def call(self, inputs):

@@ -24,7 +24,7 @@ from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
 class Trafo(Layer):
-    typ_emb = pos_emb = enc_stack = dec_stack = src_b = mem_b = None
+    typ_emb = pos_emb = enc_stack = dec_stack = pos_x_b = pos_p_b = None
 
     @staticmethod
     def cfg_items(ps):
@@ -34,14 +34,16 @@ class Trafo(Layer):
                 'drop_hidden',
                 'num_toks',
                 'pos_type',
-                'tok_typs',
+                'tok_types',
+                'len_src',
+                'len_tgt',
             ))
 
     def __init__(self, ps, **kw):
         super().__init__(ps, **kw)
         cfg = self.cfg
         self.embed = TokEmbed(ps, name='embed')
-        if cfg.tok_typs:
+        if cfg.tok_types:
             self.typ_emb = TypEmbed(ps, name='typ_emb')
         if cfg.pos_type == 'embed':
             self.pos_emb = PosEmbed(ps, name='pos_emb')
@@ -67,6 +69,7 @@ class Trafo(Layer):
     def call(self, inputs):
         srcs, typs, mems, ctx, tgt = inputs
         out = e_ms = d_ms = None
+        """
         if srcs:
             if srcs[0] is not None:
                 y = self.embed(srcs[0], typs[0])
@@ -78,6 +81,7 @@ class Trafo(Layer):
             out = self.deduce([tgt, ctx])
         else:
             out = self.search([tgt, ctx])
+        """
         return [out, e_ms, d_ms]
 
     def embed(self, x, typ=None):

@@ -122,18 +122,17 @@ class Search(Deduce):
     def cfg_items(ps):
         return dict(
             ps.cfg_items(
-                'PAD',
-                'brackets',
-                'dim_embed',
-                'dim_hidden',
-                'emb_one_hot',
+                'END',
+                'UNK',
+                'batch_size',
+                'beam_size',
                 'num_toks',
                 'share_adapt',
                 'share_table',
             ))
 
     def __init__(self, ps, owner, **kw):
-        super().__init__(ps, **kw)
+        super().__init__(ps, owner, **kw)
         cfg = self.cfg
         if cfg.beam_size:
             self.beam = Beam(ps, self, name='beam')
@@ -164,7 +163,7 @@ class Search(Deduce):
                     if tf.reduce_all(tf.reduce_any(e, axis=1)) is True:
                         break
                     logp, logi, unk = self.to_logp(tgt, ctx, i)
-        return tf.one_hot(tgt, cfg.num_toks, 0.0, cfg.big_neg)
+        return tf.one_hot(tgt, cfg.num_toks, 0.0, utils.big_neg)
 
     def search(self, tgt, ctx, i=None):
         cfg = self.cfg
