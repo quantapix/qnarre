@@ -134,7 +134,7 @@ class EncStack(Stack):
     @tf.function
     def call(self, inputs):
         x, mems = inputs
-        y = self.pre(x)
+        y = self.pre([x, x])
         ms = []
         for i, e in enumerate(self.encs):
             m = None if mems is None else mems[i]
@@ -176,7 +176,7 @@ class DecStack(Stack):
                 b = U.ones_band_part(ln, ln, -1, 0, out_shape=sh)
                 b = -1e9 * (1.0 - b)
         """
-        y = self.pre(x)
+        y = self.pre([x, x])
         ms = []
         for i, d in enumerate(self.decs):
             m = None if mems is None else mems[i]

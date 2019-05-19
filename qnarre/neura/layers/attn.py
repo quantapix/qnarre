@@ -80,8 +80,7 @@ class Attn(Layer):
     def call(self, inputs, mask=None):
         x, ctx = inputs
         y = x if ctx is None else tf.concat([ctx, x], axis=1)
-        if self.pre is not None:
-            y = self.pre([y])
+        y = self.pre([y, y])
         if self.v_w is None:
             y = v = tf.einsum('bih,hk->bik', y, self.qkv_w)
         else:
@@ -98,8 +97,7 @@ class Attn(Layer):
         y = self.to_scores(qk, mask[0], v)
         y = self.join_heads(y)
         y = tf.einsum('biv,vh->bih', y, self.out_w)
-        if self.post is not None:
-            y = self.post([x, y])
+        y = self.post([x, y])
         return y
 
     def split_heads(self, x):

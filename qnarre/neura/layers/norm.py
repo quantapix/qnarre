@@ -66,7 +66,7 @@ class LayerProc(Layer):
             self.batch = tf.BatchNormalization(epsilon=cfg.norm_epsilon)
 
     def build(self, input_shape):
-        s = input_shape[-1]
+        s = input_shape[1][-1]
         self.norm_w = self.add_weight('norm_w', s, initializer='ones')
         self.norm_b = self.add_weight('norm_b', s, initializer='zeros')
         # self.gamma = self.add_weight(shape=(), initializer='zeros')

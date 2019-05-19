@@ -24,6 +24,7 @@ from tensorflow.python.framework import constant_op
 ks = tf.keras
 K = ks.backend
 
+stop_gradient = tf.stop_gradient
 Adam = ks.optimizers.Adam
 BatchNormalization = ks.layers.BatchNormalization
 Conv1D = ks.layers.Conv1D
