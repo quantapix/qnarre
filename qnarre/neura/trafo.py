@@ -110,7 +110,8 @@ def main(_):
 
 
 if __name__ == '__main__':
-    # T.logging.set_verbosity(T.logging.INFO)
+    from absl import logging
+    logging.set_verbosity(logging.DEBUG)  # INFO
     from absl import flags as F
     F.DEFINE_integer('len_ctx', None, '')
     from absl import app

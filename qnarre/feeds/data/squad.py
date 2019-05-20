@@ -59,10 +59,10 @@ def download(sh):
 
 
 def main(_):
-    path = pth.Path.cwd() / flags.FLAGS.data_dir
-    if not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
-    download(Shell(path))
+    p = pth.Path.cwd() / flags.FLAGS.data_dir
+    if not p.exists():
+        p.mkdir(parents=True, exist_ok=True)
+    download(Shell(p))
 
 
 if __name__ == '__main__':

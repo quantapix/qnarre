@@ -39,6 +39,7 @@ class FFNet(Layer):
         kw.update(activation=ps.act_ffnet)
         self.dense1 = tf.Dense(cfg.dim_ffnet, **kw)
 
+    @tf.function
     def call(self, inputs):
         x = inputs
         x = self.pre([x, x])
