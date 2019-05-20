@@ -106,8 +106,7 @@ class Deduce(Layer):
             # self.add_metric(f(name='acc')(tgt, y))
             f = tf.sparse_softmax_cross_entropy_with_logits
             loss = f(labels=tgt, logits=y)
-        # self.add_loss(tf.reduce_mean(loss))
-        print(y)
+        # self.add_loss(lambda: tf.reduce_mean(loss))
         return y
 
     def logits(self, x, i=None):
@@ -149,7 +148,7 @@ class Search(Deduce):
             tgt, score = self.beam([x, ctx])
         else:
             logp, logi, unk = self.search(tgt, ctx)
-            sh = tf.int_shape(tgt)
+            sh = tgt.shape
             b = tf.range(cfg.batch_size)
             for i in range(sh[-1]):
                 if tf.reduce_any(unk[:, i]) is True:
@@ -177,12 +176,12 @@ class Search(Deduce):
             y = self.decode(tgt, ctx)
             if i is not None:
                 y = y[:, i, :]
-            sh = tf.int_shape(y)
+            sh = y.shape  # tf.int_shape(y)
             y = tf.reshape(y, (-1, sh[-1]))
             y = self.logits(y)
-            y = tf.reshape(y, sh[:-1] + tf.int_shape(y)[-1:])
+            y = tf.reshape(y, sh[:-1] + y.shape[-1:])
             u = tf.expand_dims(unk, axis=2)
-            u = tf.broadcast_to(u, tf.int_shape(y))
+            u = tf.broadcast_to(u, y.shape)
             logi = tf.where(u, y, prior)
         logp = y - tf.reduce_logsumexp(y, axis=-1, keepdims=True)
         return logp, logi, unk

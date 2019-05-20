@@ -88,7 +88,7 @@ class Attn(Layer):
         else:
             y = tf.einsum('bih,hk->bik', y, self.qk_w)
             v = tf.einsum('bih,hv->biv', v, self.v_w)
-        xlen = tf.int_shape(x)[1]
+        xlen = x.shape[1]  # tf.int_shape(x)[1]
         q = self.split_heads(y[:, -xlen:, :])
         k = self.split_heads(y)
         if self.pos_tim is None:
@@ -103,7 +103,7 @@ class Attn(Layer):
         return y
 
     def split_heads(self, x):
-        s = tf.int_shape(x)
+        s = x.shape  # tf.int_shape(x)
         n = self.cfg.num_heads
         y = tf.reshape(x, (-1, s[1], n, s[-1] // n))
         y = tf.transpose(y, perm=[0, 2, 1, 3])
@@ -120,7 +120,7 @@ class Attn(Layer):
         return y
 
     def shift(self, x):
-        s = tf.int_shape(x)
+        s = x.shape  # tf.int_shape(x)
         y = tf.pad(x, [[0, 0], [0, 0], [0, 0], [1, 0]])
         y = tf.reshape(y, [s[0], s[1], s[3] + 1, s[2]])
         y = tf.slice(y, [0, 0, 1, 0], [-1, -1, -1, -1])
@@ -144,7 +144,7 @@ class Attn(Layer):
     @staticmethod
     def join_heads(x):
         y = tf.transpose(x, perm=[0, 2, 1, 3])
-        s = tf.int_shape(y)
+        s = y.shape  # tf.int_shape(y)
         y = tf.reshape(y, (-1, s[1], s[2] * s[3]))
         return y
 

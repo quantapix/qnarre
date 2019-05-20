@@ -75,7 +75,7 @@ class TokEmbed(Layer):
             u = self.lookup(u - b, i)
             y = tf.tensor_scatter_nd_add(y, tf.where(m), u)
             b = e
-        y *= tf.int_shape(y)[-1]**0.5
+        y *= y.shape[-1]**0.5
         y._keras_mask = tf.not_equal(x, cfg.PAD)
         return y
 
