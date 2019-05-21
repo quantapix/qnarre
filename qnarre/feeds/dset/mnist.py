@@ -24,29 +24,29 @@ from qnarre.neura import tf
 def dset(ps, kind):
     w, h = ps.img_width, ps.img_height
     return tf.Dataset.from_generator(
-        lambda: _reader(ps, kind),
+        lambda: reader(ps, kind),
         (tf.float32, tf.int32),
         (tf.TensorShape((w * h, )), tf.TensorShape(())),
     )
 
 
-def _reader(ps, kind):
-    p = pth.Path(ps.data_dir)
-    x, y = _names[kind]
+def reader(ps, kind):
+    p = pth.Path(ps.dir_data) / ps.dset
+    x, y = names[kind]
     with lzma.open(p / (x + '.xz'), mode='rb') as xf:
-        assert _read32(xf) == 2051
-        _, r, c = _read32(xf), _read32(xf), _read32(xf)
+        assert read32(xf) == 2051
+        _, r, c = read32(xf), read32(xf), read32(xf)
         with lzma.open(p / (y + '.xz'), mode='rb') as yf:
-            assert _read32(yf) == 2049
-            _ = _read32(yf)
+            assert read32(yf) == 2049
+            _ = read32(yf)
             while True:
-                x, y = _read32(xf, r * c * 4), _read32(yf, 1)
+                x, y = read32(xf, r * c * 4), read32(yf, 1)
                 if x is None or y is None:
                     break
                 yield x, int(y)
 
 
-def _read32(f, count=4):
+def read32(f, count=4):
     b = f.read(count)
     if b:
         dt = np.uint8 if count == 1 else np.dtype(np.uint32).newbyteorder('>')
@@ -56,16 +56,9 @@ def _read32(f, count=4):
         return np.array(rs, dtype=np.float)
 
 
-_names = {
-    'train': ('train_images', 'train_labels'),
-    'test': ('test_images', 'test_labels'),
-    'try': ('test_images', 'test_labels'),
-}
-
-
 def cached_dset(ps, kind):
-    path = pth.Path(ps.data_dir)
-    p, r, c = _check_images(path / '{}_images'.format(kind))
+    p = pth.Path(ps.dir_data) / ps.dset
+    p, r, c = check_images(p / '{}_images'.format(kind))
 
     def _img(x):
         x = tf.decode_raw(x, tf.uint8)
@@ -74,7 +67,7 @@ def cached_dset(ps, kind):
         return x / 255.0
 
     x = tf.FixedLengthRecordDataset(p, r * c, header_bytes=16).map(_img)
-    p = _check_labels(path / '{}_labels'.format(kind))
+    p = check_labels(p / '{}_labels'.format(kind))
 
     def _lbl(y):
         y = tf.decode_raw(y, tf.uint8)
@@ -85,9 +78,9 @@ def cached_dset(ps, kind):
     return tf.Dataset.zip((x, y))
 
 
-def np_dataset(ps, kind):
-    path = pth.Path(ps.data_dir)
-    with np.load(path / 'combined') as d:
+def np_dset(ps, kind):
+    p = pth.Path(ps.dir_data) / ps.dset
+    with np.load(p / 'combined') as d:
         x, y = d['x_{}'.format(kind)], d['y_{}'.format(kind)]
     x = x.astype(np.float32) / 255
     x = np.expand_dims(x, -1)
@@ -96,8 +89,8 @@ def np_dataset(ps, kind):
 
 
 def np_data(ps, kind):
-    path = pth.Path(ps.data_dir)
-    with np.load(path / 'combined') as d:
+    p = pth.Path(ps.dir_data) / ps.dset
+    with np.load(p / 'combined') as d:
         x, y = d['x_{}'.format(kind)], d['y_{}'.format(kind)]
     r, c = x.shape[1:]
     x = x.reshape((-1, r * c)).astype('float32') / 255
@@ -105,18 +98,25 @@ def np_data(ps, kind):
     return x, y
 
 
-def _check_images(path):
+def check_images(path):
     with open(path, 'rb') as f:
-        if _read32(f) != 2051:
+        if read32(f) != 2051:
             raise ValueError('Invalid magic number {}'.format(f.name))
-        _read32(f)
-        r = _read32(f)
-        c = _read32(f)
+        read32(f)
+        r = read32(f)
+        c = read32(f)
     return str(path), r, c
 
 
-def _check_labels(path):
+def check_labels(path):
     with open(path, 'rb') as f:
-        if _read32(f) != 2049:
+        if read32(f) != 2049:
             raise ValueError('Invalid magic number {}'.format(f.name))
     return str(path)
+
+
+names = {
+    'train': ('train_images', 'train_labels'),
+    'test': ('test_images', 'test_labels'),
+    'try': ('test_images', 'test_labels'),
+}

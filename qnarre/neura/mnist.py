@@ -64,18 +64,12 @@ _params = dict(
     batch_size=64,
     dim_hidden=512,
     drop_hidden=0.2,
+    dset='mnist',
     img_height=28,
     img_width=28,
-    model_name='mlp',
+    model='mnist',
     num_classes=10,
     optimizer='sgd',
-)
-
-_params.update(
-    data_dir='.data/mnist',
-    log_dir='.model/mnist/logs',
-    model_dir='.model/mnist',
-    save_dir='.model/mnist/save',
 )
 
 

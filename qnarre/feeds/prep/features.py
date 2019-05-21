@@ -61,7 +61,7 @@ Span.__len__ = _span_len
 Token = co.namedtuple('Token', 'word span pos lemma ner embeds')
 
 
-class Tokens(abc.Sequence):
+class Toks(abc.Sequence):
 
     elems = offsets = ()
     fields = ('_words', '_spans', '_poss', '_lemmas', ' _ners')
@@ -153,23 +153,23 @@ class Tokens(abc.Sequence):
         return ns
 
 
-_init_cache(Tokens, Tokens.fields)
+_init_cache(Toks, Toks.fields)
 
-Topic = co.namedtuple('Topic', 'title contexts')
+Topic = co.namedtuple('Topic', 'title ctxts')
 # Topic.__new__.__defaults__ = ('', ())
 
-Context = co.namedtuple('Context', 'text tokens questions')
-# Context.__new__.__defaults__ = ('', None, ())
+Ctxt = co.namedtuple('Ctxt', 'text toks queries')
+# Ctxt.__new__.__defaults__ = ('', None, ())
 
-Question = co.namedtuple('Question', 'text tokens answers unfit viables qid')
-# Question.__new__.__defaults__ = ('', '', None, False, ())
+Query = co.namedtuple('Query', 'text toks replies valid plaus qid')
+# Query.__new__.__defaults__ = ('', '', None, False, ())
 
-Answer = co.namedtuple('Answer', 'text tokens span uid')
+Reply = co.namedtuple('Reply', 'text toks span uid')
 
 
 class Topics(abc.Sequence):
 
-    fields = ('_contexts', '_questions', '_answers')
+    fields = ('_ctxts', '_queries', '_replies')
 
     def __init__(self, elems):
         self.elems = tuple(elems)
@@ -190,31 +190,31 @@ class Topics(abc.Sequence):
         return f'Topics(\n{ts}\n)'
 
     @property
-    def contexts(self):
-        if self._contexts is None:
-            self._contexts = tuple((t, c) for t in self for c in t.contexts)
-        return self._contexts
+    def ctxts(self):
+        if self._ctxts is None:
+            self._ctxts = tuple((t, c) for t in self for c in t.ctxts)
+        return self._ctxts
 
     @property
-    def questions(self):
-        if self._questions is None:
-            self._questions = tuple(
-                (t, c, q) for t, c in self.contexts for q in c.questions)
-        return self._questions
+    def queries(self):
+        if self._queries is None:
+            self._queries = tuple(
+                (t, c, q) for t, c in self.ctxts for q in c.queries)
+        return self._queries
 
     @property
-    def answers(self):
-        if self._answers is None:
-            self._answers = tuple(
-                (t, c, q, a) for t, c, q in self.questions for a in q.answers)
-        return self._answers
+    def replies(self):
+        if self._replies is None:
+            self._replies = tuple(
+                (t, c, q, a) for t, c, q in self.queries for a in q.replies)
+        return self._replies
 
     @property
-    def viables(self):
-        if self._viables is None:
-            self._viables = tuple(
-                (t, c, q, v) for t, c, q in self.questions for v in q.viables)
-        return self._viables
+    def plaus(self):
+        if self._plaus is None:
+            self._plaus = tuple(
+                (t, c, q, v) for t, c, q in self.queries for v in q.plaus)
+        return self._plaus
 
 
 _init_cache(Topics, Topics.fields)
@@ -236,35 +236,35 @@ Token.__str__ = token__str__
 
 
 def topic__str__(self):
-    cs = ',\n'.join(str(c) for c in self.contexts)
+    cs = ',\n'.join(str(c) for c in self.ctxts)
     return f'T("{self.title}"\n({cs})\n)'
 
 
 Topic.__str__ = topic__str__
 
 
-def context__str__(self):
-    ts = ' '.join(str(t) for t in self.tokens)
-    qs = ',\n'.join(str(q) for q in self.questions)
+def ctxt__str__(self):
+    ts = ' '.join(str(t) for t in self.toks)
+    qs = ',\n'.join(str(q) for q in self.queries)
     return f'C("{self.text}"\n({ts})\n({qs})\n)'
 
 
-Context.__str__ = context__str__
+Ctxt.__str__ = ctxt__str__
 
 
-def question__str__(self):
-    ts = ' '.join(str(t) for t in self.tokens)
-    ans = ',\n'.join(str(a) for a in self.answers)
-    vs = ',\n'.join(str(v) for v in self.viables)
-    return f'Q("{self.text}" {self.unfit}\n({ts})\n({ans})\n({vs})\n)'
+def query__str__(self):
+    ts = ' '.join(str(t) for t in self.toks)
+    ans = ',\n'.join(str(a) for a in self.replies)
+    vs = ',\n'.join(str(v) for v in self.plaus)
+    return f'Q("{self.text}" {self.valid}\n({ts})\n({ans})\n({vs})\n)'
 
 
-Question.__str__ = question__str__
+Query.__str__ = query__str__
 
 
-def answer__str__(self):
-    ts = ' '.join(str(t) for t in self.tokens)
-    return f'A("{self.text}" {self.span}\n({ts}))'
+def reply__str__(self):
+    ts = ' '.join(str(t) for t in self.toks)
+    return f'R("{self.text}" {self.span}\n({ts}))'
 
 
-Answer.__str__ = answer__str__
+Reply.__str__ = reply__str__

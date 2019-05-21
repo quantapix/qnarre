@@ -13,15 +13,21 @@
 # limitations under the License.
 # =============================================================================
 
+import unicodedata
+
 from collections import abc, defaultdict
+
+
+def normalize(txt):
+    return ' '.join(unicodedata.normalize('NFD', txt).split())
+
+
+_uids = defaultdict(int)
 
 
 def next_uid(key=None):
     _uids[key] += 1
     return _uids[key]
-
-
-_uids = defaultdict(int)
 
 
 class Words(abc.Mapping):

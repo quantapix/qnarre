@@ -18,69 +18,15 @@ import lzma
 import random
 
 import pathlib as pth
-import tensorflow as tf
 
-from qfeeds.prep.encoder import Encoder
+from qnarre.neura import tf
+from qnarre.feeds.prep import features as F
+from qnarre.feeds.prep import utils, encoder
 
 
-def dataset(kind, params):
-    PS = params
-    enc = Encoder.load(PS)
-    msl = mtl = 0
-
-    def _reader():
-        p = pth.Path(PS.data_dir)
-        for n in _names[kind]:
-            with lzma.open(p / (n + '.csv.xz'), mode='rt') as f:
-                for i, ln in enumerate(csv.reader(f)):
-                    if i > 0:
-                        if kind == 'train':
-                            t = ln[1]
-                            src = ln[2:6]
-                            y = random.randint(0, 1)
-                            tgt = [
-                                ln[6] if y == 0 else '',
-                                ln[6] if y == 1 else ''
-                            ]
-                        else:
-                            t = ''
-                            src = ln[1:5]
-                            tgt = [ln[5], ln[6]]
-                            y = int(ln[-1]) - 1
-                        yield t, src, tgt, y
-                    # if i > 5:
-                    #     break
-
-    def _converter():
-        nonlocal msl, mtl
-        for _, src, tgt, y in _reader():
-            tgt = [enc.encode(t) if t else [] for t in tgt]
-            tl = max(tgt, key=lambda x: len(x))
-            mtl = max(tl, mtl)
-            if not PS.tgt_len or tl <= PS.tgt_len:
-                ss = [enc.encode(s) if s else [] for s in src]
-                ssl = sum(ss, key=lambda x: len(x))
-                msl = max(ssl, msl)
-                ml = PS.mem_len - tl
-                src, ssl = [], 0
-                for s in ss:
-                    sl = len(s)
-                    ml -= sl
-                    if ml < 0:
-                        break
-                    ssl += sl
-                    if PS.src_len and ssl > PS.src_len:
-                        break
-                    src.extend(s)
-                if src:
-                    for i, t in enumerate(tgt):
-                        if t:
-                            yield src, t, int(i == y)
-
-    if msl or mtl:
-        PS.ds_src_len, PS.ds_tgt_len = msl, mtl
+def dset(ps, kind):
     return tf.data.Dataset.from_generator(
-        _converter,
+        features(ps, kind),
         (tf.int32, tf.int32, tf.int32),
         (
             tf.TensorShape([None]),
@@ -90,7 +36,88 @@ def dataset(kind, params):
     )
 
 
-_names = {
+def features(ps, kind):
+    tokenizer = encoder.tokenizer_for(ps)
+    fs = F.Topics(tokenizer(reader(ps, kind)))
+    ps.update(features=fs)
+    msl = mtl = 0
+    if msl or mtl:
+        ps.ds_src_len, ps.ds_tgt_len = msl, mtl
+    for _, ctx, snt, tgt in reader(ps, kind):
+        tgt = [enc.encode(t) if t else [] for t in tgt]
+        tl = max(tgt, key=lambda x: len(x))
+        mtl = max(tl, mtl)
+        if not ps.tgt_len or tl <= ps.tgt_len:
+            ss = [enc.encode(s) if s else [] for s in src]
+            ssl = sum(ss, key=lambda x: len(x))
+            msl = max(ssl, msl)
+            ml = ps.mem_len - tl
+            src, ssl = [], 0
+            for s in ss:
+                sl = len(s)
+                ml -= sl
+                if ml < 0:
+                    break
+                ssl += sl
+                if ps.src_len and ssl > ps.src_len:
+                    break
+                src.extend(s)
+            if src:
+                for i, t in enumerate(tgt):
+                    if t:
+                        yield src, t, int(i == y)
+
+                tgt = random.randint(0, 1)
+                snt = [ln[6] if y == 0 else '', ln[6] if y == 1 else '']
+                ttl = ''
+                ctx = ln[1:5]
+                snt = [ln[5], ln[6]]
+                tgt = int(ln[-1]) - 1
+
+
+def reader(ps, kind):
+    assert not ps.dset or ps.dset == 'roc'
+    p = pth.Path(ps.dir_data) / ps.dset
+    for n in names[kind]:
+        with lzma.open(p / (n + '.csv.xz'), mode='rt') as f:
+            for i, ln in enumerate(csv.reader(f)):
+                if i < 1:
+                    continue
+                ln = utils.normalize(ln)
+                if kind == 'train':
+                    t = ln[1].strip()
+                    c = ' '.join(t.strip() for t in ln[2:6])
+                    qs = [
+                        F.Query(
+                            qid=utils.next_uid('query'),
+                            text=ln[6].strip(),
+                            valid=True,
+                            toks=F.Toks(),
+                        )
+                    ]
+                else:
+                    t = ''
+                    c = ' '.join(t.strip() for t in ln[1:5])
+                    tgt = int(ln[-1]) - 1
+                    qs = [
+                        F.Query(
+                            qid=utils.next_uid('query'),
+                            text=ln[5].strip(),
+                            valid=(tgt == 0),
+                            toks=F.Toks(),
+                        ),
+                        F.Query(
+                            qid=utils.next_uid('query'),
+                            text=ln[6].strip(),
+                            valid=(tgt == 1),
+                            toks=F.Toks(),
+                        )
+                    ]
+                c = F.Ctxt(text=c, toks=F.Toks(), queries=qs)
+                yield F.Topic(title=t, ctxts=[c])
+
+
+names = {
     'train': ('rocstories_2016', 'rocstories_2017'),
     'test': ('cloze_val', 'cloze_test'),
 }

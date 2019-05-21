@@ -15,107 +15,43 @@
 
 import json
 import lzma
-import unicodedata
 
-import pathlib as P
-import tensorflow as T
+import pathlib as pth
 
-from qnarre.feeds.prep import utils as U
-from qnarre.feeds.prep import layout as L
+from qnarre.neura import tf
+from qnarre.feeds.prep import features as F
+from qnarre.feeds.prep import utils, encoder
 
 
-def dataset(params, kind):
-    PS = params
-    PS.update(layout=L.Topics(PS.tokenizer(_reader(PS, kind))))
-    return T.data.Dataset.from_generator(
-        lambda: _converter(PS, kind),
-        PS.features.tf_dtypes,
-        PS.features.tf_shapes,
+def dset(ps, kind):
+    return tf.Dataset.from_generator(
+        lambda: features(ps, kind),
+        ps.features.tf_dtypes,
+        ps.features.tf_shapes,
     )
 
 
-def _reader(PS, kind):
-    p = P.Path(PS.data_dir)
-    for n in _names[kind]:
-        with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
-            for t in json.load(f)['data']:
-                cs = []
-                for p in t['paragraphs']:
-                    ctx = _normalize(p['context'])
-                    qs = []
-                    for q in p['qas']:
-                        ans = []
-                        for a in q.get('answers', ()):
-                            tx = _normalize(a['text'])
-                            s = a['answer_start']
-                            if ctx.find(tx, s) == s:
-                                ans.append(
-                                    L.Answer(
-                                        text=tx,
-                                        tokens=L.Tokens(),
-                                        span=L.Span(s, s + len(tx)),
-                                        uid=U.next_uid('answer'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        vs = []
-                        for v in q.get('plausible_answers', ()):
-                            tx = _normalize(v['text'])
-                            s = v['answer_start']
-                            if ctx.find(tx, s) == s:
-                                vs.append(
-                                    L.Answer(
-                                        text=tx,
-                                        tokens=L.Tokens(),
-                                        span=L.Span(s, s + len(tx)),
-                                        uid=U.next_uid('answer'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        qs.append(
-                            L.Question(
-                                qid=q['id'],
-                                text=_normalize(q['question']),
-                                unfit=q.get('is_impossible', False),
-                                tokens=L.Tokens(),
-                                answers=ans,
-                                viables=vs,
-                            ))
-                    cs.append(
-                        L.Context(
-                            text=ctx,
-                            tokens=L.Tokens(),
-                            questions=qs,
-                        ))
-                yield L.Topic(
-                    title=_normalize(t['title']),
-                    contexts=cs,
-                )
-
-
-def _normalize(txt):
-    return ' '.join(unicodedata.normalize('NFD', txt).split())
-
-
-def _converter(PS, kind):
-    FS = PS.features
-    for _, c, q, ans in PS.layout.answers():
-        cs, qs = c.tokens, q.tokens
-        if PS.max_qry_len:
-            qs = qs[:PS.max_qry_len]
+def features(ps, kind):
+    tokenizer = encoder.tokenizer_for(ps)
+    fs = F.Topics(tokenizer(reader(ps, kind)))
+    ps.update(features=fs)
+    for _, c, q, ans in ps.features.answers():
+        cs, qs = c.toks, q.toks
+        if ps.max_qry_len:
+            qs = qs[:ps.max_qry_len]
         end, ql = len(cs), len(qs)
-        sl = PS.max_seq_len - ql - 3
+        sl = ps.max_seq_len - ql - 3
         ss, b = [], 0
         while b < end:
             e = end
             e = (b + sl) if e - b > sl else e
-            ss.append(L.Span(begin=b, end=e))
+            ss.append(F.Span(begin=b, end=e))
             if e == end:
                 break
-            b = min(e, b + PS.doc_stride)
+            b = min(e, b + ps.doc_stride)
         ql += 2
         for si, s in enumerate(ss):
-            seq = [PS.CLS] + qs + [PS.SEP] + cs[s.begin:s.end] + [PS.SEP]
+            seq = [ps.CLS] + qs + [ps.SEP] + cs[s.begin:s.end] + [ps.SEP]
             typ = [0] * ql + [1] * (len(s) + 1)
 
             def _optim(i):
@@ -132,14 +68,14 @@ def _converter(PS, kind):
             opt = [0] * ql
             opt += [_optim(idx) for idx in range(s.begin, s.end)] + [0]
             assert len(seq) == len(typ) == len(opt)
-            pad = [0] * (PS.max_seq_len - len(seq))
+            pad = [0] * (ps.max_seq_len - len(seq))
             if pad:
                 seq += pad
                 typ += pad
                 opt += pad
             beg, end = 0, 0
             if kind == 'train':
-                if not q.unfit:
+                if not q.valid:
                     beg, end = ans.span.begin, ans.span.end
                     if b >= s.begin and e <= s.end:
                         beg += ql - s.begin
@@ -147,7 +83,59 @@ def _converter(PS, kind):
             yield seq, typ, opt, beg, end, ans.uid
 
 
-_names = {
+def reader(ps, kind):
+    assert not ps.dset or ps.dset == 'squad'
+    p = pth.Path(ps.data_dir) / ps.dset
+    for n in names[kind]:
+        with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
+            for t in json.load(f)['data']:
+                cs = []
+                for p in t['paragraphs']:
+                    ctx = utils.normalize(p['context'])
+                    qs = []
+                    for q in p['qas']:
+                        rs = []
+                        for r in q.get('answers', ()):
+                            tx = utils.normalize(r['text'])
+                            s = r['answer_start']
+                            if ctx.find(tx, s) == s:
+                                rs.append(
+                                    F.Reply(
+                                        text=tx,
+                                        toks=F.Toks(),
+                                        span=F.Span(s, s + len(tx)),
+                                        uid=utils.next_uid('reply'),
+                                    ))
+                            else:
+                                print('Mismatched', ctx[:20], tx[:20])
+                        ps = []
+                        for p in q.get('plausible_answers', ()):
+                            tx = utils.normalize(p['text'])
+                            s = p['answer_start']
+                            if ctx.find(tx, s) == s:
+                                ps.append(
+                                    F.Reply(
+                                        text=tx,
+                                        toks=F.Toks(),
+                                        span=F.Span(s, s + len(tx)),
+                                        uid=utils.next_uid('reply'),
+                                    ))
+                            else:
+                                print('Mismatched', ctx[:20], tx[:20])
+                        qs.append(
+                            F.Query(
+                                qid=q['id'],
+                                text=utils.normalize(q['question']),
+                                valid=q.get('is_impossible', False),
+                                toks=F.Toks(),
+                                replies=rs,
+                                plaus=ps,
+                            ))
+                    cs.append(F.Ctxt(text=ctx, toks=F.Toks(), queries=qs))
+                yield F.Topic(title=utils.normalize(t['title']), ctxts=cs)
+
+
+names = {
     'train': ('train-v2.0', 'train-v1.1'),
     'test': ('dev-v2.0', 'dev-v1.1'),
 }
