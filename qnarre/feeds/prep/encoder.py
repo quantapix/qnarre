@@ -70,9 +70,7 @@ class SplitCounter(Splitter):
 
 def join_splits(splits, offsets):
     i, ts = 0, []
-    # print(splits, offsets)
     for s, o in zip(splits, offsets):
-        # print('s:', s, 'o:', o, 'i:', i)
         if i < o:
             ts.append(' ' * (o - i))
             i = o
@@ -153,25 +151,11 @@ class BertE(WordE):
         return join_splits(splits(), offsets)
 
 
-def _bytes_to_code():
-    bc = {b: chr(b) for b in range(ord("!"), ord("~") + 1)}
-    bc.update({b: chr(b) for b in range(ord("¡"), ord("¬") + 1)})
-    bc.update({b: chr(b) for b in range(ord("®"), ord("ÿ") + 1)})
-    i = 0
-    for b in range(2**8):
-        if b not in bc:
-            bc[b] = chr(2**8 + i)
-            i += 1
-    return bc, {c: b for b, c in bc.items()}
-
-
-_pat = r"'s|'t|'re|'ve|'m|'ll|'d|"
-_pat += r' ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+'
-
-
 class Gpt2E(WordE):
-    from_byte, from_code = _bytes_to_code()
-    pattern = re.compile(_pat)
+    pat = r"'s|'t|'re|'ve|'m|'ll|'d|"
+    pat += r' ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+'
+    pat = re.compile(pat)
+    from_byte, from_code = utils.bytes_to_code()
 
     def __init__(self, ps):
         with open(ps.gpt_2_vocab, mode='rt') as f:
@@ -191,14 +175,17 @@ class Gpt2E(WordE):
         self.cache = {}
 
     def __call__(self, txt, offset=0):
+        b = ''
         for w, off in self.splitter(txt, offset):
+            w = b + w
+            b = ' '
             o = 0
-            for t in re.findall(self.pattern, w):
+            for t in re.findall(self.pat, w):
                 o = w.find(t, o)
                 sw = ''.join(self.from_byte[b] for b in t.encode())
                 for st in self.segment(sw):
-                    assert o + len(st) < len(w)
-                    yield self.vocab.get(st, self.ps.UNK), off + o
+                    assert o + len(st) <= len(w)
+                    yield self.vocab.get(st, self.ps.UNK), off + o, st
                     o += len(st)
 
     def segment(self, word):
@@ -217,7 +204,7 @@ class Gpt2E(WordE):
                 if p in self.pairs:
                     return p
 
-            p = self.min_pair()
+            p = min_pair()
             if p is None:
                 break
             lf, rt = p
@@ -240,8 +227,8 @@ class Gpt2E(WordE):
         self.cache[word] = segs
         return segs
 
-    def decode(self, ids, offsets):
-        ts = ''.join(self.by_ids[i] for i in ids)
+    def decode(self, ids, _):
+        ts = ''.join(self.vocab[i] for i in ids)
         bs = bytearray([self.from_code[c] for c in ts])
         return bs.decode(errors='replace')
 

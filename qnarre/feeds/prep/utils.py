@@ -15,6 +15,7 @@
 
 import unicodedata
 
+from functools import lru_cache
 from collections import abc, defaultdict
 
 _uids = defaultdict(int)
@@ -111,6 +112,19 @@ def is_chinese(c):
             or (n >= 0xF900 and n <= 0xFAFF) or (n >= 0x2B740 and n <= 0x2B81F)
             or (n >= 0x4E00 and n <= 0x9FFF)
             or (n >= 0x2F800 and n <= 0x2FA1F))
+
+
+@lru_cache()
+def bytes_to_code():
+    bc = {b: chr(b) for b in range(ord("!"), ord("~") + 1)}
+    bc.update({b: chr(b) for b in range(ord("¡"), ord("¬") + 1)})
+    bc.update({b: chr(b) for b in range(ord("®"), ord("ÿ") + 1)})
+    i = 0
+    for b in range(2**8):
+        if b not in bc:
+            bc[b] = chr(2**8 + i)
+            i += 1
+    return bc, {c: b for b, c in bc.items()}
 
 
 class Tokenizer:
