@@ -45,7 +45,7 @@ class Words(abc.Mapping):
 
 CLS = '[CLS]'
 EOS = '[EOS]'
-MSK = '[MSK]'
+MSK = '[MASK]'
 PAD = '[PAD]'
 SEP = '[SEP]'
 SOS = '[SOS]'

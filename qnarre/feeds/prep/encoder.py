@@ -71,7 +71,9 @@ class SplitCounter(Splitter):
 
 def join_splits(splits, offsets):
     i, ts = 0, []
+    # print(splits, offsets)
     for s, o in zip(splits, offsets):
+        # print('s:', s, 'o:', o, 'i:', i)
         if i < o:
             ts.append(' ' * (o - i))
             i = o
@@ -116,8 +118,8 @@ class CharE(WordE):
 
 class BertE(WordE):
     def __init__(self, ps):
-        with open(ps.vocab_path, mode='rt') as f:
-            ws = f.read()
+        with open(ps.bert_vocab, mode='rt') as f:
+            ws = f.readlines()
         super().__init__(ps, ws)
 
     def __call__(self, txt, offset=0):
@@ -142,6 +144,14 @@ class BertE(WordE):
                         yield self.ps.UNK, o + b, ''.join(cs[b:e])
                         return
                     b = e
+
+    def decode(self, ids, offsets):
+        def splits():
+            for i in ids:
+                s = self.vocab[i]
+                yield s[2:] if s.startswith('##') else s
+
+        return join_splits(splits(), offsets)
 
 
 def _bytes_to_code():

@@ -25,7 +25,7 @@ ps = dict(
     model='',
     tok_max_chars=None,
     vocab_pairs=None,
-    vocab_path=None,
+    bert_vocab='.model/bert/uncased_L-12_H-768_A-12/vocab.txt',
 )
 
 ps = U.Params(ps)
@@ -41,6 +41,7 @@ def test_encoders():
     ts, os, _ = zip(*we(txt))
     d = we.decode(ts, os)
     assert d == txt
+    be = encoder.BertE(ps)
     with zipfile.ZipFile('.data/text8/text8.zip') as z:
         with z.open('text8') as f:
             ws = utils.normalize(f.read().decode().strip())
@@ -53,4 +54,7 @@ def test_encoders():
                 ts, os, _ = zip(*we(txt))
                 d = we.decode(ts, os)
                 assert d == txt
-    print(len(ce.vocab), len(we.vocab))
+                ts, os, _ = zip(*be(txt))
+                d = be.decode(ts, os)
+                assert d == txt
+    print(len(ce.vocab), len(we.vocab), len(be.vocab))
