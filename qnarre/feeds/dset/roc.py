@@ -15,7 +15,6 @@
 
 import csv
 import lzma
-import random
 
 import pathlib as pth
 

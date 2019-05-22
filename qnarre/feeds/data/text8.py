@@ -28,21 +28,18 @@ def download(sh):
         ('text8',
          'a6640522afe85d1963ad56c05b0ede0a0c000dddc9671758a6cc09b7a38e5232'),
     ):
-        sh.run(
-            'wget -q -c -N {}'.format(url + f + suff),
-            'xz -qk -9 -T0 {}'.format(f + suff),
-        )
+        sh.run('wget -q -c -N {}'.format(url + f + suff), )
         assert s == sh.sha256sum(f + suff)
 
 
 def main(_):
-    p = pth.Path.cwd() / flags.FLAGS.data_dir
+    p = pth.Path.cwd() / flags.FLAGS.dir_data
     if not p.exists():
         p.mkdir(parents=True, exist_ok=True)
     download(Shell(p))
 
 
 if __name__ == '__main__':
-    flags.DEFINE_string(name='data_dir', default='.data/text8', help='')
+    flags.DEFINE_string(name='dir_data', default='.data/text8', help='')
     from absl import app
     app.run(main)

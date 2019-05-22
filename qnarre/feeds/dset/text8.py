@@ -21,99 +21,63 @@ import zipfile
 import pathlib as pth
 
 from qnarre.neura import tf
-from qnarre.feeds.prep import utils as U
-from qnarre.feeds.prep import layout as L
+from qnarre.feeds.prep import features as F
+from qnarre.feeds.prep import utils, encoder
 
 
-def dataset(ps, kind):
-    ps.update(layout=L.Topics(ps.tokenizer(_reader(ps, kind))))
-    return tf.Dataset.from_generator(
-        lambda: _converter(ps, kind),
-        ps.features.tf_dtypes,
-        ps.features.tf_shapes,
+def dset(ps, kind):
+    t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
+    return tf.data.Dataset.from_generator(
+        lambda: features(ps, kind),
+        ((t, ) * 3, t),
+        ((sh, sh, tf.TensorShape(())), tf.TensorShape(())),
     )
 
+num_test_words = 100000
 
-def prep(ps, kind):
-    data = zipfile.ZipFile('text8.zip').extractall()
-    data = open('text8', 'r', encoding='utf-8').read()
-    num_test_chars = 5000000
-    train_data = data[:-2 * num_test_chars]
-    valid_data = data[-2 * num_test_chars:-num_test_chars]
-    test_data = data[-num_test_chars:]
-    for fn, part in [('train.txt', train_data), ('valid.txt', valid_data),
-                     ('test.txt', test_data)]:
-        print('{} will have {} bytes'.format(fn, len(part)))
-        print('- Tokenizing...')
-        # Change space ' ' to underscore '_'
-        part_str = ' '.join(['_' if c == ' ' else c for c in part.strip()])
-        print('- Writing...')
-        f = open(fn, 'w').write(part_str)
-        f = open(fn + '.raw', 'w', encoding='utf-8').write(part)
+def reader(ps, kind):
+    assert not ps.dset or ps.dset == 'text8'
+    p = pth.Path(ps.dir_data) / ps.dset
+    with zipfile.ZipFile(p / 'text8.zip') as z:
+        with z.open('text8') as f:
+            ws = utils.normalize(f.read().decode().strip()).split()
+            if kind == 'train':
+                ws = ws[:-2 * num_test_words]
+            elif kind == 'valid':
+                ws = ws[-2 * num_test_words:-num_test_words]
+            elif kind == 'test':
+                ws = ws[-num_test_words:]
 
-
-def _reader(ps, kind):
-    p = pth.Path(ps.data_dir)
-    for n in _names[kind]:
-        with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
-            for t in json.load(f)['data']:
-                cs = []
-                for p in t['paragraphs']:
-                    ctx = _normalize(p['context'])
-                    qs = []
-                    for q in p['qas']:
-                        ans = []
-                        for a in q.get('answers', ()):
-                            tx = _normalize(a['text'])
-                            s = a['answer_start']
-                            if ctx.find(tx, s) == s:
-                                ans.append(
-                                    L.Answer(
-                                        text=tx,
-                                        tokens=L.Tokens(),
-                                        span=L.Span(s, s + len(tx)),
-                                        uid=U.next_uid('answer'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        vs = []
-                        for v in q.get('plausible_answers', ()):
-                            tx = _normalize(v['text'])
-                            s = v['answer_start']
-                            if ctx.find(tx, s) == s:
-                                vs.append(
-                                    L.Answer(
-                                        text=tx,
-                                        tokens=L.Tokens(),
-                                        span=L.Span(s, s + len(tx)),
-                                        uid=U.next_uid('answer'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        qs.append(
-                            L.Question(
-                                qid=q['id'],
-                                text=_normalize(q['question']),
-                                unfit=q.get('is_impossible', False),
-                                tokens=L.Tokens(),
-                                answers=ans,
-                                viables=vs,
-                            ))
-                    cs.append(
-                        L.Context(
-                            text=ctx,
-                            tokens=L.Tokens(),
-                            questions=qs,
-                        ))
-                yield L.Topic(
-                    title=_normalize(t['title']),
-                    contexts=cs,
-                )
-
-
-def _normalize(txt):
-    return ' '.join(unicodedata.normalize('NFD', txt).split())
-
+                t = ln[1].strip()
+                    c = ' '.join(t.strip() for t in ln[2:6])
+                    qs = [
+                        F.Query(
+                            qid=utils.next_uid('query'),
+                            text=ln[6].strip(),
+                            valid=True,
+                            toks=F.Toks(),
+                        )
+                    ]
+                else:
+                    t = ''
+                    c = ' '.join(t.strip() for t in ln[1:5])
+                    tgt = int(ln[-1]) - 1
+                    qs = [
+                        F.Query(
+                            qid=utils.next_uid('query'),
+                            text=ln[5].strip(),
+                            valid=(tgt == 0),
+                            toks=F.Toks(),
+                        ),
+                        F.Query(
+                            qid=utils.next_uid('query'),
+                            text=ln[6].strip(),
+                            valid=(tgt == 1),
+                            toks=F.Toks(),
+                        )
+                    ]
+                c = F.Ctxt(text=c, toks=F.Toks(), queries=qs)
+                yield F.Topic(title=t, ctxts=[c])
 
 def _converter(PS, kind):
     FS = ps.features
@@ -163,9 +127,3 @@ def _converter(PS, kind):
                         beg += ql - s.begin
                         end += ql - s.end
             yield seq, typ, opt, beg, end, ans.uid
-
-
-_names = {
-    'train': ('train-v2.0', 'train-v1.1'),
-    'test': ('dev-v2.0', 'dev-v1.1'),
-}

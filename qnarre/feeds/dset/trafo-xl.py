@@ -4,33 +4,6 @@ import zipfile
 
 from io import open
 
-if os.path.exists('train.txt'):
-    print('Tokenized text8 already exists - skipping processing')
-    sys.exit()
-
-data = zipfile.ZipFile('text8.zip').extractall()
-data = open('text8', 'r', encoding='utf-8').read()
-
-print('Length of text8: {}'.format(len(data)))
-
-num_test_chars = 5000000
-
-train_data = data[:-2 * num_test_chars]
-valid_data = data[-2 * num_test_chars:-num_test_chars]
-test_data = data[-num_test_chars:]
-
-for fn, part in [('train.txt', train_data), ('valid.txt', valid_data),
-                 ('test.txt', test_data)]:
-    print('{} will have {} bytes'.format(fn, len(part)))
-    print('- Tokenizing...')
-    # Change space ' ' to underscore '_'
-    part_str = ' '.join(['_' if c == ' ' else c for c in part.strip()])
-    print('- Writing...')
-    f = open(fn, 'w').write(part_str)
-    f = open(fn + '.raw', 'w', encoding='utf-8').write(part)
-
-    import math
-import os
 from functools import partial
 
 from collections import Counter, OrderedDict
@@ -663,39 +636,3 @@ def get_corpus_info(corpus_info_path):
     with open(corpus_info_path, "r") as fp:
         corpus_info = json.load(fp)
     return corpus_info
-
-
-if __name__ == "__main__":
-    FLAGS = flags.FLAGS
-    flags.DEFINE_string("data_dir", None, help="Location of the data corpus")
-    flags.DEFINE_enum("dataset",
-                      "wt103",
-                      ["ptb", "wt2", "wt103", "lm1b", "enwik8", "text8"],
-                      help="Dataset name.")
-    flags.DEFINE_integer("per_host_train_bsz",
-                         60,
-                         help="train batch size each host")
-    flags.DEFINE_integer("per_host_valid_bsz",
-                         60,
-                         help="valid batch size each host")
-    flags.DEFINE_integer(
-        "per_host_test_bsz",
-        0,
-        help="If > 0, enter test mode and process test set only."
-        "Otherwise, process train and dev sets only.")
-    flags.DEFINE_integer("tgt_len", 70, help="number of tokens to predict")
-    flags.DEFINE_integer("max_batch", -1, help="run in debug mode")
-    flags.DEFINE_integer("num_core_per_host", 8, help="8 for TPU v2.")
-    flags.DEFINE_bool(
-        "debug",
-        default=False,
-        help="Process only the first batch without shuffle for lm1b.")
-    flags.DEFINE_integer("num_procs", 1, help="number of processes")
-    flags.DEFINE_integer("num_passes",
-                         10,
-                         help="number of passes when use_tpu=True")
-    flags.DEFINE_integer("num_shuffle", 4, help="number of shuffles for lm1b")
-    flags.DEFINE_bool("use_tpu", True, help="use tpu")
-
-    tf.app.run(main)
-
