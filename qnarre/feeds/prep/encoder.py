@@ -177,9 +177,7 @@ class Gpt2E(WordE):
     def __call__(self, txt, offset=0):
         b = ''
         for w, off in self.splitter(txt, offset):
-            w = b + w
-            b = ' '
-            o = 0
+            o, w = 0, b + w
             for t in re.findall(self.pat, w):
                 o = w.find(t, o)
                 sw = ''.join(self.from_byte[b] for b in t.encode())
@@ -187,6 +185,7 @@ class Gpt2E(WordE):
                     assert o + len(st) <= len(w)
                     yield self.vocab.get(st, self.ps.UNK), off + o, st
                     o += len(st)
+            b = ' '
 
     def segment(self, word):
         if word in self.cache:
@@ -231,19 +230,3 @@ class Gpt2E(WordE):
         ts = ''.join(self.vocab[i] for i in ids)
         bs = bytearray([self.from_code[c] for c in ts])
         return bs.decode(errors='replace')
-
-
-"""
-def normalize(txt):
-    txt = txt.replace('—', '-')
-    txt = txt.replace('–', '-')
-    txt = txt.replace('―', '-')
-    txt = txt.replace('…', '...')
-    txt = txt.replace('´', "'")
-    txt = R.sub(
-        r'(-+|~+|!+|"+|;+|\?+|\++|,+|\)+|\(+|\\+|\/+|\*+|\[+|\]+|}+|{+|\|+|_+)',
-        r' \1 ', txt)
-    txt = R.sub(r'\s*\n\s*', ' \n ', txt)
-    txt = R.sub(r'[^\S\n]+', ' ', txt)
-    return txt.strip()
-"""
