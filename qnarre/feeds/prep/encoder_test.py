@@ -26,6 +26,8 @@ ps = dict(
     tok_max_chars=None,
     vocab_pairs=None,
     bert_vocab='.model/bert/uncased_L-12_H-768_A-12/vocab.txt',
+    gpt_2_vocab='.model/gpt_2/117M/encoder.json',
+    gpt_2_pairs='.model/gpt_2/117M/vocab.bpe',
 )
 
 ps = U.Params(ps)
@@ -42,6 +44,7 @@ def test_encoders():
     d = we.decode(ts, os)
     assert d == txt
     be = encoder.BertE(ps)
+    ge = encoder.Gpt2E(ps)
     with zipfile.ZipFile('.data/text8/text8.zip') as z:
         with z.open('text8') as f:
             ws = utils.normalize(f.read().decode().strip())
@@ -57,4 +60,7 @@ def test_encoders():
                 ts, os, _ = zip(*be(txt))
                 d = be.decode(ts, os)
                 assert d == txt
-    print(len(ce.vocab), len(we.vocab), len(be.vocab))
+                ts, os, _ = zip(*ge(txt))
+                d = ge.decode(ts, os)
+                assert d == txt
+    print(len(ce.vocab), len(we.vocab), len(be.vocab), len(ge.vocab))

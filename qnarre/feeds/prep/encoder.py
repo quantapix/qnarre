@@ -14,7 +14,6 @@
 # =============================================================================
 
 import json
-import lzma
 
 import regex as re
 import collections as col
@@ -170,17 +169,24 @@ _pat = r"'s|'t|'re|'ve|'m|'ll|'d|"
 _pat += r' ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+'
 
 
-class BPE(WordE):
+class Gpt2E(WordE):
     from_byte, from_code = _bytes_to_code()
     pattern = re.compile(_pat)
 
     def __init__(self, ps):
-        with lzma.open(ps.vocab_path, mode='rt') as f:
+        with open(ps.gpt_2_vocab, mode='rt') as f:
             ws = json.load(f)
-        super().__init__(ps, ws)
-        with lzma.open(ps.vocab_pairs, mode='rt', encoding='utf-8') as f:
+        ws = sorted(ws.items(), key=lambda i: i[1])
+
+        def words():
+            for i, (w, j) in enumerate(ws):
+                assert i == j
+                yield w
+
+        super().__init__(ps, words())
+        with open(ps.gpt_2_pairs, mode='rt', encoding='utf-8') as f:
             ps = f.read()
-        ps = tuple(tuple(p.split()) for p in ps.split('\n')[1:-1])
+        ps = tuple(tuple(p.split()) for p in ps.splitlines()[1:])
         self.pairs = dict(zip(ps, range(len(ps))))
         self.cache = {}
 
