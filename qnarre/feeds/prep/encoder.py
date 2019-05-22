@@ -38,6 +38,7 @@ class Splitter:
                 w = ''.join('' if utils.is_accent(c) else c for c in w)
             if w.isalnum():
                 yield w, offset + off
+                off += len(w)
             else:
                 lcs, los, new = [], [], True
                 for c in list(w):
@@ -68,7 +69,7 @@ class SplitCounter(Splitter):
         return w, o
 
 
-def join_splits(self, splits, offsets):
+def join_splits(splits, offsets):
     i, ts = 0, []
     for s, o in zip(splits, offsets):
         if i < o:
@@ -77,6 +78,7 @@ def join_splits(self, splits, offsets):
         else:
             assert i == o
         ts.append(s)
+        i += len(s)
     return ''.join(ts)
 
 
@@ -107,8 +109,9 @@ class WordE:
 class CharE(WordE):
     def __call__(self, txt, offset=0):
         for w, o in self.splitter(txt, offset):
-            for i, c in list(w):
-                yield self.vocab.append(c), o + i, c
+            for i, c in enumerate(list(w)):
+                t = self.vocab.append(c)
+                yield t, o + i, c
 
 
 class BertE(WordE):
