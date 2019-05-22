@@ -17,11 +17,6 @@ import unicodedata
 
 from collections import abc, defaultdict
 
-
-def normalize(txt):
-    return ' '.join(unicodedata.normalize('NFD', txt).split())
-
-
 _uids = defaultdict(int)
 
 
@@ -32,7 +27,7 @@ def next_uid(key=None):
 
 class Words(abc.Mapping):
     def __init__(self):
-        self.by_word = {'': ''}
+        self.by_word = {}
 
     def __len__(self):
         return len(self.by_word)
@@ -48,21 +43,74 @@ class Words(abc.Mapping):
         return w
 
 
-class Indeces(Words):
-    def __init__(self):
-        self.by_word = {None: 0, '': 1}
-        self.by_idx = [None, '']
+CLS = '[CLS]'
+EOS = '[EOS]'
+MSK = '[MSK]'
+PAD = '[PAD]'
+SEP = '[SEP]'
+SOS = '[SOS]'
+UNK = '[UNK]'
+
+
+class Vocab(Words):
+    fixed = False
+
+    def __init__(self, ps, words=None):
+        self.by_word = {}
+        self.by_idx = []
+        if words:
+            for i, w in enumerate(words):
+                w = w.strip()
+                assert w not in self.by_word
+                self.by_word[w] = i
+                self.by_idx.append(w)
+            self.fixed = True
+        ps.update(PAD=self.append(PAD),
+                  UNK=self.append(UNK),
+                  CLS=self.append(CLS),
+                  SOS=self.append(SOS),
+                  SEP=self.append(SEP),
+                  EOS=self.append(EOS),
+                  MSK=self.append(MSK))
+        ps.update(vocab=self)
 
     def __getitem__(self, w):
-        try:
-            return self.by_word[w] if isinstance(w, str) else self.by_idx[w]
-        except KeyError:
-            return 0 if isinstance(w, str) else None
+        return self.by_word[w] if isinstance(w, str) else self.by_idx[w]
 
     def append(self, w):
-        if w not in self.by_word:
-            self.by_word[w] = len(self.by_word)
+        try:
+            i = self.by_word[w]
+        except KeyError:
+            i = len(self.by_word)
+            assert i == len(self.by_idx)
+            self.by_word[w] = i
             self.by_idx.append(w)
+        return i
+
+
+def normalize(txt):
+    return unicodedata.normalize('NFD', txt)
+
+
+def is_accent(c):
+    return unicodedata.category(c) == 'Mn'
+
+
+def is_punct(c):
+    n = ord(c)
+    if ((n >= 33 and n <= 47) or (n >= 58 and n <= 64) or (n >= 91 and n <= 96)
+            or (n >= 123 and n <= 126)):
+        return True
+    return unicodedata.category(c).startswith('P')
+
+
+def is_chinese(c):
+    n = ord(c)
+    return ((n >= 0x2B820 and n <= 0x2CEAF) or (n >= 0x2A700 and n <= 0x2B73F)
+            or (n >= 0x3400 and n <= 0x4DBF) or (n >= 0x20000 and n <= 0x2A6DF)
+            or (n >= 0xF900 and n <= 0xFAFF) or (n >= 0x2B740 and n <= 0x2B81F)
+            or (n >= 0x4E00 and n <= 0x9FFF)
+            or (n >= 0x2F800 and n <= 0x2FA1F))
 
 
 class Tokenizer:

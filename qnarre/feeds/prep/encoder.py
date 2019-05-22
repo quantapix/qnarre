@@ -15,37 +15,33 @@
 
 import json
 import lzma
-import unicodedata
 
 import regex as re
-import pathlib as pth
+import collections as col
 
-from collections import Counter
+from qnarre.feeds.prep import utils
 
 
 class Splitter:
-    def __init__(self, ps):
-        self.ps = ps
-        self.count = Counter()
+    def __init__(self, lower_case=False):
+        self.lower_case = lower_case
 
     def __call__(self, txt, offset=0):
+        txt = txt.lower() if self.lower_case else txt
         off = 0
-        for w in unicodedata.normalize('NFD', txt).split():
+        for w in txt.split():
             if not w or not w.isprintable():
                 continue
             off = txt.find(w, off)
-            if self.ps.tok_lower_case:
-                w = w.lower()
             if not w.isascii():
-                w = ''.join(f' {c} ' if is_chinese(c) else c for c in w)
-                w = ''.join('' if is_accent(c) else c for c in w)
+                w = ''.join(f' {c} ' if utils.is_chinese(c) else c for c in w)
+                w = ''.join('' if utils.is_accent(c) else c for c in w)
             if w.isalnum():
-                self.count.update(w)
                 yield w, offset + off
             else:
                 lcs, los, new = [], [], True
                 for c in list(w):
-                    if is_punct(c):
+                    if utils.is_punct(c):
                         lcs.append([c])
                         los.append(off)
                         new = True
@@ -58,133 +54,89 @@ class Splitter:
                     off += 1
                 for cs, o in zip(lcs, los):
                     w = ''.join(cs)
-                    self.count.update(w)
                     yield w, offset + o
 
-    def join(self, splits, offsets):
-        i, ts = 0, []
-        for s, o in zip(splits, offsets):
-            if i < o:
-                ts.append(' ' * (o - i))
-                i = o
-            else:
-                assert i == o
-            ts.append(s)
-        return ''.join(ts)
 
-
-def is_accent(c):
-    return unicodedata.category(c) == 'Mn'
-
-
-def is_punct(c):
-    n = ord(c)
-    if ((n >= 33 and n <= 47) or (n >= 58 and n <= 64) or (n >= 91 and n <= 96)
-            or (n >= 123 and n <= 126)):
-        return True
-    return unicodedata.category(c).startswith('P')
-
-
-def is_chinese(c):
-    n = ord(c)
-    return ((n >= 0x2B820 and n <= 0x2CEAF) or (n >= 0x2A700 and n <= 0x2B73F)
-            or (n >= 0x3400 and n <= 0x4DBF) or (n >= 0x20000 and n <= 0x2A6DF)
-            or (n >= 0xF900 and n <= 0xFAFF) or (n >= 0x2B740 and n <= 0x2B81F)
-            or (n >= 0x4E00 and n <= 0x9FFF)
-            or (n >= 0x2F800 and n <= 0x2FA1F))
-
-
-CLS = '[CLS]'
-EOS = '[EOS]'
-MSK = '[MSK]'
-PAD = '[PAD]'
-SEP = '[SEP]'
-SOS = '[SOS]'
-UNK = '[UNK]'
-
-
-class Encoder:
-    _by_ids = None
-
-    @classmethod
-    def load(cls, ps):
-        p = pth.Path(ps.model_dir) / ps.model_name
-        with open(p / 'vocab.txt', mode='rt') as f:
-            v = {t.strip(): i for i, t in enumerate(f)}
-        ps.update(
-            num_toks=len(v),
-            tok_vocab=v,
-            CLS=v[CLS],
-            EOS=v[EOS],
-            MSK=v[MSK],
-            PAD=v[PAD],
-            SEP=v[SEP],
-            SOS=v[SOS],
-            UNK=v[UNK],
-        )
-        if ps.tok_lower_case is None:
-            ps.update(tok_lower_case=ps.model_name.startswith('uncased'))
-        return cls(ps)
-
-    def __init__(self, ps):
-        self.ps = ps
-        self.splitter = Splitter(ps)
+class SplitCounter(Splitter):
+    def __init__(self, lower_case=False):
+        super().__init__(lower_case)
+        self.count = col.Counter()
 
     def __call__(self, txt, offset=0):
-        unk = self.ps.tok_vocab[UNK]
-        for w, offset in self.splitter(txt, offset):
-            cs = list(w)
-            if self.ps.tok_max_chars and len(cs) > self.ps.tok_max_chars:
-                yield unk, offset, cs
-            else:
-                b = 0
-                while b < len(cs):
-                    e, unk = len(cs), True
-                    while b < e:
-                        s = '##' if b > 0 else ''
-                        s += ''.join(cs[b:e])
-                        if s in self.ps.tok_vocab:
-                            yield self.ps.tok_vocab[s], offset + b, s
-                            unk = False
-                            break
-                        e -= 1
-                    if unk:
-                        yield unk, offset + b, cs[b:e]
-                        return
-                    b = e
+        w, o = super()(txt, offset)
+        self.count.update(w)
+        return w, o
 
-    @property
-    def by_ids(self):
-        if self._by_ids is None:
-            ts = sorted(self.ps.tok_vocab.items(), key=lambda _, i: i)
-            self._by_ids = [t for t, _ in ts]
-        return self._by_ids
+
+def join_splits(self, splits, offsets):
+    i, ts = 0, []
+    for s, o in zip(splits, offsets):
+        if i < o:
+            ts.append(' ' * (o - i))
+            i = o
+        else:
+            assert i == o
+        ts.append(s)
+    return ''.join(ts)
+
+
+class WordE:
+    def __init__(self, ps, words=None):
+        self.ps = ps
+        self.vocab = utils.Vocab(ps, words)
+        lc = ps.lower_case
+        if lc is None:
+            lc = ps.model.startswith('uncased')
+        self.splitter = Splitter(lc)
+
+    def __call__(self, txt, offset=0):
+        maxc = self.ps.tok_max_chars or 200
+        for w, o in self.splitter(txt, offset):
+            if w in self.vocab:
+                t = self.vocab[w]
+            elif len(w) > maxc or self.vocab.fixed:
+                t = self.ps.UNK
+            else:
+                t = self.vocab.append(w)
+            yield t, o, w
 
     def decode(self, ids, offsets):
-        return self.splitter.join((self.by_ids[i] for i in ids), offsets)
+        return join_splits((self.vocab[i] for i in ids), offsets)
 
 
-class BertEncoder(Encoder):
+class CharE(WordE):
     def __call__(self, txt, offset=0):
-        unk = self.ps.tok_vocab[UNK]
-        for _, offset, w in self.splitter(txt, offset):
-            cs = list(w)
-            if self.ps.tok_max_chars and len(cs) > self.ps.tok_max_chars:
-                yield unk, offset, cs
+        for w, o in self.splitter(txt, offset):
+            for i, c in list(w):
+                yield self.vocab.append(c), o + i, c
+
+
+class BertE(WordE):
+    def __init__(self, ps):
+        with open(ps.vocab_path, mode='rt') as f:
+            ws = f.read()
+        super().__init__(ps, ws)
+
+    def __call__(self, txt, offset=0):
+        maxc = self.ps.tok_max_chars or 200
+        for w, o in self.splitter(txt, offset):
+            if len(w) > maxc:
+                yield self.ps.UNK, o, w
             else:
+                cs = list(w)
                 b = 0
                 while b < len(cs):
                     e, unk = len(cs), True
                     while b < e:
                         s = '##' if b > 0 else ''
                         s += ''.join(cs[b:e])
-                        if s in self.ps.tok_vocab:
-                            yield self.ps.tok_vocab[s], offset + b, s
+                        if s in self.vocab:
+                            yield self.vocab[s], o + b, s
                             unk = False
                             break
                         e -= 1
                     if unk:
-                        yield unk, offset + b, cs[b:e]
+                        yield self.ps.UNK, o + b, ''.join(cs[b:e])
                         return
                     b = e
 
@@ -205,46 +157,29 @@ _pat = r"'s|'t|'re|'ve|'m|'ll|'d|"
 _pat += r' ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+'
 
 
-class BPEncoder(Encoder):
+class BPE(WordE):
     from_byte, from_code = _bytes_to_code()
     pattern = re.compile(_pat)
 
-    @classmethod
-    def load(cls, ps):
-        p = pth.Path(ps.model_dir)
-        with lzma.open(p / 'tokens.json.xz', mode='rt') as f:
-            v = json.load(f)
-        ps.update(
-            num_toks=len(v),
-            tok_vocab=v,
-            CLS=v[CLS],
-            EOS=v[EOS],
-            MSK=v[MSK],
-            PAD=v[PAD],
-            SEP=v[SEP],
-            SOS=v[SOS],
-            UNK=v[UNK],
-        )
-        with lzma.open(p / 'pairs.bpe.xz', mode='rt', encoding='utf-8') as f:
-            pairs = f.read()
-        pairs = tuple(tuple(p.split()) for p in pairs.split('\n')[1:-1])
-        return cls(ps, pairs)
-
-    def __init__(self, ps, pairs):
-        super().__init__(ps)
-        self.pairs = dict(zip(pairs, range(len(pairs))))
+    def __init__(self, ps):
+        with lzma.open(ps.vocab_path, mode='rt') as f:
+            ws = json.load(f)
+        super().__init__(ps, ws)
+        with lzma.open(ps.vocab_pairs, mode='rt', encoding='utf-8') as f:
+            ps = f.read()
+        ps = tuple(tuple(p.split()) for p in ps.split('\n')[1:-1])
+        self.pairs = dict(zip(ps, range(len(ps))))
         self.cache = {}
 
     def __call__(self, txt, offset=0):
-        unk = self.ps.tok_vocab[UNK]
-        for w, offset in self.splitter(txt, offset):
+        for w, off in self.splitter(txt, offset):
             o = 0
             for t in re.findall(self.pattern, w):
                 o = w.find(t, o)
                 sw = ''.join(self.from_byte[b] for b in t.encode())
                 for st in self.segment(sw):
                     assert o + len(st) < len(w)
-                    yield self.ps.tok_vocab.get(st, unk), offset + o
+                    yield self.vocab.get(st, self.ps.UNK), off + o
                     o += len(st)
 
     def segment(self, word):
