@@ -35,21 +35,21 @@ def download(sh):
         ):
             f = f.replace('#', v)
             sh.run(
-                f'mkdir -p {p}/{d}',
-                f'cd {p}/{d}',
+                f'mkdir -p {p}',
+                f'cd {p}',
                 'wget -q -c -N {}'.format('/'.join((url, 'tf_' + p, d, f))),
                 # 'xz -qk -9 -T0 {}'.format(f + suff),
             )
 
 
 def main(_):
-    p = pth.Path.cwd() / flags.FLAGS.data_dir
+    p = pth.Path.cwd() / flags.FLAGS.dir_data
     if not p.exists():
         p.mkdir(parents=True, exist_ok=True)
     download(Shell(p))
 
 
 if __name__ == '__main__':
-    flags.DEFINE_string(name='data_dir', default='.data/trafo_xl', help='')
+    flags.DEFINE_string(name='dir_data', default='.model/trafo_xl', help='')
     from absl import app
     app.run(main)

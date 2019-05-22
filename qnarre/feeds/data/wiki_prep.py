@@ -127,11 +127,11 @@ def preproc(sh):
 
 
 def define_download_flags():
-    flags.DEFINE_string(name='data_dir', default='.data/wiki', help='Data dir')
+    flags.DEFINE_string(name='dir_data', default='.data/wiki', help='Data dir')
 
 
 def main(_):
-    dd = flags.FLAGS.data_dir
+    dd = flags.FLAGS.dir_data
     path = pth.Path.cwd() / dd
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)

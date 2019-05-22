@@ -48,13 +48,13 @@ def download(sh):
 
 
 def main(_):
-    p = pth.Path.cwd() / flags.FLAGS.data_dir
+    p = pth.Path.cwd() / flags.FLAGS.dir_data
     if not p.exists():
         p.mkdir(parents=True, exist_ok=True)
     download(Shell(p))
 
 
 if __name__ == '__main__':
-    flags.DEFINE_string(name='data_dir', default='.data/1b_word', help='')
+    flags.DEFINE_string(name='dir_data', default='.data/1b_word', help='')
     from absl import app
     app.run(main)

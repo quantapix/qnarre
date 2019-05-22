@@ -127,13 +127,13 @@ def download(sh):
 
 
 def main(_):
-    path = pth.Path.cwd() / flags.FLAGS.data_dir
+    path = pth.Path.cwd() / flags.FLAGS.dir_data
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
     download(Shell(path))
 
 
 if __name__ == '__main__':
-    flags.DEFINE_string(name='data_dir', default='.model/bert', help='')
+    flags.DEFINE_string(name='dir_data', default='.model/bert', help='')
     from absl import app
     app.run(main)

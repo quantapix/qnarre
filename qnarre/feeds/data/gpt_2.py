@@ -22,23 +22,23 @@ from qnarre.feeds.data.shell import Shell
 
 
 def download(sh):
-    url = 'https://s3.amazonaws.com/research.metamind.io/wikitext/'
-    suff = '.zip'
-    for f, s in (
-        ('wikitext-103-v1',
-         '242ba0f20b329cfdf1ccc61e9e9e5b59becf189db7f7a81cd2a0e2fc31539590'),
-        ('wikitext-103-raw-v1',
-         '91c00ae287f0d699e18605c84afc9e45c192bc6b7797ff8837e5474655a33794'),
-        ('wikitext-2-v1',
-         '92675f1d63015c1c8b51f1656a52d5bdbc33aafa60cc47a218a66e7ee817488c'),
-        ('wikitext-2-raw-v1',
-         'ef7edb566e3e2b2d31b29c1fdb0c89a4cc683597484c3dc2517919c615435a11')
-    ):
-        sh.run(
-            'wget -q -c -N {}'.format(url + f + suff),
-            'xz -qk -9 -T0 {}'.format(f + suff),
-        )
-        assert s == sh.sha256sum(f + suff)
+    url = 'https://storage.googleapis.com/gpt-2/models'
+    for m in ('117M', '345M'):
+        for f in (
+                'checkpoint',
+                'encoder.json',
+                'hparams.json',
+                'model.ckpt.data-00000-of-00001',
+                'model.ckpt.index',
+                'model.ckpt.meta',
+                'vocab.bpe',
+        ):
+            sh.run(
+                f'mkdir -p {m}',
+                f'cd {m}',
+                'wget -q -c -N {}'.format('/'.join((url, m, f))),
+                # 'xz -qk -9 -T0 {}'.format(f + suff),
+            )
 
 
 def main(_):
@@ -49,6 +49,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-    flags.DEFINE_string(name='dir_data', default='.data/wikitext', help='')
+    flags.DEFINE_string(name='dir_data', default='.model/gpt_2', help='')
     from absl import app
     app.run(main)

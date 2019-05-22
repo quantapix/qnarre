@@ -47,11 +47,11 @@ def download(sh):
 def define_download_flags():
     fu.define_base()
     flags.adopt_module_key_flags(fu)
-    fu.set_defaults(data_dir='.cache/transformer/data')
+    fu.set_defaults(dir_data='.cache/transformer/data')
 
 
 def main(_):
-    path = pth.Path.cwd() / flags.FLAGS.data_dir
+    path = pth.Path.cwd() / flags.FLAGS.dir_data
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
     download(Shell(path))

@@ -36,11 +36,11 @@ def download(sh):
 
 
 def define_download_flags():
-    flags.DEFINE_string(name='data_dir', default='.data/wiki', help='Data dir')
+    flags.DEFINE_string(name='dir_data', default='.data/wiki', help='Data dir')
 
 
 def main(_):
-    path = pth.Path.cwd() / flags.FLAGS.data_dir
+    path = pth.Path.cwd() / flags.FLAGS.dir_data
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
     # download(Shell(path))

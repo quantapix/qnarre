@@ -86,7 +86,7 @@ def features(ps, kind):
 
 def reader(ps, kind):
     assert not ps.dset or ps.dset == 'squad'
-    p = pth.Path(ps.data_dir) / ps.dset
+    p = pth.Path(ps.dir_data) / ps.dset
     for n in names[kind]:
         with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
             for t in json.load(f)['data']:

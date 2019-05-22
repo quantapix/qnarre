@@ -35,7 +35,7 @@ def dataset(ps, kind):
 
 
 def prep(ps, kind):
-    p = pth.Path(ps.data_dir)
+    p = pth.Path(ps.dir_data)
     data = zipfile.ZipFile('enwik8.zip').read('enwik8')
     num_test_chars = 5000000
     train_data = data[:-2 * num_test_chars]
@@ -52,7 +52,7 @@ def prep(ps, kind):
 
 
 def _reader(ps, kind):
-    p = pth.Path(ps.data_dir)
+    p = pth.Path(ps.dir_data)
     for n in _names[kind]:
         with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
             for t in json.load(f)['data']:

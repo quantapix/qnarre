@@ -398,8 +398,8 @@ def create_ordered_tfrecords(save_dir,
     return file_name, num_batch
 
 
-def get_lm_corpus(data_dir, dataset):
-    fn = os.path.join(data_dir, "cache.pkl")
+def get_lm_corpus(dir_data, dataset):
+    fn = os.path.join(dir_data, "cache.pkl")
 
     if exists(fn):
         print("Loading cached dataset...")
@@ -417,11 +417,11 @@ def get_lm_corpus(data_dir, dataset):
         elif dataset == "lm1b":
             kwargs["special"] = []
             kwargs["lower_case"] = False
-            kwargs["vocab_file"] = os.path.join(data_dir, "1b_word_vocab.txt")
+            kwargs["vocab_file"] = os.path.join(dir_data, "1b_word_vocab.txt")
         elif dataset in ["enwik8", "text8"]:
             pass
 
-        corpus = Corpus(data_dir, dataset, **kwargs)
+        corpus = Corpus(dir_data, dataset, **kwargs)
 
         print("Saving dataset...")
         with open(fn, "wb") as fp:
@@ -432,7 +432,7 @@ def get_lm_corpus(data_dir, dataset):
             "cutoffs": corpus.cutoffs,
             "dataset": corpus.dataset
         }
-        with open(os.path.join(data_dir, "corpus-info.json"), "w") as fp:
+        with open(os.path.join(dir_data, "corpus-info.json"), "w") as fp:
             json.dump(corpus_info, fp)
 
     return corpus
@@ -441,9 +441,9 @@ def get_lm_corpus(data_dir, dataset):
 def main(unused_argv):
     del unused_argv  # Unused
 
-    corpus = get_lm_corpus(FLAGS.data_dir, FLAGS.dataset)
+    corpus = get_lm_corpus(FLAGS.dir_data, FLAGS.dataset)
 
-    save_dir = os.path.join(FLAGS.data_dir, "tfrecords")
+    save_dir = os.path.join(FLAGS.dir_data, "tfrecords")
     if not exists(save_dir):
         makedirs(save_dir)
 
@@ -512,8 +512,8 @@ def get_input_fn(record_info_dir,
         # per-core batch size
         per_core_bsz = params["batch_size"]
 
-        # data_dir could be a remote path, e.g., a google storage url
-        data_dir = params["data_dir"]
+        # dir_data could be a remote path, e.g., a google storage url
+        dir_data = params["dir_data"]
 
         def parser(record):
             # preprocess "inp_perm" and "tgt_perm"
@@ -593,7 +593,7 @@ def get_input_fn(record_info_dir,
 
         file_paths = []
         for file_name in file_names:
-            file_path = os.path.join(data_dir, file_name)
+            file_path = os.path.join(dir_data, file_name)
             file_paths.append(file_path)
 
         if split == "train":

@@ -233,10 +233,10 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
     return images, tf.reshape(label_batch, [batch_size])
 
 
-def distorted_inputs(data_dir, batch_size):
+def distorted_inputs(dir_data, batch_size):
 
     filenames = [
-        os.path.join(data_dir, 'data_batch_%d.bin' % i) for i in range(1, 6)
+        os.path.join(dir_data, 'data_batch_%d.bin' % i) for i in range(1, 6)
     ]
     for f in filenames:
         if not tf.gfile.Exists(f):
