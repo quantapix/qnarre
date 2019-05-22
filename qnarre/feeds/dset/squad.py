@@ -24,10 +24,11 @@ from qnarre.feeds.prep import utils, encoder
 
 
 def dset(ps, kind):
+    t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
     return tf.Dataset.from_generator(
         lambda: features(ps, kind),
-        ps.features.tf_dtypes,
-        ps.features.tf_shapes,
+        ((t, ) * 4, (t, ) * 2),
+        ((sh, ) * 4, tf.TensorShape(())),
     )
 
 
@@ -35,12 +36,12 @@ def features(ps, kind):
     tokenizer = encoder.tokenizer_for(ps)
     fs = F.Topics(tokenizer(reader(ps, kind)))
     ps.update(features=fs)
-    for _, c, q, ans in ps.features.answers():
+    for _, c, q, rep in fs.replies():
         cs, qs = c.toks, q.toks
-        if ps.max_qry_len:
-            qs = qs[:ps.max_qry_len]
+        if ps.len_qry:
+            qs = qs[:ps.len_qry]
         end, ql = len(cs), len(qs)
-        sl = ps.max_seq_len - ql - 3
+        sl = ps.len_src - ql - 3
         ss, b = [], 0
         while b < end:
             e = end
@@ -48,13 +49,13 @@ def features(ps, kind):
             ss.append(F.Span(begin=b, end=e))
             if e == end:
                 break
-            b = min(e, b + ps.doc_stride)
+            b = min(e, b + ps.src_stride)
         ql += 2
         for si, s in enumerate(ss):
-            seq = [ps.CLS] + qs + [ps.SEP] + cs[s.begin:s.end] + [ps.SEP]
+            src = [ps.CLS] + qs + [ps.SEP] + cs[s.begin:s.end] + [ps.SEP]
             typ = [0] * ql + [1] * (len(s) + 1)
 
-            def _optim(i):
+            def optim(i):
                 o, oi = None, -1
                 for s2i, s2 in enumerate(ss):
                     if i >= s2.begin and i < s2.end:
@@ -66,21 +67,21 @@ def features(ps, kind):
                 return 1 if si == oi else 0
 
             opt = [0] * ql
-            opt += [_optim(idx) for idx in range(s.begin, s.end)] + [0]
-            assert len(seq) == len(typ) == len(opt)
-            pad = [0] * (ps.max_seq_len - len(seq))
+            opt += [optim(idx) for idx in range(s.begin, s.end)] + [0]
+            assert len(src) == len(typ) == len(opt)
+            pad = [0] * (ps.len_src - len(src))
             if pad:
-                seq += pad
+                src += pad
                 typ += pad
                 opt += pad
             beg, end = 0, 0
             if kind == 'train':
                 if not q.valid:
-                    beg, end = ans.span.begin, ans.span.end
+                    beg, end = rep.span.begin, rep.span.end
                     if b >= s.begin and e <= s.end:
                         beg += ql - s.begin
                         end += ql - s.end
-            yield seq, typ, opt, beg, end, ans.uid
+            yield (src, typ, opt, rep.uid), (beg, end)
 
 
 def reader(ps, kind):

@@ -25,14 +25,11 @@ from qnarre.feeds.prep import utils, encoder
 
 
 def dset(ps, kind):
+    t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
     return tf.data.Dataset.from_generator(
-        features(ps, kind),
-        (tf.int32, tf.int32, tf.int32),
-        (
-            tf.TensorShape([None]),
-            tf.TensorShape([None]),
-            tf.TensorShape([1]),
-        ),
+        lambda: features(ps, kind),
+        ((t, ) * 3, t),
+        ((sh, sh, tf.TensorShape(())), tf.TensorShape(())),
     )
 
 
@@ -40,39 +37,15 @@ def features(ps, kind):
     tokenizer = encoder.tokenizer_for(ps)
     fs = F.Topics(tokenizer(reader(ps, kind)))
     ps.update(features=fs)
-    msl = mtl = 0
-    if msl or mtl:
-        ps.ds_src_len, ps.ds_tgt_len = msl, mtl
-    for _, ctx, snt, tgt in reader(ps, kind):
-        tgt = [enc.encode(t) if t else [] for t in tgt]
-        tl = max(tgt, key=lambda x: len(x))
-        mtl = max(tl, mtl)
-        if not ps.tgt_len or tl <= ps.tgt_len:
-            ss = [enc.encode(s) if s else [] for s in src]
-            ssl = sum(ss, key=lambda x: len(x))
-            msl = max(ssl, msl)
-            ml = ps.mem_len - tl
-            src, ssl = [], 0
-            for s in ss:
-                sl = len(s)
-                ml -= sl
-                if ml < 0:
-                    break
-                ssl += sl
-                if ps.src_len and ssl > ps.src_len:
-                    break
-                src.extend(s)
-            if src:
-                for i, t in enumerate(tgt):
-                    if t:
-                        yield src, t, int(i == y)
-
-                tgt = random.randint(0, 1)
-                snt = [ln[6] if y == 0 else '', ln[6] if y == 1 else '']
-                ttl = ''
-                ctx = ln[1:5]
-                snt = [ln[5], ln[6]]
-                tgt = int(ln[-1]) - 1
+    for _, c, q, rep in fs.replies():
+        cs, qs = c.toks, q.toks
+        if ps.len_qry:
+            qs = qs[:ps.len_qry]
+        cl, ql = len(cs), len(qs)
+        cl = min(cl, ps.len_src - ql - 3)
+        src = [ps.CLS] + qs + [ps.SEP] + cs[:cl] + [ps.SEP]
+        typ = [0] * ql + [1] * (cl + 1)
+        yield (src, typ, rep.uid), 1 if rep.valid else 0
 
 
 def reader(ps, kind):
