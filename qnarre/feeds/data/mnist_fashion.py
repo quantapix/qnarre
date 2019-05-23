@@ -1,4 +1,3 @@
-
 # Copyright 2019 Quantapix Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,20 +21,19 @@ from qnarre.feeds.data.shell import Shell
 
 
 def download(sh):
-    files = (
-        ('train-images-idx3-ubyte', 'train_images'),
-        ('train-labels-idx1-ubyte', 'train_labels'),
-        ('t10k-images-idx3-ubyte', 'test_images'),
-        ('t10k-labels-idx1-ubyte', 'test_labels'),
-    )
     url = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/'
     suff = '.gz'
-    for s, d in files:
+    fs = (
+        'train-images-idx3-ubyte',
+        'train-labels-idx1-ubyte',
+        't10k-images-idx3-ubyte',
+        't10k-labels-idx1-ubyte',
+    )
+    for f in fs:
         sh.run(
-            'wget -q -c -N {}'.format(url + s + suff),
-            'gunzip -q -k {}'.format(s + suff),
-            'mv {} {}'.format(s, d),
-            'xz -q -9 -T0 {}'.format(d),
+            'wget -q -c -N {}'.format(url + f + suff),
+            # 'gunzip -q -k {}'.format(f + suff),
+            # 'xz -q -9 -T0 {}'.format(f),
         )
 
 
@@ -47,7 +45,8 @@ def main(_):
 
 
 if __name__ == '__main__':
-    flags.DEFINE_string(
-        name='dir_data', default='.data/mnist-fashion', help='')
+    flags.DEFINE_string(name='dir_data',
+                        default='.data/mnist_fashion',
+                        help='')
     from absl import app
     app.run(main)

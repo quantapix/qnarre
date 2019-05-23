@@ -31,7 +31,10 @@ def dset_for(ps, kind):
         ds_2 = ds_2.shuffle(n)
         ds_3 = ds_3.shuffle(n)
     ds = tf.Dataset.zip((ds_1, ds_2, ds_3))
-    ds = ds.map(lambda s, s2, s3: ((s[0], s2[0], s2[1], s3[0], s3[1]), s[1]))
+    ds = ds.map(lambda s, s2, s3: (
+        (s['image'], s2['image'], s2['label'], s3['image'], s3['label']),
+        s['label'],
+    ))
     ds = ds.batch(ps.batch_size)
     # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return ds

@@ -58,10 +58,10 @@ params = dict(
 )
 
 params.update(
-    data_dir='.data/trafo',
+    dir_data='.data/trafo',
     log_dir='.model/trafo/logs',
-    model_dir='.model/trafo',
-    save_dir='.model/trafo/save',
+    dir_model='.model/trafo',
+    dir_save='.model/trafo/save',
 )
 
 

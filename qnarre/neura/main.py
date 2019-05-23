@@ -85,7 +85,7 @@ def run_quess(sess, params):
     model = model_for(PS)
     model.compile(**compile_args_for(PS))
     model.train_on_batch(ds_train[:1])
-    save_p = pth.Path(PS.save_dir)
+    save_p = pth.Path(PS.dir_save)
     if save_p.exists():
         model.load_weights(save_p)
     model.summary()
@@ -149,7 +149,7 @@ def eager_quess(sess, params):
     model = model_for(PS)
     model.compile(**compile_args_for(PS))
     # model.train_on_batch(ds_train[:1])
-    save_p = pth.Path(PS.save_dir)
+    save_p = pth.Path(PS.dir_save)
     if save_p.exists():
         model.load_weights(save_p)
     model.summary()

@@ -85,10 +85,10 @@ _params = dict(
 )
 
 _params.update(
-    data_dir='.data/transformer',
+    dir_data='.data/transformer',
     log_dir='.model/transformer/logs',
-    model_dir='.model/transformer',
-    save_dir='.model/transformer/save',
+    dir_model='.model/transformer',
+    dir_save='.model/transformer/save',
 )
 
 

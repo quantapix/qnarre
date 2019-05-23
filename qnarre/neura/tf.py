@@ -111,6 +111,7 @@ greater_equal = math_ops.greater_equal
 identity = array_ops.identity
 import_event = None  # ts.import_event
 int32 = tf.int32
+int64 = tf.int64
 is_built_with_cuda = tf.test.is_built_with_cuda
 is_nan = math_ops.is_nan
 l2_normalize = tf.nn.l2_normalize

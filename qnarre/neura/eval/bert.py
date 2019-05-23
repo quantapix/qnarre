@@ -340,7 +340,7 @@ def _decode_record(record, name_to_features):
 def main(_):
     result = estimator.evaluate(input_fn=eval_input_fn, steps=PS.eval_steps)
 
-    output_eval_file = os.path.join(PS.save_dir, "eval_results.txt")
+    output_eval_file = os.path.join(PS.dir_save, "eval_results.txt")
     with tf.gfile.GFile(output_eval_file, "w") as writer:
         tf.logging.info("***** Eval results *****")
         for key in sorted(result.keys()):

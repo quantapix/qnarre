@@ -13,6 +13,8 @@
 # limitations under the License.
 # =============================================================================
 
+import numpy as np
+
 from qnarre.neura import tf
 
 # tf.serialize_tensor <--> tf.parse_tensor
@@ -37,7 +39,7 @@ def one_float_feat(v):
 
 
 def floats_feat(vs):
-    assert isinstance(vs, list)
+    assert isinstance(vs, list) or isinstance(vs, np.ndarray)
     return tf.Feature(float_list=tf.FloatList(value=vs))
 
 
@@ -46,12 +48,12 @@ def one_int_feat(v):
 
 
 def ints_feat(vs):
-    assert isinstance(vs, list)
+    assert isinstance(vs, list) or isinstance(vs, np.ndarray)
     return tf.Feature(int64_list=tf.Int64List(value=vs))
 
 
 def dump(path, examples):
     path.parent.mkdir()
-    with tf.io.TFRecordWriter(path) as w:
-        for e in examples:
+    with tf.TFRecordWriter(str(path)) as w:
+        for e in examples():
             w.write(e)

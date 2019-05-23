@@ -67,11 +67,11 @@ def load_flags():
     flags.DEFINE_integer('batch_size', None, '')
     flags.DEFINE_integer('train_epochs', None, '')
     flags.DEFINE_integer('train_steps', None, '')
-    flags.DEFINE_string('data_dir', None, '')
+    flags.DEFINE_string('dir_data', None, '')
     # flags.DEFINE_string('log_dir', None, '')
-    flags.DEFINE_string('model_dir', None, '')
-    flags.DEFINE_string('model_name', None, '')
-    flags.DEFINE_string('save_dir', None, '')
+    flags.DEFINE_string('dir_model', None, '')
+    flags.DEFINE_string('model', None, '')
+    flags.DEFINE_string('dir_save', None, '')
 
 
 root = dict(

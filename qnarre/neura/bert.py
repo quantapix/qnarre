@@ -99,11 +99,11 @@ _params = dict(
 )
 
 _params.update(
-    data_dir='.data/bert',
+    dir_data='.data/bert',
     log_dir='.model/bert/logs',
-    model_dir='.model/bert',
-    save_dir='.model/bert/save',
-    model_name='uncased_L-12_H-768_A-12',
+    dir_model='.model/bert',
+    dir_save='.model/bert/save',
+    model='uncased_L-12_H-768_A-12',
 )
 
 

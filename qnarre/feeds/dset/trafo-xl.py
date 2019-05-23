@@ -22,7 +22,7 @@ from tensorflow.gfile import MakeDirs as makedirs
 from tensorflow.gfile import Glob as glob
 
 
-def _preprocess(shard, train, vocab, save_dir, cutoffs, bin_sizes, bsz,
+def _preprocess(shard, train, vocab, dir_save, cutoffs, bin_sizes, bsz,
                 tgt_len, num_core_per_host, use_tpu, num_shuffle):
     file_names = []
     num_batch = 0
@@ -36,7 +36,7 @@ def _preprocess(shard, train, vocab, save_dir, cutoffs, bin_sizes, bsz,
 
         np.random.shuffle(data_shard)
         file_name, num_batch_shuffle = create_ordered_tfrecords(
-            save_dir,
+            dir_save,
             basename,
             np.concatenate(data_shard),
             bsz,
@@ -113,7 +113,7 @@ class Corpus(object):
         else:
             self.cutoffs = []
 
-    def convert_to_tfrecords(self, split, save_dir, bsz, tgt_len,
+    def convert_to_tfrecords(self, split, dir_save, bsz, tgt_len,
                              num_core_per_host, **kwargs):
         FLAGS = kwargs.get('FLAGS')
 
@@ -128,14 +128,14 @@ class Corpus(object):
             record_name = "record_info-{}.bsz-{}.tlen-{}.json".format(
                 split, bsz, tgt_len)
 
-        record_info_path = os.path.join(save_dir, record_name)
+        record_info_path = os.path.join(dir_save, record_name)
 
         if self.dataset in ["ptb", "wt2", "wt103", "enwik8", "text8"]:
             data = getattr(self, split)
             bin_sizes = get_bin_sizes(data, bsz // num_core_per_host, tgt_len,
                                       self.cutoffs)
             file_name, num_batch = create_ordered_tfrecords(
-                save_dir,
+                dir_save,
                 split,
                 data,
                 bsz,
@@ -159,7 +159,7 @@ class Corpus(object):
                         _preprocess,
                         train=self.train,
                         vocab=self.vocab,
-                        save_dir=save_dir,
+                        dir_save=dir_save,
                         cutoffs=self.cutoffs,
                         bin_sizes=bin_sizes,
                         bsz=bsz,
@@ -188,7 +188,7 @@ class Corpus(object):
                                 shard, shuffle)
                             np.random.shuffle(data_shard)
                             file_name, num_batch_ = create_ordered_tfrecords(
-                                save_dir,
+                                dir_save,
                                 basename,
                                 np.concatenate(data_shard),
                                 bsz,
@@ -202,7 +202,7 @@ class Corpus(object):
 
             else:
                 file_name, num_batch = create_ordered_tfrecords(
-                    save_dir,
+                    dir_save,
                     split,
                     getattr(self, split),
                     bsz,
@@ -289,7 +289,7 @@ def batchify(data, batch_size, num_passes):
     return data
 
 
-def create_ordered_tfrecords(save_dir,
+def create_ordered_tfrecords(dir_save,
                              basename,
                              data,
                              batch_size,
@@ -307,7 +307,7 @@ def create_ordered_tfrecords(save_dir,
         file_name = "{}.bsz-{}.tlen-{}.tfrecords".format(
             basename, batch_size, tgt_len)
 
-    save_path = os.path.join(save_dir, file_name)
+    save_path = os.path.join(dir_save, file_name)
     record_writer = tf.python_io.TFRecordWriter(save_path)
 
     batched_data = batchify(data, batch_size, num_passes)
@@ -443,14 +443,14 @@ def main(unused_argv):
 
     corpus = get_lm_corpus(FLAGS.dir_data, FLAGS.dataset)
 
-    save_dir = os.path.join(FLAGS.dir_data, "tfrecords")
-    if not exists(save_dir):
-        makedirs(save_dir)
+    dir_save = os.path.join(FLAGS.dir_data, "tfrecords")
+    if not exists(dir_save):
+        makedirs(dir_save)
 
     # test mode
     if FLAGS.per_host_test_bsz > 0:
         corpus.convert_to_tfrecords("test",
-                                    save_dir,
+                                    dir_save,
                                     FLAGS.per_host_test_bsz,
                                     FLAGS.tgt_len,
                                     FLAGS.num_core_per_host,
@@ -464,7 +464,7 @@ def main(unused_argv):
         if batch_size <= 0: continue
         print("Converting {} set...".format(split))
         corpus.convert_to_tfrecords(split,
-                                    save_dir,
+                                    dir_save,
                                     batch_size,
                                     FLAGS.tgt_len,
                                     FLAGS.num_core_per_host,

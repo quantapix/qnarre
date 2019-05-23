@@ -1,4 +1,3 @@
-
 # Copyright 2019 Quantapix Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,31 +21,20 @@ from qnarre.feeds.data.shell import Shell
 
 
 def download(sh):
-    files = (
-        ('train-images-idx3-ubyte', 'train_images'),
-        ('train-labels-idx1-ubyte', 'train_labels'),
-        ('t10k-images-idx3-ubyte', 'test_images'),
-        ('t10k-labels-idx1-ubyte', 'test_labels'),
-    )
     url = 'https://storage.googleapis.com/cvdf-datasets/mnist/'
     suff = '.gz'
-    for s, d in files:
+    fs = (
+        'train-images-idx3-ubyte',
+        'train-labels-idx1-ubyte',
+        't10k-images-idx3-ubyte',
+        't10k-labels-idx1-ubyte',
+    )
+    for f in fs:
         sh.run(
             # 'wget --show-progress -q -c -N {}'.format(url + s + suff),
-            'wget -q -c -N {}'.format(url + s + suff),
-            'gunzip -q -k {}'.format(s + suff),
-            'mv {} {}'.format(s, d),
-            'xz -q -9 -T0 {}'.format(d),
-        )
-
-    files = (('mnist', 'combined'), )
-    url = 'https://s3.amazonaws.com/img-datasets/'
-    suff = '.npz'
-    for s, d in files:
-        s += suff
-        sh.run(
-            'wget -q -c -N {}'.format(url + s),
-            'mv {} {}'.format(s, d + suff),
+            'wget -q -c -N {}'.format(url + f + suff),
+            # 'gunzip -q -k {}'.format(f + suff),
+            # 'xz -q -9 -T0 {}'.format(f),
         )
 
 

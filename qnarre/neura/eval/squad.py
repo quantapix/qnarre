@@ -367,7 +367,7 @@ def run_squad(sess, params):
     ds_train = dataset_for('train', params)
     ds_test = dataset_for('test', params)
 
-    save_p = pth.Path(params.save_dir)
+    save_p = pth.Path(params.dir_save)
     if save_p.exists():
         model.train_on_batch(ds_train[:1])
         model.load_weights(save_p)
@@ -434,10 +434,10 @@ _params = dict(
 )
 
 _params.update(
-    data_dir='.data/squad',
+    dir_data='.data/squad',
     log_dir='.model/squad/logs',
-    model_dir='.model/squad',
-    save_dir='.model/squad/save',
+    dir_model='.model/squad',
+    dir_save='.model/squad/save',
 )
 
 

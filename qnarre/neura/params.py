@@ -47,11 +47,11 @@ def load_flags():
     F.DEFINE_integer('iters_per_loop', None, '')
     F.DEFINE_integer('train_steps', None, '')
     F.DEFINE_integer('warmup_steps', None, '')
-    F.DEFINE_string('data_dir', None, '')
+    F.DEFINE_string('dir_data', None, '')
     # F.DEFINE_string('log_dir', None, '')
-    F.DEFINE_string('model_dir', None, '')
-    F.DEFINE_string('model_name', None, '')
-    F.DEFINE_string('save_dir', None, '')
+    F.DEFINE_string('dir_model', None, '')
+    F.DEFINE_string('model', None, '')
+    F.DEFINE_string('dir_save', None, '')
     df = ['channels_first', 'channels_last']
     F.DEFINE_enum('data_format', None, df, '')
 

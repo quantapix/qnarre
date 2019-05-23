@@ -64,7 +64,7 @@ flags.DEFINE_integer("num_core_per_host",
                      help="number of cores per host")
 
 # Experiment (data/checkpoint/directory) parameters
-flags.DEFINE_string("data_dir",
+flags.DEFINE_string("dir_data",
                     default="",
                     help="Path to tf-records directory.")
 flags.DEFINE_string("record_info_dir",
@@ -73,7 +73,7 @@ flags.DEFINE_string("record_info_dir",
 flags.DEFINE_string("corpus_info_path",
                     default="",
                     help="Path to corpus-info.json file.")
-flags.DEFINE_string("model_dir", default=None, help="Estimator model_dir.")
+flags.DEFINE_string("dir_model", default=None, help="Estimator dir_model.")
 flags.DEFINE_bool("do_eval",
                   default=False,
                   help="Whether to run eval on the dev set.")
@@ -83,13 +83,13 @@ flags.DEFINE_bool("track_mean",
 flags.DEFINE_string("eval_ckpt_path",
                     None,
                     help="Checkpoint path for evaluation."
-                    "If set, model_dir will be ignored."
-                    "If unset, will use the latest ckpt in model_dir.")
+                    "If set, dir_model will be ignored."
+                    "If unset, will use the latest ckpt in dir_model.")
 flags.DEFINE_string("warm_start_path",
                     None,
                     help="Checkpoint path for warm start."
                     "If set, will clear Adam states."
-                    "Note that the new model_dir should be different"
+                    "Note that the new dir_model should be different"
                     " from warm_start_path.")
 
 # Optimization paramenters
@@ -430,7 +430,7 @@ def main(unused_argv):
     per_host_input = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
     run_config = tf.contrib.tpu.RunConfig(
         cluster=tpu_cluster_resolver,
-        model_dir=FLAGS.model_dir,
+        dir_model=FLAGS.dir_model,
         session_config=tf.ConfigProto(allow_soft_placement=True,
                                       log_device_placement=True),
         tpu_config=tf.contrib.tpu.TPUConfig(
@@ -455,7 +455,7 @@ def main(unused_argv):
         use_tpu=FLAGS.use_tpu,
         config=run_config,
         params={
-            "data_dir": FLAGS.data_dir,
+            "dir_data": FLAGS.dir_data,
             "track_mean": FLAGS.track_mean
         },
         train_batch_size=FLAGS.train_batch_size,
@@ -474,7 +474,7 @@ def main(unused_argv):
             tf.logging.info(log_str)
             tf.logging.info("=" * 200)
         else:
-            ckpt_state = tf.train.get_checkpoint_state(FLAGS.model_dir)
+            ckpt_state = tf.train.get_checkpoint_state(FLAGS.dir_model)
             eval_results = []
             for eval_checkpoint in ckpt_state.all_model_checkpoint_paths:
                 if not exists(eval_checkpoint + ".index"): continue
@@ -531,7 +531,7 @@ flags.DEFINE_integer("num_core_per_host",
                      help="Number of cores per host")
 
 # Experiment (data/checkpoint/directory) config
-flags.DEFINE_string("data_dir",
+flags.DEFINE_string("dir_data",
                     default="",
                     help="Path to tf-records directory.")
 flags.DEFINE_string("record_info_dir",
@@ -540,7 +540,7 @@ flags.DEFINE_string("record_info_dir",
 flags.DEFINE_string("corpus_info_path",
                     default="",
                     help="Path to corpus-info.json file.")
-flags.DEFINE_string("model_dir", default=None, help="Estimator model_dir.")
+flags.DEFINE_string("dir_model", default=None, help="Estimator dir_model.")
 flags.DEFINE_bool("do_train", default=True, help="Whether to run training.")
 flags.DEFINE_bool("do_eval",
                   default=False,
@@ -548,13 +548,13 @@ flags.DEFINE_bool("do_eval",
 flags.DEFINE_string("eval_ckpt_path",
                     None,
                     help="Checkpoint path for do_test evaluation."
-                    "If set, model_dir will be ignored."
-                    "If unset, will use the latest ckpt in model_dir.")
+                    "If set, dir_model will be ignored."
+                    "If unset, will use the latest ckpt in dir_model.")
 flags.DEFINE_string("warm_start_path",
                     None,
                     help="Checkpoint path for warm start."
                     "If set, will clear Adam states."
-                    "Note that the new model_dir should be different"
+                    "Note that the new dir_model should be different"
                     " from warm_start_path.")
 
 # Optimization config
@@ -749,7 +749,7 @@ def train(n_token, cutoffs, ps_device):
     ##### Create computational graph
     train_set = train_input_fn({
         "batch_size": FLAGS.train_batch_size,
-        "data_dir": FLAGS.data_dir
+        "dir_data": FLAGS.dir_data
     })
 
     input_feed, label_feed = train_set.make_one_shot_iterator().get_next()
@@ -864,7 +864,7 @@ def train(n_token, cutoffs, ps_device):
                 total_loss, prev_step = 0., curr_step
 
             if curr_step > 0 and curr_step % FLAGS.save_steps == 0:
-                save_path = os.path.join(FLAGS.model_dir, "model.ckpt")
+                save_path = os.path.join(FLAGS.dir_model, "model.ckpt")
                 saver.save(sess, save_path)
                 tf.logging.info("Model saved in path: {}".format(save_path))
 
@@ -891,7 +891,7 @@ def evaluate(n_token, cutoffs, ps_device):
     ##### Create computational graph
     eval_set = eval_input_fn({
         "batch_size": FLAGS.eval_batch_size,
-        "data_dir": FLAGS.data_dir
+        "dir_data": FLAGS.dir_data
     })
 
     input_feed, label_feed = eval_set.make_one_shot_iterator().get_next()
@@ -941,7 +941,7 @@ def evaluate(n_token, cutoffs, ps_device):
         sess.run(tf.global_variables_initializer())
 
         if FLAGS.eval_ckpt_path is None:
-            eval_ckpt_path = tf.train.latest_checkpoint(FLAGS.model_dir)
+            eval_ckpt_path = tf.train.latest_checkpoint(FLAGS.dir_model)
         else:
             eval_ckpt_path = FLAGS.eval_ckpt_path
         tf.logging.info("Evaluate {}".format(eval_ckpt_path))
@@ -1094,7 +1094,7 @@ TEST_NUM_CORE=1
 
 if [[ $1 == 'train_data' ]]; then
     python data_utils.py \
-        --data_dir=${DATA_ROOT}/ \
+        --dir_data=${DATA_ROOT}/ \
         --dataset=enwik8 \
         --tgt_len=${TGT_LEN} \
         --per_host_train_bsz=${BSZ} \
@@ -1104,7 +1104,7 @@ if [[ $1 == 'train_data' ]]; then
         ${@:2}
 elif [[ $1 == 'test_data' ]]; then
     python data_utils.py \
-        --data_dir=${DATA_ROOT}/ \
+        --dir_data=${DATA_ROOT}/ \
         --dataset=enwik8 \
         --tgt_len=${TEST_TGT_LEN} \
         --per_host_test_bsz=${TEST_BSZ} \
@@ -1114,10 +1114,10 @@ elif [[ $1 == 'test_data' ]]; then
 elif [[ $1 == 'train' ]]; then
     echo 'Run training...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-enwik8 \
+        --dir_model=EXP-enwik8 \
         --n_layer=${N_LAYER} \
         --d_model=${D_MODEL} \
         --d_embed=${D_EMBED} \
@@ -1141,10 +1141,10 @@ elif [[ $1 == 'train' ]]; then
 elif [[ $1 == 'eval' ]]; then
     echo 'Run evaluation...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-enwik8 \
+        --dir_model=EXP-enwik8 \
         --n_layer=${N_LAYER} \
         --d_model=${D_MODEL} \
         --d_embed=${D_EMBED} \
@@ -1198,7 +1198,7 @@ TEST_NUM_CORE=1
 
 if [[ $1 == 'train_data' ]]; then
     python data_utils.py \
-      --data_dir=${DATA_ROOT}/ \
+      --dir_data=${DATA_ROOT}/ \
       --dataset=lm1b \
       --tgt_len=${TGT_LEN} \
       --per_host_train_bsz=${BSZ} \
@@ -1208,7 +1208,7 @@ if [[ $1 == 'train_data' ]]; then
       ${@:2}
 elif [[ $1 == 'test_data' ]]; then
     python data_utils.py \
-      --data_dir=${DATA_ROOT}/ \
+      --dir_data=${DATA_ROOT}/ \
       --dataset=lm1b \
       --tgt_len=${TEST_TGT_LEN} \
       --per_host_test_bsz=${TEST_BSZ} \
@@ -1218,10 +1218,10 @@ elif [[ $1 == 'test_data' ]]; then
 elif [[ $1 == 'train' ]]; then
     echo 'Run training...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-lm1b \
+        --dir_model=EXP-lm1b \
         --div_val=${DIV_VAL} \
         --untie_r=True \
         --proj_share_all_but_first=False \
@@ -1247,10 +1247,10 @@ elif [[ $1 == 'train' ]]; then
 elif [[ $1 == 'eval' ]]; then
     echo 'Run evaluation...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-lm1b \
+        --dir_model=EXP-lm1b \
         --div_val=${DIV_VAL} \
         --untie_r=True \
         --proj_share_all_but_first=False \
@@ -1307,7 +1307,7 @@ TEST_NUM_CORE=1
 
 if [[ $1 == 'train_data' ]]; then
     python data_utils.py \
-        --data_dir=${DATA_ROOT}/ \
+        --dir_data=${DATA_ROOT}/ \
         --dataset=text8 \
         --tgt_len=${TGT_LEN} \
         --per_host_train_bsz=${BSZ} \
@@ -1317,7 +1317,7 @@ if [[ $1 == 'train_data' ]]; then
         ${@:2}
 elif [[ $1 == 'test_data' ]]; then
     python data_utils.py \
-        --data_dir=${DATA_ROOT}/ \
+        --dir_data=${DATA_ROOT}/ \
         --dataset=text8 \
         --tgt_len=${TEST_TGT_LEN} \
         --per_host_test_bsz=${TEST_BSZ} \
@@ -1327,10 +1327,10 @@ elif [[ $1 == 'test_data' ]]; then
 elif [[ $1 == 'train' ]]; then
     echo 'Run training...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-text8 \
+        --dir_model=EXP-text8 \
         --n_layer=${N_LAYER} \
         --d_model=${D_MODEL} \
         --d_embed=${D_EMBED} \
@@ -1354,10 +1354,10 @@ elif [[ $1 == 'train' ]]; then
 elif [[ $1 == 'eval' ]]; then
     echo 'Run evaluation...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-text8 \
+        --dir_model=EXP-text8 \
         --n_layer=${N_LAYER} \
         --d_model=${D_MODEL} \
         --d_embed=${D_EMBED} \
@@ -1412,7 +1412,7 @@ TEST_NUM_CORE=1
 
 if [[ $1 == 'train_data' ]]; then
     python data_utils.py \
-        --data_dir=${DATA_ROOT}/ \
+        --dir_data=${DATA_ROOT}/ \
         --dataset=wt103 \
         --tgt_len=${TGT_LEN} \
         --per_host_train_bsz=${BSZ} \
@@ -1422,7 +1422,7 @@ if [[ $1 == 'train_data' ]]; then
         ${@:2}
 elif [[ $1 == 'test_data' ]]; then
     python data_utils.py \
-        --data_dir=${DATA_ROOT}/ \
+        --dir_data=${DATA_ROOT}/ \
         --dataset=enwik8 \
         --tgt_len=${TEST_TGT_LEN} \
         --per_host_test_bsz=${TEST_BSZ} \
@@ -1432,10 +1432,10 @@ elif [[ $1 == 'test_data' ]]; then
 elif [[ $1 == 'train' ]]; then
     echo 'Run training...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-wt103 \
+        --dir_model=EXP-wt103 \
         --div_val=${DIV_VAL} \
         --untie_r=True \
         --proj_share_all_but_first=True \
@@ -1460,10 +1460,10 @@ elif [[ $1 == 'train' ]]; then
 elif [[ $1 == 'eval' ]]; then
     echo 'Run evaluation...'
     python train_gpu.py \
-        --data_dir=${DATA_ROOT}/tfrecords \
+        --dir_data=${DATA_ROOT}/tfrecords \
         --record_info_dir=${DATA_ROOT}/tfrecords/ \
         --corpus_info_path=${DATA_ROOT}/corpus-info.json \
-        --model_dir=EXP-wt103 \
+        --dir_model=EXP-wt103 \
         --div_val=${DIV_VAL} \
         --untie_r=True \
         --proj_share_all_but_first=True \

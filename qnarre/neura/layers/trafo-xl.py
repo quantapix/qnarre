@@ -569,7 +569,7 @@ class TransfoXLPreTrainedModel(nn.Module):
 
     @classmethod
     def from_pretrained(cls,
-                        pretrained_model_name_or_path,
+                        pretrained_model_or_path,
                         state_dict=None,
                         cache_dir=None,
                         from_tf=False,
@@ -579,7 +579,7 @@ class TransfoXLPreTrainedModel(nn.Module):
         Instantiate a TransfoXLPreTrainedModel from a pre-trained model file or a pytorch state dict.
         Download and cache the pre-trained model file if needed.
         Params:
-            pretrained_model_name_or_path: either:
+            pretrained_model_or_path: either:
                 - a str with the name of a pre-trained model to load selected in the list of:
                     . `transfo-xl`
                 - a path or url to a pretrained model archive containing:
@@ -594,15 +594,15 @@ class TransfoXLPreTrainedModel(nn.Module):
             *inputs, **kwargs: additional input for the specific Bert class
                 (ex: num_labels for BertForSequenceClassification)
         """
-        if pretrained_model_name_or_path in PRETRAINED_MODEL_ARCHIVE_MAP:
+        if pretrained_model_or_path in PRETRAINED_MODEL_ARCHIVE_MAP:
             archive_file = PRETRAINED_MODEL_ARCHIVE_MAP[
-                pretrained_model_name_or_path]
+                pretrained_model_or_path]
             config_file = PRETRAINED_CONFIG_ARCHIVE_MAP[
-                pretrained_model_name_or_path]
+                pretrained_model_or_path]
         else:
-            archive_file = os.path.join(pretrained_model_name_or_path,
+            archive_file = os.path.join(pretrained_model_or_path,
                                         WEIGHTS_NAME)
-            config_file = os.path.join(pretrained_model_name_or_path,
+            config_file = os.path.join(pretrained_model_or_path,
                                        CONFIG_NAME)
         # redirect to the cache, if necessary
         try:
@@ -615,9 +615,9 @@ class TransfoXLPreTrainedModel(nn.Module):
                 "Model name '{}' was not found in model name list ({}). "
                 "We assumed '{}' was a path or url but couldn't find files {} and {} "
                 "at this path or url.".format(
-                    pretrained_model_name_or_path,
+                    pretrained_model_or_path,
                     ', '.join(PRETRAINED_MODEL_ARCHIVE_MAP.keys()),
-                    pretrained_model_name_or_path, archive_file, config_file))
+                    pretrained_model_or_path, archive_file, config_file))
             return None
         if resolved_archive_file == archive_file and resolved_config_file == config_file:
             logger.info("loading weights file {}".format(archive_file))
@@ -638,7 +638,7 @@ class TransfoXLPreTrainedModel(nn.Module):
         if from_tf:
             # Directly load from a TensorFlow checkpoint
             return load_tf_weights_in_transfo_xl(
-                model, config, pretrained_model_name_or_path)
+                model, config, pretrained_model_or_path)
 
         missing_keys = []
         unexpected_keys = []

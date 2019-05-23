@@ -71,11 +71,11 @@ def train(sid, ps, dset_fn, model_fn, cbacks=None):
     ds_test = dset_fn(ps, 'test')
     # with T.distribute.MirroredStrategy().scope():
     model = model_fn(ps, compiled=True)
-    sp = pth.Path(ps.save_dir)
+    sp = pth.Path(ps.dir_save)
     if sp.exists():
         model.train_on_batch(dset[:1])
         model.load_weights(sp)
-    p = ps.log_dir + '/train/' + sid
+    p = ps.dir_log + '/train/' + sid
     writer = tf.create_file_writer(p)
     sum_s = tb_summary.session_start_pb(hparams=ps.hparams)
     cbs = cbacks or []
@@ -120,7 +120,7 @@ def train_loop(params, model_fn, dset_fn, cbacks=None):
     nus = [16, 32, 512]
     drs = [0.1, 0.2]
     opts = ['adam', 'sgd']
-    writer = tf.create_file_writer(ps.log_dir + '/train')
+    writer = tf.create_file_writer(ps.dir_log + '/train')
     with writer.as_default():
         s = None  # _to_summary_pb(nus, drs, opts)
         e = tf.Event(summary=s).SerializeToString()

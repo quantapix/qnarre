@@ -71,10 +71,10 @@ _params = dict(
 )
 
 _params.update(
-    data_dir='.data/squad',
+    dir_data='.data/squad',
     log_dir='.model/squad/logs',
-    model_dir='.model/squad',
-    save_dir='.model/squad/save',
+    dir_model='.model/squad',
+    dir_save='.model/squad/save',
 )
 
 _fspecs = {
