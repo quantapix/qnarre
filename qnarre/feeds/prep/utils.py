@@ -127,6 +127,27 @@ def bytes_to_code():
     return bc, {c: b for b, c in bc.items()}
 
 
+class Embeds:
+
+    _word = _chars = None
+
+    @property
+    def word(self):
+        return self._word
+
+    @word.setter
+    def word(self, v):
+        self._word = tuple(v)
+
+    @property
+    def chars(self):
+        return self._chars
+
+    @chars.setter
+    def chars(self, v):
+        self._chars = tuple(v)
+
+
 class Tokenizer:
 
     limit = 500

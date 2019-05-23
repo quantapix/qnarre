@@ -19,11 +19,159 @@ import lzma
 import pathlib as pth
 
 from qnarre.neura import tf
+from qnarre.feeds.prep import records as R
 from qnarre.feeds.prep import features as F
 from qnarre.feeds.prep import utils, encoder
 
 
-def dset(ps, kind):
+def dset(ps, kind, subset='reply_spans'):
+    assert not ps.dset or ps.dset == 'squad'
+    p = pth.Path(ps.dir_data) / ps.dset / kind
+    if not p.exists():
+        ts = topics(ps, kind)
+        for n in registry['all']:
+            R.dump(p / n, lambda: registry[n](topics=ts))
+    feats = registry[subset]()
+    ds = tf.TFRecordDataset(p / subset)
+    ds = ds.map(lambda x: tf.parse_single_example(x, feats))
+    return ds
+
+
+def query_valid(topics=None):
+    if topics is None:
+        return {
+            'title': tf.VarLenFeature(tf.int64),
+            'context': tf.VarLenFeature(tf.int64),
+            'query': tf.VarLenFeature(tf.int64),
+            'valid': tf.FixedLenFeature([], tf.int64),
+            'uid': tf.FixedLenFeature([], tf.string),
+        }
+    for t, c, q in topics.queries():
+        f = {
+            'title': R.ints_feat([*t.title.toks]),
+            'context': R.ints_feat([*c.toks]),
+            'query': R.ints_feat([*q.toks]),
+            'valid': R.one_int_feat(1 if q.valid else 0),
+            'uid': R.bytes_feat(q.uid),
+        }
+        e = tf.Example(features=tf.Features(feature=f))
+        yield e.SerializeToString()
+
+
+def reply_spans(topics=None):
+    if topics is None:
+        return {
+            'title': tf.VarLenFeature(tf.int64),
+            'context': tf.VarLenFeature(tf.int64),
+            'query': tf.VarLenFeature(tf.int64),
+            'reply': tf.VarLenFeature(tf.int64),
+            'begin': tf.FixedLenFeature([], tf.int64),
+            'end': tf.FixedLenFeature([], tf.int64),
+            'uid': tf.FixedLenFeature([], tf.string),
+        }
+    for t, c, q, r in topics.replies():
+        f = {
+            'title': R.ints_feat([*t.title.toks]),
+            'context': R.ints_feat([*c.toks]),
+            'query': R.ints_feat([*q.toks]),
+            'reply': R.ints_feat([*r.toks]),
+            'begin': R.one_int_feat(r.span.beg),
+            'end': R.one_int_feat(r.span.end),
+            'uid': R.bytes_feat(r.uid),
+        }
+        e = tf.Example(features=tf.Features(feature=f))
+        yield e.SerializeToString()
+
+
+def possibles(topics=None):
+    if topics is None:
+        return {
+            'title': tf.VarLenFeature(tf.int64),
+            'context': tf.VarLenFeature(tf.int64),
+            'query': tf.VarLenFeature(tf.int64),
+            'possib': tf.VarLenFeature(tf.int64),
+            'begin': tf.FixedLenFeature([], tf.int64),
+            'end': tf.FixedLenFeature([], tf.int64),
+            'uid': tf.FixedLenFeature([], tf.string),
+        }
+    for t, c, q, p in topics.possibs():
+        f = {
+            'title': R.ints_feat([*t.title.toks]),
+            'context': R.ints_feat([*c.toks]),
+            'query': R.ints_feat([*q.toks]),
+            'possib': R.ints_feat([*p.toks]),
+            'begin': R.one_int_feat(p.span.beg),
+            'end': R.one_int_feat(p.span.end),
+            'uid': R.bytes_feat(p.uid),
+        }
+        e = tf.Example(features=tf.Features(feature=f))
+        yield e.SerializeToString()
+
+
+def topics(ps, kind):
+    tokenizer = encoder.tokenizer_for(ps)
+    return F.Topics(tokenizer(reader(ps, kind)))
+
+
+def reader(ps, kind):
+    assert not ps.dset or ps.dset == 'squad'
+    p = pth.Path(ps.dir_data) / ps.dset
+    for n in registry[kind]:
+        with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
+            for to in json.load(f)['data']:
+                cs = []
+                for p in to['paragraphs']:
+                    ct = utils.normalize(p['context'])
+                    qs = []
+                    for q in p['qas']:
+                        qu = q['id']
+                        rs = []
+                        for i, r in enumerate(q.get('answers', ())):
+                            rt = utils.normalize(r['text'])
+                            s = r['answer_start']
+                            if ct.find(rt, s) == s:
+                                rs.append(
+                                    F.Reply(text=rt,
+                                            toks=F.Toks(),
+                                            span=F.Span(s, s + len(rt)),
+                                            uid=qu + f'-r{i}'))
+                            else:
+                                print('Mismatched', ct[:20], rt[:20])
+                        ps = []
+                        for i, p in enumerate(q.get('plausible_answers', ())):
+                            pt = utils.normalize(p['text'])
+                            s = p['answer_start']
+                            if ct.find(pt, s) == s:
+                                ps.append(
+                                    F.Reply(text=pt,
+                                            toks=F.Toks(),
+                                            span=F.Span(s, s + len(pt)),
+                                            uid=qu + f'-p{i}'))
+                            else:
+                                print('Mismatched', ct[:20], pt[:20])
+                        qs.append(
+                            F.Query(text=utils.normalize(q['question']),
+                                    toks=F.Toks(),
+                                    valid=q.get('is_impossible', False),
+                                    replies=rs,
+                                    possibs=ps,
+                                    uid=qu))
+                    cs.append(F.Context(text=ct, toks=F.Toks(), queries=qs))
+                t = F.Title(text=utils.normalize(to['title']))
+                yield F.Topic(title=t, contexts=cs)
+
+
+registry = {
+    'all': ('query_valid', 'reply_spans', 'possibles'),
+    'possibles': possibles,
+    'query_valid': query_valid,
+    'reply_spans': reply_spans,
+    'test': ('dev-v2.0', 'dev-v1.1'),
+    'train': ('train-v2.0', 'train-v1.1'),
+}
+
+
+def dset_old(ps, kind):
     t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
     return tf.Dataset.from_generator(
         lambda: features(ps, kind),
@@ -82,100 +230,3 @@ def features(ps, kind):
                         beg += ql - s.begin
                         end += ql - s.end
             yield (src, typ, opt, rep.uid), (beg, end)
-
-
-def reader(ps, kind):
-    assert not ps.dset or ps.dset == 'squad'
-    p = pth.Path(ps.dir_data) / ps.dset
-    for n in names[kind]:
-        with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
-            for t in json.load(f)['data']:
-                cs = []
-                for p in t['paragraphs']:
-                    ctx = utils.normalize(p['context'])
-                    qs = []
-                    for q in p['qas']:
-                        rs = []
-                        for r in q.get('answers', ()):
-                            tx = utils.normalize(r['text'])
-                            s = r['answer_start']
-                            if ctx.find(tx, s) == s:
-                                rs.append(
-                                    F.Reply(
-                                        text=tx,
-                                        toks=F.Toks(),
-                                        span=F.Span(s, s + len(tx)),
-                                        uid=utils.next_uid('reply'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        ps = []
-                        for p in q.get('plausible_answers', ()):
-                            tx = utils.normalize(p['text'])
-                            s = p['answer_start']
-                            if ctx.find(tx, s) == s:
-                                ps.append(
-                                    F.Reply(
-                                        text=tx,
-                                        toks=F.Toks(),
-                                        span=F.Span(s, s + len(tx)),
-                                        uid=utils.next_uid('reply'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        qs.append(
-                            F.Query(
-                                qid=q['id'],
-                                text=utils.normalize(q['question']),
-                                valid=q.get('is_impossible', False),
-                                toks=F.Toks(),
-                                replies=rs,
-                                plaus=ps,
-                            ))
-                    cs.append(F.Ctxt(text=ctx, toks=F.Toks(), queries=qs))
-                yield F.Topic(title=utils.normalize(t['title']), ctxts=cs)
-
-
-names = {
-    'train': ('train-v2.0', 'train-v1.1'),
-    'test': ('dev-v2.0', 'dev-v1.1'),
-}
-"""
-class FeatureWriter:
-    def __init__(self, filename, is_training):
-        self.filename = filename
-        self.is_training = is_training
-        self.num_features = 0
-        self._writer = T.python_io.TFRecordWriter(filename)
-
-    def process_feature(self, feature):
-        self.num_features += 1
-
-        def create_int_feature(values):
-            feature = T.train.Feature(
-                int64_list=T.train.Int64List(value=list(values)))
-            return feature
-
-        features = collections.OrderedDict()
-        features["unique_ids"] = create_int_feature([feature.unique_id])
-        features["input_ids"] = create_int_feature(feature.input_ids)
-        features["input_mask"] = create_int_feature(feature.input_mask)
-        features["segment_ids"] = create_int_feature(feature.segment_ids)
-
-        if self.is_training:
-            features["start_positions"] = create_int_feature(
-                [feature.start_position])
-            features["end_positions"] = create_int_feature(
-                [feature.end_position])
-            impossible = 0
-            if feature.is_impossible:
-                impossible = 1
-            features["is_impossible"] = create_int_feature([impossible])
-
-        tf_example = T.train.Example(
-            features=T.train.Features(feature=features))
-        self._writer.write(tf_example.SerializeToString())
-
-    def close(self):
-        self._writer.close()
-"""

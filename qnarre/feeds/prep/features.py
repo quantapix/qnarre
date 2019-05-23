@@ -18,53 +18,19 @@ import copy
 import collections as co
 import collections.abc as abc
 
-
-def _init_cache(cls, fs, v=None):
-    for f in fs:
-        setattr(cls, f, v)
-
-
-def _del_cache(cls, fs):
-    for f in fs:
-        if hasattr(cls, f):
-            delattr(cls, f)
-
-
-class Embeds:
-
-    _word = _chars = None
-
-    @property
-    def word(self):
-        return self._word
-
-    @word.setter
-    def word(self, v):
-        self._word = tuple(v)
-
-    @property
-    def chars(self):
-        return self._chars
-
-    @chars.setter
-    def chars(self, v):
-        self._chars = tuple(v)
-
-
-def _span_len(self):
-    return self.end - self.begin
-
-
-Span = co.namedtuple('Span', 'begin end')
-Span.__len__ = _span_len
-
-Token = co.namedtuple('Token', 'word span pos lemma ner embeds')
+Span = co.namedtuple('Span', 'beg end')
+Token = co.namedtuple('Token', 'text span pos lemma ner embs')
+Topic = co.namedtuple('Topic', 'title contexts')
+Title = co.namedtuple('Title', 'text toks')
+Context = co.namedtuple('Context', 'text toks queries')
+Query = co.namedtuple('Query', 'text toks valid replies possibs uid')
+Reply = co.namedtuple('Reply', 'text toks span uid')
 
 
 class Toks(abc.Sequence):
 
     elems = offsets = ()
-    fields = ('_words', '_spans', '_poss', '_lemmas', ' _ners')
+    fields = ('_texts', '_spans', '_poss', '_lemmas', ' _ners')
     opts = {}
 
     def __len__(self):
@@ -88,10 +54,10 @@ class Toks(abc.Sequence):
         assert len(self.elems) == len(self.offsets)
 
     @property
-    def words(self):
-        if self._words is None:
-            self._words = co.Counter(t.word for t in self)
-        return self._words
+    def texts(self):
+        if self._texts is None:
+            self._texts = co.Counter(t.text for t in self)
+        return self._texts
 
     @property
     def poss(self):
@@ -113,9 +79,7 @@ class Toks(abc.Sequence):
 
     @property
     def text(self):
-        # s = t.beginChar
-        # e = ts[i + 1].beginChar if i + 1 < len(ts) else t.endChar
-        return ' '.join([t.word for t in self])
+        return ' '.join([t.text for t in self])
 
     @property
     def groups(self):
@@ -129,10 +93,10 @@ class Toks(abc.Sequence):
                 if n == non:
                     i += 1
                 else:
-                    begin = i
+                    b = i
                     while (i < len(ns) and ns[i] == n):
                         i += 1
-                    gs.append((self.slice(begin, i).text(), n))
+                    gs.append((self.slice(b, i).text(), n))
             return gs
 
     def slice(self, i=None, j=None):
@@ -142,7 +106,7 @@ class Toks(abc.Sequence):
         return ts
 
     def ngrams(self, n=1, lower=False, filter_fn=None, as_strings=True):
-        ws = [t.word for t in self]
+        ws = [t.text for t in self]
         if lower:
             ws = [w.lower() for w in ws]
         ns = [(s, e + 1) for s in range(len(ws))
@@ -153,23 +117,9 @@ class Toks(abc.Sequence):
         return ns
 
 
-_init_cache(Toks, Toks.fields)
-
-Topic = co.namedtuple('Topic', 'title ctxts')
-# Topic.__new__.__defaults__ = ('', ())
-
-Ctxt = co.namedtuple('Ctxt', 'text toks queries')
-# Ctxt.__new__.__defaults__ = ('', None, ())
-
-Query = co.namedtuple('Query', 'text toks replies valid plaus qid')
-# Query.__new__.__defaults__ = ('', '', None, False, ())
-
-Reply = co.namedtuple('Reply', 'text toks span uid')
-
-
 class Topics(abc.Sequence):
 
-    fields = ('_ctxts', '_queries', '_replies')
+    fields = ('_contexts', '_queries', '_replies')
 
     def __init__(self, elems):
         self.elems = tuple(elems)
@@ -190,45 +140,49 @@ class Topics(abc.Sequence):
         return f'Topics(\n{ts}\n)'
 
     @property
-    def ctxts(self):
-        if self._ctxts is None:
-            self._ctxts = tuple((t, c) for t in self for c in t.ctxts)
-        return self._ctxts
+    def contexts(self):
+        if self._contexts is None:
+            self._contexts = tuple((t, c) for t in self for c in t.contexts)
+        return self._contexts
 
     @property
     def queries(self):
         if self._queries is None:
             self._queries = tuple(
-                (t, c, q) for t, c in self.ctxts for q in c.queries)
+                (t, c, q) for t, c in self.contexts for q in c.queries)
         return self._queries
 
     @property
     def replies(self):
         if self._replies is None:
             self._replies = tuple(
-                (t, c, q, a) for t, c, q in self.queries for a in q.replies)
+                (t, c, q, r) for t, c, q in self.queries for r in q.replies)
         return self._replies
 
     @property
-    def plaus(self):
-        if self._plaus is None:
-            self._plaus = tuple(
-                (t, c, q, v) for t, c, q in self.queries for v in q.plaus)
-        return self._plaus
+    def possibs(self):
+        if self._possibs is None:
+            self._possibs = tuple(
+                (t, c, q, p) for t, c, q in self.queries for p in q.possibs)
+        return self._possibs
 
 
-_init_cache(Topics, Topics.fields)
+def _span_len(self):
+    return self.end - self.beg
+
+
+Span.__len__ = _span_len
 
 
 def span__str__(self):
-    return f'[{self.begin} {self.end}]'
+    return f'[{self.beg} {self.end}]'
 
 
 Span.__str__ = span__str__
 
 
 def token__str__(self):
-    s = f'{self.word} {self.span} {self.lemma} {self.pos} {self.ner}'
+    s = f'{self.text} {self.span} {self.lemma} {self.pos} {self.ner}'
     return '{' + s + '}'
 
 
@@ -236,27 +190,35 @@ Token.__str__ = token__str__
 
 
 def topic__str__(self):
-    cs = ',\n'.join(str(c) for c in self.ctxts)
+    cs = ',\n'.join(str(c) for c in self.contexts)
     return f'T("{self.title}"\n({cs})\n)'
 
 
 Topic.__str__ = topic__str__
 
 
-def ctxt__str__(self):
+def title__str__(self):
+    ts = ' '.join(str(t) for t in self.toks)
+    return f'Ti("{self.text}"\n({ts})\n)'
+
+
+Title.__str__ = title__str__
+
+
+def context__str__(self):
     ts = ' '.join(str(t) for t in self.toks)
     qs = ',\n'.join(str(q) for q in self.queries)
     return f'C("{self.text}"\n({ts})\n({qs})\n)'
 
 
-Ctxt.__str__ = ctxt__str__
+Context.__str__ = context__str__
 
 
 def query__str__(self):
     ts = ' '.join(str(t) for t in self.toks)
-    ans = ',\n'.join(str(a) for a in self.replies)
-    vs = ',\n'.join(str(v) for v in self.plaus)
-    return f'Q("{self.text}" {self.valid}\n({ts})\n({ans})\n({vs})\n)'
+    rs = ',\n'.join(str(a) for a in self.replies)
+    ps = ',\n'.join(str(v) for v in self.possibs)
+    return f'Q("{self.text}" {self.valid}\n({ts})\n({rs})\n({ps})\n)'
 
 
 Query.__str__ = query__str__
@@ -268,3 +230,18 @@ def reply__str__(self):
 
 
 Reply.__str__ = reply__str__
+
+
+def _init_cache(cls, fs, v=None):
+    for f in fs:
+        setattr(cls, f, v)
+
+
+_init_cache(Toks, Toks.fields)
+_init_cache(Topics, Topics.fields)
+
+
+def _del_cache(cls, fs):
+    for f in fs:
+        if hasattr(cls, f):
+            delattr(cls, f)
