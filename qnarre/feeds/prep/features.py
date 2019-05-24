@@ -15,16 +15,21 @@
 
 import copy
 
-import collections as co
+import collections as col
 import collections.abc as abc
 
-Span = co.namedtuple('Span', 'beg end')
-Token = co.namedtuple('Token', 'text span pos lemma ner embs')
-Topic = co.namedtuple('Topic', 'title contexts')
-Title = co.namedtuple('Title', 'text toks')
-Context = co.namedtuple('Context', 'text toks queries')
-Query = co.namedtuple('Query', 'text toks valid replies possibs uid')
-Reply = co.namedtuple('Reply', 'text toks span uid')
+Span = col.namedtuple('Span', 'beg end')
+Token = col.namedtuple('Token', 'text span pos lemma ner embs')
+Topic = col.namedtuple('Topic', 'title contexts')
+Title = col.namedtuple('Title', 'text toks')
+Context = col.namedtuple('Context', 'text toks queries')
+Query = col.namedtuple('Query', 'text toks valid replies possibs uid')
+Reply = col.namedtuple('Reply', 'text toks span uid')
+
+
+class Span_2(col.namedtuple('Span_2', 'beg end xxx')):
+    def __new__(cls, beg, end, xxx=None):
+        return super().__new__(cls, beg, end, xxx)
 
 
 class Toks(abc.Sequence):
@@ -56,25 +61,25 @@ class Toks(abc.Sequence):
     @property
     def texts(self):
         if self._texts is None:
-            self._texts = co.Counter(t.text for t in self)
+            self._texts = col.Counter(t.text for t in self)
         return self._texts
 
     @property
     def poss(self):
         if self._poss is None:
-            self._poss = co.Counter(t.pos for t in self)
+            self._poss = col.Counter(t.pos for t in self)
         return self._poss
 
     @property
     def lemmas(self):
         if self._lemmas is None:
-            self._lemmas = co.Counter(t.lemma for t in self)
+            self._lemmas = col.Counter(t.lemma for t in self)
         return self._lemmas
 
     @property
     def ners(self):
         if self._ners is None:
-            self._ners = co.Counter(t.ner for t in self)
+            self._ners = col.Counter(t.ner for t in self)
         return self._ners
 
     @property

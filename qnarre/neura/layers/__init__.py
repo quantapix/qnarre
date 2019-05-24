@@ -19,15 +19,15 @@ from qnarre.neura.layers.attn import Attn
 from qnarre.neura.layers.ffnet import FFNet
 from qnarre.neura.layers.trafo import Trafo
 from qnarre.neura.layers.norm import Norm, PreProc, PostProc
-from qnarre.neura.layers.mnist import Mnist, Mnist_2, Mnist_3
+from qnarre.neura.layers.mnist import Mnist  # , Mnist_2, Mnist_3
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 __all__ = (
     Attn,
     FFNet,
     Mnist,
-    Mnist_2,
-    Mnist_3,
+    # Mnist_2,
+    # Mnist_3,
     Norm,
     PosEmbed,
     PosTiming,

@@ -21,7 +21,24 @@ from qnarre.feeds.dset.mnist import dset
 from qnarre.neura.session import session_for
 
 
+def mapper(d):
+    print(d, d['image'], d['label'])
+    return tuple((d['image'], d['label']))
+
+
 def dset_for(ps, kind):
+    ds = dset(ps, kind)
+    n = 50000
+    if kind == 'train':
+        ds = ds.shuffle(n)
+    # ds = ds.map(lambda s: tuple((s['image'], s['label'])))
+    ds = ds.map(mapper)
+    ds = ds.batch(ps.batch_size)
+    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    return ds
+
+
+def dset_for_old(ps, kind):
     ds_1 = dset(ps, kind)
     ds_2 = dset(ps, kind)
     ds_3 = dset(ps, kind)
@@ -41,6 +58,25 @@ def dset_for(ps, kind):
 
 
 def model_for(ps, compiled=False):
+    w, h = ps.img_width, ps.img_height
+    ins = [
+        tf.Input(shape=(w * h, ), dtype='float32'),
+        # tf.Input(shape=(1, ), dtype='int32'),
+    ]
+    outs = [L.Mnist(ps)(ins[0])]
+    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
+    if compiled:
+        m.compile(
+            optimizer=ps.optimizer,
+            loss=ps.losses,
+            metrics=[ps.metrics],
+            # target_tensors=[ins[4]],
+        )
+    print(m.summary())
+    return m
+
+
+def model_for_old(ps, compiled=False):
     w, h = ps.img_width, ps.img_height
     ins = [
         tf.Input(shape=(w * h, ), dtype='float32'),
@@ -73,6 +109,7 @@ _params = dict(
     model='mnist',
     num_classes=10,
     optimizer='sgd',
+    eager_mode=True,
 )
 
 

@@ -19,6 +19,44 @@ from qnarre.neura.layers import base
 
 class Mnist(base.Layer):
     @staticmethod
+    def cfg_items(ps):
+        return dict(
+            ps.cfg_items(
+                'data_format',
+                'act_hidden',
+                'drop_hidden',
+                'dim_hidden',
+                'img_height',
+                'img_width',
+                'num_classes',
+            ))
+
+    def __init__(self, ps, **kw):
+        super().__init__(ps, **kw)
+        cfg = self.cfg
+        f = cfg.data_format
+        self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
+
+    def build(self, input_shape):
+        cfg = self.cfg
+        self.d1 = tf.Dense(cfg.dim_hidden, activation=cfg.act_hidden)
+        self.d2 = tf.Dense(cfg.num_classes, activation='softmax')
+        return super().build(input_shape)
+
+    @tf.function
+    def call(self, inputs):
+        x = inputs
+        y = tf.Reshape(self.shape)(x)
+        y = tf.Flatten()(y)
+        y = self.d1(y)
+        y = tf.Dropout(self.cfg.drop_hidden)(y)
+        y = self.d2(y)
+        return y
+
+
+"""
+class Mnist_1(base.Layer):
+    @staticmethod
     def cfg_items(params):
         return dict(
             params.cfg_items(
@@ -115,3 +153,4 @@ class Mnist_3(base.Layer):
         y1, y2 = tf.Dropout(0.1)(y1), tf.Dropout(0.1)(y2)
         y1, y2 = self.d2_1(y1), self.d2_2(y2)
         return [y1, y2]
+"""
