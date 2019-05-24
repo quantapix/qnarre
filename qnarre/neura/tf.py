@@ -24,7 +24,6 @@ from tensorflow.python.framework import constant_op
 ks = tf.keras
 K = ks.backend
 
-string = tf.string
 Accuracy = tf.keras.metrics.Accuracy
 Adam = ks.optimizers.Adam
 BatchNormalization = ks.layers.BatchNormalization
@@ -159,11 +158,13 @@ square = math_ops.square
 squeeze = array_ops.squeeze
 stack = array_ops.stack
 stop_gradient = tf.stop_gradient
+string = tf.string
 tanh = math_ops.tanh
 tensor_scatter_nd_add = tf.tensor_scatter_nd_add
 tensor_scatter_nd_update = tf.tensor_scatter_nd_update
 tile = array_ops.tile
 to_categorical = ks.utils.to_categorical
+to_dense = tf.sparse.to_dense
 top_k = tf.nn.top_k
 transpose = array_ops.transpose
 unstack = array_ops.unstack

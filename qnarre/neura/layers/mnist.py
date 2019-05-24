@@ -19,7 +19,8 @@ from qnarre.neura.layers import base
 
 def adapter(ps, feats, x):
     d = tf.parse_example(x, feats)
-    img = tf.cast(d['int_img'], tf.float32) / 255.
+    img = tf.to_dense(d['flt_img'])
+    # img = tf.cast(d['int_img'], tf.float32) / 255.
     lbl = d['int_lbl']
     return img, lbl
 

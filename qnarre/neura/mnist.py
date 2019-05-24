@@ -57,7 +57,7 @@ params = dict(
     model='mnist',
     num_classes=10,
     optimizer='sgd',
-    # eager_mode=True,
+    eager_mode=True,
 )
 
 
