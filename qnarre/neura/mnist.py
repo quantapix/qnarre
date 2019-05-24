@@ -13,58 +13,28 @@
 # limitations under the License.
 # =============================================================================
 
-import qnarre.neura.utils as U
-import qnarre.neura.layers as L
+import qnarre.neura.utils as utils
 
-from qnarre.neura import tf
-from qnarre.feeds.dset.mnist import dset
+# from qnarre.neura import tf
 from qnarre.neura.session import session_for
-
-
-def mapper(d):
-    print(d, d['image'], d['label'])
-    return tuple((d['image'], d['label']))
+from qnarre.feeds.dset.mnist import dset as mnist_dset
+from qnarre.neura.layers.mnist import model as mnist_model
+from qnarre.neura.layers.mnist import adapter as mnist_adapter
 
 
 def dset_for(ps, kind):
-    ds = dset(ps, kind)
+    ds, feats = mnist_dset(ps, kind)
     n = 50000
     if kind == 'train':
         ds = ds.shuffle(n)
-    # ds = ds.map(lambda s: tuple((s['image'], s['label'])))
-    ds = ds.map(mapper)
-    ds = ds.batch(ps.batch_size)
-    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-    return ds
-
-
-def dset_for_old(ps, kind):
-    ds_1 = dset(ps, kind)
-    ds_2 = dset(ps, kind)
-    ds_3 = dset(ps, kind)
-    n = 50000
-    if kind == 'train':
-        ds_1 = ds_1.shuffle(n)
-        ds_2 = ds_2.shuffle(n)
-        ds_3 = ds_3.shuffle(n)
-    ds = tf.Dataset.zip((ds_1, ds_2, ds_3))
-    ds = ds.map(lambda s, s2, s3: (
-        (s['image'], s2['image'], s2['label'], s3['image'], s3['label']),
-        s['label'],
-    ))
-    ds = ds.batch(ps.batch_size)
+    ds = ds.batch(1 if ps.eager_mode else ps.batch_size)
+    ds = ds.map(lambda d: mnist_adapter(ps, feats, d))
     # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return ds
 
 
 def model_for(ps, compiled=False):
-    w, h = ps.img_width, ps.img_height
-    ins = [
-        tf.Input(shape=(w * h, ), dtype='float32'),
-        # tf.Input(shape=(1, ), dtype='int32'),
-    ]
-    outs = [L.Mnist(ps)(ins[0])]
-    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
+    m = mnist_model(ps)
     if compiled:
         m.compile(
             optimizer=ps.optimizer,
@@ -76,29 +46,7 @@ def model_for(ps, compiled=False):
     return m
 
 
-def model_for_old(ps, compiled=False):
-    w, h = ps.img_width, ps.img_height
-    ins = [
-        tf.Input(shape=(w * h, ), dtype='float32'),
-        tf.Input(shape=(w * h, ), dtype='float32'),
-        tf.Input(shape=(1, ), dtype='int32'),
-        tf.Input(shape=(w * h, ), dtype='float32'),
-        tf.Input(shape=(1, ), dtype='int32'),
-    ]
-    outs = [L.Mnist(ps)(ins)]
-    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
-    if compiled:
-        m.compile(
-            optimizer=ps.optimizer,
-            loss=ps.losses,
-            metrics=[ps.metrics],
-            # target_tensors=[ins[4]],
-        )
-    print(m.summary())
-    return m
-
-
-_params = dict(
+params = dict(
     act_hidden='relu',
     batch_size=64,
     dim_hidden=512,
@@ -109,18 +57,18 @@ _params = dict(
     model='mnist',
     num_classes=10,
     optimizer='sgd',
-    eager_mode=True,
+    # eager_mode=True,
 )
 
 
 def main(_):
-    ps = U.Params(_params).init_comps()
+    ps = utils.Params(params).init_comps()
     session_for(ps)(dset_for, model_for)
 
 
 if __name__ == '__main__':
     # T.logging.set_verbosity(T.logging.INFO)
-    U.load_flags()
+    utils.load_flags()
     from absl import flags
     flags.DEFINE_integer('num_classes', None, '')
     from absl import app

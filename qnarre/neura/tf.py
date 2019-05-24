@@ -24,6 +24,7 @@ from tensorflow.python.framework import constant_op
 ks = tf.keras
 K = ks.backend
 
+string = tf.string
 Accuracy = tf.keras.metrics.Accuracy
 Adam = ks.optimizers.Adam
 BatchNormalization = ks.layers.BatchNormalization
@@ -134,7 +135,7 @@ one_hot = array_ops.one_hot
 ones = array_ops.ones
 ones_like = array_ops.ones_like
 pad = array_ops.pad
-parse_single_example = tf.io.parse_single_example
+parse_example = tf.io.parse_example
 pow = math_ops.pow
 print = tf.print
 range = math_ops.range

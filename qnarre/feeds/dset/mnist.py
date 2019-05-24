@@ -26,32 +26,35 @@ def dset(ps, kind):
     assert ps.dset.startswith('mnist')
     p = pth.Path(ps.dir_data) / ps.dset / kind
     if not p.exists():
-        ds = tuple(reader(ps, kind))
-        print(len(ds))
-        R.dump(p / ps.dset, lambda: examples(data=ds))
+        vs = tuple(reader(ps, kind))
+        R.dump(p / ps.dset, lambda: recorder(vs))
     ds = tf.TFRecordDataset(str(p / ps.dset))
-    ds = ds.map(lambda x: tf.parse_single_example(x, specs()))
-    return ds
+    return ds, feats
 
 
-def specs():
-    return {
-        'image': tf.VarLenFeature(tf.float32),
-        'label': tf.FixedLenFeature([], tf.int64),
-    }
+feats = {
+    'int_img': tf.FixedLenFeature([28 * 28], tf.int64),
+    'flt_img': tf.VarLenFeature(tf.float32),
+    'int_lbl': tf.FixedLenFeature([], tf.int64),
+    'str_lbl': tf.FixedLenFeature([], tf.string),
+}
 
 
-def examples(data):
-    for i, l in data:
+def recorder(vals):
+    for iis, fis, il, sl in vals:
         f = {
-            'image': R.floats_feat(i),
-            'label': R.one_int_feat(l),
+            'int_img': R.ints_feat(iis),
+            'flt_img': R.floats_feat(fis),
+            'int_lbl': R.one_int_feat(il),
+            'str_lbl': R.bytes_feat(sl),
         }
         e = tf.Example(features=tf.Features(feature=f))
         yield e.SerializeToString()
 
 
 def reader(ps, kind):
+    names = (b'zero', b'one', b'two', b'three', b'four', b'five', b'six',
+             b'seven', b'eight', b'nine')
     p = pth.Path(ps.dir_data) / ps.dset
     x, y = registry[kind]
     with gzip.open(p / (x + '.gz'), mode='rb') as xf:
@@ -64,7 +67,7 @@ def reader(ps, kind):
                 x, y = read32(xf, r * c * 4), read32(yf, 1)
                 if x is None or y is None:
                     break
-                yield x / 255.0, int(y)
+                yield x.astype(int), x / 255.0, int(y), names[int(y)]
 
 
 def read32(f, count=4):

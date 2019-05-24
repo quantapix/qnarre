@@ -17,8 +17,6 @@ import numpy as np
 
 from qnarre.neura import tf
 
-# tf.serialize_tensor <--> tf.parse_tensor
-
 
 def bytes_feat(v):
     return many_bytes_feat([v])
@@ -52,8 +50,8 @@ def ints_feat(vs):
     return tf.Feature(int64_list=tf.Int64List(value=vs))
 
 
-def dump(path, examples):
+def dump(path, records):
     path.parent.mkdir()
     with tf.TFRecordWriter(str(path)) as w:
-        for e in examples():
-            w.write(e)
+        for r in records():
+            w.write(r)

@@ -15,15 +15,8 @@
 
 import unicodedata
 
+from collections import abc
 from functools import lru_cache
-from collections import abc, defaultdict
-
-_uids = defaultdict(int)
-
-
-def next_uid(key=None):
-    _uids[key] += 1
-    return _uids[key]
 
 
 class Words(abc.Mapping):
@@ -193,3 +186,15 @@ class Featurer:
         for _, _, q in topics.questions:
             self.poss |= q.tokens.poss
             self.ners |= q.tokens.ners
+
+
+"""
+from collections import abc, defaultdict
+
+_uids = defaultdict(int)
+
+
+def next_uid(key=None):
+    _uids[key] += 1
+    return _uids[key]
+"""

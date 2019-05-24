@@ -17,6 +17,35 @@ from qnarre.neura import tf
 from qnarre.neura.layers import base
 
 
+def adapter(ps, feats, x):
+    d = tf.parse_example(x, feats)
+    img = tf.cast(d['int_img'], tf.float32) / 255.
+    lbl = d['int_lbl']
+    return img, lbl
+
+
+def model(ps):
+    w, h = ps.img_width, ps.img_height
+    ins = tf.Input(shape=(w * h, ), dtype='float32'),
+    outs = [Mnist(ps)(ins)]
+    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
+    return m
+
+
+def model_old(ps):
+    w, h = ps.img_width, ps.img_height
+    ins = [
+        tf.Input(shape=(w * h, ), dtype='float32'),
+        tf.Input(shape=(w * h, ), dtype='float32'),
+        tf.Input(shape=(1, ), dtype='int32'),
+        tf.Input(shape=(w * h, ), dtype='float32'),
+        tf.Input(shape=(1, ), dtype='int32'),
+    ]
+    outs = [Mnist(ps)(ins)]
+    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
+    return m
+
+
 class Mnist(base.Layer):
     @staticmethod
     def cfg_items(ps):
@@ -35,21 +64,24 @@ class Mnist(base.Layer):
         super().__init__(ps, **kw)
         cfg = self.cfg
         f = cfg.data_format
-        self.shape = [1, 28, 28] if f == 'channels_first' else [28, 28, 1]
+        self.shape = (1, 28, 28) if f == 'channels_first' else (28, 28, 1)
+        self.reshape = tf.Reshape(self.shape)
+        self.flatten = tf.Flatten()
 
     def build(self, input_shape):
         cfg = self.cfg
         self.d1 = tf.Dense(cfg.dim_hidden, activation=cfg.act_hidden)
         self.d2 = tf.Dense(cfg.num_classes, activation='softmax')
+        self.drop = tf.Dropout(cfg.drop_hidden)
         return super().build(input_shape)
 
     @tf.function
     def call(self, inputs):
         x = inputs
-        y = tf.Reshape(self.shape)(x)
-        y = tf.Flatten()(y)
+        y = self.reshape(x)
+        y = self.flatten(y)
         y = self.d1(y)
-        y = tf.Dropout(self.cfg.drop_hidden)(y)
+        y = self.drop(y)
         y = self.d2(y)
         return y
 
