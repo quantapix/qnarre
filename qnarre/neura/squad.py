@@ -16,46 +16,38 @@
 # https://arxiv.org/pdf/1806.03822.pdf
 # https://arxiv.org/pdf/1606.05250.pdf
 
-import tensorflow as T
-
 from qnarre.neura import bert
-from qnarre.neura import utils as U
-from qnarre.neura.layers import Squad, SquadLoss
-from qnarre.feeds.dset.squad_ds import dataset as squad_ds
+from qnarre.neura.session import session_for
 
-KS = T.keras
+from qnarre.feeds.dset.squad import dset as squad_dset
+from qnarre.neura.layers.squad import model as squad_model
+from qnarre.neura.layers.squad import adapter as squad_adapter
 
 
-def model_for(params):
-    PS = params
-    FS = PS.features
-    seq = KS.Input(**FS.input_kw(FS.SEQ))
-    typ = KS.Input(**FS.input_kw(FS.TYP))
-    opt = KS.Input(**FS.input_kw(FS.OPT))
-    beg = KS.Input(**FS.input_kw(FS.BEG))
-    end = KS.Input(**FS.input_kw(FS.END))
-    uid = KS.Input(**FS.input_kw(FS.UID))
-    ins = [seq, typ, opt, beg, end, uid]
-    y = Squad(PS)([seq, typ])
-    y = SquadLoss(PS)([beg, end], y)
-    m = KS.Model(inputs=ins, outputs=[y])
-    m.compile(optimizer=U.adam_opt(PS),
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+def dset_for(ps, kind):
+    ds, feats = squad_dset(ps, kind)
+    if kind == 'train':
+        ds = ds.shuffle(10000)
+    ds = ds.batch(1 if ps.eager_mode else ps.batch_size)
+    ds = ds.map(lambda d: squad_adapter(ps, feats, d))
+    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    return ds
+
+
+def model_for(ps, compiled=False):
+    m = squad_model(ps)
+    if compiled:
+        m.compile(
+            optimizer=ps.optimizer,
+            loss=ps.losses,
+            metrics=[ps.metrics],
+            # target_tensors=[ins[4]],
+        )
+    print(m.summary())
     return m
 
 
-def dset_for(params, kind):
-    PS = params
-    ds, data = squad_ds(PS, kind)
-    if kind == 'train':
-        ds = ds.shuffle(buffer_size=50000)
-    ds = ds.batch(PS.batch_size)
-    # ds = ds.prefetch(buffer_size=T.data.experimental.AUTOTUNE)
-    return ds, data
-
-
-_params = dict(
+params = dict(
     batch_size=8,
     learn_rate=5e-6,
     max_ans_len=30,
@@ -68,76 +60,27 @@ _params = dict(
     use_fp16=False,
     use_xla=False,
     warmup_split=0.1,
+    #
+    dset='squad',
+    dset_subset='reply_spans',  # 'query_valid', 'possibles'
+    model='squad',
+    optimizer='sgd',
+    eager_mode=True,
 )
-
-_params.update(
-    dir_data='.data/squad',
-    log_dir='.model/squad/logs',
-    dir_model='.model/squad',
-    dir_save='.model/squad/save',
-)
-
-_fspecs = {
-    'SEQ': {
-        'name': 'sequence',
-        'dtype': 'int32',
-        'shape': (None, ),
-    },
-    'TYP': {
-        'name': 'types',
-        'dtype': 'int32',
-        'shape': (None, ),
-    },
-    'OPT': {
-        'name': 'optimal',
-        'dtype': 'int32',
-        'shape': (None, ),
-    },
-    'BEG': {
-        'name': 'begin',
-        'dtype': 'int32',
-        'shape': (),
-    },
-    'END': {
-        'name': 'end',
-        'dtype': 'int32',
-        'shape': (),
-    },
-    'UID': {
-        'name': 'uid',
-        'dtype': 'int32',
-        'shape': (),
-    },
-}
-
-
-class Features(U.Features):
-    def __init__(self, params, **kw):
-        super().__init__(**kw)
-        PS = params
-        sh = (PS.max_seq_len, )
-        self.shapes[self.SEQ] = sh
-        self.shapes[self.TYP] = sh
-        self.shapes[self.OPT] = sh
 
 
 def main(_):
-    PS = bert.load_params().override(_params)
-    PS.update(features=Features(PS, specs=_fspecs))
-    U.train_sess(PS, model_for, dset_for)
+    ps = bert.load_params().override(params)
+    # tf.autograph.set_verbosity(1)
+    # print(tf.autograph.to_code(Trafo.embed.python_function))
+    session_for(ps)(dset_for, model_for)
 
 
 if __name__ == '__main__':
-    # T.logging.set_verbosity(T.logging.INFO)
+    from absl import app, flags, logging
+    logging.set_verbosity(logging.INFO)  # DEBUG
     bert.load_flags()
-    from absl import flags as F
-    F.DEFINE_float('null_score_diff_threshold', None, '')
-    F.DEFINE_float('warmup_split', None, '')
-    F.DEFINE_integer('max_ans_len', None, '')
-    F.DEFINE_integer('max_qry_len', None, '')
-    F.DEFINE_integer('n_best_size', None, '')
-    F.DEFINE_integer('seq_stride', None, '')
-    from absl import app
+    flags.DEFINE_integer('xxx', None, '')
     app.run(main)
 
 ###

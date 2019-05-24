@@ -24,9 +24,8 @@ from qnarre.neura.layers.mnist import adapter as mnist_adapter
 
 def dset_for(ps, kind):
     ds, feats = mnist_dset(ps, kind)
-    n = 50000
     if kind == 'train':
-        ds = ds.shuffle(n)
+        ds = ds.shuffle(50000)
     ds = ds.batch(1 if ps.eager_mode else ps.batch_size)
     ds = ds.map(lambda d: mnist_adapter(ps, feats, d))
     # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
@@ -63,13 +62,14 @@ params = dict(
 
 def main(_):
     ps = utils.Params(params).init_comps()
+    # tf.autograph.set_verbosity(1)
+    # print(tf.autograph.to_code(Trafo.embed.python_function))
     session_for(ps)(dset_for, model_for)
 
 
 if __name__ == '__main__':
-    # T.logging.set_verbosity(T.logging.INFO)
+    from absl import app, flags, logging
+    logging.set_verbosity(logging.INFO)  # DEBUG
     utils.load_flags()
-    from absl import flags
     flags.DEFINE_integer('num_classes', None, '')
-    from absl import app
     app.run(main)

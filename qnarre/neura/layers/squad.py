@@ -14,44 +14,67 @@
 # =============================================================================
 
 from qnarre.neura import tf
+from qnarre.neura.layers import base
 
 from qnarre.neura.layers.bert import Bert
 
 
-class Squad(tf.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(dtype='float32', **kw)
-        self.PS = PS
-        self.bert = Bert(PS)
+def adapter(ps, feats, x):
+    d = tf.parse_example(x, feats)
+    img = tf.to_dense(d['flt_img'])
+    # img = tf.cast(d['int_img'], tf.float32) / 255.
+    lbl = d['int_lbl']
+    return img, lbl
+
+
+def model(ps):
+    seq = tf.Input(shape=(), dtype=tf.float32)
+    typ = tf.Input(shape=(), dtype=tf.float32)
+    opt = tf.Input(shape=(), dtype=tf.float32)
+    beg = tf.Input(shape=(), dtype=tf.float32)
+    end = tf.Input(shape=(), dtype=tf.float32)
+    uid = tf.Input(shape=(), dtype=tf.float32)
+    ins = [seq, typ, opt, beg, end, uid]
+    y = Squad(ps)([seq, typ])
+    outs = [SquadLoss(ps)([beg, end], y)]
+    m = tf.Model(name='SquadModel', inputs=ins, outputs=outs)
+    return m
+
+
+class Squad(base.Layer):
+    def __init__(self, ps, **kw):
+        super().__init__(ps, **kw)  # dtype='float32', **kw)
+        self.bert = Bert(ps)
 
     def build(self, input_shape):
         _, slen = input_shape[0]
-        PS = self.PS
-        assert slen == PS.max_seq_len
-        sh = (2, PS.hidden_size)
-        self.gain = self.add_weight(shape=sh, initializer=PS.initializer)
+        cfg = self.cfg
+        assert slen == cfg.max_seq_len
+        sh = (2, cfg.hidden_size)
+        self.gain = self.add_weight(shape=sh, initializer=cfg.initializer)
         self.bias = self.add_weight(shape=2, initializer='zeros')
         return super().build(input_shape)
 
+    @tf.function
     def call(self, inputs, **kw):
         y = self.bert.transformer([inputs, None], **kw)
         y = tf.bias_add(tf.matmul(y, self.gain, transpose_b=True), self.bias)
         return list(tf.unstack(tf.transpose(y, [2, 0, 1]), axis=0))
 
 
-class SquadLoss(tf.Layer):
-    def __init__(self, PS, **kw):
-        super().__init__(dtype='float32', **kw)
-        self.PS = PS
-        self.slen = PS.max_seq_len
+class SquadLoss(base.Layer):
+    def __init__(self, ps, **kw):
+        super().__init__(ps, **kw)  # dtype='float32', **kw)
+        self.slen = self.cfg.max_seq_len
 
     def build(self, input_shape):
-        PS = self.PS
-        sh = (2, PS.hidden_size)
-        self.gain = self.add_weight(shape=sh, initializer=PS.initializer)
+        cfg = self.cfg
+        sh = (2, cfg.hidden_size)
+        self.gain = self.add_weight(shape=sh, initializer=cfg.initializer)
         self.bias = self.add_weight(shape=2, initializer='zeros')
         return super().build(input_shape)
 
+    @tf.function
     def call(self, inputs, **_):
         span, pred = inputs
 

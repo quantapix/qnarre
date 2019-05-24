@@ -24,28 +24,48 @@ from qnarre.feeds.prep import features as F
 from qnarre.feeds.prep import utils, encoder
 
 
-def dset(ps, kind, subset='reply_spans'):
-    assert not ps.dset or ps.dset == 'squad'
+def dset(ps, kind):
+    assert ps.dset == 'squad'
     p = pth.Path(ps.dir_data) / ps.dset / kind
     if not p.exists():
-        ts = topics(ps, kind)
+        tokenizer = encoder.tokenizer_for(ps)
+        ts = F.Topics(tokenizer(reader(ps, kind)))
         for n in registry['all']:
             R.dump(p / n, lambda: registry[n](topics=ts))
-    feats = registry[subset]()
-    ds = tf.TFRecordDataset(p / subset)
-    ds = ds.map(lambda x: tf.parse_single_example(x, feats))
-    return ds
+    ds = tf.TFRecordDataset(p / ps.dset_subset)
+    return ds, feats[ps.dset_subset]
 
 
-def query_valid(topics=None):
-    if topics is None:
-        return {
-            'title': tf.VarLenFeature(tf.int64),
-            'context': tf.VarLenFeature(tf.int64),
-            'query': tf.VarLenFeature(tf.int64),
-            'valid': tf.FixedLenFeature([], tf.int64),
-            'uid': tf.FixedLenFeature([], tf.string),
-        }
+feats = {
+    'query_valid': {
+        'title': tf.VarLenFeature(tf.int64),
+        'context': tf.VarLenFeature(tf.int64),
+        'query': tf.VarLenFeature(tf.int64),
+        'valid': tf.FixedLenFeature([], tf.int64),
+        'uid': tf.FixedLenFeature([], tf.string),
+    },
+    'reply_spans': {
+        'title': tf.VarLenFeature(tf.int64),
+        'context': tf.VarLenFeature(tf.int64),
+        'query': tf.VarLenFeature(tf.int64),
+        'reply': tf.VarLenFeature(tf.int64),
+        'begin': tf.FixedLenFeature([], tf.int64),
+        'end': tf.FixedLenFeature([], tf.int64),
+        'uid': tf.FixedLenFeature([], tf.string),
+    },
+    'possibles': {
+        'title': tf.VarLenFeature(tf.int64),
+        'context': tf.VarLenFeature(tf.int64),
+        'query': tf.VarLenFeature(tf.int64),
+        'possib': tf.VarLenFeature(tf.int64),
+        'begin': tf.FixedLenFeature([], tf.int64),
+        'end': tf.FixedLenFeature([], tf.int64),
+        'uid': tf.FixedLenFeature([], tf.string),
+    },
+}
+
+
+def query_valid(topics):
     for t, c, q in topics.queries():
         f = {
             'title': R.ints_feat([*t.title.toks]),
@@ -58,17 +78,7 @@ def query_valid(topics=None):
         yield e.SerializeToString()
 
 
-def reply_spans(topics=None):
-    if topics is None:
-        return {
-            'title': tf.VarLenFeature(tf.int64),
-            'context': tf.VarLenFeature(tf.int64),
-            'query': tf.VarLenFeature(tf.int64),
-            'reply': tf.VarLenFeature(tf.int64),
-            'begin': tf.FixedLenFeature([], tf.int64),
-            'end': tf.FixedLenFeature([], tf.int64),
-            'uid': tf.FixedLenFeature([], tf.string),
-        }
+def reply_spans(topics):
     for t, c, q, r in topics.replies():
         f = {
             'title': R.ints_feat([*t.title.toks]),
@@ -83,17 +93,7 @@ def reply_spans(topics=None):
         yield e.SerializeToString()
 
 
-def possibles(topics=None):
-    if topics is None:
-        return {
-            'title': tf.VarLenFeature(tf.int64),
-            'context': tf.VarLenFeature(tf.int64),
-            'query': tf.VarLenFeature(tf.int64),
-            'possib': tf.VarLenFeature(tf.int64),
-            'begin': tf.FixedLenFeature([], tf.int64),
-            'end': tf.FixedLenFeature([], tf.int64),
-            'uid': tf.FixedLenFeature([], tf.string),
-        }
+def possibles(topics):
     for t, c, q, p in topics.possibs():
         f = {
             'title': R.ints_feat([*t.title.toks]),
@@ -106,11 +106,6 @@ def possibles(topics=None):
         }
         e = tf.Example(features=tf.Features(feature=f))
         yield e.SerializeToString()
-
-
-def topics(ps, kind):
-    tokenizer = encoder.tokenizer_for(ps)
-    return F.Topics(tokenizer(reader(ps, kind)))
 
 
 def reader(ps, kind):
@@ -130,11 +125,8 @@ def reader(ps, kind):
                             rt = utils.normalize(r['text'])
                             s = r['answer_start']
                             if ct.find(rt, s) == s:
-                                rs.append(
-                                    F.Reply(text=rt,
-                                            toks=F.Toks(),
-                                            span=F.Span(s, s + len(rt)),
-                                            uid=qu + f'-r{i}'))
+                                s = F.Span(s, s + len(rt))
+                                rs.append(F.Reply(rt, s, qu + f'-r{i}'))
                             else:
                                 print('Mismatched', ct[:20], rt[:20])
                         ps = []
@@ -142,23 +134,16 @@ def reader(ps, kind):
                             pt = utils.normalize(p['text'])
                             s = p['answer_start']
                             if ct.find(pt, s) == s:
-                                ps.append(
-                                    F.Reply(text=pt,
-                                            toks=F.Toks(),
-                                            span=F.Span(s, s + len(pt)),
-                                            uid=qu + f'-p{i}'))
+                                s = F.Span(s, s + len(pt))
+                                ps.append(F.Reply(pt, s, qu + f'-p{i}'))
                             else:
                                 print('Mismatched', ct[:20], pt[:20])
-                        qs.append(
-                            F.Query(text=utils.normalize(q['question']),
-                                    toks=F.Toks(),
-                                    valid=q.get('is_impossible', False),
-                                    replies=rs,
-                                    possibs=ps,
-                                    uid=qu))
-                    cs.append(F.Context(text=ct, toks=F.Toks(), queries=qs))
-                t = F.Title(text=utils.normalize(to['title']))
-                yield F.Topic(title=t, contexts=cs)
+                        t = utils.normalize(q['question'])
+                        v = q.get('is_impossible', False)
+                        qs.append(F.Query(t, v, rs, ps, qu, qu))
+                    cs.append(F.Context(ct, qs))
+                t = F.Title(utils.normalize(to['title']))
+                yield F.Topic(t, cs)
 
 
 registry = {
@@ -169,15 +154,6 @@ registry = {
     'test': ('dev-v2.0', 'dev-v1.1'),
     'train': ('train-v2.0', 'train-v1.1'),
 }
-
-
-def dset_old(ps, kind):
-    t, sh = tf.int32, tf.TensorShape((ps.len_src, ))
-    return tf.Dataset.from_generator(
-        lambda: features(ps, kind),
-        ((t, ) * 4, (t, ) * 2),
-        ((sh, ) * 4, tf.TensorShape(())),
-    )
 
 
 def features(ps, kind):
