@@ -19,24 +19,23 @@ import collections as col
 import collections.abc as abc
 
 Span = col.namedtuple('Span', 'beg end')
-Topic = col.namedtuple('Topic', 'title contexts')
 Token = col.namedtuple('Token', 'text span pos lemma ner embs')
 
 
-class Title(col.namedtuple('Title', 'text toks')):
-    def __new__(cls, text, toks=None):
-        return super().__new__(cls, text, toks or Toks())
+class Topic(col.namedtuple('Topic', 'text contexts uid toks')):
+    def __new__(cls, text='unknown', contexts=None, uid=None, toks=None):
+        return super().__new__(cls, text, contexts, uid, toks or Toks())
 
 
-class Context(col.namedtuple('Context', 'text queries toks')):
-    def __new__(cls, text, queries, toks=None):
-        return super().__new__(cls, text, queries, toks or Toks())
+class Context(col.namedtuple('Context', 'text queries uid toks')):
+    def __new__(cls, text, queries=None, uid=None, toks=None):
+        return super().__new__(cls, text, queries, uid, toks or Toks())
 
 
-class Query(col.namedtuple('Query', 'text valid replies possibs uid toks')):
-    def __new__(cls, text, valid, replies, possibs, uid, toks=None):
+class Query(col.namedtuple('Query', 'text valid uid toks replies possibs')):
+    def __new__(cls, text, valid, uid, replies=None, possibs=None, toks=None):
         toks = toks or Toks()
-        return super().__new__(cls, text, valid, replies, possibs, uid, toks)
+        return super().__new__(cls, text, valid, uid, replies, possibs, toks)
 
 
 class Reply(col.namedtuple('Reply', 'text span uid toks')):

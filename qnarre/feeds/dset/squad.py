@@ -31,8 +31,8 @@ def dset(ps, kind):
         tokenizer = encoder.tokenizer_for(ps)
         ts = F.Topics(tokenizer(reader(ps, kind)))
         for n in registry['all']:
-            R.dump(p / n, lambda: registry[n](topics=ts))
-    ds = tf.TFRecordDataset(p / ps.dset_subset)
+            R.dump(p / n, lambda: registry[n](ts))
+    ds = tf.TFRecordDataset(str(p / ps.dset_subset))
     return ds, feats[ps.dset_subset]
 
 
@@ -109,13 +109,12 @@ def possibles(topics):
 
 
 def reader(ps, kind):
-    assert not ps.dset or ps.dset == 'squad'
     p = pth.Path(ps.dir_data) / ps.dset
     for n in registry[kind]:
         with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
-            for to in json.load(f)['data']:
+            for data in json.load(f)['data']:
                 cs = []
-                for p in to['paragraphs']:
+                for p in data['paragraphs']:
                     ct = utils.normalize(p['context'])
                     qs = []
                     for q in p['qas']:
@@ -138,12 +137,12 @@ def reader(ps, kind):
                                 ps.append(F.Reply(pt, s, qu + f'-p{i}'))
                             else:
                                 print('Mismatched', ct[:20], pt[:20])
-                        t = utils.normalize(q['question'])
-                        v = q.get('is_impossible', False)
-                        qs.append(F.Query(t, v, rs, ps, qu, qu))
+                        qt = utils.normalize(q['question'])
+                        qv = q.get('is_impossible', False)
+                        qs.append(F.Query(qt, qv, qu, rs, ps))
                     cs.append(F.Context(ct, qs))
-                t = F.Title(utils.normalize(to['title']))
-                yield F.Topic(t, cs)
+                tt = utils.normalize(data['title'])
+                yield F.Topic(tt, cs)
 
 
 registry = {
