@@ -50,10 +50,9 @@ def ints_feat(vs):
     return tf.Feature(int64_list=tf.Int64List(value=vs))
 
 
-def writer(path):
-    p = path.with_suffix('.tfrecords')
-    p.parent.mkdir()
-    return tf.TFRecordWriter(str(p))
+def example(feat):
+    e = tf.Example(features=tf.Features(feature=feat))
+    return e.SerializeToString()
 
 
 def dataset(path):
@@ -61,11 +60,16 @@ def dataset(path):
     return tf.TFRecordDataset(str(p))
 
 
-def load(path):
-    pass
+@tf.function
+def load(path, feat):
+    ds = dataset(path).take(1)
+    for d in ds.map(lambda x: tf.parse_single_example(x, feat)):
+        return tf.to_dense(d['toks']).numpy()
 
 
 def dump(path, records):
-    with writer() as w:
+    p = path.with_suffix('.tfrecords')
+    p.parent.mkdir()
+    with tf.TFRecordWriter(str(p)) as w:
         for r in records():
             w.write(r)

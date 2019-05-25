@@ -28,7 +28,7 @@ def dset(ps, kind):
     if not p.exists():
         vs = tuple(reader(ps, kind))
         R.dump(p / ps.dset, lambda: recorder(vs))
-    ds = tf.TFRecordDataset(str(p / ps.dset))
+    ds = R.dataset(p / ps.dset)
     return ds, feats
 
 
@@ -42,14 +42,12 @@ feats = {
 
 def recorder(vals):
     for iis, fis, il, sl in vals:
-        f = {
+        yield R.example({
             'int_img': R.ints_feat(iis),
             'flt_img': R.floats_feat(fis),
             'int_lbl': R.one_int_feat(il),
             'str_lbl': R.bytes_feat(sl),
-        }
-        e = tf.Example(features=tf.Features(feature=f))
-        yield e.SerializeToString()
+        })
 
 
 def reader(ps, kind):

@@ -106,6 +106,7 @@ root = dict(
     tokenizer=None,
     train_epochs=2,
     train_steps=None,
+    vocab_path='vocab.tfrecords'
 )
 
 

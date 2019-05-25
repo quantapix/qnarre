@@ -76,10 +76,12 @@ class Vocab(Words):
         else:
             self.by_idx[w]
 
-    def load(self, vocab):
-        if isinstance(vocab, pth.Path):
-            vocab = R.load(vocab)
-        for i, w in enumerate(vocab):
+    def load(self, v):
+        if isinstance(v, pth.Path):
+            v = R.load(v, {
+                'toks': tf.VarLenFeature(tf.string),
+            })
+        for i, w in enumerate(v):
             w = w.strip()
             assert w not in self.by_word
             self.by_word[w] = i
@@ -97,11 +99,11 @@ class Vocab(Words):
             self.max_used = i
         return i
 
-    def record(self, used=True):
-        n = (self.max_used + 1) if used else len(self.by_idx)
-        f = {'toks': R.bytes_list_feat(self.by_idx[:n])}
-        e = tf.Example(features=tf.Features(feature=f))
-        return e.SerializeToString()
+    def record(self):
+        return R.example({
+            'toks':
+            R.bytes_list_feat(self.by_idx[:self.max_used + 1]),
+        })
 
 
 def normalize(txt):

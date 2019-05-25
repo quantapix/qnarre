@@ -25,12 +25,16 @@ from qnarre.feeds.prep import utils, encoder
 
 def dset(ps, kind):
     assert ps.dset == 'enwik8'
-    p = pth.Path(ps.dir_data) / ps.dset / kind
+    p = pth.Path(ps.dir_data) / ps.dset
+    pv = p / ps.vocab_path
+    p = p / kind
     if not p.exists():
         tokenizer = encoder.tokenizer_for(ps)
         tp = F.Topic(ps.dset, tokenizer(reader(ps, kind)))
         R.dump(p / ps.dset, lambda: recorder(tp))
-    ds = tf.TFRecordDataset(str(p / ps.dset))
+        if kind == 'train' and not pv.exists():
+            R.dump(pv, lambda: [tokenizer.vocab.record()])
+    ds = R.dataset(p / ps.dset)
     return ds, feats
 
 
@@ -42,12 +46,10 @@ feats = {
 
 def recorder(topic):
     for _, c in topic.contexts():
-        f = {
+        yield R.example({
             'context': R.ints_feat([*c.toks]),
             'uid': R.bytes_feat(c.uid),
-        }
-        e = tf.Example(features=tf.Features(feature=f))
-        yield e.SerializeToString()
+        })
 
 
 def reader(ps, kind):

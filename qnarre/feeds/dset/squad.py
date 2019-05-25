@@ -26,13 +26,17 @@ from qnarre.feeds.prep import utils, encoder
 
 def dset(ps, kind):
     assert ps.dset == 'squad'
-    p = pth.Path(ps.dir_data) / ps.dset / kind
+    p = pth.Path(ps.dir_data) / ps.dset
+    pv = p / ps.vocab_path
+    p = p / kind
     if not p.exists():
         tokenizer = encoder.tokenizer_for(ps)
         ts = F.Topics(tokenizer(reader(ps, kind)))
         for n in registry['all']:
             R.dump(p / n, lambda: registry[n](ts))
-    ds = tf.TFRecordDataset(str(p / ps.dset_subset))
+        if kind == 'train' and not pv.exists():
+            R.dump(pv, lambda: [tokenizer.vocab.record()])
+    ds = R.dataset(p / ps.dset_subset)
     return ds, feats[ps.dset_subset]
 
 
@@ -67,20 +71,18 @@ feats = {
 
 def query_valid(topics):
     for t, c, q in topics.queries():
-        f = {
+        yield R.example({
             'title': R.ints_feat([*t.title.toks]),
             'context': R.ints_feat([*c.toks]),
             'query': R.ints_feat([*q.toks]),
             'valid': R.one_int_feat(1 if q.valid else 0),
             'uid': R.bytes_feat(q.uid),
-        }
-        e = tf.Example(features=tf.Features(feature=f))
-        yield e.SerializeToString()
+        })
 
 
 def reply_spans(topics):
     for t, c, q, r in topics.replies():
-        f = {
+        yield R.example({
             'title': R.ints_feat([*t.title.toks]),
             'context': R.ints_feat([*c.toks]),
             'query': R.ints_feat([*q.toks]),
@@ -88,14 +90,12 @@ def reply_spans(topics):
             'begin': R.one_int_feat(r.span.beg),
             'end': R.one_int_feat(r.span.end),
             'uid': R.bytes_feat(r.uid),
-        }
-        e = tf.Example(features=tf.Features(feature=f))
-        yield e.SerializeToString()
+        })
 
 
 def possibles(topics):
     for t, c, q, p in topics.possibs():
-        f = {
+        yield R.example({
             'title': R.ints_feat([*t.title.toks]),
             'context': R.ints_feat([*c.toks]),
             'query': R.ints_feat([*q.toks]),
@@ -103,9 +103,7 @@ def possibles(topics):
             'begin': R.one_int_feat(p.span.beg),
             'end': R.one_int_feat(p.span.end),
             'uid': R.bytes_feat(p.uid),
-        }
-        e = tf.Example(features=tf.Features(feature=f))
-        yield e.SerializeToString()
+        })
 
 
 def reader(ps, kind):

@@ -26,12 +26,12 @@ def tokenizer_for(ps):
     t = ps.tokenizer
     if t == 'char':
         return CharEncoder(ps)
-    elif t == 'word':
-        return WordEncoder(ps)
     elif t == 'bert':
         return BertEncoder(ps)
     elif t == 'gpt_2':
         return Gpt2Encoder(ps)
+    assert t is None or t == 'word'
+    return WordEncoder(ps)
 
 
 class Splitter:
@@ -97,6 +97,10 @@ def join_splits(splits, offsets):
 class WordEncoder:
     def __init__(self, ps, vocab=None):
         self.ps = ps
+        if vocab is None:
+            v = pth.Path(ps.dir_data) / ps.dset / ps.vocab_path
+            if v.exists():
+                vocab = v
         self.vocab = utils.Vocab(ps, vocab)
         lc = ps.lower_case
         if lc is None:
@@ -128,10 +132,8 @@ class CharEncoder(WordEncoder):
 
 class BertEncoder(WordEncoder):
     def __init__(self, ps):
-        p = pth.Path(ps.dir_data) / ps.dset
-        if p.exists():
-            v = p / 'vocab'
-        else:
+        v = pth.Path(ps.dir_data) / ps.dset / ps.vocab_path
+        if not v.exists():
             with open(ps.bert_vocab, mode='rt') as f:
                 v = f.readlines()
         super().__init__(ps, v)
@@ -175,10 +177,8 @@ class Gpt2Encoder(WordEncoder):
     from_byte, from_code = utils.bytes_to_code()
 
     def __init__(self, ps):
-        p = pth.Path(ps.dir_data) / ps.dset
-        if p.exists():
-            v = p / 'vocab'
-        else:
+        v = pth.Path(ps.dir_data) / ps.dset / ps.vocab_path
+        if not v.exists():
             with open(ps.gpt_2_vocab, mode='rt') as f:
                 ts = sorted(json.load(f).items(), key=lambda i: i[1])
             v = []
