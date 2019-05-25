@@ -15,48 +15,38 @@
 # https://arxiv.org/pdf/1810.04805.pdf
 # https://github.com/google-research/bert
 
-import tensorflow as T
+from qnarre.neura import trafo
+from qnarre.neura.session import session_for
 
-from qnarre.neura.layers import Bert
-from qnarre.neura import utils as U
-from qnarre.neura import transformer
-from qnarre.feeds.prep.tokenizer import Tokenizer
-from qnarre.feeds.dset.bert_ds import dataset as bert_ds
-
-KS = T.keras
-KL = KS.layers
+from qnarre.feeds.dset.squad import dset as bert_dset
+from qnarre.neura.layers.squad import model as bert_model
+from qnarre.neura.layers.squad import adapter as bert_adapter
 
 
-def model_for(params):
-    PS = params
-    sh = (PS.max_seq_len, )
-    seq = KL.Input(shape=sh, dtype='int32', name='seq')
-    typ = KL.Input(shape=sh, dtype='int32', name='typ')
-    sh = (PS.max_seq_preds, )
-    idx = KL.Input(shape=sh, dtype='int32', name='mlm_idx')
-    val = KL.Input(shape=sh, dtype='int32', name='mlm_val')
-    fit = KL.Input(shape=sh, dtype='bool', name='fit')
-    mlm = KL.Input(shape=sh, dtype='float32', name='mlm')
-    ins = [seq, typ, fit, idx, val, mlm]
-    outs = Bert(PS)(ins)
-    m = KS.Model(inputs=ins, outputs=outs)
-    m.compile(optimizer=U.adam_opt(PS),
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+def dset_for(ps, kind):
+    ds, feats = bert_dset(ps, kind)
+    if kind == 'train':
+        ds = ds.shuffle(10000)
+    ds = ds.batch(1 if ps.eager_mode else ps.batch_size)
+    ds = ds.map(lambda d: bert_adapter(ps, feats, d))
+    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    return ds
+
+
+def model_for(ps, compiled=False):
+    m = bert_model(ps)
+    if compiled:
+        m.compile(
+            optimizer=ps.optimizer,
+            loss=ps.losses,
+            metrics=[ps.metrics],
+            # target_tensors=[ins[4]],
+        )
+    print(m.summary())
     return m
 
 
-def dset_for(kind, params):
-    PS = params
-    ds, data = bert_ds(kind, PS)
-    if kind == 'train':
-        ds = ds.shuffle(buffer_size=50000)
-    ds = ds.batch(PS.batch_size)
-    # ds = ds.prefetch(buffer_size=T.data.experimental.AUTOTUNE)
-    return ds, data
-
-
-_params = dict(
+params = dict(
     attn_drop=0.1,
     attn_heads=12,  # bert 12
     attn_k_size=0,
@@ -96,24 +86,16 @@ _params = dict(
     train_steps=100000,
     vocab_size=None,
     warmup_steps=10000,
-)
-
-_params.update(
-    dir_data='.data/bert',
-    log_dir='.model/bert/logs',
-    dir_model='.model/bert',
-    dir_save='.model/bert/save',
     model='uncased_L-12_H-768_A-12',
 )
 
 
 def load_params():
-    PS = transformer.load_params().override(_params)
-    return PS.update(tokenizer=Tokenizer(PS))
+    return trafo.load_params().override(params)
 
 
 def load_flags():
-    transformer.load_flags()
+    trafo.load_flags()
     from absl import flags
     flags.DEFINE_bool('lower_case', None, '')
     flags.DEFINE_integer('max_preds_per_seq', None, '')
@@ -122,17 +104,18 @@ def load_flags():
 
 
 def main(_):
-    # bert_config = modeling.BertConfig.from_json_file(PS.bert_config)
-    U.train_sess(load_params(), model_for, dset_for)
+    ps = load_params()
+    # tf.autograph.set_verbosity(1)
+    # print(tf.autograph.to_code(Trafo.embed.python_function))
+    session_for(ps)(dset_for, model_for)
 
 
 if __name__ == '__main__':
-    # T.logging.set_verbosity(T.logging.INFO)
+    from absl import app, flags, logging
+    logging.set_verbosity(logging.INFO)  # DEBUG
     load_flags()
-    from absl import app
+    flags.DEFINE_integer('xxx', None, '')
     app.run(main)
-
-###
 """
 def metric_fn(masked_lm_example_loss, masked_lm_log_probs,
               val, masked_lm_weights,

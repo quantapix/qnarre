@@ -16,35 +16,34 @@
 # https://arxiv.org/pdf/1607.06450.pdf
 # https://arxiv.org/pdf/1606.08415.pdf
 
-from qnarre.neura import tf
-from qnarre.neura.utils import Params
-from qnarre.neura.layers import Trafo
+from absl import flags
+
+from qnarre.neura import utils
 from qnarre.neura.session import session_for
-from qnarre.feeds.dset.trafo import dset as dset
+
+from qnarre.feeds.dset.squad import dset as trafo_dset
+from qnarre.neura.layers.squad import model as trafo_model
+from qnarre.neura.layers.squad import adapter as trafo_adapter
 
 
 def dset_for(ps, kind):
-    ds = dset(ps, kind)
-    n = 1000
-    ds = ds.take(n)
+    ds, feats = trafo_dset(ps, kind)
     if kind == 'train':
-        ds = ds.shuffle(n)
-    ds = ds.batch(ps.batch_size)
+        ds = ds.shuffle(10000)
+    ds = ds.batch(1 if ps.eager_mode else ps.batch_size)
+    ds = ds.map(lambda d: trafo_adapter(ps, feats, d))
+    # ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return ds
 
 
 def model_for(ps, compiled=False):
-    src = tf.Input(shape=(ps.len_src, ), dtype='int32')
-    typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
-    hint = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
-    ins = [src, typ, hint, tgt]
-    m = tf.Model(name='TrafoModel', inputs=ins, outputs=[Trafo(ps)(ins)])
+    m = trafo_model(ps)
     if compiled:
         m.compile(
             optimizer=ps.optimizer,
             loss=ps.losses,
             metrics=[ps.metrics],
+            # target_tensors=[ins[4]],
         )
     print(m.summary())
     return m
@@ -94,25 +93,27 @@ params = dict(
     tok_types=8,
 )
 
-params.update(
-    dir_data='.data/trafo',
-    log_dir='.model/trafo/logs',
-    dir_model='.model/trafo',
-    dir_save='.model/trafo/save',
-)
+
+def load_params():
+    return utils.Params(params).init_comps()
+
+
+def load_flags():
+    flags.DEFINE_bool('lower_case', None, '')
+    flags.DEFINE_integer('max_preds_per_seq', None, '')
+    flags.DEFINE_string('bert_config', None, '')
+    flags.DEFINE_string('init_checkpoint', None, '')
 
 
 def main(_):
-    ps = Params(params).init_comps()
+    ps = load_params()
     # tf.autograph.set_verbosity(1)
     # print(tf.autograph.to_code(Trafo.embed.python_function))
     session_for(ps)(dset_for, model_for)
 
 
 if __name__ == '__main__':
-    from absl import logging
-    logging.set_verbosity(logging.DEBUG)  # INFO
-    from absl import flags as F
-    F.DEFINE_integer('len_ctx', None, '')
-    from absl import app
+    from absl import app, logging
+    logging.set_verbosity(logging.INFO)  # DEBUG
+    load_flags()
     app.run(main)

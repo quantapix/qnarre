@@ -23,6 +23,25 @@ from qnarre.neura.layers.norm import PreProc, PostProc
 from qnarre.neura.layers.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
 
 
+def adapter(ps, feats, x):
+    d = tf.parse_example(x, feats)
+    img = tf.to_dense(d['flt_img'])
+    # img = tf.cast(d['int_img'], tf.float32) / 255.
+    lbl = d['int_lbl']
+    return img, lbl
+
+
+def model(ps):
+    src = tf.Input(shape=(ps.len_src, ), dtype='int32')
+    typ = tf.Input(shape=(ps.len_src, ), dtype='int32')
+    hint = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
+    tgt = tf.Input(shape=(ps.len_tgt, ), dtype='int32')
+    ins = [src, typ, hint, tgt]
+    outs = [Trafo(ps)(ins)]
+    m = tf.Model(name='TrafoModel', inputs=ins, outputs=outs)
+    return m
+
+
 class Trafo(Layer):
     typ_emb = pos_emb = enc_stack = dec_stack = pos_x_b = pos_p_b = None
 
