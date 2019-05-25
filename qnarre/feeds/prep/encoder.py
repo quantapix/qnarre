@@ -16,9 +16,22 @@
 import json
 
 import regex as re
+import pathlib as pth
 import collections as col
 
 from qnarre.feeds.prep import utils
+
+
+def tokenizer_for(ps):
+    t = ps.tokenizer
+    if t == 'char':
+        return CharEncoder(ps)
+    elif t == 'word':
+        return WordEncoder(ps)
+    elif t == 'bert':
+        return BertEncoder(ps)
+    elif t == 'gpt_2':
+        return Gpt2Encoder(ps)
 
 
 class Splitter:
@@ -81,10 +94,10 @@ def join_splits(splits, offsets):
     return ''.join(ts)
 
 
-class WordE:
-    def __init__(self, ps, words=None):
+class WordEncoder:
+    def __init__(self, ps, vocab=None):
         self.ps = ps
-        self.vocab = utils.Vocab(ps, words)
+        self.vocab = utils.Vocab(ps, vocab)
         lc = ps.lower_case
         if lc is None:
             lc = ps.model.startswith('uncased')
@@ -105,7 +118,7 @@ class WordE:
         return join_splits((self.vocab[i] for i in ids), offsets)
 
 
-class CharE(WordE):
+class CharEncoder(WordEncoder):
     def __call__(self, txt, offset=0):
         for w, o in self.splitter(txt, offset):
             for i, c in enumerate(list(w)):
@@ -113,11 +126,15 @@ class CharE(WordE):
                 yield t, o + i, c
 
 
-class BertE(WordE):
+class BertEncoder(WordEncoder):
     def __init__(self, ps):
-        with open(ps.bert_vocab, mode='rt') as f:
-            ws = f.readlines()
-        super().__init__(ps, ws)
+        p = pth.Path(ps.dir_data) / ps.dset
+        if p.exists():
+            v = p / 'vocab'
+        else:
+            with open(ps.bert_vocab, mode='rt') as f:
+                v = f.readlines()
+        super().__init__(ps, v)
 
     def __call__(self, txt, offset=0):
         maxc = self.ps.tok_max_chars or 200
@@ -151,27 +168,28 @@ class BertE(WordE):
         return join_splits(splits(), offsets)
 
 
-class Gpt2E(WordE):
+class Gpt2Encoder(WordEncoder):
     pat = r"'s|'t|'re|'ve|'m|'ll|'d|"
     pat += r' ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+'
     pat = re.compile(pat)
     from_byte, from_code = utils.bytes_to_code()
 
     def __init__(self, ps):
-        with open(ps.gpt_2_vocab, mode='rt') as f:
-            ws = json.load(f)
-        ws = sorted(ws.items(), key=lambda i: i[1])
-
-        def words():
-            for i, (w, j) in enumerate(ws):
+        p = pth.Path(ps.dir_data) / ps.dset
+        if p.exists():
+            v = p / 'vocab'
+        else:
+            with open(ps.gpt_2_vocab, mode='rt') as f:
+                ts = sorted(json.load(f).items(), key=lambda i: i[1])
+            v = []
+            for i, (w, j) in enumerate(ts):
                 assert i == j
-                yield w
-
-        super().__init__(ps, words())
+                v.append(w)
+        super().__init__(ps, v)
         with open(ps.gpt_2_pairs, mode='rt', encoding='utf-8') as f:
-            ps = f.read()
-        ps = tuple(tuple(p.split()) for p in ps.splitlines()[1:])
-        self.pairs = dict(zip(ps, range(len(ps))))
+            data = f.read()
+        ts = tuple(tuple(d.split()) for d in data.splitlines()[1:])
+        self.pairs = dict(zip(ts, range(len(ts))))
         self.cache = {}
 
     def __call__(self, txt, offset=0):

@@ -25,12 +25,14 @@ from qnarre.feeds.prep import utils, encoder
 
 def dset(ps, kind):
     assert ps.dset == 'text8'
-    p = pth.Path(ps.dir_data) / ps.dset / kind
+    pv = pth.Path(ps.dir_data) / ps.dset
+    p = pv / kind
     if not p.exists():
         tokenizer = encoder.tokenizer_for(ps)
         tp = F.Topic(ps.dset, tokenizer(reader(ps, kind)))
         R.dump(p / ps.dset, lambda: recorder(tp))
-    ds = tf.TFRecordDataset(str(p / ps.dset))
+        R.dump(p / 'vocab', lambda: [tokenizer.vocab.record()])
+    ds = R.dataset(p / ps.dset)
     return ds, feats
 
 

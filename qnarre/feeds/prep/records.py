@@ -19,11 +19,11 @@ from qnarre.neura import tf
 
 
 def bytes_feat(v):
-    return many_bytes_feat([v])
+    return bytes_list_feat([v])
 
 
-def many_bytes_feat(vs):
-    assert isinstance(vs, list)
+def bytes_list_feat(vs):
+    assert isinstance(vs, list) or isinstance(vs, np.ndarray)
 
     def unpack():
         for v in vs:
@@ -50,8 +50,22 @@ def ints_feat(vs):
     return tf.Feature(int64_list=tf.Int64List(value=vs))
 
 
+def writer(path):
+    p = path.with_suffix('.tfrecords')
+    p.parent.mkdir()
+    return tf.TFRecordWriter(str(p))
+
+
+def dataset(path):
+    p = path.with_suffix('.tfrecords')
+    return tf.TFRecordDataset(str(p))
+
+
+def load(path):
+    pass
+
+
 def dump(path, records):
-    path.parent.mkdir()
-    with tf.TFRecordWriter(str(path)) as w:
+    with writer() as w:
         for r in records():
             w.write(r)

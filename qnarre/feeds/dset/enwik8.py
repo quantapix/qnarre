@@ -13,158 +13,58 @@
 # limitations under the License.
 # =============================================================================
 
-import json
-import lzma
-import unicodedata
 import zipfile
 
 import pathlib as pth
 
 from qnarre.neura import tf
-from qnarre.feeds.prep import utils as U
-from qnarre.feeds.prep import layout as L
+from qnarre.feeds.prep import records as R
+from qnarre.feeds.prep import features as F
+from qnarre.feeds.prep import utils, encoder
 
 
-def dataset(ps, kind):
-    ps.update(layout=L.Topics(ps.tokenizer(_reader(ps, kind))))
-    return tf.Dataset.from_generator(
-        lambda: _converter(ps, kind),
-        ps.features.tf_dtypes,
-        ps.features.tf_shapes,
-    )
+def dset(ps, kind):
+    assert ps.dset == 'enwik8'
+    p = pth.Path(ps.dir_data) / ps.dset / kind
+    if not p.exists():
+        tokenizer = encoder.tokenizer_for(ps)
+        tp = F.Topic(ps.dset, tokenizer(reader(ps, kind)))
+        R.dump(p / ps.dset, lambda: recorder(tp))
+    ds = tf.TFRecordDataset(str(p / ps.dset))
+    return ds, feats
 
 
-def prep(ps, kind):
-    p = pth.Path(ps.dir_data)
-    data = zipfile.ZipFile('enwik8.zip').read('enwik8')
-    num_test_chars = 5000000
-    train_data = data[:-2 * num_test_chars]
-    valid_data = data[-2 * num_test_chars:-num_test_chars]
-    test_data = data[-num_test_chars:]
-    for fn, part in [('train.txt', train_data), ('valid.txt', valid_data),
-                     ('test.txt', test_data)]:
-        print('{} will have {} bytes'.format(fn, len(part)))
-        print('- Tokenizing...')
-        part_str = ' '.join([str(c) if c != ord('\n') else '\n' for c in part])
-        print('- Writing...')
-        f = open(fn, 'w').write(part_str)
-        f = open(fn + '.raw', 'wb').write(part)
-
-
-def _reader(ps, kind):
-    p = pth.Path(ps.dir_data)
-    for n in _names[kind]:
-        with lzma.open(p / (n + '.json.xz'), mode='rt') as f:
-            for t in json.load(f)['data']:
-                cs = []
-                for p in t['paragraphs']:
-                    ctx = _normalize(p['context'])
-                    qs = []
-                    for q in p['qas']:
-                        ans = []
-                        for a in q.get('answers', ()):
-                            tx = _normalize(a['text'])
-                            s = a['answer_start']
-                            if ctx.find(tx, s) == s:
-                                ans.append(
-                                    L.Answer(
-                                        text=tx,
-                                        tokens=L.Tokens(),
-                                        span=L.Span(s, s + len(tx)),
-                                        uid=U.next_uid('answer'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        vs = []
-                        for v in q.get('plausible_answers', ()):
-                            tx = _normalize(v['text'])
-                            s = v['answer_start']
-                            if ctx.find(tx, s) == s:
-                                vs.append(
-                                    L.Answer(
-                                        text=tx,
-                                        tokens=L.Tokens(),
-                                        span=L.Span(s, s + len(tx)),
-                                        uid=U.next_uid('answer'),
-                                    ))
-                            else:
-                                print('Mismatched', ctx[:20], tx[:20])
-                        qs.append(
-                            L.Question(
-                                qid=q['id'],
-                                text=_normalize(q['question']),
-                                unfit=q.get('is_impossible', False),
-                                tokens=L.Tokens(),
-                                answers=ans,
-                                viables=vs,
-                            ))
-                    cs.append(
-                        L.Context(
-                            text=ctx,
-                            tokens=L.Tokens(),
-                            questions=qs,
-                        ))
-                yield L.Topic(
-                    title=_normalize(t['title']),
-                    contexts=cs,
-                )
-
-
-def _normalize(txt):
-    return ' '.join(unicodedata.normalize('NFD', txt).split())
-
-
-def _converter(PS, kind):
-    FS = ps.features
-    for _, c, q, ans in ps.layout.answers():
-        cs, qs = c.tokens, q.tokens
-        if ps.max_qry_len:
-            qs = qs[:ps.max_qry_len]
-        end, ql = len(cs), len(qs)
-        sl = ps.max_seq_len - ql - 3
-        ss, b = [], 0
-        while b < end:
-            e = end
-            e = (b + sl) if e - b > sl else e
-            ss.append(L.Span(begin=b, end=e))
-            if e == end:
-                break
-            b = min(e, b + ps.doc_stride)
-        ql += 2
-        for si, s in enumerate(ss):
-            seq = [ps.CLS] + qs + [ps.SEP] + cs[s.begin:s.end] + [ps.SEP]
-            typ = [0] * ql + [1] * (len(s) + 1)
-
-            def _optim(i):
-                o, oi = None, -1
-                for s2i, s2 in enumerate(ss):
-                    if i >= s2.begin and i < s2.end:
-                        left = i - s2.begin
-                        right = s2.end - i - 1
-                        o2 = min(left, right) + 0.01 * len(s2)
-                        if o is None or o2 > o:
-                            o, oi = o2, s2i
-                return 1 if si == oi else 0
-
-            opt = [0] * ql
-            opt += [_optim(idx) for idx in range(s.begin, s.end)] + [0]
-            assert len(seq) == len(typ) == len(opt)
-            pad = [0] * (ps.max_seq_len - len(seq))
-            if pad:
-                seq += pad
-                typ += pad
-                opt += pad
-            beg, end = 0, 0
-            if kind == 'train':
-                if not q.unfit:
-                    beg, end = ans.span.begin, ans.span.end
-                    if b >= s.begin and e <= s.end:
-                        beg += ql - s.begin
-                        end += ql - s.end
-            yield seq, typ, opt, beg, end, ans.uid
-
-
-_names = {
-    'train': ('train-v2.0', 'train-v1.1'),
-    'test': ('dev-v2.0', 'dev-v1.1'),
+feats = {
+    'context': tf.VarLenFeature(tf.int64),
+    'uid': tf.FixedLenFeature([], tf.string),
 }
+
+
+def recorder(topic):
+    for _, c in topic.contexts():
+        f = {
+            'context': R.ints_feat([*c.toks]),
+            'uid': R.bytes_feat(c.uid),
+        }
+        e = tf.Example(features=tf.Features(feature=f))
+        yield e.SerializeToString()
+
+
+def reader(ps, kind):
+    assert not ps.dset or ps.dset == 'enwik8'
+    p = pth.Path(ps.dir_data) / ps.dset
+    with zipfile.ZipFile(p / 'enwik8.zip') as z:
+        with z.open('enwik8') as f:
+            ws = utils.normalize(f.read().decode().strip()).split()
+            split = ps.test_train_split or 10
+            n = len(ws) * split // 100
+            if kind == 'train':
+                ws = ws[:-2 * n]
+            elif kind == 'valid':
+                ws = ws[-2 * n:-n]
+            elif kind == 'test':
+                ws = ws[-n:]
+            wl = ps.len_words
+            for i in range(len(ws) // wl):
+                cu = '{:0>9d}0'.format(i)
+                yield F.Context(ws[i * wl:(i + 1) * wl], uid=cu)

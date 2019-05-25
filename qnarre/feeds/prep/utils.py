@@ -15,8 +15,13 @@
 
 import unicodedata
 
+import pathlib as pth
+
 from collections import abc
 from functools import lru_cache
+
+from qnarre.neura import tf
+from qnarre.feeds.prep import records as R
 
 
 class Words(abc.Mapping):
@@ -49,16 +54,11 @@ UNK = '[UNK]'
 class Vocab(Words):
     fixed = False
 
-    def __init__(self, ps, words=None):
+    def __init__(self, ps, vocab=None):
         self.by_word = {}
         self.by_idx = []
-        if words:
-            for i, w in enumerate(words):
-                w = w.strip()
-                assert w not in self.by_word
-                self.by_word[w] = i
-                self.by_idx.append(w)
-            self.fixed = True
+        if vocab:
+            self.load(vocab)
         ps.update(PAD=self.append(PAD),
                   UNK=self.append(UNK),
                   CLS=self.append(CLS),
@@ -67,9 +67,24 @@ class Vocab(Words):
                   EOS=self.append(EOS),
                   MSK=self.append(MSK))
         ps.update(vocab=self)
+        self.max_used = -1
 
     def __getitem__(self, w):
-        return self.by_word[w] if isinstance(w, str) else self.by_idx[w]
+        if isinstance(w, str):
+            i = self.by_word[w]
+            self.max_used = max(i, self.max_used)
+        else:
+            self.by_idx[w]
+
+    def load(self, vocab):
+        if isinstance(vocab, pth.Path):
+            vocab = R.load(vocab)
+        for i, w in enumerate(vocab):
+            w = w.strip()
+            assert w not in self.by_word
+            self.by_word[w] = i
+            self.by_idx.append(w)
+        self.fixed = True
 
     def append(self, w):
         try:
@@ -79,7 +94,14 @@ class Vocab(Words):
             assert i == len(self.by_idx)
             self.by_word[w] = i
             self.by_idx.append(w)
+            self.max_used = i
         return i
+
+    def record(self, used=True):
+        n = (self.max_used + 1) if used else len(self.by_idx)
+        f = {'toks': R.bytes_list_feat(self.by_idx[:n])}
+        e = tf.Example(features=tf.Features(feature=f))
+        return e.SerializeToString()
 
 
 def normalize(txt):
