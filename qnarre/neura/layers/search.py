@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+# https://arxiv.org/pdf/1904.09751.pdf
 
 from qnarre.neura import tf
 from qnarre.neura import utils

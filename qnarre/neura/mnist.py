@@ -56,7 +56,6 @@ params = dict(
     model='mnist',
     num_classes=10,
     optimizer='sgd',
-    eager_mode=True,
 )
 
 
@@ -73,3 +72,4 @@ if __name__ == '__main__':
     utils.load_flags()
     flags.DEFINE_integer('num_classes', None, '')
     app.run(main)
+    # python -m qnarre.neura.mnist -eager_mode
