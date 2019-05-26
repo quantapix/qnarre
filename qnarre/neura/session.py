@@ -35,8 +35,11 @@ def session_for(ps, sid=None):
     return lambda *args, **kw: sess(sid, ps, *args, **kw)
 
 
+TRAIN = 'train'
+
+
 def eager_train(sid, ps, dset_fn, model_fn, cbacks=None):
-    dset = dset_fn(ps, 'train')
+    dset = dset_fn(ps, TRAIN)
     # dset_test = dset_fn(ps, 'test')
     model = model_fn(ps)
 
@@ -67,45 +70,48 @@ def eager_train(sid, ps, dset_fn, model_fn, cbacks=None):
 
 
 def train(sid, ps, dset_fn, model_fn, cbacks=None):
-    dset = dset_fn(ps, 'train')
-    ds_test = dset_fn(ps, 'test')
+    ds = dset_fn(ps, TRAIN)
     # with T.distribute.MirroredStrategy().scope():
-    model = model_fn(ps, compiled=True)
-    sp = pth.Path(ps.dir_save)
-    if sp.exists():
-        model.train_on_batch(dset[:1])
-        model.load_weights(sp)
-    p = ps.dir_log + '/train/' + sid
-    writer = tf.create_file_writer(p)
-    sum_s = tb_summary.session_start_pb(hparams=ps.hparams)
+    mdl = model_fn(ps, compiled=True)
+    mp = pth.Path.cwd() / ps.dir_model / ps.model
+    if mp.exists() and tf.get_checkpoint_state(str(mp)):
+        mdl.train_on_batch(ds)
+        mdl.load_weights(str(mp / TRAIN))
+    lp = pth.Path.cwd() / ps.dir_log / ps.model
+    if lp.exists():
+        sumy = tf.create_file_writer(str(lp / TRAIN / sid))
+        sum_s = tb_summary.session_start_pb(hparams=ps.hparams)
     cbs = cbacks or []
-    cbs.append(
-        tf.TensorBoard(log_dir=p,
-                       histogram_freq=1,
-                       embeddings_freq=0,
-                       update_freq='epoch'))
+    if lp.exists():
+        cbs.append(
+            tf.TensorBoard(log_dir=str(lp / TRAIN / sid),
+                           histogram_freq=1,
+                           embeddings_freq=0,
+                           update_freq='epoch'))
     cbs.append(
         tf.EarlyStopping(monitor='val_loss',
                          min_delta=1e-2,
                          patience=2,
                          verbose=True))
-    if sp.exists():
+    if mp.exists():
         cbs.append(
-            tf.ModelCheckpoint(model_save_path=sp,
+            tf.ModelCheckpoint(str(mp / TRAIN),
+                               save_weights_only=True,
                                save_best_only=True,
-                               monitor='val_loss',
                                verbose=True))
-    hist = model.fit(dset,
-                     callbacks=cbacks,
-                     epochs=ps.train_epochs,
-                     validation_data=ds_test)
+    ds_test = dset_fn(ps, 'test')
+    hist = mdl.fit(ds,
+                   callbacks=cbs,
+                   epochs=ps.train_epochs,
+                   validation_data=ds_test)
     print(f'History: {hist.history}')
+    sp = pth.Path.cwd() / ps.dir_save / ps.model
     if sp.exists():
-        model.save_weights(sp, save_format='tf')
-    loss, acc = model.evaluate(ds_test)
+        tf.export_saved_model(mdl, str(sp))
+    loss, acc = mdl.evaluate(ds_test)
     print(f'\nEval loss, acc: {loss}, {acc}')
     """
-    with writer.as_default():
+    with sumy.as_default():
         e = tf.Event(summary=sum_s).SerializeToString()
         tf.import_event(e)
         tf.scalar('accuracy', acc, step=1, description='Accuracy')
@@ -113,6 +119,24 @@ def train(sid, ps, dset_fn, model_fn, cbacks=None):
         e = tf.Event(summary=sum_e).SerializeToString()
         tf.import_event(e)
     """
+
+
+def evaluate(sid, ps, dset_fn, model_fn, cbacks=None):
+    ds = dset_fn(ps, 'test')
+    # with T.distribute.MirroredStrategy().scope():
+    p = str(pth.Path.cwd() / ps.dir_save / ps.model)
+    assert tf.contains_saved_model(p)
+    mdl = tf.load_from_saved_model(p)
+    loss, acc = mdl.evaluate(ds)
+    print(f'\nEvaluate loss, acc: {loss}, {acc}')
+
+
+def predict(sid, ps, dset_fn, model_fn, cbacks=None):
+    ds = dset_fn(ps, 'try')
+    # with T.distribute.MirroredStrategy().scope():
+    p = str(pth.Path.cwd() / ps.dir_save / ps.model)
+    assert tf.contains_saved_model(p)
+    m = tf.load_from_saved_model(p)
 
 
 def train_loop(params, model_fn, dset_fn, cbacks=None):

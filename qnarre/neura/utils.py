@@ -59,6 +59,7 @@ def load_flags():
     # flags.DEFINE_integer('eval_steps', None, '')
     # flags.DEFINE_integer('iters_per_loop', None, '')
     # flags.DEFINE_integer('warmup_steps', None, '')
+    # flags.DEFINE_string('log_dir', None, '')
     df = ['channels_first', 'channels_last']
     flags.DEFINE_bool('eager_mode', False, '')
     flags.DEFINE_bool('eval_only', False, '')
@@ -68,10 +69,9 @@ def load_flags():
     flags.DEFINE_integer('train_epochs', None, '')
     flags.DEFINE_integer('train_steps', None, '')
     flags.DEFINE_string('dir_data', None, '')
-    # flags.DEFINE_string('log_dir', None, '')
     flags.DEFINE_string('dir_model', None, '')
-    flags.DEFINE_string('model', None, '')
     flags.DEFINE_string('dir_save', None, '')
+    flags.DEFINE_string('model', None, '')
 
 
 root = dict(
@@ -106,7 +106,7 @@ root = dict(
     tokenizer=None,
     train_epochs=2,
     train_steps=None,
-    vocab_path='vocab.tfrecords'
+    vocab_path='vocab.tfrecords',
 )
 
 
