@@ -61,8 +61,8 @@ class Mnist(base.Layer):
                 'num_classes',
             ))
 
-    def __init__(self, ps, **kw):
-        super().__init__(ps, **kw)
+    def __init__(self, ps, name=None, **kw):
+        super().__init__(ps, name=name or 'Mnist', **kw)
         cfg = self.cfg
         f = cfg.data_format
         self.shape = (1, 28, 28) if f == 'channels_first' else (28, 28, 1)
@@ -71,9 +71,9 @@ class Mnist(base.Layer):
 
     def build(self, input_shape):
         cfg = self.cfg
-        self.d1 = tf.Dense(cfg.dim_hidden, activation=cfg.act_hidden)
-        self.d2 = tf.Dense(cfg.num_classes, activation='softmax')
-        self.drop = tf.Dropout(cfg.drop_hidden)
+        self.d1 = tf.Dense(cfg.dim_hidden, activation=cfg.act_hidden, name='d1')
+        self.d2 = tf.Dense(cfg.num_classes, activation='softmax', name='d2')
+        self.drop = tf.Dropout(cfg.drop_hidden, name='drop')
         return super().build(input_shape)
 
     @tf.function

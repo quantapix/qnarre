@@ -97,7 +97,7 @@ def train(sid, ps, dset_fn, model_fn, cbacks=None):
         cbs.append(
             tf.ModelCheckpoint(str(mp / TRAIN),
                                save_weights_only=True,
-                               save_best_only=True,
+                               # save_best_only=True,
                                verbose=True))
     ds_test = dset_fn(ps, 'test')
     hist = mdl.fit(ds,
