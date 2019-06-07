@@ -70,7 +70,7 @@ build() {
               export TF_CUDA_VERSION=$($NVENV_PATH/cuda/bin/nvcc --version | sed -n 's/^.*release \(.*\),.*/\1/p')
               export TF_CUDNN_VERSION=$(sed -n 's/^#define CUDNN_MAJOR\s*\(.*\).*/\1/p' $NVENV_PATH/cuda/include/cudnn.h)
               export TF_NCCL_VERSION=$(sed -n 's/^#define NCCL_MAJOR\s*\(.*\).*/\1/p' $NVENV_PATH/nccl/include/nccl.h)
-              export TF_NEED_TENSORRT=1
+              export TF_NEED_TENSORRT=0
               export TENSORRT_INSTALL_PATH=$NVENV_PATH/tensorrt
               export TF_TENSORRT_VERSION=$(sed -n 's/^#define NV_TENSORRT_MAJOR\s*\(.*\).*/\1/p' $TENSORRT_INSTALL_PATH/include/NvInfer.h)
               export TF_CUDA_COMPUTE_CAPABILITIES=6.1,7.0,7.2,7.5
