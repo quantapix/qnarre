@@ -65,17 +65,15 @@ build() {
               export HOST_CXX_COMPILER_PATH=/usr/bin/gcc
               export TF_CUDA_CLANG=0
               # export CLANG_CUDA_COMPILER_PATH=/usr/bin/clang
-              export CUDA_TOOLKIT_PATH=/home/qpix/clone/qnarre_new/.nvenv/cuda
-              export TF_CUDA_VERSION=$($CUDA_TOOLKIT_PATH/bin/nvcc --version | sed -n 's/^.*release \(.*\),.*/\1/p')
-              export CUDNN_INSTALL_PATH="$CUDA_TOOLKIT_PATH"
-              export TF_CUDNN_VERSION=$(sed -n 's/^#define CUDNN_MAJOR\s*\(.*\).*/\1/p' $CUDNN_INSTALL_PATH/include/cudnn.h)
-              export NCCL_INSTALL_PATH=/home/qpix/clone/qnarre_new/.nvenv/nccl
-              export TF_NCCL_VERSION=$(sed -n 's/^#define NCCL_MAJOR\s*\(.*\).*/\1/p' $NCCL_INSTALL_PATH/include/nccl.h)
+              NVENV_PATH=/home/qpix/clone/qnarre_new/.nvenv
+              export TF_CUDA_PATHS=$NVENV_PATH/cublas,$NVENV_PATH/cuda,$NVENV_PATH/nccl
+              export TF_CUDA_VERSION=$($NVENV_PATH/cuda/bin/nvcc --version | sed -n 's/^.*release \(.*\),.*/\1/p')
+              export TF_CUDNN_VERSION=$(sed -n 's/^#define CUDNN_MAJOR\s*\(.*\).*/\1/p' $NVENV_PATH/cuda/include/cudnn.h)
+              export TF_NCCL_VERSION=$(sed -n 's/^#define NCCL_MAJOR\s*\(.*\).*/\1/p' $NVENV_PATH/nccl/include/nccl.h)
               export TF_NEED_TENSORRT=1
-              export TENSORRT_INSTALL_PATH=/home/qpix/clone/qnarre_new/.nvenv/tensorrt
+              export TENSORRT_INSTALL_PATH=$NVENV_PATH/tensorrt
               export TF_TENSORRT_VERSION=$(sed -n 's/^#define NV_TENSORRT_MAJOR\s*\(.*\).*/\1/p' $TENSORRT_INSTALL_PATH/include/NvInfer.h)
               export TF_CUDA_COMPUTE_CAPABILITIES=6.1,7.0,7.2,7.5
-              NVENV_PATH=/home/qpix/clone/qnarre_new/.nvenv
               export LD_LIBRARY_PATH=$NVENV_PATH/cublas/lib64:$NVENV_PATH/cuda/lib64:$NVENV_PATH/extras/CUPTI/lib64:$NVENV_PATH/nccl/lib:$NVENV_PATH/tensorrt/lib
           else
               # export CC_OPT_FLAGS="-march=native $CC_OPT_FLAGS"
