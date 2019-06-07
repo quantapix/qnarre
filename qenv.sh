@@ -21,9 +21,9 @@ nvenv() {
     mv .nvenv/nccl_* .nvenv/nccl
     mv .nvenv/TensorRT-* .nvenv/tensorrt
     (cd /usr/local
-     sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
-     sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
-     sudo ln -s "$OLDPWD"/.nvenv/tensorrt tensorrt)
+     sudo ln -sf "$OLDPWD"/.nvenv/cuda cuda
+     sudo ln -sf "$OLDPWD"/.nvenv/nccl nccl
+     sudo ln -sf "$OLDPWD"/.nvenv/tensorrt tensorrt)
 }
 
 keras() {
@@ -127,6 +127,7 @@ main() {
     .qenv/bin/pip install -U gin-config  sympy gym pypng spacy-nightly
     .qenv/bin/pip install -U dash dash-html-components dash-core-components
     .qenv/bin/pip install -U dash-table dash-daq
+    .qenv/bin/pip install -U jupyter
 
 	  # keras
     # spacy
@@ -136,7 +137,7 @@ main() {
 
     # .qenv/bin/pip install -U mesh-tensorflow
     # .qenv/bin/pip install -U tensorflow-datasets
-    .qenv/bin/pip install -U tensorflow-probability
+    # .qenv/bin/pip install -U tensorflow-probability
 }
 
 main "$@"
