@@ -16,3 +16,6 @@
 [submodule "tensorflow/bazel"]
 	path = tensorflow/bazel
 	url = https://github.com/bazelbuild/bazel.git
+[submodule "tensorflow/docs"]
+	path = tensorflow/docs
+	url = https://github.com/tensorflow/docs.git
