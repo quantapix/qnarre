@@ -23,6 +23,7 @@ nvenv() {
     (cd /usr/local
      sudo ln -s "$OLDPWD"/.nvenv/cublas cublas
      sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
+     sudo ln -s "$OLDPWD"/.nvenv/cuda/extras/CUPTI cupti
      sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
      sudo ln -s "$OLDPWD"/.nvenv/tensorrt tensorrt)
 }
