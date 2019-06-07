@@ -14,6 +14,8 @@
 # limitations under the License.
 # =============================================================================
 
+# ./bazel-0.26 --user
+
 set -x -e -u -o pipefail
 
 build() {
