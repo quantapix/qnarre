@@ -21,9 +21,10 @@ nvenv() {
     mv .nvenv/nccl_* .nvenv/nccl
     mv .nvenv/TensorRT-* .nvenv/tensorrt
     (cd /usr/local
-     sudo ln -sf "$OLDPWD"/.nvenv/cuda cuda
-     sudo ln -sf "$OLDPWD"/.nvenv/nccl nccl
-     sudo ln -sf "$OLDPWD"/.nvenv/tensorrt tensorrt)
+     sudo ln -s "$OLDPWD"/.nvenv/cublas cublas
+     sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
+     sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
+     sudo ln -s "$OLDPWD"/.nvenv/tensorrt tensorrt)
 }
 
 keras() {
