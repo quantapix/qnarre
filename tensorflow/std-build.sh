@@ -76,7 +76,7 @@ build() {
               export TF_TENSORRT_VERSION=$(sed -n 's/^#define NV_TENSORRT_MAJOR\s*\(.*\).*/\1/p' $TENSORRT_INSTALL_PATH/include/NvInfer.h)
               export TF_CUDA_COMPUTE_CAPABILITIES=6.1,7.0,7.2,7.5
               NVENV_PATH=/home/qpix/clone/qnarre_new/.nvenv
-              export LD_LIBRARY_PATH=$NVENV_PATH/cublas/lib64:$NVENV_PATH/cuda/lib64:$NVENV_PATH/cupti/lib64:$NVENV_PATH/nccl/lib:$NVENV_PATH/tensorrt/lib
+              export LD_LIBRARY_PATH=$NVENV_PATH/cublas/lib64:$NVENV_PATH/cuda/lib64:$NVENV_PATH/extras/CUPTI/lib64:$NVENV_PATH/nccl/lib:$NVENV_PATH/tensorrt/lib
           else
               # export CC_OPT_FLAGS="-march=native $CC_OPT_FLAGS"
               export TF_NEED_GDR=0
