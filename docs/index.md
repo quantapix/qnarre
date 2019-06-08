@@ -14,20 +14,29 @@ Seeking out contradictions and inconsistencies in "oceans" of deceitful data wit
 
 # Advanced TensorFlow 2.0 w/ Keras
 
-* 
-* [more detail...](./advanced_tf/index.html)
+* **Dataset**: Tensor "Highway" On-Ramp (Without Getting Lost)
+* **Trackable**: Pervasive Topological Persistence Infrastructure
+* Custom Keras Layers Without The Drawbacks
+* **Autograph**: Intuitive Data-Driven Flow Control At Last
+* Many Small GPUs: Elegant In-Model Distribution That Fits
+* Unnecessary Complexity Through Layer Proliferation
+* **Ragged Tensors**: Custom-Made For Document Processing (And More)
+* Unified Adaptable Masking That Flows With Tensors
+* Keras **Callbacks**: Eagerly Extending Their Scope And Usage
+* **Metrics And Summaries**: Modular And Reusable All The Way
+* [more detail... (fully uploaded by June 30)](./advanced_tf/index.html)
 
 # Modeling Activism in Family Court
 
 * 
-* [more detail...](./activist_court/index.html)
+* [more detail... (fully uploaded by July 31)](./activist_court/index.html)
 
 # Judicial Contradictions Targeted
 
 * 
-* [more detail...](./judicial_report/index.html)
+* [more detail... (fully uploaded by August 31)](./judicial_report/index.html)
 
 # Qnarre Narratives for Real-Estate?
 
 * 
-* [more detail...](./qnarre_for_re/index.html)
+* [more detail... (fully uploaded by September 30)](./qnarre_for_re/index.html)
