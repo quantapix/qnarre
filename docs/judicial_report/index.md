@@ -9,12 +9,12 @@ layout: default
 * TBD
 * [runable simulation...](./prepare.ipynb)
 
-## [Tagging Elements With **Topics** And Extracting **Narratives**](./tagging.pdf)
+## [Tagging Elements With Topics And Extracting Narratives](./tagging.pdf)
 
 * TBD
 * [runable simulation...](./tagging.ipynb)
 
-## [Interpreting And Analyzing The Inferred **Conflict Graph**](./analyze.pdf)
+## [Interpreting And Analyzing The Inferred Conflict Graph](./analyze.pdf)
 
 * TBD
 * [runable simulation...](./analyze.ipynb)

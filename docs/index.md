@@ -40,7 +40,7 @@ Seeking out contradictions and inconsistencies in "oceans" of deceitful data wit
 * Preparing And Normalizing Legal Documents And Evidence
 * Tagging Elements With **Topics** And Extracting **Narratives**
 * Interpreting And Analyzing The Inferred **Conflict Graph**
-* [Generating Output Suitable For Further Standardized Reporting](./report.pdf)
+* Generating Output For Standardized Reporting
 * TBD
 * [more detail... (fully uploaded by August 31)](./judicial_report/index.html)
 

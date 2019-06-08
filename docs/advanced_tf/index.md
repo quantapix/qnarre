@@ -4,12 +4,12 @@ layout: default
 
 # Advanced TensorFlow 2.0 w/ Keras
 
-## [**Dataset**: tensor "highway" on-ramp (without getting lost)](./dataset.pdf)
+## [Dataset: tensor "highway" on-ramp (without getting lost)](./dataset.pdf)
 
 * TBD
 * [runable examples...](./dataset.ipynb)
 
-## [**Trackable**: pervasive topological persistence infrastructure](./trackable.pdf)
+## [Trackable: pervasive topological persistence infrastructure](./trackable.pdf)
 
 * TBD
 * [runable examples...](./trackable.ipynb)
@@ -19,7 +19,7 @@ layout: default
 * TBD
 * [runable examples...](./custom.ipynb)
 
-## [**Autograph**: intuitive data-driven flow control at last](./autograph.pdf)
+## [Autograph: intuitive data-driven flow control at last](./autograph.pdf)
 
 * TBD
 * [runable examples...](./autograph.ipynb)
@@ -34,7 +34,7 @@ layout: default
 * TBD
 * [runable examples...](./layers.ipynb)
 
-## [**Ragged Tensors**: custom-made for document processing (and more)](./ragged.pdf)
+## [Ragged Tensors: custom-made for document processing (and more)](./ragged.pdf)
 
 * TBD
 * [runable examples...](./ragged.ipynb)
@@ -44,12 +44,12 @@ layout: default
 * TBD
 * [runable examples...](./masking.ipynb)
 
-## [Keras **Callbacks**: eagerly extending their scope and usage](./callbacks.pdf)
+## [Keras Callbacks: eagerly extending their scope and usage](./callbacks.pdf)
 
 * TBD
 * [runable examples...](./callbacks.ipynb)
 
-## [**Metrics and summaries**: modular and reusable all the way](./metrics.pdf)
+## [Metrics and summaries: modular and reusable all the way](./metrics.pdf)
 
 * TBD
 * [runable examples...](./metrics.ipynb)
