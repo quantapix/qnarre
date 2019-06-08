@@ -28,15 +28,24 @@ Seeking out contradictions and inconsistencies in "oceans" of deceitful data wit
 
 # Modeling Activism in Family Court
 
-* 
+* **Reductio Ad Absurdum** - A Judicial Simulation
+* From Fabricated Conflicts To Overt Ideological Activism
+* An Initial **Conceptual Model** Of A Complex Domain
+* Through Statistical Modeling To Representative Metrics
+* TBD
 * [more detail... (fully uploaded by July 31)](./activist_court/index.html)
 
-# Judicial Contradictions Targeted
+# Judicial Contradictions Numerically Evaluated
 
-* 
+* Preparing And Normalizing Legal Documents And Evidence
+* Tagging Elements With **Topics** And Extracting **Narratives**
+* Interpreting And Analyzing The Inferred **Conflict Graph**
+* [Generating Output Suitable For Further Standardized Reporting](./report.pdf)
+* TBD
 * [more detail... (fully uploaded by August 31)](./judicial_report/index.html)
 
 # Qnarre Narratives for Real-Estate?
 
-* 
+* Studied Scenarios And Results
+* TBD
 * [more detail... (fully uploaded by September 30)](./qnarre_for_re/index.html)
