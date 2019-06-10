@@ -189,6 +189,10 @@ class Layer(tf.keras.layers.Layer):
 
 
 def models(mod, lay):
+    vs = [v.name for v in lay.variables]
+    ts = [t.name for t in lay.trainable_variables]
+    ms = [m.name for m in lay.submodules]
+    print(f'lay variables: {vs}, trainables: {ts}, submodules: {ms}')
     d = tf.constant([100, 100])
     mod(d)
     print(lay)
