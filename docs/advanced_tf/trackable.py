@@ -16,6 +16,7 @@
 
 import tensorflow as tf
 
+from datetime import datetime
 from tensorflow.python.training.tracking import base
 from tensorflow.python.training.tracking import tracking
 
@@ -158,6 +159,16 @@ def modules(mod):
     print(f'restored: {mod}')
 
 
+def graph(tracer):
+    s = datetime.now().strftime('%Y%m%d-%H%M%S')
+    d = f'/tmp/logs/func/{s}'
+    w = tf.summary.create_file_writer(d)
+    tf.summary.trace_on(graph=True, profiler=True)
+    tracer()
+    with w.as_default():
+        tf.summary.trace_export(name="trace", step=0, profiler_outdir=d)
+
+
 class Layer(tf.keras.layers.Layer):
     def __init__(self, sub=None, **kw):
         super().__init__(**kw)
@@ -190,6 +201,7 @@ class Layer(tf.keras.layers.Layer):
 
 
 def models(mod, lay):
+    print(mod.summary())
     vs = [v.name for v in mod.variables]
     ts = [t.name for t in mod.trainable_variables]
     ms = [m.name for m in mod.submodules]
@@ -239,17 +251,28 @@ def main(_):
     tr3.br_dict = {'br1': br1, 'br2': br2, 'br3': br3}
     sharing(tr3)
 
-    mod = Module('m1')
-    mod.sub = Module('m2')
-    mod.sub.sub = Module('m3')
-    modules(mod)
+    mod1 = Module('m1')
+    mod1.sub = Module('m2')
+    mod1.sub.sub = Module('m3')
+    modules(mod1)
+
+    @tf.function
+    def tracer1():
+        return mod1()
+
+    graph(tracer1)
 
     ins = [tf.keras.Input(shape=(), dtype=tf.int32)]
     lay = Layer(name='l1', sub=Layer(name='l2', sub=Layer(name='l3')))
     outs = [lay(ins)]
-    mod = tf.keras.Model(name='model', inputs=ins, outputs=outs)
-    print(mod.summary())
-    models(mod, lay)
+    mod2 = tf.keras.Model(name='m2', inputs=ins, outputs=outs)
+    models(mod2, lay)
+
+    @tf.function
+    def tracer2():
+        return mod2(tf.constant([100, 100]))
+
+    # graph(tracer2)
 
 
 if __name__ == '__main__':
