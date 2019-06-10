@@ -83,7 +83,7 @@ def containers(tr3):
     m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
     m.save()
     vs = tf.train.list_variables(m.latest_checkpoint)
-    print(f'list containers: {vs}')
+    print(f'containers: {vs}')
 
 
 def sharing(tr3):
@@ -122,6 +122,12 @@ class Module(tf.Module):
         super().__init__(name=name)
         self.v = tf.Variable(0, name='m_v')
 
+    def __str__(self):
+        s = f'n: {self.name}, v: {self.v.numpy()}'
+        if self.sub:
+            s += f', s: ({self.sub})'
+        return s
+
     @tf.function
     def __call__(self):
         y = tf.math.add(self.v, tf.constant(1))
@@ -129,11 +135,6 @@ class Module(tf.Module):
             y = tf.math.add(y, self.sub())
         self.v.assign(y)
         return y
-
-    def print_all(self):
-        print(f'{self.name}: {self.v.numpy()}')
-        if self.sub:
-            self.sub.print_all()
 
 
 def modules(mod1):
@@ -143,16 +144,15 @@ def modules(mod1):
     c = tf.train.Checkpoint(mod1=mod1)
     m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
     mod1()
-    mod1.print_all()
+    print(mod1)
     m.save()
     mod1()
-    mod1.print_all()
+    print(mod1)
     p = m.latest_checkpoint
     vs = tf.train.list_variables(p)
-    print(f'list containers: {vs}')
+    print(f'containers: {vs}')
     c.restore(p)
-    print('after restore:')
-    mod1.print_all()
+    print(f'restored: {mod1}')
 
 
 def main(_):
@@ -191,21 +191,8 @@ def main(_):
     mod1.sub.sub.sub = Module('m4')
     mod1.sub.sub.sub.sub = Module('m5')
     modules(mod1)
-    """
-    opt = tf.keras.optimizers.Adam(0.1)
-    ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=opt, net=net)
-    to_restore = tf.Variable(tf.zeros([5]))
-    print(to_restore.numpy())  # All zeros
-    fake_layer = tf.train.Checkpoint(bias=to_restore)
-    fake_net = tf.train.Checkpoint(l1=fake_layer)
-    new_root = tf.train.Checkpoint(net=fake_net)
-    status = new_root.restore(tf.train.latest_checkpoint('./tf_ckpts/'))
-    print(to_restore.numpy())
-    """
 
 
 if __name__ == '__main__':
-    from absl import app, flags
-    # flags.DEFINE_integer('num_classes', None, '')
+    from absl import app
     app.run(main)
-    # python -m qnarre.neura.mnist -eager_mode
