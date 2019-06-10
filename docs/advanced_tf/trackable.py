@@ -20,6 +20,8 @@ import tensorflow as tf
 from tensorflow.python.training.tracking import base
 from tensorflow.python.training.tracking import tracking
 
+from tensorflow.python.util import nest
+
 
 def trackable(tr1, v):
     c = tf.train.Checkpoint(tr1=tr1)
@@ -160,7 +162,9 @@ def modules(mod):
 
 
 class Layer(tf.keras.layers.Layer):
-    sub = None
+    def __init__(self, sub=None, **kw):
+        super().__init__(**kw)
+        self.sub = sub
 
     def __str__(self):
         s = f'n: {self.name}, v: {self.v.numpy()}'
@@ -189,9 +193,9 @@ class Layer(tf.keras.layers.Layer):
 
 
 def models(mod, lay):
-    vs = [v.name for v in lay.variables]
-    ts = [t.name for t in lay.trainable_variables]
-    ms = [m.name for m in lay.submodules]
+    vs = [v.name for v in mod.variables]
+    ts = [t.name for t in mod.trainable_variables]
+    ms = [m.name for m in mod.submodules]
     print(f'lay variables: {vs}, trainables: {ts}, submodules: {ms}')
     d = tf.constant([100, 100])
     mod(d)
@@ -244,9 +248,7 @@ def main(_):
     modules(mod)
 
     ins = [tf.keras.Input(shape=(), dtype=tf.int32)]
-    lay = Layer(name='l1')
-    lay.sub = Layer(name='l2')
-    lay.sub.sub = Layer(name='l3')
+    lay = Layer(name='l1', sub=Layer(name='l2', sub=Layer(name='l3')))
     outs = [lay(ins)]
     mod = tf.keras.Model(name='model', inputs=ins, outputs=outs)
     print(mod.summary())
