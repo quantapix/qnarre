@@ -20,10 +20,7 @@ from tensorflow.python.training.tracking import base
 from tensorflow.python.training.tracking import tracking
 
 
-def trackable():
-    tr1 = base.Trackable()
-    v = tf.Variable(1)
-    tr1._track_trackable(v, name='tr1_v')
+def trackable(tr1, v):
     c = tf.train.Checkpoint(tr1=tr1)
     m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
     p = m.latest_checkpoint
@@ -38,12 +35,7 @@ def trackable():
     m.save()
 
 
-def autotrackable():
-    tr2 = tracking.AutoTrackable()
-    tracked, untracked = tf.Variable(1000), tf.Variable(0)
-    tr2.v = tracked
-    with base.no_automatic_dependency_tracking_scope(tr2):
-        tr2.untracked = untracked
+def autotrackable(tr2, tracked, untracked):
     c = tf.train.Checkpoint(tr2=tr2)
     m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
     p = m.latest_checkpoint
@@ -71,9 +63,7 @@ def listing():
     print(f'checkpoint types: {ts} and shapes: {ss}')
 
 
-def deleting():
-    tr2 = tracking.AutoTrackable()
-    tr2.v = tf.Variable(-1)
+def deleting(tr2):
     c = tf.train.Checkpoint(tr2=tr2)
     m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
     c.restore(m.latest_checkpoint)
@@ -87,13 +77,41 @@ def deleting():
     print(f'deleted IS DELETED: {vs}')
 
 
+def containers(tr3):
+    c = tf.train.Checkpoint(tr3=tr3)
+    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m.save()
+    vs = tf.train.list_variables(m.latest_checkpoint)
+    print(f'list containers: {vs}')
+
+
 def main(_):
+    tr1 = base.Trackable()
+    v = tf.Variable(1)
+    tr1._track_trackable(v, name='tr1_v')
     for _ in range(3):
-        trackable()
+        trackable(tr1, v)
+
+    tr2 = tracking.AutoTrackable()
+    tracked, untracked = tf.Variable(1000), tf.Variable(0)
+    tr2.v = tracked
+    with base.no_automatic_dependency_tracking_scope(tr2):
+        tr2.untracked = untracked
     for _ in range(2):
-        autotrackable()
+        autotrackable(tr2, tracked, untracked)
     listing()
-    deleting()
+    deleting(tr2)
+
+    tr3 = tracking.AutoTrackable()
+    br1 = tracking.AutoTrackable()
+    br1.v = tf.Variable(0)
+    br2 = tracking.AutoTrackable()
+    br2.v = tf.Variable(0)
+    tr3.br_list = [br1, br2]
+    br3 = tracking.AutoTrackable()
+    br3.v = tf.Variable(0)
+    tr3.br_dict = {'br3': br3}
+    containers(tr3)
     """
     opt = tf.keras.optimizers.Adam(0.1)
     ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=opt, net=net)
