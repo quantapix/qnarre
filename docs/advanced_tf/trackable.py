@@ -16,11 +16,8 @@
 
 import tensorflow as tf
 
-# from tensorflow.python.module import module
 from tensorflow.python.training.tracking import base
 from tensorflow.python.training.tracking import tracking
-
-from tensorflow.python.util import nest
 
 
 def trackable(tr1, v):
