@@ -120,7 +120,8 @@ class Module(tf.Module):
 
     def __init__(self, name=None):
         super().__init__(name=name)
-        self.v = tf.Variable(0, name='m_v')
+        with self.name_scope:
+            self.v = tf.Variable(1, name='m_v')
 
     def __str__(self):
         s = f'n: {self.name}, v: {self.v.numpy()}'
@@ -129,30 +130,78 @@ class Module(tf.Module):
         return s
 
     @tf.function
+    @tf.Module.with_name_scope
     def __call__(self):
-        y = tf.math.add(self.v, tf.constant(1))
-        if self.sub is not None:
-            y = tf.math.add(y, self.sub())
+        if self.sub is None:
+            y = tf.constant(100)
+        else:
+            y = self.sub()
+        y = tf.math.add(y, self.v)
         self.v.assign(y)
         return y
 
 
-def modules(mod1):
-    # vs = [v.name for v in mod1.variables]
-    # ms = [m.name for m in mod1.submodules]
-    # print(f'mod variables: {vs}, submodules: {ms}')
-    c = tf.train.Checkpoint(mod1=mod1)
+def modules(mod):
+    vs = [v.name for v in mod.variables]
+    ms = [m.name for m in mod.submodules]
+    print(f'mod variables: {vs}, submodules: {ms}')
+    c = tf.train.Checkpoint(module=mod)
     m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
-    mod1()
-    print(mod1)
+    mod()
+    print(mod)
     m.save()
-    mod1()
-    print(mod1)
+    mod()
+    print(mod)
     p = m.latest_checkpoint
     vs = tf.train.list_variables(p)
     print(f'containers: {vs}')
     c.restore(p)
-    print(f'restored: {mod1}')
+    print(f'restored: {mod}')
+
+
+class Layer(tf.keras.layers.Layer):
+    sub = None
+
+    def __str__(self):
+        s = f'n: {self.name}, v: {self.v.numpy()}'
+        if self.sub:
+            s += f', s: ({self.sub})'
+        return s
+
+    def build(self, input_shape):
+        # with self.name_scope:
+        self.v = self.add_variable(name='l_v',
+                                   shape=[],
+                                   dtype=tf.int32,
+                                   initializer=tf.ones_initializer)
+        return super().build(input_shape)
+
+    @tf.function
+    # @tf.Module.with_name_scope
+    def call(self, x):
+        if self.sub is None:
+            y = x
+        else:
+            y = self.sub(x)
+        y = tf.math.add(y, self.v)
+        self.v.assign(tf.reduce_sum(y))
+        return y
+
+
+def models(mod, lay):
+    d = tf.constant([100, 100])
+    mod(d)
+    print(lay)
+    c = tf.train.Checkpoint(model=mod)
+    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m.save()
+    mod(d)
+    print(lay)
+    p = m.latest_checkpoint
+    vs = tf.train.list_variables(p)
+    print(f'containers: {vs}')
+    c.restore(p)
+    print(f'restored: {lay}')
 
 
 def main(_):
@@ -185,12 +234,19 @@ def main(_):
     tr3.br_dict = {'br1': br1, 'br2': br2, 'br3': br3}
     sharing(tr3)
 
-    mod1 = Module('m1')
-    mod1.sub = Module('m2')
-    mod1.sub.sub = Module('m3')
-    mod1.sub.sub.sub = Module('m4')
-    mod1.sub.sub.sub.sub = Module('m5')
-    modules(mod1)
+    mod = Module('m1')
+    mod.sub = Module('m2')
+    mod.sub.sub = Module('m3')
+    modules(mod)
+
+    ins = [tf.keras.Input(shape=(), dtype=tf.int32)]
+    lay = Layer(name='l1')
+    lay.sub = Layer(name='l2')
+    lay.sub.sub = Layer(name='l3')
+    outs = [lay(ins)]
+    mod = tf.keras.Model(name='model', inputs=ins, outputs=outs)
+    print(mod.summary())
+    models(mod, lay)
 
 
 if __name__ == '__main__':
