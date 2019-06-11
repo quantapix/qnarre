@@ -129,7 +129,7 @@ class Module(tf.Module):
             s += f', s: ({self.sub})'
         return s
 
-    @tf.function
+    # @tf.function
     @tf.Module.with_name_scope
     def __call__(self):
         if self.sub is None:
@@ -163,7 +163,7 @@ def graph(tracer):
     s = datetime.now().strftime('%Y%m%d-%H%M%S')
     d = f'/tmp/logs/func/{s}'
     w = tf.summary.create_file_writer(d)
-    tf.summary.trace_on(graph=True, profiler=True)
+    tf.summary.trace_on(graph=True)  # , profiler=True)
     tracer()
     with w.as_default():
         tf.summary.trace_export(name="trace", step=0, profiler_outdir=d)
@@ -188,7 +188,7 @@ class Layer(tf.keras.layers.Layer):
                                    initializer=tf.ones_initializer)
         return super().build(input_shape)
 
-    @tf.function
+    # @tf.function
     # @tf.Module.with_name_scope
     def call(self, x):
         if self.sub is None:
@@ -260,7 +260,7 @@ def main(_):
     def tracer1():
         return mod1()
 
-    graph(tracer1)
+    # graph(tracer1)
 
     ins = [tf.keras.Input(shape=(), dtype=tf.int32)]
     lay = Layer(name='l1', sub=Layer(name='l2', sub=Layer(name='l3')))
@@ -272,7 +272,7 @@ def main(_):
     def tracer2():
         return mod2(tf.constant([100, 100]))
 
-    # graph(tracer2)
+    graph(tracer2)
 
 
 if __name__ == '__main__':
