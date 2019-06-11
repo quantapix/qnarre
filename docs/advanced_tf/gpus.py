@@ -19,33 +19,53 @@ import tensorflow as tf
 
 from datetime import datetime
 
-keras = tf.keras
-layers = tf.keras.layers
+ks = tf.keras
+kl = ks.layers
+cfg = tf.config.experimental
+
+# tf.debugging.set_log_device_placement(True)
+
+devs = ((None, None, None, None, None), )
+# devs = ((None, ), (10, 10, 10), (10, 10, 10))
+cfg.set_visible_devices(cfg.get_visible_devices('CPU')[:1], 'CPU')
+cfg.set_visible_devices(cfg.get_visible_devices('GPU')[:len(devs) - 1], 'GPU')
+for d, ms in zip(cfg.get_visible_devices(), devs):
+    vs = [cfg.VirtualDeviceConfiguration(m) for m in ms]
+    cfg.set_virtual_device_configuration(d, vs)
+devs = cfg.list_logical_devices('CPU')
+devs += cfg.list_logical_devices('GPU')
+print('devices:', [d.name for d in devs])
+
+tf.config.set_soft_device_placement(False)
+cfg.set_device_policy('warn')
 
 
-class Layer(layers.Layer):
-    def __init__(self, ps, **kw):
+class Layer(kl.Layer):
+    def __init__(self, i, ps, **kw):
         super().__init__(**kw)
+        self.idx = min(i + 1, len(devs) - 1)
         self.ps = ps
 
     def build(self, input_shape):
         s = input_shape[-1]
-        self.w = self.add_weight(name='l_w', shape=(s, s))
-        self.b = self.add_weight(name='l_b', shape=(s, ))
+        with tf.device(devs[self.idx].name):
+            self.w = self.add_weight(name='l_w', shape=(s, s))
+            self.b = self.add_weight(name='l_b', shape=(s, ))
         return super().build(input_shape)
 
     def call(self, x):
-        y = tf.einsum('bi,ij->bj', x, self.w) + self.b
+        with tf.device(devs[self.idx].name):
+            y = tf.einsum('bi,ij->bj', x, self.w) + self.b
         return y
 
 
 def model_for(ps):
-    m = keras.Sequential()
-    m.add(layers.Dense(ps.dim_hidden, input_dim=ps.dim_input, name='in'))
-    for i in (range(ps.num_layers)):
-        m.add(Layer(ps, name=f'lay_{i}'))
-    m.add(layers.Dense(ps.dim_input, name='out'))
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
+    m = ks.Sequential()
+    m.add(kl.Dense(ps.dim_hidden, input_dim=ps.dim_input, name='in'))
+    for i in range(ps.num_layers):
+        m.add(Layer(i, ps, name=f'lay_{i}'))
+    m.add(kl.Dense(ps.dim_input, name='out'))
+    m.compile(optimizer=ps.optimizer(), loss=ps.loss(), metrics=[ps.metrics()])
     print(m.summary())
     return m
 
@@ -53,10 +73,10 @@ def model_for(ps):
 params = dict(
     dim_hidden=1000,
     dim_input=100,
-    loss=keras.losses.MeanAbsoluteError(),
-    metrics=[keras.metrics.MeanAbsoluteError()],
-    num_layers=10,
-    optimizer=keras.optimizers.SGD(learning_rate=0.01),
+    loss=ks.losses.MeanAbsoluteError,
+    metrics=ks.metrics.MeanAbsoluteError,
+    num_layers=2,
+    optimizer=ks.optimizers.SGD,
 )
 
 
@@ -68,12 +88,12 @@ class Params:
 
 def main(_):
     ps = Params(**params)
-    # with T.distribute.MirroredStrategy().scope():
     d = np.ones((100, ps.dim_input))
+    # with tf.distribute.MirroredStrategy().scope():
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/logs/{ld}'
-    cs = [keras.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
+    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
     m.fit(d, d, callbacks=cs, epochs=10, batch_size=10)
 
 
