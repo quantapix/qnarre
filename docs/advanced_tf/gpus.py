@@ -26,7 +26,7 @@ cfg = tf.config.experimental
 # tf.debugging.set_log_device_placement(True)
 
 devs = ((None, None, None, None, None), )
-# devs = ((None, ), (10, 10, 10), (10, 10, 10))
+devs = ((None, ), (1000, 1000, 1000, 1000, 1000, 1000), (1000, 1000, 1000, 1000, 1000, 1000))
 cfg.set_visible_devices(cfg.get_visible_devices('CPU')[:1], 'CPU')
 cfg.set_visible_devices(cfg.get_visible_devices('GPU')[:len(devs) - 1], 'GPU')
 for d, ms in zip(cfg.get_visible_devices(), devs):
@@ -37,7 +37,7 @@ devs += cfg.list_logical_devices('GPU')
 print('devices:', [d.name for d in devs])
 
 tf.config.set_soft_device_placement(False)
-cfg.set_device_policy('warn')
+# cfg.set_device_policy('warn')
 
 
 class Layer(kl.Layer):
@@ -75,7 +75,7 @@ params = dict(
     dim_input=100,
     loss=ks.losses.MeanAbsoluteError,
     metrics=ks.metrics.MeanAbsoluteError,
-    num_layers=2,
+    num_layers=10,
     optimizer=ks.optimizers.SGD,
 )
 
