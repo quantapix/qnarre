@@ -4,54 +4,54 @@ layout: default
 
 # Advanced TensorFlow 2.0 w/ Keras
 
-## [Dataset: tensor "highway" on-ramp (without getting lost)](./dataset.pdf)
+## [Trackable: pervasive topological persistence infrastructure](./trackable.html)
 
 * TBD
-* [runable examples...](./dataset.ipynb)
+* [more detail...](./trackable.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/trackable.ipynb)
 
-## [Trackable: pervasive topological persistence infrastructure](./trackable.pdf)
-
-* TBD
-* [runable examples...](./trackable.ipynb)
-
-## [Custom Keras layers without the drawbacks](./custom.pdf)
+## [Many Small GPUs: elegant in-model distribution that fits](./gpus.html)
 
 * TBD
-* [runable examples...](./custom.ipynb)
+* [more detail...](./gpus.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/gpus.ipynb)
 
-## [Autograph: intuitive data-driven flow control at last](./autograph.pdf)
-
-* TBD
-* [runable examples...](./autograph.ipynb)
-
-## [Many Small GPUs: elegant in-model distribution that fits](./gpus.pdf)
+## [Dataset: tensor "highway" on-ramp (without getting lost)](./dataset.html)
 
 * TBD
-* [runable examples...](./gpus.ipynb)
+* [more detail...](./dataset.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/dataset.ipynb)
 
-## [Unnecessary complexity through layer proliferation](./layers.pdf)
-
-* TBD
-* [runable examples...](./layers.ipynb)
-
-## [Ragged Tensors: custom-made for document processing (and more)](./ragged.pdf)
+## [Custom Keras layers without the drawbacks](./custom.html)
 
 * TBD
-* [runable examples...](./ragged.ipynb)
+* [more detail...](./custom.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/custom.ipynb)
 
-## [Unified adaptable masking that flows with tensors](./masking.pdf)
-
-* TBD
-* [runable examples...](./masking.ipynb)
-
-## [Keras Callbacks: eagerly extending their scope and usage](./callbacks.pdf)
+## [Autograph: intuitive data-driven flow control at last](./autograph.html)
 
 * TBD
-* [runable examples...](./callbacks.ipynb)
+* [more detail...](./autograph.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/autograph.ipynb)
 
-## [Metrics and summaries: modular and reusable all the way](./metrics.pdf)
+## [Unnecessary complexity through layer proliferation](./layers.html)
 
 * TBD
-* [runable examples...](./metrics.ipynb)
+* [more detail...](./layers.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
+
+## [Ragged Tensors: custom-made for document processing (and more)](./ragged.html)
+
+* TBD
+* [more detail...](./ragged.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/ragged.ipynb)
+
+## [Unified adaptable masking that flows with tensors](./masking.html)
+
+* TBD
+* [more detail...](./masking.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
+
+## [Keras Callbacks: eagerly extending their scope and usage](./callbacks.html)
+
+* TBD
+* [more detail...](./callbacks.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/callbacks.ipynb)
+
+## [Metrics and summaries: modular and reusable all the way](./metrics.html)
+
+* TBD
+* [more detail...](./metrics.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/metrics.ipynb)
 
 [back](../)

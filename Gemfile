@@ -31,4 +31,5 @@ end
 # ------------------
 
 # bundle install --path .bundle/local
+# export PATH=/home/qpix/.gem/ruby/2.6.0/bin:$PATH
 # bundle exec jekyll serve
