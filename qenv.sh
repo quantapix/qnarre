@@ -5,7 +5,7 @@ set -x
 set -e -u -o pipefail
 
 # python -m ipykernel install --user --name qenv --display-name "Python (.qenv)"
-# ipython notebook --no-browser --port=8889
+# jupyter notebook --no-browser --port=8889
 # ssh -N -f -L localhost:8888:localhost:8889 remote_user@remote_host
 
 nvenv() {
