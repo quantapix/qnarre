@@ -4,7 +4,7 @@ layout: default
 
 Motivation behind our **qnarre** effort is our unconditional love for our children. **Quantapix**, the software startup behind *qnarre*, was born as a precursor to a vicious, cruel and simply unimaginable, yet intuitively well understood power struggle of the "elite" vs. us, the rest.
 
-[Just as documented](https:femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children while holding us ideological hostages for millions of dollars.
+[Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children while holding us ideological hostages for millions of dollars.
 
 We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble "deep learning" technology, is not all evil nor exclusively exploitative. Despite the naive, uninformed fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism and communism) in the form of yet uncommunicated contradictions and inconsistencies.
 
