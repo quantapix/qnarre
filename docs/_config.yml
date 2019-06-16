@@ -1,3 +1,8 @@
 title: qnarre
 description: a quick narrative analyzer
 theme: jekyll-theme-cayman
+github:
+  is_project_page: true
+  repository_url: https://github.com/quantapix/qnarre.git
+  repository_name: qnarre
+  owner_name: Quantapix

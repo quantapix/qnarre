@@ -2,15 +2,17 @@
 layout: default
 ---
 
-Motivation behind our **qnarre** effort is our unconditional love for our children. **Quantapix**, the software startup behind *qnarre*, was born as a precursor to a vicious, cruel and simply unimaginable, yet intuitively well understood power struggle of the "elite" vs. us, the rest.
+Motivation behind our **qnarre** effort is our unconditional love for our children. **Quantapix**, the software startup behind *qnarre*, was born as a precursor to a vicious, cruel and simply unimaginable, yet intuitively well understood power struggle between the "elite" and us.
 
-[Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children while holding us ideological hostages for millions of dollars.
+[Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for millions of dollars.
 
 We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble "deep learning" technology, is not all evil nor exclusively exploitative. Despite the naive, uninformed fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism and communism) in the form of yet uncommunicated contradictions and inconsistencies.
 
 Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American children** from greedy professional torturing and forceful, institutionalized separation, as parental alienation is simply ruthless child abuse.
 
-Seeking out contradictions and inconsistencies in "oceans" of deceitful data with ever adapting, fluid learning mechanisms is exactly what AI, "the child protector", was inherently invented for. AI can rightfully become our openly shared ethical and moral reference, an always true guiding compass. 
+Seeking out contradictions and inconsistencies in "oceans" of deceitful data with ever adapting, fluidly learning, reproducible mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. AI can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
+
+The following blogs incorporate "runable" [python](https://www.python.org/) scripts organized as [jupyter](https://jupyter.org/) notebooks.
 
 # Advanced TensorFlow 2.0 w/ Keras
 
