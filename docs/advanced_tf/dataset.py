@@ -29,8 +29,10 @@ td = tf.data
 # example - fascinating https://arxiv.org/pdf/1812.02825.pdf
 # num_items of "x=-12,y=24:y+x:12" w/ "defs", "op" and "res"
 # names: x, y, ops: +, -, *, values: [-max_val, max_val]
-# vocab: ['x', 'y', '+', '-', '*', '=', ',', ':']
-# also: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+vocab = ('x', 'y')
+vocab += ('+', '-', '*', '=', ',', ':')
+vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 # pipeline is parametric
 
@@ -76,6 +78,7 @@ def native_source(ps):
 
 # can be consumed as iterables or as aggregatables (reduce)
 
+
 def dset_gen_src(ps):
     # from_generator
     ds = td.Dataset.from_generator(
@@ -99,6 +102,27 @@ def dset_filter(x):
     return r
 
 
+@tf.function
+def dset_features(x):
+    fs = tf.strings.split(x, ':')
+    return {'defs': fs[0], 'op': fs[1], 'res': fs[2]}
+
+
+tokens = {k: v for v, k in enumerate(vocab, start=5)}
+
+
+@tf.function
+def dset_tokenize(d):
+    return {
+        k: tf.numpy_function(
+            lambda x: tf.constant([tokens[chr(c)] for c in x]),
+            [d[k]],
+            Tout=tf.int32,
+        )
+        for k in ('defs', 'op', 'res')
+    }
+
+
 # potentially large
 # inside a tf.function or eagerly
 # transparent performance is key
@@ -110,19 +134,22 @@ def main(_):
         print(s)
     # cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip
     print('Ops on datasets')
-    ds1 = dset_gen_src(ps)
-    ds2 = dset_src(ps)
-    for s in ds1.take(2):
+    dg = dset_gen_src(ps)
+    for s in dg.take(2):
         print(s)
-    for i, s in ds2.take(2).concatenate(ds1).enumerate():
+    ds = dset_src(ps)
+    for i, s in ds.take(2).concatenate(dg).enumerate():
         print(i, s)
     # filter
     print('Filter dataset elements')
-    ds = dset_src(ps)
     for i, s in enumerate(ds.filter(dset_filter)):
         print(s)
-
-    # apply, flat_map, interleave, map
+    # map
+    for s in ds.map(dset_features).take(1):
+        print(s)
+    for s in ds.map(dset_features).map(dset_tokenize).take(1):
+        print(s)
+    # apply, flat_map, interleave
 
     # batch, padded_batch
 
