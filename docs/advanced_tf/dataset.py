@@ -26,11 +26,11 @@ tt = tf.train
 # kl = ks.layers
 
 # complex input pipelines from simple, reusable pieces
-# a pipeline starts with a "source" and chains "transformations" to it
+# a pipeline starts with a "src_dset" and chains "transformations" to it
 
 # example - fascinating https://arxiv.org/pdf/1812.02825.pdf
 # num_samples of "x=-12,y=24:y+x:12" w/ "defs", "op" and "res"
-# names: x, y, ops: +, -, *, values: [-max_val, max_val]
+# vars: x, y, ops: +, -, *, vals: [-max_val, max_val]
 
 vocab = ('x', 'y')
 vocab += ('+', '-', '*', '=', ',', ':')
@@ -42,19 +42,20 @@ params = dict(
     max_val=10,
     num_samples=4,
     num_shards=3,
-    size_batch=2,
 )
 
 
 class Params:
+    # without error-prone string names
     def __init__(self, **kw):
         for k, v in kw.items():
             setattr(self, k, v)
 
 
-def native(ps):
+def py_gen(ps):
+    # generate samples
     m, n = ps.max_val, ps.num_samples
-    # x, y values in defs
+    # x, y vals in defs
     vals = np.random.randint(low=-m, high=m + 1, size=(2, n))
     # (x, y) order if 1 in defs [0] and op [1], respectively
     ords = np.random.randint(2, size=(2, n))
@@ -86,17 +87,17 @@ def native(ps):
 def gen_src(ps):
     # from_generator
     ds = td.Dataset.from_generator(
-        lambda: native(ps),
+        lambda: py_gen(ps),
         tf.string,
         tf.TensorShape([]),
     )
     return ds
 
 
-def source(ps):
+def src_dset(ps):
     # range, from_tensor_slices, from_tensors
     # also TextLineDataset
-    ds = [s for s in native(ps)]
+    ds = [s for s in py_gen(ps)]
     ds = td.Dataset.from_tensor_slices(np.array(ds))
     return ds
 
@@ -136,7 +137,7 @@ def tokenizer(d):
 
 def shards(ps):
     for _ in range(ps.num_shards):
-        yield source(ps).map(splitter).map(tokenizer)
+        yield src_dset(ps).map(splitter).map(tokenizer)
 
 
 def records(dset):
@@ -151,10 +152,11 @@ def records(dset):
 
 
 def dump(ps):
-    root = pth.Path('/tmp/qnarre/dataset')
-    root.mkdir(parents=True, exist_ok=True)
+    d = pth.Path('/tmp/qnarre/dataset')
+    d.mkdir(parents=True, exist_ok=True)
     for i, ds in enumerate(shards(ps)):
-        p = str(root / f'shard_{i}.tfrecords')
+        i = '{:0>4d}'.format(i)
+        p = str(d / f'shard_{i}.tfrecords')
         with tf.io.TFRecordWriter(p) as w:
             for r in records(ds):
                 w.write(r)
@@ -168,40 +170,33 @@ features = {
 }
 
 
-@tf.function
-def load(paths):
+def load(ps, paths):
     ds = td.TFRecordDataset(paths)
-    ds = ds.map(lambda x: tf.io.parse_single_example(x, features))
-    return ds.map(
-        lambda d: {
-            'defs': tf.sparse.to_dense(d['defs']),
-            'op': tf.sparse.to_dense(d['op']),
-            'res': tf.sparse.to_dense(d['res']),
-        })
+    if ps.dim_batch:
+        ds = ds.batch(ps.dim_batch)
+        return ds.map(lambda x: tf.io.parse_example(x, features))
+    return ds.map(lambda x: tf.io.parse_single_example(x, features))
 
 
 @tf.function
-def batch_load(ps, paths):
-    ds = td.TFRecordDataset(paths).batch(ps.size_batch)
-    ds = ds.map(lambda x: tf.io.parse_example(x, features))
-    return ds.map(
-        lambda d: {
-            'defs': tf.sparse.to_dense(d['defs']),
-            'op': tf.sparse.to_dense(d['op']),
-            'res': tf.sparse.to_dense(d['res']),
-        })
+def adapter(d):
+    return [
+        tf.sparse.to_dense(d['defs']),
+        tf.sparse.to_dense(d['op']),
+        tf.sparse.to_dense(d['res']),
+    ]
 
 
 def main(_):
     ps = Params(**params)
-    for s in native(ps):
+    for s in py_gen(ps):
         print(s)
     # cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip
     print('Ops on datasets')
     dg = gen_src(ps)
     for s in dg.take(2):
         print(s)
-    ds = source(ps)
+    ds = src_dset(ps)
     for i, s in ds.take(2).concatenate(dg).enumerate():
         print(i, s)
     # filter
@@ -214,10 +209,12 @@ def main(_):
     for s in ds.map(splitter).map(tokenizer).take(1):
         print(s)
     fs = [f for f in dump(ps)]
-    for i, s in enumerate(load(fs)):
+    ps.dim_batch = None
+    for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
     # batch, padded_batch
-    for i, s in enumerate(batch_load(ps, fs)):
+    ps.dim_batch = 2
+    for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
     # apply, flat_map, interleave, prefetch
 

@@ -21,19 +21,17 @@ td = tf.data
 ks = tf.keras
 kl = ks.layers
 
-# complex input pipelines from simple, reusable pieces
-# a pipeline starts with a "source" and chains "transformations" to it
 
-# tf.data.Dataset - abstraction for potentially large sequence of elements
-# each element is one or more Tensors
-# can be consumed as iterables or as aggregatables (reduce)
-# [inside a tf.function or eagerly]
-
-# apply, batch, cache,
-
-# concatenate, enumerate, filter, flat_map, interleave
-
-# from_generator, from_tensor_slices, from_tensors
+@tf.function
+def batch_load(ps, paths):
+    ds = td.TFRecordDataset(paths).batch(ps.dim_batch)
+    ds = ds.map(lambda x: tf.io.parse_example(x, features))
+    return ds.map(
+        lambda d: {
+            'defs': tf.sparse.to_dense(d['defs']),
+            'op': tf.sparse.to_dense(d['op']),
+            'res': tf.sparse.to_dense(d['res']),
+        })
 
 
 params = dict(
