@@ -135,9 +135,9 @@ def tokenizer(d):
 # transparent performance is key
 
 
-def shards(ps):
+def shards(ps, **kw):
     for _ in range(ps.num_shards):
-        yield src_dset(ps).map(splitter).map(tokenizer)
+        yield src_dset(ps).map(splitter, **kw).map(tokenizer, **kw)
 
 
 def records(dset):
@@ -151,12 +151,13 @@ def records(dset):
         yield tt.Example(features=fs).SerializeToString()
 
 
-def dump(ps):
+def dump(ps, **kw):
     d = pth.Path('/tmp/qnarre/dataset')
     d.mkdir(parents=True, exist_ok=True)
-    for i, ds in enumerate(shards(ps)):
+    for i, ds in enumerate(shards(ps, **kw)):
         i = '{:0>4d}'.format(i)
         p = str(d / f'shard_{i}.tfrecords')
+        print(f'dumping {p}...')
         with tf.io.TFRecordWriter(p) as w:
             for r in records(ds):
                 w.write(r)
@@ -170,12 +171,12 @@ features = {
 }
 
 
-def load(ps, paths):
+def load(ps, paths, **kw):
     ds = td.TFRecordDataset(paths)
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
-        return ds.map(lambda x: tf.io.parse_example(x, features))
-    return ds.map(lambda x: tf.io.parse_single_example(x, features))
+        return ds.map(lambda x: tf.io.parse_example(x, features), **kw)
+    return ds.map(lambda x: tf.io.parse_single_example(x, features), **kw)
 
 
 @tf.function
@@ -217,6 +218,14 @@ def main(_):
     for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
     # apply, flat_map, interleave, prefetch
+    ps.max_val = 100
+    ps.num_samples = 1000
+    ps.num_shards = 10
+    kw = dict(num_parallel_calls=td.experimental.AUTOTUNE)
+    fs = [f for f in dump(ps, **kw)]
+    ps.dim_batch = 100
+    for i, _ in enumerate(load(ps, fs, **kw).map(adapter)):
+        print(i)
 
 
 if __name__ == '__main__':
