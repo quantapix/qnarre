@@ -135,9 +135,9 @@ def tokenizer(d):
 # transparent performance is key
 
 
-def shards(ps, **kw):
+def shards(ps):
     for _ in range(ps.num_shards):
-        yield src_dset(ps).map(splitter, **kw).map(tokenizer, **kw)
+        yield src_dset(ps).map(splitter).map(tokenizer)
 
 
 def records(dset):
@@ -151,10 +151,10 @@ def records(dset):
         yield tt.Example(features=fs).SerializeToString()
 
 
-def dump(ps, **kw):
+def dump(ps):
     d = pth.Path('/tmp/qnarre/dataset')
     d.mkdir(parents=True, exist_ok=True)
-    for i, ds in enumerate(shards(ps, **kw)):
+    for i, ds in enumerate(shards(ps)):
         i = '{:0>4d}'.format(i)
         p = str(d / f'shard_{i}.tfrecords')
         print(f'dumping {p}...')
@@ -171,12 +171,12 @@ features = {
 }
 
 
-def load(ps, paths, **kw):
+def load(ps, paths):
     ds = td.TFRecordDataset(paths)
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
-        return ds.map(lambda x: tf.io.parse_example(x, features), **kw)
-    return ds.map(lambda x: tf.io.parse_single_example(x, features), **kw)
+        return ds.map(lambda x: tf.io.parse_example(x, features))
+    return ds.map(lambda x: tf.io.parse_single_example(x, features))
 
 
 @tf.function
@@ -221,10 +221,9 @@ def main(_):
     ps.max_val = 100
     ps.num_samples = 1000
     ps.num_shards = 10
-    kw = dict(num_parallel_calls=td.experimental.AUTOTUNE)
-    fs = [f for f in dump(ps, **kw)]
+    fs = [f for f in dump(ps)]
     ps.dim_batch = 100
-    for i, _ in enumerate(load(ps, fs, **kw).map(adapter)):
+    for i, _ in enumerate(load(ps, fs).map(adapter)):
         print(i)
 
 
