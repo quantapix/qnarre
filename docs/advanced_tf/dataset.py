@@ -124,10 +124,10 @@ def tokenizer(d):
     return {
         k: tf.numpy_function(
             lambda x: tf.constant([tokens[chr(c)] for c in x]),
-            [d[k]],
+            [v],
             Tout=tf.int32,
         )
-        for k in ('defs', 'op', 'res')
+        for k, v in d.items()
     }
 
 

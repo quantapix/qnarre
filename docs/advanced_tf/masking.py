@@ -38,16 +38,19 @@ def paths(ps):
 
 
 @tf.function
-def adapter(d):
-    ds = tf.cast(d['defs'], tf.int32)
-    ds = tf.RaggedTensor.from_sparse(ds)
+def caster(d):
+    return {k: tf.cast(v, tf.int32) for k, v in d.items()}
+
+
+@tf.function
+def adapter(d, len_seq):
+    ds = tf.RaggedTensor.from_sparse(d['defs'])
     ss = tf.fill([ds.nrows(), 1], SEP)
-    os = tf.cast(d['op'], tf.int32)
-    os = tf.RaggedTensor.from_sparse(os)
-    x = tf.concat([ds, ss, os], axis=1)
-    y = tf.cast(d['res'], tf.int32)
-    y = tf.RaggedTensor.from_sparse(y)
-    return x.to_tensor(), y.to_tensor()
+    os = tf.RaggedTensor.from_sparse(d['op'])
+    x = tf.concat([ds, ss, os], axis=1).to_tensor()
+    x = tf.pad(x, [[0, 0], [0, len_seq - tf.shape(x)[-1]]])
+    y = tf.RaggedTensor.from_sparse(d['res']).to_tensor()
+    return x, y
 
 
 def dset_for(ps):
@@ -57,11 +60,15 @@ def dset_for(ps):
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs))
-    return ds.map(adapter)
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
+    return ds.map(lambda d: adapter(d, tf.constant(ps.len_seq)))
 
 
 def model_for(ps):
+    inp = tf.Input(shape=(ps.len_seq, ), dtype='int32'),
+    out = [Mnist(ps)(ins)]
+    m = tf.Model(name='MnistModel', inputs=ins, outputs=outs)
+
     m = ks.Sequential()
     m.add(kl.Dense(ps.dim_hidden, input_dim=ps.dim_input, name='in'))
     for i in range(ps.num_layers):
@@ -73,9 +80,10 @@ def model_for(ps):
 
 
 params = dict(
+    dim_batch=100,
     dim_hidden=1000,
     dim_input=100,
-    dim_batch=100,
+    len_seq=20,
     loss=ks.losses.MeanAbsoluteError,
     metrics=ks.metrics.MeanAbsoluteError,
     num_layers=10,
@@ -92,7 +100,7 @@ class Params:
 
 def main(_):
     ps = Params(**params)
-    for s in dset_for(ps):
+    for s in dset_for(ps).take(1):
         print(s)
 
 
