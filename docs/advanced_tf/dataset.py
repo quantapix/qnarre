@@ -97,8 +97,8 @@ def gen_src(ps):
 def src_dset(ps):
     # range, from_tensor_slices, from_tensors
     # also TextLineDataset
-    ds = [s for s in py_gen(ps)]
-    ds = td.Dataset.from_tensor_slices(np.array(ds))
+    ds = np.array(list(py_gen(ps)))
+    ds = td.Dataset.from_tensor_slices(ds)
     return ds
 
 
