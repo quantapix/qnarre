@@ -51,8 +51,8 @@ def adapter(d, len_input):
     os = tf.RaggedTensor.from_sparse(d['op'])
     x = tf.concat([ds, ss, os], axis=1).to_tensor()
     x = tf.pad(x, [[0, 0], [0, len_input - tf.shape(x)[-1]]])
-    y = tf.RaggedTensor.from_sparse(d['res']).to_tensor()
-    return x, y[:, :1]
+    y = tf.RaggedTensor.from_sparse(d['res'])[:, :1].to_tensor()
+    return x, y
 
 
 def dset_for(ps):
