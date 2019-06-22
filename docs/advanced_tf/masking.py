@@ -74,11 +74,20 @@ class Layer(kl.Layer):
         self.ps = ps
 
 
-class Embed(Layer):
+class Masking(Layer):
     def __init__(self, *pa, **kw):
         super().__init__(*pa, **kw)
         self._compute_output_and_mask_jointly = True
 
+    def compute_mask(self, x, mask=None):
+        return tf.not_equal(x, 0)
+
+    def call(self, x):
+        x._keras_mask = self.compute_mask(x)
+        return x
+
+
+class Embed(Layer):
     def build(self, shape):
         ps = self.ps
         s = (ps.dim_vocab, ps.dim_hidden)
@@ -89,13 +98,11 @@ class Embed(Layer):
         s = tf.TensorShape((self.ps.dim_hidden, ))
         return shape.concatenate(s)
 
-    def compute_mask(self, x, mask=None):
-        return tf.not_equal(x, 0)
-
     @tf.function
-    def call(self, x):
+    def call(self, x, mask=None):
         y = tf.nn.embedding_lookup(self.emb_t, x)
-        y._keras_mask = self.compute_mask(x)
+        if mask is not None:
+            y *= tf.cast(mask, tf.float32)[:, :, None]
         return y
 
 
@@ -110,15 +117,13 @@ class Reflect(Layer):
 
     @tf.function
     def call(self, x, mask=None):
-        if mask is not None:
-            tf.print('mask', mask)
-            x *= tf.cast(mask, tf.float32)[:, :, None]
         q = tf.einsum('bsi,ij->bsj', x, self.q_w)
         k = tf.einsum('bsi,ij->bsj', x, self.k_w)
         y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
         if mask is not None:
             m = tf.logical_not(mask)
-            y += (tf.cast(m, tf.float32) * -1e9)[:, :, None]
+            m = tf.cast(m, tf.float32)[:, :, None]
+            y += m * -1e9
         v = tf.einsum('bsi,ij->bsj', x, self.v_w)
         y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
         return y
@@ -126,7 +131,8 @@ class Reflect(Layer):
 
 def model_for(ps):
     x = ks.Input(shape=(ps.len_input, ), dtype='int32')
-    y = Embed(ps)(x)
+    y = Masking(ps)(x)
+    y = Embed(ps)(y)
     y = Reflect(ps)(y)
     y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
@@ -139,7 +145,7 @@ def model_for(ps):
 
 params = dict(
     dim_batch=2,
-    dim_dense=25,
+    dim_dense=150,
     dim_hidden=15,
     dim_vocab=len(vocab) + 5,
     len_input=20,
