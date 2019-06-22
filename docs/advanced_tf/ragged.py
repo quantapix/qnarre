@@ -51,7 +51,7 @@ def adapter(d, len_input):
     os = tf.RaggedTensor.from_sparse(d['op'])
     x = tf.concat([ds, ss, os], axis=1)
     y = tf.RaggedTensor.from_sparse(d['res'])[:, :1].to_tensor()
-    return x, y
+    return (x.flat_values, x.row_splits), y
 
 
 def dset_for(ps):
@@ -70,6 +70,15 @@ class Layer(kl.Layer):
         kw.update(dtype=tf.float32)
         super().__init__(**kw)
         self.ps = ps
+
+
+class ToRagged(Layer):
+    def compute_output_shape(self, shape):
+        return tf.TensorShape((None, ))
+
+    @tf.function
+    def call(self, x):
+        return tf.RaggedTensor.from_row_splits(x[0], x[1])
 
 
 class Embed(Layer):
@@ -99,8 +108,8 @@ class Reflect(Layer):
 
     @tf.function
     def call(self, x):
-        q = x.with_values(tf.einsum('ni,ij->nj', x.values, self.q_w))
-        k = x.with_values(tf.einsum('ni,ij->nj', x.values, self.k_w))
+        q = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.q_w))
+        k = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.k_w))
         """
         y = tf.linalg.matmul(q.to_tensor(),
                              k.to_tensor(),
@@ -109,26 +118,38 @@ class Reflect(Layer):
                              b_is_sparse=True)
         """
         y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
-        tf.print('y', y, x.row_lengths())
+        print('111 y', y, x.row_lengths())
         y *= self.scale
-        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths(), ragged_rank=2)
-        tf.print('y', y)
-        # y = tf.sparse.softmax(y.to_sparse())
-        print('y', y)
-        # y = tf.RaggedTensor.from_sparse(y)
-        v = x.with_values(tf.einsum('ni,ij->nj', x.values, self.v_w))
+        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
+        print('222 y', y)
+        y = y.to_sparse()  # tf.sparse.softmax(y.to_sparse())
+        print('333 y', y)
+        y = tf.RaggedTensor.from_sparse(y)
+        v = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.v_w))
         # y = tf.einsum('bsz,bzi->bsi', y.values, v.values)
-        return x
+        return v
+
+
+class Expand(Layer):
+    def compute_output_shape(self, shape):
+        return tf.TensorShape((self.ps.len_input, self.ps.dim_hidden))
+
+    @tf.function
+    def call(self, x):
+        y = x.to_tensor()
+        s = tf.shape(y)[-2]
+        y = tf.pad(y, [[0, 0], [0, self.ps.len_input - s], [0, 0]])
+        return y
 
 
 def model_for(ps):
-    x = ks.Input(shape=(None, ), dtype='int32', ragged=True)
-    y = Embed(ps)(x)
+    x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int32')]
+    #, ragged=True)
+    y = ToRagged(ps)(x)
+    y = Embed(ps)(y)
     y = Reflect(ps)(y)
-    print(y)
-    # y = y.to_tensor()
-    # y = tf.pad(x, [[0, 0], [0, ps.len_input - tf.shape(y)[-1]]])
-    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y.to_tensor())
+    y = Expand(ps)(y)
+    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
@@ -159,8 +180,8 @@ class Params:
 def main(_):
     ps = Params(**params)
     ds = dset_for(ps)
-    for s in ds.take(1):
-        print(s)
+    # for s in ds.take(1):
+    #     print(s)
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/qnarre/logs/{ld}'
