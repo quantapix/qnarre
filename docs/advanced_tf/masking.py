@@ -75,11 +75,15 @@ class Layer(kl.Layer):
 
 
 class Masking(Layer):
+    def __init__(self, *pa, **kw):
+        super().__init__(*pa, **kw)
+        # self._compute_output_and_mask_jointly = True
+
     def compute_mask(self, x, mask=None):
         return tf.not_equal(x, 0)
 
     def call(self, x):
-        x._keras_mask = self.compute_mask(x)
+        # x._keras_mask = self.compute_mask(x)
         return x
 
 
