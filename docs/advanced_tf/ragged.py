@@ -109,10 +109,16 @@ class Reflect(Layer):
                              b_is_sparse=True)
         """
         y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
+        tf.print('y', y, x.row_lengths())
         y *= self.scale
+        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths(), ragged_rank=2)
+        tf.print('y', y)
+        # y = tf.sparse.softmax(y.to_sparse())
+        print('y', y)
+        # y = tf.RaggedTensor.from_sparse(y)
         v = x.with_values(tf.einsum('ni,ij->nj', x.values, self.v_w))
-        y = v  # tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
-        return y
+        # y = tf.einsum('bsz,bzi->bsi', y.values, v.values)
+        return x
 
 
 def model_for(ps):
@@ -121,8 +127,8 @@ def model_for(ps):
     y = Reflect(ps)(y)
     print(y)
     # y = y.to_tensor()
-    y = tf.pad(x, [[0, 0], [0, ps.len_input - tf.shape(y)[-1]]])
-    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
+    # y = tf.pad(x, [[0, 0], [0, ps.len_input - tf.shape(y)[-1]]])
+    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y.to_tensor())
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
