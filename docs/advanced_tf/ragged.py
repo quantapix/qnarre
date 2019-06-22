@@ -49,10 +49,9 @@ def adapter(d, len_input):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     ss = tf.fill([ds.nrows(), 1], SEP)
     os = tf.RaggedTensor.from_sparse(d['op'])
-    x = tf.concat([ds, ss, os], axis=1).to_tensor()
-    x = tf.pad(x, [[0, 0], [0, len_input - tf.shape(x)[-1]]])
-    y = tf.RaggedTensor.from_sparse(d['res']).to_tensor()
-    return x, y[:, :1]
+    x = tf.concat([ds, ss, os], axis=1)
+    y = tf.RaggedTensor.from_sparse(d['res'])[:, :1].to_tensor()
+    return x, y
 
 
 def dset_for(ps):
@@ -70,17 +69,7 @@ class Layer(kl.Layer):
     def __init__(self, ps, **kw):
         kw.update(dtype=tf.float32)
         super().__init__(**kw)
-        self.supports_masking = True
         self.ps = ps
-
-
-class Masking(Layer):
-    def compute_mask(self, x, mask=None):
-        return tf.not_equal(x, 0)
-
-    def call(self, x):
-        x._keras_mask = self.compute_mask(x)
-        return x
 
 
 class Embed(Layer):
@@ -95,11 +84,8 @@ class Embed(Layer):
         return shape.concatenate(s)
 
     @tf.function
-    def call(self, x, mask=None):
-        y = tf.nn.embedding_lookup(self.emb_t, x)
-        if mask is not None:
-            y *= tf.cast(mask, tf.float32)[:, :, None]
-        return y
+    def call(self, x):
+        return tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
 
 
 class Reflect(Layer):
@@ -112,25 +98,30 @@ class Reflect(Layer):
         return super().build(shape)
 
     @tf.function
-    def call(self, x, mask=None):
-        q = tf.einsum('bsi,ij->bsj', x, self.q_w)
-        k = tf.einsum('bsi,ij->bsj', x, self.k_w)
-        y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
-        if mask is not None:
-            # tf.print(' *** applying mask')
-            m = tf.logical_not(mask)
-            m = tf.cast(m, tf.float32)[:, :, None]
-            y += m * -1e9
-        v = tf.einsum('bsi,ij->bsj', x, self.v_w)
-        y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
+    def call(self, x):
+        q = x.with_values(tf.einsum('ni,ij->nj', x.values, self.q_w))
+        k = x.with_values(tf.einsum('ni,ij->nj', x.values, self.k_w))
+        """
+        y = tf.linalg.matmul(q.to_tensor(),
+                             k.to_tensor(),
+                             transpose_b=True,
+                             a_is_sparse=True,
+                             b_is_sparse=True)
+        """
+        y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
+        y *= self.scale
+        v = x.with_values(tf.einsum('ni,ij->nj', x.values, self.v_w))
+        y = v  # tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
         return y
 
 
 def model_for(ps):
-    x = ks.Input(shape=(ps.len_input, ), dtype='int32')
-    y = Masking(ps)(x)
-    y = Embed(ps)(y)
+    x = ks.Input(shape=(None, ), dtype='int32', ragged=True)
+    y = Embed(ps)(x)
     y = Reflect(ps)(y)
+    print(y)
+    # y = y.to_tensor()
+    y = tf.pad(x, [[0, 0], [0, ps.len_input - tf.shape(y)[-1]]])
     y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
