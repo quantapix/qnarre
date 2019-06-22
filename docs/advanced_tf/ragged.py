@@ -110,24 +110,14 @@ class Reflect(Layer):
     def call(self, x):
         q = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.q_w))
         k = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.k_w))
-        """
-        y = tf.linalg.matmul(q.to_tensor(),
-                             k.to_tensor(),
-                             transpose_b=True,
-                             a_is_sparse=True,
-                             b_is_sparse=True)
-        """
-        y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
-        print('111 y', y, x.row_lengths())
-        y *= self.scale
-        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
-        print('222 y', y)
-        y = y.to_sparse()  # tf.sparse.softmax(y.to_sparse())
-        print('333 y', y)
-        y = tf.RaggedTensor.from_sparse(y)
         v = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.v_w))
-        # y = tf.einsum('bsz,bzi->bsi', y.values, v.values)
-        return v
+        y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
+        y *= self.scale
+        y = tf.nn.softmax(y)
+        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
+        y, v = y.flat_values, v.flat_values
+        y = x.with_values(tf.einsum('nz,zi->ni', y, v))
+        return y
 
 
 class Expand(Layer):
