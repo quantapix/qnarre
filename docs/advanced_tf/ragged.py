@@ -36,6 +36,25 @@ kl = ks.layers
 # from_generator, from_tensor_slices, from_tensors
 
 
+
+class Norm(kl.Layer):
+    def build(self, shape):
+        s = shape[-1]
+        self.n_w = self.add_weight(name='n_w', shape=s, initializer='ones')
+        self.n_b = self.add_weight(name='n_b', shape=s, initializer='zeros')
+        return super().build(shape)
+
+    @tf.function
+    def call(self, x, mask=None):
+        if mask is not None:
+            x *= tf.cast(mask, tf.float32)[:, :, None]
+        m = tf.reduce_mean(x, axis=-1, keepdims=True)
+        v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
+        y = (x - m) / tf.sqrt(v + 1e-6)
+        y = y * self.n_w + self.n_b
+        return y
+
+
 params = dict(
     dim_hidden=1000,
     dim_input=100,

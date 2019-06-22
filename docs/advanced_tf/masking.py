@@ -14,7 +14,6 @@
 # =============================================================================
 # !pip install tensorflow==2.0.0-beta0
 
-# import numpy as np
 import pathlib as pth
 import tensorflow as tf
 
@@ -46,12 +45,12 @@ def caster(d):
 
 
 @tf.function
-def adapter(d, len_seq):
+def adapter(d, len_input):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     ss = tf.fill([ds.nrows(), 1], SEP)
     os = tf.RaggedTensor.from_sparse(d['op'])
     x = tf.concat([ds, ss, os], axis=1).to_tensor()
-    x = tf.pad(x, [[0, 0], [0, len_seq - tf.shape(x)[-1]]])
+    x = tf.pad(x, [[0, 0], [0, len_input - tf.shape(x)[-1]]])
     y = tf.RaggedTensor.from_sparse(d['res']).to_tensor()
     return x, y[:, :1]
 
@@ -64,7 +63,7 @@ def dset_for(ps):
         'res': tf.io.VarLenFeature(tf.int64),
     }
     ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
-    return ds.map(lambda d: adapter(d, tf.constant(ps.len_seq)))
+    return ds.map(lambda d: adapter(d, tf.constant(ps.len_input)))
 
 
 class Layer(kl.Layer):
@@ -112,6 +111,7 @@ class Reflect(Layer):
     @tf.function
     def call(self, x, mask=None):
         if mask is not None:
+            tf.print('mask', mask)
             x *= tf.cast(mask, tf.float32)[:, :, None]
         q = tf.einsum('bsi,ij->bsj', x, self.q_w)
         k = tf.einsum('bsi,ij->bsj', x, self.k_w)
@@ -124,41 +124,12 @@ class Reflect(Layer):
         return y
 
 
-class Ponder(kl.Dense):
-    @tf.function
-    def call(self, x, mask=None):
-        if mask is not None:
-            x *= tf.cast(mask, tf.float32)[:, :, None]
-        s = tf.shape(x)
-        y = tf.reshape(x, (-1, s[-2] * s[-1]))
-        y = super().call(y)
-        return y
-
-
-class Norm(kl.Layer):
-    def build(self, shape):
-        s = shape[-1]
-        self.n_w = self.add_weight(name='n_w', shape=s, initializer='ones')
-        self.n_b = self.add_weight(name='n_b', shape=s, initializer='zeros')
-        return super().build(shape)
-
-    @tf.function
-    def call(self, x, mask=None):
-        if mask is not None:
-            x *= tf.cast(mask, tf.float32)[:, :, None]
-        m = tf.reduce_mean(x, axis=-1, keepdims=True)
-        v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
-        y = (x - m) / tf.sqrt(v + 1e-6)
-        y = y * self.n_w + self.n_b
-        return y
-
-
 def model_for(ps):
-    x = ks.Input(shape=(ps.len_seq, ), dtype='int32')
+    x = ks.Input(shape=(ps.len_input, ), dtype='int32')
     y = Embed(ps)(x)
     y = Reflect(ps)(y)
-    # y = Norm()(y)
-    y = Ponder(ps.dim_ponder, activation='relu')(y)
+    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
+    y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
@@ -168,15 +139,14 @@ def model_for(ps):
 
 params = dict(
     dim_batch=2,
-    dim_hidden=10,
+    dim_dense=25,
+    dim_hidden=15,
     dim_vocab=len(vocab) + 5,
-    len_seq=20,
+    len_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
-    num_layers=10,
-    num_shards=10,
+    num_shards=2,
     optimizer=ks.optimizers.Adam(),
-    dim_ponder=100,
 )
 
 
