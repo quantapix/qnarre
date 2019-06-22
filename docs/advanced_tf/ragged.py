@@ -14,54 +14,142 @@
 # =============================================================================
 # !pip install tensorflow==2.0.0-beta0
 
-import numpy as np
+import pathlib as pth
 import tensorflow as tf
+
+from datetime import datetime
 
 td = tf.data
 ks = tf.keras
 kl = ks.layers
 
-# complex input pipelines from simple, reusable pieces
-# a pipeline starts with a "source" and chains "transformations" to it
+vocab = ('x', 'y')
+vocab += ('+', '-', '*', '=', ',', ':')
+vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
-# tf.data.Dataset - abstraction for potentially large sequence of elements
-# each element is one or more Tensors
-# can be consumed as iterables or as aggregatables (reduce)
-# [inside a tf.function or eagerly]
-
-# apply, batch, cache,
-
-# concatenate, enumerate, filter, flat_map, interleave
-
-# from_generator, from_tensor_slices, from_tensors
+tokens = {k: v for v, k in enumerate(vocab, start=5)}
+tokens.update({v: k for k, v in tokens.items()})
+SEP = tokens[':']
 
 
+def paths(ps):
+    d = pth.Path('/tmp/qnarre/dataset')
+    for i in range(ps.num_shards):
+        i = '{:0>4d}'.format(i)
+        yield str(d / f'shard_{i}.tfrecords')
 
-class Norm(kl.Layer):
+
+@tf.function
+def caster(d):
+    return {k: tf.cast(v, tf.int32) for k, v in d.items()}
+
+
+@tf.function
+def adapter(d, len_input):
+    ds = tf.RaggedTensor.from_sparse(d['defs'])
+    ss = tf.fill([ds.nrows(), 1], SEP)
+    os = tf.RaggedTensor.from_sparse(d['op'])
+    x = tf.concat([ds, ss, os], axis=1).to_tensor()
+    x = tf.pad(x, [[0, 0], [0, len_input - tf.shape(x)[-1]]])
+    y = tf.RaggedTensor.from_sparse(d['res']).to_tensor()
+    return x, y[:, :1]
+
+
+def dset_for(ps):
+    ds = td.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
+    fs = {
+        'defs': tf.io.VarLenFeature(tf.int64),
+        'op': tf.io.VarLenFeature(tf.int64),
+        'res': tf.io.VarLenFeature(tf.int64),
+    }
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
+    return ds.map(lambda d: adapter(d, tf.constant(ps.len_input)))
+
+
+class Layer(kl.Layer):
+    def __init__(self, ps, **kw):
+        kw.update(dtype=tf.float32)
+        super().__init__(**kw)
+        self.supports_masking = True
+        self.ps = ps
+
+
+class Masking(Layer):
+    def compute_mask(self, x, mask=None):
+        return tf.not_equal(x, 0)
+
+    def call(self, x):
+        x._keras_mask = self.compute_mask(x)
+        return x
+
+
+class Embed(Layer):
+    def build(self, shape):
+        ps = self.ps
+        s = (ps.dim_vocab, ps.dim_hidden)
+        self.emb_t = self.add_weight(name='emb_t', shape=s)
+        return super().build(shape)
+
+    def compute_output_shape(self, shape):
+        s = tf.TensorShape((self.ps.dim_hidden, ))
+        return shape.concatenate(s)
+
+    @tf.function
+    def call(self, x, mask=None):
+        y = tf.nn.embedding_lookup(self.emb_t, x)
+        if mask is not None:
+            y *= tf.cast(mask, tf.float32)[:, :, None]
+        return y
+
+
+class Reflect(Layer):
     def build(self, shape):
         s = shape[-1]
-        self.n_w = self.add_weight(name='n_w', shape=s, initializer='ones')
-        self.n_b = self.add_weight(name='n_b', shape=s, initializer='zeros')
+        self.scale = 1 / (s**0.5)
+        self.q_w = self.add_weight(name='q_w', shape=(s, s))
+        self.k_w = self.add_weight(name='k_w', shape=(s, s))
+        self.v_w = self.add_weight(name='v_w', shape=(s, s))
         return super().build(shape)
 
     @tf.function
     def call(self, x, mask=None):
+        q = tf.einsum('bsi,ij->bsj', x, self.q_w)
+        k = tf.einsum('bsi,ij->bsj', x, self.k_w)
+        y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
         if mask is not None:
-            x *= tf.cast(mask, tf.float32)[:, :, None]
-        m = tf.reduce_mean(x, axis=-1, keepdims=True)
-        v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
-        y = (x - m) / tf.sqrt(v + 1e-6)
-        y = y * self.n_w + self.n_b
+            # tf.print(' *** applying mask')
+            m = tf.logical_not(mask)
+            m = tf.cast(m, tf.float32)[:, :, None]
+            y += m * -1e9
+        v = tf.einsum('bsi,ij->bsj', x, self.v_w)
+        y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
         return y
 
 
+def model_for(ps):
+    x = ks.Input(shape=(ps.len_input, ), dtype='int32')
+    y = Masking(ps)(x)
+    y = Embed(ps)(y)
+    y = Reflect(ps)(y)
+    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
+    y = kl.Dense(ps.dim_dense, activation='relu')(y)
+    y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
+    m = ks.Model(inputs=x, outputs=y)
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
+    print(m.summary())
+    return m
+
+
 params = dict(
-    dim_hidden=1000,
-    dim_input=100,
-    loss=ks.losses.MeanAbsoluteError,
-    metrics=ks.metrics.MeanAbsoluteError,
-    num_layers=10,
-    optimizer=ks.optimizers.SGD,
+    dim_batch=2,
+    dim_dense=150,
+    dim_hidden=15,
+    dim_vocab=len(vocab) + 5,
+    len_input=20,
+    loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metrics=ks.metrics.SparseCategoricalAccuracy(),
+    num_shards=2,
+    optimizer=ks.optimizers.Adam(),
 )
 
 
@@ -73,7 +161,14 @@ class Params:
 
 def main(_):
     ps = Params(**params)
-    d = np.ones((100, ps.dim_input))
+    ds = dset_for(ps)
+    for s in ds.take(1):
+        print(s)
+    m = model_for(ps)
+    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
+    ld = f'/tmp/qnarre/logs/{ld}'
+    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
+    m.fit(ds, callbacks=cs, epochs=10)
 
 
 if __name__ == '__main__':

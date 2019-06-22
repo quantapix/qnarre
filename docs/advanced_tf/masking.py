@@ -75,10 +75,6 @@ class Layer(kl.Layer):
 
 
 class Masking(Layer):
-    def __init__(self, *pa, **kw):
-        super().__init__(*pa, **kw)
-        self._compute_output_and_mask_jointly = True
-
     def compute_mask(self, x, mask=None):
         return tf.not_equal(x, 0)
 
@@ -121,6 +117,7 @@ class Reflect(Layer):
         k = tf.einsum('bsi,ij->bsj', x, self.k_w)
         y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
         if mask is not None:
+            # tf.print(' *** applying mask')
             m = tf.logical_not(mask)
             m = tf.cast(m, tf.float32)[:, :, None]
             y += m * -1e9

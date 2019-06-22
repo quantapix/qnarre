@@ -19,55 +19,23 @@ import tensorflow as tf
 
 from datetime import datetime
 
-ks = tf.keras
-kl = ks.layers
-cfg = tf.config.experimental
 
-# tf.debugging.set_log_device_placement(True)
+class Norm(kl.Layer):
+    def build(self, shape):
+        s = shape[-1]
+        self.n_w = self.add_weight(name='n_w', shape=s, initializer='ones')
+        self.n_b = self.add_weight(name='n_b', shape=s, initializer='zeros')
+        return super().build(shape)
 
-devs = ((None, None, None, None, None), )
-devs = ((None, ), (1000, 1000, 1000, 1000, 1000, 1000), (1000, 1000, 1000, 1000, 1000, 1000))
-cfg.set_visible_devices(cfg.get_visible_devices('CPU')[:1], 'CPU')
-cfg.set_visible_devices(cfg.get_visible_devices('GPU')[:len(devs) - 1], 'GPU')
-for d, ms in zip(cfg.get_visible_devices(), devs):
-    vs = [cfg.VirtualDeviceConfiguration(m) for m in ms]
-    cfg.set_virtual_device_configuration(d, vs)
-devs = cfg.list_logical_devices('CPU')
-devs += cfg.list_logical_devices('GPU')
-print('devices:', [d.name for d in devs])
-
-tf.config.set_soft_device_placement(False)
-# cfg.set_device_policy('warn')
-
-
-class Layer(kl.Layer):
-    def __init__(self, i, ps, **kw):
-        super().__init__(**kw)
-        self.idx = min(i + 1, len(devs) - 1)
-        self.ps = ps
-
-    def build(self, input_shape):
-        s = input_shape[-1]
-        with tf.device(devs[self.idx].name):
-            self.w = self.add_weight(name='l_w', shape=(s, s))
-            self.b = self.add_weight(name='l_b', shape=(s, ))
-        return super().build(input_shape)
-
-    def call(self, x):
-        with tf.device(devs[self.idx].name):
-            y = tf.einsum('bi,ij->bj', x, self.w) + self.b
+    @tf.function
+    def call(self, x, mask=None):
+        if mask is not None:
+            x *= tf.cast(mask, tf.float32)[:, :, None]
+        m = tf.reduce_mean(x, axis=-1, keepdims=True)
+        v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
+        y = (x - m) / tf.sqrt(v + 1e-6)
+        y = y * self.n_w + self.n_b
         return y
-
-
-def model_for(ps):
-    m = ks.Sequential()
-    m.add(kl.Dense(ps.dim_hidden, input_dim=ps.dim_input, name='in'))
-    for i in range(ps.num_layers):
-        m.add(Layer(i, ps, name=f'lay_{i}'))
-    m.add(kl.Dense(ps.dim_input, name='out'))
-    m.compile(optimizer=ps.optimizer(), loss=ps.loss(), metrics=[ps.metrics()])
-    print(m.summary())
-    return m
 
 
 params = dict(
