@@ -67,17 +67,23 @@ def dset_for(ps):
     return ds.map(lambda d: adapter(d, tf.constant(ps.len_seq)))
 
 
-class Embed(kl.Layer):
+class Layer(kl.Layer):
     def __init__(self, ps, **kw):
+        kw.update(dtype=tf.float32)
         super().__init__(**kw)
-        self._compute_output_and_mask_jointly = True
         self.supports_masking = True
         self.ps = ps
+
+
+class Embed(Layer):
+    def __init__(self, *pa, **kw):
+        super().__init__(*pa, **kw)
+        self._compute_output_and_mask_jointly = True
 
     def build(self, shape):
         ps = self.ps
         s = (ps.dim_vocab, ps.dim_hidden)
-        self.emb_t = self.add_weight(name='emb_t', shape=s, dtype=tf.float32)
+        self.emb_t = self.add_weight(name='emb_t', shape=s)
         return super().build(shape)
 
     def compute_output_shape(self, shape):
@@ -94,64 +100,66 @@ class Embed(kl.Layer):
         return y
 
 
-class Attn(kl.Layer):
-    def __init__(self, ps, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-        self.ps = ps
-
+class Reflect(Layer):
     def build(self, shape):
         s = shape[-1]
-        kw = dict(dtype=tf.float32)
-        self.qkv_w = self.add_weight(name='qkv_w', shape=(s, s), **kw)
+        self.scale = 1 / (s**0.5)
+        self.q_w = self.add_weight(name='q_w', shape=(s, s))
+        self.k_w = self.add_weight(name='k_w', shape=(s, s))
+        self.v_w = self.add_weight(name='v_w', shape=(s, s))
         return super().build(shape)
-
-    def compute_output_shape(self, shape):
-        s = tf.TensorShape((self.ps.dim_hidden, ))
-        return shape.concatenate(s)
 
     @tf.function
     def call(self, x, mask=None):
         if mask is not None:
-            print('mask', mask.shape.as_list())
-            m = tf.cast(tf.logical_not(mask), tf.float32) * -1e9
-            x += m[:, :, None]
-            print('xx', x.shape.as_list())
-        y = tf.einsum('bi,ij->bj', x, self.dense_w) + self.dense_b
+            x *= tf.cast(mask, tf.float32)[:, :, None]
+        q = tf.einsum('bsi,ij->bsj', x, self.q_w)
+        k = tf.einsum('bsi,ij->bsj', x, self.k_w)
+        y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
+        if mask is not None:
+            m = tf.logical_not(mask)
+            y += (tf.cast(m, tf.float32) * -1e9)[:, :, None]
+        v = tf.einsum('bsi,ij->bsj', x, self.v_w)
+        y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
+        return y
+
+
+class Ponder(kl.Dense):
+    @tf.function
+    def call(self, x, mask=None):
+        if mask is not None:
+            x *= tf.cast(mask, tf.float32)[:, :, None]
+        s = tf.shape(x)
+        y = tf.reshape(x, (-1, s[-2] * s[-1]))
+        y = super().call(y)
         return y
 
 
 class Norm(kl.Layer):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.supports_masking = True
-
     def build(self, shape):
         s = shape[-1]
-        self.norm_w = self.add_weight('norm_w', s, initializer='ones')
-        self.norm_b = self.add_weight('norm_b', s, initializer='zeros')
+        self.n_w = self.add_weight(name='n_w', shape=s, initializer='ones')
+        self.n_b = self.add_weight(name='n_b', shape=s, initializer='zeros')
         return super().build(shape)
 
     @tf.function
     def call(self, x, mask=None):
         if mask is not None:
-            x += tf.cast(mask, tf.float32)[:, :, None]
+            x *= tf.cast(mask, tf.float32)[:, :, None]
         m = tf.reduce_mean(x, axis=-1, keepdims=True)
         v = tf.reduce_mean(tf.square(x - m), axis=-1, keepdims=True)
         y = (x - m) / tf.sqrt(v + 1e-6)
-        y = y * self.norm_w + self.norm_b
+        y = y * self.n_w + self.n_b
         return y
 
 
 def model_for(ps):
     x = ks.Input(shape=(ps.len_seq, ), dtype='int32')
     y = Embed(ps)(x)
-    print('y', y.shape.as_list())
-    y = Dense(ps)(y)
+    y = Reflect(ps)(y)
     # y = Norm()(y)
-    print('y', y.shape.as_list())
+    y = Ponder(ps.dim_ponder, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
-    print('y', y.shape.as_list())
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
     print(m.summary())
@@ -168,6 +176,7 @@ params = dict(
     num_layers=10,
     num_shards=10,
     optimizer=ks.optimizers.Adam(),
+    dim_ponder=100,
 )
 
 
