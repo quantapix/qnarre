@@ -108,6 +108,16 @@ class Reflect(Layer):
 
     @tf.function
     def call(self, x):
+        x = x.to_tensor()
+        q = tf.einsum('bsi,ij->bsj', x, self.q_w)
+        k = tf.einsum('bsi,ij->bsj', x, self.k_w)
+        y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
+        v = tf.einsum('bsi,ij->bsj', x, self.v_w)
+        y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
+        return y
+
+    @tf.function
+    def call_new(self, x):
         q = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.q_w))
         k = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.k_w))
         v = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.v_w))
@@ -126,7 +136,8 @@ class Expand(Layer):
 
     @tf.function
     def call(self, x):
-        y = x.to_tensor()
+        # y = x.to_tensor()
+        y = x
         s = tf.shape(y)[-2]
         y = tf.pad(y, [[0, 0], [0, self.ps.len_input - s], [0, 0]])
         return y
@@ -134,7 +145,7 @@ class Expand(Layer):
 
 def model_for(ps):
     x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int32')]
-    #, ragged=True)
+    # , ragged=True)
     y = ToRagged(ps)(x)
     y = Embed(ps)(y)
     y = Reflect(ps)(y)
@@ -168,6 +179,7 @@ class Params:
 
 
 def main(_):
+    # tf.autograph.set_verbosity(1)
     ps = Params(**params)
     ds = dset_for(ps)
     # for s in ds.take(1):
@@ -180,5 +192,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-    from absl import app
+    from absl import app  # , logging
+    # logging.set_verbosity(logging.DEBUG)
     app.run(main)
