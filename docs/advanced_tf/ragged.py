@@ -107,7 +107,6 @@ class Reflect(Layer):
 
 
 class Expand(Layer):
-
     def call(self, x):
         y = x.to_tensor()
         s = tf.shape(y)[-2]
@@ -127,7 +126,7 @@ def model_for(ps):
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
-    # m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
     print(m.summary())
     return m
 
@@ -151,7 +150,6 @@ class Params:
             setattr(self, k, v)
 
 
-"""
 def main(_):
     # tf.autograph.set_verbosity(1)
     ps = Params(**params)
@@ -163,7 +161,6 @@ def main(_):
     ld = f'/tmp/qnarre/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
     m.fit(ds, callbacks=cs, epochs=10)
-"""
 
 
 def main_eager(_):
@@ -200,4 +197,4 @@ def main_eager(_):
 if __name__ == '__main__':
     from absl import app  # , logging
     # logging.set_verbosity(logging.DEBUG)
-    app.run(main_eager)
+    app.run(main)
