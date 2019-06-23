@@ -72,29 +72,18 @@ class Layer(kl.Layer):
         self.ps = ps
 
 
-class ToRagged(Layer):
-    def compute_output_shape(self, shape):
-        return tf.TensorShape((None, ))
-
-    @tf.function
-    def call(self, x):
-        return tf.RaggedTensor.from_row_splits(x[0], x[1])
-
-
 class Embed(Layer):
-    def build(self, shape):
+    def __init__(self, *pa, **kw):
+        super().__init__(*pa, **kw)
         ps = self.ps
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
-        return super().build(shape)
 
-    def compute_output_shape(self, shape):
-        s = tf.TensorShape((self.ps.dim_hidden, ))
-        return shape.concatenate(s)
-
-    @tf.function
     def call(self, x):
-        return tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
+        fv, rs = x
+        x = tf.RaggedTensor.from_row_splits(fv, rs)
+        y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
+        return y
 
 
 class Reflect(Layer):
@@ -106,55 +95,39 @@ class Reflect(Layer):
         self.v_w = self.add_weight(name='v_w', shape=(s, s))
         return super().build(shape)
 
-    @tf.function
     def call(self, x):
-        x = x.to_tensor()
-        q = tf.einsum('bsi,ij->bsj', x, self.q_w)
-        k = tf.einsum('bsi,ij->bsj', x, self.k_w)
-        y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
-        v = tf.einsum('bsi,ij->bsj', x, self.v_w)
-        y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
-        return y
-
-    @tf.function
-    def call_new(self, x):
         q = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.q_w))
         k = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.k_w))
         v = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.v_w))
         y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
-        y *= self.scale
-        y = tf.nn.softmax(y)
+        y = tf.nn.softmax(y * self.scale)
+        y = tf.einsum('bsz,bzi->bsi', y, v.to_tensor())
         y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
-        y, v = y.flat_values, v.flat_values
-        y = x.with_values(tf.einsum('nz,zi->ni', y, v))
         return y
 
 
 class Expand(Layer):
-    def compute_output_shape(self, shape):
-        return tf.TensorShape((self.ps.len_input, self.ps.dim_hidden))
 
-    @tf.function
     def call(self, x):
-        # y = x.to_tensor()
-        y = x
+        y = x.to_tensor()
         s = tf.shape(y)[-2]
         y = tf.pad(y, [[0, 0], [0, self.ps.len_input - s], [0, 0]])
         return y
 
 
 def model_for(ps):
-    x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int32')]
-    # , ragged=True)
-    y = ToRagged(ps)(x)
-    y = Embed(ps)(y)
+    x = [
+        ks.Input(shape=(), dtype='int32'),  # , ragged=True)
+        ks.Input(shape=(), dtype='int64'),
+    ]
+    y = Embed(ps)(x)
     y = Reflect(ps)(y)
     y = Expand(ps)(y)
     y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
+    # m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
     print(m.summary())
     return m
 
@@ -162,7 +135,7 @@ def model_for(ps):
 params = dict(
     dim_batch=2,
     dim_dense=150,
-    dim_hidden=15,
+    dim_hidden=6,
     dim_vocab=len(vocab) + 5,
     len_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -178,6 +151,7 @@ class Params:
             setattr(self, k, v)
 
 
+"""
 def main(_):
     # tf.autograph.set_verbosity(1)
     ps = Params(**params)
@@ -189,9 +163,41 @@ def main(_):
     ld = f'/tmp/qnarre/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
     m.fit(ds, callbacks=cs, epochs=10)
+"""
+
+
+def main_eager(_):
+    ps = Params(**params)
+    ds = dset_for(ps)
+    m = model_for(ps)
+
+    def step(x, y):
+        with tf.GradientTape() as tape:
+            logits = m(x)
+            loss = ps.loss(y, logits)
+            loss += sum(m.losses)
+            acc = ps.metrics(y, logits)
+        grads = tape.gradient(loss, m.trainable_variables)
+        ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
+        return loss, acc
+
+    @tf.function
+    def epoch():
+        s, loss, acc = 0, 0.0, 0.0
+        for x, y in ds:
+            s += 1
+            loss, acc = step(x, y)
+            if tf.equal(s % 10, 0):
+                m = ps.metrics.result()
+                tf.print('Step:', s, ', loss:', loss, ', acc:', m)
+        return loss, acc
+
+    for e in range(10):
+        loss, acc = epoch()
+        print(f'Epoch {e} loss:', loss, ', acc:', acc)
 
 
 if __name__ == '__main__':
     from absl import app  # , logging
     # logging.set_verbosity(logging.DEBUG)
-    app.run(main)
+    app.run(main_eager)
