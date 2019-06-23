@@ -97,21 +97,97 @@ class Embed(kl.Layer):
         fv, rs = x
         x = tf.RaggedTensor.from_row_splits(fv, rs)
         y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
-        y *= y.shape[-1]**0.5
+        # y *= y.shape[-1]**0.5
         y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=y.row_lengths())
         return y
 
 
-class Reflect(kl.Layer):
-    def build(self, shape):
-        s = shape[-1]
-        self.scale = 1 / (s**0.5)
-        self.q_w = self.add_weight(name='q_w', shape=(s, s))
-        self.k_w = self.add_weight(name='k_w', shape=(s, s))
-        self.v_w = self.add_weight(name='v_w', shape=(s, s))
-        return super().build(shape)
+class Encode(kl.Layer):
+    def __init__(self, ps):
+        super().__init__(dtype=tf.float32)
+        self.ps = ps
+        n = self.ps.dim_stacks
+        self.encs = [Encoder(self, f'enc_{i}') for i in range(n)]
 
     def call(self, x):
+        y = x
+        for e in self.encs:
+            y, ctx = e(y)
+        return [y, ctx]
+
+
+class Decode(kl.Layer):
+    def __init__(self, ps):
+        super().__init__(dtype=tf.float32)
+        self.ps = ps
+        n = self.ps.dim_stacks
+        self.decs = [Decoder(self, f'dec_{i}') for i in range(n)]
+
+    def call(self, x):
+        y, ctx = x
+        for d in self.decs:
+            y, _ = d([y, ctx])
+        return y
+
+
+class Debed(kl.Layer):
+    def __init__(self, ps):
+        super().__init__(dtype=tf.float32)
+        self.out = kl.Dense(ps.dim_vocab, activation=None)
+
+    def call(self, x):
+        y = x.to_tensor()
+        s = tf.shape(y)
+        y = tf.pad(y, [[0, 0], [0, self.max_len - s[-2]], [0, 0]])
+        y = tf.reshape(y, [-1, self.max_len * s[-1]])
+        y = self.out(y)
+        return y
+
+
+class Encoder(tf.Module):
+    def __init__(self, layer, name=None):
+        super().__init__(name=name)
+        with self.name_scope:
+            self.reflect = Attention(layer, name='_refl')
+            self.conclude = Conclusion(layer, name=name + '_concl')
+
+    @tf.Module.with_name_scope
+    def __call__(self, x):
+        y, ctx = self.reflect([x, None])
+        y = self.conclude(y)
+        return y, ctx
+
+
+class Decoder(tf.Module):
+    def __init__(self, layer, name=None):
+        super().__init__(name=name)
+        with self.name_scope:
+            self.reflect = Attention(layer, name='_refl')
+            self.consider = Attention(layer, name='_cons')
+            self.conclude = Conclusion(layer, name=name + '_conc')
+
+    @tf.Module.with_name_scope
+    def __call__(self, x):
+        x, ctx = x
+        y, _ = self.reflect([x, None])
+        y, _ = self.consider([y, ctx])
+        y = self.conclude(y)
+        return y
+
+
+class Attention(tf.Module):
+    def __init__(self, layer, name=None):
+        super().__init__(name=name)
+        h = layer.ps.dim_hidden
+        self.scale = 1 / (h**0.5)
+        with self.name_scope:
+            self.q_w = layer.add_weight(name='q_w', shape=(h, h))
+            self.k_w = layer.add_weight(name='k_w', shape=(h, h))
+            self.v_w = layer.add_weight(name='v_w', shape=(h, h))
+
+    @tf.Module.with_name_scope
+    def __call__(self, x):
+        x, ctx = x
         q = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.q_w))
         k = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.k_w))
         v = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.v_w))
@@ -119,29 +195,36 @@ class Reflect(kl.Layer):
         y = tf.nn.softmax(y * self.scale)
         y = tf.einsum('bsz,bzi->bsi', y, v.to_tensor())
         y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
-        return y
+        return [y, None]
 
 
-class Expand(kl.Layer):
-    def __init__(self, ps):
-        super().__init__()
-        self.ps = ps
+class Conclusion(tf.Module):
+    def __init__(self, layer, name=None):
+        super().__init__(name=name)
+        ps = layer.ps
+        self.max_len = m = ps.len_max_seq
+        self.inflate = kl.Dense(ps.dim_dense, activation='relu')
+        self.deflate = kl.Dense(m * ps.dim_hidden, use_bias=False)
 
-    def call(self, x):
+    @tf.Module.with_name_scope
+    def __call__(self, x):
         y = x.to_tensor()
-        s = tf.shape(y)[-2]
-        y = tf.pad(y, [[0, 0], [0, self.ps.len_max_seq - s], [0, 0]])
+        s = tf.shape(y)
+        y = tf.pad(y, [[0, 0], [0, self.max_len - s[-2]], [0, 0]])
+        y = tf.reshape(y, [-1, self.max_len * s[-1]])
+        y = self.inflate(y)
+        y = self.deflate(y)
+        y = tf.reshape(y, [-1, self.max_len, s[-1]])
+        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
         return y
 
 
 def model_for(ps):
     x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     y = Embed(ps)(x)
-    y = Reflect(ps)(y)
-    y = Expand(ps)(y)
-    y = kl.Reshape((ps.len_max_seq * ps.dim_hidden, ))(y)
-    y = kl.Dense(ps.dim_dense, activation='relu')(y)
-    y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
+    y = Encode(ps)(y)
+    y = Decode(ps)(y)
+    y = Debed(ps)(y)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
     print(m.summary())
@@ -152,6 +235,7 @@ params = dict(
     dim_batch=2,
     dim_dense=150,
     dim_hidden=6,
+    dim_stacks=2,
     dim_vocab=len(vocab) + 5,
     len_max_seq=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
