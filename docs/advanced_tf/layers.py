@@ -104,7 +104,7 @@ class Embed(kl.Layer):
 
 class Encode(kl.Layer):
     def __init__(self, ps):
-        super().__init__(dtype=tf.float32)
+        super().__init__()
         self.ps = ps
         n = self.ps.dim_stacks
         self.encs = [Encoder(self, f'enc_{i}') for i in range(n)]
@@ -118,7 +118,7 @@ class Encode(kl.Layer):
 
 class Decode(kl.Layer):
     def __init__(self, ps):
-        super().__init__(dtype=tf.float32)
+        super().__init__()
         self.ps = ps
         n = self.ps.dim_stacks
         self.decs = [Decoder(self, f'dec_{i}') for i in range(n)]
@@ -126,14 +126,16 @@ class Decode(kl.Layer):
     def call(self, x):
         y, ctx = x
         for d in self.decs:
-            y, _ = d([y, ctx])
+            y = d([y, ctx])
         return y
 
 
 class Debed(kl.Layer):
     def __init__(self, ps):
-        super().__init__(dtype=tf.float32)
-        self.out = kl.Dense(ps.dim_vocab, activation=None)
+        super().__init__()
+        self.max_len = u = ps.len_max_seq
+        s = [u * ps.dim_hidden, ps.dim_vocab]
+        self.out = Dense(self, s, name='out')
 
     def call(self, x):
         y = x.to_tensor()
@@ -155,7 +157,7 @@ class Encoder(tf.Module):
     def __call__(self, x):
         y, ctx = self.reflect([x, None])
         y = self.conclude(y)
-        return y, ctx
+        return [y, ctx]
 
 
 class Decoder(tf.Module):
@@ -195,16 +197,20 @@ class Attention(tf.Module):
         y = tf.nn.softmax(y * self.scale)
         y = tf.einsum('bsz,bzi->bsi', y, v.to_tensor())
         y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
-        return [y, None]
+        return [y, tf.constant(1)]
 
 
 class Conclusion(tf.Module):
     def __init__(self, layer, name=None):
         super().__init__(name=name)
         ps = layer.ps
-        self.max_len = m = ps.len_max_seq
-        self.inflate = kl.Dense(ps.dim_dense, activation='relu')
-        self.deflate = kl.Dense(m * ps.dim_hidden, use_bias=False)
+        self.max_len = u = ps.len_max_seq
+        u *= ps.dim_hidden
+        with self.name_scope:
+            s = [u, ps.dim_dense]
+            self.inflate = Dense(layer, s, name='infl', activ='relu')
+            s = [ps.dim_dense, u]
+            self.deflate = Dense(layer, s, name='defl', bias=False)
 
     @tf.Module.with_name_scope
     def __call__(self, x):
@@ -216,6 +222,29 @@ class Conclusion(tf.Module):
         y = self.deflate(y)
         y = tf.reshape(y, [-1, self.max_len, s[-1]])
         y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
+        return y
+
+
+class Dense(tf.Module):
+    activ = None
+    bias = None
+
+    def __init__(self, layer, shape, name=None, activ=None, bias=True):
+        super().__init__(name=name)
+        with self.name_scope:
+            self.kern = layer.add_weight('kern', shape=shape)
+            self.activ = ks.activations.get(activ)
+            if bias:
+                kw = dict(shape=shape[1:], initializer='zeros')
+                self.bias = layer.add_weight('bias', **kw)
+
+    @tf.Module.with_name_scope
+    def __call__(self, x):
+        y = tf.einsum('bi,ij->bj', x, self.kern)
+        if self.bias is not None:
+            y += self.bias
+        if self.activ:
+            return self.activ(y)
         return y
 
 
