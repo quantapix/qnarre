@@ -178,3 +178,53 @@
 - if we turn on batching in our dataset, the same code will now return the following:
 
 - as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each:
+
+# Unified Adaptable Masking
+
+- TODO: expand bullets
+- objective: [graph](./masking.pdf)
+
+- load our meta data
+
+- get paths to the file shards
+- recast our parsed streams and start using `RaggedTensors` instead of sparse ones
+- before handing the streams of data to Keras convert them (for now) to dense tensors 
+
+- ready to create our dataset
+
+- we need to tell our Keras layers to support masking, let's do it once for all of them
+- our first layer, the one to calculate the masking tensor, has to override `compute_mask`
+- we could also transfer the mask calculation to a layer that would do it as a side-effect
+- in that case we would use the 2 commented out lines
+
+- our embedding layer is as simple as it gets: it creates the embedding table, adjusts the layer's output shape and then does the actual lookup
+- once the embedded values are determined, we then apply masking cleanly
+- Keras knows that we want to use the mask tensor from us listing the `mask=None` keyword argument
+- for `autograph`'s sake we need to explicitly check that the optional `mask` argument is not `None` 
+
+- our self-attention layer, called `Reflect`, does the absolute minimum required steps to implement the "attention" mechanism of the `transformer` architecture
+- an excellent, creative explanation of how it works is at http://jalammar.github.io/illustrated-transformer/
+- please note the masking tensor being automatically supplied to the call by Keras
+- we only need to state our intention to mask by adding the `mask=None` keyword argument
+- the actual masking calculation, based on our previously created boolean tensor, is now trivial
+
+- now we are ready to create and compile our Keras `functional` model
+- as the objective of this blog is to showcase masking, all the other necessary "plumbing" layers are the canned Keras variety ones
+
+- our parameters have slightly increased in number
+- please see the previous blogs for the justification of the scheme
+
+- once we instantiate our params and our dataset, and using the already compiled model, we are ready to start a training session
+- our aim is to use as much of the great functionality and error checking that Keras provides, so using the model's `fit` method is all we need for now
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries
+- if you haven't run the code, an already generated graph is [here](./masking.pdf)
+
+# Ragged Tensors
+
+- TODO: expand bullets
+
+# Layer Proliferation
+
+- TODO: expand bullets
+

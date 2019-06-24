@@ -34,8 +34,11 @@ The new, "cleaned up" version, the beta of TensorFlow 2.0, has just been release
 
 ## [Unified Adaptable Masking That Flows With Tensors](./masking.html)
 
-* TBD
-* [more detail...](./masking.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
+* Padding uneven input data can pollute our calculations
+* It is best to cleanly "mask-out" the padded values
+* Keras' masking mechanism allows one to access custom maskings
+* It is fully transparent, without cluttering the flow of our code
+* [more detail...](./masking.html), the [graph...](./masking.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
 
 ## [Ragged Tensors: Custom-Made For Document Processing](./ragged.html)
 

@@ -19,16 +19,15 @@ import tensorflow as tf
 
 from datetime import datetime
 
-td = tf.data
 ks = tf.keras
 kl = ks.layers
 
-vocab = ('x', 'y')
-vocab += ('+', '-', '*', '=', ',', ':')
+vocab = ('x', 'y', '+', '-', '*', '=', ',', ':')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 tokens = {k: v for v, k in enumerate(vocab, start=5)}
 tokens.update({v: k for k, v in tokens.items()})
+
 SEP = tokens[':']
 
 
@@ -56,7 +55,7 @@ def adapter(d, len_input):
 
 
 def dset_for(ps):
-    ds = td.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
+    ds = tf.data.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
     fs = {
         'defs': tf.io.VarLenFeature(tf.int64),
         'op': tf.io.VarLenFeature(tf.int64),
