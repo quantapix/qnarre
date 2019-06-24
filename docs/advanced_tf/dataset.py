@@ -20,21 +20,10 @@ import tensorflow as tf
 
 td = tf.data
 tt = tf.train
-# ks = tf.keras
-# kl = ks.layers
-
-# complex input pipelines from simple, reusable pieces
-# a pipeline starts with a "src_dset" and chains "transformations" to it
-
-# example - fascinating https://arxiv.org/pdf/1812.02825.pdf
-# num_samples of "x=-12,y=24:y+x:12" w/ "defs", "op" and "res"
-# vars: x, y, ops: +, -, *, vals: [-max_val, max_val]
 
 vocab = ('x', 'y')
 vocab += ('+', '-', '*', '=', ',', ':')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-
-# pipeline is parametric
 
 params = dict(
     max_val=10,
@@ -44,14 +33,12 @@ params = dict(
 
 
 class Params:
-    # without error-prone string names
     def __init__(self, **kw):
         for k, v in kw.items():
             setattr(self, k, v)
 
 
 def py_gen(ps):
-    # generate samples
     m, n = ps.max_val, ps.num_samples
     # x, y vals in defs
     vals = np.random.randint(low=-m, high=m + 1, size=(2, n))
@@ -76,14 +63,7 @@ def py_gen(ps):
         yield res
 
 
-# tf.data.Dataset - abstraction for a sequence of elements
-# each element is one or more Tensors
-
-# can be consumed as iterables or as aggregatables (reduce)
-
-
 def gen_src(ps):
-    # from_generator
     ds = td.Dataset.from_generator(
         lambda: py_gen(ps),
         tf.string,
@@ -93,14 +73,11 @@ def gen_src(ps):
 
 
 def src_dset(ps):
-    # range, from_tensor_slices, from_tensors
-    # also TextLineDataset
     ds = np.array(list(py_gen(ps)))
     ds = td.Dataset.from_tensor_slices(ds)
     return ds
 
 
-# inside a tf.function or eagerly
 @tf.function
 def filterer(x):
     r = tf.strings.length(x) < 15
@@ -127,10 +104,6 @@ def tokenizer(d):
         )
         for k, v in d.items()
     }
-
-
-# potentially large
-# transparent performance is key
 
 
 def shards(ps):
@@ -190,7 +163,6 @@ def main(_):
     ps = Params(**params)
     for s in py_gen(ps):
         print(s)
-    # cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip
     print('Ops on datasets')
     dg = gen_src(ps)
     for s in dg.take(2):
@@ -198,11 +170,10 @@ def main(_):
     ds = src_dset(ps)
     for i, s in ds.take(2).concatenate(dg).enumerate():
         print(i, s)
-    # filter
-    print('Filter dataset elements')
+    print('Filter elements')
     for i, s in enumerate(ds.filter(filterer)):
         print(i, s)
-    # map
+    print('Split elements')
     for s in ds.map(splitter).take(1):
         print(s)
     for s in ds.map(splitter).map(tokenizer).take(1):
@@ -211,11 +182,9 @@ def main(_):
     ps.dim_batch = None
     for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
-    # batch, padded_batch
     ps.dim_batch = 2
     for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
-    # apply, flat_map, interleave, prefetch
     ps.max_val = 100
     ps.num_samples = 1000
     ps.num_shards = 10

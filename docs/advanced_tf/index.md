@@ -26,7 +26,10 @@ The new, "cleaned up" version, the beta of TensorFlow 2.0, has just been release
 
 ## [Dataset: Tensor "Highway" On-Ramp (Without Getting Lost)](./dataset.html)
 
-* TBD
+* Complex input data pipelines from simple, reusable pieces
+* Starting from a "source", pipelines "transform" data streams
+* New features allow splitting the streams into named "filaments"
+* Performance and throughput is increased through file sharding 
 * [more detail...](./dataset.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/dataset.ipynb)
 
 ## [Unified Adaptable Masking That Flows With Tensors](./masking.html)
