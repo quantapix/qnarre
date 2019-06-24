@@ -128,6 +128,7 @@ main() {
     .qenv/bin/pip install -U gin-config  sympy gym pypng spacy-nightly
     .qenv/bin/pip install -U dash dash-html-components dash-core-components
     .qenv/bin/pip install -U dash-table dash-daq
+    .qenv/bin/pip install -U awscli
     .qenv/bin/pip install -U jupyter
 
 	  # keras
