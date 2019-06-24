@@ -129,7 +129,6 @@ class Module(tf.Module):
             s += f', s: ({self.sub})'
         return s
 
-    # @tf.function
     @tf.Module.with_name_scope
     def __call__(self):
         if self.sub is None:
@@ -181,15 +180,12 @@ class Layer(tf.keras.layers.Layer):
         return s
 
     def build(self, input_shape):
-        # with self.name_scope:
-        self.v = self.add_variable(name='l_v',
-                                   shape=[],
-                                   dtype=tf.int32,
-                                   initializer=tf.ones_initializer)
+        self.v = self.add_weight(name='l_v',
+                                 shape=[],
+                                 dtype=tf.int32,
+                                 initializer=tf.ones_initializer)
         return super().build(input_shape)
 
-    # @tf.function
-    # @tf.Module.with_name_scope
     def call(self, x):
         if self.sub is None:
             y = x
@@ -235,7 +231,9 @@ def main(_):
         tr2.untracked = untracked
     for _ in range(2):
         autotrackable(tr2, tracked, untracked)
+
     listing()
+
     deleting(tr2)
 
     tr3 = tracking.AutoTrackable()
@@ -248,6 +246,7 @@ def main(_):
     br3.v = tf.Variable(5)
     tr3.br_dict = {'br3': br3}
     containers(tr3)
+
     tr3.br_dict = {'br1': br1, 'br2': br2, 'br3': br3}
     sharing(tr3)
 
@@ -256,9 +255,9 @@ def main(_):
     mod1.sub.sub = Module('m3')
     modules(mod1)
 
-    @tf.function
-    def tracer1():
-        return mod1()
+    # @tf.function
+    # def tracer1():
+    #     return mod1()
 
     # graph(tracer1)
 

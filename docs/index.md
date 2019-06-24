@@ -19,12 +19,12 @@ The following blogs incorporate "runable" [python](https://www.python.org/) scri
 * **Trackable**: a pervasive topological persistence infrastructure
 * Many Smaller GPUs: elegant in-model distribution that fits
 * **Dataset**: tensor "highway" on-ramp (without getting lost)
-* Custom Keras layers without the drawbacks
-* **Autograph**: intuitive data-driven flow control at last
-* Unnecessary complexity through layer proliferation
-* **Ragged Tensors**: custom-made for document processing (and more)
 * Unified adaptable masking that flows with tensors
-* Keras **Callbacks**: eagerly extending their scope and usage
+* **Ragged Tensors**: custom-made for document processing (and more)
+* Unnecessary complexity through layer proliferation
+* **Autograph**: intuitive data-driven flow control at last
+* Custom Keras layers without the drawbacks
+* Keras Callbacks: eagerly extending their scope and usage
 * **Metrics And Summaries**: modular and reusable all the way
 * [more detail... (fully uploaded by June 30)](./advanced_tf/index.html)
 

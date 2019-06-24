@@ -13017,45 +13017,6 @@ ul.typeahead-list  > li > a.pull-right {
 .highlight .vm { color: #19177C } /* Name.Variable.Magic */
 .highlight .il { color: #666666 } /* Literal.Number.Integer.Long */
     </style>
-<style type="text/css">
-    
-/* Temporary definitions which will become obsolete with Notebook release 5.0 */
-.ansi-black-fg { color: #3E424D; }
-.ansi-black-bg { background-color: #3E424D; }
-.ansi-black-intense-fg { color: #282C36; }
-.ansi-black-intense-bg { background-color: #282C36; }
-.ansi-red-fg { color: #E75C58; }
-.ansi-red-bg { background-color: #E75C58; }
-.ansi-red-intense-fg { color: #B22B31; }
-.ansi-red-intense-bg { background-color: #B22B31; }
-.ansi-green-fg { color: #00A250; }
-.ansi-green-bg { background-color: #00A250; }
-.ansi-green-intense-fg { color: #007427; }
-.ansi-green-intense-bg { background-color: #007427; }
-.ansi-yellow-fg { color: #DDB62B; }
-.ansi-yellow-bg { background-color: #DDB62B; }
-.ansi-yellow-intense-fg { color: #B27D12; }
-.ansi-yellow-intense-bg { background-color: #B27D12; }
-.ansi-blue-fg { color: #208FFB; }
-.ansi-blue-bg { background-color: #208FFB; }
-.ansi-blue-intense-fg { color: #0065CA; }
-.ansi-blue-intense-bg { background-color: #0065CA; }
-.ansi-magenta-fg { color: #D160C4; }
-.ansi-magenta-bg { background-color: #D160C4; }
-.ansi-magenta-intense-fg { color: #A03196; }
-.ansi-magenta-intense-bg { background-color: #A03196; }
-.ansi-cyan-fg { color: #60C6C8; }
-.ansi-cyan-bg { background-color: #60C6C8; }
-.ansi-cyan-intense-fg { color: #258F8F; }
-.ansi-cyan-intense-bg { background-color: #258F8F; }
-.ansi-white-fg { color: #C5C1B4; }
-.ansi-white-bg { background-color: #C5C1B4; }
-.ansi-white-intense-fg { color: #A1A6B2; }
-.ansi-white-intense-bg { background-color: #A1A6B2; }
-
-.ansi-bold { font-weight: bold; }
-
-    </style>
 
 
 <style type="text/css">
@@ -13113,18 +13074,48 @@ div#notebook {
   <div tabindex="-1" id="notebook" class="border-box-sizing">
     <div class="container" id="notebook-container">
 
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Trackable">Trackable<a class="anchor-link" href="#Trackable">&#182;</a></h1><ul>
+<li><p>TODO: expand bullets</p>
+</li>
+<li><p>a pervasive topological persistence infrastructure</p>
+</li>
+<li>objective: <a href="./trackable.pdf">graph</a></li>
+<li>prep</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.training.tracking</span> <span class="k">import</span> <span class="n">base</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.training.tracking</span> <span class="k">import</span> <span class="n">tracking</span>
 </pre></div>
 
     </div>
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>persistence of training data</li>
+<li>checkpointing and the manager</li>
+</ul>
+
+</div>
+</div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
@@ -13133,7 +13124,7 @@ div#notebook {
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">trackable</span><span class="p">(</span><span class="n">tr1</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr1</span><span class="o">=</span><span class="n">tr1</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
     <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">expect_partial</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">p</span><span class="p">:</span>
@@ -13151,22 +13142,19 @@ div#notebook {
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>variables and keeping track of them</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[3]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">tensorflow.python.training.tracking</span> <span class="k">import</span> <span class="n">base</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr1</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">Trackable</span><span class="p">()</span>
@@ -13192,11 +13180,11 @@ div#notebook {
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>start from scratch
 value before: 1
-restored from: /tmp/trackable/ckpt-1
-others are: [&#39;/tmp/trackable/ckpt-1&#39;]
+restored from: /tmp/q/trackable/ckpt-1
+others are: [&#39;/tmp/q/trackable/ckpt-1&#39;]
 value before: 2
-restored from: /tmp/trackable/ckpt-2
-others are: [&#39;/tmp/trackable/ckpt-1&#39;, &#39;/tmp/trackable/ckpt-2&#39;]
+restored from: /tmp/q/trackable/ckpt-2
+others are: [&#39;/tmp/q/trackable/ckpt-1&#39;, &#39;/tmp/q/trackable/ckpt-2&#39;]
 value before: 3
 </pre>
 </div>
@@ -13206,14 +13194,25 @@ value before: 3
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>boiler-plate hassle, private function</li>
+<li>auto-tracking through native Python attribute mechanism</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">autotrackable</span><span class="p">(</span><span class="n">tr2</span><span class="p">,</span> <span class="n">tracked</span><span class="p">,</span> <span class="n">untracked</span><span class="p">):</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr2</span><span class="o">=</span><span class="n">tr2</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
     <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">expect_partial</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">p</span><span class="p">:</span>
@@ -13229,22 +13228,20 @@ value before: 3
 </div>
 
 </div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">tensorflow.python.training.tracking</span> <span class="k">import</span> <span class="n">tracking</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>notice the <code>tr2.v = tracked</code> assignment</li>
+<li>turn-off autotracking</li>
+</ul>
 
 </div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr2</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
@@ -13270,10 +13267,10 @@ value before: 3
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>restored from: /tmp/trackable/ckpt-3
+<pre>restored from: /tmp/q/trackable/ckpt-3
 values before: 1000, 0
 value as saved: 2000
-restored from: /tmp/trackable/ckpt-4
+restored from: /tmp/q/trackable/ckpt-4
 values before: 2000, 0
 value as saved: 3000
 </pre>
@@ -13284,14 +13281,27 @@ value as saved: 3000
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>hundreds of variables</li>
+<li>consistent, hierarchical "naming" scheme without naming</li>
+<li>topology of layers</li>
+<li>helpers to list the "inventory"</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">listing</span><span class="p">():</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">()</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
     <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;names and shapes list: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -13309,9 +13319,19 @@ value as saved: 3000
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>naming conventions</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">listing</span><span class="p">()</span>
@@ -13342,14 +13362,25 @@ checkpoint types: {&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;: tf.int32, &#39;_C
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>variable management requires deletion</li>
+<li>same native Python attribute mechanism</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">deleting</span><span class="p">(</span><span class="n">tr2</span><span class="p">):</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr2</span><span class="o">=</span><span class="n">tr2</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
     <span class="n">c</span><span class="o">.</span><span class="n">tr2</span><span class="o">.</span><span class="n">deleted</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
@@ -13366,9 +13397,19 @@ checkpoint types: {&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;: tf.int32, &#39;_C
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>deleting and the results</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">deleting</span><span class="p">(</span><span class="n">tr2</span><span class="p">)</span>
@@ -13398,14 +13439,25 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>variable management also means aggregating</li>
+<li>intuitive Python <code>list</code> and <code>dict</code> are transparently employed</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">containers</span><span class="p">(</span><span class="n">tr3</span><span class="p">):</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr3</span><span class="o">=</span><span class="n">tr3</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
     <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;containers: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -13416,9 +13468,19 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>"naming" conventions are just as expected </li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr3</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
@@ -13456,14 +13518,27 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>neural networks rely on sharing weights, that is variables</li>
+<li>variable sharing was ad-hoc, "name-based" before</li>
+<li>Python has native support for this fundamental problem</li>
+<li>sharing of variables now is just as expected</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">sharing</span><span class="p">(</span><span class="n">tr3</span><span class="p">):</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr3</span><span class="o">=</span><span class="n">tr3</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span><span class="o">.</span><span class="n">assert_consumed</span><span class="p">()</span>
     <span class="n">v1</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
     <span class="n">v2</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
@@ -13484,7 +13559,7 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;all zeros: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}&#39;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;shared too: {vd1.numpy()}, {vd2.numpy()}&#39;</span><span class="p">)</span>
     <span class="n">c2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr3</span><span class="o">=</span><span class="n">tr3</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c2</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c2</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">c2</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span><span class="o">.</span><span class="n">assert_consumed</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;all tens: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}&#39;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;shared too: {vd1.numpy()}, {vd2.numpy()}&#39;</span><span class="p">)</span>
@@ -13495,9 +13570,20 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>persisted shared variables are not repeated</li>
+<li>updates to shared variables can be easily verified</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr3</span><span class="o">.</span><span class="n">br_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;br1&#39;</span><span class="p">:</span> <span class="n">br1</span><span class="p">,</span> <span class="s1">&#39;br2&#39;</span><span class="p">:</span> <span class="n">br2</span><span class="p">,</span> <span class="s1">&#39;br3&#39;</span><span class="p">:</span> <span class="n">br3</span><span class="p">}</span>
@@ -13533,9 +13619,21 @@ shared too: 10, 10
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>variable management also means "encapsulating"</li>
+<li>new "modules" build on autotracking to extend Python's encapsulation mechanism</li>
+<li>explicit name scoping of modules allows the reuse of module "classes"</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
@@ -13568,24 +13666,19 @@ shared too: 10, 10
 </div>
 
 </div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">mod1</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m1&#39;</span><span class="p">)</span>
-<span class="n">mod1</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m2&#39;</span><span class="p">)</span>
-<span class="n">mod1</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m3&#39;</span><span class="p">)</span>
-</pre></div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>convenience methods to recursively collect variables</li>
+</ul>
 
-    </div>
 </div>
 </div>
-
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">modules</span><span class="p">(</span><span class="n">mod</span><span class="p">):</span>
@@ -13593,7 +13686,7 @@ shared too: 10, 10
     <span class="n">ms</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mod</span><span class="o">.</span><span class="n">submodules</span><span class="p">]</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;mod variables: </span><span class="si">{vs}</span><span class="s1">, submodules: </span><span class="si">{ms}</span><span class="s1">&#39;</span><span class="p">)</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="n">mod</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">mod</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
     <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
@@ -13611,12 +13704,25 @@ shared too: 10, 10
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>name-based hierarchy and topological, Python-object hierarchy </li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">modules</span><span class="p">(</span><span class="n">mod1</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">mod1</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m1&#39;</span><span class="p">)</span>
+<span class="n">mod1</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m2&#39;</span><span class="p">)</span>
+<span class="n">mod1</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m3&#39;</span><span class="p">)</span>
+<span class="n">modules</span><span class="p">(</span><span class="n">mod1</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13646,9 +13752,22 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>Keras is the API for consistently reasoning about the network of components</li>
+<li>Keras also visibly splits the distinct phases of building vs. executing of graphs </li>
+<li>Keras layers build on TF modules to manage variable persistence</li>
+<li>the previous modules example is almost identical in Keras</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[22]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Layer</span><span class="p">):</span>
@@ -13684,25 +13803,19 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 </div>
 
 </div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ins</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)]</span>
-<span class="n">lay</span> <span class="o">=</span> <span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l1&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l2&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l3&#39;</span><span class="p">)))</span>
-<span class="n">outs</span> <span class="o">=</span> <span class="p">[</span><span class="n">lay</span><span class="p">(</span><span class="n">ins</span><span class="p">)]</span>
-<span class="n">mod2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;m2&#39;</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">ins</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outs</span><span class="p">)</span>
-</pre></div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>create the helper to list our results</li>
+</ul>
 
-    </div>
 </div>
 </div>
-
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[24]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">models</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">lay</span><span class="p">):</span>
@@ -13715,7 +13828,7 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
     <span class="n">mod</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">lay</span><span class="p">)</span>
     <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">mod</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
     <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
     <span class="n">mod</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">lay</span><span class="p">)</span>
@@ -13731,12 +13844,26 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>a most simple Keras model using 3 scalar variables to showcase the underlining topological persistence management</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[25]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">models</span><span class="p">(</span><span class="n">mod2</span><span class="p">,</span> <span class="n">lay</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ins</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)]</span>
+<span class="n">lay</span> <span class="o">=</span> <span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l1&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l2&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l3&#39;</span><span class="p">)))</span>
+<span class="n">outs</span> <span class="o">=</span> <span class="p">[</span><span class="n">lay</span><span class="p">(</span><span class="n">ins</span><span class="p">)]</span>
+<span class="n">mod2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;m2&#39;</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">ins</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outs</span><span class="p">)</span>
+<span class="n">models</span><span class="p">(</span><span class="n">mod2</span><span class="p">,</span> <span class="n">lay</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13757,7 +13884,7 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 _________________________________________________________________
 Layer (type)                 Output Shape              Param #   
 =================================================================
-input_2 (InputLayer)         [(None,)]                 0         
+input_1 (InputLayer)         [(None,)]                 0         
 _________________________________________________________________
 l1 (Layer)                   (1, None)                 3         
 =================================================================
@@ -13766,7 +13893,7 @@ Trainable params: 3
 Non-trainable params: 0
 _________________________________________________________________
 None
-lay variables: [&#39;l1_1/l_v:0&#39;, &#39;l1_1/l2/l_v:0&#39;, &#39;l1_1/l2/l3/l_v:0&#39;], trainables: [&#39;l1_1/l_v:0&#39;, &#39;l1_1/l2/l_v:0&#39;, &#39;l1_1/l2/l3/l_v:0&#39;], submodules: [&#39;input_2&#39;, &#39;l1&#39;, &#39;l2&#39;, &#39;l3&#39;]
+lay variables: [&#39;l1/l_v:0&#39;, &#39;l1/l2/l_v:0&#39;, &#39;l1/l2/l3/l_v:0&#39;], trainables: [&#39;l1/l_v:0&#39;, &#39;l1/l2/l_v:0&#39;, &#39;l1/l2/l3/l_v:0&#39;], submodules: [&#39;input_1&#39;, &#39;l1&#39;, &#39;l2&#39;, &#39;l3&#39;]
 n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 n: l1, v: 1424, s: (n: l2, v: 1012, s: (n: l3, v: 604))
 containers: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;model/layer_with_weights-0/l_v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;model/layer_with_weights-0/sub/l_v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;model/layer_with_weights-0/sub/sub/l_v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
@@ -13779,15 +13906,27 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>"a picture is worth a thousand words"</li>
+<li>even a simplest model can be overwhelming when expressed as text</li>
+<li>TensorBoard is a tool to also view the nested graphs</li>
+<li>summary data for TB is generated as follows</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
-<span class="k">def</span> <span class="nf">graph</span><span class="p">(</span><span class="n">tracer</span><span class="p">):</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">graph</span><span class="p">(</span><span class="n">tracer</span><span class="p">):</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">-%H%M%S&#39;</span><span class="p">)</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/tmp/logs/func/</span><span class="si">{s}</span><span class="s1">&#39;</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/tmp/q/logs/func/</span><span class="si">{s}</span><span class="s1">&#39;</span>
     <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">create_file_writer</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
     <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">trace_on</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># , profiler=True)</span>
     <span class="n">tracer</span><span class="p">()</span>
@@ -13800,9 +13939,21 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>our Keras model implements data-driven Python recursion</li>
+<li>the new "Autograph" functionality allows us to use such intuitive expressions</li>
+<li>it is invoked with the <code>tf.function</code> Python decorator</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[27]:</div>
+<div class="prompt input_prompt">In&nbsp;[21]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
@@ -13815,9 +13966,19 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>load TensorBoard</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> tensorboard
@@ -13828,9 +13989,19 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>generate the TB summaries including the graph representation</li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[31]:</div>
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">graph</span><span class="p">(</span><span class="n">tracer2</span><span class="p">)</span>
@@ -13841,12 +14012,23 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>and view the zoom-able and clickable TensorBoard graph</li>
+<li>if you haven't run the code an already generated graph is <a href="./trackable.pdf">here</a></li>
+</ul>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[24]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">tensorboard</span> --logdir /tmp/logs/func
+<div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">tensorboard</span> --logdir /tmp/q/logs/func
 </pre></div>
 
     </div>
@@ -13856,6 +14038,19 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 <div class="output_wrapper">
 <div class="output">
 
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+
+
+<div class="output_text output_subarea ">
+<pre>Reusing TensorBoard on port 6006 (pid 30435), started 0:12:41 ago. (Use &#39;!kill 30435&#39; to kill it.)</pre>
+</div>
+
+</div>
 
 <div class="output_area">
 
@@ -13877,19 +14072,6 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 
 </div>
 
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
-</pre></div>
-
-    </div>
 </div>
 </div>
 
