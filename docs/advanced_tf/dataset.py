@@ -13,8 +13,6 @@
 # limitations under the License.
 # =============================================================================
 # !pip install -U tf-nightly-2.0-preview
-# !pip install tensorflow==2.0.0-beta0
-# export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
 
 import numpy as np
 import pathlib as pth
@@ -152,7 +150,7 @@ def records(dset):
 
 
 def dump(ps):
-    d = pth.Path('/tmp/qnarre/dataset')
+    d = pth.Path('/tmp/q/dataset')
     d.mkdir(parents=True, exist_ok=True)
     for i, ds in enumerate(shards(ps)):
         i = '{:0>4d}'.format(i)

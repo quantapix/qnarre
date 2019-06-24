@@ -52,7 +52,7 @@ SEP = tokens[':']
 
 
 def paths(ps):
-    d = pth.Path('/tmp/qnarre/dataset')
+    d = pth.Path('/tmp/q/dataset')
     for i in range(ps.num_shards):
         i = '{:0>4d}'.format(i)
         yield str(d / f'shard_{i}.tfrecords')
@@ -289,7 +289,7 @@ def main(_):
     m = model_for(ps)
     from datetime import datetime
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/qnarre/logs/{ld}'
+    ld = f'/tmp/q/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
     m.fit(ds, callbacks=cs, epochs=10)
 

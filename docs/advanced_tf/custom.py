@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# !pip install tensorflow==2.0.0-beta0
+# !pip install -U tf-nightly-2.0-preview
 
 import numpy as np
 import tensorflow as tf
@@ -60,7 +60,7 @@ def main(_):
     # with tf.distribute.MirroredStrategy().scope():
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/logs/{ld}'
+    ld = f'/tmp/q/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
     m.fit(d, d, callbacks=cs, epochs=10, batch_size=10)
 

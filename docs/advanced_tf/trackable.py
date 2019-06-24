@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# !pip install tensorflow==2.0.0-beta0
+# !pip install -U tf-nightly-2.0-preview
 
 import tensorflow as tf
 
@@ -23,7 +23,7 @@ from tensorflow.python.training.tracking import tracking
 
 def trackable(tr1, v):
     c = tf.train.Checkpoint(tr1=tr1)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     p = m.latest_checkpoint
     c.restore(p).expect_partial()
     if p:
@@ -38,7 +38,7 @@ def trackable(tr1, v):
 
 def autotrackable(tr2, tracked, untracked):
     c = tf.train.Checkpoint(tr2=tr2)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     p = m.latest_checkpoint
     c.restore(p).expect_partial()
     if p:
@@ -51,7 +51,7 @@ def autotrackable(tr2, tracked, untracked):
 
 def listing():
     c = tf.train.Checkpoint()
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     p = m.latest_checkpoint
     vs = tf.train.list_variables(p)
     print(f'names and shapes list: {vs}')
@@ -66,7 +66,7 @@ def listing():
 
 def deleting(tr2):
     c = tf.train.Checkpoint(tr2=tr2)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     c.restore(m.latest_checkpoint)
     c.tr2.deleted = tf.Variable(-1)
     m.save()
@@ -80,7 +80,7 @@ def deleting(tr2):
 
 def containers(tr3):
     c = tf.train.Checkpoint(tr3=tr3)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     m.save()
     vs = tf.train.list_variables(m.latest_checkpoint)
     print(f'containers: {vs}')
@@ -88,7 +88,7 @@ def containers(tr3):
 
 def sharing(tr3):
     c = tf.train.Checkpoint(tr3=tr3)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     c.restore(m.latest_checkpoint).assert_consumed()
     v1 = tr3.br_list[0].v
     v2 = tr3.br_list[1].v
@@ -109,7 +109,7 @@ def sharing(tr3):
     print(f'all zeros: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}')
     print(f'shared too: {vd1.numpy()}, {vd2.numpy()}')
     c2 = tf.train.Checkpoint(tr3=tr3)
-    m = tf.train.CheckpointManager(c2, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c2, '/tmp/q/trackable', max_to_keep=2)
     c2.restore(m.latest_checkpoint).assert_consumed()
     print(f'all tens: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}')
     print(f'shared too: {vd1.numpy()}, {vd2.numpy()}')
@@ -146,7 +146,7 @@ def modules(mod):
     ms = [m.name for m in mod.submodules]
     print(f'mod variables: {vs}, submodules: {ms}')
     c = tf.train.Checkpoint(module=mod)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     mod()
     print(mod)
     m.save()
@@ -161,7 +161,7 @@ def modules(mod):
 
 def graph(tracer):
     s = datetime.now().strftime('%Y%m%d-%H%M%S')
-    d = f'/tmp/logs/func/{s}'
+    d = f'/tmp/q/logs/func/{s}'
     w = tf.summary.create_file_writer(d)
     tf.summary.trace_on(graph=True)  # , profiler=True)
     tracer()
@@ -210,7 +210,7 @@ def models(mod, lay):
     mod(d)
     print(lay)
     c = tf.train.Checkpoint(model=mod)
-    m = tf.train.CheckpointManager(c, '/tmp/trackable', max_to_keep=2)
+    m = tf.train.CheckpointManager(c, '/tmp/q/trackable', max_to_keep=2)
     m.save()
     mod(d)
     print(lay)

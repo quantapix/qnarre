@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# !pip install tensorflow==2.0.0-beta0
+# !pip install -U tf-nightly-2.0-preview
 
 import pathlib as pth
 import tensorflow as tf
@@ -33,7 +33,7 @@ SEP = tokens[':']
 
 
 def paths(ps):
-    d = pth.Path('/tmp/qnarre/dataset')
+    d = pth.Path('/tmp/q/dataset')
     for i in range(ps.num_shards):
         i = '{:0>4d}'.format(i)
         yield str(d / f'shard_{i}.tfrecords')
@@ -170,7 +170,7 @@ def main(_):
         print(s)
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/qnarre/logs/{ld}'
+    ld = f'/tmp/q/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
     m.fit(ds, callbacks=cs, epochs=10)
 
