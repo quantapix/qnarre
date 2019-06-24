@@ -18,8 +18,11 @@ The new, "cleaned up" version, the beta of TensorFlow 2.0, has just been release
 
 ## [Many Smaller GPUs: Elegant In-Model Distribution That Fits](./gpus.html)
 
-* TBD
-* [more detail...](./gpus.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/gpus.ipynb)
+* Physical GPUs to custom configurable virtual GPUs
+* Stacks of Keras layers laid over parametric sequences of GPUs
+* Instant, predictable massive GPU computations/interactions
+* Clean, clear model "pipelines" visualized and verified 
+* [more detail...](./gpus.html), the [graph...](./gpus.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/gpus.ipynb)
 
 ## [Dataset: Tensor "Highway" On-Ramp (Without Getting Lost)](./dataset.html)
 
