@@ -223,6 +223,9 @@
 # Ragged Tensors
 
 - TODO: expand bullets
+- objective: [graph](./ragged.pdf)
+
+- load our meta data
 
 # Layer Proliferation
 
