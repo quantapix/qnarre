@@ -230,4 +230,5 @@
 # Layer Proliferation
 
 - TODO: expand bullets
+- objective: [graph](./layers.pdf)
 
