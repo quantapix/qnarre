@@ -19,16 +19,15 @@ import tensorflow as tf
 
 from datetime import datetime
 
-td = tf.data
 ks = tf.keras
 kl = ks.layers
 
-vocab = ('x', 'y')
-vocab += ('+', '-', '*', '=', ',', ':')
+vocab = ('x', 'y', '+', '-', '*', '=', ',', ':')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 tokens = {k: v for v, k in enumerate(vocab, start=5)}
 tokens.update({v: k for k, v in tokens.items()})
+
 SEP = tokens[':']
 
 
@@ -45,7 +44,7 @@ def caster(d):
 
 
 @tf.function
-def adapter(d, len_input):
+def adapter(d):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     ss = tf.fill([ds.nrows(), 1], SEP)
     os = tf.RaggedTensor.from_sparse(d['op'])
@@ -55,27 +54,19 @@ def adapter(d, len_input):
 
 
 def dset_for(ps):
-    ds = td.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
+    ds = tf.data.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
     fs = {
         'defs': tf.io.VarLenFeature(tf.int64),
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
-    return ds.map(lambda d: adapter(d, tf.constant(ps.len_input)))
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs))
+    return ds.map(caster).map(adapter)
 
 
-class Layer(kl.Layer):
-    def __init__(self, ps, **kw):
-        kw.update(dtype=tf.float32)
-        super().__init__(**kw)
-        self.ps = ps
-
-
-class Embed(Layer):
-    def __init__(self, *pa, **kw):
-        super().__init__(*pa, **kw)
-        ps = self.ps
+class Embed(kl.Layer):
+    def __init__(self, ps):
+        super().__init__(dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
 
@@ -86,7 +77,7 @@ class Embed(Layer):
         return y
 
 
-class Reflect(Layer):
+class Reflect(kl.Layer):
     def build(self, shape):
         s = shape[-1]
         self.scale = 1 / (s**0.5)
@@ -106,11 +97,15 @@ class Reflect(Layer):
         return y
 
 
-class Expand(Layer):
+class Expand(kl.Layer):
+    def __init__(self, ps):
+        super().__init__()
+        self.ps = ps
+
     def call(self, x):
         y = x.to_tensor()
         s = tf.shape(y)[-2]
-        y = tf.pad(y, [[0, 0], [0, self.ps.len_input - s], [0, 0]])
+        y = tf.pad(y, [[0, 0], [0, self.ps.len_max_input - s], [0, 0]])
         return y
 
 
@@ -120,9 +115,9 @@ def model_for(ps):
         ks.Input(shape=(), dtype='int64'),
     ]
     y = Embed(ps)(x)
-    y = Reflect(ps)(y)
+    y = Reflect()(y)
     y = Expand(ps)(y)
-    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
+    y = kl.Reshape((ps.len_max_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
@@ -136,7 +131,7 @@ params = dict(
     dim_dense=150,
     dim_hidden=6,
     dim_vocab=len(vocab) + 5,
-    len_input=20,
+    len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
     num_shards=2,

@@ -44,12 +44,12 @@ def caster(d):
 
 
 @tf.function
-def adapter(d, len_input):
+def adapter(d, len_max_input):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     ss = tf.fill([ds.nrows(), 1], SEP)
     os = tf.RaggedTensor.from_sparse(d['op'])
     x = tf.concat([ds, ss, os], axis=1).to_tensor()
-    x = tf.pad(x, [[0, 0], [0, len_input - tf.shape(x)[-1]]])
+    x = tf.pad(x, [[0, 0], [0, len_max_input - tf.shape(x)[-1]]])
     y = tf.RaggedTensor.from_sparse(d['res'])[:, :1].to_tensor()
     return x, y
 
@@ -62,20 +62,18 @@ def dset_for(ps):
         'res': tf.io.VarLenFeature(tf.int64),
     }
     ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
-    return ds.map(lambda d: adapter(d, tf.constant(ps.len_input)))
+    return ds.map(lambda d: adapter(d, tf.constant(ps.len_max_input)))
 
 
 class Layer(kl.Layer):
-    def __init__(self, ps, **kw):
-        kw.update(dtype=tf.float32)
+    def __init__(self, **kw):
         super().__init__(**kw)
         self.supports_masking = True
-        self.ps = ps
 
 
 class Masking(Layer):
-    def __init__(self, *pa, **kw):
-        super().__init__(*pa, **kw)
+    def __init__(self):
+        super().__init__()
         # self._compute_output_and_mask_jointly = True
 
     def compute_mask(self, x, mask=None):
@@ -87,17 +85,11 @@ class Masking(Layer):
 
 
 class Embed(Layer):
-    def build(self, shape):
-        ps = self.ps
+    def __init__(self, ps):
+        super().__init__(dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
-        return super().build(shape)
 
-    def compute_output_shape(self, shape):
-        s = tf.TensorShape((self.ps.dim_hidden, ))
-        return shape.concatenate(s)
-
-    @tf.function
     def call(self, x, mask=None):
         y = tf.nn.embedding_lookup(self.emb_t, x)
         if mask is not None:
@@ -114,7 +106,6 @@ class Reflect(Layer):
         self.v_w = self.add_weight(name='v_w', shape=(s, s))
         return super().build(shape)
 
-    @tf.function
     def call(self, x, mask=None):
         q = tf.einsum('bsi,ij->bsj', x, self.q_w)
         k = tf.einsum('bsi,ij->bsj', x, self.k_w)
@@ -130,11 +121,11 @@ class Reflect(Layer):
 
 
 def model_for(ps):
-    x = ks.Input(shape=(ps.len_input, ), dtype='int32')
-    y = Masking(ps)(x)
+    x = ks.Input(shape=(ps.len_max_input, ), dtype='int32')
+    y = Masking()(x)
     y = Embed(ps)(y)
-    y = Reflect(ps)(y)
-    y = kl.Reshape((ps.len_input * ps.dim_hidden, ))(y)
+    y = Reflect()(y)
+    y = kl.Reshape((ps.len_max_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
     y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
@@ -148,7 +139,7 @@ params = dict(
     dim_dense=150,
     dim_hidden=15,
     dim_vocab=len(vocab) + 5,
-    len_input=20,
+    len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
     num_shards=2,
@@ -165,8 +156,8 @@ class Params:
 def main(_):
     ps = Params(**params)
     ds = dset_for(ps)
-    for s in ds.take(1):
-        print(s)
+    # for s in ds.take(1):
+    #     print(s)
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/q/logs/{ld}'

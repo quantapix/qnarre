@@ -64,7 +64,7 @@ def caster(d):
 
 
 @tf.function
-def adapter(d, len_max_seq):
+def adapter(d):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     s = tf.fill([ds.nrows(), 1], SEP)
     os = tf.RaggedTensor.from_sparse(d['op'])
@@ -80,8 +80,8 @@ def dset_for(ps):
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
-    return ds.map(lambda d: adapter(d, tf.constant(ps.len_max_seq)))
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs))
+    return ds.map(caster).map(adapter)
 
 
 class Embed(kl.Layer):
@@ -89,7 +89,7 @@ class Embed(kl.Layer):
         super().__init__(dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
-        p = pos_timing(ps.len_max_seq, ps.dim_hidden)
+        p = pos_timing(ps.len_max_input, ps.dim_hidden)
         p = tf.constant(p, dtype=tf.float32)
         self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
 
@@ -133,7 +133,7 @@ class Decode(kl.Layer):
 class Debed(kl.Layer):
     def __init__(self, ps):
         super().__init__()
-        self.max_len = u = ps.len_max_seq
+        self.max_len = u = ps.len_max_input
         s = [u * ps.dim_hidden, ps.dim_vocab]
         self.out = Dense(self, s, name='out')
 
@@ -204,7 +204,7 @@ class Conclusion(tf.Module):
     def __init__(self, layer, name=None):
         super().__init__(name=name)
         ps = layer.ps
-        self.max_len = u = ps.len_max_seq
+        self.max_len = u = ps.len_max_input
         u *= ps.dim_hidden
         with self.name_scope:
             s = [u, ps.dim_dense]
@@ -266,7 +266,7 @@ params = dict(
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(vocab) + 5,
-    len_max_seq=20,
+    len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
     num_shards=2,
