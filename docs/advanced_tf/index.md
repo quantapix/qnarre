@@ -8,7 +8,7 @@ Google's open sourced TensorFlow, a top project on the ~36 million developers' G
 
 The new, "cleaned up" version, the beta of TensorFlow 2.0, has just been released with its APIs now frozen. Personally motivated and eagerly curious to "read the sources", the following blogs document our process of learning TensorFlow 2.0:
 
-## [Trackable: A Pervasive Topological Persistence Infrastructure](./trackable.html)
+## [Trackable: A Pervasive, Topological Persistence Infrastructure](./trackable.html)
 
 * Auto tracking modeling variables
 * "Pythonic" aggregating and encapsulating in models
@@ -42,13 +42,17 @@ The new, "cleaned up" version, the beta of TensorFlow 2.0, has just been release
 
 ## [Ragged Tensors: Custom-Made For Document Processing](./ragged.html)
 
-* TBD
-* [more detail...](./ragged.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/ragged.ipynb)
+* The new ragged tensors expand on the existing composite tensors
+* They can potentially solve the masking problem efficiently
+* As they still lack important ops, perhaps it is time for "user ops"
+* [more detail...](./ragged.html), the [graph...](./ragged.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/ragged.ipynb)
 
 ## [Unnecessary Complexity Through Layer Proliferation](./layers.html)
 
-* TBD
-* [more detail...](./layers.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
+* With complex component architectures, Keras layers seem "heavy"
+* This first iteration of the `Transformer` model mixes Keras and Modules
+* In subsequent blogs we expand on this "blended approach" of modeling
+* [more detail...](./layers.html), the [graph...](./layers.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
 
 ## [Autograph: Intuitive Data-Driven Flow Control At Last](./autograph.html)
 
