@@ -18,37 +18,19 @@ import numpy as np
 import pathlib as pth
 import tensorflow as tf
 
+from datetime import datetime
+
 ks = tf.keras
 kl = ks.layers
 
-
-def pos_timing(width, depth):
-    assert depth % 2 == 0
-    d = np.arange(depth)[np.newaxis, :]
-    d = 1 / np.power(10000, (2 * (d // 2)) / np.float32(depth))
-    t = np.arange(width)[:, np.newaxis] * d
-    t = [np.sin(t[:, 0::2]), np.cos(t[:, 1::2])]
-    t = np.concatenate(t, axis=-1)[np.newaxis, ...]
-    return t
-
-
-"""
-pos = pos_timing(50, 512)
-
-plt.pcolormesh(pos[0], cmap='RdBu')
-plt.xlabel('Depth')
-plt.xlim((0, 512))
-plt.ylabel('Position')
-plt.colorbar()
-"""
-
-vocab = ('x', 'y', '+', '-', '*', '=', ',', ':')
+vocab = (' ', '$', ':', '|', ',')
+vocab += ('x', 'y', '=', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
-tokens = {k: v for v, k in enumerate(vocab, start=5)}
+tokens = {c: i for i, c in enumerate(vocab)}
 tokens.update({v: k for k, v in tokens.items()})
 
-SEP = tokens[':']
+PAD, MSK, SEP, EOS = [tokens[c] for c in vocab[:4]]
 
 
 def paths(ps):
@@ -66,11 +48,22 @@ def caster(d):
 @tf.function
 def adapter(d):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
-    s = tf.fill([ds.nrows(), 1], SEP)
+    n = ds.nrows()
     os = tf.RaggedTensor.from_sparse(d['op'])
-    x = tf.concat([ds, s, os], axis=1)
-    y = tf.RaggedTensor.from_sparse(d['res'])[:, :1].to_tensor()
-    return (x.flat_values, x.row_splits), y
+    inp = tf.concat([ds, tf.fill([n, 1], SEP), os], axis=1)
+    out = tf.RaggedTensor.from_row_lengths([PAD] * n, [1] * n)
+    rs = tf.RaggedTensor.from_sparse(d['res'])
+    tgt = tf.concat([rs, tf.fill([rs.nrows(), 1], EOS)], axis=1)
+    # return [inp, out], tgt
+    return ([
+        inp.flat_values,
+        inp.row_splits,
+        out.flat_values,
+        out.row_splits,
+    ], [
+        tgt.flat_values,
+        tgt.row_splits,
+    ])
 
 
 def dset_for(ps):
@@ -80,8 +73,18 @@ def dset_for(ps):
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs))
-    return ds.map(caster).map(adapter)
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
+    return ds.map(adapter)
+
+
+def pos_timing(width, depth):
+    assert depth % 2 == 0
+    d = np.arange(depth)[np.newaxis, :]
+    d = 1 / np.power(10000, (2 * (d // 2)) / np.float32(depth))
+    t = np.arange(width)[:, np.newaxis] * d
+    t = [np.sin(t[:, 0::2]), np.cos(t[:, 1::2])]
+    t = np.concatenate(t, axis=-1)[np.newaxis, ...]
+    return t
 
 
 class Embed(kl.Layer):
@@ -97,36 +100,54 @@ class Embed(kl.Layer):
         fv, rs = x
         x = tf.RaggedTensor.from_row_splits(fv, rs)
         y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
-        # y *= y.shape[-1]**0.5
+        y *= y.shape[-1]**0.5
         y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=y.row_lengths())
         return y
 
 
-class Encode(kl.Layer):
-    def __init__(self, ps):
+class Contextual(kl.Layer):
+    def __init__(self, ps, len_ctx):
         super().__init__()
         self.ps = ps
-        n = self.ps.dim_stacks
-        self.encs = [Encoder(self, f'enc_{i}') for i in range(n)]
+        self.len_ctx = len_ctx
+
+    def build(self, shape):
+        s = (shape[0], self.len_ctx, shape[-1])
+        kw = dict(initializer='zeros', trainable=False, use_resource=True)
+        self.ctx = self.add_weight(name='ctx', shape=s, **kw)
+        return super().build(shape)
+
+    def ctx_add(x):
+        pass
+
+    def ctx_update(x):
+        pass
+
+
+class Encode(Contextual):
+    def __init__(self, ps):
+        super().__init__(ps, ps.len_enc_ctx)
+        self.encs = [Encoder(self, f'enc_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
-        y = x
+        y = self.ctx_add(x)
         for e in self.encs:
-            y, ctx = e(y)
-        return [y, ctx]
+            y = e(y)
+        self.ctx_update(y)
+        return y
 
 
-class Decode(kl.Layer):
+class Decode(Contextual):
     def __init__(self, ps):
-        super().__init__()
-        self.ps = ps
-        n = self.ps.dim_stacks
-        self.decs = [Decoder(self, f'dec_{i}') for i in range(n)]
+        super().__init__(ps, ps.len_dec_ctx)
+        self.decs = [Decoder(self, f'dec_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
-        y, ctx = x
+        x, enc_ctx = x
+        y = self.ctx_add(x)
         for d in self.decs:
-            y = d([y, ctx])
+            y = d(y + [enc_ctx])
+        self.ctx_update(y)
         return y
 
 
@@ -155,9 +176,9 @@ class Encoder(tf.Module):
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        y, ctx = self.reflect([x, None])
+        y = self.reflect(x + [None])
         y = self.conclude(y)
-        return [y, ctx]
+        return y
 
 
 class Decoder(tf.Module):
@@ -170,9 +191,9 @@ class Decoder(tf.Module):
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        x, ctx = x
-        y, _ = self.reflect([x, None])
-        y, _ = self.consider([y, ctx])
+        x, enc_ctx = x[:-1], x[-1]
+        y = self.reflect(x + [None])
+        y = self.consider(y + [enc_ctx])
         y = self.conclude(y)
         return y
 
@@ -249,12 +270,15 @@ class Dense(tf.Module):
 
 
 def model_for(ps):
-    x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    y = Embed(ps)(x)
-    y = Encode(ps)(y)
-    y = Decode(ps)(y)
+    emb = Embed(ps)
+    xi = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    yi = emb(xi)
+    y = Encode(ps)(yi)
+    xo = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    yo = emb(xo)
+    y = Decode(ps)([yo, y])
     y = Debed(ps)(y)
-    m = ks.Model(inputs=x, outputs=y)
+    m = ks.Model(inputs=xi + xo, outputs=[y])
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
     print(m.summary())
     return m
@@ -266,9 +290,12 @@ params = dict(
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(vocab) + 5,
+    len_dec_ctx=20,
+    len_enc_ctx=100,
     len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
+    num_epochs=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
 )
@@ -280,20 +307,6 @@ class Params:
             setattr(self, k, v)
 
 
-def main(_):
-    # tf.autograph.set_verbosity(1)
-    ps = Params(**params)
-    ds = dset_for(ps)
-    # for s in ds.take(1):
-    #     print(s)
-    m = model_for(ps)
-    from datetime import datetime
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=10)
-
-
 def main_eager(_):
     ps = Params(**params)
     ds = dset_for(ps)
@@ -301,10 +314,10 @@ def main_eager(_):
 
     def step(x, y):
         with tf.GradientTape() as tape:
-            logits = m(x)
-            loss = ps.loss(y, logits)
+            yy = m(x)
+            loss = ps.loss(y, yy)
             loss += sum(m.losses)
-            acc = ps.metrics(y, logits)
+            acc = ps.metrics(y, yy)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
         return loss, acc
@@ -316,16 +329,25 @@ def main_eager(_):
             s += 1
             loss, acc = step(x, y)
             if tf.equal(s % 10, 0):
-                m = ps.metrics.result()
-                tf.print('Step:', s, ', loss:', loss, ', acc:', m)
+                a = ps.metrics.result()
+                tf.print('Step:', s, ', loss:', loss, ', acc:', a)
         return loss, acc
 
-    for e in range(10):
+    for e in range(ps.num_epochs):
         loss, acc = epoch()
         print(f'Epoch {e} loss:', loss, ', acc:', acc)
 
 
+def main_graph(_):
+    ps = Params(**params)
+    ds = dset_for(ps)
+    m = model_for(ps)
+    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
+    ld = f'/tmp/q/logs/{ld}'
+    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
+    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
+
+
 if __name__ == '__main__':
-    from absl import app  # , logging
-    # logging.set_verbosity(logging.DEBUG)
+    from absl import app
     app.run(main_eager)
