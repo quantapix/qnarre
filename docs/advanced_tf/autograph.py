@@ -92,7 +92,8 @@ class Embed(kl.Layer):
         super().__init__(dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
-        p = pos_timing(ps.len_max_input, ps.dim_hidden)
+        w = max(ps.len_dec_ctx, ps.len_enc_ctx)
+        p = pos_timing(w, ps.dim_hidden)
         p = tf.constant(p, dtype=tf.float32)
         self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
 
@@ -100,9 +101,10 @@ class Embed(kl.Layer):
         fv, rs = x
         x = tf.RaggedTensor.from_row_splits(fv, rs)
         y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
+        row_lens = y.row_lengths()
         y *= y.shape[-1]**0.5
-        y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=y.row_lengths())
-        return y
+        y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=row_lens)
+        return [y.to_tensor(), row_lens]
 
 
 class Contextual(kl.Layer):
@@ -117,11 +119,20 @@ class Contextual(kl.Layer):
         self.ctx = self.add_weight(name='ctx', shape=s, **kw)
         return super().build(shape)
 
-    def ctx_add(x):
-        pass
+    def append(self, x):
+        x, row_lens = x
+        y = tf.concat([self.ctx, x], axis=1)
+        y = tf.gather_nd(y, self.calc_idxs(row_lens))
+        return [y, row_lens]
 
-    def ctx_update(x):
-        pass
+    def calc_idxs(self, row_lens):
+        lc = self.len_ctx
+        tf.assert_greater_equal(lc, row_lens)
+        i = tf.range(lc)[None, ] + row_lens[:, None]
+        y = self.ps.dim_batch
+        y = tf.broadcast_to(tf.range(y)[:, None], [y, lc])
+        y = tf.stack([y, i], axis=2)
+        return y
 
 
 class Encode(Contextual):
@@ -130,10 +141,10 @@ class Encode(Contextual):
         self.encs = [Encoder(self, f'enc_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
-        y = self.ctx_add(x)
+        y = self.append(x)
         for e in self.encs:
             y = e(y)
-        self.ctx_update(y)
+        self.ctx.assign(y[0])
         return y
 
 
@@ -144,26 +155,24 @@ class Decode(Contextual):
 
     def call(self, x):
         x, enc_ctx = x
-        y = self.ctx_add(x)
+        y = self.append(x)
         for d in self.decs:
             y = d(y + [enc_ctx])
-        self.ctx_update(y)
+        self.ctx.assign(y[0])
         return y
 
 
 class Debed(kl.Layer):
     def __init__(self, ps):
         super().__init__()
-        self.max_len = u = ps.len_max_input
-        s = [u * ps.dim_hidden, ps.dim_vocab]
-        self.out = Dense(self, s, name='out')
+        self.out = Dense(self, [ps.dim_hidden, ps.dim_vocab], name='out')
 
     def call(self, x):
-        y = x.to_tensor()
-        s = tf.shape(y)
-        y = tf.pad(y, [[0, 0], [0, self.max_len - s[-2]], [0, 0]])
-        y = tf.reshape(y, [-1, self.max_len * s[-1]])
+        x, _ = x
+        s = tf.shape(x)
+        y = tf.reshape(x, [s[0] * s[1], -1])
         y = self.out(y)
+        y = tf.reshape(x, [s[0], s[1], -1])
         return y
 
 
@@ -210,51 +219,53 @@ class Attention(tf.Module):
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        x, ctx = x
-        q = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.q_w))
-        k = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.k_w))
-        v = x.with_values(tf.einsum('ni,ij->nj', x.flat_values, self.v_w))
-        y = tf.einsum('bsi,bzi->bsz', q.to_tensor(), k.to_tensor())
+        x, row_lens, ctx = x
+        off = tf.math.reduce_max(row_lens)
+        q = tf.einsum('bni,ij->bnj', x[:, -off:, :], self.q_w)
+        ctx = x if ctx is None else ctx
+        k = tf.einsum('bni,ij->bnj', ctx, self.k_w)
+        y = tf.einsum('bni,bmi->bnm', q, k)
+        # use row_lens
         y = tf.nn.softmax(y * self.scale)
-        y = tf.einsum('bsz,bzi->bsi', y, v.to_tensor())
-        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
-        return [y, tf.constant(1)]
+        v = tf.einsum('bni,ij->bnj', ctx, self.v_w)
+        y = tf.einsum('bnm,bmi->bni', y, v)
+        y = tf.concat([x[:, :-off, :], y])
+        return [y, row_lens]
 
 
 class Conclusion(tf.Module):
     def __init__(self, layer, name=None):
         super().__init__(name=name)
+        self.layer = layer
         ps = layer.ps
-        self.max_len = u = ps.len_max_input
-        u *= ps.dim_hidden
+        u = layer.len_ctx * ps.dim_hidden
         with self.name_scope:
             s = [u, ps.dim_dense]
-            self.inflate = Dense(layer, s, name='infl', activ='relu')
+            self.inflate = Dense(layer, s, name='infl', activation='relu')
             s = [ps.dim_dense, u]
             self.deflate = Dense(layer, s, name='defl', bias=False)
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        y = x.to_tensor()
-        s = tf.shape(y)
-        y = tf.pad(y, [[0, 0], [0, self.max_len - s[-2]], [0, 0]])
-        y = tf.reshape(y, [-1, self.max_len * s[-1]])
+        x, row_lens = x
+        lc = self.layer.len_ctx
+        dh = self.layer.ps.dim_hidden
+        y = tf.reshape(x, [-1, lc * dh])
         y = self.inflate(y)
         y = self.deflate(y)
-        y = tf.reshape(y, [-1, self.max_len, s[-1]])
-        y = tf.RaggedTensor.from_tensor(y, lengths=x.row_lengths())
-        return y
+        y = tf.reshape(y, [-1, lc, dh])
+        return [y, row_lens]
 
 
 class Dense(tf.Module):
-    activ = None
+    activation = None
     bias = None
 
-    def __init__(self, layer, shape, name=None, activ=None, bias=True):
+    def __init__(self, layer, shape, name=None, activation=None, bias=True):
         super().__init__(name=name)
         with self.name_scope:
             self.kern = layer.add_weight('kern', shape=shape)
-            self.activ = ks.activations.get(activ)
+            self.activation = ks.activations.get(activation)
             if bias:
                 kw = dict(shape=shape[1:], initializer='zeros')
                 self.bias = layer.add_weight('bias', **kw)
@@ -264,8 +275,8 @@ class Dense(tf.Module):
         y = tf.einsum('bi,ij->bj', x, self.kern)
         if self.bias is not None:
             y += self.bias
-        if self.activ:
-            return self.activ(y)
+        if self.activation:
+            return self.activation(y)
         return y
 
 
@@ -292,7 +303,6 @@ params = dict(
     dim_vocab=len(vocab) + 5,
     len_dec_ctx=20,
     len_enc_ctx=100,
-    len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
     num_epochs=2,
