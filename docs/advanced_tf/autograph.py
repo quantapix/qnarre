@@ -92,7 +92,7 @@ class Embed(kl.Layer):
         super().__init__(dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
-        w = max(ps.len_dec_ctx, ps.len_enc_ctx)
+        w = max(ps.width_dec, ps.width_enc)
         p = pos_timing(w, ps.dim_hidden)
         p = tf.constant(p, dtype=tf.float32)
         self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
@@ -101,64 +101,66 @@ class Embed(kl.Layer):
         fv, rs = x
         x = tf.RaggedTensor.from_row_splits(fv, rs)
         y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
-        row_lens = y.row_lengths()
+        lens = y.row_lengths()
         y *= y.shape[-1]**0.5
-        y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=row_lens)
-        return [y.to_tensor(), row_lens]
+        y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=lens)
+        return [y.to_tensor(), lens]
 
 
-class Contextual(kl.Layer):
-    def __init__(self, ps, len_ctx):
+class Context(kl.Layer):
+    def __init__(self, ps, width):
         super().__init__()
         self.ps = ps
-        self.len_ctx = len_ctx
+        self.width = width
 
     def build(self, shape):
-        s = (shape[0], self.len_ctx, shape[-1])
+        s = (shape[0], self.width, shape[-1])
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
         self.ctx = self.add_weight(name='ctx', shape=s, **kw)
         return super().build(shape)
 
     def append(self, x):
-        x, row_lens = x
+        x, lens = x
         y = tf.concat([self.ctx, x], axis=1)
-        y = tf.gather_nd(y, self.calc_idxs(row_lens))
-        return [y, row_lens]
+        y = tf.gather_nd(y, self.calc_idxs(lens))
+        return [y, lens]
 
-    def calc_idxs(self, row_lens):
-        lc = self.len_ctx
-        tf.assert_greater_equal(lc, row_lens)
-        i = tf.range(lc)[None, ] + row_lens[:, None]
+    def calc_idxs(self, lens):
+        w = self.width
+        tf.assert_greater_equal(w, lens)
         y = self.ps.dim_batch
-        y = tf.broadcast_to(tf.range(y)[:, None], [y, lc])
+        y = tf.broadcast_to(tf.range(y)[:, None], [y, w])
+        i = tf.range(w)[None, ] + lens[:, None]
         y = tf.stack([y, i], axis=2)
         return y
 
 
-class Encode(Contextual):
+class Encode(Context):
     def __init__(self, ps):
-        super().__init__(ps, ps.len_enc_ctx)
+        super().__init__(ps, ps.width_enc)
         self.encs = [Encoder(self, f'enc_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
         y = self.append(x)
         for e in self.encs:
             y = e(y)
-        self.ctx.assign(y[0])
+        y = y[0]
+        self.ctx.assign(y)
         return y
 
 
-class Decode(Contextual):
+class Decode(Context):
     def __init__(self, ps):
-        super().__init__(ps, ps.len_dec_ctx)
+        super().__init__(ps, ps.width_dec)
         self.decs = [Decoder(self, f'dec_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
-        x, enc_ctx = x
+        x, ye = x
         y = self.append(x)
         for d in self.decs:
-            y = d(y + [enc_ctx])
-        self.ctx.assign(y[0])
+            y = d(y + [ye])
+        y = y[0]
+        self.ctx.assign(y)
         return y
 
 
@@ -172,7 +174,7 @@ class Debed(kl.Layer):
         s = tf.shape(x)
         y = tf.reshape(x, [s[0] * s[1], -1])
         y = self.out(y)
-        y = tf.reshape(x, [s[0], s[1], -1])
+        y = tf.reshape(y, [s[0], s[1], -1])
         return y
 
 
@@ -200,9 +202,9 @@ class Decoder(tf.Module):
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        x, enc_ctx = x[:-1], x[-1]
+        x, ye = x[:-1], x[-1]
         y = self.reflect(x + [None])
-        y = self.consider(y + [enc_ctx])
+        y = self.consider(y + [ye])
         y = self.conclude(y)
         return y
 
@@ -219,18 +221,18 @@ class Attention(tf.Module):
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        x, row_lens, ctx = x
-        off = tf.math.reduce_max(row_lens)
+        x, lens, ctx = x
+        off = tf.math.reduce_max(lens)
         q = tf.einsum('bni,ij->bnj', x[:, -off:, :], self.q_w)
         ctx = x if ctx is None else ctx
         k = tf.einsum('bni,ij->bnj', ctx, self.k_w)
         y = tf.einsum('bni,bmi->bnm', q, k)
-        # use row_lens
+        # use lens
         y = tf.nn.softmax(y * self.scale)
         v = tf.einsum('bni,ij->bnj', ctx, self.v_w)
         y = tf.einsum('bnm,bmi->bni', y, v)
         y = tf.concat([x[:, :-off, :], y])
-        return [y, row_lens]
+        return [y, lens]
 
 
 class Conclusion(tf.Module):
@@ -238,23 +240,23 @@ class Conclusion(tf.Module):
         super().__init__(name=name)
         self.layer = layer
         ps = layer.ps
-        u = layer.len_ctx * ps.dim_hidden
+        w = layer.width * ps.dim_hidden
         with self.name_scope:
-            s = [u, ps.dim_dense]
+            s = [w, ps.dim_dense]
             self.inflate = Dense(layer, s, name='infl', activation='relu')
-            s = [ps.dim_dense, u]
+            s = [ps.dim_dense, w]
             self.deflate = Dense(layer, s, name='defl', bias=False)
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        x, row_lens = x
-        lc = self.layer.len_ctx
-        dh = self.layer.ps.dim_hidden
-        y = tf.reshape(x, [-1, lc * dh])
+        x, lens = x
+        w = self.layer.width
+        d = self.layer.ps.dim_hidden
+        y = tf.reshape(x, [-1, w * d])
         y = self.inflate(y)
         y = self.deflate(y)
-        y = tf.reshape(y, [-1, lc, dh])
-        return [y, row_lens]
+        y = tf.reshape(y, [-1, w, d])
+        return [y, lens]
 
 
 class Dense(tf.Module):
@@ -281,18 +283,46 @@ class Dense(tf.Module):
 
 
 def model_for(ps):
-    emb = Embed(ps)
-    xi = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    yi = emb(xi)
-    y = Encode(ps)(yi)
-    xo = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    yo = emb(xo)
-    y = Decode(ps)([yo, y])
-    y = Debed(ps)(y)
-    m = ks.Model(inputs=xi + xo, outputs=[y])
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
+    embed = Embed(ps)
+    xe = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    ye = Encode(ps)(embed(xe))
+    xd = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    yd = Decode(ps)(embed(xd) + [ye])
+    y = Debed(ps)(yd)
+    m = ks.Model(inputs=xe + xd, outputs=[y])
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
+
+
+class Loss(ks.losses.Loss):
+    @staticmethod
+    def xent(y_true, y_pred):
+        kw = dict(labels=y_true, logits=y_pred)
+        return tf.nn.sparse_softmax_cross_entropy_with_logits(**kw)
+
+    def __init__(self):
+        super().__init(name='loss')
+
+    def call(self, y_true, y_pred):
+        return self.xent(y_true, y_pred)
+
+
+class Metric(ks.metrics.Metric):
+    def __init__(self):
+        super().__init__(name='metric', dtype=tf.float32)
+        self.total = self.add_weight('total', initializer='zeros')
+        self.count = self.add_weight('count', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, _=None):
+        fv, rs = y_true
+        y_true = tf.RaggedTensor.from_row_splits(fv, rs).to_tensor()
+        vs = Loss.xent(y_true, y_pred)
+        self.total.assign_add(tf.math.reduce_sum(vs))
+        return self.count.assign_add(tf.size(vs))
+
+    def result(self):
+        return tf.math.divide_no_nan(self.total, self.count)
 
 
 params = dict(
@@ -301,13 +331,13 @@ params = dict(
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(vocab) + 5,
-    len_dec_ctx=20,
-    len_enc_ctx=100,
-    loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metrics=ks.metrics.SparseCategoricalAccuracy(),
+    loss=Loss(),
+    metric=Metric(),
     num_epochs=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
+    width_dec=20,
+    width_enc=100,
 )
 
 
@@ -327,7 +357,7 @@ def main_eager(_):
             yy = m(x)
             loss = ps.loss(y, yy)
             loss += sum(m.losses)
-            acc = ps.metrics(y, yy)
+            acc = ps.metric(y, yy)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
         return loss, acc
@@ -339,7 +369,7 @@ def main_eager(_):
             s += 1
             loss, acc = step(x, y)
             if tf.equal(s % 10, 0):
-                a = ps.metrics.result()
+                a = ps.metric.result()
                 tf.print('Step:', s, ', loss:', loss, ', acc:', a)
         return loss, acc
 
