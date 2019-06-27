@@ -106,6 +106,7 @@ class ToRagged(kl.Layer):
     def call(self, x):
         ys = []
         for i in range(3):
+            i *= 2
             fv, rs = x[i:i + 2]
             ys.append(tf.RaggedTensor.from_row_splits(fv, rs))
         return ys
@@ -186,7 +187,6 @@ class Encode(Layer):
         y = x
         for e in self.encs:
             y = e(y)
-        y = y[0]
         return y
 
 
@@ -201,7 +201,6 @@ class Decode(Layer):
         y = x
         for d in self.decs:
             y = d(y + [ye])
-        y = y[0]
         return y
 
 
@@ -211,10 +210,12 @@ class Debed(kl.Layer):
         self.out = Dense(self, [ps.dim_hidden, ps.dim_vocab], name='out')
 
     def call(self, x):
+        x, lens = x
         s = tf.shape(x)
         y = tf.reshape(x, [s[0] * s[1], -1])
         y = self.out(y)
         y = tf.reshape(y, [s[0], s[1], -1])
+        y = tf.RaggedTensor.from_tensor(y, lengths=lens)
         return y
 
 
@@ -328,9 +329,10 @@ def model_for(ps):
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     y = ToRagged()(x)
     y = Frames(ps)(y)
+    ye, yd = y[:2], y[2:]
     embed = Embed(ps)
-    ye = Encode(ps)(embed(y[:2]))
-    yd = Decode(ps)(embed(y[2:]) + [ye])
+    ye = Encode(ps)(embed(ye))
+    yd = Decode(ps)(embed(yd) + [ye[0]])
     y = Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
     # m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
@@ -341,8 +343,11 @@ def model_for(ps):
 class Loss(ks.losses.Loss):
     @staticmethod
     def xent(y_true, y_pred):
+        y_true = y_true.to_tensor()
+        y_pred = y_pred.to_tensor()
         s = tf.shape(y_true)
-        kw = dict(labels=y_true, logits=y_pred[:, :s[1], :])
+        # kw = dict(labels=y_true, logits=y_pred[:, :s[1], :])
+        kw = dict(labels=y_true, logits=y_pred)
         return tf.nn.sparse_softmax_cross_entropy_with_logits(**kw)
 
     def __init__(self):
@@ -373,15 +378,15 @@ params = dict(
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(vocab) + 5,
-    # loss=Loss(),
-    loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
-    # metric=Metric(),
-    metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
+    loss=Loss(),
+    # loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metric=Metric(),
+    # metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
     num_epochs=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
-    width_dec=20,
-    width_enc=100,
+    width_dec=15,
+    width_enc=25,
 )
 
 
