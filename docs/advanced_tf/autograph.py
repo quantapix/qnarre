@@ -66,7 +66,8 @@ def formatter(d):
         y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
         return x.with_flat_values(y)
 
-    return {'enc': enc, 'dec': mask(tgt), 'tgt': tgt}
+    # return {'enc': enc, 'dec': mask(tgt), 'tgt': tgt}
+    return {'enc': enc, 'dec': tgt, 'tgt': tgt}
 
 
 @tf.function
@@ -124,7 +125,7 @@ class Frames(Layer):
         super().__init__(ps, dtype=tf.int32)  # , dynamic=True)
         s = (ps.dim_batch, ps.width_enc)
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
-        self.prev = self.add_weight(name='prev', shape=s, **kw)
+        self.prev = self.add_weight('prev', shape=s, **kw)
 
     def compute_output_shape(self, _):
         ps = self.ps
@@ -152,7 +153,7 @@ class Frames(Layer):
         p = tf.concat([ye, xt], axis=1)
         tl = tf.cast(xt.row_lengths(), dtype=tf.int32)
         p = tf.gather_nd(p, self.calc_idxs(tl))
-        self.prev.assign(p)
+        # self.prev.assign(p)
         # tf.map_fn(print_prev, self.prev)
         return [ye, el, yd, dl]
 
@@ -183,11 +184,11 @@ class Embed(Layer):
     def __init__(self, ps):
         super().__init__(ps, dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
-        self.emb_t = self.add_weight(name='emb_t', shape=s)
+        self.emb = self.add_weight('emb', shape=s)
         w = max(ps.width_dec, ps.width_enc)
         p = self.pos_timing(w, ps.dim_hidden)
         p = tf.constant(p, dtype=tf.float32)
-        self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
+        self.pos = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
 
     def compute_output_shape(self, _):
         return [
@@ -198,8 +199,8 @@ class Embed(Layer):
     @tf.function
     def call(self, x):
         x, lens = x
-        y = tf.nn.embedding_lookup(self.emb_t, x)
-        y = (y * y.shape[-1]**0.5) + self.pos_b[:, :y.shape[1], :]
+        y = tf.nn.embedding_lookup(self.emb, x)
+        y = (y * y.shape[-1]**0.5) + self.pos[:, :y.shape[1], :]
         return [y, lens]
 
 
@@ -235,7 +236,7 @@ class Decode(Layer):
 class Debed(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.out = Dense(self, [ps.dim_hidden, ps.dim_vocab], name='out')
+        self.out = Dense(self, 'out', [ps.dim_hidden, ps.dim_vocab])
 
     def compute_output_shape(self, _):
         return tf.TensorShape([None, None, self.ps.dim_vocab])
@@ -252,12 +253,13 @@ class Debed(Layer):
 
 
 class Encoder(tf.Module):
-    def __init__(self, layer, name=None):
+    def __init__(self, layer, name):
         super().__init__(name=name)
         with self.name_scope:
-            self.reflect = Attention(layer, name='_refl')
-            self.conclude = Conclusion(layer, name=name + '_concl')
+            self.reflect = Attention(layer, 'refl')
+            self.conclude = Conclusion(layer, 'cncl')
 
+    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         y = self.reflect(x + [None])
@@ -266,13 +268,14 @@ class Encoder(tf.Module):
 
 
 class Decoder(tf.Module):
-    def __init__(self, layer, name=None):
+    def __init__(self, layer, name):
         super().__init__(name=name)
         with self.name_scope:
-            self.reflect = Attention(layer, name='_refl')
-            self.consider = Attention(layer, name='_cons')
-            self.conclude = Conclusion(layer, name=name + '_conc')
+            self.reflect = Attention(layer, 'refl')
+            self.consider = Attention(layer, 'cons')
+            self.conclude = Conclusion(layer, 'cncl')
 
+    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         x, ye = x[:-1], x[-1]
@@ -283,43 +286,45 @@ class Decoder(tf.Module):
 
 
 class Attention(tf.Module):
-    def __init__(self, layer, name=None):
+    def __init__(self, layer, name):
         super().__init__(name=name)
         h = layer.ps.dim_hidden
         self.scale = 1 / (h**0.5)
         with self.name_scope:
-            self.q_w = layer.add_weight(name='q_w', shape=(h, h))
-            self.k_w = layer.add_weight(name='k_w', shape=(h, h))
-            self.v_w = layer.add_weight(name='v_w', shape=(h, h))
+            self.q = layer.add_weight('q', shape=(h, h))
+            self.k = layer.add_weight('k', shape=(h, h))
+            self.v = layer.add_weight('v', shape=(h, h))
 
+    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         x, lens, ctx = x
         off = tf.math.reduce_max(lens)
-        q = tf.einsum('bni,ij->bnj', x[:, -off:, :], self.q_w)
+        q = tf.einsum('bni,ij->bnj', x[:, -off:, :], self.q)
         ctx = x if ctx is None else ctx
-        k = tf.einsum('bni,ij->bnj', ctx, self.k_w)
+        k = tf.einsum('bni,ij->bnj', ctx, self.k)
         y = tf.einsum('bni,bmi->bnm', q, k)
         # use lens
         y = tf.nn.softmax(y * self.scale)
-        v = tf.einsum('bni,ij->bnj', ctx, self.v_w)
+        v = tf.einsum('bni,ij->bnj', ctx, self.v)
         y = tf.einsum('bnm,bmi->bni', y, v)
         y = tf.concat([x[:, :-off, :], y], axis=1)
         return [y, lens]
 
 
 class Conclusion(tf.Module):
-    def __init__(self, layer, name=None):
+    def __init__(self, layer, name):
         super().__init__(name=name)
         self.layer = layer
         ps = layer.ps
         w = layer.width * ps.dim_hidden
         with self.name_scope:
             s = [w, ps.dim_dense]
-            self.inflate = Dense(layer, s, name='infl', activation='relu')
+            self.inflate = Dense(layer, 'infl', s, activation='relu')
             s = [ps.dim_dense, w]
-            self.deflate = Dense(layer, s, name='defl', bias=False)
+            self.deflate = Dense(layer, 'defl', s, bias=False)
 
+    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         x, lens = x
@@ -336,22 +341,23 @@ class Dense(tf.Module):
     activation = None
     bias = None
 
-    def __init__(self, layer, shape, name=None, activation=None, bias=True):
+    def __init__(self, layer, name, shape, activation=None, bias=True):
         super().__init__(name=name)
         with self.name_scope:
             self.kern = layer.add_weight('kern', shape=shape)
-            self.activation = ks.activations.get(activation)
+            # self.activation = ks.activations.get(activation)
             if bias:
                 kw = dict(shape=shape[1:], initializer='zeros')
                 self.bias = layer.add_weight('bias', **kw)
 
+    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         y = tf.einsum('bi,ij->bj', x, self.kern)
         if self.bias is not None:
-            y += self.bias
+            y += self.bias[None, ]
         if self.activation:
-            return self.activation(y)
+            y = self.activation(y)
         return y
 
 
@@ -362,9 +368,8 @@ def model_for(ps):
     y = ToRagged()(x)
     y = Frames(ps)(y)
     ye, yd = y[:2], y[2:]
-    embed = Embed(ps)
-    ye = Encode(ps)(embed(ye))
-    yd = Decode(ps)(embed(yd) + [ye[0]])
+    ye = Encode(ps)(Embed(ps)(ye))
+    yd = Decode(ps)(Embed(ps)(yd) + [ye[0]])
     y = Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
@@ -430,6 +435,8 @@ def main_eager(_):
     m = model_for(ps)
 
     def step(x, y):
+        for v in m.trainable_variables:
+            print('****', v)
         with tf.GradientTape() as tape:
             yy = m(x)
             loss = ps.loss(y, yy)
@@ -467,5 +474,5 @@ def main_graph(_):
 
 if __name__ == '__main__':
     from absl import app
-    app.run(main_graph)
-    # app.run(main_eager)
+    # app.run(main_graph)
+    app.run(main_eager)
