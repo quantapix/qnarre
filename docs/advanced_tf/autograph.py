@@ -51,7 +51,7 @@ def adapter(d):
     n = ds.nrows()
     os = tf.RaggedTensor.from_sparse(d['op'])
     inp = tf.concat([ds, tf.fill([n, 1], SEP), os], axis=1)
-    out = tf.RaggedTensor.from_row_lengths([PAD] * n, [1] * n)
+    out = tf.RaggedTensor.from_tensor(tf.fill([n, 1], PAD))
     rs = tf.RaggedTensor.from_sparse(d['res'])
     tgt = tf.concat([rs, tf.fill([rs.nrows(), 1], EOS)], axis=1)
     # return [inp, out], tgt
@@ -94,8 +94,8 @@ class Embed(kl.Layer):
         fv, rs = x
         x = tf.RaggedTensor.from_row_splits(fv, rs)
         y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
-        lens = tf.cast(y.row_lengths(), dtype=tf.int32)
         y *= y.shape[-1]**0.5
+        lens = tf.cast(y.row_lengths(), dtype=tf.int32)
         y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=lens)
         return [y.to_tensor(), lens]
 
@@ -278,8 +278,8 @@ def model_for(ps):
     xd = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     yd = Decode(ps)(embed(xd) + [ye])
     y = Debed(ps)(yd)
-    m = ks.Model(inputs=xe + xd, outputs=[y])
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
+    m = ks.Model(inputs=xe + xd, outputs=y)
+    # m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
 
@@ -306,7 +306,7 @@ class Metric(ks.metrics.Metric):
     def update_state(self, y_true, y_pred, sample_weight=None):
         vs = Loss.xent(y_true, y_pred)
         self.total.assign_add(tf.math.reduce_sum(vs))
-        return self.count.assign_add(tf.size(vs))
+        return self.count.assign_add(tf.cast(tf.size(vs), dtype=tf.float32))
 
     def result(self):
         return tf.math.divide_no_nan(self.total, self.count)
@@ -344,7 +344,7 @@ def main_eager(_):
             yy = m(x)
             loss = ps.loss(y, yy)
             loss += sum(m.losses)
-            acc = ps.metric(y, yy)
+            acc = ps.metric.update_state(y, yy)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
         return loss, acc
