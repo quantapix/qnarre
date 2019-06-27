@@ -287,7 +287,8 @@ def model_for(ps):
 class Loss(ks.losses.Loss):
     @staticmethod
     def xent(y_true, y_pred):
-        kw = dict(labels=y_true, logits=y_pred)
+        s = tf.shape(y_true)
+        kw = dict(labels=y_true, logits=y_pred[:, :s[1], :])
         return tf.nn.sparse_softmax_cross_entropy_with_logits(**kw)
 
     def __init__(self):
