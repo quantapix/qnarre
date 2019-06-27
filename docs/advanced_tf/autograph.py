@@ -66,8 +66,7 @@ def formatter(d):
         y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
         return x.with_flat_values(y)
 
-    # return {'enc': enc, 'dec': mask(tgt), 'tgt': tgt}
-    return {'enc': enc, 'dec': tgt, 'tgt': tgt}
+    return {'enc': enc, 'dec': mask(tgt), 'tgt': tgt}
 
 
 @tf.function
@@ -153,7 +152,7 @@ class Frames(Layer):
         p = tf.concat([ye, xt], axis=1)
         tl = tf.cast(xt.row_lengths(), dtype=tf.int32)
         p = tf.gather_nd(p, self.calc_idxs(tl))
-        # self.prev.assign(p)
+        self.prev.assign(p)
         # tf.map_fn(print_prev, self.prev)
         return [ye, el, yd, dl]
 
@@ -181,8 +180,8 @@ class Embed(Layer):
         t = np.concatenate(t, axis=-1)[np.newaxis, ...]
         return t
 
-    def __init__(self, ps):
-        super().__init__(ps, dtype=tf.float32)
+    def __init__(self, ps, name):
+        super().__init__(ps, name=name, dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb = self.add_weight('emb', shape=s)
         w = max(ps.width_dec, ps.width_enc)
@@ -200,7 +199,7 @@ class Embed(Layer):
     def call(self, x):
         x, lens = x
         y = tf.nn.embedding_lookup(self.emb, x)
-        y = (y * y.shape[-1]**0.5) + self.pos[:, :y.shape[1], :]
+        y = (y * y.shape[-1]**0.5)  #  + self.pos[:, :y.shape[1], :]
         return [y, lens]
 
 
@@ -345,7 +344,7 @@ class Dense(tf.Module):
         super().__init__(name=name)
         with self.name_scope:
             self.kern = layer.add_weight('kern', shape=shape)
-            # self.activation = ks.activations.get(activation)
+            self.activation = ks.activations.get(activation)
             if bias:
                 kw = dict(shape=shape[1:], initializer='zeros')
                 self.bias = layer.add_weight('bias', **kw)
@@ -368,8 +367,8 @@ def model_for(ps):
     y = ToRagged()(x)
     y = Frames(ps)(y)
     ye, yd = y[:2], y[2:]
-    ye = Encode(ps)(Embed(ps)(ye))
-    yd = Decode(ps)(Embed(ps)(yd) + [ye[0]])
+    ye = Encode(ps)(Embed(ps, 'e1')(ye))
+    yd = Decode(ps)(Embed(ps, 'e2')(yd) + [ye[0]])
     y = Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
@@ -435,8 +434,6 @@ def main_eager(_):
     m = model_for(ps)
 
     def step(x, y):
-        for v in m.trainable_variables:
-            print('****', v)
         with tf.GradientTape() as tape:
             yy = m(x)
             loss = ps.loss(y, yy)
@@ -474,5 +471,5 @@ def main_graph(_):
 
 if __name__ == '__main__':
     from absl import app
-    # app.run(main_graph)
-    app.run(main_eager)
+    app.run(main_graph)
+    # app.run(main_eager)
