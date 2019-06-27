@@ -55,15 +55,8 @@ def adapter(d):
     rs = tf.RaggedTensor.from_sparse(d['res'])
     tgt = tf.concat([rs, tf.fill([rs.nrows(), 1], EOS)], axis=1)
     # return [inp, out], tgt
-    return ([
-        inp.flat_values,
-        inp.row_splits,
-        out.flat_values,
-        out.row_splits,
-    ], [
-        tgt.flat_values,
-        tgt.row_splits,
-    ])
+    return ((inp.flat_values, inp.row_splits, out.flat_values, out.row_splits),
+            tgt.to_tensor())
 
 
 def dset_for(ps):
@@ -101,7 +94,7 @@ class Embed(kl.Layer):
         fv, rs = x
         x = tf.RaggedTensor.from_row_splits(fv, rs)
         y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
-        lens = y.row_lengths()
+        lens = tf.cast(y.row_lengths(), dtype=tf.int32)
         y *= y.shape[-1]**0.5
         y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=lens)
         return [y.to_tensor(), lens]
@@ -112,12 +105,9 @@ class Context(kl.Layer):
         super().__init__()
         self.ps = ps
         self.width = width
-
-    def build(self, shape):
-        s = (shape[0], self.width, shape[-1])
+        s = (ps.dim_batch, self.width, ps.dim_hidden)
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
         self.ctx = self.add_weight(name='ctx', shape=s, **kw)
-        return super().build(shape)
 
     def append(self, x):
         x, lens = x
@@ -127,7 +117,7 @@ class Context(kl.Layer):
 
     def calc_idxs(self, lens):
         w = self.width
-        tf.assert_greater_equal(w, lens)
+        tf.debugging.assert_greater_equal(w, lens)
         y = self.ps.dim_batch
         y = tf.broadcast_to(tf.range(y)[:, None], [y, w])
         i = tf.range(w)[None, ] + lens[:, None]
@@ -155,7 +145,7 @@ class Decode(Context):
         self.decs = [Decoder(self, f'dec_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
-        x, ye = x
+        x, ye = x[:-1], x[-1]
         y = self.append(x)
         for d in self.decs:
             y = d(y + [ye])
@@ -170,7 +160,6 @@ class Debed(kl.Layer):
         self.out = Dense(self, [ps.dim_hidden, ps.dim_vocab], name='out')
 
     def call(self, x):
-        x, _ = x
         s = tf.shape(x)
         y = tf.reshape(x, [s[0] * s[1], -1])
         y = self.out(y)
@@ -231,7 +220,7 @@ class Attention(tf.Module):
         y = tf.nn.softmax(y * self.scale)
         v = tf.einsum('bni,ij->bnj', ctx, self.v_w)
         y = tf.einsum('bnm,bmi->bni', y, v)
-        y = tf.concat([x[:, :-off, :], y])
+        y = tf.concat([x[:, :-off, :], y], axis=1)
         return [y, lens]
 
 
@@ -302,7 +291,7 @@ class Loss(ks.losses.Loss):
         return tf.nn.sparse_softmax_cross_entropy_with_logits(**kw)
 
     def __init__(self):
-        super().__init(name='loss')
+        super().__init__(name='loss')
 
     def call(self, y_true, y_pred):
         return self.xent(y_true, y_pred)
@@ -314,9 +303,7 @@ class Metric(ks.metrics.Metric):
         self.total = self.add_weight('total', initializer='zeros')
         self.count = self.add_weight('count', initializer='zeros')
 
-    def update_state(self, y_true, y_pred, _=None):
-        fv, rs = y_true
-        y_true = tf.RaggedTensor.from_row_splits(fv, rs).to_tensor()
+    def update_state(self, y_true, y_pred, sample_weight=None):
         vs = Loss.xent(y_true, y_pred)
         self.total.assign_add(tf.math.reduce_sum(vs))
         return self.count.assign_add(tf.size(vs))
