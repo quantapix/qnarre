@@ -21,8 +21,8 @@ import tensorflow as tf
 td = tf.data
 tt = tf.train
 
-vocab = ('x', 'y')
-vocab += ('+', '-', '*', '=', ',', ':')
+vocab = (' ', ':', '|')
+vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 params = dict(
@@ -41,7 +41,7 @@ class Params:
 def py_gen(ps):
     m, n = ps.max_val, ps.num_samples
     # x, y vals in defs
-    vals = np.random.randint(low=-m, high=m + 1, size=(2, n))
+    vals = np.random.randint(low=1 - m, high=m, size=(2, n))
     # (x, y) order if 1 in defs [0] and op [1], respectively
     ords = np.random.randint(2, size=(2, n))
     # index of ['+', '-', '*']
@@ -91,7 +91,7 @@ def splitter(x):
     return {'defs': fs[0], 'op': fs[1], 'res': fs[2]}
 
 
-tokens = {k: v for v, k in enumerate(vocab, start=5)}
+tokens = {c: i for i, c in enumerate(vocab)}
 
 
 @tf.function
@@ -185,13 +185,14 @@ def main(_):
     ps.dim_batch = 2
     for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
-    ps.max_val = 100
-    ps.num_samples = 1000
+    ps.max_val = 10000
+    ps.num_samples = 100000
     ps.num_shards = 10
     fs = [f for f in dump(ps)]
     ps.dim_batch = 100
     for i, _ in enumerate(load(ps, fs).map(adapter)):
-        print(i)
+        pass
+    print(i)
 
 
 if __name__ == '__main__':

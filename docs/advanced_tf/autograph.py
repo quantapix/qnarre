@@ -23,14 +23,15 @@ from datetime import datetime
 ks = tf.keras
 kl = ks.layers
 
-vocab = (' ', '$', ':', '|', ',')
-vocab += ('x', 'y', '=', '+', '-', '*')
+vocab = (' ', ':', '|')
+vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 tokens = {c: i for i, c in enumerate(vocab)}
 tokens.update({v: k for k, v in tokens.items()})
 
-PAD, MSK, SEP, EOS = [tokens[c] for c in vocab[:4]]
+SPC, SEP, STP = [tokens[c] for c in vocab[:3]]
+assert SPC == 0
 
 
 def paths(ps):
@@ -46,17 +47,42 @@ def caster(d):
 
 
 @tf.function
-def adapter(d):
+def formatter(d):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     n = ds.nrows()
     os = tf.RaggedTensor.from_sparse(d['op'])
-    inp = tf.concat([ds, tf.fill([n, 1], SEP), os], axis=1)
-    out = tf.RaggedTensor.from_tensor(tf.fill([n, 1], PAD))
+    tf.debugging.assert_equal(n, os.nrows())
+    ss = tf.fill([n, 1], SEP)
+    enc = tf.concat([ds, ss, os, ss], axis=1)
     rs = tf.RaggedTensor.from_sparse(d['res'])
-    tgt = tf.concat([rs, tf.fill([rs.nrows(), 1], EOS)], axis=1)
-    # return [inp, out], tgt
-    return ((inp.flat_values, inp.row_splits, out.flat_values, out.row_splits),
-            tgt.to_tensor())
+    tf.debugging.assert_equal(n, rs.nrows())
+    tgt = tf.concat([rs, tf.fill([n, 1], STP)], axis=1)
+
+    def mask(x):
+        y = x.flat_values
+        mv = tf.shape(y)[0]
+        s = mv // 2
+        i = tf.random.uniform([s], maxval=mv, dtype=tf.int32)[:, None]
+        y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
+        return x.with_flat_values(y)
+
+    return {'enc': enc, 'dec': mask(tgt), 'tgt': tgt}
+
+
+@tf.function
+def adapter(d):
+    enc, dec, tgt = d['enc'], d['dec'], d['tgt']
+    return (
+        (
+            enc.flat_values,
+            enc.row_splits,
+            dec.flat_values,
+            dec.row_splits,
+            tgt.flat_values,
+            tgt.row_splits,
+        ),
+        tgt,
+    )
 
 
 def dset_for(ps):
@@ -66,91 +92,116 @@ def dset_for(ps):
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
-    return ds.map(adapter)
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs))
+    return ds.map(caster).map(formatter).map(adapter)
 
 
-def pos_timing(width, depth):
-    assert depth % 2 == 0
-    d = np.arange(depth)[np.newaxis, :]
-    d = 1 / np.power(10000, (2 * (d // 2)) / np.float32(depth))
-    t = np.arange(width)[:, np.newaxis] * d
-    t = [np.sin(t[:, 0::2]), np.cos(t[:, 1::2])]
-    t = np.concatenate(t, axis=-1)[np.newaxis, ...]
-    return t
+class Layer(kl.Layer):
+    def __init__(self, ps, **kw):
+        super().__init__(**kw)
+        self.ps = ps
 
 
-class Embed(kl.Layer):
+class ToRagged(kl.Layer):
+    def call(self, x):
+        ys = []
+        for i in range(3):
+            fv, rs = x[i:i + 2]
+            ys.append(tf.RaggedTensor.from_row_splits(fv, rs))
+        return ys
+
+
+class Frames(Layer):
     def __init__(self, ps):
-        super().__init__(dtype=tf.float32)
-        s = (ps.dim_vocab, ps.dim_hidden)
-        self.emb_t = self.add_weight(name='emb_t', shape=s)
-        w = max(ps.width_dec, ps.width_enc)
-        p = pos_timing(w, ps.dim_hidden)
-        p = tf.constant(p, dtype=tf.float32)
-        self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
+        super().__init__(ps, dtype=tf.int32)
+        s = (ps.dim_batch, ps.width_enc)
+        kw = dict(initializer='zeros', trainable=False, use_resource=True)
+        self.prev = self.add_weight(name='prev', shape=s, **kw)
 
     def call(self, x):
-        fv, rs = x
-        x = tf.RaggedTensor.from_row_splits(fv, rs)
-        y = tf.ragged.map_flat_values(tf.nn.embedding_lookup, self.emb_t, x)
-        y *= y.shape[-1]**0.5
-        lens = tf.cast(y.row_lengths(), dtype=tf.int32)
-        y += tf.RaggedTensor.from_tensor(self.pos_b, lengths=lens)
-        return [y.to_tensor(), lens]
-
-
-class Context(kl.Layer):
-    def __init__(self, ps, width):
-        super().__init__()
-        self.ps = ps
-        self.width = width
-        s = (ps.dim_batch, self.width, ps.dim_hidden)
-        kw = dict(initializer='zeros', trainable=False, use_resource=True)
-        self.ctx = self.add_weight(name='ctx', shape=s, **kw)
-
-    def append(self, x):
-        x, lens = x
-        y = tf.concat([self.ctx, x], axis=1)
-        y = tf.gather_nd(y, self.calc_idxs(lens))
-        return [y, lens]
+        xe, xd, xt = x
+        # tf.debugging.assert_greater_equal(self.ps.width_enc,
+        #                                   xe.bounding_shape(axis=1, out_type=tf.int32))
+        ye = tf.concat([self.prev, xe], axis=1)
+        el = tf.cast(xe.row_lengths(), dtype=tf.int32)
+        ye = tf.gather_nd(ye, self.calc_idxs(el))
+        c = self.ps.width_dec - xd.bounding_shape(axis=1, out_type=tf.int32)
+        # tf.debugging.assert_greater_equal(c, 0)
+        yd = tf.pad(xd.to_tensor(), [[0, 0], [0, c]])
+        dl = tf.cast(xd.row_lengths(), dtype=tf.int32)
+        # tf.debugging.assert_greater_equal(self.ps.width_enc,
+        #                                   xt.bounding_shape(axis=1, out_type=tf.int32))
+        p = tf.concat([ye, xt], axis=1)
+        tl = tf.cast(xt.row_lengths(), dtype=tf.int32)
+        p = tf.gather_nd(p, self.calc_idxs(tl))
+        self.prev.assign(p)
+        return [ye, el, yd, dl]
 
     def calc_idxs(self, lens):
-        w = self.width
-        tf.debugging.assert_greater_equal(w, lens)
-        y = self.ps.dim_batch
+        y, w = self.ps.dim_batch, self.ps.width_enc
         y = tf.broadcast_to(tf.range(y)[:, None], [y, w])
         i = tf.range(w)[None, ] + lens[:, None]
         y = tf.stack([y, i], axis=2)
         return y
 
+    def print_prev(self):
+        for b in self.prev.numpy():
+            print(''.join([tokens[t] for t in b]))
 
-class Encode(Context):
+
+class Embed(kl.Layer):
+    @staticmethod
+    def pos_timing(width, depth):
+        assert depth % 2 == 0
+        d = np.arange(depth)[np.newaxis, :]
+        d = 1 / np.power(10000, (2 * (d // 2)) / np.float32(depth))
+        t = np.arange(width)[:, np.newaxis] * d
+        t = [np.sin(t[:, 0::2]), np.cos(t[:, 1::2])]
+        t = np.concatenate(t, axis=-1)[np.newaxis, ...]
+        return t
+
     def __init__(self, ps):
-        super().__init__(ps, ps.width_enc)
+        super().__init__(dtype=tf.float32)
+        s = (ps.dim_vocab, ps.dim_hidden)
+        self.emb_t = self.add_weight(name='emb_t', shape=s)
+        w = max(ps.width_dec, ps.width_enc)
+        p = self.pos_timing(w, ps.dim_hidden)
+        p = tf.constant(p, dtype=tf.float32)
+        self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
+
+    def call(self, x):
+        x, lens = x
+        y = tf.nn.embedding_lookup(self.emb_t, x)
+        y = (y * y.shape[-1]**0.5) + self.pos_b
+        return [y, lens]
+
+
+class Encode(Layer):
+    def __init__(self, ps):
+        super().__init__(ps)
+        self.width = ps.width_enc
         self.encs = [Encoder(self, f'enc_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
-        y = self.append(x)
+        y = x
         for e in self.encs:
             y = e(y)
         y = y[0]
-        self.ctx.assign(y)
         return y
 
 
-class Decode(Context):
+class Decode(Layer):
     def __init__(self, ps):
-        super().__init__(ps, ps.width_dec)
+        super().__init__(ps)
+        self.width = ps.width_dec
         self.decs = [Decoder(self, f'dec_{i}') for i in range(ps.dim_stacks)]
 
     def call(self, x):
         x, ye = x[:-1], x[-1]
-        y = self.append(x)
+        y = x
         for d in self.decs:
             y = d(y + [ye])
         y = y[0]
-        self.ctx.assign(y)
         return y
 
 
@@ -272,13 +323,16 @@ class Dense(tf.Module):
 
 
 def model_for(ps):
+    x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    y = ToRagged()(x)
+    y = Frames(ps)(y)
     embed = Embed(ps)
-    xe = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    ye = Encode(ps)(embed(xe))
-    xd = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    yd = Decode(ps)(embed(xd) + [ye])
+    ye = Encode(ps)(embed(y[:2]))
+    yd = Decode(ps)(embed(y[2:]) + [ye])
     y = Debed(ps)(yd)
-    m = ks.Model(inputs=xe + xd, outputs=y)
+    m = ks.Model(inputs=x, outputs=y)
     # m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
@@ -319,8 +373,10 @@ params = dict(
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(vocab) + 5,
-    loss=Loss(),
-    metric=Metric(),
+    # loss=Loss(),
+    loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
+    # metric=Metric(),
+    metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
     num_epochs=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
