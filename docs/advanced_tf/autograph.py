@@ -135,7 +135,6 @@ class Frames(Layer):
             tf.TensorShape([None])
         ]
 
-    @tf.function
     def call(self, x):
         xe, xd, xt = x
         # tf.debugging.assert_greater_equal(self.ps.width_enc,
@@ -178,16 +177,17 @@ class Embed(Layer):
         t = np.arange(width)[:, np.newaxis] * d
         t = [np.sin(t[:, 0::2]), np.cos(t[:, 1::2])]
         t = np.concatenate(t, axis=-1)[np.newaxis, ...]
+        t = tf.constant(t, dtype=tf.float32)
         return t
 
-    def __init__(self, ps, name):
-        super().__init__(ps, name=name, dtype=tf.float32)
+    def __init__(self, ps):
+        super().__init__(ps, name='emb', dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
-        self.emb = self.add_weight('emb', shape=s)
-        w = max(ps.width_dec, ps.width_enc)
-        p = self.pos_timing(w, ps.dim_hidden)
-        p = tf.constant(p, dtype=tf.float32)
-        self.pos = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
+        self.tabl = self.add_weight('tabl', shape=s)
+        p = self.pos_timing(ps.width_enc, ps.dim_hidden)
+        self.enc_p = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
+        p = self.pos_timing(ps.width_dec, ps.dim_hidden)
+        self.dec_p = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
 
     def compute_output_shape(self, _):
         return [
@@ -195,10 +195,9 @@ class Embed(Layer):
             tf.TensorShape([None]),
         ]
 
-    @tf.function
     def call(self, x):
         x, lens = x
-        y = tf.nn.embedding_lookup(self.emb, x)
+        y = tf.nn.embedding_lookup(self.tabl, x)
         y = (y * y.shape[-1]**0.5)  #  + self.pos[:, :y.shape[1], :]
         return [y, lens]
 
@@ -209,7 +208,7 @@ class Encode(Layer):
         self.width = ps.width_enc
         self.encs = [Encoder(self, f'enc_{i}') for i in range(ps.dim_stacks)]
 
-    @tf.function
+    # @tf.function
     def call(self, x):
         y = x
         for e in self.encs:
@@ -223,7 +222,7 @@ class Decode(Layer):
         self.width = ps.width_dec
         self.decs = [Decoder(self, f'dec_{i}') for i in range(ps.dim_stacks)]
 
-    @tf.function
+    # @tf.function
     def call(self, x):
         x, ye = x[:-1], x[-1]
         y = x
@@ -240,7 +239,6 @@ class Debed(Layer):
     def compute_output_shape(self, _):
         return tf.TensorShape([None, None, self.ps.dim_vocab])
 
-    @tf.function
     def call(self, x):
         x, lens = x
         s = tf.shape(x)
@@ -258,7 +256,6 @@ class Encoder(tf.Module):
             self.reflect = Attention(layer, 'refl')
             self.conclude = Conclusion(layer, 'cncl')
 
-    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         y = self.reflect(x + [None])
@@ -274,7 +271,6 @@ class Decoder(tf.Module):
             self.consider = Attention(layer, 'cons')
             self.conclude = Conclusion(layer, 'cncl')
 
-    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         x, ye = x[:-1], x[-1]
@@ -294,7 +290,6 @@ class Attention(tf.Module):
             self.k = layer.add_weight('k', shape=(h, h))
             self.v = layer.add_weight('v', shape=(h, h))
 
-    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         x, lens, ctx = x
@@ -323,7 +318,6 @@ class Conclusion(tf.Module):
             s = [ps.dim_dense, w]
             self.deflate = Dense(layer, 'defl', s, bias=False)
 
-    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         x, lens = x
@@ -337,24 +331,24 @@ class Conclusion(tf.Module):
 
 
 class Dense(tf.Module):
-    activation = None
     bias = None
+    activation = None
 
     def __init__(self, layer, name, shape, activation=None, bias=True):
         super().__init__(name=name)
         with self.name_scope:
-            self.kern = layer.add_weight('kern', shape=shape)
-            self.activation = ks.activations.get(activation)
+            kw = dict(shape=shape, initializer='glorot_uniform')
+            self.kern = layer.add_weight('kern', **kw)
             if bias:
-                kw = dict(shape=shape[1:], initializer='zeros')
+                kw.update(shape=[shape[1]], initializer='zeros')
                 self.bias = layer.add_weight('bias', **kw)
+            self.activation = ks.activations.get(activation)
 
-    @tf.function
     @tf.Module.with_name_scope
     def __call__(self, x):
         y = tf.einsum('bi,ij->bj', x, self.kern)
         if self.bias is not None:
-            y += self.bias[None, ]
+            y = tf.nn.bias_add(y, self.bias)
         if self.activation:
             y = self.activation(y)
         return y
@@ -366,9 +360,9 @@ def model_for(ps):
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     y = ToRagged()(x)
     y = Frames(ps)(y)
-    ye, yd = y[:2], y[2:]
-    ye = Encode(ps)(Embed(ps, 'e1')(ye))
-    yd = Decode(ps)(Embed(ps, 'e2')(yd) + [ye[0]])
+    embed = Embed(ps)
+    ye = Encode(ps)(embed(y[:2]))
+    yd = Decode(ps)(embed(y[2:]) + [ye[0]])
     y = Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
@@ -438,25 +432,25 @@ def main_eager(_):
             yy = m(x)
             loss = ps.loss(y, yy)
             loss += sum(m.losses)
-            acc = ps.metric(y, yy)
+            xent = ps.metric(y, yy)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
-        return loss, acc
+        return loss, xent
 
     @tf.function
     def epoch():
-        s, loss, acc = 0, 0.0, 0.0
+        s, loss, xent = 0, 0.0, 0.0
         for x, y in ds:
             s += 1
-            loss, acc = step(x, y)
+            loss, xent = step(x, y)
             if tf.equal(s % 10, 0):
-                a = ps.metric.result()
-                tf.print('Step:', s, ', loss:', loss, ', acc:', a)
-        return loss, acc
+                e = ps.metric.result()
+                tf.print('Step:', s, ', loss:', loss, ', xent:', e)
+        return loss, xent
 
     for e in range(ps.num_epochs):
-        loss, acc = epoch()
-        print(f'Epoch {e} loss:', loss, ', acc:', acc)
+        loss, xent = epoch()
+        print(f'Epoch {e} loss:', loss, ', xent:', xent)
 
 
 def main_graph(_):
@@ -471,5 +465,5 @@ def main_graph(_):
 
 if __name__ == '__main__':
     from absl import app
-    app.run(main_graph)
-    # app.run(main_eager)
+    # app.run(main_graph)
+    app.run(main_eager)
