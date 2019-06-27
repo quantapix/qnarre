@@ -345,7 +345,7 @@ def main_eager(_):
             yy = m(x)
             loss = ps.loss(y, yy)
             loss += sum(m.losses)
-            acc = ps.metric.update_state(y, yy)
+            acc = ps.metric(y, yy)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
         return loss, acc
