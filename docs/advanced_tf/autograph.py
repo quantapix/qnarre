@@ -81,7 +81,7 @@ def adapter(d):
             tgt.flat_values,
             tgt.row_splits,
         ),
-        tgt,
+        tgt.to_tensor(),
     )
 
 
@@ -101,8 +101,15 @@ class Layer(kl.Layer):
         super().__init__(**kw)
         self.ps = ps
 
+    def compute_output_shape(self, shape):
+        return shape
+
 
 class ToRagged(kl.Layer):
+    def compute_output_shape(self, _):
+        return [tf.TensorShape([None, None])] * 3
+
+    @tf.function
     def call(self, x):
         ys = []
         for i in range(3):
@@ -114,11 +121,21 @@ class ToRagged(kl.Layer):
 
 class Frames(Layer):
     def __init__(self, ps):
-        super().__init__(ps, dtype=tf.int32)
+        super().__init__(ps, dtype=tf.int32)  # , dynamic=True)
         s = (ps.dim_batch, ps.width_enc)
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
         self.prev = self.add_weight(name='prev', shape=s, **kw)
 
+    def compute_output_shape(self, _):
+        ps = self.ps
+        return [
+            tf.TensorShape([None, ps.width_enc]),
+            tf.TensorShape([None]),
+            tf.TensorShape([None, ps.width_dec]),
+            tf.TensorShape([None])
+        ]
+
+    @tf.function
     def call(self, x):
         xe, xd, xt = x
         # tf.debugging.assert_greater_equal(self.ps.width_enc,
@@ -136,6 +153,7 @@ class Frames(Layer):
         tl = tf.cast(xt.row_lengths(), dtype=tf.int32)
         p = tf.gather_nd(p, self.calc_idxs(tl))
         self.prev.assign(p)
+        # tf.map_fn(print_prev, self.prev)
         return [ye, el, yd, dl]
 
     def calc_idxs(self, lens):
@@ -145,12 +163,13 @@ class Frames(Layer):
         y = tf.stack([y, i], axis=2)
         return y
 
-    def print_prev(self):
-        for b in self.prev.numpy():
-            print(''.join([tokens[t] for t in b]))
+
+@tf.function
+def print_prev(x):
+    tf.print(''.join([tokens[t] for t in x]))
 
 
-class Embed(kl.Layer):
+class Embed(Layer):
     @staticmethod
     def pos_timing(width, depth):
         assert depth % 2 == 0
@@ -162,7 +181,7 @@ class Embed(kl.Layer):
         return t
 
     def __init__(self, ps):
-        super().__init__(dtype=tf.float32)
+        super().__init__(ps, dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
         self.emb_t = self.add_weight(name='emb_t', shape=s)
         w = max(ps.width_dec, ps.width_enc)
@@ -170,10 +189,17 @@ class Embed(kl.Layer):
         p = tf.constant(p, dtype=tf.float32)
         self.pos_b = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
 
+    def compute_output_shape(self, _):
+        return [
+            tf.TensorShape([None, None, self.ps.dim_hidden]),
+            tf.TensorShape([None]),
+        ]
+
+    @tf.function
     def call(self, x):
         x, lens = x
         y = tf.nn.embedding_lookup(self.emb_t, x)
-        y = (y * y.shape[-1]**0.5) + self.pos_b
+        y = (y * y.shape[-1]**0.5) + self.pos_b[:, :y.shape[1], :]
         return [y, lens]
 
 
@@ -183,6 +209,7 @@ class Encode(Layer):
         self.width = ps.width_enc
         self.encs = [Encoder(self, f'enc_{i}') for i in range(ps.dim_stacks)]
 
+    @tf.function
     def call(self, x):
         y = x
         for e in self.encs:
@@ -196,6 +223,7 @@ class Decode(Layer):
         self.width = ps.width_dec
         self.decs = [Decoder(self, f'dec_{i}') for i in range(ps.dim_stacks)]
 
+    @tf.function
     def call(self, x):
         x, ye = x[:-1], x[-1]
         y = x
@@ -204,18 +232,22 @@ class Decode(Layer):
         return y
 
 
-class Debed(kl.Layer):
+class Debed(Layer):
     def __init__(self, ps):
-        super().__init__()
+        super().__init__(ps)
         self.out = Dense(self, [ps.dim_hidden, ps.dim_vocab], name='out')
 
+    def compute_output_shape(self, _):
+        return tf.TensorShape([None, None, self.ps.dim_vocab])
+
+    @tf.function
     def call(self, x):
         x, lens = x
         s = tf.shape(x)
         y = tf.reshape(x, [s[0] * s[1], -1])
         y = self.out(y)
         y = tf.reshape(y, [s[0], s[1], -1])
-        y = tf.RaggedTensor.from_tensor(y, lengths=lens)
+        y = y[:, :tf.math.reduce_max(lens), :]
         return y
 
 
@@ -335,7 +367,7 @@ def model_for(ps):
     yd = Decode(ps)(embed(yd) + [ye[0]])
     y = Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
-    # m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
 
@@ -343,10 +375,6 @@ def model_for(ps):
 class Loss(ks.losses.Loss):
     @staticmethod
     def xent(y_true, y_pred):
-        y_true = y_true.to_tensor()
-        y_pred = y_pred.to_tensor()
-        s = tf.shape(y_true)
-        # kw = dict(labels=y_true, logits=y_pred[:, :s[1], :])
         kw = dict(labels=y_true, logits=y_pred)
         return tf.nn.sparse_softmax_cross_entropy_with_logits(**kw)
 
@@ -378,10 +406,10 @@ params = dict(
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(vocab) + 5,
-    loss=Loss(),
-    # loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metric=Metric(),
-    # metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
+    # loss=Loss(),
+    loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
+    # metric=Metric(),
+    metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
     num_epochs=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
@@ -439,4 +467,5 @@ def main_graph(_):
 
 if __name__ == '__main__':
     from absl import app
-    app.run(main_eager)
+    app.run(main_graph)
+    # app.run(main_eager)
