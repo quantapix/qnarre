@@ -14,33 +14,16 @@
 # =============================================================================
 # !pip install -U tf-nightly-2.0-preview
 
-import pathlib as pth
 import tensorflow as tf
 
 from datetime import datetime
 
+import advanced_tf.dataset as qd
+
 ks = tf.keras
 kl = ks.layers
 
-vocab = ('x', 'y', '+', '-', '*', '=', ',', ':')
-vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-
-tokens = {k: v for v, k in enumerate(vocab, start=5)}
-tokens.update({v: k for k, v in tokens.items()})
-
-SEP = tokens[':']
-
-
-def paths(ps):
-    d = pth.Path('/tmp/q/dataset')
-    for i in range(ps.num_shards):
-        i = '{:0>4d}'.format(i)
-        yield str(d / f'shard_{i}.tfrecords')
-
-
-@tf.function
-def caster(d):
-    return {k: tf.cast(v, tf.int32) for k, v in d.items()}
+SEP = qd.tokens[':']
 
 
 @tf.function
@@ -55,13 +38,14 @@ def adapter(d, len_max_input):
 
 
 def dset_for(ps):
-    ds = tf.data.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
+    ds = tf.data.TFRecordDataset(list(qd.files(ps)))
+    ds = ds.batch(ps.dim_batch)
     fs = {
         'defs': tf.io.VarLenFeature(tf.int64),
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(caster)
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(qd.caster)
     return ds.map(lambda d: adapter(d, tf.constant(ps.len_max_input)))
 
 
@@ -138,7 +122,7 @@ params = dict(
     dim_batch=2,
     dim_dense=150,
     dim_hidden=15,
-    dim_vocab=len(vocab) + 5,
+    dim_vocab=len(qd.vocab),
     len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
@@ -147,17 +131,9 @@ params = dict(
 )
 
 
-class Params:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-
 def main(_):
-    ps = Params(**params)
+    ps = qd.Params(**params)
     ds = dset_for(ps)
-    # for s in ds.take(1):
-    #     print(s)
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/q/logs/{ld}'

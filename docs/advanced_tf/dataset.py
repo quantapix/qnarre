@@ -127,12 +127,12 @@ def dump(ps):
     d.mkdir(parents=True, exist_ok=True)
     for i, ds in enumerate(shards(ps)):
         i = '{:0>4d}'.format(i)
-        p = str(d / f'shard_{i}.tfrecords')
-        print(f'dumping {p}...')
-        with tf.io.TFRecordWriter(p) as w:
+        f = str(d / f'shard_{i}.tfrecords')
+        print(f'dumping {f}...')
+        with tf.io.TFRecordWriter(f) as w:
             for r in records(ds):
                 w.write(r)
-        yield p
+        yield f
 
 
 features = {
@@ -142,12 +142,24 @@ features = {
 }
 
 
-def load(ps, paths):
-    ds = td.TFRecordDataset(paths)
+def files(ps):
+    d = pth.Path('/tmp/q/dataset')
+    for i in range(ps.num_shards):
+        i = '{:0>4d}'.format(i)
+        yield str(d / f'shard_{i}.tfrecords')
+
+
+def load(ps, files):
+    ds = td.TFRecordDataset(files)
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
         return ds.map(lambda x: tf.io.parse_example(x, features))
     return ds.map(lambda x: tf.io.parse_single_example(x, features))
+
+
+@tf.function
+def caster(d):
+    return {k: tf.cast(v, tf.int32) for k, v in d.items()}
 
 
 @tf.function
@@ -185,8 +197,8 @@ def main(_):
     ps.dim_batch = 2
     for i, s in enumerate(load(ps, fs).map(adapter)):
         print(i, s)
-    ps.max_val = 10000
-    ps.num_samples = 100000
+    ps.max_val = 100
+    ps.num_samples = 1000
     ps.num_shards = 10
     fs = [f for f in dump(ps)]
     ps.dim_batch = 100

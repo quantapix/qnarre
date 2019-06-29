@@ -14,33 +14,16 @@
 # =============================================================================
 # !pip install -U tf-nightly-2.0-preview
 
-import pathlib as pth
 import tensorflow as tf
 
 from datetime import datetime
 
+import advanced_tf.dataset as qd
+
 ks = tf.keras
 kl = ks.layers
 
-vocab = ('x', 'y', '+', '-', '*', '=', ',', ':')
-vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-
-tokens = {k: v for v, k in enumerate(vocab, start=5)}
-tokens.update({v: k for k, v in tokens.items()})
-
-SEP = tokens[':']
-
-
-def paths(ps):
-    d = pth.Path('/tmp/q/dataset')
-    for i in range(ps.num_shards):
-        i = '{:0>4d}'.format(i)
-        yield str(d / f'shard_{i}.tfrecords')
-
-
-@tf.function
-def caster(d):
-    return {k: tf.cast(v, tf.int32) for k, v in d.items()}
+SEP = qd.tokens[':']
 
 
 @tf.function
@@ -54,14 +37,15 @@ def adapter(d):
 
 
 def dset_for(ps):
-    ds = tf.data.TFRecordDataset(list(paths(ps))).batch(ps.dim_batch)
+    ds = tf.data.TFRecordDataset(list(qd.files(ps)))
+    ds = ds.batch(ps.dim_batch)
     fs = {
         'defs': tf.io.VarLenFeature(tf.int64),
         'op': tf.io.VarLenFeature(tf.int64),
         'res': tf.io.VarLenFeature(tf.int64),
     }
-    ds = ds.map(lambda x: tf.io.parse_example(x, fs))
-    return ds.map(caster).map(adapter)
+    ds = ds.map(lambda x: tf.io.parse_example(x, fs)).map(qd.caster)
+    return ds.map(adapter)
 
 
 class Embed(kl.Layer):
@@ -110,10 +94,8 @@ class Expand(kl.Layer):
 
 
 def model_for(ps):
-    x = [
-        ks.Input(shape=(), dtype='int32'),  # , ragged=True)
-        ks.Input(shape=(), dtype='int64'),
-    ]
+    x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    # , ragged=True)
     y = Embed(ps)(x)
     y = Reflect()(y)
     y = Expand(ps)(y)
@@ -129,8 +111,8 @@ def model_for(ps):
 params = dict(
     dim_batch=2,
     dim_dense=150,
-    dim_hidden=6,
-    dim_vocab=len(vocab) + 5,
+    dim_hidden=15,
+    dim_vocab=len(qd.vocab),
     len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=ks.metrics.SparseCategoricalAccuracy(),
@@ -139,18 +121,9 @@ params = dict(
 )
 
 
-class Params:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-
 def main(_):
-    # tf.autograph.set_verbosity(1)
-    ps = Params(**params)
+    ps = qd.Params(**params)
     ds = dset_for(ps)
-    # for s in ds.take(1):
-    #     print(s)
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/q/logs/{ld}'
@@ -159,7 +132,7 @@ def main(_):
 
 
 def main_eager(_):
-    ps = Params(**params)
+    ps = qd.Params(**params)
     ds = dset_for(ps)
     m = model_for(ps)
 
@@ -190,6 +163,6 @@ def main_eager(_):
 
 
 if __name__ == '__main__':
-    from absl import app  # , logging
-    # logging.set_verbosity(logging.DEBUG)
+    from absl import app
     app.run(main)
+    # app.run(main_eager)
