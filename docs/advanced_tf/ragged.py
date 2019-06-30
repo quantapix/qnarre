@@ -15,7 +15,7 @@
 # !pip install -U tf-nightly-2.0-preview
 
 import tensorflow as tf
-import advanced_tf.dataset as qd
+import dataset as qd
 
 ks = tf.keras
 kl = ks.layers
