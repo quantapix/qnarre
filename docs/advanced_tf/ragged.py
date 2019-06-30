@@ -111,25 +111,25 @@ def main_eager(ps, ds, m):
             logits = m(x)
             loss = ps.loss(y, logits)
             loss += sum(m.losses)
-            acc = ps.metric(y, logits)
+            xent = ps.metric(y, logits)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
-        return loss, acc
+        return loss, xent
 
     @tf.function
     def epoch():
-        s, loss, acc = 0, 0.0, 0.0
+        s, loss, xent = 0, 0.0, 0.0
         for x, y in ds:
             s += 1
-            loss, acc = step(x, y)
+            loss, xent = step(x, y)
             if tf.equal(s % 10, 0):
-                m = ps.metric.result()
-                tf.print('Step:', s, ', loss:', loss, ', acc:', m)
-        return loss, acc
+                e = ps.metric.result()
+                tf.print('Step:', s, ', loss:', loss, ', xent:', e)
+        return loss, xent
 
     for e in range(ps.num_epochs):
-        loss, acc = epoch()
-        print(f'Epoch {e} loss:', loss, ', acc:', acc)
+        loss, xent = epoch()
+        print(f'Epoch {e} loss:', loss.numpy(), ', xent:', xent.numpy())
 
 
 params = dict(
@@ -139,7 +139,7 @@ params = dict(
     dim_vocab=len(qd.vocab),
     len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metric=ks.metrics.SparseCategoricalAccuracy(),
+    metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
     num_epochs=10,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),

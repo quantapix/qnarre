@@ -129,7 +129,7 @@ params = dict(
     dim_vocab=len(qd.vocab),
     len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metric=ks.metrics.SparseCategoricalAccuracy(),
+    metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
     num_epochs=10,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
