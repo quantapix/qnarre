@@ -74,7 +74,7 @@ def adapter(d):
     )
 
 
-def dset_for(ps):
+def dset_for(ps, adapter=adapter):
     ds = tf.data.TFRecordDataset(list(qd.files(ps)))
     ds = ds.take(100).batch(ps.dim_batch)
     fs = {

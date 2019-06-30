@@ -17,9 +17,26 @@
 import tensorflow as tf
 import advanced_tf.dataset as qd
 import advanced_tf.custom as qc
+import advanced_tf.autograph as qa
 
 ks = tf.keras
 kl = ks.layers
+
+
+@tf.function
+def adapter(d):
+    enc, dec, tgt = d['enc'], d['dec'], d['tgt']
+    return ((
+        enc.flat_values,
+        enc.row_splits,
+        dec.flat_values,
+        dec.row_splits,
+        tgt.flat_values,
+        tgt.row_splits,
+    ), (
+        tgt.to_tensor(),
+        tgt.to_tensor(),
+    ))
 
 
 class ToRagged(qc.ToRagged):
@@ -40,19 +57,18 @@ def model_for(ps):
     x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    print(qc.ToRagged(), x)
-    tf.autograph.trace(ToRagged(), x)
     y = ToRagged()(x)
     y = qc.Frames(ps)(y)
     embed = qc.Embed(ps)
     ye = qc.Encode(ps)(embed(y[:2]))
     yd = qc.Decode(ps)(embed(y[2:]) + [ye[0]])
     y = qc.Debed(ps)(yd)
-    m = ks.Model(inputs=x, outputs=y)
+    ys = qa.Probe(ps)(yd)
+    m = ks.Model(inputs=x, outputs=[y, ys])
     m.compile(
         optimizer=ps.optimizer,
-        loss={'debed': ps.loss},
-        metrics={'debed': [ps.metric]},
+        loss={'debed': ps.loss, 'probe': ps.loss},
+        metrics={'debed': [ps.metric], 'probe': [ps.metric]},
     )
     print(m.summary())
     return m
@@ -69,7 +85,7 @@ class Loss(ks.losses.Loss):
         return tf.reshape(y, s[:-1])
 
     def __init__(self):
-        super().__init__(name='qloss')
+        super().__init__(name='loss')
 
     def call(self, tgt, out):
         return self.xent(tgt, out)
@@ -77,7 +93,7 @@ class Loss(ks.losses.Loss):
 
 class Metric(ks.metrics.Metric):
     def __init__(self):
-        super().__init__(name='qmetric', dtype=tf.float32)
+        super().__init__(name='metric', dtype=tf.float32)
         self.total = self.add_weight('total', initializer='zeros')
         self.count = self.add_weight('count', initializer='zeros')
 
@@ -99,4 +115,4 @@ params.update(
 if __name__ == '__main__':
     ps = qd.Params(**params)
     import advanced_tf.masking as qm
-    qm.main_graph(ps, qc.dset_for(ps), model_for(ps))
+    qm.main_graph(ps, qc.dset_for(ps, adapter), model_for(ps))

@@ -18,6 +18,7 @@ import numpy as np
 import tensorflow as tf
 import advanced_tf.dataset as qd
 import advanced_tf.custom as qc
+import advanced_tf.layers as ql
 
 ks = tf.keras
 kl = ks.layers
@@ -77,6 +78,22 @@ class Frames(qc.Frames):
         return y
 
 
+class Probe(ql.Layer):
+    def __init__(self, ps):
+        super().__init__(ps)
+        self.dbd = qc.Dense(self, 'dbd', [ps.dim_hidden, ps.dim_vocab])
+
+    @tf.function
+    def call(self, x):
+        y, lens = x
+        s = tf.shape(y)
+        y = tf.reshape(y, [s[0] * s[1], -1])
+        y = self.dbd(y)
+        y = tf.reshape(y, [s[0], s[1], -1])
+        y = y[:, :tf.math.reduce_max(lens), :]
+        return y
+
+
 def model_for(ps):
     x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
@@ -86,7 +103,7 @@ def model_for(ps):
     embed = Embed(ps)
     ye = qc.Encode(ps)(embed(y[:2]))
     yd = qc.Decode(ps)(embed(y[2:]) + [ye[0]])
-    y = qc.Debed(ps)(yd)
+    y = Probe(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
