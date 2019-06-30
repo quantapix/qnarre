@@ -17,7 +17,7 @@
 from datetime import datetime
 
 import tensorflow as tf
-import advanced_tf.dataset as qd
+import dataset as qd
 
 ks = tf.keras
 kl = ks.layers

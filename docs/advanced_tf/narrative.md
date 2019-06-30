@@ -1,5 +1,5 @@
 
-# Trackable
+# Trackable: A Pervasive Persistence Infrastructure
 
 - TODO: expand bullets
 
@@ -76,7 +76,7 @@
 - and view the zoom-able and clickable TensorBoard graph
 - if you haven't run the code, an already generated graph is [here](./trackable.pdf)
 
-# Many Smaller GPUs
+# Many Smaller GPUs: Elegant In-Model Distribution
 
 - TODO: expand bullets
 

@@ -13017,6 +13017,45 @@ ul.typeahead-list  > li > a.pull-right {
 .highlight .vm { color: #19177C } /* Name.Variable.Magic */
 .highlight .il { color: #666666 } /* Literal.Number.Integer.Long */
     </style>
+<style type="text/css">
+    
+/* Temporary definitions which will become obsolete with Notebook release 5.0 */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-bold { font-weight: bold; }
+
+    </style>
 
 
 <style type="text/css">
@@ -13077,7 +13116,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Ragged-Tensors">Ragged Tensors<a class="anchor-link" href="#Ragged-Tensors">&#182;</a></h1><ul>
+<h1 id="Ragged-Tensors-For-Document-Processing">Ragged Tensors For Document Processing<a class="anchor-link" href="#Ragged-Tensors-For-Document-Processing">&#182;</a></h1><ul>
 <li>TODO: expand bullets</li>
 <li>objective: <a href="./ragged.pdf">graph</a></li>
 </ul>
@@ -13090,9 +13129,8 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">pathlib</span> <span class="k">as</span> <span class="nn">pth</span>
-<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
-<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">dataset</span> <span class="k">as</span> <span class="nn">qd</span>
 <span class="n">ks</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span>
 <span class="n">kl</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">layers</span>
 </pre></div>
@@ -13117,16 +13155,28 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">vocab</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;:&#39;</span><span class="p">)</span>
-<span class="n">vocab</span> <span class="o">+=</span> <span class="p">(</span><span class="s1">&#39;0&#39;</span><span class="p">,</span> <span class="s1">&#39;1&#39;</span><span class="p">,</span> <span class="s1">&#39;2&#39;</span><span class="p">,</span> <span class="s1">&#39;3&#39;</span><span class="p">,</span> <span class="s1">&#39;4&#39;</span><span class="p">,</span> <span class="s1">&#39;5&#39;</span><span class="p">,</span> <span class="s1">&#39;6&#39;</span><span class="p">,</span> <span class="s1">&#39;7&#39;</span><span class="p">,</span> <span class="s1">&#39;8&#39;</span><span class="p">,</span> <span class="s1">&#39;9&#39;</span><span class="p">)</span>
-
-<span class="n">tokens</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">vocab</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">5</span><span class="p">)}</span>
-<span class="n">tokens</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tokens</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
-
-<span class="n">SEP</span> <span class="o">=</span> <span class="n">tokens</span><span class="p">[</span><span class="s1">&#39;:&#39;</span><span class="p">]</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">)</span>
 </pre></div>
 
     </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>(&#39; &#39;, &#39;:&#39;, &#39;|&#39;, &#39;x&#39;, &#39;y&#39;, &#39;=&#39;, &#39;,&#39;, &#39;+&#39;, &#39;-&#39;, &#39;*&#39;, &#39;0&#39;, &#39;1&#39;, &#39;2&#39;, &#39;3&#39;, &#39;4&#39;, &#39;5&#39;, &#39;6&#39;, &#39;7&#39;, &#39;8&#39;, &#39;9&#39;)
+</pre>
+</div>
+</div>
+
 </div>
 </div>
 
@@ -13134,6 +13184,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>files and caster from qd</li>
+</ul>
 
 </div>
 </div>
@@ -13143,20 +13196,10 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">paths</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">pth</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;/tmp/q/dataset&#39;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">num_shards</span><span class="p">):</span>
-        <span class="n">i</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{:0&gt;4d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-        <span class="k">yield</span> <span class="nb">str</span><span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="n">f</span><span class="s1">&#39;shard_</span><span class="si">{i}</span><span class="s1">.tfrecords&#39;</span><span class="p">)</span>
-
-<span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
-<span class="k">def</span> <span class="nf">caster</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-
-<span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
 <span class="k">def</span> <span class="nf">adapter</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
     <span class="n">ds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_sparse</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;defs&#39;</span><span class="p">])</span>
-    <span class="n">ss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">fill</span><span class="p">([</span><span class="n">ds</span><span class="o">.</span><span class="n">nrows</span><span class="p">(),</span> <span class="mi">1</span><span class="p">],</span> <span class="n">SEP</span><span class="p">)</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">fill</span><span class="p">([</span><span class="n">ds</span><span class="o">.</span><span class="n">nrows</span><span class="p">(),</span> <span class="mi">1</span><span class="p">],</span> <span class="n">qd</span><span class="o">.</span><span class="n">SEP</span><span class="p">)</span>
     <span class="n">os</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_sparse</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;op&#39;</span><span class="p">])</span>
     <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">ds</span><span class="p">,</span> <span class="n">ss</span><span class="p">,</span> <span class="n">os</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_sparse</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;res&#39;</span><span class="p">])[:,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">()</span>
@@ -13171,6 +13214,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
@@ -13181,14 +13225,15 @@ div#notebook {
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
-    <span class="n">ds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">TFRecordDataset</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">paths</span><span class="p">(</span><span class="n">ps</span><span class="p">)))</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_batch</span><span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">TFRecordDataset</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="n">ps</span><span class="p">)))</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_batch</span><span class="p">)</span>
     <span class="n">fs</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;defs&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">VarLenFeature</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">),</span>
         <span class="s1">&#39;op&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">VarLenFeature</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">),</span>
         <span class="s1">&#39;res&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">VarLenFeature</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">),</span>
     <span class="p">}</span>
-    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">parse_example</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fs</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">caster</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">adapter</span><span class="p">)</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">parse_example</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fs</span><span class="p">))</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">caster</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">adapter</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13199,6 +13244,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
@@ -13212,12 +13258,12 @@ div#notebook {
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">emb_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;emb_t&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;emb&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="n">fv</span><span class="p">,</span> <span class="n">rs</span> <span class="o">=</span> <span class="n">x</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_row_splits</span><span class="p">(</span><span class="n">fv</span><span class="p">,</span> <span class="n">rs</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ragged</span><span class="o">.</span><span class="n">map_flat_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">embedding_lookup</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_t</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ragged</span><span class="o">.</span><span class="n">map_flat_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">embedding_lookup</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">y</span>
 </pre></div>
 
@@ -13229,6 +13275,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
@@ -13242,15 +13289,15 @@ div#notebook {
     <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
         <span class="n">s</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">s</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">q_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;q_w&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">k_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;k_w&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">v_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;v_w&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;q&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;v&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">q</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_w</span><span class="p">))</span>
-        <span class="n">k</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_w</span><span class="p">))</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_w</span><span class="p">))</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">))</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">))</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">))</span>
         <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;bsi,bzi-&gt;bsz&#39;</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">(),</span> <span class="n">k</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">())</span>
         <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span>
         <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;bsz,bzi-&gt;bsi&#39;</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">())</span>
@@ -13266,6 +13313,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
@@ -13295,6 +13343,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
@@ -13314,9 +13363,9 @@ div#notebook {
     <span class="n">y</span> <span class="o">=</span> <span class="n">Expand</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">kl</span><span class="o">.</span><span class="n">Reshape</span><span class="p">((</span><span class="n">ps</span><span class="o">.</span><span class="n">len_max_input</span> <span class="o">*</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">,</span> <span class="p">))(</span><span class="n">y</span><span class="p">)</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">kl</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_dense</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">kl</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="kc">None</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">kl</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dbd&#39;</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="kc">None</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
     <span class="n">m</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">metrics</span><span class="p">])</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="p">])</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">m</span>
 </pre></div>
@@ -13329,6 +13378,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
@@ -13341,19 +13391,15 @@ div#notebook {
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
     <span class="n">dim_batch</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
     <span class="n">dim_dense</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
-    <span class="n">dim_hidden</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
-    <span class="n">dim_vocab</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">dim_hidden</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+    <span class="n">dim_vocab</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">),</span>
     <span class="n">len_max_input</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
     <span class="n">loss</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">SparseCategoricalCrossentropy</span><span class="p">(</span><span class="n">from_logits</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-    <span class="n">metrics</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">SparseCategoricalAccuracy</span><span class="p">(),</span>
+    <span class="n">metric</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">SparseCategoricalCrossentropy</span><span class="p">(</span><span class="n">from_logits</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">num_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
     <span class="n">num_shards</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
     <span class="n">optimizer</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(),</span>
 <span class="p">)</span>
-
-<span class="k">class</span> <span class="nc">Params</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13364,22 +13410,19 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
-<span class="n">ds</span> <span class="o">=</span> <span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-<span class="n">m</span> <span class="o">=</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-<span class="n">ld</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">-%H%M%S&#39;</span><span class="p">)</span>
-<span class="n">ld</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/tmp/q/logs/</span><span class="si">{ld}</span><span class="s1">&#39;</span>
-<span class="n">cs</span> <span class="o">=</span> <span class="p">[</span><span class="n">ks</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">(</span><span class="n">log_dir</span><span class="o">=</span><span class="n">ld</span><span class="p">,</span> <span class="n">histogram_freq</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
-<span class="n">m</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">qd</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">masking</span> <span class="k">as</span> <span class="nn">qm</span>
+<span class="n">qm</span><span class="o">.</span><span class="n">main_graph</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
 </pre></div>
 
     </div>
@@ -13396,8 +13439,12 @@ div#notebook {
 
 
 <div class="output_subarea output_stream output_stderr output_text">
-<pre>W0624 21:38:23.439969 139960225908352 training_utils.py:1444] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
-W0624 21:38:23.617162 139960225908352 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
+<pre>WARNING: Logging before flag parsing goes to stderr.
+W0630 18:52:56.353597 139869130888832 deprecation.py:323] From /home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/ops/ragged/ragged_tensor.py:2168: where (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.where in 2.0, which has the same broadcast rule as np.where
+W0630 18:52:57.147370 139869130888832 training_utils.py:1455] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
+W0630 18:52:57.287034 139869130888832 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
 </pre>
 </div>
 </div>
@@ -13408,29 +13455,29 @@ W0624 21:38:23.617162 139960225908352 summary_ops_v2.py:1110] Model failed to se
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Model: &#34;model_1&#34;
+<pre>Model: &#34;model&#34;
 __________________________________________________________________________________________________
 Layer (type)                    Output Shape         Param #     Connected to                     
 ==================================================================================================
-input_3 (InputLayer)            [(None,)]            0                                            
+input_1 (InputLayer)            [(None,)]            0                                            
 __________________________________________________________________________________________________
-input_4 (InputLayer)            [(None,)]            0                                            
+input_2 (InputLayer)            [(None,)]            0                                            
 __________________________________________________________________________________________________
-embed_1 (Embed)                 (None, None, 6)      138         input_3[0][0]                    
-                                                                 input_4[0][0]                    
+embed (Embed)                   (None, None, 15)     300         input_1[0][0]                    
+                                                                 input_2[0][0]                    
 __________________________________________________________________________________________________
-reflect_1 (Reflect)             (None, None, 6)      108         embed_1[0][0]                    
+reflect (Reflect)               (None, None, 15)     675         embed[0][0]                      
 __________________________________________________________________________________________________
-expand_1 (Expand)               (None, None, 6)      0           reflect_1[0][0]                  
+expand (Expand)                 (None, None, 15)     0           reflect[0][0]                    
 __________________________________________________________________________________________________
-reshape_1 (Reshape)             (None, 120)          0           expand_1[0][0]                   
+reshape (Reshape)               (None, 300)          0           expand[0][0]                     
 __________________________________________________________________________________________________
-dense_1 (Dense)                 (None, 150)          18150       reshape_1[0][0]                  
+dense (Dense)                   (None, 150)          45150       reshape[0][0]                    
 __________________________________________________________________________________________________
-out (Dense)                     (None, 23)           3473        dense_1[0][0]                    
+dbd (Dense)                     (None, 20)           3020        dense[0][0]                      
 ==================================================================================================
-Total params: 21,869
-Trainable params: 21,869
+Total params: 49,145
+Trainable params: 49,145
 Non-trainable params: 0
 __________________________________________________________________________________________________
 None
@@ -13449,6 +13496,9 @@ Epoch 1/10
   &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
 /home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
   &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
+W0630 18:52:57.578012 139869130888832 deprecation.py:323] From /home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/keras/optimizer_v2/optimizer_v2.py:454: BaseResourceVariable.constraint (from tensorflow.python.ops.resource_variable_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Apply a constraint manually following the optimizer update step.
 </pre>
 </div>
 </div>
@@ -13459,40 +13509,27 @@ Epoch 1/10
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>1000/1000 [==============================] - 7s 7ms/step - loss: 1.7588 - sparse_categorical_accuracy: 0.5045
+<pre>1000/1000 [==============================] - 7s 7ms/step - loss: 1.7148 - sparse_categorical_crossentropy: 1.7148
 Epoch 2/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.6174 - sparse_categorical_accuracy: 0.5210
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.4729 - sparse_categorical_crossentropy: 1.4729
 Epoch 3/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.4897 - sparse_categorical_accuracy: 0.5650
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.3973 - sparse_categorical_crossentropy: 1.3973
 Epoch 4/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.4034 - sparse_categorical_accuracy: 0.5800
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.3517 - sparse_categorical_crossentropy: 1.3517
 Epoch 5/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.3544 - sparse_categorical_accuracy: 0.5810
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.3136 - sparse_categorical_crossentropy: 1.3136
 Epoch 6/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.3174 - sparse_categorical_accuracy: 0.5915
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.2838 - sparse_categorical_crossentropy: 1.2838
 Epoch 7/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.2800 - sparse_categorical_accuracy: 0.5905
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.2500 - sparse_categorical_crossentropy: 1.2500
 Epoch 8/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.2422 - sparse_categorical_accuracy: 0.5985
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.2134 - sparse_categorical_crossentropy: 1.2134
 Epoch 9/10
-1000/1000 [==============================] - 3s 3ms/step - loss: 1.2023 - sparse_categorical_accuracy: 0.6055
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.1745 - sparse_categorical_crossentropy: 1.1745
 Epoch 10/10
-1000/1000 [==============================] - 2s 2ms/step - loss: 1.1573 - sparse_categorical_accuracy: 0.6175
+1000/1000 [==============================] - 3s 3ms/step - loss: 1.1284 - sparse_categorical_crossentropy: 1.1284
 </pre>
 </div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[11]:</div>
-
-
-
-
-<div class="output_text output_subarea output_execute_result">
-<pre>&lt;tensorflow.python.keras.callbacks.History at 0x7f4aa9636d68&gt;</pre>
-</div>
-
 </div>
 
 </div>
@@ -13512,7 +13549,7 @@ Epoch 10/10
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> tensorboard
@@ -13535,7 +13572,7 @@ Epoch 10/10
 
 
 <div class="output_text output_subarea ">
-<pre>Reusing TensorBoard on port 6007 (pid 20958), started 10:17:40 ago. (Use &#39;!kill 20958&#39; to kill it.)</pre>
+<pre>Reusing TensorBoard on port 6006 (pid 18246), started 0:14:55 ago. (Use &#39;!kill 18246&#39; to kill it.)</pre>
 </div>
 
 </div>
@@ -13551,13 +13588,250 @@ Epoch 10/10
         <iframe
             width="100%"
             height="800"
-            src="http://localhost:6007"
+            src="http://localhost:6006"
             frameborder="0"
             allowfullscreen
         ></iframe>
         
 </div>
 
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">main_eager</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+            <span class="n">logits</span> <span class="o">=</span> <span class="n">m</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">logits</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">losses</span><span class="p">)</span>
+            <span class="n">xent</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">logits</span><span class="p">)</span>
+        <span class="n">grads</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">)</span>
+        <span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+    <span class="k">def</span> <span class="nf">epoch</span><span class="p">():</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="n">step</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s1">&#39;Step:&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="s1">&#39;, loss:&#39;</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;, xent:&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span>
+
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span><span class="p">):</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="n">epoch</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Epoch </span><span class="si">{e}</span><span class="s1"> loss:&#39;</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;, xent:&#39;</span><span class="p">,</span> <span class="n">xent</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">main_eager</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Model: &#34;model_1&#34;
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+input_3 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+input_4 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+embed_1 (Embed)                 (None, None, 15)     300         input_3[0][0]                    
+                                                                 input_4[0][0]                    
+__________________________________________________________________________________________________
+reflect_1 (Reflect)             (None, None, 15)     675         embed_1[0][0]                    
+__________________________________________________________________________________________________
+expand_1 (Expand)               (None, None, 15)     0           reflect_1[0][0]                  
+__________________________________________________________________________________________________
+reshape_1 (Reshape)             (None, 300)          0           expand_1[0][0]                   
+__________________________________________________________________________________________________
+dense_1 (Dense)                 (None, 150)          45150       reshape_1[0][0]                  
+__________________________________________________________________________________________________
+dbd (Dense)                     (None, 20)           3020        dense_1[0][0]                    
+==================================================================================================
+Total params: 49,145
+Trainable params: 49,145
+Non-trainable params: 0
+__________________________________________________________________________________________________
+None
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
+  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
+/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
+  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
+/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
+  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
+/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
+  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Step: 10 , loss: 2.28478527 , xent: 1.1448046
+Step: 20 , loss: 3.81193447 , xent: 1.15515363
+Step: 30 , loss: 1.8434391 , xent: 1.16223383
+Step: 40 , loss: 3.81591511 , xent: 1.16753304
+Step: 50 , loss: 2.87038851 , xent: 1.17481923
+Step: 60 , loss: 1.68613362 , xent: 1.18543231
+Step: 70 , loss: 2.33604383 , xent: 1.19397402
+Step: 80 , loss: 1.84736013 , xent: 1.19979382
+Step: 90 , loss: 5.07681131 , xent: 1.20539725
+Step: 100 , loss: 2.55470848 , xent: 1.21048045
+Step: 110 , loss: 0.712921798 , xent: 1.21195638
+Step: 120 , loss: 0.58221221 , xent: 1.21817505
+Step: 130 , loss: 1.94782269 , xent: 1.22357321
+Step: 140 , loss: 1.14698422 , xent: 1.22696328
+Step: 150 , loss: 0.708327532 , xent: 1.22934473
+Step: 160 , loss: 1.90195084 , xent: 1.23556912
+Step: 170 , loss: 1.44895661 , xent: 1.24154496
+Step: 180 , loss: 3.44900703 , xent: 1.24626958
+Step: 190 , loss: 2.92142868 , xent: 1.25323761
+Step: 200 , loss: 1.64794934 , xent: 1.25925446
+Step: 210 , loss: 1.83148074 , xent: 1.26511645
+Step: 220 , loss: 2.25727272 , xent: 1.2707442
+Step: 230 , loss: 1.54202437 , xent: 1.27445662
+Step: 240 , loss: 1.46193075 , xent: 1.27767217
+Step: 250 , loss: 1.97467518 , xent: 1.28335464
+Step: 260 , loss: 3.74973798 , xent: 1.28960454
+Step: 270 , loss: 2.55091023 , xent: 1.29422939
+Step: 280 , loss: 1.73297191 , xent: 1.29745162
+Step: 290 , loss: 2.17893887 , xent: 1.30225241
+Step: 300 , loss: 1.72861814 , xent: 1.30525208
+Step: 310 , loss: 0.719360054 , xent: 1.30760932
+Step: 320 , loss: 0.512156546 , xent: 1.30834687
+Step: 330 , loss: 0.553617835 , xent: 1.30851257
+Step: 340 , loss: 0.603225946 , xent: 1.30957103
+Step: 350 , loss: 3.12958407 , xent: 1.31524682
+Step: 360 , loss: 1.32249975 , xent: 1.31452703
+Step: 370 , loss: 2.93880868 , xent: 1.31600559
+Step: 380 , loss: 0.559981108 , xent: 1.31903541
+Step: 390 , loss: 0.870343208 , xent: 1.32218683
+Step: 400 , loss: 2.12917304 , xent: 1.32526183
+Step: 410 , loss: 1.54295099 , xent: 1.32709384
+Step: 420 , loss: 1.79426825 , xent: 1.3284477
+Step: 430 , loss: 1.13219821 , xent: 1.32898664
+Step: 440 , loss: 1.14928 , xent: 1.32848489
+Step: 450 , loss: 2.12289548 , xent: 1.32718742
+Step: 460 , loss: 1.72129393 , xent: 1.32833016
+Step: 470 , loss: 0.361049861 , xent: 1.33144534
+Step: 480 , loss: 4.69956207 , xent: 1.33459437
+Step: 490 , loss: 0.726473 , xent: 1.33404481
+Step: 500 , loss: 1.93642259 , xent: 1.3361032
+Step: 510 , loss: 1.29767358 , xent: 1.33974576
+Step: 520 , loss: 1.28262436 , xent: 1.34217215
+Step: 530 , loss: 2.49503899 , xent: 1.34044564
+Step: 540 , loss: 2.85425568 , xent: 1.33982849
+Step: 550 , loss: 0.272021383 , xent: 1.3398596
+Step: 560 , loss: 0.956960917 , xent: 1.34033442
+Step: 570 , loss: 0.621461 , xent: 1.34220958
+Step: 580 , loss: 1.48867822 , xent: 1.34559453
+Step: 590 , loss: 0.541784763 , xent: 1.34457099
+Step: 600 , loss: 1.64634907 , xent: 1.34858322
+Step: 610 , loss: 0.258855045 , xent: 1.34705687
+Step: 620 , loss: 3.65229702 , xent: 1.35012066
+Step: 630 , loss: 1.57557106 , xent: 1.35205495
+Step: 640 , loss: 0.910252869 , xent: 1.35490739
+Step: 650 , loss: 0.574979186 , xent: 1.3578335
+Step: 660 , loss: 0.456428766 , xent: 1.3596524
+Step: 670 , loss: 0.476096183 , xent: 1.35992849
+Step: 680 , loss: 0.559191346 , xent: 1.36013412
+Step: 690 , loss: 3.27553892 , xent: 1.36226332
+Step: 700 , loss: 2.31600142 , xent: 1.36434555
+Step: 710 , loss: 0.501723468 , xent: 1.36512184
+Step: 720 , loss: 0.430445433 , xent: 1.36587214
+Step: 730 , loss: 0.523389459 , xent: 1.36508358
+Step: 740 , loss: 0.299639463 , xent: 1.36473262
+Step: 750 , loss: 2.29508352 , xent: 1.36575234
+Step: 760 , loss: 1.75971079 , xent: 1.36615729
+Step: 770 , loss: 1.87361062 , xent: 1.36486983
+Step: 780 , loss: 0.68941009 , xent: 1.36378324
+Step: 790 , loss: 1.88984108 , xent: 1.36310875
+Step: 800 , loss: 0.967560291 , xent: 1.36388755
+Step: 810 , loss: 1.09711134 , xent: 1.36767471
+Step: 820 , loss: 0.627769649 , xent: 1.3688072
+Step: 830 , loss: 1.95480919 , xent: 1.36895013
+Step: 840 , loss: 0.748292804 , xent: 1.36927295
+Step: 850 , loss: 2.91080952 , xent: 1.37118387
+Step: 860 , loss: 1.06126964 , xent: 1.36832094
+Step: 870 , loss: 1.37885022 , xent: 1.36859763
+Step: 880 , loss: 0.584781587 , xent: 1.36755037
+Step: 890 , loss: 1.75883448 , xent: 1.37042809
+Step: 900 , loss: 1.59039807 , xent: 1.36949933
+Step: 910 , loss: 1.80502522 , xent: 1.37244284
+Step: 920 , loss: 2.22589159 , xent: 1.37494
+Step: 930 , loss: 1.99508739 , xent: 1.37685
+Step: 940 , loss: 0.389230222 , xent: 1.37628293
+Step: 950 , loss: 0.575339079 , xent: 1.3761512
+Step: 960 , loss: 2.8223 , xent: 1.37706757
+Step: 970 , loss: 0.247093067 , xent: 1.37521625
+Step: 980 , loss: 0.651084781 , xent: 1.37630522
+Step: 990 , loss: 0.178871661 , xent: 1.37534952
+Step: 1000 , loss: 1.38629889 , xent: 1.37606168
+Epoch 0 loss: 1.3862989 , xent: 1.3760617
+</pre>
+</div>
 </div>
 
 </div>
