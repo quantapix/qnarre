@@ -58,17 +58,23 @@ class Embed(qc.Embed):
         return [y, lens]
 
 
-@tf.function
-def print_prev(x):
-    tf.print(''.join([qd.tokens[t] for t in x]))
-
-
 class Frames(qc.Frames):
     @tf.function
     def call(self, x):
-        super().call(x)
-        # tf.map_fn(print_prev, self.prev)
-        return x
+        y = super().call.python_function(x)
+        tf.print()
+
+        def print_row(r):
+            tf.print(
+                tf.numpy_function(
+                    lambda ts: ''.join([qd.vocab[t] for t in ts]),
+                    [r],
+                    Tout=[tf.string],
+                ))
+            return r
+
+        tf.map_fn(print_row, self.prev)
+        return y
 
 
 def model_for(ps):
@@ -76,7 +82,7 @@ def model_for(ps):
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     y = qc.ToRagged()(x)
-    y = qc.Frames(ps)(y)
+    y = Frames(ps)(y)
     embed = Embed(ps)
     ye = qc.Encode(ps)(embed(y[:2]))
     yd = qc.Decode(ps)(embed(y[2:]) + [ye[0]])
