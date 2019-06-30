@@ -47,14 +47,14 @@ class Embed(qc.Embed):
     def call(self, x):
         y, lens = x
         y = tf.nn.embedding_lookup(self.emb, y)
-        y *= y.shape[-1]**0.5
-        w = tf.shape(y)
-        if tf.equal(w[-2], self.ps.width_enc):
-            y += tf.broadcast_to(self.enc_p, w)
-        elif tf.equal(w[-2], self.ps.width_dec):
-            y += tf.broadcast_to(self.dec_p, w)
+        s = tf.shape(y)
+        if s[-2] == self.ps.width_enc:
+            y += tf.broadcast_to(self.enc_p, s)
+        elif s[-2] == self.ps.width_dec:
+            y += tf.broadcast_to(self.dec_p, s)
         else:
             pass
+        y *= tf.cast(s[-1], tf.float32)**0.5
         return [y, lens]
 
 
