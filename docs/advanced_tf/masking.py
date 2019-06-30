@@ -14,22 +14,19 @@
 # =============================================================================
 # !pip install -U tf-nightly-2.0-preview
 
-import tensorflow as tf
-
 from datetime import datetime
 
+import tensorflow as tf
 import advanced_tf.dataset as qd
 
 ks = tf.keras
 kl = ks.layers
 
-SEP = qd.tokens[':']
-
 
 @tf.function
 def adapter(d, len_max_input):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
-    ss = tf.fill([ds.nrows(), 1], SEP)
+    ss = tf.fill([ds.nrows(), 1], qd.SEP)
     os = tf.RaggedTensor.from_sparse(d['op'])
     x = tf.concat([ds, ss, os], axis=1).to_tensor()
     x = tf.pad(x, [[0, 0], [0, len_max_input - tf.shape(x)[-1]]])
@@ -72,10 +69,10 @@ class Embed(Layer):
     def __init__(self, ps):
         super().__init__(dtype=tf.float32)
         s = (ps.dim_vocab, ps.dim_hidden)
-        self.emb_t = self.add_weight(name='emb_t', shape=s)
+        self.emb = self.add_weight(name='emb', shape=s)
 
     def call(self, x, mask=None):
-        y = tf.nn.embedding_lookup(self.emb_t, x)
+        y = tf.nn.embedding_lookup(self.emb, x)
         if mask is not None:
             y *= tf.cast(mask, tf.float32)[:, :, None]
         return y
@@ -85,21 +82,21 @@ class Reflect(Layer):
     def build(self, shape):
         s = shape[-1]
         self.scale = 1 / (s**0.5)
-        self.q_w = self.add_weight(name='q_w', shape=(s, s))
-        self.k_w = self.add_weight(name='k_w', shape=(s, s))
-        self.v_w = self.add_weight(name='v_w', shape=(s, s))
+        self.q = self.add_weight(name='q', shape=(s, s))
+        self.k = self.add_weight(name='k', shape=(s, s))
+        self.v = self.add_weight(name='v', shape=(s, s))
         return super().build(shape)
 
     def call(self, x, mask=None):
-        q = tf.einsum('bsi,ij->bsj', x, self.q_w)
-        k = tf.einsum('bsi,ij->bsj', x, self.k_w)
+        q = tf.einsum('bsi,ij->bsj', x, self.q)
+        k = tf.einsum('bsi,ij->bsj', x, self.k)
         y = tf.einsum('bsi,bzi->bsz', q, k) * self.scale
         if mask is not None:
             # tf.print(' *** applying mask')
             m = tf.logical_not(mask)
             m = tf.cast(m, tf.float32)[:, :, None]
             y += m * -1e9
-        v = tf.einsum('bsi,ij->bsj', x, self.v_w)
+        v = tf.einsum('bsi,ij->bsj', x, self.v)
         y = tf.einsum('bsz,bzi->bsi', tf.nn.softmax(y), v)
         return y
 
@@ -111,11 +108,18 @@ def model_for(ps):
     y = Reflect()(y)
     y = kl.Reshape((ps.len_max_input * ps.dim_hidden, ))(y)
     y = kl.Dense(ps.dim_dense, activation='relu')(y)
-    y = kl.Dense(ps.dim_vocab, name='out', activation=None)(y)
+    y = kl.Dense(ps.dim_vocab, name='dbd', activation=None)(y)
     m = ks.Model(inputs=x, outputs=y)
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metrics])
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
+
+
+def main_graph(ps, ds, m):
+    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
+    ld = f'/tmp/q/logs/{ld}'
+    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
+    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
 
 
 params = dict(
@@ -125,22 +129,12 @@ params = dict(
     dim_vocab=len(qd.vocab),
     len_max_input=20,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metrics=ks.metrics.SparseCategoricalAccuracy(),
+    metric=ks.metrics.SparseCategoricalAccuracy(),
+    num_epochs=10,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
 )
 
-
-def main(_):
-    ps = qd.Params(**params)
-    ds = dset_for(ps)
-    m = model_for(ps)
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=10)
-
-
 if __name__ == '__main__':
-    from absl import app
-    app.run(main)
+    ps = qd.Params(**params)
+    main_graph(ps, dset_for(ps), model_for(ps))

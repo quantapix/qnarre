@@ -16,10 +16,8 @@
 # export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
 
 import tensorflow as tf
-
-from datetime import datetime
-
 import advanced_tf.dataset as qd
+import advanced_tf.layers as ql
 
 ks = tf.keras
 kl = ks.layers
@@ -37,21 +35,17 @@ def dump_dset(ps):
     return fs
 
 
-SPC, SEP, STP = [qd.tokens[c] for c in qd.vocab[:3]]
-assert SPC == 0
-
-
 @tf.function
 def formatter(d):
     ds = tf.RaggedTensor.from_sparse(d['defs'])
     n = ds.nrows()
     os = tf.RaggedTensor.from_sparse(d['op'])
     tf.debugging.assert_equal(n, os.nrows())
-    ss = tf.fill([n, 1], SEP)
+    ss = tf.fill([n, 1], qd.SEP)
     enc = tf.concat([ds, ss, os, ss], axis=1)
     rs = tf.RaggedTensor.from_sparse(d['res'])
     tf.debugging.assert_equal(n, rs.nrows())
-    tgt = tf.concat([rs, tf.fill([n, 1], STP)], axis=1)
+    tgt = tf.concat([rs, tf.fill([n, 1], qd.STP)], axis=1)
 
     def rand_blank(x):
         y = x.flat_values
@@ -92,13 +86,6 @@ def dset_for(ps):
     return ds.map(formatter).map(adapter)
 
 
-class Layer(kl.Layer):
-    def __init__(self, ps, **kw):
-        kw.setdefault('dtype', tf.float32)
-        super().__init__(**kw)
-        self.ps = ps
-
-
 class ToRagged(kl.Layer):
     @tf.function
     def call(self, x):
@@ -110,7 +97,7 @@ class ToRagged(kl.Layer):
         return ys
 
 
-class Frames(Layer):
+class Frames(ql.Layer):
     def __init__(self, ps):
         super().__init__(ps, dtype=tf.int32)  # , dynamic=True)
         s = (ps.dim_batch, ps.width_enc)
@@ -140,7 +127,7 @@ class Frames(Layer):
         return y
 
 
-class Embed(Layer):
+class Embed(ql.Layer):
     def __init__(self, ps):
         super().__init__(ps)
         s = (ps.dim_vocab, ps.dim_hidden)
@@ -154,7 +141,7 @@ class Embed(Layer):
         return [y, lens]
 
 
-class Encode(Layer):
+class Encode(ql.Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.width = ps.width_enc
@@ -168,7 +155,7 @@ class Encode(Layer):
         return y
 
 
-class Decode(Layer):
+class Decode(ql.Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.width = ps.width_dec
@@ -182,7 +169,7 @@ class Decode(Layer):
         return y
 
 
-class Debed(Layer):
+class Debed(ql.Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.dbd = Dense(self, 'dbd', [ps.dim_hidden, ps.dim_vocab])
@@ -205,7 +192,6 @@ class Encoder(tf.Module):
             self.reflect = Attention(layer, 'refl')
             self.conclude = Conclusion(layer, 'conc')
 
-    # @tf.Module.with_name_scope
     @tf.function
     def __call__(self, x):
         y = x
@@ -222,7 +208,6 @@ class Decoder(tf.Module):
             self.consider = Attention(layer, 'cnsd')
             self.conclude = Conclusion(layer, 'conc')
 
-    # @tf.Module.with_name_scope
     @tf.function
     def __call__(self, x):
         y, ye = x[:-1], x[-1]
@@ -242,7 +227,6 @@ class Attention(tf.Module):
             self.k = layer.add_weight('k', shape=(h, h))
             self.v = layer.add_weight('v', shape=(h, h))
 
-    # @tf.Module.with_name_scope
     @tf.function
     def __call__(self, x):
         x, lens, ctx = x
@@ -270,7 +254,6 @@ class Conclusion(tf.Module):
             s = [ps.dim_dense, w]
             self.deflate = Dense(layer, 'defl', s, bias=False)
 
-    # @tf.Module.with_name_scope
     @tf.function
     def __call__(self, x):
         y, lens = x
@@ -283,29 +266,10 @@ class Conclusion(tf.Module):
         return [y, lens]
 
 
-class Dense(tf.Module):
-    bias = None
-    activation = None
-
-    def __init__(self, layer, name, shape, activation=None, bias=True):
-        super().__init__(name=name)
-        with self.name_scope:
-            kw = dict(shape=shape, initializer='glorot_uniform')
-            self.kern = layer.add_weight('kern', **kw)
-            if bias:
-                kw.update(shape=[shape[1]], initializer='zeros')
-                self.bias = layer.add_weight('bias', **kw)
-            self.activation = ks.activations.get(activation)
-
-    # @tf.Module.with_name_scope
+class Dense(ql.Dense):
     @tf.function
     def __call__(self, x):
-        y = tf.einsum('bi,ij->bj', x, self.kern)
-        if self.bias is not None:
-            y = tf.nn.bias_add(y, self.bias)
-        if self.activation:
-            y = self.activation(y)
-        return y
+        return super().__call__(x)
 
 
 def model_for(ps):
@@ -319,6 +283,7 @@ def model_for(ps):
     yd = Decode(ps)(embed(y[2:]) + [ye[0]])
     y = Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
 
@@ -338,18 +303,9 @@ params = dict(
     width_enc=25,
 )
 
-
-def main(_):
-    ps = qd.Params(**params)
-    ds = dset_for(ps)
-    m = model_for(ps)
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
-
-
 if __name__ == '__main__':
-    from absl import app
-    app.run(main)
+    ps = qd.Params(**params)
+    import advanced_tf.masking as qm
+    qm.main_graph(ps, dset_for(ps), model_for(ps))
+    # import advanced_tf.ragged as qr
+    # qr.main_eager(ps, dset_for(ps), model_for(ps))

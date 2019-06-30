@@ -15,11 +15,8 @@
 # !pip install -U tf-nightly-2.0-preview
 
 import tensorflow as tf
-
-from datetime import datetime
-
-import advanced_tf.custom as qc
 import advanced_tf.dataset as qd
+import advanced_tf.custom as qc
 
 ks = tf.keras
 kl = ks.layers
@@ -63,22 +60,7 @@ params.update(
     metric=Metric(),
 )
 
-
-def main(_):
-    ps = qd.Params(**params)
-    ds = qc.dset_for(ps)
-    m = qc.model_for(ps)
-    m.compile(
-        optimizer=ps.optimizer,
-        loss={'debed': ps.loss},
-        metrics={'debed': [ps.metric]},
-    )
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
-
-
 if __name__ == '__main__':
-    from absl import app
-    app.run(main)
+    ps = qd.Params(**params)
+    import advanced_tf.masking as qm
+    qm.main_graph(ps, qc.dset_for(ps), qc.model_for(ps))

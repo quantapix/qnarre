@@ -25,6 +25,11 @@ vocab = (' ', ':', '|')
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
+tokens = {c: i for i, c in enumerate(vocab)}
+
+SPC, SEP, STP = [tokens[c] for c in vocab[:3]]
+assert SPC == 0
+
 params = dict(
     max_val=10,
     num_samples=4,
@@ -89,9 +94,6 @@ def filterer(x):
 def splitter(x):
     fs = tf.strings.split(x, ':')
     return {'defs': fs[0], 'op': fs[1], 'res': fs[2]}
-
-
-tokens = {c: i for i, c in enumerate(vocab)}
 
 
 @tf.function
@@ -171,8 +173,7 @@ def adapter(d):
     ]
 
 
-def main(_):
-    ps = Params(**params)
+def main(ps):
     for s in py_gen(ps):
         print(s)
     print('Ops on datasets')
@@ -208,5 +209,5 @@ def main(_):
 
 
 if __name__ == '__main__':
-    from absl import app
-    app.run(main)
+    ps = Params(**params)
+    main(ps)
