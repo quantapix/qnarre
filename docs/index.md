@@ -2,55 +2,59 @@
 layout: default
 ---
 
-Motivation behind our **qnarre** effort is our unconditional love for our children. **Quantapix**, the software startup behind *qnarre*, was born as a precursor to a vicious, cruel and simply unimaginable, yet intuitively well understood power struggle between the "elite" and us.
+Motivation behind the **qnarre** effort is our unconditional love for our children.
 
-[Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for millions of dollars.
+**Quantapix**, the software startup, was born as a precursor to the vicious, cruel and simply unimaginable, yet intuitively well understood power struggle between the "elite" and the rest of us.
 
-We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble "deep learning" technology, is not all evil nor exclusively exploitative. Despite the naive, uninformed fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism and communism) in the form of yet uncommunicated contradictions and inconsistencies.
+[Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for perhaps millions of dollars.
 
-Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American children** from greedy professional torturing and forceful, institutionalized separation, as parental alienation is simply ruthless child abuse.
+We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble "deep learning" technology, is not all evil nor needs to be exclusively exploitative.
 
-Seeking out contradictions and inconsistencies in "oceans" of deceitful data with ever adapting, fluidly learning, reproducible mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. AI can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
+Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
+
+Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our American **children** from greedy professional torturing and forceful, institutionalized separation and isolation. Court-mandated parental alienation, for astronomical profits for the "elite", is simply ruthless child abuse.
+
+Seeking out **contradictions** and **inconsistencies** in "vast oceans" of deceitful data with ever adapting, fluidly learning, yet still reproducible mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. It can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
 
 The following blogs incorporate "runable" [python](https://www.python.org/) scripts organized as [jupyter](https://jupyter.org/) notebooks.
 
 # Advanced TensorFlow 2.0 w/ Keras
 
-* **Trackable**: a pervasive topological persistence infrastructure
-* Many Smaller GPUs: elegant in-model distribution that fits
-* **Dataset**: tensor "highway" on-ramp (without getting lost)
-* Unified adaptable masking that flows with tensors
-* **Ragged Tensors**: custom-made for document processing (and more)
-* Unnecessary complexity through layer proliferation
-* **Autograph**: intuitive data-driven flow control at last
+* **Trackable**: a pervasive persistence infrastructure
+* Many smaller GPUs: elegant in-model distribution
+* **Dataset**: the tensor "highway" on-ramp
+* Unified adaptable masking that flows
+* **Ragged tensors** for document processing
+* Complexity through layer proliferation
 * Custom Keras layers without the drawbacks
-* Keras Callbacks: eagerly extending their scope and usage
-* **Metrics And Summaries**: modular and reusable all the way
+* **Autograph**: intuitive data-driven control at last
+* Modular and reusable metrics all the way
+* Keras callbacks: extending their scope and usage
 * [more detail... (fully uploaded by June 30)](./advanced_tf/index.html)
 
-# Modeling Ideological Activism in Family Courts
+# Modeling Ideological Activism
 
-* **Reductio Ad Absurdum** - a judicial simulation
-* An initial conceptual model of an "emotional" domain
-* The astronomical profits of **"high-conflict"** divorces
-* Psychological object model of the ABA **"frequent fliers"**
-* From fabricated conflicts to overt ideological activism
-* **Representative metrics** through statistical modeling
-* Learn, adapt and protect yourself from "elite" predators
+* **Reductio ad absurdum** - a judicial simulation
+* A conceptual model of an "emotional" domain
+* The lucrative profits of **"high-conflict"** divorces
+* Psychological object model of "frequent fliers"
+* From fabricated conflicts to ideological activism
+* Representative **metrics** through statistical modeling
+* Learn, adapt and protect from "elite" predators
 * [more detail... (fully uploaded by July 31)](./activist_court/index.html)
 
-# Judicial Contradictions Analytically Evaluated
+# Evaluating Contradictions Analytically
 
-* Preparing and normalizing legal documents and evidence
-* Tagging elements with **topics** and extracting **narratives**
-* Interpreting and analyzing the inferred **conflict graph**
-* Generating output for **standardized**, flexible reporting
-* Unmasking "cover-ups" effectively, using irrefutable analytics
-* Analyzing trends, costs, **profits** and identifying motives
-* **"Based on a true story"**: a sample redacted Qnarre report 
+* Preparing and normalizing documents
+* Tagging with **topics** and extracting **narratives**
+* Standardized output, flexible reporting
+* Interpreting the inferred **conflict graph**
+* Irrefutable analytics to unmask "cover-ups"
+* Trends, costs, **profits** and identifying motives
+* "Based on a true story": a sample Qnarre report 
 * [more detail... (fully uploaded by August 31)](./judicial_report/index.html)
 
-# Qnarre Narratives for Real-Estate?
+# Narratives for Real-Estate?
 
-* Contracted study of scenarios and results
+* A "for hire" study of scenarios and results
 * [more detail... (fully uploaded by September 30)](./qnarre_for_re/index.html)

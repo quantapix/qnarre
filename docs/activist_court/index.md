@@ -2,7 +2,7 @@
 layout: default
 ---
 
-# Modeling Ideological Activism in Family Courts
+# Modeling Ideological Activism
 
 ## [Reductio Ad Absurdum - A Judicial Simulation](./simulation.html)
 
@@ -12,34 +12,34 @@ layout: default
 * Judgments: from certainty through ambiguity to absurdity
 * [more detail...](./simulation.html) and [runable simulation...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/simulation.ipynb)
 
-## [An Initial Conceptual Model Of An "Emotional" Domain](./concepts.pdf)
+## [A Conceptual Model Of An "Emotional" Domain](./tbd.html)
 
-* TBD
-* [runable simulation...](./concepts.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [The Astronomical Profits Of "High-Conflict" Divorces](./profits.pdf)
+## [The Lucrative Profits Of "High-Conflict" Divorces](./tbd.html)
 
-* TBD
-* [runable simulation...](./profits.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Psychological Object Model Of The ABA "Frequent Fliers"](./psychology.pdf)
+## [Psychological Object Model Of "Frequent Fliers"](./tbd.html)
 
-* TBD
-* [runable simulation...](./psychology.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [From Fabricated Conflicts To Overt Ideological Activism](./activism.pdf)
+## [From Fabricated Conflicts To Ideological Activism](./tbd.html)
 
-* TBD
-* [runable simulation...](./activism.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Representative Metrics Through Statistical Modeling](./metrics.pdf)
+## [Representative Metrics Through Statistical Modeling](./tbd.html)
 
-* TBD
-* [runable simulation...](./metrics.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Learn, Adapt And Protect Yourself From "Elite" Predators](./predators.pdf)
+## [Learn, Adapt And Protect From "Elite" Predators](./tbd.html)
 
-* TBD
-* [runable simulation...](./predators.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
 [back](../)

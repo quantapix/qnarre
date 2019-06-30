@@ -2,41 +2,41 @@
 layout: default
 ---
 
-# Judicial Contradictions Analytically Evaluated
+# Evaluating Contradictions Analytically
 
-## [Preparing And Normalizing Legal Documents And Evidence](./prepare.pdf)
+## [Preparing And Normalizing Documents](./tbd.html)
 
-* TBD
-* [runable simulation...](./prepare.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Tagging Elements With Topics And Extracting Narratives](./tagging.pdf)
+## [Tagging With Topics And Extracting Narratives](./tbd.html)
 
-* TBD
-* [runable simulation...](./tagging.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Interpreting And Analyzing The Inferred Conflict Graph](./analyze.pdf)
+## [Standardized Output, Flexible Reporting](./tbd.html)
 
-* TBD
-* [runable simulation...](./analyze.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Generating Output For Standardized, Flexible Reporting](./generate.pdf)
+## [Interpreting The Inferred Conflict Graph](./tbd.html)
 
-* TBD
-* [runable simulation...](./generate.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Unmasking "Cover-Ups" Effectively, Using Irrefutable Analytics](./unmask.pdf)
+## [Irrefutable Analytics To Unmask "Cover-Ups"](./tbd.html)
 
-* TBD
-* [runable simulation...](./unmask.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## [Analyzing Trends, Costs, Profits And Identifying Motives](./profit.pdf)
+## [Trends, Costs, Profits And Identifying Motives](./tbd.html)
 
-* TBD
-* [runable simulation...](./profit.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
-## ["Based On A True Story": A Sample Redacted Qnarre Report ](./report.pdf)
+## ["Based On A True Story": A Sample Qnarre Report ](./report.pdf)
 
-* TBD
-* [runable simulation...](./report.ipynb)
+* Beta 1 - raw and restricted report
+* [more detail...](./report.pdf)
 
 [back](../)

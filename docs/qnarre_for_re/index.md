@@ -2,11 +2,11 @@
 layout: default
 ---
 
-# Qnarre Narratives for Real-Estate?
+# Narratives for Real-Estate?
 
-## [Contracted Study Of Scenarios And Results](./study.pdf)
+## [A "For Hire" Study Of Scenarios And Results](./tbd.html)
 
-* TBD
-* [runable simulation...](./prepare.ipynb)
+* In progress...
+* [more detail...](./tbd.html)
 
 [back](../)
