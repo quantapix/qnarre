@@ -16,11 +16,8 @@
 
 import numpy as np
 import tensorflow as tf
-
-from datetime import datetime
-
-import advanced_tf.custom as qc
 import advanced_tf.dataset as qd
+import advanced_tf.custom as qc
 
 ks = tf.keras
 kl = ks.layers
@@ -40,25 +37,30 @@ def pos_timing(width, depth):
 class Embed(qc.Embed):
     def __init__(self, ps):
         super().__init__(ps)
-        p = pos_timing(ps.width_enc, ps.dim_hidden)
-        self.enc_p = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
-        p = pos_timing(ps.width_dec, ps.dim_hidden)
-        self.dec_p = tf.broadcast_to(p, [ps.dim_batch] + p.shape[1:])
+        self.enc_p = pos_timing(ps.width_enc, ps.dim_hidden)
+        self.dec_p = pos_timing(ps.width_dec, ps.dim_hidden)
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None], dtype=tf.int32)
+    ]])
     def call(self, x):
         y, lens = x
-        y += self.pos[:, :x.shape[1], :]
+        y = tf.nn.embedding_lookup(self.emb, y)
+        y *= y.shape[-1]**0.5
+        w = tf.shape(y)
+        if tf.equal(w[-2], self.ps.width_enc):
+            y += tf.broadcast_to(self.enc_p, w)
+        elif tf.equal(w[-2], self.ps.width_dec):
+            y += tf.broadcast_to(self.dec_p, w)
+        else:
+            pass
         return [y, lens]
-
-
-tokens = qd.tokens
-tokens.update({v: k for k, v in tokens.items()})
 
 
 @tf.function
 def print_prev(x):
-    tf.print(''.join([tokens[t] for t in x]))
+    tf.print(''.join([qd.tokens[t] for t in x]))
 
 
 class Frames(qc.Frames):
@@ -74,62 +76,20 @@ def model_for(ps):
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
     y = qc.ToRagged()(x)
-    y = Frames(ps)(y)
+    y = qc.Frames(ps)(y)
     embed = Embed(ps)
     ye = qc.Encode(ps)(embed(y[:2]))
     yd = qc.Decode(ps)(embed(y[2:]) + [ye[0]])
     y = qc.Debed(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
 
 
-def main_graph(_):
-    ps = qd.Params(**qc.params)
-    ds = qc.dset_for(ps)
-    m = model_for(ps)
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
-
-
-def main_eager(_):
-    ps = qd.Params(**qc.params)
-    ds = qc.dset_for(ps)
-    m = model_for(ps)
-
-    def step(x, y):
-        with tf.GradientTape() as tape:
-            yy = m(x)
-            loss = ps.loss(y, yy)
-            loss += sum(m.losses)
-            xent = ps.metric(y, yy)
-        for v in m.trainable_variables:
-            print('---', v)
-        grads = tape.gradient(loss, m.trainable_variables)
-        ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
-        return loss, xent
-
-    @tf.function
-    def epoch():
-        s, loss, xent = 0, 0.0, 0.0
-        for x, y in ds:
-            s += 1
-            loss, xent = step(x, y)
-            if tf.equal(s % 10, 0):
-                e = ps.metric.result()
-                tf.print('Step:', s, ', loss:', loss, ', xent:', e)
-        return loss, xent
-
-    for e in range(ps.num_epochs):
-        loss, xent = epoch()
-        print(f'Epoch {e} loss:', loss, ', xent:', xent)
-
-
 if __name__ == '__main__':
-    # tf.autograph.set_verbosity(10)
-    from absl import app
-    app.run(main_graph)
-    # app.run(main_eager)
+    ps = qd.Params(**qc.params)
+    import advanced_tf.masking as qm
+    qm.main_graph(ps, qc.dset_for(ps), model_for(ps))
+    # import advanced_tf.ragged as qr
+    # qr.main_eager(ps, dset_for(ps), model_for(ps))
