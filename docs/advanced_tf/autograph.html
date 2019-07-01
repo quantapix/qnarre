@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>layers</title>
+<title>autograph</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13116,9 +13116,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Complexity-Through-Layer-Proliferation">Complexity Through Layer Proliferation<a class="anchor-link" href="#Complexity-Through-Layer-Proliferation">&#182;</a></h1><ul>
+<h1 id="Autograph:-Intuitive-Data-Driven-Control-At-Last">Autograph: Intuitive Data-Driven Control At Last<a class="anchor-link" href="#Autograph:-Intuitive-Data-Driven-Control-At-Last">&#182;</a></h1><ul>
 <li>TODO: expand bullets</li>
-<li>objective: <a href="./layers.pdf">graph</a></li>
+<li>objective: <a href="./autograph.pdf">graph</a></li>
 </ul>
 
 </div>
@@ -13132,9 +13132,34 @@ div#notebook {
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">import</span> <span class="nn">dataset</span> <span class="k">as</span> <span class="nn">qd</span>
-<span class="kn">import</span> <span class="nn">ragged</span> <span class="k">as</span> <span class="nn">qr</span>
+<span class="kn">import</span> <span class="nn">custom</span> <span class="k">as</span> <span class="nn">qc</span>
+<span class="kn">import</span> <span class="nn">layers</span> <span class="k">as</span> <span class="nn">ql</span>
 <span class="n">ks</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span>
 <span class="n">kl</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">layers</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">pos_timing</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">depth</span><span class="p">):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">pos_timing</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">t</span>
 </pre></div>
 
     </div>
@@ -13155,49 +13180,31 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">pos_timing</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">depth</span><span class="p">):</span>
-    <span class="k">assert</span> <span class="n">depth</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">depth</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="mi">10000</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">depth</span><span class="p">))</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">width</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">*</span> <span class="n">d</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">t</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">t</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">])]</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">t</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Embed</span><span class="p">(</span><span class="n">qc</span><span class="o">.</span><span class="n">Embed</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enc_p</span> <span class="o">=</span> <span class="n">pos_timing</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">width_enc</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dec_p</span> <span class="o">=</span> <span class="n">pos_timing</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">width_dec</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">)</span>
 
-<span class="n">pos</span> <span class="o">=</span> <span class="n">pos_timing</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">512</span><span class="p">)</span>
-
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;RdBu&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Depth&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">512</span><span class="p">))</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Position&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">input_signature</span><span class="o">=</span><span class="p">[[</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="p">]])</span>
+    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">lens</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">embedding_lookup</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">emb</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ps</span><span class="o">.</span><span class="n">width_enc</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enc_p</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ps</span><span class="o">.</span><span class="n">width_dec</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dec_p</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="n">y</span> <span class="o">*=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">lens</span><span class="p">]</span>
 </pre></div>
 
     </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-
-
-<div class="output_png output_subarea ">
-<img src="data:image/png;base64,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
-"
->
-</div>
-
-</div>
-
 </div>
 </div>
 
@@ -13215,84 +13222,22 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>(&#39; &#39;, &#39;:&#39;, &#39;|&#39;, &#39;x&#39;, &#39;y&#39;, &#39;=&#39;, &#39;,&#39;, &#39;+&#39;, &#39;-&#39;, &#39;*&#39;, &#39;0&#39;, &#39;1&#39;, &#39;2&#39;, &#39;3&#39;, &#39;4&#39;, &#39;5&#39;, &#39;6&#39;, &#39;7&#39;, &#39;8&#39;, &#39;9&#39;)
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span><span class="n">kl</span><span class="o">.</span><span class="n">Layer</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-        <span class="n">kw</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;dtype&#39;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ps</span> <span class="o">=</span> <span class="n">ps</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Embed</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">emb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;emb&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">pos_timing</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">len_max_input</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">)</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_batch</span><span class="p">]</span> <span class="o">+</span> <span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
-
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Frames</span><span class="p">(</span><span class="n">qc</span><span class="o">.</span><span class="n">Frames</span><span class="p">):</span>
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
     <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">fv</span><span class="p">,</span> <span class="n">rs</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_row_splits</span><span class="p">(</span><span class="n">fv</span><span class="p">,</span> <span class="n">rs</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ragged</span><span class="o">.</span><span class="n">map_flat_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">embedding_lookup</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">lengths</span><span class="o">=</span><span class="n">y</span><span class="o">.</span><span class="n">row_lengths</span><span class="p">())</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">call</span><span class="o">.</span><span class="n">python_function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">print_row</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">numpy_function</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">ts</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ts</span><span class="p">]),</span>
+                    <span class="p">[</span><span class="n">r</span><span class="p">],</span>
+                    <span class="n">Tout</span><span class="o">=</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">string</span><span class="p">],</span>
+                <span class="p">))</span>
+            <span class="k">return</span> <span class="n">r</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span><span class="n">print_row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">y</span>
 </pre></div>
 
@@ -13311,63 +13256,22 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Encode</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Probe</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Layer</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">encs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Encoder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;enc_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_stacks</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbd</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;dbd&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">])</span>
 
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
     <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">encs</span><span class="p">:</span>
-            <span class="n">y</span><span class="p">,</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">e</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">ctx</span><span class="p">]</span>
-
-<span class="k">class</span> <span class="nc">Decode</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">decs</span> <span class="o">=</span> <span class="p">[</span><span class="n">Decoder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;dec_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_stacks</span><span class="p">)]</span>
-
-    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span><span class="p">,</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">decs</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">d</span><span class="p">([</span><span class="n">y</span><span class="p">,</span> <span class="n">ctx</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">y</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Debed</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="n">u</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">len_max_input</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">u</span> <span class="o">*</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dbd</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;dbd&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">()</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">lens</span> <span class="o">=</span> <span class="n">x</span>
         <span class="n">s</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">-</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbd</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:,</span> <span class="p">:</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">lens</span><span class="p">),</span> <span class="p">:]</span>
         <span class="k">return</span> <span class="n">y</span>
 </pre></div>
 
@@ -13386,189 +13290,19 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Encoder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_scope</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">reflect</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;refl&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">conclude</span> <span class="o">=</span> <span class="n">Conclusion</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;conc&#39;</span><span class="p">)</span>
-
-    <span class="nd">@tf</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="n">with_name_scope</span>
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span><span class="p">,</span> <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflect</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conclude</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">ctx</span><span class="p">]</span>
-
-<span class="k">class</span> <span class="nc">Decoder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_scope</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">reflect</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;refl&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">consider</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;cnsd&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">conclude</span> <span class="o">=</span> <span class="n">Conclusion</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;conc&#39;</span><span class="p">)</span>
-
-    <span class="nd">@tf</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="n">with_name_scope</span>
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="n">y</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflect</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
-        <span class="n">y</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">consider</span><span class="p">([</span><span class="n">y</span><span class="p">,</span> <span class="n">ctx</span><span class="p">])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conclude</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">y</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Attention</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="n">h</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">h</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_scope</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="s1">&#39;q&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
-
-    <span class="nd">@tf</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="n">with_name_scope</span>
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="n">q</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">))</span>
-        <span class="n">k</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">))</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">with_values</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ni,ij-&gt;nj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">flat_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">))</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;bsi,bzi-&gt;bsz&#39;</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">(),</span> <span class="n">k</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">())</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">y</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;bsz,bzi-&gt;bsi&#39;</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">())</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">lengths</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">row_lengths</span><span class="p">())</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">y</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Conclusion</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="n">ps</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">ps</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="n">w</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">len_max_input</span>
-        <span class="n">w</span> <span class="o">*=</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_scope</span><span class="p">:</span>
-            <span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_dense</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">inflate</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;infl&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">)</span>
-            <span class="n">s</span> <span class="o">=</span> <span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_dense</span><span class="p">,</span> <span class="n">w</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">deflate</span> <span class="o">=</span> <span class="n">Dense</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;defl&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="nd">@tf</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="n">with_name_scope</span>
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to_tensor</span><span class="p">()</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">-</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inflate</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deflate</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RaggedTensor</span><span class="o">.</span><span class="n">from_tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">lengths</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">row_lengths</span><span class="p">())</span>
-        <span class="k">return</span> <span class="n">y</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Dense</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="n">bias</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">activation</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_scope</span><span class="p">:</span>
-            <span class="n">kw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">initializer</span><span class="o">=</span><span class="s1">&#39;glorot_uniform&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">kern</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="s1">&#39;kern&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">bias</span><span class="p">:</span>
-                <span class="n">kw</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">initializer</span><span class="o">=</span><span class="s1">&#39;zeros&#39;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="s1">&#39;bias&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">activations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">activation</span><span class="p">)</span>
-
-    <span class="nd">@tf</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="n">with_name_scope</span>
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;bi,ij-&gt;bj&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kern</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">bias_add</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">y</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
     <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">ks</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int32&#39;</span><span class="p">),</span> <span class="n">ks</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int64&#39;</span><span class="p">)]</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">Embed</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">Encode</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">Decode</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">Debed</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">+=</span> <span class="p">[</span><span class="n">ks</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int32&#39;</span><span class="p">),</span> <span class="n">ks</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int64&#39;</span><span class="p">)]</span>
+    <span class="n">x</span> <span class="o">+=</span> <span class="p">[</span><span class="n">ks</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int32&#39;</span><span class="p">),</span> <span class="n">ks</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int64&#39;</span><span class="p">)]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">ToRagged</span><span class="p">()(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">Frames</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">embed</span> <span class="o">=</span> <span class="n">Embed</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+    <span class="n">ye</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Encode</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">embed</span><span class="p">(</span><span class="n">y</span><span class="p">[:</span><span class="mi">2</span><span class="p">]))</span>
+    <span class="n">yd</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Decode</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">embed</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span> <span class="o">+</span> <span class="p">[</span><span class="n">ye</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">Probe</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">yd</span><span class="p">)</span>
     <span class="n">m</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
     <span class="n">m</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="p">])</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
@@ -13590,45 +13324,13 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-    <span class="n">dim_batch</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-    <span class="n">dim_dense</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
-    <span class="n">dim_hidden</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
-    <span class="n">dim_stacks</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-    <span class="n">dim_vocab</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">),</span>
-    <span class="n">len_max_input</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
-    <span class="n">loss</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">SparseCategoricalCrossentropy</span><span class="p">(</span><span class="n">from_logits</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-    <span class="n">metric</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">SparseCategoricalAccuracy</span><span class="p">(),</span>
-    <span class="n">num_epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-    <span class="n">num_shards</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-    <span class="n">optimizer</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(),</span>
-<span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[20]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">qd</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">qd</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">qc</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+<span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="kn">import</span> <span class="nn">masking</span> <span class="k">as</span> <span class="nn">qm</span>
-<span class="n">qm</span><span class="o">.</span><span class="n">main_graph</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">qr</span><span class="o">.</span><span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
+<span class="n">qm</span><span class="o">.</span><span class="n">main_graph</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">qc</span><span class="o">.</span><span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
 </pre></div>
 
     </div>
@@ -13645,7 +13347,7 @@ div#notebook {
 
 
 <div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 21:05:15.772540 140338507302528 training_utils.py:1455] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
+<pre>W0630 21:01:38.184058 140600421676672 training_utils.py:1455] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
 </pre>
 </div>
 </div>
@@ -13656,27 +13358,51 @@ div#notebook {
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Model: &#34;model_2&#34;
+<pre>Model: &#34;model_3&#34;
 __________________________________________________________________________________________________
 Layer (type)                    Output Shape         Param #     Connected to                     
 ==================================================================================================
-input_5 (InputLayer)            [(None,)]            0                                            
+input_19 (InputLayer)           [(None,)]            0                                            
 __________________________________________________________________________________________________
-input_6 (InputLayer)            [(None,)]            0                                            
+input_20 (InputLayer)           [(None,)]            0                                            
 __________________________________________________________________________________________________
-embed_2 (Embed)                 (None, None, 6)      120         input_5[0][0]                    
-                                                                 input_6[0][0]                    
+input_21 (InputLayer)           [(None,)]            0                                            
 __________________________________________________________________________________________________
-encode_2 (Encode)               [(None, None, None), 72516       embed_2[0][0]                    
+input_22 (InputLayer)           [(None,)]            0                                            
 __________________________________________________________________________________________________
-decode_2 (Decode)               (None, None, None)   72732       encode_2[0][0]                   
-                                                                 encode_2[0][1]                   
+input_23 (InputLayer)           [(None,)]            0                                            
 __________________________________________________________________________________________________
-debed_2 (Debed)                 (None, 20)           2420        decode_2[0][0]                   
+input_24 (InputLayer)           [(None,)]            0                                            
+__________________________________________________________________________________________________
+to_ragged_3 (ToRagged)          [(None, None), (None 0           input_19[0][0]                   
+                                                                 input_20[0][0]                   
+                                                                 input_21[0][0]                   
+                                                                 input_22[0][0]                   
+                                                                 input_23[0][0]                   
+                                                                 input_24[0][0]                   
+__________________________________________________________________________________________________
+frames_3 (Frames)               [(5, 25), (None,), ( 125         to_ragged_3[0][0]                
+                                                                 to_ragged_3[0][1]                
+                                                                 to_ragged_3[0][2]                
+__________________________________________________________________________________________________
+embed_3 (Embed)                 multiple             120         frames_3[0][0]                   
+                                                                 frames_3[0][1]                   
+                                                                 frames_3[0][2]                   
+                                                                 frames_3[0][3]                   
+__________________________________________________________________________________________________
+encode_3 (Encode)               [(None, 25, 6), (Non 90516       embed_3[0][0]                    
+                                                                 embed_3[0][1]                    
+__________________________________________________________________________________________________
+decode_3 (Decode)               [(None, 15, 6), (Non 54732       embed_3[1][0]                    
+                                                                 embed_3[1][1]                    
+                                                                 encode_3[0][0]                   
+__________________________________________________________________________________________________
+probe_3 (Probe)                 (None, None, None)   140         decode_3[0][0]                   
+                                                                 decode_3[0][1]                   
 ==================================================================================================
-Total params: 147,788
-Trainable params: 147,788
-Non-trainable params: 0
+Total params: 145,633
+Trainable params: 145,508
+Non-trainable params: 125
 __________________________________________________________________________________________________
 None
 </pre>
@@ -13689,7 +13415,7 @@ None
 
 
 <div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 21:05:16.393986 140338507302528 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
+<pre>W0630 21:01:39.012634 140600421676672 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
 </pre>
 </div>
 </div>
@@ -13700,62 +13426,67 @@ None
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Epoch 1/5
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>1000/1000 [==============================] - 22s 22ms/step - loss: 1.8823 - sparse_categorical_accuracy: 0.4925
-Epoch 2/5
-1000/1000 [==============================] - 6s 6ms/step - loss: 1.6305 - sparse_categorical_accuracy: 0.5040
-Epoch 3/5
-1000/1000 [==============================] - 5s 5ms/step - loss: 1.5499 - sparse_categorical_accuracy: 0.5390
-Epoch 4/5
-1000/1000 [==============================] - 5s 5ms/step - loss: 1.5049 - sparse_categorical_accuracy: 0.5510
-Epoch 5/5
-1000/1000 [==============================] - 6s 6ms/step - loss: 1.4616 - sparse_categorical_accuracy: 0.5680
+<pre>
+[&#34;        y=76,x=34:y-x:42|&#34;]
+[&#34;       y=12,x=33:x*y:396|&#34;]
+[&#34;     y=-13,x=-80:x-y:-67|&#34;]
+[&#34;      x=51,y=-70:x-y:121|&#34;]
+[&#34;       y=-24,x=30:x-y:54|&#34;]
+      1/Unknown - 3s 3s/step - loss: 3.0014 - sparse_categorical_crossentropy: 3.0014
+[&#34;x:42|x=-15,y=-38:y*x:570|&#34;]
+[&#34;x*y:396|x=36,y=72:y-x:36|&#34;]
+[&#34;y:-67|x=-93,y=55:y+x:-38|&#34;]
+[&#34;-y:121|x=2,y=-66:y-x:-68|&#34;]
+[&#34;x-y:54|x=-1,y=-59:x*y:59|&#34;]
+      2/Unknown - 3s 1s/step - loss: 2.9652 - sparse_categorical_crossentropy: 2.9652
+[&#34;570|y=59,x=-78:x*y:-4602|&#34;]
+[&#34;:36|y=-98,x=-78:y*x:7644|&#34;]
+[&#34;:-38|x=-21,y=-36:y+x:-57|&#34;]
+[&#34;y-x:-68|x=21,y=40:y+x:61|&#34;]
+[&#34;x*y:59|y=31,x=-12:x+y:19|&#34;]
+      3/Unknown - 4s 1s/step - loss: 2.9888 - sparse_categorical_crossentropy: 2.9956
+[&#34;y:-4602|y=59,x=66:y-x:-7|&#34;]
+[&#34;:7644|y=21,x=67:x*y:1407|&#34;]
+[&#34;x:-57|x=-51,y=-69:x-y:18|&#34;]
+[&#34;:61|y=49,x=-70:y*x:-3430|&#34;]
+[&#34;x+y:19|y=53,x=15:x*y:795|&#34;]
+      4/Unknown - 5s 1s/step - loss: 2.9879 - sparse_categorical_crossentropy: 2.9924
+[&#34;:y-x:-7|y=52,x=50:x-y:-2|&#34;]
+[&#34;1407|y=-86,x=40:y-x:-126|&#34;]
+[&#34;-y:18|x=48,y=-43:y-x:-91|&#34;]
+[&#34;:-3430|x=99,y=-24:x+y:75|&#34;]
+[&#34;795|x=94,y=-79:x*y:-7426|&#34;]
+      5/Unknown - 6s 1s/step - loss: 2.9691 - sparse_categorical_crossentropy: 2.9697
+[&#34;y:-2|x=17,y=-37:x*y:-629|&#34;]
+[&#34;126|x=99,y=-94:y*x:-9306|&#34;]
+[&#34;x:-91|y=-82,x=63:x+y:-19|&#34;]
+[&#34;:75|x=-51,y=-79:x*y:4029|&#34;]
+[&#34;426|y=-67,x=-44:x*y:2948|&#34;]
+      6/Unknown - 7s 1s/step - loss: 2.9654 - sparse_categorical_crossentropy: 2.9654
+[&#34;y:-629|y=72,x=28:y+x:100|&#34;]
+[&#34;306|y=93,x=-67:x*y:-6231|&#34;]
+[&#34;-19|y=83,x=-61:y*x:-5063|&#34;]
+[&#34;4029|x=-19,y=-63:x+y:-82|&#34;]
+[&#34;:2948|y=-5,x=-31:y*x:155|&#34;]
+      7/Unknown - 8s 1s/step - loss: 2.9354 - sparse_categorical_crossentropy: 2.9323
+[&#34;x:100|x=42,y=83:x*y:3486|&#34;]
+[&#34;:-6231|x=-8,y=23:x-y:-31|&#34;]
+[&#34;*x:-5063|x=7,y=40:y+x:47|&#34;]
+[&#34;-82|y=-63,x=-35:y*x:2205|&#34;]
+[&#34;155|y=-68,x=-17:y*x:1156|&#34;]
+      8/Unknown - 9s 1s/step - loss: 2.9268 - sparse_categorical_crossentropy: 2.9247
+[&#34;:3486|x=97,y=30:y*x:2910|&#34;]
+[&#34;y:-31|y=-50,x=-71:y-x:21|&#34;]
+[&#34;y+x:47|x=44,y=59:x+y:103|&#34;]
+[&#34;*x:2205|x=23,y=66:y-x:43|&#34;]
+[&#34;1156|y=-90,x=76:y-x:-166|&#34;]
+      9/Unknown - 10s 1s/step - loss: 2.8991 - sparse_categorical_crossentropy: 2.8989
+[&#34;:2910|x=-20,y=72:x-y:-92|&#34;]
+[&#34;y-x:21|y=-1,x=91:y-x:-92|&#34;]
+[&#34;+y:103|x=-14,y=0:y+x:-14|&#34;]
+[&#34;:43|x=-78,y=64:y*x:-4992|&#34;]
+[&#34;166|x=-81,y=16:y*x:-1296|&#34;]
+10/10 [==============================] - 11s 1s/step - loss: 2.8581 - sparse_categorical_crossentropy: 2.8533
 </pre>
 </div>
 </div>
@@ -13767,17 +13498,14 @@ Epoch 5/5
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries</li>
-<li>if you haven't run the code, an already generated graph is <a href="./layers.pdf">here</a></li>
-</ul>
+<p>-</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> tensorboard
@@ -13800,7 +13528,7 @@ Epoch 5/5
 
 
 <div class="output_text output_subarea ">
-<pre>Reusing TensorBoard on port 6006 (pid 18246), started 0:40:33 ago. (Use &#39;!kill 18246&#39; to kill it.)</pre>
+<pre>Reusing TensorBoard on port 6006 (pid 18246), started 2:37:39 ago. (Use &#39;!kill 18246&#39; to kill it.)</pre>
 </div>
 
 </div>
@@ -13829,142 +13557,13 @@ Epoch 5/5
 </div>
 
 </div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">qr</span><span class="o">.</span><span class="n">main_eager</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">qr</span><span class="o">.</span><span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Model: &#34;model_3&#34;
-__________________________________________________________________________________________________
-Layer (type)                    Output Shape         Param #     Connected to                     
-==================================================================================================
-input_7 (InputLayer)            [(None,)]            0                                            
-__________________________________________________________________________________________________
-input_8 (InputLayer)            [(None,)]            0                                            
-__________________________________________________________________________________________________
-embed_3 (Embed)                 (None, None, 6)      120         input_7[0][0]                    
-                                                                 input_8[0][0]                    
-__________________________________________________________________________________________________
-encode_3 (Encode)               [(None, None, None), 72516       embed_3[0][0]                    
-__________________________________________________________________________________________________
-decode_3 (Decode)               (None, None, None)   72732       encode_3[0][0]                   
-                                                                 encode_3[0][1]                   
-__________________________________________________________________________________________________
-debed_3 (Debed)                 (None, 20)           2420        decode_3[0][0]                   
-==================================================================================================
-Total params: 147,788
-Trainable params: 147,788
-Non-trainable params: 0
-__________________________________________________________________________________________________
-None
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Step: 10 , loss: 2.24212742 , xent: 0.56386137
-Step: 20 , loss: 2.33669519 , xent: 0.559803903
-Step: 30 , loss: 2.9666779 , xent: 0.556796134
-Step: 40 , loss: 3.00279307 , xent: 0.556730747
-Step: 50 , loss: 3.11257172 , xent: 0.555238068
-Step: 60 , loss: 1.19533181 , xent: 0.553301871
-Step: 70 , loss: 2.49692106 , xent: 0.552803755
-Step: 80 , loss: 1.94691455 , xent: 0.553240716
-Step: 90 , loss: 3.86864901 , xent: 0.552752316
-Step: 100 , loss: 2.69638801 , xent: 0.551818192
-Epoch 0 loss: 2.696388 , xent: 0.5518182
-</pre>
-</div>
-</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
-
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">

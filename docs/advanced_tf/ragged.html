@@ -13648,17 +13648,18 @@ Epoch 10/10
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<p>-</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">main_eager</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
+<span class="n">main_eager</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
 </pre></div>
 
     </div>
@@ -13675,26 +13676,26 @@ Epoch 10/10
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Model: &#34;model_1&#34;
+<pre>Model: &#34;model_2&#34;
 __________________________________________________________________________________________________
 Layer (type)                    Output Shape         Param #     Connected to                     
 ==================================================================================================
-input_3 (InputLayer)            [(None,)]            0                                            
+input_5 (InputLayer)            [(None,)]            0                                            
 __________________________________________________________________________________________________
-input_4 (InputLayer)            [(None,)]            0                                            
+input_6 (InputLayer)            [(None,)]            0                                            
 __________________________________________________________________________________________________
-embed_1 (Embed)                 (None, None, 15)     300         input_3[0][0]                    
-                                                                 input_4[0][0]                    
+embed_2 (Embed)                 (None, None, 15)     300         input_5[0][0]                    
+                                                                 input_6[0][0]                    
 __________________________________________________________________________________________________
-reflect_1 (Reflect)             (None, None, 15)     675         embed_1[0][0]                    
+reflect_2 (Reflect)             (None, None, 15)     675         embed_2[0][0]                    
 __________________________________________________________________________________________________
-expand_1 (Expand)               (None, None, 15)     0           reflect_1[0][0]                  
+expand_2 (Expand)               (None, None, 15)     0           reflect_2[0][0]                  
 __________________________________________________________________________________________________
-reshape_1 (Reshape)             (None, 300)          0           expand_1[0][0]                   
+reshape_2 (Reshape)             (None, 300)          0           expand_2[0][0]                   
 __________________________________________________________________________________________________
-dense_1 (Dense)                 (None, 150)          45150       reshape_1[0][0]                  
+dense_2 (Dense)                 (None, 150)          45150       reshape_2[0][0]                  
 __________________________________________________________________________________________________
-dbd (Dense)                     (None, 20)           3020        dense_1[0][0]                    
+dbd (Dense)                     (None, 20)           3020        dense_2[0][0]                    
 ==================================================================================================
 Total params: 49,145
 Trainable params: 49,145
@@ -13729,111 +13730,34 @@ None
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>Step: 10 , loss: 2.28478527 , xent: 1.1448046
-Step: 20 , loss: 3.81193447 , xent: 1.15515363
-Step: 30 , loss: 1.8434391 , xent: 1.16223383
-Step: 40 , loss: 3.81591511 , xent: 1.16753304
-Step: 50 , loss: 2.87038851 , xent: 1.17481923
-Step: 60 , loss: 1.68613362 , xent: 1.18543231
-Step: 70 , loss: 2.33604383 , xent: 1.19397402
-Step: 80 , loss: 1.84736013 , xent: 1.19979382
-Step: 90 , loss: 5.07681131 , xent: 1.20539725
-Step: 100 , loss: 2.55470848 , xent: 1.21048045
-Step: 110 , loss: 0.712921798 , xent: 1.21195638
-Step: 120 , loss: 0.58221221 , xent: 1.21817505
-Step: 130 , loss: 1.94782269 , xent: 1.22357321
-Step: 140 , loss: 1.14698422 , xent: 1.22696328
-Step: 150 , loss: 0.708327532 , xent: 1.22934473
-Step: 160 , loss: 1.90195084 , xent: 1.23556912
-Step: 170 , loss: 1.44895661 , xent: 1.24154496
-Step: 180 , loss: 3.44900703 , xent: 1.24626958
-Step: 190 , loss: 2.92142868 , xent: 1.25323761
-Step: 200 , loss: 1.64794934 , xent: 1.25925446
-Step: 210 , loss: 1.83148074 , xent: 1.26511645
-Step: 220 , loss: 2.25727272 , xent: 1.2707442
-Step: 230 , loss: 1.54202437 , xent: 1.27445662
-Step: 240 , loss: 1.46193075 , xent: 1.27767217
-Step: 250 , loss: 1.97467518 , xent: 1.28335464
-Step: 260 , loss: 3.74973798 , xent: 1.28960454
-Step: 270 , loss: 2.55091023 , xent: 1.29422939
-Step: 280 , loss: 1.73297191 , xent: 1.29745162
-Step: 290 , loss: 2.17893887 , xent: 1.30225241
-Step: 300 , loss: 1.72861814 , xent: 1.30525208
-Step: 310 , loss: 0.719360054 , xent: 1.30760932
-Step: 320 , loss: 0.512156546 , xent: 1.30834687
-Step: 330 , loss: 0.553617835 , xent: 1.30851257
-Step: 340 , loss: 0.603225946 , xent: 1.30957103
-Step: 350 , loss: 3.12958407 , xent: 1.31524682
-Step: 360 , loss: 1.32249975 , xent: 1.31452703
-Step: 370 , loss: 2.93880868 , xent: 1.31600559
-Step: 380 , loss: 0.559981108 , xent: 1.31903541
-Step: 390 , loss: 0.870343208 , xent: 1.32218683
-Step: 400 , loss: 2.12917304 , xent: 1.32526183
-Step: 410 , loss: 1.54295099 , xent: 1.32709384
-Step: 420 , loss: 1.79426825 , xent: 1.3284477
-Step: 430 , loss: 1.13219821 , xent: 1.32898664
-Step: 440 , loss: 1.14928 , xent: 1.32848489
-Step: 450 , loss: 2.12289548 , xent: 1.32718742
-Step: 460 , loss: 1.72129393 , xent: 1.32833016
-Step: 470 , loss: 0.361049861 , xent: 1.33144534
-Step: 480 , loss: 4.69956207 , xent: 1.33459437
-Step: 490 , loss: 0.726473 , xent: 1.33404481
-Step: 500 , loss: 1.93642259 , xent: 1.3361032
-Step: 510 , loss: 1.29767358 , xent: 1.33974576
-Step: 520 , loss: 1.28262436 , xent: 1.34217215
-Step: 530 , loss: 2.49503899 , xent: 1.34044564
-Step: 540 , loss: 2.85425568 , xent: 1.33982849
-Step: 550 , loss: 0.272021383 , xent: 1.3398596
-Step: 560 , loss: 0.956960917 , xent: 1.34033442
-Step: 570 , loss: 0.621461 , xent: 1.34220958
-Step: 580 , loss: 1.48867822 , xent: 1.34559453
-Step: 590 , loss: 0.541784763 , xent: 1.34457099
-Step: 600 , loss: 1.64634907 , xent: 1.34858322
-Step: 610 , loss: 0.258855045 , xent: 1.34705687
-Step: 620 , loss: 3.65229702 , xent: 1.35012066
-Step: 630 , loss: 1.57557106 , xent: 1.35205495
-Step: 640 , loss: 0.910252869 , xent: 1.35490739
-Step: 650 , loss: 0.574979186 , xent: 1.3578335
-Step: 660 , loss: 0.456428766 , xent: 1.3596524
-Step: 670 , loss: 0.476096183 , xent: 1.35992849
-Step: 680 , loss: 0.559191346 , xent: 1.36013412
-Step: 690 , loss: 3.27553892 , xent: 1.36226332
-Step: 700 , loss: 2.31600142 , xent: 1.36434555
-Step: 710 , loss: 0.501723468 , xent: 1.36512184
-Step: 720 , loss: 0.430445433 , xent: 1.36587214
-Step: 730 , loss: 0.523389459 , xent: 1.36508358
-Step: 740 , loss: 0.299639463 , xent: 1.36473262
-Step: 750 , loss: 2.29508352 , xent: 1.36575234
-Step: 760 , loss: 1.75971079 , xent: 1.36615729
-Step: 770 , loss: 1.87361062 , xent: 1.36486983
-Step: 780 , loss: 0.68941009 , xent: 1.36378324
-Step: 790 , loss: 1.88984108 , xent: 1.36310875
-Step: 800 , loss: 0.967560291 , xent: 1.36388755
-Step: 810 , loss: 1.09711134 , xent: 1.36767471
-Step: 820 , loss: 0.627769649 , xent: 1.3688072
-Step: 830 , loss: 1.95480919 , xent: 1.36895013
-Step: 840 , loss: 0.748292804 , xent: 1.36927295
-Step: 850 , loss: 2.91080952 , xent: 1.37118387
-Step: 860 , loss: 1.06126964 , xent: 1.36832094
-Step: 870 , loss: 1.37885022 , xent: 1.36859763
-Step: 880 , loss: 0.584781587 , xent: 1.36755037
-Step: 890 , loss: 1.75883448 , xent: 1.37042809
-Step: 900 , loss: 1.59039807 , xent: 1.36949933
-Step: 910 , loss: 1.80502522 , xent: 1.37244284
-Step: 920 , loss: 2.22589159 , xent: 1.37494
-Step: 930 , loss: 1.99508739 , xent: 1.37685
-Step: 940 , loss: 0.389230222 , xent: 1.37628293
-Step: 950 , loss: 0.575339079 , xent: 1.3761512
-Step: 960 , loss: 2.8223 , xent: 1.37706757
-Step: 970 , loss: 0.247093067 , xent: 1.37521625
-Step: 980 , loss: 0.651084781 , xent: 1.37630522
-Step: 990 , loss: 0.178871661 , xent: 1.37534952
-Step: 1000 , loss: 1.38629889 , xent: 1.37606168
-Epoch 0 loss: 1.3862989 , xent: 1.3760617
+<pre>Step: 10 , loss: 2.32437706 , xent: 1.38269854
+Step: 20 , loss: 4.57577085 , xent: 1.38721442
+Step: 30 , loss: 1.85324097 , xent: 1.39087987
+Step: 40 , loss: 3.42399216 , xent: 1.39260852
+Step: 50 , loss: 2.88146091 , xent: 1.3952688
+Step: 60 , loss: 1.36529291 , xent: 1.39925313
+Step: 70 , loss: 2.36236858 , xent: 1.40269136
+Step: 80 , loss: 1.86278176 , xent: 1.40463638
+Step: 90 , loss: 3.87270284 , xent: 1.40630019
+Step: 100 , loss: 2.69483709 , xent: 1.40788627
+Epoch 0 loss: 2.694837 , xent: 1.4078863
 </pre>
 </div>
 </div>
 
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span> 
+</pre></div>
+
+    </div>
 </div>
 </div>
 

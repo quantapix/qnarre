@@ -232,3 +232,22 @@
 - TODO: expand bullets
 - objective: [graph](./layers.pdf)
 
+# Custom Keras Layers Without The Drawbacks
+
+- TODO: expand bullets
+- objective: [graph](./custom.pdf)
+
+# Autograph: Intuitive Data-Driven Control At Last
+
+- TODO: expand bullets
+- objective: [graph](./autograph.pdf)
+
+# Modular And Reusable Metrics All The Way
+
+- TODO: expand bullets
+- objective: [graph](./metrics.pdf)
+
+# Keras Callbacks: Extending Their Scope And Usage
+
+- TODO: expand bullets
+- objective: [graph](./callbacks.pdf)

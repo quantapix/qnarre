@@ -16,9 +16,9 @@
 
 import numpy as np
 import tensorflow as tf
-import advanced_tf.dataset as qd
-import advanced_tf.custom as qc
-import advanced_tf.layers as ql
+import dataset as qd
+import custom as qc
+import layers as ql
 
 ks = tf.keras
 kl = ks.layers

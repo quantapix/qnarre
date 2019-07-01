@@ -16,8 +16,8 @@
 # export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
 
 import tensorflow as tf
-import advanced_tf.dataset as qd
-import advanced_tf.layers as ql
+import dataset as qd
+import layers as ql
 
 ks = tf.keras
 kl = ks.layers

@@ -16,8 +16,8 @@
 
 import numpy as np
 import tensorflow as tf
-import advanced_tf.dataset as qd
-import advanced_tf.ragged as qr
+import dataset as qd
+import ragged as qr
 
 ks = tf.keras
 kl = ks.layers
@@ -239,6 +239,6 @@ params = dict(
 
 if __name__ == '__main__':
     ps = qd.Params(**params)
-    # import advanced_tf.masking as qm
+    # import masking as qm
     # qm.main_graph(ps, qr.dset_for(ps), model_for(ps))
     qr.main_eager(ps, qr.dset_for(ps), model_for(ps))
