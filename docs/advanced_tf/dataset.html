@@ -13117,13 +13117,43 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Dataset:-The-Tensor-&quot;Highway&quot;-On-Ramp">Dataset: The Tensor "Highway" On-Ramp<a class="anchor-link" href="#Dataset:-The-Tensor-&quot;Highway&quot;-On-Ramp">&#182;</a></h1><ul>
-<li><p>TODO: expand bullets</p>
-</li>
-<li><p>complex input data pipelines from simple, reusable pieces</p>
-</li>
+<li>TODO: expand bullets</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>machine learning is about lots and lots of data</li>
+<li>organizing that input data is an error-prone, arduous task</li>
+<li><code>datasets</code> were designed to build complex input data pipelines from simple, reusable pieces</li>
+<li>this blog shows off some of the useful features of this new approach to "feed the beast"</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
 <li>while computers were made to add numbers together, they quickly run into insurmountable obstacles if these numbers are presented as textual sequences of digits</li>
 <li>we aim to finally "teach" our computer to correctly add and multiply</li>
-<li>use example - fascinating <a href="https://arxiv.org/pdf/1812.02825.pdf">https://arxiv.org/pdf/1812.02825.pdf</a></li>
+<li>hence, we start with a simple yet fascinating example, inspired by <a href="https://arxiv.org/pdf/1812.02825.pdf">https://arxiv.org/pdf/1812.02825.pdf</a></li>
+<li>the rest of the blogs in this group will continue to build on the below presented results</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>before we can run any meaningful code, we need to prep our environment</li>
 </ul>
 
 </div>
@@ -13148,7 +13178,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>more preps</li>
+<li>and for convenience, and brevity, let's create some aliases</li>
 </ul>
 
 </div>
@@ -13172,9 +13202,10 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>our data consists of <code>num_samples</code> (perhaps easily millions) of <code>"x=-12,y=24:y+x:12"</code>-like strings of texts with <code>defs</code>, <code>op</code> and <code>res</code> fields (separated by <code>:</code>)</li>
+<li>our input data consists of <code>num_samples</code> (perhaps easily millions) of <code>"x=-12,y=24:y+x:12"</code>-like strings, or lines, of texts</li>
+<li>these visibly consists of <code>defs</code>, <code>op</code> and <code>res</code> fields (separated by <code>:</code>)</li>
 <li>our variables are: <code>x</code> and <code>y</code></li>
-<li>our "operations" are: <code>+</code>, <code>-</code> and <code>*</code></li>
+<li>our "operations" are: <code>=</code>, <code>+</code>, <code>-</code> and <code>*</code></li>
 <li>and our variables can be assigned values from: <code>[-max_val, max_val]</code></li>
 </ul>
 
@@ -13200,7 +13231,9 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>our input data pipeline is parametric, without error-prone string names</li>
+<li>we intend to make our input data pipeline parametric</li>
+<li>the obvious simple Python <code>dict</code> structures, with literal string keys, are error-prone exactly because of the unchecked literals</li>
+<li>a few lines of code gives as the <code>Params</code> class that leverages the native attribute mechanism to validate all our params</li>
 </ul>
 
 </div>
@@ -13232,7 +13265,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>let's generate our data randomly based on our given <code>Params</code> instance as a Python generator</li>
+<li>let's generate our data randomly, fittingly as a Python generator, based on a given <code>Params</code> instance</li>
 </ul>
 
 </div>
@@ -13277,7 +13310,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>ok, let's do it!</li>
+<li>now that the generator is defined, it takes just a line of code to create millions of correct "exercises"</li>
 </ul>
 
 </div>
@@ -13323,9 +13356,9 @@ y=-4,x=9:y+x:5
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>the class <code>tf.data.Dataset</code>is an abstraction for a sequence of elements</li>
-<li>each element is one or more Tensors containing our data</li>
-<li>an example is the following dataset directly using our "in-memory" generator</li>
+<li>the class <code>tf.data.Dataset</code>is the main abstraction for our sequence of elements</li>
+<li>each element of a dataset is one or more Tensors containing the fields, or <code>features</code>, of our <code>sample</code> "lines" of elementary math exercises</li>
+<li>using our "in-memory" generator, we can directly create a dataset as follows</li>
 </ul>
 
 </div>
@@ -13354,7 +13387,7 @@ y=-4,x=9:y+x:5
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>and here is the first 2 samples of the now tensor-based sequence</li>
+<li>and here are the first 2 samples of the now tensor-based sequence</li>
 </ul>
 
 </div>
@@ -13398,8 +13431,8 @@ tf.Tensor(b&#39;y=1,x=7:y+x:8&#39;, shape=(), dtype=string)
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>an input data pipeline starts with a "source" <code>dataset</code></li>
-<li>this "source" can also be a <code>range</code>, <code>from_tensor_slices</code>, <code>from_tensors</code> and even <code>TextLineDataset</code></li>
+<li>an input data pipeline starts with a "source" dataset, perhaps just as simple as the above</li>
+<li>this "source" can also be a <code>range</code>, <code>from_tensor_slices</code>, <code>from_tensors</code> and even a <code>TextLineDataset</code> (see the TF docs)</li>
 </ul>
 
 </div>
@@ -13425,10 +13458,10 @@ tf.Tensor(b&#39;y=1,x=7:y+x:8&#39;, shape=(), dtype=string)
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>all <code>datasets</code> can be consumed as iterables or as aggregatables (e.g. reduce)</li>
-<li>they also allow chaining of "transformations" to themselves</li>
-<li>some of the handy canned operations: <em>cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip</em></li>
-<li>an example of 2 samples of a new dataset, concatenated with all 4 samples of the previous, gen-based, dataset and "enumerated" is as follows:</li>
+<li>all datasets can then be consumed as iterables or as aggregatables (e.g. reduce)</li>
+<li>they also allow chaining of handy "transformations" to themselves</li>
+<li>some of the canned operations are: <em>cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip</em></li>
+<li>an example of 2 samples of a new dataset, concatenated with all 4 samples of the previous, gen-based, dataset and also "enumerated" is as follows</li>
 </ul>
 
 </div>
@@ -13476,7 +13509,7 @@ tf.Tensor(5, shape=(), dtype=int64) tf.Tensor(b&#39;y=-6,x=-5:y-x:-1&#39;, shape
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>we can also filter the "pipeline" at any stage:</li>
+<li>we can also filter our to be "pipeline" at any stage</li>
 </ul>
 
 </div>
@@ -13529,8 +13562,8 @@ filtering &#34;x=-3,y=5:y-x:8&#34;... in
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>even more importantly, we can split the pipeline into named "filaments" of data</li>
-<li>this new feature proves to be extremely useful, allowing us to standardize and unify our data sources with configurable-on-the-fly channeling of the features aggregated therein</li>
+<li>more importantly, we can split the pipeline into named "filaments" of data</li>
+<li>this new feature proves to be extremely useful, allowing us to standardize and unify our data sources with configurable, on-the-fly channeling of the features aggregated therein</li>
 </ul>
 
 </div>
@@ -13577,7 +13610,7 @@ filtering &#34;x=-3,y=5:y-x:8&#34;... in
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>another example of a "pipeline component" is an in-line Python <code>dict</code>-based tokenizer:</li>
+<li>another example of a "pipeline component" is an in-line Python <code>dict</code>-based tokenizer</li>
 </ul>
 
 </div>
@@ -13632,9 +13665,9 @@ filtering &#34;x=-3,y=5:y-x:8&#34;... in
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li><code>dataset</code>s can be potentially very large, fitting only on disk in many files</li>
-<li>as transparent performance is key for training throughput, datasets can be efficiently encoded into binary sequences stored in sharded files</li>
-<li>the following will convert our samples into binary "records"</li>
+<li>datasets can be potentially very large, fitting only on disk and in many files</li>
+<li>as transparent data-pipeline performance is key for training throughput, datasets can be efficiently encoded into binary sequences stored in <code>sharded</code> files</li>
+<li>the following will convert our samples into such binary "records"</li>
 </ul>
 
 </div>
@@ -13666,7 +13699,7 @@ filtering &#34;x=-3,y=5:y-x:8&#34;... in
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
 <li>and we can "dump" our tokenized, ready-to-consume samples into shards of files stored in a directory</li>
-<li>once these prepared samples are stored we can "stream" them without any more prep into subsequent blogs</li>
+<li>once these prepared samples are stored we can "stream" them without any more prep (see subsequent blogs)</li>
 </ul>
 
 </div>
@@ -13725,8 +13758,9 @@ dumping /tmp/q/dataset/shard_0002.tfrecords...
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>for loading the "records" back, we need to create templates for interpreting the stored data</li>
-<li>then loading our samples back straight into a 'dataset' can be just as follows:</li>
+<li>for loading the "records" back, we need to create templates for interpreting the stored binary data</li>
+<li>then loading them back, straight into a dataset, can be just as follows</li>
+<li>note that the names of the shard files are returned by our "dump" function</li>
 </ul>
 
 </div>
@@ -13760,7 +13794,8 @@ dumping /tmp/q/dataset/shard_0002.tfrecords...
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>before we actually load the shards back, let's "adapt" the pipeline to supply dense tensors instead of the originally configured sparse ones (since we haven't batched anything yet, we set <code>dim_batch</code> to <code>None</code>):</li>
+<li>before we actually start using the loaded data, let's "adapt" the pipeline to supply dense tensors instead of the originally configured sparse ones</li>
+<li>also, since we haven't batched anything yet, we set <code>dim_batch</code> to <code>None</code></li>
 </ul>
 
 </div>
@@ -13822,10 +13857,10 @@ dumping /tmp/q/dataset/shard_0002.tfrecords...
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>the listing above reveals that we merged 3 sharded files, worth 4 samples each, into the 12 samples</li>
-<li>only the number of "features" is printed for each sample for brevity</li>
-<li><strong>Please also note</strong> how the above in-line adapter converted our named features into unnamed, positional-in-a-list features. This was necessary as the Keras <code>Input</code> doesn't recognize named input tensors yet.</li>
-<li>if we turn on batching in our dataset, the same code will now return the following:</li>
+<li>the listing above reveals that we merged 3 sharded files, worth 4 samples each, into the 12 printed samples</li>
+<li>only the number of features is printed for each sample, for brevity</li>
+<li><strong>Please also note</strong> how the above in-line adapter converted our named features into unnamed, positional, i.e. in-a-list features. This was necessary as the Keras <code>Input</code> doesn't recognize named input tensors yet</li>
+<li>if we turn on batching in our dataset, the same code will now return the following</li>
 </ul>
 
 </div>
@@ -13909,7 +13944,7 @@ array([[14],
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each:</li>
+<li>as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each</li>
 </ul>
 
 </div>
@@ -13962,6 +13997,16 @@ dumping /tmp/q/dataset/shard_0009.tfrecords...
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>this concludes our blog, please see how easy masking our uneven sample "lines" can be by clicking on the next blog</li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>

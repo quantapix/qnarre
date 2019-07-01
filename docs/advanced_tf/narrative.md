@@ -135,7 +135,7 @@
 
 - .
 
-- and for convenience and brevity let's create some aliases
+- and for convenience, and brevity, let's create some aliases
 
 - .
 
@@ -167,7 +167,7 @@
 
 - .
 
-- and here is the first 2 samples of the now tensor-based sequence
+- and here are the first 2 samples of the now tensor-based sequence
 
 - .
 
@@ -183,7 +183,7 @@
 
 - .
 
-- we can also filter our to be "pipeline" at any stage:
+- we can also filter our to be "pipeline" at any stage
 
 - .
 
