@@ -2,7 +2,7 @@
 layout: default
 ---
 
-# Evaluating Contradictions Analytically
+# Court Contradictions Analytically Evaluated
 
 ## [Preparing And Normalizing Legal Documents](./tbd.html)
 
@@ -19,12 +19,12 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Interpreting The Inferred Conflict Graph](./tbd.html)
+## [Interpreting And Presenting Inferred Conflict Graphs](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Irrefutable Analytics To Unmask "Cover-Ups"](./tbd.html)
+## [Irrefutable Analytics To Unmask Ruthless "Cover-Ups"](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)

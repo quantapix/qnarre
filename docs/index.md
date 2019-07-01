@@ -8,7 +8,7 @@ Motivation behind the **qnarre** effort is our unconditional love for our childr
 
 [Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some trusted professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for perhaps millions of dollars.
 
-We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble "deep learning" technology, is not all evil nor needs to be exclusively exploitative.
+We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative.
 
 Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
@@ -29,32 +29,32 @@ The following blogs incorporate "runable" [python](https://www.python.org/) scri
 * Custom Keras layers without the drawbacks
 * **Autograph**: intuitive data-driven control at last
 * Modular and reusable metrics all the way
-* Keras callbacks: extending their scope and usage
-* [more detail... (fully uploaded by June 30)](./advanced_tf/index.html)
+* Keras **callbacks**: extending their scope and usage
+* [more detail... (uploaded June 30)](./advanced_tf/index.html)
 
-# Modeling Ideological Activism
+# Modeling Ideological Judicial Activism
 
 * **Reductio ad absurdum** - a judicial simulation
 * A conceptual model of an "emotional" domain
 * The lucrative profits of **"high-conflict"** divorces
-* A psychological object model of the "frequent fliers"
+* A psychological object model of the ABA "frequent fliers"
 * From fabricated conflicts to ideological activism
 * Representative **metrics** through statistical modeling
 * Learn, adapt and protect from "elite" predators
-* [more detail... (fully uploaded by July 31)](./activist_court/index.html)
+* [more detail... (uploaded July 31)](./activist_court/index.html)
 
-# Evaluating Contradictions Analytically
+# Court Contradictions Analytically Evaluated
 
 * Preparing and normalizing legal documents
 * Tagging with **topics** and extracting **narratives**
 * Standardized output and flexible reporting
-* Interpreting the inferred **conflict graph**
-* Irrefutable analytics to unmask "cover-ups"
+* Interpreting and presenting inferred **conflict graphs**
+* Irrefutable analytics to unmask ruthless "cover-ups"
 * Trends, costs, **profits** while identifying motives
 * "Based on a true story": a sample Qnarre report 
-* [more detail... (fully uploaded by August 31)](./judicial_report/index.html)
+* [more detail... (uploaded August 31)](./judicial_report/index.html)
 
-# Narratives for Real-Estate?
+# Narratives For Real-Estate As Well?
 
 * A "for hire" study of scenarios and results
-* [more detail... (fully uploaded by September 30)](./qnarre_for_re/index.html)
+* [more detail... (uploaded September 30)](./qnarre_for_re/index.html)

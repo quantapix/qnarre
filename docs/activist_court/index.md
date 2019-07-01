@@ -2,7 +2,7 @@
 layout: default
 ---
 
-# Modeling Ideological Activism
+# Modeling Ideological Judicial Activism
 
 ## [Reductio Ad Absurdum - A Judicial Simulation](./simulation.html)
 
@@ -22,7 +22,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [A Psychological Object Model Of The "Frequent Fliers"](./tbd.html)
+## [A Psychological Object Model Of The ABA "Frequent Fliers"](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
