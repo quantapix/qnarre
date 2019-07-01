@@ -4,7 +4,7 @@ layout: default
 
 # Evaluating Contradictions Analytically
 
-## [Preparing And Normalizing Documents](./tbd.html)
+## [Preparing And Normalizing Legal Documents](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
@@ -14,7 +14,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Standardized Output, Flexible Reporting](./tbd.html)
+## [Standardized Output And Flexible Reporting](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
@@ -29,7 +29,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Trends, Costs, Profits And Identifying Motives](./tbd.html)
+## [Trends, Costs, Profits While Identifying Motives](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)

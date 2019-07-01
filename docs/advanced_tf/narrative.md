@@ -179,7 +179,7 @@
 
 - as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each:
 
-# Unified Adaptable Masking
+# Unified Adaptable Masking That Follows
 
 - TODO: expand bullets
 - objective: [graph](./masking.pdf)
@@ -220,14 +220,14 @@
 - with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries
 - if you haven't run the code, an already generated graph is [here](./masking.pdf)
 
-# Ragged Tensors
+# Ragged Tensors For Document Processing
 
 - TODO: expand bullets
 - objective: [graph](./ragged.pdf)
 
 - load our meta data
 
-# Layer Proliferation
+# Unnecessary Complexity Through Layer Proliferation
 
 - TODO: expand bullets
 - objective: [graph](./layers.pdf)

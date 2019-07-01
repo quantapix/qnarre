@@ -22,7 +22,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Psychological Object Model Of "Frequent Fliers"](./tbd.html)
+## [A Psychological Object Model Of The "Frequent Fliers"](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)

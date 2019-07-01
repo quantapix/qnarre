@@ -12,7 +12,7 @@ We believe, and with the following series of blogs we attempt to publicly prove,
 
 Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
-Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our American **children** from greedy professional torturing and forceful, institutionalized separation and isolation. Court-mandated parental alienation, for astronomical profits for the "elite", is simply ruthless child abuse.
+Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our American **children** from greedy professional torturing and forceful, institutionalized separation and isolation. Court-mandated parental alienation, while paying astronomical profits to the "trusted elite", is nothing but ruthless child abuse.
 
 Seeking out **contradictions** and **inconsistencies** in "vast oceans" of deceitful data with ever adapting, fluidly learning, yet still reproducible mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. It can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
 
@@ -23,9 +23,9 @@ The following blogs incorporate "runable" [python](https://www.python.org/) scri
 * **Trackable**: a pervasive persistence infrastructure
 * Many smaller GPUs: elegant in-model distribution
 * **Dataset**: the tensor "highway" on-ramp
-* Unified adaptable masking that flows
+* Unified adaptable masking that follows
 * **Ragged tensors** for document processing
-* Complexity through layer proliferation
+* Unnecessary complexity through layer proliferation
 * Custom Keras layers without the drawbacks
 * **Autograph**: intuitive data-driven control at last
 * Modular and reusable metrics all the way
@@ -37,7 +37,7 @@ The following blogs incorporate "runable" [python](https://www.python.org/) scri
 * **Reductio ad absurdum** - a judicial simulation
 * A conceptual model of an "emotional" domain
 * The lucrative profits of **"high-conflict"** divorces
-* Psychological object model of "frequent fliers"
+* A psychological object model of the "frequent fliers"
 * From fabricated conflicts to ideological activism
 * Representative **metrics** through statistical modeling
 * Learn, adapt and protect from "elite" predators
@@ -45,12 +45,12 @@ The following blogs incorporate "runable" [python](https://www.python.org/) scri
 
 # Evaluating Contradictions Analytically
 
-* Preparing and normalizing documents
+* Preparing and normalizing legal documents
 * Tagging with **topics** and extracting **narratives**
-* Standardized output, flexible reporting
+* Standardized output and flexible reporting
 * Interpreting the inferred **conflict graph**
 * Irrefutable analytics to unmask "cover-ups"
-* Trends, costs, **profits** and identifying motives
+* Trends, costs, **profits** while identifying motives
 * "Based on a true story": a sample Qnarre report 
 * [more detail... (fully uploaded by August 31)](./judicial_report/index.html)
 
