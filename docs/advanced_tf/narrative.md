@@ -121,63 +121,115 @@
 
 - TODO: expand bullets
 
-- complex input data pipelines from simple, reusable pieces
+- machine learning is about lots and lots of data
+- organizing that input data is an error-prone, arduous task
+- `datasets` were designed to build complex input data pipelines from simple, reusable pieces
+- this blog shows off some of the useful features of this new approach to "feed the beast"
+
 - while computers were made to add numbers together, they quickly run into insurmountable obstacles if these numbers are presented as textual sequences of digits
 - we aim to finally "teach" our computer to correctly add and multiply
-- use example - fascinating https://arxiv.org/pdf/1812.02825.pdf
+- hence, we start with a simple yet fascinating example, inspired by https://arxiv.org/pdf/1812.02825.pdf
+- the rest of the blogs in this group will continue to build on the below presented results
 
-- more preps
+- before we can run any meaningful code, we need to prep our environment
 
-- our data consists of `num_samples` (perhaps easily millions) of `"x=-12,y=24:y+x:12"`-like strings of texts with `defs`, `op` and `res` fields (separated by `:`)
+- .
+
+- and for convenience and brevity let's create some aliases
+
+- .
+
+- our input data consists of `num_samples` (perhaps easily millions) of `"x=-12,y=24:y+x:12"`-like strings, or lines, of texts
+- these visibly consists of `defs`, `op` and `res` fields (separated by `:`)
 - our variables are: `x` and `y`
-- our "operations" are: `+`, `-` and `*`
+- our "operations" are: `=`, `+`, `-` and `*`
 - and our variables can be assigned values from: `[-max_val, max_val]`
 
-- our input data pipeline is parametric, without error-prone string names
+- .
 
-- let's generate our data randomly based on our given `Params` instance as a Python generator
+- we intend to make our input data pipeline parametric
+- the obvious simple Python `dict` structures, with literal string keys, are error-prone exactly because of the unchecked literals
+- a few lines of code gives as the `Params` class that leverages the native attribute mechanism to validate all our params
 
-- ok, let's do it!
+- .
 
-- the class `tf.data.Dataset`is an abstraction for a sequence of elements
-- each element is one or more Tensors containing our data
-- an example is the following dataset directly using our "in-memory" generator
+- let's generate our data randomly, fittingly as a Python generator, based on a given `Params` instance
+
+- .
+
+- now that the generator is defined, it takes just a line of code to create millions of correct "exercises"
+
+- .
+
+- the class `tf.data.Dataset`is the main abstraction for our sequence of elements
+- each element of a dataset is one or more Tensors containing the fields, or `features`, of our `sample` "lines" of elementary math exercises
+- using our "in-memory" generator, we can directly create a dataset as follows
+
+- .
 
 - and here is the first 2 samples of the now tensor-based sequence
 
-- an input data pipeline starts with a "source" `dataset`
-- this "source" can also be a `range`, `from_tensor_slices`, `from_tensors` and even `TextLineDataset`
+- .
 
-- all `datasets` can be consumed as iterables or as aggregatables (e.g. reduce)
-- they also allow chaining of "transformations" to themselves
-- some of the handy canned operations: *cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip*
-- an example of 2 samples of a new dataset, concatenated with all 4 samples of the previous, gen-based, dataset and "enumerated" is as follows:
+- an input data pipeline starts with a "source" dataset, perhaps just as simple as the above
+- this "source" can also be a `range`, `from_tensor_slices`, `from_tensors` and even a `TextLineDataset` (see the TF docs)
 
-- we can also filter the "pipeline" at any stage:
+- .
 
-- even more importantly, we can split the pipeline into named "filaments" of data
-- this new feature proves to be extremely useful, allowing us to standardize and unify our data sources with configurable-on-the-fly channeling of the features aggregated therein
+- all datasets can then be consumed as iterables or as aggregatables (e.g. reduce)
+- they also allow chaining of handy "transformations" to themselves
+- some of the canned operations are: *cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip*
+- an example of 2 samples of a new dataset, concatenated with all 4 samples of the previous, gen-based, dataset and also "enumerated" is as follows
 
-- another example of a "pipeline component" is an in-line Python `dict`-based tokenizer:
+- .
 
-- `dataset`s can be potentially very large, fitting only on disk in many files
-- as transparent performance is key for training throughput, datasets can be efficiently encoded into binary sequences stored in sharded files
-- the following will convert our samples into binary "records"
+- we can also filter our to be "pipeline" at any stage:
+
+- .
+
+- more importantly, we can split the pipeline into named "filaments" of data
+- this new feature proves to be extremely useful, allowing us to standardize and unify our data sources with configurable, on-the-fly channeling of the features aggregated therein
+
+- .
+
+- another example of a "pipeline component" is an in-line Python `dict`-based tokenizer
+
+- .
+
+- datasets can be potentially very large, fitting only on disk and in many files
+- as transparent data-pipeline performance is key for training throughput, datasets can be efficiently encoded into binary sequences stored in `sharded` files
+- the following will convert our samples into such binary "records"
+
+- .
 
 - and we can "dump" our tokenized, ready-to-consume samples into shards of files stored in a directory
-- once these prepared samples are stored we can "stream" them without any more prep in subsequent blogs
+- once these prepared samples are stored we can "stream" them without any more prep (see subsequent blogs)
 
-- for loading the "records" back, we need to create templates for interpreting the stored data
-- then loading our samples back straight into a 'dataset' can be just as follows:
+- .
 
-- before we actually load the shards back, let's "adapt" the pipeline to supply dense tensors instead of the originally configured sparse ones (since we haven't batched anything yet, we set `dim_batch` to `None`):
+- for loading the "records" back, we need to create templates for interpreting the stored binary data
+- then loading them back, straight into a dataset, can be just as follows
+- note that the names of the shard files are returned by our "dump" function
 
-- the listing above reveals that we merged 3 sharded files, worth 4 samples each, into the 12 samples
-- only the number of "features" is printed for each sample for brevity
-- **Please also note** how the above in-line adapter converted our named features into unnamed, positional-in-a-list features. This was necessary as the Keras `Input` doesn't recognize named input tensors yet.
-- if we turn on batching in our dataset, the same code will now return the following:
+- .
 
-- as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each:
+- before we actually start using the loaded data, let's "adapt" the pipeline to supply dense tensors instead of the originally configured sparse ones
+- also, since we haven't batched anything yet, we set `dim_batch` to `None`
+
+- .
+
+- the listing above reveals that we merged 3 sharded files, worth 4 samples each, into the 12 printed samples
+- only the number of features is printed for each sample, for brevity
+- **Please also note** how the above in-line adapter converted our named features into unnamed, positional, i.e. in-a-list features. This was necessary as the Keras `Input` doesn't recognize named input tensors yet
+- if we turn on batching in our dataset, the same code will now return the following
+
+- .
+
+- as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each
+
+- .
+
+- this concludes our blog, please see how easy masking our uneven sample "lines" can be by clicking on the next blog
 
 # Unified Adaptable Masking That Follows
 
