@@ -275,11 +275,9 @@
 
 - in order to turn our impossibly tight `int32` tokens into something more useful for machine learning, we need to `Embed` them into a much higher dimensional "space"
 - our embedding layer, however, is as simple as it gets: it first creates the embedding table and then does the actual lookup using the input tokens
-- once the embedded values are determined, we then apply our `bool` masking cleanly
-- always resetting the masked-out, high dimensional values to `0` regardless of any "learned" adjustments
+- once the embedded values are determined, we then apply our `bool` masking cleanly, always resetting the masked-out, high dimensional values to `0` regardless of any "learned" adjustments
 - Keras knows that we want to use the transparently hidden mask tensor during layer processing from our included `mask=None` keyword argument in the `call` method's signature
-- for `autograph`'s sake we need to also explicitly check that the optional `mask` argument is not `None`
-- a simple `if mask:` would only trigger "trace execution" instead of "graph execution" in our later blogs
+- for `autograph`'s sake we need to also explicitly check that the optional `mask` argument is not `None`; a simple `if mask:` would only trigger "trace execution" instead of "graph execution" in our later blogs
 
 - .
 
