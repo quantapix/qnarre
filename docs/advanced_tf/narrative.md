@@ -3,27 +3,53 @@
 
 - TODO: expand bullets
 
-- a pervasive topological persistence infrastructure
+- training in TensorFlow means continually adjusting collections of values stored as tensors in `variables`
+- persistence of these variables from one training session to the next is critical for improving on already achieved, but otherwise long-running, results
+- the new system-wide pervasive `trackable` architecture now provides just such a persistence infrastructure
+- instead of the old, named-based hierarchy, the new design applies a topological, "layered objects" naming scheme
 
+- we explore some of the key aspects of this architecture
+- we start with a high-level view and then we gradually build from the lowest base-classes to the more useful Keras `layers`
 - our objective here is to arrive to a training model representable by the [graph](./masking.pdf)
 
-- persistence of training data
-- checkpointing and the manager
+- we need to prep our environment in order to run any meaningful code
 
-- variables and keeping track of them
+- .
 
-- boiler-plate hassle, private function
-- auto-tracking through native Python attribute mechanism
+- persistence of training data is ultimately realized through `Checkpoint` objects
+- as the number of such representations, saved as plain files, grows, `CheckpointManager`s help with keeping track (see TF docs for full functionality)
+- we present a simple scenario for persisting (saving and restoring) a variable encapsulated by a `Trackable` object as follows
 
-- notice the `tr2.v = tracked` assignment
-- turn-off autotracking
+- .
 
-- hundreds of variables
-- consistent, hierarchical "naming" scheme without naming
-- topology of layers
-- helpers to list the "inventory"
+- using the above function, our iterations of incrementing the singleton `int` variable and keeping track of the `Checkpoint` files result in
 
-- naming conventions
+- .
+
+- while the above is fully functional, the extensive boiler-plate code becomes an unnecessary hassle when implementing slightly more complex schemes
+- also note that we used a private, undocumented, non-API method to make our code work
+- obviously, a more convenient, "auto-tracking" functionality is needed
+- the native Python attribute mechanism provides a framework to satisfy such needs
+- our slightly adjusted calling function is now as follows
+
+- .
+
+- and here is our use of an `AutoTrackable` object holding onto 2 single-valued variables
+- notice the intuitive `tr2.v = tracked` assignment as this is where the entire "trackable" scheme is triggered
+- just in case we want to avoid the default functionality, we can turn off autotracking as well
+
+- .
+
+- employing the native Python attribute mechanism and assignment operator allows us to "autotrack" hundreds or thousands of training variables reliably
+- moreover, a consistent, hierarchical "layered objects" naming scheme emerges, without actual, explicit string-based names
+- for a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the provided helper functions
+
+- .
+
+- looking at the result of calling our function, we can quickly see the simple pattern of the employed hierarchical naming conventions
+
+- .
+
 
 - variable management requires deletion
 - same native Python attribute mechanism
