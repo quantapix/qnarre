@@ -234,43 +234,84 @@
 # Unified Adaptable Masking That Follows
 
 - TODO: expand bullets
-- objective: [graph](./masking.pdf)
 
-- load our meta data
+- significant difference between image vs. text processing in machine learning is uneven input sequence length
+- padding the textual input to a uniform length is an obvious, natural solution
+- indiscriminate padding can, however, pollute our calculations and introduce unwanted biases
 
-- get paths to the file shards
-- recast our parsed streams and start using `RaggedTensors` instead of sparse ones
-- before handing the streams of data to Keras convert them (for now) to dense tensors 
+- sometimes it is best to cleanly “mask-out” the padded input with carefully chosen, bias minimizing values
+- repeated, explicit and contextual masking calculations thus become necessary
+- historically such code has been cluttering the clean "flow of data"
+- Keras’ transparent masking mechanism allows for on-demand custom maskings
+- our objective here is to arrive to a model representable by the [graph](./masking.pdf)
 
-- ready to create our dataset
+- just as before, we need to prep our environment in order to run any meaningful code
 
-- we need to tell our Keras layers to support masking, let's do it once for all of them
-- our first layer, the one to calculate the masking tensor, has to override `compute_mask`
-- we could also transfer the mask calculation to a layer that would do it as a side-effect
+- .
+
+- loading our already created meta data from the sources gives us
+
+- .
+
+- to "adapt" our existing datasets, we recast our parsed streams and start using the new `RaggedTensor`s instead of the default sparse ones
+- we also combine existing `feature`s into new ones including separator tokens
+- before handing the prepared streams of data to Keras, convert them to dense tensors 
+- most importantly, we pad the tensors to `len_max_input`, with generic zeros, for uniformity
+
+- . (move caster)
+
+- a newly created function will return the paths to our existing file shards
+- and we are ready to create our dataset adapted to our problem
+
+- .
+
+- next, we need to tell our custom Keras layers to support masking
+- let's do it once for all of them in our `Layer` base class
+- our first layer, the one to specifically calculate the versatile `bool` masking tensor, has to override `compute_mask`
+- we could also transfer the mask calculation to a layer that would do it as an efficient side-effect
 - in that case we would use the 2 commented out lines
 
-- our embedding layer is as simple as it gets: it creates the embedding table, adjusts the layer's output shape and then does the actual lookup
-- once the embedded values are determined, we then apply masking cleanly
-- Keras knows that we want to use the mask tensor from us listing the `mask=None` keyword argument
-- for `autograph`'s sake we need to explicitly check that the optional `mask` argument is not `None` 
+- .
 
-- our self-attention layer, called `Reflect`, does the absolute minimum required steps to implement the "attention" mechanism of the `transformer` architecture
+- in order to turn our impossibly tight `int32` tokens into something more useful for machine learning, we need to `Embed` them into a much higher dimensional "space"
+- our embedding layer, however, is as simple as it gets: it first creates the embedding table and then does the actual lookup using the input tokens
+- once the embedded values are determined, we then apply our `bool` masking cleanly
+- always resetting the masked-out, high dimensional values to `0` regardless of any "learned" adjustments
+- Keras knows that we want to use the transparently hidden mask tensor during layer processing from our included `mask=None` keyword argument in the `call` method's signature
+- for `autograph`'s sake we need to also explicitly check that the optional `mask` argument is not `None`
+- a simple `if mask:` would only trigger "trace execution" instead of "graph execution" in our later blogs
+
+- .
+
+- our self-attention layer, fittingly called `Reflect`, does the absolute minimum required steps to implement the "attention" mechanism of the `transformer` architecture
 - an excellent, creative explanation of how it works is at http://jalammar.github.io/illustrated-transformer/
-- please note the masking tensor being automatically supplied to the call by Keras
+- please note that the masking tensor is being automatically supplied to the call by Keras
 - we only need to state our intention to mask by adding the `mask=None` keyword argument
-- the actual masking calculation, based on our previously created boolean tensor, is now trivial
+- the actual masking calculation, based on our previously created `bool` tensor and specific for this layer now, is outright trivial
 
-- now we are ready to create and compile our Keras `functional` model
-- as the objective of this blog is to showcase masking, all the other necessary "plumbing" layers are the canned Keras variety ones
+- .
 
-- our parameters have slightly increased in number
-- please see the previous blogs for the justification of the scheme
+- we are ready to create and compile our Keras `functional` model
+- as the objective of this blog is to showcase masking, all the other necessary, "plumbing" layers are the canned Keras variety ones
 
-- once we instantiate our params and our dataset, and using the already compiled model, we are ready to start a training session
-- our aim is to use as much of the great functionality and error checking that Keras provides, so using the model's `fit` method is all we need for now
+- .
 
-- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries
-- if you haven't run the code, an already generated graph is [here](./masking.pdf)
+- our parameters have slightly increased in count, otherwise they are the same as before
+- please see the previous blog for the justification of the `Params` class and overall scheme
+
+- .
+
+- once we instantiate our parameters and our dataset, and using the already compiled model, we are ready to start a training session conveniently implemented by the Keras `fit` method
+- our aim is to use as much of the versatility, functionality and error checking that Keras provides, so using the model's `fit` method is all we need for now
+
+- .
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TensorBoard can conveniently visualize
+- if you haven't run the below code, an already generated graph is [here](./masking.pdf)
+
+- .
+
+- this concludes our blog, please see how to use the new `RaggedTensors` instead of "masking" by clicking on the next blog
 
 # Ragged Tensors For Document Processing
 
