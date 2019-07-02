@@ -4,7 +4,8 @@
 - TODO: expand bullets
 
 - a pervasive topological persistence infrastructure
-- objective: [graph](./trackable.pdf)
+
+- our objective here is to arrive to a training model representable by the [graph](./masking.pdf)
 
 - persistence of training data
 - checkpointing and the manager
