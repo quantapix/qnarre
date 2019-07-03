@@ -419,9 +419,82 @@
 # Ragged Tensors For Document Processing
 
 - TODO: expand bullets
-- objective: [graph](./ragged.pdf)
 
-- load our meta data
+- `RaggedTensor`s are a newly added feature in TF intended to cleanly and efficiently solve the previously mentioned "uneven sequence length" problem
+- while easily convertable, they are different from the more general `SparseTensor`s as they only allow "ragged edges"
+- from an implementation point of view, `RaggedTensors` are efficiently represented as `composite tensor`s consisting of 1) a packed sequence of values and 2) a list of indices (effectively "row lengths")
+
+- needless to say, these new composite tensors are purpose-fitted for our sample text processing problem
+- one significant advantage of their specific design is the fluid nature of their "duality"
+- on one hand they can be viewed just as a simple vector of values, for efficient graph ops
+- on the other hand they can be used as handy "masks" to selectively extract just the right values from dense tensors
+- in order to demonstrate their use, we set our objective here to arrive to a model representable by the [graph](./ragged.pdf)
+
+- just as before, we need to prep our environment in order to run any meaningful code
+
+- .
+
+- loading our already created meta data from the sources gives us
+
+- .
+
+- our previously introduced `adapter` function to our datasets, themselves loadable from our stored samples, is adjusted slightly:
+- we don't immediately convert the created ragged tensors to dense tensors anymore
+- while Keras has the intention of fully supporting ragged input tensors (the `ragged=True` optional keyword argument is already available), passing in our `composite tensors` doesn't work just yet
+- to work around this problem, we split our ragged tensors into its components, pass the components in and then quickly reassemble them once inside the model
+
+- .
+
+- with our adapter configured, our `dataset` streaming function is simple and looks as expected
+
+- .
+
+- just as in our previous blog, our "elementary math" training problem calls for first embedding the passed in tokens into more spacious "hidden dimensions"
+- our already defined `Embed` class only needs to be adjusted to work with ragged arguments
+- specifically, after reassembling our `RaggedTensor` inputs from its passed-in components, we simply apply our trusty `embedding_lookup` to all the "flattened" or "bunched-up" tokens
+
+- .
+
+- our `Reflect` layer will need slightly more changes
+- as the `flat_values` of our ragged input loose their batch dimensions, the matrix multiplications become simpler (expressed here through the all time favorite `einsum`, see [here](https://rockt.github.io/2018/04/30/einsum))
+- since the `attention` mechanism's `q`, `k` and `v` components are "element-wise" tied to their inputs, the "raggedness" of the results doesn't change
+- this means that we only need to change the content of our `RaggedTensor`s, the "row_lengths" stay the same as implemented by the `with_values` method
+- when we switch over to cross-products, for scoring our calculated attention coefficients, we use dense tensors once again
+- but the actual result of the layer is a `RaggedTensor`
+- since its "raggedness" is the same as the layer's input's raggedness, we can conveniently recreate the same shaped `RaggedTensor` from the respective values of the just calculated dense tensor by using the original input's `row_lengths` method
+
+- .
+
+- we need to implement similar changes in our `Expand` layer's
+- `inflating` our hidden dimensions, for learning purposes, requires a fixed width, hence we immediately convert to a dense tensor
+- since we are done with our "calculation", we can simply pad the input to the layer to our expected `len_max_input` 
+
+- .
+
+- and now we are ready to define our model
+- we have the two inputs, the two components of our input `RaggedTensor`
+- we also use our new `Embed`, `Reflect` and `Expand` layers adjusted to work with our sudden "raggedness"
+- the rest of the model is simply carried over from the previous blog
+
+- .
+
+- our parameters are also unchanged
+
+- .
+
+- firing up our training session, we can confirm the model's layers and connections
+- the listing of a short session follows
+- we can easily adjust the parameters to tailor the length of the sessions to our objectives
+- however, at this point the results are still largely meaningless and extending the trainings is not yet warranted
+
+- .
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
+- if you haven't run the below code, an already generated graph is [here](./ragged.pdf)
+
+- .
+
+- this concludes our blog, please see how to avoid "layer-proliferation" complexity by clicking on the next blog
 
 # Unnecessary Complexity Through Layer Proliferation
 
