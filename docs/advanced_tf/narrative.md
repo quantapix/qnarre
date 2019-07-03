@@ -50,58 +50,98 @@
 
 - .
 
+- any type of variable management system that allows creating variables also needs to support deleting them
+- to delete a variable from the hierarchy, the familiar native Python attribute mechanism's `del` operation can be used just as follows
 
-- variable management requires deletion
-- same native Python attribute mechanism
+- .
 
-- deleting and the results
+- and here are the results of calling our function
 
-- variable management also means aggregating
-- intuitive Python `list` and `dict` are transparently employed
+- .
 
-- "naming" conventions are just as expected
 
-- neural networks rely on sharing weights, that is variables
-- variable sharing was ad-hoc, "name-based" before
-- Python has extensive native support for this fundamental problem
-- sharing of variables now is just as expected
+- variable management also means possibly aggregating variables into containers
+- intuitive Python `list` and `dict` structures can be transparently employed
+- using our modified function to print our variables
 
-- persisted shared variables are not repeated
-- updates to shared variables can be easily verified
+- .
 
-- variable management also means "encapsulating"
-- new "modules" build on autotracking to extend Python's encapsulation mechanism
-- explicit name scoping of modules allows the reuse of module "classes"
+- we can intuitively collect variables into either `list`s or `dict`s
+- the patterns used for naming the variables are just as expected
 
-- convenience methods to recursively collect variables
+- .
 
-- name-based hierarchy and topological, Python-object hierarchy
+- neural networks rely on sharing persisted trainable weights, variables in our case, to express interdependencies
+- variable sharing was ad-hoc, "name-based", with a global scope before
+- as Python has extensive native support for managing easily sharable references to its objects, this fundamental problem gets an intuitive solution with the new trackable architecture
+- as expected, sharing variables now is natural and also safe, as it uses references instead of error-prone strings
 
-- Keras is the API for consistently reasoning about the network of components
-- Keras also visibly splits the distinct phases of building vs. executing of graphs 
-- "functional" Keras has the most packaged functionality, we aim to use it throughout
-- Keras layers build on TF modules to manage variable persistence
-- the previous modules example is almost identical in Keras
+- .
 
-- create the helper to list our results
+- persisted shared variables are obviously not repeated in checkpoints
+- and when checkpoints are restored or reloaded, the in-memory sharing of variables is also re-established
+- updates to shared variables can be easily verified just as follows
 
-- a most simple Keras model using 3 scalar variables to showcase the underlining topological persistence management
+- .
 
-- "a picture is worth a thousand words"
-- even a simplest model can be overwhelming when expressed as text
-- TensorBoard is a tool to also view the nested graphs
-- summary data for TB is generated as follows
+- variable management also means possible "encapsulation"
+- new `Module` objects build on `AutoTrackable` to extend Python's familiar `class`-based encapsulation mechanism
+- supported explicit name scoping of modules allows the reuse of module classes, otherwise instances of the same class would need to be generically counted 
 
-- our Keras model implements data-driven Python recursion
-- the new "Autograph" functionality allows us to use such intuitive expressions
-- it is invoked with the `@tf.function` Python decorator
+- .
 
-- load TensorBoard
+- when building hierarchies of modules, provided convenience methods also allow for recursively collecting variables
 
-- generate the TB summaries including the graph representation
+- .
 
-- and view the zoom-able and clickable TensorBoard graph
+- with our module class and our handy printing function we can now build a basic nested hierarchy
+- the results of printing our "one branch tree" show both the name-based hierarchy and the Python-object or "checkpoint" hierarchy
+
+- .
+
+- Keras is the API for consistently reasoning about the interconnected network of components
+- it also visibly splits the two distinct phases of building vs. executing our component "graphs"
+- `functional` Keras has the most packaged features to assist us with our neural networks and we aim to use it throughout
+- Keras `layer`s, as well-defined encapsulating components, build on the previously used `module`s to manage variable persistence
+- the previous modules example is almost identical with Keras layers
+
+- .
+
+- through adjusting our helper to print our results
+
+- .
+
+- we arrive to a most simple Keras model, using a mere 3 scalar variables to showcase the underlying already tried and used persistence management
+
+- .
+
+- even the simplest model can be overwhelming when expressed textually
+- TensorBoard is an accompanying tool that can help us in picturing the nested component graphs
+- as a "a picture is worth a thousand words", `summary` data for TB is generated as follows
+ 
+- .
+
+- our trivially simple Keras model still implements data-driven Python recursion
+- the new `autograph` functionality allows us to use such intuitive, native expressions instead of the usual TF "graph ops"
+- autograph code generation is invoked with the `@tf.function` Python decorator
+
+- .
+
+- in order to see the TB generated summaries, including the picture of our graph, we need to load the extension
+
+- .
+
+- then we generate the TB summaries
+
+- .
+
+- and now we can view the zoom-able and clickable TB graph
 - if you haven't run the code, an already generated graph is [here](./trackable.pdf)
+
+- .
+
+- this concludes our blog, please see how to use the new GPU-related functionality by clicking on the next blog
+
 
 # Many Smaller GPUs: Elegant In-Model Distribution
 
