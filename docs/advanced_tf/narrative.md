@@ -506,7 +506,110 @@
 # Unnecessary Complexity Through Layer Proliferation
 
 - TODO: expand bullets
-- objective: [graph](./layers.pdf)
+
+- in this blog we continue to elaborate on our loosely `transformer`-based approach of training our computer to "understand" elementary symbolic algebra
+- just as previously mentioned, a quick and fun intro to the venerable transformer is [here](http://jalammar.github.io/illustrated-transformer/)
+- our objective is to expand our layers repertoire to include the `encoder` and the `decoder` stacks, as well as to ultimately arrive to a model representable by the [graph](./layers.pdf)
+
+- just as before, we need to prep our environment in order to run any meaningful code
+
+- .
+
+- before we start to focus on our stacks, an important feature of encoding textual inputs needs to be considered
+- to aid in making sense of text, we need to include not just the information carried by the tokens themselves but also their position in the input sequence
+- following the "positional encoding" approach from [here](https://github.com/tensorflow/examples/blob/master/community/en/position_encoding.ipynb), we can define our `pos_timing` function as follows
+- the quick graphical plot helps us confirm the correctness of our code as the concatenated `sin` and `cos` timing signals give us finely graded and rich positional embeddings
+
+- .
+
+- loading our already created meta data from the sources gives us
+
+- .
+
+- we then continue to defining our own shared Keras "base" layer
+- at this time we only store a reference to our parameters object in it, as all our layers will need to use this resource
+
+- .
+
+- the `Embed` layer is taken directly from our previous blog
+- as we need to add the above mentioned positional "timing signals" to our embeddings, we first create just such a `constant` tensor
+- then, using the previously mentioned `RaggedTensor`-technique of extracting the ragged-shaped values from a dense tensor, we simply add the positional info to the already determined embedding
+
+- .
+
+- the next layers to write are the `Encode` and `Decode` stacks
+- we implement them as simple lists of the respective `Encoder` and `Decoder` components
+- when calling the stacks, the code simply loops through the component lists and calls the components
+- in order to "chain" the stacks, every component is given the output of the previous component as its input
+- in the case of the `Decoder` components, in addition to its regular input, we also supply the previously encoded output as the `ctx` argument
+
+- .
+
+- the mirror of the `Embed` layer is our `Debed` layer
+- while the embedding step maps `int` tokens to higher dimensional learned `float` values, the debedding step does the opposite
+- it takes the higher dimensional values and maps them to learned `one-hot` vectors, corresponding to approximate output tokens
+- as debedding is implemented using a `Dense` component, it also requires a fixed width
+- just as in the previous blog, we simply pad our ragged tensors with `0`s to our `len_max_input` parameter, as our calculations are complete
+
+- .
+
+- we have now completed the definition of our top layers as Keras layers, but we still need to define the inner components
+- we could continue using the seemingly "heavy" Keras layers and nest them deep
+- as presented in a previous blog, we instead switch over to be using the much lighter weight `Module` as the base class for our inner components
+- our `Encoder` thus becomes a simple module containing the self-attention followed by the feed-forward mechanisms
+- we fittingly call the objects `reflect` and `conclude`
+- our `Decoder` also adds the attention layer looking at the previously encoded "context"
+- hence the Python object encapsulating this attention component is called `consider`
+
+- .
+
+- our `Attention` component, again based on `Module` is taken directly from the previous blog
+- just as explained already there, it relies and takes advantage of the new `RaggedTensor`s
+
+- .
+
+- a new component is our `Conclusion` module, it implements the "feed-forward" functionality of the transformer
+- in simple terms, it takes the attention-enhanced, higher dimensional, element-wise mapping of the token sequence and it first `inflates` it to an even higher dimension with a non-linearity, or `activation`, at the end as its "concluding" step
+- then it `deflates` the activated mapping back to our hidden dimension, making it available for the next level in the stack
+- the same `RaggedTensor` trick applies at the end as the one we used in the `Attention` module
+
+- .
+
+- our last component is the `Dense` module
+- it simply re-implements the Keras layer with the same name, yet with more focused, streamlined functionality and minimal configurability
+- the interesting aspect of this module, as well as our `Attention` module above, is that the necessarily created Keras weights are added using the enclosing Keras layer, however topologically they are directly listed as part of their modules
+
+- .
+
+- and now we are ready to define our model
+- we have the two inputs, the two components of our input `RaggedTensor`
+- we also use our new `Embed`, `Encode`, `Decode` and `Debed` Keras layers, with all the internal, light-weight modules hidden at this level
+- the rest of the model is simply carried over from the previous blog
+
+- .
+
+- our parameters need to be adjusted to provide parametric values for our stacks
+
+- .
+
+- by firing up our training session, we can confirm the model's layers and connections
+- the listing of a short session follows
+- we can easily adjust the parameters to tailor the length of the sessions to our objectives
+- however, at this point the results are still largely meaningless and extending the trainings is not yet warranted
+
+- .
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
+- if you haven't run the below code, an already generated graph is [here](./layers.pdf)
+
+- .
+
+- we can also switch over to the new `eager` execution mode
+- this is particularly convenient for experimentation, as all ops are immediately executed
+- and here is a much shortened `eager` session
+
+- .
+- this concludes our blog, please see how to further customize our model by clicking on the next blog
 
 # Custom Keras Layers Without The Drawbacks
 
