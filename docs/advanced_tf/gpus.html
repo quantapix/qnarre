@@ -13117,12 +13117,42 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Many-Smaller-GPUs:-Elegant-In-Model-Distribution">Many Smaller GPUs: Elegant In-Model Distribution<a class="anchor-link" href="#Many-Smaller-GPUs:-Elegant-In-Model-Distribution">&#182;</a></h1><ul>
-<li><p>TODO: expand bullets</p>
-</li>
-<li><p>laying out a possibly large model across many smaller GPUs</p>
-</li>
-<li>a model that can also be used to test custom allocation strategies</li>
-<li>objective: <a href="./gpus.pdf">graph</a></li>
+<li>TODO: expand bullets</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>GPUs are no doubt one of our most critical resources when running neural networks</li>
+<li>GPUs have strict capacities and limits as physical resources </li>
+<li>using servers with many smaller GPUs, we often ran into the inherent limitations of our equipment</li>
+<li>laying out a possibly large model across many smaller GPUs has thus become a requirement for us</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>this blog presents a few basic steps in that direction</li>
+<li>the outlined model can also be used to effectively test more complex and custom GPU allocation strategies</li>
+<li>our objective here is to arrive to training a model representable by the <a href="./gpus.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>we need to prep our environment in order to run any meaningful code</li>
 </ul>
 
 </div>
@@ -13147,7 +13177,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>more preps</li>
+<li>we also define a few convenient aliases</li>
 </ul>
 
 </div>
@@ -13172,9 +13202,10 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>partition physical GPUs into custom-sized virtual GPUs</li>
-<li>components, layers, of the model can then expect properly allocated virtual GPU ids</li>
-<li>given the parameter-driven "resource" requirements of our layers, we can develop heuristics for partitioning and allocating the physical devices</li>
+<li>for any effective and generalizable allocation strategy we need to be able to reason about our resources in a uniform way</li>
+<li>we start with the new TF functionality of partitioning our physical GPUs into custom-sized, and thus easily "normalizable" virtual GPUs</li>
+<li>the components, <code>layers</code>, of our models can then expect the ids of the properly sized, or allocated virtual GPUs</li>
+<li>given the parameter-driven "resource" requirements of our layers, we can also develop heuristics for partitioning and allocating the physical devices before starting a training session</li>
 </ul>
 
 </div>
@@ -13223,7 +13254,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>turn off "soft" allocation for now</li>
+<li>let's turn off "soft" allocation for now</li>
 </ul>
 
 </div>
@@ -13246,9 +13277,10 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>a most basic, custom "dense" layer as a component in our configurable stack</li>
-<li>we aim to "lay" this stack onto our virtual GPUs as a functional forward-backward pipeline that fits in our combined GPU-space</li>
-<li>each layer would therefore use a predetermined virtual GPU</li>
+<li>the model we develop here builds on a configurable "stack" of identical layers</li>
+<li>a most basic, custom <code>dense</code> layer class is all we need as the stack's repeated components</li>
+<li>we then aim to "lay" this stack on its side, and onto our virtual GPUs as a functional, forward-backward propagating pipeline that hence fits in our combined GPU-space</li>
+<li>each layer of the stack would therefore use a predetermined virtual GPU <code>idx</code> </li>
 </ul>
 
 </div>
@@ -13287,9 +13319,9 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>a basic "sequential" Keras model is all what we need</li>
-<li>once the input (and the output too) is shaped, we chain our "dense" layers in the middle</li>
-<li>Keras' <code>summary</code> feature is vary handy to confirm our model is laid out as intended</li>
+<li>a basic <code>sequential</code> Keras model will suffice as the container of our stack</li>
+<li>once the input, as well as the output, is shaped, we simply chain our chosen number of layers together in the middle</li>
+<li>the Keras model's <code>summary</code> method is very handy to confirm our model is laid out as intended</li>
 </ul>
 
 </div>
@@ -13321,7 +13353,7 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
 <li>before we can run our model, we need to establish our parameters</li>
-<li>a simple Python <code>dict</code> works the best to keep things organized, unique and sorted out</li>
+<li>a simple Python <code>dict</code> works best to keep things organized, unique and sorted</li>
 </ul>
 
 </div>
@@ -13351,8 +13383,9 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>the drawback of string keyed <code>dict</code>s is just that, the strings can be misspelled and hundreds of potentially misnamed parameters cause unneeded pain and suffering</li>
-<li>Python's automatically verified <code>attributes</code> come to the rescue: a simple, straightforward and functional <code>Params</code> class</li>
+<li>the drawback of string keyed <code>dict</code>s is just that, the strings can have typos in them and hundreds of potentially misnamed parameters certainly cause unnecessary confusion</li>
+<li>Python's automatically verified native <code>attribute</code>s come to the rescue once again</li>
+<li>here is a simple, straightforward and functional <code>Params</code> class</li>
 </ul>
 
 </div>
@@ -13378,7 +13411,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>let's create our <code>Params</code> instance and a handy training data set (with testing and verification all built in)</li>
+<li>let's create our <code>Params</code> instance and a truly handy training data set (with testing and verification all built in) in just one line of code</li>
 </ul>
 
 </div>
@@ -13404,8 +13437,9 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
 <li>finally we are ready to compile our model</li>
-<li>the summary shows that, just as expected, it has over 10 million weights randomly picked</li>
-<li>we then bring them "inline" through millions of multiplications and additions by our many virtual GPUs, only to verify that our input <code>ones</code> are in fact just a series of <code>1</code>s</li>
+<li>just as expected, the <code>summary</code> of the model shows that it has over 10 million weights</li>
+<li>the initial values of the weights is randomly picked</li>
+<li>through training, we bring these arbitrary values "inline" through millions of multiplications and additions executed by our many virtual GPUs, only to verify that our input <code>ones</code> are in fact just a series of <code>1</code>s</li>
 </ul>
 
 </div>
@@ -13478,7 +13512,7 @@ None
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>running the model gives us the familiar Keras output showing a nice convergence of a trivial problem across easily configurable GPUs</li>
+<li>training the model gives us the familiar Keras output showing a nice convergence of a trivial problem across easily configurable GPUs</li>
 </ul>
 
 </div>
@@ -13569,19 +13603,7 @@ Epoch 10/10
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> tensorboard
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">tensorboard</span> --logdir /tmp/q/logs
+<span class="o">%</span><span class="k">tensorboard</span> --logdir /tmp/q/logs
 </pre></div>
 
     </div>
@@ -13598,12 +13620,25 @@ Epoch 10/10
 
 
 
+
+<div class="output_text output_subarea ">
+<pre>Reusing TensorBoard on port 6006 (pid 18246), started 2 days, 5:49:56 ago. (Use &#39;!kill 18246&#39; to kill it.)</pre>
+</div>
+
+</div>
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+
 <div class="output_html rendered_html output_subarea ">
 
         <iframe
             width="100%"
             height="800"
-            src="http://localhost:6007"
+            src="http://localhost:6006"
             frameborder="0"
             allowfullscreen
         ></iframe>
@@ -13615,6 +13650,16 @@ Epoch 10/10
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>this concludes our blog, please see how to use the new dataset functionality by clicking on the next blog</li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>
