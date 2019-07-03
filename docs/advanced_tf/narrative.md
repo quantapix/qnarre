@@ -10,7 +10,7 @@
 
 - we explore some of the key aspects of this architecture
 - we start with a high-level view and then we gradually build from the lowest base-classes to the more useful Keras `layers`
-- our objective here is to arrive to a training model representable by the [graph](./trackable.pdf)
+- our objective here is to arrive to training model representable by the [graph](./trackable.pdf)
 
 - we need to prep our environment in order to run any meaningful code
 
@@ -147,42 +147,80 @@
 
 - TODO: expand bullets
 
-- laying out a possibly large model across many smaller GPUs
-- a model that can also be used to test custom allocation strategies
-- objective: [graph](./gpus.pdf)
+- GPUs are no doubt one of our most critical resources when running neural networks
+- GPUs have strict capacities and limits as physical resources 
+- using servers with many smaller GPUs, we often ran into the inherent limitations of our equipment
+- laying out a possibly large model across many smaller GPUs has thus become a requirement for us
 
-- more preps
+- this blog presents a few basic steps in that direction
+- the outlined model can also be used to effectively test more complex and custom GPU allocation strategies
+- our objective here is to arrive to training a model representable by the [graph](./gpus.pdf)
 
-- partition physical GPUs into custom-sized virtual GPUs
-- components, layers, of the model can then expect properly allocated virtual GPU ids
-- given the parameter-driven "resource" requirements of our layers, we can develop heuristics for partitioning and allocating the physical devices
+- we need to prep our environment in order to run any meaningful code
 
-- turn off "soft" allocation for now
+- .
 
-- a most basic, custom "dense" layer as a component in our configurable stack
-- we aim to "lay" this stack onto our virtual GPUs as a functional forward-backward pipeline that fits in our combined GPU-space
-- each layer would therefore use a predetermined virtual GPU
+- we also define a few convenient aliases
 
-- a basic "sequential" Keras model is all what we need
-- once the input (and the output too) is shaped, we chain our "dense" layers in the middle
-- Keras' `summary` feature is vary handy to confirm our model is laid out as intended
+- .
+
+- for any effective and generalizable allocation strategy we need to be able to reason about our resources in a uniform way
+- we start with the new TF functionality of partitioning our physical GPUs into custom-sized, and thus easily "normalizable" virtual GPUs
+- the components, `layers`, of our models can then expect the ids of the properly sized, or allocated virtual GPUs
+- given the parameter-driven "resource" requirements of our layers, we can also develop heuristics for partitioning and allocating the physical devices before starting a training session
+
+- .
+
+- let's turn off "soft" allocation for now
+
+- .
+
+- the model we develop here builds on a configurable "stack" of identical layers
+- a most basic, custom `dense` layer class is all we need as the stack's repeated components
+- we then aim to "lay" this stack on its side, and onto our virtual GPUs as a functional, forward-backward propagating pipeline that hence fits in our combined GPU-space
+- each layer of the stack would therefore use a predetermined virtual GPU `idx` 
+
+- .
+
+- a basic `sequential` Keras model will suffice as the container of our stack
+- once the input, as well as the output, is shaped, we simply chain our chosen number of layers together in the middle
+- the Keras model's `summary` method is very handy to confirm our model is laid out as intended
+
+- .
 
 - before we can run our model, we need to establish our parameters
-- a simple Python `dict` works the best to keep things organized, unique and sorted out
+- a simple Python `dict` works best to keep things organized, unique and sorted
 
-- the drawback of string keyed `dict`s is just that, the strings can be misspelled and hundreds of potentially misnamed parameters cause unneeded pain and suffering
-- Python's automatically verified `attributes` come to the rescue: a simple, straightforward and functional `Params` class
+- .
 
-- let's create our `Params` instance and a handy training data set (with testing and verification all built in)
+- the drawback of string keyed `dict`s is just that, the strings can have typos in them and hundreds of potentially misnamed parameters certainly cause unnecessary confusion
+- Python's automatically verified native `attribute`s come to the rescue once again
+- here is a simple, straightforward and functional `Params` class
+
+- .
+
+- let's create our `Params` instance and a truly handy training data set (with testing and verification all built in) in just one line of code
+
+- .
 
 - finally we are ready to compile our model
-- the summary shows that, just as expected, it has over 10 million weights randomly picked
-- we then bring them "inline" through millions of multiplications and additions by our many virtual GPUs, only to verify that our input `ones` are in fact just a series of `1`s
+- just as expected, the `summary` of the model shows that it has over 10 million weights
+- the initial values of the weights is randomly picked
+- through training, we bring these arbitrary values "inline" through millions of multiplications and additions executed by our many virtual GPUs, only to verify that our input `ones` are in fact just a series of `1`s
 
-- running the model gives us the familiar Keras output showing a nice convergence of a trivial problem across easily configurable GPUs
+- .
+
+- training the model gives us the familiar Keras output showing a nice convergence of a trivial problem across easily configurable GPUs
+
+- .
 
 - and now let's fire up TensorBoard and visually confirm that our stack of "dense" layers is connected just as expected
 - if you haven't run the code, an already generated graph is [here](./gpus.pdf)
+
+- .
+
+- this concludes our blog, please see how to use the new dataset functionality by clicking on the next blog
+
 
 # Dataset: Tensor "Highway" On-Ramp
 
