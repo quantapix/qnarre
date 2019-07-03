@@ -541,7 +541,7 @@
 - we implement them as simple lists of the respective `Encoder` and `Decoder` components
 - when calling the stacks, the code simply loops through the component lists and calls the components
 - in order to "chain" the stacks, every component is given the output of the previous component as its input
-- in the case of the `Decoder` components, in addition to its regular input, we also supply the previously encoded output as the `ctx` argument
+- in the case of the `Decoder` components, in addition to their regular inputs, we also supply the previously encoded output as their `ctx` argument
 
 - .
 
@@ -554,7 +554,7 @@
 - .
 
 - we have now completed the definition of our top layers as Keras layers, but we still need to define the inner components
-- we could continue using the seemingly "heavy" Keras layers and nest them deep
+- we could continue using the seemingly "heavy" Keras layers and nest them deeper
 - as presented in a previous blog, we instead switch over to be using the much lighter weight `Module` as the base class for our inner components
 - our `Encoder` thus becomes a simple module containing the self-attention followed by the feed-forward mechanisms
 - we fittingly call the objects `reflect` and `conclude`
@@ -600,7 +600,7 @@
 - .
 
 - with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
-- if you haven't run the below code, an already generated graph is [here](./layers.pdf)
+- if you haven't run the code below, an already generated graph is [here](./layers.pdf)
 
 - .
 
@@ -609,6 +609,7 @@
 - and here is a much shortened `eager` session
 
 - .
+
 - this concludes our blog, please see how to further customize our model by clicking on the next blog
 
 # Custom Keras Layers Without The Drawbacks
