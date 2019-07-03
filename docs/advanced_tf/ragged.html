@@ -13118,7 +13118,42 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Ragged-Tensors-For-Document-Processing">Ragged Tensors For Document Processing<a class="anchor-link" href="#Ragged-Tensors-For-Document-Processing">&#182;</a></h1><ul>
 <li>TODO: expand bullets</li>
-<li>objective: <a href="./ragged.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li><code>RaggedTensor</code>s are a newly added feature in TF intended to cleanly and efficiently solve the previously mentioned "uneven sequence length" problem</li>
+<li>while easily convertable, they are different from the more general <code>SparseTensor</code>s as they only allow "ragged edges"</li>
+<li>from an implementation point of view, <code>RaggedTensors</code> are efficiently represented as <code>composite tensor</code>s consisting of 1) a packed sequence of values and 2) a list of indices (effectively "row lengths")</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>needless to say, these new composite tensors are purpose-fitted to our sample text processing problem</li>
+<li>one significant advantage of their specific design is the fluid nature of their "duality"</li>
+<li>on one hand, they can be viewed just as a simple vector of values, for efficient graph ops</li>
+<li>on the other hand, they can be used as handy "masks" to selectively extract just the right values from dense tensors</li>
+<li>in order to demonstrate their use, we set our objective here to arrive to a model representable by the <a href="./ragged.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>just as before, we need to prep our environment in order to run any meaningful code</li>
 </ul>
 
 </div>
@@ -13144,7 +13179,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>load our meta data</li>
+<li>loading our already created meta data from the sources gives us</li>
 </ul>
 
 </div>
@@ -13185,7 +13220,9 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>files and caster from qd</li>
+<li>our previously introduced <code>adapter</code> to our datasets, themselves loadable from our stored samples, is adjusted slightly: we don't immediately convert the created ragged tensors to dense tensors anymore</li>
+<li>while Keras has the intention of fully supporting ragged input tensors (the <code>ragged=True</code> optional keyword argument is already available), passing in our <code>composite tensors</code> doesn't work just yet</li>
+<li>to work around this problem, we split our ragged tensors into its components, pass the components in and then quickly reassemble them, once inside the model</li>
 </ul>
 
 </div>
@@ -13214,7 +13251,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>with our adapter configured, our <code>dataset</code> streaming function is simple and looks as expected</li>
+</ul>
 
 </div>
 </div>
@@ -13244,7 +13283,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>just as in our previous blog, our "elementary math" training problem calls for first embedding the passed in tokens into more spacious hidden dimensions</li>
+<li>hence our already defined <code>Embed</code> class only needs to be adjusted to work with ragged arguments</li>
+<li>specifically, after reassembling our <code>RaggedTensor</code> inputs from its passed-in components, we simply apply our trusty <code>embedding_lookup</code> to all the flattened or "bunched-up" tokens</li>
+</ul>
 
 </div>
 </div>
@@ -13275,7 +13318,15 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our <code>Reflect</code> layer will need slightly more changes</li>
+<li>as the <code>flat_values</code> of our ragged input loose their batch dimensions, the matrix multiplications become simpler (expressed here through the all time favorite <code>einsum</code>, see <a href="https://rockt.github.io/2018/04/30/einsum">here</a>)</li>
+<li>since the <code>attention</code> mechanism's <code>q</code>, <code>k</code> and <code>v</code> components are element-wise tied to their inputs, the "raggedness" of the results doesn't change</li>
+<li>this means that we only need to change the content of our <code>RaggedTensor</code>s, the "row_lengths" stay the same as implemented by the <code>with_values</code> method</li>
+<li>when we switch over to cross-products, for scoring our calculated attention coefficients, we use dense tensors once again</li>
+<li>but the actual result of the layer is a <code>RaggedTensor</code></li>
+<li>since its "raggedness" is the same as the layer's input's raggedness, we can conveniently recreate the same shaped <code>RaggedTensor</code> from the respective values of the just calculated dense tensor by using the original input's <code>row_lengths</code> method</li>
+</ul>
 
 </div>
 </div>
@@ -13313,7 +13364,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we need to implement similar changes in our <code>Expand</code> layer</li>
+<li>"inflating" our hidden dimensions, for intrinsic learning purposes, requires a fixed width, hence we immediately convert to a dense tensor</li>
+<li>since we are done with our token calculations, we can simply pad the input to the layer to our expected <code>len_max_input</code> </li>
+</ul>
 
 </div>
 </div>
@@ -13343,7 +13398,12 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>and now we are ready to define our model</li>
+<li>we have the two inputs, the two components of our input <code>RaggedTensor</code></li>
+<li>we also use our new <code>Embed</code>, <code>Reflect</code> and <code>Expand</code> layers adjusted to work with our sudden "raggedness"</li>
+<li>the rest of the model is simply carried over from the previous blog</li>
+</ul>
 
 </div>
 </div>
@@ -13378,7 +13438,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our parameters are also unchanged</li>
+</ul>
 
 </div>
 </div>
@@ -13410,7 +13472,12 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>by firing up our training session, we can confirm the model's layers and connections</li>
+<li>the listing of a short session follows</li>
+<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
+<li>however, at this point the results are still largely meaningless and extending the trainings is not yet warranted</li>
+</ul>
 
 </div>
 </div>
@@ -13540,7 +13607,7 @@ Epoch 10/10
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries</li>
+<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize</li>
 <li>if you haven't run the code, an already generated graph is <a href="./ragged.pdf">here</a></li>
 </ul>
 
@@ -13604,6 +13671,10 @@ Epoch 10/10
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>we can also switch over to the new <code>eager</code> execution mode</li>
+<li>this is particularly convenient for experimentation, as all ops are immediately executed</li>
+</ul>
 
 </div>
 </div>
@@ -13648,7 +13719,9 @@ Epoch 10/10
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>and here is a much shortened <code>eager</code> session</li>
+</ul>
 
 </div>
 </div>
@@ -13749,18 +13822,15 @@ Epoch 0 loss: 2.694837 , xent: 1.4078863
 </div>
 
 </div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
-</pre></div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>this concludes our blog, please see how to avoid "layer-proliferation" complexity by clicking on the next blog</li>
+</ul>
 
-    </div>
 </div>
 </div>
-
 </div>
     </div>
   </div>

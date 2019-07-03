@@ -424,10 +424,10 @@
 - while easily convertable, they are different from the more general `SparseTensor`s as they only allow "ragged edges"
 - from an implementation point of view, `RaggedTensors` are efficiently represented as `composite tensor`s consisting of 1) a packed sequence of values and 2) a list of indices (effectively "row lengths")
 
-- needless to say, these new composite tensors are purpose-fitted for our sample text processing problem
+- needless to say, these new composite tensors are purpose-fitted to our sample text processing problem
 - one significant advantage of their specific design is the fluid nature of their "duality"
-- on one hand they can be viewed just as a simple vector of values, for efficient graph ops
-- on the other hand they can be used as handy "masks" to selectively extract just the right values from dense tensors
+- on one hand, they can be viewed just as a simple vector of values, for efficient graph ops
+- on the other hand, they can be used as handy "masks" to selectively extract just the right values from dense tensors
 - in order to demonstrate their use, we set our objective here to arrive to a model representable by the [graph](./ragged.pdf)
 
 - just as before, we need to prep our environment in order to run any meaningful code
@@ -438,10 +438,9 @@
 
 - .
 
-- our previously introduced `adapter` function to our datasets, themselves loadable from our stored samples, is adjusted slightly:
-- we don't immediately convert the created ragged tensors to dense tensors anymore
+- our previously introduced `adapter` to our datasets, themselves loadable from our stored samples, is adjusted slightly: we don't immediately convert the created ragged tensors to dense tensors anymore
 - while Keras has the intention of fully supporting ragged input tensors (the `ragged=True` optional keyword argument is already available), passing in our `composite tensors` doesn't work just yet
-- to work around this problem, we split our ragged tensors into its components, pass the components in and then quickly reassemble them once inside the model
+- to work around this problem, we split our ragged tensors into its components, pass the components in and then quickly reassemble them, once inside the model
 
 - .
 
@@ -449,9 +448,9 @@
 
 - .
 
-- just as in our previous blog, our "elementary math" training problem calls for first embedding the passed in tokens into more spacious "hidden dimensions"
+- just as in our previous blog, our "elementary math" training problem calls for first embedding the passed in tokens into more spacious hidden dimensions
 - our already defined `Embed` class only needs to be adjusted to work with ragged arguments
-- specifically, after reassembling our `RaggedTensor` inputs from its passed-in components, we simply apply our trusty `embedding_lookup` to all the "flattened" or "bunched-up" tokens
+- specifically, after reassembling our `RaggedTensor` inputs from its passed-in components, we simply apply our trusty `embedding_lookup` to all the flattened or "bunched-up" tokens
 
 - .
 
@@ -465,9 +464,9 @@
 
 - .
 
-- we need to implement similar changes in our `Expand` layer's
-- `inflating` our hidden dimensions, for learning purposes, requires a fixed width, hence we immediately convert to a dense tensor
-- since we are done with our "calculation", we can simply pad the input to the layer to our expected `len_max_input` 
+- we need to implement similar changes in our `Expand` layer
+- "inflating" our hidden dimensions, for learning purposes, requires a fixed width, hence we immediately convert to a dense tensor
+- since we are done with our token calculations, we can simply pad the input to the layer to our expected `len_max_input` 
 
 - .
 
@@ -482,7 +481,7 @@
 
 - .
 
-- firing up our training session, we can confirm the model's layers and connections
+- by firing up our training session, we can confirm the model's layers and connections
 - the listing of a short session follows
 - we can easily adjust the parameters to tailor the length of the sessions to our objectives
 - however, at this point the results are still largely meaningless and extending the trainings is not yet warranted
@@ -494,6 +493,14 @@
 
 - .
 
+- we can also switch over to the new `eager` execution mode
+- this is particularly convenient for experimentation, as all ops are immediately executed
+
+- .
+
+- and here is a much shortened `eager` session
+
+- .
 - this concludes our blog, please see how to avoid "layer-proliferation" complexity by clicking on the next blog
 
 # Unnecessary Complexity Through Layer Proliferation
