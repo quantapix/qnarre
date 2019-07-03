@@ -13117,12 +13117,42 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Trackable:-A-Pervasive-Persistence-Infrastructure">Trackable: A Pervasive Persistence Infrastructure<a class="anchor-link" href="#Trackable:-A-Pervasive-Persistence-Infrastructure">&#182;</a></h1><ul>
-<li><p>TODO: expand bullets</p>
-</li>
-<li><p>a pervasive topological persistence infrastructure</p>
-</li>
-<li>objective: <a href="./trackable.pdf">graph</a></li>
-<li>prep</li>
+<li>TODO: expand bullets</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>training in TensorFlow means continually adjusting collections of values stored as tensors in <code>variables</code></li>
+<li>persistence of these variables from one training session to the next is critical for improving on already achieved, but otherwise long-running, results</li>
+<li>the new system-wide pervasive <code>trackable</code> architecture now provides just such a persistence infrastructure</li>
+<li>instead of the old, named-based hierarchy, the new design applies a topological, "layered objects" naming scheme</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>we explore some of the key aspects of this architecture</li>
+<li>we start with a high-level view and then we gradually build from the lowest base-classes to the more useful Keras <code>layers</code></li>
+<li>our objective here is to arrive to a training model representable by the <a href="./trackable.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>we need to prep our environment in order to run any meaningful code</li>
 </ul>
 
 </div>
@@ -13149,8 +13179,9 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>persistence of training data</li>
-<li>checkpointing and the manager</li>
+<li>persistence of training data is ultimately realized through <code>Checkpoint</code> objects</li>
+<li>as the number of such representations, saved as plain files, grows, <code>CheckpointManager</code>s help with keeping track (see TF docs for full functionality)</li>
+<li>we present a simple scenario for persisting (saving and restoring) a variable encapsulated by a <code>Trackable</code> object as follows</li>
 </ul>
 
 </div>
@@ -13185,7 +13216,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>variables and keeping track of them</li>
+<li>using the above function, our iterations of incrementing the singleton <code>int</code> variable and keeping track of the <code>Checkpoint</code> files result in</li>
 </ul>
 
 </div>
@@ -13237,8 +13268,11 @@ value before: 3
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>boiler-plate hassle, private function</li>
-<li>auto-tracking through native Python attribute mechanism</li>
+<li>while the above is fully functional, the extensive boiler-plate code becomes an unnecessary hassle when implementing slightly more complex schemes</li>
+<li>also note that we used a private, undocumented, non-API method to make our code work</li>
+<li>obviously, a more convenient, "auto-tracking" functionality is needed</li>
+<li>the native Python attribute mechanism provides a framework to satisfy such needs</li>
+<li>our slightly adjusted printing function is now as follows</li>
 </ul>
 
 </div>
@@ -13271,8 +13305,9 @@ value before: 3
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>notice the <code>tr2.v = tracked</code> assignment</li>
-<li>turn-off autotracking</li>
+<li>and here is our use of an <code>AutoTrackable</code> object holding onto 2 single-valued variables</li>
+<li>notice the intuitive <code>tr2.v = tracked</code> assignment, as this is where the entire "trackable" scheme is triggered</li>
+<li>just in case we want to avoid the default functionality, we can turn off autotracking as well</li>
 </ul>
 
 </div>
@@ -13324,10 +13359,9 @@ value as saved: 3000
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>hundreds of variables</li>
-<li>consistent, hierarchical "naming" scheme without naming</li>
-<li>topology of layers</li>
-<li>helpers to list the "inventory"</li>
+<li>employing the native Python attribute mechanism and assignment operator allows us to reliably "autotrack" hundreds or thousands of training variables</li>
+<li>moreover, a consistent, hierarchical "layered objects" naming scheme emerges, without actual, explicit string-based names</li>
+<li>for a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the TF provided helper functions</li>
 </ul>
 
 </div>
@@ -13362,7 +13396,7 @@ value as saved: 3000
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>naming conventions</li>
+<li>looking at the result of calling our function, we can quickly see the simple pattern of the employed hierarchical naming conventions</li>
 </ul>
 
 </div>
@@ -13405,8 +13439,8 @@ checkpoint types: {&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;: tf.int32, &#39;_C
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>variable management requires deletion</li>
-<li>same native Python attribute mechanism</li>
+<li>any type of variable management system that allows creating variables also needs to support deleting them</li>
+<li>to delete a variable from the hierarchy, the familiar native Python attribute mechanism's <code>del</code> operation can be used just as follows</li>
 </ul>
 
 </div>
@@ -13440,7 +13474,7 @@ checkpoint types: {&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;: tf.int32, &#39;_C
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>deleting and the results</li>
+<li>and here are the results of calling our function</li>
 </ul>
 
 </div>
@@ -13482,8 +13516,9 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>variable management also means aggregating</li>
-<li>intuitive Python <code>list</code> and <code>dict</code> are transparently employed</li>
+<li>variable management also means possibly aggregating variables into containers</li>
+<li>intuitive Python <code>list</code> and <code>dict</code> structures can be transparently employed</li>
+<li>using our modified function to print our variables</li>
 </ul>
 
 </div>
@@ -13511,7 +13546,8 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>"naming" conventions are just as expected </li>
+<li>we can intuitively collect variables into either <code>list</code>s or <code>dict</code>s</li>
+<li>the patterns used for naming the aggregated variables are just as expected</li>
 </ul>
 
 </div>
@@ -13561,10 +13597,10 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>neural networks rely on sharing weights, that is variables</li>
-<li>variable sharing was ad-hoc, "name-based" before</li>
-<li>Python has native support for this fundamental problem</li>
-<li>sharing of variables now is just as expected</li>
+<li>neural networks rely on sharing persisted trainable weights, variables in our case, to express interdependencies</li>
+<li>variable sharing was ad-hoc, only name-based and with a global scope before</li>
+<li>as Python has extensive native support for managing easily sharable references to its objects, this fundamental problem gets an intuitive solution with the new trackable architecture</li>
+<li>as expected, sharing variables now is natural and also safe, as it uses references instead of error-prone strings</li>
 </ul>
 
 </div>
@@ -13613,8 +13649,9 @@ deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_co
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>persisted shared variables are not repeated</li>
-<li>updates to shared variables can be easily verified</li>
+<li>persisted shared variables are obviously not duplicated in checkpoints</li>
+<li>and when checkpoints are restored or reloaded, the in-memory sharing of variables is also re-established</li>
+<li>updates to shared variables can be easily verified just as follows</li>
 </ul>
 
 </div>
@@ -13662,9 +13699,9 @@ shared too: 10, 10
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>variable management also means "encapsulating"</li>
-<li>new "modules" build on autotracking to extend Python's encapsulation mechanism</li>
-<li>explicit name scoping of modules allows the reuse of module "classes"</li>
+<li>variable management also means possible encapsulation</li>
+<li>new <code>Module</code> objects build on <code>AutoTrackable</code> to extend Python's familiar <code>class</code>-based encapsulation mechanism</li>
+<li>supported explicit name scoping of modules allows the reuse of module classes, otherwise instances of the same class would need to be generically counted </li>
 </ul>
 
 </div>
@@ -13709,7 +13746,7 @@ shared too: 10, 10
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>convenience methods to recursively collect variables</li>
+<li>when building hierarchies of modules, TF provided convenience methods also allow for recursively collecting variables</li>
 </ul>
 
 </div>
@@ -13747,7 +13784,8 @@ shared too: 10, 10
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>name-based hierarchy and topological, Python-object hierarchy </li>
+<li>with our module class and our handy printing function we can now build a basic nested hierarchy</li>
+<li>the results of printing our "one branch tree" show both the name-based hierarchy and the Python-object or "checkpoint" hierarchy</li>
 </ul>
 
 </div>
@@ -13795,10 +13833,11 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>Keras is the API for consistently reasoning about the network of components</li>
-<li>Keras also visibly splits the distinct phases of building vs. executing of graphs </li>
-<li>Keras layers build on TF modules to manage variable persistence</li>
-<li>the previous modules example is almost identical in Keras</li>
+<li>Keras is the API for consistently reasoning about the interconnected network of components</li>
+<li>it also visibly splits the two distinct phases of building vs. executing our component "graphs"</li>
+<li><code>functional</code> Keras has the most packaged features to assist us with our neural networks and we aim to use it throughout</li>
+<li>Keras <code>layer</code>s, as well-defined encapsulating components, build on the previously used <code>module</code>s to manage variable persistence</li>
+<li>the previous modules example is almost identical with Keras layers</li>
 </ul>
 
 </div>
@@ -13846,7 +13885,7 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>create the helper to list our results</li>
+<li>through adjusting our helper to print the results</li>
 </ul>
 
 </div>
@@ -13887,7 +13926,7 @@ restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>a most simple Keras model using 3 scalar variables to showcase the underlining topological persistence management</li>
+<li>we arrive to a most simple Keras model, using a mere 3 scalar variables to showcase the underlying, already tried and used, persistence management</li>
 </ul>
 
 </div>
@@ -13949,10 +13988,9 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>"a picture is worth a thousand words"</li>
-<li>even a simplest model can be overwhelming when expressed as text</li>
-<li>TensorBoard is a tool to also view the nested graphs</li>
-<li>summary data for TB is generated as follows</li>
+<li>even the simplest model can be overwhelming when expressed textually</li>
+<li>TensorBoard is an accompanying tool that can help us in picturing the nested component graphs</li>
+<li>as a "a picture is worth a thousand words", <code>summary</code> data for TB is generated as follows</li>
 </ul>
 
 </div>
@@ -13982,9 +14020,9 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>our Keras model implements data-driven Python recursion</li>
-<li>the new "Autograph" functionality allows us to use such intuitive expressions</li>
-<li>it is invoked with the <code>tf.function</code> Python decorator</li>
+<li>our trivially simple Keras model still implements data-driven Python recursion</li>
+<li>the new <code>autograph</code> functionality allows us to use such intuitive, native expressions instead of the usual TF "graph ops"</li>
+<li>autograph code generation is invoked with the <code>tf.function</code> Python decorator</li>
 </ul>
 
 </div>
@@ -14009,7 +14047,7 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>load TensorBoard</li>
+<li>in order to see the TB generated summaries, including the picture of our graph, we need to load the extension</li>
 </ul>
 
 </div>
@@ -14032,7 +14070,7 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>generate the TB summaries including the graph representation</li>
+<li>then we generate the TB summaries</li>
 </ul>
 
 </div>
@@ -14055,8 +14093,8 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <ul>
-<li>and view the zoom-able and clickable TensorBoard graph</li>
-<li>if you haven't run the code an already generated graph is <a href="./trackable.pdf">here</a></li>
+<li>and now we can view the zoom-able and clickable TB graph</li>
+<li>if you haven't run the code, an already generated graph is <a href="./trackable.pdf">here</a></li>
 </ul>
 
 </div>
@@ -14114,6 +14152,16 @@ restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>this concludes our blog, please see how to use the new GPU-related functionality by clicking on the next blog</li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>

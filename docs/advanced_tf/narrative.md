@@ -10,7 +10,7 @@
 
 - we explore some of the key aspects of this architecture
 - we start with a high-level view and then we gradually build from the lowest base-classes to the more useful Keras `layers`
-- our objective here is to arrive to a training model representable by the [graph](./masking.pdf)
+- our objective here is to arrive to a training model representable by the [graph](./trackable.pdf)
 
 - we need to prep our environment in order to run any meaningful code
 
@@ -30,19 +30,19 @@
 - also note that we used a private, undocumented, non-API method to make our code work
 - obviously, a more convenient, "auto-tracking" functionality is needed
 - the native Python attribute mechanism provides a framework to satisfy such needs
-- our slightly adjusted calling function is now as follows
+- our slightly adjusted printing function is now as follows
 
 - .
 
 - and here is our use of an `AutoTrackable` object holding onto 2 single-valued variables
-- notice the intuitive `tr2.v = tracked` assignment as this is where the entire "trackable" scheme is triggered
+- notice the intuitive `tr2.v = tracked` assignment, as this is where the entire "trackable" scheme is triggered
 - just in case we want to avoid the default functionality, we can turn off autotracking as well
 
 - .
 
-- employing the native Python attribute mechanism and assignment operator allows us to "autotrack" hundreds or thousands of training variables reliably
+- employing the native Python attribute mechanism and assignment operator allows us to reliably "autotrack" hundreds or thousands of training variables
 - moreover, a consistent, hierarchical "layered objects" naming scheme emerges, without actual, explicit string-based names
-- for a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the provided helper functions
+- for a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the TF provided helper functions
 
 - .
 
@@ -67,30 +67,30 @@
 - .
 
 - we can intuitively collect variables into either `list`s or `dict`s
-- the patterns used for naming the variables are just as expected
+- the patterns used for naming the aggregated variables are just as expected
 
 - .
 
 - neural networks rely on sharing persisted trainable weights, variables in our case, to express interdependencies
-- variable sharing was ad-hoc, "name-based", with a global scope before
+- variable sharing was ad-hoc, only name-based and with a global scope before
 - as Python has extensive native support for managing easily sharable references to its objects, this fundamental problem gets an intuitive solution with the new trackable architecture
 - as expected, sharing variables now is natural and also safe, as it uses references instead of error-prone strings
 
 - .
 
-- persisted shared variables are obviously not repeated in checkpoints
+- persisted shared variables are obviously not duplicated in checkpoints
 - and when checkpoints are restored or reloaded, the in-memory sharing of variables is also re-established
 - updates to shared variables can be easily verified just as follows
 
 - .
 
-- variable management also means possible "encapsulation"
+- variable management also means possible encapsulation
 - new `Module` objects build on `AutoTrackable` to extend Python's familiar `class`-based encapsulation mechanism
 - supported explicit name scoping of modules allows the reuse of module classes, otherwise instances of the same class would need to be generically counted 
 
 - .
 
-- when building hierarchies of modules, provided convenience methods also allow for recursively collecting variables
+- when building hierarchies of modules, TF provided convenience methods also allow for recursively collecting variables
 
 - .
 
@@ -111,7 +111,7 @@
 
 - .
 
-- we arrive to a most simple Keras model, using a mere 3 scalar variables to showcase the underlying already tried and used persistence management
+- we arrive to a most simple Keras model, using a mere 3 scalar variables to showcase the underlying, already tried and used, persistence management
 
 - .
 
@@ -123,7 +123,7 @@
 
 - our trivially simple Keras model still implements data-driven Python recursion
 - the new `autograph` functionality allows us to use such intuitive, native expressions instead of the usual TF "graph ops"
-- autograph code generation is invoked with the `@tf.function` Python decorator
+- autograph code generation is invoked with the `tf.function` Python decorator
 
 - .
 
