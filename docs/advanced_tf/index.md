@@ -54,7 +54,7 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 
 ## [Unnecessary Complexity Through Layer Proliferation](./layers.html)
 
-* With complex component requirements Keras layers can seem "heavy" 
+* With complex component requirements, Keras layers can seem "heavy" 
 * A first take on the `Transformer` model mixes `layers` and `modules`
 * Validated `functional` layers interconnect modules with bare ops
 * We continue to expand on this "blended approach" of modeling

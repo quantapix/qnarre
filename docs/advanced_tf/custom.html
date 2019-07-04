@@ -13118,7 +13118,30 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Custom-Keras-Layers-Without-The-Drawbacks">Custom Keras Layers Without The Drawbacks<a class="anchor-link" href="#Custom-Keras-Layers-Without-The-Drawbacks">&#182;</a></h1><ul>
 <li>TODO: expand bullets</li>
-<li>objective: <a href="./custom.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>in this blog we continue to train our computer to "understand" elementary symbolic algebra</li>
+<li>we slightly change our approach however</li>
+<li>instead of having a fixed input/context for our encoder/decoder stacks, we follow the idea of "sliding contexts" from this <a href="https://arxiv.org/pdf/1901.02860.pdf">paper</a></li>
+<li>in addition, we continue to architect our model with a mixture of "validated" Keras <code>layers</code> as well as light-weight <code>Modules</code> containing bare ops</li>
+<li>our objective is to ultimately arrive to a model representable by the <a href="./custom.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>just as before, we need to prep our environment in order to run any meaningful code</li>
 </ul>
 
 </div>
@@ -13144,7 +13167,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>before we start, we need to increase our dataset slightly as the training steps are becoming more meaningful</li>
+<li>calling the <code>dump_dset</code> function with a parameters object will update our stored binary file shards</li>
+</ul>
 
 </div>
 </div>
@@ -13174,7 +13200,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>for verification purposes, loading our already created meta data from the sources gives us</li>
+</ul>
 
 </div>
 </div>
@@ -13215,7 +13243,26 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we also need to expand our previously used <code>formatter</code></li>
+<li>as we intend to concatenate subsequent inputs in our "sliding context", we need to end the result, <code>res</code>, feature of our samples with our <code>STP = "|"</code> token</li>
+<li>please also note how we have started to use <code>tf.debugging.assert</code>s just to increase our confidence in the correctness of our data</li>
+<li>later we will be able to switch these out with the familiar Python <code>asserts</code></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>our <code>formatter</code> comes with an other significant adjustment</li>
+<li>we intend to feed both our <code>encoder</code> and our <code>decoder</code> with inputs</li>
+<li>namely, the encoder gets the full sample <code>defs</code> and <code>op</code>, while the decoder gets either a fully blank or a partially blanked <code>res</code></li>
+<li>so our dataset will supply an <code>enc</code>, a <code>dec</code> and a <code>tgt</code> (the full correct result of the math expression in the sample) tensors</li>
+<li>the <code>rand_blank</code> function does the quick (inline) random blanking of the result to be fed into our <code>decoder</code></li>
+</ul>
 
 </div>
 </div>
@@ -13256,7 +13303,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>in order for our dataset to be usable, we also need to update our <code>adapter</code></li>
+<li>we continue to still split our input ragged tensors into their components, and as we now have 3 ragged inputs (<code>enc</code>, <code>dec</code> and <code>tgt</code> as well, to give ourselves a choice of using custom <code>loss</code> and <code>metrics</code> implementations), the total number of input tensors to our model will thus be 6</li>
+<li>the adapter needs to also supply our <code>tgt</code> dense tensor for the canned <code>loss</code> and <code>metrics</code> consumption</li>
+</ul>
 
 </div>
 </div>
@@ -13290,7 +13341,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our new dataset creator function, <code>dset_for</code> is as follows</li>
+<li>we added an optionally overridable <code>adapter</code> argument to be used later</li>
+</ul>
 
 </div>
 </div>
@@ -13320,7 +13374,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>as we now have 3 pairs of input tensors, that we need to convert back into <code>RaggedTensor</code>s, we quickly added a <code>ToRagged</code> convenience layer that can be seamlessly eliminated once the Keras <code>Input</code>s start properly supporting the <code>ragged=True</code> keyword argument</li>
+</ul>
 
 </div>
 </div>
@@ -13349,7 +13405,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>the <code>Frames</code> layer is the new significant addition</li>
+<li>with every new input <code>xe</code> for the <code>encoder</code>, it first concatenates the <code>prev</code> stored context with <code>xe</code> into <code>ye</code></li>
+<li>and then it updates <code>prev</code>, to be used in the next cycle, with the concatenation of <code>ye</code> and the passed in result, <code>xt</code></li>
+<li>the computations are slightly complicated due to using the raggedness of the inputs to satisfy the continuous "sliding context" requirement</li>
+<li>the layer also return the "row_lengths" for both <code>enc</code> and <code>dec</code> inputs</li>
+<li>moreover, please note that the entire <code>Frames</code> layer works exclusively with tokens, as we don't want to keep already stale embedding calculations around in our "sliding context"</li>
+</ul>
 
 </div>
 </div>
@@ -13397,7 +13460,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>as our <code>Frames</code> layer returns fixed-width dense tensors, we can adjust our carried-over <code>Embed</code> layer to use the straight <code>embedding_lookup</code> optionally</li>
+</ul>
 
 </div>
 </div>
@@ -13429,7 +13494,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we update the <code>Encode</code> and <code>Decode</code> layers with the addition of the <code>tf.function</code> decorators for the <code>call</code> methods</li>
+</ul>
 
 </div>
 </div>
@@ -13474,7 +13541,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our <code>Debed</code> layer is also largely a carry-over, with the adjustment for the now fixed-width tensors</li>
+</ul>
 
 </div>
 </div>
@@ -13508,7 +13577,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we update the <code>Encoder</code> and <code>Decoder</code> modules with the addition of the <code>tf.function</code> decorators for the <code>__call__</code> methods</li>
+</ul>
 
 </div>
 </div>
@@ -13557,7 +13628,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>the same applies to our new <code>Attention</code> module</li>
+</ul>
 
 </div>
 </div>
@@ -13600,7 +13673,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>the same applies to our new <code>Conclusion</code> module as well</li>
+</ul>
 
 </div>
 </div>
@@ -13642,7 +13717,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>to add the <code>tf.function</code> decorator to our <code>Dense</code> module, we simply inherit from the previous version</li>
+</ul>
 
 </div>
 </div>
@@ -13666,7 +13743,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our model needs to be updated as well to use the newly defined components</li>
+<li>another significant change is the addition of the "row_lengths" tensor  (directly from the ragged tensors) to all the input and output, now fixed-width dense tensors</li>
+<li>once again, we were able to return to using dense tensors for our inputs, despite the "raggedness" of our samples, because we adopted the "sliding context" strategy, thus smoothly concatenating an entire "history" of inputs, into our "working set"</li>
+</ul>
 
 </div>
 </div>
@@ -13700,7 +13781,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our parameters need to be expanded with the addition of the values for the now fixed widths of both our <code>encoder</code> and <code>decoder</code> </li>
+</ul>
 
 </div>
 </div>
@@ -13734,7 +13817,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>by firing up our training session, we can confirm the model's layers and connections</li>
+<li>the listing of a short session follows</li>
+<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
+</ul>
 
 </div>
 </div>
@@ -13860,19 +13947,16 @@ Epoch 5/5
 </div>
 
 </div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># import ragged as qr</span>
-<span class="c1"># qr.main_eager(ps, dset_for(ps), model_for(ps))</span>
-</pre></div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize</li>
+<li>if you haven't run the code below, an already generated graph is <a href="./custom.pdf">here</a></li>
+</ul>
 
-    </div>
 </div>
 </div>
-
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
@@ -13931,7 +14015,11 @@ Epoch 5/5
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we can also switch over to the new <code>eager</code> execution mode</li>
+<li>this is particularly convenient for experimentation, as all ops are immediately executed</li>
+<li>and here is a much shortened <code>eager</code> session</li>
+</ul>
 
 </div>
 </div>
@@ -13941,13 +14029,24 @@ Epoch 5/5
 <div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># import ragged as qr</span>
+<span class="c1"># qr.main_eager(ps, dset_for(ps), model_for(ps))</span>
 </pre></div>
 
     </div>
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>this concludes our blog, please see how to use the <code>autograph</code> features with our model by clicking on the next blog</li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>
