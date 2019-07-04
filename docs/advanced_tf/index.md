@@ -39,32 +39,32 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 ## [Unified Adaptable Masking That Follows](./masking.html)
 
 * Padding uneven input data can pollute our calculations
-* It is best to cleanly "mask-out" the padded values
+* It often seems best to cleanly "mask-out" padded values
 * Keras' mechanism allows for on-demand custom maskings
-* Fully transparent, without cluttering the flow of data
+* Without cluttering the flow, masking becomes transparent
 * [more detail...](./masking.html), the [graph...](./masking.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
 
 ## [Ragged Tensors For Document Processing](./ragged.html)
 
-* New ragged tensors expand on existing composite tensors
+* New ragged tensors expand existing composite tensors
 * They can potentially solve data masking more efficiently
-* Shape and content can be separated for op efficiency
-* Once ops are complete, shapes are seamlessly re-applied 
+* Content and shape can be separated for ops efficiency
+* Shapes are seamlessly re-applied once ops finish executing 
 * [more detail...](./ragged.html), the [graph...](./ragged.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/ragged.ipynb)
 
 ## [Unnecessary Complexity Through Layer Proliferation](./layers.html)
 
-* Keras layers can seem "heavy" with complex component requirements 
+* With complex component requirements Keras layers can seem "heavy" 
 * A first take on the `Transformer` model mixes `layers` and `modules`
-* Validated `functional` layers connect modules with bare ops
+* Validated `functional` layers interconnect modules with bare ops
 * We continue to expand on this "blended approach" of modeling
 * [more detail...](./layers.html), the [graph...](./layers.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
 
 ## [Custom Keras Layers Without The Drawbacks](./custom.html)
 
-* Standard layers seem to be either too complex or too trivial
+* Standard layers seem either too complex or just plain trivial
 * Large selection of options can obfuscate essential roles
-* A `module` calling on directly needed bare ops is just a few lines
+* A `module` calling on needed bare ops directly is just a few lines
 * Modules nested in custom layers benefit from the `functional` API
 * [more detail...](./custom.html), the [graph...](./custom.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/custom.ipynb)
 

@@ -615,7 +615,120 @@
 # Custom Keras Layers Without The Drawbacks
 
 - TODO: expand bullets
-- objective: [graph](./custom.pdf)
+
+- in this blog we continue to train our computer to "understand" elementary symbolic algebra
+- we slightly change our approach however
+- instead of having a fixed input/context for our encoder/decoder stacks, we follow the idea of "sliding contexts" from this [paper](https://arxiv.org/pdf/1901.02860.pdf)
+- in addition, we continue to architect our model with a mixture of "validated" Keras `layers` as well as light-weight `Modules` containing bare ops
+- our objective is to ultimately arrive to a model representable by the [graph](./custom.pdf)
+
+- just as before, we need to prep our environment in order to run any meaningful code
+
+- .
+
+- before we start, we need to increase our dataset slightly as the training steps are becoming more meaningful
+- calling the `dump_dset` function with a parameters object will update our stored binary file shards
+
+- .
+
+- for verification purposes, loading our already created meta data from the sources gives us
+
+- .
+
+- we also need to expand our previously used `formatter`
+- as we intend to concatenate subsequent inputs in our "sliding context", we need to end the result, `res`, feature of our samples with our `STP = "|"` token
+- please also note how we have started to use `tf.debugging.assert`s just to increase our confidence in the correctness of our data
+- later we will be able to switch these out with the familiar Python `asserts`
+
+- our `formatter` comes with an other significant adjustment
+- we intend to feed both our `encoder` and our `decoder` with inputs
+- namely, the encoder gets the full sample `defs` and `op`, while the decoder gets either a fully blank or a partially blanked `res`
+- so our dataset will supply an `enc`, a `dec` and a `tgt` (the full correct result of the math expression in the sample) tensors
+- the `rand_blank` function does the quick (inline) random blanking of the result to be fed into our `decoder`
+
+- .
+
+- in order for our dataset to be usable, we also need to update our `adapter`
+- we continue to still split our input ragged tensors into their components, and as we now have 3 ragged inputs (`enc`, `dec` and `tgt` as well, to give ourselves a choice of using custom `loss` and `metrics` implementations), the total number of input tensors to our model will thus be 6
+- the adapter needs to also supply our `tgt` dense tensor for the canned `loss` and `metrics` consumption
+
+- .
+
+- our new dataset creator function, `dset_for` is as follows
+- we added an optionally overridable `adapter` argument to be used later
+
+- .
+
+- as we now have 3 pairs of input tensors, that we need to convert back into `RaggedTensor`s, we quickly added a `ToRagged` convenience layer that can be seamlessly eliminated once the Keras `Input`s start properly supporting the `ragged=True` keyword argument
+
+- .
+
+- the `Frames` layer is the new significant addition
+- with every new input `xe` for the `encoder`, it first concatenates the `prev` stored context with `xe` into `ye`
+- and then it updates `prev`, to be used in the next cycle, with the concatenation of `ye` and the passed in result, `xt`
+- the computations are slightly complicated due to using the raggedness of the inputs to satisfy the continuous "sliding context" requirement
+- the layer also return the "row_lengths" for both `enc` and `dec` inputs
+- moreover, please note that the entire `Frames` layer works exclusively with tokens, as we don't want to keep already stale embedding calculations around in our "sliding context"
+
+- .
+
+- as our `Frames` layer returns fixed-width dense tensors, we can adjust our carried-over `Embed` layer to use the straight `embedding_lookup` optionally
+
+- .
+
+- we update the `Encode` and `Decode` layers with the addition of the `tf.function` decorators for the `call` methods
+
+- .
+
+- our `Debed` layer is also largely a carry-over, with the adjustment for the now fixed-width tensors
+
+- .
+
+- we update the `Encoder` and `Decoder` modules with the addition of the `tf.function` decorators for the `__call__` methods
+
+- .
+
+- the same applies to our new `Attention` module
+
+- .
+
+- the same applies to our new `Conclusion` module as well
+
+- .
+
+- to add the `tf.function` decorator to our `Dense` module, we simply inherit from the previous version
+
+- .
+
+- our model needs to be updated as well to use the newly defined components
+- another significant change is the addition of the "row_lengths" tensor  (directly from the ragged tensors) to all the input and output, now fixed-width dense tensors
+- once again, we were able to return to using dense tensors for our inputs, despite the "raggedness" of our samples, because we adopted the "sliding context" strategy, thus smoothly concatenating an entire "history" of inputs, into our "working set"
+
+- .
+
+- our parameters need to be expanded with the addition of the values for the now fixed widths of both our `encoder` and `decoder` 
+
+- .
+
+- by firing up our training session, we can confirm the model's layers and connections
+- the listing of a short session follows
+- we can easily adjust the parameters to tailor the length of the sessions to our objectives
+
+- .
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
+- if you haven't run the code below, an already generated graph is [here](./custom.pdf)
+
+- .
+
+- we can also switch over to the new `eager` execution mode
+- this is particularly convenient for experimentation, as all ops are immediately executed
+- and here is a much shortened `eager` session
+
+- .
+
+- this concludes our blog, please see how to use the `autograph` features with our model by clicking on the next blog
+
 
 # Autograph: Intuitive Data-Driven Control At Last
 
