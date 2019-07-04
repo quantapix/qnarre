@@ -2,7 +2,7 @@
 layout: default
 ---
 
-# Narratives For Real-Estate As Well?
+# Narratives For Real-Estate?
 
 ## [A "For Hire" Study Of Scenarios And Results](./tbd.html)
 

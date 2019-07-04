@@ -6,25 +6,25 @@ layout: default
 
 Google's open sourced TensorFlow, a top project on the "~36 million developers" GitHub, is arguably one of the most successful applications of the mathematics we understand, and have come to personally love.
 
-This amazingly capable, perhaps community developed tool suddenly allows us to study, and to efficiently simulate our insights and understanding of the fluid reality around us.
+This amazingly capable, perhaps community developed tool suddenly allows us to study, and to also efficiently simulate, our insights and understanding of the fluid reality around us.
 
 The new, cleaned up version, the beta of TensorFlow 2.0, has just been released with its APIs now frozen. Personally motivated and eagerly curious to "read the sources", the following blogs document our process of learning and adjusting to TensorFlow 2.0.
 
-*Note: the runable examples currently depend on the "nightly" builds of TensorFlow 2.0 (downloadable with `!pip install -U tf-nightly-2.0-preview` from running notebooks).*
+*Note: the runable examples currently depend on the "nightly" builds of TensorFlow 2.0 (downloadable with `!pip install -U tf-nightly-2.0-preview` from running Jupyter notebooks).*
 
 ## [Trackable: A Pervasive Persistence Infrastructure](./trackable.html)
 
-* Auto tracking modeling variables
+* Auto-tracking natively referenced modeling variables
 * "Pythonic" aggregating and encapsulating in models
-* New `modules` and Keras `layers` for seamless persistence
-* "A picture is worth a thousand words" graphs with TensorBoard
+* Mixing new `modules` and Keras `layers` for seamless persistence
+* "A picture is worth a thousand words": graphs with TensorBoard
 * [more detail...](./trackable.html), the [graph...](./trackable.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/trackable.ipynb)
 
 ## [Many Smaller GPUs: Elegant In-Model Distribution](./gpus.html)
 
-* Physical GPUs to custom configurable virtual GPUs
+* Physical GPUs to custom configurable, virtual GPUs
 * Stacks of Keras layers laid over parametric sequences of GPUs
-* Instant, predictable massive GPU computations/interactions
+* Instant, predictable and massive GPU computations/interactions
 * Clean, clear model "pipelines" visualized and verified 
 * [more detail...](./gpus.html), the [graph...](./gpus.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/gpus.ipynb)
 
@@ -36,7 +36,7 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 * Performance and throughput is increased through file sharding 
 * [more detail...](./dataset.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/dataset.ipynb)
 
-## [Unified Adaptable Masking That Follows](./masking.html)
+## [Unified Adaptable Masking That Follows The Flow](./masking.html)
 
 * Padding uneven input data can pollute our calculations
 * It often seems best to cleanly "mask-out" padded values
@@ -44,7 +44,7 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 * Without cluttering the flow, masking becomes transparent
 * [more detail...](./masking.html), the [graph...](./masking.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
 
-## [Ragged Tensors For Document Processing](./ragged.html)
+## [Ragged Tensors Especially For Document Processing](./ragged.html)
 
 * New ragged tensors expand existing composite tensors
 * They can potentially solve data masking more efficiently
@@ -54,8 +54,8 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 
 ## [Unnecessary Complexity Through Layer Proliferation](./layers.html)
 
-* With complex component requirements, Keras layers can seem "heavy" 
-* A first take on the `Transformer` model mixes `layers` and `modules`
+* With complex requirements, Keras layers can seem "heavy" 
+* A first take on `Transformer` mixes `layers` and `modules`
 * Validated `functional` layers interconnect modules with bare ops
 * We continue to expand on this "blended approach" of modeling
 * [more detail...](./layers.html), the [graph...](./layers.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
@@ -81,7 +81,7 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 * Evaluating progress and results have always been too complicated
 * Simple `loss` and aggregating `metric` APIs elegantly solve it now
 * Customizing the "metering" protocol through subclassing is shown
-* Blended metering strategies are now possible as well
+* Blended, mixed metering strategies are now possible as well
 * [more detail...](./metrics.html), the [graph...](./metrics.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/metrics.ipynb)
 
 ## [Keras Callbacks: Extending Their Scope And Usage](./callbacks.html)

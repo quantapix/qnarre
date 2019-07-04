@@ -29,7 +29,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Trends, Costs, Profits While Identifying Motives](./tbd.html)
+## [Trends, Costs And Profits While Identifying Motives](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)

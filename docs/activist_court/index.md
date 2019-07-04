@@ -17,7 +17,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [The Lucrative Profits Of "High-Conflict" Divorces](./tbd.html)
+## [The Predatory Profits Of "High-Conflict" Divorces](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
@@ -27,7 +27,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [From Fabricated Conflicts To Ideological Activism](./tbd.html)
+## [From Purposefully Fabricated Conflicts To Ideological Activism](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
@@ -37,7 +37,7 @@ layout: default
 * In progress...
 * [more detail...](./tbd.html)
 
-## [Learn, Adapt And Protect From "Elite" Predators](./tbd.html)
+## [Learn, Adapt And Effectively Protect From "Elite" Predators](./tbd.html)
 
 * In progress...
 * [more detail...](./tbd.html)
