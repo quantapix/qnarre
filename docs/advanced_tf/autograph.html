@@ -13118,7 +13118,31 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Autograph:-Intuitive-Data-Driven-Control-At-Last">Autograph: Intuitive Data-Driven Control At Last<a class="anchor-link" href="#Autograph:-Intuitive-Data-Driven-Control-At-Last">&#182;</a></h1><ul>
 <li>TODO: expand bullets</li>
-<li>objective: <a href="./autograph.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>continuing our blogs, we shift our focus to yet another new feature in TF, the <code>autograph</code> functionality</li>
+<li>previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control</li>
+<li>by writing on-demand Python code now, <code>autograph</code> transparently patches all the necessary graph ops together and packages the result into a "python op"</li>
+<li>while the generated new ops are potentially a lot faster than the code before them, in this blog we are more interested in the new expressive powers of the <code>autograph</code> package</li>
+<li>specifically, we look at what becomes possible when decorating our functions with the new <code>tf.function</code> decorator, as doing this would by default invoke the <code>autograph</code> functionality</li>
+<li>our objective is to ultimately arrive to a model of the generated new pops as represented by the <a href="./autograph.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>just as before, we need to prep our environment in order to run any meaningful code</li>
 </ul>
 
 </div>
@@ -13146,7 +13170,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>next, we borrow the <code>pos_timing</code> function from our previous blogs, and override it to return a constant "timing signal" tensor, depending on the <code>width</code> and <code>depth</code> arguments</li>
+<li>as our first task is to implement a "python branch" in our new <code>Embed</code> op, we will be using two different "timing" tensors, one for the <code>encode</code> input and the other for the <code>decode</code> input</li>
+</ul>
 
 </div>
 </div>
@@ -13170,7 +13197,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>the <code>Embed</code> layer will thus create the two constant tensors</li>
+<li>our model will call the shared <code>Embed</code> instance for both of our stacks</li>
+<li>as we have decorated its <code>call</code> method with <code>tf.function</code>, we can use familiar and intuitive Python comparisons to branch on the value of tensors on-the-fly, during graph execution</li>
+<li>clearly, our two stacks, while having the same <code>depth</code>s, have different <code>width</code>s</li>
+<li>also the constant "timing" tensors have different <code>width</code>s as well</li>
+<li>yet we are still able to pick-and-match the otherwise incompatible tensors and successfully add them together, all dependent on the <code>width</code> of our "current" input tensor</li>
+</ul>
 
 </div>
 </div>
@@ -13212,7 +13246,15 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>next we demonstrate how on-the-fly "python ops" can also provide insights into inner processes and data flows</li>
+<li>we borrow our <code>Frames</code> layer from the previous blog and override its <code>call</code> method with a <code>tf.function</code> decorated new version that, besides calling on <code>super().call()</code>, also calls a new <code>print_row</code> Python function on every row in our batch</li>
+<li>yes, we are calling a Python function and printing its results in a TF graph op while never leaving our intuitive and familiar Python environment! Isn't that great?</li>
+<li>the <code>print_row</code> function itself is simple, it iterates through the tokens of the "row", it does a lookup of each in our <code>vocab</code> "table" for the actual character representing the token and then it joins all the characters and prints out the resulting string</li>
+<li>and, if we scroll down to the listing of our training session, we can actually see the "sliding context" of our samples as they fly by during our training</li>
+<li>needless to say, the listing confirms that our <code>Frames</code> layer does a good job concatenating the varied length sample inputs, the target results, as well as the necessary separators</li>
+<li>as a result, a simple Python function usable during graph ops, provides us invaluable insights deep into our inner processes and data flow</li>
+</ul>
 
 </div>
 </div>
@@ -13249,7 +13291,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our next new layer is the <code>Probe</code> layer, showcasing how control is intuitive at last from data-driven branching to searching</li>
+<li>it is a temporary replacement for our previous <code>Debed</code> layer</li>
+<li>the <code>Probe</code> layer implements an approximation of "Beam Search", see <a href="https://arxiv.org/pdf/1702.01806.pdf">paper</a></li>
+<li>it effectively iterates through the hidden dimensions of the output, and based on parallel <code>topk</code> searches, comparing various choices for "debeding" the output, it settles on an "optimal" debedding and thus final token output for our <code>decoder</code></li>
+<li>the point of the <code>Probe</code> layer in the blog is to showcase data-driven iterations and parallel searches all implemented as "Python ops"</li>
+<li>to be continued...</li>
+</ul>
 
 </div>
 </div>
@@ -13283,7 +13332,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our model needs to be updated as well to use the newly defined components</li>
+<li>other than that, we are ready to start training</li>
+</ul>
 
 </div>
 </div>
@@ -13317,7 +13369,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>by firing up our training session, we can confirm the model's layers and connections</li>
+<li>the listing of a short session follows</li>
+<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
+</ul>
 
 </div>
 </div>
@@ -13498,7 +13554,10 @@ None
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize</li>
+<li>if you haven't run the code below, an already generated graph is <a href="./autograph.pdf">here</a></li>
+</ul>
 
 </div>
 </div>
@@ -13560,23 +13619,12 @@ None
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>this concludes our blog, please see how to use customize the losses and metrics driving the training by clicking on the next blog</li>
+</ul>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
     </div>
   </div>
