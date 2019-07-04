@@ -4,7 +4,7 @@ layout: default
 
 Motivation behind the **qnarre** effort is our unconditional love for our children.
 
-**Quantapix**, the software startup, was born as a precursor to the vicious, cruel and simply unimaginable, yet intuitively well understood power struggle between the predator "elite" and the rest of us.
+**Quantapix**, the software startup, was born as a precursor to the vicious, cruel and simply unimaginable, yet intuitively well understood power struggle between the "elite" and the rest of us.
 
 [Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some "trusted" professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for perhaps millions of dollars.
 
@@ -12,7 +12,7 @@ We believe, and with the following series of blogs we attempt to publicly prove,
 
 Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
-Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American-born children** from greedy professional torturing and forceful, institutionalized separation and isolation. Family Court-mandated, and even directly ordered, parental alienation, while paying astronomical profits to the "trusted elite", is nothing but ruthless and cruel child abuse.
+Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American-born children** from greedy professional torturing and forceful, institutionalized separation and isolation. Family Court-mandated, and even directly ordered, parental alienation, while paying astronomical profits to the "trusted" elite, is nothing but ruthless and cruel child abuse.
 
 Seeking out **contradictions** and **inconsistencies** in "vast oceans" of deceitful data with ever adapting, fluidly learning, yet still reproducible software mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. It can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
 

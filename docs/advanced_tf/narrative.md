@@ -733,7 +733,69 @@
 # Autograph: Intuitive Data-Driven Control At Last
 
 - TODO: expand bullets
-- objective: [graph](./autograph.pdf)
+
+- continuing our blogs, we shift our focus to yet another new feature in TF, the `autograph` functionality
+- previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control
+- by writing on-demand Python code now, `autograph` transparently patches all the necessary graph ops together and packages the result into a "python op"
+- while the generated new ops are potentially a lot faster than the code before them, in this blog we are more interested in the new expressive powers of the `autograph` package
+- specifically, we look at what becomes possible when decorating our functions with the new `tf.function` decorator, as doing this would by default invoke the `autograph` functionality
+- our objective is to ultimately arrive to a model of the generated new pops as represented by the [graph](./autograph.pdf)
+
+- just as before, we need to prep our environment in order to run any meaningful code
+
+- .
+
+- next, we borrow the `pos_timing` function from our previous blogs, and override it to return a constant "timing signal" tensor, depending on the `width` and `depth` arguments
+- as our first task is to implement a "python branch" in our new `Embed` op, we will be using two different "timing" tensors, one for the `encode` input and the other for the `decode` input
+
+- .
+
+- the `Embed` layer will thus create the two constant tensors
+- our model will call the shared `Embed` instance for both of our stacks
+- as we have decorated its `call` method with `tf.function`, we can use familiar and intuitive Python comparisons to branch on the value of tensors on-the-fly, during graph execution
+- clearly, our two stacks, while having the same `depth`s, have different `width`s
+- also the constant "timing" tensors have different `width`s as well
+- yet we are still able to pick-and-match the otherwise incompatible tensors and successfully add them together, all dependent on the `width` of our "current" input tensor
+
+- .
+
+- next we demonstrate how on-the-fly "python ops" can also provide insights into inner processes and data flows
+- we borrow our `Frames` layer from the previous blog and override its `call` method with a `tf.function` decorated new version that, besides calling on `super().call()`, also calls a new `print_row` Python function on every row in our batch
+- yes, we are calling a Python function and printing its results in a TF graph op while never leaving our intuitive and familiar Python environment! Isn't that great?
+- the `print_row` function itself is simple, it iterates through the tokens of the "row", it does a lookup of each in our `vocab` "table" for the actual character representing the token and then it joins all the characters and prints out the resulting string
+- and, if we scroll down to the listing of our training session, we can actually see the "sliding context" of our samples as they fly by during our training
+- needless to say, the listing confirms that our `Frames` layer does a good job concatenating the varied length sample inputs, the target results, as well as the necessary separators
+- as a result, a simple Python function usable during graph ops, provides us invaluable insights deep into our inner processes and data flow
+
+- .
+
+- our next new layer is the `Probe` layer, showcasing how control is intuitive at last from data-driven branching to searching
+- it is a temporary replacement for our previous `Debed` layer
+- the `Probe` layer implements an approximation of "Beam Search", see [paper](https://arxiv.org/pdf/1702.01806.pdf)
+- it effectively iterates through the hidden dimensions of the output, and based on parallel `topk` searches, comparing various choices for "debeding" the output, it settles on an "optimal" debedding and thus final token output for our `decoder`
+- the point of the `Probe` layer in the blog is to showcase data-driven iterations and parallel searches all implemented as "Python ops"
+- to be continued...
+
+- .
+
+- our model needs to be updated as well to use the newly defined components
+- other than that, we are ready to start training
+
+- .
+
+- by firing up our training session, we can confirm the model's layers and connections
+- the listing of a short session follows
+- we can easily adjust the parameters to tailor the length of the sessions to our objectives
+
+- .
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
+- if you haven't run the code below, an already generated graph is [here](./autograph.pdf)
+
+- .
+
+- this concludes our blog, please see how to use customize the losses and metrics driving the training by clicking on the next blog
+
 
 # Modular And Reusable Metrics All The Way
 
