@@ -13118,7 +13118,29 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Modular-And-Reusable-Metrics-All-The-Way">Modular And Reusable Metrics All The Way<a class="anchor-link" href="#Modular-And-Reusable-Metrics-All-The-Way">&#182;</a></h1><ul>
 <li>TODO: expand bullets</li>
-<li>objective: <a href="./metrics.pdf">graph</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>as we have run various training sessions, and we have approached modeling itself from various angles, it is time for us to consider the piece of TF functionality that ties it all together</li>
+<li>ultimately, the end goal of any modeling, and of the actual training with our models, is to arrive to simply quantifiable "measures", the <code>losses</code>, that we can then use in our repeated iterations of tuning the weights of the model</li>
+<li>a <code>loss</code> is defined as some sort of difference, or "distance", between the results of our model's calculations and the given targets</li>
+<li>specifically, we have been using <code>crossentropy</code>, (see a fun explanation <a href="https://colah.github.io/posts/2015-09-Visual-Information/">here</a>) as that "distance"</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>just as before, we need to prep our environment in order to run any meaningful code</li>
 </ul>
 
 </div>
@@ -13145,7 +13167,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>in order to be able to experiment with multiple <code>loss</code> and <code>metrics</code> settings, we duplicate our <code>tgt</code> tensors in our newly defined <code>adapter</code> function for our <code>dataset</code></li>
+</ul>
 
 </div>
 </div>
@@ -13179,7 +13203,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we also adjust our <code>ToRagged</code> layer</li>
+<li>instead of leaving the <code>tf.function</code> decorator generic, which is allowing multiple version of the op to be generated based on the actual shapes of the input tensors</li>
+<li>we restrict the generated op to only one version: the one taking any size 1D triple input pairs</li>
+</ul>
 
 </div>
 </div>
@@ -13211,7 +13239,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>and now we are ready to tackle replacement <code>loss</code> and <code>metric</code> classes</li>
+<li>the Keras <code>losses.Loss</code> base class, that all the various other "losses" are derived from, has a <code>call</code> method with the above mentioned two arguments: the target tensor and the model's output tensor</li>
+<li>our replacement implementation of the method skips the various checks and validations from the canned version and simply flattens the two known tensors followed by calling the efficient graph op implementation of crossentropy</li>
+</ul>
 
 </div>
 </div>
@@ -13246,7 +13278,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our <code>Metric</code> class is even simpler, it adds the aggregating <code>total</code> and <code>count</code> variables and then delegates to calling our <code>xent</code> function (the same that our matching <code>Loss</code> uses)</li>
+</ul>
 
 </div>
 </div>
@@ -13279,7 +13313,13 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>our model needs to be updated to use the newly defined components, including our new <code>Loss</code> and <code>Metric</code></li>
+<li>as we include both the <code>Debed</code> and the <code>Probe</code> layers from our previous blogs, and they show up as a pair of output tensors respectively identifiable by their names, we can assign different losses and metrics to each</li>
+<li>we chose to use the same <code>loss</code> and <code>metric</code> for both</li>
+<li>Keras obviously will sum both losses and metrics to calculate the end result</li>
+<li>nevertheless, since we have a pair of outputs, we also had to double the targets that the <code>loss</code> and <code>metric</code> would use</li>
+</ul>
 
 </div>
 </div>
@@ -13318,7 +13358,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>we also need to update our parameters with instances of our specific <code>Loss</code> and <code>Metric</code> instances we want Keras to call on</li>
+</ul>
 
 </div>
 </div>
@@ -13343,7 +13385,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>and now we are ready to start our training session</li>
+<li>we can confirm the model's layers and connections</li>
+<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
+</ul>
 
 </div>
 </div>
@@ -13474,7 +13520,10 @@ Apply a constraint manually following the optimizer update step.
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize</li>
+<li>if you haven't run the code below, an already generated graph is <a href="./metrics.pdf">here</a></li>
+</ul>
 
 </div>
 </div>
@@ -13536,23 +13585,12 @@ Apply a constraint manually following the optimizer update step.
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>-</p>
+<ul>
+<li>this concludes our blog, please see how to use Keras callbacks by clicking on the next blog</li>
+</ul>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
     </div>
   </div>

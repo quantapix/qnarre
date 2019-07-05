@@ -860,4 +860,27 @@
 # Keras Callbacks: Extending Their Scope And Usage
 
 - TODO: expand bullets
-- objective: [graph](./callbacks.pdf)
+- this blog, as a transitioning piece between our to groups of blogs, is still work in progress
+- it concerns the various `callbacks` that we can register during training sessions
+- as automating our sessions is an important objective of ours, specifically to enable us to finetune our training `hyper-parameters`, we will be adding to this blog as the rest of the next group's blogs materialize
+
+- just as before, we need to prep our environment in order to run any meaningful code
+
+- .
+
+- and now we are ready to define our model
+- as this blog focuses on the actual training process, our model can be reused directly from a previous blog
+
+- .
+
+- once the model is defined, we now adjust our main calling function
+- at this point we define our `callbacks` that should be kept "in loop" during our training session
+- to be expanded...
+
+- .
+
+- we also need to update our parameters as they relate to our "callback objectives"
+- to be expanded...
+
+- .
+
