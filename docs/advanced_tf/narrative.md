@@ -736,10 +736,10 @@
 
 - continuing our blogs, we shift our focus to yet another new feature in TF, the `autograph` functionality
 - previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control
-- by writing on-demand Python code now, `autograph` transparently patches all the necessary graph ops together and packages the result into a "python op"
+- by writing on-demand Python code now, `autograph` transparently patches  all the necessary graph ops together and packages the result into a "python op"
 - while the generated new ops are potentially a lot faster than the code before them, in this blog we are more interested in the new expressive powers of the `autograph` package
 - specifically, we look at what becomes possible when decorating our functions with the new `tf.function` decorator, as doing this would by default invoke the `autograph` functionality
-- our objective is to ultimately arrive to a model of the generated new pops as represented by the [graph](./autograph.pdf)
+- our objective is to ultimately arrive to a model of the generated new ops as represented by the [graph](./autograph.pdf)
 
 - just as before, we need to prep our environment in order to run any meaningful code
 
@@ -800,7 +800,62 @@
 # Modular And Reusable Metrics All The Way
 
 - TODO: expand bullets
-- objective: [graph](./metrics.pdf)
+
+- as we have run various training sessions, and we have approached modeling itself from various angles, it is time for us to consider the piece of TF functionality that ties it all together
+- ultimately, the end goal of any modeling, and of the actual training with our models, is to arrive to simply quantifiable "measures", the `losses`, that we can then use in our repeated iterations of tuning the weights of the model
+- a `loss` is defined as some sort of difference, or "distance", between the results of our model's calculations and the given targets
+- specifically, we have been using `crossentropy`, (see a fun explanation [here](https://colah.github.io/posts/2015-09-Visual-Information/)) as that "distance"
+
+
+- just as before, we need to prep our environment in order to run any meaningful code
+
+- .
+
+- in order to be able to experiment with multiple `loss` and `metrics` settings, we duplicate our `tgt` tensors in our newly defined `adapter` function for our `dataset`
+
+- .
+
+- we also adjust our `ToRagged` layer
+- instead of leaving the `tf.function` decorator generic, which is allowing multiple version of the op to be generated based on the actual shapes of the input tensors
+- we restrict the generated op to only one version: the one taking any size 1D triple input pairs
+
+- .
+
+- and now we are ready to tackle replacement `loss` and `metric` classes
+- the Keras `losses.Loss` base class, that all the various other "losses" are derived from, has a `call` method with the above mentioned two arguments: the target tensor and the model's output tensor
+- our replacement implementation of the method skips the various checks and validations from the canned version and simply flattens the two known tensors followed by calling the efficient graph op implementation of crossentropy
+
+- .
+
+- our `Metric` class is even simpler, it adds the aggregating `total` and `count` variables and then delegates to calling our `xent` function (the same that our matching `Loss` uses)
+
+- .
+
+- our model needs to be updated to use the newly defined components, including our new `Loss` and `Metric`
+- as we include both the `Debed` and the `Probe` layers from our previous blogs, and they show up as a pair of output tensors respectively identifiable by their names, we can assign different losses and metrics to each
+- we chose to use the same `loss` and `metric` for both
+- Keras obviously will sum both losses and metrics to calculate the end result
+- nevertheless, since we have a pair of outputs, we also had to double the targets that the `loss` and `metric` would use
+
+- .
+
+- we also need to update our parameters with instances of our specific `Loss` and `Metric` instances we want Keras to call on
+
+- .
+
+- and now we are ready to start our training session
+- we can confirm the model's layers and connections
+- we can easily adjust the parameters to tailor the length of the sessions to our objectives
+
+- .
+
+- with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
+- if you haven't run the code below, an already generated graph is [here](./metrics.pdf)
+
+- .
+
+- this concludes our blog, please see how to use Keras callbacks by clicking on the next blog
+
 
 # Keras Callbacks: Extending Their Scope And Usage
 
