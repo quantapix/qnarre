@@ -15,9 +15,18 @@
 
 from datetime import datetime
 
+import numpy as np
 import tensorflow as tf
 
 ks = tf.keras
+
+
+def gelu(x):
+    # https://arxiv.org/pdf/1606.08415.pdf
+    c = np.sqrt(2 / np.pi)
+    c *= x + 0.044715 * tf.pow(x, 3)
+    c = 0.5 * (1.0 + tf.tanh(c))
+    return x * c
 
 
 def cross_entropy(tgt, y):

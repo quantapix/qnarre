@@ -39,14 +39,20 @@ def model_for(ps):
 
 
 params = dict(
+    dim_attn=None,
+    dim_attn_k=None,
+    dim_attn_v=None,
     dim_batch=5,
     dim_dense=150,
     dim_hidden=6,
     dim_stacks=2,
     dim_vocab=len(qd.vocab),
+    drop_attn=None,
+    drop_hidden=0.1,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
     num_epochs=5,
+    num_heads=None,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
     print_frames=False,

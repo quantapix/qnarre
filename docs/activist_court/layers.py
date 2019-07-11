@@ -28,6 +28,15 @@ class Layer(ks.layers.Layer):
         super().__init__(**kw)
         self.ps = ps
 
+    def pre_proc(self, x):
+        return x
+
+    def drop(self, x, rate):
+        return x
+
+    def post_proc(self, x):
+        return x[1]
+
 
 class ToRagged(ks.layers.Layer):
     @tf.function(input_signature=[[
