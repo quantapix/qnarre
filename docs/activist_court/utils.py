@@ -29,6 +29,12 @@ def gelu(x):
     return x * c
 
 
+def activation(x):
+    if x == 'gelu':
+        return gelu
+    return ks.activations.get(x)
+
+
 def cross_entropy(tgt, y):
     tgt = tf.reshape(tf.cast(tgt, tf.int64), [-1])
     s = tf.shape(y)

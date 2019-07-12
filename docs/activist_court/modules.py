@@ -15,6 +15,8 @@
 
 import tensorflow as tf
 
+import utils as qu
+
 ks = tf.keras
 
 
@@ -56,19 +58,19 @@ class Attention(tf.Module):
         self.layer = layer
         ps = layer.ps
         h = ps.dim_hidden
+        k = ps.dim_attn or h
+        self.scale = 1 / (k**0.5)
         self.num_heads = n = ps.num_heads or 1
         assert h % n == 0
-        k = ps.dim_attn_k or ps.dim_attn or h
-        assert k % n == 0
-        self.scale = 1 / (k**0.5)
-        v = ps.dim_attn_v or k
-        assert v % n == 0
+        v = h // n
         self.drop_rate = ps.drop_attn or ps.drop_hidden
         with self.name_scope:
             self.q = layer.add_weight('q', shape=(h, n * k))
+            self.activate_q = qu.activation(ps.activ_attn_q)
             self.k = layer.add_weight('k', shape=(h, n * k))
+            self.activate_k = qu.activation(ps.activ_attn_k)
             self.v = layer.add_weight('v', shape=(h, n * v))
-            self.y = layer.add_weight('y', shape=(n * v, h))
+            self.activate_v = qu.activation(ps.activ_attn_v)
 
     @tf.function
     def __call__(self, x):
@@ -76,18 +78,18 @@ class Attention(tf.Module):
         off = tf.math.reduce_max(lens)
         x = self.layer.pre_proc(inp[:, -off:, :])
         q = tf.einsum('bxi,ij->bxj', x, self.q)
-        q = self.split_heads(q)
+        q = self.split_heads(self.activate_q(q))
         k = tf.einsum('bci,ij->bcj', ctx, self.k)
-        k = self.split_heads(k)
+        k = self.split_heads(self.activate_k(k))
         v = tf.einsum('bci,ij->bcj', ctx, self.v)
-        v = self.split_heads(v)
+        v = self.split_heads(self.activate_v(v))
         y = tf.einsum('bnxi,bnci->bnxc', q, k)
+        y *= self.scale
         # use lens
-        y = tf.nn.softmax(y * self.scale)
-        y = self.layer.drop(y, self.drop_rate)
+        y = tf.nn.softmax(y)
+        # y = self.layer.drop(y, self.drop_rate)
         y = tf.einsum('bnxc,bnci->bnxi', y, v)
         y = self.join_heads(y)
-        y = tf.einsum('bxi,ij->bxj', y, self.y)
         y = self.layer.post_proc([x, y])
         y = tf.concat([inp[:, :-off, :], y], axis=1)
         return [y, lens]
@@ -132,21 +134,22 @@ class Conclusion(tf.Module):
 
 class Dense(tf.Module):
     bias = None
-    activation = None
+    activate = None
 
-    def __init__(self, layer, name, shape, activation=None, bias=True):
+    def __init__(self, layer, name, shape, bias=True, activation=None):
         super().__init__(name)
         with self.name_scope:
             self.kern = layer.add_weight('kern', shape=shape)
             if bias:
                 self.bias = layer.add_weight('bias', shape=shape[1:])
-            self.activation = ks.activations.get(activation)
+            if activation:
+                self.activate = qu.activation(activation)
 
     @tf.function
     def __call__(self, x):
         y = tf.einsum('bi,ij->bj', x, self.kern)
         if self.bias is not None:
             y = tf.nn.bias_add(y, self.bias)
-        if self.activation:
-            y = self.activation(y)
+        if self.activate:
+            y = self.activate(y)
         return y

@@ -20,13 +20,22 @@ import data as qd
 import modules as qm
 
 ks = tf.keras
+ki = ks.initializers
 
 
 class Layer(ks.layers.Layer):
+    initer = None
+
     def __init__(self, ps, **kw):
         kw.setdefault('dtype', tf.float32)
         super().__init__(**kw)
         self.ps = ps
+        if ps.initer_stddev:
+            self.initer = ki.TruncatedNormal(stddev=ps.initer_stddev)
+
+    def add_weight(self, name, shape, **kw):
+        kw.setdefault('initializer', self.initer)
+        return super().add_weight(name=name, shape=shape, **kw)
 
     def pre_proc(self, x):
         return x
