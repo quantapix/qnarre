@@ -24,8 +24,8 @@ class Encoder(tf.Module):
     def __init__(self, layer, name):
         super().__init__(name)
         with self.name_scope:
-            self.reflect = Attention(layer, 'refl')
-            self.conclude = Conclusion(layer, 'conc')
+            self.reflect = Attention(layer, 'reflect')
+            self.conclude = Conclusion(layer, 'conclude')
 
     @tf.function
     def __call__(self, x):
@@ -39,9 +39,9 @@ class Decoder(tf.Module):
     def __init__(self, layer, name):
         super().__init__(name)
         with self.name_scope:
-            self.reflect = Attention(layer, 'refl')
-            self.consider = Attention(layer, 'cnsd')
-            self.conclude = Conclusion(layer, 'conc')
+            self.reflect = Attention(layer, 'reflect')
+            self.consider = Attention(layer, 'consider')
+            self.conclude = Conclusion(layer, 'conclude')
 
     @tf.function
     def __call__(self, x):
@@ -53,36 +53,36 @@ class Decoder(tf.Module):
 
 
 class Attention(tf.Module):
+    out = None
+
     def __init__(self, layer, name):
         super().__init__(name)
         self.layer = layer
         ps = layer.ps
         h = ps.dim_hidden
-        k = ps.dim_attn or h
+        k = ps.dim_attn_qk or ps.dim_attn or h
         self.scale = 1 / (k**0.5)
         self.num_heads = n = ps.num_heads or 1
-        assert h % n == 0
-        v = h // n
+        v = ps.dim_attn_v
+        if not v:
+            assert h % n == 0
+            v = h // n
         self.drop_rate = ps.drop_attn or ps.drop_hidden
         with self.name_scope:
-            self.q = layer.add_weight('q', shape=(h, n * k))
-            self.activate_q = qu.activation(ps.activ_attn_q)
-            self.k = layer.add_weight('k', shape=(h, n * k))
-            self.activate_k = qu.activation(ps.activ_attn_k)
-            self.v = layer.add_weight('v', shape=(h, n * v))
-            self.activate_v = qu.activation(ps.activ_attn_v)
+            self.q = Dense(layer, 'q', [h, n * k])
+            self.k = Dense(layer, 'k', [h, n * k])
+            self.v = Dense(layer, 'v', [h, n * v])
+            if n * v != h:
+                self.out = Dense(layer, 'out', [n * v, h])
 
     @tf.function
     def __call__(self, x):
         inp, lens, ctx = x
         off = tf.math.reduce_max(lens)
-        x = self.layer.pre_proc(inp[:, -off:, :])
-        q = tf.einsum('bxi,ij->bxj', x, self.q)
-        q = self.split_heads(self.activate_q(q))
-        k = tf.einsum('bci,ij->bcj', ctx, self.k)
-        k = self.split_heads(self.activate_k(k))
-        v = tf.einsum('bci,ij->bcj', ctx, self.v)
-        v = self.split_heads(self.activate_v(v))
+        x = inp[:, -off:, :]
+        q = self.split_heads(self.q(x))
+        k = self.split_heads(self.k(ctx))
+        v = self.split_heads(self.v(ctx))
         y = tf.einsum('bnxi,bnci->bnxc', q, k)
         y *= self.scale
         # use lens
@@ -90,7 +90,10 @@ class Attention(tf.Module):
         # y = self.layer.drop(y, self.drop_rate)
         y = tf.einsum('bnxc,bnci->bnxi', y, v)
         y = self.join_heads(y)
-        y = self.layer.post_proc([x, y])
+        if self.out is not None:
+            y = self.out(y)
+        y = self.layer.drop(y, self.drop_rate)
+        y = self.layer.norm(x + y)
         y = tf.concat([inp[:, :-off, :], y], axis=1)
         return [y, lens]
 
@@ -113,22 +116,19 @@ class Conclusion(tf.Module):
         super().__init__(name)
         self.layer = layer
         ps = layer.ps
-        w = layer.width * ps.dim_hidden
+        self.drop_rate = ps.drop_concl or ps.drop_hidden
+        a, c, h = ps.activ_concl, ps.dim_concl, ps.dim_hidden
         with self.name_scope:
-            s = [w, ps.dim_dense]
-            self.inflate = Dense(layer, 'infl', s, activation='relu')
-            s = [ps.dim_dense, w]
-            self.deflate = Dense(layer, 'defl', s, bias=False)
+            self.inflate = Dense(layer, 'inflate', [h, c], activation=a)
+            self.deflate = Dense(layer, 'deflate', [c, h])
 
     @tf.function
     def __call__(self, x):
-        y, lens = x
-        w = self.layer.width
-        d = self.layer.ps.dim_hidden
-        y = tf.reshape(y, [-1, w * d])
-        y = self.inflate(y)
+        x, lens = x
+        y = self.inflate(x)
         y = self.deflate(y)
-        y = tf.reshape(y, [-1, w, d])
+        y = self.layer.drop(y, self.drop_rate)
+        y = self.layer.norm(x + y)
         return [y, lens]
 
 
@@ -139,7 +139,7 @@ class Dense(tf.Module):
     def __init__(self, layer, name, shape, bias=True, activation=None):
         super().__init__(name)
         with self.name_scope:
-            self.kern = layer.add_weight('kern', shape=shape)
+            self.kernel = layer.add_weight('kernel', shape=shape)
             if bias:
                 self.bias = layer.add_weight('bias', shape=shape[1:])
             if activation:
@@ -147,7 +147,7 @@ class Dense(tf.Module):
 
     @tf.function
     def __call__(self, x):
-        y = tf.einsum('bi,ij->bj', x, self.kern)
+        y = tf.einsum('bni,ij->bnj', x, self.kernel)
         if self.bias is not None:
             y = tf.nn.bias_add(y, self.bias)
         if self.activate:

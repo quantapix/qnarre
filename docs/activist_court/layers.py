@@ -20,16 +20,19 @@ import data as qd
 import modules as qm
 
 ks = tf.keras
+kl = ks.layers
 ki = ks.initializers
 
 
-class Layer(ks.layers.Layer):
+class Layer(kl.Layer):
     initer = None
 
     def __init__(self, ps, **kw):
         kw.setdefault('dtype', tf.float32)
         super().__init__(**kw)
         self.ps = ps
+        self.dropouts = {}
+        self.norm = kl.LayerNormalization()
         if ps.initer_stddev:
             self.initer = ki.TruncatedNormal(stddev=ps.initer_stddev)
 
@@ -37,17 +40,12 @@ class Layer(ks.layers.Layer):
         kw.setdefault('initializer', self.initer)
         return super().add_weight(name=name, shape=shape, **kw)
 
-    def pre_proc(self, x):
-        return x
-
     def drop(self, x, rate):
-        return x
-
-    def post_proc(self, x):
-        return x[1]
+        d = self.dropouts.setdefault(rate, kl.Dropout(rate))
+        return d(x)
 
 
-class ToRagged(ks.layers.Layer):
+class ToRagged(kl.Layer):
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int64)
@@ -119,7 +117,7 @@ class Embed(Layer):
     def __init__(self, ps):
         super().__init__(ps)
         s = (ps.dim_vocab, ps.dim_hidden)
-        self.emb = self.add_weight('emb', shape=s)
+        self.table = self.add_weight('table', shape=s)
         self.enc_p = self.pos_timing(ps.width_enc, ps.dim_hidden)
         self.dec_p = self.pos_timing(ps.width_dec, ps.dim_hidden)
 
@@ -129,7 +127,7 @@ class Embed(Layer):
     ]])
     def call(self, x):
         y, lens = x
-        y = tf.nn.embedding_lookup(self.emb, y)
+        y = tf.nn.embedding_lookup(self.table, y)
         s = tf.shape(y)
         if s[-2] == self.ps.width_enc:
             y += tf.broadcast_to(self.enc_p, s)
@@ -146,7 +144,7 @@ class Encode(Layer):
         super().__init__(ps)
         self.width = ps.width_enc
         n = ps.dim_stacks
-        self.encs = [qm.Encoder(self, f'enc_{i}') for i in range(n)]
+        self.encs = [qm.Encoder(self, f'encode_{i}') for i in range(n)]
 
     @tf.function
     def call(self, x):
@@ -161,7 +159,7 @@ class Decode(Layer):
         super().__init__(ps)
         self.width = ps.width_dec
         n = ps.dim_stacks
-        self.decs = [qm.Decoder(self, f'dec_{i}') for i in range(n)]
+        self.decs = [qm.Decoder(self, f'decode_{i}') for i in range(n)]
 
     @tf.function
     def call(self, x):
@@ -174,15 +172,12 @@ class Decode(Layer):
 class Debed(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.dbd = qm.Dense(self, 'dbd', [ps.dim_hidden, ps.dim_vocab])
+        self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
     @tf.function
     def call(self, x):
         y, lens = x
-        s = tf.shape(y)
-        y = tf.reshape(y, [s[0] * s[1], -1])
-        y = self.dbd(y)
-        y = tf.reshape(y, [s[0], s[1], -1])
+        y = self.inflate(y)
         y = y[:, :tf.math.reduce_max(lens), :]
         return y
 
@@ -190,14 +185,11 @@ class Debed(Layer):
 class Probe(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.prb = qm.Dense(self, 'prb', [ps.dim_hidden, ps.dim_vocab])
+        self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
     @tf.function
     def call(self, x):
         y, lens = x
-        s = tf.shape(y)
-        y = tf.reshape(y, [s[0] * s[1], -1])
-        y = self.prb(y)
-        y = tf.reshape(y, [s[0], s[1], -1])
+        y = self.inflate(y)
         y = y[:, :tf.math.reduce_max(lens), :]
         return y
