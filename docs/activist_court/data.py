@@ -23,8 +23,8 @@ import utils as qu
 td = tf.data
 tt = tf.train
 
-metas = (' ', 'defs', 'ops', 'res')
 vocab = (' ', )
+metas = vocab + ('defs', 'ops', 'res')
 separs = (':', ';', '|')
 vocab += separs
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
@@ -62,7 +62,7 @@ def sampler(ps):
 @tf.function
 def splitter(x):
     fs = tf.strings.split(x, ':')
-    return {m: fs[i] for i, m in enumerate(metas)}
+    return {m: fs[i] for i, m in enumerate(metas[1:])}
 
 
 @tf.function
@@ -95,7 +95,7 @@ def recorder(samples):
     for s in samples:
         features = tt.Features(feature={
             m: tt.Feature(int64_list=tt.Int64List(value=s[m]))
-            for m in metas
+            for m in metas[1:]
         })
         yield tt.Example(features=features).SerializeToString()
 
@@ -113,7 +113,7 @@ def load(ps, files=None, count=None):
     ds = td.TFRecordDataset(files or list(sharder(ps)))
     if count:
         ds = ds.take(count)
-    features = {m: tf.io.VarLenFeature(tf.int64) for m in metas}
+    features = {m: tf.io.VarLenFeature(tf.int64) for m in metas[1:]}
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
         return ds.map(lambda x: tf.io.parse_example(x, features))
@@ -128,7 +128,7 @@ def caster(d):
 @tf.function
 def formatter(d):
     n, ys, ms = None, [], []
-    for m, s in zip(metas, separs):
+    for m, s in zip(metas[1:], separs):
         y = tf.RaggedTensor.from_sparse(d[m])
         if n is None:
             n = y.nrows()
