@@ -23,16 +23,15 @@ import utils as qu
 td = tf.data
 tt = tf.train
 
-metas = ('defs', 'ops', 'res')
-separs = (':', ';', '|')
-
+metas = (' ', 'defs', 'ops', 'res')
 vocab = (' ', )
+separs = (':', ';', '|')
 vocab += separs
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 tokens = {c: i for i, c in enumerate(vocab)}
-tokens.update((c, i) for i, c in enumerate(metas, start=len(tokens)))
+tokens.update((c, i) for i, c in enumerate(metas))
 
 SPC = tokens[vocab[0]]
 assert SPC == 0

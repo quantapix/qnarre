@@ -52,6 +52,7 @@ params = dict(
     dim_batch=5,
     dim_concl=150,
     dim_hidden=6,
+    dim_metas=len(qd.metas),
     dim_stacks=2,
     dim_vocab=len(qd.vocab),
     drop_attn=None,

@@ -132,8 +132,8 @@ class Embed(Layer):
 
     def __init__(self, ps):
         super().__init__(ps)
-        s = [ps.dim_vocab, ps.dim_hidden]
-        self.table = self.add_weight('table', shape=s)
+        self.toks = self.add_weight('toks', [ps.dim_vocab, ps.dim_hidden])
+        self.meta = self.add_weight('meta', [ps.dim_metas, ps.dim_hidden])
         self.enc_p = self.pos_timing(ps.width_enc, ps.dim_hidden)
         self.dec_p = self.pos_timing(ps.width_dec, ps.dim_hidden)
 
@@ -143,8 +143,10 @@ class Embed(Layer):
         tf.TensorSpec(shape=[None, None], dtype=tf.int32)
     ]])
     def call(self, x):
-        y, lens, meta = x
-        y = tf.nn.embedding_lookup(self.table, y)
+        y, lens, ym = x
+        y = tf.nn.embedding_lookup(self.toks, y)
+        ym = tf.one_hot(ym, self.ps.dim_metas)
+        y += tf.einsum('bsi,ih->bsh', ym, self.meta)
         s = tf.shape(y)
         if s[-2] == self.ps.width_enc:
             y += tf.broadcast_to(self.enc_p, s)
