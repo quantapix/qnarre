@@ -23,14 +23,15 @@ ks = tf.keras
 
 
 def model_for(ps):
-    x = [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
-    x += [ks.Input(shape=(), dtype='int32'), ks.Input(shape=(), dtype='int64')]
+    x = [
+        ks.Input(shape=(), dtype=d) for n in range(5)
+        for d in ('int32', 'int64')
+    ]
     y = ql.ToRagged()(x)
     y = ql.Frames(ps)(y)
     embed = ql.Embed(ps)
-    ye = ql.Encode(ps)(embed(y[:2]))
-    yd = ql.Decode(ps)(embed(y[2:]) + [ye[0]])
+    ye = ql.Encode(ps)(embed(y[:3]))
+    yd = ql.Decode(ps)(embed(y[3:]) + [ye[0]])
     y = ql.Probe(ps)(yd)
     m = ks.Model(inputs=x, outputs=y)
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
@@ -69,6 +70,6 @@ params.update(
 )
 
 if __name__ == '__main__':
-    ps = qd.Params(**params)
+    ps = qu.Params(**params)
     qu.train_graph(ps, qd.dset_for(ps), model_for(ps))
     # qu.train_eager(ps, qd.dset_for(ps), model_for(ps))
