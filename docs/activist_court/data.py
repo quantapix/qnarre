@@ -151,20 +151,21 @@ def formatter(d):
         return x.with_flat_values(y)
 
     return {
-        'enc': tf.concat(ys[:2], axis=1),
-        'm_enc': tf.concat(ms[:2], axis=1),
-        'dec': blank(ys[-1]),
-        'm_dec': ms[-1],
-        'tgt': ys[-1]
+        'encode': tf.concat(ys[:2], axis=1),
+        'decode': blank(ys[-1]),
+        'target': ys[-1],
+        'e_meta': tf.concat(ms[:2], axis=1).flat_values,
+        'd_meta': ms[-1].flat_values,
     }
 
 
 @tf.function
 def adapter(d):
-    ys = [d[k] for k in ('enc', 'm_enc', 'dec', 'm_dec', 'tgt')]
     return (
-        tuple(t for y in ys for t in (y.flat_values, y.row_splits)),
-        ys[-1].to_tensor(),
+        tuple(t for k in ('encode', 'decode', 'target')
+              for t in (d[k].flat_values, d[k].row_splits)) +
+        (d['e_meta'], d['d_meta']),
+        d['target'].to_tensor(),
     )
 
 

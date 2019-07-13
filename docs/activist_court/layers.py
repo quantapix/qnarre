@@ -49,14 +49,16 @@ class ToRagged(kl.Layer):
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int64)
-    ] * 5])
+    ] * 3 + [
+        tf.TensorSpec(shape=[None], dtype=tf.int32),
+    ] * 2])
     def call(self, x):
         ys = []
-        for i in range(5):
+        for i in range(3):
             i *= 2
             fv, rs = x[i:i + 2]
             ys.append(tf.RaggedTensor.from_row_splits(fv, rs))
-        return ys
+        return ys + x[-2:]
 
 
 class Frames(Layer):
@@ -76,7 +78,7 @@ class Frames(Layer):
 
     @tf.function
     def call(self, x):
-        xe, me, xd, md, xt = x
+        xe, xd, xt, em, dm = x
         ye = tf.concat([self.prev, xe], axis=1)
         el = tf.cast(xe.row_lengths(), dtype=tf.int32)
         ye = tf.gather_nd(ye, self.calc_idxs(el))
@@ -91,7 +93,8 @@ class Frames(Layer):
         if ps.print_frames:
             tf.print()
             tf.map_fn(self.print_row, self.prev)
-        return [ye, me.to_tensor(), el, yd, md.to_tensor(), dl]
+        yem, ydm = em, dm
+        return [ye, yem, el, yd, ydm, dl]
 
     def calc_idxs(self, lens):
         ps = self.ps
@@ -123,11 +126,11 @@ class Embed(Layer):
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None], dtype=tf.int32),
-        tf.TensorSpec(shape=[None, None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int32)
     ]])
     def call(self, x):
-        y, mx, lens = x
+        y, meta, lens = x
         y = tf.nn.embedding_lookup(self.table, y)
         s = tf.shape(y)
         if s[-2] == self.ps.width_enc:

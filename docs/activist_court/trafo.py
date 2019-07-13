@@ -23,10 +23,12 @@ ks = tf.keras
 
 
 def model_for(ps):
-    x = [
-        ks.Input(shape=(), dtype=d) for n in range(5)
-        for d in ('int32', 'int64')
-    ]
+    x = []
+    for _ in ('encode', 'decode', 'target'):
+        x.append(ks.Input(shape=(), dtype='int32'))
+        x.append(ks.Input(shape=(), dtype='int64'))
+    for _ in ('e_meta', 'd_meta'):
+        x.append(ks.Input(shape=(), dtype='int32'))
     y = ql.ToRagged()(x)
     y = ql.Frames(ps)(y)
     embed = ql.Embed(ps)
