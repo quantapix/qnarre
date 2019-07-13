@@ -53,15 +53,39 @@ class ToRagged(kl.Layer):
         tf.TensorSpec(shape=[None], dtype=tf.int32),
     ] * 2])
     def call(self, x):
-        ys = []
-        for i in range(3):
-            i *= 2
-            fv, rs = x[i:i + 2]
-            ys.append(tf.RaggedTensor.from_row_splits(fv, rs))
-        return ys + x[-2:]
+        efv, ers, dfv, drs, tfv, trs, em, dm = x
+        return [
+            tf.RaggedTensor.from_row_splits(efv, ers),
+            tf.RaggedTensor.from_row_splits(dfv, drs),
+            tf.RaggedTensor.from_row_splits(tfv, trs),
+            tf.RaggedTensor.from_row_splits(em, ers),
+            tf.RaggedTensor.from_row_splits(dm, drs),
+        ]
 
 
 class Frames(Layer):
+    def __init__(self, ps):
+        super().__init__(ps, dtype=tf.int32)
+        kw = dict(initializer='zeros', trainable=False, use_resource=True)
+        self.prev = self.add_weight('prev', [ps.dim_batch, ps.width_enc], **kw)
+
+    def append(self, x, ragged):
+        ps = self.ps
+        r, c = ps.dim_batch, ps.width_enc
+        r = tf.broadcast_to(tf.range(r)[:, None], [r, c])
+        lens = tf.cast(ragged.row_lengths(), dtype=tf.int32)
+        c = tf.range(c)[None, ] + lens[:, None]
+        y = tf.concat([x, ragged], axis=1)
+        y = tf.gather_nd(y, tf.stack([r, c], axis=2))
+        return [y, lens]
+
+    def expand(self, x):
+        c = self.ps.width_dec - x.bounding_shape(axis=1, out_type=tf.int32)
+        y = tf.pad(x.to_tensor(), [[0, 0], [0, c]])
+        return y
+
+
+class Tokens(Frames):
     @staticmethod
     def print_row(r):
         tf.print(
@@ -70,39 +94,28 @@ class Frames(Layer):
                               Tout=[tf.string]))
         return r
 
-    def __init__(self, ps):
-        super().__init__(ps, dtype=tf.int32)
-        s = (ps.dim_batch, ps.width_enc)
-        kw = dict(initializer='zeros', trainable=False, use_resource=True)
-        self.prev = self.add_weight('prev', shape=s, **kw)
-
     @tf.function
     def call(self, x):
-        xe, xd, xt, em, dm = x
-        ye = tf.concat([self.prev, xe], axis=1)
-        el = tf.cast(xe.row_lengths(), dtype=tf.int32)
-        ye = tf.gather_nd(ye, self.calc_idxs(el))
-        ps = self.ps
-        c = ps.width_dec - xd.bounding_shape(axis=1, out_type=tf.int32)
-        yd = tf.pad(xd.to_tensor(), [[0, 0], [0, c]])
-        dl = tf.cast(xd.row_lengths(), dtype=tf.int32)
-        p = tf.concat([ye, xt], axis=1)
-        tl = tf.cast(xt.row_lengths(), dtype=tf.int32)
-        p = tf.gather_nd(p, self.calc_idxs(tl))
+        xe, xd, xt = x[:3]
+        ye, el = self.append(self.prev, xe)
+        yd = self.expand(xd)
+        p, dl = self.append(ye, xt)
         self.prev.assign(p)
-        if ps.print_frames:
+        if self.ps.print_frames:
             tf.print()
             tf.map_fn(self.print_row, self.prev)
-        yem, ydm = em, dm
-        return [ye, yem, el, yd, ydm, dl]
+        return [ye, el, yd, dl]
 
-    def calc_idxs(self, lens):
-        ps = self.ps
-        b, w = ps.dim_batch, ps.width_enc
-        y = tf.broadcast_to(tf.range(b)[:, None], [b, w])
-        i = tf.range(w)[None, ] + lens[:, None]
-        y = tf.stack([y, i], axis=2)
-        return y
+
+class Metas(Frames):
+    @tf.function
+    def call(self, x):
+        xe, xd = x[3:]
+        ye, _ = self.append(self.prev, xe)
+        yd = self.expand(xd)
+        p, _ = self.append(ye, xd)
+        self.prev.assign(p)
+        return [ye, yd]
 
 
 class Embed(Layer):
@@ -119,7 +132,7 @@ class Embed(Layer):
 
     def __init__(self, ps):
         super().__init__(ps)
-        s = (ps.dim_vocab, ps.dim_hidden)
+        s = [ps.dim_vocab, ps.dim_hidden]
         self.table = self.add_weight('table', shape=s)
         self.enc_p = self.pos_timing(ps.width_enc, ps.dim_hidden)
         self.dec_p = self.pos_timing(ps.width_dec, ps.dim_hidden)
@@ -127,10 +140,10 @@ class Embed(Layer):
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int32),
-        tf.TensorSpec(shape=[None], dtype=tf.int32)
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32)
     ]])
     def call(self, x):
-        y, meta, lens = x
+        y, lens, meta = x
         y = tf.nn.embedding_lookup(self.table, y)
         s = tf.shape(y)
         if s[-2] == self.ps.width_enc:
