@@ -21,6 +21,12 @@ import tensorflow as tf
 ks = tf.keras
 
 
+class Params:
+    def __init__(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
 def gelu(x):
     # https://arxiv.org/pdf/1606.08415.pdf
     c = np.sqrt(2 / np.pi)

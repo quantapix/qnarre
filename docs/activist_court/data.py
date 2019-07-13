@@ -18,16 +18,23 @@ import numpy as np
 import pathlib as pth
 import tensorflow as tf
 
+import utils as qu
+
 td = tf.data
 tt = tf.train
 
-vocab = (' ', ':', '|')
+metas = ('defs', 'ops', 'res')
+separs = (':', ';', '|')
+
+vocab = (' ', )
+vocab += separs
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
 tokens = {c: i for i, c in enumerate(vocab)}
+tokens.update((c, i) for i, c in enumerate(metas, start=len(tokens)))
 
-SPC, SEP, STP = [tokens[c] for c in vocab[:3]]
+SPC = tokens[vocab[0]]
 assert SPC == 0
 
 
@@ -56,7 +63,7 @@ def sampler(ps):
 @tf.function
 def splitter(x):
     fs = tf.strings.split(x, ':')
-    return {'defs': fs[0], 'op': fs[1], 'res': fs[2]}
+    return {m: fs[i] for i, m in enumerate(metas)}
 
 
 @tf.function
@@ -87,12 +94,10 @@ def sharder(ps, samples=False):
 
 def recorder(samples):
     for s in samples:
-        features = tt.Features(
-            feature={
-                'defs': tt.Feature(int64_list=tt.Int64List(value=s['defs'])),
-                'op': tt.Feature(int64_list=tt.Int64List(value=s['op'])),
-                'res': tt.Feature(int64_list=tt.Int64List(value=s['res'])),
-            })
+        features = tt.Features(feature={
+            m: tt.Feature(int64_list=tt.Int64List(value=s[m]))
+            for m in metas
+        })
         yield tt.Example(features=features).SerializeToString()
 
 
@@ -109,11 +114,7 @@ def load(ps, files=None, count=None):
     ds = td.TFRecordDataset(files or list(sharder(ps)))
     if count:
         ds = ds.take(count)
-    features = {
-        'defs': tf.io.VarLenFeature(tf.int64),
-        'op': tf.io.VarLenFeature(tf.int64),
-        'res': tf.io.VarLenFeature(tf.int64),
-    }
+    features = {m: tf.io.VarLenFeature(tf.int64) for m in metas}
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
         return ds.map(lambda x: tf.io.parse_example(x, features))
@@ -127,17 +128,21 @@ def caster(d):
 
 @tf.function
 def formatter(d):
-    ds = tf.RaggedTensor.from_sparse(d['defs'])
-    n = ds.nrows()
-    os = tf.RaggedTensor.from_sparse(d['op'])
-    tf.debugging.assert_equal(n, os.nrows())
-    ss = tf.fill([n, 1], SEP)
-    enc = tf.concat([ds, ss, os, ss], axis=1)
-    rs = tf.RaggedTensor.from_sparse(d['res'])
-    tf.debugging.assert_equal(n, rs.nrows())
-    tgt = tf.concat([rs, tf.fill([n, 1], STP)], axis=1)
+    n, ys, ms = None, [], []
+    for m, s in zip(metas, separs):
+        y = tf.RaggedTensor.from_sparse(d[m])
+        if n is None:
+            n = y.nrows()
+        else:
+            tf.debugging.assert_equal(n, y.nrows())
+        y = tf.concat([y, tf.fill([n, 1], tokens[s])], axis=1)
+        ys.append(y)
+        rs = y.row_lengths()
+        y = tf.fill([tf.reduce_sum(rs)], tokens[m])
+        y = tf.RaggedTensor.from_row_lengths(y, rs)
+        ms.append(y)
 
-    def rand_blank(x):
+    def blank(x):
         y = x.flat_values
         mv = tf.shape(y)[0]
         s = mv // 2
@@ -145,22 +150,21 @@ def formatter(d):
         y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
         return x.with_flat_values(y)
 
-    return {'enc': enc, 'dec': rand_blank(tgt), 'tgt': tgt}
+    return {
+        'enc': tf.concat(ys[:2], axis=1),
+        'm_enc': tf.concat(ms[:2], axis=1),
+        'dec': blank(ys[-1]),
+        'm_dec': ms[-1],
+        'tgt': ys[-1]
+    }
 
 
 @tf.function
 def adapter(d):
-    enc, dec, tgt = d['enc'], d['dec'], d['tgt']
+    ys = [d[k] for k in ('enc', 'm_enc', 'dec', 'm_dec', 'tgt')]
     return (
-        (
-            enc.flat_values,
-            enc.row_splits,
-            dec.flat_values,
-            dec.row_splits,
-            tgt.flat_values,
-            tgt.row_splits,
-        ),
-        tgt.to_tensor(),
+        tuple(t for y in ys for t in (y.flat_values, y.row_splits)),
+        ys[-1].to_tensor(),
     )
 
 
@@ -176,12 +180,6 @@ params = dict(
 )
 
 
-class Params:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-
 def main(ps):
     fs = [f for f in dump(ps)]
     ds = load(ps, files=fs).map(caster).map(formatter).map(adapter)
@@ -191,5 +189,5 @@ def main(ps):
 
 
 if __name__ == '__main__':
-    ps = Params(**params)
+    ps = qu.Params(**params)
     main(ps)
