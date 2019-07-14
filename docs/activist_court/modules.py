@@ -92,8 +92,8 @@ class Attention(tf.Module):
         y = self.join_heads(y)
         if self.out is not None:
             y = self.out(y)
-        y = self.layer.drop(y, self.drop_rate)
-        y = self.layer.norm(x + y)
+        # y = self.layer.drop(y, self.drop_rate)
+        # y = self.layer.norm(x + y)
         y = tf.concat([inp[:, :-off, :], y], axis=1)
         return [y, lens]
 
@@ -127,8 +127,8 @@ class Conclusion(tf.Module):
         x, lens = x
         y = self.inflate(x)
         y = self.deflate(y)
-        y = self.layer.drop(y, self.drop_rate)
-        y = self.layer.norm(x + y)
+        # y = self.layer.drop(y, self.drop_rate)
+        # y = self.layer.norm(x + y)
         return [y, lens]
 
 

@@ -171,8 +171,8 @@ class Embed(Layer):
         else:
             pass
         y *= tf.cast(s[-1], tf.float32)**0.5
-        y = self.drop(y, self.ps.drop_hidden)
-        y = self.norm(y)
+        # y = self.drop(y, self.ps.drop_hidden)
+        # y = self.norm(y)
         return [y, lens[:, 0]]
 
 
