@@ -94,17 +94,33 @@ class Tokens(Frames):
                               Tout=[tf.string]))
         return r
 
+    def __init__(self, ps):
+        super().__init__(ps)
+        assert ps.width_enc > 0
+        kw = dict(initializer='zeros', trainable=False, use_resource=True)
+        self.lens = self.add_weight('lens', [ps.dim_batch, ps.dim_queue], **kw)
+
     @tf.function
     def call(self, x):
         xe, xd, xt = x[:3]
         ye, el = self.append(self.prev, xe)
+        el = self.queue(self.lens, el)
         yd = self.expand(xd)
         p, dl = self.append(ye, xt)
         self.prev.assign(p)
+        self.lens.assign(self.queue(el, dl))
         if self.ps.print_frames:
             tf.print()
             tf.map_fn(self.print_row, self.prev)
-        return [ye, el, yd, dl]
+        return [ye, el, yd, dl[:, None]]
+
+    def queue(self, x, lens):
+        tf.debugging.assert_less_equal(lens, self.ps.width_enc)
+        y = tf.concat([lens[:, None], x], axis=1)
+        # i = tf.constant(1)
+        # while tf.math.reduce_sum(y[:, i:], axis=1) >= self.ps.width_enc:
+        #    i += 1
+        return y[:, :-1]
 
 
 class Metas(Frames):
@@ -134,12 +150,12 @@ class Embed(Layer):
         super().__init__(ps)
         self.toks = self.add_weight('toks', [ps.dim_vocab, ps.dim_hidden])
         self.meta = self.add_weight('meta', [ps.dim_metas, ps.dim_hidden])
-        self.enc_p = self.pos_timing(ps.width_enc, ps.dim_hidden)
-        self.dec_p = self.pos_timing(ps.width_dec, ps.dim_hidden)
+        self.e_pos = self.pos_timing(ps.width_enc, ps.dim_hidden)
+        self.d_pos = self.pos_timing(ps.width_dec, ps.dim_hidden)
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None], dtype=tf.int32),
-        tf.TensorSpec(shape=[None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32),
         tf.TensorSpec(shape=[None, None], dtype=tf.int32)
     ]])
     def call(self, x):
@@ -149,13 +165,15 @@ class Embed(Layer):
         y += tf.einsum('bsi,ih->bsh', ym, self.meta)
         s = tf.shape(y)
         if s[-2] == self.ps.width_enc:
-            y += tf.broadcast_to(self.enc_p, s)
+            y += tf.broadcast_to(self.e_pos, s)
         elif s[-2] == self.ps.width_dec:
-            y += tf.broadcast_to(self.dec_p, s)
+            y += tf.broadcast_to(self.d_pos, s)
         else:
             pass
         y *= tf.cast(s[-1], tf.float32)**0.5
-        return [y, lens]
+        y = self.drop(y, self.ps.drop_hidden)
+        y = self.norm(y)
+        return [y, lens[:, 0]]
 
 
 class Encode(Layer):
