@@ -160,7 +160,9 @@ class Embed(Layer):
     ]])
     def call(self, x):
         y, lens, ym = x
-        y = tf.nn.embedding_lookup(self.toks, y)
+        y = tf.one_hot(y, self.ps.dim_vocab)
+        y = tf.einsum('bsi,ih->bsh', y, self.toks)
+        # y = tf.nn.embedding_lookup(self.toks, y)
         ym = tf.one_hot(ym, self.ps.dim_metas)
         y += tf.einsum('bsi,ih->bsh', ym, self.meta)
         s = tf.shape(y)
