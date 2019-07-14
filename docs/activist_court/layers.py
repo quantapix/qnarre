@@ -100,19 +100,19 @@ class Tokens(Frames):
         super().__init__(ps)
         assert ps.width_enc >= ps.width_dec > 0
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
-        self.lens = self.add_weight('lens', [ps.dim_batch, ps.dim_queue], **kw)
+        self.hist = self.add_weight('hist', [ps.dim_batch, ps.dim_hist], **kw)
 
     @tf.function
     def call(self, x):
         xe, xd, xt = x[:3]
         ye, el = self.append(self.prev, xe)
         tf.debugging.assert_less_equal(el, self.ps.width_enc)
-        el = tf.concat([el, self.lens], axis=1)[:, :-1]
+        el = tf.concat([el, self.hist], axis=1)[:, :-1]
         yd = self.expand(xd)
         p, dl = self.append(ye, xt)
         self.prev.assign(p)
         tf.debugging.assert_less_equal(dl, self.ps.width_dec)
-        self.lens.assign(tf.concat([dl, el], axis=1)[:, :-1])
+        self.hist.assign(tf.concat([dl, el], axis=1)[:, :-1])
         if self.ps.print_frames:
             tf.print()
             tf.map_fn(self.print_row, self.prev)
@@ -155,7 +155,7 @@ class Embed(Layer):
         tf.TensorSpec(shape=[None, None], dtype=tf.int32)
     ]])
     def call(self, x):
-        y, lens, ym = x
+        y, hist, ym = x
         y = tf.one_hot(y, self.ps.dim_vocab)
         y = tf.einsum('bsi,ih->bsh', y, self.toks)
         # y = tf.nn.embedding_lookup(self.toks, y)
@@ -163,7 +163,7 @@ class Embed(Layer):
         y += tf.einsum('bsi,ih->bsh', ym, self.meta)
         s = tf.shape(y)
         if s[-2] == self.ps.width_enc:
-            y += tf.broadcast_to(self.e_pos, s)
+            y += self.segment(self.e_pos, hist, s)
         elif s[-2] == self.ps.width_dec:
             y += tf.broadcast_to(self.d_pos, s)
         else:
@@ -171,15 +171,14 @@ class Embed(Layer):
         y *= tf.cast(s[-1], tf.float32)**0.5
         y = self.drop(y, self.ps.drop_hidden)
         y = self.norm(y)
-        return [y, lens[:, 0]]
+        return [y, hist[:, 0]]
 
-    def queue(self, x, lens):
-        tf.debugging.assert_less_equal(lens, self.ps.width_enc)
-        y = tf.concat([lens[:, None], x], axis=1)
-        # i = tf.constant(1)
-        # while tf.math.reduce_sum(y[:, i:], axis=1) >= self.ps.width_enc:
-        #    i += 1
-        return y[:, :-1]
+    def segment(self, pos, hist, shape):
+        y = tf.broadcast_to(pos, shape)
+        for i in tf.range(self.ps.dim_hist, 0, -1):
+            r = tf.RaggedTensor.from_tensor(y, hist[:, i - 1])
+            y = tf.concat([y, r], axis=1)[:, -shape[-2]:, :]
+        return y
 
 
 class Encode(Layer):
