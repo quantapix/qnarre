@@ -8,6 +8,10 @@ set -e -u -o pipefail
 # jupyter notebook --no-browser --port=8889
 # ssh -N -f -L localhost:8888:localhost:8889 remote_user@remote_host
 
+# export PATH=/home/qpix/clone/qnarre_new/.nvenv/cuda/bin:$PATH
+# export LD_LIBRARY_PATH=/home/qpix/clone/qnarre_new/.nvenv/cuda/lib64:$LD_LIBRARY_PATH
+# export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
+
 nvenv() {
     mkdir .nvenv
     (cd nvidia
