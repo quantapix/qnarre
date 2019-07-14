@@ -78,5 +78,6 @@ params.update(
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
+    ps.is_training = True
     # qu.train_graph(ps, qd.dset_for(ps), model_for(ps))
     qu.train_eager(ps, qd.dset_for(ps), model_for(ps))

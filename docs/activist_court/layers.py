@@ -41,8 +41,10 @@ class Layer(kl.Layer):
         return super().add_weight(name=name, shape=shape, **kw)
 
     def drop(self, x, rate):
-        d = self.dropouts.setdefault(rate, kl.Dropout(rate))
-        return d(x)
+        y = x
+        if self.ps.is_training:
+            y = tf.nn.dropout(x, rate)
+        return y
 
 
 class ToRagged(kl.Layer):
@@ -173,8 +175,8 @@ class Embed(Layer):
         else:
             pass
         y *= tf.cast(s[-1], tf.float32)**0.5
-        # y = self.drop(y, self.ps.drop_hidden)
-        # y = self.norm(y)
+        y = self.drop(y, self.ps.drop_hidden)
+        y = self.norm(y)
         return [y, lens[:, 0]]
 
 
