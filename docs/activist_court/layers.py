@@ -75,8 +75,8 @@ class Frames(Layer):
         ps = self.ps
         r, c = ps.dim_batch, ps.width_enc
         r = tf.broadcast_to(tf.range(r)[:, None], [r, c])
-        lens = tf.cast(ragged.row_lengths(), dtype=tf.int32)
-        c = tf.range(c)[None, ] + lens[:, None]
+        lens = tf.cast(ragged.row_lengths(), dtype=tf.int32)[:, None]
+        c = tf.range(c)[None, ] + lens
         y = tf.concat([x, ragged], axis=1)
         y = tf.gather_nd(y, tf.stack([r, c], axis=2))
         return [y, lens]
@@ -98,7 +98,7 @@ class Tokens(Frames):
 
     def __init__(self, ps):
         super().__init__(ps)
-        assert ps.width_enc > 0
+        assert ps.width_enc >= ps.width_dec > 0
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
         self.lens = self.add_weight('lens', [ps.dim_batch, ps.dim_queue], **kw)
 
@@ -106,23 +106,17 @@ class Tokens(Frames):
     def call(self, x):
         xe, xd, xt = x[:3]
         ye, el = self.append(self.prev, xe)
-        el = self.queue(self.lens, el)
+        tf.debugging.assert_less_equal(el, self.ps.width_enc)
+        el = tf.concat([el, self.lens], axis=1)[:, :-1]
         yd = self.expand(xd)
         p, dl = self.append(ye, xt)
         self.prev.assign(p)
-        self.lens.assign(self.queue(el, dl))
+        tf.debugging.assert_less_equal(dl, self.ps.width_dec)
+        self.lens.assign(tf.concat([dl, el], axis=1)[:, :-1])
         if self.ps.print_frames:
             tf.print()
             tf.map_fn(self.print_row, self.prev)
-        return [ye, el, yd, dl[:, None]]
-
-    def queue(self, x, lens):
-        tf.debugging.assert_less_equal(lens, self.ps.width_enc)
-        y = tf.concat([lens[:, None], x], axis=1)
-        # i = tf.constant(1)
-        # while tf.math.reduce_sum(y[:, i:], axis=1) >= self.ps.width_enc:
-        #    i += 1
-        return y[:, :-1]
+        return [ye, el, yd, dl]
 
 
 class Metas(Frames):
@@ -178,6 +172,14 @@ class Embed(Layer):
         y = self.drop(y, self.ps.drop_hidden)
         y = self.norm(y)
         return [y, lens[:, 0]]
+
+    def queue(self, x, lens):
+        tf.debugging.assert_less_equal(lens, self.ps.width_enc)
+        y = tf.concat([lens[:, None], x], axis=1)
+        # i = tf.constant(1)
+        # while tf.math.reduce_sum(y[:, i:], axis=1) >= self.ps.width_enc:
+        #    i += 1
+        return y[:, :-1]
 
 
 class Encode(Layer):
