@@ -98,7 +98,7 @@ class Tokens(Frames):
 
     def __init__(self, ps):
         super().__init__(ps)
-        assert ps.width_enc >= ps.width_dec > 0
+        assert ps.width_enc > ps.width_dec > 0
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
         self.hist = self.add_weight('hist', [ps.dim_batch, ps.dim_hist], **kw)
 
@@ -220,11 +220,12 @@ class Debed(Layer):
     def call(self, x):
         y, lens = x
         y = self.inflate(y)
-        y = y[:, :tf.math.reduce_max(lens), :]
+        y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
+        # y = y[:, :tf.math.reduce_max(lens), :]
         return y
 
 
-class Probe(Layer):
+class Deduce(Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])

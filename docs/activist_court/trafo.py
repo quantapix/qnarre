@@ -36,10 +36,19 @@ def model_for(ps):
     ye = embed(yt[:2] + ym[:1])
     ye = ql.Encode(ps)(ye)
     yd = embed(yt[2:] + ym[1:])
-    yd = ql.Decode(ps)(yd + [ye[0]])
-    y = ql.Probe(ps)(yd)
-    m = ks.Model(inputs=x, outputs=y)
-    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
+    decode = ql.Decode(ps)
+    yd = decode(yd + [ye[0]])
+    yb, yc = ql.Debed(ps)(yd), ql.Deduce(ps)(yd)
+    m = ks.Model(inputs=x, outputs=[yb, yc])
+    m.compile(optimizer=ps.optimizer,
+              loss={
+                  'debed': ps.loss,
+                  'deduce': ps.loss
+              },
+              metrics={
+                  'debed': [ps.metric],
+                  'deduce': [ps.metric]
+              })
     print(m.summary())
     return m
 

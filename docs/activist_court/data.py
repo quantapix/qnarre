@@ -160,12 +160,10 @@ def formatter(d):
 
 @tf.function
 def adapter(d):
-    return (
-        tuple(t for k in ('encode', 'decode', 'target')
-              for t in (d[k].flat_values, d[k].row_splits)) +
-        (d['e_meta'], d['d_meta']),
-        d['target'].to_tensor(),
-    )
+    x = tuple(t for k in ('encode', 'decode', 'target')
+              for t in (d[k].flat_values, d[k].row_splits))
+    y = d['target'].to_tensor()
+    return (x + (d['e_meta'], d['d_meta']), (y, y))
 
 
 def dset_for(ps, adapter=adapter):
