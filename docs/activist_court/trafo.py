@@ -30,15 +30,13 @@ def model_for(ps):
     for _ in ('e_meta', 'd_meta'):
         x.append(ks.Input(shape=(), dtype='int32'))
     y = ql.ToRagged()(x)
-    yt = ql.Tokens(ps)(y)
-    ym = ql.Metas(ps)(y)
+    yt, ym = ql.Tokens(ps)(y), ql.Metas(ps)(y)
+    xe, xd = yt[:2] + ym[:1], yt[2:] + ym[1:]
     embed = ql.Embed(ps)
-    ye = embed(yt[:2] + ym[:1])
-    ye = ql.Encode(ps)(ye)
-    yd = embed(yt[2:] + ym[1:])
+    ye = ql.Encode(ps)(embed(xe))[0]
     decode = ql.Decode(ps)
-    yd = decode(yd + [ye[0]])
-    yb, yc = ql.Debed(ps)(yd), ql.Deduce(ps)(yd)
+    yb = ql.Debed(ps)(decode(embed(xd) + [ye]))
+    yc = ql.Deduce(ps, embed, decode)(xd + [ye])
     m = ks.Model(inputs=x, outputs=[yb, yc])
     m.compile(optimizer=ps.optimizer,
               loss={

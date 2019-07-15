@@ -221,18 +221,20 @@ class Debed(Layer):
         y, lens = x
         y = self.inflate(y)
         y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
-        # y = y[:, :tf.math.reduce_max(lens), :]
         return y
 
 
 class Deduce(Layer):
-    def __init__(self, ps):
+    def __init__(self, ps, embed, decode):
         super().__init__(ps)
+        self.embed = embed
+        self.decode = decode
         self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
     @tf.function
     def call(self, x):
-        y, lens = x
+        y = self.embed(x[:-1])
+        y, lens = self.decode(y + x[-1:])
         y = self.inflate(y)
         y = y[:, :tf.math.reduce_max(lens), :]
         return y
