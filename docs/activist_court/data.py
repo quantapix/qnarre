@@ -29,12 +29,15 @@ separs = (':', ';', '|')
 vocab += separs
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
+masks = ('#', )
+vocab += masks
 
 tokens = {c: i for i, c in enumerate(vocab)}
 tokens.update((c, i) for i, c in enumerate(metas))
 
 SPC = tokens[vocab[0]]
 assert SPC == 0
+MSK = tokens[masks[0]]
 
 
 def sampler(ps):
@@ -141,17 +144,18 @@ def formatter(d):
         y = tf.RaggedTensor.from_row_lengths(y, rs)
         ms.append(y)
 
-    def blank(x):
+    def mask(x):
         y = x.flat_values
-        mv = tf.shape(y)[0]
-        s = mv // 2
-        i = tf.random.uniform([s], maxval=mv, dtype=tf.int32)[:, None]
-        y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
+        e = tf.shape(y)[0]
+        s = e // 2
+        i = tf.random.uniform([s], maxval=e, dtype=tf.int32)[:, None]
+        y = tf.tensor_scatter_nd_update(y, i, tf.fill([s], MSK))
+        # y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
         return x.with_flat_values(y)
 
     return {
         'encode': tf.concat(ys[:2], axis=1),
-        'decode': blank(ys[-1]),
+        'decode': mask(ys[-1]),
         'target': ys[-1],
         'e_meta': tf.concat(ms[:2], axis=1).flat_values,
         'd_meta': ms[-1].flat_values,
