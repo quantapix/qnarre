@@ -69,11 +69,11 @@ params = dict(
     initer_stddev=0.02,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
-    num_epochs=5,
+    num_epochs=1,  # 5,
     num_heads=3,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
-    print_frames=False,
+    print_toks=True,  # False,
     width_dec=15,
     width_enc=25,
 )
@@ -87,4 +87,4 @@ if __name__ == '__main__':
     ps = qu.Params(**params)
     ps.is_training = True
     # qu.train_graph(ps, qd.dset_for(ps), model_for(ps))
-    qu.train_eager(ps, qd.dset_for(ps), model_for(ps))
+    qu.train_eager(ps, qd.dset_for(ps, count=10), model_for(ps))

@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 
 import data as qd
+import utils as qu
 import modules as qm
 
 ks = tf.keras
@@ -88,14 +89,6 @@ class Frames(Layer):
 
 
 class Tokens(Frames):
-    @staticmethod
-    def print_row(r):
-        tf.print(
-            tf.numpy_function(lambda ts: ''.join([qd.vocab[t] for t in ts]),
-                              [r],
-                              Tout=[tf.string]))
-        return r
-
     def __init__(self, ps):
         super().__init__(ps)
         assert ps.width_enc > ps.width_dec > 0
@@ -113,9 +106,8 @@ class Tokens(Frames):
         self.prev.assign(p)
         tf.debugging.assert_less_equal(dl, self.ps.width_dec)
         self.hist.assign(tf.concat([dl, el], axis=1)[:, :-1])
-        if self.ps.print_frames:
-            tf.print()
-            tf.map_fn(self.print_row, self.prev)
+        if self.ps.print_toks:
+            qu.print_toks(self.prev, qd.vocab)
         return [ye, el, yd, dl]
 
 
@@ -127,6 +119,8 @@ class Metas(Frames):
         yd = self.expand(xd)
         p, _ = self.append(ye, xd)
         self.prev.assign(p)
+        if self.ps.print_toks:
+            qu.print_toks(self.prev, qd.metas)
         return [ye, yd]
 
 
@@ -236,6 +230,9 @@ class Deduce(Layer):
         toks, *x = x
         y = self.deduce([toks] + x)
         for i in tf.range(self.ps.width_dec):
+            if self.ps.print_toks:
+                tf.print('***', i)
+                qu.print_toks(toks, qd.vocab)
             msks = tf.equal(toks, qd.MSK)  # toks == qd.MSK
             if tf.reduce_any(msks) is True:
                 toks = self.update(toks, msks, y)

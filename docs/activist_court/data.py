@@ -170,8 +170,8 @@ def adapter(d):
     return (x + (d['e_meta'], d['d_meta']), (y, y))
 
 
-def dset_for(ps, adapter=adapter):
-    return load(ps).map(caster).map(formatter).map(adapter)
+def dset_for(ps, adapter=adapter, count=None):
+    return load(ps, count=count).map(caster).map(formatter).map(adapter)
 
 
 params = dict(

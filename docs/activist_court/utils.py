@@ -104,3 +104,17 @@ def train_eager(ps, ds, m):
     for e in range(ps.num_epochs):
         loss, xent = epoch()
         print(f'Epoch {e} loss:', loss.numpy(), ', xent:', xent.numpy())
+
+
+def print_toks(x, via):
+    def print_row(r):
+        tf.print(
+            tf.numpy_function(
+                lambda ts: ''.join([via[t][0] for t in ts]),
+                [r],
+                Tout=[tf.string],
+            ))
+        return r
+
+    tf.print()
+    tf.map_fn(print_row, x)
