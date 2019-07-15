@@ -232,30 +232,38 @@ class Deduce(Layer):
         self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
     @tf.function
-    def call_old(self, x):
+    def call(self, x):
+        toks, *x = x
+        y = self.deduce([toks] + x)
+        for i in tf.range(self.ps.width_dec):
+            msks = tf.equal(toks, qd.MSK)  # toks == qd.MSK
+            if tf.reduce_any(msks) is True:
+                toks = self.update(toks, msks, y)
+                y = self.deduce([toks] + x)
+            else:
+                c = tf.equal(toks, qd.EOS)  # toks == qd.EOS
+                c = tf.math.count_nonzero(c, axis=1)
+                if tf.reduce_any(tf.not_equal(c, 1)) is False:  # c != 1
+                    break
+                tf.print('*** not all EOSs reached!')
+        return y
+
+    def deduce(self, x):
         y = self.embed(x[:-1])
         y, lens = self.decode(y + x[-1:])
         y = self.inflate(y)
         y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
         return y
 
-    @tf.function
-    def call(self, x):
-        toks, xl, xm, xe = x
-        y = self.embed([toks, xl, xm])
-        y, lens = self.decode(y + [xe])
-        for i in tf.range(self.ps.width_dec):
-            c = tf.math.equal(toks, qd.MSK)
-            if tf.math.reduce_any(c) is False:
-                c = tf.math.equal(toks, qd.EOS)
-                c = tf.math.count_nonzero(c, axis=1)
-                c = tf.math.not_equal(c, 1)
-                if tf.math.reduce_any(c) is False:
-                    break
-            y = self.inflate(y)
-            y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
-            y = self.embed([toks, xl, xm])
-            y = self.decode(y + [xe])[0]
-        y = self.inflate(y)
-        y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
+    def update(self, toks, msks, ctx):
+        i = tf.cast(msks, tf.int32)
+        i = tf.argmax(i, axis=1, output_type=tf.int32)
+        n = tf.shape(msks)[0]
+        i = tf.stack([tf.range(n), i], axis=1)
+        m = tf.zeros_like(msks)
+        m = tf.tensor_scatter_nd_update(m, i, [True] * n)
+        y = tf.math.log_softmax(tf.boolean_mask(ctx, m))
+        y = tf.argmax(y, axis=-1, output_type=tf.int32)
+        y = tf.tensor_scatter_nd_update(toks, i, y)
+        y = tf.where(tf.logical_and(msks, m), y, toks)
         return y
