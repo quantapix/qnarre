@@ -191,8 +191,8 @@ class Encode(Layer):
     @tf.function
     def call(self, x):
         y = x
-        for e in self.encs:
-            y = e(y)
+        for enc in self.encs:
+            y = enc(y)
         return y
 
 
@@ -206,8 +206,8 @@ class Decode(Layer):
     @tf.function
     def call(self, x):
         y, ye = x[:-1], x[-1]
-        for d in self.decs:
-            y = d(y + [ye])
+        for dec in self.decs:
+            y = dec(y + [ye])
         return y
 
 
@@ -232,9 +232,30 @@ class Deduce(Layer):
         self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
     @tf.function
-    def call(self, x):
+    def call_old(self, x):
         y = self.embed(x[:-1])
         y, lens = self.decode(y + x[-1:])
         y = self.inflate(y)
-        y = y[:, :tf.math.reduce_max(lens), :]
+        y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
+        return y
+
+    @tf.function
+    def call(self, x):
+        toks, xl, xm, xe = x
+        y = self.embed([toks, xl, xm])
+        y, lens = self.decode(y + [xe])
+        for i in tf.range(self.ps.width_dec):
+            c = tf.math.equal(toks, qd.MSK)
+            if tf.math.reduce_any(c) is False:
+                c = tf.math.equal(toks, qd.EOS)
+                c = tf.math.count_nonzero(c, axis=1)
+                c = tf.math.not_equal(c, 1)
+                if tf.math.reduce_any(c) is False:
+                    break
+            y = self.inflate(y)
+            y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
+            y = self.embed([toks, xl, xm])
+            y = self.decode(y + [xe])[0]
+        y = self.inflate(y)
+        y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
         return y

@@ -37,6 +37,7 @@ tokens.update((c, i) for i, c in enumerate(metas))
 
 SPC = tokens[vocab[0]]
 assert SPC == 0
+EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
 
@@ -150,7 +151,6 @@ def formatter(d):
         s = e // 2
         i = tf.random.uniform([s], maxval=e, dtype=tf.int32)[:, None]
         y = tf.tensor_scatter_nd_update(y, i, tf.fill([s], MSK))
-        # y = tf.tensor_scatter_nd_update(y, i, tf.zeros([s], dtype=tf.int32))
         return x.with_flat_values(y)
 
     return {
