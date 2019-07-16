@@ -228,21 +228,25 @@ class Deduce(Layer):
     @tf.function
     def call(self, x):
         toks, *x = x
+        if self.ps.print_toks:
+            qu.print_toks(toks, qd.vocab)
         y = self.deduce([toks] + x)
-        for i in tf.range(self.ps.width_dec):
-            if self.ps.print_toks:
-                tf.print('***', i)
-                qu.print_toks(toks, qd.vocab)
-            msks = tf.equal(toks, qd.MSK)  # toks == qd.MSK
-            if tf.reduce_any(msks) is True:
-                toks = self.update(toks, msks, y)
+        n = tf.shape(y)[1]
+        p = tf.shape(toks)[1] - n
+        for i in tf.range(n):
+            t = toks[:, :n]
+            m = tf.equal(t, qd.MSK)
+            if tf.equal(tf.reduce_any(m), True):
+                t = self.update(t, m, y)
+                if self.ps.print_toks:
+                    qu.print_toks(t, qd.vocab)
+                toks = tf.pad(t, [[0, 0], [0, p]])
                 y = self.deduce([toks] + x)
             else:
-                c = tf.equal(toks, qd.EOS)  # toks == qd.EOS
-                c = tf.math.count_nonzero(c, axis=1)
-                if tf.reduce_any(tf.not_equal(c, 1)) is False:  # c != 1
+                e = tf.equal(t, qd.EOS)
+                e = tf.math.count_nonzero(e, axis=1)
+                if tf.equal(tf.reduce_any(tf.not_equal(e, 1)), False):
                     break
-                tf.print('*** not all EOSs reached!')
         return y
 
     def deduce(self, x):
@@ -258,8 +262,9 @@ class Deduce(Layer):
         n = tf.shape(msks)[0]
         i = tf.stack([tf.range(n), i], axis=1)
         m = tf.zeros_like(msks)
-        m = tf.tensor_scatter_nd_update(m, i, [True] * n)
-        y = tf.math.log_softmax(tf.boolean_mask(ctx, m))
+        m = tf.tensor_scatter_nd_update(m, i, tf.ones([n], tf.bool))
+        y = tf.boolean_mask(ctx, m)
+        y = tf.math.log_softmax(y)
         y = tf.argmax(y, axis=-1, output_type=tf.int32)
         y = tf.tensor_scatter_nd_update(toks, i, y)
         y = tf.where(tf.logical_and(msks, m), y, toks)
