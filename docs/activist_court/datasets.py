@@ -40,11 +40,13 @@ assert SPC == 0
 EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
+features = ('enc', 'dec', 'tgt')
+
 
 @tf.function
 def splitter(x):
-    fs = tf.strings.split(x, ':')
-    return {m: fs[i] for i, m in enumerate(metas[1:])}
+    # fs = tf.strings.split(x, ':')
+    return {f: x[i] for i, f in enumerate(features)}
 
 
 @tf.function
@@ -65,19 +67,23 @@ def tokenizer(d):
 
 def sharder(ps, samples=False):
     d = pth.Path('/tmp/q/data')
-    d.mkdir(parents=True, exist_ok=True)
-    for i in range(ps.num_shards):
-        i = '{:0>4d}'.format(i)
-        f = str(d / f'shard_{i}.tfrecords')
-        if samples:
-            ss = np.array(list(qs.sampler(ps)))
-            ds = td.Dataset.from_tensor_slices(ss)
-            yield f, ds.map(splitter).map(tokenizer)
-        else:
-            yield f
+    for s in range(ps.num_shards):
+        s = '{:0>4d}'.format(s)
 
+        def sampler():
+            for s in qs.sampler(ps):
+                yield [s[g] for g in qs.groups]
 
-features = ('enc', 'dec', 'tgt')
+        ss = np.array(list(sampler(ps))) if samples else None
+        for i, g in enumerate(qs.groups):
+            f = d / g
+            f.mkdir(parents=True, exist_ok=True)
+            f = str(f / f'shard_{s}.tfrecords')
+            if ss:
+                ds = td.Dataset.from_tensor_slices(ss[:, i])
+                yield f, ds.map(splitter).map(tokenizer)
+            else:
+                yield f
 
 
 def recorder(samples):
