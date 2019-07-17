@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# !pip install -U tf-nightly-2.0-preview
 
 import numpy as np
 import pathlib as pth
 import tensorflow as tf
 
+import samples as qs
 import utils as qu
 
 td = tf.data
 tt = tf.train
 
 vocab = (' ', )
-metas = vocab + ('defs', 'ops', 'res')
-separs = (':', ';', '|')
+metas = vocab + ('xys', 'ops', 'res')
+separs = (';', '[', ']')
 vocab += separs
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
@@ -41,28 +41,6 @@ EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
 
-def sampler(ps):
-    m, n = ps.max_val, ps.num_samples
-    vals = np.random.randint(low=1 - m, high=m, size=(2, n))
-    ords = np.random.randint(2, size=(2, n))
-    ops = np.array(['+', '-', '*'])
-    ops.reshape((1, 3))
-    ops = ops[np.random.randint(3, size=n)]
-    for i in range(n):
-        x, y = vals[:, i]
-        res = f'x={x},y={y}:' if ords[0, i] else f'y={y},x={x}:'
-        o = ops[i]
-        res += (f'x{o}y:' if ords[1, i] else f'y{o}x:')
-        if o == '+':
-            res += f'{x + y}'
-        elif o == '*':
-            res += f'{x * y}'
-        else:
-            assert o == '-'
-            res += (f'{x - y}' if ords[1, i] else f'{y - x}')
-        yield res
-
-
 @tf.function
 def splitter(x):
     fs = tf.strings.split(x, ':')
@@ -76,7 +54,7 @@ def tokenizer(d):
             lambda x: tf.constant([tokens[chr(c)] for c in x]),
             [v],
             Tout=tf.int32,
-        )
+        ) if isinstance(v, str) else v
         for k, v in d.items()
     }
 
@@ -88,20 +66,23 @@ def sharder(ps, samples=False):
         i = '{:0>4d}'.format(i)
         f = str(d / f'shard_{i}.tfrecords')
         if samples:
-            ss = np.array(list(sampler(ps)))
+            ss = np.array(list(qs.sampler(ps)))
             ds = td.Dataset.from_tensor_slices(ss)
             yield f, ds.map(splitter).map(tokenizer)
         else:
             yield f
 
 
+features = ('enc', 'dec', 'tgt')
+
+
 def recorder(samples):
     for s in samples:
-        features = tt.Features(feature={
-            m: tt.Feature(int64_list=tt.Int64List(value=s[m]))
-            for m in metas[1:]
+        fs = tt.Features(feature={
+            f: tt.Feature(int64_list=tt.Int64List(value=s[f]))
+            for f in features
         })
-        yield tt.Example(features=features).SerializeToString()
+        yield tt.Example(features=fs).SerializeToString()
 
 
 def dump(ps):
@@ -176,6 +157,7 @@ def dset_for(ps, adapter=adapter, count=None):
 
 params = dict(
     dim_batch=100,
+    dim_pool=8 * 1024,
     max_val=100,  # 10000
     num_samples=1000,  # 100000
     num_shards=10,

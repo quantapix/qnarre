@@ -15,8 +15,6 @@
 
 import numpy as np
 
-import utils as qu
-
 randint = np.random.randint
 
 np.random.seed(12345)
@@ -28,7 +26,7 @@ class Samples:
         mx, n = ps.max_val, ps.dim_pool
         self.xys = randint(low=1 - mx, high=mx, size=(2, n))
         self.ops = np.array(['+', '-', '*'])[randint(3, size=n)]
-        self.keep = randint(2, size=(2, n))
+        self.seq = randint(2, size=(2, n))
         self.yns = randint(2, size=(2, n))
         self.idx = 0
 
@@ -46,24 +44,24 @@ class Samples:
         if double_y:
             self.xys[1, i] = 2 if op == '*' else self.xys[0, i]
         x, y = self.xys[:, i]
-        keep ^= not(self.keep[0, i])
+        keep ^= not (self.seq[0, i])
         if use_x is None:
-            inp = f'x={x},y={y}' if keep else f'y={y},x={x}'
+            xys = f'x={x},y={y}' if keep else f'y={y},x={x}'
         else:
-            inp = f'x=$,y={y}' if keep else f'y={y},x=$'
-        inp += ';' + (f'x{op}y' if self.keep[1, i] else f'y{op}x')
+            xys = f'x=$,y={y}' if keep else f'y={y},x=$'
+        xys += ';' + (f'x{op}y' if self.seq[1, i] else f'y{op}x')
         if op == '+':
-            out = x + y
+            res = x + y
         elif op == '*':
-            out = x * y
+            res = x * y
         else:
             assert op == '-'
-            out = (x - y) if self.keep[1, i] else (y - x)
+            res = (x - y) if self.seq[1, i] else (y - x)
         cls = '2' if double_y else ('*' if op == '*' else '+')
-        clx = '0' if use_x is None else ('+' if out >= use_x else '-')
-        return inp, out, cls, clx
+        clx = '0' if use_x is None else ('+' if res >= use_x else '-')
+        return xys, res, cls, clx
 
-    def other_than(self, x):
+    def other(self, x):
         mx = self.ps.max_val
         while True:
             y = randint(low=1 - mx, high=mx)
@@ -85,21 +83,22 @@ def sampler(ps):
         ss, idx = ss.next_idx
         enc, res, *_ = ss.create(idx)
         dec = tgt = f'[{res}]'
+        bad = f'[{ss.other(res)}]'
         yn = ss.yns[0, idx]
 
-        yns = dict(tgt=yn)
-        if not yn:
-            bad = f'[{ss.other_than(res)}]'
-            yns.update(dec=bad)
+        yns = dict(enc=enc, dec=dec if yn else bad, tgt=[yn])
+
         ss2, i2 = ss.next_idx
         e2, r2, *_ = ss2.create(i2, use_x=res)
         d2 = e2 + f'[{r2}]'
-        ynx = dict(enc=enc + tgt, dec=d2, tgt=yn)
+        ynx = dict(enc=enc + tgt, dec=d2, tgt=[yn])
         if not yn:
             if randint(2):
-                ynx.update(dec=e2 + f'[{ss2.other_than(r2)}]')
+                ynx.update(dec=e2 + f'[{ss2.other(r2)}]')
             else:
                 ynx.update(enc=enc + bad)
+
+        msk = dict(enc=enc, dec=mask(dec), tgt=tgt)
 
         msx = dict(enc=enc + tgt, dec=mask(d2), tgt=d2)
 
@@ -107,53 +106,79 @@ def sampler(ps):
         ss2, i2 = ss2.next_idx
         e2, r2, t2, _ = ss2.create(i2, double_y=(t2 == '2'))
         cls = dict(enc=e2, dec=f'[{r2}]', tgt=t2)
+
         t3 = np.array(['0', '+', '-'])[randint(3)]
         ss2, i2 = ss2.next_idx
         e2, r2, _, t3 = ss2.create(i2, use_x=None if t3 == '0' else res)
         clx = dict(enc=enc + tgt, dec=e2 + f'[{r2}]', tgt=t3)
 
-        r1, r3 = f'{ss2.other_than(res)}', f'{ss2.other_than(res)}'
+        r1, r3 = f'{ss2.other(res)}', f'{ss2.other(res)}'
         r2 = f'[{r1}{res}{r3}]'
-        qas = dict(dec=r2, tgt=[len(r1) + 1, len(r2) - len(r3) - 1])
+        qas = dict(enc=enc, dec=r2, tgt=[len(r1) + 1, len(r2) - len(r3) - 1])
 
         e2, r2, *_ = ss.create(idx, keep=False)
         d2 = e2 + f'[{r2}]' if yn else bad
-        rev = dict(enc=enc + tgt, dec=d2, tgt=yn)
+        rev = dict(enc=enc + tgt, dec=d2, tgt=[yn])
+
+        gen = dict(enc=enc, dec='[?', tgt=tgt)
+        fix = dict(enc=enc, dec=mask(dec, '_'), tgt=tgt)
 
         yield {
-            'enc': enc,
-            'dec': dec,
-            'tgt': tgt,
             'yns': yns,
             'ynx': ynx,
-            'msk': dict(dec=mask(dec)),
+            'msk': msk,
             'msx': msx,
             'cls': cls,
             'clx': clx,
             'qas': qas,
             'rev': rev,
-            'gen': dict(dec='[?'),
-            'fix': dict(dec=mask(dec, '_')),
+            'gen': gen,
+            'fix': fix,
         }
         ss = ss2
 
 
-params = dict(
-    dim_pool=8 * 1024,
-    max_val=100,
-    num_samples=10,
-)
+groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
 
+vocab = (' ', )
+separs = (';', '[', ']')
+vocab += separs
+vocab += ('x', 'y', '=', ',', '+', '-', '*')
+vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
+masks = ('?', '_')
+vocab += masks
+
+tokens = {c: i for i, c in enumerate(vocab)}
+
+SPC = tokens[vocab[0]]
+assert SPC == 0
+
+
+def tokenize(x):
+    return [tokens[chr(c)] for c in x]
+
+
+def tkenizer(ps):
+    for 
 
 def main(ps):
     for d in sampler(ps):
-        for t in ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev',
-                  'gen', 'fix'):
-            s = dict(enc=d['enc'], dec=d['dec'], tgt=d['tgt'])
-            s.update(d[t])
-            print(f'sample {t}:', s)
+        for g in groups:
+            print(f'sample {g}:', d[g])
 
+
+class Params:
+    def __init__(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
+params = dict(
+    dim_pool=5,
+    max_val=100,
+    num_samples=15,
+)
 
 if __name__ == '__main__':
-    ps = qu.Params(**params)
+    ps = Params(**params)
     main(ps)
