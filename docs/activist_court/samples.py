@@ -86,12 +86,12 @@ def sampler(ps):
         bad = f'[{ss.other(res)}]'
         yn = ss.yns[0, idx]
 
-        yns = dict(enc=enc, dec=dec if yn else bad, tgt=[yn])
+        yns = dict(enc=enc, dec=dec if yn else bad, tgt=f'#{yn}')
 
         ss2, i2 = ss.next_idx
         e2, r2, *_ = ss2.create(i2, use_x=res)
         d2 = e2 + f'[{r2}]'
-        ynx = dict(enc=enc + tgt, dec=d2, tgt=[yn])
+        ynx = dict(enc=enc + tgt, dec=d2, tgt=f'#{yn}')
         if not yn:
             if randint(2):
                 ynx.update(dec=e2 + f'[{ss2.other(r2)}]')
@@ -114,11 +114,12 @@ def sampler(ps):
 
         r1, r3 = f'{ss2.other(res)}', f'{ss2.other(res)}'
         r2 = f'[{r1}{res}{r3}]'
-        qas = dict(enc=enc, dec=r2, tgt=[len(r1) + 1, len(r2) - len(r3) - 1])
+        b, e = len(r1) + 1, len(r2) - len(r3) - 1
+        qas = dict(enc=enc, dec=r2, tgt=f'#{b} {e}')
 
         e2, r2, *_ = ss.create(idx, keep=False)
         d2 = e2 + f'[{r2}]' if yn else bad
-        rev = dict(enc=enc + tgt, dec=d2, tgt=[yn])
+        rev = dict(enc=enc + tgt, dec=d2, tgt=f'#{yn}')
 
         gen = dict(enc=enc, dec='[?', tgt=tgt)
         fix = dict(enc=enc, dec=mask(dec, '_'), tgt=tgt)
@@ -140,26 +141,6 @@ def sampler(ps):
 
 groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
 
-vocab = (' ', )
-separs = (';', '[', ']')
-vocab += separs
-vocab += ('x', 'y', '=', ',', '+', '-', '*')
-vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-masks = ('?', '_')
-vocab += masks
-
-tokens = {c: i for i, c in enumerate(vocab)}
-
-SPC = tokens[vocab[0]]
-assert SPC == 0
-
-
-def tokenize(x):
-    return [tokens[chr(c)] for c in x]
-
-
-def tkenizer(ps):
-    for 
 
 def main(ps):
     for d in sampler(ps):

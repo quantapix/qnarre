@@ -49,12 +49,16 @@ def splitter(x):
 
 @tf.function
 def tokenizer(d):
+    def tokenize(x):
+        if chr(x[0]) == '#':
+            y = ''.join([chr(c)] for c in x[1:])
+            y = [int(v) for v in y.split()]
+        else:
+            y = [tokens[chr(c)] for c in x]
+        return tf.constant(y)
+
     return {
-        k: tf.numpy_function(
-            lambda x: tf.constant([tokens[chr(c)] for c in x]),
-            [v],
-            Tout=tf.int32,
-        ) if isinstance(v, str) else v
+        k: tf.numpy_function(tokenize, [v], Tout=tf.int32)
         for k, v in d.items()
     }
 
