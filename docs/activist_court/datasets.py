@@ -29,7 +29,7 @@ separs = (':', ';', '|')
 vocab += separs
 vocab += ('x', 'y', '=', ',', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-masks = ('#', )
+masks = ('?', '_')
 vocab += masks
 
 tokens = {c: i for i, c in enumerate(vocab)}
