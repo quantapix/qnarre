@@ -18,7 +18,6 @@ import pathlib as pth
 import tensorflow as tf
 
 import samples as qs
-import utils as qu
 
 td = tf.data
 tt = tf.train
@@ -40,13 +39,13 @@ assert SPC == 0
 EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
-features = ('enc', 'dec', 'tgt')
+features = ('enc', 'dec', 'tgt', 'emt', 'dmt')
 
 
 @tf.function
 def splitter(x):
     # fs = tf.strings.split(x, ':')
-    return {f: x[i] for i, f in enumerate(features)}
+    return {f: x[i] for i, f in enumerate(features[:3])}
 
 
 @tf.function
@@ -65,21 +64,23 @@ def tokenizer(d):
     }
 
 
-def sharder(ps, samples=False):
+def sharder(ps, group=None, samples=False):
+    gs = qs.groups if group is None else list(group)
     d = pth.Path('/tmp/q/data')
     for s in range(ps.num_shards):
         s = '{:0>4d}'.format(s)
 
         def sampler():
             for s in qs.sampler(ps):
-                yield [[s[g][f] for f in features] for g in qs.groups]
+                yield [[s[g][f] for f in features[:3]] for g in gs]
 
         ss = np.array(list(sampler())) if samples else None
-        for i, g in enumerate(qs.groups):
+        for g in gs:
             f = d / g
             f.mkdir(parents=True, exist_ok=True)
             f = str(f / f'shard_{s}.tfrecords')
             if ss is not None:
+                i = qs.groups.index(g)
                 ds = td.Dataset.from_tensor_slices(ss[:, i])
                 yield f, ds.map(splitter).map(tokenizer)
             else:
@@ -104,15 +105,15 @@ def dump(ps):
         yield f
 
 
-def load(ps, files=None, count=None):
-    ds = td.TFRecordDataset(files or list(sharder(ps)))
+def load(ps, group=None, files=None, count=None):
+    ds = td.TFRecordDataset(files or list(sharder(ps, group)))
     if count:
         ds = ds.take(count)
-    features = {m: tf.io.VarLenFeature(tf.int64) for m in metas[1:]}
+    fs = {f: tf.io.VarLenFeature(tf.int64) for f in features}
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
-        return ds.map(lambda x: tf.io.parse_example(x, features))
-    return ds.map(lambda x: tf.io.parse_single_example(x, features))
+        return ds.map(lambda x: tf.io.parse_example(x, fs))
+    return ds.map(lambda x: tf.io.parse_single_example(x, fs))
 
 
 @tf.function
@@ -123,8 +124,8 @@ def caster(d):
 @tf.function
 def formatter(d):
     n, ys, ms = None, [], []
-    for m, s in zip(metas[1:], separs):
-        y = tf.RaggedTensor.from_sparse(d[m])
+    for f in features:
+        y = tf.RaggedTensor.from_sparse(d[f])
         if n is None:
             n = y.nrows()
         else:
@@ -136,52 +137,38 @@ def formatter(d):
         y = tf.RaggedTensor.from_row_lengths(y, rs)
         ms.append(y)
 
-    def mask(x):
-        y = x.flat_values
-        e = tf.shape(y)[0]
-        s = e // 2
-        i = tf.random.uniform([s], maxval=e, dtype=tf.int32)[:, None]
-        y = tf.tensor_scatter_nd_update(y, i, tf.fill([s], MSK))
-        return x.with_flat_values(y)
-
     return {
-        'encode': tf.concat(ys[:2], axis=1),
-        'decode': mask(ys[-1]),
-        'target': ys[-1],
-        'e_meta': tf.concat(ms[:2], axis=1).flat_values,
-        'd_meta': ms[-1].flat_values,
+        'enc': tf.concat(ys[:2], axis=1),
+        'dec': mask(ys[-1]),
+        'tgt': ys[-1],
+        'emt': tf.concat(ms[:2], axis=1).flat_values,
+        'dmt': ms[-1].flat_values,
     }
 
 
 @tf.function
 def adapter(d):
-    x = tuple(t for k in ('encode', 'decode', 'target')
-              for t in (d[k].flat_values, d[k].row_splits))
-    y = d['target'].to_tensor()
-    return (x + (d['e_meta'], d['d_meta']), (y, y))
+    x = tuple(t for f in features for t in (d[f].flat_values, d[f].row_splits))
+    y = d['tgt'].to_tensor()
+    return (x + (d['emt'], d['dmt']), (y, y))
 
 
-def dset_for(ps, adapter=adapter, count=None):
-    return load(ps, count=count).map(caster).map(formatter).map(adapter)
-
-
-params = dict(
-    dim_batch=100,
-    dim_pool=8 * 1024,
-    max_val=100,  # 10000
-    num_samples=1000,  # 100000
-    num_shards=10,
-)
-
-
-def main(ps):
-    fs = [f for f in dump(ps)]
-    # ds = load(ps, files=fs).map(caster).map(formatter).map(adapter)
-    # for i, _ in enumerate(ds):
-    #     pass
-    print(f'dumped {len(fs)} batches of {ps.dim_batch} samples each')
+def dset_for(ps, group, adapter=adapter, count=None):
+    return load(ps, group, count=count).map(caster).map(formatter).map(adapter)
 
 
 if __name__ == '__main__':
-    ps = qu.Params(**params)
-    main(ps)
+    import utils as qu
+    ps = dict(
+        dim_batch=100,
+        dim_pool=8 * 1024,
+        max_val=100,  # 10000
+        num_samples=1000,  # 100000
+        num_shards=3,
+    )
+    ps = qu.Params(**ps)
+    fs = [f for f in dump(ps)]
+    ds = load(ps, files=fs).map(caster).map(formatter).map(adapter)
+    for i, _ in enumerate(ds):
+        pass
+    print(f'dumped {i} batches of {ps.dim_batch} samples each')

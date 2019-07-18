@@ -19,61 +19,7 @@ randint = np.random.randint
 
 np.random.seed(12345)
 
-
-class Samples:
-    def __init__(self, ps):
-        self.ps = ps
-        mx, n = ps.max_val, ps.dim_pool
-        self.xys = randint(low=1 - mx, high=mx, size=(2, n))
-        self.ops = np.array(['+', '-', '*'])[randint(3, size=n)]
-        self.seq = randint(2, size=(2, n))
-        self.yns = randint(2, size=(2, n))
-        self.idx = 0
-
-    @property
-    def next_idx(self):
-        self.idx += 1
-        if self.idx >= self.ps.dim_pool:
-            self = Samples(self.ps)
-        return self, self.idx
-
-    def create(self, i, use_x=None, double_y=None, keep=True):
-        if use_x is not None:
-            self.xys[0, i] = use_x
-        op = self.ops[i]
-        if double_y:
-            self.xys[1, i] = 2 if op == '*' else self.xys[0, i]
-        x, y = self.xys[:, i]
-        keep ^= not (self.seq[0, i])
-        if use_x is None:
-            xys = f'x={x},y={y}' if keep else f'y={y},x={x}'
-        else:
-            xys = f'x=$,y={y}' if keep else f'y={y},x=$'
-        xys += ';' + (f'x{op}y' if self.seq[1, i] else f'y{op}x')
-        if op == '+':
-            res = x + y
-        elif op == '*':
-            res = x * y
-        else:
-            assert op == '-'
-            res = (x - y) if self.seq[1, i] else (y - x)
-        cls = '2' if double_y else ('*' if op == '*' else '+')
-        clx = '0' if use_x is None else ('+' if res >= use_x else '-')
-        return xys, res, cls, clx
-
-    def other(self, x):
-        mx = self.ps.max_val
-        while True:
-            y = randint(low=1 - mx, high=mx)
-            if y != x:
-                return y
-
-
-def mask(x, msk=None):
-    x, lx = list(x), len(x)
-    for i in randint(lx, size=((lx // 2) if msk is None else 1)):
-        x[i] = msk or '?'
-    return ''.join(x)
+groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
 
 
 def sampler(ps):
@@ -139,27 +85,70 @@ def sampler(ps):
         ss = ss2
 
 
-groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
+class Samples:
+    def __init__(self, ps):
+        self.ps = ps
+        mx, n = ps.max_val, ps.dim_pool
+        self.xys = randint(low=1 - mx, high=mx, size=(2, n))
+        self.ops = np.array(['+', '-', '*'])[randint(3, size=n)]
+        self.seq = randint(2, size=(2, n))
+        self.yns = randint(2, size=(2, n))
+        self.idx = 0
+
+    @property
+    def next_idx(self):
+        self.idx += 1
+        if self.idx >= self.ps.dim_pool:
+            self = Samples(self.ps)
+        return self, self.idx
+
+    def create(self, i, use_x=None, double_y=None, keep=True):
+        if use_x is not None:
+            self.xys[0, i] = use_x
+        op = self.ops[i]
+        if double_y:
+            self.xys[1, i] = 2 if op == '*' else self.xys[0, i]
+        x, y = self.xys[:, i]
+        keep ^= not (self.seq[0, i])
+        if use_x is None:
+            xys = f'x={x},y={y}' if keep else f'y={y},x={x}'
+        else:
+            xys = f'x=$,y={y}' if keep else f'y={y},x=$'
+        xys += ';' + (f'x{op}y' if self.seq[1, i] else f'y{op}x')
+        if op == '+':
+            res = x + y
+        elif op == '*':
+            res = x * y
+        else:
+            assert op == '-'
+            res = (x - y) if self.seq[1, i] else (y - x)
+        cls = '2' if double_y else ('*' if op == '*' else '+')
+        clx = '0' if use_x is None else ('+' if res >= use_x else '-')
+        return xys, res, cls, clx
+
+    def other(self, x):
+        mx = self.ps.max_val
+        while True:
+            y = randint(low=1 - mx, high=mx)
+            if y != x:
+                return y
 
 
-def main(ps):
+def mask(x, msk=None):
+    x, lx = list(x), len(x)
+    for i in randint(lx, size=((lx // 2) if msk is None else 1)):
+        x[i] = msk or '?'
+    return ''.join(x)
+
+
+if __name__ == '__main__':
+    import utils as qu
+    ps = dict(
+        dim_pool=5,
+        max_val=100,
+        num_samples=15,
+    )
+    ps = qu.Params(**ps)
     for d in sampler(ps):
         for g in groups:
             print(f'sample {g}:', d[g])
-
-
-class Params:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-
-params = dict(
-    dim_pool=5,
-    max_val=100,
-    num_samples=15,
-)
-
-if __name__ == '__main__':
-    ps = Params(**params)
-    main(ps)
