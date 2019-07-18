@@ -157,13 +157,14 @@ def dset_for(ps, group, adapter=adapter, count=None):
 
 
 if __name__ == '__main__':
+    np.random.seed(12345)
     import utils as qu
     ps = dict(
         dim_batch=100,
         dim_pool=8 * 1024,
-        max_val=100,  # 10000
-        num_samples=1000,  # 100000
-        num_shards=3,
+        max_val=10000,
+        num_samples=1000,
+        num_shards=10,
     )
     ps = qu.Params(**ps)
     fs = [f for f in dump(ps)]

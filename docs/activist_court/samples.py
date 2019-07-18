@@ -17,8 +17,6 @@ import numpy as np
 
 randint = np.random.randint
 
-np.random.seed(12345)
-
 groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
 
 
@@ -142,6 +140,7 @@ def mask(x, msk=None):
 
 
 if __name__ == '__main__':
+    np.random.seed(12345)
     import utils as qu
     ps = dict(
         dim_pool=5,
