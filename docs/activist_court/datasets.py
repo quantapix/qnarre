@@ -32,7 +32,7 @@ masks = ('?', '_')
 vocab += masks
 
 tokens = {c: i for i, c in enumerate(vocab)}
-tokens.update((c, i) for i, c in enumerate(metas))
+tokens.update((c[0].upper(), i) for i, c in enumerate(metas))
 
 SPC = tokens[vocab[0]]
 assert SPC == 0
@@ -42,15 +42,38 @@ MSK = tokens[masks[0]]
 features = ('enc', 'dec', 'tgt', 'emt', 'dmt')
 
 
+def sampler(ps, groups):
+    def to_metas(x):
+        y, x = '', x.split(';')
+        if len(x) > 1:
+            y = 'X' * (len(x[0]) + 1)
+            x = x[1:]
+        x = x[0].split('[')
+        y += 'O' * len(x[0])
+        if len(x) > 1:
+            y += 'R' * (len(x[1]) + 1)
+        return y
+
+    for s in qs.sampler(ps):
+
+        def to_features(g):
+            for f in features[:3]:
+                yield s[g][f]
+            yield to_metas(s[g]['enc'])
+            d, t = s[g]['dec'], s[g]['tgt']
+            yield to_metas(d if t.startswith('#') or len(d) != len(t) else t)
+
+        yield [list(to_features(g)) for g in groups]
+
+
 @tf.function
 def splitter(x):
-    # fs = tf.strings.split(x, ':')
-    return {f: x[i] for i, f in enumerate(features[:3])}
+    return {f: x[i] for i, f in enumerate(features)}
 
 
 @tf.function
 def tokenizer(d):
-    def tokenize(x):
+    def to_tokens(x):
         if chr(x[0]) == '#':
             y = ''.join([chr(c) for c in x[1:]])
             y = [int(v) for v in y.split()]
@@ -59,7 +82,7 @@ def tokenizer(d):
         return tf.constant(y)
 
     return {
-        k: tf.numpy_function(tokenize, [v], Tout=tf.int32)
+        k: tf.numpy_function(to_tokens, [v], Tout=tf.int32)
         for k, v in d.items()
     }
 
@@ -67,20 +90,14 @@ def tokenizer(d):
 def sharder(ps, group=None, samples=False):
     gs = qs.groups if group is None else list(group)
     d = pth.Path('/tmp/q/data')
-    for s in range(ps.num_shards):
-        s = '{:0>4d}'.format(s)
-
-        def sampler():
-            for s in qs.sampler(ps):
-                yield [[s[g][f] for f in features[:3]] for g in gs]
-
-        ss = np.array(list(sampler())) if samples else None
-        for g in gs:
+    for n in range(ps.num_shards):
+        n = '{:0>4d}'.format(n)
+        ss = np.array(list(sampler(ps, gs))) if samples else None
+        for i, g in enumerate(gs):
             f = d / g
             f.mkdir(parents=True, exist_ok=True)
-            f = str(f / f'shard_{s}.tfrecords')
+            f = str(f / f'shard_{n}.tfrecords')
             if ss is not None:
-                i = qs.groups.index(g)
                 ds = td.Dataset.from_tensor_slices(ss[:, i])
                 yield f, ds.map(splitter).map(tokenizer)
             else:
@@ -123,34 +140,16 @@ def caster(d):
 
 @tf.function
 def formatter(d):
-    n, ys, ms = None, [], []
-    for f in features:
-        y = tf.RaggedTensor.from_sparse(d[f])
-        if n is None:
-            n = y.nrows()
-        else:
-            tf.debugging.assert_equal(n, y.nrows())
-        y = tf.concat([y, tf.fill([n, 1], tokens[s])], axis=1)
-        ys.append(y)
-        rs = y.row_lengths()
-        y = tf.fill([tf.reduce_sum(rs)], tokens[m])
-        y = tf.RaggedTensor.from_row_lengths(y, rs)
-        ms.append(y)
-
-    return {
-        'enc': tf.concat(ys[:2], axis=1),
-        'dec': mask(ys[-1]),
-        'tgt': ys[-1],
-        'emt': tf.concat(ms[:2], axis=1).flat_values,
-        'dmt': ms[-1].flat_values,
-    }
+    return {f: tf.RaggedTensor.from_sparse(d[f]) for f in features}
 
 
 @tf.function
 def adapter(d):
-    x = tuple(t for f in features for t in (d[f].flat_values, d[f].row_splits))
+    x = tuple(t for f in features[:3]
+              for t in (d[f].flat_values, d[f].row_splits))
+    x += tuple(d[f].flat_values for f in features[3:])
     y = d['tgt'].to_tensor()
-    return (x + (d['emt'], d['dmt']), (y, y))
+    return x, (y, y)
 
 
 def dset_for(ps, group, adapter=adapter, count=None):
