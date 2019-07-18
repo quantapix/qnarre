@@ -23,16 +23,17 @@ td = tf.data
 tt = tf.train
 
 vocab = (' ', )
-metas = vocab + ('xys', 'ops', 'res', 'ans')
-separs = (',', ';', '[', ']', '|')
+metas = vocab + ('XYS', 'OPS', 'RES')
+metas += tuple('ABCDEFGHIJ')
+separs = tuple(',;[]|')
 vocab += separs
-vocab += ('x', 'y', '=', '$', '+', '-', '*')
-vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-masks = ('?', '_')
+vocab += tuple('xy=$+-*')
+vocab += tuple('0123456789')
+masks = tuple('?~_')
 vocab += masks
 
 tokens = {c: i for i, c in enumerate(vocab)}
-tokens.update((c[0].upper(), i) for i, c in enumerate(metas))
+tokens.update((c[0], i) for i, c in enumerate(metas))
 
 SPC = tokens[vocab[0]]
 assert SPC == 0
@@ -43,7 +44,9 @@ features = ('enc', 'dec', 'tgt', 'emt', 'dmt')
 
 
 def sampler(ps, groups):
-    def to_metas(x):
+    def to_metas(g, x):
+        # print('to_metas x', x)
+        g = chr(ord('A') + qs.groups.index(g))
         m, y = '', x.split(';')
         if len(y) > 1:
             m = 'X' * (len(y[0]) + 1)
@@ -52,25 +55,25 @@ def sampler(ps, groups):
         y2 = y[0].split('|')
         m += 'O' * len(y2[0])
         if len(y2) > 1:
-            m += 'A' * (len(y2[1]) + 1)
+            m += g * (len(y2[1]) + 1)
         if len(y) > 1:
             y2 = y[1].split('|')
             m += 'R' * (len(y2[0]) + 1)
             if len(y2) > 1:
-                m += 'A' * (len(y2[1]) + 1)
+                m += g * (len(y2[1]) + 1)
         assert len(x) == len(m)
+        # print('to_metas m', m)
         return m
 
     for s in qs.sampler(ps):
 
         def to_features(g):
-            for f in features[:3]:
-                yield s[g][f]
-            yield to_metas(s[g]['enc'])
-            d, t = s[g]['dec'], s[g]['tgt']
-            yield to_metas(d if t.startswith('#') or len(d) != len(t) else t)
+            s2 = s[g]
+            e, d, t = s2['enc'], s2['dec'], s2['tgt']
+            d2 = d if t.startswith('#') or len(d) != len(t) else t
+            return [e, d, t, to_metas(g, e), to_metas(g, d2)]
 
-        yield [list(to_features(g)) for g in groups]
+        yield [to_features(g) for g in groups]
 
 
 @tf.function
@@ -83,7 +86,7 @@ def tokenizer(d):
     def to_tokens(x):
         if chr(x[0]) == '#':
             y = ''.join([chr(c) for c in x[1:]])
-            y = [int(v) for v in y.split()]
+            y = [int(v) for v in y.split(',')]
         else:
             y = [tokens[chr(c)] for c in x]
         return tf.constant(y)

@@ -39,13 +39,13 @@ def sampler(ps):
         ynx = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
         if not yn:
             if randint(2):
-                ynx.update(dec=e2 + f'[{ss2.other(r2)}]')
+                ynx.update(dec=e2 + f'[{ss2.other(r2)}]' + '|?')
             else:
                 ynx.update(enc=enc + bad)
 
-        msk = dict(enc=enc, dec=mask(dec), tgt=tgt)
+        msk = dict(enc=enc, dec=mask(dec) + '|', tgt=tgt + '|')
 
-        msx = dict(enc=enc + tgt, dec=mask(d2), tgt=d2)
+        msx = dict(enc=enc + tgt, dec=mask(d2) + '|', tgt=d2 + '|')
 
         t2 = np.array(['+', '*', '2'])[randint(3)]
         ss2, i2 = ss2.next_idx
@@ -61,17 +61,18 @@ def sampler(ps):
 
         r1, r3 = f'{ss2.other(res)}', f'{ss2.other(res)}'
         r2 = f'[{r1}{res}{r3}]'
-        b, e = len(r1) + 1, len(r2) - len(r3) - 1
-        qas = dict(enc=enc, dec=r2, tgt=f'#{b} {e}')
+        b = '{:0>3d}'.format(len(r1) + 1)
+        e = '{:0>3d}'.format(len(r2) - len(r3) - 1)
+        qas = dict(enc=enc, dec=r2 + '|', tgt=f'#{b},{e}')
 
         e2, r2, *_ = ss.create(idx, keep=False)
         d2 = e2 + (f'[{r2}]' if yn else bad)
         rev = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
 
-        gen = dict(enc=enc, dec='[?', tgt=tgt)
+        gen = dict(enc=enc, dec='[~' + '|', tgt=tgt + '|')
 
         d2, t2 = alter(dec)
-        fix = dict(enc=enc, dec=d2, tgt=t2)
+        fix = dict(enc=enc, dec=d2 + '|', tgt=t2 + '|')
 
         yield {
             'yns': yns,

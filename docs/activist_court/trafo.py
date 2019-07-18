@@ -83,6 +83,10 @@ params.update(
     metric=qu.Metric(),
 )
 
+# groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
+groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'rev', 'fix')
+
+
 if __name__ == '__main__':
     ps = qu.Params(**params)
     ps.is_training = True
