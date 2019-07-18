@@ -88,7 +88,7 @@ def tokenizer(d):
 
 
 def sharder(ps, group=None, samples=False):
-    gs = qs.groups if group is None else list(group)
+    gs = qs.groups if group is None else [group]
     d = pth.Path('/tmp/q/data')
     for n in range(ps.num_shards):
         n = '{:0>4d}'.format(n)

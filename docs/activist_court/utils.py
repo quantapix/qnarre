@@ -13,8 +13,6 @@
 # limitations under the License.
 # =============================================================================
 
-from datetime import datetime
-
 import numpy as np
 import tensorflow as tf
 
@@ -73,6 +71,7 @@ class Metric(ks.metrics.Metric):
 
 
 def train_graph(ps, ds, m):
+    from datetime import datetime
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/q/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]

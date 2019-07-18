@@ -15,7 +15,7 @@
 
 import tensorflow as tf
 
-import data as qd
+import datasets as qd
 import layers as ql
 import utils as qu
 
@@ -88,4 +88,4 @@ if __name__ == '__main__':
     ps.is_training = True
     # qu.train_graph(ps, qd.dset_for(ps), model_for(ps))
     # qu.train_eager(ps, qd.dset_for(ps, count=10), model_for(ps))
-    qu.train_eager(ps, qd.dset_for(ps), model_for(ps))
+    qu.train_eager(ps, qd.dset_for(ps, 'msk'), model_for(ps))

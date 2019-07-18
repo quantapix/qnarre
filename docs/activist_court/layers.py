@@ -32,7 +32,6 @@ class Layer(kl.Layer):
         kw.setdefault('dtype', tf.float32)
         super().__init__(**kw)
         self.ps = ps
-        self.dropouts = {}
         self.norm = kl.LayerNormalization()
         if ps.initer_stddev:
             self.initer = ki.TruncatedNormal(stddev=ps.initer_stddev)
