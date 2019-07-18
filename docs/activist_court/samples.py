@@ -30,12 +30,13 @@ def sampler(ps):
         bad = f'[{ss.other(res)}]'
         yn = ss.yns[0, idx]
 
-        yns = dict(enc=enc, dec=dec if yn else bad, tgt=f'#{yn}')
+        d2 = dec if yn else bad
+        yns = dict(enc=enc, dec=d2 + '|?', tgt=d2 + f'|{yn}')
 
         ss2, i2 = ss.next_idx
         e2, r2, *_ = ss2.create(i2, use_x=res)
         d2 = e2 + f'[{r2}]'
-        ynx = dict(enc=enc + tgt, dec=d2, tgt=f'#{yn}')
+        ynx = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
         if not yn:
             if randint(2):
                 ynx.update(dec=e2 + f'[{ss2.other(r2)}]')
@@ -49,12 +50,14 @@ def sampler(ps):
         t2 = np.array(['+', '*', '2'])[randint(3)]
         ss2, i2 = ss2.next_idx
         e2, r2, t2, _ = ss2.create(i2, double_y=(t2 == '2'))
-        cls = dict(enc=e2, dec=f'[{r2}]', tgt=t2)
+        d2 = f'[{r2}]'
+        cls = dict(enc=e2, dec=d2 + '|?', tgt=d2 + f'|{t2}')
 
         t3 = np.array(['0', '+', '-'])[randint(3)]
         ss2, i2 = ss2.next_idx
         e2, r2, _, t3 = ss2.create(i2, use_x=None if t3 == '0' else res)
-        clx = dict(enc=enc + tgt, dec=e2 + f'[{r2}]', tgt=t3)
+        d2 = e2 + f'[{r2}]'
+        clx = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{t3}')
 
         r1, r3 = f'{ss2.other(res)}', f'{ss2.other(res)}'
         r2 = f'[{r1}{res}{r3}]'
@@ -62,11 +65,13 @@ def sampler(ps):
         qas = dict(enc=enc, dec=r2, tgt=f'#{b} {e}')
 
         e2, r2, *_ = ss.create(idx, keep=False)
-        d2 = e2 + f'[{r2}]' if yn else bad
-        rev = dict(enc=enc + tgt, dec=d2, tgt=f'#{yn}')
+        d2 = e2 + (f'[{r2}]' if yn else bad)
+        rev = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
 
         gen = dict(enc=enc, dec='[?', tgt=tgt)
-        fix = dict(enc=enc, dec=mask(dec, '_'), tgt=tgt)
+
+        d2, t2 = alter(dec)
+        fix = dict(enc=enc, dec=d2, tgt=t2)
 
         yield {
             'yns': yns,
@@ -132,20 +137,30 @@ class Samples:
                 return y
 
 
-def mask(x, msk=None):
+def mask(x):
     x, lx = list(x), len(x)
-    for i in randint(lx, size=((lx // 2) if msk is None else 1)):
-        x[i] = msk or '?'
+    for i in randint(lx, size=(lx // 2)):
+        x[i] = '?'
     return ''.join(x)
+
+
+def alter(x):
+    x, lx = list(x), len(x)
+    i = randint(2 if x[1] == '-' else 1, lx - 1)
+    y = x[i]
+    x[i] = '0' if y == '9' else chr(ord(y) + 1)
+    y = ''.join(x)
+    x[i] = '_'
+    return y, ''.join(x)
 
 
 if __name__ == '__main__':
     np.random.seed(12345)
     import utils as qu
     ps = dict(
-        dim_pool=5,
+        dim_pool=3,
         max_val=100,
-        num_samples=15,
+        num_samples=10,
     )
     ps = qu.Params(**ps)
     for d in sampler(ps):

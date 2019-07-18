@@ -23,10 +23,10 @@ td = tf.data
 tt = tf.train
 
 vocab = (' ', )
-metas = vocab + ('xys', 'ops', 'res')
-separs = ('=', ',', ';', '[', ']')
+metas = vocab + ('xys', 'ops', 'res', 'ans')
+separs = (',', ';', '[', ']', '|')
 vocab += separs
-vocab += ('x', 'y', '$', '+', '-', '*')
+vocab += ('x', 'y', '=', '$', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 masks = ('?', '_')
 vocab += masks
@@ -44,15 +44,22 @@ features = ('enc', 'dec', 'tgt', 'emt', 'dmt')
 
 def sampler(ps, groups):
     def to_metas(x):
-        y, x = '', x.split(';')
-        if len(x) > 1:
-            y = 'X' * (len(x[0]) + 1)
-            x = x[1:]
-        x = x[0].split('[')
-        y += 'O' * len(x[0])
-        if len(x) > 1:
-            y += 'R' * (len(x[1]) + 1)
-        return y
+        m, y = '', x.split(';')
+        if len(y) > 1:
+            m = 'X' * (len(y[0]) + 1)
+            y = y[1:]
+        y = y[0].split('[')
+        y2 = y[0].split('|')
+        m += 'O' * len(y2[0])
+        if len(y2) > 1:
+            m += 'A' * (len(y2[1]) + 1)
+        if len(y) > 1:
+            y2 = y[1].split('|')
+            m += 'R' * (len(y2[0]) + 1)
+            if len(y2) > 1:
+                m += 'A' * (len(y2[1]) + 1)
+        assert len(x) == len(m)
+        return m
 
     for s in qs.sampler(ps):
 
