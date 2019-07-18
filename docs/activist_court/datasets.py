@@ -25,9 +25,9 @@ tt = tf.train
 
 vocab = (' ', )
 metas = vocab + ('xys', 'ops', 'res')
-separs = (';', '[', ']')
+separs = ('=', ',', ';', '[', ']')
 vocab += separs
-vocab += ('x', 'y', '=', ',', '+', '-', '*')
+vocab += ('x', 'y', '$', '+', '-', '*')
 vocab += ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 masks = ('?', '_')
 vocab += masks
@@ -53,7 +53,7 @@ def splitter(x):
 def tokenizer(d):
     def tokenize(x):
         if chr(x[0]) == '#':
-            y = ''.join([chr(c)] for c in x[1:])
+            y = ''.join([chr(c) for c in x[1:]])
             y = [int(v) for v in y.split()]
         else:
             y = [tokens[chr(c)] for c in x]
@@ -72,14 +72,14 @@ def sharder(ps, samples=False):
 
         def sampler():
             for s in qs.sampler(ps):
-                yield [s[g] for g in qs.groups]
+                yield [[s[g][f] for f in features] for g in qs.groups]
 
-        ss = np.array(list(sampler(ps))) if samples else None
+        ss = np.array(list(sampler())) if samples else None
         for i, g in enumerate(qs.groups):
             f = d / g
             f.mkdir(parents=True, exist_ok=True)
             f = str(f / f'shard_{s}.tfrecords')
-            if ss:
+            if ss is not None:
                 ds = td.Dataset.from_tensor_slices(ss[:, i])
                 yield f, ds.map(splitter).map(tokenizer)
             else:
@@ -176,10 +176,10 @@ params = dict(
 
 def main(ps):
     fs = [f for f in dump(ps)]
-    ds = load(ps, files=fs).map(caster).map(formatter).map(adapter)
-    for i, _ in enumerate(ds):
-        pass
-    print(f'dumped {i} batches of {ps.dim_batch} samples each')
+    # ds = load(ps, files=fs).map(caster).map(formatter).map(adapter)
+    # for i, _ in enumerate(ds):
+    #     pass
+    print(f'dumped {len(fs)} batches of {ps.dim_batch} samples each')
 
 
 if __name__ == '__main__':
