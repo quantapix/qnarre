@@ -17,7 +17,9 @@ import numpy as np
 
 randint = np.random.randint
 
-groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
+groups = 'yns ynx msk msx cls clx qas rev gen fix'.split()
+
+YNS, YNX, MSK, MSX, CLS, CLX, QAS, REV, GEN, FIX = groups
 
 
 def sampler(ps):
@@ -47,13 +49,13 @@ def sampler(ps):
 
         msx = dict(enc=enc + tgt, dec=mask(d2) + '|', tgt=d2 + '|')
 
-        t2 = np.array(['+', '*', '2'])[randint(3)]
+        t2 = np.array(list('+*2'))[randint(3)]
         ss2, i2 = ss2.next_idx
         e2, r2, t2, _ = ss2.create(i2, double_y=(t2 == '2'))
         d2 = f'[{r2}]'
         cls = dict(enc=e2, dec=d2 + '|_', tgt=d2 + f'|{t2}')
 
-        t3 = np.array(['0', '+', '-'])[randint(3)]
+        t3 = np.array(list('0+-'))[randint(3)]
         ss2, i2 = ss2.next_idx
         e2, r2, _, t3 = ss2.create(i2, use_x=None if t3 == '0' else res)
         d2 = e2 + f'[{r2}]'
@@ -76,16 +78,16 @@ def sampler(ps):
         fix = dict(enc=enc, dec=d2 + '|', tgt=tgt + '|', out=f'#{i2}')
 
         yield {
-            'yns': yns,
-            'ynx': ynx,
-            'msk': msk,
-            'msx': msx,
-            'cls': cls,
-            'clx': clx,
-            'qas': qas,
-            'rev': rev,
-            'gen': gen,
-            'fix': fix,
+            YNS: yns,
+            YNX: ynx,
+            MSK: msk,
+            MSX: msx,
+            CLS: cls,
+            CLX: clx,
+            QAS: qas,
+            REV: rev,
+            GEN: gen,
+            FIX: fix,
         }
         ss = ss2
 
@@ -95,7 +97,7 @@ class Samples:
         self.ps = ps
         mx, n = ps.max_val, ps.dim_pool
         self.xys = randint(low=1 - mx, high=mx, size=(2, n))
-        self.ops = np.array(['+', '-', '*'])[randint(3, size=n)]
+        self.ops = np.array(list('+-*'))[randint(3, size=n)]
         self.seq = randint(2, size=(2, n))
         self.yns = randint(2, size=(2, n))
         self.idx = 0
