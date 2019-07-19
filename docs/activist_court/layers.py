@@ -16,9 +16,10 @@
 import numpy as np
 import tensorflow as tf
 
-import data as qd
-import utils as qu
+import datasets as qd
 import modules as qm
+import samples as qs
+import utils as qu
 
 ks = tf.keras
 kl = ks.layers
@@ -267,4 +268,31 @@ class Deduce(Layer):
         y = tf.argmax(y, axis=-1, output_type=tf.int32)
         y = tf.tensor_scatter_nd_update(toks, i, y)
         y = tf.where(tf.logical_and(msks, m), y, toks)
+        return y
+
+
+class Output(Layer):
+    def __init__(self, ps):
+        super().__init__(ps)
+        h = ps.dim_hidden
+        self.width = w = ps.width_dec
+        self.span = qm.Dense(self, 'span', [h * w, 2 * w])
+        self.spot = qm.Dense(self, 'spot', [h * w, w])
+        self.zero = tf.one_hot(0, ps.width_dec)[None, None, ]
+
+    @tf.function
+    def call(self, x):
+        g, x, _ = x
+        s = tf.shape(x)
+        if tf.equal(g[0], qs.groups.index('qas')):
+            y = tf.pad(x, [[0, 0], [0, self.width - s[1]], [0, 0]])
+            y = tf.reshape(y, [s[0], 1, -1])
+            y = self.span(y)
+            y = tf.reshape(y, [s[0], 2, -1])
+        elif tf.equal(g[0], qs.groups.index('fix')):
+            y = tf.pad(x, [[0, 0], [0, self.width - s[1]], [0, 0]])
+            y = tf.reshape(y, [s[0], 1, -1])
+            y = self.spot(y)
+        else:
+            y = self.zero
         return y

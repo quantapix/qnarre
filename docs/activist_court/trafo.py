@@ -16,6 +16,7 @@
 import tensorflow as tf
 
 import datasets as qd
+import samples as qs
 import layers as ql
 import utils as qu
 
@@ -23,11 +24,12 @@ ks = tf.keras
 
 
 def model_for(ps):
+    g = [ks.Input(shape=(), dtype='int32')]
     x = []
-    for _ in ('encode', 'decode', 'target'):
+    for _ in ('enc', 'dec', 'tgt'):
         x.append(ks.Input(shape=(), dtype='int32'))
         x.append(ks.Input(shape=(), dtype='int64'))
-    for _ in ('e_meta', 'd_meta'):
+    for _ in ('emt', 'dmt'):
         x.append(ks.Input(shape=(), dtype='int32'))
     y = ql.ToRagged()(x)
     yt, ym = ql.Tokens(ps)(y), ql.Metas(ps)(y)
@@ -35,17 +37,21 @@ def model_for(ps):
     embed = ql.Embed(ps)
     ye = ql.Encode(ps)(embed(xe))[0]
     decode = ql.Decode(ps)
-    yb = ql.Debed(ps)(decode(embed(xd) + [ye]))
+    y = decode(embed(xd) + [ye])
+    yb = ql.Debed(ps)(y)
     yc = ql.Deduce(ps, embed, decode)(xd + [ye])
-    m = ks.Model(inputs=x, outputs=[yb, yc])
+    yo = ql.Output(ps)(g + y)
+    m = ks.Model(inputs=g + x, outputs=[yb, yc, yo])
     m.compile(optimizer=ps.optimizer,
               loss={
                   'debed': ps.loss,
-                  'deduce': ps.loss
+                  'deduce': ps.loss,
+                  'output': ps.loss,
               },
               metrics={
                   'debed': [ps.metric],
-                  'deduce': [ps.metric]
+                  'deduce': [ps.metric],
+                  'output': [ps.metric],
               })
     print(m.summary())
     return m
@@ -69,8 +75,9 @@ params = dict(
     initer_stddev=0.02,
     loss=ks.losses.SparseCategoricalCrossentropy(from_logits=True),
     metric=ks.metrics.SparseCategoricalCrossentropy(from_logits=True),
-    num_epochs=5,
+    num_epochs=2,
     num_heads=3,
+    num_rounds=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
     print_toks=False,
@@ -83,13 +90,18 @@ params.update(
     metric=qu.Metric(),
 )
 
-# groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'qas', 'rev', 'gen', 'fix')
-groups = ('yns', 'ynx', 'msk', 'msx', 'cls', 'clx', 'rev', 'fix')
+
+def main(ps, fn, groups=None, count=None):
+    groups = groups or qs.groups
+    m = model_for(ps)
+    for r in range(ps.num_rounds):
+        for g in groups:
+            print(f'\nRound {r}, group {g}...\n=======================')
+            fn(ps, qd.dset_for(ps, g, count=count), m)
 
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
     ps.is_training = True
-    # qu.train_graph(ps, qd.dset_for(ps), model_for(ps))
-    # qu.train_eager(ps, qd.dset_for(ps, count=10), model_for(ps))
-    qu.train_eager(ps, qd.dset_for(ps, 'msk'), model_for(ps))
+    # qu.train_eager(ps, qd.dset_for(ps, 'msk', count=10), model_for(ps))
+    main(ps, qu.train_eager, groups=('msk', ), count=10)

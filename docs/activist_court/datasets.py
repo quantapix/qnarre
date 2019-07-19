@@ -40,13 +40,13 @@ assert SPC == 0
 EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
-features = ('enc', 'dec', 'tgt', 'emt', 'dmt', 'out')
+features = ('grp', 'enc', 'dec', 'tgt', 'emt', 'dmt', 'out')
 
 
 def sampler(ps, groups):
-    def to_metas(g, x):
+    def to_meta(g, x):
         # print('to_metas x', x)
-        g = chr(ord('A') + qs.groups.index(g))
+        g = chr(ord('A') + g)
         m, y = '', x.split(';')
         if len(y) > 1:
             m = 'X' * (len(y[0]) + 1)
@@ -68,10 +68,11 @@ def sampler(ps, groups):
     for s in qs.sampler(ps):
 
         def to_features(g):
-            s2 = s[g]
-            e, d, t, o = s2['enc'], s2['dec'], s2['tgt'], s2.get('out', '')
+            fs = s[g]
+            g = qs.groups.index(g)
+            e, d, t, o = fs['enc'], fs['dec'], fs['tgt'], fs.get('out', '#0')
             d2 = t if '?' in d else d
-            return [e, d, t, to_metas(g, e), to_metas(g, d2), o]
+            return [f'#{g}', e, d, t, to_meta(g, e), to_meta(g, d2), o]
 
         yield [to_features(g) for g in groups]
 
@@ -155,11 +156,12 @@ def formatter(d):
 
 @tf.function
 def adapter(d):
-    x = tuple(t for f in features[:3]
-              for t in (d[f].flat_values, d[f].row_splits))
-    x += tuple(d[f].flat_values for f in features[3:])
-    t, o = d['tgt'].to_tensor(), d['out'].to_tensor()
-    y = (t, t, o)
+    x = (d['grp'].to_tensor(),)
+    x += tuple(t for f in ('enc', 'dec', 'tgt')
+               for t in (d[f].flat_values, d[f].row_splits))
+    x += tuple(d[f].flat_values for f in ('emt', 'dmt'))
+    t = d['tgt'].to_tensor()
+    y = (t, t, d['out'].to_tensor())
     return x, y
 
 
