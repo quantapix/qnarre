@@ -278,12 +278,13 @@ class Output(Layer):
         self.width = w = ps.width_dec
         self.span = qm.Dense(self, 'span', [h * w, 2 * w])
         self.spot = qm.Dense(self, 'spot', [h * w, w])
-        self.zero = tf.one_hot(0, ps.width_dec)[None, None, ]
+        self.zero = tf.one_hot(0, ps.width_dec)[None, ]
 
     @tf.function
     def call(self, x):
         g, x, _ = x
         s = tf.shape(x)
+        """
         if tf.equal(g[0], qs.groups.index('qas')):
             y = tf.pad(x, [[0, 0], [0, self.width - s[1]], [0, 0]])
             y = tf.reshape(y, [s[0], 1, -1])
@@ -295,4 +296,6 @@ class Output(Layer):
             y = self.spot(y)
         else:
             y = self.zero
+        """
+        y = tf.broadcast_to(self.zero, [s[0], self.width])
         return y

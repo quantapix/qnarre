@@ -79,12 +79,12 @@ def train_graph(ps, ds, m):
 
 
 def train_eager(ps, ds, m):
-    def step(x, y):
+    def step(x, ts):
         with tf.GradientTape() as tape:
-            logits = m(x)
-            loss = ps.loss(y, logits)
-            loss += sum(m.losses)
-            xent = ps.metric(y, logits)
+            ys = m(x)
+            loss = [ps.loss(t, y) for t, y in zip(ts, ys[:-1])]
+            # loss += sum(m.losses)
+            xent = [ps.metric(t, y) for t, y, in zip(ts, ys[:-1])]
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
         return loss, xent
