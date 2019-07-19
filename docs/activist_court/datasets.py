@@ -22,8 +22,8 @@ import samples as qs
 td = tf.data
 tt = tf.train
 
-vocab = (' ', )
-metas = vocab + ('XYS', 'OPS', 'RES')
+vocab = tuple(' ')
+metas = vocab + tuple('XYS OPS RES'.split())
 metas += tuple('ABCDEFGHIJ')
 separs = tuple(',;[]|')
 vocab += separs
@@ -40,7 +40,9 @@ assert SPC == 0
 EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
-features = ('grp', 'enc', 'dec', 'tgt', 'emt', 'dmt', 'out')
+features = tuple('grp enc dec tgt emt dmt out'.split())
+
+GRP, ENC, DEC, TGT, EMT, DMT, OUT = features
 
 
 def sampler(ps, groups):
@@ -70,7 +72,7 @@ def sampler(ps, groups):
         def to_features(g):
             fs = s[g]
             g = qs.groups.index(g)
-            e, d, t, o = fs['enc'], fs['dec'], fs['tgt'], fs.get('out', '#0')
+            e, d, t, o = fs[ENC], fs[DEC], fs[TGT], fs.get(OUT, '')
             d2 = t if '?' in d else d
             return [f'#{g}', e, d, t, to_meta(g, e), to_meta(g, d2), o]
 
@@ -145,28 +147,22 @@ def load(ps, group=None, files=None, count=None):
 
 
 @tf.function
-def caster(d):
-    return {k: tf.cast(v, tf.int32) for k, v in d.items()}
-
-
-@tf.function
-def formatter(d):
-    return {f: tf.RaggedTensor.from_sparse(d[f]) for f in features}
-
-
-@tf.function
-def adapter(d):
-    x = (d['grp'].to_tensor(),)
-    x += tuple(t for f in ('enc', 'dec', 'tgt')
-               for t in (d[f].flat_values, d[f].row_splits))
-    x += tuple(d[f].flat_values for f in ('emt', 'dmt'))
-    t = d['tgt'].to_tensor()
-    y = (t, t, d['out'].to_tensor())
+def adapter(d, group=None):
+    d = {f: tf.cast(d[f], tf.int32) for f in features}
+    d = {f: tf.RaggedTensor.from_sparse(d[f]) for f in features}
+    # x = (d[GRP].to_tensor(), )
+    x = tuple(t for f in (ENC, DEC, TGT)
+              for t in (d[f].flat_values, d[f].row_splits))
+    x += tuple(d[f].flat_values for f in (EMT, DMT))
+    if group in (qs.QAS, qs.FIX):
+        y = d[OUT].to_tensor()
+    else:
+        y = d[TGT].to_tensor()
     return x, y
 
 
 def dset_for(ps, group, adapter=adapter, count=None):
-    return load(ps, group, count=count).map(caster).map(formatter).map(adapter)
+    return load(ps, group, count=count).map(lambda x: adapter(x, group))
 
 
 if __name__ == '__main__':
@@ -176,12 +172,12 @@ if __name__ == '__main__':
         dim_batch=100,
         dim_pool=8 * 1024,
         max_val=10000,
-        num_samples=1000,
-        num_shards=10,
+        num_samples=100,
+        num_shards=2,
     )
     ps = qu.Params(**ps)
     fs = [f for f in dump(ps)]
-    ds = load(ps, files=fs).map(caster).map(formatter).map(adapter)
+    ds = load(ps, files=fs).map(adapter)
     for i, _ in enumerate(ds):
         pass
-    print(f'dumped {i} batches of {ps.dim_batch} samples each')
+    print(f'dumped {i + 1} batches of {ps.dim_batch} samples each')

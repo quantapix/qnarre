@@ -17,7 +17,7 @@ import numpy as np
 
 randint = np.random.randint
 
-groups = 'yns ynx msk msx cls clx qas rev gen fix'.split()
+groups = tuple('yns ynx msk msx cls clx qas rev gen fix'.split())
 
 YNS, YNX, MSK, MSX, CLS, CLX, QAS, REV, GEN, FIX = groups
 
