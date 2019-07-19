@@ -29,7 +29,7 @@ separs = tuple(',;[]|')
 vocab += separs
 vocab += tuple('xy=$+-*')
 vocab += tuple('0123456789')
-masks = tuple('?~_')
+masks = tuple('?')
 vocab += masks
 
 tokens = {c: i for i, c in enumerate(vocab)}
@@ -40,7 +40,7 @@ assert SPC == 0
 EOS = tokens[separs[-1]]
 MSK = tokens[masks[0]]
 
-features = ('enc', 'dec', 'tgt', 'emt', 'dmt')
+features = ('enc', 'dec', 'tgt', 'emt', 'dmt', 'out')
 
 
 def sampler(ps, groups):
@@ -69,9 +69,9 @@ def sampler(ps, groups):
 
         def to_features(g):
             s2 = s[g]
-            e, d, t = s2['enc'], s2['dec'], s2['tgt']
+            e, d, t, o = s2['enc'], s2['dec'], s2['tgt'], s2.get('out', '')
             d2 = d if t.startswith('#') or len(d) != len(t) else t
-            return [e, d, t, to_metas(g, e), to_metas(g, d2)]
+            return [e, d, t, to_metas(g, e), to_metas(g, d2), o]
 
         yield [to_features(g) for g in groups]
 
@@ -84,12 +84,12 @@ def splitter(x):
 @tf.function
 def tokenizer(d):
     def to_tokens(x):
-        if chr(x[0]) == '#':
+        if len(x) > 0 and chr(x[0]) == '#':
             y = ''.join([chr(c) for c in x[1:]])
-            y = [int(v) for v in y.split(',')]
+            y = [int(v) for v in y.split()]
         else:
             y = [tokens[chr(c)] for c in x]
-        return tf.constant(y)
+        return tf.constant(y, tf.int32)
 
     return {
         k: tf.numpy_function(to_tokens, [v], Tout=tf.int32)
@@ -158,8 +158,9 @@ def adapter(d):
     x = tuple(t for f in features[:3]
               for t in (d[f].flat_values, d[f].row_splits))
     x += tuple(d[f].flat_values for f in features[3:])
-    y = d['tgt'].to_tensor()
-    return x, (y, y)
+    t, o = d['tgt'].to_tensor(), d['out'].to_tensor()
+    y = (t, t, o)
+    return x, y
 
 
 def dset_for(ps, group, adapter=adapter, count=None):

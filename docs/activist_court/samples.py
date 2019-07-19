@@ -63,16 +63,17 @@ def sampler(ps):
         r2 = f'[{r1}{res}{r3}]'
         b = '{:0>3d}'.format(len(r1) + 1)
         e = '{:0>3d}'.format(len(r2) - len(r3) - 1)
-        qas = dict(enc=enc, dec=r2 + '|', tgt=f'#{b},{e}')
+        qas = dict(enc=enc, dec=r2 + '|', tgt='|', out=f'#{b} {e}')
 
         e2, r2, *_ = ss.create(idx, keep=False)
         d2 = e2 + (f'[{r2}]' if yn else bad)
         rev = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
 
-        gen = dict(enc=enc, dec='[~' + '|', tgt=tgt + '|')
+        d2 = '[' + '?' * (len(tgt) + 5)
+        gen = dict(enc=enc, dec=d2 + '|', tgt=tgt + '|')
 
-        d2, t2 = alter(dec)
-        fix = dict(enc=enc, dec=d2 + '|', tgt=t2 + '|')
+        d2, i2 = alter(dec)
+        fix = dict(enc=enc, dec=d2 + '|', tgt=tgt + '|', out=f'#{i2}')
 
         yield {
             'yns': yns,
@@ -150,9 +151,7 @@ def alter(x):
     i = randint(2 if x[1] == '-' else 1, lx - 1)
     y = x[i]
     x[i] = '0' if y == '9' else chr(ord(y) + 1)
-    y = ''.join(x)
-    x[i] = '_'
-    return y, ''.join(x)
+    return ''.join(x), i
 
 
 if __name__ == '__main__':
