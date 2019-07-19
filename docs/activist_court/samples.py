@@ -31,15 +31,15 @@ def sampler(ps):
         yn = ss.yns[0, idx]
 
         d2 = dec if yn else bad
-        yns = dict(enc=enc, dec=d2 + '|?', tgt=d2 + f'|{yn}')
+        yns = dict(enc=enc, dec=d2 + '|_', tgt=d2 + f'|{yn}')
 
         ss2, i2 = ss.next_idx
         e2, r2, *_ = ss2.create(i2, use_x=res)
         d2 = e2 + f'[{r2}]'
-        ynx = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
+        ynx = dict(enc=enc + tgt, dec=d2 + '|_', tgt=d2 + f'|{yn}')
         if not yn:
             if randint(2):
-                ynx.update(dec=e2 + f'[{ss2.other(r2)}]' + '|?')
+                ynx.update(dec=e2 + f'[{ss2.other(r2)}]' + '|_')
             else:
                 ynx.update(enc=enc + bad)
 
@@ -51,13 +51,13 @@ def sampler(ps):
         ss2, i2 = ss2.next_idx
         e2, r2, t2, _ = ss2.create(i2, double_y=(t2 == '2'))
         d2 = f'[{r2}]'
-        cls = dict(enc=e2, dec=d2 + '|?', tgt=d2 + f'|{t2}')
+        cls = dict(enc=e2, dec=d2 + '|_', tgt=d2 + f'|{t2}')
 
         t3 = np.array(['0', '+', '-'])[randint(3)]
         ss2, i2 = ss2.next_idx
         e2, r2, _, t3 = ss2.create(i2, use_x=None if t3 == '0' else res)
         d2 = e2 + f'[{r2}]'
-        clx = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{t3}')
+        clx = dict(enc=enc + tgt, dec=d2 + '|_', tgt=d2 + f'|{t3}')
 
         r1, r3 = f'{ss2.other(res)}', f'{ss2.other(res)}'
         r2 = f'[{r1}{res}{r3}]'
@@ -67,9 +67,9 @@ def sampler(ps):
 
         e2, r2, *_ = ss.create(idx, keep=False)
         d2 = e2 + (f'[{r2}]' if yn else bad)
-        rev = dict(enc=enc + tgt, dec=d2 + '|?', tgt=d2 + f'|{yn}')
+        rev = dict(enc=enc + tgt, dec=d2 + '|_', tgt=d2 + f'|{yn}')
 
-        d2 = '[' + '?' * (len(tgt) + 5)
+        d2 = '[' + '_' * (len(tgt) + randint(5))
         gen = dict(enc=enc, dec=d2 + '|', tgt=tgt + '|')
 
         d2, i2 = alter(dec)

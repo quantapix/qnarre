@@ -29,7 +29,7 @@ separs = tuple(',;[]|')
 vocab += separs
 vocab += tuple('xy=$+-*')
 vocab += tuple('0123456789')
-masks = tuple('?')
+masks = tuple('?_')
 vocab += masks
 
 tokens = {c: i for i, c in enumerate(vocab)}
@@ -70,7 +70,7 @@ def sampler(ps, groups):
         def to_features(g):
             s2 = s[g]
             e, d, t, o = s2['enc'], s2['dec'], s2['tgt'], s2.get('out', '')
-            d2 = d if t.startswith('#') or len(d) != len(t) else t
+            d2 = t if '?' in d else d
             return [e, d, t, to_metas(g, e), to_metas(g, d2), o]
 
         yield [to_features(g) for g in groups]
