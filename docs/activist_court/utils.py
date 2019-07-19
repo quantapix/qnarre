@@ -39,20 +39,21 @@ def activation(x):
     return ks.activations.get(x)
 
 
-def cross_entropy(tgt, y):
-    tgt = tf.reshape(tf.cast(tgt, tf.int64), [-1])
-    s = tf.shape(y)
-    y = tf.reshape(y, [-1, s[-1]])
-    y = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tgt, logits=y)
-    return tf.reshape(y, s[:-1])
+def cross_entropy(tgt, out):
+    t = tf.reshape(tf.cast(tgt, tf.int64), [-1])
+    s = tf.shape(out)
+    y = tf.reshape(out, [-1, s[-1]])
+    y = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=t, logits=y)
+    y = tf.reshape(y, s[:-1])
+    return y
 
 
 class Loss(ks.losses.Loss):
     def __init__(self):
         super().__init__(name='loss')
 
-    def call(self, tgt, y):
-        return cross_entropy(tgt, y)
+    def call(self, tgt, out):
+        return cross_entropy(tgt, out)
 
 
 class Metric(ks.metrics.Metric):
@@ -61,8 +62,8 @@ class Metric(ks.metrics.Metric):
         self.total = self.add_weight('total', initializer='zeros')
         self.count = self.add_weight('count', initializer='zeros')
 
-    def update_state(self, tgt, y, sample_weight=None):
-        vs = cross_entropy(tgt, y)
+    def update_state(self, tgt, out, sample_weight=None):
+        vs = cross_entropy(tgt, out)
         self.total.assign_add(tf.math.reduce_sum(vs))
         return self.count.assign_add(tf.cast(tf.size(vs), dtype=tf.float32))
 
@@ -79,12 +80,12 @@ def train_graph(ps, ds, m):
 
 
 def train_eager(ps, ds, m):
-    def step(x, ts):
+    def step(x, t):
         with tf.GradientTape() as tape:
-            ys = m(x)
-            loss = [ps.loss(t, y) for t, y in zip(ts, ys[:-1])]
-            # loss += sum(m.losses)
-            xent = [ps.metric(t, y) for t, y, in zip(ts, ys[:-1])]
+            y = m(x)
+            loss = ps.loss(t, y)
+            loss += sum(m.losses)
+            xent = ps.metric(t, y)
         grads = tape.gradient(loss, m.trainable_variables)
         ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
         return loss, xent

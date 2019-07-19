@@ -23,13 +23,12 @@ import utils as qu
 ks = tf.keras
 
 
-def model_for(ps):
-    g = [ks.Input(shape=(), dtype='int32')]
+def model_for(ps, group):
     x = []
-    for _ in ('enc', 'dec', 'tgt'):
+    for _ in (qd.ENC, qd.DEC, qd.TGT):
         x.append(ks.Input(shape=(), dtype='int32'))
         x.append(ks.Input(shape=(), dtype='int64'))
-    for _ in ('emt', 'dmt'):
+    for _ in (qd.EMT, qd.DMT):
         x.append(ks.Input(shape=(), dtype='int32'))
     y = ql.ToRagged()(x)
     yt, ym = ql.Tokens(ps)(y), ql.Metas(ps)(y)
@@ -37,22 +36,16 @@ def model_for(ps):
     embed = ql.Embed(ps)
     ye = ql.Encode(ps)(embed(xe))[0]
     decode = ql.Decode(ps)
-    y = decode(embed(xd) + [ye])
-    yb = ql.Debed(ps)(y)
-    yc = ql.Deduce(ps, embed, decode)(xd + [ye])
-    yo = ql.Output(ps)(g + y)
-    m = ks.Model(inputs=g + x, outputs=[yb, yc, yo])
-    m.compile(optimizer=ps.optimizer,
-              loss={
-                  'debed': ps.loss,
-                  'deduce': ps.loss,
-                  'output': ps.loss,
-              },
-              metrics={
-                  'debed': [ps.metric],
-                  'deduce': [ps.metric],
-                  'output': [ps.metric],
-              })
+    if group in (qs.YNS, qs.YNX):
+        y = decode(embed(xd) + [ye])
+        y = ql.Debed(ps)(y)
+    elif group in (qs.MSK, qs.MSX):
+        y = ql.Deduce(ps, embed, decode)(xd + [ye])
+    if group in (qs.QAS, qs.FIX):
+        y = decode(embed(xd) + [ye])
+        y = ql.Output(ps, group)(y)
+    m = ks.Model(inputs=x, outputs=[y])
+    m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
 
@@ -81,8 +74,8 @@ params = dict(
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
     print_toks=False,
-    width_dec=15,
-    width_enc=25,
+    width_dec=40,
+    width_enc=50,
 )
 
 params.update(
@@ -93,15 +86,14 @@ params.update(
 
 def main(ps, fn, groups=None, count=None):
     groups = groups or qs.groups
-    m = model_for(ps)
     for r in range(ps.num_rounds):
         for g in groups:
-            print(f'\nRound {r}, group {g}...\n=======================')
-            fn(ps, qd.dset_for(ps, g, count=count), m)
+            print(f'\nRound {r + 1}, group {g}...\n=======================')
+            fn(ps, qd.dset_for(ps, g, count=count), model_for(ps, g))
 
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
     ps.is_training = True
     # qu.train_eager(ps, qd.dset_for(ps, 'msk', count=10), model_for(ps))
-    main(ps, qu.train_eager, groups=('msk', ), count=10)
+    main(ps, qu.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
