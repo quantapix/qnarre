@@ -33,7 +33,6 @@ class Layer(kl.Layer):
         kw.setdefault('dtype', tf.float32)
         super().__init__(**kw)
         self.ps = ps
-        self.norm = kl.LayerNormalization()
         if ps.initer_stddev:
             self.initer = ki.TruncatedNormal(stddev=ps.initer_stddev)
 
@@ -52,9 +51,7 @@ class ToRagged(kl.Layer):
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int64)
-    ] * 3 + [
-        tf.TensorSpec(shape=[None], dtype=tf.int32),
-    ] * 2])
+    ] * 3 + [tf.TensorSpec(shape=[None], dtype=tf.int32)] * 2])
     def call(self, x):
         efv, ers, dfv, drs, tfv, trs, em, dm = x
         return [
@@ -138,6 +135,7 @@ class Embed(Layer):
 
     def __init__(self, ps):
         super().__init__(ps)
+        self.norm = qm.Norm(self, 'norm', [ps.dim_hidden])
         self.toks = self.add_weight('toks', [ps.dim_vocab, ps.dim_hidden])
         self.meta = self.add_weight('meta', [ps.dim_metas, ps.dim_hidden])
         self.e_pos = self.pos_timing(ps.width_enc, ps.dim_hidden)
@@ -179,10 +177,14 @@ class Encode(Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.width = ps.width_enc
+        self.norm = qm.Norm(self, 'norm', [ps.dim_hidden])
         n = ps.dim_stacks
         self.encs = [qm.Encoder(self, f'encode_{i}') for i in range(n)]
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32)
+    ]])
     def call(self, x):
         y = x
         for enc in self.encs:
@@ -194,10 +196,15 @@ class Decode(Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.width = ps.width_dec
+        self.norm = qm.Norm(self, 'norm', [ps.dim_hidden])
         n = ps.dim_stacks
         self.decs = [qm.Decoder(self, f'decode_{i}') for i in range(n)]
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None, None, None])
+    ]])
     def call(self, x):
         y, ye = x[:-1], x[-1]
         for dec in self.decs:
@@ -210,7 +217,10 @@ class Debed(Layer):
         super().__init__(ps)
         self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32)
+    ]])
     def call(self, x):
         y, lens = x
         y = self.inflate(y)
@@ -225,7 +235,12 @@ class Deduce(Layer):
         self.decode = decode
         self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None, None, None])
+    ]])
     def call(self, x):
         toks, *x = x
         if self.ps.print_toks:
@@ -271,7 +286,7 @@ class Deduce(Layer):
         return y
 
 
-class Output(Layer):
+class Locate(Layer):
     span, spot = None, None
 
     def __init__(self, ps, group):
@@ -284,7 +299,10 @@ class Output(Layer):
             assert group is qs.FIX
             self.spot = qm.Dense(self, 'spot', [h * w, w])
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32)
+    ]])
     def call(self, x):
         y, _ = x
         s = tf.shape(y)

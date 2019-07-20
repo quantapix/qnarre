@@ -27,7 +27,10 @@ class Encoder(tf.Module):
             self.reflect = Attention(layer, 'reflect')
             self.conclude = Conclusion(layer, 'conclude')
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32)
+    ]])
     def __call__(self, x):
         y = x
         y = self.reflect(y + [y[0]])
@@ -43,7 +46,11 @@ class Decoder(tf.Module):
             self.consider = Attention(layer, 'consider')
             self.conclude = Conclusion(layer, 'conclude')
 
-    @tf.function
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32),
+        tf.TensorSpec(shape=[None, None, None])
+    ]])
     def __call__(self, x):
         y, ye = x[:-1], x[-1]
         y = self.reflect(y + [y[0]])
@@ -145,11 +152,31 @@ class Dense(tf.Module):
             if activation:
                 self.activate = qu.activation(activation)
 
-    @tf.function
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None, None])])
     def __call__(self, x):
         y = tf.einsum('bni,ij->bnj', x, self.kernel)
         if self.bias is not None:
             y = tf.nn.bias_add(y, self.bias)
         if self.activate:
             y = self.activate(y)
+        return y
+
+
+class Norm(tf.Module):
+    epsilon = 1e-3
+
+    def __init__(self, layer, name, shape):
+        super().__init__(name)
+        kw = dict(shape=shape, dtype=tf.float32)
+        with self.name_scope:
+            self.gamma = layer.add_weight('gamma', initializer='ones', **kw)
+            self.beta = layer.add_weight('beta', initializer='zeros', **kw)
+
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None, None])])
+    def __call__(self, x):
+        mean, variance = tf.nn.moments(x, -1, keepdims=True)
+        kw = dict(offset=self.beta,
+                  scale=self.gamma,
+                  variance_epsilon=self.epsilon)
+        y = tf.nn.batch_normalization(x, mean, variance, **kw)
         return y

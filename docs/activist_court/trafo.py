@@ -43,7 +43,7 @@ def model_for(ps, group):
         y = ql.Deduce(ps, embed, decode)(xd + [ye])
     if group in (qs.QAS, qs.FIX):
         y = decode(embed(xd) + [ye])
-        y = ql.Output(ps, group)(y)
+        y = ql.Locate(ps, group)(y)
     m = ks.Model(inputs=x, outputs=[y])
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
