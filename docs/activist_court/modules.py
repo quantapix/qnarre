@@ -108,16 +108,16 @@ class Attention(tf.Module):
     def __init__(self, layer, name):
         super().__init__(name)
         self.layer = layer
-        ps = layer.ps
-        h = ps.dim_hidden
-        k = ps.dim_attn_qk or ps.dim_attn or h
+        cfg = layer.cfg
+        h = cfg.dim_hidden
+        k = cfg.dim_attn_qk or cfg.dim_attn or h
         self.scale = 1 / (k**0.5)
-        self.num_heads = n = ps.num_heads or 1
-        v = ps.dim_attn_v
+        self.num_heads = n = cfg.num_heads or 1
+        v = cfg.dim_attn_v
         if not v:
             assert h % n == 0
             v = h // n
-        self.drop_rate = ps.drop_attn or ps.drop_hidden
+        self.drop_rate = cfg.drop_attn or cfg.drop_hidden
         with self.name_scope:
             self.q = Dense(layer, 'q', [h, n * k])
             self.k = Dense(layer, 'k', [h, n * k])
@@ -165,9 +165,9 @@ class Conclusion(tf.Module):
     def __init__(self, layer, name):
         super().__init__(name)
         self.layer = layer
-        ps = layer.ps
-        self.drop_rate = ps.drop_concl or ps.drop_hidden
-        a, c, h = ps.activ_concl, ps.dim_concl, ps.dim_hidden
+        cfg = layer.cfg
+        self.drop_rate = cfg.drop_concl or cfg.drop_hidden
+        a, c, h = cfg.activ_concl, cfg.dim_concl, cfg.dim_hidden
         with self.name_scope:
             self.inflate = Dense(layer, 'inflate', [h, c], activation=a)
             self.deflate = Dense(layer, 'deflate', [c, h])

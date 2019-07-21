@@ -24,6 +24,58 @@ class Params:
         for k, v in kw.items():
             setattr(self, k, v)
 
+    def cfg_items(self, *keys):
+        for k in keys:
+            yield k, getattr(self, k, None)
+
+
+runtime = Params(is_training=True, print_toks=False)
+
+
+class Config(Params):
+    def __init__(self, **kw):
+        kw.update(runtime=runtime)
+        super().__init__(**kw)
+        self._items = kw.items()
+
+    def items(self):
+        return self._items
+
+
+def train_graph(ps, ds, m):
+    from datetime import datetime
+    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
+    ld = f'/tmp/q/logs/{ld}'
+    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
+    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
+
+
+def train_eager(ps, ds, m):
+    def step(x, t):
+        with tf.GradientTape() as tape:
+            y = m(x)
+            loss = ps.loss(t, y)
+            loss += sum(m.losses)
+            xent = ps.metric(t, y)
+        grads = tape.gradient(loss, m.trainable_variables)
+        ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
+        return loss, xent
+
+    @tf.function
+    def epoch():
+        s, loss, xent = 0, 0.0, 0.0
+        for x, y in ds:
+            s += 1
+            loss, xent = step(x, y)
+            if tf.equal(s % 10, 0):
+                e = ps.metric.result()
+                tf.print('Step:', s, ', loss:', loss, ', xent:', e)
+        return loss, xent
+
+    for e in range(ps.num_epochs):
+        loss, xent = epoch()
+        print(f'Epoch {e} loss:', loss.numpy(), ', xent:', xent.numpy())
+
 
 def gelu(x):
     # https://arxiv.org/pdf/1606.08415.pdf
@@ -69,41 +121,6 @@ class Metric(ks.metrics.Metric):
 
     def result(self):
         return tf.math.divide_no_nan(self.total, self.count)
-
-
-def train_graph(ps, ds, m):
-    from datetime import datetime
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
-
-
-def train_eager(ps, ds, m):
-    def step(x, t):
-        with tf.GradientTape() as tape:
-            y = m(x)
-            loss = ps.loss(t, y)
-            loss += sum(m.losses)
-            xent = ps.metric(t, y)
-        grads = tape.gradient(loss, m.trainable_variables)
-        ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
-        return loss, xent
-
-    @tf.function
-    def epoch():
-        s, loss, xent = 0, 0.0, 0.0
-        for x, y in ds:
-            s += 1
-            loss, xent = step(x, y)
-            if tf.equal(s % 10, 0):
-                e = ps.metric.result()
-                tf.print('Step:', s, ', loss:', loss, ', xent:', e)
-        return loss, xent
-
-    for e in range(ps.num_epochs):
-        loss, xent = epoch()
-        print(f'Epoch {e} loss:', loss.numpy(), ', xent:', xent.numpy())
 
 
 def print_toks(x, via):

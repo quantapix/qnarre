@@ -73,7 +73,6 @@ params = dict(
     num_rounds=2,
     num_shards=2,
     optimizer=ks.optimizers.Adam(),
-    print_toks=False,
     width_dec=40,
     width_enc=50,
 )
@@ -84,7 +83,8 @@ params.update(
 )
 
 
-def main(ps, fn, groups=None, count=None):
+def train(ps, fn, groups=None, count=None):
+    qu.runtime.is_training = True
     groups = groups or qs.groups
     for r in range(ps.num_rounds):
         for g in groups:
@@ -94,6 +94,5 @@ def main(ps, fn, groups=None, count=None):
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
-    ps.is_training = True
-    # main(ps, qu.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
-    main(ps, qu.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    # train(ps, qu.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    train(ps, qu.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)

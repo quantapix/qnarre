@@ -22,19 +22,34 @@ import samples as qs
 import utils as qu
 
 ks = tf.keras
-kl = ks.layers
 ki = ks.initializers
 
 
-class Layer(kl.Layer):
+class Layer(ks.layers.Layer):
     initer = None
+
+    @classmethod
+    def from_config(cls, cfg):
+        return cls(qu.Config(**cfg))
+
+    @staticmethod
+    def cfg_items(ps):
+        yield from ps.cfg_items('initer_stddev', )
 
     def __init__(self, ps, **kw):
         kw.setdefault('dtype', tf.float32)
         super().__init__(**kw)
-        self.ps = ps
-        if ps.initer_stddev:
-            self.initer = ki.TruncatedNormal(stddev=ps.initer_stddev)
+        if isinstance(ps, qu.Config):
+            self.cfg = ps
+        else:
+            self.cfg = cfg = qu.Config(**dict(self.cfg_items(ps)))
+        if cfg.initer_stddev:
+            self.initer = ki.TruncatedNormal(stddev=cfg.initer_stddev)
+
+    def get_config(self):
+        b = super().get_config().items()
+        c = self.cfg.items()
+        return dict(list(b) + list(c))
 
     def add_weight(self, name, shape, **kw):
         kw.setdefault('initializer', self.initer)
@@ -42,12 +57,12 @@ class Layer(kl.Layer):
 
     def drop(self, x, rate):
         y = x
-        if self.ps.is_training:
+        if self.cfg.runtime.is_training:
             y = tf.nn.dropout(x, rate)
         return y
 
 
-class ToRagged(kl.Layer):
+class ToRagged(ks.layers.Layer):
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int64)
@@ -66,12 +81,21 @@ class ToRagged(kl.Layer):
 class Frames(Layer):
     def __init__(self, ps):
         super().__init__(ps, dtype=tf.int32)
+        s = [self.cfg.dim_batch, self.cfg.width_enc]
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
-        self.prev = self.add_weight('prev', [ps.dim_batch, ps.width_enc], **kw)
+        self.prev = self.add_weight('prev', s, **kw)
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'dim_batch',
+            'dim_hist',
+            'width_dec',
+            'width_enc',
+        )
 
     def append(self, x, ragged):
-        ps = self.ps
-        r, c = ps.dim_batch, ps.width_enc
+        r, c = self.cfg.dim_batch, self.cfg.width_enc
         r = tf.broadcast_to(tf.range(r)[:, None], [r, c])
         lens = tf.cast(ragged.row_lengths(), dtype=tf.int32)[:, None]
         c = tf.range(c)[None, ] + lens
@@ -80,7 +104,7 @@ class Frames(Layer):
         return [y, lens]
 
     def expand(self, x):
-        c = self.ps.width_dec - x.bounding_shape(axis=1, out_type=tf.int32)
+        c = self.cfg.width_dec - x.bounding_shape(axis=1, out_type=tf.int32)
         y = tf.pad(x.to_tensor(), [[0, 0], [0, c]])
         return y
 
@@ -88,22 +112,24 @@ class Frames(Layer):
 class Tokens(Frames):
     def __init__(self, ps):
         super().__init__(ps)
-        assert ps.width_enc > ps.width_dec > 0
+        cfg = self.cfg
+        assert cfg.width_enc > cfg.width_dec > 0
+        s = [cfg.dim_batch, cfg.dim_hist]
         kw = dict(initializer='zeros', trainable=False, use_resource=True)
-        self.hist = self.add_weight('hist', [ps.dim_batch, ps.dim_hist], **kw)
+        self.hist = self.add_weight('hist', s, **kw)
 
     @tf.function
     def call(self, x):
         xe, xd, xt = x[:3]
         ye, el = self.append(self.prev, xe)
-        tf.debugging.assert_less_equal(el, self.ps.width_enc)
+        tf.debugging.assert_less_equal(el, self.cfg.width_enc)
         el = tf.concat([el, self.hist], axis=1)[:, :-1]
         yd = self.expand(xd)
         p, dl = self.append(ye, xt)
         self.prev.assign(p)
-        tf.debugging.assert_less_equal(dl, self.ps.width_dec)
+        tf.debugging.assert_less_equal(dl, self.cfg.width_dec)
         self.hist.assign(tf.concat([dl, el], axis=1)[:, :-1])
-        if self.ps.print_toks:
+        if self.cfg.runtime.print_toks:
             qu.print_toks(self.prev, qd.vocab)
         return [ye, el, yd, dl]
 
@@ -116,7 +142,7 @@ class Metas(Frames):
         yd = self.expand(xd)
         p, _ = self.append(ye, xd)
         self.prev.assign(p)
-        if self.ps.print_toks:
+        if self.cfg.runtime.print_toks:
             qu.print_toks(self.prev, qd.metas)
         return [ye, yd]
 
@@ -135,11 +161,24 @@ class Embed(Layer):
 
     def __init__(self, ps):
         super().__init__(ps)
-        self.norm = qm.Normalization(self, 'norm', [ps.dim_hidden])
-        self.toks = self.add_weight('toks', [ps.dim_vocab, ps.dim_hidden])
-        self.meta = self.add_weight('meta', [ps.dim_metas, ps.dim_hidden])
-        self.e_pos = self.pos_timing(ps.width_enc, ps.dim_hidden)
-        self.d_pos = self.pos_timing(ps.width_dec, ps.dim_hidden)
+        cfg = self.cfg
+        self.norm = qm.Normalization(self, 'norm', [cfg.dim_hidden])
+        self.toks = self.add_weight('toks', [cfg.dim_vocab, cfg.dim_hidden])
+        self.meta = self.add_weight('meta', [cfg.dim_metas, cfg.dim_hidden])
+        self.e_pos = self.pos_timing(cfg.width_enc, cfg.dim_hidden)
+        self.d_pos = self.pos_timing(cfg.width_dec, cfg.dim_hidden)
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'dim_hidden',
+            'dim_hist',
+            'dim_metas',
+            'dim_vocab',
+            'drop_hidden',
+            'width_dec',
+            'width_enc',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None], dtype=tf.int32),
@@ -148,26 +187,26 @@ class Embed(Layer):
     ]])
     def call(self, x):
         y, hist, ym = x
-        y = tf.one_hot(y, self.ps.dim_vocab)
+        y = tf.one_hot(y, self.cfg.dim_vocab)
         y = tf.einsum('bsi,ih->bsh', y, self.toks)
         # y = tf.nn.embedding_lookup(self.toks, y)
-        ym = tf.one_hot(ym, self.ps.dim_metas)
+        ym = tf.one_hot(ym, self.cfg.dim_metas)
         y += tf.einsum('bsi,ih->bsh', ym, self.meta)
         s = tf.shape(y)
-        if s[-2] == self.ps.width_enc:
+        if s[-2] == self.cfg.width_enc:
             y += self.segment(self.e_pos, hist, s)
-        elif s[-2] == self.ps.width_dec:
+        elif s[-2] == self.cfg.width_dec:
             y += tf.broadcast_to(self.d_pos, s)
         else:
             pass
         y *= tf.cast(s[-1], tf.float32)**0.5
-        y = self.drop(y, self.ps.drop_hidden)
+        y = self.drop(y, self.cfg.drop_hidden)
         y = self.norm(y)
         return [y, hist[:, 0]]
 
     def segment(self, pos, hist, shape):
         y = tf.broadcast_to(pos, shape)
-        for i in tf.range(self.ps.dim_hist, 0, -1):
+        for i in tf.range(self.cfg.dim_hist, 0, -1):
             r = tf.RaggedTensor.from_tensor(y, hist[:, i - 1])
             y = tf.concat([y, r], axis=1)[:, -shape[-2]:, :]
         return y
@@ -176,10 +215,28 @@ class Embed(Layer):
 class Encode(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.width = ps.width_enc
-        self.norm = qm.Normalization(self, 'norm', [ps.dim_hidden])
-        n = ps.dim_stacks
+        cfg = self.cfg
+        self.width = cfg.width_enc
+        self.norm = qm.Normalization(self, 'norm', [cfg.dim_hidden])
+        n = cfg.dim_stacks
         self.encs = [qm.Encoding(self, f'encode_{i}') for i in range(n)]
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'activ_concl',
+            'dim_attn',
+            'dim_attn_qk',
+            'dim_attn_v',
+            'dim_concl',
+            'dim_hidden',
+            'dim_stacks',
+            'drop_attn',
+            'drop_concl',
+            'drop_hidden',
+            'num_heads',
+            'width_enc',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
@@ -195,10 +252,28 @@ class Encode(Layer):
 class Decode(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.width = ps.width_dec
-        self.norm = qm.Normalization(self, 'norm', [ps.dim_hidden])
-        n = ps.dim_stacks
+        cfg = self.cfg
+        self.width = cfg.width_dec
+        self.norm = qm.Normalization(self, 'norm', [cfg.dim_hidden])
+        n = cfg.dim_stacks
         self.decs = [qm.Decoding(self, f'decode_{i}') for i in range(n)]
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'activ_concl',
+            'dim_attn',
+            'dim_attn_qk',
+            'dim_attn_v',
+            'dim_concl',
+            'dim_hidden',
+            'dim_stacks',
+            'drop_attn',
+            'drop_concl',
+            'drop_hidden',
+            'num_heads',
+            'width_dec',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
@@ -215,7 +290,15 @@ class Decode(Layer):
 class Debed(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
+        s = [self.cfg.dim_hidden, self.cfg.dim_vocab]
+        self.inflate = qm.Dense(self, 'inflate', s)
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'dim_hidden',
+            'dim_vocab',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
@@ -233,7 +316,15 @@ class Deduce(Layer):
         super().__init__(ps)
         self.embed = embed
         self.decode = decode
-        self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
+        s = [self.cfg.dim_hidden, self.cfg.dim_vocab]
+        self.inflate = qm.Dense(self, 'inflate', s)
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'dim_hidden',
+            'dim_vocab',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None], dtype=tf.int32),
@@ -243,7 +334,7 @@ class Deduce(Layer):
     ]])
     def call(self, x):
         toks, *x = x
-        if self.ps.print_toks:
+        if self.cfg.runtime.print_toks:
             qu.print_toks(toks, qd.vocab)
         y = self.deduce([toks] + x)
         n = tf.shape(y)[1]
@@ -253,7 +344,7 @@ class Deduce(Layer):
             m = tf.equal(t, qd.MSK)
             if tf.equal(tf.reduce_any(m), True):
                 t = self.update(t, m, y)
-                if self.ps.print_toks:
+                if self.cfg.runtime.print_toks:
                     qu.print_toks(t, qd.vocab)
                 toks = tf.pad(t, [[0, 0], [0, p]])
                 y = self.deduce([toks] + x)
@@ -289,7 +380,15 @@ class Deduce(Layer):
 class Probe(Layer):
     def __init__(self, ps):
         super().__init__(ps)
-        self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
+        s = [self.cfg.dim_hidden, self.cfg.dim_vocab]
+        self.inflate = qm.Dense(self, 'inflate', s)
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'dim_hidden',
+            'dim_vocab',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
@@ -307,13 +406,20 @@ class Locate(Layer):
 
     def __init__(self, ps, group):
         super().__init__(ps)
-        h = ps.dim_hidden
-        self.width = w = ps.width_dec
+        h = self.cfg.dim_hidden
+        self.width = w = self.cfg.width_dec
         if group is qs.QAS:
             self.span = qm.Dense(self, 'span', [h * w, 2 * w])
         else:
             assert group is qs.FIX
             self.spot = qm.Dense(self, 'spot', [h * w, w])
+
+    def cfg_items(self, ps):
+        yield from super().cfg_items(ps)
+        yield from ps.cfg_items(
+            'dim_hidden',
+            'width_dec',
+        )
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
