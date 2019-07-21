@@ -13,6 +13,7 @@
 # limitations under the License.
 # =============================================================================
 
+import re
 import numpy as np
 import tensorflow as tf
 
@@ -98,3 +99,9 @@ def print_toks(x, via):
 
     tf.print()
     tf.map_fn(print_row, x)
+
+
+def to_snake_case(x):
+    y = re.sub('(.)([A-Z][a-z0-9]+)', r'\1_\2', x)
+    y = re.sub('([a-z])([A-Z])', r'\1_\2', y).lower()
+    return 'private' + y if y[0] == '_' else y

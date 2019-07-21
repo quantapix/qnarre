@@ -32,11 +32,11 @@ class Model(ks.Model):
 
 def model_for(ps, group):
     x = []
-    for _ in (qd.ENC, qd.DEC, qd.TGT):
-        x.append(ks.Input(shape=(), dtype='int32'))
-        x.append(ks.Input(shape=(), dtype='int64'))
-    for _ in (qd.EMT, qd.DMT):
-        x.append(ks.Input(shape=(), dtype='int32'))
+    for n in (qd.ENC, qd.DEC, qd.TGT):
+        x.append(ks.Input(name=n + '_fv', shape=(), dtype='int32'))
+        x.append(ks.Input(name=n + '_rs', shape=(), dtype='int64'))
+    for n in (qd.EMT, qd.DMT):
+        x.append(ks.Input(name=n + '_fv', shape=(), dtype='int32'))
     y = ql.ToRagged()(x)
     yt, ym = ql.Tokens(ps)(y), ql.Metas(ps)(y)
     xe, xd = yt[:2] + ym[:1], yt[2:] + ym[1:]

@@ -56,6 +56,9 @@ def train_graph(ps, ds, m):
     c = tf.train.Checkpoint(model=m)
     mp = b / 'model' / f'{m.name}'
     mgr = tf.train.CheckpointManager(c, str(mp), max_to_keep=3)
+    # if mgr.latest_checkpoint:
+    #     vs = tf.train.list_variables(mgr.latest_checkpoint)
+    #     print(f'\n*** checkpoint vars: {vs}')
     c.restore(mgr.latest_checkpoint).expect_partial()
 
     class CheckpointCB(ks.callbacks.Callback):
