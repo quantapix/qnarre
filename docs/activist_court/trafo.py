@@ -18,6 +18,7 @@ import tensorflow as tf
 import datasets as qd
 import samples as qs
 import layers as ql
+import tasks as qt
 import utils as qu
 
 ks = tf.keras
@@ -44,7 +45,7 @@ def model_for(ps, group):
     if group in (qs.QAS, qs.FIX):
         y = decode(embed(xd) + [ye])
         y = ql.Locate(ps, group)(y)
-    m = ks.Model(inputs=x, outputs=[y])
+    m = ks.Model(name='trafo', inputs=x, outputs=[y])
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
@@ -83,7 +84,7 @@ params.update(
 )
 
 
-def train(ps, fn, groups=None, count=None):
+def main(ps, fn, groups=None, count=None):
     qu.Config.runtime.is_training = True
     groups = groups or qs.groups
     for r in range(ps.num_rounds):
@@ -94,5 +95,5 @@ def train(ps, fn, groups=None, count=None):
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
-    # train(ps, qu.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
-    train(ps, qu.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    # train(ps, qt.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    main(ps, qt.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)

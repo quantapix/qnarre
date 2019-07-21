@@ -42,7 +42,8 @@ class Layer(ks.layers.Layer):
         if isinstance(ps, qu.Config):
             self.cfg = ps
         else:
-            self.cfg = cfg = qu.Config(**dict(self.cfg_items(ps)))
+            self.cfg = qu.Config(**dict(self.cfg_items(ps)))
+        cfg = self.cfg
         if cfg.initer_stddev:
             self.initer = ki.TruncatedNormal(stddev=cfg.initer_stddev)
 

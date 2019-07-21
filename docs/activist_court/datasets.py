@@ -162,7 +162,8 @@ def adapter(d, group=None):
 
 
 def dset_for(ps, group, adapter=adapter, count=None):
-    return load(ps, group, count=count).map(lambda x: adapter(x, group))
+    ds = load(ps, group, count=count).map(lambda x: adapter(x, group))
+    return ds.shuffle(1000)
 
 
 if __name__ == '__main__':

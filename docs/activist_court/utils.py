@@ -40,39 +40,27 @@ class Config(Params):
         return self._items
 
 
-def train_graph(ps, ds, m):
-    from datetime import datetime
-    ld = datetime.now().strftime('%Y%m%d-%H%M%S')
-    ld = f'/tmp/q/logs/{ld}'
-    cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
+class Loss(ks.losses.Loss):
+    def __init__(self):
+        super().__init__(name='loss')
+
+    def call(self, tgt, out):
+        return cross_entropy(tgt, out)
 
 
-def train_eager(ps, ds, m):
-    def step(x, t):
-        with tf.GradientTape() as tape:
-            y = m(x)
-            loss = ps.loss(t, y)
-            loss += sum(m.losses)
-            xent = ps.metric(t, y)
-        grads = tape.gradient(loss, m.trainable_variables)
-        ps.optimizer.apply_gradients(zip(grads, m.trainable_variables))
-        return loss, xent
+class Metric(ks.metrics.Metric):
+    def __init__(self):
+        super().__init__(name='metric', dtype=tf.float32)
+        self.total = self.add_weight('total', initializer='zeros')
+        self.count = self.add_weight('count', initializer='zeros')
 
-    @tf.function
-    def epoch():
-        s, loss, xent = 0, 0.0, 0.0
-        for x, y in ds:
-            s += 1
-            loss, xent = step(x, y)
-            if tf.equal(s % 10, 0):
-                e = ps.metric.result()
-                tf.print('Step:', s, ', loss:', loss, ', xent:', e)
-        return loss, xent
+    def update_state(self, tgt, out, sample_weight=None):
+        vs = cross_entropy(tgt, out)
+        self.total.assign_add(tf.math.reduce_sum(vs))
+        return self.count.assign_add(tf.cast(tf.size(vs), dtype=tf.float32))
 
-    for e in range(ps.num_epochs):
-        loss, xent = epoch()
-        print(f'Epoch {e} loss:', loss.numpy(), ', xent:', xent.numpy())
+    def result(self):
+        return tf.math.divide_no_nan(self.total, self.count)
 
 
 def gelu(x):
@@ -96,29 +84,6 @@ def cross_entropy(tgt, out):
     y = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=t, logits=y)
     y = tf.reshape(y, s[:-1])
     return y
-
-
-class Loss(ks.losses.Loss):
-    def __init__(self):
-        super().__init__(name='loss')
-
-    def call(self, tgt, out):
-        return cross_entropy(tgt, out)
-
-
-class Metric(ks.metrics.Metric):
-    def __init__(self):
-        super().__init__(name='metric', dtype=tf.float32)
-        self.total = self.add_weight('total', initializer='zeros')
-        self.count = self.add_weight('count', initializer='zeros')
-
-    def update_state(self, tgt, out, sample_weight=None):
-        vs = cross_entropy(tgt, out)
-        self.total.assign_add(tf.math.reduce_sum(vs))
-        return self.count.assign_add(tf.cast(tf.size(vs), dtype=tf.float32))
-
-    def result(self):
-        return tf.math.divide_no_nan(self.total, self.count)
 
 
 def print_toks(x, via):
