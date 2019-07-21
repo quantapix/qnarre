@@ -29,12 +29,10 @@ class Params:
             yield k, getattr(self, k, None)
 
 
-runtime = Params(is_training=True, print_toks=False)
-
-
 class Config(Params):
+    runtime = Params(is_training=True, print_toks=False)
+
     def __init__(self, **kw):
-        kw.update(runtime=runtime)
         super().__init__(**kw)
         self._items = kw.items()
 

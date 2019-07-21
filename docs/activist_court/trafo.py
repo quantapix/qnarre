@@ -84,7 +84,7 @@ params.update(
 
 
 def train(ps, fn, groups=None, count=None):
-    qu.runtime.is_training = True
+    qu.Config.runtime.is_training = True
     groups = groups or qs.groups
     for r in range(ps.num_rounds):
         for g in groups:
