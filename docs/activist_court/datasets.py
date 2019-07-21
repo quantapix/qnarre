@@ -152,7 +152,7 @@ def adapter(d, group=None):
     d = {f: tf.RaggedTensor.from_sparse(d[f]) for f in features}
     # x = tuple(d[GRP].to_tensor())
     x = tuple(t for f in (ENC, DEC, TGT)
-              for t in (d[f].flat_values, d[f].row_splits))
+              for t in (d[f].flat_values, tf.cast(d[f].row_splits, tf.int32)))
     x += tuple(d[f].flat_values for f in (EMT, DMT))
     if group in (qs.QAS, qs.FIX):
         y = (d[OUT].to_tensor(), )

@@ -28,13 +28,13 @@ ki = ks.initializers
 class Layer(ks.layers.Layer):
     initer = None
 
-    @classmethod
-    def from_config(cls, cfg):
-        return cls(qu.Config(**cfg))
-
     @staticmethod
     def cfg_items(ps):
         yield from ps.cfg_items('initer_stddev', )
+
+    @classmethod
+    def from_config(cls, cfg):
+        return cls(qu.Config(**cfg))
 
     def __init__(self, ps, **kw):
         kw.setdefault('name', qu.to_snake_case(type(self).__name__))
@@ -69,10 +69,8 @@ class ToRagged(ks.layers.Layer):
         kw.setdefault('name', qu.to_snake_case(type(self).__name__))
         super().__init__(**kw)
 
-    @tf.function(input_signature=[[
-        tf.TensorSpec(shape=[None], dtype=tf.int32),
-        tf.TensorSpec(shape=[None], dtype=tf.int64)
-    ] * 3 + [tf.TensorSpec(shape=[None], dtype=tf.int32)] * 2])
+    @tf.function(
+        input_signature=[[tf.TensorSpec(shape=[None], dtype=tf.int32)] * 8])
     def call(self, x):
         efv, ers, dfv, drs, tfv, trs, em, dm = x
         return [

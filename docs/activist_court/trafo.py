@@ -13,6 +13,8 @@
 # limitations under the License.
 # =============================================================================
 
+import functools
+
 import tensorflow as tf
 
 import datasets as qd
@@ -23,6 +25,24 @@ import utils as qu
 
 ks = tf.keras
 
+inputs = [
+    ks.Input(name=n + p, shape=(), dtype='int32') for n in (
+        qd.ENC,
+        qd.DEC,
+        qd.TGT,
+    ) for p in ('_fv', '_rs')
+] + [
+    ks.Input(name=n + p, shape=(), dtype='int32') for n in (
+        qd.EMT,
+        qd.DMT,
+    ) for p in ('_fv', )
+]
+
+
+@functools.lru_cache(maxsize=32)
+def layer_for(cls, *pa, **kw):
+    return cls(*pa, **kw)
+
 
 class Model(ks.Model):
     def _track_layers(self, layers):
@@ -31,26 +51,22 @@ class Model(ks.Model):
 
 
 def model_for(ps, group):
-    x = []
-    for n in (qd.ENC, qd.DEC, qd.TGT):
-        x.append(ks.Input(name=n + '_fv', shape=(), dtype='int32'))
-        x.append(ks.Input(name=n + '_rs', shape=(), dtype='int64'))
-    for n in (qd.EMT, qd.DMT):
-        x.append(ks.Input(name=n + '_fv', shape=(), dtype='int32'))
-    y = ql.ToRagged()(x)
-    yt, ym = ql.Tokens(ps)(y), ql.Metas(ps)(y)
+    x = inputs
+    y = layer_for(ql.ToRagged)(x)
+    yt = layer_for(ql.Tokens, ps)(y)
+    ym = layer_for(ql.Metas, ps)(y)
     xe, xd = yt[:2] + ym[:1], yt[2:] + ym[1:]
-    embed = ql.Embed(ps)
-    ye = ql.Encode(ps)(embed(xe))[0]
-    decode = ql.Decode(ps)
+    embed = layer_for(ql.Embed, ps)
+    ye = layer_for(ql.Encode, ps)(embed(xe))[0]
+    decode = layer_for(ql.Decode, ps)
     if group in (qs.YNS, qs.YNX):
         y = decode(embed(xd) + [ye])
-        y = ql.Debed(ps)(y)
+        y = layer_for(ql.Debed, ps)(y)
     elif group in (qs.MSK, qs.MSX):
-        y = ql.Deduce(ps, embed, decode)(xd + [ye])
+        y = layer_for(ql.Deduce, ps, embed, decode)(xd + [ye])
     if group in (qs.QAS, qs.FIX):
         y = decode(embed(xd) + [ye])
-        y = ql.Locate(ps, group)(y)
+        y = layer_for(ql.Locate, ps, group)(y)
     m = Model(name='trafo', inputs=x, outputs=[y])
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
