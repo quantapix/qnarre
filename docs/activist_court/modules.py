@@ -20,7 +20,50 @@ import utils as qu
 ks = tf.keras
 
 
-class Encoder(tf.Module):
+class Dense(tf.Module):
+    bias = None
+    activate = None
+
+    def __init__(self, layer, name, shape, bias=True, activation=None):
+        super().__init__(name)
+        with self.name_scope:
+            self.kernel = layer.add_weight('kernel', shape=shape)
+            if bias:
+                self.bias = layer.add_weight('bias', shape=shape[1:])
+            if activation:
+                self.activate = qu.activation(activation)
+
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None, None])])
+    def __call__(self, x):
+        y = tf.einsum('bni,ij->bnj', x, self.kernel)
+        if self.bias is not None:
+            y = tf.nn.bias_add(y, self.bias)
+        if self.activate:
+            y = self.activate(y)
+        return y
+
+
+class Normalization(tf.Module):
+    epsilon = 1e-3
+
+    def __init__(self, layer, name, shape):
+        super().__init__(name)
+        kw = dict(shape=shape, dtype=tf.float32)
+        with self.name_scope:
+            self.gamma = layer.add_weight('gamma', initializer='ones', **kw)
+            self.beta = layer.add_weight('beta', initializer='zeros', **kw)
+
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None, None])])
+    def __call__(self, x):
+        mean, variance = tf.nn.moments(x, -1, keepdims=True)
+        kw = dict(offset=self.beta,
+                  scale=self.gamma,
+                  variance_epsilon=self.epsilon)
+        y = tf.nn.batch_normalization(x, mean, variance, **kw)
+        return y
+
+
+class Encoding(tf.Module):
     def __init__(self, layer, name):
         super().__init__(name)
         with self.name_scope:
@@ -38,7 +81,7 @@ class Encoder(tf.Module):
         return y
 
 
-class Decoder(tf.Module):
+class Decoding(tf.Module):
     def __init__(self, layer, name):
         super().__init__(name)
         with self.name_scope:
@@ -137,46 +180,3 @@ class Conclusion(tf.Module):
         y = self.layer.drop(y, self.drop_rate)
         y = self.layer.norm(x + y)
         return [y, lens]
-
-
-class Dense(tf.Module):
-    bias = None
-    activate = None
-
-    def __init__(self, layer, name, shape, bias=True, activation=None):
-        super().__init__(name)
-        with self.name_scope:
-            self.kernel = layer.add_weight('kernel', shape=shape)
-            if bias:
-                self.bias = layer.add_weight('bias', shape=shape[1:])
-            if activation:
-                self.activate = qu.activation(activation)
-
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None, None])])
-    def __call__(self, x):
-        y = tf.einsum('bni,ij->bnj', x, self.kernel)
-        if self.bias is not None:
-            y = tf.nn.bias_add(y, self.bias)
-        if self.activate:
-            y = self.activate(y)
-        return y
-
-
-class Norm(tf.Module):
-    epsilon = 1e-3
-
-    def __init__(self, layer, name, shape):
-        super().__init__(name)
-        kw = dict(shape=shape, dtype=tf.float32)
-        with self.name_scope:
-            self.gamma = layer.add_weight('gamma', initializer='ones', **kw)
-            self.beta = layer.add_weight('beta', initializer='zeros', **kw)
-
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None, None, None])])
-    def __call__(self, x):
-        mean, variance = tf.nn.moments(x, -1, keepdims=True)
-        kw = dict(offset=self.beta,
-                  scale=self.gamma,
-                  variance_epsilon=self.epsilon)
-        y = tf.nn.batch_normalization(x, mean, variance, **kw)
-        return y

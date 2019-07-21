@@ -95,5 +95,5 @@ def main(ps, fn, groups=None, count=None):
 if __name__ == '__main__':
     ps = qu.Params(**params)
     ps.is_training = True
-    # qu.train_eager(ps, qd.dset_for(ps, 'msk', count=10), model_for(ps))
-    main(ps, qu.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    # main(ps, qu.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    main(ps, qu.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)

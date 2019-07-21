@@ -135,7 +135,7 @@ class Embed(Layer):
 
     def __init__(self, ps):
         super().__init__(ps)
-        self.norm = qm.Norm(self, 'norm', [ps.dim_hidden])
+        self.norm = qm.Normalization(self, 'norm', [ps.dim_hidden])
         self.toks = self.add_weight('toks', [ps.dim_vocab, ps.dim_hidden])
         self.meta = self.add_weight('meta', [ps.dim_metas, ps.dim_hidden])
         self.e_pos = self.pos_timing(ps.width_enc, ps.dim_hidden)
@@ -177,9 +177,9 @@ class Encode(Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.width = ps.width_enc
-        self.norm = qm.Norm(self, 'norm', [ps.dim_hidden])
+        self.norm = qm.Normalization(self, 'norm', [ps.dim_hidden])
         n = ps.dim_stacks
-        self.encs = [qm.Encoder(self, f'encode_{i}') for i in range(n)]
+        self.encs = [qm.Encoding(self, f'encode_{i}') for i in range(n)]
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
@@ -196,9 +196,9 @@ class Decode(Layer):
     def __init__(self, ps):
         super().__init__(ps)
         self.width = ps.width_dec
-        self.norm = qm.Norm(self, 'norm', [ps.dim_hidden])
+        self.norm = qm.Normalization(self, 'norm', [ps.dim_hidden])
         n = ps.dim_stacks
-        self.decs = [qm.Decoder(self, f'decode_{i}') for i in range(n)]
+        self.decs = [qm.Decoding(self, f'decode_{i}') for i in range(n)]
 
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None, None, None]),
@@ -283,6 +283,22 @@ class Deduce(Layer):
         y = tf.argmax(y, axis=-1, output_type=tf.int32)
         y = tf.tensor_scatter_nd_update(toks, i, y)
         y = tf.where(tf.logical_and(msks, m), y, toks)
+        return y
+
+
+class Probe(Layer):
+    def __init__(self, ps):
+        super().__init__(ps)
+        self.inflate = qm.Dense(self, 'inflate', [ps.dim_hidden, ps.dim_vocab])
+
+    @tf.function(input_signature=[[
+        tf.TensorSpec(shape=[None, None, None]),
+        tf.TensorSpec(shape=[None], dtype=tf.int32)
+    ]])
+    def call(self, x):
+        y, lens = x
+        y = self.inflate(y)
+        y = tf.RaggedTensor.from_tensor(y, lens).to_tensor()
         return y
 
 
