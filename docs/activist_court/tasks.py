@@ -51,22 +51,42 @@ def train_eager(ps, ds, m):
 def train_graph(ps, ds, m):
     b = pth.Path('/tmp/q')
     b.mkdir(parents=True, exist_ok=True)
-    mp = str(b / f'model/{m.name}')
-    if tf.train.get_checkpoint_state(mp):
-        m.train_on_batch(ds)
-        m.load_weights(mp)
     lp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    lp = str(b / f'logs/{lp}')
-    cs = [
-        ks.callbacks.ModelCheckpoint(
-            mp,
-            save_weights_only=True,
-            verbose=True,
-        ),
+    lp = b / f'logs/{lp}'
+    c = tf.train.Checkpoint(model=m)
+    mp = b / 'model' / f'{m.name}'
+    mgr = tf.train.CheckpointManager(c, str(mp), max_to_keep=3)
+    c.restore(mgr.latest_checkpoint).expect_partial()
+
+    class CheckpointCB(ks.callbacks.Callback):
+        def on_epoch_end(self, epoch, logs=None):
+            mgr.save()
+
+    cbs = [
+        CheckpointCB(),
         ks.callbacks.TensorBoard(
-            log_dir=lp,
+            log_dir=str(lp),
             histogram_freq=1,
-        )
+        ),
     ]
-    m.fit(ds, callbacks=cs, epochs=ps.num_epochs)
-    # m.save_weights(mp, save_format='tf')
+    m.fit(ds, callbacks=cbs, epochs=ps.num_epochs)
+    # mgr.save()
+
+
+def evaluate(ps, ds, m):
+    mp = pth.Path('/tmp/q/model')
+    if tf.train.get_checkpoint_state(str(mp)):
+        m.train_on_batch(ds)
+        m.load_weights(str(mp / f'{m.name}'))
+        loss, xent = m.evaluate(ds)
+        print(f'\nEvaluate loss, xent: {loss}, {xent}')
+
+
+def predict(ps, ds, m):
+    mp = pth.Path('/tmp/q/model')
+    if tf.train.get_checkpoint_state(str(mp)):
+        m.train_on_batch(ds)
+        m.load_weights(str(mp / f'{m.name}'))
+        for x, t in ds:
+            y = m.predict(x)
+            print(y, t.numpy())

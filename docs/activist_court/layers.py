@@ -37,6 +37,7 @@ class Layer(ks.layers.Layer):
         yield from ps.cfg_items('initer_stddev', )
 
     def __init__(self, ps, **kw):
+        kw.setdefault('name', type(self).__name__)
         kw.setdefault('dtype', tf.float32)
         super().__init__(**kw)
         if isinstance(ps, qu.Config):
@@ -64,6 +65,10 @@ class Layer(ks.layers.Layer):
 
 
 class ToRagged(ks.layers.Layer):
+    def __init__(self, **kw):
+        kw.setdefault('name', type(self).__name__)
+        super().__init__(**kw)
+
     @tf.function(input_signature=[[
         tf.TensorSpec(shape=[None], dtype=tf.int32),
         tf.TensorSpec(shape=[None], dtype=tf.int64)

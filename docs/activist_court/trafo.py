@@ -24,6 +24,12 @@ import utils as qu
 ks = tf.keras
 
 
+class Model(ks.Model):
+    def _track_layers(self, layers):
+        for lay in layers:
+            self._track_trackable(lay, lay.name, overwrite=True)
+
+
 def model_for(ps, group):
     x = []
     for _ in (qd.ENC, qd.DEC, qd.TGT):
@@ -45,7 +51,7 @@ def model_for(ps, group):
     if group in (qs.QAS, qs.FIX):
         y = decode(embed(xd) + [ye])
         y = ql.Locate(ps, group)(y)
-    m = ks.Model(name='trafo', inputs=x, outputs=[y])
+    m = Model(name='trafo', inputs=x, outputs=[y])
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
     print(m.summary())
     return m
@@ -95,5 +101,6 @@ def main(ps, fn, groups=None, count=None):
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
-    # train(ps, qt.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    # main(ps, qt.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
     main(ps, qt.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    # main(ps, qt.evaluate, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
