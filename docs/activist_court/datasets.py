@@ -112,7 +112,7 @@ def sharder(ps, root=None, group=None, samples=False):
             f = str(f / f'shard_{n}.tfrecords')
             if ss is not None:
                 ds = td.Dataset.from_tensor_slices(ss[:, i])
-                yield f, ds.map(splitter).map(tokenizer)
+                yield f, ds.map(splitter, -1).map(tokenizer, -1)
             else:
                 yield f
 
@@ -142,8 +142,8 @@ def load(ps, root=None, group=None, files=None, count=None):
     fs = {f: tf.io.VarLenFeature(tf.int64) for f in features}
     if ps.dim_batch:
         ds = ds.batch(ps.dim_batch)
-        return ds.map(lambda x: tf.io.parse_example(x, fs))
-    return ds.map(lambda x: tf.io.parse_single_example(x, fs))
+        return ds.map(lambda x: tf.io.parse_example(x, fs), -1)
+    return ds.map(lambda x: tf.io.parse_single_example(x, fs), -1)
 
 
 @tf.function
@@ -162,7 +162,8 @@ def adapter(d, group=None):
 
 
 def dset_for(ps, root=None, group=None, adapter=adapter, count=None):
-    ds = load(ps, root, group, count=count).map(lambda x: adapter(x, group))
+    ds = load(ps, root, group, count=count)
+    ds = ds.map(lambda x: adapter(x, group), -1)
     return ds.shuffle(1000)
 
 
@@ -178,7 +179,7 @@ if __name__ == '__main__':
     )
     ps = qu.Params(**ps)
     fs = [f for f in dump(ps)]
-    ds = load(ps, files=fs).map(adapter)
+    ds = load(ps, files=fs).map(adapter, -1)
     for i, _ in enumerate(ds):
         pass
     print(f'dumped {i + 1} batches of {ps.dim_batch} samples each')
