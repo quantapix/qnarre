@@ -100,9 +100,9 @@ def tokenizer(d):
     }
 
 
-def sharder(ps, group=None, samples=False):
+def sharder(ps, root=None, group=None, samples=False):
     gs = qs.groups if group is None else [group]
-    d = pth.Path('/tmp/q/data')
+    d = pth.Path(root or '/tmp/q/data')
     for n in range(ps.num_shards):
         n = '{:0>4d}'.format(n)
         ss = np.array(list(sampler(ps, gs))) if samples else None
@@ -126,8 +126,8 @@ def recorder(samples):
         yield tt.Example(features=fs).SerializeToString()
 
 
-def dump(ps):
-    for f, ss in sharder(ps, samples=True):
+def dump(ps, root=None):
+    for f, ss in sharder(ps, root, samples=True):
         print(f'dumping {f}...')
         with tf.io.TFRecordWriter(f) as w:
             for r in recorder(ss):
@@ -135,8 +135,8 @@ def dump(ps):
         yield f
 
 
-def load(ps, group=None, files=None, count=None):
-    ds = td.TFRecordDataset(files or list(sharder(ps, group)))
+def load(ps, root=None, group=None, files=None, count=None):
+    ds = td.TFRecordDataset(files or list(sharder(ps, root, group)))
     if count:
         ds = ds.take(count)
     fs = {f: tf.io.VarLenFeature(tf.int64) for f in features}
@@ -161,8 +161,8 @@ def adapter(d, group=None):
     return x, y
 
 
-def dset_for(ps, group, adapter=adapter, count=None):
-    ds = load(ps, group, count=count).map(lambda x: adapter(x, group))
+def dset_for(ps, root=None, group=None, adapter=adapter, count=None):
+    ds = load(ps, root, group, count=count).map(lambda x: adapter(x, group))
     return ds.shuffle(1000)
 
 
@@ -170,10 +170,10 @@ if __name__ == '__main__':
     np.random.seed(12345)
     import utils as qu
     ps = dict(
-        dim_batch=100,
-        dim_pool=8 * 1024,
-        max_val=10000,
-        num_samples=100,
+        dim_batch=5,
+        dim_pool=10,
+        max_val=1000,
+        num_samples=20,
         num_shards=2,
     )
     ps = qu.Params(**ps)
