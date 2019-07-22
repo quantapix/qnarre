@@ -14,11 +14,14 @@
 # =============================================================================
 
 import numpy as np
+import tensorflow as tf
 
 import datasets as qd
 import utils as qu
 
 np.random.seed(12345)
+
+tf.config.experimental.set_visible_devices([], 'GPU')
 
 ds_small = dict(
     dim_batch=5,
@@ -39,8 +42,8 @@ ds_large = dict(
 
 def dump_ds(kind):
     ps = qu.Params(**(ds_small if kind == 'small' else ds_large))
-    fs = [f for f in qd.dump(ps, f'/tmp/q/data/{kind}')]
-    ds = qd.load(ps, files=fs).map(qd.adapter)
+    ss = [s for s in qd.dump(ps, f'/tmp/q/data/{kind}')]
+    ds = qd.load(ps, shards=ss).map(qd.adapter)
     for i, _ in enumerate(ds):
         pass
     print(f'dumped {i + 1} batches of {ps.dim_batch} samples each')
@@ -48,3 +51,4 @@ def dump_ds(kind):
 
 if __name__ == '__main__':
     dump_ds('small')
+    # dump_ds('large')
