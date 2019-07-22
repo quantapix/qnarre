@@ -16,6 +16,7 @@
 import numpy as np
 import pathlib as pth
 import tensorflow as tf
+import multiprocessing as mp
 
 import samples as qs
 
@@ -100,43 +101,51 @@ def tokenizer(d):
     }
 
 
-def sharder(ps, root=None, group=None, samples=False):
-    gs = qs.groups if group is None else [group]
-    d = pth.Path(root or '/tmp/q/data')
-    for n in range(ps.num_shards):
-        n = '{:0>4d}'.format(n)
-        ss = np.array(list(sampler(ps, gs))) if samples else None
-        for i, g in enumerate(gs):
-            f = d / g
-            f.mkdir(parents=True, exist_ok=True)
-            f = str(f / f'shard_{n}.tfrecords')
-            if ss is not None:
-                ds = td.Dataset.from_tensor_slices(ss[:, i])
-                yield f, ds.map(splitter, -1).map(tokenizer, -1)
-            else:
-                yield f
-
-
-def recorder(samples):
-    for s in samples:
+def recorder(examples):
+    for e in examples:
         fs = tt.Features(feature={
-            f: tt.Feature(int64_list=tt.Int64List(value=s[f]))
+            f: tt.Feature(int64_list=tt.Int64List(value=e[f]))
             for f in features
         })
         yield tt.Example(features=fs).SerializeToString()
 
 
-def dump(ps, root=None):
-    for f, ss in sharder(ps, root, samples=True):
-        print(f'dumping {f}...')
-        with tf.io.TFRecordWriter(f) as w:
-            for r in recorder(ss):
-                w.write(r)
-        yield f
+def shards_for(ps, root, groups):
+    for s in range(ps.num_shards):
+        s = '{:0>4d}'.format(s)
+        for i, g in enumerate(groups):
+            f = root / g
+            f.mkdir(parents=True, exist_ok=True)
+            f = str(f / f'shard_{s}.tfrecords')
+            yield f, i
 
 
-def load(ps, root=None, group=None, files=None, count=None):
-    ds = td.TFRecordDataset(files or list(sharder(ps, root, group)))
+def write(shard):
+    ps, gs, f, i = shard
+    ss = np.array(list(sampler(ps, gs)))
+    ds = td.Dataset.from_tensor_slices(ss[:, i])
+    ds = ds.map(splitter, -1).map(tokenizer, -1)
+    print(f'dumping {f}...')
+    with tf.io.TFRecordWriter(f) as w:
+        for r in recorder(ds):
+            w.write(r)
+
+
+def dump(ps, root=None, group=None):
+    r = pth.Path(root or '/tmp/q/data')
+    gs = qs.groups if group is None else [group]
+    shards = [(ps, gs, f, i) for f, i in shards_for(ps, r, gs)]
+    with mp.Pool() as pool:
+        pool.map(write, shards)
+    return [s[2] for s in shards]
+
+
+def load(ps, root=None, group=None, shards=None, count=None):
+    if shards is None:
+        r = pth.Path(root or '/tmp/q/data')
+        gs = qs.groups if group is None else [group]
+        shards = [s[0] for s in shards_for(ps, r, gs)]
+    ds = td.TFRecordDataset(shards)
     if count:
         ds = ds.take(count)
     fs = {f: tf.io.VarLenFeature(tf.int64) for f in features}
@@ -175,11 +184,11 @@ if __name__ == '__main__':
         dim_pool=10,
         max_val=1000,
         num_samples=20,
-        num_shards=2,
+        num_shards=3,
     )
     ps = qu.Params(**ps)
-    fs = [f for f in dump(ps)]
-    ds = load(ps, files=fs).map(adapter, -1)
+    ss = [s for s in dump(ps)]
+    ds = load(ps, shards=ss).map(adapter, -1)
     for i, _ in enumerate(ds):
         pass
     print(f'dumped {i + 1} batches of {ps.dim_batch} samples each')
