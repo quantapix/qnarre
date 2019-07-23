@@ -4,13 +4,13 @@ layout: default
 
 # Advanced TensorFlow 2.0 w/ Keras
 
-Google's open sourced TensorFlow, a top project on the "~36 million developers" GitHub, is arguably one of the most successful applications of the mathematics we understand, and have come to personally love.
+Google's open-sourced TensorFlow, a top project on the "~36 million developers" GitHub, is arguably one of the most successful applications of the mathematics we understand and have come to personally love.
 
 This amazingly capable, perhaps community developed tool suddenly allows us to study, and to also efficiently simulate, our insights and understanding of the fluid reality around us.
 
-The new, cleaned up version, the beta of TensorFlow 2.0, has just been released with its APIs now frozen. Personally motivated and eagerly curious to "read the sources", the following blogs document our process of learning and adjusting to TensorFlow 2.0.
+The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released with its APIs now frozen. Personally motivated and eagerly curious to "read the sources", the following blogs document our process of learning and adjusting to TensorFlow 2.0.
 
-*Note: the runable examples currently depend on the "nightly" builds of TensorFlow 2.0 (downloadable with `!pip install -U tf-nightly-2.0-preview` from running Jupyter notebooks).*
+*Note: the runnable examples currently depend on the "nightly" builds of TensorFlow 2.0 (downloadable with `!pip install -U tf-nightly-2.0-preview` from running Jupyter notebooks).*
 
 ## [Trackable: A Pervasive Persistence Infrastructure](./trackable.html)
 
@@ -22,7 +22,7 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 
 ## [Many Smaller GPUs: Elegant In-Model Distribution](./gpus.html)
 
-* Physical GPUs to custom configurable, virtual GPUs
+* From physical GPUs to custom configurable, virtual GPUs
 * Stacks of Keras layers laid over parametric sequences of GPUs
 * Instant, predictable and massive GPU computations/interactions
 * Clean, clear model "pipelines" visualized and verified 

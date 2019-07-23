@@ -2,34 +2,34 @@
 
 * Introduction
 
-Motivation behind the **qnarre** effort is our unconditional love for our children.
+The motivation behind the **qnarre** effort is our unconditional love for our children.
 
-**Quantapix**, the software startup, was born as a precursor to the vicious, cruel and simply unimaginable, yet intuitively well understood power struggle between the "elite" and the rest of us.
+**Quantapix**, the software startup, was born as a precursor to the vicious, cruel and simply unimaginable, yet intuitively well-understood power struggle between the "elite" and the rest of us.
 
 [Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some "trusted" professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for perhaps millions of dollars.
 
-We believe, and with the following series of blogs we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative.
+We believe, and with the following series of blogs, we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative.
 
 Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
 Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American-born children** from greedy professional torturing and forceful, institutionalized separation and isolation. Family Court-mandated, and even directly ordered, parental alienation, while paying astronomical profits to the "trusted" elite, is nothing but ruthless and cruel child abuse.
 
-Seeking out **contradictions** and **inconsistencies** in "vast oceans" of deceitful data with ever adapting, fluidly learning, yet still reproducible software mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. It can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
+Seeking out **contradictions** and **inconsistencies** in "vast oceans" of deceitful data with ever-adapting, fluidly learning, yet still reproducible software mechanisms is exactly what AI, "the child protector" kind, was inherently invented for. It can rightfully become our openly shared ethical and moral reference, an always true, falsifiable and verifiably correctable guiding compass.
 
-The following blogs incorporate "runable" [Python](https://www.python.org/) scripts organized as [Jupyter](https://jupyter.org/) notebooks. Introduction to using these and other amazingly productive, state-of-the-art tools is well beyond our limited scope here. 
+The following blogs incorporate "runnable" [Python](https://www.python.org/) scripts organized as [Jupyter](https://jupyter.org/) notebooks. Introduction to using these and other amazingly productive, state-of-the-art tools is well beyond our limited scope here. 
 
 
 * Advanced TensorFlow 2.0 w/ Keras
 
 ** Introduction
 
-Google's open sourced TensorFlow, a top project on the "~36 million developers" GitHub, is arguably one of the most successful applications of the mathematics we understand, and have come to personally love.
+Google's open-sourced TensorFlow, a top project on the "~36 million developers" GitHub, is arguably one of the most successful applications of the mathematics we understand and have come to personally love.
 
 This amazingly capable, perhaps community developed tool suddenly allows us to study, and to also efficiently simulate, our insights and understanding of the fluid reality around us.
 
-The new, cleaned up version, the beta of TensorFlow 2.0, has just been released with its APIs now frozen. Personally motivated and eagerly curious to "read the sources", the following blogs document our process of learning and adjusting to TensorFlow 2.0.
+The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released with its APIs now frozen. Personally motivated and eagerly curious to "read the sources", the following blogs document our process of learning and adjusting to TensorFlow 2.0.
 
-*Note: the runable examples currently depend on the "nightly" builds of TensorFlow 2.0 (downloadable with `!pip install -U tf-nightly-2.0-preview` from running Jupyter notebooks).*
+/Note: the runnable examples currently depend on the "nightly" builds of TensorFlow 2.0 (downloadable with `!pip install -U tf-nightly-2.0-preview` from running Jupyter notebooks)./
 
 ** Trackable: A Pervasive Persistence Infrastructure
 
@@ -38,150 +38,262 @@ The new, cleaned up version, the beta of TensorFlow 2.0, has just been released 
 - Mixing new `modules` and Keras `layers` for seamless persistence
 - "A picture is worth a thousand words": graphs with TensorBoard
 
-training in TensorFlow means continually adjusting collections of values stored as tensors in `variables`
-persistence of these variables from one training session to the next is critical for improving on already achieved, but otherwise long-running, results
-the new system-wide pervasive `trackable` architecture now provides just such a persistence infrastructure
-instead of the old, named-based hierarchy, the new design applies a topological, "layered objects" naming scheme
+Training in TensorFlow means continually adjusting collections of values stored as `tensors` in objects called `variables`.
 
-we explore some of the key aspects of this architecture
-we start with a high-level view and then we gradually build from the lowest base-classes to the more useful Keras `layers`
-our objective here is to arrive to a training model representable by the [graph](./trackable.pdf)
+The persistence of these variables, from one training session to the next, is critical for improving on the already achieved, but otherwise long-running results.
 
-we need to prep our environment in order to run any meaningful code
+A new system-wide pervasive `trackable` architecture now provides just such a persistence infrastructure. Instead of the old name-based hierarchy, the new design applies a topological, "layered objects" naming scheme.
 
-persistence of training data is ultimately realized through `Checkpoint` objects
-as the number of such representations, saved as plain files, grows, `CheckpointManager`s help with keeping track (see TF docs for full functionality)
-we present a simple scenario for persisting (saving and restoring) a variable encapsulated by a `Trackable` object as follows
+In this first blog, we explore some of the key aspects of this architecture. We start with a high-level view and then we gradually build from the simple base classes to the more useful Keras `layers`.
 
-using the above function, our iterations of incrementing the singleton `int` variable and keeping track of the `Checkpoint` files result in
+Our objective is to arrive at a training model representable by the [graph](./trackable.pdf).
 
-while the above is fully functional, the extensive boiler-plate code becomes an unnecessary hassle when implementing slightly more complex schemes
-also note that we used a private, undocumented, non-API method to make our code work
-obviously, a more convenient, "auto-tracking" functionality is needed
-the native Python attribute mechanism provides a framework to satisfy such needs
-our slightly adjusted printing function is now as follows
+We first need to prep our environment to run any meaningful code:
 
-and here is our use of an `AutoTrackable` object holding onto 2 single-valued variables
-notice the intuitive `tr2.v = tracked` assignment, as this is where the entire "trackable" scheme is triggered
-just in case we want to avoid the default functionality, we can turn off autotracking as well
+# code
 
-employing the native Python attribute mechanism and assignment operator allows us to reliably "autotrack" hundreds or thousands of training variables
-moreover, a consistent, hierarchical "layered objects" naming scheme emerges, without actual, explicit string-based names
-for a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the TF provided helper functions
+The actual persistence of training data, the weights, is ultimately realized through explicit Checkpoint objects.
 
-looking at the result of calling our function, we can quickly see the simple pattern of the employed hierarchical naming conventions
+As the number of such representations grows, saved as efficiently encoded versioned files, CheckpointManagers help with keeping track (see TF docs for full functionality).
 
-any type of variable management system that allows creating variables also needs to support deleting them
-to delete a variable from the hierarchy, the familiar native Python attribute mechanism's `del` operation can be used just as follows
+We present a simple scenario for persisting (saving and restoring) a single-valued variable encapsulated by a Trackable object as follows:
 
-and here are the results of calling our function
+# code
 
-variable management also means possibly aggregating variables into containers
-intuitive Python `list` and `dict` structures can be transparently employed
-using our modified function to print our variables
+Using the above function, our 3 iterations of incrementing the single-valued `int` variable and keeping track of the `Checkpoint` files result in:
 
-we can intuitively collect variables into either `list`s or `dict`s
-the patterns used for naming the aggregated variables are just as expected
+# code
 
-neural networks rely on sharing persisted trainable weights, variables in our case, to express interdependencies
-variable sharing was ad-hoc, only name-based and with a global scope before
-as Python has extensive native support for managing easily sharable references to its objects, this fundamental problem gets an intuitive solution with the new trackable architecture
-as expected, sharing variables now is natural and also safe, as it uses references instead of error-prone strings
+While the above snippet is fully functional, the extensive boiler-plate code becomes an unnecessary hassle when implementing even slightly more complex schemes.
 
-persisted shared variables are obviously not duplicated in checkpoints
-and when checkpoints are restored or reloaded, the in-memory sharing of variables is also re-established
-updates to shared variables can be easily verified just as follows
+Also note that we used a private, undocumented and non-API method to make our code work. A more convenient "auto-tracking" functionality is needed.
 
-variable management also means possible encapsulation
-new `Module` objects build on `AutoTrackable` to extend Python's familiar `class`-based encapsulation mechanism
-supported explicit name scoping of modules allows the reuse of module classes, otherwise instances of the same class would need to be generically counted
+The native Python attribute mechanism conveniently provides a framework to satisfy such needs as we'll see in a moment.
 
-when building hierarchies of modules, TF provided convenience methods also allow for recursively collecting variables
+In preparation, our slightly adjusted printing function is now as follows:
 
-with our module class and our handy printing function we can now build a basic nested hierarchy
-the results of printing our "one branch tree" show both the name-based hierarchy and the Python-object or "checkpoint" hierarchy
+# code
 
-Keras is the API for consistently reasoning about the interconnected network of components
-it also visibly splits the two distinct phases of building vs. executing our component "graphs"
-`functional` Keras has the most packaged features to assist us with our neural networks and we aim to use it throughout
-Keras `layer`s, as well-defined encapsulating components, build on the previously used `module`s to manage variable persistence
-the previous modules example is almost identical with Keras layers
+And here is our use of an AutoTrackable object holding onto 2 single-valued variables.
 
-through adjusting our helper to print the results
+Notice the intuitive tr2.v = tracked assignment, as this is where the entire "trackable" scheme is triggered.
 
-we arrive to a most simple Keras model, using a mere 3 scalar variables to showcase the underlying, already tried and used, persistence management
+Just in case we want to avoid the default functionality, we can turn off auto-tracking as well:
 
-even the simplest model can be overwhelming when expressed textually
-TensorBoard is an accompanying tool that can help us in picturing the nested component graphs
-as a "a picture is worth a thousand words", `summary` data for TB is generated as follows
+# code
 
-our trivially simple Keras model still implements data-driven Python recursion
-the new `autograph` functionality allows us to use such intuitive, native expressions instead of the usual TF "graph ops"
-autograph code generation is invoked with the `tf.function` Python decorator
+Employing the native Python attribute mechanism and assignment operator allows us to reliably "auto track" hundreds or thousands of training variables.
 
-in order to see the TB generated summaries, including the picture of our graph, we need to load the extension
+Moreover, a consistent hierarchical "layered objects" naming scheme emerges, without the need for explicit, string-based names.
 
-then we generate the TB summaries"
+For a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the helper functions provided by TF:
 
-and now we can view the zoom-able and clickable TB graph
-if you haven't run the code, an already generated graph is [here](./trackable.pdf)
+# code
 
-this concludes our blog, please see how to use the new GPU-related functionality by clicking on the next blog
+Looking at the result of calling our function, we can quickly grasp the otherwise simple pattern of hierarchical naming convention employed by the architecture:
+
+# code
+
+Any type of variable management system that allows creating variables must also support deleting them.
+
+The familiar native Python attribute mechanism's `del` operation is used to delete a variable from the hierarchy, just as shown below:
+
+# code
+
+And here are the results of calling our `deleting` function:
+
+# code
+
+Variable management also means possibly aggregating variables into various containers.
+
+Intuitive Python list and dict structures can be transparently employed through the trackable mechanism.
+
+Using our below-modified function to print our variables in our `containers':
+
+# code
+
+Just as mentioned above, we can intuitively collect variables into either lists or dicts.
+
+And the patterns used for naming the thus aggregated variables are just as expected:
+
+# code
+
+Neural networks rely on sharing persisted trainable weights, TF variables in our case, to express interdependencies.
+
+Variable sharing was ad-hoc, only name-based and with a global scope before.
+
+As Python has extensive native support for managing easily sharable references to its objects, this fundamental problem gets an intuitive solution with the new trackable architecture.
+
+As expected, sharing variables now is natural and also safe, as it uses references instead of error-prone strings:
+
+# code
+
+Persisted shared variables are not duplicated in checkpoints. And when checkpoints are restored or reloaded, the in-memory sharing of variables is also re-established.
+
+Updates to our shared variables can be easily verified just as follows:
+
+# code
+
+Variable management also means possible encapsulation.
+
+The new Module objects build on AutoTrackable to extend Python's familiar class-based encapsulation mechanism.
+
+The also supported explicit name scoping of modules allows the reuse of module classes, as instances of the same class would need to be generically counted otherwise:
+
+# code
+
+When building hierarchies of modules, TF provided convenience methods also allow for recursively collecting the "layered" variables. This is essential for computing gradients:
+
+# code
+
+With our module class and our handy printing function, we can now build a basic nested hierarchy of 3 layered modules.
+
+Printing our "one branch tree" shows both the name-based hierarchy and the Python-object or topological "checkpoint" hierarchy:
+
+# code
+
+Keras is the API for consistently reasoning about the interconnected network of components. It also visibly splits the two distinct, building vs. executing, phases of our component "graphs".
+
+The `functional` Keras, as opposed to either the `sequential` or the `subclassed` flavors, has the most pre-packaged features to assist us with our neural networks. We aim to use it throughout our blogs.
+
+Keras `layer`s, as well-defined encapsulating components, build on the previously used `module`s to manage variable persistence.
+
+Hence, the previous `module`s example is almost identical to the below shown "Keras layers" version:
+
+# code
+
+And after adjusting our helper to print the results:
+
+# code
+
+We finally arrive at the most simple Keras model.
+
+It uses just 3 scalar variables to showcase the underlying already tried and used persistence management:
+
+# code
+
+Nevertheless, even the simplest model can be overwhelming when expressed only textually.
+
+TensorBoard is an accompanying tool that can help us in "picturing" the nested component graphs.
+
+As "a picture is worth a thousand words", summary data for TB is generated as follows:
+
+# code
+
+Please note that our trivially simple Keras model still implements data-driven Python recursion.
+
+The new autograph functionality allows us to use such intuitive, native expressions instead of the usual, but more cumbersome, TF "graph ops".
+
+Autograph code generation is invoked with the tf.function Python decorator. A later blog will highlight the most impressive features of this new approach to defining ops.
+
+# code
+
+In order to see the TB generated summaries, including the picture of our graph, we need to load the extension:
+
+# code
+
+Then we generate the TB summaries by calling our tracer function:
+
+# code
+
+And now we can view the zoom-able and clickable TB graph.
+
+If you haven't run the code, an already generated graph is [here](./trackable.pdf).
+
+# code
+
+This concludes our blog. For using the new GPU-related functionality, please click on our next blog.
 
 ** Many Smaller GPUs: Elegant In-Model Distribution
 
-- Physical GPUs to custom configurable, virtual GPUs
+- From physical GPUs to custom configurable, virtual GPUs
 - Stacks of Keras layers laid over parametric sequences of GPUs
 - Instant, predictable and massive GPU computations/interactions
 - Clean, clear model "pipelines" visualized and verified 
 
-GPUs are no doubt one of our most critical resources when running neural networks
-GPUs have strict capacities and limits as physical resources 
-using servers with many smaller GPUs, we often ran into the inherent limitations of our equipment
-laying out a possibly large model across many smaller GPUs has thus become a requirement for us
+GPUs (and TPUs) are no doubt one of our most critical resources when running neural networks.
 
-this blog presents a few basic steps in that direction
-the outlined model can also be used to effectively test more complex and custom GPU allocation strategies
-our objective here is to arrive to training a model representable by the [graph](./gpus.pdf)
+GPUs have strict capacities and limits as physical resources. When using servers with many smaller GPUs, we often ran into the inherent physical limitations of our equipment.
 
-we need to prep our environment in order to run any meaningful code
+Laying out a possibly large model across many smaller GPUs has thus become a requirement for us. This blog presents a few basic steps in that direction.
+
+The outlined model can also be used to effectively test more complex and custom GPU allocation strategies.
+
+Our objective here is to arrive at training a model representable by the graph.
+
+Just as before, we need to prep our environment to run any meaningful code:
+
+# code
 
 we also define a few convenient aliases
 
-for any effective and generalizable allocation strategy we need to be able to reason about our resources in a uniform way
-we start with the new TF functionality of partitioning our physical GPUs into custom-sized, and thus easily "normalizable" virtual GPUs
-the components, `layers`, of our models can then expect the ids of the properly sized, or allocated virtual GPUs
-given the parameter-driven "resource" requirements of our layers, we can also develop heuristics for partitioning and allocating the physical devices before starting a training session
+# code
+
+For any effective and generalizable allocation strategy, we need to be able to reason about our resources uniformly.
+
+We start with the new TF functionality of partitioning our physical GPUs into custom-sized, and thus easily "normalizable", virtual GPUs.
+
+The components, or layers of our models, can then expect the ids of the properly sized, or allocated, virtual GPUs.
+
+Given the parameter-driven "resource" requirements of our layers, we can also develop heuristics for partitioning and allocating the physical devices before starting a training session. Such heuristics are beyond the scope of this blog.
+
+# code
 
 let's turn off "soft" allocation for now
 
-the model we develop here builds on a configurable "stack" of identical layers
-a most basic, custom `dense` layer class is all we need as the stack's repeated components
-we then aim to "lay" this stack on its side, and onto our virtual GPUs as a functional, forward-backward propagating pipeline that hence fits in our combined GPU-space
-each layer of the stack would therefore use a predetermined virtual GPU `idx` 
+# code
 
-a basic `sequential` Keras model will suffice as the container of our stack
-once the input, as well as the output, is shaped, we simply chain our chosen number of layers together in the middle
-the Keras model's `summary` method is very handy to confirm our model is laid out as intended
+The model we develop here builds on a configurable "stack" of identical layers.
 
-before we can run our model, we need to establish our parameters
-a simple Python `dict` works best to keep things organized, unique and sorted
+A most basic, custom `dense` layer class is all we need as the stack's repeated component.
 
-the drawback of string keyed `dict`s is just that, the strings can have typos in them and hundreds of potentially misnamed parameters certainly cause unnecessary confusion
-Python's automatically verified native `attribute`s come to the rescue once again
-here is a simple, straightforward and functional `Params` class
+We aim to "lay" this stack on its side, and onto our virtual GPUs, as a functional, forward-backward propagating pipeline that could now fit in our combined GPU-space.
 
-let's create our `Params` instance and a truly handy training data set (with testing and verification all built in) in just one line of code
+Each layer of the stack would, therefore, use a predetermined, or heuristically pre-calculated, virtual GPU `idx`:
 
-finally we are ready to compile our model
-just as expected, the `summary` of the model shows that it has over 10 million weights
-the initial values of the weights is randomly picked
-through training, we bring these arbitrary values "inline" through millions of multiplications and additions executed by our many virtual GPUs, only to verify that our input `ones` are in fact just a series of `1`s
+# code
 
-training the model gives us the familiar Keras output showing a nice convergence of a trivial problem across easily configurable GPUs
+A basic `sequential` Keras model will suffice as the container of our stack.
 
-and now let's fire up TensorBoard and visually confirm that our stack of "dense" layers is connected just as expected
-if you haven't run the code, an already generated graph is [here](./gpus.pdf)
+Once our input, as well as the output, is shaped, we simply chain our chosen number of layers together, in the middle of our basic `sequential` model.
+
+The Keras model's `summary` method is handy to confirm our model is laid out just as intended:
+
+# code
+
+Before we can run our model, we need to establish our parameters, the various dimensions and other attributes we want to use to shape the training.
+
+A simple Python `dict` works best to keep things organized, unique and also sorted:
+
+# code
+
+The drawback of string keyed `dict`s is just that, the strings can have typos in them and hundreds of potentially misnamed parameters, later on, will certainly cause unnecessary confusion.
+
+Python's automatically verified native `attribute`s come to the rescue once again.
+
+Here is a simple, straightforward and functional `Params` class:
+
+# code
+
+Let's create our `Params` instance and a truly handy training data set (with testing and verification all built-in) in just one line of code:
+
+# code
+
+Finally, we are ready to compile our model. And, just as expected, the `summary` of the model shows that it has over 10 million weights.
+
+The initial values of the weights are randomly picked. Through training, we bring these arbitrary values "inline" through millions of multiplications and additions executed by our many virtual GPUs, only to verify that our input `ones` are, in fact, just a series of `1`s:
+
+# code
+
+Training the model gives us the familiar Keras output, showing a nice convergence of a trivial problem across easily configurable GPUs:
+
+# code
+
+And now let's fire up TensorBoard and visually confirm that our stack of "dense" layers is connected just as expected.
+
+If you haven't run the code, an already generated graph is [here](./gpus.pdf).
+
+# code
 
 this concludes our blog, please see how to use the new dataset functionality by clicking on the next blog"
 
@@ -685,143 +797,248 @@ to be expanded...
 - Judgments: from certainty through ambiguity to absurdity
 
 > "Reductio ad absurdum... is a form of argument that attempts to either disprove a statement by showing it inevitably leads to a ridiculous, absurd, or impractical conclusion, or to prove one by showing that if it were not true, the result would be absurd or impossible." - Wikipedia.
-The **qnarre** narrative analyzing software operates on flat text statements represented by lists of sentences. The input **evidence** of a qnarre session is the list of all statements to be considered.
-These statements are further grouped into an ordered list of **docs** of pages and paragraphs. The docs are persisted in varied formats in a hierarchical and rooted directory structure.
-When a statement is assigned a **credibility** in qnarre, it becomes a **claim**. Credibility is an ordering of all claims defined to intuitively reflect that, for example, a police report or an allegation made during a trial in Court can be trusted more than a casual verbal opinion overheard on the street. 
-All docs in qnarre belong to a **genre** (e.g. letter, motion, affidavit, judgment, etc.) that implicitly weighs all contained claims of the doc with an inherent, default credibility.
-Claims can also be assigned incidental **weights** that fine-tune their individual credibilities. To model a doc of a specific genre, and containing 100 random claims, we can run the Python code presented below:
 
-Before any of our simulations can be tried, or repeated with 
-changed parameters, our environment needs to be initialized
+The **qnarre** narrative analyzing software operates on flat text statements represented by lists of sentences. The input **evidence** of a qnarre session is the list of all statements to be considered.
+
+These statements are further grouped into an ordered list of **docs** of pages and paragraphs. The docs are persisted in varied formats in a hierarchical and rooted directory structure.
+
+When a statement is assigned a **credibility** in qnarre, it becomes a **claim**. Credibility is an ordering of all claims defined to intuitively reflect that, for example, a police report or an allegation made during a trial in Court can be trusted more than a casual verbal opinion overheard on the street. 
+
+All docs in qnarre belong to a **genre** (e.g. letter, motion, affidavit, judgment, etc.) that implicitly weighs all contained claims of the doc with an inherent, default credibility.
+
+Claims can also be assigned incidental **weights** that fine-tune their individual credibilities. To model a doc of a specific genre, and containing 100 random claims, we can run the Python code presented below.
+
+Before any of our simulations can be tried, or repeated with changed parameters, our environment needs to be initialized:
+
+# code
 
 Also, let's create 5 genres represented as their credibilities
 
-We define a function to conveniently create a new doc
+# code
+
+We define a function to conveniently create a new doc:
+
+# code
 
 Let's plot this, the chart will be randomly different with every run 
 
+# code
+
 The code above, and below, relies on randomly synthesizing varied data, or "sampling" from already created lists of values. These processes are defined in terms of their parameters.
+
 All our simulations are thus driven by our input parameters and/or weights. Parameters and weights are real numbers, or Python *floats*. Some are from the interval [0,1] and can thus be directly used as *prior* probabilities.
+
 Such parameters are:
 - the number of docs in an input evidence is reflected by its **breadth**
 - the number of claims in any specific doc is influenced by its **depth**.
+
 To model an evidence of random docs with those parameters, we can run:
 
+# code
+
 Let's plot this
+
+# code
 
 The chosen simple probability distributions for the samples are noted through the choice of functions used. Numpy documentation provides further details.
+
 More sophisticated, *generic* and even *conjugate* probability distributions can be easily plugged in to properly reflect inherent covariance and contravariance present in the data.
+
 The credibility of a claim can be further enhanced by citing an *authority*. Such authority "witnessing" a claim will turn the claim into a **proof**. The *weight* of a proof derived from the authority is the enhancing factor of the underlying claim.
+
 The percentage of proofs in an evidence is its **proven** parameter. To model an evidence witnessed, and thus proven, by authorities, we can run:
 
+# code
+
 Let's plot this
+
+# code
 
 Claims can be further categorized through *topics*. Grouping together varying topical claims and related proofs improves the understanding of the overall context in an evidence.
+
 **Realities** are such contextual claims encapsulating the inherent, or readily and verifiably inferenceable, "common sense" credibilities.
+
 The percentage of realities of all claims in an evidence is generated from its **contextual** parameter.
+
 A reality, through the thus logically concluded credibility measure called its **coherence**, adds to the overall **certainty** of a simulation. We represent this *certainty* with a natural value of `1.0` and as an obvious upper bound of our charts and simulated "worlds".
+
 Assuming that normal and balanced **ambiguity** rules before an evidence is ever considered, we can model how the realities of an evidence drive the overall understanding from *ambiguity* to *certainty* as follows.
+
 Note that *ambiguity* has become our starting point, the "origin" and baseline with a natural value of `0.0` across the charts:
 
+# code
+
 Let's plot this
+
+# code
 
 And now our bounds for the world of trials:
 
+# code
+
 "*Conflict is opportunity*": good attorneys find intrinsic contradictions and conflicts in lawsuits and creatively expose the consequences, thus elevating or plausibly projecting neutral *ambiguity* to *certainty*. Judgments are then reproducibly made without further consequences and attorneys reap the rewards.
+
 Without such conflicts, or the ability to find them, attorneys starve. Less capable yet "ambitious" or *malicious* attorneys professionally (i.e. "credibly") create, or plainly *fabricate*, artificial conflicts.
+
 Such artificial **conflicts** are thus the fabricated claims that knowingly and purposefully hook into and then graft onto specific perceived realities of an evidence.
+
 The objective of a \\[fabricated\\] *conflict* is to sow fear, uncertainty and doubt. A conflict, through its intended "credibility", defined hereon as its **fragmentation** measure, adds to the overall **absurdity**, or the level of confusion in the evidence and all its simulations.
+
 So called "high-conflict" attorneys and professionals keenly understand the lucrative potential in this ruthless scheme and advertise their services as "aggressive", simply meaning maliciously *predatorial*, as shown in these simulations.
+
 A conflict's *fragmentation* is thus expressed by, and is proportional to:
 - its inherent *weight* measure (e.g. the modelled types of deception, fraud, extortion, etc.)
 - the strength, the *coherence*, of its targeted reality (the more absurd something is the more confusion it creates when forcibly taken seriously).
+
 Furthermore, just as a reality is enhanced by numerically more topical yet still semantically broad claims, a conflict is also emphasized by necessarily focused and narrow, almost literal, **repeats** along the famously quoted lines of the ruthless monster:  
+
 > Repeat a lie often enough and it becomes the truth” - Nazi Joseph Goebbels
+
 The percentage of conflicts of all claims in an evidence is generated from its malicious or **malignant** characteristic/parameter. We can model how the conflicts of an evidence fragment the overall reality of a simulation from *ambiguity* to *absurdity* as follows:
 
+# code
+
 Let's plot this
+
+# code
 
 Note that *absurdity* is now our lower bound in our charts, and simulations, and it is assigned an artificial value of `-2.0`. The value was chosen to reflect the significant antisymmetry between the necessarily coherent reality and the realm of widly fragmented, confused and outright dellusional "dreams have no limits" absurdity.
+
 As opportunities dwindle in the realm of reality, creatively unbounded,  yet also morally unrestricted, select skilled professionals aim to "legally" profit from the unchartered, and truly vast, "Wild West" of absurdity.
+
 **These simulations and software directly target such professionals, with the stated objective of systematically and sustainably profiting from their current and especially past exploiting escapades into the "Land Absurdity".**
+
 Now that some of the used concepts have been defined, we can plot our target domain and its bounds as follows:
 
+# code
+
 Let's plot this
+
+# code
 
 **Judgments** are claims meant to forcefully solve conflicts. If the conflicts are inherent, or simply tractable, judgments restore and reinforce reality thus leading to an obviously sustainable, clear and fair *certainty*.
+
 In a biased, or *prejudiced* simulation, reflected by the evidence's **prejudiced** parameter, the selected conflicts a judgement builds on greatly influence the credibility and thus the soundness of its own conjecture claim.
+
 Judgments that are not sound (i.e. not coherent with reality) cause confusion and possibly destabilizing, long-term upheaval. A judgment's **turmoil** measure is thus expressed by, and is proportional to:
+
 - its inherent *weight* measure (e.g. the modelled types of confusion, bias, fabrication, etc.)
 - the actual influence, the sum of the *fragmentations* of all its referenced conflicts (inherent, tractable conflicts are not modelled as they are factored into the coherence of realities).
+
 The percentage of judgments of all claims in an evidence is generated from its *breadth* characteristic/parameter. The *weights* of the judgments are proportional to the *prejudice* parameter of the evidence.
+
 We can model how the judgments of an evidence cause consequential *turmoil* and drive a simulation from *ambiguity* to *absurdity* through confusion as follows:
+
+# code
 
 Let's plot this
 
-To be continued...
+# code
+
+This concludes our blog. For more on modeling these concepts in detail, please click on our next blog.
 
 ** A Conceptual Model Of An "Emotional" Domain
 
-*** Underlying Classes (or concepts/terms)
+- General underlying concepts
+- Claims, topics and narratives revisited
+- Broad realities vs. narrow conflicts
+- From patterns of judgments to activism
 
-*** Modeling the Domain
+We are only concerned with textual data stored electronically. The `source` is thus our unit of representation.
 
-| Term          | Definition                             | Properties                              | Mark |
-| ---           | ---                                    | ---                                     | ---  |
-| **Source**    | digitized content stored in a file     | type (e.g. pdf, jpg, email, text)       |      |
-| **Evidence**  | a hierarchy of considered Sources      | root (directory)                        |      |
-| **Doc**       | a unit of paginated flat text Evidence | name (date), kind, author, title, pages |      |
-| **Place**     | a specific location in a Doc           | doc, page, para(graph)                  |      |
-| **Claim**     | a now Placed relevant text fragment    | text, place                             | '~'  |
-| **Author**    | an author of Docs of Claims            | name, title                             |      |
-| **Agent**     | a to be believed professional (Author) | kind (of profession)                    |      |
-| **Authority** | a trusted Agent of an official agency  | agency (institution or 'sworn self')    |      |
+The `evidence` is all the `doc`s we need to consider organized hierarchically as `source`s.
 
-*** Categories of Claims
+Ultimately, it all comes down to working with text fragments, `claims`, with various interconnected and even overlapping properties. We define:
 
-| Term          | Definition                                                                    | Properties  |
-| ---           | ---                                                                           | ---         |
-| **Topic**     | a relevant/dominant thematic subject matter of Claims                         | name        |
-| **Narrative** | a thematically focused "slice" through Claims                                 | name, topic |
-| **Kind**      | level of "officialness" (e.g. affidavit, report, letter, motion, order, etc.) | name        |
+| Term         | Definition                             | Properties                               |
+| ---          | ---                                    | ---                                      |
+| **Source**   | digitized content stored in a file     | type (e.g. pdf, jpg, email, text)        |
+| **Evidence** | a hierarchy of considered Sources      | root (directory)                         |
+| **Doc**      | a unit of paginated flat text Evidence | name (date), genre, author, title, pages |
+| **Genre**    | a kind of "officialness" of a Doc      | name                                     |
+| **Place**    | a specific location in a Doc           | doc, page, para(graph)                   |
+| **Claim**    | a Placed relevant text fragment        | text, place                              |
 
-*** Groups of Claims
+The `author` of a `doc` of `claim`s can be a party, a lawyer or a judge, for example. Accordingly, we define:
 
-| Term         | Definition                                                       | Properties           | Mark  |
-| ---          | ---                                                              | ---                  | ---   |
-| **Node**     | a generic grouping of Claim(s) along thematic dimensions         | topic, narrative     |       |
-| **Proof**    | a readily verifiable undisputed Claim from an Authority          | claim, authority     | '!p'  |
-| **Reality**  | a logical inference from Proofs guided by thematic Claims        | proofs, claims       | '!r'  |
-| **Conflict** | a Claim intended to fabricate/escalate bases of Judgments        | claim, reality       | '?.'  |
-| **Suborn**   | a false Claim caused by Agent as intentional perjury             | (agent's) agency     | '??.' |
-| **Repeat**   | variant of conflict inducing Claim to reinforce intended effect  | claim, conflict      | '^t'  |
-| **Judgment** | a thematic conjecture by Authority over inflated Conflicts       | conflicts, authority | '=.'  |
+| Term          | Definition                            | Properties                           |
+| ---           | ---                                   | ---                                  |
+| **Author**    | an author of Docs of Claims           | name, title                          |
+| **Agent**     | a to be believed professional         | kind (of profession)                 |
+| **Authority** | a trusted Agent of an official agency | agency (institution or 'sworn self') |
 
-*** Types of Modelled Conflicts
+A `claim` can be grouped into `topic`s and attached to `narrative`s. Such groupings and assignments are done based on the semantic meaning of the claim as well as the context the claim belongs to.
 
-| Term                | Definition                                                       | Mark |
-| ---                 | ---                                                              | ---  |
-| **Contradiction**   | neglected or refused to state apparent inconsistency or conflict | '?x' |
-| **Deception**       | intentionally emphasized relevant half-truths to affect judgment | '?d' |
-| **Distortion**      | reported relevant information in a suggestive and biased manner  | '?s' |
-| **Fairness**        | neglected or refused to consider both claim and counterclaim     | '?a' |
-| **Fraud**           | stated intentionally falsified relevant and crucial information  | '?u' |
-| **Isolation**       | neglected or refused to consider relevant and essential context  | '?i' |
-| **Extortion**       | stated relevant and threatening claims to force money or "fees"  | '?e' |
-| **Misreading**      | stated seemingly unintentionally misinterpreted relevant claims  | '?m' |
-| **Negligence**      | reported relevant and damaging information in a careless manner  | '?n' |
-| **Omission**        | neglected or refused to report disclosed relevant information    | '?o' |
-| **Proportionality** | neglected or refused to report in balanced/proportional manner   | '?y' |
+| Term          | Definition                                    | Properties  |
+| ---           | ---                                           | ---         |
+| **Topic**     | a relevant/dominant subject matter of Claims  | name        |
+| **Narrative** | a thematically focused "slice" through Claims | name, topic |
 
-*** Types of Modelled Judgments
+More importantly, `claim`s are further categorized as follows. The objective is to either compute a generalizing `credibility` for the claim or to derive other reproducible conjectures regarding the related claims. 
 
-| Term            | Definition                                                         | Mark |
-| ---             | ---                                                                | ---  |
-| **Bias**        | selection and judgment of conflicts satisfying a prior narrative   | '=b' |
-| **Confusion**   | selection and judgment of conflicts leading to clear contradiction | '=c' |
-| **Disregard**   | avoidance of relevant conflicts while protecting a prior narrative | '=g' |
-| **Fabrication** | injection of disputable conjecture reinforcing a prior narrative   | '=f' |
-| **Validation**  | selection and judgment of conflicts refuting an inflated Conflict  | '=v' |
+| Term           | Definition                                                | Properties       |
+| ---            | ---                                                       | ---              |
+| **Node**       | a generic grouping of Claim(s) along thematic dimensions  | topic, narrative |
+| **Proof**      | a readily verifiable undisputed Claim from an Authority   | claim, authority |
+| **Conjecture** | a logical inference from Proofs guided by thematic Claims | proofs, claims   |
+| **Reality**    | a broad-based reinforcing Conjecture                      | coherence        |
+| **Dissent**    | a narrow, fragmenting and thus weakening Conjecture       | fragment         |
+
+A `dissent` is further broken down into self-explained types with increasing factors of their fragmenting effects. These are:
+
+| Term                | Definition                                                       |
+| ---                 | ---                                                              |
+| **Misreading**      | stated seemingly unintentionally misinterpreted relevant claims  |
+| **Fairness**        | neglected or refused to consider both claim and counterclaim     |
+| **Negligence**      | reported relevant and damaging information in a careless manner  |
+| **Proportionality** | neglected or refused to report in balanced/proportional manner   |
+| **Contradiction**   | neglected or refused to state apparent inconsistency or conflict |
+| **Isolation**       | neglected or refused to consider relevant and essential context  |
+| **Omission**        | neglected or refused to report disclosed relevant information    |
+| **Distortion**      | reported relevant information in a suggestive and biased manner  |
+
+A special type of a claim is a `conflict`. Its purpose is to directly contradict a `reality` and thus to manipulate a subsequent `judgment`.
+
+| Term         | Definition                                                      | Properties           |
+| ---          | ---                                                             | ---                  |
+| **Conflict** | a Claim intended to fabricate/escalate bases for Judgments      | claim, reality       |
+| **Suborn**   | a false Claim caused by Agent as intentional perjury            | (agent's) agency     |
+| **Repeat**   | variant of conflict inducing Claim to reinforce intended effect | claim, conflict      |
+| **Judgment** | a thematic conjecture by Authority over inflated Conflicts      | conflicts, authority |
+| **Activism** | a thematic pattern of conjectures by Authority                  | judgments, authority |
+
+Revealing, and even fabricating, conflicts is the objective of lawsuits. We categorize conflicts along their increasing fragmenting effect on judgments: 
+
+| Term         | Definition                                                       |
+| ---          | ---                                                              |
+| **Inherent** | emphasized inherent contradictions to confuse judgment           |
+| **Conceal**  | intentionally concealed relevant truths to affect judgment       |
+| **Deceive**  | intentionally emphasized relevant half-truths to affect judgment |
+| **Fraud**    | stated intentionally falsified relevant and crucial information  |
+| **Extort**   | stated relevant and threatening claims to force money or "fees"  |
+
+The judgments of lawsuits represent the net effect of all the claimed conflicts. If a `judgment` relies predominantly on conflicts while overruling realities, it causes `turmoil`. The types of judgments we consider in increasing turmoil effect is as follows: 
+
+| Term            | Definition                                                         |
+| ---             | ---                                                                |
+| **Validation**  | selection and judgment of conflicts refuting an inflated Conflict  |
+| **Confusion**   | selection and judgment of conflicts leading to clear contradiction |
+| **Bias**        | selection and judgment of conflicts satisfying a prior narrative   |
+| **Disregard**   | avoidance of relevant conflicts while protecting a prior narrative |
+| **Fabrication** | injection of disputable conjecture reinforcing a prior narrative   |
+
+When considering multiple judgment claims, a pattern, a trend can possibly be established. During processing, when our calculations support such patterns, `activism`s emerge. We define the following categories in increasing effect on their `turmoil` factor:
+
+| Term           | Definition |
+| ---            | ---        |
+| **Exclude**    | pattern of |
+| **Insinuate**  | pattern of |
+| **Polarize**   | pattern of |
+| **Recast**     | pattern of |
+| **Elevate**    | pattern of |
+| **Victimize**  | pattern of |
+| **Exploit**    | pattern of |
+| **Perpetuate** | pattern of |
 
 ** The Predatory Profits Of "High-Conflict" Divorces
 

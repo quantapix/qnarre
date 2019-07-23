@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>trackable</title>
+<title>concepts</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13116,974 +13116,375 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Trackable:-A-Pervasive-Persistence-Infrastructure">Trackable: A Pervasive Persistence Infrastructure<a class="anchor-link" href="#Trackable:-A-Pervasive-Persistence-Infrastructure">&#182;</a></h1>
+<h1 id="A-Conceptual-Model-Of-An-&quot;Emotional&quot;-Domain">A Conceptual Model Of An "Emotional" Domain<a class="anchor-link" href="#A-Conceptual-Model-Of-An-&quot;Emotional&quot;-Domain">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Training in TensorFlow means continually adjusting collections of values stored as <code>tensors</code> in objects called <code>variables</code>.</p>
-<p>The persistence of these variables, from one training session to the next, is critical for improving on the already achieved, but otherwise long-running results.</p>
-<p>A new system-wide pervasive <code>trackable</code> architecture now provides just such a persistence infrastructure. Instead of the old name-based hierarchy, the new design applies a topological, "layered objects" naming scheme.</p>
-<p>In this first blog, we explore some of the key aspects of this architecture. We start with a high-level view and then we gradually build from the simple base classes to the more useful Keras <code>layers</code>.</p>
-<p>Our objective is to arrive at a training model representable by the <a href="./trackable.pdf">graph</a>.</p>
-<p>We first need to prep our environment to run any meaningful code:</p>
+<p>We are only concerned with textual data stored electronically. The <code>source</code> is thus our unit of representation.</p>
+<p>The <code>evidence</code> is all the <code>doc</code>s we need to consider organized hierarchically as <code>source</code>s.</p>
+<p>Ultimately, it all comes down to working with text fragments, <code>claims</code>, with various interconnected and even overlapping properties. We define:</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Source</strong></td>
+<td>digitized content stored in a file</td>
+<td>type (e.g. pdf, jpg, email, text)</td>
+</tr>
+<tr>
+<td><strong>Evidence</strong></td>
+<td>a hierarchy of considered Sources</td>
+<td>root (directory)</td>
+</tr>
+<tr>
+<td><strong>Doc</strong></td>
+<td>a unit of paginated flat text Evidence</td>
+<td>name (date), genre, author, title, pages</td>
+</tr>
+<tr>
+<td><strong>Genre</strong></td>
+<td>a kind of "officialness" of a Doc</td>
+<td>name</td>
+</tr>
+<tr>
+<td><strong>Place</strong></td>
+<td>a specific location in a Doc</td>
+<td>doc, page, para(graph)</td>
+</tr>
+<tr>
+<td><strong>Claim</strong></td>
+<td>a Placed relevant text fragment</td>
+<td>text, place</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
-
-<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
-<span class="kn">from</span> <span class="nn">tensorflow.python.training.tracking</span> <span class="k">import</span> <span class="n">base</span>
-<span class="kn">from</span> <span class="nn">tensorflow.python.training.tracking</span> <span class="k">import</span> <span class="n">tracking</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The actual persistence of training data, the <code>weights</code>, is ultimately realized through explicit <code>Checkpoint</code> objects.</p>
-<p>As the number of such representations grows, saved as efficiently encoded versioned files, <code>CheckpointManager</code>s help with keeping track (see TF docs for full functionality).</p>
-<p>We present a simple scenario for persisting (saving and restoring) a single-valued variable encapsulated by a <code>Trackable</code> object as follows:</p>
+<p>The <code>author</code> of a <code>doc</code> of <code>claim</code>s can be a party, a lawyer or a judge, for example. Accordingly, we define:</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Author</strong></td>
+<td>an author of Docs of Claims</td>
+<td>name, title</td>
+</tr>
+<tr>
+<td><strong>Agent</strong></td>
+<td>a to be believed professional</td>
+<td>kind (of profession)</td>
+</tr>
+<tr>
+<td><strong>Authority</strong></td>
+<td>a trusted Agent of an official agency</td>
+<td>agency (institution or 'sworn self')</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">trackable</span><span class="p">(</span><span class="n">tr1</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr1</span><span class="o">=</span><span class="n">tr1</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">expect_partial</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">p</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;restored from: </span><span class="si">{p}</span><span class="s1">&#39;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;others are: </span><span class="si">{m.checkpoints}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;start from scratch&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;value before: {v.numpy()}&#39;</span><span class="p">)</span>
-    <span class="n">v</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Using the above function, our 3 iterations of incrementing the single-valued <code>int</code> variable and keeping track of the <code>Checkpoint</code> files result in:</p>
+<p>A <code>claim</code> can be grouped into <code>topic</code>s and attached to <code>narrative</code>s. Such groupings and assignments are done based on the semantic meaning of the claim as well as the context the claim belongs to.</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Topic</strong></td>
+<td>a relevant/dominant subject matter of Claims</td>
+<td>name</td>
+</tr>
+<tr>
+<td><strong>Narrative</strong></td>
+<td>a thematically focused "slice" through Claims</td>
+<td>name, topic</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr1</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">Trackable</span><span class="p">()</span>
-<span class="n">v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">tr1</span><span class="o">.</span><span class="n">_track_trackable</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;tr1_v&#39;</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
-    <span class="n">trackable</span><span class="p">(</span><span class="n">tr1</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>start from scratch
-value before: 1
-restored from: /tmp/q/trackable/ckpt-1
-others are: [&#39;/tmp/q/trackable/ckpt-1&#39;]
-value before: 2
-restored from: /tmp/q/trackable/ckpt-2
-others are: [&#39;/tmp/q/trackable/ckpt-1&#39;, &#39;/tmp/q/trackable/ckpt-2&#39;]
-value before: 3
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>While the above snippet is fully functional, the extensive boiler-plate code becomes an unnecessary hassle when implementing even slightly more complex schemes.</p>
-<p>Also note that we used a private, undocumented and non-API method to make our code work. A more convenient "auto-tracking" functionality is needed.</p>
-<p>The native Python attribute mechanism conveniently provides a framework to satisfy such needs as we'll see in a moment.</p>
-<p>In preparation, our slightly adjusted printing function is now as follows:</p>
+<p>More importantly, <code>claim</code>s are further categorized as follows. The objective is to either compute a generalizing <code>credibility</code> for the claim or to derive other reproducible conjecture regarding the related claims.</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Node</strong></td>
+<td>a generic grouping of Claim(s) along thematic dimensions</td>
+<td>topic, narrative</td>
+</tr>
+<tr>
+<td><strong>Proof</strong></td>
+<td>a readily verifiable undisputed Claim from an Authority</td>
+<td>claim, authority</td>
+</tr>
+<tr>
+<td><strong>Conjecture</strong></td>
+<td>a logical inference from Proofs guided by thematic Claims</td>
+<td>proofs, claims</td>
+</tr>
+<tr>
+<td><strong>Reality</strong></td>
+<td>a broad-based reinforcing Conjecture</td>
+<td>coherence</td>
+</tr>
+<tr>
+<td><strong>Dissent</strong></td>
+<td>a narrow, fragmenting, and thus weakening, Conjecture</td>
+<td>fragment</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">autotrackable</span><span class="p">(</span><span class="n">tr2</span><span class="p">,</span> <span class="n">tracked</span><span class="p">,</span> <span class="n">untracked</span><span class="p">):</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr2</span><span class="o">=</span><span class="n">tr2</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">expect_partial</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">p</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;restored from: </span><span class="si">{p}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;values before: {tracked.numpy()}, {untracked.numpy()}&#39;</span><span class="p">)</span>
-    <span class="n">tracked</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;value as saved: {tracked.numpy()}&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>And here is our use of an <code>AutoTrackable</code> object holding onto 2 single-valued variables.</p>
-<p>Notice the intuitive <code>tr2.v = tracked</code> assignment, as this is where the entire "trackable" scheme is triggered.</p>
-<p>Just in case we want to avoid the default functionality, we can turn off auto-tracking as well:</p>
+<p>A <code>dissent</code> is further broken down into self-explained types with increasing factors of their fragmenting effects. These are:</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Misreading</strong></td>
+<td>stated seemingly unintentionally misinterpreted relevant claims</td>
+</tr>
+<tr>
+<td><strong>Fairness</strong></td>
+<td>neglected or refused to consider both claim and counterclaim</td>
+</tr>
+<tr>
+<td><strong>Negligence</strong></td>
+<td>reported relevant and damaging information in a careless manner</td>
+</tr>
+<tr>
+<td><strong>Proportionality</strong></td>
+<td>neglected or refused to report in balanced/proportional manner</td>
+</tr>
+<tr>
+<td><strong>Contradiction</strong></td>
+<td>neglected or refused to state apparent inconsistency or conflict</td>
+</tr>
+<tr>
+<td><strong>Isolation</strong></td>
+<td>neglected or refused to consider relevant and essential context</td>
+</tr>
+<tr>
+<td><strong>Omission</strong></td>
+<td>neglected or refused to report disclosed relevant information</td>
+</tr>
+<tr>
+<td><strong>Distortion</strong></td>
+<td>reported relevant information in a suggestive and biased manner</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr2</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
-<span class="n">tracked</span><span class="p">,</span> <span class="n">untracked</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">tr2</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">tracked</span>
-<span class="k">with</span> <span class="n">base</span><span class="o">.</span><span class="n">no_automatic_dependency_tracking_scope</span><span class="p">(</span><span class="n">tr2</span><span class="p">):</span>
-    <span class="n">tr2</span><span class="o">.</span><span class="n">untracked</span> <span class="o">=</span> <span class="n">untracked</span>
-<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
-    <span class="n">autotrackable</span><span class="p">(</span><span class="n">tr2</span><span class="p">,</span> <span class="n">tracked</span><span class="p">,</span> <span class="n">untracked</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>restored from: /tmp/q/trackable/ckpt-3
-values before: 1000, 0
-value as saved: 2000
-restored from: /tmp/q/trackable/ckpt-4
-values before: 2000, 0
-value as saved: 3000
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Employing the native Python attribute mechanism and assignment operator allows us to reliably "auto track" hundreds or thousands of training variables.</p>
-<p>Moreover, a consistent hierarchical "layered objects" naming scheme emerges, without the need for explicit, string-based names.</p>
-<p>For a snapshot view of the "topology" of our layers, or just a simple inventory of our variables, we can use the helper functions provided by TF:</p>
+<p>A special type of a claim is a <code>conflict</code>. Its purpose is to directly contradict a <code>reality</code> and thus to manipulate a subsequent <code>judgment</code>.</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Conflict</strong></td>
+<td>a Claim intended to fabricate/escalate bases for Judgments</td>
+<td>claim, reality</td>
+</tr>
+<tr>
+<td><strong>Suborn</strong></td>
+<td>a false Claim caused by Agent as intentional perjury</td>
+<td>(agent's) agency</td>
+</tr>
+<tr>
+<td><strong>Repeat</strong></td>
+<td>variant of conflict inducing Claim to reinforce intended effect</td>
+<td>claim, conflict</td>
+</tr>
+<tr>
+<td><strong>Judgment</strong></td>
+<td>a thematic conjecture by Authority over inflated Conflicts</td>
+<td>conflicts, authority</td>
+</tr>
+<tr>
+<td><strong>Activism</strong></td>
+<td>a thematic pattern of conjectures by Authority</td>
+<td>judgments, authority</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">listing</span><span class="p">():</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">()</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;names and shapes list: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">n</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">vs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">load_variable</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;loaded value: </span><span class="si">{v}</span><span class="s1"> for name: </span><span class="si">{n}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">load_checkpoint</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="n">ts</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get_variable_to_dtype_map</span><span class="p">()</span>
-    <span class="n">ss</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get_variable_to_shape_map</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;checkpoint types: </span><span class="si">{ts}</span><span class="s1"> and shapes: </span><span class="si">{ss}</span><span class="s1">&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Looking at the result of calling our function, we can quickly grasp the otherwise simple pattern of hierarchical naming convention employed by the architecture:</p>
+<p>Revealing, and even fabricating, conflicts is the objective of lawsuits. We categorize conflicts along their increasing fragmenting effect on judgments:</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Inherent</strong></td>
+<td>emphasized inherent contradictions to confuse judgment</td>
+</tr>
+<tr>
+<td><strong>Conceal</strong></td>
+<td>intentionally concealed relevant truths to affect judgment</td>
+</tr>
+<tr>
+<td><strong>Deceive</strong></td>
+<td>intentionally emphasized relevant half-truths to affect judgment</td>
+</tr>
+<tr>
+<td><strong>Fraud</strong></td>
+<td>stated intentionally falsified relevant and crucial information</td>
+</tr>
+<tr>
+<td><strong>Extort</strong></td>
+<td>stated relevant and threatening claims to force money or "fees"</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">listing</span><span class="p">()</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>names and shapes list: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-loaded value: 3000 for name: tr2/v/.ATTRIBUTES/VARIABLE_VALUE
-checkpoint types: {&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;: tf.int32, &#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;: tf.string, &#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;: tf.int64} and shapes: {&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;: [], &#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;: [], &#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;: []}
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Any type of variable management system that allows creating variables must also support deleting them.</p>
-<p>The familiar native Python attribute mechanism's <code>del</code> operation is used to delete a variable from the hierarchy, just as shown below:</p>
+<p>The judgments of lawsuits represent the net effect of all the claimed conflicts. If a <code>judgment</code> relies predominantly on conflicts while overruling realities, it causes <code>turmoil</code>. The types of judgments we consider in increasing turmoil effect is as follows:</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Validation</strong></td>
+<td>selection and judgment of conflicts refuting an inflated Conflict</td>
+</tr>
+<tr>
+<td><strong>Confusion</strong></td>
+<td>selection and judgment of conflicts leading to clear contradiction</td>
+</tr>
+<tr>
+<td><strong>Bias</strong></td>
+<td>selection and judgment of conflicts satisfying a prior narrative</td>
+</tr>
+<tr>
+<td><strong>Disregard</strong></td>
+<td>avoidance of relevant conflicts while protecting a prior narrative</td>
+</tr>
+<tr>
+<td><strong>Fabrication</strong></td>
+<td>injection of disputable conjecture reinforcing a prior narrative</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">deleting</span><span class="p">(</span><span class="n">tr2</span><span class="p">):</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr2</span><span class="o">=</span><span class="n">tr2</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">tr2</span><span class="o">.</span><span class="n">deleted</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;list deleted: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="k">del</span> <span class="n">c</span><span class="o">.</span><span class="n">tr2</span><span class="o">.</span><span class="n">deleted</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;deleted IS DELETED: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>And here are the results of calling our <code>deleting</code> function:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">deleting</span><span class="p">(</span><span class="n">tr2</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>list deleted: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr2/deleted/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-deleted IS DELETED: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr2/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Variable management also means possibly aggregating variables into various containers.</p>
-<p>Intuitive Python <code>list</code> and <code>dict</code> structures can be transparently employed through the <code>trackable</code> mechanism.</p>
-<p>Using our below-modified function to print our variables in our `containers':</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">containers</span><span class="p">(</span><span class="n">tr3</span><span class="p">):</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr3</span><span class="o">=</span><span class="n">tr3</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;containers: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Just as mentioned above, we can intuitively collect variables into either <code>list</code>s or <code>dict</code>s.</p>
-<p>And the patterns used for naming the thus aggregated variables are just as expected:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr3</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
-<span class="n">br1</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
-<span class="n">br1</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-<span class="n">br2</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
-<span class="n">br2</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-<span class="n">tr3</span><span class="o">.</span><span class="n">br_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">br1</span><span class="p">,</span> <span class="n">br2</span><span class="p">]</span>
-<span class="n">br3</span> <span class="o">=</span> <span class="n">tracking</span><span class="o">.</span><span class="n">AutoTrackable</span><span class="p">()</span>
-<span class="n">br3</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-<span class="n">tr3</span><span class="o">.</span><span class="n">br_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;br3&#39;</span><span class="p">:</span> <span class="n">br3</span><span class="p">}</span>
-<span class="n">containers</span><span class="p">(</span><span class="n">tr3</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>containers: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr3/br_dict/br3/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr3/br_list/0/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr3/br_list/1/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Neural networks rely on sharing persisted trainable weights, TF variables in our case, to express interdependencies.</p>
-<p>Variable sharing was ad-hoc, only name-based and with a global scope before.</p>
-<p>As Python has extensive native support for managing easily sharable references to its objects, this fundamental problem gets an intuitive solution with the new trackable architecture.</p>
-<p>As expected, sharing variables now is natural and also safe, as it uses references instead of error-prone strings:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">sharing</span><span class="p">(</span><span class="n">tr3</span><span class="p">):</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr3</span><span class="o">=</span><span class="n">tr3</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span><span class="o">.</span><span class="n">assert_consumed</span><span class="p">()</span>
-    <span class="n">v1</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
-    <span class="n">v2</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
-    <span class="n">vd1</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_dict</span><span class="p">[</span><span class="s1">&#39;br1&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
-    <span class="n">vd2</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_dict</span><span class="p">[</span><span class="s1">&#39;br2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
-    <span class="n">vd3</span> <span class="o">=</span> <span class="n">tr3</span><span class="o">.</span><span class="n">br_dict</span><span class="p">[</span><span class="s1">&#39;br3&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">v</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;all fives: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;shared too: {vd1.numpy()}, {vd2.numpy()}&#39;</span><span class="p">)</span>
-    <span class="n">v1</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-    <span class="n">v2</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-    <span class="n">vd3</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;shared not repeated: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">v1</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">)</span>
-    <span class="n">v2</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">)</span>
-    <span class="n">vd3</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;all zeros: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;shared too: {vd1.numpy()}, {vd2.numpy()}&#39;</span><span class="p">)</span>
-    <span class="n">c2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">tr3</span><span class="o">=</span><span class="n">tr3</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c2</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">c2</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span><span class="o">.</span><span class="n">assert_consumed</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;all tens: {v1.numpy()}, {v2.numpy()}, {vd3.numpy()}&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;shared too: {vd1.numpy()}, {vd2.numpy()}&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Persisted shared variables are not duplicated in checkpoints. And when checkpoints are restored or reloaded, the in-memory sharing of variables is also re-established.</p>
-<p>Updates to our shared variables can be easily verified just as follows:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">tr3</span><span class="o">.</span><span class="n">br_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;br1&#39;</span><span class="p">:</span> <span class="n">br1</span><span class="p">,</span> <span class="s1">&#39;br2&#39;</span><span class="p">:</span> <span class="n">br2</span><span class="p">,</span> <span class="s1">&#39;br3&#39;</span><span class="p">:</span> <span class="n">br3</span><span class="p">}</span>
-<span class="n">sharing</span><span class="p">(</span><span class="n">tr3</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>all fives: 5, 5, 5
-shared too: 5, 5
-shared not repeated: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr3/br_dict/br3/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr3/br_list/0/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;tr3/br_list/1/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-all zeros: 0, 0, 0
-shared too: 0, 0
-all tens: 10, 10, 10
-shared too: 10, 10
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Variable management also means possible encapsulation.</p>
-<p>The new <code>Module</code> objects build on <code>AutoTrackable</code> to extend Python's familiar <code>class</code>-based encapsulation mechanism.</p>
-<p>The also supported explicit name scoping of modules allows the reuse of module classes, as instances of the same class would need to be generically counted otherwise:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Module</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="n">sub</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_scope</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;m_v&#39;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;n: </span><span class="si">{self.name}</span><span class="s1">, v: {self.v.numpy()}&#39;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="p">:</span>
-            <span class="n">s</span> <span class="o">+=</span> <span class="n">f</span><span class="s1">&#39;, s: (</span><span class="si">{self.sub}</span><span class="s1">)&#39;</span>
-        <span class="k">return</span> <span class="n">s</span>
-
-    <span class="nd">@tf</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="n">with_name_scope</span>
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="p">()</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">y</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>When building hierarchies of modules, TF provided convenience methods also allow for recursively collecting the "layered" variables. This is essential for computing gradients:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">modules</span><span class="p">(</span><span class="n">mod</span><span class="p">):</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mod</span><span class="o">.</span><span class="n">variables</span><span class="p">]</span>
-    <span class="n">ms</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mod</span><span class="o">.</span><span class="n">submodules</span><span class="p">]</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;mod variables: </span><span class="si">{vs}</span><span class="s1">, submodules: </span><span class="si">{ms}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="n">mod</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">mod</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="n">mod</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">mod</span><span class="p">)</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;containers: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;restored: </span><span class="si">{mod}</span><span class="s1">&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>With our module class and our handy printing function, we can now build a basic nested hierarchy of 3 layered modules.</p>
-<p>Printing our "one branch tree" shows both the name-based hierarchy and the Python-object or topological "checkpoint" hierarchy:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">mod1</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m1&#39;</span><span class="p">)</span>
-<span class="n">mod1</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m2&#39;</span><span class="p">)</span>
-<span class="n">mod1</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">Module</span><span class="p">(</span><span class="s1">&#39;m3&#39;</span><span class="p">)</span>
-<span class="n">modules</span><span class="p">(</span><span class="n">mod1</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>mod variables: [&#39;m1/m_v:0&#39;, &#39;m2/m_v:0&#39;, &#39;m3/m_v:0&#39;], submodules: [&#39;m2&#39;, &#39;m3&#39;]
-n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
-n: m1, v: 406, s: (n: m2, v: 303, s: (n: m3, v: 201))
-containers: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;module/sub/sub/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;module/sub/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;module/v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-restored: n: m1, v: 103, s: (n: m2, v: 102, s: (n: m3, v: 101))
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Keras is the API for consistently reasoning about the interconnected network of components. It also visibly splits the two distinct, building vs. executing, phases of our component "graphs".</p>
-<p>The <code>functional</code> Keras, as opposed to either the <code>sequential</code> or the <code>subclassed</code> flavors, has the most pre-packaged features to assist us with our neural networks. We aim to use it throughout our blogs.</p>
-<p>Keras <code>layer</code>s, as well-defined encapsulating components, build on the previously used <code>module</code>s to manage variable persistence.</p>
-<p>Hence, the previous <code>module</code>s example is almost identical to the below shown "Keras layers" version:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Layer</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span>
-
-    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;n: </span><span class="si">{self.name}</span><span class="s1">, v: {self.v.numpy()}&#39;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="p">:</span>
-            <span class="n">s</span> <span class="o">+=</span> <span class="n">f</span><span class="s1">&#39;, s: (</span><span class="si">{self.sub}</span><span class="s1">)&#39;</span>
-        <span class="k">return</span> <span class="n">s</span>
-
-    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_weight</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l_v&#39;</span><span class="p">,</span>
-                                 <span class="n">shape</span><span class="o">=</span><span class="p">[],</span>
-                                 <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
-                                 <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ones_initializer</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">y</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>And, after adjusting our helper to print the results:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">models</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">lay</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">mod</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mod</span><span class="o">.</span><span class="n">variables</span><span class="p">]</span>
-    <span class="n">ts</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">mod</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">]</span>
-    <span class="n">ms</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mod</span><span class="o">.</span><span class="n">submodules</span><span class="p">]</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;lay variables: </span><span class="si">{vs}</span><span class="s1">, trainables: </span><span class="si">{ts}</span><span class="s1">, submodules: </span><span class="si">{ms}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">])</span>
-    <span class="n">mod</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">lay</span><span class="p">)</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">mod</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s1">&#39;/tmp/q/trackable&#39;</span><span class="p">,</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-    <span class="n">mod</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">lay</span><span class="p">)</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">latest_checkpoint</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">list_variables</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;containers: </span><span class="si">{vs}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;restored: </span><span class="si">{lay}</span><span class="s1">&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>We finally arrive at the most simple Keras model.</p>
-<p>It uses just 3 scalar variables to showcase the underlying already tried and used persistence management:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ins</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)]</span>
-<span class="n">lay</span> <span class="o">=</span> <span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l1&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l2&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">=</span><span class="n">Layer</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;l3&#39;</span><span class="p">)))</span>
-<span class="n">outs</span> <span class="o">=</span> <span class="p">[</span><span class="n">lay</span><span class="p">(</span><span class="n">ins</span><span class="p">)]</span>
-<span class="n">mod2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;m2&#39;</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">ins</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outs</span><span class="p">)</span>
-<span class="n">models</span><span class="p">(</span><span class="n">mod2</span><span class="p">,</span> <span class="n">lay</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Model: &#34;m2&#34;
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-input_1 (InputLayer)         [(None,)]                 0         
-_________________________________________________________________
-l1 (Layer)                   (1, None)                 3         
-=================================================================
-Total params: 3
-Trainable params: 3
-Non-trainable params: 0
-_________________________________________________________________
-None
-lay variables: [&#39;l1/l_v:0&#39;, &#39;l1/l2/l_v:0&#39;, &#39;l1/l2/l3/l_v:0&#39;], trainables: [&#39;l1/l_v:0&#39;, &#39;l1/l2/l_v:0&#39;, &#39;l1/l2/l3/l_v:0&#39;], submodules: [&#39;input_1&#39;, &#39;l1&#39;, &#39;l2&#39;, &#39;l3&#39;]
-n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
-n: l1, v: 1424, s: (n: l2, v: 1012, s: (n: l3, v: 604))
-containers: [(&#39;_CHECKPOINTABLE_OBJECT_GRAPH&#39;, []), (&#39;model/layer_with_weights-0/l_v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;model/layer_with_weights-0/sub/l_v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;model/layer_with_weights-0/sub/sub/l_v/.ATTRIBUTES/VARIABLE_VALUE&#39;, []), (&#39;save_counter/.ATTRIBUTES/VARIABLE_VALUE&#39;, [])]
-restored: n: l1, v: 206, s: (n: l2, v: 204, s: (n: l3, v: 202))
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Nevertheless, even the simplest model can be overwhelming when expressed only textually.</p>
-<p>TensorBoard is an accompanying tool that can help us in "picturing" the nested component graphs.</p>
-<p>As "a picture is worth a thousand words", <code>summary</code> data for TB is generated as follows:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[20]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">graph</span><span class="p">(</span><span class="n">tracer</span><span class="p">):</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">-%H%M%S&#39;</span><span class="p">)</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/tmp/q/logs/func/</span><span class="si">{s}</span><span class="s1">&#39;</span>
-    <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">create_file_writer</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-    <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">trace_on</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># , profiler=True)</span>
-    <span class="n">tracer</span><span class="p">()</span>
-    <span class="k">with</span> <span class="n">w</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
-        <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">trace_export</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;trace&quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">profiler_outdir</span><span class="o">=</span><span class="n">d</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Please note that our trivially simple Keras model still implements data-driven Python recursion.</p>
-<p>The new <code>autograph</code> functionality allows us to use such intuitive, native expressions instead of the usual, but more cumbersome, TF "graph ops".</p>
-<p>Autograph code generation is invoked with the <code>tf.function</code> Python decorator. A later blog will highlight the most impressive features of this new approach to defining ops.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
-<span class="k">def</span> <span class="nf">tracer2</span><span class="p">():</span>
-    <span class="k">return</span> <span class="n">mod2</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">]))</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>In order to see the TB generated summaries, including the picture of our graph, we need to load the extension:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[22]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> tensorboard
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Then we generate the TB summaries by calling our <code>tracer</code> function:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">graph</span><span class="p">(</span><span class="n">tracer2</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>And now we can view the zoom-able and clickable TB graph.</p>
-<p>If you haven't run the code, an already generated graph is <a href="./trackable.pdf">here</a>.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[24]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">tensorboard</span> --logdir /tmp/q/logs/func
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-
-
-<div class="output_text output_subarea ">
-<pre>Reusing TensorBoard on port 6006 (pid 30435), started 0:12:41 ago. (Use &#39;!kill 30435&#39; to kill it.)</pre>
-</div>
-
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-
-<div class="output_html rendered_html output_subarea ">
-
-        <iframe
-            width="100%"
-            height="800"
-            src="http://localhost:6006"
-            frameborder="0"
-            allowfullscreen
-        ></iframe>
-        
-</div>
-
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>This concludes our blog. For using the new GPU-related functionality, please click on our next blog.</p>
+<p>When considering multiple judgment claims, a pattern, a trend can possibly be established. During processing, when our calculations support such patterns, <code>activism</code>s emerge. We define the following categories in increasing effect on their <code>turmoil</code> factor:</p>
+<table>
+<thead><tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Exclude</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Insinuate</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Polarize</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Recast</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Elevate</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Victimize</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Exploit</strong></td>
+<td>pattern of</td>
+</tr>
+<tr>
+<td><strong>Perpetuate</strong></td>
+<td>pattern of</td>
+</tr>
+</tbody>
+</table>
 
 </div>
 </div>

@@ -12,10 +12,13 @@ layout: default
 * Judgments: from certainty through ambiguity to absurdity
 * [more detail...](./simulation.html) and [runable simulation...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/simulation.ipynb)
 
-## [A Conceptual Model Of An "Emotional" Domain](./tbd.html)
+## [A Conceptual Model Of An "Emotional" Domain](./concepts.html)
 
-* In progress...
-* [more detail...](./tbd.html)
+* General underlying concepts
+* Claims, topics and narratives revisited
+* Broad realities vs. narrow conflicts
+* From patterns of judgments to activism
+* [more detail...](./concepts.html)
 
 ## [The Predatory Profits Of "High-Conflict" Divorces](./tbd.html)
 

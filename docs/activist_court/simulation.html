@@ -13122,7 +13122,8 @@ div#notebook {
 <p>These statements are further grouped into an ordered list of <strong>docs</strong> of pages and paragraphs. The docs are persisted in varied formats in a hierarchical and rooted directory structure.</p>
 <p>When a statement is assigned a <strong>credibility</strong> in qnarre, it becomes a <strong>claim</strong>. Credibility is an ordering of all claims defined to intuitively reflect that, for example, a police report or an allegation made during a trial in Court can be trusted more than a casual verbal opinion overheard on the street.</p>
 <p>All docs in qnarre belong to a <strong>genre</strong> (e.g. letter, motion, affidavit, judgment, etc.) that implicitly weighs all contained claims of the doc with an inherent, default credibility.</p>
-<p>Claims can also be assigned incidental <strong>weights</strong> that fine-tune their individual credibilities. To model a doc of a specific genre, and containing 100 random claims, we can run the Python code presented below:</p>
+<p>Claims can also be assigned incidental <strong>weights</strong> that fine-tune their individual credibilities. To model a doc of a specific genre, and containing 100 random claims, we can run the Python code presented below.</p>
+<p>Before any of our simulations can be tried, or repeated with changed parameters, our environment needs to be initialized:</p>
 
 </div>
 </div>
@@ -13132,9 +13133,7 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Before any of our simulations can be tried, or repeated with </span>
-<span class="c1"># changed parameters, our environment needs to be initialized</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.random</span> <span class="k">as</span> <span class="nn">r</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 
@@ -13149,13 +13148,20 @@ div#notebook {
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>We define a function to conveniently create a new doc:</p>
+
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># We define a function to conveniently create a new doc</span>
-<span class="k">def</span> <span class="nf">new_doc</span><span class="p">(</span><span class="n">depth</span><span class="p">):</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">new_doc</span><span class="p">(</span><span class="n">depth</span><span class="p">):</span>
     <span class="n">genre</span> <span class="o">=</span> <span class="n">genres</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">genres</span><span class="p">))]</span> <span class="c1"># random genre from our list</span>
     <span class="n">sigma</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span> <span class="c1"># standard deviation from a uniform distribution</span>
     <span class="n">claims</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">genre</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span> <span class="c1"># and the list of claims</span>
@@ -13213,7 +13219,7 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The code above, and below, relies on randomly synthesizing varied data, or "sampling" from already created lists of values. These processes are defined in terms of their parameters.</p>
-<p>All our simulations are thus driven by our input parameters and/or weights. Parameters and weights are real numbers, or Python <em>floats</em>. Some are from the interval [0,1] and can thus be directly used as <em>prior</em> probabilities.</p>
+<p>All our simulations are thus driven by our input parameters and/or weights. Parameters and weights are real numbers, or Python <code>floats</code>. Some are from the interval [0,1] and can thus be directly used as <code>prior</code> probabilities.</p>
 <p>Such parameters are:</p>
 <ul>
 <li>the number of docs in an input evidence is reflected by its <strong>breadth</strong></li>
@@ -13288,8 +13294,8 @@ div#notebook {
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>The chosen simple probability distributions for the samples are noted through the choice of functions used. Numpy documentation provides further details.</p>
-<p>More sophisticated, <em>generic</em> and even <em>conjugate</em> probability distributions can be easily plugged in to properly reflect inherent covariance and contravariance present in the data.</p>
-<p>The credibility of a claim can be further enhanced by citing an <em>authority</em>. Such authority "witnessing" a claim will turn the claim into a <strong>proof</strong>. The <em>weight</em> of a proof derived from the authority is the enhancing factor of the underlying claim.</p>
+<p>More sophisticated, <code>generic</code> and even <code>conjugate</code> probability distributions can be easily plugged in to properly reflect inherent covariance and contravariance present in the data.</p>
+<p>The credibility of a claim can be further enhanced by citing an <code>authority</code>. Such authority "witnessing" a claim will turn the claim into a <strong>proof</strong>. The <code>weight</code> of a proof derived from the authority is the enhancing factor of the underlying claim.</p>
 <p>The percentage of proofs in an evidence is its <strong>proven</strong> parameter. To model an evidence witnessed, and thus proven, by authorities, we can run:</p>
 
 </div>
@@ -13359,12 +13365,12 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Claims can be further categorized through <em>topics</em>. Grouping together varying topical claims and related proofs improves the understanding of the overall context in an evidence.</p>
+<p>Claims can be further categorized through <code>topics</code>. Grouping together varying topical claims and related proofs improves the understanding of the overall context in an evidence.</p>
 <p><strong>Realities</strong> are such contextual claims encapsulating the inherent, or readily and verifiably inferenceable, "common sense" credibilities.</p>
 <p>The percentage of realities of all claims in an evidence is generated from its <strong>contextual</strong> parameter.</p>
-<p>A reality, through the thus logically concluded credibility measure called its <strong>coherence</strong>, adds to the overall <strong>certainty</strong> of a simulation. We represent this <em>certainty</em> with a natural value of <code>1.0</code> and as an obvious upper bound of our charts and simulated "worlds".</p>
-<p>Assuming that normal and balanced <strong>ambiguity</strong> rules before an evidence is ever considered, we can model how the realities of an evidence drive the overall understanding from <em>ambiguity</em> to <em>certainty</em> as follows.</p>
-<p>Note that <em>ambiguity</em> has become our starting point, the "origin" and baseline with a natural value of <code>0.0</code> across the charts:</p>
+<p>A reality, through the thus logically concluded credibility measure called its <strong>coherence</strong>, adds to the overall <strong>certainty</strong> of a simulation. We represent this <code>certainty</code> with a natural value of <code>1.0</code> and as an obvious upper bound of our charts and simulated "worlds".</p>
+<p>Assuming that normal and balanced <strong>ambiguity</strong> rules before an evidence is ever considered, we can model how the realities of an evidence drive the overall understanding from <code>ambiguity</code> to <code>certainty</code> as follows.</p>
+<p>Note that <code>ambiguity</code> has become our starting point, the "origin" and baseline with a natural value of <code>0.0</code> across the charts:</p>
 
 </div>
 </div>
@@ -13455,20 +13461,20 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>"<em>Conflict is opportunity</em>": good attorneys find intrinsic contradictions and conflicts in lawsuits and creatively expose the consequences, thus elevating or plausibly projecting neutral <em>ambiguity</em> to <em>certainty</em>. Judgments are then reproducibly made without further consequences and attorneys reap the rewards.</p>
-<p>Without such conflicts, or the ability to find them, attorneys starve. Less capable yet "ambitious" or <em>malicious</em> attorneys professionally (i.e. "credibly") create, or plainly <em>fabricate</em>, artificial conflicts.</p>
+<p>"<em>Conflict is opportunity</em>": good attorneys find intrinsic contradictions and conflicts in lawsuits and creatively expose the consequences, thus elevating or plausibly projecting neutral <code>ambiguity</code> to <code>certainty</code>. Judgments are then reproducibly made without further consequences and attorneys reap the rewards.</p>
+<p>Without such conflicts, or the ability to find them, attorneys starve. Less capable yet "ambitious" or <code>malicious</code> attorneys professionally (i.e. "credibly") create, or plainly <code>fabricate</code>, artificial conflicts.</p>
 <p>Such artificial <strong>conflicts</strong> are thus the fabricated claims that knowingly and purposefully hook into and then graft onto specific perceived realities of an evidence.</p>
-<p>The objective of a [fabricated] <em>conflict</em> is to sow fear, uncertainty and doubt. A conflict, through its intended "credibility", defined hereon as its <strong>fragmentation</strong> measure, adds to the overall <strong>absurdity</strong>, or the level of confusion in the evidence and all its simulations.</p>
-<p>So called "high-conflict" attorneys and professionals keenly understand the lucrative potential in this ruthless scheme and advertise their services as "aggressive", simply meaning maliciously <em>predatorial</em>, as shown in these simulations.</p>
-<p>A conflict's <em>fragmentation</em> is thus expressed by, and is proportional to:</p>
+<p>The objective of a [fabricated] <code>conflict</code> is to sow fear, uncertainty and doubt. A conflict, through its intended "credibility", defined hereon as its <strong>fragmentation</strong> measure, adds to the overall <strong>absurdity</strong>, or the level of confusion in the evidence and all its simulations.</p>
+<p>So called "high-conflict" attorneys and professionals keenly understand the lucrative potential in this ruthless scheme and advertise their services as "aggressive", simply meaning maliciously <code>predatorial</code>, as shown in these simulations.</p>
+<p>A conflict's <code>fragmentation</code> is thus expressed by, and is proportional to:</p>
 <ul>
-<li>its inherent <em>weight</em> measure (e.g. the modelled types of deception, fraud, extortion, etc.)</li>
-<li>the strength, the <em>coherence</em>, of its targeted reality (the more absurd something is the more confusion it creates when forcibly taken seriously).</li>
+<li>its inherent <code>weight</code> measure (e.g. the modelled types of deception, fraud, extortion, etc.)</li>
+<li>the strength, the <code>coherence</code>, of its targeted reality (the more absurd something is the more confusion it creates when forcibly taken seriously).</li>
 </ul>
 <p>Furthermore, just as a reality is enhanced by numerically more topical yet still semantically broad claims, a conflict is also emphasized by necessarily focused and narrow, almost literal, <strong>repeats</strong> along the famously quoted lines of the ruthless monster:</p>
 <blockquote><p>Repeat a lie often enough and it becomes the truth” - Nazi Joseph Goebbels</p>
 </blockquote>
-<p>The percentage of conflicts of all claims in an evidence is generated from its malicious or <strong>malignant</strong> characteristic/parameter. We can model how the conflicts of an evidence fragment the overall reality of a simulation from <em>ambiguity</em> to <em>absurdity</em> as follows:</p>
+<p>The percentage of conflicts of all claims in an evidence is generated from its malicious or <strong>malignant</strong> characteristic/parameter. We can model how the conflicts of an evidence fragment the overall reality of a simulation from <code>ambiguity</code> to <code>absurdity</code> as follows:</p>
 
 </div>
 </div>
@@ -13559,9 +13565,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Note that <em>absurdity</em> is now our lower bound in our charts, and simulations, and it is assigned an artificial value of <code>-2.0</code>. The value was chosen to reflect the significant antisymmetry between the necessarily coherent reality and the realm of widly fragmented, confused and outright dellusional "dreams have no limits" absurdity.</p>
+<p>Note that <code>absurdity</code> is now our lower bound in our charts, and simulations, and it is assigned an artificial value of <code>-2.0</code>. The value was chosen to reflect the significant antisymmetry between the necessarily coherent reality and the realm of widly fragmented, confused and outright dellusional "dreams have no limits" absurdity.</p>
 <p>As opportunities dwindle in the realm of reality, creatively unbounded,  yet also morally unrestricted, select skilled professionals aim to "legally" profit from the unchartered, and truly vast, "Wild West" of absurdity.</p>
-<p><strong>These simulations and software directly target such professionals, with the stated objective of systematically and sustainably profiting from their current and especially past exploiting escapades into the "Land Absurdity".</strong></p>
+<p><strong>These simulations and software directly target such professionals, with the stated objective of systematically and sustainably profiting from their current and especially their past exploiting escapades into the "Land of Absurdity".</strong></p>
 <p>Now that some of the used concepts have been defined, we can plot our target domain and its bounds as follows:</p>
 
 </div>
@@ -13622,15 +13628,15 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>Judgments</strong> are claims meant to forcefully solve conflicts. If the conflicts are inherent, or simply tractable, judgments restore and reinforce reality thus leading to an obviously sustainable, clear and fair <em>certainty</em>.</p>
-<p>In a biased, or <em>prejudiced</em> simulation, reflected by the evidence's <strong>prejudiced</strong> parameter, the selected conflicts a judgement builds on greatly influence the credibility and thus the soundness of its own conjecture claim.</p>
+<p><strong>Judgments</strong> are claims meant to forcefully solve conflicts. If the conflicts are inherent, or simply tractable, judgments restore and reinforce reality thus leading to an obviously sustainable, clear and fair <code>certainty</code>.</p>
+<p>In a biased, or <code>prejudiced</code> simulation, reflected by the evidence's <strong>prejudiced</strong> parameter, the selected conflicts a judgement builds on greatly influence the credibility and thus the soundness of its own conjecture claim.</p>
 <p>Judgments that are not sound (i.e. not coherent with reality) cause confusion and possibly destabilizing, long-term upheaval. A judgment's <strong>turmoil</strong> measure is thus expressed by, and is proportional to:</p>
 <ul>
-<li>its inherent <em>weight</em> measure (e.g. the modelled types of confusion, bias, fabrication, etc.)</li>
-<li>the actual influence, the sum of the <em>fragmentations</em> of all its referenced conflicts (inherent, tractable conflicts are not modelled as they are factored into the coherence of realities).</li>
+<li>its inherent <code>weight</code> measure (e.g. the modelled types of confusion, bias, fabrication, etc.)</li>
+<li>the actual influence, the sum of the <code>fragmentations</code> of all its referenced conflicts (inherent, tractable conflicts are not modelled as they are factored into the coherence of realities).</li>
 </ul>
-<p>The percentage of judgments of all claims in an evidence is generated from its <em>breadth</em> characteristic/parameter. The <em>weights</em> of the judgments are proportional to the <em>prejudice</em> parameter of the evidence.</p>
-<p>We can model how the judgments of an evidence cause consequential <em>turmoil</em> and drive a simulation from <em>ambiguity</em> to <em>absurdity</em> through confusion as follows:</p>
+<p>The percentage of judgments of all claims in an evidence is generated from its <code>breadth</code> characteristic/parameter. The <code>weights</code> of the judgments are proportional to the <code>prejudice</code> parameter of the evidence.</p>
+<p>We can model how the judgments of an evidence cause consequential <code>turmoil</code> and drive a simulation from <code>ambiguity</code> to <code>absurdity</code> through confusion as follows:</p>
 
 </div>
 </div>
@@ -13725,7 +13731,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>To be continued...</p>
+<p>This concludes our blog. For more on modeling these concepts in detail, please click on our next blog.</p>
 
 </div>
 </div>
