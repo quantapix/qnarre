@@ -295,86 +295,138 @@ If you haven't run the code, an already generated graph is [here](./gpus.pdf).
 
 # code
 
-this concludes our blog, please see how to use the new dataset functionality by clicking on the next blog"
+This concludes our blog, please see how to use the new dataset functionality by clicking on the next blog.
 
 ** Dataset: The Tensor "Highway" On-Ramp
 
 - Complex input data pipelines from simple, reusable pieces
-- Starting from a "source", pipelines "transform" data streams
+- Starting from a "source", pipelines transform data streams
 - New features allow splitting the streams into named "filaments"
 - Performance and throughput is increased through file sharding 
 
-machine learning is about lots and lots of data
-organizing that input data is an error-prone, arduous task
-`datasets` were designed to build complex input data pipelines from simple, reusable pieces
-this blog shows off some of the useful features of this new approach to "feed the beast"
+Machine learning is about lots and lots of data. Organizing the input data is an error-prone, arduous task. 
 
-while computers were made to add numbers together, they quickly run into insurmountable obstacles if these numbers are presented as textual sequences of digits
-we aim to finally "teach" our computer to correctly add and multiply
-hence, we start with a simple yet fascinating example, inspired by https://arxiv.org/pdf/1812.02825.pdf
-the rest of the blogs in this group will continue to build on the below presented results
+TensorFlow `datasets` were designed to build complex input data pipelines from simple, reusable pieces with the clear objective of normalizing that process.
 
-before we can run any meaningful code, we need to prep our environment
+This blog shows off some of the useful features of this new approach to "feed the beast".
 
-and for convenience, and brevity, let's create some aliases
+Before we can run any meaningful code, we first need to prep our environment:
 
-our input data consists of `num_samples` (perhaps easily millions) of `"x=-12,y=24:y+x:12"`-like strings, or lines, of texts
-these visibly consists of `defs`, `op` and `res` fields (separated by `:`)
-our variables are: `x` and `y`
-our "operations" are: `=`, `+`, `-` and `*`
-and our variables can be assigned values from: `[-max_val, max_val]`
+# code
 
-we intend to make our input data pipeline parametric
-the obvious simple Python `dict` structures, with literal string keys, are error-prone exactly because of the unchecked literals
-a few lines of code gives as the `Params` class that leverages the native attribute mechanism to validate all our params
+For convenience, and brevity, let's create some aliases as well:
 
-let's generate our data randomly, fittingly as a Python generator, based on a given `Params` instance
+# code
 
-now that the generator is defined, it takes just a line of code to create millions of correct "exercises"
+While computers were made to add numbers together, they quickly run into insurmountable obstacles if these numbers are presented as simple textual sequences of digits.
 
-the class `tf.data.Dataset`is the main abstraction for our sequence of elements
-each element of a dataset is one or more Tensors containing the fields, or `features`, of our `sample` "lines" of elementary math exercises
-using our "in-memory" generator, we can directly create a dataset as follows
+We aim to finally "teach" our computer to correctly add and multiply, just as we learned in elementary school. And we start with a simple yet fascinating example, inspired by https://arxiv.org/pdf/1812.02825.pdf.
 
-and here are the first 2 samples of the now tensor-based sequence
+Our input data consists of `num_samples` (perhaps easily millions) of `"x=-12,y=24:y+x:12"`-like strings, or lines, of texts. These visibly consist of `defs`, `op` and `res` fields (separated by `:`).
 
-an input data pipeline starts with a "source" dataset, perhaps just as simple as the above
-this "source" can also be a `range`, `from_tensor_slices`, `from_tensors` and even a `TextLineDataset` (see the TF docs)
+Our variables are: `x` and `y`, our "operations" are: `=`, `+`, `-` and `*`, and our variables can be assigned values from: `[-max_val, max_val]`.
 
-all datasets can then be consumed as iterables or as aggregatables (e.g. reduce)
-they also allow chaining of handy "transformations" to themselves
-some of the canned operations are: *cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip*
-an example of 2 samples of a new dataset, concatenated with all 4 samples of the previous, gen-based, dataset and also "enumerated" is as follows
+The rest of the blogs in this group will continue to build on the below presented results:
 
-we can also filter our to be "pipeline" at any stage
+# code
 
-more importantly, we can split the pipeline into named "filaments" of data
-this new feature proves to be extremely useful, allowing us to standardize and unify our data sources with configurable, on-the-fly channeling of the features aggregated therein
+We also intend to make our input data pipeline parametric.
 
-another example of a "pipeline component" is an in-line Python `dict`-based tokenizer
+However, the obvious simple and intuitive Python `dict` structures, with literal string keys, are error-prone exactly because of unchecked literals.
 
-datasets can be potentially very large, fitting only on disk and in many files
-as transparent data-pipeline performance is key for training throughput, datasets can be efficiently encoded into binary sequences stored in `sharded` files
-the following will convert our samples into such binary "records"
+A few lines of code gives as the `Params` class that leverages the native Python attribute mechanism to validate the names of all our params:
 
-and we can "dump" our tokenized, ready-to-consume samples into shards of files stored in a directory
-once these prepared samples are stored we can "stream" them without any more prep (see subsequent blogs)
+# code
 
-for loading the "records" back, we need to create templates for interpreting the stored binary data
-then loading them back, straight into a dataset, can be just as follows
-note that the names of the shard files are returned by our "dump" function
+Let's now randomly generate our data, fittingly as a Python generator, and based on a given `Params` instance. For this we define:
 
-before we actually start using the loaded data, let's "adapt" the pipeline to supply dense tensors instead of the originally configured sparse ones
-also, since we haven't batched anything yet, we set `dim_batch` to `None`
+# code
 
-the listing above reveals that we merged 3 sharded files, worth 4 samples each, into the 12 printed samples
-only the number of features is printed for each sample, for brevity
-**Please also note** how the above in-line adapter converted our named features into unnamed, positional, i.e. in-a-list features. This was necessary as the Keras `Input` doesn't recognize named input tensors yet
-if we turn on batching in our dataset, the same code will now return the following
+With our generator defined, it takes just a line of code to create millions of correct "exercises" or samples for our training sessions:
 
-as a preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each
+# code
 
-this concludes our blog, please see how easy masking our uneven sample "lines" can be by clicking on the next blog
+The `tf.data.Dataset` class is the main abstraction for our sequence of elements.
+
+Each element of a dataset is one or more Tensors containing the fields, or `features`, of our `sample` "lines" of elementary math exercises.
+
+Using our "in-memory" generator, we can directly create a TF dataset as follows:
+
+# code
+
+And here are the first 2 samples of the now tensor-based sequence:
+
+# code
+
+An input data pipeline starts with a "source" dataset, perhaps just as simple as the above.
+
+This "source" can also be a `range`, `from_tensor_slices`, `from_tensors` and even a `TextLineDataset` (see the TF docs).
+
+# code
+
+All datasets can then be consumed one-by-one as iterables or as aggregatables (e.g. using reduce ops) collections.
+
+Datasets also allow chaining of handy "transformations" to themselves. Some of the canned operations are the intuitive: *cache, concatenate, enumerate, reduce, repeat, shuffle, skip, take, zip*.
+
+An example of 2 samples of a new dataset, concatenated with all 4 samples of the previous, gen-based, dataset and also "enumerated" on-the-fly is as follows:
+
+# code
+
+We can also filter our to be "pipeline" at any stage, with the objective of perhaps dropping unfit samples:
+
+# code
+
+More importantly, we can split the pipeline into named "filaments" of data.
+
+This new feature proves to be extremely useful, allowing us to standardize and unify all our data sources with configurable, on-the-fly channeling of features aggregated therein:
+
+# code
+
+Another example of a "pipeline component" is an in-line Python `dict`-based tokenizer:
+
+# code
+
+Datasets can be potentially very large, fitting only on disk and in many files.
+
+As transparent data-pipeline performance is key for training throughput, datasets can also be efficiently encoded into binary sequences stored in `sharded` files.
+
+The following will convert our samples into such binary "records":
+
+# code
+
+And we can "dump" our tokenized, ready-to-consume samples into shards of files stored in a directory.
+
+Once these prepared samples are stored, we can "stream" them straight into our models without any more prep (see subsequent blogs):
+
+# code
+
+For streaming, or loading the "records" back, we need to create templates used in interpreting the stored binary data.
+
+With the templates defined, loading them back in, straight into our datasets, can be just as follows.
+
+Note that the names of the shard files are conveniently returned by our "dump" function:
+
+# code
+
+Before we actually start using the loaded data in our models, let's "adapt" the pipeline to supply dense tensors instead of the originally configured sparse ones.
+
+Also, since we haven't batched anything yet, we set `dim_batch` to `None`:
+
+# code
+
+The listing above reveals that we merged 3 sharded files, worth 4 samples each, into the 12 printed samples. We only printed the number of features for each sample, for brevity.
+
+**Please also note** how the above in-line adapter converted our named features into unnamed, positional, i.e. in-a-list features. This was necessary as the Keras `Input` doesn't recognize named input tensors yet.
+
+If we turn on batching in our dataset, the same code will now return the following:
+
+# code
+
+As preparation for the subsequent blogs, let's generate a more substantial data source with 10 shards of 1,000 samples each:
+
+# code
+
+This concludes our blog, please see how easy masking our uneven sample "lines" can be by clicking on the next blog.
 
 ** Unified Adaptable Masking That Follows The Flow
 
@@ -1044,6 +1096,7 @@ When considering multiple judgment claims, a pattern, a trend can possibly be es
 ** The Predatory Profits Of "High-Conflict" Divorces
 
 - In progress...
+TODO: expand bullets
 
 ** A Psychological Object Model Of The ABA "Frequent Fliers"
 
