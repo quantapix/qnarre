@@ -1,1 +1,1 @@
-../../qnarre/doc/ragged.py
+../../qnarre/blog/ragged.py

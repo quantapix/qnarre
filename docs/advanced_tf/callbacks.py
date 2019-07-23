@@ -1,1 +1,1 @@
-../../qnarre/doc/callbacks.py
+../../qnarre/blog/callbacks.py

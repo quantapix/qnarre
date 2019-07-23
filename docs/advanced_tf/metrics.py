@@ -1,1 +1,1 @@
-../../qnarre/doc/metrics.py
+../../qnarre/blog/metrics.py

@@ -1,1 +1,1 @@
-../../qnarre/doc/gpus.py
+../../qnarre/blog/gpus.py

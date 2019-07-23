@@ -1,1 +1,1 @@
-../../qnarre/doc/autograph.py
+../../qnarre/blog/autograph.py

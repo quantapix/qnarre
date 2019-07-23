@@ -1,1 +1,1 @@
-../../qnarre/doc/custom.py
+../../qnarre/blog/custom.py
