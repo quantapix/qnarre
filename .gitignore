@@ -1,4 +1,6 @@
-.qpy
-.qenv
-.nvenv
 .bundle
+.data
+.model
+.nvenv
+.qenv
+.qpy
