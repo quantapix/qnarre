@@ -4,6 +4,7 @@ set -x -e -u -o pipefail
 
 
 site_upload() {
+    bundle exec jekyll build
     aws s3 cp _site s3://qnarre.com/ --acl public-read --recursive
 }
 
