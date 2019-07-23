@@ -13116,45 +13116,18 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Unified-Adaptable-Masking-That-Follows">Unified Adaptable Masking That Follows<a class="anchor-link" href="#Unified-Adaptable-Masking-That-Follows">&#182;</a></h1><ul>
-<li>TODO: expand bullets</li>
-</ul>
-
+<h1 id="Unified-Adaptable-Masking-That-Follows">Unified Adaptable Masking That Follows<a class="anchor-link" href="#Unified-Adaptable-Masking-That-Follows">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>significant difference between image vs. text processing in machine learning is uneven input sequence length</li>
-<li>padding the textual input to a uniform length is an obvious, natural solution</li>
-<li>indiscriminate padding can, however, pollute our calculations and introduce unwanted biases</li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>sometimes it is best to cleanly “mask-out” the padded input with carefully chosen, bias minimizing values</li>
-<li>repeated, explicit and contextual masking calculations thus become necessary</li>
-<li>historically such code has been cluttering the clean "flow of data"</li>
-<li>Keras’ transparent masking mechanism allows for on-demand custom maskings</li>
-<li>our objective here is to arrive to a model representable by the <a href="./masking.pdf">graph</a></li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>just as before, we need to prep our environment in order to run any meaningful code</li>
-</ul>
+<p>A significant difference between image vs. text processing in machine learning is even vs. uneven input sequence length. Padding uneven textual input to a uniform length is an obvious, natural solution.</p>
+<p>Indiscriminate padding can, however, pollute our calculations and introduce unwanted biases. Sometimes it is best to cleanly “mask-out” the padded input with carefully chosen, bias minimizing values.</p>
+<p>Repeated, explicit and contextual masking calculations become necessary as a result. Historically such code has been cluttering the otherwise clean "flow of data". Keras’ transparent masking mechanism allows for on-demand custom maskings.</p>
+<p>Our objective here is to arrive at a model representable by the <a href="./masking.pdf">graph</a>.</p>
+<p>Just as before, we need to prep our environment to run any meaningful code:</p>
 
 </div>
 </div>
@@ -13179,9 +13152,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>loading our already created meta data from the sources gives us</li>
-</ul>
+<p>Loading our already created meta data from the sources gives us:</p>
 
 </div>
 </div>
@@ -13222,12 +13193,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>to "adapt" our existing datasets, we recast our parsed streams and start using the new <code>RaggedTensor</code>s instead of the default sparse ones</li>
-<li>we also combine existing <code>feature</code>s into new ones including separator tokens</li>
-<li>before handing the prepared streams of data to Keras, convert them to dense tensors </li>
-<li>most importantly, we pad the tensors to <code>len_max_input</code>, with generic zeros, for uniformity</li>
-</ul>
+<p>To "adapt" our existing datasets, we recast our parsed streams and start using the new <code>RaggedTensor</code>s instead of the default sparse ones.</p>
+<p>We also combine existing <code>feature</code>s into new ones by inserting separator tokens between the concatenated pieces.</p>
+<p>Before handing the prepared streams of data to Keras, we still need to convert them to dense tensors. Most importantly, we pad the tensors to <code>len_max_input</code>, with generic zeros, for uniformity.</p>
 
 </div>
 </div>
@@ -13281,10 +13249,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>a newly created function will return the paths to our existing file shards</li>
-<li>and we are ready to create our dataset adapted to our problem</li>
-</ul>
+<p>A newly created function will return the paths to our existing file shards.</p>
+<p>And now we are ready to create our datasets, custom-adapted to our problem at hand:</p>
 
 </div>
 </div>
@@ -13320,13 +13286,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>next, we need to tell our custom Keras layers to support masking</li>
-<li>let's do it once for all of them in our <code>Layer</code> base class</li>
-<li>our first layer, the one to specifically calculate the versatile <code>bool</code> masking tensor, has to override <code>compute_mask</code></li>
-<li>we could also transfer the mask calculation to a layer that would do it as an efficient side-effect</li>
-<li>in that case we would use the 2 commented out lines</li>
-</ul>
+<p>Next, we need to tell our custom Keras layers to support masking. Let's do it once for all of them in our own <code>Layer</code> base class. We simply inherit from it for all other layers.</p>
+<p>Our first layer, the one receiving the to-be-masked input and needing to specifically calculate the versatile <code>bool</code> masking tensor, has to override the <code>compute_mask</code> method.</p>
+<p>We could also transfer the mask calculation to another layer that would do it as an efficient side-effect of its own tasks. In that case we would use the 2 commented out lines:</p>
 
 </div>
 </div>
@@ -13362,13 +13324,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>in order to turn our impossibly tight <code>int32</code> tokens into something more useful for machine learning, we need to <code>Embed</code> them into a much higher dimensional "space"</li>
-<li>our embedding layer, however, is as simple as it gets: it first creates the embedding table and then does the actual lookup using the input tokens</li>
-<li>once the embedded values are determined, we then apply our <code>bool</code> masking cleanly, always resetting the masked-out, high dimensional values to <code>0</code> regardless of any "learned" adjustments</li>
-<li>Keras knows that we want to use the transparently hidden mask tensor during layer processing from our included <code>mask=None</code> keyword argument in the <code>call</code> method's signature</li>
-<li>for <code>autograph</code>'s sake we need to also explicitly check that the optional <code>mask</code> argument is not <code>None</code>; a simple <code>if mask:</code> would only trigger "trace execution" instead of "graph execution" in our later blogs</li>
-</ul>
+<p>In order to turn our impossibly "tight" <code>int32</code> tokens into something more useful for machine learning, we need to <code>Embed</code> them into a much higher dimensional "space".</p>
+<p>Our embedding layer, however, is as simple as it gets: it first creates the embedding table and then does the actual lookup using the input tokens.</p>
+<p>Once the embedded values are determined, we apply our straightforward <code>bool</code> masking cleanly, always resetting the masked-out, high dimensional values to <code>0</code> regardless of any "learned" adjustments.</p>
+<p>During layer processing, Keras knows that we want to use the transparently hidden mask tensor from our included <code>mask=None</code> keyword argument in the <code>call</code> method's signature.</p>
+<p>For <code>autograph</code>'s sake we need to also explicitly check that the optional <code>mask</code> argument is <code>not None</code>; a simple intuitive <code>if mask:</code> would only trigger "trace execution" instead of "graph execution" in our later blogs.</p>
 
 </div>
 </div>
@@ -13399,13 +13359,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our self-attention layer, fittingly called <code>Reflect</code>, does the absolute minimum required steps to implement the "attention" mechanism of the <code>transformer</code> architecture</li>
-<li>an excellent, creative explanation of how it works is at <a href="http://jalammar.github.io/illustrated-transformer/">http://jalammar.github.io/illustrated-transformer/</a></li>
-<li>please note that the masking tensor is being automatically supplied to the call by Keras</li>
-<li>we only need to state our intention to mask by adding the <code>mask=None</code> keyword argument</li>
-<li>the actual masking calculation, based on our previously created <code>bool</code> tensor and specific for this layer now, is outright trivial</li>
-</ul>
+<p>Our self-attention layer, fittingly called <code>Reflect</code>, does the absolute minimum required steps to implement the "attention" mechanism of the <code>transformer</code> architecture. An excellent, creative explanation of how it works is at <a href="http://jalammar.github.io/illustrated-transformer/">http://jalammar.github.io/illustrated-transformer/</a>.</p>
+<p>The masking tensor is being automatically supplied to the call by Keras. Once again, we only need to state our intention to mask by adding the <code>mask=None</code> keyword argument.</p>
+<p>The actual masking calculation, based on our previously created <code>bool</code> tensor and specific for this layer only, is outright trivial. It simply replaces the to-be-masked values with large negatives:</p>
 
 </div>
 </div>
@@ -13446,10 +13402,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we are ready to create and compile our Keras <code>functional</code> model</li>
-<li>as the objective of this blog is to showcase masking, all the other necessary, "plumbing" layers are the canned Keras variety ones</li>
-</ul>
+<p>We are now ready to create and compile our Keras <code>functional</code> model.</p>
+<p>As the objective of this blog is to showcase masking, all the other necessary "plumbing" layers are the canned Keras variety ones.</p>
 
 </div>
 </div>
@@ -13481,10 +13435,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our parameters have slightly increased in count, otherwise they are the same as before</li>
-<li>please see the previous blog for the justification of the <code>Params</code> class and overall scheme</li>
-</ul>
+<p>The count of our parameters have slightly increased, otherwise they are the same as before. Please see the previous blog for the justification of the <code>Params</code> class and the overall scheme.</p>
 
 </div>
 </div>
@@ -13521,10 +13472,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>once we instantiate our parameters and our dataset, and using the already compiled model, we are ready to start a training session conveniently implemented by the Keras <code>fit</code> method</li>
-<li>our aim is to use as much of the versatility, functionality and error checking that Keras provides, so using the model's <code>fit</code> method is all we need for now</li>
-</ul>
+<p>Once we instantiate our parameters and our dataset, and using the already compiled model, we are ready to start a training session conveniently implemented by the Keras <code>fit</code> method.</p>
+<p>Our aim is to use as much of the versatility, functionality and error checking that Keras provides, so using the model's <code>fit</code> method is all we need for now:</p>
 
 </div>
 </div>
@@ -13557,22 +13506,6 @@ div#notebook {
     <div class="prompt"></div>
 
 
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>WARNING: Logging before flag parsing goes to stderr.
-W0630 18:39:30.146089 139995089241728 deprecation.py:323] From /home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/ops/ragged/ragged_tensor.py:2168: where (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.
-Instructions for updating:
-Use tf.where in 2.0, which has the same broadcast rule as np.where
-W0630 18:39:30.754104 139995089241728 training_utils.py:1455] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
-W0630 18:39:30.951140 139995089241728 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>Model: &#34;model&#34;
 _________________________________________________________________
@@ -13598,30 +13531,7 @@ Non-trainable params: 0
 _________________________________________________________________
 None
 Epoch 1/10
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 18:39:31.142105 139995089241728 deprecation.py:323] From /home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/keras/optimizer_v2/optimizer_v2.py:454: BaseResourceVariable.constraint (from tensorflow.python.ops.resource_variable_ops) is deprecated and will be removed in a future version.
-Instructions for updating:
-Apply a constraint manually following the optimizer update step.
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>1000/1000 [==============================] - 4s 4ms/step - loss: 1.7373 - sparse_categorical_crossentropy: 1.7373
+1000/1000 [==============================] - 4s 4ms/step - loss: 1.7373 - sparse_categorical_crossentropy: 1.7373
 Epoch 2/10
 1000/1000 [==============================] - 2s 2ms/step - loss: 1.4499 - sparse_categorical_crossentropy: 1.4499
 Epoch 3/10
@@ -13651,10 +13561,8 @@ Epoch 10/10
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TensorBoard can conveniently visualize</li>
-<li>if you haven't run the below code, an already generated graph is <a href="./masking.pdf">here</a></li>
-</ul>
+<p>With our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TensorBoard can conveniently visualize.</p>
+<p>If you haven't run the below code, an already generated graph is <a href="./masking.pdf">here</a>.</p>
 
 </div>
 </div>
@@ -13716,9 +13624,7 @@ Epoch 10/10
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>this concludes our blog, please see how to use the new <code>RaggedTensors</code> instead of "masking" by clicking on the next blog</li>
-</ul>
+<p>This concludes our blog, please see how to use the new <code>RaggedTensors</code> instead of masking by clicking on the next blog.</p>
 
 </div>
 </div>

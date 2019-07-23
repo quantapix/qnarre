@@ -31,7 +31,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 ## [Dataset: The Tensor "Highway" On-Ramp](./dataset.html)
 
 * Complex input data pipelines from simple, reusable pieces
-* Starting from a "source", pipelines "transform" data streams
+* Starting from a "source", pipelines transform data streams
 * New features allow splitting the streams into named "filaments"
 * Performance and throughput is increased through file sharding 
 * [more detail...](./dataset.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/dataset.ipynb)
