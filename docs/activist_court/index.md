@@ -10,7 +10,7 @@ layout: default
 * "Conflicts are opportunities"
 * Metrics: coherence, fragmentation
 * Judgments: from certainty through ambiguity to absurdity
-* [more detail...](./simulation.html) and [runable simulation...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/simulation.ipynb)
+* [more detail...](./simulation.html) and [runnable simulation...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/simulation.ipynb)
 
 ## [A Conceptual Model Of An "Emotional" Domain](./concepts.html)
 

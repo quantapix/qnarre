@@ -18,7 +18,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * "Pythonic" aggregating and encapsulating in models
 * Mixing new `modules` and Keras `layers` for seamless persistence
 * "A picture is worth a thousand words": graphs with TensorBoard
-* [more detail...](./trackable.html), the [graph...](./trackable.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/trackable.ipynb)
+* [more detail...](./trackable.html), the [graph...](./trackable.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/trackable.ipynb)
 
 ## [Many Smaller GPUs: Elegant In-Model Distribution](./gpus.html)
 
@@ -26,7 +26,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * Stacks of Keras layers laid over parametric sequences of GPUs
 * Instant, predictable and massive GPU computations/interactions
 * Clean, clear model "pipelines" visualized and verified 
-* [more detail...](./gpus.html), the [graph...](./gpus.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/gpus.ipynb)
+* [more detail...](./gpus.html), the [graph...](./gpus.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/gpus.ipynb)
 
 ## [Dataset: The Tensor "Highway" On-Ramp](./dataset.html)
 
@@ -34,7 +34,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * Starting from a "source", pipelines "transform" data streams
 * New features allow splitting the streams into named "filaments"
 * Performance and throughput is increased through file sharding 
-* [more detail...](./dataset.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/dataset.ipynb)
+* [more detail...](./dataset.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/dataset.ipynb)
 
 ## [Unified Adaptable Masking That Follows The Flow](./masking.html)
 
@@ -42,7 +42,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * It often seems best to cleanly "mask-out" padded values
 * Keras' mechanism allows for on-demand custom maskings
 * Without cluttering the flow, masking becomes transparent
-* [more detail...](./masking.html), the [graph...](./masking.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
+* [more detail...](./masking.html), the [graph...](./masking.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
 
 ## [Ragged Tensors Especially For Document Processing](./ragged.html)
 
@@ -50,7 +50,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * They can potentially solve data masking more efficiently
 * Content and shape can be separated for ops efficiency
 * Shapes are seamlessly re-applied once ops finish executing 
-* [more detail...](./ragged.html), the [graph...](./ragged.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/ragged.ipynb)
+* [more detail...](./ragged.html), the [graph...](./ragged.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/ragged.ipynb)
 
 ## [Unnecessary Complexity Through Layer Proliferation](./layers.html)
 
@@ -58,7 +58,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * A first take on `Transformer` mixes `layers` and `modules`
 * Validated `functional` layers interconnect modules with bare ops
 * We continue to expand on this "blended approach" of modeling
-* [more detail...](./layers.html), the [graph...](./layers.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
+* [more detail...](./layers.html), the [graph...](./layers.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/layers.ipynb)
 
 ## [Custom Keras Layers Without The Drawbacks](./custom.html)
 
@@ -66,7 +66,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * Large selection of options can obfuscate essential roles
 * A `module` calling on needed bare ops directly is just a few lines
 * Modules nested in custom layers benefit from the `functional` API
-* [more detail...](./custom.html), the [graph...](./custom.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/custom.ipynb)
+* [more detail...](./custom.html), the [graph...](./custom.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/custom.ipynb)
 
 ## [Autograph: Intuitive Data-Driven Control At Last](./autograph.html)
 
@@ -74,7 +74,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * Autograph transparently patches ops together for native control
 * Control is intuitive at last from data-driven branching to searching
 * On-the-fly "python ops" also provide insights into inner processes
-* [more detail...](./autograph.html), the [graph...](./autograph.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/autograph.ipynb)
+* [more detail...](./autograph.html), the [graph...](./autograph.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/autograph.ipynb)
 
 ## [Modular And Reusable Metrics All The Way](./metrics.html)
 
@@ -82,13 +82,13 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * Simple `loss` and aggregating `metric` APIs elegantly solve it now
 * Customizing the "metering" protocol through subclassing is shown
 * Blended, mixed metering strategies are now possible as well
-* [more detail...](./metrics.html), the [graph...](./metrics.pdf) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/metrics.ipynb)
+* [more detail...](./metrics.html), the [graph...](./metrics.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/metrics.ipynb)
 
 ## [Keras Callbacks: Extending Their Scope And Usage](./callbacks.html)
 
 * Callbacks provide a framework for non-model specific event handling
 * A flexible and uniform mechanism helps with automating
 * Hyper-parameter tuning can also be aided by custom callbacks
-* [more detail...](./callbacks.html) and [runable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/callbacks.ipynb)
+* [more detail...](./callbacks.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/callbacks.ipynb)
 
 [back](../)
