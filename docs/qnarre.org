@@ -517,70 +517,98 @@ If you haven't run the below code, an already generated graph is [here](./maskin
 
 This concludes our blog, please see how to use the new `RaggedTensors` instead of masking by clicking on the next blog.
 
-** Ragged Tensors Especially For Document Processing
+** Ragged Tensors Especially For Text Processing
 
 - New ragged tensors expand existing composite tensors
 - They can potentially solve data masking more efficiently
 - Content and shape can be separated for ops efficiency
 - Shapes are seamlessly re-applied once ops finish executing 
 
-`RaggedTensor`s are a newly added feature in TF intended to cleanly and efficiently solve the previously mentioned "uneven sequence length" problem
-while easily convertable, they are different from the more general `SparseTensor`s as they only allow "ragged edges"
-from an implementation point of view, `RaggedTensors` are efficiently represented as `composite tensor`s consisting of 1) a packed sequence of values and 2) a list of indices (effectively "row lengths")
+`RaggedTensor`s are a newly added feature in TF. They intend to cleanly and efficiently solve the previously mentioned "uneven sequence-length" problem.
 
-needless to say, these new composite tensors are purpose-fitted to our sample text processing problem
-one significant advantage of their specific design is the fluid nature of their "duality"
-on one hand, they can be viewed just as a simple vector of values, for efficient graph ops
-on the other hand, they can be used as handy "masks" to selectively extract just the right values from dense tensors
-in order to demonstrate their use, we set our objective here to arrive to a model representable by the [graph](./ragged.pdf)
+While easily convertible, they are different from the more general `SparseTensor`s, as they only allow "ragged edges".
 
-just as before, we need to prep our environment in order to run any meaningful code
+From an implementation point of view, `RaggedTensors` are efficiently represented as `composite tensor`s consisting of 1) a packed sequence of values and 2) a list of indices (effectively "row lengths").
 
-loading our already created meta data from the sources gives us
+These new composite tensors are purpose-fitted to our sample text processing problem.
 
-our previously introduced `adapter` to our datasets, themselves loadable from our stored samples, is adjusted slightly: we don't immediately convert the created ragged tensors to dense tensors anymore
-while Keras has the intention of fully supporting ragged input tensors (the `ragged=True` optional keyword argument is already available), passing in our `composite tensors` doesn't work just yet
-to work around this problem, we split our ragged tensors into its components, pass the components in and then quickly reassemble them, once inside the model
+One significant advantage of their specific design is the fluid nature of their "duality". On one hand, they can be viewed just as a simple vector of values, for efficient graph ops. On the other hand, they can be used as handy "masks", to selectively extract just the right values from dense tensors.
 
-with our adapter configured, our `dataset` streaming function is simple and looks as expected
+To demonstrate their use, we set our objective to arrive at a model representable by the [graph](./ragged.pdf).
 
-just as in our previous blog, our "elementary math" training problem calls for first embedding the passed in tokens into more spacious hidden dimensions
-hence our already defined `Embed` class only needs to be adjusted to work with ragged arguments
-specifically, after reassembling our `RaggedTensor` inputs from its passed-in components, we simply apply our trusty `embedding_lookup` to all the flattened or "bunched-up" tokens
+Just as before, we need to prep our environment to run any meaningful code:
 
-our `Reflect` layer will need slightly more changes
-as the `flat_values` of our ragged input loose their batch dimensions, the matrix multiplications become simpler (expressed here through the all time favorite `einsum`, see [here](https://rockt.github.io/2018/04/30/einsum))
-since the `attention` mechanism's `q`, `k` and `v` components are element-wise tied to their inputs, the "raggedness" of the results doesn't change
-this means that we only need to change the content of our `RaggedTensor`s, the "row_lengths" stay the same as implemented by the `with_values` method
-when we switch over to cross-products, for scoring our calculated attention coefficients, we use dense tensors once again
-but the actual result of the layer is a `RaggedTensor`
-since its "raggedness" is the same as the layer's input's raggedness, we can conveniently recreate the same shaped `RaggedTensor` from the respective values of the just calculated dense tensor by using the original input's `row_lengths` method
+# code
 
-we need to implement similar changes in our `Expand` layer
-"inflating" our hidden dimensions, for intrinsic learning purposes, requires a fixed width, hence we immediately convert to a dense tensor
-since we are done with our token calculations, we can simply pad the input to the layer to our expected `len_max_input` 
+Loading our already created meta data from the sources gives us:
 
-and now we are ready to define our model
-we have the two inputs, the two components of our input `RaggedTensor`
-we also use our new `Embed`, `Reflect` and `Expand` layers adjusted to work with our sudden "raggedness"
-the rest of the model is simply carried over from the previous blog
+# code
 
-our parameters are also unchanged
+Our previously introduced `adapter` to our various datasets, themselves loadable from our stored samples, is adjusted slightly: we don't immediately convert the created ragged tensors to dense tensors anymore.
 
-by firing up our training session, we can confirm the model's layers and connections
-the listing of a short session follows
-we can easily adjust the parameters to tailor the length of the sessions to our objectives
-however, at this point the results are still largely meaningless and extending the trainings is not yet warranted
+While Keras has the intention of supporting ragged input tensors (the `ragged=True` optional keyword argument is already available), passing in our `composite tensors` doesn't seem to work just yet. To work around this problem, we split our ragged tensors into its components, pass the components in and then reassemble them, once inside the model.
 
-with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
-if you haven't run the code, an already generated graph is [here](./ragged.pdf)
+# code
 
-we can also switch over to the new `eager` execution mode
-this is particularly convenient for experimentation, as all ops are immediately executed
+With the adapter configured, our dataset streaming function is simple and looks as expected:
 
-and here is a much shortened `eager` session
+# code
 
-this concludes our blog, please see how to avoid "layer-proliferation" complexity by clicking on the next blog
+Just as in our previous blog, our elementary math training problem calls for first embedding the passed-in tokens into more spacious hidden dimensions.
+
+Hence our already defined `Embed` class only needs to be adjusted to work with ragged tensor arguments. Specifically, after reassembling our `RaggedTensor` inputs from its passed-in components, we simply apply our trusty `embedding_lookup` to all the flattened or "bunched-up" tokens:
+
+# code
+
+Our `Reflect` layer will need slightly more changes.
+
+As the `flat_values` of our ragged inputs loose their batch dimensions, the matrix multiplications become simpler (expressed here through the favorite `einsum`, see [here](https://rockt.github.io/2018/04/30/einsum)).
+
+Since the `attention` mechanism's `q`, `k` and `v` components are element-wise tied to their inputs, the new "raggedness" of the inputs doesn't change their scope. This means that we only need to change the content of our `RaggedTensor`s, the "row_lengths" stay the same as implemented by the `with_values` method.
+
+When we switch over to cross-products, for scoring our calculated attention coefficients, we need to use dense tensors once again. But the actual result of the layer is a `RaggedTensor`.
+
+Since its "raggedness" is the same as the layer's input's raggedness, we can conveniently recreate the same shaped `RaggedTensor` from the respective values of the just calculated dense tensor by using the original ragged input's `row_lengths` method. Very convenient indeed:
+
+# code
+
+We need to implement similar changes in our `Expand` layer.
+
+"Inflating" our hidden dimensions, for the intrinsic learning purposes, requires a fixed width, hence we immediately convert to a larger dense tensor. However, as we are done with our "ragged" token calculations, we can simply pad the input to the layer to our expected `len_max_input`:
+
+# code
+
+We are ready now to define our model.
+
+We have the two inputs, the two components of our input `RaggedTensor`. We also use our new `Embed`, `Reflect` and `Expand` layers adjusted to work with our sudden "raggedness". The rest of the model is simply carried over from the previous blog:
+
+# code
+
+Our parameters are also unchanged:
+
+# code
+
+By firing up our training session, we can confirm the model's layers and connections. Also, the listing of a short session follows.
+
+We can easily adjust the parameters to tailor the length of the sessions to our objectives. However, at this point the results are still largely meaningless and extending the trainings is not yet warranted.
+
+# code
+
+With our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize.
+
+If you haven't run the code, an already generated graph is [here](./ragged.pdf).
+
+# code
+
+We can also switch over to the new `eager` execution mode. This is particularly convenient for experimentation, as all ops are immediately executed:
+
+# code
+
+And here is a much shortened `eager` session:
+
+# code
+
+This concludes our blog, please see how to avoid "layer-proliferation" complexity by clicking on the next blog.
 
 ** Unnecessary Complexity Through Layer Proliferation
 

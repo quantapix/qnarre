@@ -24,7 +24,7 @@ The following blogs incorporate "runnable" [Python](https://www.python.org/) scr
 * Many smaller GPUs: elegant in-model distribution
 * **Dataset**: the tensor "highway" on-ramp
 * Unified adaptable masking that follows the flow
-* **Ragged tensors** especially for document processing
+* **Ragged tensors** especially for text processing
 * Unnecessary complexity through layer proliferation
 * Custom Keras layers without the drawbacks
 * **Autograph**: intuitive data-driven control at last

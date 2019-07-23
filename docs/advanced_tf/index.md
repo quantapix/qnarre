@@ -44,7 +44,7 @@ The new, cleaned-up version, the beta of TensorFlow 2.0, has just been released 
 * Without cluttering the flow, masking becomes transparent
 * [more detail...](./masking.html), the [graph...](./masking.pdf) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/advanced_tf/masking.ipynb)
 
-## [Ragged Tensors Especially For Document Processing](./ragged.html)
+## [Ragged Tensors Especially For Text Processing](./ragged.html)
 
 * New ragged tensors expand existing composite tensors
 * They can potentially solve data masking more efficiently
