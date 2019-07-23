@@ -20,29 +20,29 @@ layout: default
 * From patterns of judgments to activism
 * [more detail...](./concepts.html)
 
-## [The Predatory Profits Of "High-Conflict" Divorces](./tbd.html)
+## [The Predatory Profits Of "High-Conflict" Divorces](./conflict.html)
 
 * In progress...
-* [more detail...](./tbd.html)
+* [more detail...](./conflict.html)
 
-## [A Psychological Object Model Of The ABA "Frequent Fliers"](./tbd.html)
-
-* In progress...
-* [more detail...](./tbd.html)
-
-## [From Purposefully Fabricated Conflicts To Ideological Activism](./tbd.html)
+## [A Psychological Object Model Of The ABA "Frequent Fliers"](./objects.html)
 
 * In progress...
-* [more detail...](./tbd.html)
+* [more detail...](./objects.html)
 
-## [Representative Metrics Through Statistical Modeling](./tbd.html)
-
-* In progress...
-* [more detail...](./tbd.html)
-
-## [Learn, Adapt And Effectively Protect From "Elite" Predators](./tbd.html)
+## [From Purposefully Fabricated Conflicts To Ideological Activism](./activism.html)
 
 * In progress...
-* [more detail...](./tbd.html)
+* [more detail...](./activism.html)
+
+## [Representative Metrics Through Statistical Modeling](./metrics.html)
+
+* In progress...
+* [more detail...](./metrics.html)
+
+## [Learn, Adapt And Effectively Protect From "Elite" Predators](./protect.html)
+
+* In progress...
+* [more detail...](./protect.html)
 
 [back](../)

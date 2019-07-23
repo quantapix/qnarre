@@ -789,6 +789,7 @@ to be expanded...
 
 * Modeling Ideological Judicial Activism
 
+** Introduction
 ** Reductio Ad Absurdum - A Judicial Simulation
 
 - Claims, proofs and realities
@@ -1063,6 +1064,7 @@ When considering multiple judgment claims, a pattern, a trend can possibly be es
 
 * Court Contradictions Analytically Evaluated
 
+** Introduction
 ** Preparing and normalizing legal documents
 ** Tagging with **topics** and extracting **narratives**
 ** Standardized output and flexible reporting
