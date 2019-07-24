@@ -13123,9 +13123,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We are only concerned with textual data stored electronically. The <code>source</code> is thus our unit of representation.</p>
-<p>The <code>evidence</code> is all the <code>doc</code>s we need to consider organized hierarchically as <code>source</code>s.</p>
-<p>Ultimately, it all comes down to working with text fragments, <code>claims</code>, with various interconnected and even overlapping properties. We define:</p>
+<p>We are only concerned with textual data stored electronically. A <code>source</code> is thus our generic unit of representation throughout the problem domain.</p>
+<p>The <code>evidence</code> is the exhaustive collection of all the <code>doc</code>s we need to consider, organized hierarchically as individual <code>source</code>s.</p>
+<p>Ultimately, it all comes down to working with text fragments, or <code>claims</code>, with their various interconnected and even overlapping properties and attributes.</p>
+<p>We formalize these and define:</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13146,12 +13147,12 @@ div#notebook {
 </tr>
 <tr>
 <td><strong>Doc</strong></td>
-<td>a unit of paginated flat text Evidence</td>
+<td>paginated, flat textual Evidence</td>
 <td>name (date), genre, author, title, pages</td>
 </tr>
 <tr>
 <td><strong>Genre</strong></td>
-<td>a kind of "officialness" of a Doc</td>
+<td>the "officialness" of a Doc</td>
 <td>name</td>
 </tr>
 <tr>
@@ -13162,7 +13163,7 @@ div#notebook {
 <tr>
 <td><strong>Claim</strong></td>
 <td>a Placed relevant text fragment</td>
-<td>text, place</td>
+<td>text, place, credibility</td>
 </tr>
 </tbody>
 </table>
@@ -13173,7 +13174,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The <code>author</code> of a <code>doc</code> of <code>claim</code>s can be a party, a lawyer or a judge, for example. Accordingly, we define:</p>
+<p>The <code>author</code> of a <code>doc</code> of implicitly related set of <code>claim</code>s can be a party, a lawyer or a judge, for example.</p>
+<p>Accordingly, we define:</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13206,7 +13208,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>A <code>claim</code> can be grouped into <code>topic</code>s and attached to <code>narrative</code>s. Such groupings and assignments are done based on the semantic meaning of the claim as well as the context the claim belongs to.</p>
+<p>A <code>claim</code> can be grouped into <code>topic</code>s and attached to <code>narrative</code>s. Such groupings and assignments are done based on the semantic meaning of the claim, as well as of the context the claim belongs to.</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13234,7 +13236,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>More importantly, <code>claim</code>s are further categorized as follows. The objective is to either compute a generalizing <code>credibility</code> for the claim or to derive other reproducible conjecture regarding the related claims.</p>
+<p>More importantly, <code>claim</code>s are further categorized as follows.</p>
+<p>The objective is to either compute a generalizing <code>credibility</code> for the claim or to derive other reproducible conjectures, regarding the related claims.</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13250,7 +13253,7 @@ div#notebook {
 </tr>
 <tr>
 <td><strong>Proof</strong></td>
-<td>a readily verifiable undisputed Claim from an Authority</td>
+<td>a readily verifiable, undisputed Claim from an Authority</td>
 <td>claim, authority</td>
 </tr>
 <tr>
@@ -13260,13 +13263,13 @@ div#notebook {
 </tr>
 <tr>
 <td><strong>Reality</strong></td>
-<td>a broad-based reinforcing Conjecture</td>
+<td>a broad-based, reinforcing Conjecture</td>
 <td>coherence</td>
 </tr>
 <tr>
 <td><strong>Dissent</strong></td>
-<td>a narrow, fragmenting, and thus weakening, Conjecture</td>
-<td>fragment</td>
+<td>a narrow, fragmenting and thus weakening Conjecture</td>
+<td>fragmentation</td>
 </tr>
 </tbody>
 </table>
@@ -13277,7 +13280,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>A <code>dissent</code> is further broken down into self-explained types with increasing factors of their fragmenting effects. These are:</p>
+<p>While a broad <code>reality</code> is "simple", as in hard to characterize any further, a narrow <code>dissent</code> is much richer in "character".</p>
+<p>We break down <code>dissent</code>s into self-explanatory types, with increasing factors of their fragmenting effects.</p>
+<p>These are:</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13287,7 +13292,7 @@ div#notebook {
 <tbody>
 <tr>
 <td><strong>Misreading</strong></td>
-<td>stated seemingly unintentionally misinterpreted relevant claims</td>
+<td>seemingly unintentionally misinterpreted relevant claims</td>
 </tr>
 <tr>
 <td><strong>Fairness</strong></td>
@@ -13326,7 +13331,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>A special type of a claim is a <code>conflict</code>. Its purpose is to directly contradict a <code>reality</code> and thus to manipulate a subsequent <code>judgment</code>.</p>
+<p>A special type of claim is a <code>conflict</code>.</p>
+<p>Its purpose is to directly contradict a <code>reality</code> and thus to manipulate a subsequent <code>judgment</code>. As the most important objects in modeling a lawsuit, <code>conflict</code>s are at the center of our attention.</p>
+<p>The ultimate goal of our modeling efforts is to arrive at a mechanism to extract a semantic "conflict graph" in a reproducible fashion.</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13347,7 +13354,7 @@ div#notebook {
 </tr>
 <tr>
 <td><strong>Repeat</strong></td>
-<td>variant of conflict inducing Claim to reinforce intended effect</td>
+<td>variant of a conflict aimed at reinforcing intended effect</td>
 <td>claim, conflict</td>
 </tr>
 <tr>
@@ -13369,7 +13376,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Revealing, and even fabricating, conflicts is the objective of lawsuits. We categorize conflicts along their increasing fragmenting effect on judgments:</p>
+<p>Once again, revealing, and even actively fabricating, conflicts is the objective of lawsuits.</p>
+<p>We categorize conflicts along their increasing fragmenting effect on realities:</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13406,7 +13414,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The judgments of lawsuits represent the net effect of all the claimed conflicts. If a <code>judgment</code> relies predominantly on conflicts while overruling realities, it causes <code>turmoil</code>. The types of judgments we consider in increasing turmoil effect is as follows:</p>
+<p>The judgments of lawsuits represent the net effect of all claimed conflicts.</p>
+<p>If a <code>judgment</code> relies predominantly on perhaps fabricated conflicts, or is simply prejudiced by them, while actively overruling realities, it causes <code>turmoil</code>.</p>
+<p>The types of judgments we consider in increasing <code>turmoil</code> effect is as follows:</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13432,7 +13442,7 @@ div#notebook {
 </tr>
 <tr>
 <td><strong>Fabrication</strong></td>
-<td>injection of disputable conjecture reinforcing a prior narrative</td>
+<td>injection of disputable conjecture to reinforce a prior narrative</td>
 </tr>
 </tbody>
 </table>
@@ -13443,7 +13453,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>When considering multiple judgment claims, a pattern, a trend can possibly be established. During processing, when our calculations support such patterns, <code>activism</code>s emerge. We define the following categories in increasing effect on their <code>turmoil</code> factor:</p>
+<p>When considering multiple judgment claims, a pattern, or a trend, can possibly be established.</p>
+<p>During processing, when our calculations support such "judicial" patterns, <code>activism</code>s emerge.</p>
+<p>We define the following <code>activism</code> categories in increasing effect of their <code>turmoil</code> factor:</p>
 <table>
 <thead><tr>
 <th>Term</th>
@@ -13453,38 +13465,46 @@ div#notebook {
 <tbody>
 <tr>
 <td><strong>Exclude</strong></td>
-<td>pattern of</td>
+<td>a pattern of excluding undesired realities</td>
 </tr>
 <tr>
 <td><strong>Insinuate</strong></td>
-<td>pattern of</td>
+<td>a pattern of insinuating desired "realities"</td>
 </tr>
 <tr>
 <td><strong>Polarize</strong></td>
-<td>pattern of</td>
+<td>a pattern of deepening fabricated conflicts</td>
 </tr>
 <tr>
 <td><strong>Recast</strong></td>
-<td>pattern of</td>
+<td>a pattern of re-interpreting realities</td>
 </tr>
 <tr>
 <td><strong>Elevate</strong></td>
-<td>pattern of</td>
+<td>a pattern of elevating desired "realities"</td>
 </tr>
 <tr>
 <td><strong>Victimize</strong></td>
-<td>pattern of</td>
+<td>a pattern of repeatedly causing suffering</td>
 </tr>
 <tr>
 <td><strong>Exploit</strong></td>
-<td>pattern of</td>
+<td>a pattern of repeatedly preying on the defenseless</td>
 </tr>
 <tr>
 <td><strong>Perpetuate</strong></td>
-<td>pattern of</td>
+<td>a pattern of reinforcing the repetition of unfairness</td>
 </tr>
 </tbody>
 </table>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>This blog introduced the most essential "framing" concepts of our model. A subsequent blog will define the precise analytical, or quantitatively measurable, properties of these elements.</p>
 
 </div>
 </div>
