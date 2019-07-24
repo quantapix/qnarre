@@ -898,6 +898,19 @@ to be expanded...
 * Modeling Ideological Judicial Activism
 
 ** Introduction
+
+We have outlined our overall objective and also have considered just the right tools to use to achieve it. In this second group of blogs, we set out to introduce the conceptual framework for our efforts.
+
+We present a high-level, yet still easily simulatable view of our problem domain. We also define key abstractions to provide an unambiguous foundation for our subsequent work. And we clarify mechanism to numerically analyze, or just to simply measure, progress and results in a reproducible fashion. At the end, we also draw conclusions and offer usable "packaged" solutions.
+
+Most importantly, we introduce a flexible, scalable and easily testable "proxy"-model that we can use to drive our deep-learning development. Our problem domain is clearly nebulous. Without a firm and trustworthy guidance, we could easily loose direction.
+
+As we are attempting to teach our computer to "understand" first, we reach for the ultimate, and undoubtedly universal, symbolic language: mathematics. To this effect, we have already introduced the problem of training elementary arithmetic in a previous [blog]().
+
+With these blogs, we greatly expand on that first, exploratory attempt. There are numerous recent [results]() in NLP (natural language processing in AI) that approach or even surpass measured levels of human comprehension. We first provide a framework of modules that reproduce the ideas, schemes and results presented in the latest published research.
+
+As the symbolism of our "proxy" model is universally understood, meaning that it is fully predictable, synthesizing a virtually infinite and arbitrarily precise training sample base is within our reach. With purpose-built training data sets, we then build on the published state-of-the-art results, measurably fine-tuning them.
+
 ** Reductio Ad Absurdum - A Judicial Simulation
 
 - Claims, proofs and realities
@@ -1053,22 +1066,22 @@ This concludes our blog. For more on modeling these concepts in detail, please c
 - Broad realities vs. narrow conflicts
 - From patterns of judgments to activism
 
-We are only concerned with textual data stored electronically. The `source` is thus our unit of representation.
+We are only concerned with textual data stored electronically. A `source` is thus our generic unit of representation throughout the problem domain.
 
-The `evidence` is all the `doc`s we need to consider organized hierarchically as `source`s.
+The `evidence` is the exhaustive collection of all the `doc`s we need to consider, organized hierarchically as individual `source`s.
 
-Ultimately, it all comes down to working with text fragments, `claims`, with various interconnected and even overlapping properties. We define:
+Ultimately, it all comes down to working with text fragments, or `claims`, with their various interconnected and even overlapping properties and attributes. We formalize these and define:
 
 | Term         | Definition                             | Properties                               |
 | ---          | ---                                    | ---                                      |
 | **Source**   | digitized content stored in a file     | type (e.g. pdf, jpg, email, text)        |
 | **Evidence** | a hierarchy of considered Sources      | root (directory)                         |
-| **Doc**      | a unit of paginated flat text Evidence | name (date), genre, author, title, pages |
-| **Genre**    | a kind of "officialness" of a Doc      | name                                     |
+| **Doc**      | paginated flat textual Evidence        | name (date), genre, author, title, pages |
+| **Genre**    | the "officialness" of a Doc            | name                                     |
 | **Place**    | a specific location in a Doc           | doc, page, para(graph)                   |
 | **Claim**    | a Placed relevant text fragment        | text, place                              |
 
-The `author` of a `doc` of `claim`s can be a party, a lawyer or a judge, for example. Accordingly, we define:
+The `author` of a `doc` of implicitly related set of `claim`s can be a party, a lawyer or a judge, for example. Accordingly, we define:
 
 | Term          | Definition                            | Properties                           |
 | ---           | ---                                   | ---                                  |
@@ -1076,7 +1089,7 @@ The `author` of a `doc` of `claim`s can be a party, a lawyer or a judge, for exa
 | **Agent**     | a to be believed professional         | kind (of profession)                 |
 | **Authority** | a trusted Agent of an official agency | agency (institution or 'sworn self') |
 
-A `claim` can be grouped into `topic`s and attached to `narrative`s. Such groupings and assignments are done based on the semantic meaning of the claim as well as the context the claim belongs to.
+A `claim` can be grouped into `topic`s and attached to `narrative`s. Such groupings and assignments are done based on the semantic meaning of the claim, as well as the context the claim belongs to.
 
 | Term          | Definition                                    | Properties  |
 | ---           | ---                                           | ---         |
@@ -1174,6 +1187,13 @@ TODO: expand bullets
 * Court Contradictions Analytically Evaluated
 
 ** Introduction
+
+In this third group of blogs, we finally turn our attention back to the concrete tasks we need to perform to accomplish our objectives. Reusing the generalizable mechanisms and results from the previous section, we outline our now textual input preparation steps. We also specify the format of our outputs, optimized on purpose for flexibility and versatility during subsequent processing.
+
+The effective product of all the activities presented in this section is the "conflict graph", a condensed summary of the now "understood" meaning of our input texts. This graph is then interpreted and used to synthesize various metrics and statistics about the semantic context of our data. We describe the graph in more detail and supply a set of custom operators on it.
+
+We also outline an introductory sampling of analytics. As the end-results are all reproducible, traceable and verifiable numeric quantities, standard data-mining and "big-data" practices can be applied. We end the blogs with presenting just such a "data-mined" report, based on actual filed documents and Court proceedings.
+
 ** Preparing and normalizing legal documents
 ** Tagging with **topics** and extracting **narratives**
 ** Standardized output and flexible reporting
