@@ -13116,31 +13116,16 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Unnecessary-Complexity-Through-Layer-Proliferation">Unnecessary Complexity Through Layer Proliferation<a class="anchor-link" href="#Unnecessary-Complexity-Through-Layer-Proliferation">&#182;</a></h1><ul>
-<li>TODO: expand bullets</li>
-</ul>
-
+<h1 id="Unnecessary-Complexity-Through-Layer-Proliferation">Unnecessary Complexity Through Layer Proliferation<a class="anchor-link" href="#Unnecessary-Complexity-Through-Layer-Proliferation">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>in this blog we continue to elaborate on our loosely <code>transformer</code>-based approach of training our computer to "understand" elementary symbolic algebra</li>
-<li>just as previously mentioned, a quick and fun intro to the venerable transformer is <a href="http://jalammar.github.io/illustrated-transformer/">here</a></li>
-<li>our objective is to expand our layers repertoire to include the <code>encoder</code> and the <code>decoder</code> stacks, as well as to ultimately arrive to a model representable by the <a href="./layers.pdf">graph</a></li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>just as before, we need to prep our environment in order to run any meaningful code</li>
-</ul>
+<p>In this blog, we continue to elaborate on our loosely <code>transformer</code>-based approach to training our computer to "understand" elementary symbolic arithmetic. Just as previously mentioned, a quick and fun intro to the venerable transformer is <a href="http://jalammar.github.io/illustrated-transformer/">here</a>.</p>
+<p>Our objective is to expand our layers' repertoire to include the <code>encoder</code> and the <code>decoder</code> stacks, as well as to ultimately arrive at a model representable by the <a href="./layers.pdf">graph</a>.</p>
+<p>We need to prep our environment to run any meaningful code:</p>
 
 </div>
 </div>
@@ -13166,12 +13151,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>before we start to focus on our stacks, an important feature of encoding textual inputs needs to be considered</li>
-<li>to aid in making sense of text, we need to include not just the information carried by the tokens themselves but also their position in the input sequence</li>
-<li>following the "positional encoding" approach from <a href="https://github.com/tensorflow/examples/blob/master/community/en/position_encoding.ipynb">here</a>, we can define our <code>pos_timing</code> function as follows</li>
-<li>the quick graphical plot helps us confirm the correctness of our code as the concatenated <code>sin</code> and <code>cos</code> timing signals give us finely graded and rich positional embeddings</li>
-</ul>
+<p>Before we start to focus on our stacks, an important feature of encoding textual inputs needs to be considered. To aid in making sense of a text, we need to include not just the information carried by the tokens themselves but also their position in the input sequence.</p>
+<p>Following the "positional encoding" approach from <a href="https://github.com/tensorflow/examples/blob/master/community/en/position_encoding.ipynb">here</a>, we can define our <code>pos_timing</code> function as follows.</p>
+<p>The quick graphical plot helps us confirm the correctness of our code as the concatenated <code>sin</code> and <code>cos</code> timing signals give us finely graded and rich positional embeddings:</p>
 
 </div>
 </div>
@@ -13231,9 +13213,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>loading our already created meta data from the sources gives us</li>
-</ul>
+<p>Loading our already created meta data from the source files gives us:</p>
 
 </div>
 </div>
@@ -13272,10 +13252,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we then continue to defining our own shared Keras "base" layer</li>
-<li>at this time we only store a reference to our parameters object in it, as all our layers will need to use this resource</li>
-</ul>
+<p>We continue with defining our own shared Keras "base" layer.</p>
+<p>At this time, we only store a reference to our parameters instance in it, as all our layers will need to use this resource:</p>
 
 </div>
 </div>
@@ -13300,11 +13278,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>the <code>Embed</code> layer is taken directly from our previous blog</li>
-<li>as we need to add the above mentioned positional "timing signals" to our embeddings, we first create just such a <code>constant</code> tensor</li>
-<li>then, using the previously mentioned <code>RaggedTensor</code>-technique of extracting the ragged-shaped values from a dense tensor, we simply add the positional info to the already determined embedding</li>
-</ul>
+<p>The <code>Embed</code> layer is taken directly from our previous blog.</p>
+<p>As we need to add the above mentioned positional "timing signals" to our embeddings, we first create just such a <code>constant</code> tensor.</p>
+<p>Then, using the previously mentioned <code>RaggedTensor</code>-technique of extracting the ragged-shaped values from a dense tensor, we simply add the positional info to the already determined embedding:</p>
 
 </div>
 </div>
@@ -13339,13 +13315,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>the next layers to write are the <code>Encode</code> and <code>Decode</code> stacks</li>
-<li>we implement them as simple lists of the respective <code>Encoder</code> and <code>Decoder</code> components</li>
-<li>when calling the stacks, the code simply loops through the component lists and calls the components</li>
-<li>in order to "chain" the stacks, every component is given the output of the previous component as its input</li>
-<li>in the case of the <code>Decoder</code> components, in addition to their regular inputs, we also supply the previously encoded output as their <code>ctx</code> argument</li>
-</ul>
+<p>The next layers to write are the <code>Encode</code> and <code>Decode</code> stacks.</p>
+<p>We implement them as simple lists of the respective <code>Encoder</code> and <code>Decoder</code> components. When calling the stacks, the code simply loops through the component lists and calls the components.</p>
+<p>In order to "chain" the stacks, every component is given the output of the previous component as its input.</p>
+<p>In the case of the <code>Decoder</code> components, and in addition to their regular inputs, we also supply the previously encoded output as their <code>ctx</code> argument:</p>
 
 </div>
 </div>
@@ -13386,13 +13359,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>the mirror of the <code>Embed</code> layer is our <code>Debed</code> layer</li>
-<li>while the embedding step maps <code>int</code> tokens to higher dimensional learned <code>float</code> values, the debedding step does the opposite</li>
-<li>it takes the higher dimensional values and maps them to learned <code>one-hot</code> vectors, corresponding to approximate output tokens</li>
-<li>as debedding is implemented using a <code>Dense</code> component, it also requires a fixed width</li>
-<li>just as in the previous blog, we simply pad our ragged tensors with <code>0</code>s to our <code>len_max_input</code> parameter, as our calculations are complete</li>
-</ul>
+<p>The mirror "image" of the <code>Embed</code> layer is our <code>Debed</code> layer.</p>
+<p>While the embedding step maps <code>int</code> tokens to higher-dimensional, learned <code>float</code> values, the "debedding" step does the opposite. It takes the higher-dimensional values and maps them to learned <code>one-hot</code> vectors, corresponding to approximate output tokens.</p>
+<p>As debedding is implemented using a <code>Dense</code> component, it also requires a fixed width. Just as in the previous blog, we simply pad our ragged tensors with <code>0</code>s to our <code>len_max_input</code> parameter, as our calculations are complete and the raggedness is not needed any longer:</p>
 
 </div>
 </div>
@@ -13426,15 +13395,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we have now completed the definition of our top layers as Keras layers, but we still need to define the inner components</li>
-<li>we could continue using the seemingly "heavy" Keras layers and nest them deeper</li>
-<li>as presented in a previous blog, we instead switch over to be using the much lighter weight <code>Module</code> as the base class for our inner components</li>
-<li>our <code>Encoder</code> thus becomes a simple module containing the self-attention followed by the feed-forward mechanisms</li>
-<li>we fittingly call the objects <code>reflect</code> and <code>conclude</code></li>
-<li>our <code>Decoder</code> also adds the attention layer looking at the previously encoded "context"</li>
-<li>hence the Python object encapsulating this attention component is called <code>consider</code></li>
-</ul>
+<p>We have now completed the definition of our top layers as Keras layers, but we still need to define the inner components.</p>
+<p>We could continue using the seemingly "heavy" Keras layers and nest them deeper. Instead, as presented in a previous blog, we switch over to using the much lighter-weight <code>Module</code> as the base class for our inner components.</p>
+<p>Our <code>Encoder</code> thus becomes a simple module containing the self-attention followed by the feed-forward mechanisms. We fittingly call the inner modules <code>reflect</code> and <code>conclude</code>.</p>
+<p>Our <code>Decoder</code> also adds the attention layer looking at the previously encoded "context". Hence, the module encapsulating this attention component is called <code>consider</code>:</p>
 
 </div>
 </div>
@@ -13482,10 +13446,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our <code>Attention</code> component, again based on <code>Module</code>, is taken directly from the previous blog</li>
-<li>just as explained already there, it relies and takes advantage of the new <code>RaggedTensor</code>s</li>
-</ul>
+<p>Our <code>Attention</code> component, again based on <code>Module</code>, is taken directly from the previous blog. As explained there, it relies on and takes advantage of the new <code>RaggedTensor</code>s:</p>
 
 </div>
 </div>
@@ -13526,12 +13487,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>a new component is our <code>Conclusion</code> module, it implements the "feed-forward" functionality of the transformer</li>
-<li>in simple terms, it takes the attention-enhanced, higher dimensional, element-wise mapping of the token sequence and it first <code>inflates</code> it to an even higher dimension with a non-linearity, or <code>activation</code>, at the end as its "concluding" step</li>
-<li>then it <code>deflates</code> the activated mapping back to our hidden dimension, making it available for the next level in the stack</li>
-<li>the same <code>RaggedTensor</code> trick applies at the end as the one we used in the <code>Attention</code> module</li>
-</ul>
+<p>A new component is our <code>Conclusion</code> module. It implements the "feed-forward" functionality of the transformer.</p>
+<p>In simple terms, it takes the attention-enhanced, higher-dimensional, element-wise mapping of the token sequence and it first <code>inflates</code> it to an even higher dimension with a non-linearity, or <code>activation</code>, at the end as its "concluding" step.</p>
+<p>Then it <code>deflates</code> the activated mapping back to our hidden dimension, making it available for the next level in the stack.</p>
+<p>The same <code>RaggedTensor</code> trick, as the one we used in the <code>Attention</code> module, applies at the end:</p>
 
 </div>
 </div>
@@ -13574,11 +13533,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our last component is the <code>Dense</code> module</li>
-<li>it simply re-implements the Keras layer with the same name, yet with more focused, streamlined functionality and minimal configurability</li>
-<li>the interesting aspect of this module, as well as our <code>Attention</code> module above, is that the necessarily created Keras weights are added using the enclosing Keras layer, however topologically they are directly listed as part of their modules</li>
-</ul>
+<p>Our last component is the <code>Dense</code> module.</p>
+<p>It simply re-implements the Keras layer with the same name, yet with more focused, streamlined functionality and minimal configurability.</p>
+<p>The interesting aspect of this module, just as our <code>Attention</code> module above, is that the necessarily created Keras weights are added using the enclosing Keras layer, however, topologically, they are directly listed as part of their respective modules:</p>
 
 </div>
 </div>
@@ -13620,12 +13577,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and now we are ready to define our model</li>
-<li>we have the two inputs, the two components of our input <code>RaggedTensor</code></li>
-<li>we also use our new <code>Embed</code>, <code>Encode</code>, <code>Decode</code> and <code>Debed</code> Keras layers, with all the internal, light-weight modules hidden at this level</li>
-<li>the rest of the model is simply carried over from the previous blog</li>
-</ul>
+<p>And now we are ready to define our model.</p>
+<p>We have the two inputs, the two components of our input <code>RaggedTensor</code>.</p>
+<p>We also use our new <code>Embed</code>, <code>Encode</code>, <code>Decode</code> and <code>Debed</code> Keras layers, with all the internal, light-weight modules hidden at this level.</p>
+<p>The rest of the model is simply carried over from the previous blog:</p>
 
 </div>
 </div>
@@ -13655,9 +13610,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our parameters need to be adjusted to provide parametric values for our stacks</li>
-</ul>
+<p>Our parameters need to be adjusted to provide parametric values for our stacks:</p>
 
 </div>
 </div>
@@ -13690,12 +13643,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>by firing up our training session, we can confirm the model's layers and connections</li>
-<li>the listing of a short session follows</li>
-<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
-<li>however, at this point the results are still largely meaningless and extending the trainings is not yet warranted</li>
-</ul>
+<p>By firing up our training session, we can confirm the model's layers and connections. The listing of a short session follows.</p>
+<p>We can easily adjust the parameters to tailor the length of the sessions to our objectives. However, at this point the results are still largely meaningless and extending the trainings is not yet warranted.</p>
 
 </div>
 </div>
@@ -13717,17 +13666,6 @@ div#notebook {
 <div class="output_wrapper">
 <div class="output">
 
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 21:05:15.772540 140338507302528 training_utils.py:1455] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
-</pre>
-</div>
-</div>
 
 <div class="output_area">
 
@@ -13758,75 +13696,8 @@ Trainable params: 147,788
 Non-trainable params: 0
 __________________________________________________________________________________________________
 None
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 21:05:16.393986 140338507302528 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Epoch 1/5
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>1000/1000 [==============================] - 22s 22ms/step - loss: 1.8823 - sparse_categorical_accuracy: 0.4925
+Epoch 1/5
+1000/1000 [==============================] - 22s 22ms/step - loss: 1.8823 - sparse_categorical_accuracy: 0.4925
 Epoch 2/5
 1000/1000 [==============================] - 6s 6ms/step - loss: 1.6305 - sparse_categorical_accuracy: 0.5040
 Epoch 3/5
@@ -13846,10 +13717,8 @@ Epoch 5/5
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize</li>
-<li>if you haven't run the code below, an already generated graph is <a href="./layers.pdf">here</a></li>
-</ul>
+<p>With our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize.</p>
+<p>If you haven't run the code below, an already generated graph is <a href="./layers.pdf">here</a>.</p>
 
 </div>
 </div>
@@ -13911,11 +13780,8 @@ Epoch 5/5
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we can also switch over to the new <code>eager</code> execution mode</li>
-<li>this is particularly convenient for experimentation, as all ops are immediately executed</li>
-<li>and here is a much shortened <code>eager</code> session</li>
-</ul>
+<p>We can also switch over to the new <code>eager</code> execution mode.</p>
+<p>This is particularly convenient for experimentation, as all ops are immediately executed. Here is a much shortened <code>eager</code> session:</p>
 
 </div>
 </div>
@@ -13966,79 +13832,7 @@ Trainable params: 147,788
 Non-trainable params: 0
 __________________________________________________________________________________________________
 None
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-/home/qpix/clone/qnarre-local/.qpy/lib/python3.7/site-packages/tensorflow_core/python/framework/indexed_slices.py:416: UserWarning: Converting sparse IndexedSlices to a dense Tensor of unknown shape. This may consume a large amount of memory.
-  &#34;Converting sparse IndexedSlices to a dense Tensor of unknown shape. &#34;
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Step: 10 , loss: 2.24212742 , xent: 0.56386137
+Step: 10 , loss: 2.24212742 , xent: 0.56386137
 Step: 20 , loss: 2.33669519 , xent: 0.559803903
 Step: 30 , loss: 2.9666779 , xent: 0.556796134
 Step: 40 , loss: 3.00279307 , xent: 0.556730747
@@ -14060,9 +13854,7 @@ Epoch 0 loss: 2.696388 , xent: 0.5518182
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>this concludes our blog, please see how to further customize our model by clicking on the next blog</li>
-</ul>
+<p>This concludes our blog, please see how to further customize our model by clicking on the next blog.</p>
 
 </div>
 </div>
