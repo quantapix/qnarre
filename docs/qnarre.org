@@ -1235,24 +1235,92 @@ This blog introduced the most essential "framing" concepts of our model. A subse
 
 ** The Predatory Profits Of "High-Conflict" Divorces
 
-- In progress...
-TODO: expand bullets
+- with no conflict, there is no lawsuit nor profits
+- with no money nor profits, there is no "high-conflict"
+- with no "high conflict", there are no trend-setting cases
+- with no "trend-setting", there is no fame nor $500 / hour billing rate
+
+- TODO: expand bullets
+
+- for justification, consider the following chain of conjectures (referenced lawyers are the divorce lawyer type):
+
+- our general common law is adversarial, winner takes all
+- a family by definition is not adversarial, both parents love their children
+- however, with no conflict, obviously there is no lawsuit nor profits for lawyers
+- thus common law applied to families must first turn a family into adversaries
+- unsolved conflicts or perceived lack of resources create adversaries
+- sustainable and intractable conflicts guarantee adversaries for life or "high-conflict"
+- however, with no money nor possible profits, there simply cannot be "high-conflict"
+- given sufficient funds, "high-conflict" cases are an ambitious lawyer's "gold mines" and long-term job-security
+- lawyers are in abundance and competition is fierce as one only needs to be a convincing actor
+- however, with no "high conflict", there are no trend-setting "interesting" cases
+- with no "trend-setting", there is no fame nor $500 / hour billing rate for an ambitious lawyer
+
+- accepting the above, what can an ambitious lawyer do? (other than change profession)
+- he or she has only one choice: provoke or flat-out fabricate a conflict, where there is none, specifically for the Court's consumption
+- in this blog we focus on lawyers directly fabricating conflicts, or flat-out, knowingly lying to the Court
+
+- as per strict rules, all meaningful communication is (or can be converted to) textual
+
+- our first goal thus is to train our computer to "catch the knowingly and directly lying lawyer"
+
+- current NLP research has shown that the various proposed mechanism for answering the generic semantic correctness questions are promising
+- we use them to train our elementary arithmetic model to tell us if a mathematical expression is correct or not
+
+- YNS samples
+- create samples
+
+- there are still weaknesses regarding the size and scope of the considered "context" for correctness questions, however, our easily scaled and fully controlled "lab model" allows us to freely experiment
+
+- the latest mt-dnn models achieve better than human performance due to "cross-training"
+
+- we add variants to our samples:
+
+- MSK masking inputs to quess
+- REV reversing the order
+- FIX to actually find the error 
+  
+- present the model
+
+- run the model 
 
 ** A Psychological Object Model Of The ABA "Frequent Fliers"
 
-- In progress...
+- TODO: expand bullets
+- most humans simply say no to such acts considering that children are involved
+- there are humans, however, Nazi SS concentration-camp guards are quintessential examples, that will do the "job" as long as there is palatable excuse for them to "hate or despise the others"
+- all
+
+YNX, MSX, FIX
 
 ** From Purposefully Fabricated Conflicts To Ideological Activism
 
-- In progress...
+- TODO: expand bullets
+
+- CLS, CLX
+- QAS
+- GEN
 
 ** Representative Metrics Through Statistical Modeling
 
-- In progress...
+- TODO: expand bullets
+
+- weights
+- credibility
+- proven
+- coherence
+- certainty
+- ambiguity
+- frag(mentation)
+- absurdity
+- repeats
+- malignant
+- prejudiced
+- turmoil
 
 ** Learn, Adapt And Protect Effectively From "Elite" Predators
 
-- In progress...
+- TODO: expand bullets
 
 
 * Court Contradictions Analytically Evaluated
