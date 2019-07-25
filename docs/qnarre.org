@@ -742,78 +742,135 @@ This concludes our blog, please see how to further customize our model by clicki
 - A `module` calling on needed bare ops directly is just a few lines
 - Modules nested in custom layers benefit from the `functional` API
 
-in this blog we continue to train our computer to "understand" elementary symbolic algebra
-we slightly change our approach however
-instead of having a fixed input/context for our encoder/decoder stacks, we follow the idea of "sliding contexts" from this [paper](https://arxiv.org/pdf/1901.02860.pdf)
-in addition, we continue to architect our model with a mixture of "validated" Keras `layers` as well as light-weight `Modules` containing bare ops
-our objective is to ultimately arrive to a model representable by the [graph](./custom.pdf)
+In this blog we continue to train our computer to "understand" elementary symbolic arithmetic.
 
-just as before, we need to prep our environment in order to run any meaningful code
+We slightly change our approach however. Instead of having fixed input/context for our encoder/decoder stacks, we follow the idea of "sliding contexts" from this [paper](https://arxiv.org/pdf/1901.02860.pdf).
 
-before we start, we need to increase our dataset slightly as the training steps are becoming more meaningful
-calling the `dump_dset` function with a parameters object will update our stored binary file shards
+In addition, we continue to architect our model with a mixture of "validated" Keras `layers` as well as light-weight `Modules` containing bare TF ops.
 
-for verification purposes, loading our already created meta data from the sources gives us
+Our objective is to ultimately arrive at a model representable by the [graph](./custom.pdf).
 
-we also need to expand our previously used `formatter`
-as we intend to concatenate subsequent inputs in our "sliding context", we need to end the result, `res`, feature of our samples with our `STP = "|"` token
-please also note how we have started to use `tf.debugging.assert`s just to increase our confidence in the correctness of our data
-later we will be able to switch these out with the familiar Python `asserts`
+Just as before, we need to prep our environment to run any meaningful code:
 
-our `formatter` comes with an other significant adjustment
-we intend to feed both our `encoder` and our `decoder` with inputs
-namely, the encoder gets the full sample `defs` and `op`, while the decoder gets either a fully blank or a partially blanked `res`
-so our dataset will supply an `enc`, a `dec` and a `tgt` (the full correct result of the math expression in the sample) tensors
-the `rand_blank` function does the quick (inline) random blanking of the result to be fed into our `decoder`
+# code
 
-in order for our dataset to be usable, we also need to update our `adapter`
-we continue to still split our input ragged tensors into their components, and as we now have 3 ragged inputs (`enc`, `dec` and `tgt` as well, to give ourselves a choice of using custom `loss` and `metrics` implementations), the total number of input tensors to our model will thus be 6
-the adapter needs to also supply our `tgt` dense tensor for the canned `loss` and `metrics` consumption
+Before we start, we need to increase our dataset slightly as the training steps are becoming more meaningful.
 
-our new dataset creator function, `dset_for` is as follows
-we added an optionally overridable `adapter` argument to be used later
+Calling the `dump_dset` function with a parameters instance will update our stored sharded binary files.
 
-as we now have 3 pairs of input tensors, that we need to convert back into `RaggedTensor`s, we quickly added a `ToRagged` convenience layer that can be seamlessly eliminated once the Keras `Input`s start properly supporting the `ragged=True` keyword argument
+# code
 
-the `Frames` layer is the new significant addition
-with every new input `xe` for the `encoder`, it first concatenates the `prev` stored context with `xe` into `ye`
-and then it updates `prev`, to be used in the next cycle, with the concatenation of `ye` and the passed in result, `xt`
-the computations are slightly complicated due to using the raggedness of the inputs to satisfy the continuous "sliding context" requirement
-the layer also return the "row_lengths" for both `enc` and `dec` inputs
-moreover, please note that the entire `Frames` layer works exclusively with tokens, as we don't want to keep already stale embedding calculations around in our "sliding context"
+For verification purposes, loading our already created meta data from the sources gives us:
 
-as our `Frames` layer returns fixed-width dense tensors, we can adjust our carried-over `Embed` layer to use the straight `embedding_lookup` optionally
+# code
 
-we update the `Encode` and `Decode` layers with the addition of the `tf.function` decorators for the `call` methods
+We also need to expand our previously used `formatter`.
 
-our `Debed` layer is also largely a carry-over, with the adjustment for the now fixed-width tensors
+As we intend to concatenate subsequent inputs in our "sliding context", we need to end the result feature, `res`, of our samples with our `STP = "|"` token.
 
-we update the `Encoder` and `Decoder` modules with the addition of the `tf.function` decorators for the `__call__` methods
+We have started to use `tf.debugging.assert`s to increase our confidence in the correctness of our data. Later we will be able to switch these out with the familiar Python `asserts`.
 
-the same applies to our new `Attention` module
+Our `formatter` comes with an other significant adjustment.
 
-the same applies to our new `Conclusion` module as well
+We intend to feed both our `encoder` and our `decoder` with inputs. Namely, the encoder gets the concatenated `defs` and `op` features, while the decoder gets either a fully or a partially blanked `res`.
 
-to add the `tf.function` decorator to our `Dense` module, we simply inherit from the previous version
+Our dataset will supply an `enc`, a `dec` and a `tgt` (the full correct result of the math expression in the sample) tensors. The `rand_blank` function does the quick (inline) random blanking, or masking, of the arithmetic result to be fed into our `decoder` as the `des` tensor.
 
-our model needs to be updated as well to use the newly defined components
-another significant change is the addition of the "row_lengths" tensor  (directly from the ragged tensors) to all the input and output, now fixed-width dense tensors
-once again, we were able to return to using dense tensors for our inputs, despite the "raggedness" of our samples, because we adopted the "sliding context" strategy, thus smoothly concatenating an entire "history" of inputs, into our "working set"
+# code
 
-our parameters need to be expanded with the addition of the values for the now fixed widths of both our `encoder` and `decoder` 
+In order for our dataset to be usable, we also need to update our `adapter`.
 
-by firing up our training session, we can confirm the model's layers and connections
-the listing of a short session follows
-we can easily adjust the parameters to tailor the length of the sessions to our objectives
+We continue to split our input ragged tensors into their components, and as we now have 3 ragged inputs: `enc`, `dec` and `tgt`, the total number of dense input tensors to our model will be 6.
 
-with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
-if you haven't run the code below, an already generated graph is [here](./custom.pdf)
+The adapter needs to also supply our `tgt` dense tensor to the canned `loss` and `metrics` components that drive the gradient calculations.
 
-we can also switch over to the new `eager` execution mode
-this is particularly convenient for experimentation, as all ops are immediately executed
-and here is a much shortened `eager` session
+In addition, we chose to add `tgt`, or its two components, to our inputs as well. This duplication gives us the chance of feeding correct arithmetic results into our "sliding context".
 
-this concludes our blog, please see how to use the `autograph` features with our model by clicking on the next blog
+# code
+
+Our new dataset creator function, `dset_for` is as follows.
+
+We have added an optionally overridable `adapter` argument to be used later.
+
+# code
+
+As we now have 3 pairs of input tensors, that we need to convert back into `RaggedTensor`s, we quickly add a `ToRagged` convenience layer that can be seamlessly eliminated once the Keras `Input`s start properly supporting the `ragged=True` keyword argument:
+
+# code
+
+The `Frames` layer is the new significant addition to our code.
+
+With every new encoder input sequence of tokens `xe`, it first concatenates the `prev` stored context with `xe` and then stores the result in `ye`.
+
+Then it updates the `prev` variable with the concatenation of `ye` and the passed in correct arithmetic result `xt`. The resulting `prev` is to be used in the next cycle.
+
+The computations are slightly more complex due to using the raggedness of the inputs to satisfy the continuous, seamlessly "sliding context" requirement.
+
+The layer also returns the "row_lengths" tensors for both `enc` and `dec` inputs. They will be used later for propagating the input token sequences' "raggedness".
+
+The entire `Frames` layer works exclusively with tokens, as we don't want to keep stale embedding calculations around in our "sliding context".
+
+# code
+
+As our `Frames` layer returns fixed-width dense tensors once again, we can re-adjust our carried-over `Embed` layer to use the straight `embedding_lookup` instead.
+
+# code
+
+We update the `Encode` and `Decode` layers with the addition of the `tf.function` decorators for the `call` methods.
+
+# code
+
+Our `Debed` layer is also largely a carry-over, with the adjustment for the now fixed-width tensors.
+
+# code
+
+We update the `Encoder` and `Decoder` modules with the addition of the `tf.function` decorators for the `__call__` methods
+
+# code
+
+The same applies to our new `Attention` module:
+
+# code
+
+The same applies to our new `Conclusion` module as well:
+
+# code
+
+To add the `tf.function` decorator to our `Dense` module, we simply inherit from the previous version:
+
+# code
+
+Our model instance needs to be updated as well to use the newly defined components.
+
+Another significant change is the addition of the "row_lengths" tensor (received directly from the ragged tensors) to all the now fixed-width input and output dense tensors.
+
+Once again, we were able to return to using dense tensors for our inputs, despite the "raggedness" of our samples, because we adopted the "sliding context" strategy, thus smoothly concatenating an entire "history" of inputs and correct arithmetic results, into our "working set":
+
+# code
+
+Our parameters need to be expanded with the addition of the values for the now fixed widths of both our `encoder` and `decoder` stacks.
+
+# code
+
+By firing up our training session, we can confirm the model's layers and connections. The listing of a short session follows.
+
+We can easily adjust the parameters to tailor the length of the sessions to our objectives.
+
+# code
+
+With our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize.
+
+If you haven't run the code below, an already generated graph is [here](./custom.pdf).
+
+# code
+
+We can also switch over to the new `eager` execution mode.
+
+Once again, this is particularly convenient for experimentation, as all ops are immediately executed. And here is a much shortened `eager` session.
+
+# code
+
+This concludes our blog, please see how to use the `autograph` features with our model by clicking on the next blog.
 
 ** Autograph: Intuitive Data-Driven Control At Last
 
@@ -822,51 +879,83 @@ this concludes our blog, please see how to use the `autograph` features with our
 - Control is intuitive at last from data-driven branching to searching
 - On-the-fly "python ops" also provide insights into inner processes
 
-continuing our blogs, we shift our focus to yet another new feature in TF, the `autograph` functionality
-previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control
-by writing on-demand Python code now, `autograph` transparently patches all the necessary graph ops together and packages the result into a "python op"
-while the generated new ops are potentially a lot faster than the code before them, in this blog we are more interested in the new expressive powers of the `autograph` package
-specifically, we look at what becomes possible when decorating our functions with the new `tf.function` decorator, as doing this would by default invoke the `autograph` functionality
-our objective is to ultimately arrive to a model of the generated new pops as represented by the [graph](./autograph.pdf)
+Continuing our blogs, we shift our focus to yet another new feature in TF, the `autograph` functionality.
 
-just as before, we need to prep our environment in order to run any meaningful code
+Previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control.
 
-next, we borrow the `pos_timing` function from our previous blogs, and override it to return a constant "timing signal" tensor, depending on the `width` and `depth` arguments
-as our first task is to implement a "python branch" in our new `Embed` op, we will be using two different "timing" tensors, one for the `encode` input and the other for the `decode` input
+By generating on-demand Python code now, `autograph` transparently patches all the necessary graph ops together and packages the result into a "python op".
 
-the `Embed` layer will thus create the two constant tensors
-our model will call the shared `Embed` instance for both of our stacks
-as we have decorated its `call` method with `tf.function`, we can use familiar and intuitive Python comparisons to branch on the value of tensors on-the-fly, during graph execution
-clearly, our two stacks, while having the same `depth`s, have different `width`s
-also the constant "timing" tensors have different `width`s as well
-yet we are still able to pick-and-match the otherwise incompatible tensors and successfully add them together, all dependent on the `width` of our "current" input tensor
+While the generated new ops are potentially faster than the code before them, in this blog we are more interested in the new expressive powers of the `autograph` package.
 
-next we demonstrate how on-the-fly "python ops" can also provide insights into inner processes and data flows
-we borrow our `Frames` layer from the previous blog and override its `call` method with a `tf.function` decorated new version that, besides calling on `super().call()`, also calls a new `print_row` Python function on every row in our batch
-yes, we are calling a Python function and printing its results in a TF graph op while never leaving our intuitive and familiar Python environment! Isn't that great?
-the `print_row` function itself is simple, it iterates through the tokens of the "row", it does a lookup of each in our `vocab` "table" for the actual character representing the token and then it joins all the characters and prints out the resulting string
-and, if we scroll down to the listing of our training session, we can actually see the "sliding context" of our samples as they fly by during our training
-needless to say, the listing confirms that our `Frames` layer does a good job concatenating the varied length sample inputs, the target results, as well as the necessary separators
-as a result, a simple Python function usable during graph ops, provides us invaluable insights deep into our inner processes and data flow
+Specifically, we look at what becomes possible when decorating our functions with the new `tf.function` decorator, as doing this would by default invoke the `autograph` functionality.
 
-our next new layer is the `Probe` layer, showcasing how control is intuitive at last from data-driven branching to searching
-it is a temporary replacement for our previous `Debed` layer
-the `Probe` layer implements an approximation of "Beam Search", see [paper](https://arxiv.org/pdf/1702.01806.pdf)
-it effectively iterates through the hidden dimensions of the output, and based on parallel `topk` searches, comparing various choices for "debeding" the output, it settles on an "optimal" debedding and thus final token output for our `decoder`
-the point of the `Probe` layer in the blog is to showcase data-driven iterations and parallel searches all implemented as "Python ops"
-to be continued...
+Our objective is to ultimately arrive at a model as represented by the [graph](./autograph.pdf).
 
-our model needs to be updated as well to use the newly defined components
-other than that, we are ready to start training
+Just as before, we need to prep our environment to run any meaningful code:
 
-by firing up our training session, we can confirm the model's layers and connections
-the listing of a short session follows
-we can easily adjust the parameters to tailor the length of the sessions to our objectives
+# code
 
-with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
-if you haven't run the code below, an already generated graph is [here](./autograph.pdf)
+Next, we borrow the `pos_timing` function from our previous blogs, and override it to return a constant "timing signal" tensor, depending on the `width` and `depth` arguments.
 
-this concludes our blog, please see how to use customize the losses and metrics driving the training by clicking on the next blog"
+As our first task is to implement a "python branch" in our new `Embed` op, we will be using two different "timing" tensors, one for the `encode` input and the other for the `decode` input.
+
+# code
+
+The `Embed` layer will thus create the two constant tensors to be sourced in the subsequent `call` methods.
+
+Our model will call the shared `Embed` instance for both of our stacks. As we have decorated its `call` method with `tf.function`, we can use familiar and intuitive Python comparisons to branch on the value of tensors on-the-fly, during graph execution.
+
+Clearly, our two stacks, while having the same `depth`s, have different `width`s. Also the constant "timing" tensors have different `width`s as well.
+
+Yet we are still able to pick-and-match the otherwise incompatible tensors and successfully add them together, all depending on the actual `width` of our "current" input tensor:
+
+# code
+
+Next we demonstrate how on-the-fly "python ops" can also provide insights into inner processes and data flows.
+
+We borrow our `Frames` layer from the previous blog and override its `call` method with a `tf.function` decorated new version that, besides calling `super().call()`, also calls a new `print_row` Python function on every row in our batch.
+
+Yes, we are calling a Python function and printing its results in a TF graph op while never leaving our intuitive and familiar Python environment! Isn't that great?
+
+The `print_row` function itself is simple, it iterates through the tokens of the "row", it does a lookup of each in our `vocab` "table" for the actual character representing the token and then it "joins" all the characters and prints out the resulting string.
+
+And, if we scroll down to the listing of our training session, we can actually see the "sliding context" of our samples as they fly by during our training.
+
+Needless to say, the listing confirms that our `Frames` layer does a good job concatenating the varied length sample inputs, the target results, as well as the necessary separators. As a result, a simple Python function, usable during graph ops, provides us invaluable insights deep into our inner processes and data flow.
+
+# code
+
+Our next new layer is the partial `Deduce` layer, showcasing how control is intuitive at last from data-driven branching to searching.
+
+This layer will be used in the next group of blogs as a replacement for our previous `Debed` layer. It contains a tensor-dependent `for` loop to iteratively replace our masked characters with "deduced" ones.
+
+The future `Probe` layer, building on the `Deduce` scheme, implements an approximation of "Beam Search", see [paper](https://arxiv.org/pdf/1702.01806.pdf).
+
+It effectively iterates through the hidden dimensions of the output, and based on parallel `topk` searches, comparing various choices for "debeding" the output, it settles on an "optimal" debedding and thus final token output for our `decoder`.
+
+Without `autograph` the data-driven looping/branching graph ops would have to be expressed in a much more convoluted manner. 
+
+# code
+
+Our model needs to be updated as well to use the newly defined components.
+
+Other than that, we are ready to start training:
+
+# code
+
+By firing up our training session, we can confirm the model's layers and connections. The listing of a short session follows.
+
+We can easily adjust the parameters to tailor the length of the sessions to our objectives.
+
+# code
+
+With our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize.
+
+If you haven't run the code below, an already generated graph is [here](./autograph.pdf).
+
+# code
+
+This concludes our blog, please see how to use customize the losses and metrics driving the training by clicking on the next blog.
 
 ** Modular And Reusable Metrics All The Way
 
@@ -875,41 +964,67 @@ this concludes our blog, please see how to use customize the losses and metrics 
 - Customizing the "metering" protocol through subclassing is shown
 - Blended, mixed metering strategies are now possible as well
 
-as we have run various training sessions, and we have approached modeling itself from various angles, it is time for us to consider the piece of TF functionality that ties it all together
-ultimately, the end goal of any modeling, and of the actual training with our models, is to arrive to simply quantifiable "measures", the `losses`, that we can then use in our repeated iterations of tuning the weights of the model
-a `loss` is defined as some sort of difference, or "distance", between the results of our model's calculations and the given targets
-specifically, we have been using `crossentropy`, (see a fun explanation [here](https://colah.github.io/posts/2015-09-Visual-Information/)) as that "distance"
+As we have run various training sessions, and we have approached modeling itself from various angles, it is time for us to consider the piece of TF functionality that ties it all together.
 
-just as before, we need to prep our environment in order to run any meaningful code
+Ultimately, the end goal of any modeling, and of the actual training with our models, is to arrive to simply quantifiable "measures", the `losses`, that we can then use in our repeated iterations of gradient calculations and subsequent tuning the weights of the model.
 
-in order to be able to experiment with multiple `loss` and `metrics` settings, we duplicate our `tgt` tensors in our newly defined `adapter` function for our `dataset`
+A `loss` is defined as some sort of difference, or "distance", between the results of our model's calculations and the given targets.
 
-we also adjust our `ToRagged` layer
-instead of leaving the `tf.function` decorator generic, which is allowing multiple version of the op to be generated based on the actual shapes of the input tensors
-we restrict the generated op to only one version: the one taking any size 1D triple input pairs
+Specifically, we have been using `crossentropy`, (see a fun explanation [here](https://colah.github.io/posts/2015-09-Visual-Information/)) as that "distance".
 
-and now we are ready to tackle replacement `loss` and `metric` classes
-the Keras `losses.Loss` base class, that all the various other "losses" are derived from, has a `call` method with the above mentioned two arguments: the target tensor and the model's output tensor
-our replacement implementation of the method skips the various checks and validations from the canned version and simply flattens the two known tensors followed by calling the efficient graph op implementation of crossentropy
+Just as before, we need to prep our environment to run any meaningful code:
 
-our `Metric` class is even simpler, it adds the aggregating `total` and `count` variables and then delegates to calling our `xent` function (the same that our matching `Loss` uses)
+# code
 
-our model needs to be updated to use the newly defined components, including our new `Loss` and `Metric`
-as we include both the `Debed` and the `Probe` layers from our previous blogs, and they show up as a pair of output tensors respectively identifiable by their names, we can assign different losses and metrics to each
-we chose to use the same `loss` and `metric` for both
-Keras obviously will sum both losses and metrics to calculate the end result
-nevertheless, since we have a pair of outputs, we also had to double the targets that the `loss` and `metric` would use
+In order to be able to experiment with multiple `loss` and `metrics` settings, we duplicate our `tgt` tensors in our newly defined `adapter` function of our `dataset`.
 
-we also need to update our parameters with instances of our specific `Loss` and `Metric` instances we want Keras to call on
+# code
 
-and now we are ready to start our training session
-we can confirm the model's layers and connections
-we can easily adjust the parameters to tailor the length of the sessions to our objectives
+We also adjust our `ToRagged` layer.
 
-with our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize
-if you haven't run the code below, an already generated graph is [here](./metrics.pdf)
+Instead of leaving the `tf.function` decorator generic, which is allowing multiple version of the op to be generated based on the actual shapes of the input tensors, we restrict the generated op to only one version: the one taking triple input tensor pairs of any 1D shape. 
 
-this concludes our blog, please see how to use Keras callbacks by clicking on the next blog"
+# code
+
+And now we are ready to tackle replacement `loss` and `metric` classes.
+
+The Keras `losses.Loss` base class, that all the various other "losses" are derived from, has a `call` method with the above mentioned two arguments: the target tensor and the model's output tensor.
+
+Our replacement implementation of the method skips the various checks and validations from the canned version and simply flattens the two known tensors followed by calling directly the efficient graph op implementation of crossentropy:
+
+# code
+
+Our `Metric` class is even simpler, it adds the aggregating `total` and `count` variables and then delegates to calling our `xent` function (the same that our matching `Loss` uses).
+
+# code
+
+Our model needs to be updated to use the newly defined components, including our new `Loss` and `Metric` classes.
+
+As we include both the `Debed` and the `Probe` layers from our previous blogs, and they show up as a pair of output tensors respectively identifiable by their names, we can assign different losses and metrics to each.
+
+We chose to use the same `loss` and `metric` for both. Keras, as expected, will sum both losses and metrics to calculate the end result.
+
+To keep things simple, and since we have a pair of outputs, we also had to double the targets that the `loss` and `metric` would use:
+
+# code
+
+We also need to update our parameters with instances of our specific `Loss` and `Metric` instances we want Keras to call on:
+
+# code
+
+And now we are ready to start our training session.
+
+We can confirm the model's layers and connections and we can easily adjust the parameters to tailor the length of the sessions to our objectives.
+
+# code
+
+With our TensorBoard `callback` in place, the model's `fit` method will generate the standard summaries that TB can conveniently visualize.
+
+If you haven't run the code below, an already generated graph is [here](./metrics.pdf).
+
+# code
+
+This concludes our blog, please see how to use Keras callbacks by clicking on the next blog.
 
 ** Keras Callbacks: Extending Their Scope And Usage
 
