@@ -10,7 +10,7 @@ The motivation behind the **qnarre** effort is our unconditional love for our ch
 
 We believe, and with the following series of blogs, we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative.
 
-Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
+Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, socialism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
 Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American-born children** from greedy professional torturing and forceful, institutionalized separation and isolation. Family Court-mandated, and even directly ordered, parental alienation, while paying astronomical profits to the "trusted" elite, is nothing but ruthless and cruel child abuse.
 

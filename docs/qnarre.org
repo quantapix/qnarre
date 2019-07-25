@@ -10,7 +10,7 @@ The motivation behind the **qnarre** effort is our unconditional love for our ch
 
 We believe, and with the following series of blogs, we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative.
 
-Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
+Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, socialism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
 Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American-born children** from greedy professional torturing and forceful, institutionalized separation and isolation. Family Court-mandated, and even directly ordered, parental alienation, while paying astronomical profits to the "trusted" elite, is nothing but ruthless and cruel child abuse.
 
@@ -1061,21 +1061,21 @@ to be expanded...
 
 We have outlined our overall objective and also have considered just the right tools to use to achieve it. In this second group of blogs, we set out to introduce the conceptual framework for our efforts.
 
-We present a high-level, yet still easily simulatable view of our problem domain. We also define key abstractions to provide an unambiguous foundation for our subsequent work. And we clarify mechanism to numerically analyze, or just to simply measure, progress and results in a reproducible fashion. In the end, we also draw conclusions and offer usable "packaged" solutions.
+We present a high-level, yet still easily simulatable view of our problem domain. We also define key abstractions to provide an unambiguous foundation for our subsequent work. And we clarify mechanisms to numerically analyze, or just to simply measure, progress and results in a reproducible fashion. In the end, we also draw conclusions and offer usable "packaged" solutions.
 
-Most importantly, we introduce a **flexible, scalable and easily testable** "proxy"-model that we can use to drive our deep-learning development. Our problem domain is clearly nebulous. Without firm and trustworthy guidance, we could easily lose direction.
+Most importantly, we introduce a **flexible, scalable and easily testable** "proxy"-model that we can use to drive the development of our deep-learning modules. Our problem domain is clearly nebulous. Without firm and trustworthy guidance, we could easily lose direction.
 
-As we are attempting to teach our computer to "understand" first, we reach for the ultimate, and undoubtedly universal, symbolic language: mathematics. To this effect, we have already introduced the problem of training elementary arithmetic in a previous [blog]().
+As we are attempting to teach our computer to "understand" first, we reach for the ultimate and undoubtedly universal symbolic language: simple, elementary mathematics. To this effect, we have already introduced the problem of training first-grader's arithmetic in a previous [blog](../advanced_tf/dataset.html).
 
-With these blogs, we greatly expand on that first, exploratory attempt. There are numerous recent [results]() in NLP (natural language processing in AI) that **approach or even surpass** measured levels of human comprehension. We first provide a framework of modules that reproduce the ideas, schemes, and results presented in the latest published research.
+With the below presented new blogs, we greatly expand on that first, exploratory attempt. There are numerous recent [results](./sota_nlp.html) in NLP (natural language processing in AI) that **approach or even surpass** measured levels of human comprehension. We provide a framework of modules that reproduce the ideas, schemes, and results presented in those latest published research.
 
-As the symbolism of our "proxy" model is universally understood, meaning that it is fully predictable, synthesizing a virtually infinite and arbitrarily precise training sample base is within our reach. With purpose-built training data sets, we then build on the published state-of-the-art results, measurably fine-tuning them.
+As the symbolism of our "proxy" model is universally understood, meaning that it is fully deterministic and predictable, synthesizing a virtually infinite and arbitrarily precise training sample base is well within our reach. With purpose-built training data sets, we then build on the published state-of-the-art results, measurably fine-tuning them.
 
 ** Reductio Ad Absurdum - A Judicial Simulation
 
 - Claims, proofs and realities
 - "Conflicts are opportunities"
-- Metrics: coherence, fragmentation
+- Metrics: coherence, fragmentation and turmoil
 - Judgments: from certainty through ambiguity to absurdity
 
 > "Reductio ad absurdum... is a form of argument that attempts to either disprove a statement by showing it inevitably leads to a ridiculous, absurd, or impractical conclusion, or to prove one by showing that if it were not true, the result would be absurd or impossible." - Wikipedia.
@@ -1401,7 +1401,25 @@ This blog introduced the most essential "framing" concepts of our model. A subse
 
 ** A Psychological Object Model Of The ABA "Frequent Fliers"
 
+- American Bar: "Parents preoccupied with identity reconstruction"
+- Narcissistic Personality Disorder: "If they are male (and most are)"
+- "Psychology’s Replication Crisis Is Running Out of Excuses"
+- Soviet Stalin: "Show me the man and I’ll find you the crime"
+
 - TODO: expand bullets
+
+- ABA ["frequent fliers"](https://www.americanbar.org/content/dam/aba/events/family_law/2014/05/section_of_familylawspringcleconference/11_fri_custody.authcheckdam.pdf)
+
+- "the parents in conflict tend to be more preoccupied with their own identity reconstruction"
+
+- NPD ["feminism"](https://owlcation.com/social-sciences/What-Judges-Need-to-Know-About-Narcissistic-Personality-Disorder-in-Custody-Cases)
+
+The NPD will bring a plethora of legal actions that barely make sense or are fully nonsense. They will often burn through attorneys. They will have a history of multiple PFA’s against them. If they are male (and most are), they may have multiple custody issues with multiple women
+
+- Psychology ["science"](https://www.theatlantic.com/science/archive/2018/11/psychologys-replication-crisis-real/576223/)
+
+- In his foreword to my book, Alan Dershowitz discusses his time litigating cases in the old Soviet Union. He was always taken by the fact that they could prosecute anybody they wanted because some of the statutes were so vague
+- Stalin ["vague"](https://www.cato.org/policy-report/januaryfebruary-2010/criminalization-almost-everything)
 - most humans simply say no to such acts considering that children are involved
 - there are humans, however, Nazi SS concentration-camp guards are quintessential examples, that will do the "job" as long as there is palatable excuse for them to "hate or despise the others"
 - all
@@ -1417,6 +1435,11 @@ YNX, MSX, FIX
 - GEN
 
 ** Representative Metrics Through Statistical Modeling
+
+- Meta-Data: From Black & White To Full Color
+- Probabilistic Modeling: "Quantumized" Credibility Of Claims
+- Learned Derivatives: Coherence, Frag(mentation) And Turmoil
+- Profiling Lawyers And Predicting Trends In The Courtroom
 
 - TODO: expand bullets
 
@@ -1434,6 +1457,10 @@ YNX, MSX, FIX
 - turmoil
 
 ** Learn, Adapt And Protect Effectively From "Elite" Predators
+
+- Deceive, Deceive, Deceive: The More "Elite", The More Deceitful
+- Low-Cost Communication: Professional Profiling Becomes "Two Way"
+- The Era Of Evolutionary Competition Of AIs Is Upon Us
 
 - TODO: expand bullets
 
