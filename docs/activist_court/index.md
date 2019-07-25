@@ -42,33 +42,33 @@ As the symbolism of our "proxy" model is universally understood, meaning that it
 
 ## [A Psychological Object Model Of The ABA "Frequent Fliers"](./objects.html)
 
-* American Bar: "Parents Preoccupied With Identity Reconstruction"
-* Narcissistic Personality Disorder: "If **They Are Male** (And Most Are)"
-* "Psychology’s Replication Crisis Is Running Out of Excuses"
-* Soviet Stalin: "Show Me The Man And I’ll Find You The Crime"
+* American Bar: "parents preoccupied with identity reconstruction"
+* Narcissistic Personality Disorder: "if they are male (**and most are**)"
+* "Psychology’s replication crisis is running out of excuses"
+* Soviet Stalin: "show me the man and I’ll find you the crime"
 * [more detail...](./objects.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/objects.ipynb)
 
 ## [From Purposefully Fabricated Conflicts To Ideological Activism](./activism.html)
 
-* "Divorce Law Rigged To Torture Children"
-* "Activist Family Court Victimizing Children"
-* "Family Court Knowingly Forcing Children Into Poverty"
-* "Court Protecting, Praising Elite White Child Predator Men"
+* "Divorce law rigged to torture children"
+* "Activist Family Court victimizing children"
+* "Family Court knowingly forcing children into poverty"
+* "Court protecting, praising elite white child predator men"
 * [more detail...](./activism.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/activism.ipynb)
 
 ## [Representative Metrics Through Statistical Modeling](./metrics.html)
 
-* Meta-Data: From Black & White To Full Color
-* Probabilistic Modeling: "Quantumized" Credibility Of Claims
-* Learned Derivatives: Coherence, Frag(mentation) And Turmoil
-* Profiling Lawyers And Predicting Trends In The Courtroom
+* Meta-Data: from black & white to full color
+* Probabilistic modeling: "quantumized" credibility of claims
+* Learned derivatives: coherence, fragmentation and turmoil
+* Profiling lawyers and predicting trends in the Courtroom
 * [more detail...](./metrics.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/metrics.ipynb)
 
 ## [Learn, Adapt And Effectively Protect From "Elite" Predators](./protect.html)
 
-* Deceive, Deceive, Deceive: The More "Elite", The More Deceitful
-* Low-Cost Communication: Professional Profiling Becomes "Two Way"
-* The Era Of Evolutionary Competition Of AIs Is Upon Us
+* Deceive, deceive, deceive: the more "elite", the more deceitful
+* Low-Cost communication: professional profiling becomes "two way"
+* The era of evolutionary competition of AIs
 * [more detail...](./protect.html)
 
 [back](../)
