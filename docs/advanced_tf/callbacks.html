@@ -13116,32 +13116,29 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Keras-Callbacks:-Extending-Their-Scope-And-Usage">Keras Callbacks: Extending Their Scope And Usage<a class="anchor-link" href="#Keras-Callbacks:-Extending-Their-Scope-And-Usage">&#182;</a></h1><ul>
-<li>TODO: expand bullets</li>
-<li>this blog, as a transitioning piece between our to groups of blogs, is still work in progress</li>
-<li>it concerns the various <code>callbacks</code> that we can register during training sessions</li>
-<li>as automating our sessions is an important objective of ours, specifically to enable us to finetune our training <code>hyper-parameters</code>, we will be adding to this blog as the rest of the next group's blogs materialize</li>
-</ul>
-
+<h1 id="Keras-Callbacks:-Extending-Their-Scope-And-Usage">Keras Callbacks: Extending Their Scope And Usage<a class="anchor-link" href="#Keras-Callbacks:-Extending-Their-Scope-And-Usage">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>just as before, we need to prep our environment in order to run any meaningful code</li>
-</ul>
+<p>As a transitioning piece between our to groups of blogs, this blog is still work in progress.</p>
+<p>It concerns the various <code>callbacks</code> that we can register during training sessions.</p>
+<p>As automating our sessions is an important objective of ours, specifically to enable us to fine-tune our training <code>hyper-parameters</code>, we will be adding to this blog as the rest of the next group's blogs materialize.</p>
+<p>Just as before, we need to prep our environment to run any meaningful code:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">pathlib</span> <span class="k">as</span> <span class="nn">pth</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
 <span class="kn">import</span> <span class="nn">dataset</span> <span class="k">as</span> <span class="nn">qd</span>
 <span class="kn">import</span> <span class="nn">custom</span> <span class="k">as</span> <span class="nn">qc</span>
 <span class="n">ks</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span>
@@ -13156,17 +13153,15 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and now we are ready to define our model</li>
-<li>as this blog focuses on the actual training process, our model can be reused directly from a previous blog</li>
-</ul>
+<p>And now we are ready to define our model.</p>
+<p>As this blog focuses on the actual training process, our model can be reused directly from a previous blog:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
@@ -13179,7 +13174,7 @@ div#notebook {
     <span class="n">ye</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Encode</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">embed</span><span class="p">(</span><span class="n">y</span><span class="p">[:</span><span class="mi">2</span><span class="p">]))</span>
     <span class="n">yd</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Decode</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">embed</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span> <span class="o">+</span> <span class="p">[</span><span class="n">ye</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Debed</span><span class="p">(</span><span class="n">ps</span><span class="p">)(</span><span class="n">yd</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">ks</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;callbacks&#39;</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">y</span><span class="p">)</span>
     <span class="n">m</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="p">])</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">m</span>
@@ -13193,27 +13188,47 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>once the model is defined, we now adjust our main calling function</li>
-<li>at this point we define our <code>callbacks</code> that should be kept "in loop" during our training session</li>
-<li>to be expanded...</li>
-</ul>
+<p>Once the model is defined, we adjust our main calling function.</p>
+<p>At this point we define our <code>callbacks</code> that should be kept "in loop" during our training session.</p>
+<p>Initially we still want to include the standard Keras TensorBoard callbacks.</p>
+<p>Additionally, we want to roll our own checkpointing. We choose to use the latest <code>Checkpoint</code> and <code>CheckpointManager</code> classes (see our <a href="./trackable.html">blog</a> regarding this topic).</p>
+<p>For this we define a custom Keras <code>Callback</code> class called <code>CheckpointCB</code>. As this callback is only used to save or update our current checkpoint file, it only needs to override the <code>on_epoch_end</code> callback.</p>
+<p>In the override it simply calls the manager's <code>save</code> method.</p>
+<p>To be expanded...</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">main_graph</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">pth</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;/tmp/q&#39;</span><span class="p">)</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">-%H%M%S&#39;</span><span class="p">)</span>
+    <span class="n">lp</span> <span class="o">=</span> <span class="n">b</span> <span class="o">/</span> <span class="n">f</span><span class="s1">&#39;logs/</span><span class="si">{lp}</span><span class="s1">&#39;</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Checkpoint</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">mp</span> <span class="o">=</span> <span class="n">b</span> <span class="o">/</span> <span class="s1">&#39;model&#39;</span> <span class="o">/</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{m.name}</span><span class="s1">&#39;</span>
+    <span class="n">mgr</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">CheckpointManager</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">mp</span><span class="p">),</span> <span class="n">max_to_keep</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="c1"># if mgr.latest_checkpoint:</span>
+    <span class="c1">#     vs = tf.train.list_variables(mgr.latest_checkpoint)</span>
+    <span class="c1">#     print(f&#39;\n*** checkpoint vars: {vs}&#39;)</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">mgr</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">)</span><span class="o">.</span><span class="n">expect_partial</span><span class="p">()</span>
 
-<span class="k">def</span> <span class="nf">main_graph</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
-    <span class="n">ld</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">-%H%M%S&#39;</span><span class="p">)</span>
-    <span class="n">ld</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/tmp/q/logs/</span><span class="si">{ld}</span><span class="s1">&#39;</span>
-    <span class="n">cs</span> <span class="o">=</span> <span class="p">[</span><span class="n">ks</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">(</span><span class="n">log_dir</span><span class="o">=</span><span class="n">ld</span><span class="p">,</span> <span class="n">histogram_freq</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span><span class="p">)</span>
+    <span class="k">class</span> <span class="nc">CheckpointCB</span><span class="p">(</span><span class="n">ks</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">Callback</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">on_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="n">mgr</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+    <span class="n">cbs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">CheckpointCB</span><span class="p">(),</span>
+        <span class="n">ks</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">(</span>
+            <span class="n">log_dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">lp</span><span class="p">),</span>
+            <span class="n">histogram_freq</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13224,17 +13239,15 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we also need to update our parameters as they relate to our "callback objectives"</li>
-<li>to be expanded...</li>
-</ul>
+<p>We may also need to update our parameters as they relate to our "callback objectives".</p>
+<p>To be expanded...</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -13261,25 +13274,96 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and now we are ready to start our training session</li>
-<li>we can confirm the model's layers and connections</li>
-<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
-</ul>
+<p>And now we are ready to start our training session.</p>
+<p>We can confirm the model's layers and connections. We can easily adjust the parameters to tailor the length of the sessions to our objectives.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">ps</span> <span class="o">=</span> <span class="n">qd</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
-<span class="c1"># main_graph(ps, dset_for(ps), model_for(ps))</span>
+<span class="n">main_graph</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">qc</span><span class="o">.</span><span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">))</span>
 </pre></div>
 
     </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Model: &#34;callbacks&#34;
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+input_1 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+input_2 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+input_3 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+input_4 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+input_5 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+input_6 (InputLayer)            [(None,)]            0                                            
+__________________________________________________________________________________________________
+to_ragged (ToRagged)            [(None, None), (None 0           input_1[0][0]                    
+                                                                 input_2[0][0]                    
+                                                                 input_3[0][0]                    
+                                                                 input_4[0][0]                    
+                                                                 input_5[0][0]                    
+                                                                 input_6[0][0]                    
+__________________________________________________________________________________________________
+frames (Frames)                 [(5, 25), (None,), ( 125         to_ragged[0][0]                  
+                                                                 to_ragged[0][1]                  
+                                                                 to_ragged[0][2]                  
+__________________________________________________________________________________________________
+embed (Embed)                   multiple             120         frames[0][0]                     
+                                                                 frames[0][1]                     
+                                                                 frames[0][2]                     
+                                                                 frames[0][3]                     
+__________________________________________________________________________________________________
+encode (Encode)                 [(None, 25, 6), (Non 90516       embed[0][0]                      
+                                                                 embed[0][1]                      
+__________________________________________________________________________________________________
+decode (Decode)                 [(None, 15, 6), (Non 54732       embed[1][0]                      
+                                                                 embed[1][1]                      
+                                                                 encode[0][0]                     
+__________________________________________________________________________________________________
+debed (Debed)                   (None, None, None)   140         decode[0][0]                     
+                                                                 decode[0][1]                     
+==================================================================================================
+Total params: 145,633
+Trainable params: 145,508
+Non-trainable params: 125
+__________________________________________________________________________________________________
+None
+Epoch 1/5
+20/20 [==============================] - 15s 733ms/step - loss: 1.3225 - sparse_categorical_crossentropy: 1.3311
+Epoch 2/5
+20/20 [==============================] - 0s 6ms/step - loss: 1.2037 - sparse_categorical_crossentropy: 1.2163
+Epoch 3/5
+20/20 [==============================] - 0s 6ms/step - loss: 1.2067 - sparse_categorical_crossentropy: 1.2187
+Epoch 4/5
+20/20 [==============================] - 0s 6ms/step - loss: 1.1113 - sparse_categorical_crossentropy: 1.1200
+Epoch 5/5
+20/20 [==============================] - 0s 6ms/step - loss: 1.0234 - sparse_categorical_crossentropy: 1.0336
+</pre>
+</div>
+</div>
+
 </div>
 </div>
 
@@ -13287,9 +13371,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>to be expanded...</li>
-</ul>
+<p>A quick <code>ls</code> into our <code>/tmp/q/model/callbacks</code> checkpoint directory shows that our manager is in fact updating the checkpoint files and it is keeping only the last three, just as we expect.</p>
+<p>To be expanded...</p>
 
 </div>
 </div>

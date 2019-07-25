@@ -1032,27 +1032,53 @@ This concludes our blog, please see how to use Keras callbacks by clicking on th
 - A flexible and uniform mechanism helps with automating
 - Hyper-parameter tuning can also be aided by custom callbacks
 
-this blog, as a transitioning piece between our to groups of blogs, is still work in progress
-it concerns the various `callbacks` that we can register during training sessions
-as automating our sessions is an important objective of ours, specifically to enable us to finetune our training `hyper-parameters`, we will be adding to this blog as the rest of the next group's blogs materialize
+As a transitioning piece between our to groups of blogs, this blog is still work in progress.
 
-just as before, we need to prep our environment in order to run any meaningful code
+It concerns the various `callbacks` that we can register during training sessions.
 
-and now we are ready to define our model
-as this blog focuses on the actual training process, our model can be reused directly from a previous blog
+As automating our sessions is an important objective of ours, specifically to enable us to fine-tune our training `hyper-parameters`, we will be adding to this blog as the rest of the next group's blogs materialize.
 
-once the model is defined, we now adjust our main calling function
-at this point we define our `callbacks` that should be kept "in loop" during our training session
-to be expanded...
+Just as before, we need to prep our environment to run any meaningful code:
 
-we also need to update our parameters as they relate to our "callback objectives"
-to be expanded...
+# code
 
-and now we are ready to start our training session
-we can confirm the model's layers and connections
-we can easily adjust the parameters to tailor the length of the sessions to our objectives
+And now we are ready to define our model.
 
-to be expanded...
+As this blog focuses on the actual training process, our model can be reused directly from a previous blog:
+
+# code
+
+Once the model is defined, we adjust our main calling function.
+
+At this point we define our `callbacks` that should be kept "in loop" during our training session.
+
+Initially we still want to include the standard Keras TensorBoard callbacks.
+
+Additionally, we want to roll our own checkpointing. We choose to use the latest `Checkpoint` and `CheckpointManager` classes (see our [blog](./trackable.html) regarding this topic).
+
+For this we define a custom Keras `Callback` class called `CheckpointCB`. As this callback is only used to save or update our current checkpoint file, it only needs to override the `on_epoch_end` callback.
+
+In the override it simply calls the manager's `save` method.  
+
+To be expanded...
+
+# code
+
+We may also need to update our parameters as they relate to our "callback objectives".
+
+To be expanded...
+
+# code
+
+And now we are ready to start our training session.
+
+We can confirm the model's layers and connections. We can easily adjust the parameters to tailor the length of the sessions to our objectives.
+
+# code
+
+A quick `ls` into our `/tmp/q/model/callbacks` checkpoint directory shows that our manager is in fact updating the checkpoint files and it is keeping only the last three, just as we expect.
+
+To be expanded...
 
 
 * Modeling Ideological Judicial Activism
