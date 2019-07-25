@@ -67,7 +67,7 @@ As the symbolism of our "proxy" model is universally understood, meaning that it
 ## [Learn, Adapt And Effectively Protect From "Elite" Predators](./protect.html)
 
 * Deceive, deceive, deceive: the more "elite", the more deceitful
-* Low-Cost communication: professional profiling becomes "two way"
+* Low-cost communication: professional profiling becomes "two way"
 * The era of evolutionary competition of AIs
 * [more detail...](./protect.html)
 
