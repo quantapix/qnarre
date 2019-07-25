@@ -13116,34 +13116,20 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Autograph:-Intuitive-Data-Driven-Control-At-Last">Autograph: Intuitive Data-Driven Control At Last<a class="anchor-link" href="#Autograph:-Intuitive-Data-Driven-Control-At-Last">&#182;</a></h1><ul>
-<li>TODO: expand bullets</li>
-</ul>
-
+<h1 id="Autograph:-Intuitive-Data-Driven-Control-At-Last">Autograph: Intuitive Data-Driven Control At Last<a class="anchor-link" href="#Autograph:-Intuitive-Data-Driven-Control-At-Last">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>continuing our blogs, we shift our focus to yet another new feature in TF, the <code>autograph</code> functionality</li>
-<li>previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control</li>
-<li>by writing on-demand Python code now, <code>autograph</code> transparently patches all the necessary graph ops together and packages the result into a "python op"</li>
-<li>while the generated new ops are potentially a lot faster than the code before them, in this blog we are more interested in the new expressive powers of the <code>autograph</code> package</li>
-<li>specifically, we look at what becomes possible when decorating our functions with the new <code>tf.function</code> decorator, as doing this would by default invoke the <code>autograph</code> functionality</li>
-<li>our objective is to ultimately arrive to a model of the generated new pops as represented by the <a href="./autograph.pdf">graph</a></li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>just as before, we need to prep our environment in order to run any meaningful code</li>
-</ul>
+<p>Continuing our blogs, we shift our focus to yet another new feature in TF, the <code>autograph</code> functionality.</p>
+<p>Previously, and as far as intuitive expression of code was concerned, "graph ops" efficiently solved complex calculations while failed at simple, sequential control.</p>
+<p>By generating on-demand Python code now, <code>autograph</code> transparently patches all the necessary graph ops together and packages the result into a "python op".</p>
+<p>While the generated new ops are potentially faster than the code before them, in this blog we are more interested in the new expressive powers of the <code>autograph</code> package.</p>
+<p>Specifically, we look at what becomes possible when decorating our functions with the new <code>tf.function</code> decorator, as doing this would by default invoke the <code>autograph</code> functionality.</p>
+<p>Our objective is to ultimately arrive at a model as represented by the <a href="./autograph.pdf">graph</a>.</p>
+<p>Just as before, we need to prep our environment to run any meaningful code:</p>
 
 </div>
 </div>
@@ -13170,10 +13156,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>next, we borrow the <code>pos_timing</code> function from our previous blogs, and override it to return a constant "timing signal" tensor, depending on the <code>width</code> and <code>depth</code> arguments</li>
-<li>as our first task is to implement a "python branch" in our new <code>Embed</code> op, we will be using two different "timing" tensors, one for the <code>encode</code> input and the other for the <code>decode</code> input</li>
-</ul>
+<p>Next, we borrow the <code>pos_timing</code> function from our previous blogs, and override it to return a constant "timing signal" tensor, depending on the <code>width</code> and <code>depth</code> arguments.</p>
+<p>As our first task is to implement a "python branch" in our new <code>Embed</code> op, we will be using two different "timing" tensors, one for the <code>encode</code> input and the other for the <code>decode</code> input.</p>
 
 </div>
 </div>
@@ -13197,14 +13181,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>the <code>Embed</code> layer will thus create the two constant tensors</li>
-<li>our model will call the shared <code>Embed</code> instance for both of our stacks</li>
-<li>as we have decorated its <code>call</code> method with <code>tf.function</code>, we can use familiar and intuitive Python comparisons to branch on the value of tensors on-the-fly, during graph execution</li>
-<li>clearly, our two stacks, while having the same <code>depth</code>s, have different <code>width</code>s</li>
-<li>also the constant "timing" tensors have different <code>width</code>s as well</li>
-<li>yet we are still able to pick-and-match the otherwise incompatible tensors and successfully add them together, all dependent on the <code>width</code> of our "current" input tensor</li>
-</ul>
+<p>The <code>Embed</code> layer will thus create the two constant tensors to be sourced in the subsequent <code>call</code> methods.</p>
+<p>Our model will call the shared <code>Embed</code> instance for both of our stacks. As we have decorated its <code>call</code> method with <code>tf.function</code>, we can use familiar and intuitive Python comparisons to branch on the value of tensors on-the-fly, during graph execution.</p>
+<p>Clearly, our two stacks, while having the same <code>depth</code>s, have different <code>width</code>s. Also the constant "timing" tensors have different <code>width</code>s as well.</p>
+<p>Yet we are still able to pick-and-match the otherwise incompatible tensors and successfully add them together, all depending on the actual <code>width</code> of our "current" input tensor:</p>
 
 </div>
 </div>
@@ -13246,15 +13226,13 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>next we demonstrate how on-the-fly "python ops" can also provide insights into inner processes and data flows</li>
-<li>we borrow our <code>Frames</code> layer from the previous blog and override its <code>call</code> method with a <code>tf.function</code> decorated new version that, besides calling on <code>super().call()</code>, also calls a new <code>print_row</code> Python function on every row in our batch</li>
-<li>yes, we are calling a Python function and printing its results in a TF graph op while never leaving our intuitive and familiar Python environment! Isn't that great?</li>
-<li>the <code>print_row</code> function itself is simple, it iterates through the tokens of the "row", it does a lookup of each in our <code>vocab</code> "table" for the actual character representing the token and then it joins all the characters and prints out the resulting string</li>
-<li>and, if we scroll down to the listing of our training session, we can actually see the "sliding context" of our samples as they fly by during our training</li>
-<li>needless to say, the listing confirms that our <code>Frames</code> layer does a good job concatenating the varied length sample inputs, the target results, as well as the necessary separators</li>
-<li>as a result, a simple Python function usable during graph ops, provides us invaluable insights deep into our inner processes and data flow</li>
-</ul>
+<p>Next we demonstrate how on-the-fly "python ops" can also provide insights into inner processes and data flows.</p>
+<p>We borrow our <code>Frames</code> layer from the previous blog and override its <code>call</code> method with a <code>tf.function</code> decorated new version that, besides calling <code>super().call()</code>, also calls a new <code>print_row</code> Python function on every row in our batch.</p>
+<p>Yes, we are calling a Python function and printing its results in a TF graph op while never leaving our intuitive and familiar Python environment! Isn't that great?</p>
+<p>The <code>print_row</code> function itself is simple, it iterates through the tokens of the "row", it does a lookup of each in our <code>vocab</code> "table" for the actual character representing the token and then it "joins" all the characters and prints out the resulting string.</p>
+<p>And, if we scroll down to the listing of our training session, we can actually see the "sliding context" of our samples as they fly by during our training.</p>
+<p>Needless to say, the listing confirms that our <code>Frames</code> layer does a good job concatenating the varied length sample inputs, the target results, as well as the necessary separators.</p>
+<p>As a result, a simple Python function, usable during graph ops, provides us invaluable insights deep into our inner processes and data flow.</p>
 
 </div>
 </div>
@@ -13291,14 +13269,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our next new layer is the <code>Probe</code> layer, showcasing how control is intuitive at last from data-driven branching to searching</li>
-<li>it is a temporary replacement for our previous <code>Debed</code> layer</li>
-<li>the <code>Probe</code> layer implements an approximation of "Beam Search", see <a href="https://arxiv.org/pdf/1702.01806.pdf">paper</a></li>
-<li>it effectively iterates through the hidden dimensions of the output, and based on parallel <code>topk</code> searches, comparing various choices for "debeding" the output, it settles on an "optimal" debedding and thus final token output for our <code>decoder</code></li>
-<li>the point of the <code>Probe</code> layer in the blog is to showcase data-driven iterations and parallel searches all implemented as "Python ops"</li>
-<li>to be continued...</li>
-</ul>
+<p>Our next new layer is the partial <code>Deduce</code> layer, showcasing how control is intuitive at last from data-driven branching to searching.</p>
+<p>This layer will be used in the next group of blogs as a replacement for our previous <code>Debed</code> layer. It contains a tensor-dependent <code>for</code> loop to iteratively replace our masked characters with "deduced" ones.</p>
+<p>The future <code>Probe</code> layer, building on the <code>Deduce</code> scheme, implements an approximation of "Beam Search", see <a href="https://arxiv.org/pdf/1702.01806.pdf">paper</a>.</p>
+<p>It effectively iterates through the hidden dimensions of the output, and based on parallel <code>topk</code> searches, comparing various choices for "debeding" the output, it settles on an "optimal" debedding and thus final token output for our <code>decoder</code>.</p>
+<p>Without <code>autograph</code> the data-driven looping/branching graph ops would have to be expressed in a much more convoluted manner:</p>
 
 </div>
 </div>
@@ -13308,19 +13283,29 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Probe</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Layer</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dbd</span> <span class="o">=</span> <span class="n">qc</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;dbd&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">dim_hidden</span><span class="p">,</span> <span class="n">ps</span><span class="o">.</span><span class="n">dim_vocab</span><span class="p">])</span>
-
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">class</span> <span class="nc">Deduce</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
     <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
     <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="n">y</span><span class="p">,</span> <span class="n">lens</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbd</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:,</span> <span class="p">:</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">lens</span><span class="p">),</span> <span class="p">:]</span>
+        <span class="n">toks</span><span class="p">,</span> <span class="o">*</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">runtime</span><span class="o">.</span><span class="n">print_toks</span><span class="p">:</span>
+            <span class="n">qu</span><span class="o">.</span><span class="n">print_toks</span><span class="p">(</span><span class="n">toks</span><span class="p">,</span> <span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deduce</span><span class="p">([</span><span class="n">toks</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">toks</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">n</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">toks</span><span class="p">[:,</span> <span class="p">:</span><span class="n">n</span><span class="p">]</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">qd</span><span class="o">.</span><span class="n">MSK</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_any</span><span class="p">(</span><span class="n">m</span><span class="p">),</span> <span class="kc">True</span><span class="p">):</span>
+                <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span><span class="o">.</span><span class="n">runtime</span><span class="o">.</span><span class="n">print_toks</span><span class="p">:</span>
+                    <span class="n">qu</span><span class="o">.</span><span class="n">print_toks</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">)</span>
+                <span class="n">toks</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="p">]])</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deduce</span><span class="p">([</span><span class="n">toks</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">qd</span><span class="o">.</span><span class="n">EOS</span><span class="p">)</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_any</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">not_equal</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="k">break</span>
         <span class="k">return</span> <span class="n">y</span>
 </pre></div>
 
@@ -13332,10 +13317,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our model needs to be updated as well to use the newly defined components</li>
-<li>other than that, we are ready to start training</li>
-</ul>
+<p>Our model needs to be updated as well to use the newly defined components.</p>
+<p>Other than that, we are ready to start training:</p>
 
 </div>
 </div>
@@ -13369,11 +13352,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>by firing up our training session, we can confirm the model's layers and connections</li>
-<li>the listing of a short session follows</li>
-<li>we can easily adjust the parameters to tailor the length of the sessions to our objectives</li>
-</ul>
+<p>By firing up our training session, we can confirm the model's layers and connections. The listing of a short session follows.</p>
+<p>We can easily adjust the parameters to tailor the length of the sessions to our objectives.</p>
 
 </div>
 </div>
@@ -13396,17 +13376,6 @@ div#notebook {
 <div class="output_wrapper">
 <div class="output">
 
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 21:01:38.184058 140600421676672 training_utils.py:1455] Expected a shuffled dataset but input dataset `x` is not shuffled. Please invoke `shuffle()` on input dataset.
-</pre>
-</div>
-</div>
 
 <div class="output_area">
 
@@ -13461,28 +13430,7 @@ Trainable params: 145,508
 Non-trainable params: 125
 __________________________________________________________________________________________________
 None
-</pre>
-</div>
-</div>
 
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>W0630 21:01:39.012634 140600421676672 summary_ops_v2.py:1110] Model failed to serialize as JSON. Ignoring... Layers with arguments in `__init__` must override `get_config`.
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>
 [&#34;        y=76,x=34:y-x:42|&#34;]
 [&#34;       y=12,x=33:x*y:396|&#34;]
 [&#34;     y=-13,x=-80:x-y:-67|&#34;]
@@ -13554,10 +13502,8 @@ None
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>with our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize</li>
-<li>if you haven't run the code below, an already generated graph is <a href="./autograph.pdf">here</a></li>
-</ul>
+<p>With our TensorBoard <code>callback</code> in place, the model's <code>fit</code> method will generate the standard summaries that TB can conveniently visualize.</p>
+<p>If you haven't run the code below, an already generated graph is <a href="./autograph.pdf">here</a>.</p>
 
 </div>
 </div>
@@ -13619,9 +13565,7 @@ None
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>this concludes our blog, please see how to use customize the losses and metrics driving the training by clicking on the next blog</li>
-</ul>
+<p>This concludes our blog, please see how to use customize the losses and metrics driving the training by clicking on the next blog.</p>
 
 </div>
 </div>
