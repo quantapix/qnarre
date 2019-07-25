@@ -266,10 +266,28 @@ class Conclusion(tf.Module):
         return [y, lens]
 
 
-class Dense(ql.Dense):
+class Dense(tf.Module):
+    bias = None
+    activation = None
+
+    def __init__(self, layer, name, shape, activation=None, bias=True):
+        super().__init__(name=name)
+        with self.name_scope:
+            kw = dict(shape=shape, initializer='glorot_uniform')
+            self.kern = layer.add_weight('kern', **kw)
+            if bias:
+                kw.update(shape=shape[1:], initializer='zeros')
+                self.bias = layer.add_weight('bias', **kw)
+            self.activation = ks.activations.get(activation)
+
     @tf.function
     def __call__(self, x):
-        return super().__call__(x)
+        y = tf.einsum('bi,ij->bj', x, self.kern)
+        if self.bias is not None:
+            y = tf.nn.bias_add(y, self.bias)
+        if self.activation:
+            y = self.activation(y)
+        return y
 
 
 def model_for(ps):
@@ -305,7 +323,7 @@ params = dict(
 
 if __name__ == '__main__':
     ps = qd.Params(**params)
-    import advanced_tf.masking as qm
+    import masking as qm
     qm.main_graph(ps, dset_for(ps), model_for(ps))
-    # import advanced_tf.ragged as qr
+    # import ragged as qr
     # qr.main_eager(ps, dset_for(ps), model_for(ps))

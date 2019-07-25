@@ -59,10 +59,26 @@ class Embed(qc.Embed):
         return [y, lens]
 
 
-class Frames(qc.Frames):
+class Frames(ql.Layer):
+    def __init__(self, ps):
+        super().__init__(ps, dtype=tf.int32)  # , dynamic=True)
+        s = (ps.dim_batch, ps.width_enc)
+        kw = dict(initializer='zeros', trainable=False, use_resource=True)
+        self.prev = self.add_weight('prev', shape=s, **kw)
+
     @tf.function
     def call(self, x):
-        y = super().call.python_function(x)
+        xe, xd, xt = x
+        ye = tf.concat([self.prev, xe], axis=1)
+        el = tf.cast(xe.row_lengths(), dtype=tf.int32)
+        ye = tf.gather_nd(ye, self.calc_idxs(el))
+        c = self.ps.width_dec - xd.bounding_shape(axis=1, out_type=tf.int32)
+        yd = tf.pad(xd.to_tensor(), [[0, 0], [0, c]])
+        dl = tf.cast(xd.row_lengths(), dtype=tf.int32)
+        p = tf.concat([ye, xt], axis=1)
+        tl = tf.cast(xt.row_lengths(), dtype=tf.int32)
+        p = tf.gather_nd(p, self.calc_idxs(tl))
+        self.prev.assign(p)
         tf.print()
 
         def print_row(r):
@@ -75,6 +91,13 @@ class Frames(qc.Frames):
             return r
 
         tf.map_fn(print_row, self.prev)
+        return [ye, el, yd, dl]
+
+    def calc_idxs(self, lens):
+        b, w = self.ps.dim_batch, self.ps.width_enc
+        y = tf.broadcast_to(tf.range(b)[:, None], [b, w])
+        i = tf.range(w)[None, ] + lens[:, None]
+        y = tf.stack([y, i], axis=2)
         return y
 
 
@@ -112,7 +135,7 @@ def model_for(ps):
 
 if __name__ == '__main__':
     ps = qd.Params(**qc.params)
-    import advanced_tf.masking as qm
+    import masking as qm
     qm.main_graph(ps, qc.dset_for(ps), model_for(ps))
-    # import advanced_tf.ragged as qr
+    # import ragged as qr
     # qr.main_eager(ps, dset_for(ps), model_for(ps))

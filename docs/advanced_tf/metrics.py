@@ -15,9 +15,9 @@
 # !pip install -U tf-nightly-2.0-preview
 
 import tensorflow as tf
-import advanced_tf.dataset as qd
-import advanced_tf.custom as qc
-import advanced_tf.autograph as qa
+import dataset as qd
+import custom as qc
+import autograph as qa
 
 ks = tf.keras
 kl = ks.layers
@@ -114,5 +114,5 @@ params.update(
 
 if __name__ == '__main__':
     ps = qd.Params(**params)
-    import advanced_tf.masking as qm
+    import masking as qm
     qm.main_graph(ps, qc.dset_for(ps, adapter), model_for(ps))
