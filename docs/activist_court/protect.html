@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>tbd</title>
+<title>protect</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13116,23 +13116,144 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>In progress...</p>
+<h1 id="Learn,-Adapt-And-Protect-From-&quot;Elite&quot;-Predators">Learn, Adapt And Protect From "Elite" Predators<a class="anchor-link" href="#Learn,-Adapt-And-Protect-From-&quot;Elite&quot;-Predators">&#182;</a></h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li><p>TODO: expand bullets</p>
+</li>
+<li><p>Deceive, Deceive: The more "elite", the more deceitful</p>
+</li>
+<li>Low-Cost communication: professional profiling becomes "two way"</li>
+<li><p>The era of evolutionary competition of mighty AIs</p>
+</li>
+<li><p>more detail</p>
+</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Once again, we have already too much accumulated code to load into our notebook. For your refence, we sample from the attached local source files: <em>datasets.py, layers.py, main.py, modules.py, samples.py, tasks.py, trafo.py</em> and <em>utils.py</em>.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="n">ks</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span>
+
+<span class="k">def</span> <span class="nf">train_eager</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">m</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">losses</span><span class="p">)</span>
+            <span class="n">xent</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">grads</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">)</span>
+        <span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span>
+
+    <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+    <span class="k">def</span> <span class="nf">epoch</span><span class="p">():</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="n">step</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s1">&#39;Step:&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="s1">&#39;, loss:&#39;</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;, xent:&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span>
+
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">num_epochs</span><span class="p">):</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="n">epoch</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Epoch </span><span class="si">{e}</span><span class="s1"> loss:&#39;</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="s1">&#39;, xent:&#39;</span><span class="p">,</span> <span class="n">xent</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 </pre></div>
 
     </div>
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+    <span class="n">mp</span> <span class="o">=</span> <span class="n">pth</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;/tmp/q/model&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">get_checkpoint_state</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">mp</span><span class="p">)):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">train_on_batch</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">mp</span> <span class="o">/</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{m.name}</span><span class="s1">&#39;</span><span class="p">))</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">xent</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Evaluate loss, xent: </span><span class="si">{loss}</span><span class="s1">, </span><span class="si">{xent}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">m</span><span class="p">):</span>
+    <span class="n">mp</span> <span class="o">=</span> <span class="n">pth</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;/tmp/q/model&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">get_checkpoint_state</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">mp</span><span class="p">)):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">train_on_batch</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">mp</span> <span class="o">/</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{m.name}</span><span class="s1">&#39;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>This concludes our final blog in this section.</p>
+
+</div>
+</div>
 </div>
     </div>
   </div>
