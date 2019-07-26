@@ -69,7 +69,7 @@ def model_for(ps, group):
         y = layer_for(ql.Locate, ps, group)(y)
     m = Model(name='trafo', inputs=x, outputs=[y])
     m.compile(optimizer=ps.optimizer, loss=ps.loss, metrics=[ps.metric])
-    print(m.summary())
+    # print(m.summary())
     return m
 
 
@@ -106,17 +106,18 @@ params.update(
 )
 
 
-def main(ps, fn, groups=None, count=None):
+def main(ps, fn, root=None, groups=None, count=None):
     qu.Config.runtime.is_training = True
     groups = groups or qs.groups
     for r in range(ps.num_rounds):
         for g in groups:
             print(f'\nRound {r + 1}, group {g}...\n=======================')
-            fn(ps, qd.dset_for(ps, g, count=count), model_for(ps, g))
+            fn(ps, qd.dset_for(ps, root, g, count=count), model_for(ps, g))
 
 
 if __name__ == '__main__':
     ps = qu.Params(**params)
+    root = f'/tmp/q/data/small'
     # main(ps, qt.train_eager, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
-    main(ps, qt.train_graph, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
+    main(ps, qt.train_graph, root, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)
     # main(ps, qt.evaluate, groups=(qs.YNS, qs.MSK, qs.QAS), count=10)

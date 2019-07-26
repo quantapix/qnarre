@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>tbd</title>
+<title>conflict</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13116,23 +13116,541 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>In progress...</p>
+<h1 id="The-Predatory-Profits-Of-&quot;High-Conflict&quot;-Divorces">The Predatory Profits Of "High-Conflict" Divorces<a class="anchor-link" href="#The-Predatory-Profits-Of-&quot;High-Conflict&quot;-Divorces">&#182;</a></h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li><p>TODO: expand bullets</p>
+</li>
+<li><p>with no conflict, there is no lawsuit nor profits</p>
+</li>
+<li>with no money nor profits, there is no "high-conflict"</li>
+<li>with no "high conflict", there are no trend-setting cases</li>
+<li>with no "trend-setting", there is no fame nor $500 per hour billing rate</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>more detail</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>too much code to load it in the notebook</li>
+<li>we sample from the local source files: datasets.py, layers.py, main.py, modules.py, samples.py, tasks.py, trafo.py and utils.py</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li><code>Samples</code> class randomly generates samples from an on-demand allocated pool of values</li>
+<li>the size of the pool is set by the <code>dim_pool</code> param and using it with large values helps with keeping the random distributions in check</li>
+<li>currently <code>Samples</code> can generate a variety of 10 different groups of samples</li>
+<li>in this blog we focus on <code>yes-no</code> (YNS), <code>masked</code> (MSK), <code>reversed</code> (REV) and <code>faulty</code> (FIX) samples</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>a simple sample generating loop can be as follows:</li>
+</ul>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">samples</span> <span class="k">as</span> <span class="nn">qs</span>
+
+<span class="n">groups</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="s1">&#39;yns ynx msk msx cls clx qas rev gen fix&#39;</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+<span class="n">YNS</span><span class="p">,</span> <span class="n">YNX</span><span class="p">,</span> <span class="n">MSK</span><span class="p">,</span> <span class="n">MSX</span><span class="p">,</span> <span class="n">CLS</span><span class="p">,</span> <span class="n">CLX</span><span class="p">,</span> <span class="n">QAS</span><span class="p">,</span> <span class="n">REV</span><span class="p">,</span> <span class="n">GEN</span><span class="p">,</span> <span class="n">FIX</span> <span class="o">=</span> <span class="n">groups</span>
+
+<span class="k">def</span> <span class="nf">sampler</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">qs</span><span class="o">.</span><span class="n">Samples</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">num_samples</span><span class="p">):</span>
+        <span class="n">ss</span><span class="p">,</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">next_idx</span>
+        <span class="n">enc</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="n">dec</span> <span class="o">=</span> <span class="n">tgt</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;[</span><span class="si">{res}</span><span class="s1">]&#39;</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;[{ss.other(res)}]&#39;</span>
+        <span class="n">yn</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">yns</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">idx</span><span class="p">]</span>
+
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">dec</span> <span class="k">if</span> <span class="n">yn</span> <span class="k">else</span> <span class="n">bad</span>
+        <span class="n">yns</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">enc</span><span class="o">=</span><span class="n">enc</span><span class="p">,</span> <span class="n">dec</span><span class="o">=</span><span class="n">d2</span> <span class="o">+</span> <span class="s1">&#39;|_&#39;</span><span class="p">,</span> <span class="n">tgt</span><span class="o">=</span><span class="n">d2</span> <span class="o">+</span> <span class="n">f</span><span class="s1">&#39;|</span><span class="si">{yn}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">yield</span> <span class="p">{</span><span class="n">YNS</span><span class="p">:</span> <span class="n">yns</span><span class="p">}</span>
 </pre></div>
 
     </div>
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>the generated samples are Python <code>dict</code>s with the previously introduced <code>enc</code> (encoder), <code>dec</code> (decoder) and <code>tgt</code> (target) features</li>
+<li>both <code>dec</code> and <code>tgt</code> features end the sample with <code>|</code> and the yes-no answer is encoded as <code>1</code> and <code>0</code> (the <code>_</code> is the place-holder that the decoder needs to solve) </li>
+<li>and now we can generate a few samples</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">utils</span> <span class="k">as</span> <span class="nn">qu</span>
+
+<span class="n">ps</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">dim_pool</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">max_val</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ps</span> <span class="o">=</span> <span class="n">qu</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">ps</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">sampler</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{d[YNS]}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>{&#39;enc&#39;: &#39;x=81,y=11;x+y&#39;, &#39;dec&#39;: &#39;[10]|_&#39;, &#39;tgt&#39;: &#39;[10]|0&#39;}
+{&#39;enc&#39;: &#39;y=-99,x=-58;x+y&#39;, &#39;dec&#39;: &#39;[-157]|_&#39;, &#39;tgt&#39;: &#39;[-157]|1&#39;}
+{&#39;enc&#39;: &#39;x=13,y=-79;y-x&#39;, &#39;dec&#39;: &#39;[-92]|_&#39;, &#39;tgt&#39;: &#39;[-92]|1&#39;}
+{&#39;enc&#39;: &#39;y=-33,x=-30;y+x&#39;, &#39;dec&#39;: &#39;[-96]|_&#39;, &#39;tgt&#39;: &#39;[-96]|0&#39;}
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>while we don't show any of the other samples in this blog, the <code>MSK</code> features mask the results at random positions with a <code>?</code>, the <code>REV</code> samples mix up the order of the variables and <code>FIX</code> samples randomly introduce an error digit in the results. </li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>the actual model is largely similar to the models already presented in the previous blogs</li>
+<li>based on what group of samples we are using, we activate some layers in the model while ignoring others</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>a significant consideration is that all the 10 groups of samples contribute (if meaningful) to the same weights (or variables)</li>
+<li>we chose to do this this based on the results of the mt-dnn paper</li>
+<li>varying the type and challenge of the samples we effectively cross-train the model</li>
+<li>in order to clearly separate the <code>loss</code> and <code>metric</code> calculations between the groups, we create a new instance of our model for each group of samples</li>
+<li>however, we reuse the same layers</li>
+<li>in order to accomplish this we define an <code>lru_cache</code> function:</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">functools</span>
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">layer_for</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">pa</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">*</span><span class="n">pa</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>and now our usual <code>model_for</code> function looks as follows:</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">inputs</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">ToRagged</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">yt</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Tokens</span><span class="p">,</span> <span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">ym</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Metas</span><span class="p">,</span> <span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">xe</span><span class="p">,</span> <span class="n">xd</span> <span class="o">=</span> <span class="n">yt</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">ym</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">yt</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">+</span> <span class="n">ym</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">embed</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Embed</span><span class="p">,</span> <span class="n">ps</span><span class="p">)</span>
+    <span class="n">ye</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Encode</span><span class="p">,</span> <span class="n">ps</span><span class="p">)(</span><span class="n">embed</span><span class="p">(</span><span class="n">xe</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">decode</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Decode</span><span class="p">,</span> <span class="n">ps</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">group</span> <span class="ow">in</span> <span class="p">(</span><span class="n">qs</span><span class="o">.</span><span class="n">YNS</span><span class="p">,</span> <span class="n">qs</span><span class="o">.</span><span class="n">YNX</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">embed</span><span class="p">(</span><span class="n">xd</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">ye</span><span class="p">])</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Debed</span><span class="p">,</span> <span class="n">ps</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">group</span> <span class="ow">in</span> <span class="p">(</span><span class="n">qs</span><span class="o">.</span><span class="n">MSK</span><span class="p">,</span> <span class="n">qs</span><span class="o">.</span><span class="n">MSX</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Deduce</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="n">embed</span><span class="p">,</span> <span class="n">decode</span><span class="p">)(</span><span class="n">xd</span> <span class="o">+</span> <span class="p">[</span><span class="n">ye</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">group</span> <span class="ow">in</span> <span class="p">(</span><span class="n">qs</span><span class="o">.</span><span class="n">QAS</span><span class="p">,</span> <span class="n">qs</span><span class="o">.</span><span class="n">FIX</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">embed</span><span class="p">(</span><span class="n">xd</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">ye</span><span class="p">])</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">layer_for</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Locate</span><span class="p">,</span> <span class="n">ps</span><span class="p">,</span> <span class="n">group</span><span class="p">)(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;trafo&#39;</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">])</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ps</span><span class="o">.</span><span class="n">metric</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">m</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>as we have expanded the functionality of our layers and modules from the previous blogs, our params have increased in number</li>
+<li>also, the subsequent blogs in this section will describe the additions to the model's extended functionality</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">datasets</span> <span class="k">as</span> <span class="nn">qd</span>
+<span class="n">ks</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span>
+
+<span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">activ_concl</span><span class="o">=</span><span class="s1">&#39;gelu&#39;</span><span class="p">,</span>
+    <span class="n">dim_attn</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">dim_attn_qk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dim_attn_v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dim_batch</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">dim_concl</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
+    <span class="n">dim_hidden</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">dim_hist</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">dim_metas</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">metas</span><span class="p">),</span>
+    <span class="n">dim_stacks</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">dim_vocab</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">vocab</span><span class="p">),</span>
+    <span class="n">drop_attn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">drop_concl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">drop_hidden</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">initer_stddev</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">loss</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">SparseCategoricalCrossentropy</span><span class="p">(</span><span class="n">from_logits</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">metric</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">SparseCategoricalCrossentropy</span><span class="p">(</span><span class="n">from_logits</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">num_epochs</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">num_heads</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">num_rounds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">num_shards</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="n">ks</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(),</span>
+    <span class="n">width_dec</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+    <span class="n">width_enc</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+    <span class="n">loss</span><span class="o">=</span><span class="n">qu</span><span class="o">.</span><span class="n">Loss</span><span class="p">(),</span>
+    <span class="n">metric</span><span class="o">=</span><span class="n">qu</span><span class="o">.</span><span class="n">Metric</span><span class="p">(),</span>
+<span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>and this is our new <code>main</code> function that loops through all the samples in all of our groups of samples and either trains the model on the samples or performs an evaluation/prediction</li>
+<li>in the follow-on blogs we present the various training/eval/predict functions that our main loop can use</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">qu</span><span class="o">.</span><span class="n">Config</span><span class="o">.</span><span class="n">runtime</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span> <span class="ow">or</span> <span class="n">qs</span><span class="o">.</span><span class="n">groups</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">num_rounds</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Round {r + 1}, group </span><span class="si">{g}</span><span class="s1">...</span><span class="se">\n</span><span class="s1">=======================&#39;</span><span class="p">)</span>
+            <span class="n">fn</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">qd</span><span class="o">.</span><span class="n">dset_for</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">count</span><span class="p">),</span> <span class="n">model_for</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">g</span><span class="p">))</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>before we start a training session, we need to generate some samples</li>
+<li>the code that generates the samples is similar to the following</li>
+<li>the <code>large</code> datasets generate 100 shards containing each 10,000 samples for every every sample group out of the current 10</li>
+<li>the total number of samples for the <code>large</code> dataset can be easily varied, however, with the pictured settings, it amounts to <strong>10 million samples</strong> that a server with 40 hyper-threads generates in about 3 hours</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">ds_small</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">dim_batch</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">dim_pool</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">max_val</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">num_shards</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">ds_large</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">dim_batch</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">dim_pool</span><span class="o">=</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
+    <span class="n">max_val</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+    <span class="n">num_shards</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">dump_ds</span><span class="p">(</span><span class="n">kind</span><span class="p">):</span>
+    <span class="n">ps</span> <span class="o">=</span> <span class="n">qu</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="p">(</span><span class="n">ds_small</span> <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;small&#39;</span> <span class="k">else</span> <span class="n">ds_large</span><span class="p">))</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">qd</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;/tmp/q/data/</span><span class="si">{kind}</span><span class="s1">&#39;</span><span class="p">)]</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">qd</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">shards</span><span class="o">=</span><span class="n">ss</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">qd</span><span class="o">.</span><span class="n">adapter</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;dumped {i + 1} batches of </span><span class="si">{ps.dim_batch}</span><span class="s1"> samples each&#39;</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>and here is an actual call to generate our <code>small</code> sample set:</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="o">!</span>python main.py
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>dumping /tmp/q/data/small/cls/shard_0000.tfrecords...
+dumping /tmp/q/data/small/msk/shard_0000.tfrecords...
+dumping /tmp/q/data/small/yns/shard_0000.tfrecords...
+dumping /tmp/q/data/small/qas/shard_0000.tfrecords...
+dumping /tmp/q/data/small/clx/shard_0000.tfrecords...
+dumping /tmp/q/data/small/msx/shard_0000.tfrecords...
+dumping /tmp/q/data/small/ynx/shard_0000.tfrecords...
+dumping /tmp/q/data/small/rev/shard_0000.tfrecords...
+dumping /tmp/q/data/small/gen/shard_0000.tfrecords...
+dumping /tmp/q/data/small/yns/shard_0001.tfrecords...
+dumping /tmp/q/data/small/msk/shard_0001.tfrecords...
+dumping /tmp/q/data/small/cls/shard_0001.tfrecords...
+dumping /tmp/q/data/small/fix/shard_0000.tfrecords...
+dumping /tmp/q/data/small/ynx/shard_0001.tfrecords...
+dumping /tmp/q/data/small/clx/shard_0001.tfrecords...
+dumping /tmp/q/data/small/msx/shard_0001.tfrecords...
+dumping /tmp/q/data/small/qas/shard_0001.tfrecords...
+dumping /tmp/q/data/small/gen/shard_0001.tfrecords...
+dumping /tmp/q/data/small/rev/shard_0001.tfrecords...
+dumping /tmp/q/data/small/fix/shard_0001.tfrecords...
+dumped 80 batches of 5 samples each
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>and now we are ready to run a short training session:</li>
+</ul>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="o">!</span>python trafo.py
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>
+Round 1, group yns...
+=======================
+Epoch 1/2
+2/2 [==============================] - 9s 4s/step - loss: 3.2370 - metric: 3.2364
+Epoch 2/2
+2/2 [==============================] - 0s 84ms/step - loss: 3.2212 - metric: 3.2209
+
+Round 1, group msk...
+=======================
+Epoch 1/2
+2/2 [==============================] - 32s 16s/step - loss: 3.2135 - metric: 3.2134
+Epoch 2/2
+2/2 [==============================] - 0s 119ms/step - loss: 3.2034 - metric: 3.2032
+
+Round 1, group qas...
+=======================
+Epoch 1/2
+2/2 [==============================] - 7s 4s/step - loss: 3.4434 - metric: 3.4434
+Epoch 2/2
+2/2 [==============================] - 0s 82ms/step - loss: 2.7450 - metric: 2.7450
+
+Round 2, group yns...
+=======================
+Epoch 1/2
+2/2 [==============================] - 7s 4s/step - loss: 3.2059 - metric: 3.2070
+Epoch 2/2
+2/2 [==============================] - 0s 79ms/step - loss: 3.1923 - metric: 3.1935
+
+Round 2, group msk...
+=======================
+Epoch 1/2
+2/2 [==============================] - 29s 14s/step - loss: 3.1887 - metric: 3.1887
+Epoch 2/2
+2/2 [==============================] - 0s 130ms/step - loss: 3.1745 - metric: 3.1744
+
+Round 2, group qas...
+=======================
+Epoch 1/2
+2/2 [==============================] - 10s 5s/step - loss: 1.9412 - metric: 1.9412
+Epoch 2/2
+2/2 [==============================] - 0s 89ms/step - loss: 1.3604 - metric: 1.3604
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<ul>
+<li>and this concludes our blog, please click on the next blog for more detail</li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>
