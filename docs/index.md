@@ -35,12 +35,12 @@ The following blogs incorporate "runnable" [Python](https://www.python.org/) scr
 # Modeling Ideological Judicial Activism
 
 * **Reductio ad absurdum** - a judicial simulation
-* A conceptual model of an "emotional" domain
-* The predatory profits of **"high-conflict"** divorces
-* A psychological object model of the ABA "frequent fliers"
-* From purposefully fabricated conflicts to ideological activism
+* Conceptual model of an "emotional" domain
+* Predatory profits of **"high-conflict"** divorces
+* Psychological object model of ABA "frequent fliers"
+* From fabricated conflicts to ideological activism
 * Representative **metrics** through statistical modeling
-* Learn, adapt and effectively protect from "elite" predators
+* Learn, adapt and protect from "elite" predators
 * [more detail... (uploaded July 31)](./activist_court/index.html)
 
 # Court Contradictions Analytically Evaluated

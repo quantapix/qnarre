@@ -24,7 +24,7 @@ As the symbolism of our "proxy" model is universally understood, meaning that it
 * Judgments: from certainty through ambiguity to absurdity
 * [more detail...](./simulation.html) and [runnable simulation...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/simulation.ipynb)
 
-## [A Conceptual Model Of An "Emotional" Domain](./concepts.html)
+## [Conceptual Model Of An "Emotional" Domain](./concepts.html)
 
 * General underlying concepts
 * Claims, topics and narratives revisited
@@ -32,7 +32,7 @@ As the symbolism of our "proxy" model is universally understood, meaning that it
 * From patterns of judgments to activism
 * [more detail...](./concepts.html)
 
-## [The Predatory Profits Of "High-Conflict" Divorces](./conflict.html)
+## [Predatory Profits Of "High-Conflict" Divorces](./conflict.html)
 
 * With no conflict, there is no lawsuit nor profits
 * With no money nor profits, there is no "high-conflict"
@@ -40,15 +40,15 @@ As the symbolism of our "proxy" model is universally understood, meaning that it
 * With no "trend-setting", there is no fame nor $500 / hour billing rate
 * [more detail...](./conflict.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/conflict.ipynb)
 
-## [A Psychological Object Model Of The ABA "Frequent Fliers"](./objects.html)
+## [Psychological Object Model Of ABA "Frequent Fliers"](./objects.html)
 
-* American Bar: "parents preoccupied with identity reconstruction"
-* Narcissistic Personality Disorder: "if they are male (**and most are**)"
+* American Bar: "Parents preoccupied with identity reconstruction"
+* Narcissistic Personality Disorder: "If they are male (**and most are**)"
 * "Psychology’s replication crisis is running out of excuses"
-* Soviet Stalin: "show me the man and I’ll find you the crime"
+* Soviet Stalin: "Show me the man and I’ll find you the crime"
 * [more detail...](./objects.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/objects.ipynb)
 
-## [From Purposefully Fabricated Conflicts To Ideological Activism](./activism.html)
+## [From Fabricated Conflicts To Ideological Activism](./activism.html)
 
 * "Divorce law rigged to torture children"
 * "Activist Family Court victimizing children"
@@ -61,14 +61,14 @@ As the symbolism of our "proxy" model is universally understood, meaning that it
 * Meta-Data: from black & white to full color
 * Probabilistic modeling: "quantumized" credibility of claims
 * Learned derivatives: coherence, fragmentation and turmoil
-* Profiling lawyers and predicting trends in the Courtroom
+* Profiling lawyers and predicting trends in Courtroom
 * [more detail...](./metrics.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/metrics.ipynb)
 
-## [Learn, Adapt And Effectively Protect From "Elite" Predators](./protect.html)
+## [Learn, Adapt And Protect From "Elite" Predators](./protect.html)
 
-* Deceive, deceive, deceive: the more "elite", the more deceitful
+* Deceive, deceive: the more "elite", the more deceitful
 * Low-cost communication: professional profiling becomes "two way"
-* The era of evolutionary competition of AIs
-* [more detail...](./protect.html)
+* The era of evolutionary competition of mighty AIs
+* [more detail...](./protect.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/protect.ipynb)
 
 [back](../)

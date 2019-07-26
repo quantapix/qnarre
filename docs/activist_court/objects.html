@@ -13116,7 +13116,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="A-Psychological-Object-Model-Of-The-ABA-&quot;Frequent-Fliers&quot;">A Psychological Object Model Of The ABA "Frequent Fliers"<a class="anchor-link" href="#A-Psychological-Object-Model-Of-The-ABA-&quot;Frequent-Fliers&quot;">&#182;</a></h1>
+<h1 id="Psychological-Object-Model-Of-ABA-&quot;Frequent-Fliers&quot;">Psychological Object Model Of ABA "Frequent Fliers"<a class="anchor-link" href="#Psychological-Object-Model-Of-ABA-&quot;Frequent-Fliers&quot;">&#182;</a></h1>
 </div>
 </div>
 </div>
@@ -13128,9 +13128,12 @@ div#notebook {
 </li>
 <li><p>American Bar: "Parents preoccupied with identity reconstruction"</p>
 </li>
-<li>Narcissistic Personality Disorder: "If they are male (and most are)"</li>
-<li>"Psychology’s Replication Crisis Is Running Out of Excuses"</li>
-<li>Soviet Stalin: "Show me the man and I’ll find you the crime"</li>
+<li>Narcissistic Personality Disorder: "If they are male (<strong>and most are</strong>)"</li>
+<li>"Psychology’s replication crisis is running out of excuses"</li>
+<li><p>Soviet Stalin: "Show me the man and I’ll find you the crime"</p>
+</li>
+<li><p>focus on technical details</p>
+</li>
 </ul>
 
 </div>
@@ -13139,7 +13142,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>YNX, MSX, FIX</p>
+<p>Once again, we have already too much accumulated code to load into our notebook. For your refence, we sample from the attached local source files: <em>datasets.py, layers.py, main.py, modules.py, samples.py, tasks.py, trafo.py</em> and <em>utils.py</em>.</p>
 
 </div>
 </div>
@@ -13147,9 +13150,72 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>more detail</li>
-</ul>
+<p>Our previous blog has already generated the necessary <code>small</code> set of  samples.</p>
+<p>If you have not run the code yet, please follow that blog to generate samples. You will get an error if you attempt to run this code without available samples.</p>
+<p>In this blog we focus on <code>yes-no-extended</code> (YNX) and <code>masked-extended</code> (MSX) samples. Here is how we can generate a few samples:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">samples</span> <span class="k">as</span> <span class="nn">qs</span>
+
+<span class="n">groups</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="s1">&#39;yns ynx msk msx cls clx qas rev gen fix&#39;</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+<span class="n">YNS</span><span class="p">,</span> <span class="n">YNX</span><span class="p">,</span> <span class="n">MSK</span><span class="p">,</span> <span class="n">MSX</span><span class="p">,</span> <span class="n">CLS</span><span class="p">,</span> <span class="n">CLX</span><span class="p">,</span> <span class="n">QAS</span><span class="p">,</span> <span class="n">REV</span><span class="p">,</span> <span class="n">GEN</span><span class="p">,</span> <span class="n">FIX</span> <span class="o">=</span> <span class="n">groups</span>
+
+<span class="kn">import</span> <span class="nn">utils</span> <span class="k">as</span> <span class="nn">qu</span>
+
+<span class="n">ps</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">dim_pool</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">max_val</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ps</span> <span class="o">=</span> <span class="n">qu</span><span class="o">.</span><span class="n">Params</span><span class="p">(</span><span class="o">**</span><span class="n">ps</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">qs</span><span class="o">.</span><span class="n">sampler</span><span class="p">(</span><span class="n">ps</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{d[YNX]}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{d[MSX]}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>{&#39;enc&#39;: &#39;x=-35,y=-64;y-x[-29]&#39;, &#39;dec&#39;: &#39;y=-7,x=$;y-x[22]|_&#39;, &#39;tgt&#39;: &#39;y=-7,x=$;y-x[22]|1&#39;}
+{&#39;enc&#39;: &#39;x=-35,y=-64;y-x[-29]&#39;, &#39;dec&#39;: &#39;y=-7,x??????[2?]|&#39;, &#39;tgt&#39;: &#39;y=-7,x=$;y-x[22]|&#39;}
+{&#39;enc&#39;: &#39;y=40,x=23;x-y[-17]&#39;, &#39;dec&#39;: &#39;y=-61,x=$;x-y[62]|_&#39;, &#39;tgt&#39;: &#39;y=-61,x=$;x-y[44]|0&#39;}
+{&#39;enc&#39;: &#39;y=40,x=23;x-y[-17]&#39;, &#39;dec&#39;: &#39;?=?61?x?$?x-?[?4]|&#39;, &#39;tgt&#39;: &#39;y=-61,x=$;x-y[44]|&#39;}
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>We only show the YNX and MSX groups of samples. They are similar to our previous YNS and MSK samples in objective.</p>
+<p>Their scope is expanded however. The YNX samples introduce "indirection" into the learned, inherent "knowledge" as it uses 2 expressions, the second one building on, or reusing, the first one's result.</p>
+<p>Either of the expressions' results can be incorrect. And after training, the computer will have to effectively perform chained deduction to get the <code>yes-no</code> answer right.</p>
+<p>The MSX samples also two expressions. And instead of <code>masking</code> only a homogenous result, these samples randomly mask the entire second expression.</p>
+<p>As the masked expression uses the result of the first one, the above mentioned "indirection" is once again in play.</p>
 
 </div>
 </div>
@@ -13157,45 +13223,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>too much code to load it in the notebook</li>
-<li>we sample from the local source files: datasets.py, layers.py, main.py, modules.py, samples.py, tasks.py, trafo.py and utils.py</li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>our previous blog has already generated the necessary <code>small</code> set of  samples</li>
-<li>if you have not run the code yet, please follow that blog to generate samples</li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>in this blog we focus on <code>yes-no-extended</code> (YNX), <code>masked-extended</code> (MSX) and <code>faulty</code> (FIX) samples</li>
-<li>describe samples</li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we have mentioned already that we are largely reusing the model from the first section of our blogs</li>
-<li>in this blog we provide more details of the changes in the layers</li>
-<li>we start with a significant change in our <code>Layer</code> base class, we have started to support the Keras <code>get_config</code> method to be able to recreate our layers from checkpoints</li>
-<li>in <code>utils.py</code> we extend our <code>Params</code> class with a new <code>Config</code> class that encapsulates the actually persisted param values</li>
-</ul>
+<p>We have mentioned already that we are largely reusing the model, specifically its layers and modules, from the first section of our blogs.</p>
+<p>In this blog we provide more details of the necessary changes in the layers.</p>
+<p>We start with a significant change in our <code>Layer</code> base-class, as we have started to support the Keras <code>get_config</code> method. We are now able to recreate our layers from checkpoints.</p>
+<p>In <code>utils.py</code> we extend our <code>Params</code> class with a new <code>Config</code> class that encapsulates the actually persisted param values:</p>
 
 </div>
 </div>
@@ -13234,9 +13265,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>using the new <code>Config</code> we then add support for the "config" mechanism in <code>Layer</code>:</li>
-</ul>
+<p>Using our new <code>Config</code>, we add support for the Keras "config" mechanism in <code>Layer</code>:</p>
 
 </div>
 </div>
@@ -13287,11 +13316,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>to demonstrate how just the necessary params are saved for each layer, we provide here a fragment of the already presented <code>Frames</code> class</li>
-<li>the rest of the class as well as the derived <code>Tokens</code> and <code>Meta</code> classes are mostly unchanged</li>
-<li>the significant difference is that we have started to use the attached instance of the <code>Config</code> class instead of the previously used bare <code>Params</code> </li>
-</ul>
+<p>To demonstrate how only necessary params get saved for each layer, we provide a fragment of the already presented <code>Frames</code> class below.</p>
+<p>The rest of the class, as well as the derived <code>Tokens</code> and <code>Meta</code> classes are mostly unchanged.</p>
+<p>The only significant difference is that we have started to use the attached instance of the <code>Config</code> class instead of the previously used bare <code>Params</code>:</p>
 
 </div>
 </div>
@@ -13326,11 +13353,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>another addition to the layers in this blog is the addition of <code>input_signatures</code> to the <code>call</code> methods' <code>tf.function</code> definitions</li>
-<li>since we keep a tight control of the shapes of our "transfer" tensors, there is no need for TF to unnecessarily generate Python code</li>
-<li>we provide the partial <code>Decode</code> class example to illustrate this addition</li>
-</ul>
+<p>Another addition to the layers in this blog is the addition of <code>input_signatures</code> to the <code>call</code> methods' <code>tf.function</code> definitions.</p>
+<p>Since we keep a tight control of the shapes of our "transfer" tensors, there is no need for TF to unnecessarily generate Python code.</p>
+<p>We provide the partial <code>Decode</code> class example to illustrate this addition:</p>
 
 </div>
 </div>
@@ -13361,12 +13386,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>we also added a new layer to specifically help with the MSK and MSX samples</li>
-<li>the <code>Deduce</code> layer supplies a graph op to conditionally loop through all the masked, by the <code>?</code> token, positions and one-by-one deduce the target characters</li>
-<li>the loops obviously are driven by the actual number of masked positions in the individual batches of samples</li>
-<li>a partial definition of the class is as follows:</li>
-</ul>
+<p>We have also added a new layer to specifically help with the MSK and MSX samples.</p>
+<p>The new <code>Deduce</code> layer provides us with a graph op to conditionally loop through all the masked, by the <code>?</code> token, input positions and one-by-one deduce the target tokens.</p>
+<p>The loops obviously are driven by the actual number of masked positions in the individual batches of samples. So loop control needs to be executed by the synthesized graph op.</p>
+<p>A partial definition of the class follows:</p>
 
 </div>
 </div>
@@ -13438,11 +13461,11 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>with these changes in the code we can adjust the groups of samples we want to train on and run the previously presented steps</li>
-<li>in this blog we skip re-running the training sessions</li>
-<li>this concludes our blog, please click on the next blog for further details of the additional changes</li>
-</ul>
+<p>The code above depends on references to the <code>embed</code> and <code>decode</code> layers, as it has to actively a) <code>deduce</code> the new token and b) "re-decode" the context in the <code>update</code> method.</p>
+<p>The loop is initially set to execute for every token in the width of the input context.</p>
+<p>Nevertheless, if there are no <code>qd.MSK</code>, or "?", tokens and we have reached our <code>qd.EOS</code>, or "|", token for every row on the batch, we end the loop.</p>
+<p>With these changes in the code, we can adjust the groups of samples we want to train on, to YNX and MSX, and run the previously presented steps. We skip re-running the training sessions until the last "unifying" blog in this section.</p>
+<p>This concludes our blog, please click on the next blog for further details of the additional changes.</p>
 
 </div>
 </div>
