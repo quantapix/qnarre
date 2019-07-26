@@ -1454,16 +1454,13 @@ YNX, MSX, FIX
 
 ** From Purposefully Fabricated Conflicts To Ideological Activism
 
-- "Divorce law rigged to torture children"
-- "Activist Family Court victimizing children"
-- "Family Court knowingly forcing children into poverty"
-- "Court protecting, praising elite white child predator men"
-
 - TODO: expand bullets
 
-- CLS, CLX
-- QAS
-- GEN
+Impetus for this blog is provided by our parallel documenting efforts at [FemFas](https://femfas.net/) and particularly regarding the [actions](https://femfas.net/divorce_law/index.html) of our Family Court, summarized as: "Divorce law rigged to torture children", "Activist Family Court victimizing children", "Family Court knowingly forcing children into poverty" and "Court protecting, praising elite, white child predator men".
+
+We continue to leave the clearly nebulous and tricky, day-to-day details of the situation to that website and we focus instead on actionable technical steps that can mold our still easily accessible "elementary arithmetic" model into the foundation of our upcoming text-based training efforts.
+
+Further expanding on the last two blogs, we shift our attentions to the `classification` (CLS and CLX), `question-answer` (QAS), `compose` (GEN) groups of samples.    
 
 ** Representative Metrics Through Statistical Modeling
 
