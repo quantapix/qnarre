@@ -13139,9 +13139,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>more detail</li>
-</ul>
+<p>We have too much accumulated code to load into our notebook. For your refence, we sample from the attached local source files: <em>datasets.py, layers.py, main.py, modules.py, samples.py, tasks.py, trafo.py</em> and <em>utils.py</em>.</p>
 
 </div>
 </div>
@@ -13149,10 +13147,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>too much code to load it in the notebook</li>
-<li>we sample from the local source files: datasets.py, layers.py, main.py, modules.py, samples.py, tasks.py, trafo.py and utils.py</li>
-</ul>
+<p>The <code>Samples</code> class randomly generates samples from an on-demand allocated pool of values.</p>
+<p>The size of the pool is set by the <code>dim_pool</code> param and using it with large values helps with keeping the probability distributions in check.</p>
+<p>Currently, <code>Samples</code> can generate a variety of 10 different groups of samples.</p>
+<p>In this blog we focus on <code>yes-no</code> (YNS), <code>masked</code> (MSK), <code>reversed</code> (REV) and <code>faulty</code> (FIX) samples.</p>
 
 </div>
 </div>
@@ -13160,22 +13158,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li><code>Samples</code> class randomly generates samples from an on-demand allocated pool of values</li>
-<li>the size of the pool is set by the <code>dim_pool</code> param and using it with large values helps with keeping the random distributions in check</li>
-<li>currently <code>Samples</code> can generate a variety of 10 different groups of samples</li>
-<li>in this blog we focus on <code>yes-no</code> (YNS), <code>masked</code> (MSK), <code>reversed</code> (REV) and <code>faulty</code> (FIX) samples</li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>a simple sample generating loop can be as follows:</li>
-</ul>
+<p>A simple sample generating loop can be as follows:</p>
 
 </div>
 </div>
@@ -13214,11 +13197,9 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>the generated samples are Python <code>dict</code>s with the previously introduced <code>enc</code> (encoder), <code>dec</code> (decoder) and <code>tgt</code> (target) features</li>
-<li>both <code>dec</code> and <code>tgt</code> features end the sample with <code>|</code> and the yes-no answer is encoded as <code>1</code> and <code>0</code> (the <code>_</code> is the place-holder that the decoder needs to solve) </li>
-<li>and now we can generate a few samples</li>
-</ul>
+<p>The generated samples are Python <code>dict</code>s with the previously introduced <code>enc</code> (encoder), <code>dec</code> (decoder) and <code>tgt</code> (target) features.</p>
+<p>Both <code>dec</code> and <code>tgt</code> features end the sample with <code>|</code> and the yes-no answer is encoded as <code>1</code> and <code>0</code> (the <code>_</code> is the place-holder that the decoder needs to solve).</p>
+<p>And now we can generate a few samples:</p>
 
 </div>
 </div>
@@ -13270,9 +13251,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>while we don't show any of the other samples in this blog, the <code>MSK</code> features mask the results at random positions with a <code>?</code>, the <code>REV</code> samples mix up the order of the variables and <code>FIX</code> samples randomly introduce an error digit in the results. </li>
-</ul>
+<p>While we don't show any of the other samples in this blog, the <code>MSK</code> features mask the results at random positions with a <code>?</code>, the <code>REV</code> samples mix up the order of the variables and <code>FIX</code> samples randomly introduce an error digit in the results.</p>
 
 </div>
 </div>
@@ -13280,10 +13259,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>the actual model is largely similar to the models already presented in the previous blogs</li>
-<li>based on what group of samples we are using, we activate some layers in the model while ignoring others</li>
-</ul>
+<p>The actual model is largely similar to the models already presented in the previous blogs.</p>
+<p>Based on what group of samples we are using, we activate some layers in the model while ignoring others.</p>
 
 </div>
 </div>
@@ -13291,14 +13268,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>a significant consideration is that all the 10 groups of samples contribute (if meaningful) to the same weights (or variables)</li>
-<li>we chose to do this this based on the results of the mt-dnn paper</li>
-<li>varying the type and challenge of the samples we effectively cross-train the model</li>
-<li>in order to clearly separate the <code>loss</code> and <code>metric</code> calculations between the groups, we create a new instance of our model for each group of samples</li>
-<li>however, we reuse the same layers</li>
-<li>in order to accomplish this we define an <code>lru_cache</code> function:</li>
-</ul>
+<p>A significant consideration is that all the 10 groups of samples contribute (if meaningful) to the same weights (or variables).</p>
+<p>We chose to do this this based on the results of the <a href="https://arxiv.org/pdf/1901.11504.pdf">MT-DNN</a> paper. Varying the type and challenge of the samples we effectively cross-train the model.</p>
+<p>In order to clearly separate the <code>loss</code> and <code>metric</code> calculations between the groups, we create a new instance of our model for each group of samples. However, we reuse the same layers.</p>
+<p>To accomplish this, we define an <code>lru_cache</code> function:</p>
 
 </div>
 </div>
@@ -13323,9 +13296,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and now our usual <code>model_for</code> function looks as follows:</li>
-</ul>
+<p>And now, our usual <code>model_for</code> function looks as follows:</p>
 
 </div>
 </div>
@@ -13366,10 +13337,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>as we have expanded the functionality of our layers and modules from the previous blogs, our params have increased in number</li>
-<li>also, the subsequent blogs in this section will describe the additions to the model's extended functionality</li>
-</ul>
+<p>As we have expanded the functionality of our layers and modules from the previous blogs, our params have increased in number.</p>
+<p>Also, the subsequent blogs in this section will describe the additions to the model's extended functionality.</p>
 
 </div>
 </div>
@@ -13424,10 +13393,8 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and this is our new <code>main</code> function that loops through all the samples in all of our groups of samples and either trains the model on the samples or performs an evaluation/prediction</li>
-<li>in the follow-on blogs we present the various training/eval/predict functions that our main loop can use</li>
-</ul>
+<p>And this is our new <code>main</code> function that loops through all the samples in all of our groups of samples and either trains the model on the samples or performs an evaluation/prediction.</p>
+<p>In the follow-on blogs we present the various training/eval/predict functions that our main loop can use:</p>
 
 </div>
 </div>
@@ -13454,12 +13421,10 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>before we start a training session, we need to generate some samples</li>
-<li>the code that generates the samples is similar to the following</li>
-<li>the <code>large</code> datasets generate 100 shards containing each 10,000 samples for every every sample group out of the current 10</li>
-<li>the total number of samples for the <code>large</code> dataset can be easily varied, however, with the pictured settings, it amounts to <strong>10 million samples</strong> that a server with 40 hyper-threads generates in about 3 hours</li>
-</ul>
+<p>Before we start a training session, we need to generate some samples.</p>
+<p>The code that generates the samples is similar to the following.</p>
+<p>The <code>large</code> datasets generate 100 shards containing each 10,000 samples for every every sample group out of the current 10.</p>
+<p>The total number of samples for the <code>large</code> dataset can be easily varied, however, with the pictured settings, it amounts to <strong>10 million samples</strong> that a server with 40 hyper-threads generates in about 3 hours.</p>
 
 </div>
 </div>
@@ -13502,9 +13467,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and here is an actual call to generate our <code>small</code> sample set:</li>
-</ul>
+<p>And here is an actual call to generate our <code>small</code> sample set:</p>
 
 </div>
 </div>
@@ -13563,9 +13526,7 @@ dumped 80 batches of 5 samples each
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and now we are ready to run a short training session:</li>
-</ul>
+<p>Now we are ready to run a short training session:</p>
 
 </div>
 </div>
@@ -13645,9 +13606,7 @@ Epoch 2/2
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>and this concludes our blog, please click on the next blog for more detail</li>
-</ul>
+<p>And this concludes our blog, please click on the next blog for more detail.</p>
 
 </div>
 </div>
