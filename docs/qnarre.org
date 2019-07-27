@@ -1376,91 +1376,43 @@ This blog introduced the most essential "framing" concepts of our model. A subse
 
 ** The Predatory Profits Of "High-Conflict" Divorces
 
-- with no conflict, there is no lawsuit nor profits
-- with no money nor profits, there is no "high-conflict"
-- with no "high conflict", there are no trend-setting cases
-- with no "trend-setting", there is no fame nor $500 / hour billing rate
+For a justification of this blog, please consider the following chain of conjectures (referenced "lawyers" would be the *divorce lawyer* types):
+- our common law is adversarial, winner simply takes all
+- a family, by definition, is not adversarial, as fundamentally both parents love their children
+- however, with no adversarial conflict, obviously there is no lawsuit and, hence, no profits for lawyers
+- thus our common law applied to families must first turn a family into adversaries
+- by definition, unsolved conflicts or perceived lack of resources create adversaries
+- moreover, sustainable and intractable conflicts guarantee adversaries for life or "high-conflict"
+- however, with no money nor possible profits for lawyers, there simply cannot be "high-conflict"
+- given sufficient funds, "high-conflict" cases are an ambitious (i.e. ruthless) lawyer's "gold mines" and long-term job-security
+- lawyers are in overabundance and competition is fierce, as one only needs to be a malicious, convincing actor
+- however, with no "high-conflict", there are no trendsetting "interesting" cases
+- with no trendsetting, there is no fame nor [~$500 / hour billing rate](https://femfas.net/flip_burgers/index.html) for a ruthless "top lawyer"
 
-- TODO: expand bullets
+Accepting the above chain of faultless logic, what can an ambitious, i.e. deeply narcissist, divorce lawyer do?
+- in cases lacking conflicts, he has only one choice: provoke or flat-out fabricate a conflict, specifically for the Family Court's eager consumption
+- if he "leaves money on the table" and neglects exploiting lucrative cases he has already hooked-onto, he will go hungry!
+ 
+In this blog we focus on *directly* fabricated conflicts, or flat-out, knowing lies to the Family Courts. We are aided by strict rules of the Court, as all meaningful communication must already be in (or should be convertible to) textual English "inputs".
 
-- for justification, consider the following chain of conjectures (referenced lawyers are the divorce lawyer type):
+Our first goal thus is to train our computer to "catch the knowingly and directly lying lawyer" by systematically finding direct, irrefutable textual contradictions in *all* of the lawyer's communications.
 
-- our general common law is adversarial, winner takes all
-- a family by definition is not adversarial, both parents love their children
-- however, with no conflict, obviously there is no lawsuit nor profits for lawyers
-- thus common law applied to families must first turn a family into adversaries
-- unsolved conflicts or perceived lack of resources create adversaries
-- sustainable and intractable conflicts guarantee adversaries for life or "high-conflict"
-- however, with no money nor possible profits, there simply cannot be "high-conflict"
-- given sufficient funds, "high-conflict" cases are an ambitious lawyer's "gold mines" and long-term job-security
-- lawyers are in abundance and competition is fierce as one only needs to be a convincing actor
-- however, with no "high conflict", there are no trend-setting "interesting" cases
-- with no "trend-setting", there is no fame nor $500 / hour billing rate for an ambitious lawyer
-
-- accepting the above, what can an ambitious lawyer do? (other than change profession)
-- he or she has only one choice: provoke or flat-out fabricate a conflict, where there is none, specifically for the Court's consumption
-- in this blog we focus on lawyers directly fabricating conflicts, or flat-out, knowingly lying to the Court
-
-- as per strict rules, all meaningful communication is (or can be converted to) textual
-
-- our first goal thus is to train our computer to "catch the knowingly and directly lying lawyer"
-
-- current NLP research has shown that the various proposed mechanism for answering the generic semantic correctness questions are promising
-- we use them to train our elementary arithmetic model to tell us if a mathematical expression is correct or not
-
-- YNS samples
-- create samples
-
-- there are still weaknesses regarding the size and scope of the considered "context" for correctness questions, however, our easily scaled and fully controlled "lab model" allows us to freely experiment
-
-- the latest mt-dnn models achieve better than human performance due to "cross-training"
-
-- we add variants to our samples:
-
-- MSK masking inputs to quess
-- REV reversing the order
-- FIX to actually find the error 
-  
-- present the model
-
-- run the model 
+Current state-of-the-art NLP research (see ["Attention"](https://arxiv.org/pdf/1706.03762.pdf)) has shown that the various proposed mechanism for answering generic semantic correctness questions are exceedingly promising. We use them to train our elementary arithmetic model to tell us if a mathematical expression is correct or not.
 
 ** A Psychological Object Model Of The ABA "Frequent Fliers"
-
-- American Bar: "Parents preoccupied with identity reconstruction"
-- Narcissistic Personality Disorder: "If they are male (and most are)"
-- "Psychology’s Replication Crisis Is Running Out of Excuses"
-- Soviet Stalin: "Show me the man and I’ll find you the crime"
-
-- TODO: expand bullets
-
-- ABA ["frequent fliers"](https://www.americanbar.org/content/dam/aba/events/family_law/2014/05/section_of_familylawspringcleconference/11_fri_custody.authcheckdam.pdf)
-
-- "the parents in conflict tend to be more preoccupied with their own identity reconstruction"
-
-- NPD ["feminism"](https://owlcation.com/social-sciences/What-Judges-Need-to-Know-About-Narcissistic-Personality-Disorder-in-Custody-Cases)
-
-The NPD will bring a plethora of legal actions that barely make sense or are fully nonsense. They will often burn through attorneys. They will have a history of multiple PFA’s against them. If they are male (and most are), they may have multiple custody issues with multiple women
-
-- Psychology ["science"](https://www.theatlantic.com/science/archive/2018/11/psychologys-replication-crisis-real/576223/)
-
-- In his foreword to my book, Alan Dershowitz discusses his time litigating cases in the old Soviet Union. He was always taken by the fact that they could prosecute anybody they wanted because some of the statutes were so vague
-- Stalin ["vague"](https://www.cato.org/policy-report/januaryfebruary-2010/criminalization-almost-everything)
-- most humans simply say no to such acts considering that children are involved
-- there are humans, however, Nazi SS concentration-camp guards are quintessential examples, that will do the "job" as long as there is palatable excuse for them to "hate or despise the others"
-- all
-
-YNX, MSX, FIX
-
 ** From Purposefully Fabricated Conflicts To Ideological Activism
 
-- TODO: expand bullets
+Impetus for this blog is provided by our parallel documenting efforts at [FemFas.net](https://femfas.net/), particularly the sections  regarding the continued [actions](https://femfas.net/divorce_law/index.html) of our Cambridge Family Court, summarized as: 
+- *"Divorce law rigged to torture children"*,
+- *"Activist Family Court victimizing children"*,
+- *"Family Court knowingly forcing children into poverty"* and
+- *"Court protecting, praising elite, white child predator men"*.
 
-Impetus for this blog is provided by our parallel documenting efforts at [FemFas](https://femfas.net/) and particularly regarding the [actions](https://femfas.net/divorce_law/index.html) of our Family Court, summarized as: "Divorce law rigged to torture children", "Activist Family Court victimizing children", "Family Court knowingly forcing children into poverty" and "Court protecting, praising elite, white child predator men".
+We continue to leave the clearly nebulous and tricky, day-to-day details of the situation to that website and we focus instead on actionable technical steps that can mold our still easily accessible "elementary arithmetic" model into the foundation of our upcoming, purely natural-language-based training efforts.
 
-We continue to leave the clearly nebulous and tricky, day-to-day details of the situation to that website and we focus instead on actionable technical steps that can mold our still easily accessible "elementary arithmetic" model into the foundation of our upcoming text-based training efforts.
+Further expanding on the last two blogs, we shift our attention to the `classification` (CLS and CLX), `question-answer` (QAS), `compose` (GEN) groups of samples.
 
-Further expanding on the last two blogs, we shift our attentions to the `classification` (CLS and CLX), `question-answer` (QAS), `compose` (GEN) groups of samples.    
+The formulated objectives, along with provided solutions, are loosely based on the novel approaches outlined in the trendsetting [BERT](https://arxiv.org/pdf/1810.04805.pdf) and [GPT](https://s3-us-west-2.amazonaws.com/openai-assets/research-covers/language-unsupervised/language_understanding_paper.pdf) papers.
 
 ** Representative Metrics Through Statistical Modeling
 
