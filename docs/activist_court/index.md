@@ -12,9 +12,9 @@ Most importantly, we introduce a **flexible, scalable and easily testable** "pro
 
 As we are attempting to teach our computer to "understand" first, we reach for the ultimate and undoubtedly universal symbolic language: simple, elementary mathematics. To this effect, we have already introduced the problem of training first-grader's arithmetic in a previous [blog](../advanced_tf/dataset.html).
 
-With the below presented new blogs, we greatly expand on that first, exploratory attempt. There are numerous recent [results](./sota_nlp.html) in NLP (natural language processing in AI) that **approach or even surpass** measured levels of human comprehension. We provide a framework of modules that reproduce the ideas, schemes, and results presented in those latest published research.
+With the below presented new blogs, we greatly expand on that first, exploratory attempt. There are numerous recent [results](./sota_nlp.html) in NLP (natural language processing in AI) that **approach or even surpass** measured levels of human comprehension. We provide a framework of modules that reproduce the ideas, schemes, and results presented in those latest published research papers.
 
-As the symbolism of our "proxy" model is universally understood, meaning that it is fully deterministic and predictable, synthesizing a virtually infinite and arbitrarily precise training sample base is well within our reach. With purpose-built training data sets, we then build on the published state-of-the-art results, measurably fine-tuning them.
+As the inherent symbolism of our "proxy" model is universally understood, meaning that it is fully deterministic and predictable, synthesizing a virtually infinite and arbitrarily precise training-sample base is well within our reach. With purpose-built training data sets, we then build on the published state-of-the-art results, measurably fine-tuning them.
 
 ## [Reductio Ad Absurdum - A Judicial Simulation](./simulation.html)
 

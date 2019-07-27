@@ -8,6 +8,8 @@ layout: default
 
 - Transformer-XL: [https://arxiv.org/pdf/1901.02860.pdf](https://arxiv.org/pdf/1901.02860.pdf)
 
+- Math-Trafo: [https://arxiv.org/pdf/1812.02825.pdf](https://arxiv.org/pdf/1812.02825.pdf)
+
 - GPT-2: [https://s3-us-west-2.amazonaws.com/openai-assets/research-covers/language-unsupervised/language_understanding_paper.pdf](https://s3-us-west-2.amazonaws.com/openai-assets/research-covers/language-unsupervised/language_understanding_paper.pdf)
 
 - GPT: [https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf](https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf)
@@ -19,6 +21,8 @@ layout: default
 - UnivTrans: [https://arxiv.org/pdf/1807.03819.pdf](https://arxiv.org/pdf/1807.03819.pdf)
 
 - Transformer: [https://arxiv.org/pdf/1706.03762.pdf](https://arxiv.org/pdf/1706.03762.pdf)
+
+- BeamSearch: [https://arxiv.org/pdf/1702.01806.pdf](https://arxiv.org/pdf/1702.01806.pdf)
 
 - NMT: [https://arxiv.org/pdf/1609.08144.pdf](https://arxiv.org/pdf/1609.08144.pdf)
 
