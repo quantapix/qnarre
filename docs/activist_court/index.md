@@ -40,7 +40,7 @@ As the inherent symbolism of our "proxy" model is universally understood, meanin
 * With no "trend-setting", there is no fame nor $500 / hour billing rate
 * [more detail...](./conflict.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/conflict.ipynb)
 
-## [Psychological Object Model Of ABA "Frequent Fliers"](./objects.html)
+## [Psychological Non-Profiles Of American Bar "Frequent Fliers"](./objects.html)
 
 * American Bar: "Parents preoccupied with identity reconstruction"
 * Narcissistic Personality Disorder: "If they are male (**and most are**)"

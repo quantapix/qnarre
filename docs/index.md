@@ -37,7 +37,7 @@ The following blogs incorporate "runnable" [Python](https://www.python.org/) scr
 * **Reductio ad absurdum** - a judicial simulation
 * Conceptual model of an "emotional" domain
 * Predatory profits of **"high-conflict"** divorces
-* Psychological object model of ABA "frequent fliers"
+* Psychological non-profiles of American Bar "frequent fliers"
 * From fabricated conflicts to ideological activism
 * Representative **metrics** through statistical modeling
 * Learn, adapt and protect from "elite" predators
