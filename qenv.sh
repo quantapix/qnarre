@@ -8,14 +8,14 @@ set -e -u -o pipefail
 # jupyter notebook --no-browser --port=8889
 # ssh -N -f -L localhost:8888:localhost:8889 remote_user@remote_host
 
-# export PATH=/home/qpix/clone/qnarre_new/.nvenv/cuda/bin:$PATH
-# export LD_LIBRARY_PATH=/home/qpix/clone/qnarre_new/.nvenv/cuda/lib64:$LD_LIBRARY_PATH
+# export PATH=/home/qpix/clone/qnarre_new/.nvold/cuda/bin:$PATH
+# export LD_LIBRARY_PATH=/home/qpix/clone/qnarre_new/.nvold/cuda/lib64:$LD_LIBRARY_PATH
 # export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
 
 nvenv() {
     mkdir .nvenv
     (cd nvidia
-     sh ./cuda_* --extract="$OLDPWD"/.nvenv)
+     sh ./cuda_* --extract="$OLDPWD"/.nvenv --override)
     mv .nvenv/cuda-toolkit .nvenv/cuda
     mv .nvenv/cuda-samples .nvenv/cuda/samples
     (cd nvidia
@@ -24,11 +24,11 @@ nvenv() {
      tar xf tensorrt_* -C "$OLDPWD"/.nvenv)
     mv .nvenv/nccl_* .nvenv/nccl
     mv .nvenv/TensorRT-* .nvenv/tensorrt
-    (cd /usr/local
-     sudo ln -s "$OLDPWD"/.nvenv/cublas cublas
-     sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
-     sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
-     sudo ln -s "$OLDPWD"/.nvenv/tensorrt tensorrt)
+    # (cd /usr/local
+    #  sudo ln -s "$OLDPWD"/.nvenv/cublas cublas
+    #  sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
+    #  sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
+    #  sudo ln -s "$OLDPWD"/.nvenv/tensorrt tensorrt)
 }
 
 keras() {
@@ -130,20 +130,16 @@ main() {
     .qenv/bin/pip install -U flake8 autopep8 jedi yapf
     .qenv/bin/pip install -U regex cytoolz joblib scikit-learn pandas matplotlib
     .qenv/bin/pip install -U gin-config  sympy gym pypng spacy-nightly
-    .qenv/bin/pip install -U dash dash-html-components dash-core-components
-    .qenv/bin/pip install -U dash-table dash-daq
+    # .qenv/bin/pip install -U dash dash-html-components dash-core-components
+    # .qenv/bin/pip install -U dash-table dash-daq
     .qenv/bin/pip install -U awscli
     .qenv/bin/pip install -U jupyter
 
 	  # keras
     # spacy
     # spacy_en
-    tflow "$GPU"
+    # tflow "$GPU"
     # ptorch "$GPU"
-
-    # .qenv/bin/pip install -U mesh-tensorflow
-    # .qenv/bin/pip install -U tensorflow-datasets
-    # .qenv/bin/pip install -U tensorflow-probability
 }
 
 main "$@"
