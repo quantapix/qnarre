@@ -24,15 +24,12 @@ build() {
         (cd upstream || exit
          git reset --hard
          git clean -xfd)
-        # cp cuda_configure_fix.bzl upstream/third_party/gpus/cuda_configure.bzl
-        # cp protobuf_cuda10.1_fix.patch upstream/third_party
-        # patch -d upstream -Np1 -i ../protobuf_cuda10.1_fix_apply.patch || true
     fi
     if [ ! -e std.build ]; then
         mkdir std.build std.install
     fi
     (cd std.build || exit
-     if [ ! -e .qpx.flag ]; then
+     if [ ! -e .qpx_config ]; then
          (cd ../upstream || exit
           export CC_OPT_FLAGS="-pipe -fstack-protector-strong -fno-plt"
           export CC_OPT_FLAGS="-march=native $CC_OPT_FLAGS"
@@ -75,7 +72,7 @@ build() {
               export TF_NEED_TENSORRT=0
               export TENSORRT_INSTALL_PATH=$NVENV_PATH/tensorrt
               export TF_TENSORRT_VERSION=$(sed -n 's/^#define NV_TENSORRT_MAJOR\s*\(.*\).*/\1/p' $TENSORRT_INSTALL_PATH/include/NvInfer.h)
-              export TF_CUDA_COMPUTE_CAPABILITIES=6.1,7.0,7.2,7.5
+              export TF_CUDA_COMPUTE_CAPABILITIES=6.1,7.0,7.2
               export LD_LIBRARY_PATH=$NVENV_PATH/cublas/lib64:$NVENV_PATH/cuda/lib64:$NVENV_PATH/extras/CUPTI/lib64:$NVENV_PATH/nccl/lib:$NVENV_PATH/tensorrt/lib
           else
               # export CC_OPT_FLAGS="-march=native $CC_OPT_FLAGS"
@@ -84,24 +81,24 @@ build() {
               export TF_NEED_CUDA=0
           fi
           ./configure)
+         touch .qpx_config
      else
-         echo "***** SKIPPING CONFIG... *****"
+         echo "*** SKIPPING CONFIG... ***"
      fi
      (cd ../upstream || exit
       if [ "$2" ]; then
-          bazel build --config=v2 --config=opt  \
+          bazel build --config=v2 --config=opt \
                 --config=noaws --config=nohdfs \
-                --config=noignite --config=nokafka \
+                --config=nokafka --config=noignite \
+                --incompatible_no_support_tools_in_action_inputs=false \
                 //tensorflow/tools/pip_package:build_pip_package
       else
           bazel build --config=v2 --config=opt --config=mkl \
                 --config=noaws --config=nohdfs \
-                --config=noignite --config=nokafka \
+                --config=nokafka --config=noignite \
+                --incompatible_no_support_tools_in_action_inputs=false \
                 //tensorflow/tools/pip_package:build_pip_package
-          # //tensorflow:libtensorflow.so \
-          # //tensorflow:libtensorflow_cc.so \
-          # //tensorflow:install_headers \
-fi
+      fi
       bazel-bin/tensorflow/tools/pip_package/build_pip_package --nightly_flag ../std.install)
      )
     (cd std.install || exit

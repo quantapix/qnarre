@@ -24,11 +24,7 @@ nvenv() {
      tar xf tensorrt_* -C "$OLDPWD"/.nvenv)
     mv .nvenv/nccl_* .nvenv/nccl
     mv .nvenv/TensorRT-* .nvenv/tensorrt
-    # (cd /usr/local
-    #  sudo ln -s "$OLDPWD"/.nvenv/cublas cublas
-    #  sudo ln -s "$OLDPWD"/.nvenv/cuda cuda
-    #  sudo ln -s "$OLDPWD"/.nvenv/nccl nccl
-    #  sudo ln -s "$OLDPWD"/.nvenv/tensorrt tensorrt)
+    sed -i "/.*unsupported GNU version.*/d" .nvenv/cuda/targets/x86_64-linux/include/crt/host_config.h
 }
 
 keras() {
@@ -134,7 +130,7 @@ main() {
     # .qenv/bin/pip install -U dash-table dash-daq
     .qenv/bin/pip install -U awscli
     .qenv/bin/pip install -U jupyter
-
+    .qenv/bin/pip install -U keras_preprocessing
 	  # keras
     # spacy
     # spacy_en
