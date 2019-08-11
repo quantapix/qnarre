@@ -100,7 +100,11 @@ build() {
                 //tensorflow/tools/pip_package:build_pip_package
       fi
       bazel-bin/tensorflow/tools/pip_package/build_pip_package --nightly_flag ../std.install)
-     )
+    )
+    (cd ../tensorboard || exit
+     bazel build //tensorboard/pip_package:build_pip_package
+     bazel-bin/tensorboard/pip_package/build_pip_package ../std.install
+    )
     (cd std.install || exit
      pip install -I tf_nightly-*.whl)
 }
