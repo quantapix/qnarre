@@ -14,10 +14,10 @@
 # =============================================================================
 # !pip install -U tf-nightly-2.0-preview
 
+from datetime import datetime
+
 import numpy as np
 import tensorflow as tf
-
-from datetime import datetime
 
 ks = tf.keras
 kl = ks.layers
@@ -26,7 +26,8 @@ cfg = tf.config.experimental
 # tf.debugging.set_log_device_placement(True)
 
 devs = ((None, None, None, None, None), )
-devs = ((None, ), (1000, 1000, 1000, 1000, 1000, 1000), (1000, 1000, 1000, 1000, 1000, 1000))
+devs = ((None, ), (1000, 1000, 1000, 1000, 1000, 1000),
+        (1000, 1000, 1000, 1000, 1000, 1000))
 cfg.set_visible_devices(cfg.get_visible_devices('CPU')[:1], 'CPU')
 cfg.set_visible_devices(cfg.get_visible_devices('GPU')[:len(devs) - 1], 'GPU')
 for d, ms in zip(cfg.get_visible_devices(), devs):
@@ -88,13 +89,13 @@ class Params:
 
 def main(_):
     ps = Params(**params)
-    d = np.ones((100, ps.dim_input))
+    ds = np.ones((100, ps.dim_input))  #pylint: disable=no-member
     # with tf.distribute.MirroredStrategy().scope():
     m = model_for(ps)
     ld = datetime.now().strftime('%Y%m%d-%H%M%S')
     ld = f'/tmp/q/logs/{ld}'
     cs = [ks.callbacks.TensorBoard(log_dir=ld, histogram_freq=1)]
-    m.fit(d, d, callbacks=cs, epochs=10, batch_size=10)
+    m.fit(ds, ds, callbacks=cs, epochs=10, batch_size=10)
 
 
 if __name__ == '__main__':
