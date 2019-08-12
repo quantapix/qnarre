@@ -14,9 +14,10 @@
 # =============================================================================
 # !pip install -U tf-nightly-2.0-preview
 
+from datetime import datetime
+
 import tensorflow as tf
 
-from datetime import datetime
 from tensorflow.python.training.tracking import base
 from tensorflow.python.training.tracking import tracking
 
