@@ -71,4 +71,10 @@ As the inherent symbolism of our "proxy" model is universally understood, meanin
 * The era of evolutionary competition of mighty AIs
 * [more detail...](./protect.html) and [runnable examples...](https://github.com/quantapix/qnarre/blob/master/docs/activist_court/protect.ipynb)
 
+## ["Based On A True Story": A Sample Qnarre Report](./report.html)
+
+* Beta 0.1 - raw and restricted report
+* More details in September...
+* [more detail...](./report.html)
+
 [back](../)

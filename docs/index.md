@@ -8,9 +8,7 @@ The motivation behind the **qnarre** effort is our unconditional love for our ch
 
 [Just as documented](https://femfas.net), advanced "weaponized psychology" has been used extensively by some "trusted" professionals of our most respected institutions. These elite predators knowingly hurt and tortured our children, while holding us ideological hostages for perhaps millions of dollars.
 
-We believe, and with the following series of blogs, we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative.
-
-Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, socialism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies. For all those gulping the "socialism kool-aid", while easily seduced by siren songs, a "survivor", and second-order-thinker, has one question: **what happens to the saboteurs?**
+We believe, and with the following series of blogs, we attempt to publicly prove, that AI, or the more humble **"deep learning"** technology, is not all evil nor needs to be exclusively exploitative. Despite the naive, uninformed and irrational fears of the inexperienced, "the enemy is within" in all tyrannies (e.g. fascism, communism, etc.) in the form of yet uncommunicated contradictions and intrinsic inconsistencies.
 
 Our dream, along with our concrete, informed steps we continue to take to approach it, is to devise AI software to actively protect our **American-born children** from greedy professional torturing and forceful, institutionalized separation and isolation. Family Court-mandated, and even directly ordered, parental alienation, while paying astronomical profits to the "trusted" elite, is nothing but ruthless and cruel child abuse.
 
@@ -30,7 +28,7 @@ The following blogs incorporate "runnable" [Python](https://www.python.org/) scr
 * **Autograph**: intuitive data-driven control at last
 * Modular and reusable metrics all the way
 * Keras **callbacks**: extending their scope and usage
-* [more detail... (uploaded June 30)](./advanced_tf/index.html)
+* [more detail...](./advanced_tf/index.html)
 
 # Modeling Ideological Judicial Activism
 
@@ -41,7 +39,8 @@ The following blogs incorporate "runnable" [Python](https://www.python.org/) scr
 * From fabricated conflicts to ideological activism
 * Representative **metrics** through statistical modeling
 * Learn, adapt and protect from "elite" predators
-* [more detail... (uploaded July 31)](./activist_court/index.html)
+* "Based on a true story": a sample Qnarre report 
+* [more detail...](./activist_court/index.html)
 
 # Court Contradictions Analytically Evaluated
 
@@ -51,10 +50,5 @@ The following blogs incorporate "runnable" [Python](https://www.python.org/) scr
 * Interpreting and presenting inferred **conflict graphs**
 * Irrefutable analytics to unmask ruthless "cover-ups"
 * Trends, costs and **profits** while identifying motives
-* "Based on a true story": a sample Qnarre report 
-* [more detail... (uploaded August 31)](./judicial_report/index.html)
-
-# Narratives For Real-Estate?
-
-* A "for hire" study of scenarios and results
-* [more detail... (uploaded September 30)](./qnarre_for_re/index.html)
+* From Angular front-end to TensorFlow back-end: **the Qnarre app**
+* [more detail... (uploaded in September)](./judicial_report/index.html)

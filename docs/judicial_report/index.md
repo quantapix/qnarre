@@ -40,9 +40,10 @@ We also outline an introductory sampling of analytics. As the end-results are al
 * In progress...
 * [more detail...](./tbd.html)
 
-## ["Based On A True Story": A Sample Qnarre Report](./report.html)
+## [From Angular front-end to TensorFlow back-end: the Qnarre app](./tbd.html)
 
-* Beta 0.1 - raw and restricted report
-* [more detail...](./report.html)
+* In progress...
+* [more detail...](./tbd.html)
+* 
 
 [back](../)
