@@ -4,5 +4,6 @@ theme: jekyll-theme-cayman
 github:
   is_project_page: true
   repository_url: https://github.com/quantapix/qnarre.git
+  new_repo_url: https://quantapix.github.io/qnarre-dev
   repository_name: qnarre
   owner_name: Quantapix
