@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeu -o pipefail
+# set -xeu -o pipefail
 
 # python -m ipykernel install --user --name qenv --display-name "Python (.env)"
 # jupyter notebook --no-browser --port=8889
@@ -98,7 +98,7 @@ main() {
     fi
 
     if [ ! -e .env ]; then
-	      python3.9 -m venv .env
+	      python3.10 -m venv .env
     fi
 
     .env/bin/pip install -U pip wheel setuptools pytest black
@@ -108,7 +108,8 @@ main() {
     tflow
     ptorch "$GPU"
     # spacy "$GPU"
-    hface
+    .env/bin/pip install -U tokenizers accelerate datasets transformers
+    # hface
     # .env/bin/pip install -U regex cytoolz joblib scikit-learn  
     # .env/bin/pip install -U pycodestyle pylint pyyaml
     # .env/bin/pip install -U flake8 autopep8 jedi yapf

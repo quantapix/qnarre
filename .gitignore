@@ -1,0 +1,7 @@
+.cache
+.data
+.env
+.hugo_build.lock
+.runs
+.save
+dev
