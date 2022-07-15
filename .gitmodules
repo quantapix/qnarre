@@ -1,0 +1,16 @@
+[submodule "lib/accelerate"]
+	path = lib/accelerate
+	url = https://github.com/huggingface/accelerate.git
+	branch = main
+[submodule "lib/datasets"]
+	path = lib/datasets
+	url = https://github.com/huggingface/datasets.git
+	branch = main
+[submodule "lib/transformers"]
+	path = lib/transformers
+	url = https://github.com/huggingface/transformers.git
+	branch = main
+[submodule "lib/tokenizers"]
+	path = lib/tokenizers
+	url = https://github.com/huggingface/tokenizers.git
+	branch = main
