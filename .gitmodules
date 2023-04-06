@@ -25,3 +25,6 @@
 	path = lib/llama
 	url = https://github.com/facebookresearch/llama.git
 	branch = main
+[submodule "lib/llama.cpp"]
+	path = lib/llama.cpp
+	url = https://github.com/ggerganov/llama.cpp.git
