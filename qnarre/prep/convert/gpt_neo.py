@@ -93,7 +93,7 @@ def load_src_weights(model, config, gpt_neo_checkpoint_path):
         print(f"Initialize PyTorch weight {name}")
         pointer.data = torch.from_numpy(array)
     embs = model.transformer.wte.weight
-    lin = nn.Linear(embs.size()[1], embs.size()[0], bias=False)
+    lin = torch.nn.Linear(embs.size()[1], embs.size()[0], bias=False)
     lin.weight = embs
     model.set_output_embeddings(lin)
     return model

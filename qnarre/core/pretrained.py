@@ -23,7 +23,7 @@ from .base import Hypers, Module
 log = logging.get_logger(__name__)
 
 
-class Pretrained(Module):
+class PreTrained(Module):
     hs = Hypers(
         [
             "activation",
@@ -236,7 +236,7 @@ class Pretrained(Module):
         return y
 
     def to_diff_dict(self):
-        d = Pretrained().to_dict()
+        d = PreTrained().to_dict()
         c = self.__class__().to_dict() if not self.is_composition else {}
         y = {}
         for k, v in self.to_dict().items():

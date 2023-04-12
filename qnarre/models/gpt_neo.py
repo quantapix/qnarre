@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
 from ..core.ffnet import Classifier, FFNet, Masker, Pool
-from ..prep.config.bert import PreTrained
+from ..prep.config.gpt_neo import PreTrained
 
 
 log = logging.get_logger(__name__)
@@ -37,17 +37,15 @@ LIST = [
 ]
 
 
-class GPTNeoSelfAttention(qc.Module):
+class SelfAttention(qc.Module):
     def __init__(self, config, attention_type):
         super().__init__()
-
         max_positions = config.n_pos
-        bias = torch.tril(torch.ones((max_positions, max_positions), dtype=torch.uint8)).view(
+        bias = torch.tril(torch.ones((max_positions, max_positions), dtype=torch.bool)).view(
             1, 1, max_positions, max_positions
         )
         if attention_type == "local":
             bias = torch.bitwise_xor(bias, torch.tril(bias, -config.s_win))
-
         self.register_buffer("bias", bias)
         self.register_buffer("masked_bias", torch.tensor(-1e9))
 
@@ -70,7 +68,7 @@ class GPTNeoSelfAttention(qc.Module):
     def _split_heads(self, tensor, n_heads, attn_head_size):
         new_shape = tensor.size()[:-1] + (n_heads, attn_head_size)
         tensor = tensor.view(new_shape)
-        return tensor.permute(0, 2, 1, 3)  # (batch, head, seq_length, head_features)
+        return tensor.permute(0, 2, 1, 3)
 
     def _merge_heads(self, tensor, n_heads, attn_head_size):
         tensor = tensor.permute(0, 2, 1, 3).contiguous()
@@ -78,32 +76,22 @@ class GPTNeoSelfAttention(qc.Module):
         return tensor.view(new_shape)
 
     def _attn(self, query, key, value, attention_mask=None, head_mask=None):
-        # Keep the attention weights computation in fp32 to avoid overflow issues
         query = query.to(torch.float32)
         key = key.to(torch.float32)
-
         attn_weights = torch.matmul(query, key.transpose(-1, -2))
-
         query_length, key_length = query.size(-2), key.size(-2)
-        causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].bool()
-        attn_weights = torch.where(
-            causal_mask, attn_weights, self.masked_bias.to(attn_weights.dtype)
-        )
-
+        causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length]
+        mask_value = torch.finfo(attn_weights.dtype).min
+        mask_value = torch.tensor(mask_value, dtype=attn_weights.dtype).to(attn_weights.device)
+        attn_weights = torch.where(causal_mask, attn_weights, mask_value)
         if attention_mask is not None:
-            # Apply the attention mask
             attn_weights = attn_weights + attention_mask
-
         attn_weights = F.softmax(attn_weights, dim=-1)
         attn_weights = attn_weights.to(value.dtype)
         attn_weights = self.attn_dropout(attn_weights)
-
-        # Mask heads if we want to
         if head_mask is not None:
             attn_weights = attn_weights * head_mask
-
         attn_output = torch.matmul(attn_weights, value)
-
         return attn_output, attn_weights
 
     def forward(
@@ -115,37 +103,29 @@ class GPTNeoSelfAttention(qc.Module):
         y_cache=False,
         output_attentions=False,
     ):
-
         query = self.q_proj(hiddens)
         key = self.k_proj(hiddens)
         value = self.v_proj(hiddens)
-
         query = self._split_heads(query, self.n_heads, self.head_dim)
         key = self._split_heads(key, self.n_heads, self.head_dim)
         value = self._split_heads(value, self.n_heads, self.head_dim)
-
         if layer_past is not None:
             past_key = layer_past[0]
             past_value = layer_past[1]
             key = torch.cat((past_key, key), dim=-2)
             value = torch.cat((past_value, value), dim=-2)
-
         if y_cache is True:
             present = (key, value)
         else:
             present = None
-
         attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
-
         attn_output = self._merge_heads(attn_output, self.n_heads, self.head_dim)
         attn_output = self.out_proj(attn_output)
         attn_output = self.drop_resid(attn_output)
-
         outputs = (attn_output, present)
         if output_attentions:
             outputs += (attn_weights,)
-
-        return outputs  # a, present, (attns)
+        return outputs
 
 
 class Attention(qc.Module):
@@ -154,9 +134,8 @@ class Attention(qc.Module):
         self.layer_id = layer_id
         self.attention_layers = config.attention_layers
         self.attention_type = self.attention_layers[layer_id]
-
         if self.attention_type in ["global", "local"]:
-            self.attention = GPTNeoSelfAttention(config, self.attention_type)
+            self.attention = SelfAttention(config, self.attention_type)
         else:
             raise NotImplementedError(
                 "Only attn layer types 'global' and 'local' exist, but got `config.attention_layers`: "
@@ -182,7 +161,7 @@ class Attention(qc.Module):
         )
 
 
-class GPTNeoMLP(qc.Module):
+class MLP(qc.Module):
     def __init__(self, d_ff, config):
         super().__init__()
         embed_dim = config.d_model
@@ -199,7 +178,7 @@ class GPTNeoMLP(qc.Module):
         return y
 
 
-class GPTNeoBlock(qc.Module):
+class Block(qc.Module):
     def __init__(self, config, layer_id):
         super().__init__()
         d_model = config.d_model
@@ -207,7 +186,7 @@ class GPTNeoBlock(qc.Module):
         self.ln_1 = qc.LayerNorm(d_model, eps=config.eps)
         self.attn = Attention(config, layer_id)
         self.ln_2 = qc.LayerNorm(d_model, eps=config.eps)
-        self.mlp = GPTNeoMLP(inner_dim, config)
+        self.mlp = MLP(inner_dim, config)
 
     def forward(
         self,
@@ -228,36 +207,29 @@ class GPTNeoBlock(qc.Module):
             y_cache=y_cache,
             output_attentions=output_attentions,
         )
-        attn_output = attn_outputs[0]  # output_attn: a, present, (attns)
+        attn_output = attn_outputs[0]
         outputs = attn_outputs[1:]
-        # residual connection
         hiddens = attn_output + residual
-
         residual = hiddens
         hiddens = self.ln_2(hiddens)
         feed_forward_model_states = self.mlp(hiddens)
-        # residual connection
         hiddens = residual + feed_forward_model_states
-
         if y_cache:
             outputs = (hiddens,) + outputs
         else:
             outputs = (hiddens,) + outputs[1:]
-
         return outputs
 
 
 class Model(PreTrained):
     def __init__(self, config):
         super().__init__(config)
-
         self.embed_dim = config.d_model
         self.wte = qc.Embed(config.s_vocab, self.embed_dim)
         self.wpe = qc.Embed(config.n_pos, self.embed_dim)
         self.drop = qc.Dropout(config.drop_embed)
-        self.h = nn.ModuleList([GPTNeoBlock(config, layer_id=i) for i in range(config.n_lays)])
+        self.h = nn.ModuleList([Block(config, layer_id=i) for i in range(config.n_lays)])
         self.ln_f = qc.LayerNorm(self.embed_dim, eps=config.eps)
-
         self.gradient_checkpointing = False
 
     def forward(
@@ -317,14 +289,13 @@ class Model(PreTrained):
             )
             position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
 
-        # Attention mask.
         if attention_mask is not None:
             if batch_size <= 0:
                 raise ValueError("batch_size has to be defined and > 0")
             attention_mask = attention_mask.view(batch_size, -1)
             attention_mask = attention_mask[:, None, None, :]
             attention_mask = attention_mask.to(dtype=self.dtype)  # fp16 compatibility
-            attention_mask = (1.0 - attention_mask) * -10000.0
+            attention_mask = (1.0 - attention_mask) * torch.finfo(self.dtype).min
         head_mask = self.get_head_mask(head_mask, self.config.n_lays)
 
         if inputs_embeds is None:
@@ -348,7 +319,6 @@ class Model(PreTrained):
                 all_hidden_states = all_hidden_states + (hiddens,)
 
             if self.gradient_checkpointing and self.training:
-
                 if y_cache:
                     log.warning(
                         "`y_cache=True` is incompatible with gradient checkpointing. Setting `y_cache=False`..."
@@ -357,7 +327,6 @@ class Model(PreTrained):
 
                 def create_custom_forward(module):
                     def custom_forward(*inputs):
-                        # None for past_key_value
                         return module(*inputs, y_cache, output_attentions)
 
                     return custom_forward
@@ -387,12 +356,9 @@ class Model(PreTrained):
                 all_self_attentions = all_self_attentions + (outputs[2 if y_cache else 1],)
 
         hiddens = self.ln_f(hiddens)
-
         hiddens = hiddens.view(output_shape)
-        # Add last hidden state
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hiddens,)
-
         if not return_dict:
             return tuple(
                 v

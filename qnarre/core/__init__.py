@@ -25,20 +25,20 @@ from qnarre.core.base import (
     Stack,
     SeqSummary,
 )
-from qnarre.core.pretrained import Pretrained
+from qnarre.core.pretrained import PreTrained
 from qnarre.core.output import Output
 
-__all__ = (
-    Config,
-    Conv1D,
-    Dropout,
-    Embed,
-    Hypers,
-    LayerNorm,
-    Linear,
-    Module,
-    Stack,
-    Output,
-    Pretrained,
-    SeqSummary,
-)
+__all__ = [
+    "Config",
+    "Conv1D",
+    "Dropout",
+    "Embed",
+    "Hypers",
+    "LayerNorm",
+    "Linear",
+    "Module",
+    "Stack",
+    "Output",
+    "PreTrained",
+    "SeqSummary",
+]
