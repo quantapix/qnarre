@@ -56,12 +56,13 @@ tflow() {
 
 ptorch() {
     if $1; then
-        .env/bin/pip install -U cupy-cuda118
-        .env/bin/pip install --pre torch torchtext torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu118
+        .env/bin/pip install -U cupy-cuda12x
+        .env/bin/pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121
     else
-        .env/bin/pip install --pre torch torchtext torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu
+        .env/bin/pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cpu
     fi
-    .env/bin/pip install -U captum tensorboard torch-tb-profiler
+    .env/bin/pip install -U tensorboard torch-tb-profiler
+    # .env/bin/pip install -U captum tensorboard torch-tb-profiler
 }
 
 hface() {
