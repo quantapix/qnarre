@@ -46,7 +46,6 @@ question_answering_column_name_mapping = {
 def parse_params(xs):
     x = argparse.ArgumentParser()
     x.add_argument("--answer_column", type=str, default="answers")
-    x.add_argument("--audio_column", type=str, default="audio")
     x.add_argument("--block_size", type=int, default=None)
     x.add_argument("--cache_dir", type=str, default=None)
     x.add_argument("--config_name", type=str, default=None)
