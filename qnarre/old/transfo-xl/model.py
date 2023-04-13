@@ -435,7 +435,6 @@ class AdaptLogSoftmax(qc.Module):
             or (len(set(cutoffs)) != len(cutoffs))
             or any([int(c) != c for c in cutoffs])
         ):
-
             raise ValueError(
                 "cutoffs should be a sequence of unique, positive "
                 "integers sorted in an increasing order, where "
@@ -691,14 +690,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if args.cuda else "cpu")
 
     B = 4
-    tgt_len, mem_len, ext_len = 36, 36, 0
-    data_len = tgt_len * 20
+    len, mem_len, ext_len = 36, 36, 0
+    data_len = len * 20
     args.s_vocab = 10000
 
     import data_utils
 
     data = torch.LongTensor(data_len * B).random_(0, args.s_vocab).to(device)
-    diter = data_utils.LMOrderedIterator(data, B, tgt_len, device=device, ext_len=ext_len)
+    diter = data_utils.LMOrderedIterator(data, B, len, device=device, ext_len=ext_len)
 
     cutoffs = [args.s_vocab // 2]
     tie_projs = [False] + [True] * len(cutoffs)
@@ -711,7 +710,7 @@ if __name__ == "__main__":
                 div_val=div_val,
                 tie_projs=tie_projs,
                 pre_norm=True,
-                tgt_len=tgt_len,
+                tgt_len=len,
                 ext_len=ext_len,
                 mem_len=mem_len,
                 cutoffs=cutoffs,

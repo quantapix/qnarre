@@ -50,29 +50,6 @@ def shift_tokens_right(input_ids, PAD, decoder_start_token_id):
     return shifted_input_ids
 
 
-def _make_causal_mask(input_ids_shape, dtype, past_key_values_length=0):
-    bsz, tgt_len = input_ids_shape
-    mask = torch.full((tgt_len, tgt_len), float("-inf"))
-    mask_cond = torch.arange(mask.size(-1))
-    mask.masked_fill_(mask_cond < (mask_cond + 1).view(mask.size(-1), 1), 0)
-    mask = mask.to(dtype)
-    if past_key_values_length > 0:
-        mask = torch.cat([torch.zeros(tgt_len, past_key_values_length, dtype=dtype), mask], dim=-1)
-    return mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len + past_key_values_length)
-
-
-def _expand_mask(mask, dtype, tgt_len=None):
-    bsz, src_len = mask.size()
-    tgt_len = tgt_len if tgt_len is not None else src_len
-    expanded_mask = mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
-    inverted_mask = 1.0 - expanded_mask
-    expanded_attention_mask = inverted_mask.masked_fill(
-        inverted_mask.bool(), torch.finfo(dtype).min
-    )
-    expanded_attention_mask = expanded_attention_mask * inverted_mask
-    return expanded_attention_mask
-
-
 class LEDLearnedPositionalEmbedding(qc.Embed):
     def __init__(self, num_embeddings, embedding_dim):
         super().__init__(num_embeddings, embedding_dim)
@@ -1291,7 +1268,7 @@ class Decoder(PreTrained):
         # create causal mask
         combined_attention_mask = None
         if input_shape[-1] > 1:
-            combined_attention_mask = _make_causal_mask(
+            combined_attention_mask = qu.causal_mask(
                 input_shape, inputs_embeds.dtype, past_key_values_length=past_key_values_length
             ).to(self.device)
 
@@ -1302,7 +1279,7 @@ class Decoder(PreTrained):
 
         # expand encoder attention mask
         if enc_hiddens is not None and encoder_attention_mask is not None:
-            encoder_attention_mask = _expand_mask(
+            encoder_attention_mask = qu.expand_mask(
                 encoder_attention_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]
             )
 
@@ -1340,7 +1317,6 @@ class Decoder(PreTrained):
             past_key_value = caches[idx] if caches is not None else None
 
             if self.gradient_checkpointing and self.training:
-
                 if y_cache:
                     log.warning(
                         "`y_cache=True` is incompatible with gradient checkpointing. Setting `y_cache=False`..."

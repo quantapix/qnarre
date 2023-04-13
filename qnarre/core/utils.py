@@ -139,14 +139,14 @@ def shift_right2(x, PAD):
     return y
 
 
-def causal_mask(shape, dtype, c_len=0):
+def causal_mask(shape, dtype, device, c_len=0):  # qpx add device
     b, n = shape
-    y = torch.full((n, n), float("-inf"))
-    cond = torch.arange(y.size(-1))
+    y = torch.full((n, n), torch.tensor(torch.finfo(dtype).min, device=device), device=device)
+    cond = torch.arange(y.size(-1), device=device)
     y.masked_fill_(cond < (cond + 1).view(y.size(-1), 1), 0)
     y = y.to(dtype)
     if c_len > 0:
-        y = torch.cat([torch.zeros(n, c_len, dtype=dtype), y], dim=-1)
+        y = torch.cat([torch.zeros(n, c_len, dtype=dtype, device=device), y], dim=-1)
     return y[None, None, :, :].expand(b, 1, n, n + c_len)
 
 
@@ -154,4 +154,16 @@ def expand_mask(x, dtype, len=None):
     b, n = x.size()
     len = len if len is not None else n
     y = 1.0 - x[:, None, None, :].expand(b, 1, len, n).to(dtype)
-    return y.masked_fill(y.bool(), torch.finfo(dtype).min)
+    return y.masked_fill(y.to(torch.bool), torch.finfo(dtype).min)
+
+
+def _expand_mask(mask, dtype, tgt_len=None):
+    bsz, src_len = mask.size()
+    tgt_len = tgt_len if tgt_len is not None else src_len
+    expanded_mask = mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
+    inverted_mask = 1.0 - expanded_mask
+    expanded_attention_mask = inverted_mask.masked_fill(
+        inverted_mask.bool(), torch.finfo(dtype).min
+    )
+    expanded_attention_mask = expanded_attention_mask * inverted_mask
+    return expanded_attention_mask
