@@ -51,7 +51,7 @@ spacy() {
 }
 
 tflow() {
-    .env/bin/pip install -U tensorflow
+    .env/bin/pip install -U tf-nightly
 }
 
 ptorch() {
@@ -62,7 +62,7 @@ ptorch() {
         .env/bin/pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cpu
     fi
     .env/bin/pip install -U tensorboard torch-tb-profiler
-    # .env/bin/pip install -U captum tensorboard torch-tb-profiler
+    # .env/bin/pip install -U captum
 }
 
 hface() {
@@ -115,19 +115,20 @@ main() {
     fi
 
     .env/bin/pip install -U pip wheel setuptools pytest black
+    .env/bin/pip install -U packaging requests opt_einsum
     .env/bin/pip install -U numpy pandas matplotlib scipy scikit-learn nltk
-    .env/bin/pip install -U jupyter seaborn awscli
-    .env/bin/pip install -U pyarrow sentencepiece
     tflow
+    .env/bin/pip install -U keras_preprocessing --no-deps
     ptorch "$GPU"
     # spacy "$GPU"
-    .env/bin/pip install -U tokenizers accelerate datasets transformers
+    .env/bin/pip install -U jupyter seaborn awscli
+    .env/bin/pip install -U pyarrow sentencepiece
+    .env/bin/pip install -U tokenizers accelerate datasets transformers evaluate
     # hface
-    # .env/bin/pip install -U regex cytoolz joblib scikit-learn
+    # .env/bin/pip install -U regex cytoolz joblib
     # .env/bin/pip install -U pycodestyle pylint pyyaml
     # .env/bin/pip install -U flake8 autopep8 jedi yapf
-    # .env/bin/pip install -U gin-config  sympy gym pypng spacy-nightly
-    # .env/bin/pip install -U keras_preprocessing
+    # .env/bin/pip install -U gin-config sympy gym pypng spacy-nightly
 }
 
 main "$@"
