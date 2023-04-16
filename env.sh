@@ -51,17 +51,17 @@ spacy() {
 }
 
 tflow() {
-    .env/bin/pip install -U tf-nightly
+    .env/bin/pip install -U tf-nightly tb-nightly
 }
 
 ptorch() {
     if $1; then
-        .env/bin/pip install -U cupy-cuda12x
-        .env/bin/pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu121
+        .env/bin/pip install -U cupy-cuda11x
+        .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cu118
     else
-        .env/bin/pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cpu
+        .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cpu
     fi
-    .env/bin/pip install -U tensorboard torch-tb-profiler
+    .env/bin/pip install -U torch-tb-profiler
     # .env/bin/pip install -U captum
 }
 
