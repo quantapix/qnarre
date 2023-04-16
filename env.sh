@@ -65,9 +65,9 @@ main() {
     fi
 
     .env/bin/pip install -U pip wheel setuptools pytest black
-    .env/bin/pip install -U packaging requests opt_einsum
+    # .env/bin/pip install -U packaging requests opt_einsum
     .env/bin/pip install -U numpy pandas matplotlib scipy scikit-learn nltk
-    .env/bin/pip install -U keras_preprocessing --no-deps
+    # .env/bin/pip install -U keras_preprocessing --no-deps
     ptorch "$GPU"
     # spacy "$GPU"
     .env/bin/pip install -U jupyter seaborn awscli
@@ -77,6 +77,8 @@ main() {
     # .env/bin/pip install -U pycodestyle pylint pyyaml
     # .env/bin/pip install -U flake8 autopep8 jedi yapf
     # .env/bin/pip install -U gin-config sympy gym pypng spacy-nightly
+
+    .env/bin/python -c "from transformers import pipeline; print(pipeline('sentiment-analysis')('we love you'))"
 }
 
 main "$@"
