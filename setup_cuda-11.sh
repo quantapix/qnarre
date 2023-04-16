@@ -12,15 +12,9 @@ sudo apt-get install --no-install-recommends \
     libnccl2=2.15.5-1+cuda11.8 \
     libnccl-dev=2.15.5-1+cuda11.8
 
-sudo apt-get install -y --no-install-recommends \
-    libnvinfer8=8.6.0.12-1+cuda11.8 \
-    libnvinfer-dev=8.6.0.12-1+cuda11.8 \
-    libnvinfer-plugin8_8.6.0.12-1+cuda11.8
-
 function lib_installed() { /sbin/ldconfig -N -v $(sed 's/:/ /' <<< $LD_LIBRARY_PATH) 2>/dev/null | grep $1; }
 function check() { lib_installed $1 && echo "$1 is installed" || echo "ERROR: $1 is NOT installed"; }
 check libcuda
 check libcudart
 check libcudnn
 check libnccl
-check libnvinfer

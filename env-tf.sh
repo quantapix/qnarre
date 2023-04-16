@@ -24,15 +24,8 @@ spacy() {
     # .env/bin/python -m spacy download en_vectors_web_lg
 }
 
-ptorch() {
-    if $1; then
-        .env/bin/pip install -U cupy-cuda11x
-        .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cu118
-    else
-        .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cpu
-    fi
-    .env/bin/pip install -U tensorboard torch-tb-profiler
-    # .env/bin/pip install -U captum
+tflow() {
+    .env/bin/pip install -U tf-nightly tb-nightly
 }
 
 show_usage() {
@@ -67,8 +60,7 @@ main() {
     .env/bin/pip install -U pip wheel setuptools pytest black
     .env/bin/pip install -U packaging requests opt_einsum
     .env/bin/pip install -U numpy pandas matplotlib scipy scikit-learn nltk
-    .env/bin/pip install -U keras_preprocessing --no-deps
-    ptorch "$GPU"
+    tflow
     # spacy "$GPU"
     .env/bin/pip install -U jupyter seaborn awscli
     .env/bin/pip install -U pyarrow sentencepiece
