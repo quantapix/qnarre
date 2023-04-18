@@ -26,8 +26,8 @@ spacy() {
 
 ptorch() {
     if $1; then
-        .env/bin/pip install -U cupy-cuda11x
-        .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cu118
+        .env/bin/pip install -U cupy-cuda12x
+        .env/bin/pip install --pre torch torchtext --index-url https://download.pytorch.org/whl/nightly/cu121
     else
         .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cpu
     fi
@@ -73,6 +73,7 @@ main() {
     .env/bin/pip install -U jupyter seaborn awscli
     .env/bin/pip install -U pyarrow sentencepiece
     .env/bin/pip install -U tokenizers accelerate datasets transformers evaluate
+    
     # .env/bin/pip install -U regex cytoolz joblib
     # .env/bin/pip install -U pycodestyle pylint pyyaml
     # .env/bin/pip install -U flake8 autopep8 jedi yapf
