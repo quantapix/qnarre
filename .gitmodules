@@ -25,3 +25,7 @@
 [submodule "lib/llama.cpp"]
 	path = lib/llama.cpp
 	url = https://github.com/ggerganov/llama.cpp.git
+[submodule "lib/evaluate"]
+	path = lib/evaluate
+	url = https://github.com/huggingface/evaluate.git
+	branch = main
