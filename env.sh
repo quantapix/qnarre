@@ -29,7 +29,7 @@ ptorch() {
         .env/bin/pip install -U cupy-cuda12x
         .env/bin/pip install --pre torch torchtext --index-url https://download.pytorch.org/whl/nightly/cu121
     else
-        .env/bin/pip install --pre torch torchaudio torchtext torchvision --index-url https://download.pytorch.org/whl/nightly/cpu
+        .env/bin/pip install --pre torch torchtext --index-url https://download.pytorch.org/whl/nightly/cpu
     fi
     .env/bin/pip install -U tensorboard torch-tb-profiler
     # .env/bin/pip install -U captum
