@@ -14,9 +14,6 @@
 # =============================================================================
 
 import math
-import torch
-
-from collections import OrderedDict
 
 from ... import core as qc
 
@@ -107,68 +104,3 @@ MAP = {
         n_lays=6,
     ),
 }
-
-
-class Onnx:
-    def __init__(
-        self,
-        cfg,
-        task="default",
-        patching_specs=None,
-        use_past=False,
-    ):
-        super().__init__(cfg, task=task, patching_specs=patching_specs, use_past=use_past)
-        if not getattr(self._config, "PAD", None):
-            self._config.PAD = 0
-
-    @property
-    def inputs(self):
-        y = OrderedDict({"input_ids": {0: "batch", 1: "sequence"}})
-        if self.use_past:
-            self.fill_with_past_key_values_(y, direction="inputs")
-            y["mask"] = {0: "batch", 1: "past_sequence + sequence"}
-        else:
-            y["mask"] = {0: "batch", 1: "sequence"}
-
-        return y
-
-    @property
-    def n_lays(self):
-        return self._config.n_lays
-
-    @property
-    def n_heads(self):
-        return self._config.n_heads
-
-    def generate_dummy_inputs(
-        self,
-        tokenizer,
-        batch_size=-1,
-        seq_length=-1,
-        is_pair=False,
-        framework=None,
-    ):
-        common_inputs = super().generate_dummy_inputs(
-            tokenizer, batch_size, seq_length, is_pair, framework
-        )
-        y = OrderedDict({"input_ids": common_inputs["input_ids"]})
-        if self.use_past:
-            batch, seqlen = common_inputs["input_ids"].shape
-            past_key_values_length = seqlen + 2
-            past_shape = (
-                batch,
-                self.n_heads,
-                past_key_values_length,
-                self._config.d_model // self.n_heads,
-            )
-            y["prev_kv"] = [
-                (torch.zeros(past_shape), torch.zeros(past_shape)) for _ in range(self.n_lays)
-            ]
-        y["mask"] = common_inputs["mask"]
-        if self.use_past:
-            y["mask"] = torch.cat([y["mask"], torch.ones(batch, past_key_values_length)], dim=1)
-        return y
-
-    @property
-    def default_onnx_opset(self):
-        return 13

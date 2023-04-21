@@ -109,9 +109,9 @@ class Tokenizer(PreTrainedTokenizerFast):
         return tuple(self._tokenizer.model.save(dir, name=pre))
 
     def _build_conversation_input_ids(self, conversation):
-        input_ids = []
+        ys = []
         for is_user, text in conversation.iter_texts():
-            input_ids.extend(self.encode(text, add_special_tokens=False) + [self.EOS])
-        if len(input_ids) > self.model_max_length:
-            input_ids = input_ids[-self.model_max_length :]
-        return input_ids
+            ys.extend(self.encode(text, add_special_tokens=False) + [self.EOS])
+        if len(ys) > self.model_max_length:
+            ys = ys[-self.model_max_length :]
+        return ys

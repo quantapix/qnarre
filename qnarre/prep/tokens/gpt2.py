@@ -111,7 +111,7 @@ class Tokenizer(PreTrainedTokenizer):
         with open(vocab_file, encoding="utf-8") as vocab_handle:
             self.encoder = json.load(vocab_handle)
         self.decoder = {v: k for k, v in self.encoder.items()}
-        self.errors = errors  # how to handle errors in decoding
+        self.errors = errors
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
         with open(merges_file, encoding="utf-8") as merges_handle:
@@ -171,12 +171,41 @@ class Tokenizer(PreTrainedTokenizer):
         self.cache[token] = word
         return word
 
+    def build_inputs_with_special_tokens(self, token_ids_0, token_ids_1=None):
+        if self.bos:
+            BOSs = [self.BOS]
+        else:
+            BOSs = []
+        y = BOSs + token_ids_0
+        if token_ids_1 is None:
+            return y
+        return y + BOSs + token_ids_1
+
+    def get_special_tokens_mask(
+        self,
+        token_ids_0,
+        token_ids_1=None,
+        already_has_special_tokens=False,
+    ):
+        if already_has_special_tokens:
+            return super().get_special_tokens_mask(
+                token_ids_0=token_ids_0, token_ids_1=token_ids_1, already_has_special_tokens=True
+            )
+
+        if not self.bos:
+            return super().get_special_tokens_mask(
+                token_ids_0=token_ids_0, token_ids_1=token_ids_1, already_has_special_tokens=False
+            )
+        if token_ids_1 is None:
+            return [1] + ([0] * len(token_ids_0))
+        return [1] + ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1))
+
     def _tokenize(self, text):
-        bpe_tokens = []
+        ys = []
         for token in re.findall(self.pat, text):
             token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
-            bpe_tokens.extend(bpe_token for bpe_token in self.bpe(token).split(" "))
-        return bpe_tokens
+            ys.extend(bpe_token for bpe_token in self.bpe(token).split(" "))
+        return ys
 
     def _convert_token_to_id(self, token):
         return self.encoder.get(token, self.encoder.get(self.unk))
@@ -184,10 +213,10 @@ class Tokenizer(PreTrainedTokenizer):
     def _convert_id_to_token(self, index):
         return self.decoder.get(index)
 
-    def convert_tokens_to_string(self, tokens):
-        text = "".join(tokens)
-        text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
-        return text
+    def convert_tokens_to_string(self, xs):
+        y = "".join(xs)
+        y = bytearray([self.byte_decoder[c] for c in y]).decode("utf-8", errors=self.errors)
+        return y
 
     def save_vocabulary(self, dir, pre=None):
         vocab_file = os.path.join(
@@ -221,9 +250,9 @@ class Tokenizer(PreTrainedTokenizer):
         return (text, kw)
 
     def _build_conversation_input_ids(self, conversation):
-        input_ids = []
+        ys = []
         for is_user, text in conversation.iter_texts():
-            input_ids.extend(self.encode(text, add_special_tokens=False) + [self.EOS])
-        if len(input_ids) > self.model_max_length:
-            input_ids = input_ids[-self.model_max_length :]
-        return input_ids
+            ys.extend(self.encode(text, add_special_tokens=False) + [self.EOS])
+        if len(ys) > self.model_max_length:
+            ys = ys[-self.model_max_length :]
+        return ys

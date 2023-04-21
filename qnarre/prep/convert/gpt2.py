@@ -31,12 +31,12 @@ logging.set_verbosity_info()
 log = logging.get_logger(__name__)
 
 
-def load_src_weights(model, src_path):
-    src_path = abspath(src_path)
-    log.info(f"Loading from: {src_path}")
-    xs = tf.train.list_variables(src_path)
+def load_src_weights(model, path):
+    path = abspath(path)
+    log.info(f"Loading from: {path}")
+    xs = tf.train.list_variables(path)
     assert len(xs) > 0
-    ns, ws = _load_weights(xs, src_path)
+    ns, ws = _load_weights(xs, path)
     for n, w in zip(ns, ws):
         ss = n[6:].split("/")
         p = model
@@ -62,13 +62,13 @@ def load_src_weights(model, src_path):
     return model
 
 
-def _load_weights(xs, src_path):
+def _load_weights(xs, path):
     ns = []
     ws = {}
     for n, shape in xs:
         log.info(f"Loading TF weight {n} with shape {shape}")
         ns.append(n)
-        ws[n] = tf.train.load_variable(src_path, n).squeeze()
+        ws[n] = tf.train.load_variable(path, n).squeeze()
     return ns, ws
 
 
