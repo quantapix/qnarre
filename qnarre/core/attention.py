@@ -34,9 +34,10 @@ def split_heads(self, x, k=False):
         return y.permute(0, 2, 1, 3)
 
 
-def join_heads(_, x):
+def join_heads(self, x):
+    cfg = self.cfg
     y = x.permute(0, 2, 1, 3).contiguous()
-    return y.view(y.size()[:-2] + (y.size(-2) * y.size(-1),))
+    return y.view(y.size()[:-2] + (cfg.n_heads * cfg.s_head,))
 
 
 class Attention(qc.Module):

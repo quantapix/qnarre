@@ -268,8 +268,9 @@ class Attention(qc.Module):
         self.is_cross = is_cross
         self.lay_i = lay_i
         cfg = self.get_cfg(kw)
-        n, d = cfg.n_heads, cfg.d_model
-        assert d % n == 0
+        h, d = cfg.n_heads, cfg.d_model
+        assert d % h == 0
+        cfg.s_head = int(d / h)
         if is_cross:
             self.attn = qc.Conv1D(2 * d, d, **kw)
             self.query = qc.Conv1D(d, d, **kw)
@@ -278,7 +279,7 @@ class Attention(qc.Module):
         self.proj = qc.Conv1D(d, d, **kw)
         self.drop_attn = qc.Dropout(cfg.drop_attn, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
-        p, t = cfg.n_pos, torch.uint8
+        p, t = cfg.n_pos, torch.bool
         self.register_buffer("bias", torch.tril(torch.ones((p, p), dtype=t)).view(1, 1, p, p))
         self.register_buffer("bias_m", torch.tensor(-1e4))
 
@@ -309,7 +310,6 @@ class Attention(qc.Module):
         return y
 
     split_heads = qa.split_heads
-
     join_heads = qa.join_heads
 
     def scores(self, q, k, v, mask, head_m, **kw):

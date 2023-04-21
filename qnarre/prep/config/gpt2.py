@@ -66,7 +66,7 @@ class PreTrained(qc.PreTrained):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
         for name, p in module.named_parameters():
-            if "c_proj" in name and "weight" in name:
+            if name == "c_proj.weight":
                 p.data.normal_(
                     mean=0.0,
                     std=(self.cfg.init_range / math.sqrt(2 * self.cfg.n_lays)),

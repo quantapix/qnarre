@@ -427,7 +427,7 @@ class GPTJModel(GPTJPreTrainedModel):
     def forward(
         self,
         input_ids=None,
-        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        past_key_values=None,
         attention_mask=None,
         token_type_ids=None,
         position_ids=None,
@@ -701,7 +701,7 @@ class GPTJForCausalLM(GPTJPreTrainedModel):
     def forward(
         self,
         input_ids=None,
-        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        past_key_values=None,
         attention_mask=None,
         token_type_ids=None,
         position_ids=None,
@@ -810,7 +810,7 @@ class GPTJForSequenceClassification(GPTJPreTrainedModel):
     def forward(
         self,
         input_ids=None,
-        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        past_key_values=None,
         attention_mask=None,
         token_type_ids=None,
         position_ids=None,
