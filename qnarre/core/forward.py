@@ -93,6 +93,7 @@ def forward_tok(self, x, mask=None, labels=None, **kw):
     y = self.proj(ys[0])
     loss = None
     if labels is not None:
+        labels = labels.to(y.device)
         f = nn.CrossEntropyLoss()
         l = labels.view(-1)
         if mask is not None:

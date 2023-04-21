@@ -72,12 +72,6 @@ def big_neg(dtype=None):
     return torch.float16.min if f == "float16" else -1e9
 
 
-def gelu(x):
-    c = torch.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * torch.pow(x, 3))))
-    c = (c + 1.0) * 0.5
-    return x * c
-
-
 class Dictionary:
     def __init__(self):
         self.word2idx = {}

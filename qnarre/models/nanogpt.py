@@ -6,28 +6,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-
-# @torch.jit.script # good to enable when not using torch.compile, disable when using (our default)
-def new_gelu(x):
-    """
-    Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).
-    Reference: Gaussian Error Linear Units (GELU) paper: https://arxiv.org/abs/1606.08415
-    """
-    return (
-        0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
-    )
-
-
-class LayerNorm(nn.Module):
-    """LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False"""
-
-    def __init__(self, ndim, bias):
-        super().__init__()
-        self.weight = nn.Parameter(torch.ones(ndim))
-        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
-
-    def forward(self, input):
-        return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
+from .. import core as qc
+from ..core import utils as qu
 
 
 class CausalSelfAttention(nn.Module):
@@ -51,8 +31,8 @@ class CausalSelfAttention(nn.Module):
             # causal mask to ensure that attention is only applied to the left in the input sequence
             self.register_buffer(
                 "bias",
-                torch.tril(torch.ones(config.block_size, config.block_size)).view(
-                    1, 1, config.block_size, config.block_size
+                torch.tril(torch.ones(config.n_pos, config.n_pos)).view(
+                    1, 1, config.n_pos, config.n_pos
                 ),
             )
 
@@ -98,10 +78,11 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(config.n_hidden, 4 * config.n_hidden, bias=config.bias)
         self.c_proj = nn.Linear(4 * config.n_hidden, config.n_hidden, bias=config.bias)
         self.dropout = nn.Dropout(config.dropout)
+        self.act = qu.activation("gelu_new")
 
     def forward(self, x):
         x = self.c_fc(x)
-        x = new_gelu(x)
+        x = self.act(x)
         x = self.c_proj(x)
         x = self.dropout(x)
         return x
@@ -110,9 +91,9 @@ class MLP(nn.Module):
 class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.ln_1 = LayerNorm(config.n_hidden, bias=config.bias)
+        self.ln_1 = qc.LayerNorm(config.n_hidden, bias=config.bias)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = LayerNorm(config.n_hidden, bias=config.bias)
+        self.ln_2 = qc.LayerNorm(config.n_hidden, bias=config.bias)
         self.mlp = MLP(config)
 
     def forward(self, x):
@@ -121,32 +102,17 @@ class Block(nn.Module):
         return x
 
 
-@dataclass
-class GPTConfig:
-    block_size: int = 1024
-    s_vocab: int = (
-        50304  # GPT-2 s_vocab of 50257, padded up to nearest multiple of 64 for efficiency
-    )
-    n_layer: int = 12
-    n_head: int = 12
-    n_hidden: int = 768
-    dropout: float = 0.0
-    bias: bool = (
-        True  # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster
-    )
-
-
 class GPT(nn.Module):
     def __init__(self, config):
         super().__init__()
         assert config.s_vocab is not None
-        assert config.block_size is not None
+        assert config.n_pos is not None
         self.config = config
 
         self.transformer = nn.ModuleDict(
             dict(
                 wte=nn.Embedding(config.s_vocab, config.n_hidden),
-                wpe=nn.Embedding(config.block_size, config.n_hidden),
+                wpe=nn.Embedding(config.n_pos, config.n_hidden),
                 drop=nn.Dropout(config.dropout),
                 h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
                 ln_f=LayerNorm(config.n_hidden, bias=config.bias),
@@ -195,8 +161,8 @@ class GPT(nn.Module):
         device = idx.device
         b, t = idx.size()
         assert (
-            t <= self.config.block_size
-        ), f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
+            t <= self.config.n_pos
+        ), f"Cannot forward sequence of length {t}, block size is only {self.config.n_pos}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
         # forward the GPT model itself
@@ -220,16 +186,16 @@ class GPT(nn.Module):
 
         return logits, loss
 
-    def crop_block_size(self, block_size):
+    def crop_n_pos(self, n_pos):
         # model surgery to decrease the block size if necessary
         # e.g. we may load the GPT2 pretrained model checkpoint (block size 1024)
         # but want to use a smaller block size for some smaller, simpler model
-        assert block_size <= self.config.block_size
-        self.config.block_size = block_size
-        self.transformer.wpe.weight = nn.Parameter(self.transformer.wpe.weight[:block_size])
+        assert n_pos <= self.config.n_pos
+        self.config.n_pos = n_pos
+        self.transformer.wpe.weight = nn.Parameter(self.transformer.wpe.weight[:n_pos])
         for block in self.transformer.h:
             if hasattr(block.attn, "bias"):
-                block.attn.bias = block.attn.bias[:, :, :block_size, :block_size]
+                block.attn.bias = block.attn.bias[:, :, :n_pos, :n_pos]
 
     @classmethod
     def from_pretrained(cls, model_type, override_args=None):
@@ -248,9 +214,9 @@ class GPT(nn.Module):
             "gpt2-large": dict(n_layer=36, n_head=20, n_hidden=1280),  # 774M params
             "gpt2-xl": dict(n_layer=48, n_head=25, n_hidden=1600),  # 1558M params
         }[model_type]
-        print("forcing s_vocab=50257, block_size=1024, bias=True")
+        print("forcing s_vocab=50257, n_pos=1024, bias=True")
         config_args["s_vocab"] = 50257  # always 50257 for GPT model checkpoints
-        config_args["block_size"] = 1024  # always 1024 for GPT model checkpoints
+        config_args["n_pos"] = 1024  # always 1024 for GPT model checkpoints
         config_args["bias"] = True  # always True for GPT model checkpoints
         # we can override the dropout rate, if desired
         if "dropout" in override_args:
@@ -376,7 +342,7 @@ class GPT(nn.Module):
         # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
         N = self.get_num_params()
         cfg = self.config
-        L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_hidden // cfg.n_head, cfg.block_size
+        L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_hidden // cfg.n_head, cfg.n_pos
         flops_per_token = 6 * N + 12 * L * H * Q * T
         flops_per_fwdbwd = flops_per_token * T
         flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
@@ -394,10 +360,8 @@ class GPT(nn.Module):
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
         for _ in range(max_new_tokens):
-            # if the sequence context is growing too long we must crop it at block_size
-            idx_cond = (
-                idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size :]
-            )
+            # if the sequence context is growing too long we must crop it at n_pos
+            idx_cond = idx if idx.size(1) <= self.config.n_pos else idx[:, -self.config.n_pos :]
             # forward the model to get the logits for the index in the sequence
             logits, _ = self(idx_cond)
             # pluck the logits at the final step and scale by desired temperature
