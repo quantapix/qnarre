@@ -20,7 +20,7 @@ import torch
 
 from torch import nn
 from torch.nn import functional as F
-from torch.cuda.amp import autocast
+from torch.cuda.amp.autocast_mode import autocast
 from transformers.utils import logging
 from torch.utils.checkpoint import checkpoint
 
@@ -28,6 +28,7 @@ from .. import core as qc
 from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
+from ..core import ffnet as qn
 from ..core import attention as qa
 from ..core.ffnet import Classifier
 from ..prep.cfg.gpt2 import PreTrained
@@ -221,17 +222,19 @@ class DualHead(PreTrained):
 
 
 class Layer(qc.Module):
-    def __init__(self, lay_i, **kw):
-        super().__init__(**kw)
+    hs = qc.Hypers({"d_model", "add_cross", "n_inner"})
+
+    def __init__(self, lay_i, ps={}, hs=[], **kw):
+        super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
+        d = cfg.d_model
         self.attn = Attention(lay_i=lay_i, **kw)
-        self.norm_attn = qc.LayerNorm(cfg.d_model, **kw)
+        self.norm_attn = qc.LayerNorm(d, **kw)
         if cfg.add_cross:
-            self.cross = Attention(is_cross=True, **kw)
-            self.norm_cross = qc.LayerNorm(cfg.d_model, **kw)
-        d_ff = cfg.n_inner if cfg.n_inner is not None else 4 * cfg.d_model
-        self.proj = openai.MLP(d_ff, **kw)
-        self.norm = qc.LayerNorm(cfg.d_model, **kw)
+            self.cross = Attention(is_cross=True, lay_i=lay_i, **kw)
+            self.norm_cross = qc.LayerNorm(d, **kw)
+        self.proj = qn.GPT(cfg.n_inner if cfg.n_inner is not None else 4 * d, **kw)
+        self.norm = qc.LayerNorm(d, **kw)
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):
         yo = self.get_y_opts(**kw)
@@ -247,9 +250,7 @@ class Layer(qc.Module):
             y = x + y
             kv = kv + kv2
         x = y
-        y = self.proj(self.norm(y))
-        y = x + y
-        y = (y,)
+        y = (x + self.proj(self.norm(y)),)
         if yo.attn:
             y += (a, a2)
         if yo.cache:
@@ -335,14 +336,14 @@ class Attention(qc.Module):
     def reordered(self, q, k, v, mask, head_m, **kw):
         cfg = self.cfg
         yo = self.get_y_opts(**kw)
+        b, h, n_q, d = q.size()
+        _, _, n_k, _ = k.size()
+        a = torch.empty(b * h, n_q, n_k, dtype=torch.float32, device=q.device)
         alpha = 1.0
         if cfg.scale:
             alpha /= float(v.size(-1)) ** 0.5
         if cfg.scale_by_inv:
             alpha /= float(self.lay_i + 1)
-        b, h, n_q, d = q.size()
-        _, _, n_k, _ = k.size()
-        a = torch.empty(b * h, n_q, n_k, dtype=torch.float32, device=q.device)
         with autocast(enabled=False):
             q, k = q.reshape(-1, n_q, d), k.transpose(-1, -2).reshape(-1, d, n_k)
             a = torch.baddbmm(a, q.float(), k.float(), beta=0, alpha=alpha)

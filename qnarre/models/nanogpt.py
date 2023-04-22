@@ -25,6 +25,36 @@ from .. import core as qc
 from ..core import utils as qu
 
 
+class MLP(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.c_fc = nn.Linear(cfg.d_model, 4 * cfg.d_model, bias=cfg.bias)
+        self.proj = nn.Linear(4 * cfg.d_model, cfg.d_model, bias=cfg.bias)
+        self.drop = nn.Dropout(cfg.drop)
+        self.act = qu.activation("gelu_new")
+
+    def forward(self, x):
+        x = self.c_fc(x)
+        x = self.act(x)
+        x = self.proj(x)
+        x = self.drop(x)
+        return x
+
+
+class Block(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.ln_1 = qc.LayerNorm(cfg.d_model, bias=cfg.bias)
+        self.attn = Attention(cfg)
+        self.ln_2 = qc.LayerNorm(cfg.d_model, bias=cfg.bias)
+        self.mlp = MLP(cfg)
+
+    def forward(self, x):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
+
+
 class Attention(qc.Module):
     hs = qc.Hypers({"d_model", "drop", "n_heads", "n_pos"})
 
@@ -68,36 +98,6 @@ class Attention(qc.Module):
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         y = self.drop(self.proj(y))
         return y
-
-
-class MLP(nn.Module):
-    def __init__(self, cfg):
-        super().__init__()
-        self.c_fc = nn.Linear(cfg.d_model, 4 * cfg.d_model, bias=cfg.bias)
-        self.proj = nn.Linear(4 * cfg.d_model, cfg.d_model, bias=cfg.bias)
-        self.drop = nn.Dropout(cfg.drop)
-        self.act = qu.activation("gelu_new")
-
-    def forward(self, x):
-        x = self.c_fc(x)
-        x = self.act(x)
-        x = self.proj(x)
-        x = self.drop(x)
-        return x
-
-
-class Block(nn.Module):
-    def __init__(self, cfg):
-        super().__init__()
-        self.ln_1 = qc.LayerNorm(cfg.d_model, bias=cfg.bias)
-        self.attn = Attention(cfg)
-        self.ln_2 = qc.LayerNorm(cfg.d_model, bias=cfg.bias)
-        self.mlp = MLP(cfg)
-
-    def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
-        return x
 
 
 class GPT(nn.Module):

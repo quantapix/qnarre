@@ -21,6 +21,27 @@ from .. import core as qc
 from . import utils as qu
 
 
+class GPT(qc.Module):
+    hs = qc.Hypers({"act", "d_ff", "d_model", "drop"}, {})
+
+    def __init__(self, d_ff=None, ps={}, hs=[], **kw):
+        if d_ff is not None:
+            kw.update(d_ff=d_ff)
+        super().__init__(ps, [self.hs] + hs, **kw)
+        cfg = self.get_cfg(kw)
+        self.ff = qc.Conv1D(cfg.d_ff, cfg.d_model, **kw)
+        self.proj = qc.Conv1D(cfg.d_model, cfg.d_ff, **kw)
+        self.act = qu.activation(cfg.act)
+        self.drop = nn.Dropout(cfg.drop, **kw)
+
+    def forward(self, x):
+        y = self.ff(x)
+        y = self.act(y)
+        y = self.proj(y)
+        y = self.drop(y)
+        return y
+
+
 class FFNet(qc.Module):
     hs = qc.Hypers({"act", "d_ff", "d_model", "drop", "eps", "chunk_ff"}, {"seq_len_dim": 1})
 
