@@ -443,16 +443,16 @@ class LazyLin(Lazy):
 class Conv1D(Module):
     hs = Hypers()
 
-    def __init__(self, nf, nx, ps={}, hs=[], **kw):
+    def __init__(self, n_y, n_x, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.cfg
-        cfg.nf = nf
-        self.weight = Parameter(torch.empty(nx, nf))
-        self.bias = Parameter(torch.zeros(nf))
+        cfg.n_y = n_y
+        self.weight = Parameter(torch.empty(n_x, n_y))
+        self.bias = Parameter(torch.zeros(n_y))
         nn.init.normal_(self.weight, std=0.02)
 
     def forward(self, x):
-        s = x.size()[:-1] + (self.cfg.nf,)
+        s = x.size()[:-1] + (self.cfg.n_y,)
         y = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
         y = y.view(s)
         return y

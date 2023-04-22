@@ -30,7 +30,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.ffnet import Classifier
-from ..prep.config.gpt2 import PreTrained
+from ..prep.cfg.gpt2 import PreTrained
 
 from . import openai
 
@@ -257,9 +257,6 @@ class Layer(qc.Module):
         return y
 
 
-is_amp = True
-
-
 class Attention(qc.Module):
     hs = qc.Hypers({"d_model", "drop_attn", "drop", "n_heads", "n_pos", "scale", "scale_by_inv"})
 
@@ -268,7 +265,7 @@ class Attention(qc.Module):
         self.is_cross = is_cross
         self.lay_i = lay_i
         cfg = self.get_cfg(kw)
-        h, d = cfg.n_heads, cfg.d_model
+        d, h = cfg.d_model, cfg.n_heads
         assert d % h == 0
         cfg.s_head = int(d / h)
         if is_cross:
@@ -281,7 +278,7 @@ class Attention(qc.Module):
         self.drop = qc.Dropout(cfg.drop, **kw)
         p, t = cfg.n_pos, torch.bool
         self.register_buffer("bias", torch.tril(torch.ones((p, p), dtype=t)).view(1, 1, p, p))
-        self.register_buffer("bias_m", torch.tensor(-1e4))
+        # self.register_buffer("bias_m", torch.tensor(-1e4))
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):
         cfg = self.cfg
@@ -317,13 +314,14 @@ class Attention(qc.Module):
         yo = self.get_y_opts(**kw)
         a = torch.matmul(q, k.transpose(-1, -2))
         if cfg.scale:
-            a = a / (v.size(-1) ** 0.5)
+            a = a / torch.full([], v.size(-1) ** 0.5, dtype=a.dtype, device=a.device)
         if cfg.scale_by_inv:
             a = a / float(self.lay_i + 1)
         if not self.is_cross:
             n_q, n_k = q.size(-2), k.size(-2)
             causal = self.bias[:, :, n_k - n_q : n_k, :n_k].bool()
-            a = torch.where(causal, a, self.bias_m.to(a.dtype))
+            m = torch.tensor(torch.finfo(a.dtype).min, dtype=a.dtype).to(a.device)
+            a = torch.where(causal, a, m)
         if mask is not None:
             a = a + mask
         a = self.drop_attn(F.softmax(a, dim=-1).type(v.dtype))
@@ -342,21 +340,17 @@ class Attention(qc.Module):
             alpha /= float(v.size(-1)) ** 0.5
         if cfg.scale_by_inv:
             alpha /= float(self.lay_i + 1)
-        b, n, n_q, d = q.size()
+        b, h, n_q, d = q.size()
         _, _, n_k, _ = k.size()
-        a = torch.empty(b * n, n_q, n_k, dtype=torch.float32, device=q.device)
-        if is_amp:
-            with autocast(enabled=False):
-                q, k = q.reshape(-1, n_q, d), k.transpose(-1, -2).reshape(-1, d, n_k)
-                a = torch.baddbmm(a, q.float(), k.float(), beta=0, alpha=alpha)
-                a = a.reshape(b, n, n_q, n_k)
-        else:
+        a = torch.empty(b * h, n_q, n_k, dtype=torch.float32, device=q.device)
+        with autocast(enabled=False):
             q, k = q.reshape(-1, n_q, d), k.transpose(-1, -2).reshape(-1, d, n_k)
             a = torch.baddbmm(a, q.float(), k.float(), beta=0, alpha=alpha)
-            a = a.reshape(b, n, n_q, n_k)
+            a = a.reshape(b, h, n_q, n_k)
         if not self.is_cross:
-            m = self.bias[:, :, n_k - n_q : n_k, :n_k].bool()
-            a = torch.where(m, a, self.bias_m.to(a.dtype))
+            causal = self.bias[:, :, n_k - n_q : n_k, :n_k].bool()
+            m = torch.tensor(torch.finfo(a.dtype).min, dtype=a.dtype).to(a.device)
+            a = torch.where(causal, a, m)
         if mask is not None:
             a = a + mask
         a = self.drop_attn(F.softmax(a, dim=-1).type(v.dtype))

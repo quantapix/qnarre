@@ -35,8 +35,8 @@ def split_heads(self, x, k=False):
 
 
 def join_heads(self, x):
-    cfg = self.cfg
     y = x.permute(0, 2, 1, 3).contiguous()
+    cfg = self.cfg
     return y.view(y.size()[:-2] + (cfg.n_heads * cfg.s_head,))
 
 
