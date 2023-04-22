@@ -1,3 +1,18 @@
+# Copyright 2022 Quantapix Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
 import math
 import inspect
 from dataclasses import dataclass
@@ -10,91 +25,74 @@ from .. import core as qc
 from ..core import utils as qu
 
 
-class CausalSelfAttention(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        assert config.n_hidden % config.n_head == 0
-        # key, query, value projections for all heads, but in a batch
-        self.c_attn = nn.Linear(config.n_hidden, 3 * config.n_hidden, bias=config.bias)
-        # output projection
-        self.c_proj = nn.Linear(config.n_hidden, config.n_hidden, bias=config.bias)
-        # regularization
-        self.attn_dropout = nn.Dropout(config.dropout)
-        self.resid_dropout = nn.Dropout(config.dropout)
-        self.n_head = config.n_head
-        self.n_hidden = config.n_hidden
-        self.dropout = config.dropout
-        # flash attention make GPU go brrrrr but support is only in PyTorch >= 2.0
+class Attention(qc.Module):
+    hs = qc.Hypers({"d_model", "drop", "n_heads", "n_pos"})
+
+    def __init__(self, is_cross=False, lay_i=None, ps={}, hs=[], **kw):
+        super().__init__(ps, [self.hs] + hs, **kw)
+        cfg = self.get_cfg(kw)
+        d, h = cfg.d_model, cfg.n_heads
+        assert d % h == 0
+        self.attn = nn.Linear(d, 3 * d, bias=cfg.bias)
+        self.proj = nn.Linear(d, d, bias=cfg.bias)
+        self.drop_attn = nn.Dropout(cfg.drop)
+        self.drop = nn.Dropout(cfg.drop)
         self.flash = hasattr(torch.nn.functional, "scaled_dot_product_attention")
         if not self.flash:
-            print("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0")
-            # causal mask to ensure that attention is only applied to the left in the input sequence
-            self.register_buffer(
-                "bias",
-                torch.tril(torch.ones(config.n_pos, config.n_pos)).view(
-                    1, 1, config.n_pos, config.n_pos
-                ),
-            )
+            p, t = cfg.n_pos, torch.bool
+            self.register_buffer("bias", torch.tril(torch.ones((p, p), dtype=t)).view(1, 1, p, p))
 
     def forward(self, x):
+        cfg = self.cfg
+        yo = self.get_y_opts(**kw)
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_hidden)
-
-        # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        q, k, v = self.c_attn(x).split(self.n_hidden, dim=2)
-        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
-        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
-        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
-
-        # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
+        q, k, v = self.attn(x).split(cfg.d_model, dim=2)
+        k = k.view(B, T, cfg.n_heads, C // cfg.n_heads).transpose(1, 2)
+        q = q.view(B, T, cfg.n_heads, C // cfg.n_heads).transpose(1, 2)
+        v = v.view(B, T, cfg.n_heads, C // cfg.n_heads).transpose(1, 2)
         if self.flash:
-            # efficient attention using Flash Attention CUDA kernels
             y = torch.nn.functional.scaled_dot_product_attention(
                 q,
                 k,
                 v,
                 attn_mask=None,
-                dropout_p=self.dropout if self.training else 0,
+                dropout_p=cfg.drop if self.training else 0,
                 is_causal=True,
             )
         else:
-            # manual implementation of attention
             att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
             att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float("-inf"))
             att = F.softmax(att, dim=-1)
-            att = self.attn_dropout(att)
+            att = self.drop_attn(att)
             y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
-        y = (
-            y.transpose(1, 2).contiguous().view(B, T, C)
-        )  # re-assemble all head outputs side by side
-
-        # output projection
-        y = self.resid_dropout(self.c_proj(y))
+        y = y.transpose(1, 2).contiguous().view(B, T, C)
+        y = self.drop(self.proj(y))
         return y
 
 
 class MLP(nn.Module):
-    def __init__(self, config):
+    def __init__(self, cfg):
         super().__init__()
-        self.c_fc = nn.Linear(config.n_hidden, 4 * config.n_hidden, bias=config.bias)
-        self.c_proj = nn.Linear(4 * config.n_hidden, config.n_hidden, bias=config.bias)
-        self.dropout = nn.Dropout(config.dropout)
+        self.c_fc = nn.Linear(cfg.d_model, 4 * cfg.d_model, bias=cfg.bias)
+        self.proj = nn.Linear(4 * cfg.d_model, cfg.d_model, bias=cfg.bias)
+        self.drop = nn.Dropout(cfg.drop)
         self.act = qu.activation("gelu_new")
 
     def forward(self, x):
         x = self.c_fc(x)
         x = self.act(x)
-        x = self.c_proj(x)
-        x = self.dropout(x)
+        x = self.proj(x)
+        x = self.drop(x)
         return x
 
 
 class Block(nn.Module):
-    def __init__(self, config):
+    def __init__(self, cfg):
         super().__init__()
-        self.ln_1 = qc.LayerNorm(config.n_hidden, bias=config.bias)
-        self.attn = CausalSelfAttention(config)
-        self.ln_2 = qc.LayerNorm(config.n_hidden, bias=config.bias)
-        self.mlp = MLP(config)
+        self.ln_1 = qc.LayerNorm(cfg.d_model, bias=cfg.bias)
+        self.attn = Attention(cfg)
+        self.ln_2 = qc.LayerNorm(cfg.d_model, bias=cfg.bias)
+        self.mlp = MLP(cfg)
 
     def forward(self, x):
         x = x + self.attn(self.ln_1(x))
@@ -103,22 +101,22 @@ class Block(nn.Module):
 
 
 class GPT(nn.Module):
-    def __init__(self, config):
+    def __init__(self, cfg):
         super().__init__()
-        assert config.s_vocab is not None
-        assert config.n_pos is not None
-        self.config = config
+        assert cfg.s_vocab is not None
+        assert cfg.n_pos is not None
+        self.cfg = cfg
 
         self.transformer = nn.ModuleDict(
             dict(
-                wte=nn.Embedding(config.s_vocab, config.n_hidden),
-                wpe=nn.Embedding(config.n_pos, config.n_hidden),
-                drop=nn.Dropout(config.dropout),
-                h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-                ln_f=LayerNorm(config.n_hidden, bias=config.bias),
+                wte=nn.Embedding(cfg.s_vocab, cfg.d_model),
+                wpe=nn.Embedding(cfg.n_pos, cfg.d_model),
+                drop=nn.Dropout(cfg.drop),
+                h=nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)]),
+                ln_f=LayerNorm(cfg.d_model, bias=cfg.bias),
             )
         )
-        self.lm_head = nn.Linear(config.n_hidden, config.s_vocab, bias=False)
+        self.lm_head = nn.Linear(cfg.d_model, cfg.s_vocab, bias=False)
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
@@ -131,8 +129,8 @@ class GPT(nn.Module):
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
         for pn, p in self.named_parameters():
-            if pn.endswith("c_proj.weight"):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
+            if pn.endswith("proj.weight"):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * cfg.n_layer))
 
         # report number of parameters
         print("number of parameters: %.2fM" % (self.get_num_params() / 1e6,))
@@ -161,8 +159,8 @@ class GPT(nn.Module):
         device = idx.device
         b, t = idx.size()
         assert (
-            t <= self.config.n_pos
-        ), f"Cannot forward sequence of length {t}, block size is only {self.config.n_pos}"
+            t <= self.cfg.n_pos
+        ), f"Cannot forward sequence of length {t}, block size is only {self.cfg.n_pos}"
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0)  # shape (1, t)
 
         # forward the GPT model itself
@@ -190,8 +188,8 @@ class GPT(nn.Module):
         # model surgery to decrease the block size if necessary
         # e.g. we may load the GPT2 pretrained model checkpoint (block size 1024)
         # but want to use a smaller block size for some smaller, simpler model
-        assert n_pos <= self.config.n_pos
-        self.config.n_pos = n_pos
+        assert n_pos <= self.cfg.n_pos
+        self.cfg.n_pos = n_pos
         self.transformer.wpe.weight = nn.Parameter(self.transformer.wpe.weight[:n_pos])
         for block in self.transformer.h:
             if hasattr(block.attn, "bias"):
@@ -208,23 +206,23 @@ class GPT(nn.Module):
         print("loading weights from pretrained gpt: %s" % model_type)
 
         # n_layer, n_head and n_hidden are determined from model_type
-        config_args = {
+        cfg_args = {
             "gpt2": dict(n_layer=12, n_head=12, n_hidden=768),  # 124M params
             "gpt2-medium": dict(n_layer=24, n_head=16, n_hidden=1024),  # 350M params
             "gpt2-large": dict(n_layer=36, n_head=20, n_hidden=1280),  # 774M params
             "gpt2-xl": dict(n_layer=48, n_head=25, n_hidden=1600),  # 1558M params
         }[model_type]
         print("forcing s_vocab=50257, n_pos=1024, bias=True")
-        config_args["s_vocab"] = 50257  # always 50257 for GPT model checkpoints
-        config_args["n_pos"] = 1024  # always 1024 for GPT model checkpoints
-        config_args["bias"] = True  # always True for GPT model checkpoints
+        cfg_args["s_vocab"] = 50257  # always 50257 for GPT model checkpoints
+        cfg_args["n_pos"] = 1024  # always 1024 for GPT model checkpoints
+        cfg_args["bias"] = True  # always True for GPT model checkpoints
         # we can override the dropout rate, if desired
         if "dropout" in override_args:
             print(f"overriding dropout rate to {override_args['dropout']}")
-            config_args["dropout"] = override_args["dropout"]
+            cfg_args["dropout"] = override_args["dropout"]
         # create a from-scratch initialized minGPT model
-        config = GPTConfig(**config_args)
-        model = GPT(config)
+        cfg = GPTcfg(**cfg_args)
+        model = GPT(cfg)
         sd = model.state_dict()
         sd_keys = sd.keys()
         sd_keys = [
@@ -244,10 +242,10 @@ class GPT(nn.Module):
             k for k in sd_keys_hf if not k.endswith(".attn.bias")
         ]  # same, just the mask (buffer)
         transposed = [
-            "attn.c_attn.weight",
-            "attn.c_proj.weight",
+            "attn.attn.weight",
+            "attn.proj.weight",
             "mlp.c_fc.weight",
-            "mlp.c_proj.weight",
+            "mlp.proj.weight",
         ]
         # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
         # this means that we have to transpose these weights when we import them
@@ -268,7 +266,7 @@ class GPT(nn.Module):
 
         return model
 
-    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+    def cfgure_optimizers(self, weight_decay, learning_rate, betas, device_type):
         """
         This long function is unfortunately doing something very simple and is being very defensive:
         We are separating out all parameters of the model into two buckets: those that will experience
@@ -341,8 +339,8 @@ class GPT(nn.Module):
         # first estimate the number of flops we do per iteration.
         # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
         N = self.get_num_params()
-        cfg = self.config
-        L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_hidden // cfg.n_head, cfg.n_pos
+        cfg = self.cfg
+        L, H, Q, T = cfg.n_layer, cfg.n_heads, cfg.d_model // cfg.n_heads, cfg.n_pos
         flops_per_token = 6 * N + 12 * L * H * Q * T
         flops_per_fwdbwd = flops_per_token * T
         flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
@@ -361,7 +359,7 @@ class GPT(nn.Module):
         """
         for _ in range(max_new_tokens):
             # if the sequence context is growing too long we must crop it at n_pos
-            idx_cond = idx if idx.size(1) <= self.config.n_pos else idx[:, -self.config.n_pos :]
+            idx_cond = idx if idx.size(1) <= self.cfg.n_pos else idx[:, -self.cfg.n_pos :]
             # forward the model to get the logits for the index in the sequence
             logits, _ = self(idx_cond)
             # pluck the logits at the final step and scale by desired temperature
