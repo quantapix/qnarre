@@ -402,11 +402,11 @@ class Attention(qc.Module):
         d, h = cfg.d_model, cfg.n_heads
         assert d % h == 0
         cfg.s_head = s = int(d / h)
-        self.q_proj = nn.Linear(d, h * s, bias=False)
-        self.k_proj = nn.Linear(d, h * s, bias=False)
-        self.v_proj = nn.Linear(d, h * s, bias=False)
-        self.o_proj = nn.Linear(h * s, d, bias=False)
-        self.rotary_emb = qe.RotaryEmbed(s, max_position_embeddings=cfg.n_pos)
+        self.emb = qe.RotaryEmbed(s, **kw)
+        self.query = qc.Linear(d, h * s, bias=False, **kw)
+        self.key = qc.Linear(d, h * s, bias=False, **kw)
+        self.value = qc.Linear(d, h * s, bias=False, **kw)
+        self.proj = qc.Linear(h * s, d, bias=False, **kw)
 
     def _shape(self, tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, h, s).transpose(1, 2).contiguous()
@@ -416,13 +416,13 @@ class Attention(qc.Module):
         yo = self.get_y_opts(**kw)
         b, n_q, _ = x.size()
         d, h, s = cfg.d_model, cfg.n_heads, cfg.s_head
-        q = self.q_proj(x).view(b, n_q, h, s).transpose(1, 2)
-        k = self.k_proj(x).view(b, n_q, h, s).transpose(1, 2)
-        v = self.v_proj(x).view(b, n_q, h, s).transpose(1, 2)
+        q = self.query(x).view(b, n_q, h, s).transpose(1, 2)
+        k = self.key(x).view(b, n_q, h, s).transpose(1, 2)
+        v = self.value(x).view(b, n_q, h, s).transpose(1, 2)
         n_kv = k.shape[-2]
         if cache is not None:
             n_kv += cache[0].shape[-2]
-        cos, sin = self.rotary_emb(v, seq_len=n_kv)
+        cos, sin = self.emb(v, seq_len=n_kv)
         q, k = qe.apply_rotary_pos_emb(q, k, cos, sin, pos)
         if cache is not None:
             k = torch.cat([cache[0], k], dim=2)
@@ -438,7 +438,7 @@ class Attention(qc.Module):
         assert y.size() == (b, h, n_q, s)
         y = y.transpose(1, 2)
         y = y.reshape(b, n_q, d)
-        y = self.o_proj(y)
+        y = self.proj(y)
         if yo.attn:
             y += (a,)
         if yo.cache:

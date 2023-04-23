@@ -49,7 +49,7 @@ class Embeds(qc.Module):
         self.norm = qc.LayerNorm(cfg.d_embed, cfg.eps, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
 
-    def forward(self, x, y=None, typ=None, pos=None, kv_len=0, **_):
+    def forward(self, x, y=None, typ=None, pos=None, n_kv=0, **_):
         cfg = self.cfg
         if y is None:
             y = self.tok(x)
@@ -73,12 +73,12 @@ class Embeds(qc.Module):
                 else:
                     p = self.cfg.PAD
                     mask = x.ne(p).int()
-                    pos = (torch.cumsum(mask, dim=1).type_as(mask) + kv_len) * mask
+                    pos = (torch.cumsum(mask, dim=1).type_as(mask) + n_kv) * mask
                     pos = pos.long() + p
                 # reoberta end
 
                 if hasattr(self, "pos_ids"):
-                    pos = self.pos_ids[:, kv_len : n + kv_len]
+                    pos = self.pos_ids[:, n_kv : n + n_kv]
                 else:
                     pos = (
                         torch.arange(n, dtype=torch.long, device=x.device).unsqueeze(0).expand_as(x)
@@ -226,10 +226,10 @@ class PosEmbed(qc.Embed):
         self.offset = 2
         super().__init__(n_embed + self.offset, d_embed)
 
-    def forward(self, shape, kv_len=0):
-        _, n = shape[:2]
-        x = torch.arange(kv_len, kv_len + n, dtype=torch.long, device=self.weight.device)
-        return super().forward(x + self.offset)
+    def forward(self, x, n_kv=0):
+        b, n = x.shape[:2]
+        y = torch.arange(n_kv, n_kv + n, dtype=torch.long, device=self.weight.device).expand(b, -1)
+        return super().forward(y + self.offset)
 
 
 class PosEmbed2(qc.Module):
@@ -422,9 +422,9 @@ class SinEmbed2(qc.Embed):
         return y
 
     @torch.no_grad()
-    def forward(self, shape, kv_len=0):
+    def forward(self, shape, n_kv=0):
         b, n = shape[:2]
-        pos = torch.arange(kv_len, kv_len + n, dtype=torch.long, device=self.weight.device)
+        pos = torch.arange(n_kv, n_kv + n, dtype=torch.long, device=self.weight.device)
         return super().forward(pos)
 
 

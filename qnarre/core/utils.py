@@ -114,17 +114,17 @@ class Corpus:
 
 
 def shift_right(x, PAD, dec_START):
-    assert PAD is not None
     y = x.new_zeros(x.shape)
     y[:, 1:] = x[:, :-1].clone()
     y[:, 0] = dec_START
+    assert PAD is not None
     y.masked_fill_(y == -100, PAD)
     return y
 
 
 def shift_right2(x, PAD):
-    assert PAD is not None
     y = x.clone()
+    assert PAD is not None
     y.masked_fill_(y == -100, PAD)
     eos = (y.ne(PAD).sum(dim=1) - 1).unsqueeze(-1)
     dec_START = y.gather(1, eos).squeeze()
@@ -148,16 +148,4 @@ def expand_mask(x, dtype, len=None):
     b, n = x.size()
     len = len if len is not None else n
     y = 1.0 - x[:, None, None, :].expand(b, 1, len, n).to(dtype)
-    return y.masked_fill(y.to(torch.bool), torch.finfo(dtype).min)
-
-
-def _expand_mask(mask, dtype, tgt_len=None):
-    bsz, src_len = mask.size()
-    tgt_len = tgt_len if tgt_len is not None else src_len
-    expanded_mask = mask[:, None, None, :].expand(bsz, 1, tgt_len, src_len).to(dtype)
-    inverted_mask = 1.0 - expanded_mask
-    expanded_attention_mask = inverted_mask.masked_fill(
-        inverted_mask.bool(), torch.finfo(dtype).min
-    )
-    expanded_attention_mask = expanded_attention_mask * inverted_mask
-    return expanded_attention_mask
+    return y.masked_fill(y.to(torch.bool), torch.finfo(dtype).min)  # * y
