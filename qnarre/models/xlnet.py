@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core.embed import pos_enc
-from ..core.ffnet import Classifier, FFNet, PoolBeg, PoolEnd, PoolProj
+from ..core.mlp import Classifier, FFNet, PoolBeg, PoolEnd, PoolProj
 from ..prep.config.xlnet import PreTrained
 
 

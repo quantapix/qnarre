@@ -30,7 +30,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import PosEmbed
-from ..core.ffnet import Classifier
+from ..core.mlp import Classifier
 from ..prep.config.bart import PreTrained
 
 

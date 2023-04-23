@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -44,21 +44,18 @@ LIST = [
 
 @dataclass
 class BaseLukeModelOutputWithPooling(BaseModelOutputWithPooling):
-
     entity_last_hidden_state = None
     entity_hidden_states = None
 
 
 @dataclass
 class BaseLukeModelOutput(BaseModelOutput):
-
     entity_last_hidden_state = None
     entity_hidden_states = None
 
 
 @dataclass
 class EntityClassificationOutput(ModelOutput):
-
     loss = None
     logits = None
     hiddens = None
@@ -68,7 +65,6 @@ class EntityClassificationOutput(ModelOutput):
 
 @dataclass
 class EntityPairClassificationOutput(ModelOutput):
-
     loss = None
     logits = None
     hiddens = None
@@ -78,7 +74,6 @@ class EntityPairClassificationOutput(ModelOutput):
 
 @dataclass
 class EntitySpanClassificationOutput(ModelOutput):
-
     loss = None
     logits = None
     hiddens = None
@@ -566,7 +561,6 @@ class EntityPredictionHead(qc.Module):
 
 
 class Model(PreTrained):
-
     _keys_to_ignore_on_load_missing = [r"position_ids"]
 
     def __init__(self, config, add_pooling_layer=True):

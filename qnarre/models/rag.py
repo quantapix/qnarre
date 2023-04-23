@@ -26,7 +26,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.bert import PreTrained
 
 from dataclasses import dataclass
@@ -159,7 +159,6 @@ class Model(PreTrained):
         )
         # encoder_outputs are pre-computed during RAG-token generation
         if encoder_outputs is None:
-
             if has_to_retrieve:
                 question_enc_outputs = self.question_encoder(
                     input_ids, attention_mask=attention_mask, return_dict=True
@@ -176,7 +175,6 @@ class Model(PreTrained):
                     return_tensors="pt",
                 )
                 if self.context_encoder_training:
-
                     (
                         context_input_ids,
                         context_attention_mask,
@@ -646,7 +644,6 @@ class RagTokenForGeneration(PreTrained):
         )
 
     def marginalize(self, seq_logits, doc_scores, n_docs=None):
-
         n_docs = n_docs if n_docs is not None else self.config.n_docs
 
         # RAG-token marginalization

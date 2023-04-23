@@ -25,7 +25,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
 from ..core.embed import Embeds
-from ..core.ffnet import FFNet, Classifier, Masker
+from ..core.mlp import FFNet, Classifier, Masker
 from ..prep.config.roberta import PreTrained
 
 from . import bert

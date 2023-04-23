@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.bert import PreTrained
 
 from dataclasses import dataclass
@@ -239,7 +239,6 @@ class Attention(qc.Module):
         past_key_value=None,
         output_attentions=False,
     ):
-
         batch_size, tgt_len, d_model = hiddens.size()
         is_cross_attention = key_value_states is not None
         assert list(hiddens.size()) == [
@@ -1070,7 +1069,6 @@ class Decoder(PreTrained):
             past_key_value = caches[idx] if caches is not None else None
 
             if self.gradient_checkpointing and self.training:
-
                 if y_cache:
                     log.warning(
                         "`y_cache=True` is incompatible with gradient checkpointing. Setting `y_cache=False`..."

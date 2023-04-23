@@ -26,7 +26,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.funnel import PreTrained
 
 
@@ -504,7 +504,7 @@ class Encoder(qc.Module):
                 pooled_model, attention_inputs = self.attention_structure.pre_attention_pooling(
                     hidden, attention_inputs
                 )
-            for (layer_index, layer) in enumerate(block):
+            for layer_index, layer in enumerate(block):
                 for repeat_index in range(self.config.block_repeats[block_index]):
                     do_pooling = (repeat_index == 0) and (layer_index == 0) and pooling_flag
                     if do_pooling:

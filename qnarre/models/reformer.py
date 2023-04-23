@@ -31,7 +31,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -1234,7 +1234,6 @@ class LocalSelfAttention(qc.Module, EfficientAttentionMixin):
         query_key_dots_shape,
         do_standard_self_attention,
     ):
-
         # chunk attention mask and look before and after
         if attention_mask is not None:
             attention_mask = attention_mask.to(torch.uint8)[:, None, :]

@@ -26,7 +26,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.decision_transfo import PreTrained
 
 
@@ -43,6 +43,7 @@ from torch.cuda.amp import autocast
 LIST = [
     "edbeeching/decision-transformer-gym-hopper-medium",
 ]
+
 
 # Copied from transformers.models.gpt2.modeling_gpt2.GPT2Attention with GPT2->DecisionTransformerGPT2
 class DecisionTransformerGPT2Attention(qc.Module):
@@ -473,7 +474,6 @@ class GPT2Model(PreTrained):
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
         all_hidden_states = () if output_hidden_states else None
         for i, (block, layer_past) in enumerate(zip(self.h, caches)):
-
             # Model parallel
             if self.model_parallel:
                 torch.cuda.set_device(hiddens.device)
@@ -489,7 +489,6 @@ class GPT2Model(PreTrained):
                 all_hidden_states = all_hidden_states + (hiddens,)
 
             if self.gradient_checkpointing and self.training:
-
                 if y_cache:
                     log.warning(
                         "`y_cache=True` is incompatible with gradient checkpointing. Setting `y_cache=False`..."

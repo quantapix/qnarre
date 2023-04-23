@@ -25,7 +25,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.dpr import PreTrained
 
 
@@ -114,7 +114,6 @@ class Encoder(PreTrained):
 
 
 class SpanPredictor(PreTrained):
-
     base_model_prefix = "encoder"
 
     def __init__(self, config):

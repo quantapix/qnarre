@@ -28,14 +28,99 @@ from .. import core as qc
 from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
-from ..core import ffnet as qn
+from ..core import mlp as qm
 from ..core import attention as qa
-from ..core.ffnet import Classifier
-from ..prep.cfg.gpt2 import PreTrained
-
-from . import openai
+from ..core.mlp import Classifier
+from ..prep.config.gpt2 import PreTrained
 
 log = logging.get_logger(__name__)
+
+
+class LMHead(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
+
+    def forward(self, x, labels=None, **kw):
+        yo = self.get_y_opts(**kw)
+        ys = self.model(x, **kw, yo=yo)
+        y = self.proj(ys[0])
+        loss = None
+        if labels is not None:
+            sl = y[..., :-1, :].contiguous()
+            ls = labels[..., 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
+        ys = (y,) + ys[1:] + (loss,)
+        return qo.LossCrosses(*ys) if yo.kw else ys
+
+
+@dataclass
+class Output(qc.Output):
+    logits: tuple = None
+    mc_logits: tuple = None
+    attns: tuple = None
+    caches: tuple = None
+    hiddens: tuple = None
+    loss: tuple = None
+    mc_loss: tuple = None
+
+
+class DualHead(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        cfg.n_labels = 1
+        self.model = Model(**kw)
+        self.sum = qc.SeqSummary(**kw)
+        self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
+
+    def forward(self, x, mc_token_ids=None, labels=None, mc_labels=None, **kw):
+        yo = self.get_y_opts(**kw)
+        ys = self.model(x, **kw, yo=yo)
+        y = self.proj(ys[0])
+        loss = None
+        if labels is not None:
+            sl = y[..., :-1, :].contiguous()
+            ls = labels[..., 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
+        mc_y = self.sum(ys[0], mc_token_ids).squeeze(-1)
+        mc_loss = None
+        if mc_labels is not None:
+            mc_loss = nn.CrossEntropyLoss()(mc_y.view(-1, mc_y.size(-1)), mc_labels.view(-1))
+        ys = (y, mc_y) + ys[1:] + (loss, mc_loss)
+        return Output(*ys) if yo.kw else ys
+
+
+class ForSeqClassifier(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = qc.Linear(cfg.n_embed, cfg.n_labels, bias=False, **kw)
+
+    forward = qf.forward_seq
+
+    def post_proj(self, x):
+        cfg = self.cfg
+        b = (x.shape[:2] if x is not None else x_emb.shape[:2])[0]
+        if cfg.PAD is None:
+            n = -1
+        else:
+            assert b == 1
+            n = -1 if x is None else torch.ne(x, cfg.PAD).sum(-1) - 1
+        return x[torch.arange(b, device=self.device), n]
+
+
+class ForTokClassifier(PreTrained):
+    def __init__(self, drop_proj=0.1, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Classifier(drop_proj=drop_proj, **kw)
+
+    forward = qf.forward_tok
 
 
 class Model(PreTrained):
@@ -134,93 +219,6 @@ class Model(PreTrained):
         return qo.CachesCrosses(*ys) if yo.kw else ys
 
 
-class ForSeqClassifier(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = qc.Linear(cfg.n_embed, cfg.n_labels, bias=False, **kw)
-
-    forward = qf.forward_seq
-
-    def post_proj(self, x):
-        cfg = self.cfg
-        b = (x.shape[:2] if x is not None else x_emb.shape[:2])[0]
-        if cfg.PAD is None:
-            n = -1
-        else:
-            assert b == 1
-            n = -1 if x is None else torch.ne(x, cfg.PAD).sum(-1) - 1
-        return x[torch.arange(b, device=self.device), n]
-
-
-class ForTokClassifier(PreTrained):
-    def __init__(self, drop_proj=0.1, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Classifier(drop_proj=drop_proj, **kw)
-
-    forward = qf.forward_tok
-
-
-class LMHead(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
-
-    def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
-        y = self.proj(ys[0])
-        loss = None
-        if labels is not None:
-            sl = y[..., :-1, :].contiguous()
-            ls = labels[..., 1:].contiguous()
-            loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
-        ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
-
-
-@dataclass
-class Output(qc.Output):
-    logits: tuple = None
-    mc_logits: tuple = None
-    attns: tuple = None
-    caches: tuple = None
-    hiddens: tuple = None
-    loss: tuple = None
-    mc_loss: tuple = None
-
-
-class DualHead(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        cfg.n_labels = 1
-        self.model = Model(**kw)
-        self.sum = qc.SeqSummary(**kw)
-        self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
-
-    def forward(self, x, mc_token_ids=None, labels=None, mc_labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
-        y = self.proj(ys[0])
-        loss = None
-        if labels is not None:
-            sl = y[..., :-1, :].contiguous()
-            ls = labels[..., 1:].contiguous()
-            loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
-        mc_y = self.sum(ys[0], mc_token_ids).squeeze(-1)
-        mc_loss = None
-        if mc_labels is not None:
-            mc_loss = nn.CrossEntropyLoss()(mc_y.view(-1, mc_y.size(-1)), mc_labels.view(-1))
-        ys = (y, mc_y) + ys[1:] + (loss, mc_loss)
-        return Output(*ys) if yo.kw else ys
-
-
 class Layer(qc.Module):
     hs = qc.Hypers({"d_model", "add_cross", "n_inner"})
 
@@ -233,7 +231,7 @@ class Layer(qc.Module):
         if cfg.add_cross:
             self.cross = Attention(is_cross=True, lay_i=lay_i, **kw)
             self.norm_cross = qc.LayerNorm(d, **kw)
-        self.proj = qn.GPT(cfg.n_inner if cfg.n_inner is not None else 4 * d, **kw)
+        self.proj = qm.GPT(cfg.n_inner if cfg.n_inner is not None else 4 * d, **kw)
         self.norm = qc.LayerNorm(d, **kw)
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):

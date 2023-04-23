@@ -21,6 +21,23 @@ from .. import core as qc
 from . import utils as qu
 
 
+class Llama(qc.Module):
+    hs = qc.Hypers({"act", "d_ff", "d_model", "drop"}, {})
+
+    def __init__(self, d_ff=None, ps={}, hs=[], **kw):
+        if d_ff is not None:
+            kw.update(d_ff=d_ff)
+        super().__init__(ps, [self.hs] + hs, **kw)
+        cfg = self.get_cfg(kw)
+        self.gate_proj = qc.Linear(cfg.d_model, cfg.d_ff, bias=False, **kw)
+        self.down_proj = qc.Linear(cfg.d_ff, cfg.d_model, bias=False, **kw)
+        self.up_proj = nn.Linear(cfg.d_model, cfg.d_ff, bias=False, **kw)
+        self.act = qu.activation(cfg.act)
+
+    def forward(self, x):
+        return self.down_proj(self.act(self.gate_proj(x)) * self.up_proj(x))
+
+
 class GPT(qc.Module):
     hs = qc.Hypers({"act", "d_ff", "d_model", "drop"}, {})
 

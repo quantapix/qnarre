@@ -26,7 +26,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core.embed import Adaptive, Positional
-from ..core.ffnet import Positionwise
+from ..core.mlp import Positionwise
 from ..prep.config.transfo_xl import PreTrained
 
 log = logging.get_logger(__name__)

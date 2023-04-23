@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.ffnet import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, FFNet, Masker, Pool
 from ..prep.config.data2vec import PreTrained
 
 
@@ -449,7 +449,6 @@ class Encoder(qc.Module):
             past_key_value = caches[i] if caches is not None else None
 
             if self.gradient_checkpointing and self.training:
-
                 if y_cache:
                     log.warning(
                         "`y_cache=True` is incompatible with gradient checkpointing. Setting `y_cache=False`..."

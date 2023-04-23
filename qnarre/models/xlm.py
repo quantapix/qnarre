@@ -31,7 +31,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import sin_embeds
-from ..core.ffnet import Classifier, FFNet
+from ..core.mlp import Classifier, FFNet
 
 from ..prep.config.xlm import PreTrained
 

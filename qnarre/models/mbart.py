@@ -28,7 +28,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core.embed import PosEmbed
-from ..core.ffnet import Classifier
+from ..core.mlp import Classifier
 from ..prep.config.mbart import PreTrained
 
 from . import bart

@@ -17,7 +17,7 @@ import torch
 
 from qnarre.core.attention import Attend
 from qnarre.core.base import Hypers, Module, Linear
-from qnarre.core.ffnet import FFNet
+from qnarre.core.mlp import FFNet
 from qnarre.core.deduce import Deduce, Search
 from qnarre.core.norm import PreProc, PostProc
 from qnarre.core.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
