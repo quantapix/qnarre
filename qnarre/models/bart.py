@@ -164,12 +164,12 @@ class BartModel(BartPretrainedModel):
     def forward(
         self,
         input_ids=None,
-        attention_mask=None,
+        mask=None,
         decoder_input_ids=None,
-        decoder_attention_mask=None,
+        decoder_mask=None,
         head_mask=None,
         decoder_head_mask=None,
-        cross_attn_head_mask=None,
+        cross_mask=None,
         encoder_outputs=None,
         caches=None,
         inputs_embeds=None,
@@ -203,7 +203,7 @@ class BartModel(BartPretrainedModel):
         if encoder_outputs is None:
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
-                attention_mask=attention_mask,
+                mask=mask,
                 head_mask=head_mask,
                 inputs_embeds=inputs_embeds,
                 output_attentions=output_attentions,
@@ -218,11 +218,11 @@ class BartModel(BartPretrainedModel):
             )
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
-            attention_mask=decoder_attention_mask,
-            encoder_hidden_states=encoder_outputs[0],
-            enc_m=attention_mask,
+            mask=decoder_mask,
+            enc=encoder_outputs[0],
+            enc_m=mask,
             head_mask=decoder_head_mask,
-            cross_attn_head_mask=cross_attn_head_mask,
+            cross_mask=cross_mask,
             caches=caches,
             inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -239,7 +239,7 @@ class BartModel(BartPretrainedModel):
             decoder_attentions=decoder_outputs.attentions,
             cross_attentions=decoder_outputs.cross_attentions,
             encoder_last_hidden_state=encoder_outputs.last_hidden_state,
-            encoder_hidden_states=encoder_outputs.hidden_states,
+            enc=encoder_outputs.hidden_states,
             encoder_attentions=encoder_outputs.attentions,
         )
 
@@ -328,7 +328,7 @@ class BartEncoder(BartPretrainedModel):
     def forward(
         self,
         input_ids=None,
-        attention_mask=None,
+        mask=None,
         head_mask=None,
         inputs_embeds=None,
         output_attentions=None,
@@ -360,8 +360,8 @@ class BartEncoder(BartPretrainedModel):
         hidden_states = inputs_embeds + embed_pos
         hidden_states = self.layernorm_embedding(hidden_states)
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        if attention_mask is not None:
-            attention_mask = _expand_mask(attention_mask, inputs_embeds.dtype)
+        if mask is not None:
+            mask = _expand_mask(mask, inputs_embeds.dtype)
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
         if head_mask is not None:
@@ -388,13 +388,13 @@ class BartEncoder(BartPretrainedModel):
                     layer_outputs = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(encoder_layer),
                         hidden_states,
-                        attention_mask,
+                        mask,
                         (head_mask[idx] if head_mask is not None else None),
                     )
                 else:
                     layer_outputs = encoder_layer(
                         hidden_states,
-                        attention_mask,
+                        mask,
                         head_m=(head_mask[idx] if head_mask is not None else None),
                         output_attentions=output_attentions,
                     )
@@ -527,37 +527,33 @@ class BartDecoder(BartPretrainedModel):
         self.layernorm_embedding = nn.LayerNorm(config.d_model)
         self.gradient_checkpointing = False
 
-    def _prepare_decoder_attention_mask(
-        self, attention_mask, input_shape, inputs_embeds, caches_length
-    ):
-        combined_attention_mask = None
+    def _prepare_decoder_mask(self, mask, input_shape, inputs_embeds, caches_length):
+        combined_mask = None
         if input_shape[-1] > 1:
-            combined_attention_mask = qu.causal_mask(
+            combined_mask = qu.causal_mask(
                 input_shape,
                 inputs_embeds.dtype,
                 device=inputs_embeds.device,
                 caches_length=caches_length,
             )
-        if attention_mask is not None:
+        if mask is not None:
             expanded_attn_mask = qu.expand_mask(
-                attention_mask, inputs_embeds.dtype, tgt_len=input_shape[-1]
+                mask, inputs_embeds.dtype, tgt_len=input_shape[-1]
             ).to(inputs_embeds.device)
-            combined_attention_mask = (
-                expanded_attn_mask
-                if combined_attention_mask is None
-                else expanded_attn_mask + combined_attention_mask
+            combined_mask = (
+                expanded_attn_mask if combined_mask is None else expanded_attn_mask + combined_mask
             )
 
-        return combined_attention_mask
+        return combined_mask
 
     def forward(
         self,
         input_ids=None,
-        attention_mask=None,
-        encoder_hidden_states=None,
+        mask=None,
+        enc=None,
         enc_m=None,
         head_mask=None,
-        cross_attn_head_mask=None,
+        cross_mask=None,
         caches=None,
         inputs_embeds=None,
         use_cache=None,
@@ -593,10 +589,8 @@ class BartDecoder(BartPretrainedModel):
         caches_length = caches[0][0].shape[2] if caches is not None else 0
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input) * self.embed_scale
-        attention_mask = self._prepare_decoder_attention_mask(
-            attention_mask, input_shape, inputs_embeds, caches_length
-        )
-        if encoder_hidden_states is not None and enc_m is not None:
+        mask = self._prepare_decoder_mask(mask, input_shape, inputs_embeds, caches_length)
+        if enc is not None and enc_m is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
             enc_m = _expand_mask(enc_m, inputs_embeds.dtype, tgt_len=input_shape[-1])
         positions = self.embed_positions(input, caches_length)
@@ -611,14 +605,10 @@ class BartDecoder(BartPretrainedModel):
                 )
                 use_cache = False
         all_hidden_states = () if output_hidden_states else None
-        all_self_attns = () if output_attentions else None
-        all_cross_attentions = (
-            () if (output_attentions and encoder_hidden_states is not None) else None
-        )
+        all_refls = () if output_attentions else None
+        all_cross_attentions = () if (output_attentions and enc is not None) else None
         next_decoder_cache = () if use_cache else None
-        for attn_mask, mask_name in zip(
-            [head_mask, cross_attn_head_mask], ["head_mask", "cross_attn_head_mask"]
-        ):
+        for attn_mask, mask_name in zip([head_mask, cross_mask], ["head_mask", "cross_mask"]):
             if attn_mask is not None:
                 if attn_mask.size()[0] != (len(self.layers)):
                     raise ValueError(
@@ -645,23 +635,21 @@ class BartDecoder(BartPretrainedModel):
                 layer_outputs = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(decoder_layer),
                     hidden_states,
-                    attention_mask,
-                    encoder_hidden_states,
+                    mask,
+                    enc,
                     enc_m,
                     head_mask[idx] if head_mask is not None else None,
-                    cross_attn_head_mask[idx] if cross_attn_head_mask is not None else None,
+                    cross_mask[idx] if cross_mask is not None else None,
                     None,
                 )
             else:
                 layer_outputs = decoder_layer(
                     hidden_states,
-                    attention_mask=attention_mask,
-                    encoder_hidden_states=encoder_hidden_states,
+                    mask=mask,
+                    enc=enc,
                     enc_m=enc_m,
                     head_m=(head_mask[idx] if head_mask is not None else None),
-                    cross_attn_head_m=(
-                        cross_attn_head_mask[idx] if cross_attn_head_mask is not None else None
-                    ),
+                    cross_m=(cross_mask[idx] if cross_mask is not None else None),
                     cache=cache,
                     output_attentions=output_attentions,
                     use_cache=use_cache,
@@ -672,9 +660,9 @@ class BartDecoder(BartPretrainedModel):
                 next_decoder_cache += (layer_outputs[3 if output_attentions else 1],)
 
             if output_attentions:
-                all_self_attns += (layer_outputs[1],)
+                all_refls += (layer_outputs[1],)
 
-                if encoder_hidden_states is not None:
+                if enc is not None:
                     all_cross_attentions += (layer_outputs[2],)
 
         # add hidden states from the last decoder layer
@@ -689,7 +677,7 @@ class BartDecoder(BartPretrainedModel):
                     hidden_states,
                     next_cache,
                     all_hidden_states,
-                    all_self_attns,
+                    all_refls,
                     all_cross_attentions,
                 ]
                 if v is not None
@@ -698,28 +686,28 @@ class BartDecoder(BartPretrainedModel):
             last_hidden_state=hidden_states,
             caches=next_cache,
             hidden_states=all_hidden_states,
-            attentions=all_self_attns,
+            attentions=all_refls,
             cross_attentions=all_cross_attentions,
         )
 
 
 class EncLayer(qc.Module):
     hs = qc.Hypers(
-        {"act", "d_enc_ff", "d_model", "drop_act", "n_enc_heads", "eps"},
+        {"act", "d_enc_ff", "d_model", "drop_act", "n_enc_heads"},
         {"drop": 0.0, "is_dec": False},
     )
 
     def __init__(self, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        m = cfg.d_model
+        d = cfg.d_model
         self.refl = Attention(n_heads=cfg.n_enc_heads, **kw)
-        self.norm_refl = qc.LayerNorm(m, **kw)
+        self.norm_refl = qc.LayerNorm(d, **kw)
         self.act = qu.activation(cfg.act)
         self.drop_act = qc.Dropout(cfg.drop_act, **kw)
-        self.ff = qc.Linear(m, cfg.d_enc_ff, **kw)
-        self.proj = qc.Linear(cfg.d_enc_ff, m, **kw)
-        self.norm = qc.LayerNorm(m, **kw)
+        self.ff = qc.Linear(d, cfg.d_enc_ff, **kw)
+        self.proj = qc.Linear(cfg.d_enc_ff, d, **kw)
+        self.norm = qc.LayerNorm(d, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, **kw):
@@ -740,79 +728,25 @@ class EncLayer(qc.Module):
         return y
 
 
-class BartEncoderLayer(nn.Module):
-    def __init__(self, config: BartConfig):
-        super().__init__()
-        self.embed_dim = config.d_model
-        self.self_attn = BartAttention(
-            embed_dim=self.embed_dim,
-            num_heads=config.encoder_attention_heads,
-            dropout=config.attention_dropout,
-        )
-        self.self_attn_layer_norm = nn.LayerNorm(self.embed_dim)
-        self.dropout = config.dropout
-        self.activation_fn = ACT2FN[config.activation_function]
-        self.activation_dropout = config.activation_dropout
-        self.fc1 = nn.Linear(self.embed_dim, config.encoder_ffn_dim)
-        self.fc2 = nn.Linear(config.encoder_ffn_dim, self.embed_dim)
-        self.final_layer_norm = nn.LayerNorm(self.embed_dim)
-
-    def forward(
-        self,
-        hidden_states: torch.FloatTensor,
-        attention_mask: torch.FloatTensor,
-        head_m: torch.FloatTensor,
-        output_attentions=False,
-    ):
-        residual = hidden_states
-        hidden_states, attn_weights, _ = self.self_attn(
-            hidden_states=hidden_states,
-            attention_mask=attention_mask,
-            head_m=head_m,
-            output_attentions=output_attentions,
-        )
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + hidden_states
-        hidden_states = self.self_attn_layer_norm(hidden_states)
-        residual = hidden_states
-        hidden_states = self.activation_fn(self.fc1(hidden_states))
-        hidden_states = nn.functional.dropout(
-            hidden_states, p=self.activation_dropout, training=self.training
-        )
-        hidden_states = self.fc2(hidden_states)
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + hidden_states
-        hidden_states = self.final_layer_norm(hidden_states)
-        if hidden_states.dtype == torch.float16 and (
-            torch.isinf(hidden_states).any() or torch.isnan(hidden_states).any()
-        ):
-            clamp_value = torch.finfo(hidden_states.dtype).max - 1000
-            hidden_states = torch.clamp(hidden_states, min=-clamp_value, max=clamp_value)
-        outputs = (hidden_states,)
-        if output_attentions:
-            outputs += (attn_weights,)
-        return outputs
-
-
 class DecLayer(qc.Module):
     hs = qc.Hypers(
-        {"act", "d_dec_ff", "d_model", "drop_act", "n_dec_heads", "eps"},
+        {"act", "d_dec_ff", "d_model", "drop_act", "n_dec_heads"},
         {"drop": 0.0, "is_dec": False},
     )
 
     def __init__(self, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        m = cfg.d_model
+        d = cfg.d_model
         self.refl = Attention(n_heads=cfg.n_dec_heads, is_dec=True, **kw)
-        self.norm_refl = qc.LayerNorm(m, **kw)
+        self.norm_refl = qc.LayerNorm(d, **kw)
         self.act = qu.activation(cfg.act)
         self.drop_act = qc.Dropout(cfg.drop_act, **kw)
         self.attn = Attention(n_heads=cfg.n_dec_heads, is_dec=True, **kw)
-        self.norm_attn = qc.LayerNorm(m, **kw)
-        self.ff = qc.Linear(m, cfg.d_dec_ff, **kw)
-        self.proj = qc.Linear(cfg.d_dec_ff, m, **kw)
-        self.norm = qc.LayerNorm(m, **kw)
+        self.norm_attn = qc.LayerNorm(d, **kw)
+        self.ff = qc.Linear(d, cfg.d_dec_ff, **kw)
+        self.proj = qc.Linear(cfg.d_dec_ff, d, **kw)
+        self.norm = nn.LayerNorm(d, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, cache=None, cross_m=None, enc_m=None, enc=None, **kw):
@@ -830,9 +764,9 @@ class DecLayer(qc.Module):
             kv = kv + kv2
         x = y
         y = self.drop_act(self.act(self.ff(y)))
-        y = self.drop(self.proj(y))
-        y = self.norm(x + y)
-        y = (y,)
+        y = self.proj(y)
+        y = self.drop(y, p=self.dropout, training=self.training)
+        y = (self.norm(x + y),)
         if yo.attn:
             y += (a, a2)
         if yo.cache:
@@ -840,105 +774,22 @@ class DecLayer(qc.Module):
         return y
 
 
-class BartDecoderLayer(nn.Module):
-    def __init__(self, config: BartConfig):
-        super().__init__()
-        self.embed_dim = config.d_model
-        self.self_attn = BartAttention(
-            embed_dim=self.embed_dim,
-            num_heads=config.decoder_attention_heads,
-            dropout=config.attention_dropout,
-            is_decoder=True,
-        )
-        self.dropout = config.dropout
-        self.activation_fn = ACT2FN[config.activation_function]
-        self.activation_dropout = config.activation_dropout
-        self.self_attn_layer_norm = nn.LayerNorm(self.embed_dim)
-        self.encoder_attn = BartAttention(
-            self.embed_dim,
-            config.decoder_attention_heads,
-            dropout=config.attention_dropout,
-            is_decoder=True,
-        )
-        self.encoder_attn_layer_norm = nn.LayerNorm(self.embed_dim)
-        self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
-        self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
-        self.final_layer_norm = nn.LayerNorm(self.embed_dim)
-
-    def forward(
-        self,
-        hidden_states,
-        attention_mask=None,
-        encoder_hidden_states=None,
-        enc_m=None,
-        head_m=None,
-        cross_attn_head_m=None,
-        cache=None,
-        output_attentions=False,
-        use_cache=True,
-    ):
-        residual = hidden_states
-        self_attn_cache = cache[:2] if cache is not None else None
-        hidden_states, self_attn_weights, present_key_value = self.self_attn(
-            hidden_states=hidden_states,
-            cache=self_attn_cache,
-            attention_mask=attention_mask,
-            head_m=head_m,
-            output_attentions=output_attentions,
-        )
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + hidden_states
-        hidden_states = self.self_attn_layer_norm(hidden_states)
-        cross_attn_present_key_value = None
-        cross_attn_weights = None
-        if encoder_hidden_states is not None:
-            residual = hidden_states
-            cross_attn_cache = cache[-2:] if cache is not None else None
-            hidden_states, cross_attn_weights, cross_attn_present_key_value = self.encoder_attn(
-                hidden_states=hidden_states,
-                key_value_states=encoder_hidden_states,
-                attention_mask=enc_m,
-                head_m=cross_attn_head_m,
-                cache=cross_attn_cache,
-                output_attentions=output_attentions,
-            )
-            hidden_states = nn.functional.dropout(
-                hidden_states, p=self.dropout, training=self.training
-            )
-            hidden_states = residual + hidden_states
-            hidden_states = self.encoder_attn_layer_norm(hidden_states)
-            present_key_value = present_key_value + cross_attn_present_key_value
-        residual = hidden_states
-        hidden_states = self.activation_fn(self.fc1(hidden_states))
-        hidden_states = nn.functional.dropout(
-            hidden_states, p=self.activation_dropout, training=self.training
-        )
-        hidden_states = self.fc2(hidden_states)
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + hidden_states
-        hidden_states = self.final_layer_norm(hidden_states)
-        outputs = (hidden_states,)
-        if output_attentions:
-            outputs += (self_attn_weights, cross_attn_weights)
-        if use_cache:
-            outputs += (present_key_value,)
-        return outputs
-
-
 class Attention(qc.Module):
-    hs = qc.Hypers({"d_model", "n_heads", "scale"}, {"drop_attn": 0.0})
+    hs = qc.Hypers({"d_model", "n_heads"}, {"drop_attn": 0.0})
 
-    def __init__(self, ps={}, hs=[], **kw):
+    def __init__(self, is_dec=False, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
+        self.is_dec = is_dec
         cfg = self.get_cfg(kw)
-        h, d = cfg.n_heads, cfg.d_model
-        cfg.s_head = int(d / h)
-        cfg.scale = cfg.s_head**-0.5
-        self.query = qc.Linear(d, d, **kw)
+        d, h = cfg.d_model, cfg.n_heads
+        assert d % h == 0
+        cfg.s_head = s = int(d / h)
+        cfg.scale = s**-0.5
         self.key = qc.Linear(d, d, **kw)
         self.value = qc.Linear(d, d, **kw)
-        self.drop = qc.Dropout(cfg.drop_attn, **kw)
+        self.query = qc.Linear(d, d, **kw)
         self.proj = qc.Linear(d, d, **kw)
+        self.drop = qc.Dropout(cfg.drop_attn, **kw)
 
     split_heads = qa.split_heads
 
@@ -952,111 +803,40 @@ class Attention(qc.Module):
             if cache is not None:
                 k = torch.cat([cache[0], k], dim=2)
                 v = torch.cat([cache[1], v], dim=2)
-        else:
+        else:  # is_cross
             if cache is None:
                 k = self.split_heads(self.key(enc))
                 v = self.split_heads(self.value(enc))
             else:
                 k, v = cache
-        h = cfg.n_heads
+        if self.is_dec:
+            cache = (k, v)
+        n, s = cfg.n_heads, cfg.s_head
         b, tgt, _ = x.size()
-        s = (b * h, -1, cfg.s_head)
-        y = torch.bmm(q.view(s), k.view(s).transpose(1, 2))
-        src = k.view(s).size(1)
-        assert y.size() == (b * h, tgt, src)
+        h = (b * n, -1, s)
+        y = torch.bmm(q.view(h), k.view(h).transpose(1, 2))
+        src = k.view(h).size(1)
+        assert y.size() == (b * n, tgt, src)
         if mask is not None:
             assert mask.size() == (b, 1, tgt, src)
-            y = y.view(b, h, tgt, src) + mask
-            y = y.view(b * h, tgt, src)
+            y = y.view(b, n, tgt, src) + mask
+            y = y.view(b * n, tgt, src)
         y = F.softmax(y, dim=-1)
         if head_m is not None:
-            assert head_m.size() == (h,)
-            y = head_m.view(1, -1, 1, 1) * y.view(b, h, tgt, src)
-            y = y.view(b * h, tgt, src)
+            assert head_m.size() == (n,)
+            y = head_m.view(1, -1, 1, 1) * y.view(b, n, tgt, src)
+            y = y.view(b * n, tgt, src)
+        a = None
         if yo.attn:
-            a = y.view(b, h, tgt, src)
-            y = a.view(b * h, tgt, src)
-        y = torch.bmm(self.drop(y), v.view(s))
-        assert y.size() == (b * h, tgt, cfg.s_head)
-        y = y.view(b, h, tgt, cfg.s_head)
+            a = y.view(b, n, tgt, src)
+            y = a.view(b * n, tgt, src)
+        y = torch.bmm(self.drop(y), v.view(h))
+        assert y.size() == (b * n, tgt, s)
+        y = y.view(b, n, tgt, s)
         y = y.transpose(1, 2).reshape(b, tgt, cfg.d_model)
-        y = self.proj(y)
-        y = (y,)
+        y = (self.proj(y),)
         if yo.attn:
             y += (a,)
-        if yo.cache:
+        if yo.cache or self.is_decoder:
             y += ((k, v),)
         return y
-
-
-class BartAttention(qc.Module):
-    hs = qc.Hypers({"d_model", "n_heads", "scale"}, {"drop": 0.0})
-
-    def __init__(self, is_decoder=False, bias=True, ps={}, hs=[], **kw):
-        super().__init__(ps, [self.hs] + hs, **kw)
-        self.is_decoder = is_decoder
-        cfg = self.get_cfg(kw)
-        d, h = cfg.d_model, cfg.n_heads
-        assert d % h == 0
-        cfg.s_head = s = int(d / h)
-        cfg.scale = s**-0.5
-        self.key = qc.Linear(d, d, bias=bias, **kw)
-        self.value = qc.Linear(d, d, bias=bias, **kw)
-        self.query = qc.Linear(d, d, bias=bias, **kw)
-        self.proj = qc.Linear(d, d, bias=bias, **kw)
-        self.drop = qc.Dropout(cfg.drop, **kw)
-
-    def _shape(self, tensor, seq_len, bsz):
-        return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
-
-    def forward(self, x, enc=None, cache=None, mask=None, head_m=None, **kw):
-        cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        is_cross = enc is not None
-        b, tgt, _ = x.size()
-        q = self.query(x) * cfg.scale
-        if is_cross and cache is not None and cache[0].shape[2] == enc.shape[1]:
-            k = cache[0]
-            v = cache[1]
-        elif is_cross:
-            k = self._shape(self.key(enc), -1, b)
-            v = self._shape(self.value(enc), -1, b)
-        elif cache is not None:
-            k = self._shape(self.key(x), -1, b)
-            v = self._shape(self.value(x), -1, b)
-            k = torch.cat([cache[0], k], dim=2)
-            v = torch.cat([cache[1], v], dim=2)
-        else:
-            k = self._shape(self.key(x), -1, b)
-            v = self._shape(self.value(x), -1, b)
-        if self.is_decoder:
-            cache = (k, v)
-        h = cfg.n_heads
-        s = (b * h, -1, cfg.s_head)
-        q = self._shape(q, tgt, b).view(*s)
-        k = k.reshape(*s)
-        v = v.reshape(*s)
-        src = k.size(1)
-        y = torch.bmm(q, k.transpose(1, 2))
-        assert y.size() == (b * h, tgt, src)
-        if mask is not None:
-            assert mask.size() == (b, 1, tgt, src)
-            y = y.view(b, h, tgt, src) + mask
-            y = y.view(b * h, tgt, src)
-        y = F.softmax(y, dim=-1)
-        if head_m is not None:
-            assert head_m.size() == (h,)
-            y = head_m.view(1, -1, 1, 1) * y.view(b, h, tgt, src)
-            y = y.view(b * h, tgt, src)
-        if yo.attn:
-            a = y.view(b, h, tgt, src)
-            y = a.view(b * h, tgt, src)
-        else:
-            a = None
-        y = torch.bmm(self.drop(y), v)
-        assert y.size() == (b * h, tgt, cfg.s_head)
-        y = y.view(b, h, tgt, cfg.s_head)
-        y = y.transpose(1, 2)
-        y = y.reshape(b, tgt, cfg.d_model)
-        y = self.proj(y)
-        return y, a, cache
