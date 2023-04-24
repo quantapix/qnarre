@@ -48,7 +48,6 @@ class Model(PreTrained):
         self, x, x_emb=None, prev_kv=None, mask=None, typ=None, pos=None, head_m=None, **kw
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is not None:
             s = x_emb.size()[:-1]
         else:
@@ -86,31 +85,23 @@ class Model(PreTrained):
         pos = self.pos_emb[pos, :].to(d)
         y = x_emb + pos + typ
         y = self.drop(y)
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        hiddens = () if yo.hidden else None
+        attns = caches = hiddens = ()
         for i, (lay, layer_past) in enumerate(zip(self.lays, prev_kv)):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             ys = lay(
                 y,
                 mask,
                 layer_past=layer_past,
                 mask=mask,
                 head_m=head_m[i],
-                yo=yo,
                 **kw,
             )
             y, present = ys[:2]
-            if yo.attn:
-                attns += (ys[2],)
-            if yo.cache:
-                caches += (present,)
+            attns += (ys[2],)
+            caches += (present,)
         y = self.norm(y)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, hiddens)
-        return qo.WithCaches(*ys) if yo.kw else ys
+        hiddens += (y,)
+        return qo.WithCaches(y, attns, caches, hiddens)
 
 
 class ForSeqClassifier(PreTrained):
@@ -122,8 +113,7 @@ class ForSeqClassifier(PreTrained):
 
     def forward(self, x, x_emb=None, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, x_emb=x_emb, **kw, yo=yo)
+        ys = self.model(x, x_emb=x_emb, **kw)
         b = (x.shape[:2] if x is not None else x_emb.shape[:2])[0]
         if cfg.PAD is None:
             n = -1
@@ -154,7 +144,7 @@ class ForSeqClassifier(PreTrained):
             elif cfg.problem == "multi_label":
                 loss = nn.BCEWithLogitsLoss()(y, labels)
         ys = (y,) + ys[2:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class LMHead(PreTrained):
@@ -165,8 +155,7 @@ class LMHead(PreTrained):
         self.proj = qc.Linear(cfg.d_model, cfg.s_vocab, bias=True, **kw)
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -174,7 +163,7 @@ class LMHead(PreTrained):
             ls = labels[..., 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCaches(*ys) if yo.kw else ys
+        return qo.LossCaches(*ys)
 
 
 def scaled_dot_product_attention(q, k, v, mask, head_m=None):
@@ -207,11 +196,10 @@ class Encoder(qc.Module):
         self.drop1 = qc.Dropout(rate)
         self.drop2 = qc.Dropout(rate)
 
-    def forward(self, x, mask, layer_past=None, head_m=None, y_attn=False, y_cache=False, **kw):
-        yo = self.get_y_opts(y_attn=y_attn, y_cache=y_cache, **kw)
+    def forward(self, x, mask, layer_past=None, head_m=None, **kw):
         normed = self.norm1(x)
         ys = self.attn(
-            normed, normed, normed, mask, layer_past=layer_past, mask=mask, head_m=head_m, yo=yo
+            normed, normed, normed, mask, layer_past=layer_past, mask=mask, head_m=head_m
         )
         out1 = x + self.drop1(ys[0])
         out2 = self.norm2(out1)
@@ -240,20 +228,8 @@ class Attention(qc.Module):
         x = x.reshape(batch_size, -1, cfg.n_heads, cfg.d_head)
         return x.permute([0, 2, 1, 3])
 
-    def forward(
-        self,
-        v,
-        k,
-        q,
-        mask,
-        layer_past=None,
-        head_m=None,
-        y_attn=False,
-        y_cache=False,
-        **kw,
-    ):
+    def forward(self, v, k, q, mask, layer_past=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(y_attn=y_attn, y_cache=y_cache, **kw)
         b = q.shape[0]
         q = self.query(q)
         k = self.key(k)
@@ -265,16 +241,10 @@ class Attention(qc.Module):
             past_key, past_value = layer_past[0], layer_past[1]
             k = torch.cat((past_key, k), dim=-2)
             v = torch.cat((past_value, v), dim=-2)
-        if yo.cache is True:
-            present = torch.stack((k, v))
-        else:
-            present = (None,)
+        present = torch.stack((k, v))
         ys = scaled_dot_product_attention(q, k, v, mask, mask, head_m)
         scaled_attention = ys[0].permute([0, 2, 1, 3])
         attn = ys[1]
         original_size_attention = scaled_attention.reshape(b, -1, cfg.d_model)
         ys = self.proj(original_size_attention)
-        y = (ys, present)
-        if yo.attn:
-            y = y + (attn,)
-        return y
+        return ys, present, attn

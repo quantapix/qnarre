@@ -70,7 +70,6 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is not None:
             assert x_emb is None
             s, d = x.size(), x.device
@@ -115,8 +114,6 @@ class Model(PreTrained):
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
         ys = self.embs(x, c_len=c_len, pos=pos, typ=typ, x_emb=x_emb)
-        if not cfg.is_dec:
-            yo.cache = False
         ys = self.enc(
             ys,
             band_m=band_m,
@@ -128,14 +125,13 @@ class Model(PreTrained):
             head_m=head_m,
             mask=mask,
             to_m=to_m,
-            yo=yo,
         )
         y = ys[0]
         pools = self.pool(y[:, 0, :]) if self.pool is not None else None
         if p_len > 0:
             y = y[:, :-p_len]
         ys = (y,) + ys[1:] + (pools,)
-        return qo.PoolsCrosses(*ys) if yo.kw else ys
+        return qo.PoolsCrosses(*ys)
 
     @staticmethod
     def create_masks_for_block(mask, block):
@@ -182,8 +178,7 @@ class ForCausal(PreTrained):
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, yo=yo**kw)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -191,7 +186,7 @@ class ForCausal(PreTrained):
             ls = labels[:, 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, cfg.s_vocab), ls.view(-1))
         ys = (y,) + ys[2:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
+        return qo.LossCrosses(*ys)
 
 
 class ForMasked(PreTrained):
@@ -225,8 +220,7 @@ class ForPreTraining(PreTrained):
 
     def forward(self, x, labels=None, ns_labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, yo=yo**kw)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         orders = self.seq(ys[1])
         loss = None
@@ -236,7 +230,7 @@ class ForPreTraining(PreTrained):
             if loss is not None:
                 loss = loss + f(orders.view(-1, 2), ns_labels.view(-1))
         ys = (y, orders) + ys[2:] + (loss,)
-        return bert.LossSeq(*ys) if yo.kw else ys
+        return bert.LossSeq(*ys)
 
 
 def prep_q_mask(q_lens, n):
@@ -257,7 +251,6 @@ class ForQA(PreTrained):
         self.proj = qc.Linear(cfg.d_model, cfg.n_labels)
 
     def forward(self, x, beg=None, end=None, q_lens=None, typ=None, x_emb=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.size(1) if x is not None else x_emb.size(1)
         if q_lens is None and x is not None:
             q_lens = torch.argmax(x.eq(self.SEP).int(), dim=-1) + 1
@@ -269,7 +262,7 @@ class ForQA(PreTrained):
                 typ = (~y_m).long()
             y_m[:, 0] = False
             y_m.unsqueeze_(2)
-        ys = self.model(x, typ=typ, x_emb=x_emb, **kw, yo=yo)
+        ys = self.model(x, typ=typ, x_emb=x_emb, **kw)
         y = self.proj(self.ff(self.drop(ys[0])))
         if y_m is not None:
             y = y - y_m * 1e6
@@ -288,7 +281,7 @@ class ForQA(PreTrained):
             end = end.clamp(0, i)
             loss = (f(b, beg) + f(e, end)) / 2
         ys = (b, e) + ys[2:] + (loss,)
-        return qo.LossQAPools(*ys) if yo.kw else ys
+        return qo.LossQAPools(*ys)
 
 
 class ForSeqClassifier(PreTrained):
@@ -331,41 +324,33 @@ class Encoder(qc.Module):
 
     def forward(self, x, cache=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         y = x
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if yo.attn and cfg.add_cross else None
-        hiddens = () if yo.hidden else None
+        attns = ()
+        caches = ()
+        crosses = ()
+        hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             h = head_m[i] if head_m is not None else None
             c = cache[i] if cache is not None else None
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, **kw, head_m=h)
             else:
-                ys = lay(y, **kw, cache=c, head_m=h, yo=yo)
+                ys = lay(y, **kw, cache=c, head_m=h)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if cfg.add_cross:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+            attns += (ys[1],)
+            if cfg.add_cross:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
 class Layer(qc.Module):
@@ -405,10 +390,8 @@ class Layer(qc.Module):
         to_m=None,
         blocked_encoder_mask=None,
         prev_kv=None,
-        y_attn=False,
         **kw,
     ):
-        yo = self.get_y_opts(y_attn=y_attn, **kw)
         self_attn_past_key_value = prev_kv[:2] if prev_kv is not None else None
         self_attention_outputs = self.attn(
             x,
@@ -422,7 +405,6 @@ class Layer(qc.Module):
             to_m=to_m,
             from_blocked_mask=blocked_encoder_mask,
             to_blocked_mask=blocked_encoder_mask,
-            yo=yo,
         )
         attention_output = self_attention_outputs[0]
         if self.is_dec:
@@ -441,7 +423,6 @@ class Layer(qc.Module):
                 enc,
                 enc_m,
                 cross_attn_past_key_value,
-                yo=yo,
             )
             attention_output = cross_attention_outputs[0]
             y = y + cross_attention_outputs[1:-1]
@@ -492,12 +473,11 @@ class Attention(qc.Module):
             self.attn.eval()
 
     def forward(self, x, enc=None, **kw):
-        yo = self.get_y_opts(**kw)
         if self.cfg.attn_type == "original_full":
-            ys = self.attn(x, **kw, enc=enc, yo=yo)
+            ys = self.attn(x, **kw, enc=enc)
         else:
             assert enc is None
-            ys = self.attn(x, **kw, yo=yo)
+            ys = self.attn(x, **kw)
         y = self.norm(x + self.drop(self.proj(ys[0])))
         y = (y,) + ys[1:]
         return y
@@ -525,7 +505,6 @@ class FullAttn(qc.Module):
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         q = self.split_heads(self.query(x))
         if enc is None:
             k = self.split_heads(self.key(x))
@@ -550,12 +529,7 @@ class FullAttn(qc.Module):
             a *= head_m
         y = torch.matmul(a, v).permute(0, 2, 1, 3).contiguous()
         y = y.view(y.size()[:-2] + (cfg.n_heads * cfg.d_head,))
-        y = (y,)
-        if yo.attn:
-            y += (a,)
-        if yo.cache:
-            y += ((k, v),)
-        return y
+        return y, a, (k, v)
 
 
 class SparseAttn(qc.Module):
@@ -579,7 +553,6 @@ class SparseAttn(qc.Module):
     split_heads = qa.split_heads
 
     def forward(self, x, **kw):
-        yo = self.get_y_opts(**kw)
         b, seqlen, _ = x.size()
         to_seq_length = from_seq_length = seqlen
         from_block_size = to_block_size = self.block_size
@@ -605,12 +578,10 @@ class SparseAttn(qc.Module):
             to_seq_length,
             plan_from_length=None,
             plan_num_rand_blocks=None,
-            yo=yo,
             **kw,
         )
         ctx = ctx.contiguous().view(b, from_seq_length, -1)
-        y = (ctx, y) if yo.attn else (ctx,)
-        return y
+        return ctx, y
 
     @staticmethod
     def torch_bmm_nd(x1, x2, ndim=None):
@@ -648,7 +619,6 @@ class SparseAttn(qc.Module):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         assert from_seq_len // from_block_size == to_seq_len // to_block_size
         rsqrt_d = 1 / (d_head**0.5)
         bsz = batch_size
@@ -876,37 +846,23 @@ class SparseAttn(qc.Module):
         )
         ctx = ctx.view((bsz, cfg.n_heads, from_seq_len, -1)) * from_m
         ctx = torch.transpose(ctx, 1, 2)
-        if yo.attn:
-            y = torch.zeros(
-                bsz,
-                cfg.n_heads,
-                from_seq_len,
-                to_seq_len,
-                dtype=torch.float,
-                device=ctx.device,
-            )
-            y[:, :, :from_block_size, :] = first_attn_weights  # all keys global
-            y[
-                :, :, from_block_size : 2 * from_block_size, : 3 * to_block_size
-            ] = second_attn_weights[:, :, :, : 3 * to_block_size]
-            y[:, :, from_block_size : 2 * from_block_size, -to_block_size:] = second_attn_weights[
-                :, :, :, 3 * to_block_size : 4 * to_block_size
-            ]
-            for p1, i1, w1 in zip(range(bsz), rand_attn, second_attn_weights):
-                for p2, i2, w2 in zip(range(cfg.n_heads), i1, w1):
-                    attn_probs_view = y.view(
-                        bsz,
-                        cfg.n_heads,
-                        from_seq_len // from_block_size,
-                        from_block_size,
-                        to_seq_len // to_block_size,
-                        to_block_size,
-                    )
-                    right_slice = w2[:, 4 * to_block_size :]
-                    attn_probs_view[p1, p2, 1, :, i2[0]] = right_slice.view(
-                        from_block_size, cfg.n_rand_blocks, to_block_size
-                    )
-            for i in range(from_seq_len // from_block_size - 4):
+        y = torch.zeros(
+            bsz,
+            cfg.n_heads,
+            from_seq_len,
+            to_seq_len,
+            dtype=torch.float,
+            device=ctx.device,
+        )
+        y[:, :, :from_block_size, :] = first_attn_weights  # all keys global
+        y[:, :, from_block_size : 2 * from_block_size, : 3 * to_block_size] = second_attn_weights[
+            :, :, :, : 3 * to_block_size
+        ]
+        y[:, :, from_block_size : 2 * from_block_size, -to_block_size:] = second_attn_weights[
+            :, :, :, 3 * to_block_size : 4 * to_block_size
+        ]
+        for p1, i1, w1 in zip(range(bsz), rand_attn, second_attn_weights):
+            for p2, i2, w2 in zip(range(cfg.n_heads), i1, w1):
                 attn_probs_view = y.view(
                     bsz,
                     cfg.n_heads,
@@ -914,40 +870,33 @@ class SparseAttn(qc.Module):
                     from_block_size,
                     to_seq_len // to_block_size,
                     to_block_size,
-                )[:, :, 2:-2, :, 1:-1, :]
-                right_slice = attn_weights[:, :, i, :, to_block_size : 4 * to_block_size]
-                attn_probs_view[:, :, i, :, i : i + 3, :] = right_slice.view(
-                    bsz, cfg.n_heads, from_block_size, 3, to_block_size
                 )
-            y[:, :, 2 * from_block_size : -2 * from_block_size, :to_block_size] = attn_weights[
-                :, :, :, :, :to_block_size
-            ].view(bsz, cfg.n_heads, -1, to_block_size)
-            y[:, :, 2 * from_block_size : -2 * from_block_size, -to_block_size:] = attn_weights[
-                :, :, :, :, -to_block_size:
-            ].view(bsz, cfg.n_heads, -1, to_block_size)
-            for p1, i1, w1 in zip(range(bsz), rand_attn, attn_weights):
-                for p2, i2, w2 in zip(range(cfg.n_heads), i1, w1):
-                    for i in range(1, len(i2) - 1):
-                        attn_probs_view = y.view(
-                            bsz,
-                            cfg.n_heads,
-                            from_seq_len // from_block_size,
-                            from_block_size,
-                            to_seq_len // to_block_size,
-                            to_block_size,
-                        )
-                        right_slice = w2[i - 1, :, 4 * to_block_size : -to_block_size]
-                        attn_probs_view[p1, p2, i + 1, :, i2[i]] = right_slice.view(
-                            from_block_size, cfg.n_rand_blocks, to_block_size
-                        )
-            y[
-                :, :, -2 * from_block_size : -from_block_size, :to_block_size
-            ] = second_last_attn_weights[:, :, :, :to_block_size]
-            y[
-                :, :, -2 * from_block_size : -from_block_size, -3 * to_block_size :
-            ] = second_last_attn_weights[:, :, :, to_block_size : 4 * to_block_size]
-            for p1, i1, w1 in zip(range(bsz), rand_attn, second_last_attn_weights):
-                for p2, i2, w2 in zip(range(cfg.n_heads), i1, w1):
+                right_slice = w2[:, 4 * to_block_size :]
+                attn_probs_view[p1, p2, 1, :, i2[0]] = right_slice.view(
+                    from_block_size, cfg.n_rand_blocks, to_block_size
+                )
+        for i in range(from_seq_len // from_block_size - 4):
+            attn_probs_view = y.view(
+                bsz,
+                cfg.n_heads,
+                from_seq_len // from_block_size,
+                from_block_size,
+                to_seq_len // to_block_size,
+                to_block_size,
+            )[:, :, 2:-2, :, 1:-1, :]
+            right_slice = attn_weights[:, :, i, :, to_block_size : 4 * to_block_size]
+            attn_probs_view[:, :, i, :, i : i + 3, :] = right_slice.view(
+                bsz, cfg.n_heads, from_block_size, 3, to_block_size
+            )
+        y[:, :, 2 * from_block_size : -2 * from_block_size, :to_block_size] = attn_weights[
+            :, :, :, :, :to_block_size
+        ].view(bsz, cfg.n_heads, -1, to_block_size)
+        y[:, :, 2 * from_block_size : -2 * from_block_size, -to_block_size:] = attn_weights[
+            :, :, :, :, -to_block_size:
+        ].view(bsz, cfg.n_heads, -1, to_block_size)
+        for p1, i1, w1 in zip(range(bsz), rand_attn, attn_weights):
+            for p2, i2, w2 in zip(range(cfg.n_heads), i1, w1):
+                for i in range(1, len(i2) - 1):
                     attn_probs_view = y.view(
                         bsz,
                         cfg.n_heads,
@@ -956,13 +905,31 @@ class SparseAttn(qc.Module):
                         to_seq_len // to_block_size,
                         to_block_size,
                     )
-                    right_slice = w2[:, 4 * to_block_size :]
-                    attn_probs_view[p1, p2, -2, :, i2[-1]] = right_slice.view(
+                    right_slice = w2[i - 1, :, 4 * to_block_size : -to_block_size]
+                    attn_probs_view[p1, p2, i + 1, :, i2[i]] = right_slice.view(
                         from_block_size, cfg.n_rand_blocks, to_block_size
                     )
-            y[:, :, -from_block_size:, :] = last_attn_weights
-        else:
-            y = None
+        y[:, :, -2 * from_block_size : -from_block_size, :to_block_size] = second_last_attn_weights[
+            :, :, :, :to_block_size
+        ]
+        y[
+            :, :, -2 * from_block_size : -from_block_size, -3 * to_block_size :
+        ] = second_last_attn_weights[:, :, :, to_block_size : 4 * to_block_size]
+        for p1, i1, w1 in zip(range(bsz), rand_attn, second_last_attn_weights):
+            for p2, i2, w2 in zip(range(cfg.n_heads), i1, w1):
+                attn_probs_view = y.view(
+                    bsz,
+                    cfg.n_heads,
+                    from_seq_len // from_block_size,
+                    from_block_size,
+                    to_seq_len // to_block_size,
+                    to_block_size,
+                )
+                right_slice = w2[:, 4 * to_block_size :]
+                attn_probs_view[p1, p2, -2, :, i2[-1]] = right_slice.view(
+                    from_block_size, cfg.n_rand_blocks, to_block_size
+                )
+        y[:, :, -from_block_size:, :] = last_attn_weights
         return ctx, y
 
     @staticmethod

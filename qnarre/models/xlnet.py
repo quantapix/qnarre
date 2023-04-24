@@ -82,7 +82,6 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if "y_cache" in kw:
             use_mems = kw["y_cache"]
         if self.training:
@@ -177,13 +176,11 @@ class Model(PreTrained):
         new_mems = ()
         if mems is None:
             mems = [None] * len(self.lays)
-        attns = [] if yo.attn else None
-        hiddens = [] if yo.hidden else None
+        attns = hiddens = ()
         for i, lay in enumerate(self.lays):
             if use_mems:
                 new_mems = new_mems + (self.cache_mem(output_h, mems[i]),)
-            if yo.hidden:
-                hiddens.append((output_h, output_g) if output_g is not None else output_h)
+            hiddens += (output_h, output_g) if output_g is not None else (output_h,)
             ys = lay(
                 output_h,
                 output_g,
@@ -194,33 +191,27 @@ class Model(PreTrained):
                 mems=mems[i],
                 target_mapping=target_mapping,
                 head_m=head_m[i],
-                yo=yo,
                 **kw,
             )
             output_h, output_g = ys[:2]
-            if yo.attn:
-                attns.append(ys[2])
-        if yo.hidden:
-            hiddens.append((output_h, output_g) if output_g is not None else output_h)
+            attns += (ys[2],)
+        hiddens += (output_h, output_g) if output_g is not None else (output_h,)
         y = self.drop(output_g if output_g is not None else output_h)
         y = y.permute(1, 0, 2).contiguous()
         if not use_mems:
             new_mems = None
-        if yo.hidden:
-            if output_g is not None:
-                hiddens = tuple(h.permute(1, 0, 2).contiguous() for hs in hiddens for h in hs)
-            else:
-                hiddens = tuple(hs.permute(1, 0, 2).contiguous() for hs in hiddens)
-        if yo.attn:
-            if target_mapping is not None:
-                attns = tuple(
-                    tuple(att_stream.permute(2, 3, 0, 1).contiguous() for att_stream in t)
-                    for t in attns
-                )
-            else:
-                attns = tuple(t.permute(2, 3, 0, 1).contiguous() for t in attns)
-        ys = (y, attns, hiddens, new_mems)
-        return Output(*ys) if yo.kw else ys
+        if output_g is not None:
+            hiddens = tuple(h.permute(1, 0, 2).contiguous() for hs in hiddens for h in hs)
+        else:
+            hiddens = tuple(hs.permute(1, 0, 2).contiguous() for hs in hiddens)
+        if target_mapping is not None:
+            attns = tuple(
+                tuple(att_stream.permute(2, 3, 0, 1).contiguous() for att_stream in t)
+                for t in attns
+            )
+        else:
+            attns = tuple(t.permute(2, 3, 0, 1).contiguous() for t in attns)
+        return Output(y, attns, hiddens, new_mems)
 
 
 @dataclass
@@ -239,17 +230,16 @@ class ForMultiChoice(PreTrained):
         self.proj = qc.Linear(cfg.d_model, 1, **kw)
 
     def forward(self, x, typ=None, x_m=None, mask=None, x_emb=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.shape[1] if x is not None else x_emb.shape[1]
         x, typ, x_m, mask = qu.view_2D(x, typ, x_m, mask)
         x_emb = qu.view_3D(x_emb)
-        ys = self.model(x, typ=typ, x_m=x_m, mask=mask, x_emb=x_emb, **kw, yo=yo)
+        ys = self.model(x, typ=typ, x_m=x_m, mask=mask, x_emb=x_emb, **kw)
         y = self.proj(self.seqs(ys[0])).view(-1, n)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y, labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return WithLoss(*ys) if yo.kw else ys
+        return WithLoss(*ys)
 
 
 @dataclass
@@ -269,8 +259,7 @@ class ForQASimple(PreTrained):
         self.proj = qc.Linear(cfg.d_model, cfg.n_labels, **kw)
 
     def forward(self, x, beg_pos=None, end_pos=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         b, e = self.proj(ys[0]).split(1, dim=-1)
         b = b.squeeze(-1).contiguous()
         e = e.squeeze(-1).contiguous()
@@ -286,7 +275,7 @@ class ForQASimple(PreTrained):
             end_pos = end_pos.clamp(0, i)
             loss = (f(b, beg_pos) + f(e, end_pos)) / 2
         ys = (b, e) + ys[1:] + (loss,)
-        return QA(*ys) if yo.kw else ys
+        return QA(*ys)
 
 
 @dataclass
@@ -319,8 +308,7 @@ class ForQA(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = ys[0]
         s = self.logits_beg(y, p_mask=p_mask)
         if beg_pos is not None and end_pos is not None:
@@ -334,7 +322,7 @@ class ForQA(PreTrained):
                 y = self.proj(y, beg_pos=beg_pos, cls_index=cls_index)
                 loss += nn.BCEWithLogitsLoss()(y, is_impossible) * 0.5
             ys = (y,) + ys[1:] + (loss,)
-            return QATop(*ys) if yo.kw else ys
+            return QATop(*ys)
         else:
             _, n, hsz = y.size()
             slps = F.softmax(s, dim=-1)
@@ -351,7 +339,7 @@ class ForQA(PreTrained):
             ss = torch.einsum("blh,bl->bh", y, slps)
             y = self.proj(y, beg_states=ss, cls_index=cls_index)
             ys = (y,) + ys[1:] + (top_beg, top_beg_i, top_end, top_end_i)
-            return QATop(*ys) if yo.kw else ys
+            return QATop(*ys)
 
 
 @dataclass
@@ -377,8 +365,7 @@ class ForSeqClassifier(PreTrained):
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(self.seqs(ys[0]))
         loss = None
         if labels is not None:
@@ -400,7 +387,7 @@ class ForSeqClassifier(PreTrained):
             elif cfg.problem == "multi_label":
                 loss = nn.BCEWithLogitsLoss()(y, labels)
         ys = (y,) + ys[1:] + (loss,)
-        return WithLoss(*ys) if yo.kw else ys
+        return WithLoss(*ys)
 
 
 class ForTokClassifier(PreTrained):
@@ -439,14 +426,13 @@ class LMHead(PreTrained):
         return y
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, y.size(-1)), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return WithLoss(*ys) if yo.kw else ys
+        return WithLoss(*ys)
 
 
 class Layer(qc.Module):
@@ -467,11 +453,9 @@ class Layer(qc.Module):
         mems=None,
         target_mapping=None,
         head_m=None,
-        y_attn=False,
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(y_attn=y_attn, **kw)
         y = self.rel_attn(
             output_h,
             output_g,
@@ -482,7 +466,6 @@ class Layer(qc.Module):
             mems=mems,
             target_mapping=target_mapping,
             head_m=head_m,
-            yo=yo,
         )
         output_h, output_g = y[:2]
         if output_g is not None:
@@ -541,10 +524,8 @@ class Attention(qc.Module):
         seg_mat=None,
         attn_mask=None,
         head_m=None,
-        y_attn=False,
         **kw,
     ):
-        yo = self.get_y_opts(y_attn=y_attn, **kw)
         ac = torch.einsum("ibnd,jbnd->bnij", q_head + self.r_w_bias, k_head_h)
         bd = torch.einsum("ibnd,jbnd->bnij", q_head + self.r_r_bias, k_head_r)
         bd = self.rel_shift_bnij(bd, klen=ac.shape[3])
@@ -564,9 +545,7 @@ class Attention(qc.Module):
         if head_m is not None:
             y = y * torch.einsum("ijbn->bnij", head_m)
         y = torch.einsum("bnij,jbnd->ibnd", y, v_head_h)
-        if yo.attn:
-            return y, torch.einsum("bnij->ijbn", y)
-        return y
+        return y, torch.einsum("bnij->ijbn", y)
 
     def post_attention(self, h, attn_vec, residual=True):
         y = torch.einsum("ibnd,hnd->ibh", attn_vec, self.o)
@@ -587,10 +566,8 @@ class Attention(qc.Module):
         mems=None,
         target_mapping=None,
         head_m=None,
-        y_attn=False,
         **kw,
     ):
-        yo = self.get_y_opts(y_attn=y_attn, **kw)
         if g is not None:
             if mems is not None and mems.dim() > 1:
                 cat = torch.cat([mems, h], dim=0)
@@ -608,10 +585,8 @@ class Attention(qc.Module):
                 seg_mat=seg_mat,
                 attn_mask=attn_mask_h,
                 head_m=head_m,
-                yo=yo,
             )
-            if yo.attn:
-                attn_vec_h, attn_prob_h = attn_vec_h
+            attn_vec_h, attn_prob_h = attn_vec_h
             output_h = self.post_attention(h, attn_vec_h)
             q_head_g = torch.einsum("ibh,hnd->ibnd", g, self.q)
             if target_mapping is not None:
@@ -624,10 +599,8 @@ class Attention(qc.Module):
                     seg_mat=seg_mat,
                     attn_mask=attn_mask_g,
                     head_m=head_m,
-                    yo=yo,
                 )
-                if yo.attn:
-                    attn_vec_g, attn_prob_g = attn_vec_g
+                attn_vec_g, attn_prob_g = attn_vec_g
                 attn_vec_g = torch.einsum("lbnd,mlb->mbnd", attn_vec_g, target_mapping)
             else:
                 attn_vec_g = self.rel_attn_core(
@@ -638,13 +611,10 @@ class Attention(qc.Module):
                     seg_mat=seg_mat,
                     attn_mask=attn_mask_g,
                     head_m=head_m,
-                    yo=yo,
                 )
-                if yo.attn:
-                    attn_vec_g, attn_prob_g = attn_vec_g
+                attn_vec_g, attn_prob_g = attn_vec_g
             output_g = self.post_attention(g, attn_vec_g)
-            if yo.attn:
-                attn_prob = attn_prob_h, attn_prob_g
+            attn_prob = attn_prob_h, attn_prob_g
         else:
             if mems is not None and mems.dim() > 1:
                 cat = torch.cat([mems, h], dim=0)
@@ -662,13 +632,8 @@ class Attention(qc.Module):
                 seg_mat=seg_mat,
                 attn_mask=attn_mask_h,
                 head_m=head_m,
-                yo=yo,
             )
-            if yo.attn:
-                attn_vec, attn_prob = attn_vec
+            attn_vec, attn_prob = attn_vec
             output_h = self.post_attention(h, attn_vec)
             output_g = None
-        y = (output_h, output_g)
-        if yo.attn:
-            y = y + (attn_prob,)
-        return y
+        return output_h, output_g, attn_prob

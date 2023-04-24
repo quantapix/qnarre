@@ -40,7 +40,7 @@ class Model(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.embed = qc.Embed(cfg.s_vocab, cfg.d_model, **kw)
-        kw.update(is_dec=False, y_cache=False, is_enc_dec=False)
+        kw.update(is_dec=False, is_enc_dec=False)
         self.enc = Encoder(self.embed, **kw)
         kw.update(is_dec=True, is_enc_dec=False, n_lays=cfg.n_dec_lays)
         self.dec = Encoder(self.embed, **kw)
@@ -59,12 +59,11 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if head_m is not None and dec_head_m is None:
             if cfg.n_lays == cfg.n_dec_lays:
                 dec_head_m = head_m
         if y_enc is None:
-            y_enc = self.enc(x, mask=mask, x_emb=x_emb, head_m=head_m, **kw, yo=yo)
+            y_enc = self.enc(x, mask=mask, x_emb=x_emb, head_m=head_m, **kw)
         y = self.dec(
             x_dec,
             **kw,
@@ -73,10 +72,9 @@ class Model(PreTrained):
             head_m=dec_head_m,
             mask=dec_m,
             x_emb=x_dec_emb,
-            yo=yo,
         )
         ys = y + y_enc
-        return qo.Seq2Seq(*ys) if yo.kw else ys
+        return qo.Seq2Seq(*ys)
 
 
 class ForCondGen(PreTrained):
@@ -84,7 +82,7 @@ class ForCondGen(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.embed = qc.Embed(cfg.s_vocab, cfg.d_model, **kw)
-        kw.update(is_dec=False, y_cache=False, is_enc_dec=False)
+        kw.update(is_dec=False, is_enc_dec=False)
         self.enc = Encoder(self.embed, **kw)
         kw.update(is_dec=True, is_enc_dec=False, n_lays=cfg.n_dec_lays)
         self.dec = Encoder(self.embed, **kw)
@@ -104,12 +102,11 @@ class ForCondGen(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if head_m is not None and dec_head_m is None:
             if cfg.n_lays == cfg.n_dec_lays:
                 dec_head_m = head_m
         if y_enc is None:
-            y_enc = self.enc(x, mask=mask, head_m=head_m, **kw, yo=yo)
+            y_enc = self.enc(x, mask=mask, head_m=head_m, **kw)
         if labels is not None and x_dec is None and x_dec_emb is None:
             x_dec = self._shift_right(labels)
         ys = self.dec(
@@ -120,7 +117,6 @@ class ForCondGen(PreTrained):
             head_m=dec_head_m,
             mask=dec_m,
             x_emb=x_dec_emb,
-            yo=yo,
         )
         y = ys[0]
         if cfg.tie_word_embeds:
@@ -131,7 +127,7 @@ class ForCondGen(PreTrained):
             f = nn.CrossEntropyLoss(ignore_index=-100)
             loss = f(y.view(-1, y.size(-1)), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossSeq2Seq(*ys) if yo.kw else ys
+        return qo.LossSeq2Seq(*ys)
 
 
 class LayerNorm(qc.Module):
@@ -265,20 +261,9 @@ class Attention(qc.Module):
         return y
 
     def forward(
-        self,
-        x,
-        mask=None,
-        kv=None,
-        pos=None,
-        prev_kv=None,
-        head_m=None,
-        query_length=None,
-        y_attn=False,
-        y_cache=False,
-        **kw,
+        self, x, mask=None, kv=None, pos=None, prev_kv=None, head_m=None, query_length=None, **kw
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(y_attn=y_attn, y_cache=y_cache, **kw)
         b, seq_length = x.shape[:2]
         real_seq_length = seq_length
         if prev_kv is not None:
@@ -330,11 +315,8 @@ class Attention(qc.Module):
             a = a * head_m
         y = unshape(torch.matmul(a, v))
         y = self.o(y)
-        kv = (k, v) if (self.is_dec and yo.cache) else None
-        y = (y,) + (kv,) + (pos,)
-        if yo.attn:
-            y = y + (a,)
-        return y
+        kv = (k, v) if (self.is_dec) else None
+        return y, kv, pos, a
 
 
 class Reflection(qc.Module):
@@ -385,11 +367,9 @@ class Block(qc.Module):
         encoder_decoder_position_bias=None,
         cross_m=None,
         prev_kv=None,
-        y_cache=False,
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(y_cache=y_cache, **kw)
         if prev_kv is not None:
             assert self.is_dec
             expected_num_past_key_values = 2 if enc is None else 4
@@ -398,7 +378,7 @@ class Block(qc.Module):
             pkv2 = prev_kv[2:]
         else:
             pkv, pkv2 = None, None
-        ys = self.lays[0](y, prev_kv=pkv, **kw, yo=yo)
+        ys = self.lays[0](y, prev_kv=pkv, **kw)
         y, kv = ys[:2]
         ys = ys[2:]
         if y.dtype == torch.float16 and torch.isinf(y).any():
@@ -418,7 +398,6 @@ class Block(qc.Module):
                 head_m=cross_m,
                 prev_kv=pkv2,
                 query_length=query_length,
-                yo=yo,
             )
             y = ys2[0]
             if y.dtype == torch.float16 and torch.isinf(y).any():
@@ -431,12 +410,7 @@ class Block(qc.Module):
         if y.dtype == torch.float16 and torch.isinf(y).any():
             clamp = torch.finfo(y.dtype).max - 1000
             y = torch.clamp(y, min=-clamp, max=clamp)
-        y = (y,)
-        if yo.cache:
-            y = y + (kv,) + ys
-        else:
-            y = y + ys
-        return y
+        return y + (kv,) + ys
 
 
 class Encoder(qc.Module):
@@ -467,7 +441,6 @@ class Encoder(qc.Module):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s = x_emb.size()[:-1]
         else:
@@ -476,8 +449,6 @@ class Encoder(qc.Module):
             x = x.view(-1, s[-1])
         if x_emb is None:
             x_emb = self.tok_emb(x)
-        if yo.cache is True:
-            assert cfg.is_dec
         b, n = s
         mask_seq_length = cache[0][0].shape[2] + n if cache is not None else n
         if mask is None:
@@ -495,16 +466,12 @@ class Encoder(qc.Module):
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
         cross_m = self.get_head_m(cross_m, cfg.n_lays)
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if (yo.attn and cfg.is_dec) else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         pos = None
         enc_dec_pos = None
         y = self.drop(x_emb)
         for i, (lay, c) in enumerate(zip(self.lays, cache)):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             kw.update(
                 cross_m=cross_m[i],
                 enc_dec_pos=enc_dec_pos,
@@ -515,32 +482,24 @@ class Encoder(qc.Module):
                 pos=pos,
             )
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, **kw)
             else:
-                ys = lay(y, cache=c, **kw, yo=yo)
-            if yo.cache is False:
-                ys = ys[:1] + (None,) + ys[1:]
+                ys = lay(y, cache=c, **kw)
             y, kv = ys[:2]
             pos = ys[2]
             if self.is_dec and enc is not None:
-                enc_dec_pos = ys[4 if yo.attn else 3]
-            if yo.attn:
-                attns += (ys[3],)
-                if self.is_dec:
-                    crosses += (ys[5],)
-            if yo.cache:
-                caches += (kv,)
+                enc_dec_pos = ys[4]
+            attns += (ys[3],)
+            if self.is_dec:
+                crosses += (ys[5],)
+            caches += (kv,)
         y = self.drop(self.norm(y))
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)

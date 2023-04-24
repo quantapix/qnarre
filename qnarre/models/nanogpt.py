@@ -74,7 +74,6 @@ class Attention(qc.Module):
 
     def forward(self, x):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_hidden)
         q, k, v = self.attn(x).split(cfg.d_model, dim=2)
         k = k.view(B, T, cfg.n_heads, C // cfg.n_heads).transpose(1, 2)

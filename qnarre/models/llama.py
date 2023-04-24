@@ -379,18 +379,11 @@ class Layer(qc.Module):
         self.norm = qn.RMS(d, **kw)
 
     def forward(self, x, mask=None, pos=None, cache=None, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         y = self.norm_attn(x)
         y, a, kv = self.attn(y, mask=mask, pos=pos, cache=cache, **kw)
         y = x + y
         x = y
-        y = (x + self.proj(self.norm(y)),)
-        if yo.attn:
-            y += (a,)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return x + self.proj(self.norm(y)), a, kv
 
 
 class Attention(qc.Module):
@@ -413,7 +406,6 @@ class Attention(qc.Module):
 
     def forward(self, x, mask=None, pos=None, cache=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         b, n_q, _ = x.size()
         d, h, s = cfg.d_model, cfg.n_heads, cfg.s_head
         q = self.query(x).view(b, n_q, h, s).transpose(1, 2)
@@ -438,9 +430,4 @@ class Attention(qc.Module):
         assert y.size() == (b, h, n_q, s)
         y = y.transpose(1, 2)
         y = y.reshape(b, n_q, d)
-        y = self.proj(y)
-        if yo.attn:
-            y += (a,)
-        if yo.cache:
-            y += ((k, v),)
-        return y
+        return self.proj(y), a, (k, v)

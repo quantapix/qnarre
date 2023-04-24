@@ -87,7 +87,6 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             b, n = x_emb.size()[:-1]
         else:
@@ -126,27 +125,22 @@ class Model(PreTrained):
         y = self.norm_emb(y)
         y = F.drop(y, p=self.drop, training=self.training)
         y *= mask.unsqueeze(-1).to(y.dtype)
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         for i in range(cfg.n_lays):
-            if yo.hidden:
-                hiddens += (y,)
-            ys = self.attns[i](y, attn_mask, cache=cache, head_m=head_m[i], **kw, yo=yo)
+            hiddens += (y,)
+            ys = self.attns[i](y, attn_mask, cache=cache, head_m=head_m[i], **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
+            attns += (ys[1],)
             y = F.drop(y, p=cfg.drop, training=self.training)
             y = y + y
             y = self.norm1[i](y)
             y = y + self.ffnet[i](y)
             y = self.norm2[i](y)
             y *= mask.unsqueeze(-1).to(y.dtype)
-        if yo.hidden:
-            hiddens += (y,)
+        hiddens += (y,)
         if cache is not None:
             cache["slen"] += y.size(1)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+        return qo.Base(y, attns, hiddens)
 
 
 class ForMultiChoice(PreTrained):
@@ -158,17 +152,16 @@ class ForMultiChoice(PreTrained):
         self.proj = qc.Linear(cfg.n_labels, 1, **kw)
 
     def forward(self, x, mask=None, langs=None, typ=None, pos=None, x_emb=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.shape[1] if x is not None else x_emb.shape[1]
         x, mask, typ, pos, langs = qu.view_2D(x, mask, typ, pos, langs)
         x_emb = qu.view_3D(x_emb)
-        ys = self.model(x=x, mask=mask, langs=langs, typ=typ, pos=pos, x_emb=x_emb, **kw, yo=yo)
+        ys = self.model(x=x, mask=mask, langs=langs, typ=typ, pos=pos, x_emb=x_emb, **kw)
         y = self.proj(self.sum(ys[0])).view(-1, n)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y, labels)
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForQASimple(PreTrained):
@@ -191,8 +184,7 @@ class ForQA(PreTrained):
     def forward(
         self, x, beg_pos=None, end_pos=None, is_impossible=None, cls_index=None, p_mask=None, **kw
     ):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(
             ys[0],
             beg_pos=beg_pos,
@@ -200,11 +192,10 @@ class ForQA(PreTrained):
             cls_index=cls_index,
             is_impossible=is_impossible,
             p_mask=p_mask,
-            yo=yo,
             **kw,
         )
         ys = (y[0],) + ys[1:] + y[1:]
-        return QATop(*ys) if yo.kw else ys
+        return QATop(*ys)
 
 
 @dataclass
@@ -247,13 +238,12 @@ class LMHead(PreTrained):
         self.proj = Projector(**kw)
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0], labels)
         y = y[0] if labels is None else y[1]
         loss = y[0] if labels is not None else None
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class Projector(qc.Module):
@@ -323,7 +313,6 @@ class Attention(qc.Module):
 
     def forward(self, x, cache=None, enc=None, head_m=None, mask=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         q = self.split_heads(self.query(x) * cfg.scale)
         if enc is None:
             k = self.split_heads(self.key(x))
@@ -354,9 +343,4 @@ class Attention(qc.Module):
         a = y
         y = torch.matmul(y, v)
         y = qa.join_heads(y)
-        y = (self.proj(y),)
-        if yo.attn:
-            y += (a,)
-        if yo.cache:
-            y += (cache,)
-        return y
+        return self.proj(y), a, cache

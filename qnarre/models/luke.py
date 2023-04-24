@@ -723,8 +723,7 @@ class ForMasked(PreTrained):
         self.ent_proj = EntityPredictionHead(**kw)
 
     def forward_masked(self, x, labels=None, ent_labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss, mlm = None, None
         if labels is not None:
@@ -735,7 +734,7 @@ class ForMasked(PreTrained):
             mep = nn.CrossEntropyLoss()(y2.view(-1, self.cfg.ent_s_vocab), ent_labels.view(-1))
             loss = mep if loss is None else loss + mep
         ys = (y, y2) + ys[1:] + (loss, mlm, mep)
-        return WithLoss(*ys) if yo.kw else ys
+        return WithLoss(*ys)
 
 
 class LukeForEntityClassification(PreTrained):

@@ -1,4 +1,4 @@
-# Copyright 2022 Quantapix Authors. All Rights Reserved.
+# Copyright 2023 Quantapix Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,9 +48,6 @@ class Model(PreTrained):
         self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, x_emb=None, **kw
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        if not cfg.is_dec:
-            yo.cache = False
         if x is None:
             s, d = x_emb.size()[:-1], x_emb.device
         else:
@@ -68,13 +65,11 @@ class Model(PreTrained):
         else:
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        if not cfg.is_dec:
-            yo.cache = False
-        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb, yo=yo)
-        ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=mask, yo=yo)
+        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb)
+        ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=mask)
         if self.pool is not None:
             ys += (self.pool(ys[0]),)
-        return qo.PoolsCrosses(*ys) if yo.kw else ys
+        return qo.PoolsCrosses(*ys)
 
 
 class ForMasked(PreTrained):
@@ -95,17 +90,16 @@ class ForMultiChoice(PreTrained):
         self.proj = Classifier(n_labels=1, **kw)
 
     def forward(self, x, x_emb=None, mask=None, typ=None, pos=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.shape[1] if x is not None else x_emb.shape[1]
         x, mask, typ, pos = qu.view_2D(x, mask, typ, pos)
         x_emb = qu.view_3D(x_emb)
-        ys = self.model(x, x_emb=x_emb, mask=mask, typ=typ, pos=pos, **kw, yo=yo)
+        ys = self.model(x, x_emb=x_emb, mask=mask, typ=typ, pos=pos, **kw)
         y = self.proj(ys[1]).view(-1, n)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y, labels)
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForNextSentence(PreTrained):
@@ -116,14 +110,13 @@ class ForNextSentence(PreTrained):
         self.order = Classifier(n_labels=2, **kw)
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.order(ys[1])
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, 2), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForPreTraining(PreTrained):
@@ -136,8 +129,7 @@ class ForPreTraining(PreTrained):
 
     def forward(self, x, labels=None, order_label=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         orders = self.order(ys[1])
         loss = None
@@ -147,7 +139,7 @@ class ForPreTraining(PreTrained):
                 orders.view(-1, 2), order_label.view(-1)
             )
         ys = (y, orders) + ys[2:] + (loss,)
-        return qo.LossSeq(*ys) if yo.kw else ys
+        return qo.LossSeq(*ys)
 
 
 class ForQA(PreTrained):
@@ -188,10 +180,7 @@ class Masked(PreTrained):
         self.proj = Masker(**kw)
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        if labels is not None:
-            yo.cache = False
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -199,7 +188,7 @@ class Masked(PreTrained):
             ls = labels[:, 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, self.cfg.s_vocab), ls.view(-1))
         ys = (y,) + ys[2:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
+        return qo.LossCrosses(*ys)
 
 
 class Encoder(qc.Module):
@@ -215,41 +204,30 @@ class Encoder(qc.Module):
 
     def forward(self, x, head_m=None, cache=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         y = x
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if yo.attn and cfg.add_cross else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             h = head_m[i] if head_m is not None else None
             c = cache[i] if cache is not None else None
             if cfg.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, **kw, mask=h)
             else:
-                ys = lay(y, **kw, cache=c, mask=h, yo=yo)
+                ys = lay(y, **kw, cache=c, mask=h)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if cfg.add_cross:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, cache, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+            attns += (ys[1],)
+            if cfg.add_cross:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, cache, crosses, hiddens)
 
 
 class Layer(qc.Module):
@@ -268,8 +246,6 @@ class Layer(qc.Module):
 
     def forward(self, x, cache=None, enc=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         c = cache[:2] if cache is not None else None
         y, a, kv = self.attn(x, cache=c, **kw)
         a2 = None
@@ -277,12 +253,7 @@ class Layer(qc.Module):
             c = cache[-2:] if cache is not None else None
             y, a2, kv2 = self.cross(y, cache=c, enc=enc, **kw)
             kv = kv + kv2
-        y = (self.proj(y),)
-        if yo.attn:
-            y += (a, a2)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return self.proj(y), a, a2, kv
 
 
 class Attention(qc.Module):
@@ -296,26 +267,24 @@ class Attention(qc.Module):
             kw.update(pos_type=pos_type)
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        m, n = cfg.d_model, cfg.n_heads
-        assert m % n == 0  # or cfg.d_embed is not None
-        cfg.d_head = h = m // n
-        cfg.scale = 1 / (h**0.5)
-        self.query = qc.Linear(m, m, **kw)
-        self.key = qc.Linear(m, m, **kw)
-        self.value = qc.Linear(m, m, **kw)
+        d, n = cfg.d_model, cfg.n_heads
+        assert d % n == 0  # or cfg.d_embed is not None
+        cfg.s_head = s = d // n
+        cfg.scale = 1 / (s**0.5)
+        self.query = qc.Linear(d, d, **kw)
+        self.key = qc.Linear(d, d, **kw)
+        self.value = qc.Linear(d, d, **kw)
         self.drop_attn = qc.Dropout(cfg.drop_attn, **kw)
         if cfg.pos_type == "relative_key" or cfg.pos_type == "relative_key_query":
-            self.pos_emb = qc.Embed(2 * cfg.n_pos - 1, h, **kw)
-        self.proj = qc.Linear(m, m, **kw)
-        p = cfg.drop_proj if cfg.drop_proj is not None else cfg.drop
-        self.drop = qc.Dropout(p, **kw)
-        self.norm = qc.LayerNorm(m, **kw)
+            self.pos_emb = qc.Embed(2 * cfg.n_pos - 1, s, **kw)
+        self.proj = qc.Linear(d, d, **kw)
+        self.drop = qc.Dropout(cfg.drop, **kw)
+        self.norm = qc.LayerNorm(d, **kw)
 
     split_heads = qa.split_heads
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         q = self.split_heads(self.query(x))
         if enc is None:
             k = self.split_heads(self.key(x))
@@ -349,10 +318,81 @@ class Attention(qc.Module):
         if head_m is not None:
             a *= head_m
         y = torch.matmul(a, v).permute(0, 2, 1, 3).contiguous()
-        y = y.view(y.size()[:-2] + (cfg.n_heads * cfg.d_head,))
+        y = y.view(y.size()[:-2] + (cfg.n_heads * cfg.s_head,))
+        return self.norm(x + self.drop(self.proj(y))), a, (k, v)
+
+
+class BertAttention(qc.Module):
+    hs = qc.Hypers(
+        {"d_model", "drop", "n_heads", "n_pos"},
+        {"drop_attn": 0.0, "pos_type": "absolute"},
+    )
+
+    def __init__(self, pos_type=None, is_dec=False, ps={}, hs=[], **kw):
+        if pos_type is not None:
+            kw.update(pos_type=pos_type)
+        super().__init__(ps, [self.hs] + hs, **kw)
+        self.is_dec = is_dec
+        cfg = self.get_cfg(kw)
+        d, n = cfg.d_model, cfg.n_heads
+        assert d % n == 0  # or cfg.d_embed is not None
+        cfg.s_head = s = int(d / n)
+        cfg.scale = 1 / (s**0.5)
+        self.query = qc.Linear(d, d, **kw)
+        self.key = qc.Linear(d, d, **kw)
+        self.value = qc.Linear(d, d, **kw)
+        self.drop_attn = qc.Dropout(cfg.drop_attn, **kw)
+        if cfg.pos_type == "relative_key" or cfg.pos_type == "relative_key_query":
+            self.pos_emb = qc.Embed(2 * cfg.n_pos - 1, s, **kw)
+        self.proj = qc.Linear(d, d, **kw)
+        self.drop = qc.Dropout(cfg.drop, **kw)
+        self.norm = qc.LayerNorm(d, **kw)
+
+    split_heads = qa.split_heads
+
+    def forward(self, x, mask=None, head_m=None, enc=None, enc_m=None, cache=None, **kw):
+        cfg = self.cfg
+        q = self.split_heads(self.query(x))
+        if enc is None:
+            k = self.split_heads(self.key(x))
+            v = self.split_heads(self.value(x))
+            if cache is not None:
+                k = torch.cat([cache[0], k], dim=2)
+                v = torch.cat([cache[1], v], dim=2)
+        else:  # is_cross
+            mask = enc_m
+            if cache is None:
+                k = self.split_heads(self.key(enc))
+                v = self.split_heads(self.value(enc))
+            else:
+                k, v = cache[0], cache[1]
+        if self.is_dec:
+            cache = (k, v)
+        a = torch.matmul(q, k.transpose(-1, -2))
+        t = cfg.pos_type
+        if t == "relative_key" or t == "relative_key_query":
+            n_q, n_k = q.shape[2], k.shape[2]
+            if y_cache:
+                left = torch.tensor(n_k - 1, dtype=torch.long, device=x.device).view(-1, 1)
+            else:
+                left = torch.arange(n_q, dtype=torch.long, device=x.device).view(-1, 1)
+            right = torch.arange(n_k, dtype=torch.long, device=x.device).view(1, -1)
+            p = self.pos_emb(left - right + cfg.n_pos - 1).to(dtype=q.dtype)
+            if t == "relative_key":
+                a += torch.einsum("bhld,lrd->bhlr", q, p)
+            elif t == "relative_key_query":
+                a += torch.einsum("bhld,lrd->bhlr", q, p) + torch.einsum("bhrd,lrd->bhlr", k, p)
+        a *= cfg.scale
+        if mask is not None:
+            a = a + mask
+        a = self.drop_attn(F.softmax(a, dim=-1))
+        if head_m is not None:
+            a *= head_m
+        y = torch.matmul(a, v).permute(0, 2, 1, 3).contiguous()
+        y = y.view(y.size()[:-2] + (cfg.d_model,))
         y = (self.norm(x + self.drop(self.proj(y))),)
-        if yo.attn:
-            y += (a,)
-        if yo.cache:
-            y += ((k, v),)
-        return y
+        outputs = (y, a) if output_attentions else (y,)
+        if self.is_decoder:
+            outputs = outputs + (cache,)
+        outputs = (attention_output,) + outputs[1:]
+        return outputs

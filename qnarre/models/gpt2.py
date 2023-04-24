@@ -44,8 +44,7 @@ class LMHead(PreTrained):
         self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -53,7 +52,7 @@ class LMHead(PreTrained):
             ls = labels[..., 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
+        return qo.LossCrosses(*ys)
 
 
 @dataclass
@@ -77,8 +76,7 @@ class DualHead(PreTrained):
         self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
 
     def forward(self, x, mc_token_ids=None, labels=None, mc_labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -90,7 +88,7 @@ class DualHead(PreTrained):
         if mc_labels is not None:
             mc_loss = nn.CrossEntropyLoss()(mc_y.view(-1, mc_y.size(-1)), mc_labels.view(-1))
         ys = (y, mc_y) + ys[1:] + (loss, mc_loss)
-        return Output(*ys) if yo.kw else ys
+        return Output(*ys)
 
 
 class ForSeqClassifier(PreTrained):
@@ -147,7 +145,6 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s, d = x_emb.size()[:-1], x_emb.device
         else:
@@ -184,39 +181,29 @@ class Model(PreTrained):
         if typ is not None:
             y = y + self.tok_emb(typ)
         y = self.drop(y)
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if yo.attn and cfg.add_cross else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         for i, (lay, c) in enumerate(zip(self.lays, cache)):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             kw.update(enc_m=enc_m, enc=enc, head_m=head_m[i], mask=mask)
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, **kw)
             else:
-                ys = lay(y, cache=c, **kw, yo=yo)
+                ys = lay(y, cache=c, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[2 if yo.cache else 1],)
-                if cfg.add_cross:
-                    crosses += (ys[3 if yo.cache else 2],)
-            if yo.cache:
-                caches += (ys[1],)
+            attns += (ys[2],)
+            if cfg.add_cross:
+                crosses += (ys[3],)
+            caches += (ys[1],)
         y = self.norm(y).view(s + (y.size(-1),))
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
 class Layer(qc.Module):
@@ -235,8 +222,6 @@ class Layer(qc.Module):
         self.norm = qc.LayerNorm(d, **kw)
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         y = self.norm_attn(x)
         y, a, kv = self.attn(y, cache=cache, head_m=head_m, mask=mask, **kw)
         y = x + y
@@ -248,12 +233,7 @@ class Layer(qc.Module):
             y = x + y
             kv = kv + kv2
         x = y
-        y = (x + self.proj(self.norm(y)),)
-        if yo.attn:
-            y += (a, a2)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return x + self.proj(self.norm(y)), a, a2, kv
 
 
 class Attention(qc.Module):
@@ -281,7 +261,6 @@ class Attention(qc.Module):
 
     def forward(self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if enc is None:
             q, k, v = self.attn(x).split(cfg.d_model, dim=2)
         else:
@@ -295,14 +274,12 @@ class Attention(qc.Module):
             k = torch.cat((cache[0], k), dim=-2)
             v = torch.cat((cache[1], v), dim=-2)
         if cfg.reorder:
-            ys = self.reordered(q, k, v, mask, head_m, yo=yo)
+            ys = self.reordered(q, k, v, mask, head_m)
         else:
-            ys = self.scores(q, k, v, mask, head_m, yo=yo)
+            ys = self.scores(q, k, v, mask, head_m)
         y = self.join_heads(ys[0])
         y = (self.drop(self.proj(y)),)
-        y += ys[1:]
-        if yo.cache:
-            y += ((k, v),)
+        y += ys[1:] + ((k, v),)
         return y
 
     split_heads = qa.split_heads
@@ -310,7 +287,6 @@ class Attention(qc.Module):
 
     def scores(self, q, k, v, mask, head_m, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         a = torch.matmul(q, k.transpose(-1, -2))
         if cfg.scale:
             a = a / torch.full([], v.size(-1) ** 0.5, dtype=a.dtype, device=a.device)
@@ -326,14 +302,10 @@ class Attention(qc.Module):
         a = self.drop_attn(F.softmax(a, dim=-1).type(v.dtype))
         if head_m is not None:
             a = a * head_m
-        y = (torch.matmul(a, v),)
-        if yo.attn:
-            y += (a,)
-        return y
+        return torch.matmul(a, v), a
 
     def reordered(self, q, k, v, mask, head_m, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         b, h, n_q, d = q.size()
         _, _, n_k, _ = k.size()
         a = torch.empty(b * h, n_q, n_k, dtype=torch.float32, device=q.device)
@@ -355,7 +327,4 @@ class Attention(qc.Module):
         a = self.drop_attn(F.softmax(a, dim=-1).type(v.dtype))
         if head_m is not None:
             a = a * head_m
-        y = (torch.matmul(a, v),)
-        if yo.attn:
-            y += (a,)
-        return y
+        return torch.matmul(a, v), a

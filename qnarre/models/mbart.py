@@ -56,11 +56,10 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x_dec is None and x_dec_emb is None:
             x_dec = qu.shift_right2(x, cfg.PAD)
         if y_enc is None:
-            y_enc = self.enc(x, **kw, mask=mask, yo=yo)
+            y_enc = self.enc(x, **kw, mask=mask)
         y = self.dec(
             x_dec,
             **kw,
@@ -69,10 +68,9 @@ class Model(PreTrained):
             head_m=dec_head_m,
             mask=dec_m,
             x_emb=x_dec_emb,
-            yo=yo,
         )
         ys = y + y_enc
-        return qo.Seq2Seq(*ys) if yo.kw else ys
+        return qo.Seq2Seq(*ys)
 
 
 class ForCausal(PreTrained):
@@ -97,18 +95,16 @@ class ForCondGen(PreTrained):
 
     def forward(self, x, labels=None, x_dec=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if labels is not None:
-            yo.cache = False
             if x_dec is None:
                 x_dec = qu.shift_right2(labels, cfg.PAD)
-        ys = self.model(x, x_dec=x_dec, **kw, yo=yo)
+        ys = self.model(x, x_dec=x_dec, **kw)
         y = self.proj(ys[0]) + self.final_logits_bias
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, cfg.s_vocab), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossSeq2Seq(*ys) if yo.kw else ys
+        return qo.LossSeq2Seq(*ys)
 
 
 class ForQA(PreTrained):
@@ -154,7 +150,6 @@ class Encoder(qc.Module):
 
     def forward(self, x, head_m=None, mask=None, x_emb=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s = x_emb.size()[:-1]
         else:
@@ -165,14 +160,12 @@ class Encoder(qc.Module):
             x_emb = self.tok_emb(x) * cfg.scale
         y = x_emb + self.pos_emb(s)
         y = self.drop(self.norm_emb(y))
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         if mask is not None:
             mask = qu.expand_mask(mask, x_emb.dtype)
         assert head_m is None or (head_m.size()[0] == (len(self.lays)))
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             if self.training and (random.uniform(0, 1) < cfg.drop_enc):
                 continue
             h = head_m[i] if head_m is not None else None
@@ -180,21 +173,18 @@ class Encoder(qc.Module):
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, yo=yo)
+                        return x(*xs)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, head_m=h, mask=mask, **kw)
             else:
-                ys = lay(y, head_m=h, mask=mask, **kw, yo=yo)
+                ys = lay(y, head_m=h, mask=mask, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
+            attns += (ys[1],)
         y = self.norm(y)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class Decoder(qc.Module):
@@ -238,7 +228,6 @@ class Decoder(qc.Module):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s = x_emb.size()[:-1]
         else:
@@ -250,10 +239,7 @@ class Decoder(qc.Module):
         c_len = cache[0][0].shape[2] if cache is not None else 0
         y = x_emb + self.pos_emb(s, c_len)
         y = self.drop(self.norm_emb(y))
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if (yo.attn and enc is not None) else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         mask = self.prep_dec_m(mask, s, x_emb, c_len)
         if enc is not None and enc_m is not None:
             enc_m = qu.expand_mask(enc_m, x_emb.dtype, len=s[-1])
@@ -261,8 +247,7 @@ class Decoder(qc.Module):
             if m is not None:
                 assert m.size()[0] == (len(self.lays))
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             if self.training and (random.uniform(0, 1) < cfg.drop_dec):
                 continue
             h = head_m[i] if head_m is not None else None
@@ -270,30 +255,24 @@ class Decoder(qc.Module):
             kw.update(mask=mask, enc=enc, enc_m=enc_m, head_m=h, cross_m=c)
             c = cache[i] if cache is not None else None
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=x, yo=yo)
+                        return x(*xs, cache=x)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, **kw)
             else:
-                ys = lay(y, cache=c, **kw, yo=yo)
+                ys = lay(y, cache=c, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if enc is not None:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
+            attns += (ys[1],)
+            if enc is not None:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
         y = self.norm(y)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
 class EncLayer(qc.Module):
@@ -316,8 +295,6 @@ class EncLayer(qc.Module):
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, yo=None)
         y = self.norm_refl(x)
         y, a, _ = self.refl(y, **kw)
         y = x + self.drop(y)
@@ -328,10 +305,7 @@ class EncLayer(qc.Module):
         if y.dtype == torch.float16 and (torch.isinf(y).any() or torch.isnan(y).any()):
             clamp = torch.finfo(y.dtype).max - 1000
             y = torch.clamp(y, min=-clamp, max=clamp)
-        y = (y,)
-        if yo.attn:
-            y += (a,)
-        return y
+        return y, a
 
 
 class DecLayer(qc.Module):
@@ -356,8 +330,6 @@ class DecLayer(qc.Module):
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, cache=None, cross_m=None, enc_m=None, enc=None, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         y = self.norm_refl(x)
         c = cache[:2] if cache is not None else None
         y, a, kv = self.refl(y, cache=c, **kw)
@@ -374,9 +346,4 @@ class DecLayer(qc.Module):
         y = self.norm(y)
         y = self.drop_act(self.act(self.ff(y)))
         y = x + self.drop(self.proj(y))
-        y = (y,)
-        if yo.attn:
-            y += (a, a2)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return y, a, a2, kv

@@ -45,7 +45,6 @@ class Model(PreTrained):
 
     def forward(self, x, head_m=None, mask=None, pos=None, typ=None, x_emb=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s = x_emb.size()[:-1]
         else:
@@ -65,20 +64,15 @@ class Model(PreTrained):
         else:
             typ = self.tok_emb(typ.view(-1, typ.size(-1)))
         y = self.drop(x_emb + pos + typ)
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
-            ys = lay(y, mask=mask, head_m=head_m[i], yo=yo)
-            y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-        y = y.view(*(s + (y.size(-1),)))
-        if yo.hidden:
             hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+            ys = lay(y, mask=mask, head_m=head_m[i])
+            y = ys[0]
+            attns += (ys[1],)
+        y = y.view(*(s + (y.size(-1),)))
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class ForSeqClassifier(PreTrained):
@@ -109,8 +103,7 @@ class LMHead(PreTrained):
         self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
 
     def forward(self, x, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -118,7 +111,7 @@ class LMHead(PreTrained):
             ls = labels[..., 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 @dataclass
@@ -141,8 +134,7 @@ class DualHead(PreTrained):
         self.proj = qc.Linear(cfg.n_embed, cfg.s_vocab, bias=False, **kw)
 
     def forward(self, x, mc_x=None, labels=None, mc_labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         mc_y = self.sum(ys[0], mc_x).squeeze(-1)
         loss, mc_loss = None, None
@@ -153,7 +145,7 @@ class DualHead(PreTrained):
             ls = labels[..., 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
         ys = (y, mc_y) + ys[1:] + (loss, mc_loss)
-        return Output(*ys) if yo.kw else ys
+        return Output(*ys)
 
 
 class Layer(qc.Module):
@@ -169,8 +161,7 @@ class Layer(qc.Module):
         self.norm = qc.LayerNorm(m, cfg.eps, **kw)
 
     def forward(self, x, mask, head_m, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.attn(x, mask, head_m, yo=yo)
+        ys = self.attn(x, mask, head_m)
         y = self.norm_attn(x + ys[0])
         y = self.norm(y + self.proj(y))
         y = [y] + ys[1:]
@@ -213,12 +204,11 @@ class Attention(qc.Module):
 
     def forward(self, x, mask, head_m, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         q, k, v = self.attn(x).split(cfg.d_model, dim=2)
         q = self.split_heads(q)
         k = self.split_heads(k, k=True)
         v = self.split_heads(v)
-        ys = self.scores(q, k, v, mask, head_m, yo=yo)
+        ys = self.scores(q, k, v, mask, head_m)
         y = self.join_heads(ys[0])
         y = (self.drop(self.proj(y)),)
         return y + ys[1:]
@@ -229,7 +219,6 @@ class Attention(qc.Module):
 
     def scores(self, q, k, v, mask, head_m, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         a = torch.matmul(q, k)
         if cfg.scale:
             a = a / (v.size(-1) ** 0.5)
@@ -240,7 +229,4 @@ class Attention(qc.Module):
         a = self.drop_attn(F.softmax(a, dim=-1))
         if head_m is not None:
             a = a * head_m
-        y = (torch.matmul(a, v),)
-        if yo.attn:
-            y += (a,)
-        return y
+        return torch.matmul(a, v), a

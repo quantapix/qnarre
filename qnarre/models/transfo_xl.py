@@ -66,7 +66,6 @@ class Model(PreTrained):
 
     def forward(self, x, mems=None, head_m=None, x_emb=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             x_emb = x_emb.transpose(0, 1).contiguous()
             s = x_emb.size()[:-1]
@@ -92,27 +91,21 @@ class Model(PreTrained):
         else:
             dec_m = torch.triu(ones, diagonal=1 + mlen)[:, :, None]
         y = self.drop(y)
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         head_m = self.get_head_m2(head_m, cfg.n_lays)
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             m = None if mems is None else mems[i]
-            ys = lay(y, pos, **kw, dec_m=dec_m, head_m=head_m[i], mems=m, yo=yo)
+            ys = lay(y, pos, **kw, dec_m=dec_m, head_m=head_m[i], mems=m)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
+            attns += (ys[1],)
         y = self.drop(y)
         mems = None if mems is None else self.update_mems(hiddens, mems, mlen, n)
-        if yo.attn:
-            attns = tuple(x.permute(2, 3, 0, 1).contiguous() for x in attns)
-        if yo.hidden:
-            hiddens += (y,)
-            hiddens = tuple(x.transpose(0, 1).contiguous() for x in hiddens)
+        attns = tuple(x.permute(2, 3, 0, 1).contiguous() for x in attns)
+        hiddens += (y,)
+        hiddens = tuple(x.transpose(0, 1).contiguous() for x in hiddens)
         y = y.transpose(0, 1).contiguous()
-        ys = (y, attns, hiddens, mems)
-        return qo.WithMems(*ys) if yo.kw else ys
+        return qo.WithMems(y, attns, hiddens, mems)
 
 
 class ForSeqClassifier(PreTrained):
@@ -167,18 +160,17 @@ class LLMHead(PreTrained):
         return self.model.init_mems(bsz)
 
     def forward(self, x, x_emb=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
         if x is None:
             assert x_emb is not None
             b, tgt = x_emb.size(0), x_emb.size(1)
         else:
             b, tgt = x.size(0), x.size(1)
-        ys = self.model(x, x_emb=x_emb, **kw, yo=yo)
+        ys = self.model(x, x_emb=x_emb, **kw)
         xs = self.proj(ys[0][:, -tgt:], labels)
         y = xs.view(b, tgt, -1) if labels is None else ()
         loss = xs.view(b, tgt - 1) if labels is not None else None
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossMems(*ys) if yo.kw else ys
+        return qo.LossMems(*ys)
 
 
 class Projector(qc.Module):
@@ -392,7 +384,6 @@ class Attention(qc.Module):
 
     def forward(self, x, r, mask=None, mems=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         y = x if mems is None else torch.cat([mems, x], 0)
         y = self.qkv(self.norm(y) if cfg.pre_norm else y)
         r = self.r_net(r)
@@ -421,7 +412,4 @@ class Attention(qc.Module):
         y = torch.einsum("ijbn,jbnd->ibnd", (a, v))
         y = y.contiguous().view(y.size(0), y.size(1), n * h)
         y = x + self.drop(self.proj(y))
-        ys = (y,) if cfg.pre_norm else (self.norm(y),)
-        if yo.attn:
-            ys += (a,)
-        return ys
+        return y if cfg.pre_norm else self.norm(y), a

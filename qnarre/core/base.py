@@ -67,14 +67,6 @@ class Config:
         return f"Config(**{self.__dict__})"
 
 
-@dataclass
-class Yopts:
-    attn = None
-    cache = None
-    hidden = None
-    kw = None
-
-
 class Module(nn.Module):
     hs = Hypers({"dtype", "device"})
 
@@ -87,19 +79,6 @@ class Module(nn.Module):
         if kw is not None:
             kw.update(ps=y)
         return y
-
-    def get_y_opts(self, y_attn=None, y_cache=None, y_hidden=None, y_kw=None, yo=None, **_):
-        cfg = self.cfg
-        if yo is not None:
-            y_attn = y_attn if yo.attn is None else yo.attn
-            y_cache = y_cache if yo.cache is None else yo.cache
-            y_hidden = y_hidden if yo.hidden is None else yo.hidden
-            y_kw = y_kw if yo.kw is None else yo.kw
-        y_attn = cfg.y_attn if y_attn is None else y_attn
-        y_cache = cfg.y_cache if y_cache is None else y_cache
-        y_hidden = cfg.y_hidden if y_hidden is None else y_hidden
-        y_kw = cfg.y_kw if y_kw is None else y_kw
-        return Yopts(y_attn, y_cache, y_hidden, y_kw)
 
     def invert_mask(self, x):
         if x.dim() == 3:

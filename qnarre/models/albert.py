@@ -45,7 +45,6 @@ class Model(PreTrained):
 
     def forward(self, x, x_emb=None, mask=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is not None:
             assert x_emb is None
             s, d = x.size(), x.device
@@ -56,10 +55,10 @@ class Model(PreTrained):
         mask = self.get_mask(mask, s, d)
         head_m = self.get_head_m(head_m, cfg.n_lays)
         ys = self.embs(x, x_emb, **kw)
-        ys = self.enc(ys, mask=mask, head_m=head_m, **kw, yo=yo)
+        ys = self.enc(ys, mask=mask, head_m=head_m, **kw)
         if self.pool is not None:
             ys += (self.pool(ys[0]),)
-        return qo.WithPools(*ys) if yo.kw else ys
+        return qo.WithPools(*ys)
 
 
 class ForMasked(PreTrained):
@@ -132,26 +131,21 @@ class Encoder(qc.Module):
         self.proj = qc.Linear(cfg.d_embed, cfg.d_model, **kw)
         self.groups = qc.Stack([Group(**kw) for _ in range(cfg.n_groups)])
 
-    def forward(self, x, head_m=None, y_attn=False, y_hidden=False, y_kw=True, **kw):
+    def forward(self, x, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(y_attn=y_attn, y_kw=y_kw, y_hidden=y_hidden, **kw)
         y = self.proj(x)
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = ()
+        hiddens = ()
         hm = [None] * cfg.n_lays if head_m is None else head_m
         for i in range(cfg.n_lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             n = int(cfg.n_lays / cfg.n_groups)
             g = int(i / (cfg.n_lays / cfg.n_groups))
-            ys = self.groups[g](y, head_m=hm[g * n : (g + 1) * n], **kw, yo=yo)
+            ys = self.groups[g](y, head_m=hm[g * n : (g + 1) * n], **kw)
             y = ys[0]
-            if yo.attn:
-                attns += ys[1]
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+            attns += ys[1]
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class Group(qc.Module):
@@ -162,22 +156,17 @@ class Group(qc.Module):
         cfg = self.get_cfg(kw)
         self.lays = qc.Stack([Layer(**kw) for _ in range(cfg.s_group)])
 
-    def forward(self, x, head_m=None, y_attn=False, y_hidden=False, **kw):
-        yo = self.get_y_opts(y_attn=y_attn, y_hidden=y_hidden, **kw)
+    def forward(self, x, head_m=None, **kw):
         y = x
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = ()
+        hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
-            ys = lay(y, head_m=head_m[i], **kw, yo=yo)
-            y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-        if yo.hidden:
             hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+            ys = lay(y, head_m=head_m[i], **kw)
+            y = ys[0]
+            attns += (ys[1],)
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class Layer(qc.Module):
@@ -223,9 +212,8 @@ class Attention(qc.Module):
 
     split_heads = qa.split_heads
 
-    def forward(self, x, mask=None, head_m=None, y_attn=False, **kw):
+    def forward(self, x, mask=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(y_attn=y_attn, **kw)
         q = self.split_heads(self.query(x))
         k = self.split_heads(self.key(x))
         v = self.split_heads(self.value(x))
@@ -247,7 +235,4 @@ class Attention(qc.Module):
         if head_m is not None:
             a = a * head_m
         y = torch.matmul(a, v).transpose(2, 1).flatten(2)
-        y = (self.norm(x + self.drop(self.proj(y))),)
-        if yo.attn:
-            y += (a,)
-        return y
+        return self.norm(x + self.drop(self.proj(y))), a

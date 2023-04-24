@@ -48,7 +48,6 @@ class Model(PreTrained):
         self, x, x_emb=None, mask=None, head_m=None, enc=None, enc_m=None, cache=None, **kw
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is not None:
             assert x_emb is None
             s, d = x.size(), x.device
@@ -68,7 +67,7 @@ class Model(PreTrained):
         ys = self.embs(x, x_emb=x_emb, c_len=c_len, **kw)
         if hasattr(self, "proj"):
             ys = self.proj(ys)
-        ys = self.enc(ys, mask=mask, head_m=head_m, enc=enc, enc_m=enc_m, cache=cache, **kw, yo=yo)
+        ys = self.enc(ys, mask=mask, head_m=head_m, enc=enc, enc_m=enc_m, cache=cache, **kw)
         return ys
 
 
@@ -101,10 +100,7 @@ class ForCausal(PreTrained):
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        if labels is not None:
-            yo.cache = False
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -112,7 +108,7 @@ class ForCausal(PreTrained):
             ls = labels[:, 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, cfg.s_vocab), ls.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
+        return qo.LossCrosses(*ys)
 
 
 class ForMasked(PreTrained):
@@ -134,17 +130,16 @@ class ForMultiChoice(PreTrained):
         self.proj = qc.Linear(cfg.d_model, 1, **kw)
 
     def forward(self, x, x_emb=None, mask=None, typ=None, pos=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.shape[1] if x is not None else x_emb.shape[1]
         x, mask, typ, pos = qu.view_2D(x, mask, typ, pos)
         x_emb = qu.view_3D(x_emb)
-        ys = self.model(x, x_emb, mask=mask, typ=typ, pos=pos, **kw, yo=yo)
+        ys = self.model(x, x_emb, mask=mask, typ=typ, pos=pos, **kw)
         y = self.proj(self.seqs(ys[0])).view(-1, n)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y, labels)
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForPreTraining(PreTrained):
@@ -155,8 +150,7 @@ class ForPreTraining(PreTrained):
         self.proj = Classifier(cfg.d_model, cfg.act, n_labels=1, drop_proj=0.0, **kw)
 
     def forward(self, x, mask=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, mask=mask, **kw, yo=yo)
+        ys = self.model(x, mask=mask, **kw)
         y = self.proj(ys[0]).squeeze(-1)
         loss = None
         if labels is not None:
@@ -167,7 +161,7 @@ class ForPreTraining(PreTrained):
             else:
                 loss = f(y.view(-1, ys[0].shape[1]), labels.float())
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForSeqClassifier(PreTrained):
@@ -213,38 +207,27 @@ class Encoder(qc.Module):
 
     def forward(self, x, head_m=None, cache=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         y = x
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if yo.attn and cfg.add_cross else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             h = head_m[i] if head_m is not None else None
             c = cache[i] if cache is not None else None
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = torch.utils.checkpoint.checkpoint(create_forward(lay), y, head_m=h, **kw)
             else:
-                ys = lay(y, head_m=h, cache=c, **kw, yo=yo)
+                ys = lay(y, head_m=h, cache=c, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if cfg.add_cross:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+            attns += (ys[1],)
+            if cfg.add_cross:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)

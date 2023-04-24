@@ -26,7 +26,6 @@ class Output(dict):
                     pass
         for i, f in enumerate(fields(self)):
             v = xs[i] if i < n else None
-            print(f.name, ": ", v)
             if v is None:
                 v = kw.get(f.name, f.default)
             setattr(self, f.name, v)

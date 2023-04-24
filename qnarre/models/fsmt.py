@@ -41,7 +41,6 @@ class Model(PreTrained):
 
     def forward(self, x, mask=None, x_dec=None, dec_m=None, dec_head_m=None, y_enc=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x_dec is None:
             yo.cache = False
         if not yo.cache:
@@ -56,7 +55,7 @@ class Model(PreTrained):
             dec_m, causal_m = None, None
         assert x_dec is not None
         if y_enc is None:
-            y_enc = self.enc(x, **kw, mask=mask, yo=yo)
+            y_enc = self.enc(x, **kw, mask=mask)
         y = self.dec(
             x_dec,
             **kw,
@@ -65,10 +64,9 @@ class Model(PreTrained):
             enc=y_enc[0],
             head_m=dec_head_m,
             mask=dec_m,
-            yo=yo,
         )
         ys = y + y_enc
-        return qo.Seq2Seq(*ys) if yo.kw else ys
+        return qo.Seq2Seq(*ys)
 
 
 class ForCondGen(PreTrained):
@@ -79,15 +77,12 @@ class ForCondGen(PreTrained):
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        if labels is not None:
-            yo.cache = False
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(ys[0].view(-1, cfg.s_tgt_vocab), labels.view(-1))
         ys += (loss,)
-        return qo.LossSeq2Seq(*ys) if yo.kw else ys
+        return qo.LossSeq2Seq(*ys)
 
 
 class Encoder(qc.Module):
@@ -105,31 +100,25 @@ class Encoder(qc.Module):
 
     def forward(self, x, mask=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if mask is not None:
             mask = invert_mask(mask)
         y = self.tok_emb(x) * cfg.scale
         y = y + self.pos_emb(x)
         y = self.drop(y).transpose(0, 1)
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         assert head_m is None or (head_m.size()[0] == (len(self.lays)))
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y.transpose(0, 1),)
+            hiddens += (y.transpose(0, 1),)
             if self.training and (random.uniform(0, 1) < cfg.drop_enc):
                 continue
             else:
                 h = head_m[i] if head_m is not None else None
-                ys = lay(y, mask=mask, head_m=h, **kw, yo=yo)
+                ys = lay(y, mask=mask, head_m=h, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
+            attns += (ys[1],)
         y = y.transpose(0, 1)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class Decoder(qc.Module):
@@ -156,7 +145,6 @@ class Decoder(qc.Module):
         self, x, enc, enc_m, dec_m, dec_causal_m, head_m=None, cross_m=None, cache=None, **kw
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if enc_m is not None:
             enc_m = invert_mask(enc_m)
         y = self.tok_emb(x) * cfg.scale
@@ -166,38 +154,30 @@ class Decoder(qc.Module):
             pos = pos[:, -1:]
         y += pos
         y = self.drop(y).transpose(0, 1)
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         enc = enc.transpose(0, 1)
         for m, _ in zip([head_m, cross_m], ["head_m", "cross_m"]):
             if m is not None:
                 assert m.size()[0] == (len(self.lays))
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y.transpose(0, 1),)
+            hiddens += (y.transpose(0, 1),)
             if self.training and (random.uniform(0, 1) < cfg.drop_dec):
                 continue
             h = head_m[i] if head_m is not None else None
             c = cross_m[i] if cross_m is not None else None
             kw.update(enc=enc, enc_m=enc_m, dec_m=dec_m, head_m=h, cross_m=c)
             c = cache[i] if cache is not None else None
-            ys = lay(y, causal_m=dec_causal_m, cache=c, **kw, yo=yo)
+            ys = lay(y, causal_m=dec_causal_m, cache=c, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if enc is not None:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
+            attns += (ys[1],)
+            if enc is not None:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
         enc = enc.transpose(0, 1)
         y = y.transpose(0, 1)
-        if yo.hidden:
-            hiddens += (y,)
+        hiddens += (y,)
         y = self.proj(y)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
 class EncLayer(qc.Module):
@@ -216,18 +196,13 @@ class EncLayer(qc.Module):
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, mask, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, yo=None)
         y, a = self.refl(query=x, key=x, key_m=mask, **kw)
         y = self.norm_refl(x + self.drop(y))
         x = y
         y = self.drop(self.act(self.ff(y)))
         y = self.drop(self.proj(y))
         y = self.norm(x + y)
-        y = (y,)
-        if yo.attn:
-            y += (a,)
-        return y
+        return y, a
 
 
 class DecLayer(qc.Module):
@@ -251,8 +226,6 @@ class DecLayer(qc.Module):
     def forward(
         self, x, enc, enc_m=None, cache=None, causal_m=None, cross_m=None, dec_m=None, **kw
     ):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         if cache is None:
             cache = {}
         y, a = self.refl(query=x, key=x, key_m=dec_m, cache=cache, **kw, mask=causal_m)
@@ -265,12 +238,7 @@ class DecLayer(qc.Module):
         y = self.drop_act(self.act(self.ff(y)))
         y = self.drop(self.proj(y))
         y = self.norm(x + y)
-        y = (y,)
-        if yo.attn:
-            y += (a, cache)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return y, a, cache, kv
 
 
 def invert_mask(mask):
@@ -338,7 +306,6 @@ class Attention(qc.Module):
 
     def forward(self, x, mask=None, head_m=None, enc=None, enc_m=None, cache=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         static_kv = self.enc_dec_attn
         if cache is not None:
             saved_state = None
@@ -385,18 +352,14 @@ class Attention(qc.Module):
             assert head_m.size() == (n,)
             y = head_m.view(1, -1, 1, 1) * y.view(b, n, tgt, src)
             y = y.view(b * n, tgt, src)
-        if yo.attn:
-            a = y.view(b, n, tgt, src)
-            y = a.view(b * n, tgt, src)
+        a = y.view(b, n, tgt, src)
+        y = a.view(b * n, tgt, src)
         y = self.drop(y)
         y = torch.bmm(y, v)
         assert y.size() == (b * n, tgt, cfg.d_head)
         y = y.transpose(0, 1).contiguous().view(tgt, b, cfg.d_model)
         y = self.proj(y)
-        y = (y,)
-        if yo.attn:
-            y += (a,)
-        return y
+        return y, a
 
     def _use_saved_state(self, k, v, saved_state, key_m, static_kv, bsz):
         cfg = self.cfg

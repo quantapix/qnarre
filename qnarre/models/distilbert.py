@@ -43,7 +43,6 @@ class Model(PreTrained):
 
     def forward(self, x, x_emb=None, mask=None, head_m=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is not None:
             assert x_emb is None
             s, d = x.size(), x.device
@@ -53,7 +52,7 @@ class Model(PreTrained):
             mask = torch.ones(s, device=d)
         head_m = self.get_head_m(head_m, cfg.n_lays)
         y = self.embs(x, x_emb, **kw)
-        y = self.enc(y, mask=mask, head_m=head_m, yo=yo)
+        y = self.enc(y, mask=mask, head_m=head_m)
         return y
 
 
@@ -75,17 +74,16 @@ class ForMultiChoice(PreTrained):
         self.proj = Classifier(cfg.d_model, "relu", n_labels=1, drop_proj=cfg.drop_seq, **kw)
 
     def forward(self, x, x_emb=None, mask=None, labels=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.shape[1] if x is not None else x_emb.shape[1]
         x, mask = qu.view_2D(x, mask)
         x_emb = qu.view_3D(x_emb)
-        ys = self.model(x, x_emb, mask=mask, **kw, yo=yo)
+        ys = self.model(x, x_emb, mask=mask, **kw)
         y = self.proj(ys[0][:, 0]).view(-1, n)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y, labels)
         ys = (y,) + ys[1:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForSeqClassifier(PreTrained):
@@ -129,21 +127,15 @@ class Encoder(qc.Module):
         self.lays = qc.Stack([Layer(**kw) for _ in range(cfg.n_lays)])
 
     def forward(self, x, head_m=None, **kw):
-        yo = self.get_y_opts(**kw)
         y = x
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
-            ys = lay(y, head_m=head_m[i], **kw, yo=yo)
-            y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-        if yo.hidden:
             hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+            ys = lay(y, head_m=head_m[i], **kw)
+            y = ys[0]
+            attns += (ys[1],)
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class Layer(qc.Module):
@@ -157,14 +149,9 @@ class Layer(qc.Module):
         self.norm = qc.LayerNorm(cfg.d_model, 1e-12)
 
     def forward(self, x, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, yo=None)
         y, a = self.refl(x, **kw)
         y = self.norm(self.ffnet(y) + y)
-        y = (y,)
-        if yo.attn:
-            y + (a,)
-        return y
+        return y, a
 
 
 class Attention(qc.Module):
@@ -188,7 +175,6 @@ class Attention(qc.Module):
 
     def forward(self, x, head_m=None, mask=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         q = self.split_heads(self.query(x))
         k = self.split_heads(self.key(x))
         v = self.split_heads(self.value(x))
@@ -203,7 +189,4 @@ class Attention(qc.Module):
         y = torch.matmul(a, v).transpose(1, 2).contiguous()
         y = y.view(b, -1, cfg.n_heads * cfg.d_head)
         y = self.norm(x + self.proj(y))
-        y = (y,)
-        if yo.attn:
-            y += (a,)
-        return y
+        return y, a

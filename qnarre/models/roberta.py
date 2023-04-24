@@ -45,9 +45,6 @@ class Model(PreTrained):
         self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, x_emb=None, **kw
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        if not cfg.is_dec:
-            yo.cache = False
         if x is None:
             s, d = x_emb.size()[:-1], x_emb.device
         else:
@@ -65,11 +62,11 @@ class Model(PreTrained):
         else:
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb, yo=yo)
-        ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=xm, yo=yo)
+        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb)
+        ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=xm)
         pools = self.pool(ys[0]) if self.pool is not None else None
         ys += (pools,)
-        return qo.PoolsCrosses(*ys) if yo.kw else ys
+        return qo.PoolsCrosses(*ys)
 
 
 class ForCausal(PreTrained):
@@ -81,10 +78,7 @@ class ForCausal(PreTrained):
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        if labels is not None:
-            yo.cache = False
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
@@ -92,7 +86,7 @@ class ForCausal(PreTrained):
             ls = labels[:, 1:].contiguous()
             loss = nn.CrossEntropyLoss()(sl.view(-1, cfg.s_vocab), ls.view(-1))
         ys = (y,) + ys[2:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
+        return qo.LossCrosses(*ys)
 
 
 class ForMasked(PreTrained):
@@ -113,17 +107,16 @@ class ForMultiChoice(PreTrained):
         self.proj = Classifier(n_labels=1, **kw)
 
     def forward(self, x, typ=None, mask=None, labels=None, pos=None, x_emb=None, **kw):
-        yo = self.get_y_opts(**kw)
         n = x.shape[1] if x is not None else x_emb.shape[1]
         x, mask, typ, pos = qu.view_2D(x, mask, typ, pos)
         x_emb = qu.view_3D(x_emb)
-        ys = self.model(x, pos=pos, typ=typ, mask=mask, x_emb=x_emb, **kw, yo=yo)
+        ys = self.model(x, pos=pos, typ=typ, mask=mask, x_emb=x_emb, **kw)
         y = self.proj(ys[1]).view(-1, n)
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y, labels)
         ys = (y,) + ys[2:] + (loss,)
-        return qo.WithLoss(*ys) if yo.kw else ys
+        return qo.WithLoss(*ys)
 
 
 class ForQA(PreTrained):
@@ -169,41 +162,30 @@ class Encoder(qc.Module):
 
     def forward(self, x, head_m=None, cache=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         y = x
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if yo.attn and cfg.add_cross else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             h = head_m[i] if head_m is not None else None
             c = cache[i] if cache is not None else None
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, mask=h, **kw)
             else:
-                ys = lay(y, mask=h, cache=c, **kw, yo=yo)
+                ys = lay(y, mask=h, cache=c, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if cfg.add_cross:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+            attns += (ys[1],)
+            if cfg.add_cross:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
+        hiddens += (y,)
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
 class Layer(qc.Module):
@@ -222,8 +204,6 @@ class Layer(qc.Module):
 
     def forward(self, x, cache=None, enc=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         c = cache[:2] if cache is not None else None
         y, a, kv = self.attn(x, cache=c, **kw)
         a2 = None
@@ -231,9 +211,4 @@ class Layer(qc.Module):
             c = cache[-2:] if cache is not None else None
             y, a2, kv2 = self.cross(y, cache=c, enc=enc, **kw)
             kv = kv + kv2
-        y = (self.proj(y),)
-        if yo.attn:
-            y += (a, a2)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return self.proj(y), a, a2, kv

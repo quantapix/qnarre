@@ -45,14 +45,13 @@ class ForCausal(PreTrained):
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
-        ys = self.model(x, **kw, yo=yo)
+        ys = self.model(x, **kw)
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, cfg.s_vocab), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCrosses(*ys) if yo.kw else ys
+        return qo.LossCrosses(*ys[1:])
 
 
 class ForCondGen(PreTrained):
@@ -66,18 +65,16 @@ class ForCondGen(PreTrained):
 
     def forward(self, x, labels=None, x_dec_emb=None, x_dec=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if labels is not None:
-            yo.cache = False
             if x_dec is None and x_dec_emb is None:
                 x_dec = qu.shift_right(labels, cfg.PAD, cfg.dec_START)
-        ys = self.model(x, x_dec=x_dec, x_dec_emb=x_dec_emb, **kw, yo=yo)
+        ys = self.model(x, x_dec=x_dec, x_dec_emb=x_dec_emb, **kw)
         y = self.proj(ys[0]) + self.final_logits_bias
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, cfg.s_vocab), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossSeq2Seq(*ys) if yo.kw else ys
+        return qo.LossSeq2Seq(*ys)
 
 
 class ForQA(PreTrained):
@@ -129,24 +126,16 @@ class Model(PreTrained):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x_dec is None and x_dec_emb is None:
             assert x is not None
             x_dec = qu.shift_right(x, cfg.PAD, cfg.dec_START)
         if y_enc is None:
-            y_enc = self.enc(x, **kw, mask=mask, yo=yo)
+            y_enc = self.enc(x, **kw, mask=mask)
         y = self.dec(
-            x_dec,
-            **kw,
-            enc_m=mask,
-            enc=y_enc[0],
-            head_m=dec_head_m,
-            mask=dec_m,
-            x_emb=x_dec_emb,
-            yo=yo,
+            x_dec, **kw, enc_m=mask, enc=y_enc[0], head_m=dec_head_m, mask=dec_m, x_emb=x_dec_emb
         )
         ys = y + y_enc
-        return qo.Seq2Seq(*ys) if yo.kw else ys
+        return qo.Seq2Seq(*ys)
 
 
 class Encoder(qc.Module):
@@ -166,7 +155,6 @@ class Encoder(qc.Module):
 
     def forward(self, x, head_m=None, mask=None, x_emb=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s = x_emb.size()[:-1]
         else:
@@ -182,8 +170,7 @@ class Encoder(qc.Module):
             mask = qu.expand_mask(mask, x_emb.dtype)
         assert head_m is None or (head_m.size()[0] == (len(self.lays)))
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             if self.training and (random.uniform(0, 1) < cfg.drop_enc):
                 continue
             h = head_m[i] if head_m is not None else None
@@ -191,20 +178,17 @@ class Encoder(qc.Module):
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, yo=yo)
+                        return x(*xs)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, head_m=h, mask=mask, **kw)
             else:
-                ys = lay(y, head_m=h, mask=mask, **kw, yo=yo)
+                ys = lay(y, head_m=h, mask=mask, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-        if yo.hidden:
-            hiddens += (y,)
-        ys = (y, attns, hiddens)
-        return qo.Base(*ys) if yo.kw else ys
+            attns += (ys[1],)
+        hiddens += (y,)
+        return qo.Base(y, attns, hiddens)
 
 
 class BartEncoder(BartPretrainedModel):
@@ -353,7 +337,6 @@ class Decoder(qc.Module):
         **kw,
     ):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         if x is None:
             s = x_emb.size()[:-1]
         else:
@@ -373,8 +356,7 @@ class Decoder(qc.Module):
             if m is not None:
                 assert m.size()[0] == (len(self.lays))
         for i, lay in enumerate(self.lays):
-            if yo.hidden:
-                hiddens += (y,)
+            hiddens += (y,)
             if self.training and (random.uniform(0, 1) < cfg.drop_dec):
                 continue
             h = head_m[i] if head_m is not None else None
@@ -382,29 +364,24 @@ class Decoder(qc.Module):
             kw.update(cross_m=c, enc_m=enc_m, enc=enc, head_m=h, mask=mask)
             c = cache[i] if cache is not None else None
             if self.grad_checkpoint and self.training:
-                if yo.cache:
-                    yo.cache = False
 
                 def create_forward(x):
                     def forward(*xs):
-                        return x(*xs, cache=c, yo=yo)
+                        return x(*xs, cache=c)
 
                     return forward
 
                 ys = checkpoint(create_forward(lay), y, **kw)
             else:
-                ys = lay(y, cache=c, **kw, yo=yo)
+                ys = lay(y, cache=c, **kw)
             y = ys[0]
-            if yo.attn:
-                attns += (ys[1],)
-                if enc is not None:
-                    crosses += (ys[2],)
-            if yo.cache:
-                caches += (ys[-1],)
-        if yo.hidden:
-            hiddens += (y,)
+            attns += (ys[1],)
+            if enc is not None:
+                crosses += (ys[2],)
+            caches += (ys[-1],)
+        hiddens += (y,)
         ys = (y, attns, caches, crosses, hiddens)
-        return qo.CachesCrosses(*ys) if yo.kw else ys
+        return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
 class BartDecoder(BartPretrainedModel):
@@ -610,8 +587,6 @@ class EncLayer(qc.Module):
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, yo=None)
         y, a, _ = self.refl(x, **kw)
         y = self.norm_refl(x + self.drop(y))
         x = y
@@ -621,10 +596,7 @@ class EncLayer(qc.Module):
         if y.dtype == torch.float16 and (torch.isinf(y).any() or torch.isnan(y).any()):
             clamp = torch.finfo(y.dtype).max - 1000
             y = torch.clamp(y, min=-clamp, max=clamp)
-        y = (y,)
-        if yo.attn:
-            y += (a,)
-        return y
+        return y, a
 
 
 class DecLayer(qc.Module):
@@ -649,8 +621,6 @@ class DecLayer(qc.Module):
         self.drop = qc.Dropout(cfg.drop, **kw)
 
     def forward(self, x, cache=None, cross_m=None, enc_m=None, enc=None, **kw):
-        yo = self.get_y_opts(**kw)
-        kw.update(y_attn=True, y_cache=True, yo=None)
         c = cache[:2] if cache is not None else None
         y, a, kv = self.refl(x, cache=c, **kw)
         y = self.norm_refl(x + self.drop(y))
@@ -665,12 +635,7 @@ class DecLayer(qc.Module):
         y = self.drop_act(self.act(self.ff(y)))
         y = self.proj(y)
         y = self.drop(y, p=self.dropout, training=self.training)
-        y = (self.norm(x + y),)
-        if yo.attn:
-            y += (a, a2)
-        if yo.cache:
-            y += (kv,)
-        return y
+        return self.norm(x + y), a, a2, kv
 
 
 class Attention(qc.Module):
@@ -680,13 +645,13 @@ class Attention(qc.Module):
         super().__init__(ps, [self.hs] + hs, **kw)
         self.is_dec = is_dec
         cfg = self.get_cfg(kw)
-        d, h = cfg.d_model, cfg.n_heads
-        assert d % h == 0
-        cfg.s_head = s = int(d / h)
+        d, n = cfg.d_model, cfg.n_heads
+        assert d % n == 0
+        cfg.s_head = s = int(d / n)
         cfg.scale = s**-0.5
+        self.query = qc.Linear(d, d, **kw)
         self.key = qc.Linear(d, d, **kw)
         self.value = qc.Linear(d, d, **kw)
-        self.query = qc.Linear(d, d, **kw)
         self.proj = qc.Linear(d, d, **kw)
         self.drop = qc.Dropout(cfg.drop_attn, **kw)
 
@@ -694,7 +659,6 @@ class Attention(qc.Module):
 
     def forward(self, x, cache=None, enc=None, head_m=None, mask=None, **kw):
         cfg = self.cfg
-        yo = self.get_y_opts(**kw)
         q = self.split_heads(self.query(x) * cfg.scale)
         if enc is None:
             k = self.split_heads(self.key(x))
@@ -708,8 +672,6 @@ class Attention(qc.Module):
                 v = self.split_heads(self.value(enc))
             else:
                 k, v = cache
-        if self.is_dec:
-            cache = (k, v)
         n, s = cfg.n_heads, cfg.s_head
         b, tgt, _ = x.size()
         h = (b * n, -1, s)
@@ -725,17 +687,11 @@ class Attention(qc.Module):
             assert head_m.size() == (n,)
             y = head_m.view(1, -1, 1, 1) * y.view(b, n, tgt, src)
             y = y.view(b * n, tgt, src)
-        a = None
-        if yo.attn:
-            a = y.view(b, n, tgt, src)
-            y = a.view(b * n, tgt, src)
+        a = y.view(b, n, tgt, src)
+        y = a.view(b * n, tgt, src)
         y = torch.bmm(self.drop(y), v.view(h))
         assert y.size() == (b * n, tgt, s)
         y = y.view(b, n, tgt, s)
         y = y.transpose(1, 2).reshape(b, tgt, cfg.d_model)
-        y = (self.proj(y),)
-        if yo.attn:
-            y += (a,)
-        if yo.cache or self.is_decoder:
-            y += ((k, v),)
+        y = self.proj(y), a, (k, v)
         return y
