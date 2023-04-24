@@ -151,111 +151,18 @@ class Model(PreTrained):
         return qo.Seq2Seq(*ys) if yo.kw else ys
 
 
-class BartModel(BartPretrainedModel):
-    _keys_to_ignore_on_load_missing = ["encoder.embed_tokens.weight", "decoder.embed_tokens.weight"]
-
-    def __init__(self, config: BartConfig):
-        super().__init__(config)
-        padding_idx, vocab_size = config.pad_token_id, config.vocab_size
-        self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
-        self.encoder = BartEncoder(config, self.shared)
-        self.decoder = BartDecoder(config, self.shared)
-
-    def forward(
-        self,
-        input_ids=None,
-        mask=None,
-        decoder_input_ids=None,
-        decoder_mask=None,
-        head_mask=None,
-        decoder_head_mask=None,
-        cross_mask=None,
-        encoder_outputs=None,
-        caches=None,
-        inputs_embeds=None,
-        decoder_inputs_embeds=None,
-        use_cache=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        if decoder_input_ids is None and decoder_inputs_embeds is None:
-            if input_ids is None:
-                raise ValueError(
-                    "If no `decoder_input_ids` or `decoder_inputs_embeds` are "
-                    "passed, `input_ids` cannot be `None`. Please pass either "
-                    "`input_ids` or `decoder_input_ids` or `decoder_inputs_embeds`."
-                )
-            decoder_input_ids = qu.shift_right(
-                input_ids, self.config.pad_token_id, self.config.decoder_start_token_id
-            )
-
-        output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
-        )
-        output_hidden_states = (
-            output_hidden_states
-            if output_hidden_states is not None
-            else self.config.output_hidden_states
-        )
-        use_cache = use_cache if use_cache is not None else self.config.use_cache
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        if encoder_outputs is None:
-            encoder_outputs = self.encoder(
-                input_ids=input_ids,
-                mask=mask,
-                head_mask=head_mask,
-                inputs_embeds=inputs_embeds,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-            )
-        elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
-            encoder_outputs = BaseModelOutput(
-                last_hidden_state=encoder_outputs[0],
-                hidden_states=encoder_outputs[1] if len(encoder_outputs) > 1 else None,
-                attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
-            )
-        decoder_outputs = self.decoder(
-            input_ids=decoder_input_ids,
-            mask=decoder_mask,
-            enc=encoder_outputs[0],
-            enc_m=mask,
-            head_mask=decoder_head_mask,
-            cross_mask=cross_mask,
-            caches=caches,
-            inputs_embeds=decoder_inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        if not return_dict:
-            return decoder_outputs + encoder_outputs
-        return Seq2SeqModelOutput(
-            last_hidden_state=decoder_outputs.last_hidden_state,
-            caches=decoder_outputs.caches,
-            decoder_hidden_states=decoder_outputs.hidden_states,
-            decoder_attentions=decoder_outputs.attentions,
-            cross_attentions=decoder_outputs.cross_attentions,
-            encoder_last_hidden_state=encoder_outputs.last_hidden_state,
-            enc=encoder_outputs.hidden_states,
-            encoder_attentions=encoder_outputs.attentions,
-        )
-
-
 class Encoder(qc.Module):
     hs = qc.Hypers({"d_model", "n_heads", "n_pos", "eps"}, {"drop_attn": 0.0, "is_dec": False})
 
     def __init__(self, tok_emb=None, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        m = cfg.d_model
-        cfg.scale = m**0.5 if cfg.scale else 1.0
-        self.tok_emb = qc.Embed(cfg.s_vocab, m, **kw) if tok_emb is None else tok_emb
-        self.pos_emb = PosEmbed(cfg.n_pos, m, **kw)
+        d = cfg.d_model
+        cfg.scale = d**0.5 if cfg.scale else 1.0
+        self.tok_emb = qc.Embed(cfg.s_vocab, d, **kw) if tok_emb is None else tok_emb
+        self.pos_emb = PosEmbed(cfg.n_pos, d, **kw)
         self.lays = qc.Stack([EncLayer(**kw) for _ in range(cfg.n_enc_lays)])
-        self.norm = qc.LayerNorm(m, **kw)
+        self.norm = qc.LayerNorm(d, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
         self.grad_checkpoint = False
 
@@ -329,7 +236,7 @@ class BartEncoder(BartPretrainedModel):
         self,
         input_ids=None,
         mask=None,
-        head_mask=None,
+        head_m=None,
         inputs_embeds=None,
         output_attentions=None,
         output_hidden_states=None,
@@ -364,11 +271,11 @@ class BartEncoder(BartPretrainedModel):
             mask = _expand_mask(mask, inputs_embeds.dtype)
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
-        if head_mask is not None:
-            if head_mask.size()[0] != (len(self.layers)):
+        if head_m is not None:
+            if head_m.size()[0] != (len(self.layers)):
                 raise ValueError(
-                    f"The head_mask should be specified for {len(self.layers)} layers, but it is for"
-                    f" {head_mask.size()[0]}."
+                    f"The head_m should be specified for {len(self.layers)} layers, but it is for"
+                    f" {head_m.size()[0]}."
                 )
         for idx, encoder_layer in enumerate(self.layers):
             if output_hidden_states:
@@ -389,13 +296,13 @@ class BartEncoder(BartPretrainedModel):
                         create_custom_forward(encoder_layer),
                         hidden_states,
                         mask,
-                        (head_mask[idx] if head_mask is not None else None),
+                        (head_m[idx] if head_m is not None else None),
                     )
                 else:
                     layer_outputs = encoder_layer(
                         hidden_states,
                         mask,
-                        head_m=(head_mask[idx] if head_mask is not None else None),
+                        head_m=(head_m[idx] if head_m is not None else None),
                         output_attentions=output_attentions,
                     )
                 hidden_states = layer_outputs[0]
@@ -418,12 +325,12 @@ class Decoder(qc.Module):
     def __init__(self, tok_emb=None, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        m = cfg.d_model
-        cfg.scale = m**0.5 if cfg.scale else 1.0
-        self.tok_emb = qc.Embed(cfg.s_vocab, m, **kw) if tok_emb is None else tok_emb
-        self.pos_emb = PosEmbed(cfg.n_pos, m, **kw)
+        d = cfg.d_model
+        cfg.scale = d**0.5 if cfg.scale else 1.0
+        self.tok_emb = qc.Embed(cfg.s_vocab, d, **kw) if tok_emb is None else tok_emb
+        self.pos_emb = PosEmbed(cfg.n_pos, d, **kw)
         self.lays = qc.Stack([DecLayer(**kw) for _ in range(cfg.n_dec_lays)])
-        self.norm = qc.LayerNorm(m, **kw)
+        self.norm = qc.LayerNorm(d, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
         self.grad_checkpoint = False
 
@@ -527,7 +434,7 @@ class BartDecoder(BartPretrainedModel):
         self.layernorm_embedding = nn.LayerNorm(config.d_model)
         self.gradient_checkpointing = False
 
-    def _prepare_decoder_mask(self, mask, input_shape, inputs_embeds, caches_length):
+    def _prepare_dec_m(self, mask, input_shape, inputs_embeds, caches_length):
         combined_mask = None
         if input_shape[-1] > 1:
             combined_mask = qu.causal_mask(
@@ -552,8 +459,8 @@ class BartDecoder(BartPretrainedModel):
         mask=None,
         enc=None,
         enc_m=None,
-        head_mask=None,
-        cross_mask=None,
+        head_m=None,
+        cross_m=None,
         caches=None,
         inputs_embeds=None,
         use_cache=None,
@@ -573,7 +480,7 @@ class BartDecoder(BartPretrainedModel):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
-                "You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time"
+                "You cannot specify both decoder_input_ids and x_dec_emb at the same time"
             )
         elif input_ids is not None:
             input = input_ids
@@ -583,13 +490,11 @@ class BartDecoder(BartPretrainedModel):
             input_shape = inputs_embeds.size()[:-1]
             input = inputs_embeds[:, :, -1]
         else:
-            raise ValueError(
-                "You have to specify either decoder_input_ids or decoder_inputs_embeds"
-            )
+            raise ValueError("You have to specify either decoder_input_ids or x_dec_emb")
         caches_length = caches[0][0].shape[2] if caches is not None else 0
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input) * self.embed_scale
-        mask = self._prepare_decoder_mask(mask, input_shape, inputs_embeds, caches_length)
+        mask = self._prepare_dec_m(mask, input_shape, inputs_embeds, caches_length)
         if enc is not None and enc_m is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
             enc_m = _expand_mask(enc_m, inputs_embeds.dtype, tgt_len=input_shape[-1])
@@ -608,12 +513,12 @@ class BartDecoder(BartPretrainedModel):
         all_refls = () if output_attentions else None
         all_cross_attentions = () if (output_attentions and enc is not None) else None
         next_decoder_cache = () if use_cache else None
-        for attn_mask, mask_name in zip([head_mask, cross_mask], ["head_mask", "cross_mask"]):
+        for attn_mask, mask_name in zip([head_m, cross_m], ["head_m", "cross_m"]):
             if attn_mask is not None:
                 if attn_mask.size()[0] != (len(self.layers)):
                     raise ValueError(
                         f"The `{mask_name}` should be specified for {len(self.layers)} layers, but it is for"
-                        f" {head_mask.size()[0]}."
+                        f" {head_m.size()[0]}."
                     )
         for idx, decoder_layer in enumerate(self.layers):
             # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
@@ -638,8 +543,8 @@ class BartDecoder(BartPretrainedModel):
                     mask,
                     enc,
                     enc_m,
-                    head_mask[idx] if head_mask is not None else None,
-                    cross_mask[idx] if cross_mask is not None else None,
+                    head_m[idx] if head_m is not None else None,
+                    cross_m[idx] if cross_m is not None else None,
                     None,
                 )
             else:
@@ -648,8 +553,8 @@ class BartDecoder(BartPretrainedModel):
                     mask=mask,
                     enc=enc,
                     enc_m=enc_m,
-                    head_m=(head_mask[idx] if head_mask is not None else None),
-                    cross_m=(cross_mask[idx] if cross_mask is not None else None),
+                    head_m=(head_m[idx] if head_m is not None else None),
+                    cross_m=(cross_m[idx] if cross_m is not None else None),
                     cache=cache,
                     output_attentions=output_attentions,
                     use_cache=use_cache,
