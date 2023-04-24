@@ -1,4 +1,4 @@
-# Copyright 2022 Quantapix Authors. All Rights Reserved.
+# Copyright 2023 Quantapix Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# https://arxiv.org/abs/1910.13461
-# https://github.com/pytorch/fairseq/tree/main/examples/bart
 
 import math
 import random
@@ -21,14 +19,14 @@ import torch
 
 from torch import nn
 from torch.nn import functional as F
-from transformers.utils import logging
 from torch.utils.checkpoint import checkpoint
+from transformers.utils import logging
 
 from .. import core as qc
-from ..core import utils as qu
+from ..core import attention as qa
 from ..core import forward as qf
 from ..core import output as qo
-from ..core import attention as qa
+from ..core import utils as qu
 from ..core.embed import PosEmbed
 from ..core.mlp import Classifier
 from ..prep.config.bart import PreTrained
@@ -179,8 +177,7 @@ class Encoder(qc.Module):
             x_emb = self.tok_emb(x) * cfg.scale
         y = x_emb + self.pos_emb(s)
         y = self.drop(self.norm(y))
-        attns = () if yo.attn else None
-        hiddens = () if yo.hidden else None
+        attns = hiddens = ()
         if mask is not None:
             mask = qu.expand_mask(mask, x_emb.dtype)
         assert head_m is None or (head_m.size()[0] == (len(self.lays)))
@@ -368,10 +365,7 @@ class Decoder(qc.Module):
         c_len = cache[0][0].shape[2] if cache is not None else 0
         y = x_emb + self.pos_emb(s, c_len)
         y = self.drop(self.norm(y))
-        attns = () if yo.attn else None
-        caches = () if yo.cache else None
-        crosses = () if (yo.attn and enc is not None) else None
-        hiddens = () if yo.hidden else None
+        attns = caches = crosses = hiddens = ()
         mask = self.prep_dec_m(mask, s, x_emb, c_len)
         if enc is not None and enc_m is not None:
             enc_m = qu.expand_mask(enc_m, x_emb.dtype, len=s[-1])
