@@ -258,14 +258,15 @@ class Layer(qc.Module):
 
 class Attention(qc.Module):
     hs = qc.Hypers(
-        {"d_model", "drop_proj", "drop", "n_heads", "n_pos", "eps"},
+        {"d_model", "drop", "n_heads", "n_pos"},
         {"drop_attn": 0.0, "pos_type": "absolute"},
     )
 
-    def __init__(self, pos_type=None, ps={}, hs=[], **kw):
+    def __init__(self, pos_type=None, is_dec=False, ps={}, hs=[], **kw):
         if pos_type is not None:
             kw.update(pos_type=pos_type)
         super().__init__(ps, [self.hs] + hs, **kw)
+        self.is_dec = is_dec
         cfg = self.get_cfg(kw)
         d, n = cfg.d_model, cfg.n_heads
         assert d % n == 0  # or cfg.d_embed is not None
@@ -276,7 +277,7 @@ class Attention(qc.Module):
         self.value = qc.Linear(d, d, **kw)
         self.drop_attn = qc.Dropout(cfg.drop_attn, **kw)
         if cfg.pos_type == "relative_key" or cfg.pos_type == "relative_key_query":
-            self.pos_emb = qc.Embed(2 * cfg.n_pos - 1, s, **kw)
+            self.emb = qc.Embed(2 * cfg.n_pos - 1, s, **kw)
         self.proj = qc.Linear(d, d, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
         self.norm = qc.LayerNorm(d, **kw)
@@ -298,101 +299,25 @@ class Attention(qc.Module):
                 k = self.split_heads(self.key(enc))
                 v = self.split_heads(self.value(enc))
             else:
-                k = cache[0]
-                v = cache[1]
-        a = torch.matmul(q, k.transpose(-1, -2))
-        t = cfg.pos_type
-        if t == "relative_key" or t == "relative_key_query":
-            n = x.size()[1]
-            kw = dict(device=x.device, dtype=torch.long)
-            left, right = torch.arange(n, **kw).view(-1, 1), torch.arange(n, **kw).view(1, -1)
-            pos = self.pos_emb((left - right) + cfg.n_pos - 1).to(dtype=q.dtype)
-            if t == "relative_key":
-                a += torch.einsum("bhld,lrd->bhlr", q, pos)
-            elif t == "relative_key_query":
-                a += torch.einsum("bhld,lrd->bhlr", q, pos) + torch.einsum("bhrd,lrd->bhlr", k, pos)
-        a.mul_(cfg.scale)
-        if mask is not None:
-            a += mask
-        a = self.drop_attn(F.softmax(a, dim=-1))
-        if head_m is not None:
-            a *= head_m
-        y = torch.matmul(a, v).permute(0, 2, 1, 3).contiguous()
-        y = y.view(y.size()[:-2] + (cfg.n_heads * cfg.s_head,))
-        return self.norm(x + self.drop(self.proj(y))), a, (k, v)
-
-
-class BertAttention(qc.Module):
-    hs = qc.Hypers(
-        {"d_model", "drop", "n_heads", "n_pos"},
-        {"drop_attn": 0.0, "pos_type": "absolute"},
-    )
-
-    def __init__(self, pos_type=None, is_dec=False, ps={}, hs=[], **kw):
-        if pos_type is not None:
-            kw.update(pos_type=pos_type)
-        super().__init__(ps, [self.hs] + hs, **kw)
-        self.is_dec = is_dec
-        cfg = self.get_cfg(kw)
-        d, n = cfg.d_model, cfg.n_heads
-        assert d % n == 0  # or cfg.d_embed is not None
-        cfg.s_head = s = int(d / n)
-        cfg.scale = 1 / (s**0.5)
-        self.query = qc.Linear(d, d, **kw)
-        self.key = qc.Linear(d, d, **kw)
-        self.value = qc.Linear(d, d, **kw)
-        self.drop_attn = qc.Dropout(cfg.drop_attn, **kw)
-        if cfg.pos_type == "relative_key" or cfg.pos_type == "relative_key_query":
-            self.pos_emb = qc.Embed(2 * cfg.n_pos - 1, s, **kw)
-        self.proj = qc.Linear(d, d, **kw)
-        self.drop = qc.Dropout(cfg.drop, **kw)
-        self.norm = qc.LayerNorm(d, **kw)
-
-    split_heads = qa.split_heads
-
-    def forward(self, x, mask=None, head_m=None, enc=None, enc_m=None, cache=None, **kw):
-        cfg = self.cfg
-        q = self.split_heads(self.query(x))
-        if enc is None:
-            k = self.split_heads(self.key(x))
-            v = self.split_heads(self.value(x))
-            if cache is not None:
-                k = torch.cat([cache[0], k], dim=2)
-                v = torch.cat([cache[1], v], dim=2)
-        else:  # is_cross
-            mask = enc_m
-            if cache is None:
-                k = self.split_heads(self.key(enc))
-                v = self.split_heads(self.value(enc))
-            else:
-                k, v = cache[0], cache[1]
-        if self.is_dec:
-            cache = (k, v)
+                k, v = cache
         a = torch.matmul(q, k.transpose(-1, -2))
         t = cfg.pos_type
         if t == "relative_key" or t == "relative_key_query":
             n_q, n_k = q.shape[2], k.shape[2]
-            if y_cache:
-                left = torch.tensor(n_k - 1, dtype=torch.long, device=x.device).view(-1, 1)
-            else:
-                left = torch.arange(n_q, dtype=torch.long, device=x.device).view(-1, 1)
-            right = torch.arange(n_k, dtype=torch.long, device=x.device).view(1, -1)
-            p = self.pos_emb(left - right + cfg.n_pos - 1).to(dtype=q.dtype)
+            kw = dict(device=x.device, dtype=torch.long)
+            left = torch.tensor(n_k - 1 if self.id_dec else n_q, **kw).view(-1, 1)
+            right = torch.arange(n_k, **kw).view(1, -1)
+            p = self.emb(left - right + cfg.n_pos - 1).to(dtype=q.dtype)
             if t == "relative_key":
                 a += torch.einsum("bhld,lrd->bhlr", q, p)
             elif t == "relative_key_query":
                 a += torch.einsum("bhld,lrd->bhlr", q, p) + torch.einsum("bhrd,lrd->bhlr", k, p)
         a *= cfg.scale
         if mask is not None:
-            a = a + mask
+            a += mask
         a = self.drop_attn(F.softmax(a, dim=-1))
         if head_m is not None:
             a *= head_m
         y = torch.matmul(a, v).permute(0, 2, 1, 3).contiguous()
         y = y.view(y.size()[:-2] + (cfg.d_model,))
-        y = (self.norm(x + self.drop(self.proj(y))),)
-        outputs = (y, a) if output_attentions else (y,)
-        if self.is_decoder:
-            outputs = outputs + (cache,)
-        outputs = (attention_output,) + outputs[1:]
-        return outputs
+        return self.norm(x + self.drop(self.proj(y))), a, (k, v)
