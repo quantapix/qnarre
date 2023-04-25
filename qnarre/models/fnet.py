@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.fnet import PreTrained
 
 
@@ -271,7 +271,7 @@ class FNetEncoder(qc.Module):
 class FNetPreTrainingHeads(qc.Module):
     def __init__(self, config):
         super().__init__()
-        self.predictions = Masker(config)
+        self.predictions = Masked(config)
         self.seq_relationship = qc.Linear(config.d_model, 2)
 
     def forward(self, sequence_output, pooled_output):
@@ -421,7 +421,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     forward = qf.forward_masked
 

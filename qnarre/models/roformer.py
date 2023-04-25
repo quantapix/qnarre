@@ -28,7 +28,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.bert import PreTrained
 
 from torch.nn import CrossEntropyLoss
@@ -621,7 +621,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(cfg.d_embed, **kw)
+        self.proj = Masked(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
 
@@ -631,7 +631,7 @@ class ForCausal(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(cfg.d_embed, **kw)
+        self.proj = Masked(cfg.d_embed, **kw)
 
     forward = qf.forward_causal
 

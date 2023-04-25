@@ -59,7 +59,7 @@ class GPT(qc.Module):
         return y
 
 
-class FFNet(qc.Module):
+class MLP(qc.Module):
     hs = qc.Hypers(
         {"act", "chunk_ff", "d_ff", "d_model", "drop", "eps"},
         {"len_dim": 1},
@@ -109,7 +109,7 @@ class FFNet(qc.Module):
         return y
 
 
-class Masker(qc.Module):
+class Masked(qc.Module):
     hs = qc.Hypers({"d_model", "d_lin", "eps", "s_vocab"}, {"act": "gelu"})
 
     def __init__(self, d_lin=None, act=None, ps={}, hs=[], **kw):

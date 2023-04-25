@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core.embed import pos_enc
-from ..core.mlp import Classifier, FFNet, PoolBeg, PoolEnd, PoolProj
+from ..core.mlp import Classifier, MLP, PoolBeg, PoolEnd, PoolProj
 from ..prep.config.xlnet import PreTrained
 
 
@@ -440,7 +440,7 @@ class Layer(qc.Module):
         super().__init__(**kw)
         cfg = self.het_cfg(kw)
         self.rel_attn = Attention(cfg)
-        self.ffnet = FFNet(cfg.act_ffnet, cfg.drop, cfg.eps, **kw)
+        self.ffnet = MLP(cfg.act_ffnet, cfg.drop, cfg.eps, **kw)
 
     def forward(
         self,

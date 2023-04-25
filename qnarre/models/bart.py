@@ -191,7 +191,7 @@ class Encoder(qc.Module):
         return qo.Base(y, attns, hiddens)
 
 
-class BartEncoder(BartPretrainedModel):
+class BartEncoder(PreTrained):
     def __init__(self, config: BartConfig, embed_tokens: Optional[nn.Embedding] = None):
         super().__init__(config)
         self.dropout = config.dropout
@@ -384,7 +384,7 @@ class Decoder(qc.Module):
         return qo.CachesCrosses(y, attns, caches, crosses, hiddens)
 
 
-class BartDecoder(BartPretrainedModel):
+class BartDecoder(PreTrained):
     def __init__(self, config: BartConfig, embed_tokens: Optional[nn.Embedding] = None):
         super().__init__(config)
         self.dropout = config.dropout

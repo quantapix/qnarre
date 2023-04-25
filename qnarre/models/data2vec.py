@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.data2vec import PreTrained
 
 
@@ -644,7 +644,7 @@ class ForCausal(PreTrained):
             log.warning("If you want to use `Model` as a standalone, add `is_decoder=True.`")
 
         self.data2vec_text = Model(config, add_pooling_layer=False)
-        self.lm_head = Masker(config)
+        self.lm_head = Masked(config)
         self.update_keys_to_ignore(config, ["lm_head.decoder.weight"])
 
     def forward(
@@ -789,7 +789,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(cfg.d_embed, **kw)
+        self.proj = Masked(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
 

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# https://arxiv.org/abs/1810.04805
-# https://github.com/google-research/bert
 
 import torch
 import torch.utils.checkpoint
@@ -29,47 +27,11 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.bert import PreTrained
 
 
 log = logging.get_logger(__name__)
-
-
-class Model(PreTrained):
-    def __init__(self, add_pool=True, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.embs = Embeds(cfg.d_model, **kw)
-        self.enc = Encoder(**kw)
-        self.pool = Pool(**kw) if add_pool else None
-
-    def forward(
-        self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, x_emb=None, **kw
-    ):
-        cfg = self.cfg
-        if x is None:
-            s, d = x_emb.size()[:-1], x_emb.device
-        else:
-            assert x_emb is None
-            s, d = x.size(), x.device
-        c_len = cache[0][0].shape[2] if cache is not None else 0
-        if mask is None:
-            b, n = s
-            mask = torch.ones(((b, n + c_len)), device=d)
-        mask = self.get_mask(mask, s, d)
-        if cfg.is_dec and enc is not None:
-            if enc_m is None:
-                enc_m = torch.ones(enc.size()[:2], device=d)
-            enc_m = self.invert_mask(enc_m)
-        else:
-            enc_m = None
-        head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb)
-        ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=mask)
-        if self.pool is not None:
-            ys += (self.pool(ys[0]),)
-        return qo.PoolsCrosses(*ys)
 
 
 class ForMasked(PreTrained):
@@ -77,7 +39,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     forward = qf.forward_masked
 
@@ -124,7 +86,7 @@ class ForPreTraining(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
         self.order = Classifier(n_labels=2, **kw)
 
     def forward(self, x, labels=None, order_label=None, **kw):
@@ -177,7 +139,7 @@ class Masked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     def forward(self, x, labels=None, **kw):
         ys = self.model(x, **kw)
@@ -189,6 +151,42 @@ class Masked(PreTrained):
             loss = nn.CrossEntropyLoss()(sl.view(-1, self.cfg.s_vocab), ls.view(-1))
         ys = (y,) + ys[2:] + (loss,)
         return qo.LossCrosses(*ys)
+
+
+class Model(PreTrained):
+    def __init__(self, add_pool=True, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.embs = Embeds(cfg.d_model, **kw)
+        self.enc = Encoder(**kw)
+        self.pool = Pool(**kw) if add_pool else None
+
+    def forward(
+        self, x, cache=None, enc_m=None, enc=None, head_m=None, mask=None, x_emb=None, **kw
+    ):
+        cfg = self.cfg
+        if x is None:
+            s, d = x_emb.size()[:-1], x_emb.device
+        else:
+            assert x_emb is None
+            s, d = x.size(), x.device
+        c_len = cache[0][0].shape[2] if cache is not None else 0
+        if mask is None:
+            b, n = s
+            mask = torch.ones(((b, n + c_len)), device=d)
+        mask = self.get_mask(mask, s, d)
+        if cfg.is_dec and enc is not None:
+            if enc_m is None:
+                enc_m = torch.ones(enc.size()[:2], device=d)
+            enc_m = self.invert_mask(enc_m)
+        else:
+            enc_m = None
+        head_m = self.get_head_m(head_m, cfg.n_lays)
+        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb)
+        ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=mask)
+        if self.pool is not None:
+            ys += (self.pool(ys[0]),)
+        return qo.PoolsCrosses(*ys)
 
 
 class Encoder(qc.Module):
@@ -241,7 +239,7 @@ class Layer(qc.Module):
         if add_cross:
             assert self.is_dec
             self.cross = Attention(pos_type="absolute", is_dec=is_dec, **kw)
-        self.proj = FFNet(**kw)
+        self.proj = MLP(**kw)
 
     def forward(self, x, enc=None, cache=None, **kw):
         c = cache[:2] if cache is not None else None

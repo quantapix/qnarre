@@ -17,7 +17,7 @@ import torch
 
 from qnarre.core.attention import Attend
 from qnarre.core.base import Hypers, Module, Linear
-from qnarre.core.mlp import FFNet
+from qnarre.core.mlp import MLP
 from qnarre.core.deduce import Deduce, Search
 from qnarre.core.norm import PreProc, PostProc
 from qnarre.core.embed import TokEmbed, TypEmbed, PosEmbed, PosTiming
@@ -173,7 +173,7 @@ class Encoder(Module):
     def __init__(self, owner, ps=None, name="enc", **kw):
         super().__init__(ps, name=name, **kw)
         self.refl = Attend(owner, ps, name=name + "_refl")
-        self.ffnet = FFNet(owner, ps, name=name + "_ffnet")
+        self.ffnet = MLP(owner, ps, name=name + "_ffnet")
         mlen = self.cfg.len_mem
         if mlen:
             s = input_shape[0]

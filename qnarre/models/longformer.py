@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -1114,7 +1114,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     forward = qf.forward_masked
 

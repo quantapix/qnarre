@@ -30,7 +30,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.big_bird import PreTrained
 
 from . import bert
@@ -174,7 +174,7 @@ class ForCausal(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
@@ -194,7 +194,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     forward = qf.forward_masked
 
@@ -215,7 +215,7 @@ class ForPreTraining(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=True, **kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
         self.seq = qc.Linear(cfg.d_model, 2, **kw)
 
     def forward(self, x, labels=None, ns_labels=None, **kw):
@@ -247,7 +247,7 @@ class ForQA(PreTrained):
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=add_pool, **kw)
         self.drop = qc.Dropout(cfg.drop)
-        self.ff = FFNet(cfg.act, cfg.drop, cfg.eps, cfg)
+        self.ff = MLP(cfg.act, cfg.drop, cfg.eps, cfg)
         self.proj = qc.Linear(cfg.d_model, cfg.n_labels)
 
     def forward(self, x, beg=None, end=None, q_lens=None, typ=None, x_emb=None, **kw):
@@ -366,7 +366,7 @@ class Layer(qc.Module):
         if self.add_cross:
             assert self.is_dec
             self.cross = Attention(cfg)
-        self.ffnet = FFNet(cfg.act, cfg.drop, cfg.eps, **kw)
+        self.ffnet = MLP(cfg.act, cfg.drop, cfg.eps, **kw)
 
     def set_attention_type(self, x):
         assert x in ["original_full", "block_sparse"]

@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.megatron import PreTrained
 
 from torch.nn import CrossEntropyLoss
@@ -496,7 +496,7 @@ class MegatronBertOnlyNSPHead(qc.Module):
 class MegatronBertPreTrainingHeads(qc.Module):
     def __init__(self, config):
         super().__init__()
-        self.predictions = Masker(config)
+        self.predictions = Masked(config)
         self.seq_relationship = qc.Linear(config.d_model, 2)
 
     def forward(self, sequence_output, pooled_output):
@@ -680,7 +680,7 @@ class ForCausal(PreTrained):
         if not config.is_decoder:
             log.warning("If you want to use `ForCausal` as a standalone, add `is_decoder=True.`")
         self.bert = Model(config, add_pooling_layer=False)
-        self.cls = Masker(config)
+        self.cls = Masked(config)
 
     def forward(
         self,
@@ -751,7 +751,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     forward = qf.forward_masked
 

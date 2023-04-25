@@ -26,7 +26,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, Masker
+from ..core.mlp import Classifier, Masked
 from ..prep.config.electra import PreTrained
 
 from . import bert
@@ -116,7 +116,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(cfg.d_embed, **kw)
+        self.proj = Masked(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
 

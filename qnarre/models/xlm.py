@@ -31,7 +31,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import sin_embeds
-from ..core.mlp import Classifier, FFNet
+from ..core.mlp import Classifier, MLP
 
 from ..prep.config.xlm import PreTrained
 
@@ -62,7 +62,7 @@ class Model(PreTrained):
             self.attns.append(Attention(cfg.n_heads, cfg.d_embed, **kw))
             self.norm1.append(qc.LayerNorm(cfg.d_embed, cfg.eps, **kw))
             self.ffnet.append(
-                FFNet(
+                MLP(
                     gelu if cfg.gelu_activation else F.relu,
                     drop=cfg.drop,
                     d_model=cfg.d_embed,

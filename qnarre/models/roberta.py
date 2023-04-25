@@ -25,7 +25,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
 from ..core.embed import Embeds
-from ..core.mlp import FFNet, Classifier, Masker
+from ..core.mlp import MLP, Classifier, Masked
 from ..prep.config.roberta import PreTrained
 
 from . import bert
@@ -94,7 +94,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(**kw)
+        self.proj = Masked(**kw)
 
     forward = qf.forward_masked
 
@@ -200,7 +200,7 @@ class Layer(qc.Module):
         if cfg.add_cross:
             assert cfg.is_dec
             self.cross = bert.Attention(pos_type="absolute", **kw)
-        self.proj = FFNet(cfg.act, cfg.drop, cfg.eps, **kw)
+        self.proj = MLP(cfg.act, cfg.drop, cfg.eps, **kw)
 
     def forward(self, x, cache=None, enc=None, **kw):
         cfg = self.cfg

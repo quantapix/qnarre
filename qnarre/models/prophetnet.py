@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.bert import PreTrained
 
 from dataclasses import dataclass

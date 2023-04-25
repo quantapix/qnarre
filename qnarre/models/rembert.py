@@ -27,7 +27,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, FFNet, Masker, Pool
+from ..core.mlp import Classifier, MLP, Masked, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -592,7 +592,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(cfg.output_embedding_size, **kw)
+        self.proj = Masked(cfg.output_embedding_size, **kw)
 
     forward = qf.forward_masked
 
@@ -602,7 +602,7 @@ class ForCausal(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masker(cfg.output_embedding_size, **kw)
+        self.proj = Masked(cfg.output_embedding_size, **kw)
 
     forward = qf.forward_causal
 
