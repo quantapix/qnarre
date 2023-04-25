@@ -60,7 +60,10 @@ class GPT(qc.Module):
 
 
 class FFNet(qc.Module):
-    hs = qc.Hypers({"act", "d_ff", "d_model", "drop", "eps", "chunk_ff"}, {"seq_len_dim": 1})
+    hs = qc.Hypers(
+        {"act", "chunk_ff", "d_ff", "d_model", "drop", "eps"},
+        {"len_dim": 1},
+    )
 
     def __init__(self, act=None, drop=None, eps=None, ps={}, hs=[], **kw):
         if act is not None:
@@ -73,20 +76,20 @@ class FFNet(qc.Module):
         cfg = self.get_cfg(kw)
         self.ff = qc.Linear(cfg.d_model, cfg.d_ff, **kw)
         self.act = None if cfg.act is None else qu.activation(cfg.act)
-        self.drop = None if cfg.drop is None else qc.Dropout(cfg.drop, **kw)
         self.proj = qc.Linear(cfg.d_ff, cfg.d_model, **kw)
+        self.drop = None if cfg.drop is None else qc.Dropout(cfg.drop, **kw)
         self.norm = None if cfg.eps is None else qc.LayerNorm(cfg.d_model, cfg.eps, **kw)
 
     def forward(self, *xs):
         cfg = self.cfg
-        size, dim = cfg.chunk_ff, cfg.seq_len_dim
+        chunk, dim = cfg.chunk_ff, cfg.len_dim
         assert len(xs) > 0
-        if size > 0:
+        if chunk > 0:
             shape = xs[0].shape[dim]
             for x in xs:
                 assert x.shape[dim] == shape
-            assert xs[0].shape[dim] % size == 0
-            n = xs[0].shape[dim] // size
+            assert xs[0].shape[dim] % chunk == 0
+            n = xs[0].shape[dim] // chunk
             ys = tuple(x.chunk(n, dim=dim) for x in xs)
             ys = tuple(self.chunker(*y) for y in zip(*ys))
             return torch.cat(ys, dim=dim)
@@ -102,7 +105,7 @@ class FFNet(qc.Module):
         if self.drop:
             y = self.drop(y)
         if self.norm:
-            y = self.norm(y + x)
+            y = self.norm(x + y)
         return y
 
 

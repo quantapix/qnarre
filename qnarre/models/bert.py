@@ -202,7 +202,7 @@ class Encoder(qc.Module):
         self.lays = qc.Stack([Layer(**kw) for _ in range(cfg.n_lays)])
         self.grad_checkpoint = False
 
-    def forward(self, x, head_m=None, cache=None, **kw):
+    def forward(self, x, cache=None, head_m=None, **kw):
         cfg = self.cfg
         y = x
         attns = caches = crosses = hiddens = ()
@@ -210,7 +210,7 @@ class Encoder(qc.Module):
             hiddens += (y,)
             h = head_m[i] if head_m is not None else None
             c = cache[i] if cache is not None else None
-            if cfg.grad_checkpoint and self.training:
+            if self.grad_checkpoint and self.training:
 
                 def create_forward(x):
                     def forward(*xs):
@@ -231,25 +231,23 @@ class Encoder(qc.Module):
 
 
 class Layer(qc.Module):
-    hs = qc.Hypers({"act", "add_cross"}, {"is_dec": False})
+    hs = qc.Hypers({}, {})
 
-    def __init__(self, add_cross=None, ps={}, hs=[], **kw):
-        if add_cross is not None:
-            kw.update(add_cross=add_cross)
+    def __init__(self, add_cross=None, is_dec=False, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
-        cfg = self.get_cfg(kw)
-        self.attn = Attention(**kw)
-        if cfg.add_cross:
-            assert cfg.is_dec
-            self.cross = Attention(**kw)
+        self.is_dec = is_dec
+        self.get_cfg(kw)
+        self.attn = Attention(is_dec=is_dec, **kw)
+        if add_cross:
+            assert self.is_dec
+            self.cross = Attention(pos_type="absolute", is_dec=is_dec, **kw)
         self.proj = FFNet(**kw)
 
-    def forward(self, x, cache=None, enc=None, **kw):
-        cfg = self.cfg
+    def forward(self, x, enc=None, cache=None, **kw):
         c = cache[:2] if cache is not None else None
         y, a, kv = self.attn(x, cache=c, **kw)
         a2 = None
-        if cfg.is_dec and enc is not None:
+        if self.is_dec and enc is not None:
             c = cache[-2:] if cache is not None else None
             y, a2, kv2 = self.cross(y, cache=c, enc=enc, **kw)
             kv = kv + kv2
