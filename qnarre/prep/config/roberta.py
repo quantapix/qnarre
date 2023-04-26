@@ -76,7 +76,7 @@ MAP = {
     ),
     "roberta-large-mnli": dict(
         _num_labels=3,
-        archs=["ForSeqClassifier"],
+        archs=["ForSeqClass"],
         d_ff=4096,
         d_model=1024,
         id2label={"0": "CONTRADICTION", "1": "NEUTRAL", "2": "ENTAILMENT"},
@@ -89,11 +89,11 @@ MAP = {
         n_lays=6,
     ),
     "roberta-base-openai-detector": dict(
-        archs=["ForSeqClassifier"],
+        archs=["ForSeqClass"],
         y_prev=True,
     ),
     "roberta-large-openai-detector": dict(
-        archs=["ForSeqClassifier"],
+        archs=["ForSeqClass"],
         d_ff=4096,
         d_model=1024,
         n_heads=16,

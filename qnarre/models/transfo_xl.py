@@ -108,7 +108,7 @@ class Model(PreTrained):
         return qo.WithMems(y, attns, hiddens, mems)
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)

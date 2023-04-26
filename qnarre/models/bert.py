@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -39,12 +39,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
 
     forward = qf.forward_masked
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -64,16 +64,16 @@ class ForMultiChoice(PreTrained):
         return qo.WithLoss(*ys)
 
 
-class ForNextSentence(PreTrained):
+class ForNext(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.order = Classifier(n_labels=2, **kw)
+        self.proj = Classifier(n_labels=2, **kw)
 
     def forward(self, x, labels=None, **kw):
         ys = self.model(x, **kw)
-        y = self.order(ys[1])
+        y = self.proj(ys[1])
         loss = None
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, 2), labels.view(-1))
@@ -86,21 +86,19 @@ class ForPreTraining(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(**kw)
-        self.order = Classifier(n_labels=2, **kw)
+        self.proj = Predictor(**kw)
+        self.next = Classifier(n_labels=2, **kw)
 
-    def forward(self, x, labels=None, order_label=None, **kw):
+    def forward(self, x, labels=None, next=None, **kw):
         cfg = self.cfg
         ys = self.model(x, **kw)
         y = self.proj(ys[0])
-        orders = self.order(ys[1])
+        n = self.next(ys[1])
         loss = None
-        if labels is not None and order_label is not None:
+        if labels is not None and next is not None:
             f = nn.CrossEntropyLoss()
-            loss = f(y.view(-1, cfg.s_vocab), labels.view(-1)) + f(
-                orders.view(-1, 2), order_label.view(-1)
-            )
-        ys = (y, orders) + ys[2:] + (loss,)
+            loss = f(y.view(-1, cfg.s_vocab), labels.view(-1)) + f(n.view(-1, 2), next.view(-1))
+        ys = (y, n) + ys[2:] + (loss,)
         return qo.LossSeq(*ys)
 
 
@@ -114,7 +112,7 @@ class ForQA(PreTrained):
     forward = qf.forward_qa
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -124,7 +122,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -134,12 +132,31 @@ class ForTokClassifier(PreTrained):
     forward = qf.forward_tok
 
 
+class LMHead(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(add_pool=False, **kw)
+        self.proj = Predictor(**kw)
+
+    def forward(self, labels=None, **kw):
+        ys = self.model(**kw)
+        y = self.proj(ys[0])
+        loss = None
+        if labels is not None:
+            y = y[:, :-1, :].contiguous()
+            labels = labels[:, 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(y.view(-1, self.config.s_vocab), labels.view(-1))
+        ys = (y,) + ys[1:] + (loss,)
+        return qo.LossCrosses(*ys)
+
+
 class Masked(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
 
     def forward(self, x, labels=None, **kw):
         ys = self.model(x, **kw)
@@ -229,23 +246,22 @@ class Encoder(qc.Module):
 
 
 class Layer(qc.Module):
-    hs = qc.Hypers({}, {})
+    hs = qc.Hypers({}, {"is_dec": False})
 
-    def __init__(self, add_cross=None, is_dec=False, ps={}, hs=[], **kw):
+    def __init__(self, add_cross=None, ps={}, hs=[], **kw):
         super().__init__(ps, [self.hs] + hs, **kw)
-        self.is_dec = is_dec
-        self.get_cfg(kw)
-        self.attn = Attention(is_dec=is_dec, **kw)
+        cfg = self.get_cfg(kw)
+        self.attn = Attention(**kw)
         if add_cross:
-            assert self.is_dec
-            self.cross = Attention(pos_type="absolute", is_dec=is_dec, **kw)
+            assert cfg.is_dec
+            self.cross = Attention(pos_type="absolute", **kw)
         self.proj = MLP(**kw)
 
     def forward(self, x, enc=None, cache=None, **kw):
         c = cache[:2] if cache is not None else None
         y, a, kv = self.attn(x, cache=c, **kw)
         a2 = None
-        if self.is_dec and enc is not None:
+        if cfg.is_dec and enc is not None:
             c = cache[-2:] if cache is not None else None
             y, a2, kv2 = self.cross(y, cache=c, enc=enc, **kw)
             kv = kv + kv2
@@ -258,11 +274,10 @@ class Attention(qc.Module):
         {"drop_attn": 0.0, "pos_type": "absolute"},
     )
 
-    def __init__(self, pos_type=None, is_dec=False, ps={}, hs=[], **kw):
+    def __init__(self, pos_type=None, ps={}, hs=[], **kw):
         if pos_type is not None:
             kw.update(pos_type=pos_type)
         super().__init__(ps, [self.hs] + hs, **kw)
-        self.is_dec = is_dec
         cfg = self.get_cfg(kw)
         d, n = cfg.d_model, cfg.n_heads
         assert d % n == 0  # or cfg.d_embed is not None

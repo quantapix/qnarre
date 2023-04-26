@@ -46,13 +46,13 @@ class GPT(qc.Module):
             kw.update(d_ff=d_ff)
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        self.ff = qc.Conv1D(cfg.d_ff, cfg.d_model, **kw)
+        self.lin = qc.Conv1D(cfg.d_ff, cfg.d_model, **kw)
         self.proj = qc.Conv1D(cfg.d_model, cfg.d_ff, **kw)
         self.act = qu.activation(cfg.act)
         self.drop = nn.Dropout(cfg.drop, **kw)
 
     def forward(self, x):
-        y = self.ff(x)
+        y = self.lin(x)
         y = self.act(y)
         y = self.proj(y)
         y = self.drop(y)
@@ -74,7 +74,7 @@ class MLP(qc.Module):
             kw.update(eps=eps)
         super().__init__(ps, [self.hs] + hs, **kw)
         cfg = self.get_cfg(kw)
-        self.ff = qc.Linear(cfg.d_model, cfg.d_ff, **kw)
+        self.lin = qc.Linear(cfg.d_model, cfg.d_ff, **kw)
         self.act = None if cfg.act is None else qu.activation(cfg.act)
         self.proj = qc.Linear(cfg.d_ff, cfg.d_model, **kw)
         self.drop = None if cfg.drop is None else qc.Dropout(cfg.drop, **kw)
@@ -96,7 +96,7 @@ class MLP(qc.Module):
         return self.chunker(*xs)
 
     def chunker(self, x):
-        y = self.ff(x)
+        y = self.lin(x)
         if self.act:
             y = self.act(y)
         # if self.drop:
@@ -109,7 +109,7 @@ class MLP(qc.Module):
         return y
 
 
-class Masked(qc.Module):
+class Predictor(qc.Module):
     hs = qc.Hypers({"d_model", "d_lin", "eps", "s_vocab"}, {"act": "gelu"})
 
     def __init__(self, d_lin=None, act=None, ps={}, hs=[], **kw):

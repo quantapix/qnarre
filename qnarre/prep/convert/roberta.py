@@ -23,7 +23,7 @@ from fairseq.modules import TransformerSentenceEncLayer
 from transformers.utils import logging
 
 from ..config.bert import PreTrained
-from ...models.bert import ForMasked, ForSeqClassifier
+from ...models.bert import ForMasked, ForSeqClass
 
 
 logging.set_verbosity_info()
@@ -50,7 +50,7 @@ def to_pytorch(src_path, save_path, classification_head):
     if classification_head:
         cfg.n_labels = roberta.model.classification_heads["mnli"].out_proj.weight.shape[0]
     print("Our BERT config:", cfg)
-    m = ForSeqClassifier(cfg) if classification_head else ForMasked(cfg)
+    m = ForSeqClass(cfg) if classification_head else ForMasked(cfg)
     m.eval()
     m.roberta.embeddings.tok_embed.weight = roberta_sent_encoder.embed_tokens.weight
     m.roberta.embeddings.pos_embed.weight = roberta_sent_encoder.embed_positions.weight

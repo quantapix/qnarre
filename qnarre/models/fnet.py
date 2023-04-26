@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.fnet import PreTrained
 
 
@@ -271,7 +271,7 @@ class FNetEncoder(qc.Module):
 class FNetPreTrainingHeads(qc.Module):
     def __init__(self, config):
         super().__init__()
-        self.predictions = Masked(config)
+        self.predictions = Predictor(config)
         self.seq_relationship = qc.Linear(config.d_model, 2)
 
     def forward(self, sequence_output, pooled_output):
@@ -421,12 +421,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
 
     forward = qf.forward_masked
 
 
-class FNetForNextSentencePrediction(PreTrained):
+class FNetForNextPrediction(PreTrained):
     def __init__(self, config):
         super().__init__(config)
 
@@ -479,7 +479,7 @@ class FNetForNextSentencePrediction(PreTrained):
         )
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, config):
         super().__init__(config)
         self.fnet = Model(config)
@@ -540,7 +540,7 @@ class ForMultiChoice(PreTrained):
         return qo.WithLoss(loss=loss, logits=reshaped_logits, hiddens=outputs.hiddens)
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -550,7 +550,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

@@ -30,7 +30,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.big_bird import PreTrained
 
 from . import bert
@@ -174,7 +174,7 @@ class ForCausal(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
 
     def forward(self, x, labels=None, **kw):
         cfg = self.cfg
@@ -194,12 +194,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
 
     forward = qf.forward_masked
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -207,7 +207,7 @@ class ForMultiChoice(PreTrained):
         self.drop = qc.Dropout(cfg.drop, **kw)
         self.proj = qc.Linear(cfg.d_model, 1, **kw)
 
-    forward = bert.ForMultiChoice.forward
+    forward = bert.ForMulti.forward
 
 
 class ForPreTraining(PreTrained):
@@ -215,7 +215,7 @@ class ForPreTraining(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=True, **kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
         self.seq = qc.Linear(cfg.d_model, 2, **kw)
 
     def forward(self, x, labels=None, ns_labels=None, **kw):
@@ -284,7 +284,7 @@ class ForQA(PreTrained):
         return qo.LossQAPools(*ys)
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -294,7 +294,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq  # y = self.proj(ys[0][:, 0, :])
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

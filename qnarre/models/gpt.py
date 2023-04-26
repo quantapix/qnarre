@@ -75,7 +75,7 @@ class Model(PreTrained):
         return qo.Base(y, attns, hiddens)
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)

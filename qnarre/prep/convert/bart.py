@@ -27,10 +27,10 @@ from transformers import (
 from transformers.utils import logging
 
 from ..config.bart import PreTrained
-from ...models.bart import Model, ForSeqClassifier, ForCondGen
+from ...models.bart import Model, ForSeqClass, ForCondGen
 
 FAIRSEQ_MODELS = ["bart.large", "bart.large.mnli", "bart.large.cnn", "bart_xsum/model.pt"]
-extra_arch = {"bart.large": BartModel, "bart.large.mnli": ForSeqClassifier}
+extra_arch = {"bart.large": BartModel, "bart.large.mnli": ForSeqClass}
 
 
 logging.set_verbosity_info()
@@ -100,7 +100,7 @@ def convert_checkpoint(src_path, save_path, hf_checkpoint_name=None):
         state_dict["model.shared.weight"] = state_dict["model.decoder.embed_tokens.weight"]
         for src, dest in mnli_rename_keys:
             rename_key(state_dict, src, dest)
-        m = ForSeqClassifier(cfg).eval()
+        m = ForSeqClass(cfg).eval()
         m.load_state_dict(state_dict)
         fairseq_output = bart.predict("mnli", tokens, return_logits=True)
         new_model_outputs = m(tokens)[0]

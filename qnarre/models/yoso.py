@@ -31,7 +31,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.yoso import PreTrained
 
 from ...pytorch_utils import (
@@ -660,12 +660,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(cfg.d_model, **kw)
+        self.proj = Predictor(cfg.d_model, **kw)
 
     forward = qf.forward_masked
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, config):
         super().__init__(config)
 
@@ -742,7 +742,7 @@ class ForMultiChoice(PreTrained):
         )
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -752,7 +752,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

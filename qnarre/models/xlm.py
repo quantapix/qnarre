@@ -143,7 +143,7 @@ class Model(PreTrained):
         return qo.Base(y, attns, hiddens)
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -210,7 +210,7 @@ class QATop(qc.Output):
     top_end_i = None
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -220,7 +220,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

@@ -221,7 +221,7 @@ class Output(qc.Output):
     mems: tuple = None
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -355,7 +355,7 @@ class QATop(qc.Output):
     loss: tuple = None
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -390,7 +390,7 @@ class ForSeqClassifier(PreTrained):
         return WithLoss(*ys)
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

@@ -91,7 +91,7 @@ class DualHead(PreTrained):
         return Output(*ys)
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -111,7 +111,7 @@ class ForSeqClassifier(PreTrained):
         return x[torch.arange(b, device=self.device), n]
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, drop_proj=0.1, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

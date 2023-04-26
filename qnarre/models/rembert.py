@@ -27,7 +27,7 @@ from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -592,7 +592,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(cfg.output_embedding_size, **kw)
+        self.proj = Predictor(cfg.output_embedding_size, **kw)
 
     forward = qf.forward_masked
 
@@ -602,7 +602,7 @@ class ForCausal(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(cfg.output_embedding_size, **kw)
+        self.proj = Predictor(cfg.output_embedding_size, **kw)
 
     forward = qf.forward_causal
 
@@ -668,7 +668,7 @@ class ForCausal(PreTrained):
         )
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, config):
         super().__init__(config)
         self.rembert = Model(config)
@@ -742,7 +742,7 @@ class ForMultiChoice(PreTrained):
         )
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -752,7 +752,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

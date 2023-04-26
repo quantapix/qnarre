@@ -26,7 +26,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, Masked
+from ..core.mlp import Classifier, Predictor
 from ..prep.config.electra import PreTrained
 
 from . import bert
@@ -116,12 +116,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(cfg.d_embed, **kw)
+        self.proj = Predictor(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -164,7 +164,7 @@ class ForPreTraining(PreTrained):
         return qo.WithLoss(*ys)
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -174,7 +174,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)

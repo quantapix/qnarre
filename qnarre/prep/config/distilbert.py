@@ -82,7 +82,7 @@ MAP = {
         y_prev=True,
     ),
     "distilbert-base-uncased-finetuned-sst-2-english": dict(
-        archs=["ForSeqClassifier"],
+        archs=["ForSeqClass"],
         finetune="sst-2",
         id2label={"0": "NEGATIVE", "1": "POSITIVE"},
         label2id={"NEGATIVE": 0, "POSITIVE": 1},

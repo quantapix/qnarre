@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.bert import PreTrained
 
 
@@ -719,7 +719,7 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(cfg.d_model, eps=1e-12, **kw)
+        self.proj = Predictor(cfg.d_model, eps=1e-12, **kw)
         self.ent_proj = EntityPredictionHead(**kw)
 
     def forward_masked(self, x, labels=None, ent_labels=None, **kw):

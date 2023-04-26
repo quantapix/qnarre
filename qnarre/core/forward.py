@@ -21,21 +21,17 @@ from . import output as qo
 
 
 def forward_masked(self, x, labels=None, **kw):
-    yo = self.get_y_opts(**kw)
-    ys = self.model(x, **kw, yo=yo)
+    ys = self.model(x, **kw)
     y = self.proj(ys[0])
     loss = None
     if labels is not None:
         loss = nn.CrossEntropyLoss()(y.view(-1, self.cfg.s_vocab), labels.view(-1))
     ys = (y,) + ys[1:] + (loss,)
-    return qo.WithLoss(*ys) if yo.kw else ys
+    return qo.WithLoss(*ys)
 
 
 def forward_qa(self, x, beg=None, end=None, **kw):
-    yo = self.get_y_opts(**kw)
-    if beg is not None and end is not None:
-        yo.cache = False
-    ys = self.model(x, **kw, yo=yo)
+    ys = self.model(x, **kw)
     b, e = self.proj(ys[0]).split(1, dim=-1)
     b = b.squeeze(-1).contiguous()
     e = e.squeeze(-1).contiguous()
@@ -51,16 +47,13 @@ def forward_qa(self, x, beg=None, end=None, **kw):
         end.clamp_(0, i)
         loss = (f(b, beg) + f(e, end)) / 2
     ys = (b, e) + ys[1:] + (loss,)
-    return qo.LossQA(*ys) if yo.kw else ys
-    # return qo.LossSeq2SeqQA(*ys) if yo.kw else ys
+    return qo.LossQA(*ys)
+    # return qo.LossSeq2SeqQA(*ys)
 
 
 def forward_seq(self, x, labels=None, **kw):
     cfg = self.cfg
-    yo = self.get_y_opts(**kw)
-    if labels is not None:
-        yo.cache = False
-    ys = self.model(x, **kw, yo=yo)
+    ys = self.model(x, **kw)
     y = self.proj(ys[1])  # ys[0][:, 0]; ys[0][:, 0, :]; pooled_output
     loss = None
     if labels is not None:
@@ -82,14 +75,13 @@ def forward_seq(self, x, labels=None, **kw):
         elif cfg.problem == "multi_label":
             loss = nn.BCEWithLogitsLoss()(y, labels)
     ys = (y,) + ys[2:] + (loss,)  # ys[1:]
-    return qo.WithLoss(*ys) if yo.kw else ys
-    # return qo.LossSeq2Seq(*ys) if yo.kw else ys
+    return qo.WithLoss(*ys)
+    # return qo.LossSeq2Seq(*ys)
 
 
 def forward_tok(self, x, mask=None, labels=None, **kw):
     cfg = self.cfg
-    yo = self.get_y_opts(**kw)
-    ys = self.model(x, **kw, yo=yo)
+    ys = self.model(x, **kw)
     y = self.proj(ys[0])
     loss = None
     if labels is not None:
@@ -100,4 +92,4 @@ def forward_tok(self, x, mask=None, labels=None, **kw):
             l = torch.where(mask.view(-1) == 1, l, torch.tensor(f.ignore_index).type_as(l))
         loss = f(y.view(-1, cfg.n_labels), l)
     ys = (y,) + ys[2:] + (loss,)
-    return qo.WithLoss(*ys) if yo.kw else ys
+    return qo.WithLoss(*ys)

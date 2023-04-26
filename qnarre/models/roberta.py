@@ -25,7 +25,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
 from ..core.embed import Embeds
-from ..core.mlp import MLP, Classifier, Masked
+from ..core.mlp import MLP, Classifier, Predictor
 from ..prep.config.roberta import PreTrained
 
 from . import bert
@@ -94,12 +94,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(**kw)
+        self.proj = Predictor(**kw)
 
     forward = qf.forward_masked
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -129,7 +129,7 @@ class ForQA(PreTrained):
     forward = qf.forward_qa
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -139,7 +139,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, *kw):
         super().__init__(**kw)
         self.get_cfg(kw)

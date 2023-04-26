@@ -23,7 +23,7 @@ from transformers.file_utils import CONFIG_NAME, WEIGHTS_NAME
 from transformers.utils import logging
 
 from ..config.xlnet import PreTrained
-from ...models.xlnet import ForQA, ForSeqClassifier, LMHead
+from ...models.xlnet import ForQA, ForSeqClass, LMHead
 
 
 GLUE_TASKS_NUM_LABELS = {
@@ -160,7 +160,7 @@ def to_pytorch(src_path, bert_config_file, save_path, finetune=None):
     if finetune in GLUE_TASKS_NUM_LABELS:
         cfg.finetune = finetune
         cfg.n_labels = GLUE_TASKS_NUM_LABELS[finetune]
-        m = ForSeqClassifier(cfg)
+        m = ForSeqClass(cfg)
     elif "squad" in finetune:
         cfg.finetune = finetune
         m = ForQA(cfg)

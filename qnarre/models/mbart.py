@@ -118,7 +118,7 @@ class ForQA(PreTrained):
     forward = qf.forward_qa
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         kw.update(n_labels=2)
         super().__init__(**kw)

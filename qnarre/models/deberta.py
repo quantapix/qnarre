@@ -28,7 +28,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked
+from ..core.mlp import Classifier, MLP, Predictor
 from ..prep.config.bert import PreTrained
 
 
@@ -409,12 +409,12 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(cfg.d_embed, **kw)
+        self.proj = Predictor(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -424,7 +424,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -434,7 +434,7 @@ class ForTokClassifier(PreTrained):
     forward = qf.forward_tok
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, config):
         super().__init__(config)
         n_labels = getattr(config, "n_labels", 2)
@@ -526,7 +526,7 @@ class ForSeqClassifier(PreTrained):
         )
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
 
     def __init__(self, config):

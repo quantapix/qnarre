@@ -27,7 +27,7 @@ from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
 from ..core.embed import Embeds
-from ..core.mlp import Classifier, MLP, Masked, Pool
+from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.albert import PreTrained
 
 from . import bert
@@ -66,19 +66,19 @@ class ForMasked(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(add_pool=False, **kw)
-        self.proj = Masked(cfg.d_embed, **kw)
+        self.proj = Predictor(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
 
 
-class ForMultiChoice(PreTrained):
+class ForMulti(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
         self.proj = Classifier(n_labels=1, **kw)
 
-    forward = bert.ForMultiChoice.forward
+    forward = bert.ForMulti.forward
 
 
 class ForPreTraining(PreTrained):
@@ -86,7 +86,7 @@ class ForPreTraining(PreTrained):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
-        self.proj = Masked(cfg.d_embed, **kw)
+        self.proj = Predictor(cfg.d_embed, **kw)
         self.order = Classifier(n_labels=2, **kw)
 
     forward = bert.ForPreTraining.forward
@@ -102,7 +102,7 @@ class ForQA(PreTrained):
     forward = qf.forward_qa
 
 
-class ForSeqClassifier(PreTrained):
+class ForSeqClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -112,7 +112,7 @@ class ForSeqClassifier(PreTrained):
     forward = qf.forward_seq
 
 
-class ForTokClassifier(PreTrained):
+class ForTokClass(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
