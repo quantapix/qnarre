@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# https://arxiv.org/abs/2007.14062
-# https://github.com/google-research/bigbird
 
 import numpy as np
 import torch
@@ -36,6 +34,141 @@ from ..prep.config.big_bird import PreTrained
 from . import bert
 
 log = logging.get_logger(__name__)
+
+
+class ForCausal(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Predictor(**kw)
+
+    def forward(self, x, labels=None, **kw):
+        cfg = self.cfg
+        ys = self.model(x, **kw)
+        y = self.proj(ys[0])
+        loss = None
+        if labels is not None:
+            sl = y[:, :-1, :].contiguous()
+            ls = labels[:, 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(sl.view(-1, cfg.s_vocab), ls.view(-1))
+        ys = (y,) + ys[2:] + (loss,)
+        return qo.LossCrosses(*ys)
+
+
+class ForChoice(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.drop = qc.Dropout(cfg.drop, **kw)
+        self.proj = qc.Linear(cfg.d_model, 1, **kw)
+
+    forward = bert.ForChoice.forward
+
+
+class ForMasked(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Predictor(**kw)
+
+    forward = qf.forward_masked
+
+
+class ForPreTraining(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(add_pool=True, **kw)
+        self.proj = Predictor(**kw)
+        self.seq = qc.Linear(cfg.d_model, 2, **kw)
+
+    def forward(self, x, labels=None, ns_labels=None, **kw):
+        cfg = self.cfg
+        ys = self.model(x, **kw)
+        y = self.proj(ys[0])
+        orders = self.seq(ys[1])
+        loss = None
+        if labels is not None:
+            f = nn.CrossEntropyLoss()
+            loss = f(y.view(-1, cfg.s_vocab), labels.view(-1))
+            if loss is not None:
+                loss = loss + f(orders.view(-1, 2), ns_labels.view(-1))
+        ys = (y, orders) + ys[2:] + (loss,)
+        return bert.LossSeq(*ys)
+
+
+def prep_q_mask(q_lens, n):
+    y = torch.arange(0, n).to(q_lens.device)
+    y.unsqueeze_(0)
+    y = y < q_lens
+    return y
+
+
+class ForQA(PreTrained):
+    def __init__(self, add_pool=False, **kw):
+        kw.update(n_labels=2)
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(add_pool=add_pool, **kw)
+        self.drop = qc.Dropout(cfg.drop)
+        self.ff = MLP(cfg.act, cfg.drop, cfg.eps, cfg)
+        self.proj = qc.Linear(cfg.d_model, cfg.n_labels)
+
+    def forward(self, x, beg=None, end=None, q_lens=None, typ=None, x_emb=None, **kw):
+        n = x.size(1) if x is not None else x_emb.size(1)
+        if q_lens is None and x is not None:
+            q_lens = torch.argmax(x.eq(self.SEP).int(), dim=-1) + 1
+            q_lens.unsqueeze_(1)
+        y_m = None
+        if q_lens is not None:
+            y_m = prep_q_mask(q_lens, n)
+            if typ is None:
+                typ = (~y_m).long()
+            y_m[:, 0] = False
+            y_m.unsqueeze_(2)
+        ys = self.model(x, typ=typ, x_emb=x_emb, **kw)
+        y = self.proj(self.ff(self.drop(ys[0])))
+        if y_m is not None:
+            y = y - y_m * 1e6
+        b, e = y.split(1, dim=-1)
+        b = b.squeeze(-1).contiguous()
+        e = e.squeeze(-1).contiguous()
+        loss = None
+        if beg is not None and end is not None:
+            if len(beg.size()) > 1:
+                beg = beg.squeeze(-1)
+            if len(end.size()) > 1:
+                end = end.squeeze(-1)
+            i = b.size(1)
+            f = nn.CrossEntropyLoss(ignore_index=i)
+            beg = beg.clamp(0, i)
+            end = end.clamp(0, i)
+            loss = (f(b, beg) + f(e, end)) / 2
+        ys = (b, e) + ys[2:] + (loss,)
+        return qo.LossQAPools(*ys)
+
+
+class ForSeqClass(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Classifier(cfg.d_model, cfg.act, **kw)
+
+    forward = qf.forward_seq  # y = self.proj(ys[0][:, 0, :])
+
+
+class ForTokClass(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Classifier(**kw)
+
+    forward = qf.forward_tok
 
 
 class Model(PreTrained):
@@ -167,141 +300,6 @@ class Model(PreTrained):
             mask = F.pad(mask, (0, p_len), value=False)
             typ = F.pad(typ, (0, p_len), value=0)
         return p_len, x, mask, typ, pos, x_emb
-
-
-class ForCausal(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Predictor(**kw)
-
-    def forward(self, x, labels=None, **kw):
-        cfg = self.cfg
-        ys = self.model(x, **kw)
-        y = self.proj(ys[0])
-        loss = None
-        if labels is not None:
-            sl = y[:, :-1, :].contiguous()
-            ls = labels[:, 1:].contiguous()
-            loss = nn.CrossEntropyLoss()(sl.view(-1, cfg.s_vocab), ls.view(-1))
-        ys = (y,) + ys[2:] + (loss,)
-        return qo.LossCrosses(*ys)
-
-
-class ForMasked(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Predictor(**kw)
-
-    forward = qf.forward_masked
-
-
-class ForChoice(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.drop = qc.Dropout(cfg.drop, **kw)
-        self.proj = qc.Linear(cfg.d_model, 1, **kw)
-
-    forward = bert.ForChoice.forward
-
-
-class ForPreTraining(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(add_pool=True, **kw)
-        self.proj = Predictor(**kw)
-        self.seq = qc.Linear(cfg.d_model, 2, **kw)
-
-    def forward(self, x, labels=None, ns_labels=None, **kw):
-        cfg = self.cfg
-        ys = self.model(x, **kw)
-        y = self.proj(ys[0])
-        orders = self.seq(ys[1])
-        loss = None
-        if labels is not None:
-            f = nn.CrossEntropyLoss()
-            loss = f(y.view(-1, cfg.s_vocab), labels.view(-1))
-            if loss is not None:
-                loss = loss + f(orders.view(-1, 2), ns_labels.view(-1))
-        ys = (y, orders) + ys[2:] + (loss,)
-        return bert.LossSeq(*ys)
-
-
-def prep_q_mask(q_lens, n):
-    y = torch.arange(0, n).to(q_lens.device)
-    y.unsqueeze_(0)
-    y = y < q_lens
-    return y
-
-
-class ForQA(PreTrained):
-    def __init__(self, add_pool=False, **kw):
-        kw.update(n_labels=2)
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(add_pool=add_pool, **kw)
-        self.drop = qc.Dropout(cfg.drop)
-        self.ff = MLP(cfg.act, cfg.drop, cfg.eps, cfg)
-        self.proj = qc.Linear(cfg.d_model, cfg.n_labels)
-
-    def forward(self, x, beg=None, end=None, q_lens=None, typ=None, x_emb=None, **kw):
-        n = x.size(1) if x is not None else x_emb.size(1)
-        if q_lens is None and x is not None:
-            q_lens = torch.argmax(x.eq(self.SEP).int(), dim=-1) + 1
-            q_lens.unsqueeze_(1)
-        y_m = None
-        if q_lens is not None:
-            y_m = prep_q_mask(q_lens, n)
-            if typ is None:
-                typ = (~y_m).long()
-            y_m[:, 0] = False
-            y_m.unsqueeze_(2)
-        ys = self.model(x, typ=typ, x_emb=x_emb, **kw)
-        y = self.proj(self.ff(self.drop(ys[0])))
-        if y_m is not None:
-            y = y - y_m * 1e6
-        b, e = y.split(1, dim=-1)
-        b = b.squeeze(-1).contiguous()
-        e = e.squeeze(-1).contiguous()
-        loss = None
-        if beg is not None and end is not None:
-            if len(beg.size()) > 1:
-                beg = beg.squeeze(-1)
-            if len(end.size()) > 1:
-                end = end.squeeze(-1)
-            i = b.size(1)
-            f = nn.CrossEntropyLoss(ignore_index=i)
-            beg = beg.clamp(0, i)
-            end = end.clamp(0, i)
-            loss = (f(b, beg) + f(e, end)) / 2
-        ys = (b, e) + ys[2:] + (loss,)
-        return qo.LossQAPools(*ys)
-
-
-class ForSeqClass(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Classifier(cfg.d_model, cfg.act, **kw)
-
-    forward = qf.forward_seq  # y = self.proj(ys[0][:, 0, :])
-
-
-class ForTokClass(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Classifier(**kw)
-
-    forward = qf.forward_tok
 
 
 class Encoder(qc.Module):

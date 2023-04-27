@@ -1,4 +1,4 @@
-# Copyright 2022 Quantapix Authors. All Rights Reserved.
+# Copyright 2023 Quantapix Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-# https://arxiv.org/abs/1909.11942
-# https://github.com/google-research/albert
 
 import torch
 
@@ -35,30 +33,14 @@ from . import bert
 log = logging.get_logger(__name__)
 
 
-class Model(PreTrained):
-    def __init__(self, add_pool=True, **kw):
+class ForChoice(PreTrained):
+    def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
-        self.embs = Embeds(**kw)
-        self.enc = Encoder(**kw)
-        self.pool = Pool(**kw) if add_pool else None
+        self.model = Model(**kw)
+        self.proj = Classifier(n_labels=1, **kw)
 
-    def forward(self, x, x_emb=None, mask=None, head_m=None, **kw):
-        cfg = self.cfg
-        if x is not None:
-            assert x_emb is None
-            s, d = x.size(), x.device
-        else:
-            s, d = x_emb.size()[:-1], x_emb.device
-        if mask is None:
-            mask = torch.ones(s, device=d)
-        mask = self.get_mask(mask, s, d)
-        head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, x_emb, **kw)
-        ys = self.enc(ys, mask=mask, head_m=head_m, **kw)
-        if self.pool is not None:
-            ys += (self.pool(ys[0]),)
-        return qo.WithPools(*ys)
+    forward = bert.ForChoice.forward
 
 
 class ForMasked(PreTrained):
@@ -69,16 +51,6 @@ class ForMasked(PreTrained):
         self.proj = Predictor(cfg.d_embed, **kw)
 
     forward = qf.forward_masked
-
-
-class ForChoice(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Classifier(n_labels=1, **kw)
-
-    forward = bert.ForChoice.forward
 
 
 class ForPreTraining(PreTrained):
@@ -120,6 +92,32 @@ class ForTokClass(PreTrained):
         self.proj = Classifier(**kw)
 
     forward = qf.forward_tok
+
+
+class Model(PreTrained):
+    def __init__(self, add_pool=True, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.embs = Embeds(**kw)
+        self.enc = Encoder(**kw)
+        self.pool = Pool(**kw) if add_pool else None
+
+    def forward(self, x, x_emb=None, mask=None, head_m=None, **kw):
+        cfg = self.cfg
+        if x is not None:
+            assert x_emb is None
+            s, d = x.size(), x.device
+        else:
+            s, d = x_emb.size()[:-1], x_emb.device
+        if mask is None:
+            mask = torch.ones(s, device=d)
+        mask = self.get_mask(mask, s, d)
+        head_m = self.get_head_m(head_m, cfg.n_lays)
+        ys = self.embs(x, x_emb, **kw)
+        ys = self.enc(ys, mask=mask, head_m=head_m, **kw)
+        if self.pool is not None:
+            ys += (self.pool(ys[0]),)
+        return qo.WithPools(*ys)
 
 
 class Encoder(qc.Module):
