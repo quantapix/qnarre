@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datasets import load_metric
 from itertools import chain
 from torch.utils.data import DataLoader
-from transformers import default_data_collator, AutoModelForMultipleChoice, PreTrainedTokenizerBase
+from transformers import default_data_collator, AutoModelForChoicepleChoice, PreTrainedTokenizerBase
 
 from .params import TRAIN, EVAL, ALL, EACH
 from .runner import Runner as Base
@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class DataCollatorForMultipleChoice:
+class DataCollatorForChoicepleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding = True
     max_len = None
@@ -57,7 +57,7 @@ class DataCollatorForMultipleChoice:
 
 
 class Runner(Base):
-    AutoModel = AutoModelForMultipleChoice
+    AutoModel = AutoModelForChoicepleChoice
 
     @property
     def cols(self):
@@ -119,7 +119,7 @@ class Runner(Base):
             if ps.pad_to_max_length:
                 c = default_data_collator
             else:
-                c = DataCollatorForMultipleChoice(
+                c = DataCollatorForChoicepleChoice(
                     self.tokenizer, pad_to_multiple_of=(8 if mgr.use_fp16 else None)
                 )
             t = DataLoader(

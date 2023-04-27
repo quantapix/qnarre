@@ -165,7 +165,7 @@ class LossQAPools(Output):
 @dataclass
 class LossSeq(Output):
     logits: tuple | None = None
-    orders: tuple | None = None
+    next: tuple | None = None
     attns: tuple | None = None
     hiddens: tuple | None = None
     loss: tuple | None = None

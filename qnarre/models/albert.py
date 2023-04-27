@@ -71,14 +71,14 @@ class ForMasked(PreTrained):
     forward = qf.forward_masked
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
         self.model = Model(**kw)
         self.proj = Classifier(n_labels=1, **kw)
 
-    forward = bert.ForMulti.forward
+    forward = bert.ForChoice.forward
 
 
 class ForPreTraining(PreTrained):

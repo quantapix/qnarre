@@ -580,7 +580,7 @@ class Model(PreTrained):
         return hiddens
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, config):
         super().__init__(config)
         self.model = Model(config)

@@ -1157,7 +1157,7 @@ class ForQA(PreTrained):
         return qf.forward_qa(x, globals=globals, **kw)
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, config):
         super().__init__(config)
         self.longformer = Model(config)

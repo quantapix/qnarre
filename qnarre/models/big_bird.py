@@ -199,7 +199,7 @@ class ForMasked(PreTrained):
     forward = qf.forward_masked
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
@@ -207,7 +207,7 @@ class ForMulti(PreTrained):
         self.drop = qc.Dropout(cfg.drop, **kw)
         self.proj = qc.Linear(cfg.d_model, 1, **kw)
 
-    forward = bert.ForMulti.forward
+    forward = bert.ForChoice.forward
 
 
 class ForPreTraining(PreTrained):

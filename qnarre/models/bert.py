@@ -34,17 +34,7 @@ from ..prep.config.bert import PreTrained
 log = logging.get_logger(__name__)
 
 
-class ForMasked(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(add_pool=False, **kw)
-        self.proj = Predictor(**kw)
-
-    forward = qf.forward_masked
-
-
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
@@ -62,6 +52,16 @@ class ForMulti(PreTrained):
             loss = nn.CrossEntropyLoss()(y, labels)
         ys = (y,) + ys[1:] + (loss,)
         return qo.WithLoss(*ys)
+
+
+class ForMasked(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(add_pool=False, **kw)
+        self.proj = Predictor(**kw)
+
+    forward = qf.forward_masked
 
 
 class ForNext(PreTrained):
@@ -204,6 +204,130 @@ class Model(PreTrained):
         if self.pool is not None:
             ys += (self.pool(ys[0]),)
         return qo.PoolsCrosses(*ys)
+
+
+class BertModel(BertPreTrainedModel):
+    def __init__(self, config, add_pooling_layer=True):
+        super().__init__(config)
+        self.config = config
+        self.embeddings = BertEmbeddings(config)
+        self.encoder = BertEncoder(config)
+        self.pooler = BertPooler(config) if add_pooling_layer else None
+
+    def forward(
+        self,
+        x=None,
+        mask=None,
+        typ=None,
+        pos=None,
+        head_m=None,
+        x_emb=None,
+        enc=None,
+        enc_m=None,
+        past_key_values=None,
+        y_cache=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
+        output_hidden_states = (
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        if self.config.is_decoder:
+            y_cache = y_cache if y_cache is not None else self.config.y_cache
+        else:
+            y_cache = False
+
+        if x is not None and x_emb is not None:
+            raise ValueError("You cannot specify both x and x_emb at the same time")
+        elif x is not None:
+            input_shape = x.size()
+        elif x_emb is not None:
+            input_shape = x_emb.size()[:-1]
+        else:
+            raise ValueError("You have to specify either x or x_emb")
+
+        batch_size, seq_length = input_shape
+        device = x.device if x is not None else x_emb.device
+
+        # past_key_values_length
+        past_key_values_length = (
+            past_key_values[0][0].shape[2] if past_key_values is not None else 0
+        )
+
+        if mask is None:
+            mask = torch.ones(((batch_size, seq_length + past_key_values_length)), device=device)
+
+        if typ is None:
+            if hasattr(self.embeddings, "typ"):
+                buffered_typ = self.embeddings.typ[:, :seq_length]
+                buffered_typ_expanded = buffered_typ.expand(batch_size, seq_length)
+                typ = buffered_typ_expanded
+            else:
+                typ = torch.zeros(input_shape, dtype=torch.long, device=device)
+
+        # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
+        # ourselves in which case we just need to make it broadcastable to all heads.
+        extended_mask = self.get_extended_mask(mask, input_shape)
+
+        # If a 2D or 3D attention mask is provided for the cross-attention
+        # we need to make broadcastable to [batch_size, num_heads, seq_length, seq_length]
+        if self.config.is_decoder and enc is not None:
+            encoder_batch_size, encoder_sequence_length, _ = enc.size()
+            encoder_hidden_shape = (encoder_batch_size, encoder_sequence_length)
+            if enc_m is None:
+                enc_m = torch.ones(encoder_hidden_shape, device=device)
+            encoder_extended_mask = self.invert_mask(enc_m)
+        else:
+            encoder_extended_mask = None
+
+        # Prepare head mask if needed
+        # 1.0 in head_m indicate we keep the head
+        # attention_probs has shape bsz x n_heads x N x N
+        # input head_m has shape [num_heads] or [n_lays x num_heads]
+        # and head_m is converted to shape [n_lays x batch x num_heads x seq_length x seq_length]
+        head_m = self.get_head_m(head_m, self.config.n_lays)
+
+        embedding_output = self.embeddings(
+            x=x,
+            pos=pos,
+            typ=typ,
+            x_emb=x_emb,
+            past_key_values_length=past_key_values_length,
+        )
+        encoder_outputs = self.encoder(
+            embedding_output,
+            mask=extended_mask,
+            head_m=head_m,
+            enc=enc,
+            enc_m=encoder_extended_mask,
+            past_key_values=past_key_values,
+            y_cache=y_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        sequence_output = encoder_outputs[0]
+        pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+
+        if not return_dict:
+            return (sequence_output, pooled_output) + encoder_outputs[1:]
+
+        return BaseModelOutputWithPoolingAndCrossAttentions(
+            last_hidden_state=sequence_output,
+            pooler_output=pooled_output,
+            past_key_values=encoder_outputs.past_key_values,
+            hidden_states=encoder_outputs.hidden_states,
+            attentions=encoder_outputs.attentions,
+            cross_attentions=encoder_outputs.cross_attentions,
+        )
 
 
 class Encoder(qc.Module):

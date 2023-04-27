@@ -143,7 +143,7 @@ class Model(PreTrained):
         return qo.Base(y, attns, hiddens)
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)

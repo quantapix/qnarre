@@ -20,7 +20,7 @@ from transformers import (
     MODEL_MAPPING,
     AdamW,
     AutoConfig,
-    AutoModelForMultipleChoice,
+    AutoModelForChoicepleChoice,
     AutoTokenizer,
     PreTrainedTokenizerBase,
     default_data_collator,
@@ -37,7 +37,7 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
 @dataclass
-class DataCollatorForMultipleChoice:
+class DataCollatorForChoicepleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding = True
     max_len = None
@@ -173,14 +173,14 @@ def main():
         )
 
     if args.model_name:
-        model = AutoModelForMultipleChoice.from_pretrained(
+        model = AutoModelForChoicepleChoice.from_pretrained(
             args.model_name,
             from_tf=bool(".ckpt" in args.model_name),
             config=config,
         )
     else:
         logger.info("Training new model")
-        model = AutoModelForMultipleChoice.from_config(config)
+        model = AutoModelForChoicepleChoice.from_config(config)
 
     model.resize_token_embeddings(len(tokenizer))
 
@@ -237,7 +237,7 @@ def main():
         # Otherwise, `DataCollatorWithPadding` will apply dynamic padding for us (by padding to the maximum length of
         # the samples passed). When using mixed precision, we add `pad_to_multiple_of=8` to pad all tensors to multiple
         # of 8s, which will enable the use of Tensor Cores on NVIDIA hardware with compute capability >= 7.5 (Volta).
-        data_collator = DataCollatorForMultipleChoice(
+        data_collator = DataCollatorForChoicepleChoice(
             tokenizer, pad_to_multiple_of=(8 if accelerator.use_fp16 else None)
         )
 

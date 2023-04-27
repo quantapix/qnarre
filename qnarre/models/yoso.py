@@ -665,7 +665,7 @@ class ForMasked(PreTrained):
     forward = qf.forward_masked
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, config):
         super().__init__(config)
 

@@ -42,9 +42,9 @@ def forward_qa(self, x, beg=None, end=None, **kw):
         if len(end.size()) > 1:
             end = end.squeeze(-1)
         i = b.size(1)
-        f = nn.CrossEntropyLoss(ignore_index=i)
         beg.clamp_(0, i)
         end.clamp_(0, i)
+        f = nn.CrossEntropyLoss(ignore_index=i)
         loss = (f(b, beg) + f(e, end)) / 2
     ys = (b, e) + ys[1:] + (loss,)
     return qo.LossQA(*ys)

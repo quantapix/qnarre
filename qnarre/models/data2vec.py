@@ -710,7 +710,7 @@ class ForCausal(PreTrained):
         )
 
 
-class ForMulti(PreTrained):
+class ForChoice(PreTrained):
     def __init__(self, config):
         super().__init__(config)
         self.data2vec_text = Model(config)

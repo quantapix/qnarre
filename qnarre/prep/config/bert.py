@@ -1,4 +1,4 @@
-# Copyright 2022 Quantapix Authors. All Rights Reserved.
+# Copyright 2023 Quantapix Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,22 +43,23 @@ class PreTrained(qc.PreTrained):
         ),
     )
 
-    def _init_weights(self, module):
-        if isinstance(module, qc.Linear):
-            module.weight.data.normal_(mean=0.0, std=self.cfg.init_range)
-            if module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, qc.Embedding):
-            module.weight.data.normal_(mean=0.0, std=self.cfg.init_range)
-            if module.padding_idx is not None:
-                module.weight.data[module.padding_idx].zero_()
-        elif isinstance(module, qc.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
+    def _init_weights(self, x):
+        cfg = self.cfg
+        if isinstance(x, qc.Linear):
+            x.weight.data.normal_(mean=0.0, std=cfg.init_range)
+            if x.bias is not None:
+                x.bias.data.zero_()
+        elif isinstance(x, qc.Embed):
+            x.weight.data.normal_(mean=0.0, std=cfg.init_range)
+            if x.padding_idx is not None:
+                x.weight.data[cfg.PAD].zero_()
+        elif isinstance(x, qc.LayerNorm):
+            x.bias.data.zero_()
+            x.weight.data.fill_(1.0)
 
-    def _set_grad_checkpoint(self, module, value=False):
-        if isinstance(module, Encoder):
-            module.grad_checkpoint = value
+    def _set_grad_checkpoint(self, x, value=False):
+        if isinstance(x, Encoder):
+            x.grad_checkpoint = value
 
 
 MAP = {
