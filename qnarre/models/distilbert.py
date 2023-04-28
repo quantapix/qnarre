@@ -26,7 +26,7 @@ from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
 from ..core import attention as qa
-from ..core.embed import Embeds
+from ..core.embed import Embed
 from ..core.mlp import MLP, Classifier, Predictor
 from ..prep.config.distilbert import PreTrained
 
@@ -38,7 +38,7 @@ class Model(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
-        self.embs = Embeds(cfg.d_model, **kw)
+        self.emb = Embed(cfg.d_model, **kw)
         self.enc = Encoder(**kw)
 
     def forward(self, x, x_emb=None, mask=None, head_m=None, **kw):
@@ -51,7 +51,7 @@ class Model(PreTrained):
         if mask is None:
             mask = torch.ones(s, device=d)
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        y = self.embs(x, x_emb, **kw)
+        y = self.emb(x, x_emb, **kw)
         y = self.enc(y, mask=mask, head_m=head_m)
         return y
 

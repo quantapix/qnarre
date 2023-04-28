@@ -23,7 +23,7 @@ from ..core import attention as qa
 from ..core import forward as qf
 from ..core import output as qo
 from ..core import utils as qu
-from ..core.embed import Embeds
+from ..core.embed import Embed
 from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.albert import PreTrained
 
@@ -97,22 +97,22 @@ class Model(PreTrained):
     def __init__(self, add_pool=True, **kw):
         super().__init__(**kw)
         self.get_cfg(kw)
-        self.embs = Embeds(**kw)
+        self.emb = Embed(**kw)
         self.enc = Encoder(**kw)
         self.pool = Pool(**kw) if add_pool else None
 
-    def forward(self, x, x_emb=None, mask=None, head_m=None, **kw):
+    def forward(self, x, head_m=None, mask=None, x_emb=None, **kw):
         cfg = self.cfg
-        if x is not None:
+        if x is None:
+            s, d = x_emb.size()[:-1], x_emb.device
+        else:
             assert x_emb is None
             s, d = x.size(), x.device
-        else:
-            s, d = x_emb.size()[:-1], x_emb.device
         if mask is None:
             mask = torch.ones(s, device=d)
         mask = self.get_mask(mask, s, d)
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, x_emb, **kw)
+        ys = self.emb(x, x_emb, **kw)
         ys = self.enc(ys, mask=mask, head_m=head_m, **kw)
         if self.pool is not None:
             ys += (self.pool(ys[0]),)

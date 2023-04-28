@@ -25,7 +25,7 @@ from .. import core as qc
 from ..core import utils as qu
 from ..core import forward as qf
 from ..core import output as qo
-from ..core.embed import Embeds
+from ..core.embed import Embed
 from ..core.mlp import Classifier, Predictor
 from ..prep.config.electra import PreTrained
 
@@ -39,7 +39,7 @@ class Model(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
-        self.embs = Embeds(**kw)
+        self.emb = Embed(**kw)
         if cfg.d_embed != cfg.d_model:
             self.proj = qc.Linear(cfg.d_embed, cfg.d_model, **kw)
         self.enc = Encoder(**kw)
@@ -64,7 +64,7 @@ class Model(PreTrained):
         else:
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, x_emb=x_emb, c_len=c_len, **kw)
+        ys = self.emb(x, x_emb=x_emb, c_len=c_len, **kw)
         if hasattr(self, "proj"):
             ys = self.proj(ys)
         ys = self.enc(ys, mask=mask, head_m=head_m, enc=enc, enc_m=enc_m, cache=cache, **kw)

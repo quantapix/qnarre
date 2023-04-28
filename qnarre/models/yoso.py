@@ -30,7 +30,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
-from ..core.embed import Embeds
+from ..core.embed import Embed
 from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.yoso import PreTrained
 

@@ -24,7 +24,7 @@ from .. import core as qc
 from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
-from ..core.embed import Embeds
+from ..core.embed import Embed
 from ..core.mlp import MLP, Classifier, Predictor
 from ..prep.config.roberta import PreTrained
 
@@ -37,7 +37,7 @@ class Model(PreTrained):
     def __init__(self, add_pool=True, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
-        self.embs = Embeds(cfg.d_model, **kw)
+        self.emb = Embed(cfg.d_model, **kw)
         self.enc = Encoder(**kw)
         self.pool = qu.Pool(**kw) if add_pool else None
 
@@ -62,7 +62,7 @@ class Model(PreTrained):
         else:
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, **kw, c_len=c_len, x_emb=x_emb)
+        ys = self.emb(x, **kw, c_len=c_len, x_emb=x_emb)
         ys = self.enc(ys, **kw, cache=cache, enc_m=enc_m, enc=enc, head_m=head_m, mask=xm)
         pools = self.pool(ys[0]) if self.pool is not None else None
         ys += (pools,)

@@ -25,7 +25,7 @@ from .. import core as qc
 from . import utils as qu
 
 
-class Embeds(qc.Module):
+class Embed(qc.Module):
     hs = qc.Hypers(
         {"d_embed", "drop", "eps", "n_pos", "n_typ", "s_vocab"},
         {"pos_type": "absolute", "rescale": False},
@@ -39,64 +39,50 @@ class Embeds(qc.Module):
         self.tok = qc.Embed(cfg.s_vocab, cfg.d_embed, **kw)
         if cfg.n_pos is not None:
             self.pos = qc.Embed(cfg.n_pos, cfg.d_embed, **kw)
-            self.register_buffer("pos_ids", torch.arange(cfg.n_pos).expand((1, -1)))
+            self.register_buffer("pos", torch.arange(cfg.n_pos).expand((1, -1)))
             if cfg.pos_sin:
-                sin_embeds(n_pos=cfg.n_pos, dim=cfg.d_embed, out=self.pos.weight)
+                sin_embed(n_pos=cfg.n_pos, dim=cfg.d_embed, out=self.pos.weight)
         if cfg.n_typ is not None:
-            s = self.pos_ids.size()
+            s = self.pos.size()
             self.typ = qc.Embed(cfg.n_typ, cfg.d_embed, **kw)
-            self.register_buffer("typ_ids", torch.zeros(s, dtype=torch.long), persistent=False)
+            self.register_buffer("typ", torch.zeros(s, dtype=torch.long), persistent=False)
         self.norm = qc.LayerNorm(cfg.d_embed, cfg.eps, **kw)
         self.drop = qc.Dropout(cfg.drop, **kw)
 
-    def forward(self, x, y=None, typ=None, pos=None, n_kv=0, **_):
+    def forward(self, x, n_kv=0, pos=None, typ=None, x_emb=None, **_):
         cfg = self.cfg
-        if y is None:
-            y = self.tok(x)
+        if x_emb is None:
+            x_emb = self.tok(x)
             s = x.size()
         else:
-            s = y.size()[:-1]
-        b, n = s[:2]
+            s = x_emb.size()[:-1]
         if cfg.rescale:
-            y = y * (cfg.d_embed**0.5)
+            x_emb = x_emb * (cfg.d_embed**0.5)
+        b, n = s[:2]
         if typ is None:
-            if hasattr(self, "typ_ids"):
-                typ = self.typ_ids[:, :n].expand(b, n)
+            if hasattr(self, "typ"):
+                typ = self.typ[:, :n].expand(b, n)
             else:
-                typ = torch.zeros(s, dtype=torch.long, device=self.pos_ids.device)
-        y = y + self.typ(typ)
-        if self.pos_type == "absolute":
+                typ = torch.zeros(s, dtype=torch.long, device=self.pos.device)
+        y = x_emb + self.typ(typ)
+        if cfg.pos_type == "absolute":
             if pos is None:
-                # roberta
-                if x is None:
-                    pos = self.create_pos(y)
+                p = self.cfg.PAD
+                if hasattr(self, "pos"):
+                    pos = self.pos[:, n_kv : n + n_kv]
+                elif x is None:
+                    pos = torch.arange(p + 1, n + p + 1, dtype=torch.long, device=x.device)
+                    pos = pos.unsqueeze(0).expand_as(x)
                 else:
-                    p = self.cfg.PAD
                     mask = x.ne(p).int()
                     pos = (torch.cumsum(mask, dim=1).type_as(mask) + n_kv) * mask
                     pos = pos.long() + p
-                # reoberta end
-
-                if hasattr(self, "pos_ids"):
-                    pos = self.pos_ids[:, n_kv : n + n_kv]
-                else:
-                    pos = (
-                        torch.arange(n, dtype=torch.long, device=x.device).unsqueeze(0).expand_as(x)
-                    )
             y = y + self.pos(pos)
-        y = self.norm(y)
-        y = self.drop(y)
+        y = self.norm(self.drop(y))
         return y
 
-    def create_pos(self, x):
-        s = x.size()[:-1]
-        n = s[1]
-        p = self.cfg.PAD
-        y = torch.arange(p + 1, n + p + 1, dtype=torch.long, device=x.device)
-        return y.unsqueeze(0).expand(s)
 
-
-def sin_embeds(n_pos, dim, y):
+def sin_embed(n_pos, dim, y):
     y.requires_grad = False
     pos = np.array(
         [[i / np.power(10000, 2 * (j // 2) / dim) for j in range(dim)] for i in range(n_pos)]

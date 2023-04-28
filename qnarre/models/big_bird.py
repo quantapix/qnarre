@@ -27,7 +27,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
-from ..core.embed import Embeds
+from ..core.embed import Embed
 from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.big_bird import PreTrained
 
@@ -175,7 +175,7 @@ class Model(PreTrained):
     def __init__(self, add_pool=True, **kw):
         super().__init__(**kw)
         cfg = self.get_cfg(kw)
-        self.embs = Embeds(cfg.d_model, **kw)
+        self.emb = Embed(cfg.d_model, **kw)
         self.enc = Encoder(**kw)
         self.pool = Pool(**kw) if add_pool else None
         if cfg.attn_type != "original_full" and cfg.add_cross:
@@ -213,8 +213,8 @@ class Model(PreTrained):
         if mask is None:
             mask = torch.ones(((b, n + c_len)), device=d)
         if typ is None:
-            if hasattr(self.embs, "typ_ids"):
-                typ = self.embs.typ_ids[:, :n].expand(b, n)
+            if hasattr(self.emb, "typ_ids"):
+                typ = self.emb.typ_ids[:, :n].expand(b, n)
             else:
                 typ = torch.zeros(s, dtype=torch.long, device=d)
         max_tokens_to_attend = (5 + 2 * cfg.n_rand_blocks) * cfg.block_size
@@ -246,7 +246,7 @@ class Model(PreTrained):
         else:
             enc_m = None
         head_m = self.get_head_m(head_m, cfg.n_lays)
-        ys = self.embs(x, c_len=c_len, pos=pos, typ=typ, x_emb=x_emb)
+        ys = self.emb(x, c_len=c_len, pos=pos, typ=typ, x_emb=x_emb)
         ys = self.enc(
             ys,
             band_m=band_m,
@@ -296,7 +296,7 @@ class Model(PreTrained):
                 pos = F.pad(pos, (0, p_len), value=PAD)
             if x_emb is not None:
                 p = x_emb.new_full((b, p_len), cfg.PAD, dtype=torch.long)
-                x_emb = torch.cat([x_emb, self.embs(p)], dim=-2)
+                x_emb = torch.cat([x_emb, self.emb(p)], dim=-2)
             mask = F.pad(mask, (0, p_len), value=False)
             typ = F.pad(typ, (0, p_len), value=0)
         return p_len, x, mask, typ, pos, x_emb

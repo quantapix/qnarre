@@ -149,17 +149,17 @@ class Classifier(qc.Module):
         if cfg.d_lin is None:
             self.proj = qc.Linear(cfg.d_model, cfg.n_labels, **kw)
         else:
-            n = cfg.d_lin
-            self.lin = qc.Linear(cfg.d_model, n, **kw)
+            self.lin = qc.Linear(cfg.d_model, cfg.d_lin, **kw)
             self.act = qu.activation(cfg.act)
-            self.proj = qc.Linear(n, cfg.n_labels, **kw)
+            self.proj = qc.Linear(cfg.d_lin, cfg.n_labels, **kw)
         p = cfg.drop_proj if cfg.drop_proj is not None else cfg.drop
         self.drop = None if p is None else qc.Dropout(p, **kw)
 
     def forward(self, x):
         y = x  # [:, 0, :] take <s> token (equiv. to [CLS])
         if self.cfg.d_lin is not None:
-            y = self.drop(y)
+            if self.drop:
+                y = self.drop(y)
             y = self.lin(y)
             y = self.act(y)
         if self.drop:

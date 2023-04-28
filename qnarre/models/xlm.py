@@ -30,7 +30,7 @@ from ..core import utils as qu
 from ..core import output as qo
 from ..core import forward as qf
 from ..core import attention as qa
-from ..core.embed import sin_embeds
+from ..core.embed import sin_embed
 from ..core.mlp import Classifier, MLP
 
 from ..prep.config.xlm import PreTrained
@@ -49,7 +49,7 @@ class Model(PreTrained):
         assert cfg.d_embed % cfg.n_heads == 0
         self.pos_emb = qc.Embed(cfg.n_pos, cfg.d_embed, **kw)
         if cfg.sin_embeds:
-            sin_embeds(cfg.n_pos, cfg.d_embed, out=self.pos_emb.weight)
+            sin_embed(cfg.n_pos, cfg.d_embed, out=self.pos_emb.weight)
         if cfg.n_langs > 1 and cfg.use_lang_emb:
             self.lang_emb = qc.Embed(self.n_langs, cfg.d_embed, **kw)
         self.tok_emb = qc.Embed(self.s_vocab, cfg.d_embed, **kw)

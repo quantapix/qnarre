@@ -22,7 +22,7 @@ from transformers.utils import logging
 from .. import core as qc
 from ..core import utils as qu
 from ..core import output as qo
-from ..core.embed import sin_embeds
+from ..core.embed import sin_embed
 from ..prep.config.ctrl import PreTrained
 
 
@@ -37,7 +37,7 @@ class Model(PreTrained):
         cfg.scale = m**0.5 if cfg.scale else 1.0
         self.tok_emb = qc.Embed(cfg.s_vocab, m, **kw)
         self.pos_emb = qc.Embed(cfg.n_pos, m, **kw)
-        sin_embeds(cfg.n_pos, m, out=self.pos_emb.weight)
+        sin_embed(cfg.n_pos, m, out=self.pos_emb.weight)
         self.drop = qc.Dropout(cfg.drop, **kw)
         self.lays = qc.Stack(
             [Encoder(m, cfg.n_heads, cfg.d_ff, cfg.drop_resid) for _ in range(cfg.n_lays)]
