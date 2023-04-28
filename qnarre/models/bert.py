@@ -22,10 +22,10 @@ from transformers.utils import logging
 from torch.utils.checkpoint import checkpoint
 
 from .. import core as qc
-from ..core import utils as qu
+from ..core import attention as qa
 from ..core import forward as qf
 from ..core import output as qo
-from ..core import attention as qa
+from ..core import utils as qu
 from ..core.embed import Embeds
 from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.bert import PreTrained
@@ -144,9 +144,9 @@ class LMHead(PreTrained):
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
-            y = y[:, :-1, :].contiguous()
-            labels = labels[:, 1:].contiguous()
-            loss = nn.CrossEntropyLoss()(y.view(-1, self.config.s_vocab), labels.view(-1))
+            y2 = y[:, :-1, :].contiguous()
+            l = labels[:, 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(y2.view(-1, self.cfg.s_vocab), l.view(-1))
         ys = (y,) + ys[1:] + (loss,)
         return qo.LossCrosses(*ys)
 
@@ -163,9 +163,9 @@ class Masked(PreTrained):
         y = self.proj(ys[0])
         loss = None
         if labels is not None:
-            sl = y[:, :-1, :].contiguous()
-            ls = labels[:, 1:].contiguous()
-            loss = nn.CrossEntropyLoss()(sl.view(-1, self.cfg.s_vocab), ls.view(-1))
+            y2 = y[:, :-1, :].contiguous()
+            l = labels[:, 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(y2.view(-1, self.cfg.s_vocab), l.view(-1))
         ys = (y,) + ys[2:] + (loss,)
         return qo.LossCrosses(*ys)
 

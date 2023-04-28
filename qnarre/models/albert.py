@@ -15,15 +15,14 @@
 
 import torch
 
-from torch import nn
 from torch.nn import functional as F
 from transformers.utils import logging
 
 from .. import core as qc
-from ..core import utils as qu
+from ..core import attention as qa
 from ..core import forward as qf
 from ..core import output as qo
-from ..core import attention as qa
+from ..core import utils as qu
 from ..core.embed import Embeds
 from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.albert import PreTrained
@@ -59,7 +58,7 @@ class ForPreTraining(PreTrained):
         cfg = self.get_cfg(kw)
         self.model = Model(**kw)
         self.proj = Predictor(cfg.d_embed, **kw)
-        self.order = Classifier(n_labels=2, **kw)
+        self.next = Classifier(n_labels=2, **kw)
 
     forward = bert.ForPreTraining.forward
 

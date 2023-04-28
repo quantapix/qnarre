@@ -54,7 +54,7 @@ def forward_qa(self, x, beg=None, end=None, **kw):
 def forward_seq(self, x, labels=None, **kw):
     cfg = self.cfg
     ys = self.model(x, **kw)
-    y = self.proj(ys[1])  # ys[0][:, 0]; ys[0][:, 0, :]; pooled_output
+    y = self.proj(ys[1])  # ys[0][:, 0]; ys[0][:, 0, :];
     loss = None
     if labels is not None:
         if cfg.problem is None:
@@ -81,7 +81,7 @@ def forward_seq(self, x, labels=None, **kw):
 
 def forward_tok(self, x, mask=None, labels=None, **kw):
     cfg = self.cfg
-    ys = self.model(x, **kw)
+    ys = self.model(x, mask=mask, **kw)
     y = self.proj(ys[0])
     loss = None
     if labels is not None:
