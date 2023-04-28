@@ -14,10 +14,6 @@
 	path = lib/tokenizers
 	url = https://github.com/huggingface/tokenizers.git
 	branch = main
-[submodule "lib/qalugo"]
-	path = lib/qalugo
-	url = https://github.com/quantapix/qalugo.git
-	branch = main
 [submodule "lib/llama"]
 	path = lib/llama
 	url = https://github.com/facebookresearch/llama.git
