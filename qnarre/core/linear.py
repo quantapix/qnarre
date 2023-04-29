@@ -24,13 +24,13 @@ class Linear(Module):
     weight: Tensor
 
     def __init__(self, in_features, out_features, bias=True, device=None, dtype=None):
-        factory_kwargs = {"device": device, "dtype": dtype}
+        factory_kw = {"device": device, "dtype": dtype}
         super(Linear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = Parameter(torch.empty((out_features, in_features), **factory_kwargs))
+        self.weight = Parameter(torch.empty((out_features, in_features), **factory_kw))
         if bias:
-            self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
+            self.bias = Parameter(torch.empty(out_features, **factory_kw))
         else:
             self.register_parameter("bias", None)
         self.reset_parameters()
@@ -117,17 +117,17 @@ class Bilinear(Module):
         device=None,
         dtype=None,
     ):
-        factory_kwargs = {"device": device, "dtype": dtype}
+        factory_kw = {"device": device, "dtype": dtype}
         super(Bilinear, self).__init__()
         self.in1_features = in1_features
         self.in2_features = in2_features
         self.out_features = out_features
         self.weight = Parameter(
-            torch.empty((out_features, in1_features, in2_features), **factory_kwargs)
+            torch.empty((out_features, in1_features, in2_features), **factory_kw)
         )
 
         if bias:
-            self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
+            self.bias = Parameter(torch.empty(out_features, **factory_kw))
         else:
             self.register_parameter("bias", None)
         self.reset_parameters()
@@ -181,14 +181,14 @@ class LazyLinear(LazyModuleMixin, Linear):
     bias: UninitializedParameter  # type: ignore[assignment]
 
     def __init__(self, out_features, bias=True, device=None, dtype=None):
-        factory_kwargs = {"device": device, "dtype": dtype}
+        factory_kw = {"device": device, "dtype": dtype}
         # bias is hardcoded to False to avoid creating tensor
         # that will soon be overwritten.
         super().__init__(0, 0, False)
-        self.weight = UninitializedParameter(**factory_kwargs)
+        self.weight = UninitializedParameter(**factory_kw)
         self.out_features = out_features
         if bias:
-            self.bias = UninitializedParameter(**factory_kwargs)
+            self.bias = UninitializedParameter(**factory_kw)
 
     def reset_parameters(self):
         if not self.has_uninitialized_params() and self.in_features != 0:

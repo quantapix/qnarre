@@ -675,10 +675,10 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         # Load config if we don't provide a configuration
         if not isinstance(config, PretrainedConfig):
             config_path = config if config is not None else pretrained_model_name_or_path
-            config, model_kwargs = cls.config_class.from_pretrained(
+            config, model_kw = cls.config_class.from_pretrained(
                 config_path,
                 cache_dir=cache_dir,
-                return_unused_kwargs=True,
+                return_unused_kw=True,
                 force_download=force_download,
                 resume_download=resume_download,
                 proxies=proxies,
@@ -690,7 +690,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 **kw,
             )
         else:
-            model_kwargs = kw
+            model_kw = kw
 
         # Load model
         if pretrained_model_name_or_path is not None:
@@ -791,21 +791,19 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 )
             except EntryNotFoundError:
                 if filename == WEIGHTS_NAME:
-                    has_file_kwargs = {
+                    has_file_kw = {
                         "revision": revision,
                         "mirror": mirror,
                         "proxies": proxies,
                         "use_auth_token": use_auth_token,
                     }
-                    if has_file(pretrained_model_name_or_path, TF2_WEIGHTS_NAME, **has_file_kwargs):
+                    if has_file(pretrained_model_name_or_path, TF2_WEIGHTS_NAME, **has_file_kw):
                         raise EnvironmentError(
                             f"{pretrained_model_name_or_path} does not appear to have a file named {WEIGHTS_NAME} but "
                             "there is a file for TensorFlow weights. Use `from_tf=True` to load this model from those "
                             "weights."
                         )
-                    elif has_file(
-                        pretrained_model_name_or_path, FLAX_WEIGHTS_NAME, **has_file_kwargs
-                    ):
+                    elif has_file(pretrained_model_name_or_path, FLAX_WEIGHTS_NAME, **has_file_kw):
                         raise EnvironmentError(
                             f"{pretrained_model_name_or_path} does not appear to have a file named {WEIGHTS_NAME} but "
                             "there is a file for Flax weights. Use `from_flax=True` to load this model from those "
@@ -901,10 +899,10 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
             # and memory copying it on CPU or each GPU first
             with deepspeed.zero.Init(config_dict_or_path=deepspeed_config()):
                 with no_init_weights(_enable=_fast_init):
-                    model = cls(config, *model_args, **model_kwargs)
+                    model = cls(config, *model_args, **model_kw)
         else:
             with no_init_weights(_enable=_fast_init):
-                model = cls(config, *model_args, **model_kwargs)
+                model = cls(config, *model_args, **model_kw)
 
         if from_pt:
             # restore default dtype
@@ -943,7 +941,6 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 )
                 raise
         elif from_pt:
-
             if low_cpu_mem_usage:
                 cls._load_state_dict_into_model_low_mem(
                     model, loaded_state_dict_keys, resolved_archive_file
@@ -989,7 +986,6 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         ignore_mismatched_sizes=False,
         _fast_init=True,
     ):
-
         # Convert old format to new format if needed from a PyTorch state_dict
         old_keys = []
         new_keys = []

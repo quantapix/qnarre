@@ -48,19 +48,19 @@ class Tokenizer(PreTrainedTokenizer):
         eos="</s>",
         unk="<unk>",
         additional_special_tokens=[],
-        sp_model_kwargs=None,
+        sp_model_kw=None,
         **kw,
     ):
-        self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
+        self.sp_model_kw = {} if sp_model_kw is None else sp_model_kw
         super().__init__(
             eos=eos,
             unk=unk,
             additional_special_tokens=additional_special_tokens,
-            sp_model_kwargs=self.sp_model_kwargs,
+            sp_model_kw=self.sp_model_kw,
             **kw,
         )
         self.vocab_file = vocab_file
-        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kwargs)
+        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kw)
         self.sp_model.Load(vocab_file)
 
     @property
@@ -79,9 +79,9 @@ class Tokenizer(PreTrainedTokenizer):
 
     def __setstate__(self, d):
         self.__dict__ = d
-        if not hasattr(self, "sp_model_kwargs"):
-            self.sp_model_kwargs = {}
-        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kwargs)
+        if not hasattr(self, "sp_model_kw"):
+            self.sp_model_kw = {}
+        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kw)
         self.sp_model.Load(self.vocab_file)
 
     def _tokenize(self, text):

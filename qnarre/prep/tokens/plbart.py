@@ -89,12 +89,12 @@ class Tokenizer(PreTrainedTokenizer):
         tokenizer_file=None,
         src_lang=None,
         tgt_lang=None,
-        sp_model_kwargs=None,
+        sp_model_kw=None,
         additional_special_tokens=None,
         **kw,
     ):
         msk = AddedToken(msk, lstrip=True, rstrip=False) if isinstance(msk, str) else msk
-        self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
+        self.sp_model_kw = {} if sp_model_kw is None else sp_model_kw
         super().__init__(
             bos=bos,
             eos=eos,
@@ -108,10 +108,10 @@ class Tokenizer(PreTrainedTokenizer):
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             additional_special_tokens=additional_special_tokens,
-            sp_model_kwargs=self.sp_model_kwargs,
+            sp_model_kw=self.sp_model_kw,
             **kw,
         )
-        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kwargs)
+        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kw)
         self.sp_model.Load(str(vocab_file))
         self.vocab_file = vocab_file
         self.language_codes = language_codes
@@ -156,9 +156,9 @@ class Tokenizer(PreTrainedTokenizer):
 
     def __setstate__(self, d):
         self.__dict__ = d
-        if not hasattr(self, "sp_model_kwargs"):
-            self.sp_model_kwargs = {}
-        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kwargs)
+        if not hasattr(self, "sp_model_kw"):
+            self.sp_model_kw = {}
+        self.sp_model = spm.SentencePieceProcessor(**self.sp_model_kw)
         self.sp_model.LoadFromSerializedProto(self.sp_model_proto)
 
     @property
@@ -209,13 +209,13 @@ class Tokenizer(PreTrainedTokenizer):
         return_tensors,
         src_lang,
         tgt_lang,
-        **extra_kwargs,
+        **extra_kw,
     ):
         if src_lang is None or tgt_lang is None:
             raise ValueError("Translation requires a `src_lang` and a `tgt_lang` for this model")
         self.src_lang = src_lang
         inputs = self(
-            raw_inputs, add_special_tokens=True, return_tensors=return_tensors, **extra_kwargs
+            raw_inputs, add_special_tokens=True, return_tensors=return_tensors, **extra_kw
         )
         tgt_lang_id = self.convert_tokens_to_ids(tgt_lang)
         inputs["forced_bos_token_id"] = tgt_lang_id

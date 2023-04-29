@@ -66,60 +66,60 @@ class PreTrained(qc.PreTrained):
         retriever=None,
         **kw,
     ):
-        kwargs_question_encoder = {
+        kw_question_encoder = {
             argument[len("question_encoder_") :]: value
             for argument, value in kw.items()
             if argument.startswith("question_encoder_")
         }
 
-        kwargs_generator = {
+        kw_generator = {
             argument[len("generator_") :]: value
             for argument, value in kw.items()
             if argument.startswith("generator_")
         }
 
         # remove question_encoder, generator kw from kw
-        for key in kwargs_question_encoder.keys():
+        for key in kw_question_encoder.keys():
             del kw["question_encoder_" + key]
-        for key in kwargs_generator.keys():
+        for key in kw_generator.keys():
             del kw["generator_" + key]
-        question_encoder = kwargs_question_encoder.pop("model", None)
+        question_encoder = kw_question_encoder.pop("model", None)
         if question_encoder is None:
             assert question_encoder_pretrained_model_name_or_path is not None
             from ..auto.modeling_auto import AutoModel
 
-            if "config" not in kwargs_question_encoder:
+            if "config" not in kw_question_encoder:
                 from ..auto.configuration_auto import AutoConfig
 
-                question_encoder_config, kwargs_question_encoder = AutoConfig.from_pretrained(
+                question_encoder_config, kw_question_encoder = AutoConfig.from_pretrained(
                     question_encoder_pretrained_model_name_or_path,
-                    **kwargs_question_encoder,
-                    return_unused_kwargs=True,
+                    **kw_question_encoder,
+                    return_unused_kw=True,
                 )
-                kwargs_question_encoder["config"] = question_encoder_config
+                kw_question_encoder["config"] = question_encoder_config
 
             question_encoder = AutoModel.from_pretrained(
-                question_encoder_pretrained_model_name_or_path, **kwargs_question_encoder
+                question_encoder_pretrained_model_name_or_path, **kw_question_encoder
             )
 
-        generator = kwargs_generator.pop("model", None)
+        generator = kw_generator.pop("model", None)
         if generator is None:
             assert generator_pretrained_model_name_or_path is not None
             from ..auto.modeling_auto import AutoModelForSeq2SeqLM
 
-            if "config" not in kwargs_generator:
+            if "config" not in kw_generator:
                 from ..auto.configuration_auto import AutoConfig
 
-                generator_config, kwargs_generator = AutoConfig.from_pretrained(
+                generator_config, kw_generator = AutoConfig.from_pretrained(
                     generator_pretrained_model_name_or_path,
-                    **kwargs_generator,
-                    return_unused_kwargs=True,
+                    **kw_generator,
+                    return_unused_kw=True,
                 )
 
-                kwargs_generator["config"] = generator_config
+                kw_generator["config"] = generator_config
 
             generator = AutoModelForSeq2SeqLM.from_pretrained(
-                generator_pretrained_model_name_or_path, **kwargs_generator
+                generator_pretrained_model_name_or_path, **kw_generator
             )
 
         # instantiate config with corresponding kw

@@ -331,8 +331,8 @@ class GPTJPreTrainedModel(PreTrainedModel):
     supports_gradient_checkpointing = True
     _no_split_modules = ["GPTJBlock"]
 
-    def __init__(self, *inputs, **kwargs):
-        super().__init__(*inputs, **kwargs)
+    def __init__(self, *inputs, **kw):
+        super().__init__(*inputs, **kw)
 
     def _init_weights(self, module):
         """Initialize the weights."""
@@ -661,17 +661,17 @@ class GPTJForCausalLM(GPTJPreTrainedModel):
         self.lm_head = new_embeddings
 
     def prepare_inputs_for_generation(
-        self, input_ids, past_key_values=None, inputs_embeds=None, **kwargs
+        self, input_ids, past_key_values=None, inputs_embeds=None, **kw
     ):
-        token_type_ids = kwargs.get("token_type_ids", None)
-        # only last token for inputs_ids if past is defined in kwargs
+        token_type_ids = kw.get("token_type_ids", None)
+        # only last token for inputs_ids if past is defined in kw
         if past_key_values:
             input_ids = input_ids[:, -1].unsqueeze(-1)
             if token_type_ids is not None:
                 token_type_ids = token_type_ids[:, -1].unsqueeze(-1)
 
-        attention_mask = kwargs.get("attention_mask", None)
-        position_ids = kwargs.get("position_ids", None)
+        attention_mask = kw.get("attention_mask", None)
+        position_ids = kw.get("position_ids", None)
 
         if attention_mask is not None and position_ids is None:
             # create position_ids on the fly for batch generation
@@ -689,7 +689,7 @@ class GPTJForCausalLM(GPTJPreTrainedModel):
         model_inputs.update(
             {
                 "past_key_values": past_key_values,
-                "use_cache": kwargs.get("use_cache"),
+                "use_cache": kw.get("use_cache"),
                 "position_ids": position_ids,
                 "attention_mask": attention_mask,
                 "token_type_ids": token_type_ids,

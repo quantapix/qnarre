@@ -24,7 +24,7 @@ _MRPC_DEV_IDS = "https://dl.fbaipublicfiles.com/glue/data/mrpc_dev_ids.tsv"
 _MRPC_TRAIN = "https://dl.fbaipublicfiles.com/senteval/senteval_data/msr_paraphrase_train.txt"
 _MRPC_TEST = "https://dl.fbaipublicfiles.com/senteval/senteval_data/msr_paraphrase_test.txt"
 
-_MNLI_BASE_KWARGS = dict(
+_MNLI_BASE_kw = dict(
     text_features={
         "premise": "sentence1",
         "hypothesis": "sentence2",
@@ -106,15 +106,15 @@ class Glue(ds.GeneratorBasedBuilder):
         ),
         Config(
             name="mnli",
-            **_MNLI_BASE_KWARGS,
+            **_MNLI_BASE_kw,
         ),
         Config(
             name="mnli_mismatched",
-            **_MNLI_BASE_KWARGS,
+            **_MNLI_BASE_kw,
         ),
         Config(
             name="mnli_matched",
-            **_MNLI_BASE_KWARGS,
+            **_MNLI_BASE_kw,
         ),
         Config(
             name="qnli",

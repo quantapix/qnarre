@@ -39,7 +39,7 @@ def scatter(inputs, target_gpus, chunk_sizes, dim=0):
         scatter_map = None
 
 
-def scatter_kwargs(inputs, kw, target_gpus, chunk_sizes, dim=0):
+def scatter_kw(inputs, kw, target_gpus, chunk_sizes, dim=0):
     r"""Scatter with support for kw dictionary"""
     inputs = scatter(inputs, target_gpus, chunk_sizes, dim) if inputs else []
     kw = scatter(kw, target_gpus, chunk_sizes, dim) if kw else []
@@ -90,4 +90,4 @@ class BalancedDataParallel(DataParallel):
                 chunk_sizes = chunk_sizes[1:]
         else:
             return super().scatter(inputs, kw, device_ids)
-        return scatter_kwargs(inputs, kw, device_ids, chunk_sizes, dim=self.dim)
+        return scatter_kw(inputs, kw, device_ids, chunk_sizes, dim=self.dim)

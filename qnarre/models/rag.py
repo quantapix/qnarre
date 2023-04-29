@@ -435,7 +435,7 @@ class RagSequenceForGeneration(PreTrained):
         num_return_sequences=None,  # defaults to 1
         num_beams=None,  # defaults to 1
         n_docs=None,
-        **model_kwargs,
+        **model_kw,
     ):
         n_docs = n_docs if n_docs is not None else self.config.n_docs
         do_deduplication = (
@@ -466,9 +466,9 @@ class RagSequenceForGeneration(PreTrained):
             context_input_ids = context_input_ids.to(input_ids)
 
         hypos = []
-        model_kwargs["num_beams"] = num_beams
-        model_kwargs["num_return_sequences"] = num_beams
-        model_kwargs["attention_mask"] = None
+        model_kw["num_beams"] = num_beams
+        model_kw["num_return_sequences"] = num_beams
+        model_kw["attention_mask"] = None
 
         batch_size = (
             input_ids.shape[0] if input_ids is not None else context_input_ids.shape[0] // n_docs
@@ -482,7 +482,7 @@ class RagSequenceForGeneration(PreTrained):
 
             output_sequences = self.generator.generate(
                 generator_input_ids,
-                **model_kwargs,
+                **model_kw,
             )  # n_docs * n_beam, tgt_len
             if do_deduplication:
                 # do_deduplication, max_output_len
@@ -773,7 +773,7 @@ class RagTokenForGeneration(PreTrained):
         forced_eos_token_id=None,
         remove_invalid_values=None,
         exponential_decay_length_penalty=None,
-        **model_kwargs,
+        **model_kw,
     ):
         n_docs = n_docs if n_docs is not None else self.config.n_docs
         num_beams = num_beams if num_beams is not None else self.config.num_beams
@@ -868,10 +868,10 @@ class RagTokenForGeneration(PreTrained):
         doc_scores = doc_scores.repeat_interleave(num_beams, dim=0)
 
         # define start_len & additional parameters
-        model_kwargs["doc_scores"] = doc_scores
-        model_kwargs["encoder_outputs"] = encoder_outputs
-        model_kwargs["attention_mask"] = context_attention_mask
-        model_kwargs["n_docs"] = n_docs
+        model_kw["doc_scores"] = doc_scores
+        model_kw["encoder_outputs"] = encoder_outputs
+        model_kw["attention_mask"] = context_attention_mask
+        model_kw["n_docs"] = n_docs
 
         pre_processor = self._get_logits_processor(
             repetition_penalty=repetition_penalty,
@@ -906,7 +906,7 @@ class RagTokenForGeneration(PreTrained):
                 max_length=max_length,
                 PAD=PAD,
                 EOS=EOS,
-                **model_kwargs,
+                **model_kw,
             )
         elif num_beams > 1:
             length_penalty = (
@@ -934,7 +934,7 @@ class RagTokenForGeneration(PreTrained):
                 max_length=max_length,
                 PAD=PAD,
                 EOS=EOS,
-                **model_kwargs,
+                **model_kw,
             )
         else:
             raise ValueError(

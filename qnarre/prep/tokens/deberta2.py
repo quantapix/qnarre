@@ -66,10 +66,10 @@ class Tokenizer(PreTrainedTokenizer):
         pad="[PAD]",
         cls="[CLS]",
         msk="[MASK]",
-        sp_model_kwargs=None,
+        sp_model_kw=None,
         **kw,
     ):
-        self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
+        self.sp_model_kw = {} if sp_model_kw is None else sp_model_kw
         super().__init__(
             do_lower_case=do_lower_case,
             bos=bos,
@@ -80,7 +80,7 @@ class Tokenizer(PreTrainedTokenizer):
             cls=cls,
             msk=msk,
             split_by_punct=split_by_punct,
-            sp_model_kwargs=self.sp_model_kwargs,
+            sp_model_kw=self.sp_model_kw,
             **kw,
         )
         if not os.path.isfile(vocab_file):
@@ -91,7 +91,7 @@ class Tokenizer(PreTrainedTokenizer):
         self.do_lower_case = do_lower_case
         self.split_by_punct = split_by_punct
         self._tokenizer = SPMTokenizer(
-            vocab_file, split_by_punct=split_by_punct, sp_model_kwargs=self.sp_model_kwargs
+            vocab_file, split_by_punct=split_by_punct, sp_model_kw=self.sp_model_kw
         )
 
     @property
@@ -153,11 +153,11 @@ class Tokenizer(PreTrainedTokenizer):
 
 
 class SPMTokenizer:
-    def __init__(self, vocab_file, split_by_punct=False, sp_model_kwargs=None):
+    def __init__(self, vocab_file, split_by_punct=False, sp_model_kw=None):
         self.split_by_punct = split_by_punct
         self.vocab_file = vocab_file
-        self.sp_model_kwargs = {} if sp_model_kwargs is None else sp_model_kwargs
-        spm = sp.SentencePieceProcessor(**self.sp_model_kwargs)
+        self.sp_model_kw = {} if sp_model_kw is None else sp_model_kw
+        spm = sp.SentencePieceProcessor(**self.sp_model_kw)
         if not os.path.exists(vocab_file):
             raise FileNotFoundError(f"{vocab_file} does not exist!")
         spm.load(vocab_file)
@@ -182,9 +182,9 @@ class SPMTokenizer:
 
     def __setstate__(self, d):
         self.__dict__ = d
-        if not hasattr(self, "sp_model_kwargs"):
-            self.sp_model_kwargs = {}
-        self.spm = sp.SentencePieceProcessor(**self.sp_model_kwargs)
+        if not hasattr(self, "sp_model_kw"):
+            self.sp_model_kw = {}
+        self.spm = sp.SentencePieceProcessor(**self.sp_model_kw)
         self.spm.Load(self.vocab_file)
 
     def tokenize(self, text):
