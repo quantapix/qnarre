@@ -51,7 +51,7 @@ class ForCausal(PreTrained):
         if labels is not None:
             loss = nn.CrossEntropyLoss()(y.view(-1, cfg.s_vocab), labels.view(-1))
         ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCrosses(*ys[1:])
+        return qo.LossCrosses(*ys)
 
 
 class ForCondGen(PreTrained):

@@ -54,7 +54,7 @@ class PreTrained(qc.PreTrained):
             module.weight.data.fill_(1.0)
 
     def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, GPTNeoXModel):
+        if isinstance(module, Model):
             module.gradient_checkpointing = value
 
 
