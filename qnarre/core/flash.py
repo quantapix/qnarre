@@ -3,9 +3,122 @@ import torch
 import triton
 import triton.language as tl
 import flash_attn_cuda
+import torch.nn as nn
+import torch.nn.functional as F
 
-from einops import repeat
+from einops import rearrange, repeat
 from flash_attn import flash_attn_triton
+from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
+from flash_attn.bert_padding import unpad_input, pad_input
+
+
+class FlashAttention(nn.Module):
+    def __init__(self, softmax_scale=None, attention_dropout=0.0):
+        super().__init__()
+        self.softmax_scale = softmax_scale
+        self.dropout_p = attention_dropout
+
+    def forward(
+        self,
+        qkv,
+        key_padding_mask=None,
+        causal=False,
+        cu_seqlens=None,
+        max_s=None,
+        need_weights=False,
+    ):
+        assert not need_weights
+        assert qkv.dtype in [torch.float16, torch.bfloat16]
+        assert qkv.is_cuda
+
+        if cu_seqlens is None:
+            batch_size = qkv.shape[0]
+            seqlen = qkv.shape[1]
+            if key_padding_mask is None:
+                qkv = rearrange(qkv, "b s ... -> (b s) ...")
+                max_s = seqlen
+                cu_seqlens = torch.arange(
+                    0, (batch_size + 1) * seqlen, step=seqlen, dtype=torch.int32, device=qkv.device
+                )
+                output = flash_attn_unpadded_qkvpacked_func(
+                    qkv,
+                    cu_seqlens,
+                    max_s,
+                    self.dropout_p if self.training else 0.0,
+                    softmax_scale=self.softmax_scale,
+                    causal=causal,
+                )
+                output = rearrange(output, "(b s) ... -> b s ...", b=batch_size)
+            else:
+                nheads = qkv.shape[-2]
+                x = rearrange(qkv, "b s three h d -> b s (three h d)")
+                x_unpad, indices, cu_seqlens, max_s = unpad_input(x, key_padding_mask)
+                x_unpad = rearrange(x_unpad, "nnz (three h d) -> nnz three h d", three=3, h=nheads)
+                output_unpad = flash_attn_unpadded_qkvpacked_func(
+                    x_unpad,
+                    cu_seqlens,
+                    max_s,
+                    self.dropout_p if self.training else 0.0,
+                    softmax_scale=self.softmax_scale,
+                    causal=causal,
+                )
+                output = rearrange(
+                    pad_input(
+                        rearrange(output_unpad, "nnz h d -> nnz (h d)"), indices, batch_size, seqlen
+                    ),
+                    "b s (h d) -> b s h d",
+                    h=nheads,
+                )
+        else:
+            assert max_s is not None
+            output = flash_attn_unpadded_qkvpacked_func(
+                qkv,
+                cu_seqlens,
+                max_s,
+                self.dropout_p if self.training else 0.0,
+                softmax_scale=self.softmax_scale,
+                causal=causal,
+            )
+
+        return output, None
+
+
+class FlashMHA(nn.Module):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads,
+        bias=True,
+        batch_first=True,
+        attention_dropout=0.0,
+        causal=False,
+        device=None,
+        dtype=None,
+    ):
+        assert batch_first
+        factory_kwargs = {"device": device, "dtype": dtype}
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.causal = causal
+
+        self.num_heads = num_heads
+        assert self.embed_dim % num_heads == 0, "self.kdim must be divisible by num_heads"
+        self.head_dim = self.embed_dim // num_heads
+        assert (
+            self.head_dim % 8 == 0 and self.head_dim <= 128
+        ), "Only support head_dim <= 128 and divisible by 8"
+
+        self.Wqkv = nn.Linear(embed_dim, 3 * embed_dim, bias=bias, **factory_kwargs)
+        self.inner_attn = FlashAttention(attention_dropout=attention_dropout)
+        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias, **factory_kwargs)
+
+    def forward(self, x, key_padding_mask=None, need_weights=False):
+        qkv = self.Wqkv(x)
+        qkv = rearrange(qkv, "b s (three h d) -> b s three h d", three=3, h=self.num_heads)
+        context, attn_weights = self.inner_attn(
+            qkv, key_padding_mask=key_padding_mask, need_weights=need_weights, causal=self.causal
+        )
+        return self.out_proj(rearrange(context, "b s h d -> b s (h d)")), attn_weights
 
 
 # Disabling autotune for now, set num_warps=4 if headdim=64 and num_warps=8 if headdim=128
@@ -1570,3 +1683,119 @@ def flash_attn_unpadded_func_cuda(
         causal,
         return_attn_probs,
     )
+
+
+class IndexFirstAxis(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, indices):
+        ctx.save_for_backward(indices)
+        assert input.ndim >= 2
+        ctx.first_axis_dim, other_shape = input.shape[0], input.shape[1:]
+        second_dim = other_shape.numel()
+        # TD [2022-03-04] For some reason torch.gather is a bit faster than indexing.
+        # return input[indices]
+        return torch.gather(
+            rearrange(input, "b ... -> b (...)"), 0, repeat(indices, "z -> z d", d=second_dim)
+        ).reshape(-1, *other_shape)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        (indices,) = ctx.saved_tensors
+        assert grad_output.ndim >= 2
+        other_shape = grad_output.shape[1:]
+        grad_output = rearrange(grad_output, "b ... -> b (...)")
+        grad_input = torch.zeros(
+            [ctx.first_axis_dim, grad_output.shape[1]],
+            device=grad_output.device,
+            dtype=grad_output.dtype,
+        )
+        # TD [2022-03-04] For some reason torch.scatter is a bit faster than indexing.
+        # grad_input[indices] = grad_output
+        grad_input.scatter_(0, repeat(indices, "z -> z d", d=grad_output.shape[1]), grad_output)
+        return grad_input.reshape(ctx.first_axis_dim, *other_shape), None
+
+
+index_first_axis = IndexFirstAxis.apply
+
+
+class IndexPutFirstAxis(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, values, indices, first_axis_dim):
+        ctx.save_for_backward(indices)
+        assert indices.ndim == 1
+        assert values.ndim >= 2
+        output = torch.zeros(
+            first_axis_dim, *values.shape[1:], device=values.device, dtype=values.dtype
+        )
+        # TD [2022-03-04] For some reason torch.scatter is a bit faster than indexing.
+        output[indices] = values
+        # output.scatter_(0, repeat(indices, 'z -> z d', d=values.shape[1]), values)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        (indices,) = ctx.saved_tensors
+        # TD [2022-03-04] For some reason torch.gather is a bit faster than indexing.
+        grad_values = grad_output[indices]
+        # grad_values = torch.gather(grad_output, 0, repeat(indices, 'z -> z d', d=grad_output.shape[1]))
+        return grad_values, None, None
+
+
+index_put_first_axis = IndexPutFirstAxis.apply
+
+
+class IndexFirstAxisResidual(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, indices):
+        ctx.save_for_backward(indices)
+        assert input.ndim >= 2
+        ctx.first_axis_dim, other_shape = input.shape[0], input.shape[1:]
+        second_dim = other_shape.numel()
+        # TD [2022-03-04] For some reason torch.gather is a bit faster than indexing.
+        output = input[indices]
+        # We don't want to reshape input (b ... -> b (...)) since it could change the channel_last
+        # memory format to channel_first. In other words, input might not be contiguous.
+        # If we don't detach, Pytorch complains about output being a view and is being modified inplace
+        return output, input.detach()
+
+    @staticmethod
+    def backward(ctx, grad_output, grad_residual):
+        (indices,) = ctx.saved_tensors
+        assert grad_output.ndim >= 2
+        other_shape = grad_output.shape[1:]
+        assert grad_residual.shape[1:] == other_shape
+        grad_input = grad_residual
+        # grad_input[indices] += grad_output
+        indices = indices.reshape(indices.shape[0], *((1,) * (grad_output.ndim - 1)))
+        indices = indices.expand_as(grad_output)
+        grad_input.scatter_add_(0, indices, grad_output)
+        return grad_input.reshape(ctx.first_axis_dim, *other_shape), None
+
+
+index_first_axis_residual = IndexFirstAxisResidual.apply
+
+
+def unpad_input(hidden_states, attention_mask):
+    seqlens_in_batch = attention_mask.sum(dim=-1, dtype=torch.int32)
+    indices = torch.nonzero(attention_mask.flatten(), as_tuple=False).flatten()
+    max_seqlen_in_batch = seqlens_in_batch.max().item()
+    cu_seqlens = F.pad(torch.cumsum(seqlens_in_batch, dim=0, dtype=torch.torch.int32), (1, 0))
+    # TD [2022-03-04] We don't want to index with a bool mask, because Pytorch will expand the
+    # bool mask, then call nonzero to get the indices, then index with those. The indices is @dim
+    # times larger than it needs to be, wasting memory. It's faster and more memory-efficient to
+    # index with integer indices. Moreover, torch's index is a bit slower than it needs to be,
+    # so we write custom forward and backward to make it a bit faster.
+    return (
+        index_first_axis(rearrange(hidden_states, "b s ... -> (b s) ..."), indices),
+        indices,
+        cu_seqlens,
+        max_seqlen_in_batch,
+    )
+
+
+def pad_input(hidden_states, indices, batch, seqlen):
+    dim = hidden_states.shape[-1]
+    # output = torch.zeros((batch * seqlen), dim, device=hidden_states.device, dtype=hidden_states.dtype)
+    # output[indices] = hidden_states
+    output = index_put_first_axis(hidden_states, indices, batch * seqlen)
+    return rearrange(output, "(b s) ... -> b s ...", b=batch)
