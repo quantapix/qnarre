@@ -146,11 +146,7 @@ class PreTrained(nn.Module):
 class ForPreTraining(PreTrained):
     def __init__(self, cfg):
         super().__init__(cfg)
-        # If dense_seq_output, we only need to pass the hidden states for the masked out tokens
-        # (around 15%) to the classifier heads.
         self.dense_seq_output = getattr(cfg, "dense_seq_output", False)
-        # If last_layer_subset, we only need the compute the last layer for a subset of tokens
-        # (e.g., the tokens we need to compute the masked LM loss and the next-sentence prediction).
         self.last_layer_subset = getattr(cfg, "last_layer_subset", False)
         if self.last_layer_subset:
             assert self.dense_seq_output, "last_layer_subset requires dense_seq_output"
@@ -162,8 +158,7 @@ class ForPreTraining(PreTrained):
             if not use_xentropy
             else partial(CrossEntropyLoss, inplace_backward=True)
         )
-
-        self.bert = BertModel(cfg)
+        self.model = Model(cfg)
         self.cls = BertPreTrainingHeads(cfg)
         self.mlm_loss = loss_cls(ignore_index=0)
         self.nsp_loss = loss_cls(ignore_index=-1)
@@ -173,39 +168,17 @@ class ForPreTraining(PreTrained):
         self.tie_weights()
 
     def tie_weights(self):
-        self.cls.predictions.decoder.weight = self.bert.embeddings.word_embeddings.weight
+        self.cls.predictions.decoder.weight = self.model.emb.word_embeddings.weight
 
-    def forward(
-        self,
-        input_ids,
-        position_ids=None,
-        token_type_ids=None,
-        attention_mask=None,
-        labels=None,
-        next_sentence_label=None,
-    ):
-        """
-        If labels are provided, they must be 0 for masked out tokens (as specified in the attention
-        mask).
-        Outputs:
-            if `labels` and `next_sentence_label` are not `None`:
-                Outputs the total_loss which is the sum of the masked language modeling loss and the next
-                sentence classification loss.
-            if `labels` or `next_sentence_label` is `None`:
-                Outputs a tuple comprising
-                - the masked language modeling logits of shape [batch_size, sequence_length, vocab_size], and
-                - the next sentence classification logits of shape [batch_size, 2].
-
-        """
+    def forward(self, x, mask=None, labels=None, next_sentence_label=None, **kw):
         masked_tokens_mask = labels > 0 if (self.last_layer_subset and labels is not None) else None
-        outputs = self.bert(
-            input_ids,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            attention_mask=attention_mask.bool() if attention_mask is not None else None,
+        ys = self.model(
+            x,
+            mask=mask.bool() if mask is not None else None,
             masked_tokens_mask=masked_tokens_mask,
+            **kw,
         )
-        sequence_output, pooled_output = outputs.last_hidden_state, outputs.pooler_output
+        sequence_output, pooled_output = ys.last_hidden_state, ys.pooler_output
         if self.dense_seq_output and labels is not None:
             masked_token_idx = torch.nonzero(labels.flatten() > 0, as_tuple=False).flatten()
             if not self.last_layer_subset:
@@ -213,12 +186,9 @@ class ForPreTraining(PreTrained):
                     rearrange(sequence_output, "b s d -> (b s) d"), masked_token_idx
                 )
         prediction_scores, seq_relationship_score = self.cls(sequence_output, pooled_output)
-
-        total_loss = None
+        loss = None
         if labels is not None and next_sentence_label is not None:
-            if (
-                self.dense_seq_output and labels is not None
-            ):  # prediction_scores are already flattened
+            if self.dense_seq_output and labels is not None:
                 masked_lm_loss = self.mlm_loss(
                     prediction_scores, labels.flatten()[masked_token_idx]
                 )
@@ -231,17 +201,16 @@ class ForPreTraining(PreTrained):
                 rearrange(seq_relationship_score, "... t -> (...) t"),
                 rearrange(next_sentence_label, "... -> (...)"),
             )
-            total_loss = masked_lm_loss.float() + next_sentence_loss.float()
-
+            loss = masked_lm_loss.float() + next_sentence_loss.float()
         return BertForPreTrainingOutput(
-            loss=total_loss,
+            loss=loss,
             prediction_logits=prediction_scores,
             seq_relationship_logits=seq_relationship_score,
         )
 
 
 class Model(PreTrained):
-    def __init__(self, cfg, add_pooling_layer=True):
+    def __init__(self, cfg, add_pool=True):
         super().__init__(cfg)
         self.pad_vocab_size_multiple = getattr(cfg, "pad_vocab_size_multiple", 1)
         if cfg.vocab_size % self.pad_vocab_size_multiple != 0:
@@ -254,7 +223,7 @@ class Model(PreTrained):
         assert cfg.position_embedding_type == "absolute"
         assert cfg.hidden_act in ["gelu", "gelu_new", "gelu_fast"]
 
-        self.embeddings = BertEmbeddings(
+        self.emb = BertEmbeddings(
             cfg.hidden_size,
             cfg.vocab_size,
             cfg.max_position_embeddings,
@@ -263,62 +232,47 @@ class Model(PreTrained):
         )
         self.emb_drop = nn.Dropout(cfg.hidden_dropout_prob)
         self.emb_ln = nn.LayerNorm(cfg.hidden_size, eps=cfg.layer_norm_eps)
-        self.encoder = BertEncoder(cfg)
-        self.pooler = BertPooler(cfg) if add_pooling_layer else None
+        self.enc = Encoder(cfg)
+        self.pool = BertPooler(cfg) if add_pool else None
 
         self.apply(partial(_init_weights, initializer_range=cfg.initializer_range))
 
     def forward(
         self,
-        input_ids,
+        x,
         position_ids=None,
         token_type_ids=None,
-        attention_mask=None,
+        mask=None,
         masked_tokens_mask=None,
+        **kw,
     ):
-        hidden_states = self.embeddings(
-            input_ids, position_ids=position_ids, token_type_ids=token_type_ids
-        )
-        # TD [2022-12:18]: Don't need to force residual in fp32
-        # BERT puts embedding LayerNorm before embedding dropout.
+        ys = self.emb(x, **kw)
         if not self.fused_dropout_add_ln:
-            hidden_states = self.emb_ln(hidden_states)
+            ys = self.emb_ln(ys)
         else:
-            hidden_states = layer_norm(
-                hidden_states, self.emb_ln.weight, self.emb_ln.bias, self.emb_ln.eps
-            )
-        hidden_states = self.emb_drop(hidden_states)
-
+            ys = layer_norm(ys, self.emb_ln.weight, self.emb_ln.bias, self.emb_ln.eps)
+        ys = self.emb_drop(ys)
         if masked_tokens_mask is not None:
-            batch_size, seqlen = input_ids.shape[:2]
-            # We also need the first column for the CLS token
-            first_col_mask = torch.zeros(
-                batch_size, seqlen, dtype=torch.bool, device=input_ids.device
-            )
+            batch_size, seqlen = x.shape[:2]
+            first_col_mask = torch.zeros(batch_size, seqlen, dtype=torch.bool, device=x.device)
             first_col_mask[:, 0] = True
             subset_mask = masked_tokens_mask | first_col_mask
         else:
             subset_mask = None
-
-        sequence_output = self.encoder(
-            hidden_states, key_padding_mask=attention_mask, subset_mask=subset_mask
-        )
-
+        ys = self.enc(ys, key_padding_mask=mask, subset_mask=subset_mask)
         if masked_tokens_mask is None:
-            pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+            pooled_output = self.pool(ys) if self.pool is not None else None
         else:
-            # TD [2022-03-01]: the indexing here is very tricky.
-            if attention_mask is not None:
-                subset_idx = subset_mask[attention_mask]
-                pool_input = sequence_output[first_col_mask[attention_mask][subset_idx]]
-                sequence_output = sequence_output[masked_tokens_mask[attention_mask][subset_idx]]
+            if mask is not None:
+                subset_idx = subset_mask[mask]
+                pool_input = ys[first_col_mask[mask][subset_idx]]
+                ys = ys[masked_tokens_mask[mask][subset_idx]]
             else:
-                pool_input = sequence_output[first_col_mask[subset_mask]]
-                sequence_output = sequence_output[masked_tokens_mask[subset_mask]]
-            pooled_output = self.pooler(pool_input, pool=False) if self.pooler is not None else None
-
+                pool_input = ys[first_col_mask[subset_mask]]
+                ys = ys[masked_tokens_mask[subset_mask]]
+            pooled_output = self.pool(pool_input, pool=False) if self.pool is not None else None
         return BaseModelOutputWithPoolingAndCrossAttentions(
-            last_hidden_state=sequence_output,
+            last_hidden_state=ys,
             pooler_output=pooled_output,
         )
 
@@ -327,31 +281,29 @@ class Encoder(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.use_flash_attn = getattr(cfg, "use_flash_attn", False)
-        self.layers = nn.ModuleList(
-            [create_block(cfg, layer_idx=i) for i in range(cfg.num_hidden_layers)]
-        )
+        self.lays = nn.ModuleList([create_block(cfg, layer_idx=i) for i in range(cfg.n_lays)])
 
     def forward(self, hidden_states, key_padding_mask=None, subset_mask=None):
         if key_padding_mask is None or not self.use_flash_attn:
             mixer_kwargs = (
                 {"key_padding_mask": key_padding_mask} if key_padding_mask is not None else None
             )
-            for layer in self.layers:
+            for layer in self.lays:
                 hidden_states = layer(hidden_states, mixer_kwargs=mixer_kwargs)
             if subset_mask is not None:
                 hidden_states = hidden_states[subset_mask]
         else:
-            batch, seqlen = hidden_states.shape[:2]
+            b, seqlen = hidden_states.shape[:2]
             hidden_states, indices, cu_seqlens, max_seqlen_in_batch = unpad_input(
                 hidden_states, key_padding_mask
             )
             mixer_kwargs = {"cu_seqlens": cu_seqlens, "max_seqlen": max_seqlen_in_batch}
             if subset_mask is None:
-                for layer in self.layers:
+                for layer in self.lays:
                     hidden_states = layer(hidden_states, mixer_kwargs=mixer_kwargs)
-                hidden_states = pad_input(hidden_states, indices, batch, seqlen)
+                hidden_states = pad_input(hidden_states, indices, b, seqlen)
             else:
-                for layer in self.layers[:-1]:
+                for layer in self.lays[:-1]:
                     hidden_states = layer(hidden_states, mixer_kwargs=mixer_kwargs)
                 if key_padding_mask is not None:
                     subset_idx = torch.nonzero(
@@ -370,7 +322,6 @@ class Encoder(nn.Module):
                 hidden_states_subset, hidden_states = index_first_axis_residual(
                     hidden_states, subset_idx
                 )
-                # It's ok to set max_seqlen_q to be much larger
                 mixer_kwargs = {
                     "x_kv": hidden_states,
                     "cu_seqlens": subset_cu_seqlens,
@@ -378,7 +329,7 @@ class Encoder(nn.Module):
                     "cu_seqlens_k": cu_seqlens,
                     "max_seqlen_k": max_seqlen_in_batch,
                 }
-                hidden_states = self.layers[-1](hidden_states_subset, mixer_kwargs=mixer_kwargs)
+                hidden_states = self.lays[-1](hidden_states_subset, mixer_kwargs=mixer_kwargs)
         return hidden_states
 
 
@@ -417,7 +368,6 @@ def create_mlp_cls(cfg, layer_idx=None, return_residual=False):
         if FusedMLP is None:
             raise ImportError("fused_dense is not installed")
         mlp_checkpoint_lvl = getattr(cfg, "mlp_checkpoint_lvl", 0)
-        # mlp_checkpoint_lvl could be a list, which contains the checkpoint_lvl for each layer
         if isinstance(mlp_checkpoint_lvl, Sequence):
             assert layer_idx is not None
             mlp_checkpoint_lvl = mlp_checkpoint_lvl[layer_idx]
@@ -432,10 +382,7 @@ def create_mlp_cls(cfg, layer_idx=None, return_residual=False):
 
 def create_block(cfg, layer_idx=None):
     last_layer_subset = getattr(cfg, "last_layer_subset", False)
-    cross_attn = last_layer_subset and layer_idx == cfg.num_hidden_layers - 1
-    # TD [2022-12-19]: For cross attention (last layer), we actually want to return the
-    # residual x_kv, not residual x. But it's annoying to change the API (and it only affects
-    # one layer) so we just choose not to return residual in this case.
+    cross_attn = last_layer_subset and layer_idx == cfg.n_lays - 1
     return_residual = not cross_attn
     mixer_cls = create_mixer_cls(cfg, cross_attn, return_residual=return_residual)
     mlp_cls = create_mlp_cls(cfg, layer_idx, return_residual=return_residual)
@@ -520,14 +467,14 @@ def remap_state_dict(state_dict, cfg):
 
     # Attention
     last_layer_subset = getattr(cfg, "last_layer_subset", False)
-    for d in range(cfg.num_hidden_layers):
+    for d in range(cfg.n_lays):
         Wq = state_dict.pop(f"bert.encoder.layers.{d}.attention.self.query.weight")
         Wk = state_dict.pop(f"bert.encoder.layers.{d}.attention.self.key.weight")
         Wv = state_dict.pop(f"bert.encoder.layers.{d}.attention.self.value.weight")
         bq = state_dict.pop(f"bert.encoder.layers.{d}.attention.self.query.bias")
         bk = state_dict.pop(f"bert.encoder.layers.{d}.attention.self.key.bias")
         bv = state_dict.pop(f"bert.encoder.layers.{d}.attention.self.value.bias")
-        if not (last_layer_subset and d == cfg.num_hidden_layers - 1):
+        if not (last_layer_subset and d == cfg.n_lays - 1):
             state_dict[f"bert.encoder.layers.{d}.mixer.Wqkv.weight"] = torch.cat(
                 [Wq, Wk, Wv], dim=0
             )
