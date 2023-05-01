@@ -2,8 +2,10 @@ import math
 import torch
 import triton
 import triton.language as tl
+import flash_attn_cuda
 
 from einops import repeat
+from flash_attn import flash_attn_triton
 
 
 # Disabling autotune for now, set num_warps=4 if headdim=64 and num_warps=8 if headdim=128
@@ -1118,128 +1120,6 @@ class FlashAttnFunc(torch.autograd.Function):
 
 
 flash_attn_func = FlashAttnFunc.apply
-
-
-class _FlashAttnQKVPackedFunc(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, qkv, bias=None, causal=False, softmax_scale=None):
-        """Forward pass for packed FlashAttention.
-
-        Args:
-            ctx: autograd context
-            qkv: (batch, seqlen, 3, nheads, headdim)
-            bias: optional, shape broadcastible to (batch, nheads, seqlen, seqlen).
-                For example, ALiBi mask for causal would have shape (1, nheads, 1, seqlen).
-                ALiBi mask for non-causal would have shape (1, nheads, seqlen, seqlen)
-            causal (bool): whether to incorporate causal attention masking
-            softmax_scale (float, optional): scale factor for softmax
-        """
-        # Make sure that the last dimension is contiguous
-        if qkv.stride(-1) != 1:
-            qkv = qkv.contiguous()
-        o, lse, ctx.softmax_scale = _flash_attn_forward(
-            qkv[:, :, 0],
-            qkv[:, :, 1],
-            qkv[:, :, 2],
-            bias=bias,
-            causal=causal,
-            softmax_scale=softmax_scale,
-        )
-        ctx.save_for_backward(qkv, o, lse, bias)
-        ctx.causal = causal
-        return o
-
-    @staticmethod
-    def backward(ctx, do):
-        qkv, o, lse, bias = ctx.saved_tensors
-        assert not ctx.needs_input_grad[1], "FlashAttention does not support bias gradient yet"
-        # Triton's autotune causes the Tensor._version to change, and so Pytorch autograd
-        # does a memcpy. To avoid this we run in inference_mode, which doesn't track the version.
-        with torch.inference_mode():
-            dqkv = torch.empty_like(qkv)
-            _flash_attn_backward(
-                do,
-                qkv[:, :, 0],
-                qkv[:, :, 1],
-                qkv[:, :, 2],
-                o,
-                lse,
-                dqkv[:, :, 0],
-                dqkv[:, :, 1],
-                dqkv[:, :, 2],
-                bias=bias,
-                causal=ctx.causal,
-                softmax_scale=ctx.softmax_scale,
-            )
-        return dqkv, None, None, None
-
-
-flash_attn_qkvpacked_func = _FlashAttnQKVPackedFunc.apply
-
-
-class _FlashAttnFunc(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, q, k, v, bias=None, causal=False, softmax_scale=None):
-        """Forward pass for FlashAttention.
-
-        Args:
-            ctx: autograd context
-            q: (batch_size, seqlen_q, nheads, headdim)
-            k: (batch_size, seqlen_k, nheads, headdim)
-            v: (batch_size, seqlen_k, nheads, headdim)
-            bias: optional, shape broadcastible to (batch, nheads, seqlen_q, seqlen_k).
-                For example, ALiBi mask for causal would have shape (1, nheads, 1, seqlen_k).
-                ALiBi mask for non-causal would have shape (1, nheads, seqlen_q, seqlen_k)
-            causal (bool): whether to incorporate causal attention masking
-            softmax_scale (float, optional): scale factor for softmax
-        """
-        # Make sure that the last dimension is contiguous
-        q, k, v = [x if x.stride(-1) == 1 else x.contiguous() for x in [q, k, v]]
-        o, lse, ctx.softmax_scale = _flash_attn_forward(
-            q, k, v, bias=bias, causal=causal, softmax_scale=softmax_scale
-        )
-        ctx.save_for_backward(q, k, v, o, lse, bias)
-        ctx.causal = causal
-        return o
-
-    @staticmethod
-    def backward(ctx, do):
-        q, k, v, o, lse, bias = ctx.saved_tensors
-        assert not ctx.needs_input_grad[3], "FlashAttention does not support bias gradient yet"
-        # Triton's autotune causes the Tensor._version to change, and so Pytorch autograd
-        # does a memcpy. To avoid this we run in inference_mode, which doesn't track the version.
-        with torch.inference_mode():
-            dq = torch.empty_like(q)
-            dk = torch.empty_like(k)
-            dv = torch.empty_like(v)
-            _flash_attn_backward(
-                do,
-                q,
-                k,
-                v,
-                o,
-                lse,
-                dq,
-                dk,
-                dv,
-                bias=bias,
-                causal=ctx.causal,
-                softmax_scale=ctx.softmax_scale,
-            )
-        return dq, dk, dv, None, None, None
-
-
-flash_attn_func = _FlashAttnFunc.apply
-
-
-# Based on: https://github.com/HazyResearch/flash-attention/blob/4a6eaa9f27df6fff7ffb2c24e894938a687dd870/flash_attn/flash_attn_interface.py
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from flash_attn import flash_attn_triton
-import flash_attn_cuda
 
 
 def flash_attn_unpadded_unpacked_func_triton(q, k, v, bias=None, causal=False, softmax_scale=None):
