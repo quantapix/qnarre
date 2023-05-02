@@ -571,7 +571,7 @@ class Model(PreTrained):
         self.entity_embeddings = LukeEntityEmbeddings(config)
         self.encoder = Encoder(config)
 
-        self.pooler = Pool(config) if add_pooling_layer else None
+        self.pool = Pool(config) if add_pooling_layer else None
 
     def forward(
         self,
@@ -661,7 +661,7 @@ class Model(PreTrained):
         sequence_output = encoder_outputs[0]
 
         # Sixth, we compute the pooled_output, word_sequence_output and entity_sequence_output based on the sequence_output
-        pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+        pooled_output = self.pool(sequence_output) if self.pool is not None else None
 
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]

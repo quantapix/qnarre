@@ -31,7 +31,6 @@ from ..core.embed import PosEmbed
 from ..core.mlp import Classifier
 from ..prep.config.bart import PreTrained
 
-
 log = logging.get_logger(__name__)
 
 

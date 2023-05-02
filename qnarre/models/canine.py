@@ -34,12 +34,561 @@ from ..prep.config.canine import PreTrained
 
 log = logging.get_logger(__name__)
 
-LIST = ["google/canine-s", "google/canine-r"]
 
-_PRIMES = [31, 43, 59, 61, 73, 97, 103, 113, 137, 149, 157, 173, 181, 193, 211, 223]
+class ForChoice(PreTrained):
+    def __init__(self, config):
+        super().__init__(config)
+        self.canine = Model(config)
+        self.drop = qc.Dropout(config.drop)
+        self.classifier = qc.Linear(config.d_model, 1)
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
+
+        input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
+        attention_mask = (
+            attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
+        )
+        token_type_ids = (
+            token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
+        )
+        position_ids = (
+            position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
+        )
+        inputs_embeds = (
+            inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
+            if inputs_embeds is not None
+            else None
+        )
+
+        outputs = self.canine(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        pooled_output = outputs[1]
+
+        pooled_output = self.drop(pooled_output)
+        logits = self.classifier(pooled_output)
+        reshaped_logits = logits.view(-1, num_choices)
+
+        loss = None
+        if labels is not None:
+            loss_fct = CrossEntropyLoss()
+            loss = loss_fct(reshaped_logits, labels)
+
+        if not return_dict:
+            output = (reshaped_logits,) + outputs[2:]
+            return ((loss,) + output) if loss is not None else output
+
+        return qo.WithLoss(
+            loss=loss,
+            logits=reshaped_logits,
+            hiddens=outputs.hiddens,
+            attns=outputs.attns,
+        )
 
 
-class CanineEmbeddings(qc.Module):
+class ForQA(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = qc.Linear(cfg.d_model, cfg.n_labels, **kw)
+
+    forward = qf.forward_qa
+
+
+class ForSeqClass(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Classifier(**kw)
+
+    forward = qf.forward_seq
+
+
+class ForTokClass(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Classifier(**kw)
+
+    forward = qf.forward_tok
+
+
+class CaninePredictionHeadTransform(qc.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.dense = qc.Linear(cfg.d_model, cfg.d_model)
+        self.act = qu.activation(cfg.act)
+        self.norm = qc.LayerNorm(cfg.d_model, eps=cfg.eps)
+
+    def forward(self, x):
+        y = self.dense(x)
+        y = self.act(y)
+        y = self.norm(y)
+        return y
+
+
+class LMHead(qc.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.transform = CaninePredictionHeadTransform(config)
+        self.decoder = qc.Linear(config.d_model, config.s_vocab, bias=False)
+        self.bias = nn.Parameter(torch.zeros(config.s_vocab))
+        self.decoder.bias = self.bias
+
+    def forward(self, x):
+        y = self.transform(x)
+        y = self.decoder(y)
+        return y
+
+
+class CanineOnlyMLMHead(qc.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.predictions = LMHead(config)
+
+    def forward(self, sequence_output):
+        prediction_scores = self.predictions(sequence_output)
+        return prediction_scores
+
+
+class Model(PreTrained):
+    def __init__(self, config, add_pooling_layer=True):
+        super().__init__(config)
+        self.config = config
+        shallow_config = copy.deepcopy(config)
+        shallow_config.n_lays = 1
+        self.char_embeddings = Embed(config)
+        self.initial_char_encoder = Encoder(
+            shallow_config,
+            local=True,
+            always_attend_to_first_position=False,
+            first_position_attends_to_all=False,
+            attend_from_chunk_width=config.local_transformer_stride,
+            attend_from_chunk_stride=config.local_transformer_stride,
+            attend_to_chunk_width=config.local_transformer_stride,
+            attend_to_chunk_stride=config.local_transformer_stride,
+        )
+        self.chars_to_molecules = CharactersToMolecules(config)
+        self.encoder = Encoder(config)
+        self.projection = ConvProjection(config)
+        self.final_char_encoder = Encoder(shallow_config)
+        self.pool = Pool(config) if add_pooling_layer else None
+        self.post_init()
+
+    def _create_3d_attention_mask_from_input_mask(self, from_tensor, to_mask):
+        batch_size, from_seq_length = from_tensor.shape[0], from_tensor.shape[1]
+        to_seq_length = to_mask.shape[1]
+        to_mask = torch.reshape(to_mask, (batch_size, 1, to_seq_length)).float()
+        broadcast_ones = torch.ones(
+            size=(batch_size, from_seq_length, 1), dtype=torch.float32, device=to_mask.device
+        )
+        mask = broadcast_ones * to_mask
+        return mask
+
+    def _downsample_attention_mask(self, char_attention_mask, downsampling_rate):
+        batch_size, char_seq_len = char_attention_mask.shape
+        poolable_char_mask = torch.reshape(char_attention_mask, (batch_size, 1, char_seq_len))
+        pooled_molecule_mask = torch.nn.MaxPool1d(
+            kernel_size=downsampling_rate, stride=downsampling_rate
+        )(poolable_char_mask.float())
+        molecule_attention_mask = torch.squeeze(pooled_molecule_mask, dim=-1)
+        return molecule_attention_mask
+
+    def _repeat_molecules(self, molecules, char_seq_length):
+        rate = self.config.downsampling_rate
+        molecules_without_extra_cls = molecules[:, 1:, :]
+        repeated = torch.repeat_interleave(molecules_without_extra_cls, repeats=rate, dim=-2)
+        last_molecule = molecules[:, -1:, :]
+        remainder_length = torch.fmod(torch.tensor(char_seq_length), torch.tensor(rate)).item()
+        remainder_repeated = torch.repeat_interleave(
+            last_molecule,
+            # +1 molecule to compensate for truncation.
+            repeats=remainder_length + rate,
+            dim=-2,
+        )
+
+        # `repeated`: [batch_size, char_seq_len, molecule_hidden_size]
+        return torch.cat([repeated, remainder_repeated], dim=-2)
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
+        output_hidden_states = (
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
+        )
+        all_hidden_states = () if output_hidden_states else None
+        all_self_attentions = () if output_attentions else None
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        elif input_ids is not None:
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
+        else:
+            raise ValueError("You have to specify either input_ids or inputs_embeds")
+        batch_size, seq_length = input_shape
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        if attention_mask is None:
+            attention_mask = torch.ones(((batch_size, seq_length)), device=device)
+        if token_type_ids is None:
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+        extended_attention_mask = self.get_extended_attention_mask(
+            attention_mask, input_shape, device
+        )
+        molecule_attention_mask = self._downsample_attention_mask(
+            attention_mask, downsampling_rate=self.config.downsampling_rate
+        )
+        extended_molecule_attention_mask = self.get_extended_attention_mask(
+            molecule_attention_mask, (batch_size, molecule_attention_mask.shape[-1]), device
+        )
+        head_mask = self.get_head_mask(head_mask, self.config.n_lays)
+        input_char_embeddings = self.char_embeddings(
+            input_ids=input_ids,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
+        )
+        char_attention_mask = self._create_3d_attention_mask_from_input_mask(
+            input_ids, attention_mask
+        )
+        init_chars_encoder_outputs = self.initial_char_encoder(
+            input_char_embeddings,
+            attention_mask=char_attention_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+        )
+        input_char_encoding = init_chars_encoder_outputs.y
+        init_molecule_encoding = self.chars_to_molecules(input_char_encoding)
+        encoder_outputs = self.encoder(
+            init_molecule_encoding,
+            attention_mask=extended_molecule_attention_mask,
+            head_mask=head_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        molecule_sequence_output = encoder_outputs[0]
+        pooled_output = self.pool(molecule_sequence_output) if self.pool is not None else None
+        repeated_molecules = self._repeat_molecules(
+            molecule_sequence_output, char_seq_length=input_shape[-1]
+        )
+        concat = torch.cat([input_char_encoding, repeated_molecules], dim=-1)
+        sequence_output = self.projection(concat)
+        final_chars_encoder_outputs = self.final_char_encoder(
+            sequence_output,
+            attention_mask=extended_attention_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+        )
+        sequence_output = final_chars_encoder_outputs.y
+
+        if output_hidden_states:
+            deep_encoder_hidden_states = (
+                encoder_outputs.hiddens if return_dict else encoder_outputs[1]
+            )
+            all_hidden_states = (
+                all_hidden_states
+                + init_chars_encoder_outputs.hiddens
+                + deep_encoder_hidden_states
+                + final_chars_encoder_outputs.hiddens
+            )
+
+        if output_attentions:
+            deep_encoder_self_attentions = (
+                encoder_outputs.attns if return_dict else encoder_outputs[-1]
+            )
+            all_self_attentions = (
+                all_self_attentions
+                + init_chars_encoder_outputs.attns
+                + deep_encoder_self_attentions
+                + final_chars_encoder_outputs.attns
+            )
+
+        if not return_dict:
+            output = (sequence_output, pooled_output)
+            output += tuple(v for v in [all_hidden_states, all_self_attentions] if v is not None)
+            return output
+
+        return qo.WithPools(
+            y=sequence_output,
+            pools=pooled_output,
+            hiddens=all_hidden_states,
+            attns=all_self_attentions,
+        )
+
+
+class Encoder(qc.Module):
+    def __init__(
+        self,
+        config,
+        local=False,
+        always_attend_to_first_position=False,
+        first_position_attends_to_all=False,
+        attend_from_chunk_width=128,
+        attend_from_chunk_stride=128,
+        attend_to_chunk_width=128,
+        attend_to_chunk_stride=128,
+    ):
+        super().__init__()
+        self.config = config
+        self.layer = nn.ModuleList(
+            [
+                Layer(
+                    config,
+                    local,
+                    always_attend_to_first_position,
+                    first_position_attends_to_all,
+                    attend_from_chunk_width,
+                    attend_from_chunk_stride,
+                    attend_to_chunk_width,
+                    attend_to_chunk_stride,
+                )
+                for _ in range(config.n_lays)
+            ]
+        )
+        self.gradient_checkpointing = False
+
+    def forward(
+        self,
+        hiddens,
+        attention_mask=None,
+        head_mask=None,
+        output_attentions=False,
+        output_hidden_states=False,
+        return_dict=True,
+    ):
+        all_hidden_states = () if output_hidden_states else None
+        all_self_attentions = () if output_attentions else None
+        for i, layer_module in enumerate(self.layer):
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (hiddens,)
+            layer_head_mask = head_mask[i] if head_mask is not None else None
+            if self.gradient_checkpointing and self.training:
+
+                def create_custom_forward(module):
+                    def custom_forward(*inputs):
+                        return module(*inputs, output_attentions)
+
+                    return custom_forward
+
+                layer_outputs = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(layer_module),
+                    hiddens,
+                    attention_mask,
+                    layer_head_mask,
+                )
+            else:
+                layer_outputs = layer_module(
+                    hiddens, attention_mask, layer_head_mask, output_attentions
+                )
+            hiddens = layer_outputs[0]
+            if output_attentions:
+                all_self_attentions = all_self_attentions + (layer_outputs[1],)
+        if output_hidden_states:
+            all_hidden_states = all_hidden_states + (hiddens,)
+        if not return_dict:
+            return tuple(
+                v for v in [hiddens, all_hidden_states, all_self_attentions] if v is not None
+            )
+        return qo.Base(
+            y=hiddens,
+            hiddens=all_hidden_states,
+            attns=all_self_attentions,
+        )
+
+
+class Layer(qc.Module):
+    def __init__(
+        self,
+        config,
+        local,
+        always_attend_to_first_position,
+        first_position_attends_to_all,
+        attend_from_chunk_width,
+        attend_from_chunk_stride,
+        attend_to_chunk_width,
+        attend_to_chunk_stride,
+    ):
+        super().__init__()
+        self.chunk_size_feed_forward = config.chunk_size_feed_forward
+        self.seq_len_dim = 1
+        self.attention = Attention(
+            config,
+            local,
+            always_attend_to_first_position,
+            first_position_attends_to_all,
+            attend_from_chunk_width,
+            attend_from_chunk_stride,
+            attend_to_chunk_width,
+            attend_to_chunk_stride,
+        )
+        self.intermediate = Intermediate(config)
+        self.output = Output(config)
+
+    def forward(
+        self,
+        hiddens,
+        attention_mask=None,
+        head_mask=None,
+        output_attentions=False,
+    ):
+        self_attention_outputs = self.attention(
+            hiddens,
+            attention_mask,
+            head_mask,
+            output_attentions=output_attentions,
+        )
+        attention_output = self_attention_outputs[0]
+        outputs = self_attention_outputs[1:]
+        layer_output = apply_chunking_to_forward(
+            self.feed_forward_chunk,
+            self.chunk_size_feed_forward,
+            self.seq_len_dim,
+            attention_output,
+        )
+        outputs = (layer_output,) + outputs
+        return outputs
+
+    def feed_forward_chunk(self, attention_output):
+        intermediate_output = self.intermediate(attention_output)
+        layer_output = self.output(intermediate_output, attention_output)
+        return layer_output
+
+
+class Attention(qc.Module):
+    def __init__(
+        self,
+        config,
+        local=False,
+        always_attend_to_first_position=False,
+        first_position_attends_to_all=False,
+        attend_from_chunk_width=128,
+        attend_from_chunk_stride=128,
+        attend_to_chunk_width=128,
+        attend_to_chunk_stride=128,
+    ):
+        super().__init__()
+        self.self = SelfAttention(config)
+        self.output = SelfOutput(config)
+        self.local = local
+        assert attend_from_chunk_width >= attend_from_chunk_stride
+        assert attend_to_chunk_width >= attend_to_chunk_stride
+        self.always_attend_to_first_position = always_attend_to_first_position
+        self.first_position_attends_to_all = first_position_attends_to_all
+        self.attend_from_chunk_width = attend_from_chunk_width
+        self.attend_from_chunk_stride = attend_from_chunk_stride
+        self.attend_to_chunk_width = attend_to_chunk_width
+        self.attend_to_chunk_stride = attend_to_chunk_stride
+
+    def forward(
+        self,
+        hiddens,
+        attention_mask=None,
+        head_mask=None,
+        output_attentions=False,
+    ):
+        if not self.local:
+            self_outputs = self.self(hiddens, hiddens, attention_mask, head_mask, output_attentions)
+            attention_output = self_outputs[0]
+        else:
+            from_seq_length = to_seq_length = hiddens.shape[1]
+            from_tensor = to_tensor = hiddens
+            from_chunks = []
+            if self.first_position_attends_to_all:
+                from_chunks.append((0, 1))
+                from_start = 1
+            else:
+                from_start = 0
+            for chunk_start in range(from_start, from_seq_length, self.attend_from_chunk_stride):
+                chunk_end = min(from_seq_length, chunk_start + self.attend_from_chunk_width)
+                from_chunks.append((chunk_start, chunk_end))
+            to_chunks = []
+            if self.first_position_attends_to_all:
+                to_chunks.append((0, to_seq_length))
+            for chunk_start in range(0, to_seq_length, self.attend_to_chunk_stride):
+                chunk_end = min(to_seq_length, chunk_start + self.attend_to_chunk_width)
+                to_chunks.append((chunk_start, chunk_end))
+            if len(from_chunks) != len(to_chunks):
+                raise ValueError(
+                    f"Expected to have same number of `from_chunks` ({from_chunks}) and "
+                    f"`to_chunks` ({from_chunks}). Check strides."
+                )
+            attention_output_chunks = []
+            attention_probs_chunks = []
+            for (from_start, from_end), (to_start, to_end) in zip(from_chunks, to_chunks):
+                from_tensor_chunk = from_tensor[:, from_start:from_end, :]
+                to_tensor_chunk = to_tensor[:, to_start:to_end, :]
+                attention_mask_chunk = attention_mask[:, from_start:from_end, to_start:to_end]
+                if self.always_attend_to_first_position:
+                    cls_attention_mask = attention_mask[:, from_start:from_end, 0:1]
+                    attention_mask_chunk = torch.cat(
+                        [cls_attention_mask, attention_mask_chunk], dim=2
+                    )
+                    cls_position = to_tensor[:, 0:1, :]
+                    to_tensor_chunk = torch.cat([cls_position, to_tensor_chunk], dim=1)
+                attention_outputs_chunk = self.self(
+                    from_tensor_chunk,
+                    to_tensor_chunk,
+                    attention_mask_chunk,
+                    head_mask,
+                    output_attentions,
+                )
+                attention_output_chunks.append(attention_outputs_chunk[0])
+                if output_attentions:
+                    attention_probs_chunks.append(attention_outputs_chunk[1])
+            attention_output = torch.cat(attention_output_chunks, dim=1)
+        attention_output = self.output(attention_output, hiddens)
+        outputs = (attention_output,)
+        if not self.local:
+            outputs = outputs + self_outputs[1:]
+        else:
+            outputs = outputs + tuple(attention_probs_chunks)
+        return outputs
+
+
+class Embed(qc.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -170,7 +719,7 @@ class ConvProjection(qc.Module):
         return query_seq
 
 
-class CanineSelfAttention(qc.Module):
+class SelfAttention(qc.Module):
     def __init__(self, config):
         super().__init__()
         if config.d_model % config.n_heads != 0 and not hasattr(config, "d_embed"):
@@ -273,7 +822,7 @@ class CanineSelfAttention(qc.Module):
         return outputs
 
 
-class CanineSelfOutput(qc.Module):
+class SelfOutput(qc.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = qc.Linear(config.d_model, config.d_model)
@@ -287,7 +836,7 @@ class CanineSelfOutput(qc.Module):
         return hiddens
 
 
-class CanineIntermediate(qc.Module):
+class Intermediate(qc.Module):
     def __init__(self, cfg):
         super().__init__()
         self.dense = qc.Linear(cfg.d_model, cfg.d_ff)
@@ -299,7 +848,7 @@ class CanineIntermediate(qc.Module):
         return y
 
 
-class CanineOutput(qc.Module):
+class Output(qc.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = qc.Linear(config.d_ff, config.d_model)
@@ -313,554 +862,6 @@ class CanineOutput(qc.Module):
         return hiddens
 
 
-class CaninePredictionHeadTransform(qc.Module):
-    def __init__(self, cfg):
-        super().__init__()
-        self.dense = qc.Linear(cfg.d_model, cfg.d_model)
-        self.act = qu.activation(cfg.act)
-        self.norm = qc.LayerNorm(cfg.d_model, eps=cfg.eps)
+LIST = ["google/canine-s", "google/canine-r"]
 
-    def forward(self, x):
-        y = self.dense(x)
-        y = self.act(y)
-        y = self.norm(y)
-        return y
-
-
-class CanineLMPredictionHead(qc.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.transform = CaninePredictionHeadTransform(config)
-        self.decoder = qc.Linear(config.d_model, config.s_vocab, bias=False)
-        self.bias = nn.Parameter(torch.zeros(config.s_vocab))
-        self.decoder.bias = self.bias
-
-    def forward(self, x):
-        y = self.transform(x)
-        y = self.decoder(y)
-        return y
-
-
-class CanineOnlyMLMHead(qc.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.predictions = CanineLMPredictionHead(config)
-
-    def forward(self, sequence_output):
-        prediction_scores = self.predictions(sequence_output)
-        return prediction_scores
-
-
-class Model(PreTrained):
-    def __init__(self, config, add_pooling_layer=True):
-        super().__init__(config)
-        self.config = config
-        shallow_config = copy.deepcopy(config)
-        shallow_config.n_lays = 1
-        self.char_embeddings = CanineEmbeddings(config)
-        self.initial_char_encoder = Encoder(
-            shallow_config,
-            local=True,
-            always_attend_to_first_position=False,
-            first_position_attends_to_all=False,
-            attend_from_chunk_width=config.local_transformer_stride,
-            attend_from_chunk_stride=config.local_transformer_stride,
-            attend_to_chunk_width=config.local_transformer_stride,
-            attend_to_chunk_stride=config.local_transformer_stride,
-        )
-        self.chars_to_molecules = CharactersToMolecules(config)
-        self.encoder = Encoder(config)
-        self.projection = ConvProjection(config)
-        self.final_char_encoder = Encoder(shallow_config)
-        self.pooler = Pool(config) if add_pooling_layer else None
-        self.post_init()
-
-    def _create_3d_attention_mask_from_input_mask(self, from_tensor, to_mask):
-        batch_size, from_seq_length = from_tensor.shape[0], from_tensor.shape[1]
-        to_seq_length = to_mask.shape[1]
-        to_mask = torch.reshape(to_mask, (batch_size, 1, to_seq_length)).float()
-        broadcast_ones = torch.ones(
-            size=(batch_size, from_seq_length, 1), dtype=torch.float32, device=to_mask.device
-        )
-        mask = broadcast_ones * to_mask
-        return mask
-
-    def _downsample_attention_mask(self, char_attention_mask, downsampling_rate):
-        batch_size, char_seq_len = char_attention_mask.shape
-        poolable_char_mask = torch.reshape(char_attention_mask, (batch_size, 1, char_seq_len))
-        pooled_molecule_mask = torch.nn.MaxPool1d(
-            kernel_size=downsampling_rate, stride=downsampling_rate
-        )(poolable_char_mask.float())
-        molecule_attention_mask = torch.squeeze(pooled_molecule_mask, dim=-1)
-        return molecule_attention_mask
-
-    def _repeat_molecules(self, molecules, char_seq_length):
-        rate = self.config.downsampling_rate
-        molecules_without_extra_cls = molecules[:, 1:, :]
-        repeated = torch.repeat_interleave(molecules_without_extra_cls, repeats=rate, dim=-2)
-        last_molecule = molecules[:, -1:, :]
-        remainder_length = torch.fmod(torch.tensor(char_seq_length), torch.tensor(rate)).item()
-        remainder_repeated = torch.repeat_interleave(
-            last_molecule,
-            # +1 molecule to compensate for truncation.
-            repeats=remainder_length + rate,
-            dim=-2,
-        )
-
-        # `repeated`: [batch_size, char_seq_len, molecule_hidden_size]
-        return torch.cat([repeated, remainder_repeated], dim=-2)
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
-        )
-        output_hidden_states = (
-            output_hidden_states
-            if output_hidden_states is not None
-            else self.config.output_hidden_states
-        )
-        all_hidden_states = () if output_hidden_states else None
-        all_self_attentions = () if output_attentions else None
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
-        elif input_ids is not None:
-            input_shape = input_ids.size()
-        elif inputs_embeds is not None:
-            input_shape = inputs_embeds.size()[:-1]
-        else:
-            raise ValueError("You have to specify either input_ids or inputs_embeds")
-        batch_size, seq_length = input_shape
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
-        if attention_mask is None:
-            attention_mask = torch.ones(((batch_size, seq_length)), device=device)
-        if token_type_ids is None:
-            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
-        extended_attention_mask = self.get_extended_attention_mask(
-            attention_mask, input_shape, device
-        )
-        molecule_attention_mask = self._downsample_attention_mask(
-            attention_mask, downsampling_rate=self.config.downsampling_rate
-        )
-        extended_molecule_attention_mask = self.get_extended_attention_mask(
-            molecule_attention_mask, (batch_size, molecule_attention_mask.shape[-1]), device
-        )
-        head_mask = self.get_head_mask(head_mask, self.config.n_lays)
-        input_char_embeddings = self.char_embeddings(
-            input_ids=input_ids,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            inputs_embeds=inputs_embeds,
-        )
-        char_attention_mask = self._create_3d_attention_mask_from_input_mask(
-            input_ids, attention_mask
-        )
-        init_chars_encoder_outputs = self.initial_char_encoder(
-            input_char_embeddings,
-            attention_mask=char_attention_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-        )
-        input_char_encoding = init_chars_encoder_outputs.y
-        init_molecule_encoding = self.chars_to_molecules(input_char_encoding)
-        encoder_outputs = self.encoder(
-            init_molecule_encoding,
-            attention_mask=extended_molecule_attention_mask,
-            head_mask=head_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        molecule_sequence_output = encoder_outputs[0]
-        pooled_output = self.pooler(molecule_sequence_output) if self.pooler is not None else None
-        repeated_molecules = self._repeat_molecules(
-            molecule_sequence_output, char_seq_length=input_shape[-1]
-        )
-        concat = torch.cat([input_char_encoding, repeated_molecules], dim=-1)
-        sequence_output = self.projection(concat)
-        final_chars_encoder_outputs = self.final_char_encoder(
-            sequence_output,
-            attention_mask=extended_attention_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-        )
-        sequence_output = final_chars_encoder_outputs.y
-
-        if output_hidden_states:
-            deep_encoder_hidden_states = (
-                encoder_outputs.hiddens if return_dict else encoder_outputs[1]
-            )
-            all_hidden_states = (
-                all_hidden_states
-                + init_chars_encoder_outputs.hiddens
-                + deep_encoder_hidden_states
-                + final_chars_encoder_outputs.hiddens
-            )
-
-        if output_attentions:
-            deep_encoder_self_attentions = (
-                encoder_outputs.attns if return_dict else encoder_outputs[-1]
-            )
-            all_self_attentions = (
-                all_self_attentions
-                + init_chars_encoder_outputs.attns
-                + deep_encoder_self_attentions
-                + final_chars_encoder_outputs.attns
-            )
-
-        if not return_dict:
-            output = (sequence_output, pooled_output)
-            output += tuple(v for v in [all_hidden_states, all_self_attentions] if v is not None)
-            return output
-
-        return qo.WithPools(
-            y=sequence_output,
-            pools=pooled_output,
-            hiddens=all_hidden_states,
-            attns=all_self_attentions,
-        )
-
-
-class ForChoice(PreTrained):
-    def __init__(self, config):
-        super().__init__(config)
-        self.canine = Model(config)
-        self.drop = qc.Dropout(config.drop)
-        self.classifier = qc.Linear(config.d_model, 1)
-        self.post_init()
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
-
-        input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
-        attention_mask = (
-            attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
-        )
-        token_type_ids = (
-            token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
-        )
-        position_ids = (
-            position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
-        )
-        inputs_embeds = (
-            inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
-            if inputs_embeds is not None
-            else None
-        )
-
-        outputs = self.canine(
-            input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-
-        pooled_output = outputs[1]
-
-        pooled_output = self.drop(pooled_output)
-        logits = self.classifier(pooled_output)
-        reshaped_logits = logits.view(-1, num_choices)
-
-        loss = None
-        if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(reshaped_logits, labels)
-
-        if not return_dict:
-            output = (reshaped_logits,) + outputs[2:]
-            return ((loss,) + output) if loss is not None else output
-
-        return qo.WithLoss(
-            loss=loss,
-            logits=reshaped_logits,
-            hiddens=outputs.hiddens,
-            attns=outputs.attns,
-        )
-
-
-class ForQA(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = qc.Linear(cfg.d_model, cfg.n_labels, **kw)
-
-    forward = qf.forward_qa
-
-
-class ForSeqClass(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Classifier(**kw)
-
-    forward = qf.forward_seq
-
-
-class ForTokClass(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Classifier(**kw)
-
-    forward = qf.forward_tok
-
-
-class Encoder(qc.Module):
-    def __init__(
-        self,
-        config,
-        local=False,
-        always_attend_to_first_position=False,
-        first_position_attends_to_all=False,
-        attend_from_chunk_width=128,
-        attend_from_chunk_stride=128,
-        attend_to_chunk_width=128,
-        attend_to_chunk_stride=128,
-    ):
-        super().__init__()
-        self.config = config
-        self.layer = nn.ModuleList(
-            [
-                Layer(
-                    config,
-                    local,
-                    always_attend_to_first_position,
-                    first_position_attends_to_all,
-                    attend_from_chunk_width,
-                    attend_from_chunk_stride,
-                    attend_to_chunk_width,
-                    attend_to_chunk_stride,
-                )
-                for _ in range(config.n_lays)
-            ]
-        )
-        self.gradient_checkpointing = False
-
-    def forward(
-        self,
-        hiddens,
-        attention_mask=None,
-        head_mask=None,
-        output_attentions=False,
-        output_hidden_states=False,
-        return_dict=True,
-    ):
-        all_hidden_states = () if output_hidden_states else None
-        all_self_attentions = () if output_attentions else None
-        for i, layer_module in enumerate(self.layer):
-            if output_hidden_states:
-                all_hidden_states = all_hidden_states + (hiddens,)
-            layer_head_mask = head_mask[i] if head_mask is not None else None
-            if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
-                    hiddens,
-                    attention_mask,
-                    layer_head_mask,
-                )
-            else:
-                layer_outputs = layer_module(
-                    hiddens, attention_mask, layer_head_mask, output_attentions
-                )
-            hiddens = layer_outputs[0]
-            if output_attentions:
-                all_self_attentions = all_self_attentions + (layer_outputs[1],)
-        if output_hidden_states:
-            all_hidden_states = all_hidden_states + (hiddens,)
-        if not return_dict:
-            return tuple(
-                v for v in [hiddens, all_hidden_states, all_self_attentions] if v is not None
-            )
-        return qo.Base(
-            y=hiddens,
-            hiddens=all_hidden_states,
-            attns=all_self_attentions,
-        )
-
-
-class Layer(qc.Module):
-    def __init__(
-        self,
-        config,
-        local,
-        always_attend_to_first_position,
-        first_position_attends_to_all,
-        attend_from_chunk_width,
-        attend_from_chunk_stride,
-        attend_to_chunk_width,
-        attend_to_chunk_stride,
-    ):
-        super().__init__()
-        self.chunk_size_feed_forward = config.chunk_size_feed_forward
-        self.seq_len_dim = 1
-        self.attention = Attention(
-            config,
-            local,
-            always_attend_to_first_position,
-            first_position_attends_to_all,
-            attend_from_chunk_width,
-            attend_from_chunk_stride,
-            attend_to_chunk_width,
-            attend_to_chunk_stride,
-        )
-        self.intermediate = CanineIntermediate(config)
-        self.output = CanineOutput(config)
-
-    def forward(
-        self,
-        hiddens,
-        attention_mask=None,
-        head_mask=None,
-        output_attentions=False,
-    ):
-        self_attention_outputs = self.attention(
-            hiddens,
-            attention_mask,
-            head_mask,
-            output_attentions=output_attentions,
-        )
-        attention_output = self_attention_outputs[0]
-        outputs = self_attention_outputs[1:]
-        layer_output = apply_chunking_to_forward(
-            self.feed_forward_chunk,
-            self.chunk_size_feed_forward,
-            self.seq_len_dim,
-            attention_output,
-        )
-        outputs = (layer_output,) + outputs
-        return outputs
-
-    def feed_forward_chunk(self, attention_output):
-        intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output(intermediate_output, attention_output)
-        return layer_output
-
-
-class Attention(qc.Module):
-    def __init__(
-        self,
-        config,
-        local=False,
-        always_attend_to_first_position=False,
-        first_position_attends_to_all=False,
-        attend_from_chunk_width=128,
-        attend_from_chunk_stride=128,
-        attend_to_chunk_width=128,
-        attend_to_chunk_stride=128,
-    ):
-        super().__init__()
-        self.self = CanineSelfAttention(config)
-        self.output = CanineSelfOutput(config)
-        self.local = local
-        assert attend_from_chunk_width >= attend_from_chunk_stride
-        assert attend_to_chunk_width >= attend_to_chunk_stride
-        self.always_attend_to_first_position = always_attend_to_first_position
-        self.first_position_attends_to_all = first_position_attends_to_all
-        self.attend_from_chunk_width = attend_from_chunk_width
-        self.attend_from_chunk_stride = attend_from_chunk_stride
-        self.attend_to_chunk_width = attend_to_chunk_width
-        self.attend_to_chunk_stride = attend_to_chunk_stride
-
-    def forward(
-        self,
-        hiddens,
-        attention_mask=None,
-        head_mask=None,
-        output_attentions=False,
-    ):
-        if not self.local:
-            self_outputs = self.self(hiddens, hiddens, attention_mask, head_mask, output_attentions)
-            attention_output = self_outputs[0]
-        else:
-            from_seq_length = to_seq_length = hiddens.shape[1]
-            from_tensor = to_tensor = hiddens
-            from_chunks = []
-            if self.first_position_attends_to_all:
-                from_chunks.append((0, 1))
-                from_start = 1
-            else:
-                from_start = 0
-            for chunk_start in range(from_start, from_seq_length, self.attend_from_chunk_stride):
-                chunk_end = min(from_seq_length, chunk_start + self.attend_from_chunk_width)
-                from_chunks.append((chunk_start, chunk_end))
-            to_chunks = []
-            if self.first_position_attends_to_all:
-                to_chunks.append((0, to_seq_length))
-            for chunk_start in range(0, to_seq_length, self.attend_to_chunk_stride):
-                chunk_end = min(to_seq_length, chunk_start + self.attend_to_chunk_width)
-                to_chunks.append((chunk_start, chunk_end))
-            if len(from_chunks) != len(to_chunks):
-                raise ValueError(
-                    f"Expected to have same number of `from_chunks` ({from_chunks}) and "
-                    f"`to_chunks` ({from_chunks}). Check strides."
-                )
-            attention_output_chunks = []
-            attention_probs_chunks = []
-            for (from_start, from_end), (to_start, to_end) in zip(from_chunks, to_chunks):
-                from_tensor_chunk = from_tensor[:, from_start:from_end, :]
-                to_tensor_chunk = to_tensor[:, to_start:to_end, :]
-                attention_mask_chunk = attention_mask[:, from_start:from_end, to_start:to_end]
-                if self.always_attend_to_first_position:
-                    cls_attention_mask = attention_mask[:, from_start:from_end, 0:1]
-                    attention_mask_chunk = torch.cat(
-                        [cls_attention_mask, attention_mask_chunk], dim=2
-                    )
-                    cls_position = to_tensor[:, 0:1, :]
-                    to_tensor_chunk = torch.cat([cls_position, to_tensor_chunk], dim=1)
-                attention_outputs_chunk = self.self(
-                    from_tensor_chunk,
-                    to_tensor_chunk,
-                    attention_mask_chunk,
-                    head_mask,
-                    output_attentions,
-                )
-                attention_output_chunks.append(attention_outputs_chunk[0])
-                if output_attentions:
-                    attention_probs_chunks.append(attention_outputs_chunk[1])
-            attention_output = torch.cat(attention_output_chunks, dim=1)
-        attention_output = self.output(attention_output, hiddens)
-        outputs = (attention_output,)
-        if not self.local:
-            outputs = outputs + self_outputs[1:]
-        else:
-            outputs = outputs + tuple(attention_probs_chunks)
-        return outputs
+_PRIMES = [31, 43, 59, 61, 73, 97, 103, 113, 137, 149, 157, 173, 181, 193, 211, 223]

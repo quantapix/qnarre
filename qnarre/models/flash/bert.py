@@ -52,13 +52,13 @@ class BertPooler(nn.Module):
         self.dense = linear_cls(cfg.hidden_size, cfg.hidden_size)
         self.activation = nn.Tanh()
 
-    def forward(self, hidden_states, pool=True):
+    def forward(self, x, pool=True):
         # We "pool" the model by simply taking the hidden state corresponding
         # to the first token.
-        first_token_tensor = hidden_states[:, 0] if pool else hidden_states
-        pooled_output = self.dense(first_token_tensor)
-        pooled_output = self.activation(pooled_output)
-        return pooled_output
+        first_token_tensor = x[:, 0] if pool else x
+        y = self.dense(first_token_tensor)
+        y = self.activation(y)
+        return y
 
 
 class BertPredictionHeadTransform(nn.Module):

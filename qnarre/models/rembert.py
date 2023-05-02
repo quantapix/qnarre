@@ -479,7 +479,7 @@ class Model(PreTrained):
         self.embeddings = RemBertEmbeddings(config)
         self.encoder = Encoder(config)
 
-        self.pooler = Pool(config) if add_pooling_layer else None
+        self.pool = Pool(config) if add_pooling_layer else None
 
     def forward(
         self,
@@ -572,7 +572,7 @@ class Model(PreTrained):
             return_dict=return_dict,
         )
         sequence_output = encoder_outputs[0]
-        pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+        pooled_output = self.pool(sequence_output) if self.pool is not None else None
 
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]

@@ -32,171 +32,278 @@ from ..core.embed import Embed
 from ..core.mlp import Classifier, MLP, Predictor, Pool
 from ..prep.config.bert import PreTrained
 
+from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, LayerNorm, MSELoss
 
 log = logging.get_logger(__name__)
 
 
-from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, LayerNorm, MSELoss
+class ForMasked(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = Predictor(cfg.d_embed, **kw)
 
-from ...pytorch_utils import softmax_backward_data
-
-
-LIST = [
-    "microsoft/deberta-v2-xlarge",
-    "microsoft/deberta-v2-xxlarge",
-    "microsoft/deberta-v2-xlarge-mnli",
-    "microsoft/deberta-v2-xxlarge-mnli",
-]
+    forward = qf.forward_masked
 
 
-# Copied from transformers.models.deberta.modeling_deberta.ContextPooler
-class ContextPool(qc.Module):
+class ForSeqClass(PreTrained):
     def __init__(self, config):
-        super().__init__()
-        self.dense = qc.Linear(config.pooler_hidden_size, config.pooler_hidden_size)
-        self.drop = StableDropout(config.pooler_dropout)
+        super().__init__(config)
+
+        n_labels = getattr(config, "n_labels", 2)
+        self.n_labels = n_labels
+
+        self.deberta = Model(config)
+        self.pool = Pool(config)
+        output_dim = self.pool.output_dim
+
+        self.classifier = qc.Linear(output_dim, n_labels)
+        drop_out = getattr(config, "cls_dropout", None)
+        drop_out = self.config.drop if drop_out is None else drop_out
+        self.drop = StableDropout(drop_out)
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs = self.deberta(
+            input_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        encoder_layer = outputs[0]
+        pooled_output = self.pool(encoder_layer)
+        pooled_output = self.drop(pooled_output)
+        logits = self.classifier(pooled_output)
+
+        loss = None
+        if labels is not None:
+            if self.config.problem_type is None:
+                if self.n_labels == 1:
+                    # regression task
+                    loss_fn = nn.MSELoss()
+                    logits = logits.view(-1).to(labels.dtype)
+                    loss = loss_fn(logits, labels.view(-1))
+                elif labels.dim() == 1 or labels.size(-1) == 1:
+                    label_index = (labels >= 0).nonzero()
+                    labels = labels.long()
+                    if label_index.size(0) > 0:
+                        labeled_logits = torch.gather(
+                            logits, 0, label_index.expand(label_index.size(0), logits.size(1))
+                        )
+                        labels = torch.gather(labels, 0, label_index.view(-1))
+                        loss_fct = CrossEntropyLoss()
+                        loss = loss_fct(
+                            labeled_logits.view(-1, self.n_labels).float(), labels.view(-1)
+                        )
+                    else:
+                        loss = torch.tensor(0).to(logits)
+                else:
+                    log_softmax = nn.LogSoftmax(-1)
+                    loss = -((log_softmax(logits) * labels).sum(-1)).mean()
+            elif self.config.problem_type == "regression":
+                loss_fct = MSELoss()
+                if self.n_labels == 1:
+                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                else:
+                    loss = loss_fct(logits, labels)
+            elif self.config.problem_type == "single_label_classification":
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(logits.view(-1, self.n_labels), labels.view(-1))
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
+        if not return_dict:
+            output = (logits,) + outputs[1:]
+            return ((loss,) + output) if loss is not None else output
+
+        return SequenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hiddens=outputs.hiddens,
+            attns=outputs.attns,
+        )
+
+
+class ForTokClass(PreTrained):
+    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_labels = config.n_labels
+        self.deberta = Model(config)
+        self.drop = qc.Dropout(config.drop)
+        self.classifier = qc.Linear(config.d_model, config.n_labels)
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs = self.deberta(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        sequence_output = outputs[0]
+
+        sequence_output = self.drop(sequence_output)
+        logits = self.classifier(sequence_output)
+
+        loss = None
+        if labels is not None:
+            loss_fct = CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.n_labels), labels.view(-1))
+
+        if not return_dict:
+            output = (logits,) + outputs[1:]
+            return ((loss,) + output) if loss is not None else output
+
+        return TokenClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hiddens=outputs.hiddens,
+            attns=outputs.attns,
+        )
+
+
+class ForQA(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = qc.Linear(cfg.d_model, cfg.n_labels, **kw)
+
+    forward = qf.forward_qa
+
+
+class Model(PreTrained):
+    def __init__(self, config):
+        super().__init__(config)
+        self.embeddings = Embed(config)
+        self.encoder = Encoder(config)
+        self.z_steps = 0
         self.config = config
 
-    def forward(self, hiddens):
-        context_token = hiddens[:, 0]
-        context_token = self.drop(context_token)
-        pooled_output = self.dense(context_token)
-        pooled_output = qu.activation(self.config.pooler_hidden_act)(pooled_output)
-        return pooled_output
-
-    @property
-    def output_dim(self):
-        return self.config.d_model
-
-
-# Copied from transformers.models.deberta.modeling_deberta.XSoftmax with deberta->deberta_v2
-class XSoftmax(torch.autograd.Function):
-    @staticmethod
-    def forward(self, input, mask, dim):
-        self.dim = dim
-        rmask = ~(mask.bool())
-
-        output = input.masked_fill(rmask, float("-inf"))
-        output = torch.softmax(output, self.dim)
-        output.masked_fill_(rmask, 0)
-        self.save_for_backward(output)
-        return output
-
-    @staticmethod
-    def backward(self, grad_output):
-        (output,) = self.saved_tensors
-        inputGrad = softmax_backward_data(self, grad_output, output, self.dim, output)
-        return inputGrad, None, None
-
-    @staticmethod
-    def symbolic(g, self, mask, dim):
-        import torch.onnx.symbolic_helper as sym_help
-        from torch.onnx.symbolic_opset9 import masked_fill, softmax
-
-        mask_cast_value = g.op("Cast", mask, to_i=sym_help.cast_pytorch_to_onnx["Long"])
-        r_mask = g.op(
-            "Cast",
-            g.op(
-                "Sub", g.op("Constant", value_t=torch.tensor(1, dtype=torch.int64)), mask_cast_value
-            ),
-            to_i=sym_help.cast_pytorch_to_onnx["Byte"],
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
         )
-        output = masked_fill(g, self, r_mask, g.op("Constant", value_t=torch.tensor(float("-inf"))))
-        output = softmax(g, output, dim)
-        return masked_fill(
-            g, output, r_mask, g.op("Constant", value_t=torch.tensor(0, dtype=torch.uint8))
+        output_hidden_states = (
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        elif input_ids is not None:
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
+        else:
+            raise ValueError("You have to specify either input_ids or inputs_embeds")
+
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+
+        if attention_mask is None:
+            attention_mask = torch.ones(input_shape, device=device)
+        if token_type_ids is None:
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+
+        embedding_output = self.embeddings(
+            input_ids=input_ids,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            mask=attention_mask,
+            inputs_embeds=inputs_embeds,
         )
 
+        encoder_outputs = self.encoder(
+            embedding_output,
+            attention_mask,
+            output_hidden_states=True,
+            output_attentions=output_attentions,
+            return_dict=return_dict,
+        )
+        encoded_layers = encoder_outputs[1]
 
-# Copied from transformers.models.deberta.modeling_deberta.DropoutContext
-class DropoutContext(object):
-    def __init__(self):
-        self.drop = 0
-        self.mask = None
-        self.scale = 1
-        self.reuse_mask = True
+        if self.z_steps > 1:
+            hiddens = encoded_layers[-2]
+            layers = [self.encoder.layer[-1] for _ in range(self.z_steps)]
+            query_states = encoded_layers[-1]
+            rel_embeddings = self.encoder.get_rel_embedding()
+            attention_mask = self.encoder.get_attention_mask(attention_mask)
+            rel_pos = self.encoder.get_rel_pos(embedding_output)
+            for layer in layers[1:]:
+                query_states = layer(
+                    hiddens,
+                    attention_mask,
+                    output_attentions=False,
+                    query_states=query_states,
+                    relative_pos=rel_pos,
+                    rel_embeddings=rel_embeddings,
+                )
+                encoded_layers.append(query_states)
 
+        sequence_output = encoded_layers[-1]
 
-# Copied from transformers.models.deberta.modeling_deberta.get_mask
-def get_mask(input, local_context):
-    if not isinstance(local_context, DropoutContext):
-        drop = local_context
-        mask = None
-    else:
-        drop = local_context.drop
-        drop *= local_context.scale
-        mask = local_context.mask if local_context.reuse_mask else None
+        if not return_dict:
+            return (sequence_output,) + encoder_outputs[(1 if output_hidden_states else 2) :]
 
-    if drop > 0 and mask is None:
-        mask = (1 - torch.empty_like(input).bernoulli_(1 - drop)).bool()
-
-    if isinstance(local_context, DropoutContext):
-        if local_context.mask is None:
-            local_context.mask = mask
-
-    return mask, drop
-
-
-# Copied from transformers.models.deberta.modeling_deberta.XDropout
-class XDropout(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, local_ctx):
-        mask, drop = get_mask(input, local_ctx)
-        ctx.scale = 1.0 / (1 - drop)
-        if drop > 0:
-            ctx.save_for_backward(mask)
-            return input.masked_fill(mask, 0) * ctx.scale
-        else:
-            return input
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        if ctx.scale > 1:
-            (mask,) = ctx.saved_tensors
-            return grad_output.masked_fill(mask, 0) * ctx.scale, None
-        else:
-            return grad_output, None
-
-
-# Copied from transformers.models.deberta.modeling_deberta.StableDropout
-class StableDropout(qc.Module):
-    def __init__(self, drop_prob):
-        super().__init__()
-        self.drop_prob = drop_prob
-        self.count = 0
-        self.context_stack = None
-
-    def forward(self, x):
-        if self.training and self.drop_prob > 0:
-            return XDropout.apply(x, self.get_context())
-        return x
-
-    def clear_context(self):
-        self.count = 0
-        self.context_stack = None
-
-    def init_context(self, reuse_mask=True, scale=1):
-        if self.context_stack is None:
-            self.context_stack = []
-        self.count = 0
-        for c in self.context_stack:
-            c.reuse_mask = reuse_mask
-            c.scale = scale
-
-    def get_context(self):
-        if self.context_stack is not None:
-            if self.count >= len(self.context_stack):
-                self.context_stack.append(DropoutContext())
-            ctx = self.context_stack[self.count]
-            ctx.drop = self.drop_prob
-            self.count += 1
-            return ctx
-        else:
-            return self.drop_prob
+        return qo.Base(
+            y=sequence_output,
+            hiddens=encoder_outputs.hiddens if output_hidden_states else None,
+            attns=encoder_outputs.attns,
+        )
 
 
 # Copied from transformers.models.deberta.modeling_deberta.DebertaSelfOutput with DebertaLayerNorm->LayerNorm
-class DebertaV2SelfOutput(qc.Module):
+class SelfOutput(qc.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = qc.Linear(config.d_model, config.d_model)
@@ -214,8 +321,8 @@ class DebertaV2SelfOutput(qc.Module):
 class Attention(qc.Module):
     def __init__(self, config):
         super().__init__()
-        self.self = DisentangledSelfAttention(config)
-        self.output = DebertaV2SelfOutput(config)
+        self.self = SelfAttention(config)
+        self.output = SelfOutput(config)
         self.config = config
 
     def forward(
@@ -248,7 +355,7 @@ class Attention(qc.Module):
 
 
 # Copied from transformers.models.bert.modeling_bert.BertIntermediate with Bert->DebertaV2
-class DebertaV2Intermediate(qc.Module):
+class Intermediate(qc.Module):
     def __init__(self, cfg):
         super().__init__()
         self.dense = qc.Linear(cfg.d_model, cfg.d_ff)
@@ -261,7 +368,7 @@ class DebertaV2Intermediate(qc.Module):
 
 
 # Copied from transformers.models.deberta.modeling_deberta.DebertaOutput with DebertaLayerNorm->LayerNorm
-class DebertaV2Output(qc.Module):
+class Output(qc.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = qc.Linear(config.d_ff, config.d_model)
@@ -281,8 +388,8 @@ class Layer(qc.Module):
     def __init__(self, config):
         super().__init__()
         self.attention = Attention(config)
-        self.intermediate = DebertaV2Intermediate(config)
-        self.output = DebertaV2Output(config)
+        self.intermediate = Intermediate(config)
+        self.output = Output(config)
 
     def forward(
         self,
@@ -350,7 +457,7 @@ class ConvLayer(qc.Module):
         return output_states
 
 
-class DebertaV2Encoder(qc.Module):
+class Encoder(qc.Module):
     def __init__(self, config):
         super().__init__()
 
@@ -495,50 +602,7 @@ class DebertaV2Encoder(qc.Module):
         )
 
 
-def make_log_bucket_position(relative_pos, bucket_size, max_position):
-    sign = np.sign(relative_pos)
-    mid = bucket_size // 2
-    abs_pos = np.where((relative_pos < mid) & (relative_pos > -mid), mid - 1, np.abs(relative_pos))
-    log_pos = np.ceil(np.log(abs_pos / mid) / np.log((max_position - 1) / mid) * (mid - 1)) + mid
-    bucket_pos = np.where(abs_pos <= mid, relative_pos, log_pos * sign).astype(np.int)
-    return bucket_pos
-
-
-def build_relative_position(query_size, key_size, bucket_size=-1, max_position=-1):
-    q_ids = np.arange(0, query_size)
-    k_ids = np.arange(0, key_size)
-    rel_pos_ids = q_ids[:, None] - np.tile(k_ids, (q_ids.shape[0], 1))
-    if bucket_size > 0 and max_position > 0:
-        rel_pos_ids = make_log_bucket_position(rel_pos_ids, bucket_size, max_position)
-    rel_pos_ids = torch.tensor(rel_pos_ids, dtype=torch.long)
-    rel_pos_ids = rel_pos_ids[:query_size, :]
-    rel_pos_ids = rel_pos_ids.unsqueeze(0)
-    return rel_pos_ids
-
-
-@torch.jit.script
-# Copied from transformers.models.deberta.modeling_deberta.c2p_dynamic_expand
-def c2p_dynamic_expand(c2p_pos, query_layer, relative_pos):
-    return c2p_pos.expand(
-        [query_layer.size(0), query_layer.size(1), query_layer.size(2), relative_pos.size(-1)]
-    )
-
-
-@torch.jit.script
-# Copied from transformers.models.deberta.modeling_deberta.p2c_dynamic_expand
-def p2c_dynamic_expand(c2p_pos, query_layer, key_layer):
-    return c2p_pos.expand(
-        [query_layer.size(0), query_layer.size(1), key_layer.size(-2), key_layer.size(-2)]
-    )
-
-
-@torch.jit.script
-# Copied from transformers.models.deberta.modeling_deberta.pos_dynamic_expand
-def pos_dynamic_expand(pos_index, p2c_att, key_layer):
-    return pos_index.expand(p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2)))
-
-
-class DisentangledSelfAttention(qc.Module):
+class SelfAttention(qc.Module):
     def __init__(self, config):
         super().__init__()
         if config.d_model % config.n_heads != 0:
@@ -728,7 +792,7 @@ class DisentangledSelfAttention(qc.Module):
 
 
 # Copied from transformers.models.deberta.modeling_deberta.DebertaEmbeddings with DebertaLayerNorm->LayerNorm
-class DebertaV2Embeddings(qc.Module):
+class Embed(qc.Module):
     def __init__(self, config):
         super().__init__()
         PAD = getattr(config, "PAD", 0)
@@ -804,266 +868,198 @@ class DebertaV2Embeddings(qc.Module):
         return embeddings
 
 
-class Model(PreTrained):
+# Copied from transformers.models.deberta.modeling_deberta.Pooler
+class Pool(qc.Module):
     def __init__(self, config):
-        super().__init__(config)
-        self.embeddings = DebertaV2Embeddings(config)
-        self.encoder = DebertaV2Encoder(config)
-        self.z_steps = 0
+        super().__init__()
+        self.dense = qc.Linear(config.pooler_hidden_size, config.pooler_hidden_size)
+        self.drop = StableDropout(config.pooler_dropout)
         self.config = config
 
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        inputs_embeds=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
-        )
-        output_hidden_states = (
-            output_hidden_states
-            if output_hidden_states is not None
-            else self.config.output_hidden_states
-        )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+    def forward(self, hiddens):
+        context_token = hiddens[:, 0]
+        context_token = self.drop(context_token)
+        pooled_output = self.dense(context_token)
+        pooled_output = qu.activation(self.config.pooler_hidden_act)(pooled_output)
+        return pooled_output
 
-        if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
-        elif input_ids is not None:
-            input_shape = input_ids.size()
-        elif inputs_embeds is not None:
-            input_shape = inputs_embeds.size()[:-1]
+    @property
+    def output_dim(self):
+        return self.config.d_model
+
+
+# Copied from transformers.models.deberta.modeling_deberta.XSoftmax with deberta->deberta_v2
+class XSoftmax(torch.autograd.Function):
+    @staticmethod
+    def forward(self, input, mask, dim):
+        self.dim = dim
+        rmask = ~(mask.bool())
+
+        output = input.masked_fill(rmask, float("-inf"))
+        output = torch.softmax(output, self.dim)
+        output.masked_fill_(rmask, 0)
+        self.save_for_backward(output)
+        return output
+
+    @staticmethod
+    def backward(self, grad_output):
+        (output,) = self.saved_tensors
+        inputGrad = softmax_backward_data(self, grad_output, output, self.dim, output)
+        return inputGrad, None, None
+
+    @staticmethod
+    def symbolic(g, self, mask, dim):
+        import torch.onnx.symbolic_helper as sym_help
+        from torch.onnx.symbolic_opset9 import masked_fill, softmax
+
+        mask_cast_value = g.op("Cast", mask, to_i=sym_help.cast_pytorch_to_onnx["Long"])
+        r_mask = g.op(
+            "Cast",
+            g.op(
+                "Sub", g.op("Constant", value_t=torch.tensor(1, dtype=torch.int64)), mask_cast_value
+            ),
+            to_i=sym_help.cast_pytorch_to_onnx["Byte"],
+        )
+        output = masked_fill(g, self, r_mask, g.op("Constant", value_t=torch.tensor(float("-inf"))))
+        output = softmax(g, output, dim)
+        return masked_fill(
+            g, output, r_mask, g.op("Constant", value_t=torch.tensor(0, dtype=torch.uint8))
+        )
+
+
+# Copied from transformers.models.deberta.modeling_deberta.DropoutContext
+class DropoutContext(object):
+    def __init__(self):
+        self.drop = 0
+        self.mask = None
+        self.scale = 1
+        self.reuse_mask = True
+
+
+# Copied from transformers.models.deberta.modeling_deberta.XDropout
+class XDropout(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, local_ctx):
+        mask, drop = get_mask(input, local_ctx)
+        ctx.scale = 1.0 / (1 - drop)
+        if drop > 0:
+            ctx.save_for_backward(mask)
+            return input.masked_fill(mask, 0) * ctx.scale
         else:
-            raise ValueError("You have to specify either input_ids or inputs_embeds")
+            return input
 
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
-
-        if attention_mask is None:
-            attention_mask = torch.ones(input_shape, device=device)
-        if token_type_ids is None:
-            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
-
-        embedding_output = self.embeddings(
-            input_ids=input_ids,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            mask=attention_mask,
-            inputs_embeds=inputs_embeds,
-        )
-
-        encoder_outputs = self.encoder(
-            embedding_output,
-            attention_mask,
-            output_hidden_states=True,
-            output_attentions=output_attentions,
-            return_dict=return_dict,
-        )
-        encoded_layers = encoder_outputs[1]
-
-        if self.z_steps > 1:
-            hiddens = encoded_layers[-2]
-            layers = [self.encoder.layer[-1] for _ in range(self.z_steps)]
-            query_states = encoded_layers[-1]
-            rel_embeddings = self.encoder.get_rel_embedding()
-            attention_mask = self.encoder.get_attention_mask(attention_mask)
-            rel_pos = self.encoder.get_rel_pos(embedding_output)
-            for layer in layers[1:]:
-                query_states = layer(
-                    hiddens,
-                    attention_mask,
-                    output_attentions=False,
-                    query_states=query_states,
-                    relative_pos=rel_pos,
-                    rel_embeddings=rel_embeddings,
-                )
-                encoded_layers.append(query_states)
-
-        sequence_output = encoded_layers[-1]
-
-        if not return_dict:
-            return (sequence_output,) + encoder_outputs[(1 if output_hidden_states else 2) :]
-
-        return qo.Base(
-            y=sequence_output,
-            hiddens=encoder_outputs.hiddens if output_hidden_states else None,
-            attns=encoder_outputs.attns,
-        )
+    @staticmethod
+    def backward(ctx, grad_output):
+        if ctx.scale > 1:
+            (mask,) = ctx.saved_tensors
+            return grad_output.masked_fill(mask, 0) * ctx.scale, None
+        else:
+            return grad_output, None
 
 
-class ForMasked(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = Predictor(cfg.d_embed, **kw)
+# Copied from transformers.models.deberta.modeling_deberta.StableDropout
+class StableDropout(qc.Module):
+    def __init__(self, drop_prob):
+        super().__init__()
+        self.drop_prob = drop_prob
+        self.count = 0
+        self.context_stack = None
 
-    forward = qf.forward_masked
+    def forward(self, x):
+        if self.training and self.drop_prob > 0:
+            return XDropout.apply(x, self.get_context())
+        return x
 
+    def clear_context(self):
+        self.count = 0
+        self.context_stack = None
 
-class ForSeqClass(PreTrained):
-    def __init__(self, config):
-        super().__init__(config)
+    def init_context(self, reuse_mask=True, scale=1):
+        if self.context_stack is None:
+            self.context_stack = []
+        self.count = 0
+        for c in self.context_stack:
+            c.reuse_mask = reuse_mask
+            c.scale = scale
 
-        n_labels = getattr(config, "n_labels", 2)
-        self.n_labels = n_labels
-
-        self.deberta = Model(config)
-        self.pooler = ContextPool(config)
-        output_dim = self.pooler.output_dim
-
-        self.classifier = qc.Linear(output_dim, n_labels)
-        drop_out = getattr(config, "cls_dropout", None)
-        drop_out = self.config.drop if drop_out is None else drop_out
-        self.drop = StableDropout(drop_out)
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
-        outputs = self.deberta(
-            input_ids,
-            token_type_ids=token_type_ids,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            inputs_embeds=inputs_embeds,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-
-        encoder_layer = outputs[0]
-        pooled_output = self.pooler(encoder_layer)
-        pooled_output = self.drop(pooled_output)
-        logits = self.classifier(pooled_output)
-
-        loss = None
-        if labels is not None:
-            if self.config.problem_type is None:
-                if self.n_labels == 1:
-                    # regression task
-                    loss_fn = nn.MSELoss()
-                    logits = logits.view(-1).to(labels.dtype)
-                    loss = loss_fn(logits, labels.view(-1))
-                elif labels.dim() == 1 or labels.size(-1) == 1:
-                    label_index = (labels >= 0).nonzero()
-                    labels = labels.long()
-                    if label_index.size(0) > 0:
-                        labeled_logits = torch.gather(
-                            logits, 0, label_index.expand(label_index.size(0), logits.size(1))
-                        )
-                        labels = torch.gather(labels, 0, label_index.view(-1))
-                        loss_fct = CrossEntropyLoss()
-                        loss = loss_fct(
-                            labeled_logits.view(-1, self.n_labels).float(), labels.view(-1)
-                        )
-                    else:
-                        loss = torch.tensor(0).to(logits)
-                else:
-                    log_softmax = nn.LogSoftmax(-1)
-                    loss = -((log_softmax(logits) * labels).sum(-1)).mean()
-            elif self.config.problem_type == "regression":
-                loss_fct = MSELoss()
-                if self.n_labels == 1:
-                    loss = loss_fct(logits.squeeze(), labels.squeeze())
-                else:
-                    loss = loss_fct(logits, labels)
-            elif self.config.problem_type == "single_label_classification":
-                loss_fct = CrossEntropyLoss()
-                loss = loss_fct(logits.view(-1, self.n_labels), labels.view(-1))
-            elif self.config.problem_type == "multi_label_classification":
-                loss_fct = BCEWithLogitsLoss()
-                loss = loss_fct(logits, labels)
-        if not return_dict:
-            output = (logits,) + outputs[1:]
-            return ((loss,) + output) if loss is not None else output
-
-        return SequenceClassifierOutput(
-            loss=loss,
-            logits=logits,
-            hiddens=outputs.hiddens,
-            attns=outputs.attns,
-        )
+    def get_context(self):
+        if self.context_stack is not None:
+            if self.count >= len(self.context_stack):
+                self.context_stack.append(DropoutContext())
+            ctx = self.context_stack[self.count]
+            ctx.drop = self.drop_prob
+            self.count += 1
+            return ctx
+        else:
+            return self.drop_prob
 
 
-class ForTokClass(PreTrained):
-    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+# Copied from transformers.models.deberta.modeling_deberta.get_mask
+def get_mask(input, local_context):
+    if not isinstance(local_context, DropoutContext):
+        drop = local_context
+        mask = None
+    else:
+        drop = local_context.drop
+        drop *= local_context.scale
+        mask = local_context.mask if local_context.reuse_mask else None
 
-    def __init__(self, config):
-        super().__init__(config)
-        self.n_labels = config.n_labels
-        self.deberta = Model(config)
-        self.drop = qc.Dropout(config.drop)
-        self.classifier = qc.Linear(config.d_model, config.n_labels)
-        self.post_init()
+    if drop > 0 and mask is None:
+        mask = (1 - torch.empty_like(input).bernoulli_(1 - drop)).bool()
 
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+    if isinstance(local_context, DropoutContext):
+        if local_context.mask is None:
+            local_context.mask = mask
 
-        outputs = self.deberta(
-            input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            inputs_embeds=inputs_embeds,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-
-        sequence_output = outputs[0]
-
-        sequence_output = self.drop(sequence_output)
-        logits = self.classifier(sequence_output)
-
-        loss = None
-        if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.n_labels), labels.view(-1))
-
-        if not return_dict:
-            output = (logits,) + outputs[1:]
-            return ((loss,) + output) if loss is not None else output
-
-        return TokenClassifierOutput(
-            loss=loss,
-            logits=logits,
-            hiddens=outputs.hiddens,
-            attns=outputs.attns,
-        )
+    return mask, drop
 
 
-class ForQA(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = qc.Linear(cfg.d_model, cfg.n_labels, **kw)
+def make_log_bucket_position(relative_pos, bucket_size, max_position):
+    sign = np.sign(relative_pos)
+    mid = bucket_size // 2
+    abs_pos = np.where((relative_pos < mid) & (relative_pos > -mid), mid - 1, np.abs(relative_pos))
+    log_pos = np.ceil(np.log(abs_pos / mid) / np.log((max_position - 1) / mid) * (mid - 1)) + mid
+    bucket_pos = np.where(abs_pos <= mid, relative_pos, log_pos * sign).astype(np.int)
+    return bucket_pos
 
-    forward = qf.forward_qa
+
+def build_relative_position(query_size, key_size, bucket_size=-1, max_position=-1):
+    q_ids = np.arange(0, query_size)
+    k_ids = np.arange(0, key_size)
+    rel_pos_ids = q_ids[:, None] - np.tile(k_ids, (q_ids.shape[0], 1))
+    if bucket_size > 0 and max_position > 0:
+        rel_pos_ids = make_log_bucket_position(rel_pos_ids, bucket_size, max_position)
+    rel_pos_ids = torch.tensor(rel_pos_ids, dtype=torch.long)
+    rel_pos_ids = rel_pos_ids[:query_size, :]
+    rel_pos_ids = rel_pos_ids.unsqueeze(0)
+    return rel_pos_ids
+
+
+@torch.jit.script
+# Copied from transformers.models.deberta.modeling_deberta.c2p_dynamic_expand
+def c2p_dynamic_expand(c2p_pos, query_layer, relative_pos):
+    return c2p_pos.expand(
+        [query_layer.size(0), query_layer.size(1), query_layer.size(2), relative_pos.size(-1)]
+    )
+
+
+@torch.jit.script
+# Copied from transformers.models.deberta.modeling_deberta.p2c_dynamic_expand
+def p2c_dynamic_expand(c2p_pos, query_layer, key_layer):
+    return c2p_pos.expand(
+        [query_layer.size(0), query_layer.size(1), key_layer.size(-2), key_layer.size(-2)]
+    )
+
+
+@torch.jit.script
+# Copied from transformers.models.deberta.modeling_deberta.pos_dynamic_expand
+def pos_dynamic_expand(pos_index, p2c_att, key_layer):
+    return pos_index.expand(p2c_att.size()[:2] + (pos_index.size(-2), key_layer.size(-2)))
+
+
+LIST = [
+    "microsoft/deberta-v2-xlarge",
+    "microsoft/deberta-v2-xxlarge",
+    "microsoft/deberta-v2-xlarge-mnli",
+    "microsoft/deberta-v2-xxlarge-mnli",
+]

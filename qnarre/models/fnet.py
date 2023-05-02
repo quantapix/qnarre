@@ -286,7 +286,7 @@ class Model(PreTrained):
         self.config = config
         self.embeddings = FNetEmbeddings(config)
         self.encoder = FNetEncoder(config)
-        self.pooler = Pool(config) if add_pooling_layer else None
+        self.pool = Pool(config) if add_pooling_layer else None
 
     def forward(
         self,
@@ -349,7 +349,7 @@ class Model(PreTrained):
         )
         sequence_output = encoder_outputs[0]
 
-        pools = self.pooler(sequence_output) if self.pooler is not None else None
+        pools = self.pool(sequence_output) if self.pool is not None else None
 
         if not return_dict:
             return (sequence_output, pools) + encoder_outputs[1:]

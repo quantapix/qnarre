@@ -29,6 +29,68 @@ from ..prep.config.ctrl import PreTrained
 log = logging.get_logger(__name__)
 
 
+class ForSeqClass(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = qc.Linear(cfg.d_model, cfg.n_labels, bias=False, **kw)
+
+    def forward(self, x, x_emb=None, labels=None, **kw):
+        cfg = self.cfg
+        ys = self.model(x, x_emb=x_emb, **kw)
+        b = (x.shape[:2] if x is not None else x_emb.shape[:2])[0]
+        if cfg.PAD is None:
+            n = -1
+        else:
+            assert b == 1
+            if x is not None:
+                n = torch.ne(x, cfg.PAD).sum(-1) - 1
+            else:
+                n = -1
+        y = self.proj(ys[0])[range(b), n]
+        loss = None
+        if labels is not None:
+            if cfg.problem is None:
+                dt = labels.dtype
+                if cfg.n_labels == 1:
+                    cfg.problem = "regression"
+                elif cfg.n_labels > 1 and (dt == torch.long or dt == torch.int):
+                    cfg.problem = "single_label"
+                else:
+                    cfg.problem = "multi_label"
+            if cfg.problem == "regression":
+                if cfg.n_labels == 1:
+                    loss = nn.MSELoss()(y.squeeze(), labels.squeeze())
+                else:
+                    loss = nn.MSELoss()(y, labels)
+            elif cfg.problem == "single_label":
+                loss = nn.CrossEntropyLoss()(y.view(-1, cfg.n_labels), labels.view(-1))
+            elif cfg.problem == "multi_label":
+                loss = nn.BCEWithLogitsLoss()(y, labels)
+        ys = (y,) + ys[2:] + (loss,)
+        return qo.WithLoss(*ys)
+
+
+class LMHead(PreTrained):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        cfg = self.get_cfg(kw)
+        self.model = Model(**kw)
+        self.proj = qc.Linear(cfg.d_model, cfg.s_vocab, bias=True, **kw)
+
+    def forward(self, x, labels=None, **kw):
+        ys = self.model(x, **kw)
+        y = self.proj(ys[0])
+        loss = None
+        if labels is not None:
+            sl = y[..., :-1, :].contiguous()
+            ls = labels[..., 1:].contiguous()
+            loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
+        ys = (y,) + ys[1:] + (loss,)
+        return qo.LossCaches(*ys)
+
+
 class Model(PreTrained):
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -104,88 +166,6 @@ class Model(PreTrained):
         return qo.WithCaches(y, attns, caches, hiddens)
 
 
-class ForSeqClass(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = qc.Linear(cfg.d_model, cfg.n_labels, bias=False, **kw)
-
-    def forward(self, x, x_emb=None, labels=None, **kw):
-        cfg = self.cfg
-        ys = self.model(x, x_emb=x_emb, **kw)
-        b = (x.shape[:2] if x is not None else x_emb.shape[:2])[0]
-        if cfg.PAD is None:
-            n = -1
-        else:
-            assert b == 1
-            if x is not None:
-                n = torch.ne(x, cfg.PAD).sum(-1) - 1
-            else:
-                n = -1
-        y = self.proj(ys[0])[range(b), n]
-        loss = None
-        if labels is not None:
-            if cfg.problem is None:
-                dt = labels.dtype
-                if cfg.n_labels == 1:
-                    cfg.problem = "regression"
-                elif cfg.n_labels > 1 and (dt == torch.long or dt == torch.int):
-                    cfg.problem = "single_label"
-                else:
-                    cfg.problem = "multi_label"
-            if cfg.problem == "regression":
-                if cfg.n_labels == 1:
-                    loss = nn.MSELoss()(y.squeeze(), labels.squeeze())
-                else:
-                    loss = nn.MSELoss()(y, labels)
-            elif cfg.problem == "single_label":
-                loss = nn.CrossEntropyLoss()(y.view(-1, cfg.n_labels), labels.view(-1))
-            elif cfg.problem == "multi_label":
-                loss = nn.BCEWithLogitsLoss()(y, labels)
-        ys = (y,) + ys[2:] + (loss,)
-        return qo.WithLoss(*ys)
-
-
-class LMHead(PreTrained):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        cfg = self.get_cfg(kw)
-        self.model = Model(**kw)
-        self.proj = qc.Linear(cfg.d_model, cfg.s_vocab, bias=True, **kw)
-
-    def forward(self, x, labels=None, **kw):
-        ys = self.model(x, **kw)
-        y = self.proj(ys[0])
-        loss = None
-        if labels is not None:
-            sl = y[..., :-1, :].contiguous()
-            ls = labels[..., 1:].contiguous()
-            loss = nn.CrossEntropyLoss()(sl.view(-1, sl.size(-1)), ls.view(-1))
-        ys = (y,) + ys[1:] + (loss,)
-        return qo.LossCaches(*ys)
-
-
-def scaled_dot_product_attention(q, k, v, mask, head_m=None):
-    matmul_qk = torch.matmul(q, k.permute(0, 1, 3, 2))
-    dk = k.shape[-1]
-    ys = matmul_qk / np.sqrt(dk)
-    if mask is not None:
-        nd, ns = ys.size(-2), ys.size(-1)
-        ys += mask[ns - nd : ns, :ns] * -1e4
-    if mask is not None:
-        ys = ys + mask
-    ys = torch.softmax(ys, dim=-1)
-    if head_m is not None:
-        ys = ys * head_m
-    y = torch.matmul(ys, v)
-    return y, ys
-
-
-def point_wise_feed_forward_network(d_model, d_ff):
-    return nn.Sequential(qc.Linear(d_model, d_ff), nn.ReLU(), qc.Linear(d_ff, d_model))
-
-
 class Encoder(qc.Module):
     def __init__(self, d_model, n_heads, d_ff, rate=0.1):
         super().__init__()
@@ -248,3 +228,23 @@ class Attention(qc.Module):
         original_size_attention = scaled_attention.reshape(b, -1, cfg.d_model)
         ys = self.proj(original_size_attention)
         return ys, present, attn
+
+
+def scaled_dot_product_attention(q, k, v, mask, head_m=None):
+    matmul_qk = torch.matmul(q, k.permute(0, 1, 3, 2))
+    dk = k.shape[-1]
+    ys = matmul_qk / np.sqrt(dk)
+    if mask is not None:
+        nd, ns = ys.size(-2), ys.size(-1)
+        ys += mask[ns - nd : ns, :ns] * -1e4
+    if mask is not None:
+        ys = ys + mask
+    ys = torch.softmax(ys, dim=-1)
+    if head_m is not None:
+        ys = ys * head_m
+    y = torch.matmul(ys, v)
+    return y, ys
+
+
+def point_wise_feed_forward_network(d_model, d_ff):
+    return nn.Sequential(qc.Linear(d_model, d_ff), nn.ReLU(), qc.Linear(d_ff, d_model))
