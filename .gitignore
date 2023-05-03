@@ -6,3 +6,5 @@
 .save
 dev
 new/
+__pycache__
+

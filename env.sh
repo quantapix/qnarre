@@ -64,8 +64,8 @@ main() {
         python3.11 -m venv .env
     fi
 
-    .env/bin/pip install -U pip wheel setuptools pytest black 
-    .env/bin/pip install -U pip cmake setuptools_rust
+    .env/bin/pip install -U wheel setuptools pytest black 
+    .env/bin/pip install -U cmake setuptools_rust
     .env/bin/pip install -U nvidia-ml-py3
     # .env/bin/pip install -U packaging requests opt_einsum
     .env/bin/pip install -U numpy pandas matplotlib scipy scikit-learn nltk
