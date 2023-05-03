@@ -64,7 +64,8 @@ main() {
         python3.11 -m venv .env
     fi
 
-    .env/bin/pip install -U pip wheel setuptools pytest black setuptools_rust
+    .env/bin/pip install -U pip wheel setuptools pytest black 
+    .env/bin/pip install -U pip cmake setuptools_rust
     .env/bin/pip install -U nvidia-ml-py3
     # .env/bin/pip install -U packaging requests opt_einsum
     .env/bin/pip install -U numpy pandas matplotlib scipy scikit-learn nltk
@@ -74,7 +75,8 @@ main() {
     .env/bin/pip install -U jupyter seaborn awscli
     .env/bin/pip install -U pyarrow sentencepiece
     .env/bin/pip install -U tokenizers accelerate datasets transformers evaluate
-    
+    # .env/bin/pip install -U --pre triton
+
     # .env/bin/pip install -U regex cytoolz joblib
     # .env/bin/pip install -U pycodestyle pylint pyyaml
     # .env/bin/pip install -U flake8 autopep8 jedi yapf
