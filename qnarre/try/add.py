@@ -34,11 +34,14 @@ torch.manual_seed(0)
 size = 98432
 x1 = torch.rand(size, device="cuda")
 x2 = torch.rand(size, device="cuda")
-y1 = x1 + x2
-y2 = add(x1, x2)
-print(y1)
-print(y2)
-print(f"The maximum difference between torch and triton is " f"{torch.max(torch.abs(y1 - y2))}")
+y_torch = x1 + x2
+y_triton = add(x1, x2)
+print(y_torch)
+print(y_triton)
+print(
+    f"The maximum difference between torch and triton is "
+    f"{torch.max(torch.abs(y_torch - y_triton))}"
+)
 
 # %%
 
