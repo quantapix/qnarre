@@ -8,10 +8,6 @@
 
 # jupyter nbconvert --to script
 
-# export PATH=/home/qpix/clone/qnarre_new/.nvold/cuda/bin:$PATH
-# export LD_LIBRARY_PATH=/home/qpix/clone/qnarre_new/.nvold/cuda/lib64:$LD_LIBRARY_PATH
-# export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
-
 spacy() {
     if $1; then
         .env/bin/pip install spacy[lookups,transformers,cuda118]
@@ -64,10 +60,10 @@ main() {
         python3.11 -m venv .env
     fi
 
-    .env/bin/pip install -U wheel setuptools pytest black 
+    .env/bin/pip install -U pip wheel setuptools pytest black 
     .env/bin/pip install -U cmake setuptools_rust
-    .env/bin/pip install -U nvidia-ml-py3
-    # .env/bin/pip install -U packaging requests opt_einsum
+    .env/bin/pip install -U nvidia-ml-py3 opt_einsum
+    # .env/bin/pip install -U packaging requests 
     .env/bin/pip install -U numpy pandas matplotlib scipy scikit-learn nltk
     # .env/bin/pip install -U keras_preprocessing --no-deps
     ptorch "$GPU"
@@ -75,7 +71,7 @@ main() {
     .env/bin/pip install -U jupyter seaborn awscli
     .env/bin/pip install -U pyarrow sentencepiece
     .env/bin/pip install -U tokenizers accelerate datasets transformers evaluate
-    # .env/bin/pip install -U --pre triton
+    .env/bin/pip install -U --pre triton
 
     # .env/bin/pip install -U regex cytoolz joblib
     # .env/bin/pip install -U pycodestyle pylint pyyaml
