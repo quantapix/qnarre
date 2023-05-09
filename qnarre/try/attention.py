@@ -147,7 +147,7 @@ class _attention(torch.autograd.Function):
         Lq, Lk, Lv = q.shape[-1], k.shape[-1], v.shape[-1]
         assert Lq == Lk and Lk == Lv
         assert Lk in {16, 32, 64, 128}
-        o = torch.empty_like(q)
+        y = torch.empty_like(q)
         grid = (triton.cdiv(q.shape[2], BLOCK), q.shape[0] * q.shape[1], 1)
         L = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
         m = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
@@ -156,22 +156,22 @@ class _attention(torch.autograd.Function):
         _fwd_kernel[grid](
             q, k, v, sm_scale,
             L, m,
-            o,
+            y,
             q.stride(0), q.stride(1), q.stride(2), q.stride(3),
             k.stride(0), k.stride(1), k.stride(2), k.stride(3),
             v.stride(0), v.stride(1), v.stride(2), v.stride(3),
-            o.stride(0), o.stride(1), o.stride(2), o.stride(3),
+            y.stride(0), y.stride(1), y.stride(2), y.stride(3),
             q.shape[0], q.shape[1], q.shape[2],
             BLOCK_M=BLOCK, BLOCK_N=BLOCK,
             BLOCK_DMODEL=Lk, num_warps=num_warps,
             num_stages=2,
         )
 
-        ctx.save_for_backward(q, k, v, o, L, m)
+        ctx.save_for_backward(q, k, v, y, L, m)
         ctx.grid = grid
         ctx.sm_scale = sm_scale
         ctx.BLOCK_DMODEL = Lk
-        return o
+        return y
 
     @staticmethod
     def backward(ctx, do):

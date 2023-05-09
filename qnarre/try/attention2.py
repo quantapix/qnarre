@@ -63,7 +63,7 @@ def _fwd_kernel(
 
 
 @triton.jit
-def _bwd_preprocess(
+def _bwd_prep(
     Y, DY, L,
     NewDY, Delta,
     BLOCK_M: tl.constexpr, D_HEAD: tl.constexpr,
@@ -151,52 +151,50 @@ class _attention(torch.autograd.Function):
         Lq, Lk, Lv = q.shape[-1], k.shape[-1], v.shape[-1]
         assert Lq == Lk and Lk == Lv
         assert Lk in {16, 32, 64, 128}
-        o = torch.empty_like(q)
+        y = torch.empty_like(q)
         grid = (triton.cdiv(q.shape[2], BLOCK), q.shape[0] * q.shape[1])
         tmp = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
         L = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
         m = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
         num_warps = 4 if Lk <= 64 else 8
-
         _fwd_kernel[grid](
             q, k, v, sm_scale,
             tmp, L, m,
-            o,
+            y,
             q.stride(0), q.stride(1), q.stride(2), q.stride(3),
             k.stride(0), k.stride(1), k.stride(2), k.stride(3),
             v.stride(0), v.stride(1), v.stride(2), v.stride(3),
-            o.stride(0), o.stride(1), o.stride(2), o.stride(3),
+            y.stride(0), y.stride(1), y.stride(2), y.stride(3),
             q.shape[0], q.shape[1], q.shape[2],
             BLOCK_M=BLOCK, BLOCK_N=BLOCK,
             BLOCK_DMODEL=Lk, num_warps=num_warps,
             num_stages=1,
         )
-        ctx.save_for_backward(q, k, v, o, L, m)
+        ctx.save_for_backward(q, k, v, y, L, m)
         ctx.BLOCK = BLOCK
         ctx.grid = grid
         ctx.sm_scale = sm_scale
         ctx.BLOCK_DMODEL = Lk
-        return o
+        return y
 
     @staticmethod
-    def backward(ctx, do):
-        q, k, v, o, l, m = ctx.saved_tensors
-        do = do.contiguous()
+    def backward(ctx, dy):
+        q, k, v, y, l, m = ctx.saved_tensors
         dq = torch.zeros_like(q, dtype=torch.float32)
         dk = torch.empty_like(k)
         dv = torch.empty_like(v)
-        do_scaled = torch.empty_like(do)
+        dy = dy.contiguous()
+        dy_scaled = torch.empty_like(dy)
         delta = torch.empty_like(l)
-        _bwd_preprocess[(ctx.grid[0] * ctx.grid[1], )](
-            o, do, l,
-            do_scaled, delta,
+        _bwd_prep[(ctx.grid[0] * ctx.grid[1], )](
+            y, dy, l,
+            dy_scaled, delta,
             BLOCK_M=ctx.BLOCK, D_HEAD=ctx.BLOCK_DMODEL,
         )
-
         num_warps = 8
         _bwd_kernel[(ctx.grid[1],)](
             q, k, v, ctx.sm_scale,
-            o, do_scaled,
+            y, dy_scaled,
             dq, dk, dv,
             l, m,
             delta,
