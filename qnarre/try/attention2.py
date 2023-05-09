@@ -7,7 +7,7 @@ import triton.language as tl
 @triton.jit
 def _fwd_kernel(
     Q, K, V, sm_scale,
-    TMP, L, M,  # NOTE: TMP is a scratchpad buffer to workaround a compiler bug
+    TMP, L, M,
     Y,
     stride_qz, stride_qh, stride_qm, stride_qk,
     stride_kz, stride_kh, stride_kn, stride_kk,
@@ -29,10 +29,10 @@ def _fwd_kernel(
     q = tl.load(Q + off_q)
     ks = K + off_k
     vs = V + off_v
-    t_ptrs = TMP + off * N_CTX + offs_m
-    m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
-    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)
-    acc = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
+    ts = TMP + off * N_CTX + offs_m
+    l = tl.zeros([BLOCK_M], dtype=tl.float32)
+    m = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
+    y = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
     for i in range(0, (start + 1) * BLOCK_M, BLOCK_N):
         i = tl.multiple_of(i, BLOCK_N)
         k = tl.load(ks + i * stride_kn)
@@ -40,27 +40,26 @@ def _fwd_kernel(
         qk += tl.dot(q, k, trans_b=True)
         qk *= sm_scale
         qk += tl.where(offs_m[:, None] >= (i + offs_n[None, :]), 0, float("-inf"))
-        m = tl.max(qk, 1)
-        p = tl.exp(qk - m[:, None])
-        l_ij = tl.sum(p, 1)
-        m_i_new = tl.maximum(m_i, m)
-        alpha = tl.exp(m_i - m_i_new)
-        beta = tl.exp(m - m_i_new)
-        l_i_new = alpha * l_i + beta * l_ij
-        p_scale = beta / l_i_new
+        m2 = tl.max(qk, 1)
+        p = tl.exp(qk - m2[:, None])
+        m3 = tl.maximum(m, m2)
+        alpha = tl.exp(m - m3)
+        beta = tl.exp(m2 - m3)
+        l2 = alpha * l + beta * tl.sum(p, 1)
+        p_scale = beta / l2
         p = p * p_scale[:, None]
-        acc_scale = l_i / l_i_new * alpha
-        tl.store(t_ptrs, acc_scale)
-        acc_scale = tl.load(t_ptrs)  # BUG: have to store and immediately load
-        acc = acc * acc_scale[:, None]
+        y_scale = l / l2 * alpha
+        tl.store(ts, y_scale)
+        y_scale = tl.load(ts)  # BUG: have to store and immediately load
+        y = y * y_scale[:, None]
         v = tl.load(vs + i * stride_vk)
         p = p.to(v.dtype)
-        acc += tl.dot(p, v)
-        l_i = l_i_new
-        m_i = m_i_new
-    tl.store(L + off * N_CTX + offs_m, l_i)
-    tl.store(M + off * N_CTX + offs_m, m_i)
-    tl.store(Y + off_y, acc)
+        y += tl.dot(p, v)
+        l = l2
+        m = m3
+    tl.store(L + off * N_CTX + offs_m, l)
+    tl.store(M + off * N_CTX + offs_m, m)
+    tl.store(Y + off_y, y)
 
 
 @triton.jit

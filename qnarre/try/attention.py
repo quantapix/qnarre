@@ -29,32 +29,30 @@ def _fwd_kernel(
     q = tl.load(Q + off_q)
     ks = K + off_k
     vs = V + off_v
-    m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
-    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)
-    acc = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
+    l = tl.zeros([BLOCK_M], dtype=tl.float32)
+    m = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
+    y = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
     for i in range(0, (start + 1) * BLOCK_M, BLOCK_N):
-        k = tl.load(ks)
+        k = tl.load(ks + i * stride_kn)
         qk = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
         qk += tl.dot(q, k)
         qk *= sm_scale
         qk = tl.where(offs_m[:, None] >= (i + offs_n[None, :]), qk, float("-inf"))
-        m = tl.maximum(tl.max(qk, 1), m_i)
-        l_i *= tl.exp(m_i - m)
-        p = tl.exp(qk - m[:, None])
-        l_curr = tl.sum(p, 1) + l_i
-        l_rcp = 1. / l_curr
+        m2 = tl.maximum(tl.max(qk, 1), m)
+        l *= tl.exp(m - m2)
+        p = tl.exp(qk - m2[:, None])
+        l2 = tl.sum(p, 1) + l
+        l_rcp = 1. / l2
         p *= l_rcp[:, None]
-        acc *= (l_i * l_rcp)[:, None]
+        y *= (l * l_rcp)[:, None]
+        v = tl.load(vs + i * stride_vk)
         p = p.to(Q.dtype.element_ty)
-        v = tl.load(vs)
-        acc += tl.dot(p, v)
-        l_i = l_curr
-        m_i = m
-        ks += BLOCK_N * stride_kn
-        vs += BLOCK_N * stride_vk
-    tl.store(L + off * N_CTX + offs_m, l_i)
-    tl.store(M + off * N_CTX + offs_m, m_i)
-    tl.store(Y + off_y, acc)
+        y += tl.dot(p, v)
+        l = l2
+        m = m2
+    tl.store(L + off * N_CTX + offs_m, l)
+    tl.store(M + off * N_CTX + offs_m, m)
+    tl.store(Y + off_y, y)
 
 
 @triton.jit
