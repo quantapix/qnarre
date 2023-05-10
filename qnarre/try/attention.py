@@ -12,6 +12,7 @@ def _fwd_kernel(
     K,
     V,
     sm_scale,
+    # TMP,
     L,
     M,
     Y,
@@ -37,12 +38,15 @@ def _fwd_kernel(
     l = tl.zeros([BLOCK_M], dtype=tl.float32)
     m = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
     y = tl.zeros([BLOCK_M, BLOCK_DMODEL], dtype=tl.float32)
+    # ts = TMP + off * N_CTX + offs_m
     for i in range(0, (start + 1) * BLOCK_M, BLOCK_N):
+        # i = tl.multiple_of(i, BLOCK_N)
         k = tl.load(ks + i * s_kn)
         qk = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
-        qk += tl.dot(q, k)
+        qk += tl.dot(q, k)  # , tl.trans(k)) , trans_b=True)
         qk *= sm_scale
         qk = tl.where(offs_m[:, None] >= (i + offs_n[None, :]), qk, float("-inf"))
+
         m2 = tl.maximum(tl.max(qk, 1), m)
         l *= tl.exp(m - m2)
         p = tl.exp(qk - m2[:, None])
@@ -55,6 +59,25 @@ def _fwd_kernel(
         y += tl.dot(p, v)
         l = l2
         m = m2
+
+        m2 = tl.max(qk, 1)
+        p = tl.exp(qk - m2[:, None])
+        m3 = tl.maximum(m, m2)
+        alpha = tl.exp(m - m3)
+        beta = tl.exp(m2 - m3)
+        l2 = alpha * l + beta * tl.sum(p, 1)
+        p_scale = beta / l2
+        p = p * p_scale[:, None]
+        y_scale = l / l2 * alpha
+        tl.store(ts, y_scale)
+        y_scale = tl.load(ts)  # BUG: have to store and immediately load
+        y = y * y_scale[:, None]
+        v = tl.load(vs + i * s_vk)
+        p = p.to(v.dtype)
+        y += tl.dot(p, v)
+        l = l2
+        m = m3
+
     tl.store(L + off * N_CTX + offs_m, l)
     tl.store(M + off * N_CTX + offs_m, m)
     tl.store(Y + off * s_yh + offs_m[:, None] * s_ym + offs_d[None, :] * s_yn, y)
@@ -135,21 +158,23 @@ def _bwd_kernel(
         for j in range(lo, num_block * BLOCK_M, BLOCK_M):
             j += offs_m
             q = tl.load(qs)
-            qk = tl.dot(q, tl.trans(k))
+            qk = tl.dot(q, tl.trans(k))  # , trans_b=True)
             qk = tl.where(j[:, None] >= (offs_n[None, :]), qk, float("-inf"))
             m = tl.load(ms + j)
             p = tl.exp(qk * sm_scale - m[:, None])
             dy = tl.load(dys)
-            dv += tl.dot(tl.trans(p.to(Q.dtype.element_ty)), dy)
+            dv += tl.dot(
+                tl.trans(p.to(Q.dtype.element_ty)), dy
+            )  # p.to(dy.dtype), dy, trans_a=True)
             dp = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32) - tl.load(ds + j)[:, None]
-            dp += tl.dot(dy, tl.trans(v))
+            dp += tl.dot(dy, tl.trans(v))  # , trans_b=True)
             ds = p * dp * sm_scale
-            dk += tl.dot(tl.trans(ds.to(Q.dtype.element_ty)), q)
-            dq = tl.load(dqs)
-            dq += tl.dot(ds.to(Q.dtype.element_ty), k)
-            tl.store(dqs, dq)
-            dqs += BLOCK_M * s_qm
+            dk += tl.dot(tl.trans(ds.to(Q.dtype.element_ty)), q)  # ds.to(q.dtype), q, trans_a=True)
+            dq = tl.load(dqs)  # , eviction_policy="evict_last")
+            dq += tl.dot(ds.to(Q.dtype.element_ty), k)  # ds.to(k.dtype), k)
+            tl.store(dqs, dq)  # , eviction_policy="evict_last")
             qs += BLOCK_M * s_qm
+            dqs += BLOCK_M * s_qm
             dys += BLOCK_M * s_qm
         tl.store(DK + (offs_n[:, None] * s_kn + offs_k[None, :] * s_kk), dk)
         tl.store(DV + (offs_n[:, None] * s_qm + offs_k[None, :] * s_qk), dv)
@@ -170,12 +195,16 @@ class _attention(torch.autograd.Function):
         L = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
         m = torch.empty((q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32)
         num_warps = 4 if Lk <= 64 else 8
+        tmp = torch.empty(
+            (q.shape[0] * q.shape[1], q.shape[2]), device=q.device, dtype=torch.float32
+        )
 
         _fwd_kernel[grid](
             q,
             k,
             v,
             sm_scale,
+            # tmp,
             L,
             m,
             y,
@@ -186,10 +215,11 @@ class _attention(torch.autograd.Function):
             BLOCK_N=BLOCK,
             BLOCK_DMODEL=Lk,
             num_warps=num_warps,
-            num_stages=2,
+            num_stages=2,  # =1,
         )
 
         ctx.save_for_backward(q, k, v, y, L, m)
+        ctx.BLOCK = BLOCK
         ctx.grid = grid
         ctx.sm_scale = sm_scale
         ctx.BLOCK_DMODEL = Lk
@@ -197,21 +227,20 @@ class _attention(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dy):
-        BLOCK = 128
-        q, k, v, o, l, m = ctx.saved_tensors
-        dy = dy.contiguous()
+        q, k, v, y, l, m = ctx.saved_tensors
         dq = torch.zeros_like(q, dtype=torch.float32)
         dk = torch.empty_like(k)
         dv = torch.empty_like(v)
+        dy = dy.contiguous()
         dy_scaled = torch.empty_like(dy)
         delta = torch.empty_like(l)
         _bwd_prep[(ctx.grid[0] * ctx.grid[1],)](
-            o,
+            y,
             dy,
             l,
             dy_scaled,
             delta,
-            BLOCK_M=BLOCK,
+            BLOCK_M=ctx.BLOCK,
             D_HEAD=ctx.BLOCK_DMODEL,
         )
         _bwd_kernel[(ctx.grid[1],)](
@@ -219,7 +248,7 @@ class _attention(torch.autograd.Function):
             k,
             v,
             ctx.sm_scale,
-            o,
+            y,
             dy_scaled,
             dq,
             dk,
@@ -231,13 +260,13 @@ class _attention(torch.autograd.Function):
             q.shape[1],
             q.shape[2],
             ctx.grid[0],
-            BLOCK_M=BLOCK,
-            BLOCK_N=BLOCK,
+            BLOCK_M=ctx.BLOCK,
+            BLOCK_N=ctx.BLOCK,
             BLOCK_DMODEL=ctx.BLOCK_DMODEL,
             num_warps=8,
             num_stages=1,
         )
-        return dq, dk, dv, None
+        return dq, dk, dv, None  # dq.to(q.dtype),
 
 
 attention = _attention.apply
