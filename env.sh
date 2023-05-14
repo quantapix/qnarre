@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# set -xeu -o pipefail
+set -e -x
 
 # python -m ipykernel install --user --name qenv --display-name "Python (.env)"
 # jupyter notebook --no-browser --port=8889

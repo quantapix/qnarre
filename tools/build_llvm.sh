@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -e -x
+
+CMAKE_CONFIGS="-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_STANDARD=20 -DLLVM_ENABLE_PROJECTS=mlir -DLLVM_INSTALL_UTILS=ON" 
+CMAKE_CONFIGS="${CMAKE_CONFIGS} -DLLVM_TARGETS_TO_BUILD=X86;NVPTX"
+
+# CMAKE_CONFIGS="${CMAKE_CONFIGS} -DCMAKE_BUILD_TYPE=Release"
+CMAKE_CONFIGS="${CMAKE_CONFIGS} -DCMAKE_BUILD_TYPE=MinSizeRel -DLLVM_ENABLE_ASSERTIONS=True"
+#CMAKE_CONFIGS="${CMAKE_CONFIGS} -DCMAKE_BUILD_TYPE=Debug"
+
+out_prefix="out"
+num_jobs=40
+
+CURRENT_DIR="$(pwd)"
+SOURCE_DIR="$CURRENT_DIR/../dev/llvm-project"
+BUILD_DIR="$CURRENT_DIR/build/llvm"
+# rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
+pushd "$BUILD_DIR"
+# cmake "$SOURCE_DIR/llvm" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$out_prefix" $CMAKE_CONFIGS
+cmake -G Ninja -S "$SOURCE_DIR/llvm" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$out_prefix" $CMAKE_CONFIGS
+# make -j${num_jobs} install
+ninja -C "$BUILD_DIR" install
+tar -cJf "${CURRENT_DIR}/${out_prefix}.tar.xz" "$out_prefix"
+popd

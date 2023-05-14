@@ -3,5 +3,8 @@
   "cmake.configureOnOpen": false,
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
-  }
+  },
+  "C_Cpp.default.compilerPath": "/usr/bin/clang",
+  "cmake.sourceDirectory": "/home/qpix/clone/qnarre/tools",
+  "git.ignoreLimitWarning": true
 }
