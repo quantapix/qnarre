@@ -21,16 +21,23 @@ ARGS="  \
         -DLLVM_ENABLE_PROJECTS=mlir \
         -DLLVM_INSTALL_UTILS=ON \
         -DLLVM_TARGETS_TO_BUILD=X86;NVPTX \
+        -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
 "
 #        -DCMAKE_BUILD_TYPE=Release \
 #        -DCMAKE_BUILD_TYPE=Debug \
 
-# rm -rf "$BUILD/llvm"
 mkdir -p "$BUILD/llvm"
-pushd "$BUILD/llvm"
-# cmake "$SOURCE/llvm" $ARGS
+pushd "$BUILD"
+if [ ! -e .env ]; then
+    python3.11 -m venv .env
+fi
+.env/bin/pip install -U pip wheel setuptools
+.env/bin/pip install -r "$SOURCE/mlir/python/requirements.txt"
+VIRTUAL_ENV="$BUILD/.env"
+export VIRTUAL_ENV
+PATH="$BUILD/.env/bin:$PATH"
+export PATH
+cd llvm
 cmake -G Ninja -S "$SOURCE/llvm" $ARGS
-# num_jobs=40
-# make -j${num_jobs} install
 ninja install
 popd
