@@ -2,25 +2,35 @@
 
 set -e -x
 
-CMAKE_CONFIGS="-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_STANDARD=20 -DLLVM_ENABLE_PROJECTS=mlir -DLLVM_INSTALL_UTILS=ON" 
-CMAKE_CONFIGS="${CMAKE_CONFIGS} -DLLVM_TARGETS_TO_BUILD=X86;NVPTX"
+CURRENT="$(pwd)"
 
-# CMAKE_CONFIGS="${CMAKE_CONFIGS} -DCMAKE_BUILD_TYPE=Release"
-CMAKE_CONFIGS="${CMAKE_CONFIGS} -DCMAKE_BUILD_TYPE=MinSizeRel -DLLVM_ENABLE_ASSERTIONS=True"
-#CMAKE_CONFIGS="${CMAKE_CONFIGS} -DCMAKE_BUILD_TYPE=Debug"
+BUILD="$CURRENT/build"
+SOURCE="$CURRENT/../dev/llvm-project"
 
-out_prefix="out"
-num_jobs=40
+ARGS="  \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
+        -DCMAKE_C_COMPILER=clang \
+        -DCMAKE_CXX_COMPILER=clang++ \
+        -DCMAKE_CXX_STANDARD=20 \
+        -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
+        -DCMAKE_INSTALL_PREFIX=$BUILD/llvm/out \
+        -DCMAKE_LINKER=lld \
+        -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld \
+        -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld \
+        -DLLVM_ENABLE_ASSERTIONS=True \
+        -DLLVM_ENABLE_PROJECTS=mlir \
+        -DLLVM_INSTALL_UTILS=ON \
+        -DLLVM_TARGETS_TO_BUILD=X86;NVPTX \
+"
+#        -DCMAKE_BUILD_TYPE=Release \
+#        -DCMAKE_BUILD_TYPE=Debug \
 
-CURRENT_DIR="$(pwd)"
-SOURCE_DIR="$CURRENT_DIR/../dev/llvm-project"
-BUILD_DIR="$CURRENT_DIR/build/llvm"
-# rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR"
-pushd "$BUILD_DIR"
-# cmake "$SOURCE_DIR/llvm" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$out_prefix" $CMAKE_CONFIGS
-cmake -G Ninja -S "$SOURCE_DIR/llvm" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$out_prefix" $CMAKE_CONFIGS
+# rm -rf "$BUILD/llvm"
+mkdir -p "$BUILD/llvm"
+pushd "$BUILD/llvm"
+# cmake "$SOURCE/llvm" $ARGS
+cmake -G Ninja -S "$SOURCE/llvm" $ARGS
+# num_jobs=40
 # make -j${num_jobs} install
-ninja -C "$BUILD_DIR" install
-tar -cJf "${CURRENT_DIR}/${out_prefix}.tar.xz" "$out_prefix"
+ninja install
 popd

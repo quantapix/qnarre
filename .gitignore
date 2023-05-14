@@ -4,8 +4,8 @@
 .hugo_build.lock
 .runs
 .save
-dev
+dev/
 new/
-build
+build/
 __pycache__
 
