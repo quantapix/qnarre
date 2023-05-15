@@ -44,11 +44,26 @@ macro(add_kaleidoscope_chapter name)
 endmacro(add_kaleidoscope_chapter name)
 
 add_subdirectory(BuildingAJIT)
-add_subdirectory(Chapter2)
-add_subdirectory(Chapter3)
-add_subdirectory(Chapter4)
-add_subdirectory(Chapter5)
-add_subdirectory(Chapter6)
-add_subdirectory(Chapter7)
-add_subdirectory(Chapter8)
-add_subdirectory(Chapter9)
+
+set(LLVM_LINK_COMPONENTS
+  Analysis
+  Core
+  ExecutionEngine
+  InstCombine
+  native
+  Object
+  OrcJIT
+  RuntimeDyld
+  ScalarOpts
+  Support
+  TargetParser
+  TransformUtils
+  )
+
+add_kaleidoscope_chapter(Kaleidoscope toy.cpp)
+
+export_executable_symbols(Kaleidoscope)
+
+if(LLVM_COMPILER_IS_GCC_COMPATIBLE)
+  target_compile_options(Kaleidoscope PRIVATE -Wno-unused-private-field)
+endif()
