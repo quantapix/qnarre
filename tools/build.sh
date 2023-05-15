@@ -6,10 +6,7 @@ CURRENT="$(pwd)"
 SOURCE="$CURRENT"
 
 BUILD="$CURRENT/build"
-mkdir -p "$BUILD/standalone"
-mkdir -p "$BUILD/toy"
-mkdir -p "$BUILD/kaleidoscope"
-
+mkdir -p "$BUILD/{kaleidoscope,toy,standalone}"
 
 ARGS="  \
         -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
@@ -19,16 +16,14 @@ ARGS="  \
         -DLLVM_EXTERNAL_LIT=$BUILD/llvm/bin/llvm-lit \
         -DMLIR_DIR=$BUILD/llvm/out/lib/cmake/mlir \
 "
-#        -DPython_FIND_VIRTUALENV=ONLY \
-#        -DLLVM_MINIMUM_PYTHON_VERSION=3.11 \
 
 pushd "$BUILD"
 VIRTUAL_ENV="$BUILD/.env"
 export VIRTUAL_ENV
 
-pushd standalone
-cmake -G Ninja -S "$SOURCE/standalone" $ARGS
-cmake --build . --target check-standalone
+pushd kaleidoscope
+cmake -G Ninja -S "$SOURCE/kaleidoscope" $ARGS
+cmake --build . --target Kaleidoscope-Ch2
 popd
 
 pushd toy
@@ -36,9 +31,9 @@ cmake -G Ninja -S "$SOURCE/toy" $ARGS
 cmake --build . --target toyc-ch1
 popd
 
-pushd kaleidoscope
-cmake -G Ninja -S "$SOURCE/kaleidoscope" $ARGS
-cmake --build . --target Kaleidoscope-Ch2
+pushd standalone
+cmake -G Ninja -S "$SOURCE/standalone" $ARGS
+cmake --build . --target check-standalone
 popd
 
 popd
