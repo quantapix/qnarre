@@ -20,7 +20,6 @@ ARGS="  \
         -DLLVM_ENABLE_ASSERTIONS=True \
         -DLLVM_ENABLE_PROJECTS=mlir \
         -DLLVM_INSTALL_UTILS=ON \
-        -DLLVM_MINIMUM_PYTHON_VERSION=3.11 \
         -DLLVM_TARGETS_TO_BUILD=X86;NVPTX \
         -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
 "
@@ -36,8 +35,6 @@ fi
 .env/bin/pip install -r "$SOURCE/mlir/python/requirements.txt"
 VIRTUAL_ENV="$BUILD/.env"
 export VIRTUAL_ENV
-PATH="$BUILD/.env/bin:$PATH"
-export PATH
 cd llvm
 cmake -G Ninja -S "$SOURCE/llvm" $ARGS
 ninja install
