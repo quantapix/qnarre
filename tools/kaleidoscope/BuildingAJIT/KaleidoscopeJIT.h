@@ -33,8 +33,95 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include <memory>
 
+class PrototypeAST;
+class ExprAST;
+
+/// FunctionAST - This class represents a function definition itself.
+class FunctionAST {
+  std::unique_ptr<PrototypeAST> Proto;
+  std::unique_ptr<ExprAST> Body;
+
+public:
+  FunctionAST(std::unique_ptr<PrototypeAST> Proto,
+              std::unique_ptr<ExprAST> Body)
+      : Proto(std::move(Proto)), Body(std::move(Body)) {}
+
+  const PrototypeAST &getProto() const;
+  const std::string &getName() const;
+  llvm::Function *codegen();
+};
+
+/// This will compile FnAST to IR, rename the function to add the given
+/// suffix (needed to prevent a name-clash with the function's stub),
+/// and then take ownership of the module that the function was compiled
+/// into.
+llvm::orc::ThreadSafeModule irgenAndTakeOwnership(FunctionAST &FnAST,
+                                                  const std::string &Suffix);
+
 namespace llvm {
 namespace orc {
+
+class KaleidoscopeASTLayer;
+class KaleidoscopeJIT;
+
+class KaleidoscopeASTMaterializationUnit : public MaterializationUnit {
+public:
+  KaleidoscopeASTMaterializationUnit(KaleidoscopeASTLayer &L,
+                                     std::unique_ptr<FunctionAST> F);
+
+  StringRef getName() const override {
+    return "KaleidoscopeASTMaterializationUnit";
+  }
+
+  void materialize(std::unique_ptr<MaterializationResponsibility> R) override;
+
+private:
+  void discard(const JITDylib &JD, const SymbolStringPtr &Sym) override {
+    llvm_unreachable("Kaleidoscope functions are not overridable");
+  }
+
+  KaleidoscopeASTLayer &L;
+  std::unique_ptr<FunctionAST> F;
+};
+
+class KaleidoscopeASTLayer {
+public:
+  KaleidoscopeASTLayer(IRLayer &BaseLayer, const DataLayout &DL)
+      : BaseLayer(BaseLayer), DL(DL) {}
+
+  Error add(ResourceTrackerSP RT, std::unique_ptr<FunctionAST> F) {
+    return RT->getJITDylib().define(
+        std::make_unique<KaleidoscopeASTMaterializationUnit>(*this,
+                                                             std::move(F)),
+        RT);
+  }
+
+  void emit(std::unique_ptr<MaterializationResponsibility> MR,
+            std::unique_ptr<FunctionAST> F) {
+    BaseLayer.emit(std::move(MR), irgenAndTakeOwnership(*F, ""));
+  }
+
+  MaterializationUnit::Interface getInterface(FunctionAST &F) {
+    MangleAndInterner Mangle(BaseLayer.getExecutionSession(), DL);
+    SymbolFlagsMap Symbols;
+    Symbols[Mangle(F.getName())] =
+        JITSymbolFlags(JITSymbolFlags::Exported | JITSymbolFlags::Callable);
+    return MaterializationUnit::Interface(std::move(Symbols), nullptr);
+  }
+
+private:
+  IRLayer &BaseLayer;
+  const DataLayout &DL;
+};
+
+KaleidoscopeASTMaterializationUnit::KaleidoscopeASTMaterializationUnit(
+    KaleidoscopeASTLayer &L, std::unique_ptr<FunctionAST> F)
+    : MaterializationUnit(L.getInterface(*F)), L(L), F(std::move(F)) {}
+
+void KaleidoscopeASTMaterializationUnit::materialize(
+    std::unique_ptr<MaterializationResponsibility> R) {
+  L.emit(std::move(R), std::move(F));
+}
 
 class KaleidoscopeJIT {
 private:
@@ -47,7 +134,7 @@ private:
   RTDyldObjectLinkingLayer ObjectLayer;
   IRCompileLayer CompileLayer;
   IRTransformLayer OptimizeLayer;
-  CompileOnDemandLayer CODLayer;
+  KaleidoscopeASTLayer ASTLayer;
 
   JITDylib &MainJD;
 
@@ -67,9 +154,7 @@ public:
         CompileLayer(*this->ES, ObjectLayer,
                      std::make_unique<ConcurrentIRCompiler>(std::move(JTMB))),
         OptimizeLayer(*this->ES, CompileLayer, optimizeModule),
-        CODLayer(*this->ES, OptimizeLayer,
-                 this->EPCIU->getLazyCallThroughManager(),
-                 [this] { return this->EPCIU->createIndirectStubsManager(); }),
+        ASTLayer(OptimizeLayer, this->DL),
         MainJD(this->ES->createBareJITDylib("<main>")) {
     MainJD.addGenerator(
         cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(
@@ -119,7 +204,13 @@ public:
     if (!RT)
       RT = MainJD.getDefaultResourceTracker();
 
-    return CODLayer.add(RT, std::move(TSM));
+    return OptimizeLayer.add(RT, std::move(TSM));
+  }
+
+  Error addAST(std::unique_ptr<FunctionAST> F, ResourceTrackerSP RT = nullptr) {
+    if (!RT)
+      RT = MainJD.getDefaultResourceTracker();
+    return ASTLayer.add(RT, std::move(F));
   }
 
   Expected<ExecutorSymbolDef> lookup(StringRef Name) {

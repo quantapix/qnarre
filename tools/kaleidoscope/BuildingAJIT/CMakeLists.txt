@@ -1,8 +1,17 @@
-add_subdirectory(Chapter1)
-add_subdirectory(Chapter2)
-add_subdirectory(Chapter3)
-add_subdirectory(Chapter4)
+set(LLVM_LINK_COMPONENTS
+  Analysis
+  Core
+  ExecutionEngine
+  InstCombine
+  native
+  Object
+  OrcJIT
+  RuntimeDyld
+  ScalarOpts
+  Support
+  TransformUtils
+  )
 
-# if (NOT WIN32)
-#  add_subdirectory(Chapter5)
-# endif()
+add_kaleidoscope_chapter(BuildingAJIT toy.cpp)
+
+export_executable_symbols(BuildingAJIT)
