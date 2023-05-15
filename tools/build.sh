@@ -8,6 +8,8 @@ SOURCE="$CURRENT"
 BUILD="$CURRENT/build"
 mkdir -p "$BUILD/standalone"
 mkdir -p "$BUILD/toy"
+mkdir -p "$BUILD/kaleidoscope"
+
 
 ARGS="  \
         -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
@@ -31,7 +33,12 @@ popd
 
 pushd toy
 cmake -G Ninja -S "$SOURCE/toy" $ARGS
-cmake --build .
+cmake --build . --target toyc-ch1
+popd
+
+pushd kaleidoscope
+cmake -G Ninja -S "$SOURCE/kaleidoscope" $ARGS
+cmake --build . --target Kaleidoscope-Ch2
 popd
 
 popd
