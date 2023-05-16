@@ -9,7 +9,11 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 #include <cctype>
 #include <cstdio>
@@ -18,6 +22,17 @@
 #include <vector>
 
 using namespace llvm;
+
+//===----------------------------------------------------------------------===//
+// Command-line options
+//===----------------------------------------------------------------------===//
+
+namespace {
+  cl::opt<std::string>
+  InputIR("input-IR",
+              cl::desc("Specify the name of an IR file to load for function definitions"),
+              cl::value_desc("input IR file name"));
+} // namespace
 
 //===----------------------------------------------------------------------===//
 // Lexer
@@ -33,14 +48,14 @@ enum Token {
 
   // primary
   tok_identifier = -4, tok_number = -5,
-
+  
   // control
   tok_if = -6, tok_then = -7, tok_else = -8,
   tok_for = -9, tok_in = -10,
-
+  
   // operators
   tok_binary = -11, tok_unary = -12,
-
+  
   // var definition
   tok_var = -13
 };
@@ -654,7 +669,10 @@ Value *BinaryExprAST::Codegen() {
   // Special case '=' because we don't want to emit the LHS as an expression.
   if (Op == '=') {
     // Assignment requires the LHS to be an identifier.
-    VariableExprAST *LHSE = dynamic_cast<VariableExprAST*>(LHS);
+    // For now, I'm building without RTTI because LLVM builds that way by
+    // default and so we need to build that way to use the command line supprt.
+    // If you build LLVM with RTTI this can be changed back to a dynamic_cast.
+    VariableExprAST *LHSE = static_cast<VariableExprAST*>(LHS);
     if (!LHSE)
       return ErrorV("destination of '=' must be a variable");
     // Codegen the RHS.
@@ -1010,8 +1028,7 @@ static void HandleDefinition() {
     if (Function *LF = F->Codegen()) {
 #ifndef MINIMAL_STDERR_OUTPUT
       fprintf(stderr, "Read function definition:");
-      LF->print(errs());
-      fprintf(stderr, "\n");
+      LF->dump();
 #endif
     }
   } else {
@@ -1025,8 +1042,7 @@ static void HandleExtern() {
     if (Function *F = P->Codegen()) {
 #ifndef MINIMAL_STDERR_OUTPUT
       fprintf(stderr, "Read extern: ");
-      F->print(errs());
-      fprintf(stderr, "\n");
+      F->dump();
 #endif
     }
   } else {
@@ -1097,12 +1113,30 @@ double printlf() {
 }
 
 //===----------------------------------------------------------------------===//
+// Command line input file handlers
+//===----------------------------------------------------------------------===//
+
+Module* parseInputIR(std::string InputFile) {
+  SMDiagnostic Err;
+  Module *M = ParseIRFile(InputFile, Err, TheContext);
+  if (!M) {
+    Err.print("IR parsing failed: ", errs());
+    return NULL;
+  }
+
+  return M;
+}
+
+//===----------------------------------------------------------------------===//
 // Main driver code.
 //===----------------------------------------------------------------------===//
 
 int main(int argc, char **argv) {
   InitializeNativeTarget();
   LLVMContext &Context = TheContext;
+
+  cl::ParseCommandLineOptions(argc, argv,
+                              "Kaleidoscope example program\n");
 
   // Install standard binary operators.
   // 1 is lowest precedence.
@@ -1114,7 +1148,11 @@ int main(int argc, char **argv) {
   BinopPrecedence['*'] = 40;  // highest.
 
   // Make the module, which holds all the code.
-  TheModule = new Module("my cool jit", Context);
+  if (!InputIR.empty()) {
+    TheModule = parseInputIR(InputIR);
+  } else {
+    TheModule = new Module("my cool jit", Context);
+  }
 
   // Create the JIT.  This takes ownership of the module.
   std::string ErrStr;
@@ -1158,8 +1196,8 @@ int main(int argc, char **argv) {
 
   // Print out all of the generated code.
   TheFPM = 0;
-#ifndef MINIMAL_STDERR_OUTPUT
-  TheModule->print(errs(), nullptr);
+#if !defined(MINIMAL_STDERR_OUTPUT) || defined(DUMP_FINAL_MODULE)
+  TheModule->dump();
 #endif
   return 0;
 }

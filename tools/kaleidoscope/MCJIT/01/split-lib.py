@@ -19,27 +19,27 @@ class TimingScriptGenerator:
         self.shfile.write("echo \"With MCJIT\" >> %s\n" % self.timeFile)
         self.shfile.write("/usr/bin/time -f \"Command %C\\n\\tuser time: %U s\\n\\tsytem time: %S s\\n\\tmax set: %M kb\"")
         self.shfile.write(" -o %s -a " % self.timeFile)
-        self.shfile.write("./toy -suppress-prompts -use-mcjit=true -enable-lazy-compilation=true -use-object-cache -input-IR=%s < %s > %s-mcjit.out 2> %s-mcjit.err\n" % (irname, callname, rootname, rootname))
+        self.shfile.write("./toy-mcjit -use-object-cache -input-IR=%s < %s > %s-mcjit.out 2> %s-mcjit.err\n" % (irname, callname, rootname, rootname))
         self.shfile.write("echo \"\" >> %s\n" % self.timeFile)
         self.shfile.write("echo \"With MCJIT again\" >> %s\n" % self.timeFile)
         self.shfile.write("/usr/bin/time -f \"Command %C\\n\\tuser time: %U s\\n\\tsytem time: %S s\\n\\tmax set: %M kb\"")
         self.shfile.write(" -o %s -a " % self.timeFile)
-        self.shfile.write("./toy -suppress-prompts -use-mcjit=true -enable-lazy-compilation=true -use-object-cache -input-IR=%s < %s > %s-mcjit.out 2> %s-mcjit.err\n" % (irname, callname, rootname, rootname))
+        self.shfile.write("./toy-mcjit -use-object-cache -input-IR=%s < %s > %s-mcjit.out 2> %s-mcjit.err\n" % (irname, callname, rootname, rootname))
         self.shfile.write("echo \"\" >> %s\n" % self.timeFile)
         self.shfile.write("echo \"With JIT\" >> %s\n" % self.timeFile)
         self.shfile.write("/usr/bin/time -f \"Command %C\\n\\tuser time: %U s\\n\\tsytem time: %S s\\n\\tmax set: %M kb\"")
         self.shfile.write(" -o %s -a " % self.timeFile)
-        self.shfile.write("./toy -suppress-prompts -use-mcjit=false -input-IR=%s < %s > %s-mcjit.out 2> %s-mcjit.err\n" % (irname, callname, rootname, rootname))
+        self.shfile.write("./toy-jit -input-IR=%s < %s > %s-mcjit.out 2> %s-mcjit.err\n" % (irname, callname, rootname, rootname))
         self.shfile.write("echo \"\" >> %s\n" % self.timeFile)
         self.shfile.write("echo \"\" >> %s\n" % self.timeFile)
 
 class LibScriptGenerator:
-    """Used to generate a bash script which will invoke the toy and time it"""
+    """Used to generate a bash script which will convert Kaleidoscope files to IR"""
     def __init__(self, filename):
         self.shfile = open(filename, 'w')
 
     def writeLibGenCall(self, libname, irname):
-        self.shfile.write("./toy -suppress-prompts -use-mcjit=false -dump-modules < %s 2> %s\n" % (libname, irname))
+        self.shfile.write("./toy-ir-gen < %s 2> %s\n" % (libname, irname))
 
 def splitScript(inputname, libGenScript, timingScript):
   rootname = inputname[:-2]

@@ -3,6 +3,7 @@
 #include "llvm/Analysis/Passes.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
+#include "llvm/ExecutionEngine/ObjectCache.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -11,7 +12,13 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 #include <cctype>
 #include <cstdio>
@@ -19,6 +26,20 @@
 #include <string>
 #include <vector>
 using namespace llvm;
+
+//===----------------------------------------------------------------------===//
+// Command-line options
+//===----------------------------------------------------------------------===//
+
+cl::opt<std::string>
+InputIR("input-IR",
+        cl::desc("Specify the name of an IR file to load for function definitions"),
+        cl::value_desc("input IR file name"));
+
+cl::opt<bool>
+UseObjectCache("use-object-cache",
+               cl::desc("Enable use of the MCJIT object caching"),
+               cl::init(false));
 
 //===----------------------------------------------------------------------===//
 // Lexer
@@ -645,6 +666,72 @@ std::string MakeLegalFunctionName(std::string Name)
 }
 
 //===----------------------------------------------------------------------===//
+// MCJIT object cache class
+//===----------------------------------------------------------------------===//
+
+class MCJITObjectCache : public ObjectCache {
+public:
+  MCJITObjectCache() {
+    // Set IR cache directory
+    sys::fs::current_path(CacheDir);
+    sys::path::append(CacheDir, "toy_object_cache");
+  }
+
+  virtual ~MCJITObjectCache() {
+  }
+
+  virtual void notifyObjectCompiled(const Module *M, const MemoryBuffer *Obj) {
+    // Get the ModuleID
+    const std::string ModuleID = M->getModuleIdentifier();
+
+    // If we've flagged this as an IR file, cache it
+    if (0 == ModuleID.compare(0, 3, "IR:")) {
+      std::string IRFileName = ModuleID.substr(3);
+      SmallString<128>IRCacheFile = CacheDir;
+      sys::path::append(IRCacheFile, IRFileName);
+      if (!sys::fs::exists(CacheDir.str()) && sys::fs::create_directory(CacheDir.str())) {
+        fprintf(stderr, "Unable to create cache directory\n");
+        return;
+      }
+      std::string ErrStr;
+      raw_fd_ostream IRObjectFile(IRCacheFile.c_str(), ErrStr, raw_fd_ostream::F_Binary);
+      IRObjectFile << Obj->getBuffer();
+    }
+  }
+
+  // MCJIT will call this function before compiling any module
+  // MCJIT takes ownership of both the MemoryBuffer object and the memory
+  // to which it refers.
+  virtual MemoryBuffer* getObject(const Module* M) {
+    // Get the ModuleID
+    const std::string ModuleID = M->getModuleIdentifier();
+
+    // If we've flagged this as an IR file, cache it
+    if (0 == ModuleID.compare(0, 3, "IR:")) {
+      std::string IRFileName = ModuleID.substr(3);
+      SmallString<128> IRCacheFile = CacheDir;
+      sys::path::append(IRCacheFile, IRFileName);
+      if (!sys::fs::exists(IRCacheFile.str())) {
+        // This file isn't in our cache
+        return NULL;
+      }
+      std::unique_ptr<MemoryBuffer> IRObjectBuffer;
+      MemoryBuffer::getFile(IRCacheFile.c_str(), IRObjectBuffer, -1, false);
+      // MCJIT will want to write into this buffer, and we don't want that
+      // because the file has probably just been mmapped.  Instead we make
+      // a copy.  The filed-based buffer will be released when it goes
+      // out of scope.
+      return MemoryBuffer::getMemBufferCopy(IRObjectBuffer->getBuffer());
+    }
+
+    return NULL;
+  }
+
+private:
+  SmallString<128> CacheDir;
+};
+
+//===----------------------------------------------------------------------===//
 // MCJIT helper class
 //===----------------------------------------------------------------------===//
 
@@ -660,6 +747,7 @@ public:
   void *getPointerToNamedFunction(const std::string &Name);
   ExecutionEngine *compileModule(Module *M);
   void closeCurrentModule();
+  void addModule(Module *M);
   void dump();
 
 private:
@@ -669,6 +757,7 @@ private:
   Module       *OpenModule;
   ModuleVector  Modules;
   std::map<Module *, ExecutionEngine *> EngineMap;
+  MCJITObjectCache OurObjectCache;
 };
 
 class HelpingMemoryManager : public SectionMemoryManager
@@ -815,36 +904,45 @@ ExecutionEngine *MCJITHelper::compileModule(Module *M) {
     exit(1);
   }
 
-  // Create a function pass manager for this engine
-  FunctionPassManager *FPM = new FunctionPassManager(M);
+  if (UseObjectCache)
+    NewEngine->setObjectCache(&OurObjectCache);
 
-  // Set up the optimizer pipeline.  Start with registering info about how the
-  // target lays out data structures.
-  FPM->add(new DataLayout(*NewEngine->getDataLayout()));
-  // Provide basic AliasAnalysis support for GVN.
-  FPM->add(createBasicAliasAnalysisPass());
-  // Promote allocas to registers.
-  FPM->add(createPromoteMemoryToRegisterPass());
-  // Do simple "peephole" optimizations and bit-twiddling optzns.
-  FPM->add(createInstructionCombiningPass());
-  // Reassociate expressions.
-  FPM->add(createReassociatePass());
-  // Eliminate Common SubExpressions.
-  FPM->add(createGVNPass());
-  // Simplify the control flow graph (deleting unreachable blocks, etc).
-  FPM->add(createCFGSimplificationPass());
-  FPM->doInitialization();
+  // Get the ModuleID so we can identify IR input files
+  const std::string ModuleID = M->getModuleIdentifier();
 
-  // For each function in the module
-  Module::iterator it;
-  Module::iterator end = M->end();
-  for (it = M->begin(); it != end; ++it) {
-    // Run the FPM on this function
-    FPM->run(*it);
+  // If we've flagged this as an IR file, it doesn't need function passes run.
+  if (0 != ModuleID.compare(0, 3, "IR:")) {
+    // Create a function pass manager for this engine
+    FunctionPassManager *FPM = new FunctionPassManager(M);
+
+    // Set up the optimizer pipeline.  Start with registering info about how the
+    // target lays out data structures.
+    FPM->add(new DataLayout(*NewEngine->getDataLayout()));
+    // Provide basic AliasAnalysis support for GVN.
+    FPM->add(createBasicAliasAnalysisPass());
+    // Promote allocas to registers.
+    FPM->add(createPromoteMemoryToRegisterPass());
+    // Do simple "peephole" optimizations and bit-twiddling optzns.
+    FPM->add(createInstructionCombiningPass());
+    // Reassociate expressions.
+    FPM->add(createReassociatePass());
+    // Eliminate Common SubExpressions.
+    FPM->add(createGVNPass());
+    // Simplify the control flow graph (deleting unreachable blocks, etc).
+    FPM->add(createCFGSimplificationPass());
+    FPM->doInitialization();
+
+    // For each function in the module
+    Module::iterator it;
+    Module::iterator end = M->end();
+    for (it = M->begin(); it != end; ++it) {
+      // Run the FPM on this function
+      FPM->run(*it);
+    }
+
+    // We don't need this anymore
+    delete FPM;
   }
-
-  // We don't need this anymore
-  delete FPM;
 
   // Store this engine
   EngineMap[M] = NewEngine;
@@ -876,6 +974,10 @@ void *MCJITHelper::getPointerToNamedFunction(const std::string &Name)
     }
   }
   return NULL;
+}
+
+void MCJITHelper::addModule(Module* M) {
+  Modules.push_back(M);
 }
 
 void MCJITHelper::dump()
@@ -1381,14 +1483,37 @@ double printlf() {
 }
 
 //===----------------------------------------------------------------------===//
+// Command line input file handler
+//===----------------------------------------------------------------------===//
+
+Module* parseInputIR(std::string InputFile) {
+  SMDiagnostic Err;
+  Module *M = ParseIRFile(InputFile, Err, TheContext);
+  if (!M) {
+    Err.print("IR parsing failed: ", errs());
+    return NULL;
+  }
+
+  char ModID[256];
+  sprintf(ModID, "IR:%s", InputFile.c_str());
+  M->setModuleIdentifier(ModID);
+
+  TheHelper->addModule(M);
+  return M;
+}
+
+//===----------------------------------------------------------------------===//
 // Main driver code.
 //===----------------------------------------------------------------------===//
 
-int main() {
+int main(int argc, char **argv) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
   InitializeNativeTargetAsmParser();
   LLVMContext &Context = TheContext;
+
+  cl::ParseCommandLineOptions(argc, argv,
+                              "Kaleidoscope example program\n");
 
   // Install standard binary operators.
   // 1 is lowest precedence.
@@ -1408,12 +1533,16 @@ int main() {
   // Make the helper, which holds all the code.
   TheHelper = new MCJITHelper(Context);
 
+  if (!InputIR.empty()) {
+    parseInputIR(InputIR);
+  }
+
   // Run the main "interpreter loop" now.
   MainLoop();
 
 #ifndef MINIMAL_STDERR_OUTPUT
   // Print out all of the generated code.
-  TheHelper->dump();
+  TheHelper->print(errs());
 #endif
 
   return 0;
