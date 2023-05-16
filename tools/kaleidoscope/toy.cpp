@@ -20,35 +20,19 @@
 using namespace llvm;
 using namespace llvm::orc;
 
-//===----------------------------------------------------------------------===//
-// Lexer
-//===----------------------------------------------------------------------===//
-
-// The lexer returns tokens [0-255] if it is an unknown character, otherwise one
-// of these for known things.
 enum Token {
   tok_eof = -1,
-
-  // commands
   tok_def = -2,
   tok_extern = -3,
-
-  // primary
   tok_identifier = -4,
   tok_number = -5,
-
-  // control
   tok_if = -6,
   tok_then = -7,
   tok_else = -8,
   tok_for = -9,
   tok_in = -10,
-
-  // operators
   tok_binary = -11,
   tok_unary = -12,
-
-  // var definition
   tok_var = -13
 };
 
@@ -107,7 +91,6 @@ static SourceLocation LexLoc = {1, 0};
 
 static int advance() {
   int LastChar = getchar();
-
   if (LastChar == '\n' || LastChar == '\r') {
     LexLoc.Line++;
     LexLoc.Col = 0;
@@ -116,24 +99,18 @@ static int advance() {
   return LastChar;
 }
 
-static std::string IdentifierStr; // Filled in if tok_identifier
-static double NumVal;             // Filled in if tok_number
+static std::string IdentifierStr;
+static double NumVal;
 
-/// gettok - Return the next token from standard input.
 static int gettok() {
   static int LastChar = ' ';
-
-  // Skip any whitespace.
   while (isspace(LastChar))
     LastChar = advance();
-
   CurLoc = LexLoc;
-
   if (isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
     IdentifierStr = LastChar;
     while (isalnum((LastChar = advance())))
       IdentifierStr += LastChar;
-
     if (IdentifierStr == "def")
       return tok_def;
     if (IdentifierStr == "extern")
@@ -156,48 +133,35 @@ static int gettok() {
       return tok_var;
     return tok_identifier;
   }
-
   if (isdigit(LastChar) || LastChar == '.') { // Number: [0-9.]+
     std::string NumStr;
     do {
       NumStr += LastChar;
       LastChar = advance();
     } while (isdigit(LastChar) || LastChar == '.');
-
     NumVal = strtod(NumStr.c_str(), nullptr);
     return tok_number;
   }
-
   if (LastChar == '#') {
-    // Comment until end of line.
     do
       LastChar = advance();
     while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
-
     if (LastChar != EOF)
       return gettok();
   }
-
-  // Check for end of file.  Don't eat the EOF.
   if (LastChar == EOF)
     return tok_eof;
-
-  // Otherwise, just return the character as its ascii value.
   int ThisChar = LastChar;
   LastChar = advance();
   return ThisChar;
 }
 
-//===----------------------------------------------------------------------===//
-// Abstract Syntax Tree (aka Parse Tree)
-//===----------------------------------------------------------------------===//
 namespace {
 
 raw_ostream &indent(raw_ostream &O, int size) {
   return O << std::string(size, ' ');
 }
 
-/// ExprAST - Base class for all expression nodes.
 class ExprAST {
   SourceLocation Loc;
 
@@ -212,7 +176,6 @@ public:
   }
 };
 
-/// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
   double Val;
 
@@ -224,7 +187,6 @@ public:
   Value *codegen() override;
 };
 
-/// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
   std::string Name;
 
@@ -238,7 +200,6 @@ public:
   }
 };
 
-/// UnaryExprAST - Expression class for a unary operator.
 class UnaryExprAST : public ExprAST {
   char Opcode;
   std::unique_ptr<ExprAST> Operand;
@@ -254,7 +215,6 @@ public:
   }
 };
 
-/// BinaryExprAST - Expression class for a binary operator.
 class BinaryExprAST : public ExprAST {
   char Op;
   std::unique_ptr<ExprAST> LHS, RHS;
@@ -272,7 +232,6 @@ public:
   }
 };
 
-/// CallExprAST - Expression class for function calls.
 class CallExprAST : public ExprAST {
   std::string Callee;
   std::vector<std::unique_ptr<ExprAST>> Args;
@@ -290,7 +249,6 @@ public:
   }
 };
 
-/// IfExprAST - Expression class for if/then/else.
 class IfExprAST : public ExprAST {
   std::unique_ptr<ExprAST> Cond, Then, Else;
 
@@ -309,7 +267,6 @@ public:
   }
 };
 
-/// ForExprAST - Expression class for for/in.
 class ForExprAST : public ExprAST {
   std::string VarName;
   std::unique_ptr<ExprAST> Start, End, Step, Body;
@@ -331,7 +288,6 @@ public:
   }
 };
 
-/// VarExprAST - Expression class for var/in
 class VarExprAST : public ExprAST {
   std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
   std::unique_ptr<ExprAST> Body;
@@ -351,14 +307,11 @@ public:
   }
 };
 
-/// PrototypeAST - This class represents the "prototype" for a function,
-/// which captures its name, and its argument names (thus implicitly the number
-/// of arguments the function takes), as well as if it is an operator.
 class PrototypeAST {
   std::string Name;
   std::vector<std::string> Args;
   bool IsOperator;
-  unsigned Precedence; // Precedence if a binary op.
+  unsigned Precedence;
   int Line;
 
 public:
@@ -382,7 +335,6 @@ public:
   int getLine() const { return Line; }
 };
 
-/// FunctionAST - This class represents a function definition itself.
 class FunctionAST {
   std::unique_ptr<PrototypeAST> Proto;
   std::unique_ptr<ExprAST> Body;
@@ -401,33 +353,20 @@ public:
 };
 } // end anonymous namespace
 
-//===----------------------------------------------------------------------===//
-// Parser
-//===----------------------------------------------------------------------===//
-
-/// CurTok/getNextToken - Provide a simple token buffer.  CurTok is the current
-/// token the parser is looking at.  getNextToken reads another token from the
-/// lexer and updates CurTok with its results.
 static int CurTok;
 static int getNextToken() { return CurTok = gettok(); }
 
-/// BinopPrecedence - This holds the precedence for each binary operator that is
-/// defined.
 static std::map<char, int> BinopPrecedence;
 
-/// GetTokPrecedence - Get the precedence of the pending binary operator token.
 static int GetTokPrecedence() {
   if (!isascii(CurTok))
     return -1;
-
-  // Make sure it's a declared binop.
   int TokPrec = BinopPrecedence[CurTok];
   if (TokPrec <= 0)
     return -1;
   return TokPrec;
 }
 
-/// LogError* - These are little helper functions for error handling.
 std::unique_ptr<ExprAST> LogError(const char *Str) {
   fprintf(stderr, "Error: %s\n", Str);
   return nullptr;
