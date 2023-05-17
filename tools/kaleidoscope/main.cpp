@@ -1118,6 +1118,9 @@ static void HandleTopLevelExpression() {
 /// top ::= definition | external | expression | ';'
 static void MainLoop() {
   while (true) {
+#ifndef MINIMAL_STDERR_OUTPUT
+    fprintf(stderr, "ready> ");
+#endif
     switch (CurTok) {
     case tok_eof:
       return;

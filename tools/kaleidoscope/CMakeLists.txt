@@ -58,7 +58,7 @@ set(LLVM_LINK_COMPONENTS
   TransformUtils
   )
 
-add_kaleidoscope_chapter(Kaleidoscope toy.cpp)
+add_kaleidoscope_chapter(Kaleidoscope main.cpp)
 
 export_executable_symbols(Kaleidoscope)
 
