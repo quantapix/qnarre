@@ -43,8 +43,6 @@ macro(add_kaleidoscope_chapter name)
   add_llvm_example(${name} ${ARGN})
 endmacro(add_kaleidoscope_chapter name)
 
-add_subdirectory(BuildingAJIT)
-
 set(LLVM_LINK_COMPONENTS
   Analysis
   Core

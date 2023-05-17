@@ -333,6 +333,8 @@ public:
 
   unsigned getBinaryPrecedence() const { return Precedence; }
   int getLine() const { return Line; }
+
+  void CreateArgumentAllocas(Function *F);
 };
 
 class FunctionAST {
