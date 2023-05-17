@@ -15,17 +15,8 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
-#include <cctype>
-#include <cstdio>
-#include <map>
-#include <string>
-#include <vector>
 
 using namespace llvm;
-
-//===----------------------------------------------------------------------===//
-// Command-line options
-//===----------------------------------------------------------------------===//
 
 namespace {
 cl::opt<std::string> InputIR(
@@ -33,156 +24,6 @@ cl::opt<std::string> InputIR(
     cl::desc("Specify the name of an IR file to load for function definitions"),
     cl::value_desc("input IR file name"));
 } // namespace
-
-/// Error* - These are little helper functions for error handling.
-ExprAST *Error(const char *Str) {
-  fprintf(stderr, "Error: %s\n", Str);
-  return 0;
-}
-PrototypeAST *ErrorP(const char *Str) {
-  Error(Str);
-  return 0;
-}
-FunctionAST *ErrorF(const char *Str) {
-  Error(Str);
-  return 0;
-}
-
-/// varexpr ::= 'var' identifier ('=' expression)?
-//                    (',' identifier ('=' expression)?)* 'in' expression
-static ExprAST *ParseVarExpr() {
-  getNextToken(); // eat the var.
-
-  std::vector<std::pair<std::string, ExprAST *>> VarNames;
-
-  // At least one variable name is required.
-  if (CurTok != tok_identifier)
-    return Error("expected identifier after var");
-
-  while (1) {
-    std::string Name = IdentifierStr;
-    getNextToken(); // eat identifier.
-
-    // Read the optional initializer.
-    ExprAST *Init = 0;
-    if (CurTok == '=') {
-      getNextToken(); // eat the '='.
-
-      Init = ParseExpression();
-      if (Init == 0)
-        return 0;
-    }
-
-    VarNames.push_back(std::make_pair(Name, Init));
-
-    // End of var list, exit loop.
-    if (CurTok != ',')
-      break;
-    getNextToken(); // eat the ','.
-
-    if (CurTok != tok_identifier)
-      return Error("expected identifier list after var");
-  }
-
-  // At this point, we have to have 'in'.
-  if (CurTok != tok_in)
-    return Error("expected 'in' keyword after 'var'");
-  getNextToken(); // eat 'in'.
-
-  ExprAST *Body = ParseExpression();
-  if (Body == 0)
-    return 0;
-
-  return new VarExprAST(VarNames, Body);
-}
-
-/// primary
-///   ::= identifierexpr
-///   ::= numberexpr
-///   ::= parenexpr
-///   ::= ifexpr
-///   ::= forexpr
-///   ::= varexpr
-static ExprAST *ParsePrimary() {
-  switch (CurTok) {
-  default:
-    return Error("unknown token when expecting an expression");
-  case tok_identifier:
-    return ParseIdentifierExpr();
-  case tok_number:
-    return ParseNumberExpr();
-  case '(':
-    return ParseParenExpr();
-  case tok_if:
-    return ParseIfExpr();
-  case tok_for:
-    return ParseForExpr();
-  case tok_var:
-    return ParseVarExpr();
-  }
-}
-
-/// unary
-///   ::= primary
-///   ::= '!' unary
-static ExprAST *ParseUnary() {
-  // If the current token is not an operator, it must be a primary expr.
-  if (!isascii(CurTok) || CurTok == '(' || CurTok == ',')
-    return ParsePrimary();
-
-  // If this is a unary operator, read it.
-  int Opc = CurTok;
-  getNextToken();
-  if (ExprAST *Operand = ParseUnary())
-    return new UnaryExprAST(Opc, Operand);
-  return 0;
-}
-
-/// binoprhs
-///   ::= ('+' unary)*
-static ExprAST *ParseBinOpRHS(int ExprPrec, ExprAST *LHS) {
-  // If this is a binop, find its precedence.
-  while (1) {
-    int TokPrec = GetTokPrecedence();
-
-    // If this is a binop that binds at least as tightly as the current binop,
-    // consume it, otherwise we are done.
-    if (TokPrec < ExprPrec)
-      return LHS;
-
-    // Okay, we know this is a binop.
-    int BinOp = CurTok;
-    getNextToken(); // eat binop
-
-    // Parse the unary expression after the binary operator.
-    ExprAST *RHS = ParseUnary();
-    if (!RHS)
-      return 0;
-
-    // If BinOp binds less tightly with RHS than the operator after RHS, let
-    // the pending operator take RHS as its LHS.
-    int NextPrec = GetTokPrecedence();
-    if (TokPrec < NextPrec) {
-      RHS = ParseBinOpRHS(TokPrec + 1, RHS);
-      if (RHS == 0)
-        return 0;
-    }
-
-    // Merge LHS/RHS.
-    LHS = new BinaryExprAST(BinOp, LHS, RHS);
-  }
-}
-
-/// expression
-///   ::= unary binoprhs
-///
-static ExprAST *ParseExpression() {
-  ExprAST *LHS = ParseUnary();
-  if (!LHS)
-    return 0;
-
-  return ParseBinOpRHS(0, LHS);
-}
 
 /// prototype
 ///   ::= id '(' id* ')'
@@ -276,10 +117,6 @@ static PrototypeAST *ParseExtern() {
   getNextToken(); // eat extern.
   return ParsePrototype();
 }
-
-//===----------------------------------------------------------------------===//
-// Code Generation
-//===----------------------------------------------------------------------===//
 
 static Module *TheModule;
 static FunctionPassManager *TheFPM;
@@ -700,10 +537,6 @@ Function *FunctionAST::Codegen() {
   return 0;
 }
 
-//===----------------------------------------------------------------------===//
-// Top-Level parsing and JIT Driver
-//===----------------------------------------------------------------------===//
-
 static ExecutionEngine *TheExecutionEngine;
 
 static void HandleDefinition() {
@@ -780,31 +613,6 @@ static void MainLoop() {
   }
 }
 
-//===----------------------------------------------------------------------===//
-// "Library" functions that can be "extern'd" from user code.
-//===----------------------------------------------------------------------===//
-
-/// putchard - putchar that takes a double and returns 0.
-extern "C" double putchard(double X) {
-  putchar((char)X);
-  return 0;
-}
-
-/// printd - printf that takes a double prints it as "%f\n", returning 0.
-extern "C" double printd(double X) {
-  printf("%f", X);
-  return 0;
-}
-
-extern "C" double printlf() {
-  printf("\n");
-  return 0;
-}
-
-//===----------------------------------------------------------------------===//
-// Command line input file handlers
-//===----------------------------------------------------------------------===//
-
 Module *parseInputIR(std::string InputFile) {
   SMDiagnostic Err;
   Module *M = ParseIRFile(InputFile, Err, TheContext);
@@ -815,10 +623,6 @@ Module *parseInputIR(std::string InputFile) {
 
   return M;
 }
-
-//===----------------------------------------------------------------------===//
-// Main driver code.
-//===----------------------------------------------------------------------===//
 
 int main(int argc, char **argv) {
   InitializeNativeTarget();

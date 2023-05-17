@@ -1,35 +1,19 @@
 #define MINIMAL_STDERR_OUTPUT
 
-#include "llvm/Analysis/Passes.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/ExecutionEngine/ObjectCache.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Scalar.h"
-#include <cctype>
-#include <cstdio>
-#include <map>
-#include <string>
-#include <vector>
-using namespace llvm;
 
-//===----------------------------------------------------------------------===//
-// Command-line options
-//===----------------------------------------------------------------------===//
+using namespace llvm;
 
 cl::opt<std::string> InputIR(
     "input-IR",
@@ -40,21 +24,6 @@ cl::opt<bool> UseObjectCache("use-object-cache",
                              cl::desc("Enable use of the MCJIT object caching"),
                              cl::init(false));
 
-/// Error* - These are little helper functions for error handling.
-ExprAST *Error(const char *Str) {
-  fprintf(stderr, "Error: %s\n", Str);
-  return 0;
-}
-PrototypeAST *ErrorP(const char *Str) {
-  Error(Str);
-  return 0;
-}
-FunctionAST *ErrorF(const char *Str) {
-  Error(Str);
-  return 0;
-}
-
-// FIXME: Obviously we can do better than this
 std::string GenerateUniqueName(const char *root) {
   static int i = 0;
   char s[16];
@@ -90,10 +59,6 @@ std::string MakeLegalFunctionName(std::string Name) {
 
   return NewName;
 }
-
-//===----------------------------------------------------------------------===//
-// MCJIT object cache class
-//===----------------------------------------------------------------------===//
 
 class MCJITObjectCache : public ObjectCache {
 public:
@@ -157,10 +122,6 @@ public:
 private:
   SmallString<128> CacheDir;
 };
-
-//===----------------------------------------------------------------------===//
-// MCJIT helper class
-//===----------------------------------------------------------------------===//
 
 class MCJITHelper {
 public:
@@ -407,10 +368,6 @@ void MCJITHelper::dump() {
     (*it)->dump();
 }
 
-//===----------------------------------------------------------------------===//
-// Code Generation
-//===----------------------------------------------------------------------===//
-
 static MCJITHelper *TheHelper;
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
@@ -419,31 +376,6 @@ static std::map<std::string, AllocaInst *> NamedValues;
 Value *ErrorV(const char *Str) {
   Error(Str);
   return 0;
-}
-
-/// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
-/// the function.  This is used for mutable variables etc.
-static AllocaInst *CreateEntryBlockAlloca(Function *TheFunction,
-                                          const std::string &VarName) {
-  IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
-                   TheFunction->getEntryBlock().begin());
-  return TmpB.CreateAlloca(Type::getDoubleTy(TheContext), 0, VarName.c_str());
-}
-
-Value *NumberExprAST::Codegen() {
-  return ConstantFP::get(TheContext, APFloat(Val));
-}
-
-Value *VariableExprAST::Codegen() {
-  // Look this variable up in the function.
-  Value *V = NamedValues[Name];
-  char ErrStr[256];
-  sprintf(ErrStr, "Unknown variable name %s", Name.c_str());
-  if (V == 0)
-    return ErrorV(ErrStr);
-
-  // Load the value.
-  return Builder.CreateLoad(V, Name.c_str());
 }
 
 Value *UnaryExprAST::Codegen() {
@@ -501,9 +433,6 @@ Value *BinaryExprAST::Codegen() {
   default:
     break;
   }
-
-  // If it wasn't a builtin binary operator, it must be a user defined one. Emit
-  // a call to it.
   Function *F =
       TheHelper->getFunction(MakeLegalFunctionName(std::string("binary") + Op));
   assert(F && "binary operator not found!");
@@ -826,10 +755,6 @@ Function *FunctionAST::Codegen() {
   return 0;
 }
 
-//===----------------------------------------------------------------------===//
-// Top-Level parsing and JIT Driver
-//===----------------------------------------------------------------------===//
-
 static void HandleDefinition() {
   if (FunctionAST *F = ParseDefinition()) {
     TheHelper->closeCurrentModule();
@@ -841,7 +766,6 @@ static void HandleDefinition() {
 #endif
     }
   } else {
-    // Skip token for error recovery.
     getNextToken();
   }
 }
@@ -856,20 +780,14 @@ static void HandleExtern() {
 #endif
     }
   } else {
-    // Skip token for error recovery.
     getNextToken();
   }
 }
 
 static void HandleTopLevelExpression() {
-  // Evaluate a top-level expression into an anonymous function.
   if (FunctionAST *F = ParseTopLevelExpr()) {
     if (Function *LF = F->Codegen()) {
-      // JIT the function, returning a function pointer.
       void *FPtr = TheHelper->getPointerToFunction(LF);
-
-      // Cast it to the right type (takes no arguments, returns a double) so we
-      // can call it as a native function.
       double (*FP)() = (double (*)())(intptr_t)FPtr;
 #ifdef MINIMAL_STDERR_OUTPUT
       FP();
@@ -878,60 +796,9 @@ static void HandleTopLevelExpression() {
 #endif
     }
   } else {
-    // Skip token for error recovery.
     getNextToken();
   }
 }
-
-/// top ::= definition | external | expression | ';'
-static void MainLoop() {
-  while (1) {
-#ifndef MINIMAL_STDERR_OUTPUT
-    fprintf(stderr, "ready> ");
-#endif
-    switch (CurTok) {
-    case tok_eof:
-      return;
-    case ';':
-      getNextToken();
-      break; // ignore top-level semicolons.
-    case tok_def:
-      HandleDefinition();
-      break;
-    case tok_extern:
-      HandleExtern();
-      break;
-    default:
-      HandleTopLevelExpression();
-      break;
-    }
-  }
-}
-
-//===----------------------------------------------------------------------===//
-// "Library" functions that can be "extern'd" from user code.
-//===----------------------------------------------------------------------===//
-
-/// putchard - putchar that takes a double and returns 0.
-extern "C" double putchard(double X) {
-  putchar((char)X);
-  return 0;
-}
-
-/// printd - printf that takes a double prints it as "%f\n", returning 0.
-extern "C" double printd(double X) {
-  printf("%f", X);
-  return 0;
-}
-
-extern "C" double printlf() {
-  printf("\n");
-  return 0;
-}
-
-//===----------------------------------------------------------------------===//
-// Command line input file handler
-//===----------------------------------------------------------------------===//
 
 Module *parseInputIR(std::string InputFile) {
   SMDiagnostic Err;
@@ -949,10 +816,6 @@ Module *parseInputIR(std::string InputFile) {
   return M;
 }
 
-//===----------------------------------------------------------------------===//
-// Main driver code.
-//===----------------------------------------------------------------------===//
-
 int main(int argc, char **argv) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
@@ -961,33 +824,27 @@ int main(int argc, char **argv) {
 
   cl::ParseCommandLineOptions(argc, argv, "Kaleidoscope example program\n");
 
-  // Install standard binary operators.
-  // 1 is lowest precedence.
   BinopPrecedence['='] = 2;
   BinopPrecedence['<'] = 10;
   BinopPrecedence['+'] = 20;
   BinopPrecedence['-'] = 20;
   BinopPrecedence['/'] = 40;
-  BinopPrecedence['*'] = 40; // highest.
+  BinopPrecedence['*'] = 40;
 
-  // Prime the first token.
 #ifndef MINIMAL_STDERR_OUTPUT
   fprintf(stderr, "ready> ");
 #endif
   getNextToken();
 
-  // Make the helper, which holds all the code.
   TheHelper = new MCJITHelper(Context);
 
   if (!InputIR.empty()) {
     parseInputIR(InputIR);
   }
 
-  // Run the main "interpreter loop" now.
   MainLoop();
 
 #ifndef MINIMAL_STDERR_OUTPUT
-  // Print out all of the generated code.
   TheHelper->print(errs());
 #endif
 

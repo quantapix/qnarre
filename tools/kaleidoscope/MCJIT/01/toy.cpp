@@ -1,34 +1,17 @@
-#include "llvm/Analysis/Passes.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/ExecutionEngine/ObjectCache.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Scalar.h"
-#include <cctype>
-#include <cstdio>
-#include <map>
-#include <string>
-#include <vector>
 
 using namespace llvm;
-
-//===----------------------------------------------------------------------===//
-// Command-line options
-//===----------------------------------------------------------------------===//
 
 namespace {
 cl::opt<std::string> InputIR(
@@ -59,21 +42,6 @@ cl::opt<bool> UseObjectCache("use-object-cache",
                              cl::init(false));
 } // namespace
 
-/// Error* - These are little helper functions for error handling.
-ExprAST *Error(const char *Str) {
-  fprintf(stderr, "Error: %s\n", Str);
-  return 0;
-}
-PrototypeAST *ErrorP(const char *Str) {
-  Error(Str);
-  return 0;
-}
-FunctionAST *ErrorF(const char *Str) {
-  Error(Str);
-  return 0;
-}
-
-// FIXME: Obviously we can do better than this
 std::string GenerateUniqueName(const char *root) {
   static int i = 0;
   char s[16];
@@ -109,10 +77,6 @@ std::string MakeLegalFunctionName(std::string Name) {
 
   return NewName;
 }
-
-//===----------------------------------------------------------------------===//
-// MCJIT object cache class
-//===----------------------------------------------------------------------===//
 
 class MCJITObjectCache : public ObjectCache {
 public:
@@ -177,10 +141,6 @@ private:
   SmallString<128> CacheDir;
 };
 
-//===----------------------------------------------------------------------===//
-// IR input file handler
-//===----------------------------------------------------------------------===//
-
 Module *parseInputIR(std::string InputFile, LLVMContext &Context) {
   SMDiagnostic Err;
   Module *M = ParseIRFile(InputFile, Err, Context);
@@ -195,10 +155,6 @@ Module *parseInputIR(std::string InputFile, LLVMContext &Context) {
   return M;
 }
 
-//===----------------------------------------------------------------------===//
-// Helper class for execution engine abstraction
-//===----------------------------------------------------------------------===//
-
 class BaseHelper {
 public:
   BaseHelper() {}
@@ -212,10 +168,6 @@ public:
   virtual void runFPM(Function &F) = 0;
   virtual void dump();
 };
-
-//===----------------------------------------------------------------------===//
-// MCJIT helper class
-//===----------------------------------------------------------------------===//
 
 class MCJITHelper : public BaseHelper {
 public:
@@ -482,10 +434,6 @@ void MCJITHelper::dump() {
     (*it)->dump();
 }
 
-//===----------------------------------------------------------------------===//
-// Code Generation
-//===----------------------------------------------------------------------===//
-
 static BaseHelper *TheHelper;
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
@@ -494,29 +442,6 @@ static std::map<std::string, AllocaInst *> NamedValues;
 Value *ErrorV(const char *Str) {
   Error(Str);
   return 0;
-}
-
-/// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
-/// the function.  This is used for mutable variables etc.
-static AllocaInst *CreateEntryBlockAlloca(Function *TheFunction,
-                                          const std::string &VarName) {
-  IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
-                   TheFunction->getEntryBlock().begin());
-  return TmpB.CreateAlloca(Type::getDoubleTy(TheContext), 0, VarName.c_str());
-}
-
-Value *NumberExprAST::Codegen() {
-  return ConstantFP::get(TheContext, APFloat(Val));
-}
-
-Value *VariableExprAST::Codegen() {
-  // Look this variable up in the function.
-  Value *V = NamedValues[Name];
-  if (V == 0)
-    return ErrorV("Unknown variable name");
-
-  // Load the value.
-  return Builder.CreateLoad(V, Name.c_str());
 }
 
 Value *UnaryExprAST::Codegen() {
@@ -533,21 +458,13 @@ Value *UnaryExprAST::Codegen() {
 }
 
 Value *BinaryExprAST::Codegen() {
-  // Special case '=' because we don't want to emit the LHS as an expression.
   if (Op == '=') {
-    // Assignment requires the LHS to be an identifier.
-    // This assume we're building without RTTI because LLVM builds that way by
-    // default.  If you build LLVM with RTTI this can be changed to a
-    // dynamic_cast for automatic error checking.
     VariableExprAST *LHSE = static_cast<VariableExprAST *>(LHS);
     if (!LHSE)
       return ErrorV("destination of '=' must be a variable");
-    // Codegen the RHS.
     Value *Val = RHS->Codegen();
     if (Val == 0)
       return 0;
-
-    // Look up the name.
     Value *Variable = NamedValues[LHSE->getName()];
     if (Variable == 0)
       return ErrorV("Unknown variable name");
@@ -578,8 +495,6 @@ Value *BinaryExprAST::Codegen() {
     break;
   }
 
-  // If it wasn't a builtin binary operator, it must be a user defined one. Emit
-  // a call to it.
   Function *F;
   F = TheHelper->getFunction(MakeLegalFunctionName(std::string("binary") + Op));
   assert(F && "binary operator not found!");
@@ -622,8 +537,6 @@ Value *IfExprAST::Codegen() {
 
   Function *TheFunction = Builder.GetInsertBlock()->getParent();
 
-  // Create blocks for the then and else cases.  Insert the 'then' block at the
-  // end of the function.
   BasicBlock *ThenBB = BasicBlock::Create(TheContext, "then", TheFunction);
   BasicBlock *ElseBB = BasicBlock::Create(TheContext, "else");
   BasicBlock *MergeBB = BasicBlock::Create(TheContext, "ifcont");
@@ -853,18 +766,11 @@ Function *PrototypeAST::Codegen() {
   return F;
 }
 
-/// CreateArgumentAllocas - Create an alloca for each argument and register the
-/// argument in the symbol table so that references to it will succeed.
 void PrototypeAST::CreateArgumentAllocas(Function *F) {
   Function::arg_iterator AI = F->arg_begin();
   for (unsigned Idx = 0, e = Args.size(); Idx != e; ++Idx, ++AI) {
-    // Create an alloca for this variable.
     AllocaInst *Alloca = CreateEntryBlockAlloca(F, Args[Idx]);
-
-    // Store the initial value into the alloca.
     Builder.CreateStore(AI, Alloca);
-
-    // Add arguments to variable symbol table.
     NamedValues[Args[Idx]] = Alloca;
   }
 }
@@ -905,10 +811,6 @@ Function *FunctionAST::Codegen() {
   return 0;
 }
 
-//===----------------------------------------------------------------------===//
-// Top-Level parsing and JIT Driver
-//===----------------------------------------------------------------------===//
-
 static void HandleDefinition() {
   if (FunctionAST *F = ParseDefinition()) {
     if (EnableLazyCompilation)
@@ -920,7 +822,6 @@ static void HandleDefinition() {
       fprintf(stderr, "\n");
     }
   } else {
-    // Skip token for error recovery.
     getNextToken();
   }
 }
@@ -934,26 +835,20 @@ static void HandleExtern() {
       fprintf(stderr, "\n");
     }
   } else {
-    // Skip token for error recovery.
     getNextToken();
   }
 }
 
 static void HandleTopLevelExpression() {
-  // Evaluate a top-level expression into an anonymous function.
   if (FunctionAST *F = ParseTopLevelExpr()) {
     if (Function *LF = F->Codegen()) {
-      // JIT the function, returning a function pointer.
       void *FPtr = TheHelper->getPointerToFunction(LF);
-      // Cast it to the right type (takes no arguments, returns a double) so we
-      // can call it as a native function.
       double (*FP)() = (double (*)())(intptr_t)FPtr;
       double Result = FP();
       if (VerboseOutput)
         fprintf(stderr, "Evaluated to %f\n", Result);
     }
   } else {
-    // Skip token for error recovery.
     getNextToken();
   }
 }
@@ -968,7 +863,7 @@ static void MainLoop() {
       return;
     case ';':
       getNextToken();
-      break; // ignore top-level semicolons.
+      break;
     case tok_def:
       HandleDefinition();
       break;
@@ -982,31 +877,6 @@ static void MainLoop() {
   }
 }
 
-//===----------------------------------------------------------------------===//
-// "Library" functions that can be "extern'd" from user code.
-//===----------------------------------------------------------------------===//
-
-/// putchard - putchar that takes a double and returns 0.
-extern "C" double putchard(double X) {
-  putchar((char)X);
-  return 0;
-}
-
-/// printd - printf that takes a double prints it as "%f\n", returning 0.
-extern "C" double printd(double X) {
-  printf("%f", X);
-  return 0;
-}
-
-extern "C" double printlf() {
-  printf("\n");
-  return 0;
-}
-
-//===----------------------------------------------------------------------===//
-// Main driver code.
-//===----------------------------------------------------------------------===//
-
 int main(int argc, char **argv) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
@@ -1015,29 +885,20 @@ int main(int argc, char **argv) {
 
   cl::ParseCommandLineOptions(argc, argv, "Kaleidoscope example program\n");
 
-  // Install standard binary operators.
-  // 1 is lowest precedence.
   BinopPrecedence['='] = 2;
   BinopPrecedence['<'] = 10;
   BinopPrecedence['+'] = 20;
   BinopPrecedence['-'] = 20;
   BinopPrecedence['/'] = 40;
-  BinopPrecedence['*'] = 40; // highest.
+  BinopPrecedence['*'] = 40;
 
-  // Make the Helper, which holds all the code.
   TheHelper = new MCJITHelper(Context);
 
-  // Prime the first token.
   if (!SuppressPrompts)
     fprintf(stderr, "ready> ");
   getNextToken();
-
-  // Run the main "interpreter loop" now.
   MainLoop();
-
-  // Print out all of the generated code.
   if (DumpModulesOnExit)
     TheHelper->dump();
-
   return 0;
 }

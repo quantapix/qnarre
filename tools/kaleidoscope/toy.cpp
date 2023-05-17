@@ -1,5 +1,6 @@
 #include "KaleidoscopeJIT.h"
 #include "llvm/ADT/STLExtras.h"
+
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/IR/DIBuilder.h"
@@ -375,6 +376,11 @@ std::unique_ptr<ExprAST> LogError(const char *Str) {
 }
 
 std::unique_ptr<PrototypeAST> LogErrorP(const char *Str) {
+  LogError(Str);
+  return nullptr;
+}
+
+std::unique_ptr<FunctionAST> *ErrorF(const char *Str) {
   LogError(Str);
   return nullptr;
 }
@@ -1024,23 +1030,15 @@ Function *PrototypeAST::codegen() {
 // const std::string &FunctionAST::getName() const { return Proto->getName(); }
 
 Function *FunctionAST::codegen() {
-  // Transfer ownership of the prototype to the FunctionProtos map, but keep a
-  // reference to it for use below.
   auto &P = *Proto;
   FunctionProtos[Proto->getName()] = std::move(Proto);
   Function *TheFunction = getFunction(P.getName());
   if (!TheFunction)
     return nullptr;
-
-  // If this is an operator, install it.
   if (P.isBinaryOp())
     BinopPrecedence[P.getOperatorName()] = P.getBinaryPrecedence();
-
-  // Create a new basic block to start insertion into.
   BasicBlock *BB = BasicBlock::Create(*TheContext, "entry", TheFunction);
   Builder->SetInsertPoint(BB);
-
-  // Create a subprogram DIE for this function.
   DIFile *Unit = DBuilder->createFile(KSDbgInfo.TheCU->getFilename(),
                                       KSDbgInfo.TheCU->getDirectory());
   DIScope *FContext = Unit;
@@ -1051,63 +1049,32 @@ Function *FunctionAST::codegen() {
       CreateFunctionType(TheFunction->arg_size()), ScopeLine,
       DINode::FlagPrototyped, DISubprogram::SPFlagDefinition);
   TheFunction->setSubprogram(SP);
-
-  // Push the current scope.
   KSDbgInfo.LexicalBlocks.push_back(SP);
-
-  // Unset the location for the prologue emission (leading instructions with no
-  // location in a function are considered part of the prologue and the debugger
-  // will run past them when breaking on a function)
   KSDbgInfo.emitLocation(nullptr);
-
-  // Record the function arguments in the NamedValues map.
   NamedValues.clear();
   unsigned ArgIdx = 0;
   for (auto &Arg : TheFunction->args()) {
-    // Create an alloca for this variable.
     AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName());
-
-    // Create a debug descriptor for the variable.
     DILocalVariable *D = DBuilder->createParameterVariable(
         SP, Arg.getName(), ++ArgIdx, Unit, LineNo, KSDbgInfo.getDoubleTy(),
         true);
-
     DBuilder->insertDeclare(Alloca, D, DBuilder->createExpression(),
                             DILocation::get(SP->getContext(), LineNo, 0, SP),
                             Builder->GetInsertBlock());
-
-    // Store the initial value into the alloca.
     Builder->CreateStore(&Arg, Alloca);
-
-    // Add arguments to variable symbol table.
     NamedValues[std::string(Arg.getName())] = Alloca;
   }
-
   KSDbgInfo.emitLocation(Body.get());
-
   if (Value *RetVal = Body->codegen()) {
-    // Finish off the function.
     Builder->CreateRet(RetVal);
-
-    // Pop off the lexical block for the function.
     KSDbgInfo.LexicalBlocks.pop_back();
-
-    // Validate the generated code, checking for consistency.
     verifyFunction(*TheFunction);
-
     return TheFunction;
   }
-
-  // Error reading body, remove function.
   TheFunction->eraseFromParent();
-
   if (P.isBinaryOp())
     BinopPrecedence.erase(Proto->getOperatorName());
-
-  // Pop off the lexical block for the function since we added it
-  // unconditionally.
   KSDbgInfo.LexicalBlocks.pop_back();
-
   return nullptr;
 }
 
@@ -1154,7 +1121,7 @@ static void MainLoop() {
     switch (CurTok) {
     case tok_eof:
       return;
-    case ';': // ignore top-level semicolons.
+    case ';':
       getNextToken();
       break;
     case tok_def:
@@ -1180,6 +1147,11 @@ extern "C" double printd(double X) {
   return 0;
 }
 
+extern "C" double printlf() {
+  fprintf(stderr, "\n");
+  return 0;
+}
+
 int main() {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
@@ -1189,6 +1161,7 @@ int main() {
   BinopPrecedence['<'] = 10;
   BinopPrecedence['+'] = 20;
   BinopPrecedence['-'] = 20;
+  BinopPrecedence['/'] = 40;
   BinopPrecedence['*'] = 40;
 
   getNextToken();
