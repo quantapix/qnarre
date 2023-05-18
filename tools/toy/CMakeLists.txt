@@ -38,10 +38,10 @@ add_definitions(${LLVM_DEFINITIONS})
 add_custom_target(Toy)
 set_target_properties(Toy PROPERTIES FOLDER Examples)
 
-macro(add_toy_chapter name)
+macro(add_body name)
   add_dependencies(Toy ${name})
   add_llvm_example(${name} ${ARGN})
-endmacro(add_toy_chapter name)
+endmacro(add_body name)
 
 # This chapter depends on JIT support enabled.
 if(NOT MLIR_ENABLE_EXECUTION_ENGINE)
@@ -63,8 +63,8 @@ set(LLVM_TARGET_DEFINITIONS mlir/ToyCombine.td)
 mlir_tablegen(ToyCombine.inc -gen-rewriters)
 add_public_tablegen_target(ToyCh7CombineIncGen)
 
-add_toy_chapter(toyc
-  toyc.cpp
+add_body(body
+  main.cpp
   parser/AST.cpp
   mlir/MLIRGen.cpp
   mlir/Dialect.cpp
@@ -83,7 +83,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include/)
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
-target_link_libraries(toyc
+target_link_libraries(body
   PRIVATE
     ${dialect_libs}
     ${conversion_libs}
