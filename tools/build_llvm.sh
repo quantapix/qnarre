@@ -18,10 +18,12 @@ ARGS="  \
         -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld \
         -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld \
         -DLLVM_ENABLE_ASSERTIONS=True \
+        -DLLVM_ENABLE_LLD=ON \
         -DLLVM_ENABLE_PROJECTS=mlir \
         -DLLVM_INSTALL_UTILS=ON \
         -DLLVM_TARGETS_TO_BUILD=X86;NVPTX \
         -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+        -DMLIR_ENABLE_CUDA_RUNNER=ON \
         -DPython3_EXECUTABLE=$BUILD/.env/bin/python \
 "
 #        -DCMAKE_BUILD_TYPE=Release \
