@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.22)
 
 if(POLICY CMP0116)
 # Introduced in cmake 3.20
@@ -15,146 +15,94 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 project(triton)
 include(CTest)
 
-if(NOT WIN32)
-  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-endif()
+# list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Options
 option(TRITON_BUILD_TUTORIALS "Build C++ Triton tutorials" ON)
-option(TRITON_BUILD_PYTHON_MODULE "Build Python Triton bindings" OFF)
+option(TRITON_BUILD_PYTHON_MODULE "Build Python Triton bindings" ON)
 
-# Ensure Python3 vars are set correctly
-# used conditionally in this file and by lit tests
-
-# Customized release build type with assertions: TritonRelBuildWithAsserts
 set(CMAKE_C_FLAGS_TRITONRELBUILDWITHASSERTS "-O2 -g")
 set(CMAKE_CXX_FLAGS_TRITONRELBUILDWITHASSERTS "-O2 -g")
 
-# Default build type
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "Default build type: Release")
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-if(NOT WIN32)
-  find_library(TERMINFO_LIBRARY tinfo)
-endif()
+find_library(TERMINFO_LIBRARY tinfo)
 
-# Compiler flags
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-# Third-party
 include_directories(${PYBIND11_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -D__STDC_FORMAT_MACROS  -fPIC -std=gnu++17 -fvisibility=hidden -fvisibility-inlines-hidden")
 
-if(APPLE)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET 11.6)
-endif()
+set(LLVM_LDFLAGS "-L${LLVM_LIBRARY_DIR}")
+set(LLVM_LIBRARIES
+  libLLVMAggressiveInstCombine.a
+  libLLVMAMDGPUAsmParser.a
+  libLLVMAMDGPUCodeGen.a
+  libLLVMAMDGPUDesc.a
+  libLLVMAMDGPUDisassembler.a
+  libLLVMAMDGPUInfo.a
+  libLLVMAMDGPUUtils.a
+  libLLVMAnalysis.a
+  libLLVMAnalysis.a
+  libLLVMAnalysis.a
+  libLLVMAsmParser.a
+  libLLVMAsmPrinter.a
+  libLLVMBinaryFormat.a
+  libLLVMBitReader.a
+  libLLVMBitstreamReader.a
+  libLLVMBitWriter.a
+  libLLVMCodeGen.a
+  libLLVMCore.a
+  libLLVMCoroutines.a
+  libLLVMDebugInfoCodeView.a
+  libLLVMDebugInfoDWARF.a
+  libLLVMDebugInfoMSF.a
+  libLLVMDemangle.a
+  libLLVMFrontendOpenMP.a
+  libLLVMGlobalISel.a
+  libLLVMInstCombine.a
+  libLLVMInstrumentation.a
+  libLLVMipo.a
+  libLLVMipo.a
+  libLLVMIRReader.a
+  libLLVMLinker.a
+  libLLVMMC.a
+  libLLVMMCDisassembler.a
+  libLLVMMCParser.a
+  libLLVMMIRParser.a
+  libLLVMNVPTXCodeGen.a
+  libLLVMNVPTXDesc.a
+  libLLVMNVPTXInfo.a
+  libLLVMObjCARCOpts.a
+  libLLVMObject.a
+  libLLVMPasses.a
+  libLLVMProfileData.a
+  libLLVMRemarks.a
+  libLLVMScalarOpts.a
+  libLLVMScalarOpts.a
+  libLLVMSelectionDAG.a
+  libLLVMSupport.a
+  libLLVMTarget.a
+  libLLVMTextAPI.a
+  libLLVMTransformUtils.a
+  libLLVMTransformUtils.a
+  libLLVMTransformUtils.a
+  libLLVMVectorize.a
+)
+set(MLIR_DIR ${LLVM_LIBRARY_DIR}/cmake/mlir)
 
-# #########
-# LLVM
-# #########
-if(NOT MLIR_DIR)
-  if(NOT LLVM_LIBRARY_DIR)
-    if(WIN32)
-      find_package(LLVM 13 REQUIRED COMPONENTS nvptx amdgpu)
-
-      include_directories(${LLVM_INCLUDE_DIRS})
-      separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-      add_definitions(${LLVM_DEFINITIONS_LIST})
-
-      llvm_map_components_to_libnames(LLVM_LIBRARIES support core
-        NVPTXInfo nvptxcodegen
-        AMDGPUInfo AMDGPUcodegen
-      )
-    else()
-      find_package(LLVM 11 REQUIRED COMPONENTS "nvptx;amdgpu")
-    endif()
-
-    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-
-    # FindLLVM outputs LLVM_LIBRARY_DIRS but we expect LLVM_LIBRARY_DIR here
-    set(LLVM_LIBRARY_DIR ${LLVM_LIBRARY_DIRS})
-
-    if(APPLE)
-      set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14")
-    endif()
-
-  # sometimes we don't want to use llvm-config, since it may have been downloaded for some specific linux distros
-  else()
-    set(LLVM_LDFLAGS "-L${LLVM_LIBRARY_DIR}")
-    set(LLVM_LIBRARIES
-      libLLVMNVPTXCodeGen.a
-      libLLVMNVPTXDesc.a
-      libLLVMNVPTXInfo.a
-      libLLVMAMDGPUDisassembler.a
-      libLLVMMCDisassembler.a
-      libLLVMAMDGPUCodeGen.a
-      libLLVMMIRParser.a
-      libLLVMGlobalISel.a
-      libLLVMSelectionDAG.a
-      libLLVMipo.a
-      libLLVMInstrumentation.a
-      libLLVMVectorize.a
-      libLLVMLinker.a
-      libLLVMIRReader.a
-      libLLVMAsmParser.a
-      libLLVMFrontendOpenMP.a
-      libLLVMAsmPrinter.a
-      libLLVMDebugInfoDWARF.a
-      libLLVMCodeGen.a
-      libLLVMTarget.a
-      libLLVMScalarOpts.a
-      libLLVMInstCombine.a
-      libLLVMAggressiveInstCombine.a
-      libLLVMTransformUtils.a
-      libLLVMBitWriter.a
-      libLLVMAnalysis.a
-      libLLVMProfileData.a
-      libLLVMObject.a
-      libLLVMTextAPI.a
-      libLLVMBitReader.a
-      libLLVMAMDGPUAsmParser.a
-      libLLVMMCParser.a
-      libLLVMAMDGPUDesc.a
-      libLLVMAMDGPUUtils.a
-      libLLVMMC.a
-      libLLVMDebugInfoCodeView.a
-      libLLVMDebugInfoMSF.a
-      libLLVMCore.a
-      libLLVMRemarks.a
-      libLLVMBitstreamReader.a
-      libLLVMBinaryFormat.a
-      libLLVMAMDGPUInfo.a
-      libLLVMSupport.a
-      libLLVMDemangle.a
-      libLLVMPasses.a
-      libLLVMAnalysis.a
-      libLLVMTransformUtils.a
-      libLLVMScalarOpts.a
-      libLLVMTransformUtils.a
-      libLLVMipo.a
-      libLLVMObjCARCOpts.a
-      libLLVMCoroutines.a
-      libLLVMAnalysis.a
-    )
-  endif()
-
-  set(MLIR_DIR ${LLVM_LIBRARY_DIR}/cmake/mlir)
-endif()
-
-# Python module
 if(TRITON_BUILD_PYTHON_MODULE)
   message(STATUS "Adding Python module")
   set(PYTHON_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/python/src)
   set(PYTHON_SRC ${PYTHON_SRC_PATH}/main.cc ${PYTHON_SRC_PATH}/triton.cc)
   include_directories("." ${PYTHON_SRC_PATH})
-
   if(PYTHON_INCLUDE_DIRS)
     include_directories(${PYTHON_INCLUDE_DIRS})
   else()
-    find_package(Python3 REQUIRED COMPONENTS Development Interpreter)
+    message(STATUS "FINDING...")
+    find_package(Python3 COMPONENTS Interpreter Development)
     include_directories(${Python3_INCLUDE_DIRS})
     link_directories(${Python3_LIBRARY_DIRS})
     link_libraries(${Python3_LIBRARIES})
@@ -162,17 +110,7 @@ if(TRITON_BUILD_PYTHON_MODULE)
   endif()
 endif()
 
-# # Triton
-# file(GLOB_RECURSE LIBTRITON_SRC lib/*.cc)
-# if (WIN32 AND TRITON_BUILD_PYTHON_MODULE)
-# Python3_add_library(triton SHARED ${LIBTRITON_SRC} ${PYTHON_SRC})
-# set_target_properties(triton PROPERTIES SUFFIX ".pyd")
-# set_target_properties(triton PROPERTIES PREFIX "lib")
-# else()
-# add_library(triton SHARED ${LIBTRITON_SRC} ${PYTHON_SRC})
-# endif()
-
-# MLIR
+message(STATUS "FINDING2...")
 find_package(MLIR REQUIRED CONFIG PATHS ${MLIR_DIR})
 
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
@@ -213,7 +151,6 @@ if(TRITON_BUILD_PYTHON_MODULE)
     TritonHSACO
     ${dialect_libs}
     ${conversion_libs}
-
     # optimizations
     MLIRPass
     MLIRTransforms
@@ -226,42 +163,19 @@ if(TRITON_BUILD_PYTHON_MODULE)
     MLIRROCDLToLLVMIRTranslation
     MLIRIR
   )
-
-  if(WIN32)
-    target_link_libraries(triton PRIVATE ${LLVM_LIBRARIES} ${CMAKE_DL_LIBS}
-      ${TRITON_LIBRARIES}
-    )
-  elseif(APPLE)
-    target_link_libraries(triton ${LLVM_LIBRARIES} z
-      ${TRITON_LIBRARIES}
-    )
-  else()
-    target_link_libraries(triton ${LLVM_LIBRARIES} z
-      ${TRITON_LIBRARIES}
-    )
-    # TODO: Figure out which target is sufficient to fix errors; triton is
-    # apparently not enough
-    link_libraries(stdc++fs)
-  endif()
-
+  target_link_libraries(triton ${LLVM_LIBRARIES} z
+    ${TRITON_LIBRARIES}
+  )
+  link_libraries(stdc++fs)
   target_link_options(triton PRIVATE ${LLVM_LDFLAGS})
 endif()
 
-if(UNIX AND NOT APPLE)
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs,ALL")
-endif()
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs,ALL")
 
-if(TRITON_BUILD_PYTHON_MODULE AND NOT WIN32)
+if(TRITON_BUILD_PYTHON_MODULE)
   set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
-
-  # Check if the platform is MacOS
-  if(APPLE)
-    set(PYTHON_LDFLAGS "-undefined dynamic_lookup -flto")
-  endif()
-
   target_link_libraries(triton ${CUTLASS_LIBRARIES} ${PYTHON_LDFLAGS})
 endif()
 
 add_subdirectory(test)
-
 add_subdirectory(unittest)
