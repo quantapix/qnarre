@@ -24,6 +24,24 @@ cl::opt<std::string> InputIR(
 cl::opt<bool> UseObjectCache("use-object-cache",
                              cl::desc("Enable use of the MCJIT object caching"),
                              cl::init(false));
+
+cl::opt<bool> VerboseOutput(
+    "verbose", cl::desc("Enable verbose output (results, IR, etc.) to stderr"),
+    cl::init(false));
+
+cl::opt<bool> SuppressPrompts("suppress-prompts",
+                              cl::desc("Disable printing the 'ready' prompt"),
+                              cl::init(false));
+
+cl::opt<bool>
+    DumpModulesOnExit("dump-modules",
+                      cl::desc("Dump IR from modules to stderr on shutdown"),
+                      cl::init(false));
+
+cl::opt<bool> EnableLazyCompilation(
+    "enable-lazy-compilation",
+    cl::desc("Enable lazy compilation when using the MCJIT engine"),
+    cl::init(true));
 } // namespace
 
 std::string GenerateUniqueName(const char *root) {
@@ -59,7 +77,6 @@ std::string MakeLegalFunctionName(std::string Name) {
 class MCJITObjectCache : public ObjectCache {
 public:
   MCJITObjectCache() {
-    // Set IR cache directory
     sys::fs::current_path(CacheDir);
     sys::path::append(CacheDir, "toy_object_cache");
   }
@@ -67,10 +84,7 @@ public:
   virtual ~MCJITObjectCache() {}
 
   virtual void notifyObjectCompiled(const Module *M, const MemoryBuffer *Obj) {
-    // Get the ModuleID
     const std::string ModuleID = M->getModuleIdentifier();
-
-    // If we've flagged this as an IR file, cache it
     if (0 == ModuleID.compare(0, 3, "IR:")) {
       std::string IRFileName = ModuleID.substr(3);
       SmallString<128> IRCacheFile = CacheDir;
@@ -87,31 +101,19 @@ public:
     }
   }
 
-  // MCJIT will call this function before compiling any module
-  // MCJIT takes ownership of both the MemoryBuffer object and the memory
-  // to which it refers.
   virtual MemoryBuffer *getObject(const Module *M) {
-    // Get the ModuleID
     const std::string ModuleID = M->getModuleIdentifier();
-
-    // If we've flagged this as an IR file, cache it
     if (0 == ModuleID.compare(0, 3, "IR:")) {
       std::string IRFileName = ModuleID.substr(3);
       SmallString<128> IRCacheFile = CacheDir;
       sys::path::append(IRCacheFile, IRFileName);
       if (!sys::fs::exists(IRCacheFile.str())) {
-        // This file isn't in our cache
         return NULL;
       }
       std::unique_ptr<MemoryBuffer> IRObjectBuffer;
       MemoryBuffer::getFile(IRCacheFile.c_str(), IRObjectBuffer, -1, false);
-      // MCJIT will want to write into this buffer, and we don't want that
-      // because the file has probably just been mmapped.  Instead we make
-      // a copy.  The filed-based buffer will be released when it goes
-      // out of scope.
       return MemoryBuffer::getMemBufferCopy(IRObjectBuffer->getBuffer());
     }
-
     return NULL;
   }
 
@@ -121,7 +123,14 @@ private:
 
 class MCJITHelper {
 public:
-  MCJITHelper(LLVMContext &C) : Context(C), OpenModule(NULL) {}
+  MCJITHelper(LLVMContext &C) : Context(C), OpenModule(NULL) {
+    if (!InputIR.empty()) {
+      Module *M = parseInputIR(InputIR, Context);
+      Modules.push_back(M);
+      if (!EnableLazyCompilation)
+        compileModule(M);
+    }
+  }
   ~MCJITHelper();
 
   Function *getFunction(const std::string FnName);
@@ -151,14 +160,6 @@ public:
   HelpingMemoryManager(MCJITHelper *Helper) : MasterHelper(Helper) {}
   virtual ~HelpingMemoryManager() {}
 
-  /// This method returns the address of the specified function.
-  /// Our implementation will attempt to find functions in other
-  /// modules associated with the MCJITHelper to cross link functions
-  /// from one generated module to another.
-  ///
-  /// If \p AbortOnFailure is false and no function with the given name is
-  /// found, this function returns a null pointer. Otherwise, it prints a
-  /// message to stderr and aborts.
   virtual void *getPointerToNamedFunction(const std::string &Name,
                                           bool AbortOnFailure = true);
 
@@ -168,11 +169,9 @@ private:
 
 void *HelpingMemoryManager::getPointerToNamedFunction(const std::string &Name,
                                                       bool AbortOnFailure) {
-  // Try the standard symbol resolution first, but ask it not to abort.
   void *pfn = SectionMemoryManager::getPointerToNamedFunction(Name, false);
   if (pfn)
     return pfn;
-
   pfn = MasterHelper->getPointerToNamedFunction(Name);
   if (!pfn && AbortOnFailure)
     report_fatal_error("Program used external function '" + Name +
@@ -181,16 +180,12 @@ void *HelpingMemoryManager::getPointerToNamedFunction(const std::string &Name,
 }
 
 MCJITHelper::~MCJITHelper() {
-  // Walk the vector of modules.
   ModuleVector::iterator it, end;
   for (it = Modules.begin(), end = Modules.end(); it != end; ++it) {
-    // See if we have an execution engine for this module.
     std::map<Module *, ExecutionEngine *>::iterator mapIt = EngineMap.find(*it);
-    // If we have an EE, the EE owns the module so just delete the EE.
     if (mapIt != EngineMap.end()) {
       delete mapIt->second;
     } else {
-      // Otherwise, we still own the module.  Delete it now.
       delete *it;
     }
   }
@@ -205,18 +200,12 @@ Function *MCJITHelper::getFunction(const std::string FnName) {
     if (F) {
       if (*it == OpenModule)
         return F;
-
       assert(OpenModule != NULL);
-
-      // This function is in a module that has already been JITed.
-      // We need to generate a new prototype for external linkage.
       Function *PF = OpenModule->getFunction(FnName);
       if (PF && !PF->empty()) {
         ErrorF("redefinition of function across modules");
         return 0;
       }
-
-      // If we don't have a prototype yet, create one.
       if (!PF)
         PF = Function::Create(F->getFunctionType(), Function::ExternalLinkage,
                               FnName, OpenModule);
@@ -227,11 +216,8 @@ Function *MCJITHelper::getFunction(const std::string FnName) {
 }
 
 Module *MCJITHelper::getModuleForNewFunction() {
-  // If we have a Module that hasn't been JITed, use that.
   if (OpenModule)
     return OpenModule;
-
-  // Otherwise create a new Module.
   std::string ModName = GenerateUniqueName("mcjit_module_");
   Module *M = new Module(ModName, Context);
   Modules.push_back(M);
@@ -240,7 +226,6 @@ Module *MCJITHelper::getModuleForNewFunction() {
 }
 
 void *MCJITHelper::getPointerToFunction(Function *F) {
-  // Look for this function in an existing module
   ModuleVector::iterator begin = Modules.begin();
   ModuleVector::iterator end = Modules.end();
   ModuleVector::iterator it;
@@ -270,7 +255,6 @@ void MCJITHelper::closeCurrentModule() { OpenModule = NULL; }
 ExecutionEngine *MCJITHelper::compileModule(Module *M) {
   if (M == OpenModule)
     closeCurrentModule();
-
   std::string ErrStr;
   ExecutionEngine *NewEngine =
       EngineBuilder(M)
@@ -281,56 +265,32 @@ ExecutionEngine *MCJITHelper::compileModule(Module *M) {
     fprintf(stderr, "Could not create ExecutionEngine: %s\n", ErrStr.c_str());
     exit(1);
   }
-
   if (UseObjectCache)
     NewEngine->setObjectCache(&OurObjectCache);
-
-  // Get the ModuleID so we can identify IR input files
   const std::string ModuleID = M->getModuleIdentifier();
-
-  // If we've flagged this as an IR file, it doesn't need function passes run.
   if (0 != ModuleID.compare(0, 3, "IR:")) {
-    // Create a function pass manager for this engine
     FunctionPassManager *FPM = new FunctionPassManager(M);
-
-    // Set up the optimizer pipeline.  Start with registering info about how the
-    // target lays out data structures.
     FPM->add(new DataLayout(*NewEngine->getDataLayout()));
-    // Provide basic AliasAnalysis support for GVN.
     FPM->add(createBasicAliasAnalysisPass());
-    // Promote allocas to registers.
     FPM->add(createPromoteMemoryToRegisterPass());
-    // Do simple "peephole" optimizations and bit-twiddling optzns.
     FPM->add(createInstructionCombiningPass());
-    // Reassociate expressions.
     FPM->add(createReassociatePass());
-    // Eliminate Common SubExpressions.
     FPM->add(createGVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks, etc).
     FPM->add(createCFGSimplificationPass());
     FPM->doInitialization();
-
-    // For each function in the module
     Module::iterator it;
     Module::iterator end = M->end();
     for (it = M->begin(); it != end; ++it) {
-      // Run the FPM on this function
       FPM->run(*it);
     }
-
-    // We don't need this anymore
     delete FPM;
   }
-
-  // Store this engine
   EngineMap[M] = NewEngine;
   NewEngine->finalizeObject();
-
   return NewEngine;
 }
 
 void *MCJITHelper::getPointerToNamedFunction(const std::string &Name) {
-  // Look for the functions in our modules, compiling only as necessary
   ModuleVector::iterator begin = Modules.begin();
   ModuleVector::iterator end = Modules.end();
   ModuleVector::iterator it;
@@ -622,7 +582,8 @@ Function *FunctionAST::Codegen() {
 
 static void HandleDefinition() {
   if (FunctionAST *F = ParseDefinition()) {
-    TheHelper->closeCurrentModule();
+    if (EnableLazyCompilation)
+      TheHelper->closeCurrentModule();
     if (Function *LF = F->Codegen()) {
 #ifndef MINIMAL_STDERR_OUTPUT
       fprintf(stderr, "Read function definition:");
@@ -679,6 +640,30 @@ Module *parseInputIR(std::string InputFile) {
   return M;
 }
 
+/// top ::= definition | external | expression | ';'
+static void MainLoop() {
+  while (1) {
+    if (!SuppressPrompts)
+      fprintf(stderr, "ready> ");
+    switch (CurTok) {
+    case tok_eof:
+      return;
+    case ';':
+      getNextToken();
+      break;
+    case tok_def:
+      HandleDefinition();
+      break;
+    case tok_extern:
+      HandleExtern();
+      break;
+    default:
+      HandleTopLevelExpression();
+      break;
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
@@ -698,18 +683,10 @@ int main(int argc, char **argv) {
   fprintf(stderr, "ready> ");
 #endif
   getNextToken();
-
   TheHelper = new MCJITHelper(Context);
-
-  if (!InputIR.empty()) {
-    parseInputIR(InputIR);
-  }
-
   MainLoop();
-
 #ifndef MINIMAL_STDERR_OUTPUT
   TheHelper->print(errs());
 #endif
-
   return 0;
 }
