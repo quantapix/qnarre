@@ -2,15 +2,13 @@ use std;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use llvm_sys::prelude::LLVMValueRef;
+use llvm::prelude::LLVMValueRef;
 
 use iron_llvm::core;
 use iron_llvm::core::types::{FunctionType, FunctionTypeRef, RealTypeCtor, RealTypeRef};
 use iron_llvm::core::value::{Function, FunctionCtor, FunctionRef, Value};
 use iron_llvm::execution_engine::execution_engine::FrozenModule;
-use iron_llvm::execution_engine::{
-    BindingSectionMemoryManagerBuilder, ExecutionEngine, MCJITBuilder,
-};
+use iron_llvm::execution_engine::{BindingSectionMemoryManagerBuilder, ExecutionEngine, MCJITBuilder};
 use iron_llvm::support::add_symbol;
 use iron_llvm::{LLVMRef, LLVMRefCtor};
 
@@ -72,8 +70,8 @@ impl MCJITter {
 
         MCJITter {
             module_name: String::from(name),
-            current_module: current_module,
-            function_passmanager: function_passmanager,
+            current_module,
+            function_passmanager,
 
             container: Rc::new(RefCell::new(ModulesContainer {
                 execution_engines: vec![],
@@ -107,10 +105,7 @@ impl MCJITter {
             Err(msg) => panic!(msg),
         };
 
-        self.container
-            .borrow_mut()
-            .execution_engines
-            .push(execution_engine);
+        self.container.borrow_mut().execution_engines.push(execution_engine);
         self.container.borrow_mut().modules.push(module);
     }
 }
@@ -140,13 +135,13 @@ impl builder::ModuleProvider for MCJITter {
                         panic!("redefinition of function across modules")
                     }
                     f
-                }
+                },
                 None => {
                     // TODO: fix iron-llvm get_type
                     let fty = unsafe { FunctionTypeRef::from_ref(funct.get_type().to_ref()) };
                     let fty = unsafe { FunctionTypeRef::from_ref(fty.get_return_type().to_ref()) };
                     FunctionRef::new(&mut self.current_module, name, &fty)
-                }
+                },
             };
 
             if funct.count_basic_blocks() > 0 {

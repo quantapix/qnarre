@@ -6,7 +6,7 @@
 extern crate regex;
 
 extern crate iron_llvm;
-extern crate llvm_sys;
+extern crate llvm;
 
 pub mod builder;
 pub mod driver;

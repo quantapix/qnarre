@@ -1,4 +1,4 @@
-use llvm_sys::prelude::LLVMValueRef;
+use llvm::prelude::LLVMValueRef;
 use std::env;
 use std::error;
 use std::fmt;
@@ -63,22 +63,15 @@ pub fn load_ks<P: AsRef<Path>>(
     context: &mut builder::Context,
     module_provider: &mut builder::ModuleProvider,
 ) -> Result<(LLVMValueRef, bool), FilerError> {
-    let mut f = try!(File::open(path));
+    let mut f = File::open(path)?;
     let mut buf = String::new();
-    try!(f.read_to_string(&mut buf));
+    f.read_to_string(&mut buf)?;
     let tokens = lexer::tokenize(&buf);
-    let (ast, rest) = try!(parser::parse(
-        tokens.as_slice(),
-        vec![].as_slice(),
-        parser_settings
-    ));
+    let (ast, rest) = parser::parse(tokens.as_slice(), vec![].as_slice(), parser_settings)?;
     if !rest.is_empty() {
-        return Err(FilerError::Build(format!(
-            "Not complete expression: {:?}",
-            rest
-        )));
+        return Err(FilerError::Build(format!("Not complete expression: {:?}", rest)));
     }
-    Ok(try!(ast.codegen(context, module_provider)))
+    Ok(ast.codegen(context, module_provider)?)
 }
 
 pub fn load_stdlib(
@@ -91,12 +84,7 @@ pub fn load_stdlib(
         Err(_) => "stdlib".to_string(),
     };
     let path = Path::new(&path).join("stdlib.ks");
-    Ok(try!(load_ks(
-        path,
-        parser_settings,
-        context,
-        module_provider
-    )))
+    Ok(load_ks(path, parser_settings, context, module_provider)?)
 }
 
 pub fn dump_bitcode(path: &str, module_provider: &mut builder::ModuleProvider) -> Result<(), ()> {
