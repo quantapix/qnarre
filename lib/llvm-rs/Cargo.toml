@@ -6,7 +6,6 @@ build = "build.rs"
 # links = "llvm-16"
 
 [features]
-strict-versioning = []
 no-llvm-linking = []
 disable-alltargets-init = []
 prefer-dynamic = []
@@ -23,4 +22,4 @@ tempfile = { version = "3.2.0", optional = true }
 cc = "1.0"
 lazy_static = "1.0"
 regex = "1.0"
-semver = "1.0.7"
+semver = "1.0"

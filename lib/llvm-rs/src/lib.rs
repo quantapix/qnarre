@@ -1,8 +1,3 @@
-//! Bindings to LLVM's C API.
-//!
-//! Refer to the [LLVM documentation](http://llvm.org/docs/) for more
-//! information.
-
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
@@ -70,9 +65,6 @@ pub enum LLVMOpaqueJITEventListener {}
 #[derive(Debug)]
 pub enum LLVMOpaqueAttributeRef {}
 
-/// Core types used throughout LLVM.
-///
-/// In most cases you will want to `use llvm::prelude::*`.
 pub mod prelude {
     pub type LLVMBool = ::libc::c_int;
     pub type LLVMMemoryBufferRef = *mut super::LLVMMemoryBuffer;
@@ -97,27 +89,9 @@ pub mod prelude {
     pub type LLVMAttributeRef = *mut super::LLVMOpaqueAttributeRef;
 }
 
-pub mod analysis;
-pub mod bit_reader;
-pub mod bit_writer;
-pub mod blake3;
-pub mod comdat;
 pub mod core;
-pub mod debuginfo;
-pub mod disassembler;
-pub mod error;
-pub mod error_handling;
-pub mod execution_engine;
-pub mod initialization;
-pub mod ir_reader;
-pub mod linker;
-pub mod lto;
-pub mod object;
-pub mod orc2;
-pub mod remarks;
-pub mod support;
-pub mod target;
-pub mod target_machine;
+pub mod extra;
+pub mod orc;
 
 pub mod transforms {
     pub mod instcombine;
@@ -260,11 +234,8 @@ pub enum LLVMVisibility {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMUnnamedAddr {
-    /// Address of the GV is significant.
     LLVMNoUnnamedAddr,
-    /// Address of the GV is locally insignificant.
     LLVMLocalUnnamedAddr,
-    /// Address of the GV is globally insignificant.
     LLVMGlobalUnnamedAddr,
 }
 
@@ -349,10 +320,8 @@ pub enum LLVMValueKind {
     LLVMConstantFPValueKind,
     LLVMConstantPointerNullValueKind,
     LLVMConstantTokenNoneValueKind,
-
     LLVMMetadataAsValueValueKind,
     LLVMInlineAsmValueKind,
-
     LLVMInstructionValueKind,
     LLVMPoisonValueKind,
     LLVMConstantTargetNoneValueKind,
@@ -462,24 +431,17 @@ pub enum LLVMInlineAsmDialect {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMModuleFlagBehavior {
-    /// Emits an error if two values disagree, otherwise the resulting value is that of the operands.
     LLVMModuleFlagBehaviorError,
-    /// Emits a warning if two values disagree. The result value will be the operand for the flag from the first module being linked.
     LLVMModuleFlagBehaviorWarning,
-    /// Adds a requirement that another module flag be present and have a specified value after linking is performed. The value must be a metadata pair, where the first element of the pair is the ID of the module flag to be restricted, and the second element of the pair is the value the module flag should be restricted to. This behavior can be used to restrict the allowable results (via triggering of an error) of linking IDs with the **Override** behavior.
     LLVMModuleFlagBehaviorRequire,
-    /// Uses the specified value, regardless of the behavior or value of the other module. If both modules specify **Override**, but the values differ, an error will be emitted.
     LLVMModuleFlagBehaviorOverride,
-    /// Appends the two values, which are required to be metadata nodes.
     LLVMModuleFlagBehaviorAppend,
-    /// Appends the two values, which are required to be metadata nodes. However, duplicate entries in the second list are dropped during the append operation.
     LLVMModuleFlagBehaviorAppendUnique,
 }
 
 pub const LLVMAttributeReturnIndex: ::libc::c_uint = 0;
 pub const LLVMAttributeFunctionIndex: ::libc::c_uint = !0; // -1
-/// Either LLVMAttributeReturnIndex, LLVMAttributeFunctionIndex, or a parameter
-/// number from 1 to N.
+
 pub type LLVMAttributeIndex = ::libc::c_uint;
 
 pub type LLVMDiagnosticHandler = Option<extern "C" fn(arg1: LLVMDiagnosticInfoRef, arg2: *mut ::libc::c_void)>;
@@ -490,11 +452,5 @@ std::compile_error!(concat!(
     "No suitable version of LLVM was found system-wide or pointed
        to by LLVM_RS_",
     env!("CARGO_PKG_VERSION_MAJOR"),
-    "_PREFIX.
-
-       Consider using `llvmenv` to compile an appropriate copy of LLVM, and
-       refer to the llvm-sys documentation for more information.
-
-       llvm-sys: https://crates.io/crates/llvm-sys
-       llvmenv: https://crates.io/crates/llvmenv"
+    "_PREFIX."
 ));

@@ -1,13 +1,3 @@
-//! Inkwell documentation is a work in progress.
-//!
-//! If you have any LLVM knowledge that could be used to improve these docs, we would greatly appreciate you opening an issue and/or a pull request on our [GitHub page](https://github.com/TheDan64/inkwell).
-//!
-//! Due to a rustdoc issue, this documentation represents only the latest supported LLVM version. We hope that this issue will be resolved in the future so that multiple versions can be documented side by side.
-//!
-//! # Library Wide Notes
-//!
-//! * Most functions which take a string slice as input may possibly panic in the unlikely event that a c style string cannot be created based on it. (IE if your slice already has a null byte in it)
-
 #![deny(missing_debug_implementations)]
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
 
@@ -68,10 +58,7 @@ extern crate llvm_rs_80 as llvm_rs;
 #[cfg(feature = "llvm9-0")]
 extern crate llvm_rs_90 as llvm_rs;
 
-use llvm_rs::{
-    LLVMAtomicOrdering, LLVMAtomicRMWBinOp, LLVMDLLStorageClass, LLVMIntPredicate, LLVMRealPredicate,
-    LLVMThreadLocalMode, LLVMVisibility,
-};
+use llvm_rs::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp, LLVMDLLStorageClass, LLVMIntPredicate, LLVMRealPredicate, LLVMThreadLocalMode, LLVMVisibility};
 
 #[llvm_versions(7.0..=latest)]
 use llvm_rs::LLVMInlineAsmDialect;
