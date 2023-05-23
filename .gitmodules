@@ -1,15 +1,3 @@
-[submodule "lib/accelerate"]
-	path = lib/accelerate
-	url = https://github.com/huggingface/accelerate.git
-	branch = main
-[submodule "lib/datasets"]
-	path = lib/datasets
-	url = https://github.com/huggingface/datasets.git
-	branch = main
-[submodule "lib/transformers"]
-	path = lib/transformers
-	url = https://github.com/huggingface/transformers.git
-	branch = main
 [submodule "lib/tokenizers"]
 	path = lib/tokenizers
 	url = https://github.com/huggingface/tokenizers.git
@@ -21,10 +9,6 @@
 [submodule "lib/llama.cpp"]
 	path = lib/llama.cpp
 	url = https://github.com/ggerganov/llama.cpp.git
-[submodule "lib/evaluate"]
-	path = lib/evaluate
-	url = https://github.com/huggingface/evaluate.git
-	branch = main
 [submodule "lib/triton"]
 	path = lib/triton
 	url = https://github.com/openai/triton.git
