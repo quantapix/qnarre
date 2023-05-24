@@ -1,9 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
-//================================================
-// Macros
-//================================================
-
 #[cfg(feature = "runtime")]
 macro_rules! link {
     (
@@ -44,7 +38,6 @@ macro_rules! link {
         use std::sync::{Arc};
         use std::path::{Path, PathBuf};
 
-        /// The (minimum) version of a `libclang` shared library.
         #[allow(missing_docs)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum Version {
@@ -86,7 +79,6 @@ macro_rules! link {
             }
         }
 
-        /// The set of functions loaded dynamically.
         #[derive(Debug, Default)]
         pub struct Functions {
             $(
@@ -95,7 +87,6 @@ macro_rules! link {
             )+
         }
 
-        /// A dynamically loaded instance of the `libclang` library.
         #[derive(Debug)]
         pub struct SharedLibrary {
             library: libloading::Library,
@@ -108,18 +99,10 @@ macro_rules! link {
                 Self { library, path, functions: Functions::default() }
             }
 
-            /// Returns the path to this `libclang` shared library.
             pub fn path(&self) -> &Path {
                 &self.path
             }
 
-            /// Returns the (minimum) version of this `libclang` shared library.
-            ///
-            /// If this returns `None`, it indicates that the version is too old
-            /// to be supported by this crate (i.e., `3.4` or earlier). If the
-            /// version of this shared library is more recent than that fully
-            /// supported by this crate, the most recent fully supported version
-            /// will be returned.
             pub fn version(&self) -> Option<Version> {
                 macro_rules! check {
                     ($fn:expr, $version:ident) => {
@@ -152,7 +135,6 @@ macro_rules! link {
 
         thread_local!(static LIBRARY: RefCell<Option<Arc<SharedLibrary>>> = RefCell::new(None));
 
-        /// Returns whether a `libclang` shared library is loaded on this thread.
         pub fn is_loaded() -> bool {
             LIBRARY.with(|l| l.borrow().is_some())
         }
@@ -205,15 +187,6 @@ A `libclang` function was called that is not supported by the loaded `libclang` 
             $(link!(@LOAD: $(#[cfg($cfg)])* fn $name($($pname: $pty), *) $(-> $ret)*);)+
         }
 
-        /// Loads a `libclang` shared library and returns the library instance.
-        ///
-        /// This function does not attempt to load any functions from the shared library. The caller
-        /// is responsible for loading the functions they require.
-        ///
-        /// # Failures
-        ///
-        /// * a `libclang` shared library could not be found
-        /// * the `libclang` shared library could not be opened
         pub fn load_manually() -> Result<SharedLibrary, String> {
             #[allow(dead_code)]
             mod build {
@@ -240,17 +213,6 @@ A `libclang` function was called that is not supported by the loaded `libclang` 
             }
         }
 
-        /// Loads a `libclang` shared library for use in the current thread.
-        ///
-        /// This functions attempts to load all the functions in the shared library. Whether a
-        /// function has been loaded can be tested by calling the `is_loaded` function on the
-        /// module with the same name as the function (e.g., `clang_createIndex::is_loaded()` for
-        /// the `clang_createIndex` function).
-        ///
-        /// # Failures
-        ///
-        /// * a `libclang` shared library could not be found
-        /// * the `libclang` shared library could not be opened
         #[allow(dead_code)]
         pub fn load() -> Result<(), String> {
             let library = Arc::new(load_manually()?);
@@ -258,11 +220,6 @@ A `libclang` function was called that is not supported by the loaded `libclang` 
             Ok(())
         }
 
-        /// Unloads the `libclang` shared library in use in the current thread.
-        ///
-        /// # Failures
-        ///
-        /// * a `libclang` shared library is not in use in the current thread
         pub fn unload() -> Result<(), String> {
             let library = set_library(None);
             if library.is_some() {
@@ -272,23 +229,17 @@ A `libclang` function was called that is not supported by the loaded `libclang` 
             }
         }
 
-        /// Returns the library instance stored in TLS.
-        ///
-        /// This functions allows for sharing library instances between threads.
         pub fn get_library() -> Option<Arc<SharedLibrary>> {
             LIBRARY.with(|l| l.borrow_mut().clone())
         }
 
-        /// Sets the library instance stored in TLS and returns the previous library.
-        ///
-        /// This functions allows for sharing library instances between threads.
         pub fn set_library(library: Option<Arc<SharedLibrary>>) -> Option<Arc<SharedLibrary>> {
             LIBRARY.with(|l| mem::replace(&mut *l.borrow_mut(), library))
         }
     )
 }
 
-#[cfg(not(feature = "runtime"))]
+//#[cfg(not(feature = "runtime"))]
 macro_rules! link {
     (
         $(

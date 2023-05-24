@@ -82,14 +82,13 @@ fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+const LLVM_CONFIG: &str = "/usr/local/llvm/bin/llvm-config";
+
 fn llvm_config(args: &str) -> Result<String, Box<dyn Error>> {
-    let pre = env::var("PWD")
-        .map(|x| Path::new(&x).join("./tools/out/bin"))
-        .unwrap_or_default();
-    dbg!(&pre);
-    let call = format!("{} --link-static {}", pre.join("llvm-config").display(), args);
+    let p = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
+    let p = format!("{} --link-static {}", p, args);
     Ok(
-        str::from_utf8(&{ Command::new("sh").arg("-c").arg(&call).output()? }.stdout)?
+        str::from_utf8(&{ Command::new("sh").arg("-c").arg(&p).output()? }.stdout)?
             .trim()
             .to_string(),
     )
