@@ -6,5 +6,6 @@
   },
   "C_Cpp.default.compilerPath": "/usr/bin/clang",
   "cmake.sourceDirectory": "/home/qpix/clone/qnarre/tools",
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "rust-analyzer.showUnlinkedFileNotification": false
 }

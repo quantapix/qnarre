@@ -1,19 +1,7 @@
-[package]
+[workspace]
+members = ["tools/bindgen", "tools/llvm"]
+
+[workspace.package]
 name = "qnarre"
 version = "0.1.0"
 edition = "2021"
-# build = "build.rs"
-# links = "llvm-16"
-
-[dependencies]
-llvm-rs = { path = "./lib/llvm-rs" }
-# llvm-2 = { path = "./lib/llvm-2-rs" }
-# mlir = { path = "./lib/mlir-rs" }
-# docopt = "*"
-# serde = "*"
-
-# [workspace]
-# members = ["macros", "mlir-rs"]
-
-# [profile.release]
-# lto = true

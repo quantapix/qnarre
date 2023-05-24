@@ -5,7 +5,7 @@ set -e -x
 CURRENT="$(pwd)"
 
 BUILD="$CURRENT/build"
-SOURCE="$CURRENT/../dev/llvm-project"
+SOURCE="$CURRENT/../lib/llvm-project"
 
 ARGS="  \
         -DCMAKE_BUILD_TYPE=MinSizeRel \
@@ -21,7 +21,7 @@ ARGS="  \
         -DLLVM_ENABLE_LLD=ON \
         -DLLVM_ENABLE_PROJECTS=mlir \
         -DLLVM_INSTALL_UTILS=ON \
-        -DLLVM_TARGETS_TO_BUILD=X86;NVPTX;AMDGPU \
+        -DLLVM_TARGETS_TO_BUILD=X86;NVPTX \
         -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
         -DMLIR_ENABLE_CUDA_RUNNER=ON \
         -DPython3_EXECUTABLE=$BUILD/.env/bin/python \
@@ -40,5 +40,5 @@ VIRTUAL_ENV="$BUILD/.env"
 export VIRTUAL_ENV
 cd llvm
 cmake -G Ninja -S "$SOURCE/llvm" $ARGS
-ninja install
+cmake --build . --target install
 popd

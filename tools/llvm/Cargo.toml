@@ -1,0 +1,9 @@
+[package]
+name = "llvm"
+version.workspace = true
+edition.workspace = true
+build = "build.rs"
+# links = "llvm"
+
+[build-dependencies]
+bindgen = "0.65.1"

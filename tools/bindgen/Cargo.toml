@@ -1,0 +1,45 @@
+[package]
+name = "bindgen"
+version.workspace = true
+edition.workspace = true
+build = "build.rs"
+
+[lib]
+name = "bindgen"
+path = "lib.rs"
+
+[dependencies]
+bitflags = "2.2.1"
+cexpr = "0.6"
+clang-sys = { version = "1", features = ["clang_6_0"] }
+lazycell = "1"
+lazy_static = "1"
+peeking_take_while = "0.1.2"
+quote = { version = "1", default-features = false }
+syn = { version = "2.0", features = ["full", "extra-traits", "visit-mut"]}
+regex = { version = "1.5", default-features = false , features = ["std", "unicode"] }
+which = { version = "4.2.1", optional = true, default-features = false }
+prettyplease = { version = "0.2.0" }
+annotate-snippets = { version = "0.9.1", features = ["color"], optional = true }
+shlex = "1"
+rustc-hash = "1.0.1"
+proc-macro2 = { version = "1", default-features = false }
+log = { version = "0.4", optional = true }
+
+[features]
+default = ["logging", "runtime", "which-rustfmt"]
+logging = ["log"]
+static = ["clang-sys/static"]
+runtime = ["clang-sys/runtime"]
+# Dynamically discover a `rustfmt` binary using the `which` crate
+which-rustfmt = ["which"]
+experimental = ["annotate-snippets"]
+
+## The following features are for internal use and they shouldn't be used if
+## you're not hacking on bindgen
+# Features used by `bindgen-cli` 
+__cli = []
+# Features used for CI testing 
+__testing_only_extra_assertions = []
+__testing_only_libclang_9 = []
+__testing_only_libclang_5 = []
