@@ -6,9 +6,7 @@ mod helpers;
 mod as_args;
 
 use crate::callbacks::ParseCallbacks;
-use crate::codegen::{
-    AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle,
-};
+use crate::codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 use crate::deps::DepfileSpec;
 use crate::features::{RustFeatures, RustTarget};
 use crate::regex_set::RegexSet;
@@ -1470,13 +1468,13 @@ options! {
         },
         as_args: |value, args| (!value).as_args(args, "--distrust-clang-mangling"),
     },
-    /// Whether to detect include paths using `clang_sys`.
+    /// Whether to detect include paths using `clang`.
     detect_include_paths: bool {
         default: true,
         methods: {
-            /// Set whether to detect include paths using `clang_sys`.
+            /// Set whether to detect include paths using `clang`.
             ///
-            /// `clang_sys` is used to detect include paths by default.
+            /// `clang` is used to detect include paths by default.
             pub fn detect_include_paths(mut self, doit: bool) -> Self {
                 self.options.detect_include_paths = doit;
                 self

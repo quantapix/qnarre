@@ -168,18 +168,10 @@ pub(crate) trait AsTemplateParam {
     type Extra;
 
     /// Convert this thing to the item ID of a named template type parameter.
-    fn as_template_param(
-        &self,
-        ctx: &BindgenContext,
-        extra: &Self::Extra,
-    ) -> Option<TypeId>;
+    fn as_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> Option<TypeId>;
 
     /// Is this a named template type parameter?
-    fn is_template_param(
-        &self,
-        ctx: &BindgenContext,
-        extra: &Self::Extra,
-    ) -> bool {
+    fn is_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> bool {
         self.as_template_param(ctx, extra).is_some()
     }
 }
@@ -217,34 +209,27 @@ impl TemplateInstantiation {
     }
 
     /// Parse a `TemplateInstantiation` from a clang `Type`.
-    pub(crate) fn from_ty(
-        ty: &clang::Type,
-        ctx: &mut BindgenContext,
-    ) -> Option<TemplateInstantiation> {
-        use clang_sys::*;
+    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplateInstantiation> {
+        use clang::*;
 
-        let template_args = ty.template_args().map_or(vec![], |args| match ty
-            .canonical_type()
+        let template_args = ty
             .template_args()
-        {
-            Some(canonical_args) => {
-                let arg_count = args.len();
-                args.chain(canonical_args.skip(arg_count))
+            .map_or(vec![], |args| match ty.canonical_type().template_args() {
+                Some(canonical_args) => {
+                    let arg_count = args.len();
+                    args.chain(canonical_args.skip(arg_count))
+                        .filter(|t| t.kind() != CXType_Invalid)
+                        .map(|t| Item::from_ty_or_ref(t, t.declaration(), None, ctx))
+                        .collect()
+                },
+                None => args
                     .filter(|t| t.kind() != CXType_Invalid)
-                    .map(|t| {
-                        Item::from_ty_or_ref(t, t.declaration(), None, ctx)
-                    })
-                    .collect()
-            }
-            None => args
-                .filter(|t| t.kind() != CXType_Invalid)
-                .map(|t| Item::from_ty_or_ref(t, t.declaration(), None, ctx))
-                .collect(),
-        });
+                    .map(|t| Item::from_ty_or_ref(t, t.declaration(), None, ctx))
+                    .collect(),
+            });
 
         let declaration = ty.declaration();
-        let definition = if declaration.kind() == CXCursor_TypeAliasTemplateDecl
-        {
+        let definition = if declaration.kind() == CXCursor_TypeAliasTemplateDecl {
             Some(declaration)
         } else {
             declaration.specialized().or_else(|| {
@@ -276,16 +261,12 @@ impl TemplateInstantiation {
                     );
                 }
                 return None;
-            }
+            },
         };
 
-        let template_definition =
-            Item::from_ty_or_ref(definition.cur_type(), definition, None, ctx);
+        let template_definition = Item::from_ty_or_ref(definition.cur_type(), definition, None, ctx);
 
-        Some(TemplateInstantiation::new(
-            template_definition,
-            template_args,
-        ))
+        Some(TemplateInstantiation::new(template_definition, template_args))
     }
 }
 
@@ -310,8 +291,7 @@ impl IsOpaque for TemplateInstantiation {
             .template_arguments()
             .iter()
             .map(|arg| {
-                let arg_path =
-                    ctx.resolve_item(*arg).path_for_allowlisting(ctx);
+                let arg_path = ctx.resolve_item(*arg).path_for_allowlisting(ctx);
                 arg_path[1..].join("::")
             })
             .collect();
@@ -333,8 +313,7 @@ impl Trace for TemplateInstantiation {
     where
         T: Tracer,
     {
-        tracer
-            .visit_kind(self.definition.into(), EdgeKind::TemplateDeclaration);
+        tracer.visit_kind(self.definition.into(), EdgeKind::TemplateDeclaration);
         for arg in self.template_arguments() {
             tracer.visit_kind(arg.into(), EdgeKind::TemplateArgument);
         }

@@ -49,9 +49,7 @@ mod ir;
 mod parse;
 mod regex_set;
 
-pub use codegen::{
-    AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle,
-};
+pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 pub use features::{RustTarget, LATEST_STABLE_RUST, RUST_TARGET_STRINGS};
 pub use ir::annotations::FieldVisibilityKind;
 pub use ir::function::Abi;
@@ -86,10 +84,10 @@ pub const DEFAULT_ANON_FIELDS_PREFIX: &str = "__bindgen_anon_";
 const DEFAULT_NON_EXTERN_FNS_SUFFIX: &str = "__extern";
 
 fn file_is_cpp(name_file: &str) -> bool {
-    name_file.ends_with(".hpp") ||
-        name_file.ends_with(".hxx") ||
-        name_file.ends_with(".hh") ||
-        name_file.ends_with(".h++")
+    name_file.ends_with(".hpp")
+        || name_file.ends_with(".hxx")
+        || name_file.ends_with(".hh")
+        || name_file.ends_with(".h++")
 }
 
 fn args_are_cpp(clang_args: &[String]) -> bool {
@@ -291,14 +289,9 @@ pub fn builder() -> Builder {
     Default::default()
 }
 
-fn get_extra_clang_args(
-    parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>],
-) -> Vec<String> {
+fn get_extra_clang_args(parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>]) -> Vec<String> {
     // Add any extra arguments from the environment to the clang command line.
-    let extra_clang_args = match get_target_dependent_env_var(
-        parse_callbacks,
-        "BINDGEN_EXTRA_CLANG_ARGS",
-    ) {
+    let extra_clang_args = match get_target_dependent_env_var(parse_callbacks, "BINDGEN_EXTRA_CLANG_ARGS") {
         None => return vec![],
         Some(s) => s,
     };
@@ -320,17 +313,15 @@ impl Builder {
 
         // Transform input headers to arguments on the clang command line.
         self.options.clang_args.extend(
-            self.options.input_headers
-                [..self.options.input_headers.len().saturating_sub(1)]
+            self.options.input_headers[..self.options.input_headers.len().saturating_sub(1)]
                 .iter()
                 .flat_map(|header| ["-include".into(), header.to_string()]),
         );
 
-        let input_unsaved_files =
-            std::mem::take(&mut self.options.input_header_contents)
-                .into_iter()
-                .map(|(name, contents)| clang::UnsavedFile::new(name, contents))
-                .collect::<Vec<_>>();
+        let input_unsaved_files = std::mem::take(&mut self.options.input_header_contents)
+            .into_iter()
+            .map(|(name, contents)| clang::UnsavedFile::new(name, contents))
+            .collect::<Vec<_>>();
 
         Bindings::generate(self.options, input_unsaved_files)
     }
@@ -341,13 +332,8 @@ impl Builder {
     /// issues. The resulting file will be named something like `__bindgen.i` or
     /// `__bindgen.ii`
     pub fn dump_preprocessed_input(&self) -> io::Result<()> {
-        let clang =
-            clang_sys::support::Clang::find(None, &[]).ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "Cannot find clang executable",
-                )
-            })?;
+        let clang = clang::support::Clang::find(None, &[])
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Cannot find clang executable"))?;
 
         // The contents of a wrapper file that includes all the input header
         // files.
@@ -376,11 +362,7 @@ impl Builder {
             wrapper_contents.push_str(contents);
         }
 
-        let wrapper_path = PathBuf::from(if is_cpp {
-            "__bindgen.cpp"
-        } else {
-            "__bindgen.c"
-        });
+        let wrapper_path = PathBuf::from(if is_cpp { "__bindgen.cpp" } else { "__bindgen.c" });
 
         {
             let mut wrapper_file = File::create(&wrapper_path)?;
@@ -406,11 +388,7 @@ impl Builder {
         let mut child = cmd.spawn()?;
 
         let mut preprocessed = child.stdout.take().unwrap();
-        let mut file = File::create(if is_cpp {
-            "__bindgen.ii"
-        } else {
-            "__bindgen.i"
-        })?;
+        let mut file = File::create(if is_cpp { "__bindgen.ii" } else { "__bindgen.i" })?;
         io::copy(&mut preprocessed, &mut file)?;
 
         if child.wait()?.success() {
@@ -499,9 +477,7 @@ impl BindgenOptions {
                 vec![None; sets_len]
             };
 
-            for (regex_set, name) in
-                self.abi_overrides.values_mut().chain(regex_sets).zip(names)
-            {
+            for (regex_set, name) in self.abi_overrides.values_mut().chain(regex_sets).zip(names) {
                 regex_set.build_with_diagnostics(record_matches, name);
             }
         }
@@ -535,24 +511,12 @@ impl BindgenOptions {
         self.rust_features
     }
 
-    fn last_callback<T>(
-        &self,
-        f: impl Fn(&dyn callbacks::ParseCallbacks) -> Option<T>,
-    ) -> Option<T> {
-        self.parse_callbacks
-            .iter()
-            .filter_map(|cb| f(cb.as_ref()))
-            .last()
+    fn last_callback<T>(&self, f: impl Fn(&dyn callbacks::ParseCallbacks) -> Option<T>) -> Option<T> {
+        self.parse_callbacks.iter().filter_map(|cb| f(cb.as_ref())).last()
     }
 
-    fn all_callbacks<T>(
-        &self,
-        f: impl Fn(&dyn callbacks::ParseCallbacks) -> Vec<T>,
-    ) -> Vec<T> {
-        self.parse_callbacks
-            .iter()
-            .flat_map(|cb| f(cb.as_ref()))
-            .collect()
+    fn all_callbacks<T>(&self, f: impl Fn(&dyn callbacks::ParseCallbacks) -> Vec<T>) -> Vec<T> {
+        self.parse_callbacks.iter().flat_map(|cb| f(cb.as_ref())).collect()
     }
 
     fn process_comment(&self, comment: &str) -> String {
@@ -573,14 +537,8 @@ fn deprecated_target_diagnostic(target: RustTarget, _options: &BindgenOptions) {
         use crate::diagnostics::{Diagnostic, Level};
 
         let mut diagnostic = Diagnostic::default();
-        diagnostic.with_title(
-            format!("The {} Rust target is deprecated.", target),
-            Level::Warn,
-        );
-        diagnostic.add_annotation(
-            "This Rust target was passed to `--rust-target`",
-            Level::Info,
-        );
+        diagnostic.with_title(format!("The {} Rust target is deprecated.", target), Level::Warn);
+        diagnostic.add_annotation("This Rust target was passed to `--rust-target`", Level::Info);
         diagnostic.add_annotation("If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues", Level::Help);
         diagnostic.display();
     }
@@ -588,7 +546,7 @@ fn deprecated_target_diagnostic(target: RustTarget, _options: &BindgenOptions) {
 
 #[cfg(feature = "runtime")]
 fn ensure_libclang_is_loaded() {
-    if clang_sys::is_loaded() {
+    if clang::is_loaded() {
         return;
     }
 
@@ -597,16 +555,16 @@ fn ensure_libclang_is_loaded() {
     // across different threads.
 
     lazy_static! {
-        static ref LIBCLANG: std::sync::Arc<clang_sys::SharedLibrary> = {
-            clang_sys::load().expect("Unable to find libclang");
-            clang_sys::get_library().expect(
+        static ref LIBCLANG: std::sync::Arc<clang::SharedLibrary> = {
+            clang::load().expect("Unable to find libclang");
+            clang::get_library().expect(
                 "We just loaded libclang and it had better still be \
                  here!",
             )
         };
     }
 
-    clang_sys::set_library(Some(LIBCLANG.clone()));
+    clang::set_library(Some(LIBCLANG.clone()));
 }
 
 #[cfg(not(feature = "runtime"))]
@@ -633,19 +591,19 @@ impl std::fmt::Display for BindgenError {
         match self {
             BindgenError::FolderAsHeader(h) => {
                 write!(f, "'{}' is a folder", h.display())
-            }
+            },
             BindgenError::InsufficientPermissions(h) => {
                 write!(f, "insufficient permissions to read '{}'", h.display())
-            }
+            },
             BindgenError::NotExist(h) => {
                 write!(f, "header '{}' does not exist.", h.display())
-            }
+            },
             BindgenError::ClangDiagnostic(message) => {
                 write!(f, "clang diagnosed error: {}", message)
-            }
+            },
             BindgenError::Codegen(err) => {
                 write!(f, "codegen error: {}", err)
-            }
+            },
         }
     }
 }
@@ -659,28 +617,24 @@ pub struct Bindings {
     module: proc_macro2::TokenStream,
 }
 
-pub(crate) const HOST_TARGET: &str =
-    include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
+pub(crate) const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
 
 // Some architecture triplets are different between rust and libclang, see #1211
 // and duplicates.
 fn rust_to_clang_target(rust_target: &str) -> String {
     if rust_target.starts_with("aarch64-apple-") {
         let mut clang_target = "arm64-apple-".to_owned();
-        clang_target
-            .push_str(rust_target.strip_prefix("aarch64-apple-").unwrap());
+        clang_target.push_str(rust_target.strip_prefix("aarch64-apple-").unwrap());
         return clang_target;
     } else if rust_target.starts_with("riscv64gc-") {
         let mut clang_target = "riscv64-".to_owned();
         clang_target.push_str(rust_target.strip_prefix("riscv64gc-").unwrap());
         return clang_target;
     } else if rust_target.ends_with("-espidf") {
-        let mut clang_target =
-            rust_target.strip_suffix("-espidf").unwrap().to_owned();
+        let mut clang_target = rust_target.strip_suffix("-espidf").unwrap().to_owned();
         clang_target.push_str("-elf");
         if clang_target.starts_with("riscv32imc-") {
-            clang_target = "riscv32-".to_owned() +
-                clang_target.strip_prefix("riscv32imc-").unwrap();
+            clang_target = "riscv32-".to_owned() + clang_target.strip_prefix("riscv32imc-").unwrap();
         }
         return clang_target;
     }
@@ -724,18 +678,16 @@ impl Bindings {
         #[cfg(feature = "runtime")]
         debug!(
             "Generating bindings, libclang at {}",
-            clang_sys::get_library().unwrap().path().display()
+            clang::get_library().unwrap().path().display()
         );
         #[cfg(not(feature = "runtime"))]
         debug!("Generating bindings, libclang linked");
 
         options.build();
 
-        let (effective_target, explicit_target) =
-            find_effective_target(&options.clang_args);
+        let (effective_target, explicit_target) = find_effective_target(&options.clang_args);
 
-        let is_host_build =
-            rust_to_clang_target(HOST_TARGET) == effective_target;
+        let is_host_build = rust_to_clang_target(HOST_TARGET) == effective_target;
 
         // NOTE: The is_host_build check wouldn't be sound normally in some
         // cases if we were to call a binary (if you have a 32-bit clang and are
@@ -743,9 +695,7 @@ impl Bindings {
         // opening libclang.so, it has to be the same architecture and thus the
         // check is fine.
         if !explicit_target && !is_host_build {
-            options
-                .clang_args
-                .insert(0, format!("--target={}", effective_target));
+            options.clang_args.insert(0, format!("--target={}", effective_target));
         };
 
         fn detect_include_paths(options: &mut BindgenOptions) {
@@ -755,7 +705,7 @@ impl Bindings {
 
             // Filter out include paths and similar stuff, so we don't incorrectly
             // promote them to `-isystem`.
-            let clang_args_for_clang_sys = {
+            let clang_args_for_clang = {
                 let mut last_was_include_prefix = false;
                 options
                     .clang_args
@@ -775,9 +725,7 @@ impl Bindings {
                             return false;
                         }
 
-                        if arg.starts_with("-I") ||
-                            arg.starts_with("--include-directory=")
-                        {
+                        if arg.starts_with("-I") || arg.starts_with("--include-directory=") {
                             return false;
                         }
 
@@ -787,15 +735,9 @@ impl Bindings {
                     .collect::<Vec<_>>()
             };
 
-            debug!(
-                "Trying to find clang with flags: {:?}",
-                clang_args_for_clang_sys
-            );
+            debug!("Trying to find clang with flags: {:?}", clang_args_for_clang);
 
-            let clang = match clang_sys::support::Clang::find(
-                None,
-                &clang_args_for_clang_sys,
-            ) {
+            let clang = match clang::support::Clang::find(None, &clang_args_for_clang) {
                 None => return,
                 Some(clang) => clang,
             };
@@ -803,8 +745,7 @@ impl Bindings {
             debug!("Found clang: {:?}", clang);
 
             // Whether we are working with C or C++ inputs.
-            let is_cpp = args_are_cpp(&options.clang_args) ||
-                options.input_headers.iter().any(|h| file_is_cpp(h));
+            let is_cpp = args_are_cpp(&options.clang_args) || options.input_headers.iter().any(|h| file_is_cpp(h));
 
             let search_paths = if is_cpp {
                 clang.cpp_search_paths
@@ -842,9 +783,7 @@ impl Bindings {
                     return Err(BindgenError::FolderAsHeader(path.into()));
                 }
                 if !can_read(&md.permissions()) {
-                    return Err(BindgenError::InsufficientPermissions(
-                        path.into(),
-                    ));
+                    return Err(BindgenError::InsufficientPermissions(path.into()));
                 }
                 let h = h.clone();
                 options.clang_args.push(h);
@@ -880,8 +819,7 @@ impl Bindings {
             parse(&mut context)?;
         }
 
-        let (module, options) =
-            codegen::codegen(context).map_err(BindgenError::Codegen)?;
+        let (module, options) = codegen::codegen(context).map_err(BindgenError::Codegen)?;
 
         Ok(Bindings { options, module })
     }
@@ -920,14 +858,11 @@ impl Bindings {
         match self.format_tokens(&self.module) {
             Ok(formatted_bindings) => {
                 writer.write_all(formatted_bindings.as_bytes())?;
-            }
+            },
             Err(err) => {
-                eprintln!(
-                    "Failed to run rustfmt: {} (non-fatal, continuing)",
-                    err
-                );
+                eprintln!("Failed to run rustfmt: {} (non-fatal, continuing)", err);
                 writer.write_all(self.module.to_string().as_bytes())?;
-            }
+            },
         }
         Ok(())
     }
@@ -944,9 +879,7 @@ impl Bindings {
         #[cfg(feature = "which-rustfmt")]
         match which::which("rustfmt") {
             Ok(p) => Ok(Cow::Owned(p)),
-            Err(e) => {
-                Err(io::Error::new(io::ErrorKind::Other, format!("{}", e)))
-            }
+            Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
         }
         #[cfg(not(feature = "which-rustfmt"))]
         // No rustfmt binary was specified, so assume that the binary is called
@@ -955,18 +888,14 @@ impl Bindings {
     }
 
     /// Formats a token stream with the formatter set up in `BindgenOptions`.
-    fn format_tokens(
-        &self,
-        tokens: &proc_macro2::TokenStream,
-    ) -> io::Result<String> {
-        let _t = time::Timer::new("rustfmt_generated_string")
-            .with_output(self.options.time_phases);
+    fn format_tokens(&self, tokens: &proc_macro2::TokenStream) -> io::Result<String> {
+        let _t = time::Timer::new("rustfmt_generated_string").with_output(self.options.time_phases);
 
         match self.options.formatter {
             Formatter::None => return Ok(tokens.to_string()),
             Formatter::Prettyplease => {
                 return Ok(prettyplease::unparse(&syn::parse_quote!(#tokens)));
-            }
+            },
             Formatter::Rustfmt => (),
         }
 
@@ -1015,12 +944,9 @@ impl Bindings {
                     "Rustfmt parsing errors.".to_string(),
                 )),
                 Some(3) => {
-                    rustfmt_non_fatal_error_diagnostic(
-                        "Rustfmt could not format some lines",
-                        &self.options,
-                    );
+                    rustfmt_non_fatal_error_diagnostic("Rustfmt could not format some lines", &self.options);
                     Ok(bindings)
-                }
+                },
                 _ => Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Internal rustfmt error".to_string(),
@@ -1040,10 +966,7 @@ fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &BindgenOptions) {
 
         Diagnostic::default()
             .with_title(msg, Level::Warn)
-            .add_annotation(
-                "The bindings will be generated but not formatted.",
-                Level::Note,
-            )
+            .add_annotation("The bindings will be generated but not formatted.", Level::Note)
             .display();
     }
 }
@@ -1053,10 +976,7 @@ impl std::fmt::Display for Bindings {
         let mut bytes = vec![];
         self.write(Box::new(&mut bytes) as Box<dyn Write>)
             .expect("writing to a vec cannot fail");
-        f.write_str(
-            std::str::from_utf8(&bytes)
-                .expect("we should only write bindings that are valid utf-8"),
-        )
+        f.write_str(std::str::from_utf8(&bytes).expect("we should only write bindings that are valid utf-8"))
     }
 }
 
@@ -1067,29 +987,25 @@ fn filter_builtins(ctx: &BindgenContext, cursor: &clang::Cursor) -> bool {
 }
 
 /// Parse one `Item` from the Clang cursor.
-fn parse_one(
-    ctx: &mut BindgenContext,
-    cursor: clang::Cursor,
-    parent: Option<ItemId>,
-) -> clang_sys::CXChildVisitResult {
+fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang::CXChildVisitResult {
     if !filter_builtins(ctx, &cursor) {
         return CXChildVisit_Continue;
     }
 
-    use clang_sys::CXChildVisit_Continue;
+    use clang::CXChildVisit_Continue;
     match Item::parse(cursor, parent, ctx) {
-        Ok(..) => {}
-        Err(ParseError::Continue) => {}
+        Ok(..) => {},
+        Err(ParseError::Continue) => {},
         Err(ParseError::Recurse) => {
             cursor.visit(|child| parse_one(ctx, child, parent));
-        }
+        },
     }
     CXChildVisit_Continue
 }
 
 /// Parse the Clang AST into our `Item` internal representation.
 fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
-    use clang_sys::*;
+    use clang::*;
 
     let mut error = None;
     for d in context.translation_unit().diags().iter() {
@@ -1122,9 +1038,7 @@ fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
     }
 
     let root = context.root_module();
-    context.with_module(root, |context| {
-        cursor.visit(|cursor| parse_one(context, cursor, None))
-    });
+    context.with_module(root, |context| cursor.visit(|cursor| parse_one(context, cursor, None)));
 
     assert!(
         context.current_module() == context.root_module(),
@@ -1181,18 +1095,12 @@ fn env_var<K: AsRef<str> + AsRef<OsStr>>(
 }
 
 /// Looks for the env var `var_${TARGET}`, and falls back to just `var` when it is not found.
-fn get_target_dependent_env_var(
-    parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>],
-    var: &str,
-) -> Option<String> {
+fn get_target_dependent_env_var(parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>], var: &str) -> Option<String> {
     if let Ok(target) = env_var(parse_callbacks, "TARGET") {
         if let Ok(v) = env_var(parse_callbacks, format!("{}_{}", var, target)) {
             return Some(v);
         }
-        if let Ok(v) = env_var(
-            parse_callbacks,
-            format!("{}_{}", var, target.replace('-', "_")),
-        ) {
+        if let Ok(v) = env_var(parse_callbacks, format!("{}_{}", var, target.replace('-', "_"))) {
             return Some(v);
         }
     }
@@ -1285,12 +1193,6 @@ fn test_rust_to_clang_target_riscv() {
 
 #[test]
 fn test_rust_to_clang_target_espidf() {
-    assert_eq!(
-        rust_to_clang_target("riscv32imc-esp-espidf"),
-        "riscv32-esp-elf"
-    );
-    assert_eq!(
-        rust_to_clang_target("xtensa-esp32-espidf"),
-        "xtensa-esp32-elf"
-    );
+    assert_eq!(rust_to_clang_target("riscv32imc-esp-espidf"), "riscv32-esp-elf");
+    assert_eq!(rust_to_clang_target("xtensa-esp32-espidf"), "xtensa-esp32-elf");
 }

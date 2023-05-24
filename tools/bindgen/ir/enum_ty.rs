@@ -36,10 +36,7 @@ pub(crate) struct Enum {
 
 impl Enum {
     /// Construct a new `Enum` with the given representation and variants.
-    pub(crate) fn new(
-        repr: Option<TypeId>,
-        variants: Vec<EnumVariant>,
-    ) -> Self {
+    pub(crate) fn new(repr: Option<TypeId>, variants: Vec<EnumVariant>) -> Self {
         Enum { repr, variants }
     }
 
@@ -54,11 +51,8 @@ impl Enum {
     }
 
     /// Construct an enumeration from the given Clang type.
-    pub(crate) fn from_ty(
-        ty: &clang::Type,
-        ctx: &mut BindgenContext,
-    ) -> Result<Self, ParseError> {
-        use clang_sys::*;
+    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Result<Self, ParseError> {
+        use clang::*;
         debug!("Enum::from_ty {:?}", ty);
 
         if ty.kind() != CXType_Enum {
@@ -71,8 +65,7 @@ impl Enum {
             .and_then(|et| Item::from_ty(&et, declaration, None, ctx).ok());
         let mut variants = vec![];
 
-        let variant_ty =
-            repr.and_then(|r| ctx.resolve_type(r).safe_canonical_type(ctx));
+        let variant_ty = repr.and_then(|r| ctx.resolve_type(r).safe_canonical_type(ctx));
         let is_bool = variant_ty.map_or(false, Type::is_bool);
 
         // Assume signedness since the default type by the C standard is an int.
@@ -80,15 +73,11 @@ impl Enum {
             TypeKind::Int(ref int_kind) => int_kind.is_signed(),
             ref other => {
                 panic!("Since when enums can be non-integers? {:?}", other)
-            }
+            },
         });
 
         let type_name = ty.spelling();
-        let type_name = if type_name.is_empty() {
-            None
-        } else {
-            Some(type_name)
-        };
+        let type_name = if type_name.is_empty() { None } else { Some(type_name) };
         let type_name = type_name.as_deref();
 
         let definition = declaration.definition().unwrap_or(declaration);
@@ -106,10 +95,7 @@ impl Enum {
                     let annotations = Annotations::new(&cursor);
                     let custom_behavior = ctx
                         .options()
-                        .last_callback(|callbacks| {
-                            callbacks
-                                .enum_variant_behavior(type_name, &name, val)
-                        })
+                        .last_callback(|callbacks| callbacks.enum_variant_behavior(type_name, &name, val))
                         .or_else(|| {
                             let annotations = annotations.as_ref()?;
                             if annotations.hide() {
@@ -123,26 +109,12 @@ impl Enum {
 
                     let new_name = ctx
                         .options()
-                        .last_callback(|callbacks| {
-                            callbacks.enum_variant_name(type_name, &name, val)
-                        })
-                        .or_else(|| {
-                            annotations
-                                .as_ref()?
-                                .use_instead_of()?
-                                .last()
-                                .cloned()
-                        })
+                        .last_callback(|callbacks| callbacks.enum_variant_name(type_name, &name, val))
+                        .or_else(|| annotations.as_ref()?.use_instead_of()?.last().cloned())
                         .unwrap_or_else(|| name.clone());
 
                     let comment = cursor.raw_comment();
-                    variants.push(EnumVariant::new(
-                        new_name,
-                        name,
-                        comment,
-                        val,
-                        custom_behavior,
-                    ));
+                    variants.push(EnumVariant::new(new_name, name, comment, val, custom_behavior));
                 }
             }
             CXChildVisit_Continue
@@ -150,12 +122,7 @@ impl Enum {
         Ok(Enum::new(repr, variants))
     }
 
-    fn is_matching_enum(
-        &self,
-        ctx: &BindgenContext,
-        enums: &RegexSet,
-        item: &Item,
-    ) -> bool {
+    fn is_matching_enum(&self, ctx: &BindgenContext, enums: &RegexSet, item: &Item) -> bool {
         let path = item.path_for_allowlisting(ctx);
         let enum_ty = item.expect_type();
 
@@ -172,64 +139,31 @@ impl Enum {
     }
 
     /// Returns the final representation of the enum.
-    pub(crate) fn computed_enum_variation(
-        &self,
-        ctx: &BindgenContext,
-        item: &Item,
-    ) -> EnumVariation {
+    pub(crate) fn computed_enum_variation(&self, ctx: &BindgenContext, item: &Item) -> EnumVariation {
         // ModuleConsts has higher precedence before Rust in order to avoid
         // problems with overlapping match patterns.
-        if self.is_matching_enum(
-            ctx,
-            &ctx.options().constified_enum_modules,
-            item,
-        ) {
+        if self.is_matching_enum(ctx, &ctx.options().constified_enum_modules, item) {
             EnumVariation::ModuleConsts
-        } else if self.is_matching_enum(
-            ctx,
-            &ctx.options().bitfield_enums,
-            item,
-        ) {
+        } else if self.is_matching_enum(ctx, &ctx.options().bitfield_enums, item) {
             EnumVariation::NewType {
                 is_bitfield: true,
                 is_global: false,
             }
-        } else if self.is_matching_enum(ctx, &ctx.options().newtype_enums, item)
-        {
+        } else if self.is_matching_enum(ctx, &ctx.options().newtype_enums, item) {
             EnumVariation::NewType {
                 is_bitfield: false,
                 is_global: false,
             }
-        } else if self.is_matching_enum(
-            ctx,
-            &ctx.options().newtype_global_enums,
-            item,
-        ) {
+        } else if self.is_matching_enum(ctx, &ctx.options().newtype_global_enums, item) {
             EnumVariation::NewType {
                 is_bitfield: false,
                 is_global: true,
             }
-        } else if self.is_matching_enum(
-            ctx,
-            &ctx.options().rustified_enums,
-            item,
-        ) {
-            EnumVariation::Rust {
-                non_exhaustive: false,
-            }
-        } else if self.is_matching_enum(
-            ctx,
-            &ctx.options().rustified_non_exhaustive_enums,
-            item,
-        ) {
-            EnumVariation::Rust {
-                non_exhaustive: true,
-            }
-        } else if self.is_matching_enum(
-            ctx,
-            &ctx.options().constified_enums,
-            item,
-        ) {
+        } else if self.is_matching_enum(ctx, &ctx.options().rustified_enums, item) {
+            EnumVariation::Rust { non_exhaustive: false }
+        } else if self.is_matching_enum(ctx, &ctx.options().rustified_non_exhaustive_enums, item) {
+            EnumVariation::Rust { non_exhaustive: true }
+        } else if self.is_matching_enum(ctx, &ctx.options().constified_enums, item) {
             EnumVariation::Consts
         } else {
             ctx.options().default_enum_style

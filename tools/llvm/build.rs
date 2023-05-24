@@ -84,8 +84,9 @@ fn run() -> Result<(), Box<dyn Error>> {
 
 fn llvm_config(args: &str) -> Result<String, Box<dyn Error>> {
     let pre = env::var("PWD")
-        .map(|x| Path::new(&x).join("../out/bin"))
+        .map(|x| Path::new(&x).join("./tools/out/bin"))
         .unwrap_or_default();
+    dbg!(&pre);
     let call = format!("{} --link-static {}", pre.join("llvm-config").display(), args);
     Ok(
         str::from_utf8(&{ Command::new("sh").arg("-c").arg(&call).output()? }.stdout)?

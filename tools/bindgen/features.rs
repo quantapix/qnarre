@@ -86,61 +86,7 @@ macro_rules! rust_target_values_def {
 macro_rules! rust_target_base {
     ( $x_macro:ident ) => {
         $x_macro!(
-            /// Rust stable 1.0
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_0 => 1.0;
-            /// Rust stable 1.17
-            ///  * Static lifetime elision ([RFC 1623](https://github.com/rust-lang/rfcs/blob/master/text/1623-static.md))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_17 => 1.17;
-            /// Rust stable 1.19
-            ///  * Untagged unions ([RFC 1444](https://github.com/rust-lang/rfcs/blob/master/text/1444-union.md))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_19 => 1.19;
-            /// Rust stable 1.20
-            ///  * Associated constants ([PR](https://github.com/rust-lang/rust/pull/42809))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_20 => 1.20;
-            /// Rust stable 1.21
-            ///  * Builtin impls for `Clone` ([PR](https://github.com/rust-lang/rust/pull/43690))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_21 => 1.21;
-            /// Rust stable 1.25
-            ///  * `repr(align)` ([PR](https://github.com/rust-lang/rust/pull/47006))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_25 => 1.25;
-            /// Rust stable 1.26
-            ///  * [i128 / u128 support](https://doc.rust-lang.org/std/primitive.i128.html)
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_26 => 1.26;
-            /// Rust stable 1.27
-            ///  * `must_use` attribute on functions ([PR](https://github.com/rust-lang/rust/pull/48925))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_27 => 1.27;
-            /// Rust stable 1.28
-            ///  * `repr(transparent)` ([PR](https://github.com/rust-lang/rust/pull/51562))
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_28 => 1.28;
-            /// Rust stable 1.30
-            ///  * `const fn` support for limited cases ([PR](https://github.com/rust-lang/rust/pull/54835/)
-            /// *  [c_void available in core](https://doc.rust-lang.org/core/ffi/enum.c_void.html)
-            #[deprecated = "This rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues"] => Stable_1_30 => 1.30;
-            /// Rust stable 1.33
-            ///  * repr(packed(N)) ([PR](https://github.com/rust-lang/rust/pull/57049))
-            => Stable_1_33 => 1.33;
-            /// Rust stable 1.36
-            ///  * `MaybeUninit` instead of `mem::uninitialized()` ([PR](https://github.com/rust-lang/rust/pull/60445))
-            => Stable_1_36 => 1.36;
-            /// Rust stable 1.40
-            /// * `non_exhaustive` enums/structs ([Tracking issue](https://github.com/rust-lang/rust/issues/44109))
-            => Stable_1_40 => 1.40;
-            /// Rust stable 1.47
-            /// * `larger_arrays` ([Tracking issue](https://github.com/rust-lang/rust/pull/74060))
-            => Stable_1_47 => 1.47;
-            /// Rust stable 1.59
-            /// * `CStr::from_bytes_with_nul_unchecked` in `const` contexts ([PR](https://github.com/rust-lang/rust/pull/54745))
-            => Stable_1_59 => 1.59;
-            /// Rust stable 1.64
-            ///  * `core_ffi_c` ([Tracking issue](https://github.com/rust-lang/rust/issues/94501))
-            => Stable_1_64 => 1.64;
-            /// Rust stable 1.68
-            ///  * `abi_efiapi` calling convention ([Tracking issue](https://github.com/rust-lang/rust/issues/65815))
-            => Stable_1_68 => 1.68;
-            /// Nightly rust
-            ///  * `thiscall` calling convention ([Tracking issue](https://github.com/rust-lang/rust/issues/42202))
-            ///  * `vectorcall` calling convention (no tracking issue)
-            ///  * `c_unwind` calling convention ([Tracking issue](https://github.com/rust-lang/rust/issues/74990))
+            => Stable_1_69 => 1.69;
             => Nightly => nightly;
         );
     }
@@ -276,38 +222,38 @@ mod test {
     fn target_features() {
         let f_1_0 = RustFeatures::from(RustTarget::Stable_1_0);
         assert!(
-            !f_1_0.static_lifetime_elision &&
-                !f_1_0.core_ffi_c_void &&
-                !f_1_0.untagged_union &&
-                !f_1_0.associated_const &&
-                !f_1_0.builtin_clone_impls &&
-                !f_1_0.repr_align &&
-                !f_1_0.thiscall_abi &&
-                !f_1_0.vectorcall_abi
+            !f_1_0.static_lifetime_elision
+                && !f_1_0.core_ffi_c_void
+                && !f_1_0.untagged_union
+                && !f_1_0.associated_const
+                && !f_1_0.builtin_clone_impls
+                && !f_1_0.repr_align
+                && !f_1_0.thiscall_abi
+                && !f_1_0.vectorcall_abi
         );
         let f_1_21 = RustFeatures::from(RustTarget::Stable_1_21);
         assert!(
-            f_1_21.static_lifetime_elision &&
-                !f_1_21.core_ffi_c_void &&
-                f_1_21.untagged_union &&
-                f_1_21.associated_const &&
-                f_1_21.builtin_clone_impls &&
-                !f_1_21.repr_align &&
-                !f_1_21.thiscall_abi &&
-                !f_1_21.vectorcall_abi
+            f_1_21.static_lifetime_elision
+                && !f_1_21.core_ffi_c_void
+                && f_1_21.untagged_union
+                && f_1_21.associated_const
+                && f_1_21.builtin_clone_impls
+                && !f_1_21.repr_align
+                && !f_1_21.thiscall_abi
+                && !f_1_21.vectorcall_abi
         );
         let f_nightly = RustFeatures::from(RustTarget::Nightly);
         assert!(
-            f_nightly.static_lifetime_elision &&
-                f_nightly.core_ffi_c_void &&
-                f_nightly.untagged_union &&
-                f_nightly.associated_const &&
-                f_nightly.builtin_clone_impls &&
-                f_nightly.maybe_uninit &&
-                f_nightly.repr_align &&
-                f_nightly.thiscall_abi &&
-                f_nightly.vectorcall_abi &&
-                f_nightly.c_unwind_abi
+            f_nightly.static_lifetime_elision
+                && f_nightly.core_ffi_c_void
+                && f_nightly.untagged_union
+                && f_nightly.associated_const
+                && f_nightly.builtin_clone_impls
+                && f_nightly.maybe_uninit
+                && f_nightly.repr_align
+                && f_nightly.thiscall_abi
+                && f_nightly.vectorcall_abi
+                && f_nightly.c_unwind_abi
         );
     }
 

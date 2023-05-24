@@ -1,0 +1,25 @@
+[package]
+name = "clang"
+version.workspace = true
+edition.workspace = true
+build = "build.rs"
+# links = "clang"
+
+[features]
+clang_15_0 = []
+clang_16_0 = ["clang_15_0"]
+runtime = ["libloading"]
+static = []
+
+[dependencies]
+glob = "0.3"
+libc = { version = "0.2.39", default-features = false }
+libloading = { version = "0.7", optional = true }
+
+[build-dependencies]
+glob = "0.3"
+
+[dev-dependencies]
+glob = "0.3"
+serial_test = "1"
+tempfile = "3"

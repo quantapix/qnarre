@@ -56,17 +56,13 @@ pub(crate) enum MethodKind {
 impl MethodKind {
     /// Is this a destructor method?
     pub(crate) fn is_destructor(&self) -> bool {
-        matches!(
-            *self,
-            MethodKind::Destructor | MethodKind::VirtualDestructor { .. }
-        )
+        matches!(*self, MethodKind::Destructor | MethodKind::VirtualDestructor { .. })
     }
 
     /// Is this a pure virtual method?
     pub(crate) fn is_pure_virtual(&self) -> bool {
         match *self {
-            MethodKind::Virtual { pure_virtual } |
-            MethodKind::VirtualDestructor { pure_virtual } => pure_virtual,
+            MethodKind::Virtual { pure_virtual } | MethodKind::VirtualDestructor { pure_virtual } => pure_virtual,
             _ => false,
         }
     }
@@ -86,11 +82,7 @@ pub(crate) struct Method {
 
 impl Method {
     /// Construct a new `Method`.
-    pub(crate) fn new(
-        kind: MethodKind,
-        signature: FunctionId,
-        is_const: bool,
-    ) -> Self {
+    pub(crate) fn new(kind: MethodKind, signature: FunctionId, is_const: bool) -> Self {
         Method {
             kind,
             signature,
@@ -201,9 +193,7 @@ impl Field {
     pub(crate) fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
         match *self {
             Field::Bitfields(BitfieldUnit { layout, .. }) => Some(layout),
-            Field::DataMember(ref data) => {
-                ctx.resolve_type(data.ty).layout(ctx)
-            }
+            Field::DataMember(ref data) => ctx.resolve_type(data.ty).layout(ctx),
         }
     }
 }
@@ -218,31 +208,25 @@ impl Trace for Field {
         match *self {
             Field::DataMember(ref data) => {
                 tracer.visit_kind(data.ty.into(), EdgeKind::Field);
-            }
+            },
             Field::Bitfields(BitfieldUnit { ref bitfields, .. }) => {
                 for bf in bitfields {
                     tracer.visit_kind(bf.ty().into(), EdgeKind::Field);
                 }
-            }
+            },
         }
     }
 }
 
 impl DotAttributes for Field {
-    fn dot_attributes<W>(
-        &self,
-        ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         match *self {
             Field::DataMember(ref data) => data.dot_attributes(ctx, out),
             Field::Bitfields(BitfieldUnit {
-                layout,
-                ref bitfields,
-                ..
+                layout, ref bitfields, ..
             }) => {
                 writeln!(
                     out,
@@ -263,17 +247,13 @@ impl DotAttributes for Field {
                     bf.dot_attributes(ctx, out)?;
                 }
                 writeln!(out, "</table></td></tr>")
-            }
+            },
         }
     }
 }
 
 impl DotAttributes for FieldData {
-    fn dot_attributes<W>(
-        &self,
-        _ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -287,11 +267,7 @@ impl DotAttributes for FieldData {
 }
 
 impl DotAttributes for Bitfield {
-    fn dot_attributes<W>(
-        &self,
-        _ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -512,13 +488,7 @@ where
             break;
         }
 
-        bitfields_to_allocation_units(
-            ctx,
-            &mut bitfield_unit_count,
-            &mut fields,
-            bitfields,
-            packed,
-        )?;
+        bitfields_to_allocation_units(ctx, &mut bitfield_unit_count, &mut fields, bitfields, packed)?;
     }
 
     assert!(
@@ -592,22 +562,17 @@ where
 
     for bitfield in raw_bitfields {
         let bitfield_width = bitfield.bitfield_width().unwrap() as usize;
-        let bitfield_layout =
-            ctx.resolve_type(bitfield.ty()).layout(ctx).ok_or(())?;
+        let bitfield_layout = ctx.resolve_type(bitfield.ty()).layout(ctx).ok_or(())?;
         let bitfield_size = bitfield_layout.size;
         let bitfield_align = bitfield_layout.align;
 
         let mut offset = unit_size_in_bits;
         if !packed {
             if is_ms_struct {
-                if unit_size_in_bits != 0 &&
-                    (bitfield_width == 0 ||
-                        bitfield_width > unfilled_bits_in_unit)
-                {
+                if unit_size_in_bits != 0 && (bitfield_width == 0 || bitfield_width > unfilled_bits_in_unit) {
                     // We've reached the end of this allocation unit, so flush it
                     // and its bitfields.
-                    unit_size_in_bits =
-                        align_to(unit_size_in_bits, unit_align * 8);
+                    unit_size_in_bits = align_to(unit_size_in_bits, unit_align * 8);
                     flush_allocation_unit(
                         fields,
                         bitfield_unit_count,
@@ -622,10 +587,8 @@ where
                     offset = 0;
                     unit_align = 0;
                 }
-            } else if offset != 0 &&
-                (bitfield_width == 0 ||
-                    (offset & (bitfield_align * 8 - 1)) + bitfield_width >
-                        bitfield_size * 8)
+            } else if offset != 0
+                && (bitfield_width == 0 || (offset & (bitfield_align * 8 - 1)) + bitfield_width > bitfield_size * 8)
             {
                 offset = align_to(offset, bitfield_align * 8);
             }
@@ -705,12 +668,10 @@ impl CompFields {
         match *self {
             CompFields::Before(ref mut raws) => {
                 raws.push(raw);
-            }
+            },
             _ => {
-                panic!(
-                    "Must not append new fields after computing bitfield allocation units"
-                );
-            }
+                panic!("Must not append new fields after computing bitfield allocation units");
+            },
         }
     }
 
@@ -719,7 +680,7 @@ impl CompFields {
             CompFields::Before(ref mut raws) => mem::take(raws),
             _ => {
                 panic!("Already computed bitfield units");
-            }
+            },
         };
 
         let result = raw_fields_to_fields_and_bitfield_units(ctx, raws, packed);
@@ -730,10 +691,10 @@ impl CompFields {
                     fields,
                     has_bitfield_units,
                 };
-            }
+            },
             Err(()) => {
                 *self = CompFields::Error;
-            }
+            },
         }
     }
 
@@ -744,14 +705,10 @@ impl CompFields {
             CompFields::Error => return,
             CompFields::Before(_) => {
                 panic!("Not yet computed bitfield units.");
-            }
+            },
         };
 
-        fn has_method(
-            methods: &[Method],
-            ctx: &BindgenContext,
-            name: &str,
-        ) -> bool {
+        fn has_method(methods: &[Method], ctx: &BindgenContext, name: &str) -> bool {
             methods.iter().any(|method| {
                 let method_name = ctx.resolve_func(method.signature()).name();
                 method_name == name || ctx.rust_mangle(method_name) == name
@@ -773,8 +730,7 @@ impl CompFields {
             .map(|bitfield_name| {
                 let bitfield_name = bitfield_name.to_string();
                 let getter = {
-                    let mut getter =
-                        ctx.rust_mangle(&bitfield_name).to_string();
+                    let mut getter = ctx.rust_mangle(&bitfield_name).to_string();
                     if has_method(methods, ctx, &getter) {
                         getter.push_str("_bindgen_bitfield");
                     }
@@ -801,12 +757,8 @@ impl CompFields {
                     }
 
                     anon_field_counter += 1;
-                    *name = Some(format!(
-                        "{}{}",
-                        ctx.options().anon_fields_prefix,
-                        anon_field_counter
-                    ));
-                }
+                    *name = Some(format!("{}{}", ctx.options().anon_fields_prefix, anon_field_counter));
+                },
                 Field::Bitfields(ref mut bu) => {
                     for bitfield in &mut bu.bitfields {
                         if bitfield.name().is_none() {
@@ -820,7 +772,7 @@ impl CompFields {
                             bitfield.setter_name = Some(setter);
                         }
                     }
-                }
+                },
             }
         }
     }
@@ -834,17 +786,17 @@ impl Trace for CompFields {
         T: Tracer,
     {
         match *self {
-            CompFields::Error => {}
+            CompFields::Error => {},
             CompFields::Before(ref fields) => {
                 for f in fields {
                     tracer.visit_kind(f.ty().into(), EdgeKind::Field);
                 }
-            }
+            },
             CompFields::After { ref fields, .. } => {
                 for f in fields {
                     f.trace(context, tracer, &());
                 }
-            }
+            },
         }
     }
 }
@@ -1117,7 +1069,7 @@ impl CompInfo {
             CompFields::After { ref fields, .. } => fields,
             CompFields::Before(..) => {
                 panic!("Should always have computed bitfield units first");
-            }
+            },
         }
     }
 
@@ -1129,20 +1081,16 @@ impl CompInfo {
         }
     }
 
-    fn each_known_field_layout(
-        &self,
-        ctx: &BindgenContext,
-        mut callback: impl FnMut(Layout),
-    ) {
+    fn each_known_field_layout(&self, ctx: &BindgenContext, mut callback: impl FnMut(Layout)) {
         match self.fields {
-            CompFields::Error => {}
+            CompFields::Error => {},
             CompFields::After { ref fields, .. } => {
                 for field in fields.iter() {
                     if let Some(layout) = field.layout(ctx) {
                         callback(layout);
                     }
                 }
-            }
+            },
             CompFields::Before(ref raw_fields) => {
                 for field in raw_fields.iter() {
                     let field_ty = ctx.resolve_type(field.0.ty);
@@ -1150,19 +1098,17 @@ impl CompInfo {
                         callback(layout);
                     }
                 }
-            }
+            },
         }
     }
 
     fn has_bitfields(&self) -> bool {
         match self.fields {
             CompFields::Error => false,
-            CompFields::After {
-                has_bitfield_units, ..
-            } => has_bitfield_units,
+            CompFields::After { has_bitfield_units, .. } => has_bitfield_units,
             CompFields::Before(_) => {
                 panic!("Should always have computed bitfield units first");
-            }
+            },
         }
     }
 
@@ -1175,9 +1121,7 @@ impl CompInfo {
         }
         self.fields().iter().any(|field| match *field {
             Field::DataMember(..) => false,
-            Field::Bitfields(ref unit) => {
-                unit.layout.size > RUST_DERIVE_IN_ARRAY_LIMIT
-            }
+            Field::Bitfields(ref unit) => unit.layout.size > RUST_DERIVE_IN_ARRAY_LIMIT,
         })
     }
 
@@ -1235,7 +1179,7 @@ impl CompInfo {
         location: Option<clang::Cursor>,
         ctx: &mut BindgenContext,
     ) -> Result<Self, ParseError> {
-        use clang_sys::*;
+        use clang::*;
         assert!(
             ty.template_args().is_none(),
             "We handle template instantiations elsewhere"
@@ -1255,32 +1199,23 @@ impl CompInfo {
         debug!("CompInfo::from_ty({:?}, {:?})", kind, cursor);
 
         let mut ci = CompInfo::new(kind);
-        ci.is_forward_declaration =
-            location.map_or(true, |cur| match cur.kind() {
-                CXCursor_ParmDecl => true,
-                CXCursor_StructDecl | CXCursor_UnionDecl |
-                CXCursor_ClassDecl => !cur.is_definition(),
-                _ => false,
-            });
+        ci.is_forward_declaration = location.map_or(true, |cur| match cur.kind() {
+            CXCursor_ParmDecl => true,
+            CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !cur.is_definition(),
+            _ => false,
+        });
 
         let mut maybe_anonymous_struct_field = None;
         cursor.visit(|cur| {
             if cur.kind() != CXCursor_FieldDecl {
-                if let Some((ty, clang_ty, public, offset)) =
-                    maybe_anonymous_struct_field.take()
-                {
-                    if cur.kind() == CXCursor_TypedefDecl &&
-                        cur.typedef_type().unwrap().canonical_type() ==
-                            clang_ty
-                    {
+                if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
+                    if cur.kind() == CXCursor_TypedefDecl && cur.typedef_type().unwrap().canonical_type() == clang_ty {
                         // Typedefs of anonymous structs appear later in the ast
                         // than the struct itself, that would otherwise be an
                         // anonymous field. Detect that case here, and do
                         // nothing.
                     } else {
-                        let field = RawField::new(
-                            None, ty, None, None, None, public, offset,
-                        );
+                        let field = RawField::new(None, ty, None, None, None, public, offset);
                         ci.fields.append_raw_field(field);
                     }
                 }
@@ -1288,9 +1223,7 @@ impl CompInfo {
 
             match cur.kind() {
                 CXCursor_FieldDecl => {
-                    if let Some((ty, clang_ty, public, offset)) =
-                        maybe_anonymous_struct_field.take()
-                    {
+                    if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
                         let mut used = false;
                         cur.visit(|child| {
                             if child.cur_type() == clang_ty {
@@ -1300,9 +1233,7 @@ impl CompInfo {
                         });
 
                         if !used {
-                            let field = RawField::new(
-                                None, ty, None, None, None, public, offset,
-                            );
+                            let field = RawField::new(None, ty, None, None, None, public, offset);
                             ci.fields.append_raw_field(field);
                         }
                     }
@@ -1322,12 +1253,7 @@ impl CompInfo {
                         None
                     };
 
-                    let field_type = Item::from_ty_or_ref(
-                        cur.cur_type(),
-                        cur,
-                        Some(potential_id),
-                        ctx,
-                    );
+                    let field_type = Item::from_ty_or_ref(cur.cur_type(), cur, Some(potential_id), ctx);
 
                     let comment = cur.raw_comment();
                     let annotations = Annotations::new(&cur);
@@ -1337,22 +1263,11 @@ impl CompInfo {
 
                     // Name can be empty if there are bitfields, for example,
                     // see tests/headers/struct_with_bitfields.h
-                    assert!(
-                        !name.is_empty() || bit_width.is_some(),
-                        "Empty field name?"
-                    );
+                    assert!(!name.is_empty() || bit_width.is_some(), "Empty field name?");
 
                     let name = if name.is_empty() { None } else { Some(name) };
 
-                    let field = RawField::new(
-                        name,
-                        field_type,
-                        comment,
-                        annotations,
-                        bit_width,
-                        is_public,
-                        offset,
-                    );
+                    let field = RawField::new(name, field_type, comment, annotations, bit_width, is_public, offset);
                     ci.fields.append_raw_field(field);
 
                     // No we look for things like attributes and stuff.
@@ -1362,18 +1277,18 @@ impl CompInfo {
                         }
                         CXChildVisit_Continue
                     });
-                }
+                },
                 CXCursor_UnexposedAttr => {
                     ci.found_unknown_attr = true;
-                }
-                CXCursor_EnumDecl |
-                CXCursor_TypeAliasDecl |
-                CXCursor_TypeAliasTemplateDecl |
-                CXCursor_TypedefDecl |
-                CXCursor_StructDecl |
-                CXCursor_UnionDecl |
-                CXCursor_ClassTemplate |
-                CXCursor_ClassDecl => {
+                },
+                CXCursor_EnumDecl
+                | CXCursor_TypeAliasDecl
+                | CXCursor_TypeAliasTemplateDecl
+                | CXCursor_TypedefDecl
+                | CXCursor_StructDecl
+                | CXCursor_UnionDecl
+                | CXCursor_ClassTemplate
+                | CXCursor_ClassDecl => {
                     // We can find non-semantic children here, clang uses a
                     // StructDecl to note incomplete structs that haven't been
                     // forward-declared before, see [1].
@@ -1386,16 +1301,14 @@ impl CompInfo {
                     // definition, it's a valid inner type.
                     //
                     // [1]: https://github.com/rust-lang/rust-bindgen/issues/482
-                    let is_inner_struct =
-                        cur.semantic_parent() == cursor || cur.is_definition();
+                    let is_inner_struct = cur.semantic_parent() == cursor || cur.is_definition();
                     if !is_inner_struct {
                         return CXChildVisit_Continue;
                     }
 
                     // Even if this is a definition, we may not be the semantic
                     // parent, see #1281.
-                    let inner = Item::parse(cur, Some(potential_id), ctx)
-                        .expect("Inner ClassDecl");
+                    let inner = Item::parse(cur, Some(potential_id), ctx).expect("Inner ClassDecl");
 
                     // If we avoided recursion parsing this type (in
                     // `Item::from_ty_with_id()`), then this might not be a
@@ -1407,27 +1320,25 @@ impl CompInfo {
 
                         // A declaration of an union or a struct without name
                         // could also be an unnamed field, unfortunately.
-                        if cur.is_anonymous() && cur.kind() != CXCursor_EnumDecl
-                        {
+                        if cur.is_anonymous() && cur.kind() != CXCursor_EnumDecl {
                             let ty = cur.cur_type();
                             let public = cur.public_accessible();
                             let offset = cur.offset_of_field().ok();
 
-                            maybe_anonymous_struct_field =
-                                Some((inner, ty, public, offset));
+                            maybe_anonymous_struct_field = Some((inner, ty, public, offset));
                         }
                     }
-                }
+                },
                 CXCursor_PackedAttr => {
                     ci.packed_attr = true;
-                }
+                },
                 CXCursor_TemplateTypeParameter => {
                     let param = Item::type_param(None, cur, ctx).expect(
                         "Item::type_param should't fail when pointing \
                          at a TemplateTypeParameter",
                     );
                     ci.template_params.push(param);
-                }
+                },
                 CXCursor_CXXBaseSpecifier => {
                     let is_virtual_base = cur.is_virtual_base();
                     ci.has_own_virtual_method |= is_virtual_base;
@@ -1442,18 +1353,15 @@ impl CompInfo {
                         0 => "_base".into(),
                         n => format!("_base_{}", n),
                     };
-                    let type_id =
-                        Item::from_ty_or_ref(cur.cur_type(), cur, None, ctx);
+                    let type_id = Item::from_ty_or_ref(cur.cur_type(), cur, None, ctx);
                     ci.base_members.push(Base {
                         ty: type_id,
                         kind,
                         field_name,
-                        is_pub: cur.access_specifier() ==
-                            clang_sys::CX_CXXPublic,
+                        is_pub: cur.access_specifier() == clang::CX_CXXPublic,
                     });
-                }
-                CXCursor_Constructor | CXCursor_Destructor |
-                CXCursor_CXXMethod => {
+                },
+                CXCursor_Constructor | CXCursor_Destructor | CXCursor_CXXMethod => {
                     let is_virtual = cur.method_is_virtual();
                     let is_static = cur.method_is_static();
                     debug_assert!(!(is_static && is_virtual), "How?");
@@ -1477,25 +1385,17 @@ impl CompInfo {
 
                     // NB: This gets us an owned `Function`, not a
                     // `FunctionSig`.
-                    let signature =
-                        match Item::parse(cur, Some(potential_id), ctx) {
-                            Ok(item)
-                                if ctx
-                                    .resolve_item(item)
-                                    .kind()
-                                    .is_function() =>
-                            {
-                                item
-                            }
-                            _ => return CXChildVisit_Continue,
-                        };
+                    let signature = match Item::parse(cur, Some(potential_id), ctx) {
+                        Ok(item) if ctx.resolve_item(item).kind().is_function() => item,
+                        _ => return CXChildVisit_Continue,
+                    };
 
                     let signature = signature.expect_function_id(ctx);
 
                     match cur.kind() {
                         CXCursor_Constructor => {
                             ci.constructors.push(signature);
-                        }
+                        },
                         CXCursor_Destructor => {
                             let kind = if is_virtual {
                                 MethodKind::VirtualDestructor {
@@ -1505,7 +1405,7 @@ impl CompInfo {
                                 MethodKind::Destructor
                             };
                             ci.destructor = Some((kind, signature));
-                        }
+                        },
                         CXCursor_CXXMethod => {
                             let is_const = cur.method_is_const();
                             let method_kind = if is_static {
@@ -1518,22 +1418,19 @@ impl CompInfo {
                                 MethodKind::Normal
                             };
 
-                            let method =
-                                Method::new(method_kind, signature, is_const);
+                            let method = Method::new(method_kind, signature, is_const);
 
                             ci.methods.push(method);
-                        }
+                        },
                         _ => unreachable!("How can we see this here?"),
                     }
-                }
+                },
                 CXCursor_NonTypeTemplateParameter => {
                     ci.has_non_type_template_params = true;
-                }
+                },
                 CXCursor_VarDecl => {
                     let linkage = cur.linkage();
-                    if linkage != CXLinkage_External &&
-                        linkage != CXLinkage_UniqueExternal
-                    {
+                    if linkage != CXLinkage_External && linkage != CXLinkage_UniqueExternal {
                         return CXChildVisit_Continue;
                     }
 
@@ -1542,16 +1439,15 @@ impl CompInfo {
                         return CXChildVisit_Continue;
                     }
 
-                    if let Ok(item) = Item::parse(cur, Some(potential_id), ctx)
-                    {
+                    if let Ok(item) = Item::parse(cur, Some(potential_id), ctx) {
                         ci.inner_vars.push(item.as_var_id_unchecked());
                     }
-                }
+                },
                 // Intentionally not handled
-                CXCursor_CXXAccessSpecifier |
-                CXCursor_CXXFinalAttr |
-                CXCursor_FunctionTemplate |
-                CXCursor_ConversionFunction => {}
+                CXCursor_CXXAccessSpecifier
+                | CXCursor_CXXFinalAttr
+                | CXCursor_FunctionTemplate
+                | CXCursor_ConversionFunction => {},
                 _ => {
                     warn!(
                         "unhandled comp member `{}` (kind {:?}) in `{}` ({})",
@@ -1560,37 +1456,34 @@ impl CompInfo {
                         cursor.spelling(),
                         cur.location()
                     );
-                }
+                },
             }
             CXChildVisit_Continue
         });
 
         if let Some((ty, _, public, offset)) = maybe_anonymous_struct_field {
-            let field =
-                RawField::new(None, ty, None, None, None, public, offset);
+            let field = RawField::new(None, ty, None, None, None, public, offset);
             ci.fields.append_raw_field(field);
         }
 
         Ok(ci)
     }
 
-    fn kind_from_cursor(
-        cursor: &clang::Cursor,
-    ) -> Result<CompKind, ParseError> {
-        use clang_sys::*;
+    fn kind_from_cursor(cursor: &clang::Cursor) -> Result<CompKind, ParseError> {
+        use clang::*;
         Ok(match cursor.kind() {
             CXCursor_UnionDecl => CompKind::Union,
             CXCursor_ClassDecl | CXCursor_StructDecl => CompKind::Struct,
-            CXCursor_CXXBaseSpecifier |
-            CXCursor_ClassTemplatePartialSpecialization |
-            CXCursor_ClassTemplate => match cursor.template_kind() {
-                CXCursor_UnionDecl => CompKind::Union,
-                _ => CompKind::Struct,
+            CXCursor_CXXBaseSpecifier | CXCursor_ClassTemplatePartialSpecialization | CXCursor_ClassTemplate => {
+                match cursor.template_kind() {
+                    CXCursor_UnionDecl => CompKind::Union,
+                    _ => CompKind::Struct,
+                }
             },
             _ => {
                 warn!("Unknown kind for comp type: {:?}", cursor);
                 return Err(ParseError::Continue);
-            }
+            },
         })
     }
 
@@ -1612,11 +1505,7 @@ impl CompInfo {
     }
 
     /// Is this compound type packed?
-    pub(crate) fn is_packed(
-        &self,
-        ctx: &BindgenContext,
-        layout: Option<&Layout>,
-    ) -> bool {
+    pub(crate) fn is_packed(&self, ctx: &BindgenContext, layout: Option<&Layout>) -> bool {
         if self.packed_attr {
             return true;
         }
@@ -1647,11 +1536,7 @@ impl CompInfo {
     }
 
     /// Compute this compound structure's bitfield allocation units.
-    pub(crate) fn compute_bitfield_units(
-        &mut self,
-        ctx: &BindgenContext,
-        layout: Option<&Layout>,
-    ) {
+    pub(crate) fn compute_bitfield_units(&mut self, ctx: &BindgenContext, layout: Option<&Layout>) {
         let packed = self.is_packed(ctx, layout);
         self.fields.compute_bitfield_units(ctx, packed)
     }
@@ -1670,12 +1555,7 @@ impl CompInfo {
     ///
     /// Second boolean returns whether all fields can be copied (and thus
     /// ManuallyDrop is not needed).
-    pub(crate) fn is_rust_union(
-        &self,
-        ctx: &BindgenContext,
-        layout: Option<&Layout>,
-        name: &str,
-    ) -> (bool, bool) {
+    pub(crate) fn is_rust_union(&self, ctx: &BindgenContext, layout: Option<&Layout>, name: &str) -> (bool, bool) {
         if !self.is_union() {
             return (false, false);
         }
@@ -1697,9 +1577,7 @@ impl CompInfo {
         };
 
         let all_can_copy = self.fields().iter().all(|f| match *f {
-            Field::DataMember(ref field_data) => {
-                field_data.ty().can_derive_copy(ctx)
-            }
+            Field::DataMember(ref field_data) => field_data.ty().can_derive_copy(ctx),
             Field::Bitfields(_) => true,
         });
 
@@ -1716,11 +1594,7 @@ impl CompInfo {
 }
 
 impl DotAttributes for CompInfo {
-    fn dot_attributes<W>(
-        &self,
-        ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -1739,10 +1613,7 @@ impl DotAttributes for CompInfo {
         }
 
         if self.has_non_type_template_params {
-            writeln!(
-                out,
-                "<tr><td>has_non_type_template_params</td><td>true</td></tr>"
-            )?;
+            writeln!(out, "<tr><td>has_non_type_template_params</td><td>true</td></tr>")?;
         }
 
         if self.packed_attr {
@@ -1750,10 +1621,7 @@ impl DotAttributes for CompInfo {
         }
 
         if self.is_forward_declaration {
-            writeln!(
-                out,
-                "<tr><td>is_forward_declaration</td><td>true</td></tr>"
-            )?;
+            writeln!(out, "<tr><td>is_forward_declaration</td><td>true</td></tr>")?;
         }
 
         if !self.fields().is_empty() {
@@ -1772,9 +1640,7 @@ impl IsOpaque for CompInfo {
     type Extra = Option<Layout>;
 
     fn is_opaque(&self, ctx: &BindgenContext, layout: &Option<Layout>) -> bool {
-        if self.has_non_type_template_params ||
-            self.has_unevaluable_bit_field_width
-        {
+        if self.has_non_type_template_params || self.has_unevaluable_bit_field_width {
             return true;
         }
 
@@ -1808,13 +1674,13 @@ impl IsOpaque for CompInfo {
             //
             // See https://github.com/rust-lang/rust-bindgen/issues/537 and
             // https://github.com/rust-lang/rust/issues/33158
-            if self.is_packed(ctx, layout.as_ref()) &&
-                layout.map_or(false, |l| l.align > 1)
-            {
-                warn!("Found a type that is both packed and aligned to greater than \
+            if self.is_packed(ctx, layout.as_ref()) && layout.map_or(false, |l| l.align > 1) {
+                warn!(
+                    "Found a type that is both packed and aligned to greater than \
                        1; Rust before version 1.33 doesn't have `#[repr(packed(N))]`, so we \
                        are treating it as opaque. You may wish to set bindgen's rust target \
-                       version to 1.33 or later to enable `#[repr(packed(N))]` support.");
+                       version to 1.33 or later to enable `#[repr(packed(N))]` support."
+                );
                 return true;
             }
         }

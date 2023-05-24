@@ -1,7 +1,6 @@
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
-/// RAII timer to measure how long phases take.
 #[derive(Debug)]
 pub struct Timer<'a> {
     output: bool,
@@ -10,8 +9,6 @@ pub struct Timer<'a> {
 }
 
 impl<'a> Timer<'a> {
-    /// Creates a Timer with the given name, and starts it. By default,
-    /// will print to stderr when it is `drop`'d
     pub fn new(name: &'a str) -> Self {
         Timer {
             output: true,
@@ -19,28 +16,19 @@ impl<'a> Timer<'a> {
             start: Instant::now(),
         }
     }
-
-    /// Sets whether or not the Timer will print a message
-    /// when it is dropped.
-    pub fn with_output(mut self, output: bool) -> Self {
-        self.output = output;
+    pub fn with_output(mut self, x: bool) -> Self {
+        self.output = x;
         self
     }
-
-    /// Returns the time elapsed since the timer's creation
     pub fn elapsed(&self) -> Duration {
         Instant::now() - self.start
     }
-
     fn print_elapsed(&mut self) {
         if self.output {
-            let elapsed = self.elapsed();
-            let time = (elapsed.as_secs() as f64) * 1e3 +
-                (elapsed.subsec_nanos() as f64) / 1e6;
-            let stderr = io::stderr();
-            // Arbitrary output format, subject to change.
-            writeln!(stderr.lock(), "  time: {:>9.3} ms.\t{}", time, self.name)
-                .expect("timer write should not fail");
+            let d = self.elapsed();
+            let ms = (d.as_secs() as f64) * 1e3 + (d.subsec_nanos() as f64) / 1e6;
+            let e = io::stderr();
+            writeln!(e.lock(), "  time: {:>9.3} ms.\t{}", ms, self.name).expect("should not fail");
         }
     }
 }

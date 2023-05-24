@@ -205,10 +205,10 @@ impl Annotations {
     }
 
     fn parse(&mut self, comment: &clang::Comment, matched: &mut bool) {
-        use clang_sys::CXComment_HTMLStartTag;
-        if comment.kind() == CXComment_HTMLStartTag &&
-            comment.get_tag_name() == "div" &&
-            comment
+        use clang::CXComment_HTMLStartTag;
+        if comment.kind() == CXComment_HTMLStartTag
+            && comment.get_tag_name() == "div"
+            && comment
                 .get_tag_attrs()
                 .next()
                 .map_or(false, |attr| attr.name == "rustbindgen")
@@ -222,11 +222,7 @@ impl Annotations {
                     "nodebug" => self.disallow_debug = true,
                     "nodefault" => self.disallow_default = true,
                     "mustusetype" => self.must_use_type = true,
-                    "replaces" => {
-                        self.use_instead_of = Some(
-                            attr.value.split("::").map(Into::into).collect(),
-                        )
-                    }
+                    "replaces" => self.use_instead_of = Some(attr.value.split("::").map(Into::into).collect()),
                     "derive" => self.derives.push(attr.value),
                     "private" => {
                         self.visibility_kind = if attr.value != "false" {
@@ -234,12 +230,10 @@ impl Annotations {
                         } else {
                             Some(FieldVisibilityKind::Public)
                         };
-                    }
-                    "accessor" => {
-                        self.accessor_kind = Some(parse_accessor(&attr.value))
-                    }
+                    },
+                    "accessor" => self.accessor_kind = Some(parse_accessor(&attr.value)),
                     "constant" => self.constify_enum_variant = true,
-                    _ => {}
+                    _ => {},
                 }
             }
         }

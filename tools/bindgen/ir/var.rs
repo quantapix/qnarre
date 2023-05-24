@@ -100,11 +100,7 @@ impl Var {
 }
 
 impl DotAttributes for Var {
-    fn dot_attributes<W>(
-        &self,
-        _ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -113,11 +109,7 @@ impl DotAttributes for Var {
         }
 
         if let Some(ref mangled) = self.mangled_name {
-            writeln!(
-                out,
-                "<tr><td>mangled name</td><td>{}</td></tr>",
-                mangled
-            )?;
+            writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", mangled)?;
         }
 
         Ok(())
@@ -125,29 +117,22 @@ impl DotAttributes for Var {
 }
 
 fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
-    if value < 0 ||
-        ctx.options().default_macro_constant_type ==
-            MacroTypeVariation::Signed
-    {
+    if value < 0 || ctx.options().default_macro_constant_type == MacroTypeVariation::Signed {
         if value < i32::min_value() as i64 || value > i32::max_value() as i64 {
             IntKind::I64
-        } else if !ctx.options().fit_macro_constants ||
-            value < i16::min_value() as i64 ||
-            value > i16::max_value() as i64
+        } else if !ctx.options().fit_macro_constants
+            || value < i16::min_value() as i64
+            || value > i16::max_value() as i64
         {
             IntKind::I32
-        } else if value < i8::min_value() as i64 ||
-            value > i8::max_value() as i64
-        {
+        } else if value < i8::min_value() as i64 || value > i8::max_value() as i64 {
             IntKind::I16
         } else {
             IntKind::I8
         }
     } else if value > u32::max_value() as i64 {
         IntKind::U64
-    } else if !ctx.options().fit_macro_constants ||
-        value > u16::max_value() as i64
-    {
+    } else if !ctx.options().fit_macro_constants || value > u16::max_value() as i64 {
         IntKind::U32
     } else if value > u8::max_value() as i64 {
         IntKind::U16
@@ -158,13 +143,10 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
 
 /// Parses tokens from a CXCursor_MacroDefinition pointing into a function-like
 /// macro, and calls the func_macro callback.
-fn handle_function_macro(
-    cursor: &clang::Cursor,
-    callbacks: &dyn crate::callbacks::ParseCallbacks,
-) {
+fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::ParseCallbacks) {
     let is_closing_paren = |t: &ClangToken| {
         // Test cheap token kind before comparing exact spellings.
-        t.kind == clang_sys::CXToken_Punctuation && t.spelling() == b")"
+        t.kind == clang::CXToken_Punctuation && t.spelling() == b")"
     };
     let tokens: Vec<_> = cursor.tokens().iter().collect();
     if let Some(boundary) = tokens.iter().position(is_closing_paren) {
@@ -180,21 +162,18 @@ fn handle_function_macro(
 }
 
 impl ClangSubItemParser for Var {
-    fn parse(
-        cursor: clang::Cursor,
-        ctx: &mut BindgenContext,
-    ) -> Result<ParseResult<Self>, ParseError> {
+    fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
         use cexpr::expr::EvalResult;
         use cexpr::literal::CChar;
-        use clang_sys::*;
+        use clang::*;
         match cursor.kind() {
             CXCursor_MacroDefinition => {
                 for callbacks in &ctx.options().parse_callbacks {
                     match callbacks.will_parse_macro(&cursor.spelling()) {
                         MacroParsingBehavior::Ignore => {
                             return Err(ParseError::Continue);
-                        }
-                        MacroParsingBehavior::Default => {}
+                        },
+                        MacroParsingBehavior::Default => {},
                     }
 
                     if cursor.is_macro_function_like() {
@@ -233,44 +212,36 @@ impl ClangSubItemParser for Var {
                 let name = String::from_utf8(id).unwrap();
                 let (type_kind, val) = match value {
                     EvalResult::Invalid => return Err(ParseError::Continue),
-                    EvalResult::Float(f) => {
-                        (TypeKind::Float(FloatKind::Double), VarType::Float(f))
-                    }
+                    EvalResult::Float(f) => (TypeKind::Float(FloatKind::Double), VarType::Float(f)),
                     EvalResult::Char(c) => {
                         let c = match c {
                             CChar::Char(c) => {
                                 assert_eq!(c.len_utf8(), 1);
                                 c as u8
-                            }
+                            },
                             CChar::Raw(c) => {
                                 assert!(c <= ::std::u8::MAX as u64);
                                 c as u8
-                            }
+                            },
                         };
 
                         (TypeKind::Int(IntKind::U8), VarType::Char(c))
-                    }
+                    },
                     EvalResult::Str(val) => {
-                        let char_ty = Item::builtin_type(
-                            TypeKind::Int(IntKind::U8),
-                            true,
-                            ctx,
-                        );
+                        let char_ty = Item::builtin_type(TypeKind::Int(IntKind::U8), true, ctx);
                         for callbacks in &ctx.options().parse_callbacks {
                             callbacks.str_macro(&name, &val);
                         }
                         (TypeKind::Pointer(char_ty), VarType::String(val))
-                    }
+                    },
                     EvalResult::Int(Wrapping(value)) => {
                         let kind = ctx
                             .options()
                             .last_callback(|c| c.int_macro(&name, value))
-                            .unwrap_or_else(|| {
-                                default_macro_constant_type(ctx, value)
-                            });
+                            .unwrap_or_else(|| default_macro_constant_type(ctx, value));
 
                         (TypeKind::Int(kind), VarType::Int(value))
-                    }
+                    },
                 };
 
                 let ty = Item::builtin_type(type_kind, true, ctx);
@@ -279,7 +250,7 @@ impl ClangSubItemParser for Var {
                     Var::new(name, None, None, ty, Some(val), true),
                     Some(cursor),
                 ))
-            }
+            },
             CXCursor_VarDecl => {
                 let mut name = cursor.spelling();
                 if cursor.linkage() == CXLinkage_External {
@@ -311,11 +282,9 @@ impl ClangSubItemParser for Var {
 
                 // TODO(emilio): do we have to special-case constant arrays in
                 // some other places?
-                let is_const = ty.is_const() ||
-                    ([CXType_ConstantArray, CXType_IncompleteArray]
-                        .contains(&ty.kind()) &&
-                        ty.elem_type()
-                            .map_or(false, |element| element.is_const()));
+                let is_const = ty.is_const()
+                    || ([CXType_ConstantArray, CXType_IncompleteArray].contains(&ty.kind())
+                        && ty.elem_type().map_or(false, |element| element.is_const()));
 
                 let ty = match Item::from_ty(&ty, cursor, None, ctx) {
                     Ok(ty) => ty,
@@ -327,16 +296,14 @@ impl ClangSubItemParser for Var {
                              type!"
                         );
                         return Err(e);
-                    }
+                    },
                 };
 
                 // Note: Ty might not be totally resolved yet, see
                 // tests/headers/inner_const.hpp
                 //
                 // That's fine because in that case we know it's not a literal.
-                let canonical_ty = ctx
-                    .safe_resolve_type(ty)
-                    .and_then(|t| t.safe_canonical_type(ctx));
+                let canonical_ty = ctx.safe_resolve_type(ty).and_then(|t| t.safe_canonical_type(ctx));
 
                 let is_integer = canonical_ty.map_or(false, |t| t.is_integer());
                 let is_float = canonical_ty.map_or(false, |t| t.is_float());
@@ -364,10 +331,7 @@ impl ClangSubItemParser for Var {
                         }
                     })
                 } else if is_float {
-                    cursor
-                        .evaluate()
-                        .and_then(|v| v.as_double())
-                        .map(VarType::Float)
+                    cursor.evaluate().and_then(|v| v.as_double()).map(VarType::Float)
                 } else {
                     cursor
                         .evaluate()
@@ -376,24 +340,20 @@ impl ClangSubItemParser for Var {
                 };
 
                 let mangling = cursor_mangling(ctx, &cursor);
-                let var =
-                    Var::new(name, mangling, link_name, ty, value, is_const);
+                let var = Var::new(name, mangling, link_name, ty, value, is_const);
 
                 Ok(ParseResult::New(var, Some(cursor)))
-            }
+            },
             _ => {
                 /* TODO */
                 Err(ParseError::Continue)
-            }
+            },
         }
     }
 }
 
 /// Try and parse a macro using all the macros parsed until now.
-fn parse_macro(
-    ctx: &BindgenContext,
-    cursor: &clang::Cursor,
-) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
+fn parse_macro(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
     use cexpr::expr;
 
     let cexpr_tokens = cursor.cexpr_tokens();
@@ -420,16 +380,16 @@ fn parse_int_literal_tokens(cursor: &clang::Cursor) -> Option<i64> {
 }
 
 fn get_integer_literal_from_cursor(cursor: &clang::Cursor) -> Option<i64> {
-    use clang_sys::*;
+    use clang::*;
     let mut value = None;
     cursor.visit(|c| {
         match c.kind() {
             CXCursor_IntegerLiteral | CXCursor_UnaryOperator => {
                 value = parse_int_literal_tokens(&c);
-            }
+            },
             CXCursor_UnexposedExpr => {
                 value = get_integer_literal_from_cursor(&c);
-            }
+            },
             _ => (),
         }
         if value.is_some() {
@@ -441,11 +401,7 @@ fn get_integer_literal_from_cursor(cursor: &clang::Cursor) -> Option<i64> {
     value
 }
 
-fn duplicated_macro_diagnostic(
-    macro_name: &str,
-    _location: crate::clang::SourceLocation,
-    _ctx: &BindgenContext,
-) {
+fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SourceLocation, _ctx: &BindgenContext) {
     warn!("Duplicated macro definition: {}", macro_name);
 
     #[cfg(feature = "experimental")]

@@ -9,7 +9,7 @@ use super::ty::TypeKind;
 use crate::callbacks::{ItemInfo, ItemKind};
 use crate::clang::{self, Attribute};
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
-use clang_sys::{self, CXCallingConv};
+use clang::{self, CXCallingConv};
 
 use quote::TokenStreamExt;
 use std::io;
@@ -32,20 +32,16 @@ impl FunctionKind {
     pub(crate) fn from_cursor(cursor: &clang::Cursor) -> Option<FunctionKind> {
         // FIXME(emilio): Deduplicate logic with `ir::comp`.
         Some(match cursor.kind() {
-            clang_sys::CXCursor_FunctionDecl => FunctionKind::Function,
-            clang_sys::CXCursor_Constructor => {
-                FunctionKind::Method(MethodKind::Constructor)
-            }
-            clang_sys::CXCursor_Destructor => {
-                FunctionKind::Method(if cursor.method_is_virtual() {
-                    MethodKind::VirtualDestructor {
-                        pure_virtual: cursor.method_is_pure_virtual(),
-                    }
-                } else {
-                    MethodKind::Destructor
-                })
-            }
-            clang_sys::CXCursor_CXXMethod => {
+            clang::CXCursor_FunctionDecl => FunctionKind::Function,
+            clang::CXCursor_Constructor => FunctionKind::Method(MethodKind::Constructor),
+            clang::CXCursor_Destructor => FunctionKind::Method(if cursor.method_is_virtual() {
+                MethodKind::VirtualDestructor {
+                    pure_virtual: cursor.method_is_pure_virtual(),
+                }
+            } else {
+                MethodKind::Destructor
+            }),
+            clang::CXCursor_CXXMethod => {
                 if cursor.method_is_virtual() {
                     FunctionKind::Method(MethodKind::Virtual {
                         pure_virtual: cursor.method_is_pure_virtual(),
@@ -55,7 +51,7 @@ impl FunctionKind {
                 } else {
                     FunctionKind::Method(MethodKind::Normal)
                 }
-            }
+            },
             _ => return None,
         })
     }
@@ -147,22 +143,13 @@ impl Function {
 }
 
 impl DotAttributes for Function {
-    fn dot_attributes<W>(
-        &self,
-        _ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         if let Some(ref mangled) = self.mangled_name {
-            let mangled: String =
-                mangled.chars().flat_map(|c| c.escape_default()).collect();
-            writeln!(
-                out,
-                "<tr><td>mangled name</td><td>{}</td></tr>",
-                mangled
-            )?;
+            let mangled: String = mangled.chars().flat_map(|c| c.escape_default()).collect();
+            writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", mangled)?;
         }
 
         Ok(())
@@ -256,10 +243,7 @@ impl quote::ToTokens for ClangAbi {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match *self {
             Self::Known(abi) => abi.to_tokens(tokens),
-            Self::Unknown(cc) => panic!(
-                "Cannot turn unknown calling convention to tokens: {:?}",
-                cc
-            ),
+            Self::Unknown(cc) => panic!("Cannot turn unknown calling convention to tokens: {:?}", cc),
         }
     }
 }
@@ -289,7 +273,7 @@ pub(crate) struct FunctionSig {
 }
 
 fn get_abi(cc: CXCallingConv) -> ClangAbi {
-    use clang_sys::*;
+    use clang::*;
     match cc {
         CXCallingConv_Default => ClangAbi::Known(Abi::C),
         CXCallingConv_C => ClangAbi::Known(Abi::C),
@@ -304,10 +288,7 @@ fn get_abi(cc: CXCallingConv) -> ClangAbi {
 }
 
 /// Get the mangled name for the cursor's referent.
-pub(crate) fn cursor_mangling(
-    ctx: &BindgenContext,
-    cursor: &clang::Cursor,
-) -> Option<String> {
+pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<String> {
     if !ctx.options().enable_mangling {
         return None;
     }
@@ -319,7 +300,7 @@ pub(crate) fn cursor_mangling(
         return None;
     }
 
-    let is_destructor = cursor.kind() == clang_sys::CXCursor_Destructor;
+    let is_destructor = cursor.kind() == clang::CXCursor_Destructor;
     if let Ok(mut manglings) = cursor.cxx_manglings() {
         while let Some(m) = manglings.pop() {
             // Only generate the destructor group 1, see below.
@@ -389,13 +370,9 @@ fn args_from_ty_and_cursor(
         .zip(type_args.map(Some).chain(std::iter::repeat(None)))
         .take_while(|(cur, ty)| cur.is_some() || ty.is_some())
         .map(|(arg_cur, arg_ty)| {
-            let name = arg_cur.map(|a| a.spelling()).and_then(|name| {
-                if name.is_empty() {
-                    None
-                } else {
-                    Some(name)
-                }
-            });
+            let name = arg_cur
+                .map(|a| a.spelling())
+                .and_then(|name| if name.is_empty() { None } else { Some(name) });
 
             let cursor = arg_cur.unwrap_or(*cursor);
             let ty = arg_ty.unwrap_or_else(|| cursor.cur_type());
@@ -411,7 +388,7 @@ impl FunctionSig {
         cursor: &clang::Cursor,
         ctx: &mut BindgenContext,
     ) -> Result<Self, ParseError> {
-        use clang_sys::*;
+        use clang::*;
         debug!("FunctionSig::from_ty {:?} {:?}", ty, cursor);
 
         // Skip function templates
@@ -423,10 +400,7 @@ impl FunctionSig {
         let spelling = cursor.spelling();
 
         // Don't parse operatorxx functions in C++
-        let is_operator = |spelling: &str| {
-            spelling.starts_with("operator") &&
-                !clang::is_valid_identifier(spelling)
-        };
+        let is_operator = |spelling: &str| spelling.starts_with("operator") && !clang::is_valid_identifier(spelling);
         if is_operator(&spelling) {
             return Err(ParseError::Continue);
         }
@@ -434,37 +408,27 @@ impl FunctionSig {
         // Constructors of non-type template parameter classes for some reason
         // include the template parameter in their name. Just skip them, since
         // we don't handle well non-type template parameters anyway.
-        if (kind == CXCursor_Constructor || kind == CXCursor_Destructor) &&
-            spelling.contains('<')
-        {
+        if (kind == CXCursor_Constructor || kind == CXCursor_Destructor) && spelling.contains('<') {
             return Err(ParseError::Continue);
         }
 
-        let cursor = if cursor.is_valid() {
-            *cursor
-        } else {
-            ty.declaration()
-        };
+        let cursor = if cursor.is_valid() { *cursor } else { ty.declaration() };
 
         let mut args = match kind {
-            CXCursor_FunctionDecl |
-            CXCursor_Constructor |
-            CXCursor_CXXMethod |
-            CXCursor_ObjCInstanceMethodDecl |
-            CXCursor_ObjCClassMethodDecl => {
-                args_from_ty_and_cursor(ty, &cursor, ctx)
-            }
+            CXCursor_FunctionDecl
+            | CXCursor_Constructor
+            | CXCursor_CXXMethod
+            | CXCursor_ObjCInstanceMethodDecl
+            | CXCursor_ObjCClassMethodDecl => args_from_ty_and_cursor(ty, &cursor, ctx),
             _ => {
                 // For non-CXCursor_FunctionDecl, visiting the cursor's children
                 // is the only reliable way to get parameter names.
                 let mut args = vec![];
                 cursor.visit(|c| {
                     if c.kind() == CXCursor_ParmDecl {
-                        let ty =
-                            Item::from_ty_or_ref(c.cur_type(), c, None, ctx);
+                        let ty = Item::from_ty_or_ref(c.cur_type(), c, None, ctx);
                         let name = c.spelling();
-                        let name =
-                            if name.is_empty() { None } else { Some(name) };
+                        let name = if name.is_empty() { None } else { Some(name) };
                         args.push((name, ty));
                     }
                     CXChildVisit_Continue
@@ -479,32 +443,25 @@ impl FunctionSig {
                 } else {
                     args
                 }
-            }
+            },
         };
 
-        let (must_use, mut is_divergent) =
-            if ctx.options().enable_function_attribute_detection {
-                let [must_use, no_return, no_return_cpp] = cursor.has_attrs(&[
-                    Attribute::MUST_USE,
-                    Attribute::NO_RETURN,
-                    Attribute::NO_RETURN_CPP,
-                ]);
-                (must_use, no_return || no_return_cpp)
-            } else {
-                Default::default()
-            };
+        let (must_use, mut is_divergent) = if ctx.options().enable_function_attribute_detection {
+            let [must_use, no_return, no_return_cpp] =
+                cursor.has_attrs(&[Attribute::MUST_USE, Attribute::NO_RETURN, Attribute::NO_RETURN_CPP]);
+            (must_use, no_return || no_return_cpp)
+        } else {
+            Default::default()
+        };
 
         // This looks easy to break but the clang parser keeps the type spelling clean even if
         // other attributes are added.
-        is_divergent =
-            is_divergent || ty.spelling().contains("__attribute__((noreturn))");
+        is_divergent = is_divergent || ty.spelling().contains("__attribute__((noreturn))");
 
         let is_method = kind == CXCursor_CXXMethod;
         let is_constructor = kind == CXCursor_Constructor;
         let is_destructor = kind == CXCursor_Destructor;
-        if (is_constructor || is_destructor || is_method) &&
-            cursor.lexical_parent() != cursor.semantic_parent()
-        {
+        if (is_constructor || is_destructor || is_method) && cursor.lexical_parent() != cursor.semantic_parent() {
             // Only parse constructors once.
             return Err(ParseError::Continue);
         }
@@ -515,38 +472,28 @@ impl FunctionSig {
             let is_static = is_method && cursor.method_is_static();
             if !is_static && !is_virtual {
                 let parent = cursor.semantic_parent();
-                let class = Item::parse(parent, None, ctx)
-                    .expect("Expected to parse the class");
+                let class = Item::parse(parent, None, ctx).expect("Expected to parse the class");
                 // The `class` most likely is not finished parsing yet, so use
                 // the unchecked variant.
                 let class = class.as_type_id_unchecked();
 
                 let class = if is_const {
                     let const_class_id = ctx.next_item_id();
-                    ctx.build_const_wrapper(
-                        const_class_id,
-                        class,
-                        None,
-                        &parent.cur_type(),
-                    )
+                    ctx.build_const_wrapper(const_class_id, class, None, &parent.cur_type())
                 } else {
                     class
                 };
 
-                let ptr =
-                    Item::builtin_type(TypeKind::Pointer(class), false, ctx);
+                let ptr = Item::builtin_type(TypeKind::Pointer(class), false, ctx);
                 args.insert(0, (Some("this".into()), ptr));
             } else if is_virtual {
                 let void = Item::builtin_type(TypeKind::Void, false, ctx);
-                let ptr =
-                    Item::builtin_type(TypeKind::Pointer(void), false, ctx);
+                let ptr = Item::builtin_type(TypeKind::Pointer(void), false, ctx);
                 args.insert(0, (Some("this".into()), ptr));
             }
         }
 
-        let ty_ret_type = if kind == CXCursor_ObjCInstanceMethodDecl ||
-            kind == CXCursor_ObjCClassMethodDecl
-        {
+        let ty_ret_type = if kind == CXCursor_ObjCInstanceMethodDecl || kind == CXCursor_ObjCClassMethodDecl {
             ty.ret_type()
                 .or_else(|| cursor.ret_type())
                 .ok_or(ParseError::Continue)?
@@ -601,11 +548,7 @@ impl FunctionSig {
     }
 
     /// Get this function signature's ABI.
-    pub(crate) fn abi(
-        &self,
-        ctx: &BindgenContext,
-        name: Option<&str>,
-    ) -> ClangAbi {
+    pub(crate) fn abi(&self, ctx: &BindgenContext, name: Option<&str>) -> ClangAbi {
         // FIXME (pvdrz): Try to do this check lazily instead. Maybe store the ABI inside `ctx`
         // instead?.
         if let Some(name) = name {
@@ -668,11 +611,8 @@ impl FunctionSig {
 }
 
 impl ClangSubItemParser for Function {
-    fn parse(
-        cursor: clang::Cursor,
-        context: &mut BindgenContext,
-    ) -> Result<ParseResult<Self>, ParseError> {
-        use clang_sys::*;
+    fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
+        use clang::*;
 
         let kind = match FunctionKind::from_cursor(&cursor) {
             None => return Err(ParseError::Continue),
@@ -696,14 +636,8 @@ impl ClangSubItemParser for Function {
             _ => return Err(ParseError::Continue),
         };
 
-        if cursor.is_inlined_function() ||
-            cursor
-                .definition()
-                .map_or(false, |x| x.is_inlined_function())
-        {
-            if !context.options().generate_inline_functions &&
-                !context.options().wrap_static_fns
-            {
+        if cursor.is_inlined_function() || cursor.definition().map_or(false, |x| x.is_inlined_function()) {
+            if !context.options().generate_inline_functions && !context.options().wrap_static_fns {
                 return Err(ParseError::Continue);
             }
 
@@ -712,9 +646,7 @@ impl ClangSubItemParser for Function {
             }
 
             // We cannot handle `inline` functions that are not `static`.
-            if context.options().wrap_static_fns &&
-                cursor.is_inlined_function() &&
-                matches!(linkage, Linkage::External)
+            if context.options().wrap_static_fns && cursor.is_inlined_function() && matches!(linkage, Linkage::External)
             {
                 return Err(ParseError::Continue);
             }
@@ -758,14 +690,7 @@ impl ClangSubItemParser for Function {
             })
         });
 
-        let function = Self::new(
-            name.clone(),
-            mangled_name,
-            link_name,
-            sig,
-            kind,
-            linkage,
-        );
+        let function = Self::new(name.clone(), mangled_name, link_name, sig, kind, linkage);
 
         Ok(ParseResult::New(function, Some(cursor)))
     }

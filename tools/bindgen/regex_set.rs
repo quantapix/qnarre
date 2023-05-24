@@ -70,11 +70,7 @@ impl RegexSet {
     /// Must be called before calling `matches()`, or it will always return
     /// false.
     #[inline]
-    pub fn build_with_diagnostics(
-        &mut self,
-        record_matches: bool,
-        name: Option<&'static str>,
-    ) {
+    pub fn build_with_diagnostics(&mut self, record_matches: bool, name: Option<&'static str>) {
         self.build_inner(record_matches, name)
     }
 
@@ -85,19 +81,11 @@ impl RegexSet {
     /// Must be called before calling `matches()`, or it will always return
     /// false.
     #[inline]
-    pub(crate) fn build_with_diagnostics(
-        &mut self,
-        record_matches: bool,
-        name: Option<&'static str>,
-    ) {
+    pub(crate) fn build_with_diagnostics(&mut self, record_matches: bool, name: Option<&'static str>) {
         self.build_inner(record_matches, name)
     }
 
-    fn build_inner(
-        &mut self,
-        record_matches: bool,
-        _name: Option<&'static str>,
-    ) {
+    fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
         let items = self.items.iter().map(|item| format!("^({})$", item));
         self.record_matches = record_matches;
         self.set = match RxSet::new(items) {
@@ -109,7 +97,7 @@ impl RegexSet {
                     invalid_regex_warning(self, e, name);
                 }
                 None
-            }
+            },
         }
     }
 
@@ -141,11 +129,7 @@ impl RegexSet {
 }
 
 #[cfg(feature = "experimental")]
-fn invalid_regex_warning(
-    set: &RegexSet,
-    err: regex::Error,
-    name: &'static str,
-) {
+fn invalid_regex_warning(set: &RegexSet, err: regex::Error, name: &'static str) {
     use crate::diagnostics::{Diagnostic, Level, Slice};
 
     let mut diagnostic = Diagnostic::default();
@@ -178,18 +162,15 @@ fn invalid_regex_warning(
                 slice.with_source(source);
                 diagnostic.add_slice(slice);
 
-                diagnostic.with_title(
-                    "Error while parsing a regular expression.",
-                    Level::Warn,
-                );
+                diagnostic.with_title("Error while parsing a regular expression.", Level::Warn);
             } else {
                 diagnostic.with_title(string, Level::Warn);
             }
-        }
+        },
         err => {
             let err = err.to_string();
             diagnostic.with_title(err, Level::Warn);
-        }
+        },
     }
 
     diagnostic.add_annotation(
@@ -198,7 +179,10 @@ fn invalid_regex_warning(
     );
 
     if set.items.iter().any(|item| item == "*") {
-        diagnostic.add_annotation("Wildcard patterns \"*\" are no longer considered valid. Use \".*\" instead.", Level::Help);
+        diagnostic.add_annotation(
+            "Wildcard patterns \"*\" are no longer considered valid. Use \".*\" instead.",
+            Level::Help,
+        );
     }
     diagnostic.display();
 }

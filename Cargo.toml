@@ -1,5 +1,5 @@
 [workspace]
-members = ["tools/bindgen", "tools/llvm"]
+members = ["tools/bindgen", "tools/clang", "tools/llvm"]
 
 [workspace.package]
 name = "qnarre"

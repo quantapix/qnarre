@@ -6,15 +6,15 @@ use super::item::Item;
 use super::traversal::{Trace, Tracer};
 use super::ty::TypeKind;
 use crate::clang;
-use clang_sys::CXChildVisit_Continue;
-use clang_sys::CXCursor_ObjCCategoryDecl;
-use clang_sys::CXCursor_ObjCClassMethodDecl;
-use clang_sys::CXCursor_ObjCClassRef;
-use clang_sys::CXCursor_ObjCInstanceMethodDecl;
-use clang_sys::CXCursor_ObjCProtocolDecl;
-use clang_sys::CXCursor_ObjCProtocolRef;
-use clang_sys::CXCursor_ObjCSuperClassRef;
-use clang_sys::CXCursor_TemplateTypeParameter;
+use clang::CXChildVisit_Continue;
+use clang::CXCursor_ObjCCategoryDecl;
+use clang::CXCursor_ObjCClassMethodDecl;
+use clang::CXCursor_ObjCClassRef;
+use clang::CXCursor_ObjCInstanceMethodDecl;
+use clang::CXCursor_ObjCProtocolDecl;
+use clang::CXCursor_ObjCProtocolRef;
+use clang::CXCursor_ObjCSuperClassRef;
+use clang::CXCursor_TemplateTypeParameter;
 use proc_macro2::{Ident, Span, TokenStream};
 
 /// Objective C interface as used in TypeKind
@@ -121,10 +121,7 @@ impl ObjCInterface {
     }
 
     /// Parses the Objective C interface from the cursor
-    pub(crate) fn from_ty(
-        cursor: &clang::Cursor,
-        ctx: &mut BindgenContext,
-    ) -> Option<Self> {
+    pub(crate) fn from_ty(cursor: &clang::Cursor, ctx: &mut BindgenContext) -> Option<Self> {
         let name = cursor.spelling();
         let mut interface = Self::new(&name);
 
@@ -141,32 +138,20 @@ impl ObjCInterface {
                         interface.name = c.spelling();
                         interface.category = Some(cursor.spelling());
                     }
-                }
+                },
                 CXCursor_ObjCProtocolRef => {
                     // Gather protocols this interface conforms to
                     let needle = format!("P{}", c.spelling());
                     let items_map = ctx.items();
-                    debug!(
-                        "Interface {} conforms to {}, find the item",
-                        interface.name, needle
-                    );
+                    debug!("Interface {} conforms to {}, find the item", interface.name, needle);
 
                     for (id, item) in items_map {
                         if let Some(ty) = item.as_type() {
-                            if let TypeKind::ObjCInterface(ref protocol) =
-                                *ty.kind()
-                            {
+                            if let TypeKind::ObjCInterface(ref protocol) = *ty.kind() {
                                 if protocol.is_protocol {
-                                    debug!(
-                                        "Checking protocol {}, ty.name {:?}",
-                                        protocol.name,
-                                        ty.name()
-                                    );
+                                    debug!("Checking protocol {}, ty.name {:?}", protocol.name, ty.name());
                                     if Some(needle.as_ref()) == ty.name() {
-                                        debug!(
-                                            "Found conforming protocol {:?}",
-                                            item
-                                        );
+                                        debug!("Found conforming protocol {:?}", item);
                                         interface.conforms_to.push(id);
                                         break;
                                     }
@@ -174,28 +159,23 @@ impl ObjCInterface {
                             }
                         }
                     }
-                }
-                CXCursor_ObjCInstanceMethodDecl |
-                CXCursor_ObjCClassMethodDecl => {
+                },
+                CXCursor_ObjCInstanceMethodDecl | CXCursor_ObjCClassMethodDecl => {
                     let name = c.spelling();
-                    let signature =
-                        FunctionSig::from_ty(&c.cur_type(), &c, ctx)
-                            .expect("Invalid function sig");
-                    let is_class_method =
-                        c.kind() == CXCursor_ObjCClassMethodDecl;
-                    let method =
-                        ObjCMethod::new(&name, signature, is_class_method);
+                    let signature = FunctionSig::from_ty(&c.cur_type(), &c, ctx).expect("Invalid function sig");
+                    let is_class_method = c.kind() == CXCursor_ObjCClassMethodDecl;
+                    let method = ObjCMethod::new(&name, signature, is_class_method);
                     interface.add_method(method);
-                }
+                },
                 CXCursor_TemplateTypeParameter => {
                     let name = c.spelling();
                     interface.template_names.push(name);
-                }
+                },
                 CXCursor_ObjCSuperClassRef => {
                     let item = Item::from_ty_or_ref(c.cur_type(), c, None, ctx);
                     interface.parent_class = Some(item.into());
-                }
-                _ => {}
+                },
+                _ => {},
             }
             CXChildVisit_Continue
         });
@@ -212,11 +192,7 @@ impl ObjCInterface {
 }
 
 impl ObjCMethod {
-    fn new(
-        name: &str,
-        signature: FunctionSig,
-        is_class_method: bool,
-    ) -> ObjCMethod {
+    fn new(name: &str, signature: FunctionSig, is_class_method: bool) -> ObjCMethod {
         let split_name: Vec<&str> = name.split(':').collect();
 
         let rust_name = split_name.join("_");
@@ -246,10 +222,7 @@ impl ObjCMethod {
     }
 
     /// Formats the method call
-    pub(crate) fn format_method_call(
-        &self,
-        args: &[TokenStream],
-    ) -> TokenStream {
+    pub(crate) fn format_method_call(&self, args: &[TokenStream]) -> TokenStream {
         let split_name: Vec<Option<Ident>> = self
             .name
             .split(':')
@@ -262,10 +235,7 @@ impl ObjCMethod {
                     // this also fails, we panic with the first error.
                     Some(
                         syn::parse_str::<Ident>(name)
-                            .or_else(|err| {
-                                syn::parse_str::<Ident>(&format!("r#{}", name))
-                                    .map_err(|_| err)
-                            })
+                            .or_else(|err| syn::parse_str::<Ident>(&format!("r#{}", name)).map_err(|_| err))
                             .expect("Invalid identifier"),
                     )
                 }
@@ -297,15 +267,13 @@ impl ObjCMethod {
             args_without_types.push(Ident::new(name, Span::call_site()))
         }
 
-        let args = split_name.into_iter().zip(args_without_types).map(
-            |(arg, arg_val)| {
-                if let Some(arg) = arg {
-                    quote! { #arg: #arg_val }
-                } else {
-                    quote! { #arg_val: #arg_val }
-                }
-            },
-        );
+        let args = split_name.into_iter().zip(args_without_types).map(|(arg, arg_val)| {
+            if let Some(arg) = arg {
+                quote! { #arg: #arg_val }
+            } else {
+                quote! { #arg_val: #arg_val }
+            }
+        });
 
         quote! {
             #( #args )*
