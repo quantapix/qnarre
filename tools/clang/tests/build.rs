@@ -120,11 +120,11 @@ impl Env {
     }
 
     fn enable(self) -> Self {
-        env::set_var("_CLANG_SYS_TEST", "yep");
-        env::set_var("_CLANG_SYS_TEST_OS", &self.os);
-        env::set_var("_CLANG_SYS_TEST_POINTER_WIDTH", &self.pointer_width);
+        env::set_var("_CLANG_TEST", "yep");
+        env::set_var("_CLANG_TEST_OS", &self.os);
+        env::set_var("_CLANG_TEST_POINTER_WIDTH", &self.pointer_width);
         if let Some(env) = &self.env {
-            env::set_var("_CLANG_SYS_TEST_ENV", env);
+            env::set_var("_CLANG_TEST_ENV", env);
         }
 
         for (name, (value, _)) in &self.vars {
@@ -158,10 +158,10 @@ impl Env {
 
 impl Drop for Env {
     fn drop(&mut self) {
-        env::remove_var("_CLANG_SYS_TEST");
-        env::remove_var("_CLANG_SYS_TEST_OS");
-        env::remove_var("_CLANG_SYS_TEST_POINTER_WIDTH");
-        env::remove_var("_CLANG_SYS_TEST_ENV");
+        env::remove_var("_CLANG_TEST");
+        env::remove_var("_CLANG_TEST_OS");
+        env::remove_var("_CLANG_TEST_POINTER_WIDTH");
+        env::remove_var("_CLANG_TEST_ENV");
 
         for (name, (_, previous)) in &self.vars {
             if let Some(previous) = previous {
