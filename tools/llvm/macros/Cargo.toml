@@ -15,5 +15,5 @@ regex = "1.8.1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-mlir = { path = "../mlir" }
+# mlir = { path = "../mlir" }
 # mlir-sys = "0.2"
