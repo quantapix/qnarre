@@ -13,7 +13,7 @@ ARGS="  \
         -DCMAKE_CXX_COMPILER=clang++ \
         -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
-        -DCMAKE_INSTALL_PREFIX=$BUILD/llvm/out \
+        -DCMAKE_INSTALL_PREFIX=$CURRENT/out \
         -DCMAKE_LINKER=lld \
         -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld \
         -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld \

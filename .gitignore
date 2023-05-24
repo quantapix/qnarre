@@ -8,6 +8,7 @@ dev/
 new/
 build/
 target/
+out/
 Cargo.lock
 __pycache__
 
