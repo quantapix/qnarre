@@ -5,14 +5,14 @@ extern crate glob;
 use std::path::Path;
 
 #[macro_use]
-#[path = "build/macros.rs"]
+#[path = "builder/macros.rs"]
 pub mod macros;
 
-#[path = "build/common.rs"]
+#[path = "builder/common.rs"]
 pub mod common;
-#[path = "build/dynamic.rs"]
+#[path = "builder/dynamic.rs"]
 pub mod dynamic;
-#[path = "build/static.rs"]
+#[path = "builder/static.rs"]
 pub mod r#static;
 
 #[cfg(feature = "runtime")]
@@ -31,9 +31,9 @@ fn main() {
         panic!("`runtime` and `static` features can't be combined");
     }
     let p = env::var("OUT_DIR").unwrap();
-    copy("build/macros.rs", &Path::new(&p).join("macros.rs"));
-    copy("build/common.rs", &Path::new(&p).join("common.rs"));
-    copy("build/dynamic.rs", &Path::new(&p).join("dynamic.rs"));
+    copy("builder/macros.rs", &Path::new(&p).join("macros.rs"));
+    copy("builder/common.rs", &Path::new(&p).join("common.rs"));
+    copy("builder/dynamic.rs", &Path::new(&p).join("dynamic.rs"));
 }
 
 #[cfg(not(feature = "runtime"))]
