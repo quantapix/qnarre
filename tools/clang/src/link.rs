@@ -213,23 +213,19 @@ A `libclang` function was called that is not supported by the loaded `libclang` 
     )
 }
 
-//#[cfg(not(feature = "runtime"))]
+#[cfg(not(feature = "runtime"))]
 macro_rules! link {
     (
         $(
-            $(#[doc=$doc:expr] #[cfg($cfg:meta)])*
-            pub fn $name:ident($($pname:ident: $pty:ty), *) $(-> $ret:ty)*;
+            pub fn $name:ident($($pn:ident: $pty:ty), *) $(-> $ret:ty)*;
         )+
     ) => (
         extern {
             $(
-                $(#[doc=$doc] #[cfg($cfg)])*
-                pub fn $name($($pname: $pty), *) $(-> $ret)*;
+                pub fn $name($($pn: $pty), *) $(-> $ret)*;
             )+
         }
-
         $(
-            $(#[doc=$doc] #[cfg($cfg)])*
             pub mod $name {
                 pub fn is_loaded() -> bool { true }
             }
