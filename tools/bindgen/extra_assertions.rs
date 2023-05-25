@@ -1,8 +1,3 @@
-//! Macros for defining extra assertions that should only be checked in testing
-//! and/or CI when the `__testing_only_extra_assertions` feature is enabled.
-
-/// Simple macro that forwards to assert! when using
-/// __testing_only_extra_assertions.
 #[macro_export]
 macro_rules! extra_assert {
     ( $cond:expr ) => {
@@ -17,8 +12,6 @@ macro_rules! extra_assert {
     };
 }
 
-/// Simple macro that forwards to assert_eq! when using
-/// __testing_only_extra_assertions.
 #[macro_export]
 macro_rules! extra_assert_eq {
     ( $lhs:expr , $rhs:expr ) => {

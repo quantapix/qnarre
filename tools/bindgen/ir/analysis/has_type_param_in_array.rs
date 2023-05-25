@@ -1,5 +1,3 @@
-//! Determining which types has typed parameters in array.
-
 use super::{generate_dependencies, ConstrainResult, MonotoneFramework};
 use crate::ir::comp::Field;
 use crate::ir::comp::FieldMethods;
@@ -8,70 +6,42 @@ use crate::ir::traversal::EdgeKind;
 use crate::ir::ty::TypeKind;
 use crate::{HashMap, HashSet};
 
-/// An analysis that finds for each IR item whether it has array or not.
-///
-/// We use the monotone constraint function `has_type_parameter_in_array`,
-/// defined as follows:
-///
-/// * If T is Array type with type parameter, T trivially has.
-/// * If T is a type alias, a templated alias or an indirection to another type,
-///   it has type parameter in array if the type T refers to has.
-/// * If T is a compound type, it has array if any of base memter or field
-///   has type paramter in array.
-/// * If T is an instantiation of an abstract template definition, T has
-///   type parameter in array if any of the template arguments or template definition
-///   has.
 #[derive(Debug, Clone)]
 pub(crate) struct HasTypeParameterInArray<'ctx> {
     ctx: &'ctx BindgenContext,
 
-    // The incremental result of this analysis's computation. Everything in this
-    // set has array.
     has_type_parameter_in_array: HashSet<ItemId>,
 
-    // Dependencies saying that if a key ItemId has been inserted into the
-    // `has_type_parameter_in_array` set, then each of the ids in Vec<ItemId> need to be
-    // considered again.
-    //
-    // This is a subset of the natural IR graph with reversed edges, where we
-    // only include the edges from the IR graph that can affect whether a type
-    // has array or not.
     dependencies: HashMap<ItemId, Vec<ItemId>>,
 }
 
 impl<'ctx> HasTypeParameterInArray<'ctx> {
     fn consider_edge(kind: EdgeKind) -> bool {
         match kind {
-            // These are the only edges that can affect whether a type has type parameter
-            // in array or not.
-            EdgeKind::BaseMember |
-            EdgeKind::Field |
-            EdgeKind::TypeReference |
-            EdgeKind::VarType |
-            EdgeKind::TemplateArgument |
-            EdgeKind::TemplateDeclaration |
-            EdgeKind::TemplateParameterDefinition => true,
+            EdgeKind::BaseMember
+            | EdgeKind::Field
+            | EdgeKind::TypeReference
+            | EdgeKind::VarType
+            | EdgeKind::TemplateArgument
+            | EdgeKind::TemplateDeclaration
+            | EdgeKind::TemplateParameterDefinition => true,
 
-            EdgeKind::Constructor |
-            EdgeKind::Destructor |
-            EdgeKind::FunctionReturn |
-            EdgeKind::FunctionParameter |
-            EdgeKind::InnerType |
-            EdgeKind::InnerVar |
-            EdgeKind::Method => false,
+            EdgeKind::Constructor
+            | EdgeKind::Destructor
+            | EdgeKind::FunctionReturn
+            | EdgeKind::FunctionParameter
+            | EdgeKind::InnerType
+            | EdgeKind::InnerVar
+            | EdgeKind::Method => false,
             EdgeKind::Generic => false,
         }
     }
 
     fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> ConstrainResult {
         let id = id.into();
-        trace!(
-            "inserting {:?} into the has_type_parameter_in_array set",
-            id
-        );
+        trace!("inserting {:?} into the has_type_parameter_in_array set", id);
 
-        let was_not_already_in_set =
-            self.has_type_parameter_in_array.insert(id);
+        let was_not_already_in_set = self.has_type_parameter_in_array.insert(id);
         assert!(
             was_not_already_in_set,
             "We shouldn't try and insert {:?} twice because if it was \
@@ -117,53 +87,48 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
             None => {
                 trace!("    not a type; ignoring");
                 return ConstrainResult::Same;
-            }
+            },
         };
 
         match *ty.kind() {
-            // Handle the simple cases. These cannot have array in type parameter
-            // without further information.
-            TypeKind::Void |
-            TypeKind::NullPtr |
-            TypeKind::Int(..) |
-            TypeKind::Float(..) |
-            TypeKind::Vector(..) |
-            TypeKind::Complex(..) |
-            TypeKind::Function(..) |
-            TypeKind::Enum(..) |
-            TypeKind::Reference(..) |
-            TypeKind::TypeParam |
-            TypeKind::Opaque |
-            TypeKind::Pointer(..) |
-            TypeKind::UnresolvedTypeRef(..) |
-            TypeKind::ObjCInterface(..) |
-            TypeKind::ObjCId |
-            TypeKind::ObjCSel => {
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Vector(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Function(..)
+            | TypeKind::Enum(..)
+            | TypeKind::Reference(..)
+            | TypeKind::TypeParam
+            | TypeKind::Opaque
+            | TypeKind::Pointer(..)
+            | TypeKind::UnresolvedTypeRef(..)
+            | TypeKind::ObjCInterface(..)
+            | TypeKind::ObjCId
+            | TypeKind::ObjCSel => {
                 trace!("    simple type that do not have array");
                 ConstrainResult::Same
-            }
+            },
 
             TypeKind::Array(t, _) => {
-                let inner_ty =
-                    self.ctx.resolve_type(t).canonical_type(self.ctx);
+                let inner_ty = self.ctx.resolve_type(t).canonical_type(self.ctx);
                 match *inner_ty.kind() {
                     TypeKind::TypeParam => {
                         trace!("    Array with Named type has type parameter");
                         self.insert(id)
-                    }
+                    },
                     _ => {
-                        trace!(
-                            "    Array without Named type does have type parameter"
-                        );
+                        trace!("    Array without Named type does have type parameter");
                         ConstrainResult::Same
-                    }
+                    },
                 }
-            }
+            },
 
-            TypeKind::ResolvedTypeRef(t) |
-            TypeKind::TemplateAlias(t, _) |
-            TypeKind::Alias(t) |
-            TypeKind::BlockPointer(t) => {
+            TypeKind::ResolvedTypeRef(t)
+            | TypeKind::TemplateAlias(t, _)
+            | TypeKind::Alias(t)
+            | TypeKind::BlockPointer(t) => {
                 if self.has_type_parameter_in_array.contains(&t.into()) {
                     trace!(
                         "    aliases and type refs to T which have array \
@@ -177,20 +142,19 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
                     );
                     ConstrainResult::Same
                 }
-            }
+            },
 
             TypeKind::Comp(ref info) => {
-                let bases_have = info.base_members().iter().any(|base| {
-                    self.has_type_parameter_in_array.contains(&base.ty.into())
-                });
+                let bases_have = info
+                    .base_members()
+                    .iter()
+                    .any(|base| self.has_type_parameter_in_array.contains(&base.ty.into()));
                 if bases_have {
                     trace!("    bases have array, so we also have");
                     return self.insert(id);
                 }
                 let fields_have = info.fields().iter().any(|f| match *f {
-                    Field::DataMember(ref data) => self
-                        .has_type_parameter_in_array
-                        .contains(&data.ty().into()),
+                    Field::DataMember(ref data) => self.has_type_parameter_in_array.contains(&data.ty().into()),
                     Field::Bitfields(..) => false,
                 });
                 if fields_have {
@@ -200,13 +164,13 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
 
                 trace!("    comp doesn't have array");
                 ConstrainResult::Same
-            }
+            },
 
             TypeKind::TemplateInstantiation(ref template) => {
-                let args_have =
-                    template.template_arguments().iter().any(|arg| {
-                        self.has_type_parameter_in_array.contains(&arg.into())
-                    });
+                let args_have = template
+                    .template_arguments()
+                    .iter()
+                    .any(|arg| self.has_type_parameter_in_array.contains(&arg.into()));
                 if args_have {
                     trace!(
                         "    template args have array, so \
@@ -228,7 +192,7 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
 
                 trace!("    template instantiation do not have array");
                 ConstrainResult::Same
-            }
+            },
         }
     }
 

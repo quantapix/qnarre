@@ -1,19 +1,7 @@
-//! Generate Rust bindings for C and C++ libraries.
-//!
-//! Provide a C/C++ header file, receive Rust FFI code to call into C/C++
-//! functions and use types defined in the header.
-//!
-//! See the [`Builder`](./struct.Builder.html) struct for usage.
-//!
-//! See the [Users Guide](https://rust-lang.github.io/rust-bindgen/) for
-//! additional documentation.
 #![deny(missing_docs)]
 #![deny(unused_extern_crates)]
 #![deny(clippy::disallowed_methods)]
-// To avoid rather annoying warnings when matching with CXCursor_xxx as a
-// constant.
 #![allow(non_upper_case_globals)]
-// `quote!` nests quite deeply.
 #![recursion_limit = "128"]
 
 #[macro_use]
@@ -74,11 +62,9 @@ use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::str::FromStr;
 
-// Some convenient typedefs for a fast hash map and hash set.
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 type HashSet<K> = rustc_hash::FxHashSet<K>;
 
-/// Default prefix for the anon fields.
 pub const DEFAULT_ANON_FIELDS_PREFIX: &str = "__bindgen_anon_";
 
 const DEFAULT_NON_EXTERN_FNS_SUFFIX: &str = "__extern";
@@ -106,51 +92,38 @@ fn args_are_cpp(clang_args: &[String]) -> bool {
 }
 
 bitflags! {
-    /// A type used to indicate which kind of items we have to generate.
     #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct CodegenConfig: u32 {
-        /// Whether to generate functions.
         const FUNCTIONS = 1 << 0;
-        /// Whether to generate types.
         const TYPES = 1 << 1;
-        /// Whether to generate constants.
         const VARS = 1 << 2;
-        /// Whether to generate methods.
         const METHODS = 1 << 3;
-        /// Whether to generate constructors
         const CONSTRUCTORS = 1 << 4;
-        /// Whether to generate destructors.
         const DESTRUCTORS = 1 << 5;
     }
 }
 
 impl CodegenConfig {
-    /// Returns true if functions should be generated.
     pub fn functions(self) -> bool {
         self.contains(CodegenConfig::FUNCTIONS)
     }
 
-    /// Returns true if types should be generated.
     pub fn types(self) -> bool {
         self.contains(CodegenConfig::TYPES)
     }
 
-    /// Returns true if constants should be generated.
     pub fn vars(self) -> bool {
         self.contains(CodegenConfig::VARS)
     }
 
-    /// Returns true if methds should be generated.
     pub fn methods(self) -> bool {
         self.contains(CodegenConfig::METHODS)
     }
 
-    /// Returns true if constructors should be generated.
     pub fn constructors(self) -> bool {
         self.contains(CodegenConfig::CONSTRUCTORS)
     }
 
-    /// Returns true if destructors should be generated.
     pub fn destructors(self) -> bool {
         self.contains(CodegenConfig::DESTRUCTORS)
     }
@@ -162,15 +135,11 @@ impl Default for CodegenConfig {
     }
 }
 
-/// Formatting tools that can be used to format the bindings
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Formatter {
-    /// Do not format the bindings.
     None,
-    /// Use `rustfmt` to format the bindings.
     Rustfmt,
-    /// Use `prettyplease` to format the bindings.
     Prettyplease,
 }
 
@@ -205,98 +174,21 @@ impl std::fmt::Display for Formatter {
     }
 }
 
-/// Configure and generate Rust bindings for a C/C++ header.
-///
-/// This is the main entry point to the library.
-///
-/// ```ignore
-/// use bindgen::builder;
-///
-/// // Configure and generate bindings.
-/// let bindings = builder().header("path/to/input/header")
-///     .allowlist_type("SomeCoolClass")
-///     .allowlist_function("do_some_cool_thing")
-///     .generate()?;
-///
-/// // Write the generated bindings to an output file.
-/// bindings.write_to_file("path/to/output.rs")?;
-/// ```
-///
-/// # Enums
-///
-/// Bindgen can map C/C++ enums into Rust in different ways. The way bindgen maps enums depends on
-/// the pattern passed to several methods:
-///
-/// 1. [`constified_enum_module()`](#method.constified_enum_module)
-/// 2. [`bitfield_enum()`](#method.bitfield_enum)
-/// 3. [`newtype_enum()`](#method.newtype_enum)
-/// 4. [`rustified_enum()`](#method.rustified_enum)
-///
-/// For each C enum, bindgen tries to match the pattern in the following order:
-///
-/// 1. Constified enum module
-/// 2. Bitfield enum
-/// 3. Newtype enum
-/// 4. Rustified enum
-///
-/// If none of the above patterns match, then bindgen will generate a set of Rust constants.
-///
-/// # Clang arguments
-///
-/// Extra arguments can be passed to with clang:
-/// 1. [`clang_arg()`](#method.clang_arg): takes a single argument
-/// 2. [`clang_args()`](#method.clang_args): takes an iterator of arguments
-/// 3. `BINDGEN_EXTRA_CLANG_ARGS` environment variable: whitespace separate
-///    environment variable of arguments
-///
-/// Clang arguments specific to your crate should be added via the
-/// `clang_arg()`/`clang_args()` methods.
-///
-/// End-users of the crate may need to set the `BINDGEN_EXTRA_CLANG_ARGS` environment variable to
-/// add additional arguments. For example, to build against a different sysroot a user could set
-/// `BINDGEN_EXTRA_CLANG_ARGS` to `--sysroot=/path/to/sysroot`.
-///
-/// # Regular expression arguments
-///
-/// Some [`Builder`] methods such as the `allowlist_*` and `blocklist_*` methods allow regular
-/// expressions as arguments. These regular expressions will be enclosed in parentheses and
-/// anchored with `^` and `$`. So if the argument passed is `<regex>`, the regular expression to be
-/// stored will be `^(<regex>)$`.
-///
-/// As a consequence, regular expressions passed to `bindgen` will try to match the whole name of
-/// an item instead of a section of it, which means that to match any items with the prefix
-/// `prefix`, the `prefix.*` regular expression must be used.
-///
-/// Certain methods, like [`Builder::allowlist_function`], use regular expressions over function
-/// names. To match C++ methods, prefix the name of the type where they belong followed by an
-/// underscore. So if the type `Foo` has a method `bar`, it can be matched with the `Foo_bar`
-/// regular expression.
-///
-/// Additionally, Objective-C interfaces can be matched by prefixing the regular expression with
-/// `I`. For example, the `IFoo` regular expression matches the `Foo` interface and the `IFoo_foo`
-/// regular expression matches the `foo` method of the `Foo` interface.
-///
-/// Releases of `bindgen` with a version lesser or equal to `0.62.0` used to accept the wildcard
-/// pattern `*` as a valid regular expression. This behavior has been deprecated and the `.*`
-/// regular expression must be used instead.
 #[derive(Debug, Default, Clone)]
 pub struct Builder {
     options: BindgenOptions,
 }
 
-/// Construct a new [`Builder`](./struct.Builder.html).
 pub fn builder() -> Builder {
     Default::default()
 }
 
 fn get_extra_clang_args(parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>]) -> Vec<String> {
-    // Add any extra arguments from the environment to the clang command line.
     let extra_clang_args = match get_target_dependent_env_var(parse_callbacks, "BINDGEN_EXTRA_CLANG_ARGS") {
         None => return vec![],
         Some(s) => s,
     };
 
-    // Try to parse it with shell quoting. If we fail, make it one single big argument.
     if let Some(strings) = shlex::split(&extra_clang_args) {
         return strings;
     }
@@ -304,14 +196,11 @@ fn get_extra_clang_args(parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>]) -
 }
 
 impl Builder {
-    /// Generate the Rust bindings using the options built up thus far.
     pub fn generate(mut self) -> Result<Bindings, BindgenError> {
-        // Add any extra arguments from the environment to the clang command line.
         self.options
             .clang_args
             .extend(get_extra_clang_args(&self.options.parse_callbacks));
 
-        // Transform input headers to arguments on the clang command line.
         self.options.clang_args.extend(
             self.options.input_headers[..self.options.input_headers.len().saturating_sub(1)]
                 .iter()
@@ -326,23 +215,14 @@ impl Builder {
         Bindings::generate(self.options, input_unsaved_files)
     }
 
-    /// Preprocess and dump the input header files to disk.
-    ///
-    /// This is useful when debugging bindgen, using C-Reduce, or when filing
-    /// issues. The resulting file will be named something like `__bindgen.i` or
-    /// `__bindgen.ii`
     pub fn dump_preprocessed_input(&self) -> io::Result<()> {
         let clang = clang::support::Clang::find(None, &[])
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Cannot find clang executable"))?;
 
-        // The contents of a wrapper file that includes all the input header
-        // files.
         let mut wrapper_contents = String::new();
 
-        // Whether we are working with C or C++ inputs.
         let mut is_cpp = args_are_cpp(&self.options.clang_args);
 
-        // For each input header, add `#include "$header"`.
         for header in &self.options.input_headers {
             is_cpp |= file_is_cpp(header);
 
@@ -351,8 +231,6 @@ impl Builder {
             wrapper_contents.push_str("\"\n");
         }
 
-        // For each input header content, add a prefix line of `#line 0 "$name"`
-        // followed by the contents.
         for (name, contents) in &self.options.input_header_contents {
             is_cpp |= file_is_cpp(name);
 
@@ -492,21 +370,17 @@ impl BindgenOptions {
             deprecated_target_diagnostic(rust_target, self);
         }
 
-        // Disable `untagged_union` if the target does not support it.
         if !self.rust_features.untagged_union {
             self.untagged_union = false;
         }
     }
 
-    /// Update rust target version
     pub fn set_rust_target(&mut self, rust_target: RustTarget) {
         self.rust_target = rust_target;
 
-        // Keep rust_features synced with rust_target
         self.rust_features = rust_target.into();
     }
 
-    /// Get features supported by target Rust version
     pub fn rust_features(&self) -> RustFeatures {
         self.rust_features
     }
@@ -550,10 +424,6 @@ fn ensure_libclang_is_loaded() {
         return;
     }
 
-    // XXX (issue #350): Ensure that our dynamically loaded `libclang`
-    // doesn't get dropped prematurely, nor is loaded multiple times
-    // across different threads.
-
     lazy_static! {
         static ref LIBCLANG: std::sync::Arc<clang::SharedLibrary> = {
             clang::load().expect("Unable to find libclang");
@@ -570,19 +440,13 @@ fn ensure_libclang_is_loaded() {
 #[cfg(not(feature = "runtime"))]
 fn ensure_libclang_is_loaded() {}
 
-/// Error type for rust-bindgen.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum BindgenError {
-    /// The header was a folder.
     FolderAsHeader(PathBuf),
-    /// Permissions to read the header is insufficient.
     InsufficientPermissions(PathBuf),
-    /// The header does not exist.
     NotExist(PathBuf),
-    /// Clang diagnosed an error.
     ClangDiagnostic(String),
-    /// Code generation reported an error.
     Codegen(CodegenError),
 }
 
@@ -610,7 +474,6 @@ impl std::fmt::Display for BindgenError {
 
 impl std::error::Error for BindgenError {}
 
-/// Generated Rust bindings.
 #[derive(Debug)]
 pub struct Bindings {
     options: BindgenOptions,
@@ -619,8 +482,6 @@ pub struct Bindings {
 
 pub(crate) const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
 
-// Some architecture triplets are different between rust and libclang, see #1211
-// and duplicates.
 fn rust_to_clang_target(rust_target: &str) -> String {
     if rust_target.starts_with("aarch64-apple-") {
         let mut clang_target = "arm64-apple-".to_owned();
@@ -641,8 +502,6 @@ fn rust_to_clang_target(rust_target: &str) -> String {
     rust_target.to_owned()
 }
 
-/// Returns the effective target, and whether it was explicitly specified on the
-/// clang flags.
 fn find_effective_target(clang_args: &[String]) -> (String, bool) {
     let mut args = clang_args.iter();
     while let Some(opt) = args.next() {
@@ -659,7 +518,6 @@ fn find_effective_target(clang_args: &[String]) -> (String, bool) {
         }
     }
 
-    // If we're running from a build script, try to find the cargo target.
     if let Ok(t) = env::var("TARGET") {
         return (rust_to_clang_target(&t), false);
     }
@@ -668,7 +526,6 @@ fn find_effective_target(clang_args: &[String]) -> (String, bool) {
 }
 
 impl Bindings {
-    /// Generate bindings for the given options.
     pub(crate) fn generate(
         mut options: BindgenOptions,
         input_unsaved_files: Vec<clang::UnsavedFile>,
@@ -689,11 +546,6 @@ impl Bindings {
 
         let is_host_build = rust_to_clang_target(HOST_TARGET) == effective_target;
 
-        // NOTE: The is_host_build check wouldn't be sound normally in some
-        // cases if we were to call a binary (if you have a 32-bit clang and are
-        // building on a 64-bit system for example).  But since we rely on
-        // opening libclang.so, it has to be the same architecture and thus the
-        // check is fine.
         if !explicit_target && !is_host_build {
             options.clang_args.insert(0, format!("--target={}", effective_target));
         };
@@ -703,8 +555,6 @@ impl Bindings {
                 return;
             }
 
-            // Filter out include paths and similar stuff, so we don't incorrectly
-            // promote them to `-isystem`.
             let clang_args_for_clang = {
                 let mut last_was_include_prefix = false;
                 options
@@ -744,7 +594,6 @@ impl Bindings {
 
             debug!("Found clang: {:?}", clang);
 
-            // Whether we are working with C or C++ inputs.
             let is_cpp = args_are_cpp(&options.clang_args) || options.input_headers.iter().any(|h| file_is_cpp(h));
 
             let search_paths = if is_cpp {
@@ -824,7 +673,6 @@ impl Bindings {
         Ok(Bindings { options, module })
     }
 
-    /// Write these bindings as source text to a file.
     pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let file = OpenOptions::new()
             .write(true)
@@ -835,7 +683,6 @@ impl Bindings {
         Ok(())
     }
 
-    /// Write these bindings as source text to the given `Write`able.
     pub fn write<'a>(&self, mut writer: Box<dyn Write + 'a>) -> io::Result<()> {
         if !self.options.disable_header_comment {
             let version = option_env!("CARGO_PKG_VERSION");
@@ -867,7 +714,6 @@ impl Bindings {
         Ok(())
     }
 
-    /// Gets the rustfmt path to rustfmt the generated bindings.
     fn rustfmt_path(&self) -> io::Result<Cow<PathBuf>> {
         debug_assert!(matches!(self.options.formatter, Formatter::Rustfmt));
         if let Some(ref p) = self.options.rustfmt_path {
@@ -882,12 +728,9 @@ impl Bindings {
             Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
         }
         #[cfg(not(feature = "which-rustfmt"))]
-        // No rustfmt binary was specified, so assume that the binary is called
-        // "rustfmt" and that it is in the user's PATH.
         Ok(Cow::Owned("rustfmt".into()))
     }
 
-    /// Formats a token stream with the formatter set up in `BindgenOptions`.
     fn format_tokens(&self, tokens: &proc_macro2::TokenStream) -> io::Result<String> {
         let _t = time::Timer::new("rustfmt_generated_string").with_output(self.options.time_phases);
 
@@ -919,9 +762,6 @@ impl Bindings {
 
         let source = tokens.to_string();
 
-        // Write to stdin in a new thread, so that we can read from stdout on this
-        // thread. This keeps the child from blocking on writing to its stdout which
-        // might block us from writing to its stdin.
         let stdin_handle = ::std::thread::spawn(move || {
             let _ = child_stdin.write_all(source.as_bytes());
             source
@@ -980,13 +820,10 @@ impl std::fmt::Display for Bindings {
     }
 }
 
-/// Determines whether the given cursor is in any of the files matched by the
-/// options.
 fn filter_builtins(ctx: &BindgenContext, cursor: &clang::Cursor) -> bool {
     ctx.options().builtins || !cursor.is_builtin()
 }
 
-/// Parse one `Item` from the Clang cursor.
 fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang::CXChildVisitResult {
     if !filter_builtins(ctx, &cursor) {
         return CXChildVisit_Continue;
@@ -1003,7 +840,6 @@ fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<Ite
     CXChildVisit_Continue
 }
 
-/// Parse the Clang AST into our `Item` internal representation.
 fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
     use clang::*;
 
@@ -1047,20 +883,15 @@ fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
     Ok(())
 }
 
-/// Extracted Clang version data
 #[derive(Debug)]
 pub struct ClangVersion {
-    /// Major and minor semver, if parsing was successful
     pub parsed: Option<(u32, u32)>,
-    /// full version string
     pub full: String,
 }
 
-/// Get the major and the minor semver numbers of Clang's version
 pub fn clang_version() -> ClangVersion {
     ensure_libclang_is_loaded();
 
-    //Debian clang version 11.0.1-2
     let raw_v: String = clang::extract_clang_version();
     let split_v: Option<Vec<&str>> = raw_v
         .split_whitespace()
@@ -1094,7 +925,6 @@ fn env_var<K: AsRef<str> + AsRef<OsStr>>(
     std::env::var(key)
 }
 
-/// Looks for the env var `var_${TARGET}`, and falls back to just `var` when it is not found.
 fn get_target_dependent_env_var(parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>], var: &str) -> Option<String> {
     if let Ok(target) = env_var(parse_callbacks, "TARGET") {
         if let Ok(v) = env_var(parse_callbacks, format!("{}_{}", var, target)) {
@@ -1108,18 +938,6 @@ fn get_target_dependent_env_var(parse_callbacks: &[Rc<dyn callbacks::ParseCallba
     env_var(parse_callbacks, var).ok()
 }
 
-/// A ParseCallbacks implementation that will act on file includes by echoing a rerun-if-changed
-/// line and on env variable usage by echoing a rerun-if-env-changed line
-///
-/// When running inside a `build.rs` script, this can be used to make cargo invalidate the
-/// generated bindings whenever any of the files included from the header change:
-/// ```
-/// use bindgen::builder;
-/// let bindings = builder()
-///     .header("path/to/input/header")
-///     .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-///     .generate();
-/// ```
 #[derive(Debug)]
 pub struct CargoCallbacks;
 
@@ -1133,10 +951,8 @@ impl callbacks::ParseCallbacks for CargoCallbacks {
     }
 }
 
-/// Test command_line_flag function.
 #[test]
 fn commandline_flag_unit_test_function() {
-    //Test 1
     let bindings = crate::builder();
     let command_line_flags = bindings.command_line_flags();
 
@@ -1152,7 +968,6 @@ fn commandline_flag_unit_test_function() {
 
     assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
 
-    //Test 2
     let bindings = crate::builder()
         .header("input_header")
         .allowlist_type("Distinct_Type")

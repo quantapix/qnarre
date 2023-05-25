@@ -21,32 +21,23 @@ use super::BindgenOptions;
 
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
-use crate::ir::annotations::{
-    Annotations, FieldAccessorKind, FieldVisibilityKind,
-};
-use crate::ir::comp::{
-    Bitfield, BitfieldUnit, CompInfo, CompKind, Field, FieldData, FieldMethods,
-    Method, MethodKind,
-};
+use crate::ir::annotations::{Annotations, FieldAccessorKind, FieldVisibilityKind};
+use crate::ir::comp::{Bitfield, BitfieldUnit, CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::derive::{
-    CanDerive, CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq,
-    CanDeriveHash, CanDeriveOrd, CanDerivePartialEq, CanDerivePartialOrd,
+    CanDerive, CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd,
+    CanDerivePartialEq, CanDerivePartialOrd,
 };
 use crate::ir::dot;
 use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
-use crate::ir::function::{
-    Abi, ClangAbi, Function, FunctionKind, FunctionSig, Linkage,
-};
+use crate::ir::function::{Abi, ClangAbi, Function, FunctionKind, FunctionSig, Linkage};
 use crate::ir::int::IntKind;
 use crate::ir::item::{IsOpaque, Item, ItemCanonicalName, ItemCanonicalPath};
 use crate::ir::item_kind::ItemKind;
 use crate::ir::layout::Layout;
 use crate::ir::module::Module;
 use crate::ir::objc::{ObjCInterface, ObjCMethod};
-use crate::ir::template::{
-    AsTemplateParam, TemplateInstantiation, TemplateParameters,
-};
+use crate::ir::template::{AsTemplateParam, TemplateInstantiation, TemplateParameters};
 use crate::ir::ty::{Type, TypeKind};
 use crate::ir::var::Var;
 
@@ -79,19 +70,15 @@ impl fmt::Display for CodegenError {
         match self {
             Self::Serialize { msg, loc } => {
                 write!(f, "serialization error at {}: {}", loc, msg)
-            }
+            },
             Self::Io(err) => err.fmt(f),
         }
     }
 }
 
-// Name of type defined in constified enum module
 pub(crate) static CONSTIFIED_ENUM_MODULE_REPR_NAME: &str = "Type";
 
-fn top_level_path(
-    ctx: &BindgenContext,
-    item: &Item,
-) -> Vec<proc_macro2::TokenStream> {
+fn top_level_path(ctx: &BindgenContext, item: &Item) -> Vec<proc_macro2::TokenStream> {
     let mut path = vec![quote! { self }];
 
     if ctx.options().enable_cxx_namespaces {
@@ -103,10 +90,7 @@ fn top_level_path(
     path
 }
 
-fn root_import(
-    ctx: &BindgenContext,
-    module: &Item,
-) -> proc_macro2::TokenStream {
+fn root_import(ctx: &BindgenContext, module: &Item) -> proc_macro2::TokenStream {
     assert!(ctx.options().enable_cxx_namespaces, "Somebody messed it up");
     assert!(module.is_module());
 
@@ -140,11 +124,7 @@ bitflags! {
     }
 }
 
-fn derives_of_item(
-    item: &Item,
-    ctx: &BindgenContext,
-    packed: bool,
-) -> DerivableTraits {
+fn derives_of_item(item: &Item, ctx: &BindgenContext, packed: bool) -> DerivableTraits {
     let mut derivable_traits = DerivableTraits::empty();
 
     let all_template_params = item.all_template_params(ctx);
@@ -152,20 +132,10 @@ fn derives_of_item(
     if item.can_derive_copy(ctx) && !item.annotations().disallow_copy() {
         derivable_traits |= DerivableTraits::COPY;
 
-        if ctx.options().rust_features().builtin_clone_impls ||
-            !all_template_params.is_empty()
-        {
-            // FIXME: This requires extra logic if you have a big array in a
-            // templated struct. The reason for this is that the magic:
-            //     fn clone(&self) -> Self { *self }
-            // doesn't work for templates.
-            //
-            // It's not hard to fix though.
+        if ctx.options().rust_features().builtin_clone_impls || !all_template_params.is_empty() {
             derivable_traits |= DerivableTraits::CLONE;
         }
     } else if packed {
-        // If the struct or union is packed, deriving from Copy is required for
-        // deriving from any other trait.
         return derivable_traits;
     }
 
@@ -214,9 +184,7 @@ impl From<DerivableTraits> for Vec<&'static str> {
             (DerivableTraits::EQ, "Eq"),
         ]
         .iter()
-        .filter_map(|&(flag, derive)| {
-            Some(derive).filter(|_| derivable_traits.contains(flag))
-        })
+        .filter_map(|&(flag, derive)| Some(derive).filter(|_| derivable_traits.contains(flag)))
         .collect()
     }
 }
@@ -225,48 +193,22 @@ struct CodegenResult<'a> {
     items: Vec<proc_macro2::TokenStream>,
     dynamic_items: DynamicItems,
 
-    /// A monotonic counter used to add stable unique ID's to stuff that doesn't
-    /// need to be referenced by anything.
     codegen_id: &'a Cell<usize>,
 
-    /// Whether a bindgen union has been generated at least once.
     saw_bindgen_union: bool,
 
-    /// Whether an incomplete array has been generated at least once.
     saw_incomplete_array: bool,
 
-    /// Whether Objective C types have been seen at least once.
     saw_objc: bool,
 
-    /// Whether Apple block types have been seen at least once.
     saw_block: bool,
 
-    /// Whether a bitfield allocation unit has been seen at least once.
     saw_bitfield_unit: bool,
 
     items_seen: HashSet<ItemId>,
-    /// The set of generated function/var names, needed because in C/C++ is
-    /// legal to do something like:
-    ///
-    /// ```c++
-    /// extern "C" {
-    ///   void foo();
-    ///   extern int bar;
-    /// }
-    ///
-    /// extern "C" {
-    ///   void foo();
-    ///   extern int bar;
-    /// }
-    /// ```
-    ///
-    /// Being these two different declarations.
     functions_seen: HashSet<String>,
     vars_seen: HashSet<String>,
 
-    /// Used for making bindings to overloaded functions. Maps from a canonical
-    /// function name to the number of overloads we have already codegen'd for
-    /// that name. This lets us give each overload a unique suffix.
     overload_counters: HashMap<String, u32>,
 
     items_to_serialize: Vec<ItemId>,
@@ -331,9 +273,6 @@ impl<'a> CodegenResult<'a> {
         self.functions_seen.insert(name.into());
     }
 
-    /// Get the overload number for the given function name. Increments the
-    /// counter internally so the next time we ask for the overload for this
-    /// name, we get the incremented value, and so on.
     fn overload_number(&mut self, name: &str) -> u32 {
         let counter = self.overload_counters.entry(name.into()).or_insert(0);
         let number = *counter;
@@ -381,8 +320,6 @@ impl<'a> ops::DerefMut for CodegenResult<'a> {
     }
 }
 
-/// A trait to convert a rust type into a pointer, optionally const, to the same
-/// type.
 trait ToPtr {
     fn to_ptr(self, is_const: bool) -> proc_macro2::TokenStream;
 }
@@ -397,49 +334,38 @@ impl ToPtr for proc_macro2::TokenStream {
     }
 }
 
-/// An extension trait for `proc_macro2::TokenStream` that lets us append any implicit
-/// template parameters that exist for some type, if necessary.
 trait AppendImplicitTemplateParams {
-    fn append_implicit_template_params(
-        &mut self,
-        ctx: &BindgenContext,
-        item: &Item,
-    );
+    fn append_implicit_template_params(&mut self, ctx: &BindgenContext, item: &Item);
 }
 
 impl AppendImplicitTemplateParams for proc_macro2::TokenStream {
-    fn append_implicit_template_params(
-        &mut self,
-        ctx: &BindgenContext,
-        item: &Item,
-    ) {
+    fn append_implicit_template_params(&mut self, ctx: &BindgenContext, item: &Item) {
         let item = item.id().into_resolver().through_type_refs().resolve(ctx);
 
         match *item.expect_type().kind() {
             TypeKind::UnresolvedTypeRef(..) => {
                 unreachable!("already resolved unresolved type refs")
-            }
+            },
             TypeKind::ResolvedTypeRef(..) => {
                 unreachable!("we resolved item through type refs")
-            }
+            },
 
-            // None of these types ever have implicit template parameters.
-            TypeKind::Void |
-            TypeKind::NullPtr |
-            TypeKind::Pointer(..) |
-            TypeKind::Reference(..) |
-            TypeKind::Int(..) |
-            TypeKind::Float(..) |
-            TypeKind::Complex(..) |
-            TypeKind::Array(..) |
-            TypeKind::TypeParam |
-            TypeKind::Opaque |
-            TypeKind::Function(..) |
-            TypeKind::Enum(..) |
-            TypeKind::ObjCId |
-            TypeKind::ObjCSel |
-            TypeKind::TemplateInstantiation(..) => return,
-            _ => {}
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Pointer(..)
+            | TypeKind::Reference(..)
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Array(..)
+            | TypeKind::TypeParam
+            | TypeKind::Opaque
+            | TypeKind::Function(..)
+            | TypeKind::Enum(..)
+            | TypeKind::ObjCId
+            | TypeKind::ObjCSel
+            | TypeKind::TemplateInstantiation(..) => return,
+            _ => {},
         }
 
         let params: Vec<_> = item
@@ -459,26 +385,15 @@ impl AppendImplicitTemplateParams for proc_macro2::TokenStream {
 }
 
 trait CodeGenerator {
-    /// Extra information from the caller.
     type Extra;
 
-    /// Extra information returned to the caller.
     type Return;
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        extra: &Self::Extra,
-    ) -> Self::Return;
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, extra: &Self::Extra) -> Self::Return;
 }
 
 impl Item {
-    fn process_before_codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult,
-    ) -> bool {
+    fn process_before_codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult) -> bool {
         if !self.is_enabled_for_codegen(ctx) {
             return false;
         }
@@ -493,9 +408,6 @@ impl Item {
         }
 
         if !ctx.codegen_items().contains(&self.id()) {
-            // TODO(emilio, #453): Figure out what to do when this happens
-            // legitimately, we could track the opaque stuff and disable the
-            // assertion there I guess.
             warn!("Found non-allowlisted item in code generation: {:?}", self);
         }
 
@@ -508,12 +420,7 @@ impl CodeGenerator for Item {
     type Extra = ();
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        _extra: &(),
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, _extra: &()) {
         debug!("<Item as CodeGenerator>::codegen: self = {:?}", self);
         if !self.process_before_codegen(ctx, result) {
             return;
@@ -522,16 +429,16 @@ impl CodeGenerator for Item {
         match *self.kind() {
             ItemKind::Module(ref module) => {
                 module.codegen(ctx, result, self);
-            }
+            },
             ItemKind::Function(ref fun) => {
                 fun.codegen(ctx, result, self);
-            }
+            },
             ItemKind::Var(ref var) => {
                 var.codegen(ctx, result, self);
-            }
+            },
             ItemKind::Type(ref ty) => {
                 ty.codegen(ctx, result, self);
-            }
+            },
         }
     }
 }
@@ -540,16 +447,10 @@ impl CodeGenerator for Module {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         debug!("<Module as CodeGenerator>::codegen: item = {:?}", item);
 
-        let codegen_self = |result: &mut CodegenResult,
-                            found_any: &mut bool| {
+        let codegen_self = |result: &mut CodegenResult, found_any: &mut bool| {
             for child in self.children() {
                 if ctx.codegen_items().contains(child) {
                     *found_any = true;
@@ -579,10 +480,7 @@ impl CodeGenerator for Module {
             }
         };
 
-        if !ctx.options().enable_cxx_namespaces ||
-            (self.is_inline() &&
-                !ctx.options().conservative_inline_namespaces)
-        {
+        if !ctx.options().enable_cxx_namespaces || (self.is_inline() && !ctx.options().conservative_inline_namespaces) {
             codegen_self(result, &mut false);
             return;
         }
@@ -595,16 +493,13 @@ impl CodeGenerator for Module {
             if let Some(raw_lines) = ctx.options().module_lines.get(&path) {
                 for raw_line in raw_lines {
                     found_any = true;
-                    result.push(
-                        proc_macro2::TokenStream::from_str(raw_line).unwrap(),
-                    );
+                    result.push(proc_macro2::TokenStream::from_str(raw_line).unwrap());
                 }
             }
 
             codegen_self(result, &mut found_any);
         });
 
-        // Don't bother creating an empty module.
         if !found_any {
             return;
         }
@@ -632,12 +527,7 @@ impl CodeGenerator for Var {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         use crate::ir::var::VarType;
         debug!("<Var as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
@@ -651,9 +541,6 @@ impl CodeGenerator for Var {
 
         let canonical_ident = ctx.rust_ident(&canonical_name);
 
-        // We can't generate bindings to static variables of templates. The
-        // number of actual variables for a single declaration are open ended
-        // and we don't know what instantiations do or don't exist.
         if !item.all_template_params(ctx).is_empty() {
             return;
         }
@@ -672,7 +559,7 @@ impl CodeGenerator for Var {
                         #(#attrs)*
                         pub const #canonical_ident : #ty = #val ;
                     });
-                }
+                },
                 VarType::Int(val) => {
                     let int_kind = self
                         .ty()
@@ -692,7 +579,7 @@ impl CodeGenerator for Var {
                         #(#attrs)*
                         pub const #canonical_ident : #ty = #val ;
                     });
-                }
+                },
                 VarType::String(ref bytes) => {
                     let prefix = ctx.trait_prefix();
 
@@ -701,9 +588,7 @@ impl CodeGenerator for Var {
 
                     let mut cstr_bytes = bytes.clone();
                     cstr_bytes.push(0);
-                    let len = proc_macro2::Literal::usize_unsuffixed(
-                        cstr_bytes.len(),
-                    );
+                    let len = proc_macro2::Literal::usize_unsuffixed(cstr_bytes.len());
                     let cstr = CStr::from_bytes_with_nul(&cstr_bytes).unwrap();
 
                     // TODO: Here we ignore the type we just made up, probably
@@ -711,9 +596,7 @@ impl CodeGenerator for Var {
                     let array_ty = quote! { [u8; #len] };
                     let cstr_ty = quote! { ::#prefix::ffi::CStr };
 
-                    let bytes = proc_macro2::Literal::byte_string(
-                        cstr.to_bytes_with_nul(),
-                    );
+                    let bytes = proc_macro2::Literal::byte_string(cstr.to_bytes_with_nul());
 
                     if rust_features.const_cstr && options.generate_cstr {
                         result.push(quote! {
@@ -724,8 +607,7 @@ impl CodeGenerator for Var {
                             };
                         });
                     } else {
-                        let lifetime = if rust_features.static_lifetime_elision
-                        {
+                        let lifetime = if rust_features.static_lifetime_elision {
                             None
                         } else {
                             Some(quote! { 'static })
@@ -737,7 +619,7 @@ impl CodeGenerator for Var {
                             pub const #canonical_ident: &#(#lifetime )*#array_ty = #bytes ;
                         });
                     }
-                }
+                },
                 VarType::Float(f) => {
                     if let Ok(expr) = helpers::ast_ty::float_expr(ctx, f) {
                         result.push(quote! {
@@ -745,26 +627,20 @@ impl CodeGenerator for Var {
                             pub const #canonical_ident : #ty = #expr ;
                         });
                     }
-                }
+                },
                 VarType::Char(c) => {
                     result.push(quote! {
                         #(#attrs)*
                         pub const #canonical_ident : #ty = #c ;
                     });
-                }
+                },
             }
         } else {
-            // If necessary, apply a `#[link_name]` attribute
             if let Some(link_name) = self.link_name() {
                 attrs.push(attributes::link_name::<false>(link_name));
             } else {
-                let link_name =
-                    self.mangled_name().unwrap_or_else(|| self.name());
-                if !utils::names_will_be_identical_after_mangling(
-                    &canonical_name,
-                    link_name,
-                    None,
-                ) {
+                let link_name = self.mangled_name().unwrap_or_else(|| self.name());
+                if !utils::names_will_be_identical_after_mangling(&canonical_name, link_name, None) {
                     attrs.push(attributes::link_name::<false>(link_name));
                 }
             }
@@ -791,50 +667,40 @@ impl CodeGenerator for Type {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         debug!("<Type as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
 
         match *self.kind() {
-            TypeKind::Void |
-            TypeKind::NullPtr |
-            TypeKind::Int(..) |
-            TypeKind::Float(..) |
-            TypeKind::Complex(..) |
-            TypeKind::Array(..) |
-            TypeKind::Vector(..) |
-            TypeKind::Pointer(..) |
-            TypeKind::Reference(..) |
-            TypeKind::Function(..) |
-            TypeKind::ResolvedTypeRef(..) |
-            TypeKind::Opaque |
-            TypeKind::TypeParam => {
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Array(..)
+            | TypeKind::Vector(..)
+            | TypeKind::Pointer(..)
+            | TypeKind::Reference(..)
+            | TypeKind::Function(..)
+            | TypeKind::ResolvedTypeRef(..)
+            | TypeKind::Opaque
+            | TypeKind::TypeParam => {
                 // These items don't need code generation, they only need to be
                 // converted to rust types in fields, arguments, and such.
                 // NOTE(emilio): If you add to this list, make sure to also add
                 // it to BindgenContext::compute_allowlisted_and_codegen_items.
-            }
-            TypeKind::TemplateInstantiation(ref inst) => {
-                inst.codegen(ctx, result, item)
-            }
+            },
+            TypeKind::TemplateInstantiation(ref inst) => inst.codegen(ctx, result, item),
             TypeKind::BlockPointer(inner) => {
                 if !ctx.options().generate_block {
                     return;
                 }
 
-                let inner_item =
-                    inner.into_resolver().through_type_refs().resolve(ctx);
+                let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = item.canonical_name(ctx);
 
                 let inner_rust_type = {
-                    if let TypeKind::Function(fnsig) =
-                        inner_item.kind().expect_type().kind()
-                    {
+                    if let TypeKind::Function(fnsig) = inner_item.kind().expect_type().kind() {
                         utils::fnsig_block(ctx, fnsig)
                     } else {
                         panic!("invalid block typedef: {:?}", inner_item)
@@ -855,11 +721,10 @@ impl CodeGenerator for Type {
 
                 result.push(tokens);
                 result.saw_block();
-            }
+            },
             TypeKind::Comp(ref ci) => ci.codegen(ctx, result, item),
             TypeKind::TemplateAlias(inner, _) | TypeKind::Alias(inner) => {
-                let inner_item =
-                    inner.into_resolver().through_type_refs().resolve(ctx);
+                let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = item.canonical_name(ctx);
                 let path = item.canonical_path(ctx);
 
@@ -887,11 +752,7 @@ impl CodeGenerator for Type {
                 let spelling = self.name().expect("Unnamed alias?");
                 if utils::type_from_named(ctx, spelling).is_some() {
                     if let "size_t" | "ssize_t" = spelling {
-                        let layout = inner_item
-                            .kind()
-                            .expect_type()
-                            .layout(ctx)
-                            .expect("No layout?");
+                        let layout = inner_item.kind().expect_type().layout(ctx).expect("No layout?");
                         assert_eq!(
                             layout.size,
                             ctx.target_pointer_size(),
@@ -940,8 +801,7 @@ impl CodeGenerator for Type {
                     // with invalid template parameters, and at least this way
                     // they can be replaced, instead of generating plain invalid
                     // code.
-                    let inner_canon_type =
-                        inner_item.expect_type().canonical_type(ctx);
+                    let inner_canon_type = inner_item.expect_type().canonical_type(ctx);
                     if inner_canon_type.is_invalid_type_param() {
                         warn!(
                             "Item contained invalid named type, skipping: \
@@ -974,10 +834,14 @@ impl CodeGenerator for Type {
                 // https://github.com/rust-lang/rust/issues/26264
                 // These are the only characters allowed in simple
                 // paths, eg `good::dogs::Bront`.
-                if inner_rust_type.to_string().chars().all(|c| matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | ':' | '_' | ' ')) && outer_params.is_empty() &&
-                    !is_opaque &&
-                    alias_style == AliasVariation::TypeAlias &&
-                    inner_item.expect_type().canonical_type(ctx).is_enum()
+                if inner_rust_type
+                    .to_string()
+                    .chars()
+                    .all(|c| matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | ':' | '_' | ' '))
+                    && outer_params.is_empty()
+                    && !is_opaque
+                    && alias_style == AliasVariation::TypeAlias
+                    && inner_item.expect_type().canonical_type(ctx).is_enum()
                 {
                     tokens.append_all(quote! {
                         pub use
@@ -1002,11 +866,9 @@ impl CodeGenerator for Type {
                             alias_style
                         );
 
-                        let mut attributes =
-                            vec![attributes::repr("transparent")];
+                        let mut attributes = vec![attributes::repr("transparent")];
                         let packed = false; // Types can't be packed in Rust.
-                        let derivable_traits =
-                            derives_of_item(item, ctx, packed);
+                        let derivable_traits = derives_of_item(item, ctx, packed);
                         if !derivable_traits.is_empty() {
                             let derives: Vec<_> = derivable_traits.into();
                             attributes.push(attributes::derives(&derives))
@@ -1016,17 +878,14 @@ impl CodeGenerator for Type {
                             #( #attributes )*
                             pub struct #rust_name
                         }
-                    }
+                    },
                 });
 
                 let params: Vec<_> = outer_params
                     .into_iter()
                     .filter_map(|p| p.as_template_param(ctx, &()))
                     .collect();
-                if params
-                    .iter()
-                    .any(|p| ctx.resolve_type(*p).is_invalid_type_param())
-                {
+                if params.iter().any(|p| ctx.resolve_type(*p).is_invalid_type_param()) {
                     warn!(
                         "Item contained invalid template \
                          parameter: {:?}",
@@ -1037,9 +896,8 @@ impl CodeGenerator for Type {
                 let params: Vec<_> = params
                     .iter()
                     .map(|p| {
-                        p.try_to_rust_ty(ctx, &()).expect(
-                            "type parameters can always convert to rust ty OK",
-                        )
+                        p.try_to_rust_ty(ctx, &())
+                            .expect("type parameters can always convert to rust ty OK")
                     })
                     .collect();
 
@@ -1049,8 +907,7 @@ impl CodeGenerator for Type {
                     });
                 }
 
-                let access_spec =
-                    access_specifier(ctx.options().default_visibility);
+                let access_spec = access_specifier(ctx.options().default_visibility);
                 tokens.append_all(match alias_style {
                     AliasVariation::TypeAlias => quote! {
                         = #inner_rust_type ;
@@ -1059,7 +916,7 @@ impl CodeGenerator for Type {
                         quote! {
                             (#access_spec #inner_rust_type) ;
                         }
-                    }
+                    },
                 });
 
                 if alias_style == AliasVariation::NewTypeDeref {
@@ -1082,24 +939,21 @@ impl CodeGenerator for Type {
                 }
 
                 result.push(tokens);
-            }
+            },
             TypeKind::Enum(ref ei) => ei.codegen(ctx, result, item),
             TypeKind::ObjCId | TypeKind::ObjCSel => {
                 result.saw_objc();
-            }
-            TypeKind::ObjCInterface(ref interface) => {
-                interface.codegen(ctx, result, item)
-            }
+            },
+            TypeKind::ObjCInterface(ref interface) => interface.codegen(ctx, result, item),
             ref u @ TypeKind::UnresolvedTypeRef(..) => {
                 unreachable!("Should have been resolved after parsing {:?}!", u)
-            }
+            },
         }
     }
 }
 
 struct Vtable<'a> {
     item_id: ItemId,
-    /// A reference to the originating compound object.
     #[allow(dead_code)]
     comp_info: &'a CompInfo,
 }
@@ -1114,22 +968,14 @@ impl<'a> CodeGenerator for Vtable<'a> {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         assert_eq!(item.id(), self.item_id);
         debug_assert!(item.is_enabled_for_codegen(ctx));
         let name = ctx.rust_ident(self.canonical_name(ctx));
 
-        // For now, we will only generate vtables for classes that:
-        // - do not inherit from others (compilers merge VTable from primary parent class).
-        // - do not contain a virtual destructor (requires ordering; platforms generate different vtables).
-        if ctx.options().vtable_generation &&
-            self.comp_info.base_members().is_empty() &&
-            self.comp_info.destructor().is_none()
+        if ctx.options().vtable_generation
+            && self.comp_info.base_members().is_empty()
+            && self.comp_info.destructor().is_none()
         {
             let class_ident = ctx.rust_ident(self.item_id.canonical_name(ctx));
 
@@ -1177,7 +1023,6 @@ impl<'a> CodeGenerator for Vtable<'a> {
                 }
             })
         } else {
-            // For the cases we don't support, simply generate an empty struct.
             let void = helpers::ast_ty::c_void(ctx);
 
             result.push(quote! {
@@ -1197,11 +1042,7 @@ impl<'a> ItemCanonicalName for Vtable<'a> {
 impl<'a> TryToRustTy for Vtable<'a> {
     type Extra = ();
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        _: &(),
-    ) -> error::Result<proc_macro2::TokenStream> {
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, _: &()) -> error::Result<proc_macro2::TokenStream> {
         let name = ctx.rust_ident(self.canonical_name(ctx));
         Ok(quote! {
             #name
@@ -1213,27 +1054,13 @@ impl CodeGenerator for TemplateInstantiation {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         debug_assert!(item.is_enabled_for_codegen(ctx));
 
-        // Although uses of instantiations don't need code generation, and are
-        // just converted to rust types in fields, vars, etc, we take this
-        // opportunity to generate tests for their layout here. If the
-        // instantiation is opaque, then its presumably because we don't
-        // properly understand it (maybe because of specializations), and so we
-        // shouldn't emit layout tests either.
         if !ctx.options().layout_tests || self.is_opaque(ctx, item) {
             return;
         }
 
-        // If there are any unbound type parameters, then we can't generate a
-        // layout test because we aren't dealing with a concrete type with a
-        // concrete size and alignment.
         if ctx.uses_any_template_parameters(item.id()) {
             return;
         }
@@ -1245,8 +1072,7 @@ impl CodeGenerator for TemplateInstantiation {
             let align = layout.align;
 
             let name = item.full_disambiguated_name(ctx);
-            let mut fn_name =
-                format!("__bindgen_test_layout_{}_instantiation", name);
+            let mut fn_name = format!("__bindgen_test_layout_{}_instantiation", name);
             let times_seen = result.overload_number(&fn_name);
             if times_seen > 0 {
                 write!(&mut fn_name, "_{}", times_seen).unwrap();
@@ -1280,7 +1106,6 @@ impl CodeGenerator for TemplateInstantiation {
     }
 }
 
-/// Trait for implementing the code generation of a struct or union field.
 trait FieldCodegen<'a> {
     type Extra;
 
@@ -1332,7 +1157,7 @@ impl<'a> FieldCodegen<'a> for Field {
                     methods,
                     (),
                 );
-            }
+            },
             Field::Bitfields(ref unit) => {
                 unit.codegen(
                     ctx,
@@ -1345,7 +1170,7 @@ impl<'a> FieldCodegen<'a> for Field {
                     methods,
                     (),
                 );
-            }
+            },
         }
     }
 }
@@ -1397,17 +1222,13 @@ impl<'a> FieldCodegen<'a> for FieldData {
         F: Extend<proc_macro2::TokenStream>,
         M: Extend<proc_macro2::TokenStream>,
     {
-        // Bitfields are handled by `FieldCodegen` implementations for
-        // `BitfieldUnit` and `Bitfield`.
         assert!(self.bitfield_width().is_none());
 
-        let field_item =
-            self.ty().into_resolver().through_type_refs().resolve(ctx);
+        let field_item = self.ty().into_resolver().through_type_refs().resolve(ctx);
         let field_ty = field_item.expect_type();
         let mut ty = self.ty().to_rust_ty_or_opaque(ctx, &());
         ty.append_implicit_template_params(ctx, field_item);
 
-        // NB: If supported, we use proper `union` types.
         let ty = if parent.is_union() {
             wrap_union_field_if_needed(ctx, struct_layout, ty, result)
         } else if let Some(item) = field_ty.is_incomplete_array(ctx) {
@@ -1442,49 +1263,39 @@ impl<'a> FieldCodegen<'a> for FieldData {
             .expect("Each field should have a name in codegen!");
         let field_ident = ctx.rust_ident_raw(field_name.as_str());
 
-        if let Some(padding_field) =
-            struct_layout.saw_field(&field_name, field_ty, self.offset())
-        {
+        if let Some(padding_field) = struct_layout.saw_field(&field_name, field_ty, self.offset()) {
             fields.extend(Some(padding_field));
         }
 
-        let visibility = compute_visibility(
-            ctx,
-            self.is_public(),
-            Some(self.annotations()),
-            parent_visibility_kind,
-        );
-        let accessor_kind =
-            self.annotations().accessor_kind().unwrap_or(accessor_kind);
+        let visibility = compute_visibility(ctx, self.is_public(), Some(self.annotations()), parent_visibility_kind);
+        let accessor_kind = self.annotations().accessor_kind().unwrap_or(accessor_kind);
 
         match visibility {
             FieldVisibilityKind::Private => {
                 field.append_all(quote! {
                     #field_ident : #ty ,
                 });
-            }
+            },
             FieldVisibilityKind::PublicCrate => {
                 field.append_all(quote! {
                     pub(crate) #field_ident : #ty ,
                 });
-            }
+            },
             FieldVisibilityKind::Public => {
                 field.append_all(quote! {
                     pub #field_ident : #ty ,
                 });
-            }
+            },
         }
 
         fields.extend(Some(field));
 
-        // TODO: Factor the following code out, please!
         if accessor_kind == FieldAccessorKind::None {
             return;
         }
 
         let getter_name = ctx.rust_ident_raw(format!("get_{}", field_name));
-        let mutable_getter_name =
-            ctx.rust_ident_raw(format!("get_{}_mut", field_name));
+        let mutable_getter_name = ctx.rust_ident_raw(format!("get_{}_mut", field_name));
         let field_name = ctx.rust_ident_raw(field_name);
 
         methods.extend(Some(match accessor_kind {
@@ -1501,7 +1312,7 @@ impl<'a> FieldCodegen<'a> for FieldData {
                         &mut self.#field_name
                     }
                 }
-            }
+            },
             FieldAccessorKind::Unsafe => {
                 quote! {
                     #[inline]
@@ -1514,7 +1325,7 @@ impl<'a> FieldCodegen<'a> for FieldData {
                         &mut self.#field_name
                     }
                 }
-            }
+            },
             FieldAccessorKind::Immutable => {
                 quote! {
                     #[inline]
@@ -1522,18 +1333,14 @@ impl<'a> FieldCodegen<'a> for FieldData {
                         &self.#field_name
                     }
                 }
-            }
+            },
         }));
     }
 }
 
 impl BitfieldUnit {
-    /// Get the constructor name for this bitfield unit.
     fn ctor_name(&self) -> proc_macro2::TokenStream {
-        let ctor_name = Ident::new(
-            &format!("new_bitfield_{}", self.nth()),
-            Span::call_site(),
-        );
+        let ctor_name = Ident::new(&format!("new_bitfield_{}", self.nth()), Span::call_site());
         quote! {
             #ctor_name
         }
@@ -1541,9 +1348,6 @@ impl BitfieldUnit {
 }
 
 impl Bitfield {
-    /// Extend an under construction bitfield unit constructor with this
-    /// bitfield. This sets the relevant bits on the `__bindgen_bitfield_unit`
-    /// variable that's being constructed.
     fn extend_ctor_impl(
         &self,
         ctx: &BindgenContext,
@@ -1551,14 +1355,11 @@ impl Bitfield {
         mut ctor_impl: proc_macro2::TokenStream,
     ) -> proc_macro2::TokenStream {
         let bitfield_ty = ctx.resolve_type(self.ty());
-        let bitfield_ty_layout = bitfield_ty
-            .layout(ctx)
-            .expect("Bitfield without layout? Gah!");
-        let bitfield_int_ty = helpers::integer_type(ctx, bitfield_ty_layout)
-            .expect(
-                "Should already have verified that the bitfield is \
+        let bitfield_ty_layout = bitfield_ty.layout(ctx).expect("Bitfield without layout? Gah!");
+        let bitfield_int_ty = helpers::integer_type(ctx, bitfield_ty_layout).expect(
+            "Should already have verified that the bitfield is \
                  representable as an int",
-            );
+        );
 
         let offset = self.offset_into_unit();
         let width = self.width() as u8;
@@ -1581,9 +1382,7 @@ impl Bitfield {
     }
 }
 
-fn access_specifier(
-    visibility: FieldVisibilityKind,
-) -> proc_macro2::TokenStream {
+fn access_specifier(visibility: FieldVisibilityKind) -> proc_macro2::TokenStream {
     match visibility {
         FieldVisibilityKind::Private => quote! {},
         FieldVisibilityKind::PublicCrate => quote! { pub(crate) },
@@ -1591,16 +1390,6 @@ fn access_specifier(
     }
 }
 
-/// Compute a fields or structs visibility based on multiple conditions.
-/// 1. If the element was declared public, and we respect such CXX accesses specs
-/// (context option) => By default Public, but this can be overruled by an `annotation`.
-///
-/// 2. If the element was declared private, and we respect such CXX accesses specs
-/// (context option) => By default Private, but this can be overruled by an `annotation`.
-///
-/// 3. If we do not respect visibility modifiers, the result depends on the `annotation`,
-/// if any, or the passed `default_kind`.
-///
 fn compute_visibility(
     ctx: &BindgenContext,
     is_declared_public: bool,
@@ -1612,18 +1401,9 @@ fn compute_visibility(
         ctx.options().respect_cxx_access_specs,
         annotations.and_then(|e| e.visibility_kind()),
     ) {
-        (true, true, annotated_visibility) => {
-            // declared as public, cxx specs are respected
-            annotated_visibility.unwrap_or(FieldVisibilityKind::Public)
-        }
-        (false, true, annotated_visibility) => {
-            // declared as private, cxx specs are respected
-            annotated_visibility.unwrap_or(FieldVisibilityKind::Private)
-        }
-        (_, false, annotated_visibility) => {
-            // cxx specs are not respected, declaration does not matter.
-            annotated_visibility.unwrap_or(default_kind)
-        }
+        (true, true, annotated_visibility) => annotated_visibility.unwrap_or(FieldVisibilityKind::Public),
+        (false, true, annotated_visibility) => annotated_visibility.unwrap_or(FieldVisibilityKind::Private),
+        (_, false, annotated_visibility) => annotated_visibility.unwrap_or(default_kind),
     }
 }
 
@@ -1654,12 +1434,7 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
         let field_ty = {
             let unit_field_ty = unit_field_ty.clone();
             if parent.is_union() {
-                wrap_union_field_if_needed(
-                    ctx,
-                    struct_layout,
-                    unit_field_ty,
-                    result,
-                )
+                wrap_union_field_if_needed(ctx, struct_layout, unit_field_ty, result)
             } else {
                 unit_field_ty
             }
@@ -1688,23 +1463,15 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
         let mut ctor_params = vec![];
         let mut ctor_impl = quote! {};
 
-        // We cannot generate any constructor if the underlying storage can't
-        // implement AsRef<[u8]> / AsMut<[u8]> / etc, or can't derive Default.
-        //
-        // We don't check `larger_arrays` here because Default does still have
-        // the 32 items limitation.
         let mut generate_ctor = layout.size <= RUST_DERIVE_IN_ARRAY_LIMIT;
 
         let mut all_fields_declared_as_public = true;
         for bf in self.bitfields() {
-            // Codegen not allowed for anonymous bitfields
             if bf.name().is_none() {
                 continue;
             }
 
-            if layout.size > RUST_DERIVE_IN_ARRAY_LIMIT &&
-                !ctx.options().rust_features().larger_arrays
-            {
+            if layout.size > RUST_DERIVE_IN_ARRAY_LIMIT && !ctx.options().rust_features().larger_arrays {
                 continue;
             }
 
@@ -1722,7 +1489,6 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
                 (&unit_field_name, &mut bitfield_representable_as_int),
             );
 
-            // Generating a constructor requires the bitfield to be representable as an integer.
             if !bitfield_representable_as_int {
                 generate_ctor = false;
                 continue;
@@ -1731,8 +1497,7 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
             let param_name = bitfield_getter_name(ctx, bf);
             let bitfield_ty_item = ctx.resolve_item(bf.ty());
             let bitfield_ty = bitfield_ty_item.expect_type();
-            let bitfield_ty =
-                bitfield_ty.to_rust_ty_or_opaque(ctx, bitfield_ty_item);
+            let bitfield_ty = bitfield_ty.to_rust_ty_or_opaque(ctx, bitfield_ty_item);
 
             ctor_params.push(quote! {
                 #param_name : #bitfield_ty
@@ -1740,12 +1505,7 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
             ctor_impl = bf.extend_ctor_impl(ctx, param_name, ctor_impl);
         }
 
-        let visibility_kind = compute_visibility(
-            ctx,
-            all_fields_declared_as_public,
-            None,
-            visibility_kind,
-        );
+        let visibility_kind = compute_visibility(ctx, all_fields_declared_as_public, None, visibility_kind);
         let access_spec = access_specifier(visibility_kind);
 
         let field = quote! {
@@ -1768,19 +1528,13 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
     }
 }
 
-fn bitfield_getter_name(
-    ctx: &BindgenContext,
-    bitfield: &Bitfield,
-) -> proc_macro2::TokenStream {
+fn bitfield_getter_name(ctx: &BindgenContext, bitfield: &Bitfield) -> proc_macro2::TokenStream {
     let name = bitfield.getter_name();
     let name = ctx.rust_ident_raw(name);
     quote! { #name }
 }
 
-fn bitfield_setter_name(
-    ctx: &BindgenContext,
-    bitfield: &Bitfield,
-) -> proc_macro2::TokenStream {
+fn bitfield_setter_name(ctx: &BindgenContext, bitfield: &Bitfield) -> proc_macro2::TokenStream {
     let setter = bitfield.setter_name();
     let setter = ctx.rust_ident_raw(setter);
     quote! { #setter }
@@ -1812,33 +1566,24 @@ impl<'a> FieldCodegen<'a> for Bitfield {
         let bitfield_ty_item = ctx.resolve_item(self.ty());
         let bitfield_ty = bitfield_ty_item.expect_type();
 
-        let bitfield_ty_layout = bitfield_ty
-            .layout(ctx)
-            .expect("Bitfield without layout? Gah!");
-        let bitfield_int_ty =
-            match helpers::integer_type(ctx, bitfield_ty_layout) {
-                Some(int_ty) => {
-                    *bitfield_representable_as_int = true;
-                    int_ty
-                }
-                None => {
-                    *bitfield_representable_as_int = false;
-                    return;
-                }
-            };
+        let bitfield_ty_layout = bitfield_ty.layout(ctx).expect("Bitfield without layout? Gah!");
+        let bitfield_int_ty = match helpers::integer_type(ctx, bitfield_ty_layout) {
+            Some(int_ty) => {
+                *bitfield_representable_as_int = true;
+                int_ty
+            },
+            None => {
+                *bitfield_representable_as_int = false;
+                return;
+            },
+        };
 
-        let bitfield_ty =
-            bitfield_ty.to_rust_ty_or_opaque(ctx, bitfield_ty_item);
+        let bitfield_ty = bitfield_ty.to_rust_ty_or_opaque(ctx, bitfield_ty_item);
 
         let offset = self.offset_into_unit();
         let width = self.width() as u8;
 
-        let visibility_kind = compute_visibility(
-            ctx,
-            self.is_public(),
-            Some(self.annotations()),
-            visibility_kind,
-        );
+        let visibility_kind = compute_visibility(ctx, self.is_public(), Some(self.annotations()), visibility_kind);
         let access_spec = access_specifier(visibility_kind);
 
         if parent.is_union() && !struct_layout.is_rust_union() {
@@ -1897,17 +1642,10 @@ impl CodeGenerator for CompInfo {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         debug!("<CompInfo as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
 
-        // Don't output classes with template parameters that aren't types, and
-        // also don't output template specializations, neither total or partial.
         if self.has_non_type_template_params() {
             return;
         }
@@ -1919,22 +1657,9 @@ impl CodeGenerator for CompInfo {
         let canonical_name = item.canonical_name(ctx);
         let canonical_ident = ctx.rust_ident(&canonical_name);
 
-        // Generate the vtable from the method list if appropriate.
-        //
-        // TODO: I don't know how this could play with virtual methods that are
-        // not in the list of methods found by us, we'll see. Also, could the
-        // order of the vtable pointers vary?
-        //
-        // FIXME: Once we generate proper vtables, we need to codegen the
-        // vtable, but *not* generate a field for it in the case that
-        // HasVtable::has_vtable_ptr is false but HasVtable::has_vtable is true.
-        //
-        // Also, we need to generate the vtable in such a way it "inherits" from
-        // the parent too.
         let is_opaque = item.is_opaque(ctx, &());
         let mut fields = vec![];
-        let mut struct_layout =
-            StructLayoutTracker::new(ctx, self, ty, &canonical_name);
+        let mut struct_layout = StructLayoutTracker::new(ctx, self, ty, &canonical_name);
 
         if !is_opaque {
             if item.has_vtable_ptr(ctx) {
@@ -1965,10 +1690,7 @@ impl CodeGenerator for CompInfo {
 
                 struct_layout.saw_base(inner_item.expect_type());
 
-                let visibility = match (
-                    base.is_public(),
-                    ctx.options().respect_cxx_access_specs,
-                ) {
+                let visibility = match (base.is_public(), ctx.options().respect_cxx_access_specs) {
                     (true, true) => FieldVisibilityKind::Public,
                     (false, true) => FieldVisibilityKind::Private,
                     _ => ctx.options().default_visibility,
@@ -1987,10 +1709,7 @@ impl CodeGenerator for CompInfo {
                 .annotations()
                 .visibility_kind()
                 .unwrap_or(ctx.options().default_visibility);
-            let struct_accessor_kind = item
-                .annotations()
-                .accessor_kind()
-                .unwrap_or(FieldAccessorKind::None);
+            let struct_accessor_kind = item.annotations().accessor_kind().unwrap_or(FieldAccessorKind::None);
             for field in self.fields() {
                 field.codegen(
                     ctx,
@@ -2004,18 +1723,12 @@ impl CodeGenerator for CompInfo {
                     (),
                 );
             }
-            // Check whether an explicit padding field is needed
-            // at the end.
             if let Some(comp_layout) = layout {
-                fields.extend(
-                    struct_layout
-                        .add_tail_padding(&canonical_name, comp_layout),
-                );
+                fields.extend(struct_layout.add_tail_padding(&canonical_name, comp_layout));
             }
         }
 
         if is_opaque {
-            // Opaque item should not have generated methods, fields.
             debug_assert!(fields.is_empty());
             debug_assert!(methods.is_empty());
         }
@@ -2027,16 +1740,6 @@ impl CodeGenerator for CompInfo {
 
         let mut explicit_align = None;
 
-        // C++ requires every struct to be addressable, so what C++ compilers do
-        // is making the struct 1-byte sized.
-        //
-        // This is apparently not the case for C, see:
-        // https://github.com/rust-lang/rust-bindgen/issues/551
-        //
-        // Just get the layout, and assume C++ if not.
-        //
-        // NOTE: This check is conveniently here to avoid the dummy fields we
-        // may add for unused template parameters.
         if !forward_decl && zero_sized {
             let has_address = if is_opaque {
                 // Generate the address field if it's an opaque type and
@@ -2049,11 +1752,7 @@ impl CodeGenerator for CompInfo {
             if has_address {
                 let layout = Layout::new(1, 1);
                 let ty = helpers::blob(ctx, Layout::new(1, 1));
-                struct_layout.saw_field_with_layout(
-                    "_address",
-                    layout,
-                    /* offset = */ Some(0),
-                );
+                struct_layout.saw_field_with_layout("_address", layout, /* offset = */ Some(0));
                 fields.push(quote! {
                     pub _address: #ty,
                 });
@@ -2069,15 +1768,13 @@ impl CodeGenerator for CompInfo {
                     fields.push(quote! {
                         pub _bindgen_opaque_blob: #ty ,
                     });
-                }
+                },
                 None => {
                     warn!("Opaque type without layout! Expect dragons!");
-                }
+                },
             }
         } else if !is_union && !zero_sized {
-            if let Some(padding_field) =
-                layout.and_then(|layout| struct_layout.pad_struct(layout))
-            {
+            if let Some(padding_field) = layout.and_then(|layout| struct_layout.pad_struct(layout)) {
                 fields.push(padding_field);
             }
 
@@ -2088,10 +1785,7 @@ impl CodeGenerator for CompInfo {
                     } else {
                         explicit_align = Some(layout.align);
                         if !ctx.options().rust_features.repr_align {
-                            let ty = helpers::blob(
-                                ctx,
-                                Layout::new(0, layout.align),
-                            );
+                            let ty = helpers::blob(ctx, Layout::new(0, layout.align));
                             fields.push(quote! {
                                 pub __bindgen_align: #ty ,
                             });
@@ -2100,8 +1794,6 @@ impl CodeGenerator for CompInfo {
                 }
             }
         } else if is_union && !forward_decl {
-            // TODO(emilio): It'd be nice to unify this with the struct path
-            // above somehow.
             let layout = layout.expect("Unable to get layout information?");
             if struct_layout.requires_explicit_align(layout) {
                 explicit_align = Some(layout.align);
@@ -2181,32 +1873,29 @@ impl CodeGenerator for CompInfo {
 
         let derivable_traits = derives_of_item(item, ctx, packed);
         if !derivable_traits.contains(DerivableTraits::DEBUG) {
-            needs_debug_impl = ctx.options().derive_debug &&
-                ctx.options().impl_debug &&
-                !ctx.no_debug_by_name(item) &&
-                !item.annotations().disallow_debug();
+            needs_debug_impl = ctx.options().derive_debug
+                && ctx.options().impl_debug
+                && !ctx.no_debug_by_name(item)
+                && !item.annotations().disallow_debug();
         }
 
         if !derivable_traits.contains(DerivableTraits::DEFAULT) {
-            needs_default_impl = ctx.options().derive_default &&
-                !self.is_forward_declaration() &&
-                !ctx.no_default_by_name(item) &&
-                !item.annotations().disallow_default();
+            needs_default_impl = ctx.options().derive_default
+                && !self.is_forward_declaration()
+                && !ctx.no_default_by_name(item)
+                && !item.annotations().disallow_default();
         }
 
         let all_template_params = item.all_template_params(ctx);
 
-        if derivable_traits.contains(DerivableTraits::COPY) &&
-            !derivable_traits.contains(DerivableTraits::CLONE)
-        {
+        if derivable_traits.contains(DerivableTraits::COPY) && !derivable_traits.contains(DerivableTraits::CLONE) {
             needs_clone_impl = true;
         }
 
         if !derivable_traits.contains(DerivableTraits::PARTIAL_EQ) {
-            needs_partialeq_impl = ctx.options().derive_partialeq &&
-                ctx.options().impl_partialeq &&
-                ctx.lookup_can_derive_partialeq_or_partialord(item.id()) ==
-                    CanDerive::Manually;
+            needs_partialeq_impl = ctx.options().derive_partialeq
+                && ctx.options().impl_partialeq
+                && ctx.lookup_can_derive_partialeq_or_partialord(item.id()) == CanDerive::Manually;
         }
 
         let mut derives: Vec<_> = derivable_traits.into();
@@ -2214,8 +1903,6 @@ impl CodeGenerator for CompInfo {
 
         let is_rust_union = is_union && struct_layout.is_rust_union();
 
-        // The custom derives callback may return a list of derive attributes;
-        // add them to the end of the list.
         let custom_derives = ctx.options().all_callbacks(|cb| {
             cb.add_derives(&DeriveInfo {
                 name: &canonical_name,
@@ -2226,7 +1913,6 @@ impl CodeGenerator for CompInfo {
                 },
             })
         });
-        // In most cases this will be a no-op, since custom_derives will be empty.
         derives.extend(custom_derives.iter().map(|s| s.as_str()));
 
         if !derives.is_empty() {
@@ -2256,19 +1942,11 @@ impl CodeGenerator for CompInfo {
         });
         result.push(tokens);
 
-        // Generate the inner types and all that stuff.
-        //
-        // TODO: In the future we might want to be smart, and use nested
-        // modules, and whatnot.
         for ty in self.inner_types() {
             let child_item = ctx.resolve_item(*ty);
-            // assert_eq!(child_item.parent_id(), item.id());
             child_item.codegen(ctx, result, &());
         }
 
-        // NOTE: Some unexposed attributes (like alignment attributes) may
-        // affect layout, so we're bad and pray to the gods for avoid sending
-        // all the tests to shit when parsing things like max_align_t.
         if self.found_unknown_attr() {
             warn!(
                 "Type {} has an unknown attribute that may affect layout",
@@ -2285,8 +1963,7 @@ impl CodeGenerator for CompInfo {
 
             if ctx.options().layout_tests && !self.is_forward_declaration() {
                 if let Some(layout) = layout {
-                    let fn_name =
-                        format!("bindgen_test_layout_{}", canonical_ident);
+                    let fn_name = format!("bindgen_test_layout_{}", canonical_ident);
                     let fn_name = ctx.rust_ident_raw(fn_name);
                     let prefix = ctx.trait_prefix();
                     let size_of_expr = quote! {
@@ -2298,24 +1975,21 @@ impl CodeGenerator for CompInfo {
                     let size = layout.size;
                     let align = layout.align;
 
-                    let check_struct_align = if align >
-                        ctx.target_pointer_size() &&
-                        !ctx.options().rust_features().repr_align
-                    {
-                        None
-                    } else {
-                        Some(quote! {
-                            assert_eq!(#align_of_expr,
-                                   #align,
-                                   concat!("Alignment of ", stringify!(#canonical_ident)));
+                    let check_struct_align =
+                        if align > ctx.target_pointer_size() && !ctx.options().rust_features().repr_align {
+                            None
+                        } else {
+                            Some(quote! {
+                                assert_eq!(#align_of_expr,
+                                       #align,
+                                       concat!("Alignment of ", stringify!(#canonical_ident)));
 
-                        })
-                    };
+                            })
+                        };
 
                     let should_skip_field_offset_checks = is_opaque;
 
-                    let check_field_offset = if should_skip_field_offset_checks
-                    {
+                    let check_field_offset = if should_skip_field_offset_checks {
                         vec![]
                     } else {
                         self.fields()
@@ -2376,25 +2050,13 @@ impl CodeGenerator for CompInfo {
             if ctx.options().codegen_config.methods() {
                 for method in self.methods() {
                     assert!(method.kind() != MethodKind::Constructor);
-                    method.codegen_method(
-                        ctx,
-                        &mut methods,
-                        &mut method_names,
-                        result,
-                        self,
-                    );
+                    method.codegen_method(ctx, &mut methods, &mut method_names, result, self);
                 }
             }
 
             if ctx.options().codegen_config.constructors() {
                 for sig in self.constructors() {
-                    Method::new(
-                        MethodKind::Constructor,
-                        *sig,
-                        /* const */
-                        false,
-                    )
-                    .codegen_method(
+                    Method::new(MethodKind::Constructor, *sig, /* const */ false).codegen_method(
                         ctx,
                         &mut methods,
                         &mut method_names,
@@ -2418,8 +2080,6 @@ impl CodeGenerator for CompInfo {
             }
         }
 
-        // NB: We can't use to_rust_ty here since for opaque types this tries to
-        // use the specialization knowledge to generate a blob field.
         let ty_for_impl = quote! {
             #canonical_ident #generics
         };
@@ -2451,10 +2111,6 @@ impl CodeGenerator for CompInfo {
                     }
                 }
             };
-            // Note we use `ptr::write_bytes()` instead of `mem::zeroed()` because the latter does
-            // not necessarily ensure padding bytes are zeroed. Some C libraries are sensitive to
-            // non-zero padding bytes, especially when forwards/backwards compatability is
-            // involved.
             result.push(quote! {
                 impl #generics Default for #ty_for_impl {
                     fn default() -> Self {
@@ -2465,12 +2121,7 @@ impl CodeGenerator for CompInfo {
         }
 
         if needs_debug_impl {
-            let impl_ = impl_debug::gen_debug_impl(
-                ctx,
-                self.fields(),
-                item,
-                self.kind(),
-            );
+            let impl_ = impl_debug::gen_debug_impl(ctx, self.fields(), item, self.kind());
 
             let prefix = ctx.trait_prefix();
 
@@ -2482,12 +2133,7 @@ impl CodeGenerator for CompInfo {
         }
 
         if needs_partialeq_impl {
-            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(
-                ctx,
-                self,
-                item,
-                &ty_for_impl,
-            ) {
+            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, item, &ty_for_impl) {
                 let partialeq_bounds = if !generic_param_names.is_empty() {
                     let bounds = generic_param_names.iter().map(|t| {
                         quote! { #t: PartialEq }
@@ -2531,18 +2177,14 @@ impl Method {
                 MethodKind::Constructor => cc.constructors(),
                 MethodKind::Destructor => cc.destructors(),
                 MethodKind::VirtualDestructor { .. } => cc.destructors(),
-                MethodKind::Static |
-                MethodKind::Normal |
-                MethodKind::Virtual { .. } => cc.methods(),
+                MethodKind::Static | MethodKind::Normal | MethodKind::Virtual { .. } => cc.methods(),
             }
         });
 
-        // TODO(emilio): We could generate final stuff at least.
         if self.is_virtual() {
             return; // FIXME
         }
 
-        // First of all, output the actual function.
         let function_item = ctx.resolve_item(self.signature());
         if !function_item.process_before_codegen(ctx, result) {
             return;
@@ -2566,18 +2208,10 @@ impl Method {
         };
 
         let supported_abi = match signature.abi(ctx, Some(&*name)) {
-            ClangAbi::Known(Abi::ThisCall) => {
-                ctx.options().rust_features().thiscall_abi
-            }
-            ClangAbi::Known(Abi::Vectorcall) => {
-                ctx.options().rust_features().vectorcall_abi
-            }
-            ClangAbi::Known(Abi::CUnwind) => {
-                ctx.options().rust_features().c_unwind_abi
-            }
-            ClangAbi::Known(Abi::EfiApi) => {
-                ctx.options().rust_features().abi_efiapi
-            }
+            ClangAbi::Known(Abi::ThisCall) => ctx.options().rust_features().thiscall_abi,
+            ClangAbi::Known(Abi::Vectorcall) => ctx.options().rust_features().vectorcall_abi,
+            ClangAbi::Known(Abi::CUnwind) => ctx.options().rust_features().c_unwind_abi,
+            ClangAbi::Known(Abi::EfiApi) => ctx.options().rust_features().abi_efiapi,
             _ => true,
         };
 
@@ -2585,8 +2219,6 @@ impl Method {
             return;
         }
 
-        // Do not generate variadic methods, since rust does not allow
-        // implementing them, and we don't do a good job at it anyway.
         if signature.is_variadic() {
             return;
         }
@@ -2623,30 +2255,18 @@ impl Method {
             };
         }
 
-        // If it's a constructor, we always return `Self`, and we inject the
-        // "this" parameter, so there's no need to ask the user for it.
-        //
-        // Note that constructors in Clang are represented as functions with
-        // return-type = void.
         if self.is_constructor() {
             args.remove(0);
             ret = quote! { -> Self };
         }
 
-        let mut exprs =
-            helpers::ast_ty::arguments_from_signature(signature, ctx);
+        let mut exprs = helpers::ast_ty::arguments_from_signature(signature, ctx);
 
         let mut stmts = vec![];
 
-        // If it's a constructor, we need to insert an extra parameter with a
-        // variable called `__bindgen_tmp` we're going to create.
         if self.is_constructor() {
             let prefix = ctx.trait_prefix();
-            let tmp_variable_decl = if ctx
-                .options()
-                .rust_features()
-                .maybe_uninit
-            {
+            let tmp_variable_decl = if ctx.options().rust_features().maybe_uninit {
                 exprs[0] = quote! {
                     __bindgen_tmp.as_mut_ptr()
                 };
@@ -2691,9 +2311,7 @@ impl Method {
 
         let mut attrs = vec![attributes::inline()];
 
-        if signature.must_use() &&
-            ctx.options().rust_features().must_use_function
-        {
+        if signature.must_use() && ctx.options().rust_features().must_use_function {
             attrs.push(attributes::must_use());
         }
 
@@ -2707,26 +2325,11 @@ impl Method {
     }
 }
 
-/// A helper type that represents different enum variations.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum EnumVariation {
-    /// The code for this enum will use a Rust enum. Note that creating this in unsafe code
-    /// (including FFI) with an invalid value will invoke undefined behaviour, whether or not
-    /// its marked as non_exhaustive.
-    Rust {
-        /// Indicates whether the generated struct should be `#[non_exhaustive]`
-        non_exhaustive: bool,
-    },
-    /// The code for this enum will use a newtype
-    NewType {
-        /// Indicates whether the newtype will have bitwise operators
-        is_bitfield: bool,
-        /// Indicates whether the variants will be represented as global constants
-        is_global: bool,
-    },
-    /// The code for this enum will use consts
+    Rust { non_exhaustive: bool },
+    NewType { is_bitfield: bool, is_global: bool },
     Consts,
-    /// The code for this enum will use a module containing consts
     ModuleConsts,
 }
 
@@ -2735,8 +2338,6 @@ impl EnumVariation {
         matches!(*self, EnumVariation::Rust { .. })
     }
 
-    /// Both the `Const` and `ModuleConsts` variants will cause this to return
-    /// true.
     fn is_const(&self) -> bool {
         matches!(*self, EnumVariation::Consts | EnumVariation::ModuleConsts)
     }
@@ -2751,15 +2352,9 @@ impl Default for EnumVariation {
 impl fmt::Display for EnumVariation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Self::Rust {
-                non_exhaustive: false,
-            } => "rust",
-            Self::Rust {
-                non_exhaustive: true,
-            } => "rust_non_exhaustive",
-            Self::NewType {
-                is_bitfield: true, ..
-            } => "bitfield",
+            Self::Rust { non_exhaustive: false } => "rust",
+            Self::Rust { non_exhaustive: true } => "rust_non_exhaustive",
+            Self::NewType { is_bitfield: true, .. } => "bitfield",
             Self::NewType {
                 is_bitfield: false,
                 is_global,
@@ -2769,7 +2364,7 @@ impl fmt::Display for EnumVariation {
                 } else {
                     "newtype"
                 }
-            }
+            },
             Self::Consts => "consts",
             Self::ModuleConsts => "moduleconsts",
         };
@@ -2780,15 +2375,10 @@ impl fmt::Display for EnumVariation {
 impl std::str::FromStr for EnumVariation {
     type Err = std::io::Error;
 
-    /// Create a `EnumVariation` from a string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "rust" => Ok(EnumVariation::Rust {
-                non_exhaustive: false,
-            }),
-            "rust_non_exhaustive" => Ok(EnumVariation::Rust {
-                non_exhaustive: true,
-            }),
+            "rust" => Ok(EnumVariation::Rust { non_exhaustive: false }),
+            "rust_non_exhaustive" => Ok(EnumVariation::Rust { non_exhaustive: true }),
             "bitfield" => Ok(EnumVariation::NewType {
                 is_bitfield: true,
                 is_global: false,
@@ -2815,7 +2405,6 @@ impl std::str::FromStr for EnumVariation {
     }
 }
 
-/// A helper type to construct different enum variations.
 enum EnumBuilder<'a> {
     Rust {
         attrs: Vec<proc_macro2::TokenStream>,
@@ -2839,13 +2428,10 @@ enum EnumBuilder<'a> {
 }
 
 impl<'a> EnumBuilder<'a> {
-    /// Returns true if the builder is for a rustified enum.
     fn is_rust_enum(&self) -> bool {
         matches!(*self, EnumBuilder::Rust { .. })
     }
 
-    /// Create a new enum given an item builder, a canonical name, a name for
-    /// the representation, and which variation it should be generated as.
     fn new(
         name: &'a str,
         mut attrs: Vec<proc_macro2::TokenStream>,
@@ -2856,10 +2442,7 @@ impl<'a> EnumBuilder<'a> {
         let ident = Ident::new(name, Span::call_site());
 
         match enum_variation {
-            EnumVariation::NewType {
-                is_bitfield,
-                is_global,
-            } => EnumBuilder::NewType {
+            EnumVariation::NewType { is_bitfield, is_global } => EnumBuilder::NewType {
                 canonical_name: name,
                 tokens: quote! {
                     #( #attrs )*
@@ -2879,7 +2462,7 @@ impl<'a> EnumBuilder<'a> {
                     tokens,
                     emitted_any_variants: false,
                 }
-            }
+            },
 
             EnumVariation::Consts => {
                 let mut variants = Vec::new();
@@ -2892,13 +2475,10 @@ impl<'a> EnumBuilder<'a> {
                 }
 
                 EnumBuilder::Consts { variants }
-            }
+            },
 
             EnumVariation::ModuleConsts => {
-                let ident = Ident::new(
-                    CONSTIFIED_ENUM_MODULE_REPR_NAME,
-                    Span::call_site(),
-                );
+                let ident = Ident::new(CONSTIFIED_ENUM_MODULE_REPR_NAME, Span::call_site());
                 let type_definition = quote! {
                     #( #attrs )*
                     pub type #ident = #repr;
@@ -2908,11 +2488,10 @@ impl<'a> EnumBuilder<'a> {
                     module_name: name,
                     module_items: vec![type_definition],
                 }
-            }
+            },
         }
     }
 
-    /// Add a variant to this enum.
     fn with_variant(
         self,
         ctx: &BindgenContext,
@@ -2925,9 +2504,7 @@ impl<'a> EnumBuilder<'a> {
         let variant_name = ctx.rust_mangle(variant.name());
         let is_rust_enum = self.is_rust_enum();
         let expr = match variant.val() {
-            EnumVariantValue::Boolean(v) if is_rust_enum => {
-                helpers::ast_ty::uint_expr(v as u64)
-            }
+            EnumVariantValue::Boolean(v) if is_rust_enum => helpers::ast_ty::uint_expr(v as u64),
             EnumVariantValue::Boolean(v) => quote!(#v),
             EnumVariantValue::Signed(v) => helpers::ast_ty::int_expr(v),
             EnumVariantValue::Unsigned(v) => helpers::ast_ty::uint_expr(v),
@@ -2959,17 +2536,14 @@ impl<'a> EnumBuilder<'a> {
                     },
                     emitted_any_variants: true,
                 }
-            }
+            },
 
             EnumBuilder::NewType {
                 canonical_name,
                 is_global,
                 ..
             } => {
-                if ctx.options().rust_features().associated_const &&
-                    is_ty_named &&
-                    !is_global
-                {
+                if ctx.options().rust_features().associated_const && is_ty_named && !is_global {
                     let enum_ident = ctx.rust_ident(canonical_name);
                     let variant_ident = ctx.rust_ident(variant_name);
 
@@ -2981,9 +2555,7 @@ impl<'a> EnumBuilder<'a> {
                     });
                 } else {
                     let ident = ctx.rust_ident(match mangling_prefix {
-                        Some(prefix) => {
-                            Cow::Owned(format!("{}_{}", prefix, variant_name))
-                        }
+                        Some(prefix) => Cow::Owned(format!("{}_{}", prefix, variant_name)),
                         None => variant_name,
                     });
                     result.push(quote! {
@@ -2993,13 +2565,11 @@ impl<'a> EnumBuilder<'a> {
                 }
 
                 self
-            }
+            },
 
             EnumBuilder::Consts { .. } => {
                 let constant_name = match mangling_prefix {
-                    Some(prefix) => {
-                        Cow::Owned(format!("{}_{}", prefix, variant_name))
-                    }
+                    Some(prefix) => Cow::Owned(format!("{}_{}", prefix, variant_name)),
                     None => variant_name,
                 };
 
@@ -3010,7 +2580,7 @@ impl<'a> EnumBuilder<'a> {
                 });
 
                 self
-            }
+            },
             EnumBuilder::ModuleConsts {
                 module_name,
                 mut module_items,
@@ -3026,7 +2596,7 @@ impl<'a> EnumBuilder<'a> {
                     module_name,
                     module_items,
                 }
-            }
+            },
         }
     }
 
@@ -3056,7 +2626,7 @@ impl<'a> EnumBuilder<'a> {
                         #variants
                     }
                 }
-            }
+            },
             EnumBuilder::NewType {
                 canonical_name,
                 tokens,
@@ -3111,7 +2681,7 @@ impl<'a> EnumBuilder<'a> {
                 });
 
                 tokens
-            }
+            },
             EnumBuilder::Consts { variants, .. } => quote! { #( #variants )* },
             EnumBuilder::ModuleConsts {
                 module_items,
@@ -3124,7 +2694,7 @@ impl<'a> EnumBuilder<'a> {
                         #( #module_items )*
                     }
                 }
-            }
+            },
         }
     }
 }
@@ -3133,12 +2703,7 @@ impl CodeGenerator for Enum {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         debug!("<Enum as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
 
@@ -3150,12 +2715,7 @@ impl CodeGenerator for Enum {
 
         let repr_translated;
         let repr = match self.repr().map(|repr| ctx.resolve_type(repr)) {
-            Some(repr)
-                if !ctx.options().translate_enum_integer_types &&
-                    !variation.is_rust() =>
-            {
-                repr
-            }
+            Some(repr) if !ctx.options().translate_enum_integer_types && !variation.is_rust() => repr,
             repr => {
                 // An enum's integer type is translated to a native Rust
                 // integer type in 3 cases:
@@ -3175,14 +2735,11 @@ impl CodeGenerator for Enum {
                              shouldn't be legal!"
                         );
                         IntKind::Int
-                    }
+                    },
                 };
 
                 let signed = kind.is_signed();
-                let size = layout
-                    .map(|l| l.size)
-                    .or_else(|| kind.known_size())
-                    .unwrap_or(0);
+                let size = layout.map(|l| l.size).or_else(|| kind.known_size()).unwrap_or(0);
 
                 let translated = match (signed, size) {
                     (true, 1) => IntKind::I8,
@@ -3194,43 +2751,34 @@ impl CodeGenerator for Enum {
                     (true, 8) => IntKind::I64,
                     (false, 8) => IntKind::U64,
                     _ => {
-                        warn!(
-                            "invalid enum decl: signed: {}, size: {}",
-                            signed, size
-                        );
+                        warn!("invalid enum decl: signed: {}, size: {}", signed, size);
                         IntKind::I32
-                    }
+                    },
                 };
 
-                repr_translated =
-                    Type::new(None, None, TypeKind::Int(translated), false);
+                repr_translated = Type::new(None, None, TypeKind::Int(translated), false);
                 &repr_translated
-            }
+            },
         };
 
         let mut attrs = vec![];
 
-        // TODO(emilio): Delegate this to the builders?
         match variation {
             EnumVariation::Rust { non_exhaustive } => {
-                if non_exhaustive &&
-                    ctx.options().rust_features().non_exhaustive
-                {
+                if non_exhaustive && ctx.options().rust_features().non_exhaustive {
                     attrs.push(attributes::non_exhaustive());
-                } else if non_exhaustive &&
-                    !ctx.options().rust_features().non_exhaustive
-                {
+                } else if non_exhaustive && !ctx.options().rust_features().non_exhaustive {
                     panic!("The rust target you're using doesn't seem to support non_exhaustive enums");
                 }
-            }
+            },
             EnumVariation::NewType { .. } => {
                 if ctx.options().rust_features.repr_transparent {
                     attrs.push(attributes::repr("transparent"));
                 } else {
                     attrs.push(attributes::repr("C"));
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         };
 
         if let Some(comment) = item.comment(ctx) {
@@ -3244,14 +2792,8 @@ impl CodeGenerator for Enum {
         if !variation.is_const() {
             let packed = false; // Enums can't be packed in Rust.
             let mut derives = derives_of_item(item, ctx, packed);
-            // For backwards compat, enums always derive
-            // Clone/Eq/PartialEq/Hash, even if we don't generate those by
-            // default.
             derives.insert(
-                DerivableTraits::CLONE |
-                    DerivableTraits::HASH |
-                    DerivableTraits::PARTIAL_EQ |
-                    DerivableTraits::EQ,
+                DerivableTraits::CLONE | DerivableTraits::HASH | DerivableTraits::PARTIAL_EQ | DerivableTraits::EQ,
             );
             let mut derives: Vec<_> = derives.into();
             for derive in item.annotations().derives().iter() {
@@ -3260,15 +2802,12 @@ impl CodeGenerator for Enum {
                 }
             }
 
-            // The custom derives callback may return a list of derive attributes;
-            // add them to the end of the list.
             let custom_derives = ctx.options().all_callbacks(|cb| {
                 cb.add_derives(&DeriveInfo {
                     name: &name,
                     kind: DeriveTypeKind::Enum,
                 })
             });
-            // In most cases this will be a no-op, since custom_derives will be empty.
             derives.extend(custom_derives.iter().map(|s| s.as_str()));
 
             attrs.push(attributes::derives(&derives));
@@ -3277,11 +2816,7 @@ impl CodeGenerator for Enum {
         fn add_constant(
             ctx: &BindgenContext,
             enum_: &Type,
-            // Only to avoid recomputing every time.
             enum_canonical_name: &Ident,
-            // May be the same as "variant" if it's because the
-            // enum is unnamed and we still haven't seen the
-            // value.
             variant_name: &Ident,
             referenced_name: &Ident,
             enum_rust_ty: proc_macro2::TokenStream,
@@ -3307,15 +2842,12 @@ impl CodeGenerator for Enum {
         let repr = repr.to_rust_ty_or_opaque(ctx, item);
         let has_typedef = ctx.is_enum_typedef_combo(item.id());
 
-        let mut builder =
-            EnumBuilder::new(&name, attrs, repr, variation, has_typedef);
+        let mut builder = EnumBuilder::new(&name, attrs, repr, variation, has_typedef);
 
-        // A map where we keep a value -> variant relation.
         let mut seen_values = HashMap::<_, Ident>::default();
         let enum_rust_ty = item.to_rust_ty_or_opaque(ctx, &());
         let is_toplevel = item.is_toplevel(ctx);
 
-        // Used to mangle the constants we generate in the unnamed-enum case.
         let parent_canonical_name = if is_toplevel {
             None
         } else {
@@ -3332,15 +2864,10 @@ impl CodeGenerator for Enum {
             None
         };
 
-        // NB: We defer the creation of constified variants, in case we find
-        // another variant with the same value (which is the common thing to
-        // do).
         let mut constified_variants = VecDeque::new();
 
         let mut iter = self.variants().iter().peekable();
-        while let Some(variant) =
-            iter.next().or_else(|| constified_variants.pop_front())
-        {
+        while let Some(variant) = iter.next().or_else(|| constified_variants.pop_front()) {
             if variant.hidden() {
                 continue;
             }
@@ -3354,27 +2881,19 @@ impl CodeGenerator for Enum {
                 Entry::Occupied(ref entry) => {
                     if variation.is_rust() {
                         let variant_name = ctx.rust_mangle(variant.name());
-                        let mangled_name =
-                            if is_toplevel || enum_ty.name().is_some() {
-                                variant_name
-                            } else {
-                                let parent_name =
-                                    parent_canonical_name.as_ref().unwrap();
+                        let mangled_name = if is_toplevel || enum_ty.name().is_some() {
+                            variant_name
+                        } else {
+                            let parent_name = parent_canonical_name.as_ref().unwrap();
 
-                                Cow::Owned(format!(
-                                    "{}_{}",
-                                    parent_name, variant_name
-                                ))
-                            };
+                            Cow::Owned(format!("{}_{}", parent_name, variant_name))
+                        };
 
                         let existing_variant_name = entry.get();
                         // Use associated constants for named enums.
-                        if enum_ty.name().is_some() &&
-                            ctx.options().rust_features().associated_const
-                        {
+                        if enum_ty.name().is_some() && ctx.options().rust_features().associated_const {
                             let enum_canonical_name = &ident;
-                            let variant_name =
-                                ctx.rust_ident_raw(&*mangled_name);
+                            let variant_name = ctx.rust_ident_raw(&*mangled_name);
                             result.push(quote! {
                                 impl #enum_rust_ty {
                                     pub const #variant_name : #enum_rust_ty =
@@ -3402,7 +2921,7 @@ impl CodeGenerator for Enum {
                             enum_ty.name().is_some(),
                         );
                     }
-                }
+                },
                 Entry::Vacant(entry) => {
                     builder = builder.with_variant(
                         ctx,
@@ -3418,19 +2937,13 @@ impl CodeGenerator for Enum {
                     // If it's an unnamed enum, or constification is enforced,
                     // we also generate a constant so it can be properly
                     // accessed.
-                    if (variation.is_rust() && enum_ty.name().is_none()) ||
-                        variant.force_constification()
-                    {
+                    if (variation.is_rust() && enum_ty.name().is_none()) || variant.force_constification() {
                         let mangled_name = if is_toplevel {
                             variant_name.clone()
                         } else {
-                            let parent_name =
-                                parent_canonical_name.as_ref().unwrap();
+                            let parent_name = parent_canonical_name.as_ref().unwrap();
 
-                            Ident::new(
-                                &format!("{}_{}", parent_name, variant_name),
-                                Span::call_site(),
-                            )
+                            Ident::new(&format!("{}_{}", parent_name, variant_name), Span::call_site())
                         };
 
                         add_constant(
@@ -3445,7 +2958,7 @@ impl CodeGenerator for Enum {
                     }
 
                     entry.insert(variant_name);
-                }
+                },
             }
         }
 
@@ -3454,12 +2967,9 @@ impl CodeGenerator for Enum {
     }
 }
 
-/// Enum for the default type of macro constants.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum MacroTypeVariation {
-    /// Use i32 or i64
     Signed,
-    /// Use u32 or u64
     Unsigned,
 }
 
@@ -3482,7 +2992,6 @@ impl Default for MacroTypeVariation {
 impl std::str::FromStr for MacroTypeVariation {
     type Err = std::io::Error;
 
-    /// Create a `MacroTypeVariation` from a string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "signed" => Ok(MacroTypeVariation::Signed),
@@ -3498,14 +3007,10 @@ impl std::str::FromStr for MacroTypeVariation {
     }
 }
 
-/// Enum for how aliases should be translated.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum AliasVariation {
-    /// Convert to regular Rust alias
     TypeAlias,
-    /// Create a new type by wrapping the old type in a struct and using #[repr(transparent)]
     NewType,
-    /// Same as NewStruct but also impl Deref to be able to use the methods of the wrapped type
     NewTypeDeref,
 }
 
@@ -3530,7 +3035,6 @@ impl Default for AliasVariation {
 impl std::str::FromStr for AliasVariation {
     type Err = std::io::Error;
 
-    /// Create an `AliasVariation` from a string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "type_alias" => Ok(AliasVariation::TypeAlias),
@@ -3547,15 +3051,9 @@ impl std::str::FromStr for AliasVariation {
     }
 }
 
-/// Enum for how non-`Copy` `union`s should be translated.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum NonCopyUnionStyle {
-    /// Wrap members in a type generated by `bindgen`.
     BindgenWrapper,
-    /// Wrap members in [`::core::mem::ManuallyDrop`].
-    ///
-    /// Note: `ManuallyDrop` was stabilized in Rust 1.20.0, do not use it if your
-    /// MSRV is lower.
     ManuallyDrop,
 }
 
@@ -3594,53 +3092,23 @@ impl std::str::FromStr for NonCopyUnionStyle {
     }
 }
 
-/// Fallible conversion to an opaque blob.
-///
-/// Implementors of this trait should provide the `try_get_layout` method to
-/// fallibly get this thing's layout, which the provided `try_to_opaque` trait
-/// method will use to convert the `Layout` into an opaque blob Rust type.
 trait TryToOpaque {
     type Extra;
 
-    /// Get the layout for this thing, if one is available.
-    fn try_get_layout(
-        &self,
-        ctx: &BindgenContext,
-        extra: &Self::Extra,
-    ) -> error::Result<Layout>;
+    fn try_get_layout(&self, ctx: &BindgenContext, extra: &Self::Extra) -> error::Result<Layout>;
 
-    /// Do not override this provided trait method.
-    fn try_to_opaque(
-        &self,
-        ctx: &BindgenContext,
-        extra: &Self::Extra,
-    ) -> error::Result<proc_macro2::TokenStream> {
-        self.try_get_layout(ctx, extra)
-            .map(|layout| helpers::blob(ctx, layout))
+    fn try_to_opaque(&self, ctx: &BindgenContext, extra: &Self::Extra) -> error::Result<proc_macro2::TokenStream> {
+        self.try_get_layout(ctx, extra).map(|layout| helpers::blob(ctx, layout))
     }
 }
 
-/// Infallible conversion of an IR thing to an opaque blob.
-///
-/// The resulting layout is best effort, and is unfortunately not guaranteed to
-/// be correct. When all else fails, we fall back to a single byte layout as a
-/// last resort, because C++ does not permit zero-sized types. See the note in
-/// the `ToRustTyOrOpaque` doc comment about fallible versus infallible traits
-/// and when each is appropriate.
-///
-/// Don't implement this directly. Instead implement `TryToOpaque`, and then
-/// leverage the blanket impl for this trait.
 trait ToOpaque: TryToOpaque {
     fn get_layout(&self, ctx: &BindgenContext, extra: &Self::Extra) -> Layout {
         self.try_get_layout(ctx, extra)
             .unwrap_or_else(|_| Layout::for_size(ctx, 1))
     }
 
-    fn to_opaque(
-        &self,
-        ctx: &BindgenContext,
-        extra: &Self::Extra,
-    ) -> proc_macro2::TokenStream {
+    fn to_opaque(&self, ctx: &BindgenContext, extra: &Self::Extra) -> proc_macro2::TokenStream {
         let layout = self.get_layout(ctx, extra);
         helpers::blob(ctx, layout)
     }
@@ -3648,28 +3116,12 @@ trait ToOpaque: TryToOpaque {
 
 impl<T> ToOpaque for T where T: TryToOpaque {}
 
-/// Fallible conversion from an IR thing to an *equivalent* Rust type.
-///
-/// If the C/C++ construct represented by the IR thing cannot (currently) be
-/// represented in Rust (for example, instantiations of templates with
-/// const-value generic parameters) then the impl should return an `Err`. It
-/// should *not* attempt to return an opaque blob with the correct size and
-/// alignment. That is the responsibility of the `TryToOpaque` trait.
 trait TryToRustTy {
     type Extra;
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        extra: &Self::Extra,
-    ) -> error::Result<proc_macro2::TokenStream>;
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, extra: &Self::Extra) -> error::Result<proc_macro2::TokenStream>;
 }
 
-/// Fallible conversion to a Rust type or an opaque blob with the correct size
-/// and alignment.
-///
-/// Don't implement this directly. Instead implement `TryToRustTy` and
-/// `TryToOpaque`, and then leverage the blanket impl for this trait below.
 trait TryToRustTyOrOpaque: TryToRustTy + TryToOpaque {
     type Extra;
 
@@ -3686,11 +3138,7 @@ where
 {
     type Extra = E;
 
-    fn try_to_rust_ty_or_opaque(
-        &self,
-        ctx: &BindgenContext,
-        extra: &E,
-    ) -> error::Result<proc_macro2::TokenStream> {
+    fn try_to_rust_ty_or_opaque(&self, ctx: &BindgenContext, extra: &E) -> error::Result<proc_macro2::TokenStream> {
         self.try_to_rust_ty(ctx, extra).or_else(|_| {
             if let Ok(layout) = self.try_get_layout(ctx, extra) {
                 Ok(helpers::blob(ctx, layout))
@@ -3701,23 +3149,6 @@ where
     }
 }
 
-/// Infallible conversion to a Rust type, or an opaque blob with a best effort
-/// of correct size and alignment.
-///
-/// Don't implement this directly. Instead implement `TryToRustTy` and
-/// `TryToOpaque`, and then leverage the blanket impl for this trait below.
-///
-/// ### Fallible vs. Infallible Conversions to Rust Types
-///
-/// When should one use this infallible `ToRustTyOrOpaque` trait versus the
-/// fallible `TryTo{RustTy, Opaque, RustTyOrOpaque}` triats? All fallible trait
-/// implementations that need to convert another thing into a Rust type or
-/// opaque blob in a nested manner should also use fallible trait methods and
-/// propagate failure up the stack. Only infallible functions and methods like
-/// CodeGenerator implementations should use the infallible
-/// `ToRustTyOrOpaque`. The further out we push error recovery, the more likely
-/// we are to get a usable `Layout` even if we can't generate an equivalent Rust
-/// type for a C++ construct.
 trait ToRustTyOrOpaque: TryToRustTy + ToOpaque {
     type Extra;
 
@@ -3734,11 +3165,7 @@ where
 {
     type Extra = E;
 
-    fn to_rust_ty_or_opaque(
-        &self,
-        ctx: &BindgenContext,
-        extra: &E,
-    ) -> proc_macro2::TokenStream {
+    fn to_rust_ty_or_opaque(&self, ctx: &BindgenContext, extra: &E) -> proc_macro2::TokenStream {
         self.try_to_rust_ty(ctx, extra)
             .unwrap_or_else(|_| self.to_opaque(ctx, extra))
     }
@@ -3750,11 +3177,7 @@ where
 {
     type Extra = ();
 
-    fn try_get_layout(
-        &self,
-        ctx: &BindgenContext,
-        _: &(),
-    ) -> error::Result<Layout> {
+    fn try_get_layout(&self, ctx: &BindgenContext, _: &()) -> error::Result<Layout> {
         ctx.resolve_item((*self).into()).try_get_layout(ctx, &())
     }
 }
@@ -3765,11 +3188,7 @@ where
 {
     type Extra = ();
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        _: &(),
-    ) -> error::Result<proc_macro2::TokenStream> {
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, _: &()) -> error::Result<proc_macro2::TokenStream> {
         ctx.resolve_item((*self).into()).try_to_rust_ty(ctx, &())
     }
 }
@@ -3777,11 +3196,7 @@ where
 impl TryToOpaque for Item {
     type Extra = ();
 
-    fn try_get_layout(
-        &self,
-        ctx: &BindgenContext,
-        _: &(),
-    ) -> error::Result<Layout> {
+    fn try_get_layout(&self, ctx: &BindgenContext, _: &()) -> error::Result<Layout> {
         self.kind().expect_type().try_get_layout(ctx, self)
     }
 }
@@ -3789,11 +3204,7 @@ impl TryToOpaque for Item {
 impl TryToRustTy for Item {
     type Extra = ();
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        _: &(),
-    ) -> error::Result<proc_macro2::TokenStream> {
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, _: &()) -> error::Result<proc_macro2::TokenStream> {
         self.kind().expect_type().try_to_rust_ty(ctx, self)
     }
 }
@@ -3801,11 +3212,7 @@ impl TryToRustTy for Item {
 impl TryToOpaque for Type {
     type Extra = Item;
 
-    fn try_get_layout(
-        &self,
-        ctx: &BindgenContext,
-        _: &Item,
-    ) -> error::Result<Layout> {
+    fn try_get_layout(&self, ctx: &BindgenContext, _: &Item) -> error::Result<Layout> {
         self.layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)
     }
 }
@@ -3813,17 +3220,11 @@ impl TryToOpaque for Type {
 impl TryToRustTy for Type {
     type Extra = Item;
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        item: &Item,
-    ) -> error::Result<proc_macro2::TokenStream> {
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, item: &Item) -> error::Result<proc_macro2::TokenStream> {
         use self::helpers::ast_ty::*;
 
         match *self.kind() {
             TypeKind::Void => Ok(c_void(ctx)),
-            // TODO: we should do something smart with nullptr, or maybe *const
-            // c_void is enough?
             TypeKind::NullPtr => Ok(c_void(ctx).to_ptr(true)),
             TypeKind::Int(ik) => {
                 match ik {
@@ -3840,14 +3241,11 @@ impl TryToRustTy for Type {
                     IntKind::LongLong => Ok(raw_type(ctx, "c_longlong")),
                     IntKind::ULongLong => Ok(raw_type(ctx, "c_ulonglong")),
                     IntKind::WChar => {
-                        let layout = self
-                            .layout(ctx)
-                            .expect("Couldn't compute wchar_t's layout?");
-                        let ty = Layout::known_type_for_size(ctx, layout.size)
-                            .expect("Non-representable wchar_t?");
+                        let layout = self.layout(ctx).expect("Couldn't compute wchar_t's layout?");
+                        let ty = Layout::known_type_for_size(ctx, layout.size).expect("Non-representable wchar_t?");
                         let ident = ctx.rust_ident_raw(ty);
                         Ok(quote! { #ident })
-                    }
+                    },
 
                     IntKind::I8 => Ok(quote! { i8 }),
                     IntKind::U8 => Ok(quote! { u8 }),
@@ -3857,9 +3255,7 @@ impl TryToRustTy for Type {
                     IntKind::U32 => Ok(quote! { u32 }),
                     IntKind::I64 => Ok(quote! { i64 }),
                     IntKind::U64 => Ok(quote! { u64 }),
-                    IntKind::Custom { name, .. } => {
-                        Ok(proc_macro2::TokenStream::from_str(name).unwrap())
-                    }
+                    IntKind::Custom { name, .. } => Ok(proc_macro2::TokenStream::from_str(name).unwrap()),
                     IntKind::U128 => {
                         Ok(if ctx.options().rust_features.i128_and_u128 {
                             quote! { u128 }
@@ -3868,22 +3264,17 @@ impl TryToRustTy for Type {
                             // unfortunately.
                             quote! { [u64; 2] }
                         })
-                    }
-                    IntKind::I128 => {
-                        Ok(if ctx.options().rust_features.i128_and_u128 {
-                            quote! { i128 }
-                        } else {
-                            quote! { [u64; 2] }
-                        })
-                    }
+                    },
+                    IntKind::I128 => Ok(if ctx.options().rust_features.i128_and_u128 {
+                        quote! { i128 }
+                    } else {
+                        quote! { [u64; 2] }
+                    }),
                 }
-            }
-            TypeKind::Float(fk) => {
-                Ok(float_kind_rust_type(ctx, fk, self.layout(ctx)))
-            }
+            },
+            TypeKind::Float(fk) => Ok(float_kind_rust_type(ctx, fk, self.layout(ctx))),
             TypeKind::Complex(fk) => {
-                let float_path =
-                    float_kind_rust_type(ctx, fk, self.layout(ctx));
+                let float_path = float_kind_rust_type(ctx, fk, self.layout(ctx));
 
                 ctx.generated_bindgen_complex();
                 Ok(if ctx.options().enable_cxx_namespaces {
@@ -3895,7 +3286,7 @@ impl TryToRustTy for Type {
                         __BindgenComplex<#float_path>
                     }
                 })
-            }
+            },
             TypeKind::Function(ref fs) => {
                 // We can't rely on the sizeof(Option<NonZero<_>>) ==
                 // sizeof(NonZero<_>) optimization with opaque blobs (because
@@ -3907,66 +3298,55 @@ impl TryToRustTy for Type {
                 Ok(quote! {
                     ::#prefix::option::Option<#ty>
                 })
-            }
+            },
             TypeKind::Array(item, len) | TypeKind::Vector(item, len) => {
                 let ty = item.try_to_rust_ty(ctx, &())?;
                 Ok(quote! {
                     [ #ty ; #len ]
                 })
-            }
+            },
             TypeKind::Enum(..) => {
                 let path = item.namespace_aware_canonical_path(ctx);
-                let path = proc_macro2::TokenStream::from_str(&path.join("::"))
-                    .unwrap();
+                let path = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
                 Ok(quote!(#path))
-            }
-            TypeKind::TemplateInstantiation(ref inst) => {
-                inst.try_to_rust_ty(ctx, item)
-            }
+            },
+            TypeKind::TemplateInstantiation(ref inst) => inst.try_to_rust_ty(ctx, item),
             TypeKind::ResolvedTypeRef(inner) => inner.try_to_rust_ty(ctx, &()),
-            TypeKind::TemplateAlias(..) |
-            TypeKind::Alias(..) |
-            TypeKind::BlockPointer(..) => {
+            TypeKind::TemplateAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
                 if self.is_block_pointer() && !ctx.options().generate_block {
                     let void = c_void(ctx);
                     return Ok(void.to_ptr(/* is_const = */ false));
                 }
 
-                if item.is_opaque(ctx, &()) &&
-                    item.used_template_params(ctx)
+                if item.is_opaque(ctx, &())
+                    && item
+                        .used_template_params(ctx)
                         .into_iter()
                         .any(|param| param.is_template_param(ctx, &()))
                 {
                     self.try_to_opaque(ctx, item)
-                } else if let Some(ty) = self
-                    .name()
-                    .and_then(|name| utils::type_from_named(ctx, name))
-                {
+                } else if let Some(ty) = self.name().and_then(|name| utils::type_from_named(ctx, name)) {
                     Ok(ty)
                 } else {
                     utils::build_path(item, ctx)
                 }
-            }
+            },
             TypeKind::Comp(ref info) => {
                 let template_params = item.all_template_params(ctx);
-                if info.has_non_type_template_params() ||
-                    (item.is_opaque(ctx, &()) && !template_params.is_empty())
-                {
+                if info.has_non_type_template_params() || (item.is_opaque(ctx, &()) && !template_params.is_empty()) {
                     return self.try_to_opaque(ctx, item);
                 }
 
                 utils::build_path(item, ctx)
-            }
+            },
             TypeKind::Opaque => self.try_to_opaque(ctx, item),
             TypeKind::Pointer(inner) | TypeKind::Reference(inner) => {
                 let is_const = ctx.resolve_type(inner).is_const();
 
-                let inner =
-                    inner.into_resolver().through_type_refs().resolve(ctx);
+                let inner = inner.into_resolver().through_type_refs().resolve(ctx);
                 let inner_ty = inner.expect_type();
 
-                let is_objc_pointer =
-                    matches!(inner_ty.kind(), TypeKind::ObjCInterface(..));
+                let is_objc_pointer = matches!(inner_ty.kind(), TypeKind::ObjCInterface(..));
 
                 // Regardless if we can properly represent the inner type, we
                 // should always generate a proper pointer here, so use
@@ -3976,20 +3356,19 @@ impl TryToRustTy for Type {
 
                 // Avoid the first function pointer level, since it's already
                 // represented in Rust.
-                if inner_ty.canonical_type(ctx).is_function() || is_objc_pointer
-                {
+                if inner_ty.canonical_type(ctx).is_function() || is_objc_pointer {
                     Ok(ty)
                 } else {
                     Ok(ty.to_ptr(is_const))
                 }
-            }
+            },
             TypeKind::TypeParam => {
                 let name = item.canonical_name(ctx);
                 let ident = ctx.rust_ident(name);
                 Ok(quote! {
                     #ident
                 })
-            }
+            },
             TypeKind::ObjCSel => Ok(quote! {
                 objc::runtime::Sel
             }),
@@ -4001,10 +3380,10 @@ impl TryToRustTy for Type {
                 Ok(quote! {
                     #name
                 })
-            }
+            },
             ref u @ TypeKind::UnresolvedTypeRef(..) => {
                 unreachable!("Should have been resolved after parsing {:?}!", u)
-            }
+            },
         }
     }
 }
@@ -4012,11 +3391,7 @@ impl TryToRustTy for Type {
 impl TryToOpaque for TemplateInstantiation {
     type Extra = Item;
 
-    fn try_get_layout(
-        &self,
-        ctx: &BindgenContext,
-        item: &Item,
-    ) -> error::Result<Layout> {
+    fn try_get_layout(&self, ctx: &BindgenContext, item: &Item) -> error::Result<Layout> {
         item.expect_type()
             .layout(ctx)
             .ok_or(error::Error::NoLayoutForOpaqueBlob)
@@ -4026,11 +3401,7 @@ impl TryToOpaque for TemplateInstantiation {
 impl TryToRustTy for TemplateInstantiation {
     type Extra = Item;
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        item: &Item,
-    ) -> error::Result<proc_macro2::TokenStream> {
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, item: &Item) -> error::Result<proc_macro2::TokenStream> {
         if self.is_opaque(ctx, item) {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
@@ -4043,34 +3414,18 @@ impl TryToRustTy for TemplateInstantiation {
 
         let mut ty = quote! {};
         let def_path = def.namespace_aware_canonical_path(ctx);
-        ty.append_separated(
-            def_path.into_iter().map(|p| ctx.rust_ident(p)),
-            quote!(::),
-        );
+        ty.append_separated(def_path.into_iter().map(|p| ctx.rust_ident(p)), quote!(::));
 
         let def_params = def.self_template_params(ctx);
         if def_params.is_empty() {
-            // This can happen if we generated an opaque type for a partial
-            // template specialization, and we've hit an instantiation of
-            // that partial specialization.
             extra_assert!(def.is_opaque(ctx, &()));
             return Err(error::Error::InstantiationOfOpaqueType);
         }
-
-        // TODO: If the definition type is a template class/struct
-        // definition's member template definition, it could rely on
-        // generic template parameters from its outer template
-        // class/struct. When we emit bindings for it, it could require
-        // *more* type arguments than we have here, and we will need to
-        // reconstruct them somehow. We don't have any means of doing
-        // that reconstruction at this time.
 
         let template_args = self
             .template_arguments()
             .iter()
             .zip(def_params.iter())
-            // Only pass type arguments for the type parameters that
-            // the def uses.
             .filter(|&(_, param)| ctx.uses_template_parameter(def.id(), *param))
             .map(|(arg, _)| {
                 let arg = arg.into_resolver().through_type_refs().resolve(ctx);
@@ -4093,40 +3448,27 @@ impl TryToRustTy for TemplateInstantiation {
 impl TryToRustTy for FunctionSig {
     type Extra = ();
 
-    fn try_to_rust_ty(
-        &self,
-        ctx: &BindgenContext,
-        _: &(),
-    ) -> error::Result<proc_macro2::TokenStream> {
-        // TODO: we might want to consider ignoring the reference return value.
+    fn try_to_rust_ty(&self, ctx: &BindgenContext, _: &()) -> error::Result<proc_macro2::TokenStream> {
         let ret = utils::fnsig_return_ty(ctx, self);
         let arguments = utils::fnsig_arguments(ctx, self);
 
         match self.abi(ctx, None) {
-            ClangAbi::Known(Abi::ThisCall)
-                if !ctx.options().rust_features().thiscall_abi =>
-            {
+            ClangAbi::Known(Abi::ThisCall) if !ctx.options().rust_features().thiscall_abi => {
                 warn!("Skipping function with thiscall ABI that isn't supported by the configured Rust target");
                 Ok(proc_macro2::TokenStream::new())
-            }
-            ClangAbi::Known(Abi::Vectorcall)
-                if !ctx.options().rust_features().vectorcall_abi =>
-            {
+            },
+            ClangAbi::Known(Abi::Vectorcall) if !ctx.options().rust_features().vectorcall_abi => {
                 warn!("Skipping function with vectorcall ABI that isn't supported by the configured Rust target");
                 Ok(proc_macro2::TokenStream::new())
-            }
-            ClangAbi::Known(Abi::CUnwind)
-                if !ctx.options().rust_features().c_unwind_abi =>
-            {
+            },
+            ClangAbi::Known(Abi::CUnwind) if !ctx.options().rust_features().c_unwind_abi => {
                 warn!("Skipping function with C-unwind ABI that isn't supported by the configured Rust target");
                 Ok(proc_macro2::TokenStream::new())
-            }
-            ClangAbi::Known(Abi::EfiApi)
-                if !ctx.options().rust_features().abi_efiapi =>
-            {
+            },
+            ClangAbi::Known(Abi::EfiApi) if !ctx.options().rust_features().abi_efiapi => {
                 warn!("Skipping function with efiapi ABI that isn't supported by the configured Rust target");
                 Ok(proc_macro2::TokenStream::new())
-            }
+            },
             abi => Ok(quote! {
                 unsafe extern #abi fn ( #( #arguments ),* ) #ret
             }),
@@ -4137,16 +3479,9 @@ impl TryToRustTy for FunctionSig {
 impl CodeGenerator for Function {
     type Extra = Item;
 
-    /// If we've actually generated the symbol, the number of times we've seen
-    /// it.
     type Return = Option<u32>;
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) -> Self::Return {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) -> Self::Return {
         debug!("<Function as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
 
@@ -4174,24 +3509,14 @@ impl CodeGenerator for Function {
             }
         }
 
-        // Pure virtual methods have no actual symbol, so we can't generate
-        // something meaningful for them.
         let is_dynamic_function = match self.kind() {
-            FunctionKind::Method(ref method_kind)
-                if method_kind.is_pure_virtual() =>
-            {
+            FunctionKind::Method(ref method_kind) if method_kind.is_pure_virtual() => {
                 return None;
-            }
-            FunctionKind::Function => {
-                ctx.options().dynamic_library_name.is_some()
-            }
+            },
+            FunctionKind::Function => ctx.options().dynamic_library_name.is_some(),
             _ => false,
         };
 
-        // Similar to static member variables in a class template, we can't
-        // generate bindings to template functions, because the set of
-        // instantiations is open ended and we have no way of knowing which
-        // monomorphizations actually exist.
         if !item.all_template_params(ctx).is_empty() {
             return None;
         }
@@ -4203,8 +3528,6 @@ impl CodeGenerator for Function {
         {
             let seen_symbol_name = mangled_name.unwrap_or(&canonical_name);
 
-            // TODO: Maybe warn here if there's a type/argument mismatch, or
-            // something?
             if result.seen_function(seen_symbol_name) {
                 return None;
             }
@@ -4218,11 +3541,7 @@ impl CodeGenerator for Function {
 
         if ctx.options().rust_features().must_use_function {
             let must_use = signature.must_use() || {
-                let ret_ty = signature
-                    .return_type()
-                    .into_resolver()
-                    .through_type_refs()
-                    .resolve(ctx);
+                let ret_ty = signature.return_type().into_resolver().through_type_refs().resolve(ctx);
                 ret_ty.must_use(ctx)
             };
 
@@ -4236,65 +3555,32 @@ impl CodeGenerator for Function {
         }
 
         let abi = match signature.abi(ctx, Some(name)) {
-            ClangAbi::Known(Abi::ThisCall)
-                if !ctx.options().rust_features().thiscall_abi =>
-            {
-                unsupported_abi_diagnostic::<false>(
-                    name,
-                    item.location(),
-                    "thiscall",
-                    ctx,
-                );
+            ClangAbi::Known(Abi::ThisCall) if !ctx.options().rust_features().thiscall_abi => {
+                unsupported_abi_diagnostic::<false>(name, item.location(), "thiscall", ctx);
                 return None;
-            }
-            ClangAbi::Known(Abi::Vectorcall)
-                if !ctx.options().rust_features().vectorcall_abi =>
-            {
-                unsupported_abi_diagnostic::<false>(
-                    name,
-                    item.location(),
-                    "vectorcall",
-                    ctx,
-                );
+            },
+            ClangAbi::Known(Abi::Vectorcall) if !ctx.options().rust_features().vectorcall_abi => {
+                unsupported_abi_diagnostic::<false>(name, item.location(), "vectorcall", ctx);
                 return None;
-            }
-            ClangAbi::Known(Abi::CUnwind)
-                if !ctx.options().rust_features().c_unwind_abi =>
-            {
-                unsupported_abi_diagnostic::<false>(
-                    name,
-                    item.location(),
-                    "C-unwind",
-                    ctx,
-                );
+            },
+            ClangAbi::Known(Abi::CUnwind) if !ctx.options().rust_features().c_unwind_abi => {
+                unsupported_abi_diagnostic::<false>(name, item.location(), "C-unwind", ctx);
                 return None;
-            }
-            ClangAbi::Known(Abi::EfiApi)
-                if !ctx.options().rust_features().abi_efiapi =>
-            {
-                unsupported_abi_diagnostic::<true>(
-                    name,
-                    item.location(),
-                    "efiapi",
-                    ctx,
-                );
+            },
+            ClangAbi::Known(Abi::EfiApi) if !ctx.options().rust_features().abi_efiapi => {
+                unsupported_abi_diagnostic::<true>(name, item.location(), "efiapi", ctx);
                 return None;
-            }
+            },
             ClangAbi::Known(Abi::Win64) if signature.is_variadic() => {
-                unsupported_abi_diagnostic::<true>(
-                    name,
-                    item.location(),
-                    "Win64",
-                    ctx,
-                );
+                unsupported_abi_diagnostic::<true>(name, item.location(), "Win64", ctx);
                 return None;
-            }
+            },
             ClangAbi::Unknown(unknown_abi) => {
                 panic!(
                     "Invalid or unknown abi {:?} for function {:?} ({:?})",
                     unknown_abi, canonical_name, self
                 );
-            }
+            },
             abi => abi,
         };
 
@@ -4302,8 +3588,6 @@ impl CodeGenerator for Function {
             result.items_to_serialize.push(item.id());
         }
 
-        // Handle overloaded functions by giving each overload its own unique
-        // suffix.
         let times_seen = result.overload_number(&canonical_name);
         if times_seen > 0 {
             write!(&mut canonical_name, "{}", times_seen).unwrap();
@@ -4315,25 +3599,17 @@ impl CodeGenerator for Function {
             has_link_name_attr = true;
         } else {
             let link_name = mangled_name.unwrap_or(name);
-            if !is_dynamic_function &&
-                !utils::names_will_be_identical_after_mangling(
-                    &canonical_name,
-                    link_name,
-                    Some(abi),
-                )
+            if !is_dynamic_function
+                && !utils::names_will_be_identical_after_mangling(&canonical_name, link_name, Some(abi))
             {
                 attributes.push(attributes::link_name::<false>(link_name));
                 has_link_name_attr = true;
             }
         }
 
-        // Unfortunately this can't piggyback on the `attributes` list because
-        // the #[link(wasm_import_module)] needs to happen before the `extern
-        // "C"` block. It doesn't get picked up properly otherwise
-        let wasm_link_attribute =
-            ctx.options().wasm_import_module_name.as_ref().map(|name| {
-                quote! { #[link(wasm_import_module = #name)] }
-            });
+        let wasm_link_attribute = ctx.options().wasm_import_module_name.as_ref().map(|name| {
+            quote! { #[link(wasm_import_module = #name)] }
+        });
 
         if is_internal && ctx.options().wrap_static_fns && !has_link_name_attr {
             let name = canonical_name.clone() + ctx.wrap_static_fns_suffix();
@@ -4349,10 +3625,8 @@ impl CodeGenerator for Function {
             }
         };
 
-        // If we're doing dynamic binding generation, add to the dynamic items.
         if is_dynamic_function {
-            let args_identifiers =
-                utils::fnsig_argument_identifiers(ctx, signature);
+            let args_identifiers = utils::fnsig_argument_identifiers(ctx, signature);
             let ret_ty = utils::fnsig_return_ty(ctx, signature);
             result.dynamic_items().push(
                 ident,
@@ -4391,14 +3665,23 @@ fn unsupported_abi_diagnostic<const VARIADIC: bool>(
         use crate::diagnostics::{get_line, Diagnostic, Level, Slice};
 
         let mut diag = Diagnostic::default();
-        diag
-        .with_title(format!(
+        diag.with_title(
+            format!(
                 "The `{}` {}function uses the {} ABI which is not supported by the configured Rust target.",
                 fn_name,
                 if VARIADIC { "variadic " } else { "" },
-                abi), Level::Warn)
-            .add_annotation("No code will be generated for this function.", Level::Warn)
-            .add_annotation(format!("The configured Rust version is {}.", String::from(_ctx.options().rust_target)), Level::Note);
+                abi
+            ),
+            Level::Warn,
+        )
+        .add_annotation("No code will be generated for this function.", Level::Warn)
+        .add_annotation(
+            format!(
+                "The configured Rust version is {}.",
+                String::from(_ctx.options().rust_target)
+            ),
+            Level::Note,
+        );
 
         if let Some(loc) = _location {
             let (file, line, col, _) = loc.location();
@@ -4406,9 +3689,7 @@ fn unsupported_abi_diagnostic<const VARIADIC: bool>(
             if let Some(filename) = file.name() {
                 if let Ok(Some(source)) = get_line(&filename, line) {
                     let mut slice = Slice::default();
-                    slice
-                        .with_source(source)
-                        .with_location(filename, line, col);
+                    slice.with_source(source).with_location(filename, line, col);
                     diag.add_slice(slice);
                 }
             }
@@ -4418,11 +3699,7 @@ fn unsupported_abi_diagnostic<const VARIADIC: bool>(
     }
 }
 
-fn variadic_fn_diagnostic(
-    fn_name: &str,
-    _location: Option<&crate::clang::SourceLocation>,
-    _ctx: &BindgenContext,
-) {
+fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::SourceLocation>, _ctx: &BindgenContext) {
     warn!(
         "Cannot generate wrapper for the static variadic function `{}`.",
         fn_name,
@@ -4434,9 +3711,15 @@ fn variadic_fn_diagnostic(
 
         let mut diag = Diagnostic::default();
 
-        diag.with_title(format!("Cannot generate wrapper for the static function `{}`.", fn_name), Level::Warn)
-            .add_annotation("The `--wrap-static-fns` feature does not support variadic functions.", Level::Note)
-            .add_annotation("No code will be generated for this function.", Level::Note);
+        diag.with_title(
+            format!("Cannot generate wrapper for the static function `{}`.", fn_name),
+            Level::Warn,
+        )
+        .add_annotation(
+            "The `--wrap-static-fns` feature does not support variadic functions.",
+            Level::Note,
+        )
+        .add_annotation("No code will be generated for this function.", Level::Note);
 
         if let Some(loc) = _location {
             let (file, line, col, _) = loc.location();
@@ -4444,9 +3727,7 @@ fn variadic_fn_diagnostic(
             if let Some(filename) = file.name() {
                 if let Ok(Some(source)) = get_line(&filename, line) {
                     let mut slice = Slice::default();
-                    slice
-                        .with_source(source)
-                        .with_location(filename, line, col);
+                    slice.with_source(source).with_location(filename, line, col);
                     diag.add_slice(slice);
                 }
             }
@@ -4464,9 +3745,6 @@ fn objc_method_codegen(
     rust_class_name: &str,
     prefix: &str,
 ) {
-    // This would ideally resolve the method into an Item, and use
-    // Item::process_before_codegen; however, ObjC methods are not currently
-    // made into function items.
     let name = format!("{}::{}{}", rust_class_name, prefix, method.rust_name());
     if ctx.options().blocklisted_items.matches(name) {
         return;
@@ -4492,10 +3770,7 @@ fn objc_method_codegen(
 
     let body = {
         let body = if method.is_class_method() {
-            let class_name = ctx.rust_ident(
-                class_name
-                    .expect("Generating a class method without class name?"),
-            );
+            let class_name = ctx.rust_ident(class_name.expect("Generating a class method without class name?"));
             quote!(msg_send!(class!(#class_name), #methods_and_args))
         } else {
             quote!(msg_send!(*self, #methods_and_args))
@@ -4504,8 +3779,7 @@ fn objc_method_codegen(
         ctx.wrap_unsafe_ops(body)
     };
 
-    let method_name =
-        ctx.rust_ident(format!("{}{}", prefix, method.rust_name()));
+    let method_name = ctx.rust_ident(format!("{}{}", prefix, method.rust_name()));
 
     methods.push(quote! {
         unsafe fn #method_name #sig where <Self as std::ops::Deref>::Target: objc::Message + Sized {
@@ -4518,26 +3792,14 @@ impl CodeGenerator for ObjCInterface {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(
-        &self,
-        ctx: &BindgenContext,
-        result: &mut CodegenResult<'_>,
-        item: &Item,
-    ) {
+    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
         debug_assert!(item.is_enabled_for_codegen(ctx));
 
         let mut impl_items = vec![];
         let rust_class_name = item.path_for_allowlisting(ctx)[1..].join("::");
 
         for method in self.methods() {
-            objc_method_codegen(
-                ctx,
-                method,
-                &mut impl_items,
-                None,
-                &rust_class_name,
-                "",
-            );
+            objc_method_codegen(ctx, method, &mut impl_items, None, &rust_class_name, "");
         }
 
         for class_method in self.class_methods() {
@@ -4562,11 +3824,7 @@ impl CodeGenerator for ObjCInterface {
             Sized + std::ops::Deref
         };
         let trait_block = if self.is_template() {
-            let template_names: Vec<Ident> = self
-                .template_names
-                .iter()
-                .map(|g| ctx.rust_ident(g))
-                .collect();
+            let template_names: Vec<Ident> = self.template_names.iter().map(|g| ctx.rust_ident(g)).collect();
 
             quote! {
                 pub trait #trait_name <#(#template_names:'static),*> : #trait_constraints {
@@ -4608,11 +3866,7 @@ impl CodeGenerator for ObjCInterface {
             let mut protocol_set: HashSet<ItemId> = Default::default();
             for protocol_id in self.conforms_to.iter() {
                 protocol_set.insert(*protocol_id);
-                let protocol_name = ctx.rust_ident(
-                    ctx.resolve_type(protocol_id.expect_type_id(ctx))
-                        .name()
-                        .unwrap(),
-                );
+                let protocol_name = ctx.rust_ident(ctx.resolve_type(protocol_id.expect_type_id(ctx)).name().unwrap());
                 let impl_trait = quote! {
                     impl #protocol_name for #class_name { }
                 };
@@ -4636,11 +3890,7 @@ impl CodeGenerator for ObjCInterface {
 
                 let parent_name = ctx.rust_ident(parent.rust_name());
                 let impl_trait = if parent.is_template() {
-                    let template_names: Vec<Ident> = parent
-                        .template_names
-                        .iter()
-                        .map(|g| ctx.rust_ident(g))
-                        .collect();
+                    let template_names: Vec<Ident> = parent.template_names.iter().map(|g| ctx.rust_ident(g)).collect();
                     quote! {
                         impl <#(#template_names :'static),*> #parent_name <#(#template_names),*> for #class_name {
                         }
@@ -4653,11 +3903,8 @@ impl CodeGenerator for ObjCInterface {
                 result.push(impl_trait);
                 for protocol_id in parent.conforms_to.iter() {
                     if protocol_set.insert(*protocol_id) {
-                        let protocol_name = ctx.rust_ident(
-                            ctx.resolve_type(protocol_id.expect_type_id(ctx))
-                                .name()
-                                .unwrap(),
-                        );
+                        let protocol_name =
+                            ctx.rust_ident(ctx.resolve_type(protocol_id.expect_type_id(ctx)).name().unwrap());
                         let impl_trait = quote! {
                             impl #protocol_name for #class_name { }
                         };
@@ -4701,11 +3948,7 @@ impl CodeGenerator for ObjCInterface {
 
         if !self.is_protocol() {
             let impl_block = if self.is_template() {
-                let template_names: Vec<Ident> = self
-                    .template_names
-                    .iter()
-                    .map(|g| ctx.rust_ident(g))
-                    .collect();
+                let template_names: Vec<Ident> = self.template_names.iter().map(|g| ctx.rust_ident(g)).collect();
                 quote! {
                     impl <#(#template_names :'static),*> #trait_name <#(#template_names),*> for #class_name {
                     }
@@ -4724,9 +3967,7 @@ impl CodeGenerator for ObjCInterface {
     }
 }
 
-pub(crate) fn codegen(
-    context: BindgenContext,
-) -> Result<(proc_macro2::TokenStream, BindgenOptions), CodegenError> {
+pub(crate) fn codegen(context: BindgenContext) -> Result<(proc_macro2::TokenStream, BindgenOptions), CodegenError> {
     context.gen(|context| {
         let _t = context.timer("codegen");
         let counter = Cell::new(0);
@@ -4745,10 +3986,7 @@ pub(crate) fn codegen(
 
         if let Some(path) = context.options().emit_ir_graphviz.as_ref() {
             match dot::write_dot_file(context, path) {
-                Ok(()) => info!(
-                    "Your dot file was generated successfully into: {}",
-                    path
-                ),
+                Ok(()) => info!("Your dot file was generated successfully into: {}", path),
                 Err(e) => warn!("{}", e),
             }
         }
@@ -4763,25 +4001,19 @@ pub(crate) fn codegen(
             }
         }
 
-        context.resolve_item(context.root_module()).codegen(
-            context,
-            &mut result,
-            &(),
-        );
+        context
+            .resolve_item(context.root_module())
+            .codegen(context, &mut result, &());
 
         if let Some(ref lib_name) = context.options().dynamic_library_name {
             let lib_ident = context.rust_ident(lib_name);
-            let dynamic_items_tokens =
-                result.dynamic_items().get_tokens(lib_ident, context);
+            let dynamic_items_tokens = result.dynamic_items().get_tokens(lib_ident, context);
             result.push(dynamic_items_tokens);
         }
 
         utils::serialize_items(&result, context)?;
 
-        Ok(postprocessing::postprocessing(
-            result.items,
-            context.options(),
-        ))
+        Ok(postprocessing::postprocessing(result.items, context.options()))
     })
 }
 
@@ -4799,10 +4031,7 @@ pub(crate) mod utils {
     use std::path::PathBuf;
     use std::str::FromStr;
 
-    pub(super) fn serialize_items(
-        result: &CodegenResult,
-        context: &BindgenContext,
-    ) -> Result<(), CodegenError> {
+    pub(super) fn serialize_items(result: &CodegenResult, context: &BindgenContext) -> Result<(), CodegenError> {
         if result.items_to_serialize.is_empty() {
             return Ok(());
         }
@@ -4812,9 +4041,7 @@ pub(crate) mod utils {
             .wrap_static_fns_path
             .as_ref()
             .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                std::env::temp_dir().join("bindgen").join("extern")
-            });
+            .unwrap_or_else(|| std::env::temp_dir().join("bindgen").join("extern"));
 
         let dir = path.parent().unwrap();
 
@@ -4822,12 +4049,8 @@ pub(crate) mod utils {
             std::fs::create_dir_all(dir)?;
         }
 
-        let is_cpp = args_are_cpp(&context.options().clang_args) ||
-            context
-                .options()
-                .input_headers
-                .iter()
-                .any(|h| file_is_cpp(h));
+        let is_cpp = args_are_cpp(&context.options().clang_args)
+            || context.options().input_headers.iter().any(|h| file_is_cpp(h));
 
         let source_path = path.with_extension(if is_cpp { "cpp" } else { "c" });
 
@@ -4861,18 +4084,14 @@ pub(crate) mod utils {
         Ok(())
     }
 
-    pub(crate) fn prepend_bitfield_unit_type(
-        ctx: &BindgenContext,
-        result: &mut Vec<proc_macro2::TokenStream>,
-    ) {
+    pub(crate) fn prepend_bitfield_unit_type(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let bitfield_unit_src = include_str!("./bitfield_unit.rs");
         let bitfield_unit_src = if ctx.options().rust_features().min_const_fn {
             Cow::Borrowed(bitfield_unit_src)
         } else {
             Cow::Owned(bitfield_unit_src.replace("const fn ", "fn "))
         };
-        let bitfield_unit_type =
-            proc_macro2::TokenStream::from_str(&bitfield_unit_src).unwrap();
+        let bitfield_unit_type = proc_macro2::TokenStream::from_str(&bitfield_unit_src).unwrap();
         let bitfield_unit_type = quote!(#bitfield_unit_type);
 
         let items = vec![bitfield_unit_type];
@@ -4880,10 +4099,7 @@ pub(crate) mod utils {
         result.extend(old_items);
     }
 
-    pub(crate) fn prepend_objc_header(
-        ctx: &BindgenContext,
-        result: &mut Vec<proc_macro2::TokenStream>,
-    ) {
+    pub(crate) fn prepend_objc_header(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let use_objc = if ctx.options().objc_extern_crate {
             quote! {
                 #[macro_use]
@@ -4905,10 +4121,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_block_header(
-        ctx: &BindgenContext,
-        result: &mut Vec<proc_macro2::TokenStream>,
-    ) {
+    pub(crate) fn prepend_block_header(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let use_block = if ctx.options().block_extern_crate {
             quote! {
                 extern crate block;
@@ -4924,29 +4137,21 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_union_types(
-        ctx: &BindgenContext,
-        result: &mut Vec<proc_macro2::TokenStream>,
-    ) {
+    pub(crate) fn prepend_union_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let prefix = ctx.trait_prefix();
 
-        // If the target supports `const fn`, declare eligible functions
-        // as `const fn` else just `fn`.
         let const_fn = if ctx.options().rust_features().min_const_fn {
             quote! { const fn }
         } else {
             quote! { fn }
         };
 
-        // TODO(emilio): The fmt::Debug impl could be way nicer with
-        // std::intrinsics::type_name, but...
         let union_field_decl = quote! {
             #[repr(C)]
             pub struct __BindgenUnionField<T>(::#prefix::marker::PhantomData<T>);
         };
 
-        let transmute =
-            ctx.wrap_unsafe_ops(quote!(::#prefix::mem::transmute(self)));
+        let transmute = ctx.wrap_unsafe_ops(quote!(::#prefix::mem::transmute(self)));
 
         let union_field_impl = quote! {
             impl<T> __BindgenUnionField<T> {
@@ -4998,8 +4203,6 @@ pub(crate) mod utils {
             }
         };
 
-        // The actual memory of the filed will be hashed, so that's why these
-        // field doesn't do anything with the hash.
         let union_field_hash_impl = quote! {
             impl<T> ::#prefix::hash::Hash for __BindgenUnionField<T> {
                 fn hash<H: ::#prefix::hash::Hasher>(&self, _state: &mut H) {
@@ -5036,14 +4239,9 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_incomplete_array_types(
-        ctx: &BindgenContext,
-        result: &mut Vec<proc_macro2::TokenStream>,
-    ) {
+    pub(crate) fn prepend_incomplete_array_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let prefix = ctx.trait_prefix();
 
-        // If the target supports `const fn`, declare eligible functions
-        // as `const fn` else just `fn`.
         let const_fn = if ctx.options().rust_features().min_const_fn {
             quote! { const fn }
         } else {
@@ -5112,9 +4310,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_complex_type(
-        result: &mut Vec<proc_macro2::TokenStream>,
-    ) {
+    pub(crate) fn prepend_complex_type(result: &mut Vec<proc_macro2::TokenStream>) {
         let complex_type = quote! {
             #[derive(PartialEq, Copy, Clone, Hash, Debug, Default)]
             #[repr(C)]
@@ -5129,33 +4325,21 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn build_path(
-        item: &Item,
-        ctx: &BindgenContext,
-    ) -> error::Result<proc_macro2::TokenStream> {
+    pub(crate) fn build_path(item: &Item, ctx: &BindgenContext) -> error::Result<proc_macro2::TokenStream> {
         let path = item.namespace_aware_canonical_path(ctx);
-        let tokens =
-            proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
+        let tokens = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
 
         Ok(tokens)
     }
 
-    fn primitive_ty(
-        ctx: &BindgenContext,
-        name: &str,
-    ) -> proc_macro2::TokenStream {
+    fn primitive_ty(ctx: &BindgenContext, name: &str) -> proc_macro2::TokenStream {
         let ident = ctx.rust_ident_raw(name);
         quote! {
             #ident
         }
     }
 
-    pub(crate) fn type_from_named(
-        ctx: &BindgenContext,
-        name: &str,
-    ) -> Option<proc_macro2::TokenStream> {
-        // FIXME: We could use the inner item to check this is really a
-        // primitive type but, who the heck overrides these anyway?
+    pub(crate) fn type_from_named(ctx: &BindgenContext, name: &str) -> Option<proc_macro2::TokenStream> {
         Some(match name {
             "int8_t" => primitive_ty(ctx, "i8"),
             "uint8_t" => primitive_ty(ctx, "u8"),
@@ -5166,14 +4350,10 @@ pub(crate) mod utils {
             "int64_t" => primitive_ty(ctx, "i64"),
             "uint64_t" => primitive_ty(ctx, "u64"),
 
-            "size_t" if ctx.options().size_t_is_usize => {
-                primitive_ty(ctx, "usize")
-            }
+            "size_t" if ctx.options().size_t_is_usize => primitive_ty(ctx, "usize"),
             "uintptr_t" => primitive_ty(ctx, "usize"),
 
-            "ssize_t" if ctx.options().size_t_is_usize => {
-                primitive_ty(ctx, "isize")
-            }
+            "ssize_t" if ctx.options().size_t_is_usize => primitive_ty(ctx, "isize"),
             "intptr_t" | "ptrdiff_t" => primitive_ty(ctx, "isize"),
             _ => return None,
         })
@@ -5218,17 +4398,11 @@ pub(crate) mod utils {
         }
     }
 
-    pub(crate) fn fnsig_return_ty(
-        ctx: &BindgenContext,
-        sig: &FunctionSig,
-    ) -> proc_macro2::TokenStream {
+    pub(crate) fn fnsig_return_ty(ctx: &BindgenContext, sig: &FunctionSig) -> proc_macro2::TokenStream {
         fnsig_return_ty_internal(ctx, sig, /* include_arrow = */ true)
     }
 
-    pub(crate) fn fnsig_arguments(
-        ctx: &BindgenContext,
-        sig: &FunctionSig,
-    ) -> Vec<proc_macro2::TokenStream> {
+    pub(crate) fn fnsig_arguments(ctx: &BindgenContext, sig: &FunctionSig) -> Vec<proc_macro2::TokenStream> {
         use super::ToPtr;
 
         let mut unnamed_arguments = 0;
@@ -5249,20 +4423,17 @@ pub(crate) mod utils {
                 // [1]: http://c0x.coding-guidelines.com/6.7.5.3.html
                 let arg_ty = match *arg_ty.canonical_type(ctx).kind() {
                     TypeKind::Array(t, _) => {
-                        let stream =
-                            if ctx.options().array_pointers_in_arguments {
-                                arg_ty.to_rust_ty_or_opaque(ctx, arg_item)
-                            } else {
-                                t.to_rust_ty_or_opaque(ctx, &())
-                            };
+                        let stream = if ctx.options().array_pointers_in_arguments {
+                            arg_ty.to_rust_ty_or_opaque(ctx, arg_item)
+                        } else {
+                            t.to_rust_ty_or_opaque(ctx, &())
+                        };
                         stream.to_ptr(ctx.resolve_type(t).is_const())
-                    }
+                    },
                     TypeKind::Pointer(inner) => {
                         let inner = ctx.resolve_item(inner);
                         let inner_ty = inner.expect_type();
-                        if let TypeKind::ObjCInterface(ref interface) =
-                            *inner_ty.canonical_type(ctx).kind()
-                        {
+                        if let TypeKind::ObjCInterface(ref interface) = *inner_ty.canonical_type(ctx).kind() {
                             let name = ctx.rust_ident(interface.name());
                             quote! {
                                 #name
@@ -5270,7 +4441,7 @@ pub(crate) mod utils {
                         } else {
                             arg_item.to_rust_ty_or_opaque(ctx, &())
                         }
-                    }
+                    },
                     _ => arg_item.to_rust_ty_or_opaque(ctx, &()),
                 };
 
@@ -5279,7 +4450,7 @@ pub(crate) mod utils {
                     None => {
                         unnamed_arguments += 1;
                         format!("arg{}", unnamed_arguments)
-                    }
+                    },
                 };
 
                 assert!(!arg_name.is_empty());
@@ -5298,10 +4469,7 @@ pub(crate) mod utils {
         args
     }
 
-    pub(crate) fn fnsig_argument_identifiers(
-        ctx: &BindgenContext,
-        sig: &FunctionSig,
-    ) -> Vec<proc_macro2::TokenStream> {
+    pub(crate) fn fnsig_argument_identifiers(ctx: &BindgenContext, sig: &FunctionSig) -> Vec<proc_macro2::TokenStream> {
         let mut unnamed_arguments = 0;
         let args = sig
             .argument_types()
@@ -5312,7 +4480,7 @@ pub(crate) mod utils {
                     None => {
                         unnamed_arguments += 1;
                         format!("arg{}", unnamed_arguments)
-                    }
+                    },
                 };
 
                 assert!(!arg_name.is_empty());
@@ -5327,93 +4495,62 @@ pub(crate) mod utils {
         args
     }
 
-    pub(crate) fn fnsig_block(
-        ctx: &BindgenContext,
-        sig: &FunctionSig,
-    ) -> proc_macro2::TokenStream {
+    pub(crate) fn fnsig_block(ctx: &BindgenContext, sig: &FunctionSig) -> proc_macro2::TokenStream {
         let args = sig.argument_types().iter().map(|&(_, ty)| {
             let arg_item = ctx.resolve_item(ty);
 
             arg_item.to_rust_ty_or_opaque(ctx, &())
         });
 
-        let ret_ty = fnsig_return_ty_internal(
-            ctx, sig, /* include_arrow = */ false,
-        );
+        let ret_ty = fnsig_return_ty_internal(ctx, sig, /* include_arrow = */ false);
         quote! {
             *const ::block::Block<(#(#args,)*), #ret_ty>
         }
     }
 
-    // Returns true if `canonical_name` will end up as `mangled_name` at the
-    // machine code level, i.e. after LLVM has applied any target specific
-    // mangling.
     pub(crate) fn names_will_be_identical_after_mangling(
         canonical_name: &str,
         mangled_name: &str,
         call_conv: Option<ClangAbi>,
     ) -> bool {
-        // If the mangled name and the canonical name are the same then no
-        // mangling can have happened between the two versions.
         if canonical_name == mangled_name {
             return true;
         }
 
-        // Working with &[u8] makes indexing simpler than with &str
         let canonical_name = canonical_name.as_bytes();
         let mangled_name = mangled_name.as_bytes();
 
         let (mangling_prefix, expect_suffix) = match call_conv {
-            Some(ClangAbi::Known(Abi::C)) |
-            // None is the case for global variables
-            None => {
-                (b'_', false)
-            }
+            Some(ClangAbi::Known(Abi::C)) | None => (b'_', false),
             Some(ClangAbi::Known(Abi::Stdcall)) => (b'_', true),
             Some(ClangAbi::Known(Abi::Fastcall)) => (b'@', true),
 
-            // This is something we don't recognize, stay on the safe side
-            // by emitting the `#[link_name]` attribute
             Some(_) => return false,
         };
 
-        // Check that the mangled name is long enough to at least contain the
-        // canonical name plus the expected prefix.
         if mangled_name.len() < canonical_name.len() + 1 {
             return false;
         }
 
-        // Return if the mangled name does not start with the prefix expected
-        // for the given calling convention.
         if mangled_name[0] != mangling_prefix {
             return false;
         }
 
-        // Check that the mangled name contains the canonical name after the
-        // prefix
         if &mangled_name[1..canonical_name.len() + 1] != canonical_name {
             return false;
         }
 
-        // If the given calling convention also prescribes a suffix, check that
-        // it exists too
         if expect_suffix {
             let suffix = &mangled_name[canonical_name.len() + 1..];
 
-            // The shortest suffix is "@0"
             if suffix.len() < 2 {
                 return false;
             }
 
-            // Check that the suffix starts with '@' and is all ASCII decimals
-            // after that.
-            if suffix[0] != b'@' || !suffix[1..].iter().all(u8::is_ascii_digit)
-            {
+            if suffix[0] != b'@' || !suffix[1..].iter().all(u8::is_ascii_digit) {
                 return false;
             }
         } else if mangled_name.len() != canonical_name.len() + 1 {
-            // If we don't expect a prefix but there is one, we need the
-            // #[link_name] attribute
             return false;
         }
 

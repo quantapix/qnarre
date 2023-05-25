@@ -24,7 +24,6 @@ impl VisitMut for Visitor {
 }
 
 fn visit_items(items: &mut Vec<Item>) {
-    // Keep all the extern blocks in a different `Vec` for faster search.
     let mut extern_blocks = Vec::<ItemForeignMod>::new();
 
     for item in std::mem::take(items) {
@@ -47,8 +46,6 @@ fn visit_items(items: &mut Vec<Item>) {
                     break;
                 }
             }
-            // If no existing extern block had the same ABI and attributes, store
-            // it.
             if !exists {
                 extern_blocks.push(ItemForeignMod {
                     attrs,
@@ -59,13 +56,10 @@ fn visit_items(items: &mut Vec<Item>) {
                 });
             }
         } else {
-            // If the item is not an extern block, we don't have to do anything and just
-            // push it back.
             items.push(item);
         }
     }
 
-    // Move all the extern blocks alongside the rest of the items.
     for extern_block in extern_blocks {
         items.push(Item::ForeignMod(extern_block));
     }

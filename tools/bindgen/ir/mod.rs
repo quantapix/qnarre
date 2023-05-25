@@ -1,7 +1,3 @@
-//! The ir module defines bindgen's intermediate representation.
-//!
-//! Parsing C/C++ generates the IR, while code generation outputs Rust code from
-//! the IR.
 #![deny(clippy::missing_docs_in_private_items)]
 
 pub(crate) mod analysis;

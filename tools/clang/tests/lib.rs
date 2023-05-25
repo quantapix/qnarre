@@ -1,17 +1,14 @@
 extern crate clang;
 extern crate libc;
 
-use std::ptr;
-
 use clang::*;
-
 use libc::c_char;
+use std::ptr;
 
 fn parse() {
     unsafe {
         let index = clang_createIndex(0, 0);
         assert!(!index.is_null());
-
         let tu = clang_parseTranslationUnit(
             index,
             "tests/header.h\0".as_ptr() as *const c_char,

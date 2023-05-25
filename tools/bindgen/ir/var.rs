@@ -1,5 +1,3 @@
-//! Intermediate representation of variables.
-
 use super::super::codegen::MacroTypeVariation;
 use super::context::{BindgenContext, TypeId};
 use super::dot::DotAttributes;
@@ -15,40 +13,26 @@ use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
 use std::io;
 use std::num::Wrapping;
 
-/// The type for a constant variable.
 #[derive(Debug)]
 pub(crate) enum VarType {
-    /// A boolean.
     Bool(bool),
-    /// An integer.
     Int(i64),
-    /// A floating point number.
     Float(f64),
-    /// A character.
     Char(u8),
-    /// A string, not necessarily well-formed utf-8.
     String(Vec<u8>),
 }
 
-/// A `Var` is our intermediate representation of a variable.
 #[derive(Debug)]
 pub(crate) struct Var {
-    /// The name of the variable.
     name: String,
-    /// The mangled name of the variable.
     mangled_name: Option<String>,
-    /// The link name of the variable.
     link_name: Option<String>,
-    /// The type of the variable.
     ty: TypeId,
-    /// The value of the variable, that needs to be suitable for `ty`.
     val: Option<VarType>,
-    /// Whether this variable is const.
     is_const: bool,
 }
 
 impl Var {
-    /// Construct a new `Var`.
     pub(crate) fn new(
         name: String,
         mangled_name: Option<String>,
@@ -68,32 +52,26 @@ impl Var {
         }
     }
 
-    /// Is this variable `const` qualified?
     pub(crate) fn is_const(&self) -> bool {
         self.is_const
     }
 
-    /// The value of this constant variable, if any.
     pub(crate) fn val(&self) -> Option<&VarType> {
         self.val.as_ref()
     }
 
-    /// Get this variable's type.
     pub(crate) fn ty(&self) -> TypeId {
         self.ty
     }
 
-    /// Get this variable's name.
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
 
-    /// Get this variable's mangled name.
     pub(crate) fn mangled_name(&self) -> Option<&str> {
         self.mangled_name.as_deref()
     }
 
-    /// Get this variable's link name.
     pub fn link_name(&self) -> Option<&str> {
         self.link_name.as_deref()
     }
@@ -141,17 +119,11 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
     }
 }
 
-/// Parses tokens from a CXCursor_MacroDefinition pointing into a function-like
-/// macro, and calls the func_macro callback.
 fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::ParseCallbacks) {
-    let is_closing_paren = |t: &ClangToken| {
-        // Test cheap token kind before comparing exact spellings.
-        t.kind == clang::CXToken_Punctuation && t.spelling() == b")"
-    };
+    let is_closing_paren = |t: &ClangToken| t.kind == clang::CXToken_Punctuation && t.spelling() == b")";
     let tokens: Vec<_> = cursor.tokens().iter().collect();
     if let Some(boundary) = tokens.iter().position(is_closing_paren) {
         let mut spelled = tokens.iter().map(ClangToken::spelling);
-        // Add 1, to convert index to length.
         let left = spelled.by_ref().take(boundary + 1);
         let left = left.collect::<Vec<_>>().concat();
         if let Ok(left) = String::from_utf8(left) {
@@ -352,7 +324,6 @@ impl ClangSubItemParser for Var {
     }
 }
 
-/// Try and parse a macro using all the macros parsed until now.
 fn parse_macro(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
     use cexpr::expr;
 
@@ -372,7 +343,6 @@ fn parse_int_literal_tokens(cursor: &clang::Cursor) -> Option<i64> {
 
     let cexpr_tokens = cursor.cexpr_tokens();
 
-    // TODO(emilio): We can try to parse other kinds of literals.
     match expr::expr(&cexpr_tokens) {
         Ok((_, EvalResult::Int(Wrapping(val)))) => Some(val),
         _ => None,
@@ -405,18 +375,6 @@ fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::Source
     warn!("Duplicated macro definition: {}", macro_name);
 
     #[cfg(feature = "experimental")]
-    // FIXME (pvdrz & amanjeev): This diagnostic message shows way too often to be actually
-    // useful. We have to change the logic where this function is called to be able to emit this
-    // message only when the duplication is an actuall issue.
-    //
-    // If I understood correctly, `bindgen` ignores all `#undef` directives. Meaning that this:
-    // ```c
-    // #define FOO 1
-    // #undef FOO
-    // #define FOO 2
-    // ```
-    //
-    // Will trigger this message even though there's nothing wrong with it.
     #[allow(clippy::overly_complex_bool_expr)]
     if false && _ctx.options().emit_diagnostics {
         use crate::diagnostics::{get_line, Diagnostic, Level, Slice};

@@ -1,5 +1,3 @@
-//! Helpers for code generation that don't need macro expansion.
-
 use crate::ir::context::BindgenContext;
 use crate::ir::layout::Layout;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -63,8 +61,6 @@ pub(crate) mod attributes {
     }
 
     pub(crate) fn link_name<const MANGLE: bool>(name: &str) -> TokenStream {
-        // LLVM mangles the name by default but it's already mangled.
-        // Prefixing the name with \u{1} should tell LLVM to not mangle it.
         let name: Cow<'_, str> = if MANGLE {
             name.into()
         } else {
@@ -77,21 +73,15 @@ pub(crate) mod attributes {
     }
 }
 
-/// Generates a proper type for a field or type with a given `Layout`, that is,
-/// a type with the correct size and alignment restrictions.
 pub(crate) fn blob(ctx: &BindgenContext, layout: Layout) -> TokenStream {
     let opaque = layout.opaque();
 
-    // FIXME(emilio, #412): We fall back to byte alignment, but there are
-    // some things that legitimately are more than 8-byte aligned.
-    //
-    // Eventually we should be able to `unwrap` here, but...
     let ty_name = match opaque.known_rust_type_for_array(ctx) {
         Some(ty) => ty,
         None => {
             warn!("Found unknown alignment on code generation!");
             "u8"
-        }
+        },
     };
 
     let ty_name = Ident::new(ty_name, Span::call_site());
@@ -109,21 +99,13 @@ pub(crate) fn blob(ctx: &BindgenContext, layout: Layout) -> TokenStream {
     }
 }
 
-/// Integer type of the same size as the given `Layout`.
-pub(crate) fn integer_type(
-    ctx: &BindgenContext,
-    layout: Layout,
-) -> Option<TokenStream> {
+pub(crate) fn integer_type(ctx: &BindgenContext, layout: Layout) -> Option<TokenStream> {
     let name = Layout::known_type_for_size(ctx, layout.size)?;
     let name = Ident::new(name, Span::call_site());
     Some(quote! { #name })
 }
 
-/// Generates a bitfield allocation unit type for a type with the given `Layout`.
-pub(crate) fn bitfield_unit(
-    ctx: &BindgenContext,
-    layout: Layout,
-) -> TokenStream {
+pub(crate) fn bitfield_unit(ctx: &BindgenContext, layout: Layout) -> TokenStream {
     let mut tokens = quote! {};
 
     if ctx.options().enable_cxx_namespaces {
@@ -147,23 +129,20 @@ pub(crate) mod ast_ty {
     use std::str::FromStr;
 
     pub(crate) fn c_void(ctx: &BindgenContext) -> TokenStream {
-        // ctypes_prefix takes precedence
         match ctx.options().ctypes_prefix {
             Some(ref prefix) => {
                 let prefix = TokenStream::from_str(prefix.as_str()).unwrap();
                 quote! {
                     #prefix::c_void
                 }
-            }
+            },
             None => {
-                if ctx.options().use_core &&
-                    ctx.options().rust_features.core_ffi_c_void
-                {
+                if ctx.options().use_core && ctx.options().rust_features.core_ffi_c_void {
                     quote! { ::core::ffi::c_void }
                 } else {
                     quote! { ::std::os::raw::c_void }
                 }
-            }
+            },
         }
     }
 
@@ -175,11 +154,9 @@ pub(crate) mod ast_ty {
                 quote! {
                     #prefix::#ident
                 }
-            }
+            },
             None => {
-                if ctx.options().use_core &&
-                    ctx.options().rust_features().core_ffi_c
-                {
+                if ctx.options().use_core && ctx.options().rust_features().core_ffi_c {
                     quote! {
                         ::core::ffi::#ident
                     }
@@ -188,19 +165,11 @@ pub(crate) mod ast_ty {
                         ::std::os::raw::#ident
                     }
                 }
-            }
+            },
         }
     }
 
-    pub(crate) fn float_kind_rust_type(
-        ctx: &BindgenContext,
-        fk: FloatKind,
-        layout: Option<Layout>,
-    ) -> TokenStream {
-        // TODO: we probably should take the type layout into account more
-        // often?
-        //
-        // Also, maybe this one shouldn't be the default?
+    pub(crate) fn float_kind_rust_type(ctx: &BindgenContext, fk: FloatKind, layout: Option<Layout>) -> TokenStream {
         match (fk, ctx.options().convert_floats) {
             (FloatKind::Float, true) => quote! { f32 },
             (FloatKind::Double, true) => quote! { f64 },
@@ -214,37 +183,31 @@ pub(crate) mod ast_ty {
                             8 => quote! { f64 },
                             // TODO(emilio): If rust ever gains f128 we should
                             // use it here and below.
-                            _ => super::integer_type(ctx, layout)
-                                .unwrap_or(quote! { f64 }),
+                            _ => super::integer_type(ctx, layout).unwrap_or(quote! { f64 }),
                         }
-                    }
+                    },
                     None => {
-                        debug_assert!(
-                            false,
-                            "How didn't we know the layout for a primitive type?"
-                        );
+                        debug_assert!(false, "How didn't we know the layout for a primitive type?");
                         quote! { f64 }
-                    }
+                    },
                 }
-            }
+            },
             (FloatKind::Float128, _) => {
                 if ctx.options().rust_features.i128_and_u128 {
                     quote! { u128 }
                 } else {
                     quote! { [u64; 2] }
                 }
-            }
+            },
         }
     }
 
     pub(crate) fn int_expr(val: i64) -> TokenStream {
-        // Don't use quote! { #val } because that adds the type suffix.
         let val = proc_macro2::Literal::i64_unsuffixed(val);
         quote!(#val)
     }
 
     pub(crate) fn uint_expr(val: u64) -> TokenStream {
-        // Don't use quote! { #val } because that adds the type suffix.
         let val = proc_macro2::Literal::u64_unsuffixed(val);
         quote!(#val)
     }
@@ -257,10 +220,7 @@ pub(crate) mod ast_ty {
         }
     }
 
-    pub(crate) fn float_expr(
-        ctx: &BindgenContext,
-        f: f64,
-    ) -> Result<TokenStream, ()> {
+    pub(crate) fn float_expr(ctx: &BindgenContext, f: f64) -> Result<TokenStream, ()> {
         if f.is_finite() {
             let val = proc_macro2::Literal::f64_unsuffixed(f);
 
@@ -291,10 +251,7 @@ pub(crate) mod ast_ty {
         Err(())
     }
 
-    pub(crate) fn arguments_from_signature(
-        signature: &FunctionSig,
-        ctx: &BindgenContext,
-    ) -> Vec<TokenStream> {
+    pub(crate) fn arguments_from_signature(signature: &FunctionSig, ctx: &BindgenContext) -> Vec<TokenStream> {
         let mut unnamed_arguments = 0;
         signature
             .argument_types()
@@ -303,13 +260,12 @@ pub(crate) mod ast_ty {
                 Some(ref name) => {
                     let name = ctx.rust_ident(name);
                     quote! { #name }
-                }
+                },
                 None => {
                     unnamed_arguments += 1;
-                    let name =
-                        ctx.rust_ident(format!("arg{}", unnamed_arguments));
+                    let name = ctx.rust_ident(format!("arg{}", unnamed_arguments));
                     quote! { #name }
-                }
+                },
             })
             .collect()
     }

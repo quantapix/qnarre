@@ -1,5 +1,3 @@
-//! Contains code for selecting features
-
 #![deny(unused_extern_crates)]
 #![deny(clippy::missing_docs_in_private_items)]
 #![allow(deprecated)]
@@ -7,15 +5,8 @@
 use std::io;
 use std::str::FromStr;
 
-/// Define RustTarget struct definition, Default impl, and conversions
-/// between RustTarget and String.
 macro_rules! rust_target_def {
     ( $( $( #[$attr:meta] )* => $release:ident => $value:expr; )* ) => {
-        /// Represents the version of the Rust language to target.
-        ///
-        /// To support a beta release, use the corresponding stable release.
-        ///
-        /// This enum will have more variants added as necessary.
         #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Hash)]
         #[allow(non_camel_case_types)]
         pub enum RustTarget {
@@ -28,7 +19,6 @@ macro_rules! rust_target_def {
         }
 
         impl Default for RustTarget {
-            /// Gives the latest stable Rust version
             fn default() -> RustTarget {
                 LATEST_STABLE_RUST
             }
@@ -37,11 +27,6 @@ macro_rules! rust_target_def {
         impl FromStr for RustTarget {
             type Err = io::Error;
 
-            /// Create a `RustTarget` from a string.
-            ///
-            /// * The stable/beta versions of Rust are of the form "1.0",
-            /// "1.19", etc.
-            /// * The nightly version should be specified with "nightly".
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s.as_ref() {
                     $(
@@ -70,10 +55,8 @@ macro_rules! rust_target_def {
     }
 }
 
-/// Defines an array slice with all RustTarget values
 macro_rules! rust_target_values_def {
     ( $( $( #[$attr:meta] )* => $release:ident => $value:expr; )* ) => {
-        /// Strings of allowed `RustTarget` values
         pub static RUST_TARGET_STRINGS: &'static [&str] = &[
             $(
                 stringify!($value),
@@ -82,7 +65,6 @@ macro_rules! rust_target_values_def {
     }
 }
 
-/// Defines macro which takes a macro
 macro_rules! rust_target_base {
     ( $x_macro:ident ) => {
         $x_macro!(
@@ -95,17 +77,14 @@ macro_rules! rust_target_base {
 rust_target_base!(rust_target_def);
 rust_target_base!(rust_target_values_def);
 
-/// Latest stable release of Rust
 pub const LATEST_STABLE_RUST: RustTarget = RustTarget::Stable_1_68;
 
-/// Create RustFeatures struct definition, new(), and a getter for each field
 macro_rules! rust_feature_def {
     (
         $( $rust_target:ident {
             $( $( #[$attr:meta] )* => $feature:ident; )*
         } )*
     ) => {
-        /// Features supported by a rust target
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         #[allow(missing_docs)] // Documentation should go into the relevant variants.
         pub(crate) struct RustFeatures {
@@ -118,7 +97,6 @@ macro_rules! rust_feature_def {
         }
 
         impl RustFeatures {
-            /// Gives a RustFeatures struct with all features disabled
             fn new() -> Self {
                 RustFeatures {
                     $( $(
@@ -146,9 +124,6 @@ macro_rules! rust_feature_def {
     }
 }
 
-// NOTE(emilio): When adding or removing features here, make sure to update the
-// documentation for the relevant variant in the rust_target_base macro
-// definition.
 rust_feature_def!(
     Stable_1_17 {
         => static_lifetime_elision;

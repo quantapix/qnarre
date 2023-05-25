@@ -41,9 +41,7 @@ impl<'a> CSerialize<'a> for Item {
         writer: &mut W,
     ) -> Result<(), CodegenError> {
         match self.kind() {
-            ItemKind::Function(func) => {
-                func.serialize(ctx, self, stack, writer)
-            }
+            ItemKind::Function(func) => func.serialize(ctx, self, stack, writer),
             kind => Err(CodegenError::Serialize {
                 msg: format!("Cannot serialize item kind {:?}", kind),
                 loc: get_loc(self),
@@ -64,10 +62,7 @@ impl<'a> CSerialize<'a> for Function {
     ) -> Result<(), CodegenError> {
         if self.kind() != FunctionKind::Function {
             return Err(CodegenError::Serialize {
-                msg: format!(
-                    "Cannot serialize function kind {:?}",
-                    self.kind(),
-                ),
+                msg: format!("Cannot serialize function kind {:?}", self.kind(),),
                 loc: get_loc(item),
             });
         }
@@ -81,7 +76,6 @@ impl<'a> CSerialize<'a> for Function {
 
         let name = self.name();
 
-        // Function argoments stored as `(name, type_id)` tuples.
         let args = {
             let mut count = 0;
 
@@ -102,33 +96,27 @@ impl<'a> CSerialize<'a> for Function {
                 .collect::<Vec<_>>()
         };
 
-        // The name used for the wrapper self.
         let wrap_name = format!("{}{}", name, ctx.wrap_static_fns_suffix());
 
-        // The function's return type
         let ret_ty = {
             let type_id = signature.return_type();
             let item = ctx.resolve_item(type_id);
             let ret_ty = item.expect_type();
 
-            // Write `ret_ty`.
             ret_ty.serialize(ctx, item, stack, writer)?;
 
             ret_ty
         };
 
-        // Write `wrap_name(args`.
         write!(writer, " {}(", wrap_name)?;
         serialize_args(&args, ctx, writer)?;
 
-        // Write `) { name(` if the function returns void and `) { return name(` if it does not.
         if ret_ty.is_void() {
             write!(writer, ") {{ {}(", name)?;
         } else {
             write!(writer, ") {{ return {}(", name)?;
         }
 
-        // Write `arg_names); }`.
         serialize_sep(", ", args.iter(), ctx, writer, |(name, _), _, buf| {
             write!(buf, "{}", name).map_err(From::from)
         })?;
@@ -169,13 +157,13 @@ impl<'a> CSerialize<'a> for Type {
                     write!(writer, "const ")?;
                 }
                 write!(writer, "void")?
-            }
+            },
             TypeKind::NullPtr => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 write!(writer, "nullptr_t")?
-            }
+            },
             TypeKind::Int(int_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
@@ -196,15 +184,12 @@ impl<'a> CSerialize<'a> for Type {
                     IntKind::Char { .. } => write!(writer, "char")?,
                     int_kind => {
                         return Err(CodegenError::Serialize {
-                            msg: format!(
-                                "Cannot serialize integer kind {:?}",
-                                int_kind
-                            ),
+                            msg: format!("Cannot serialize integer kind {:?}", int_kind),
                             loc: get_loc(item),
                         })
-                    }
+                    },
                 }
-            }
+            },
             TypeKind::Float(float_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
@@ -215,7 +200,7 @@ impl<'a> CSerialize<'a> for Type {
                     FloatKind::LongDouble => write!(writer, "long double")?,
                     FloatKind::Float128 => write!(writer, "__float128")?,
                 }
-            }
+            },
             TypeKind::Complex(float_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
@@ -223,12 +208,10 @@ impl<'a> CSerialize<'a> for Type {
                 match float_kind {
                     FloatKind::Float => write!(writer, "float complex")?,
                     FloatKind::Double => write!(writer, "double complex")?,
-                    FloatKind::LongDouble => {
-                        write!(writer, "long double complex")?
-                    }
+                    FloatKind::LongDouble => write!(writer, "long double complex")?,
                     FloatKind::Float128 => write!(writer, "__complex128")?,
                 }
-            }
+            },
             TypeKind::Alias(type_id) => {
                 if let Some(name) = self.name() {
                     if self.is_const() {
@@ -239,22 +222,17 @@ impl<'a> CSerialize<'a> for Type {
                 } else {
                     type_id.serialize(ctx, (), stack, writer)?;
                 }
-            }
+            },
             TypeKind::Array(type_id, length) => {
                 type_id.serialize(ctx, (), stack, writer)?;
                 write!(writer, " [{}]", length)?
-            }
+            },
             TypeKind::Function(signature) => {
                 if self.is_const() {
                     stack.push("const ".to_string());
                 }
 
-                signature.return_type().serialize(
-                    ctx,
-                    (),
-                    &mut vec![],
-                    writer,
-                )?;
+                signature.return_type().serialize(ctx, (), &mut vec![], writer)?;
 
                 write!(writer, " (")?;
                 while let Some(item) = stack.pop() {
@@ -277,13 +255,13 @@ impl<'a> CSerialize<'a> for Type {
                     },
                 )?;
                 write!(writer, ")")?
-            }
+            },
             TypeKind::ResolvedTypeRef(type_id) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 type_id.serialize(ctx, (), stack, writer)?
-            }
+            },
             TypeKind::Pointer(type_id) => {
                 if self.is_const() {
                     stack.push("*const ".to_owned());
@@ -291,7 +269,7 @@ impl<'a> CSerialize<'a> for Type {
                     stack.push("*".to_owned());
                 }
                 type_id.serialize(ctx, (), stack, writer)?
-            }
+            },
             TypeKind::Comp(comp_info) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
@@ -303,7 +281,7 @@ impl<'a> CSerialize<'a> for Type {
                     CompKind::Struct => write!(writer, "struct {}", name)?,
                     CompKind::Union => write!(writer, "union {}", name)?,
                 };
-            }
+            },
             TypeKind::Enum(_enum_ty) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
@@ -311,13 +289,13 @@ impl<'a> CSerialize<'a> for Type {
 
                 let name = item.canonical_name(ctx);
                 write!(writer, "enum {}", name)?;
-            }
+            },
             ty => {
                 return Err(CodegenError::Serialize {
                     msg: format!("Cannot serialize type kind {:?}", ty),
                     loc: get_loc(item),
                 })
-            }
+            },
         };
 
         if !stack.is_empty() {
@@ -339,25 +317,15 @@ fn serialize_args<W: Write>(
     if args.is_empty() {
         write!(writer, "void")?;
     } else {
-        serialize_sep(
-            ", ",
-            args.iter(),
-            ctx,
-            writer,
-            |(name, type_id), ctx, buf| {
-                type_id.serialize(ctx, (), &mut vec![name.clone()], buf)
-            },
-        )?;
+        serialize_sep(", ", args.iter(), ctx, writer, |(name, type_id), ctx, buf| {
+            type_id.serialize(ctx, (), &mut vec![name.clone()], buf)
+        })?;
     }
 
     Ok(())
 }
 
-fn serialize_sep<
-    W: Write,
-    F: FnMut(I::Item, &BindgenContext, &mut W) -> Result<(), CodegenError>,
-    I: Iterator,
->(
+fn serialize_sep<W: Write, F: FnMut(I::Item, &BindgenContext, &mut W) -> Result<(), CodegenError>, I: Iterator>(
     sep: &str,
     mut iter: I,
     ctx: &BindgenContext,

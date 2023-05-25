@@ -19,7 +19,7 @@ pub(crate) fn gen_debug_impl(
         match kind {
             CompKind::Union => {
                 format_string.push_str("union");
-            }
+            },
             CompKind::Struct => {
                 let processed_fields = fields.iter().filter_map(|f| match f {
                     Field::DataMember(ref fd) => fd.impl_debug(ctx, ()),
@@ -33,7 +33,7 @@ pub(crate) fn gen_debug_impl(
                     tokens.extend(toks);
                     format_string.push_str(&fstring);
                 }
-            }
+            },
         }
     }
 
@@ -49,29 +49,16 @@ pub(crate) fn gen_debug_impl(
     }
 }
 
-/// A trait for the things which we can codegen tokens that contribute towards a
-/// generated `impl Debug`.
 pub(crate) trait ImplDebug<'a> {
-    /// Any extra parameter required by this a particular `ImplDebug` implementation.
     type Extra;
 
-    /// Generate a format string snippet to be included in the larger `impl Debug`
-    /// format string, and the code to get the format string's interpolation values.
-    fn impl_debug(
-        &self,
-        ctx: &BindgenContext,
-        extra: Self::Extra,
-    ) -> Option<(String, Vec<proc_macro2::TokenStream>)>;
+    fn impl_debug(&self, ctx: &BindgenContext, extra: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)>;
 }
 
 impl<'a> ImplDebug<'a> for FieldData {
     type Extra = ();
 
-    fn impl_debug(
-        &self,
-        ctx: &BindgenContext,
-        _: Self::Extra,
-    ) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
+    fn impl_debug(&self, ctx: &BindgenContext, _: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         if let Some(name) = self.name() {
             ctx.resolve_item(self.ty()).impl_debug(ctx, name)
         } else {
@@ -83,11 +70,7 @@ impl<'a> ImplDebug<'a> for FieldData {
 impl<'a> ImplDebug<'a> for BitfieldUnit {
     type Extra = ();
 
-    fn impl_debug(
-        &self,
-        ctx: &BindgenContext,
-        _: Self::Extra,
-    ) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
+    fn impl_debug(&self, ctx: &BindgenContext, _: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         let mut format_string = String::new();
         let mut tokens = vec![];
         for (i, bitfield) in self.bitfields().iter().enumerate() {
@@ -112,15 +95,9 @@ impl<'a> ImplDebug<'a> for BitfieldUnit {
 impl<'a> ImplDebug<'a> for Item {
     type Extra = &'a str;
 
-    fn impl_debug(
-        &self,
-        ctx: &BindgenContext,
-        name: &str,
-    ) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
+    fn impl_debug(&self, ctx: &BindgenContext, name: &str) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         let name_ident = ctx.rust_ident(name);
 
-        // We don't know if blocklisted items `impl Debug` or not, so we can't
-        // add them to the format string we're building up.
         if !ctx.allowlisted_items().contains(&self.id()) {
             return None;
         }
@@ -129,7 +106,7 @@ impl<'a> ImplDebug<'a> for Item {
             Some(ty) => ty,
             None => {
                 return None;
-            }
+            },
         };
 
         fn debug_print(
@@ -145,20 +122,19 @@ impl<'a> ImplDebug<'a> for Item {
         }
 
         match *ty.kind() {
-            // Handle the simple cases.
-            TypeKind::Void |
-            TypeKind::NullPtr |
-            TypeKind::Int(..) |
-            TypeKind::Float(..) |
-            TypeKind::Complex(..) |
-            TypeKind::Function(..) |
-            TypeKind::Enum(..) |
-            TypeKind::Reference(..) |
-            TypeKind::UnresolvedTypeRef(..) |
-            TypeKind::ObjCInterface(..) |
-            TypeKind::ObjCId |
-            TypeKind::Comp(..) |
-            TypeKind::ObjCSel => debug_print(name, quote! { #name_ident }),
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Function(..)
+            | TypeKind::Enum(..)
+            | TypeKind::Reference(..)
+            | TypeKind::UnresolvedTypeRef(..)
+            | TypeKind::ObjCInterface(..)
+            | TypeKind::ObjCId
+            | TypeKind::Comp(..)
+            | TypeKind::ObjCSel => debug_print(name, quote! { #name_ident }),
 
             TypeKind::TemplateInstantiation(ref inst) => {
                 if inst.is_opaque(ctx, self) {
@@ -166,23 +142,15 @@ impl<'a> ImplDebug<'a> for Item {
                 } else {
                     debug_print(name, quote! { #name_ident })
                 }
-            }
+            },
 
-            // The generic is not required to implement Debug, so we can not debug print that type
-            TypeKind::TypeParam => {
-                Some((format!("{}: Non-debuggable generic", name), vec![]))
-            }
+            TypeKind::TypeParam => Some((format!("{}: Non-debuggable generic", name), vec![])),
 
             TypeKind::Array(_, len) => {
                 // Generics are not required to implement Debug
                 if self.has_type_param_in_array(ctx) {
-                    Some((
-                        format!("{}: Array with length {}", name, len),
-                        vec![],
-                    ))
-                } else if len < RUST_DERIVE_IN_ARRAY_LIMIT ||
-                    ctx.options().rust_features().larger_arrays
-                {
+                    Some((format!("{}: Array with length {}", name, len), vec![]))
+                } else if len < RUST_DERIVE_IN_ARRAY_LIMIT || ctx.options().rust_features().larger_arrays {
                     // The simple case
                     debug_print(name, quote! { #name_ident })
                 } else if ctx.options().use_core {
@@ -202,7 +170,7 @@ impl<'a> ImplDebug<'a> for Item {
                         }],
                     ))
                 }
-            }
+            },
             TypeKind::Vector(_, len) => {
                 if ctx.options().use_core {
                     // There is no format! in core; reducing field visibility to avoid breaking
@@ -217,27 +185,25 @@ impl<'a> ImplDebug<'a> for Item {
                         }],
                     ))
                 }
-            }
+            },
 
-            TypeKind::ResolvedTypeRef(t) |
-            TypeKind::TemplateAlias(t, _) |
-            TypeKind::Alias(t) |
-            TypeKind::BlockPointer(t) => {
+            TypeKind::ResolvedTypeRef(t)
+            | TypeKind::TemplateAlias(t, _)
+            | TypeKind::Alias(t)
+            | TypeKind::BlockPointer(t) => {
                 // We follow the aliases
                 ctx.resolve_item(t).impl_debug(ctx, name)
-            }
+            },
 
             TypeKind::Pointer(inner) => {
                 let inner_type = ctx.resolve_type(inner).canonical_type(ctx);
                 match *inner_type.kind() {
-                    TypeKind::Function(ref sig)
-                        if !sig.function_pointers_can_derive() =>
-                    {
+                    TypeKind::Function(ref sig) if !sig.function_pointers_can_derive() => {
                         Some((format!("{}: FunctionPointer", name), vec![]))
-                    }
+                    },
                     _ => debug_print(name, quote! { #name_ident }),
                 }
-            }
+            },
 
             TypeKind::Opaque => None,
         }

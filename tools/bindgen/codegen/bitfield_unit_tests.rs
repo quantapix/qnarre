@@ -1,26 +1,3 @@
-//! Tests for `__BindgenBitfieldUnit`.
-//!
-//! Note that bit-fields are allocated right to left (least to most significant
-//! bits).
-//!
-//! From the x86 PS ABI:
-//!
-//! ```c
-//! struct {
-//!     int j : 5;
-//!     int k : 6;
-//!     int m : 7;
-//! };
-//! ```
-//!
-//! ```ignore
-//! +------------------------------------------------------------+
-//! |                     |              |            |          |
-//! |       padding       |       m      |     k      |    j     |
-//! |31                 18|17          11|10         5|4        0|
-//! +------------------------------------------------------------+
-//! ```
-
 use super::bitfield_unit::__BindgenBitfieldUnit;
 
 #[test]
@@ -37,9 +14,7 @@ fn bitfield_unit_get_bit() {
     assert_eq!(
         bits,
         &[
-            // 0b10011101
-            true, false, true, true, true, false, false, true,
-            // 0b00011101
+            true, false, true, true, true, false, false, true, // 0b00011101
             true, false, true, true, true, false, false, false
         ]
     );
@@ -47,8 +22,7 @@ fn bitfield_unit_get_bit() {
 
 #[test]
 fn bitfield_unit_set_bit() {
-    let mut unit =
-        __BindgenBitfieldUnit::<[u8; 2]>::new([0b00000000, 0b00000000]);
+    let mut unit = __BindgenBitfieldUnit::<[u8; 2]>::new([0b00000000, 0b00000000]);
 
     for i in 0..16 {
         if i % 3 == 0 {
@@ -60,8 +34,7 @@ fn bitfield_unit_set_bit() {
         assert_eq!(unit.get_bit(i), i % 3 == 0);
     }
 
-    let mut unit =
-        __BindgenBitfieldUnit::<[u8; 2]>::new([0b11111111, 0b11111111]);
+    let mut unit = __BindgenBitfieldUnit::<[u8; 2]>::new([0b11111111, 0b11111111]);
 
     for i in 0..16 {
         if i % 3 == 0 {
@@ -98,8 +71,6 @@ macro_rules! bitfield_unit_get {
 }
 
 bitfield_unit_get! {
-    // Let's just exhaustively test getting the bits from a single byte, since
-    // there are few enough combinations...
 
     With [0b11100010], then get(0, 1) is 0;
     With [0b11100010], then get(1, 1) is 1;
@@ -145,7 +116,6 @@ bitfield_unit_get! {
 
     With [0b11100010], then get(0, 8) is 0b11100010;
 
-    // OK. Now let's test getting bits from across byte boundaries.
 
     With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
     then get(0, 16) is 0b1111111101010101;
@@ -200,7 +170,6 @@ macro_rules! bitfield_unit_set {
 }
 
 bitfield_unit_set! {
-    // Once again, let's exhaustively test single byte combinations.
 
     set(0, 1, 0b11111111) is 0b00000001;
     set(1, 1, 0b11111111) is 0b00000010;
@@ -246,7 +215,6 @@ bitfield_unit_set! {
 
     set(0, 8, 0b11111111) is 0b11111111;
 
-    // And, now let's cross byte boundaries.
 
     set(0, 16, 0b1111111111111111) is 0b00000000000000001111111111111111;
     set(1, 16, 0b1111111111111111) is 0b00000000000000011111111111111110;

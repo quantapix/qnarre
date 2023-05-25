@@ -1,4 +1,3 @@
-/// Generating build depfiles from parsed bindings.
 use std::{collections::BTreeSet, path::PathBuf};
 
 #[derive(Clone, Debug)]
@@ -13,7 +12,6 @@ impl DepfileSpec {
     }
 
     fn to_string(&self, deps: &BTreeSet<String>) -> String {
-        // Transforms a string by escaping spaces and backslashes.
         let escape = |s: &str| s.replace('\\', "\\\\").replace(' ', "\\ ");
 
         let mut buf = format!("{}:", escape(&self.output_module));

@@ -1,93 +1,3 @@
-//! Discover which template type parameters are actually used.
-//!
-//! ### Why do we care?
-//!
-//! C++ allows ignoring template parameters, while Rust does not. Usually we can
-//! blindly stick a `PhantomData<T>` inside a generic Rust struct to make up for
-//! this. That doesn't work for templated type aliases, however:
-//!
-//! ```C++
-//! template <typename T>
-//! using Fml = int;
-//! ```
-//!
-//! If we generate the naive Rust code for this alias, we get:
-//!
-//! ```ignore
-//! pub(crate) type Fml<T> = ::std::os::raw::int;
-//! ```
-//!
-//! And this is rejected by `rustc` due to the unused type parameter.
-//!
-//! (Aside: in these simple cases, `libclang` will often just give us the
-//! aliased type directly, and we will never even know we were dealing with
-//! aliases, let alone templated aliases. It's the more convoluted scenarios
-//! where we get to have some fun...)
-//!
-//! For such problematic template aliases, we could generate a tuple whose
-//! second member is a `PhantomData<T>`. Or, if we wanted to go the extra mile,
-//! we could even generate some smarter wrapper that implements `Deref`,
-//! `DerefMut`, `From`, `Into`, `AsRef`, and `AsMut` to the actually aliased
-//! type. However, this is still lackluster:
-//!
-//! 1. Even with a billion conversion-trait implementations, using the generated
-//!    bindings is rather un-ergonomic.
-//! 2. With either of these solutions, we need to keep track of which aliases
-//!    we've transformed like this in order to generate correct uses of the
-//!    wrapped type.
-//!
-//! Given that we have to properly track which template parameters ended up used
-//! for (2), we might as well leverage that information to make ergonomic
-//! bindings that don't contain any unused type parameters at all, and
-//! completely avoid the pain of (1).
-//!
-//! ### How do we determine which template parameters are used?
-//!
-//! Determining which template parameters are actually used is a trickier
-//! problem than it might seem at a glance. On the one hand, trivial uses are
-//! easy to detect:
-//!
-//! ```C++
-//! template <typename T>
-//! class Foo {
-//!     T trivial_use_of_t;
-//! };
-//! ```
-//!
-//! It gets harder when determining if one template parameter is used depends on
-//! determining if another template parameter is used. In this example, whether
-//! `U` is used depends on whether `T` is used.
-//!
-//! ```C++
-//! template <typename T>
-//! class DoesntUseT {
-//!     int x;
-//! };
-//!
-//! template <typename U>
-//! class Fml {
-//!     DoesntUseT<U> lololol;
-//! };
-//! ```
-//!
-//! We can express the set of used template parameters as a constraint solving
-//! problem (where the set of template parameters used by a given IR item is the
-//! union of its sub-item's used template parameters) and iterate to a
-//! fixed-point.
-//!
-//! We use the `ir::analysis::MonotoneFramework` infrastructure for this
-//! fix-point analysis, where our lattice is the mapping from each IR item to
-//! the powerset of the template parameters that appear in the input C++ header,
-//! our join function is set union. The set of template parameters appearing in
-//! the program is finite, as is the number of IR items. We start at our
-//! lattice's bottom element: every item mapping to an empty set of template
-//! parameters. Our analysis only adds members to each item's set of used
-//! template parameters, never removes them, so it is monotone. Because our
-//! lattice is finite and our constraint function is monotone, iteration to a
-//! fix-point will terminate.
-//!
-//! See `src/ir/analysis.rs` for more.
-
 use super::{ConstrainResult, MonotoneFramework};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::item::{Item, ItemSet};
@@ -96,117 +6,41 @@ use crate::ir::traversal::{EdgeKind, Trace};
 use crate::ir::ty::TypeKind;
 use crate::{HashMap, HashSet};
 
-/// An analysis that finds for each IR item its set of template parameters that
-/// it uses.
-///
-/// We use the monotone constraint function `template_param_usage`, defined as
-/// follows:
-///
-/// * If `T` is a named template type parameter, it trivially uses itself:
-///
-/// ```ignore
-/// template_param_usage(T) = { T }
-/// ```
-///
-/// * If `inst` is a template instantiation, `inst.args` are the template
-///   instantiation's template arguments, `inst.def` is the template definition
-///   being instantiated, and `inst.def.params` is the template definition's
-///   template parameters, then the instantiation's usage is the union of each
-///   of its arguments' usages *if* the corresponding template parameter is in
-///   turn used by the template definition:
-///
-/// ```ignore
-/// template_param_usage(inst) = union(
-///     template_param_usage(inst.args[i])
-///         for i in 0..length(inst.args.length)
-///             if inst.def.params[i] in template_param_usage(inst.def)
-/// )
-/// ```
-///
-/// * Finally, for all other IR item kinds, we use our lattice's `join`
-/// operation: set union with each successor of the given item's template
-/// parameter usage:
-///
-/// ```ignore
-/// template_param_usage(v) =
-///     union(template_param_usage(w) for w in successors(v))
-/// ```
-///
-/// Note that we ignore certain edges in the graph, such as edges from a
-/// template declaration to its template parameters' definitions for this
-/// analysis. If we didn't, then we would mistakenly determine that ever
-/// template parameter is always used.
-///
-/// The final wrinkle is handling of blocklisted types. Normally, we say that
-/// the set of allowlisted items is the transitive closure of items explicitly
-/// called out for allowlisting, *without* any items explicitly called out as
-/// blocklisted. However, for the purposes of this analysis's correctness, we
-/// simplify and consider run the analysis on the full transitive closure of
-/// allowlisted items. We do, however, treat instantiations of blocklisted items
-/// specially; see `constrain_instantiation_of_blocklisted_template` and its
-/// documentation for details.
 #[derive(Debug, Clone)]
 pub(crate) struct UsedTemplateParameters<'ctx> {
     ctx: &'ctx BindgenContext,
 
-    // The Option is only there for temporary moves out of the hash map. See the
-    // comments in `UsedTemplateParameters::constrain` below.
     used: HashMap<ItemId, Option<ItemSet>>,
 
     dependencies: HashMap<ItemId, Vec<ItemId>>,
 
-    // The set of allowlisted items, without any blocklisted items reachable
-    // from the allowlisted items which would otherwise be considered
-    // allowlisted as well.
     allowlisted_items: HashSet<ItemId>,
 }
 
 impl<'ctx> UsedTemplateParameters<'ctx> {
     fn consider_edge(kind: EdgeKind) -> bool {
         match kind {
-            // For each of these kinds of edges, if the referent uses a template
-            // parameter, then it should be considered that the origin of the
-            // edge also uses the template parameter.
-            EdgeKind::TemplateArgument |
-            EdgeKind::BaseMember |
-            EdgeKind::Field |
-            EdgeKind::Constructor |
-            EdgeKind::Destructor |
-            EdgeKind::VarType |
-            EdgeKind::FunctionReturn |
-            EdgeKind::FunctionParameter |
-            EdgeKind::TypeReference => true,
+            EdgeKind::TemplateArgument
+            | EdgeKind::BaseMember
+            | EdgeKind::Field
+            | EdgeKind::Constructor
+            | EdgeKind::Destructor
+            | EdgeKind::VarType
+            | EdgeKind::FunctionReturn
+            | EdgeKind::FunctionParameter
+            | EdgeKind::TypeReference => true,
 
-            // An inner var or type using a template parameter is orthogonal
-            // from whether we use it. See template-param-usage-{6,11}.hpp.
             EdgeKind::InnerVar | EdgeKind::InnerType => false,
 
-            // We can't emit machine code for new monomorphizations of class
-            // templates' methods (and don't detect explicit instantiations) so
-            // we must ignore template parameters that are only used by
-            // methods. This doesn't apply to a function type's return or
-            // parameter types, however, because of type aliases of function
-            // pointers that use template parameters, eg
-            // tests/headers/struct_with_typedef_template_arg.hpp
             EdgeKind::Method => false,
 
-            // If we considered these edges, we would end up mistakenly claiming
-            // that every template parameter always used.
-            EdgeKind::TemplateDeclaration |
-            EdgeKind::TemplateParameterDefinition => false,
+            EdgeKind::TemplateDeclaration | EdgeKind::TemplateParameterDefinition => false,
 
-            // Since we have to be careful about which edges we consider for
-            // this analysis to be correct, we ignore generic edges. We also
-            // avoid a `_` wild card to force authors of new edge kinds to
-            // determine whether they need to be considered by this analysis.
             EdgeKind::Generic => false,
         }
     }
 
-    fn take_this_id_usage_set<Id: Into<ItemId>>(
-        &mut self,
-        this_id: Id,
-    ) -> ItemSet {
+    fn take_this_id_usage_set<Id: Into<ItemId>>(&mut self, this_id: Id) -> ItemSet {
         let this_id = this_id.into();
         self.used
             .get_mut(&this_id)
@@ -221,11 +55,6 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
             )
     }
 
-    /// We say that blocklisted items use all of their template parameters. The
-    /// blocklisted type is most likely implemented explicitly by the user,
-    /// since it won't be in the generated bindings, and we don't know exactly
-    /// what they'll to with template parameters, but we can push the issue down
-    /// the line to them.
     fn constrain_instantiation_of_blocklisted_template(
         &self,
         this_id: ItemId,
@@ -265,8 +94,6 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
         used_by_this_id.extend(args);
     }
 
-    /// A template instantiation's concrete template argument is only used if
-    /// the template definition uses the corresponding template parameter.
     fn constrain_instantiation(
         &self,
         this_id: ItemId,
@@ -281,13 +108,16 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
         let params = decl.self_template_params(self.ctx);
 
         debug_assert!(this_id != instantiation.template_definition());
-        let used_by_def = self.used
+        let used_by_def = self
+            .used
             .get(&instantiation.template_definition().into())
             .expect("Should have a used entry for instantiation's template definition")
             .as_ref()
-            .expect("And it should be Some because only this_id's set is None, and an \
+            .expect(
+                "And it should be Some because only this_id's set is None, and an \
                      instantiation's template definition should never be the \
-                     instantiation itself");
+                     instantiation itself",
+            );
 
         for (arg, param) in args.iter().zip(params.iter()) {
             trace!(
@@ -329,8 +159,6 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
         }
     }
 
-    /// The join operation on our lattice: the set union of all of this ID's
-    /// successors.
     fn constrain_join(&self, used_by_this_id: &mut ItemSet, item: &Item) {
         trace!("    other item: join with successors' usage");
 
@@ -379,8 +207,7 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
     fn new(ctx: &'ctx BindgenContext) -> UsedTemplateParameters<'ctx> {
         let mut used = HashMap::default();
         let mut dependencies = HashMap::default();
-        let allowlisted_items: HashSet<_> =
-            ctx.allowlisted_items().iter().cloned().collect();
+        let allowlisted_items: HashSet<_> = ctx.allowlisted_items().iter().cloned().collect();
 
         let allowlisted_and_blocklisted_items: ItemSet = allowlisted_items
             .iter()
@@ -408,22 +235,14 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
                 item.trace(
                     ctx,
                     &mut |sub_item: ItemId, _| {
-                        used.entry(sub_item)
-                            .or_insert_with(|| Some(ItemSet::new()));
-                        dependencies
-                            .entry(sub_item)
-                            .or_insert_with(Vec::new)
-                            .push(item);
+                        used.entry(sub_item).or_insert_with(|| Some(ItemSet::new()));
+                        dependencies.entry(sub_item).or_insert_with(Vec::new).push(item);
                     },
                     &(),
                 );
             }
 
-            // Additionally, whether a template instantiation's template
-            // arguments are used depends on whether the template declaration's
-            // generic template parameters are used.
-            let item_kind =
-                ctx.resolve_item(item).as_type().map(|ty| ty.kind());
+            let item_kind = ctx.resolve_item(item).as_type().map(|ty| ty.kind());
             if let Some(TypeKind::TemplateInstantiation(inst)) = item_kind {
                 let decl = ctx.resolve_type(inst.template_definition());
                 let args = inst.template_arguments();
@@ -451,25 +270,12 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
                     used.entry(arg).or_insert_with(|| Some(ItemSet::new()));
                     used.entry(param).or_insert_with(|| Some(ItemSet::new()));
 
-                    dependencies
-                        .entry(arg)
-                        .or_insert_with(Vec::new)
-                        .push(param);
+                    dependencies.entry(arg).or_insert_with(Vec::new).push(param);
                 }
             }
         }
 
         if cfg!(feature = "__testing_only_extra_assertions") {
-            // Invariant: The `used` map has an entry for every allowlisted
-            // item, as well as all explicitly blocklisted items that are
-            // reachable from allowlisted items.
-            //
-            // Invariant: the `dependencies` map has an entry for every
-            // allowlisted item.
-            //
-            // (This is so that every item we call `constrain` on is guaranteed
-            // to have a set of template parameters, and we can allow
-            // blocklisted templates to use all of their parameters).
             for item in allowlisted_items.iter() {
                 extra_assert!(used.contains_key(item));
                 extra_assert!(dependencies.contains_key(item));
@@ -493,8 +299,6 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
-        // The transitive closure of all allowlisted items, including explicitly
-        // blocklisted items.
         self.ctx
             .allowlisted_items()
             .iter()
@@ -514,14 +318,8 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
     }
 
     fn constrain(&mut self, id: ItemId) -> ConstrainResult {
-        // Invariant: all hash map entries' values are `Some` upon entering and
-        // exiting this method.
         extra_assert!(self.used.values().all(|v| v.is_some()));
 
-        // Take the set for this ID out of the hash map while we mutate it based
-        // on other hash map entries. We *must* put it back into the hash map at
-        // the end of this method. This allows us to side-step HashMap's lack of
-        // an analog to slice::split_at_mut.
         let mut used_by_this_id = self.take_this_id_usage_set(id);
 
         trace!("constrain {:?}", id);
@@ -532,33 +330,17 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
         let item = self.ctx.resolve_item(id);
         let ty_kind = item.as_type().map(|ty| ty.kind());
         match ty_kind {
-            // Named template type parameters trivially use themselves.
             Some(&TypeKind::TypeParam) => {
                 trace!("    named type, trivially uses itself");
                 used_by_this_id.insert(id);
-            }
-            // Template instantiations only use their template arguments if the
-            // template definition uses the corresponding template parameter.
+            },
             Some(TypeKind::TemplateInstantiation(inst)) => {
-                if self
-                    .allowlisted_items
-                    .contains(&inst.template_definition().into())
-                {
-                    self.constrain_instantiation(
-                        id,
-                        &mut used_by_this_id,
-                        inst,
-                    );
+                if self.allowlisted_items.contains(&inst.template_definition().into()) {
+                    self.constrain_instantiation(id, &mut used_by_this_id, inst);
                 } else {
-                    self.constrain_instantiation_of_blocklisted_template(
-                        id,
-                        &mut used_by_this_id,
-                        inst,
-                    );
+                    self.constrain_instantiation_of_blocklisted_template(id, &mut used_by_this_id, inst);
                 }
-            }
-            // Otherwise, add the union of each of its referent item's template
-            // parameter usage.
+            },
             _ => self.constrain_join(&mut used_by_this_id, item),
         }
 
@@ -571,7 +353,6 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
              if it doesn't hold, the analysis might never terminate!"
         );
 
-        // Put the set back in the hash map and restore our invariant.
         debug_assert!(self.used[&id].is_none());
         self.used.insert(id, Some(used_by_this_id));
         extra_assert!(self.used.values().all(|v| v.is_some()));

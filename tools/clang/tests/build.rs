@@ -15,14 +15,14 @@ use serial_test::serial;
 use tempfile::TempDir;
 
 #[macro_use]
-#[path = "../build/macros.rs"]
+#[path = "../builder/macros.rs"]
 mod macros;
 
-#[path = "../build/common.rs"]
+#[path = "../builder/common.rs"]
 mod common;
-#[path = "../build/dynamic.rs"]
+#[path = "../builder/dynamic.rs"]
 mod dynamic;
-#[path = "../build/static.rs"]
+#[path = "../builder/static.rs"]
 mod r#static;
 
 #[derive(Debug, Default)]
@@ -90,21 +90,17 @@ impl Env {
     }
 
     fn dll(self, path: &str, pointer_width: &str) -> Self {
-        // PE header.
         let mut contents = [0; 64];
         contents[0x3C..0x3C + 4].copy_from_slice(&i32::to_le_bytes(10));
         contents[10..14].copy_from_slice(&[b'P', b'E', 0, 0]);
         let magic = if pointer_width == "64" { 523 } else { 267 };
         contents[34..36].copy_from_slice(&u16::to_le_bytes(magic));
-
         self.file(path, &contents)
     }
 
     fn so(self, path: &str, pointer_width: &str) -> Self {
-        // ELF header.
         let class = if pointer_width == "64" { 2 } else { 1 };
         let contents = [127, 69, 76, 70, class];
-
         self.file(path, &contents)
     }
 
@@ -162,7 +158,6 @@ impl Drop for Env {
         env::remove_var("_CLANG_TEST_OS");
         env::remove_var("_CLANG_TEST_POINTER_WIDTH");
         env::remove_var("_CLANG_TEST_ENV");
-
         for (name, (_, previous)) in &self.vars {
             if let Some(previous) = previous {
                 env::set_var(name, previous);
@@ -170,18 +165,11 @@ impl Drop for Env {
                 env::remove_var(name);
             }
         }
-
         if let Err(error) = env::set_current_dir(&self.cwd) {
             println!("Failed to reset working directory: {:?}", error);
         }
     }
 }
-
-//================================================
-// Dynamic
-//================================================
-
-// Linux -----------------------------------------
 
 #[test]
 #[serial]
@@ -190,7 +178,6 @@ fn test_linux_directory_preference() {
         .so("usr/lib/libclang.so.1", "64")
         .so("usr/local/lib/libclang.so.1", "64")
         .enable();
-
     assert_eq!(
         dynamic::find(true),
         Ok(("usr/local/lib".into(), "libclang.so.1".into())),
@@ -205,7 +192,6 @@ fn test_linux_version_preference() {
         .so("usr/lib/libclang-3.5.so", "64")
         .so("usr/lib/libclang-3.5.0.so", "64")
         .enable();
-
     assert_eq!(dynamic::find(true), Ok(("usr/lib".into(), "libclang-3.5.0.so".into())),);
 }
 
@@ -217,6 +203,5 @@ fn test_linux_directory_and_version_preference() {
         .so("usr/local/lib/libclang-3.5.so", "64")
         .so("usr/lib/libclang-3.5.0.so", "64")
         .enable();
-
     assert_eq!(dynamic::find(true), Ok(("usr/lib".into(), "libclang-3.5.0.so".into())),);
 }

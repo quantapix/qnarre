@@ -1,5 +1,3 @@
-//! Intermediate representation for C/C++ functions and methods.
-
 use super::comp::MethodKind;
 use super::context::{BindgenContext, TypeId};
 use super::dot::DotAttributes;
@@ -17,20 +15,14 @@ use std::str::FromStr;
 
 const RUST_DERIVE_FUNPTR_LIMIT: usize = 12;
 
-/// What kind of a function are we looking at?
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(crate) enum FunctionKind {
-    /// A plain, free function.
     Function,
-    /// A method of some kind.
     Method(MethodKind),
 }
 
 impl FunctionKind {
-    /// Given a clang cursor, return the kind of function it represents, or
-    /// `None` otherwise.
     pub(crate) fn from_cursor(cursor: &clang::Cursor) -> Option<FunctionKind> {
-        // FIXME(emilio): Deduplicate logic with `ir::comp`.
         Some(match cursor.kind() {
             clang::CXCursor_FunctionDecl => FunctionKind::Function,
             clang::CXCursor_Constructor => FunctionKind::Method(MethodKind::Constructor),
@@ -57,42 +49,28 @@ impl FunctionKind {
     }
 }
 
-/// The style of linkage
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Linkage {
-    /// Externally visible and can be linked against
     External,
-    /// Not exposed externally. 'static inline' functions will have this kind of linkage
     Internal,
 }
 
-/// A function declaration, with a signature, arguments, and argument names.
-///
-/// The argument names vector must be the same length as the ones in the
-/// signature.
 #[derive(Debug)]
 pub(crate) struct Function {
-    /// The name of this function.
     name: String,
 
-    /// The mangled name, that is, the symbol.
     mangled_name: Option<String>,
 
-    /// The link name. If specified, overwrite mangled_name.
     link_name: Option<String>,
 
-    /// The ID pointing to the current function signature.
     signature: TypeId,
 
-    /// The kind of function this is.
     kind: FunctionKind,
 
-    /// The linkage of the function.
     linkage: Linkage,
 }
 
 impl Function {
-    /// Construct a new function.
     pub(crate) fn new(
         name: String,
         mangled_name: Option<String>,
@@ -111,32 +89,26 @@ impl Function {
         }
     }
 
-    /// Get this function's name.
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
 
-    /// Get this function's name.
     pub(crate) fn mangled_name(&self) -> Option<&str> {
         self.mangled_name.as_deref()
     }
 
-    /// Get this function's link name.
     pub fn link_name(&self) -> Option<&str> {
         self.link_name.as_deref()
     }
 
-    /// Get this function's signature type.
     pub(crate) fn signature(&self) -> TypeId {
         self.signature
     }
 
-    /// Get this function's kind.
     pub(crate) fn kind(&self) -> FunctionKind {
         self.kind
     }
 
-    /// Get this function's linkage.
     pub(crate) fn linkage(&self) -> Linkage {
         self.linkage
     }
@@ -156,26 +128,16 @@ impl DotAttributes for Function {
     }
 }
 
-/// A valid rust ABI.
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub enum Abi {
-    /// The default C ABI.
     C,
-    /// The "stdcall" ABI.
     Stdcall,
-    /// The "efiapi" ABI.
     EfiApi,
-    /// The "fastcall" ABI.
     Fastcall,
-    /// The "thiscall" ABI.
     ThisCall,
-    /// The "vectorcall" ABI.
     Vectorcall,
-    /// The "aapcs" ABI.
     Aapcs,
-    /// The "win64" ABI.
     Win64,
-    /// The "C-unwind" ABI.
     CUnwind,
 }
 
@@ -223,17 +185,13 @@ impl quote::ToTokens for Abi {
     }
 }
 
-/// An ABI extracted from a clang cursor.
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum ClangAbi {
-    /// An ABI known by Rust.
     Known(Abi),
-    /// An unknown or invalid ABI.
     Unknown(CXCallingConv),
 }
 
 impl ClangAbi {
-    /// Returns whether this Abi is known or not.
     fn is_unknown(&self) -> bool {
         matches!(*self, ClangAbi::Unknown(..))
     }
@@ -248,27 +206,19 @@ impl quote::ToTokens for ClangAbi {
     }
 }
 
-/// A function signature.
 #[derive(Debug)]
 pub(crate) struct FunctionSig {
-    /// The name of this function signature.
     name: String,
 
-    /// The return type of the function.
     return_type: TypeId,
 
-    /// The type of the arguments, optionally with the name of the argument when
-    /// declared.
     argument_types: Vec<(Option<String>, TypeId)>,
 
-    /// Whether this function is variadic.
     is_variadic: bool,
     is_divergent: bool,
 
-    /// Whether this function's return value must be used.
     must_use: bool,
 
-    /// The ABI of this function.
     abi: ClangAbi,
 }
 
@@ -287,15 +237,11 @@ fn get_abi(cc: CXCallingConv) -> ClangAbi {
     }
 }
 
-/// Get the mangled name for the cursor's referent.
 pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<String> {
     if !ctx.options().enable_mangling {
         return None;
     }
 
-    // We early return here because libclang may crash in some case
-    // if we pass in a variable inside a partial specialized template.
-    // See rust-lang/rust-bindgen#67, and rust-lang/rust-bindgen#462.
     if cursor.is_in_non_fully_specialized_template() {
         return None;
     }
@@ -303,7 +249,6 @@ pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> O
     let is_destructor = cursor.kind() == clang::CXCursor_Destructor;
     if let Ok(mut manglings) = cursor.cxx_manglings() {
         while let Some(m) = manglings.pop() {
-            // Only generate the destructor group 1, see below.
             if is_destructor && !m.ends_with("D1Ev") {
                 continue;
             }
@@ -318,25 +263,6 @@ pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> O
     }
 
     if is_destructor {
-        // With old (3.8-) libclang versions, and the Itanium ABI, clang returns
-        // the "destructor group 0" symbol, which means that it'll try to free
-        // memory, which definitely isn't what we want.
-        //
-        // Explicitly force the destructor group 1 symbol.
-        //
-        // See http://refspecs.linuxbase.org/cxxabi-1.83.html#mangling-special
-        // for the reference, and http://stackoverflow.com/a/6614369/1091587 for
-        // a more friendly explanation.
-        //
-        // We don't need to do this for constructors since clang seems to always
-        // have returned the C1 constructor.
-        //
-        // FIXME(emilio): Can a legit symbol in other ABIs end with this string?
-        // I don't think so, but if it can this would become a linker error
-        // anyway, not an invalid free at runtime.
-        //
-        // TODO(emilio, #611): Use cpp_demangle if this becomes nastier with
-        // time.
         if mangling.ends_with("D0Ev") {
             let new_len = mangling.len() - 4;
             mangling.truncate(new_len);
@@ -355,15 +281,6 @@ fn args_from_ty_and_cursor(
     let cursor_args = cursor.args().unwrap_or_default().into_iter();
     let type_args = ty.args().unwrap_or_default().into_iter();
 
-    // Argument types can be found in either the cursor or the type, but argument names may only be
-    // found on the cursor. We often have access to both a type and a cursor for each argument, but
-    // in some cases we may only have one.
-    //
-    // Prefer using the type as the source of truth for the argument's type, but fall back to
-    // inspecting the cursor (this happens for Objective C interfaces).
-    //
-    // Prefer using the cursor for the argument's type, but fall back to using the parent's cursor
-    // (this happens for function pointer return types).
     cursor_args
         .map(Some)
         .chain(std::iter::repeat(None))
@@ -382,7 +299,6 @@ fn args_from_ty_and_cursor(
 }
 
 impl FunctionSig {
-    /// Construct a new function signature from the given Clang type.
     pub(crate) fn from_ty(
         ty: &clang::Type,
         cursor: &clang::Cursor,
@@ -391,7 +307,6 @@ impl FunctionSig {
         use clang::*;
         debug!("FunctionSig::from_ty {:?} {:?}", ty, cursor);
 
-        // Skip function templates
         let kind = cursor.kind();
         if kind == CXCursor_FunctionTemplate {
             return Err(ParseError::Continue);
@@ -399,15 +314,11 @@ impl FunctionSig {
 
         let spelling = cursor.spelling();
 
-        // Don't parse operatorxx functions in C++
         let is_operator = |spelling: &str| spelling.starts_with("operator") && !clang::is_valid_identifier(spelling);
         if is_operator(&spelling) {
             return Err(ParseError::Continue);
         }
 
-        // Constructors of non-type template parameter classes for some reason
-        // include the template parameter in their name. Just skip them, since
-        // we don't handle well non-type template parameters anyway.
         if (kind == CXCursor_Constructor || kind == CXCursor_Destructor) && spelling.contains('<') {
             return Err(ParseError::Continue);
         }
@@ -454,15 +365,12 @@ impl FunctionSig {
             Default::default()
         };
 
-        // This looks easy to break but the clang parser keeps the type spelling clean even if
-        // other attributes are added.
         is_divergent = is_divergent || ty.spelling().contains("__attribute__((noreturn))");
 
         let is_method = kind == CXCursor_CXXMethod;
         let is_constructor = kind == CXCursor_Constructor;
         let is_destructor = kind == CXCursor_Destructor;
         if (is_constructor || is_destructor || is_method) && cursor.lexical_parent() != cursor.semantic_parent() {
-            // Only parse constructors once.
             return Err(ParseError::Continue);
         }
 
@@ -502,16 +410,12 @@ impl FunctionSig {
         };
 
         let ret = if is_constructor && ctx.is_target_wasm32() {
-            // Constructors in Clang wasm32 target return a pointer to the object
-            // being constructed.
             let void = Item::builtin_type(TypeKind::Void, false, ctx);
             Item::builtin_type(TypeKind::Pointer(void), false, ctx)
         } else {
             Item::from_ty_or_ref(ty_ret_type, cursor, None, ctx)
         };
 
-        // Clang plays with us at "find the calling convention", see #549 and
-        // co. This seems to be a better fix than that commit.
         let mut call_conv = ty.call_conv();
         if let Some(ty) = cursor.cur_type().canonical_type().pointee_type() {
             let cursor_call_conv = ty.call_conv();
@@ -537,20 +441,15 @@ impl FunctionSig {
         })
     }
 
-    /// Get this function signature's return type.
     pub(crate) fn return_type(&self) -> TypeId {
         self.return_type
     }
 
-    /// Get this function signature's argument (name, type) pairs.
     pub(crate) fn argument_types(&self) -> &[(Option<String>, TypeId)] {
         &self.argument_types
     }
 
-    /// Get this function signature's ABI.
     pub(crate) fn abi(&self, ctx: &BindgenContext, name: Option<&str>) -> ClangAbi {
-        // FIXME (pvdrz): Try to do this check lazily instead. Maybe store the ABI inside `ctx`
-        // instead?.
         if let Some(name) = name {
             if let Some((abi, _)) = ctx
                 .options()
@@ -574,28 +473,14 @@ impl FunctionSig {
         }
     }
 
-    /// Is this function signature variadic?
     pub(crate) fn is_variadic(&self) -> bool {
-        // Clang reports some functions as variadic when they *might* be
-        // variadic. We do the argument check because rust doesn't codegen well
-        // variadic functions without an initial argument.
         self.is_variadic && !self.argument_types.is_empty()
     }
 
-    /// Must this function's return value be used?
     pub(crate) fn must_use(&self) -> bool {
         self.must_use
     }
 
-    /// Are function pointers with this signature able to derive Rust traits?
-    /// Rust only supports deriving traits for function pointers with a limited
-    /// number of parameters and a couple ABIs.
-    ///
-    /// For more details, see:
-    ///
-    /// * <https://github.com/rust-lang/rust-bindgen/issues/547>,
-    /// * <https://github.com/rust-lang/rust/issues/38848>,
-    /// * and <https://github.com/rust-lang/rust/issues/40158>
     pub(crate) fn function_pointers_can_derive(&self) -> bool {
         if self.argument_types.len() > RUST_DERIVE_FUNPTR_LIMIT {
             return false;
@@ -604,7 +489,6 @@ impl FunctionSig {
         matches!(self.abi, ClangAbi::Known(Abi::C) | ClangAbi::Unknown(..))
     }
 
-    /// Whether this function has attributes marking it as divergent.
     pub(crate) fn is_divergent(&self) -> bool {
         self.is_divergent
     }
@@ -645,30 +529,22 @@ impl ClangSubItemParser for Function {
                 return Err(ParseError::Continue);
             }
 
-            // We cannot handle `inline` functions that are not `static`.
             if context.options().wrap_static_fns && cursor.is_inlined_function() && matches!(linkage, Linkage::External)
             {
                 return Err(ParseError::Continue);
             }
         }
 
-        // Grab the signature using Item::from_ty.
         let sig = Item::from_ty(&cursor.cur_type(), cursor, None, context)?;
 
         let mut name = cursor.spelling();
         assert!(!name.is_empty(), "Empty function name?");
 
         if cursor.kind() == CXCursor_Destructor {
-            // Remove the leading `~`. The alternative to this is special-casing
-            // code-generation for destructor functions, which seems less than
-            // ideal.
             if name.starts_with('~') {
                 name.remove(0);
             }
 
-            // Add a suffix to avoid colliding with constructors. This would be
-            // technically fine (since we handle duplicated functions/methods),
-            // but seems easy enough to handle it here.
             name.push_str("_destructor");
         }
         if let Some(nm) = context.options().last_callback(|callbacks| {

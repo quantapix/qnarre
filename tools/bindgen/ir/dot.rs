@@ -1,26 +1,15 @@
-//! Generating Graphviz `dot` files from our IR.
-
 use super::context::{BindgenContext, ItemId};
 use super::traversal::Trace;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-/// A trait for anything that can write attributes as `<table>` rows to a dot
-/// file.
 pub(crate) trait DotAttributes {
-    /// Write this thing's attributes to the given output. Each attribute must
-    /// be its own `<tr>...</tr>`.
-    fn dot_attributes<W>(
-        &self,
-        ctx: &BindgenContext,
-        out: &mut W,
-    ) -> io::Result<()>
+    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write;
 }
 
-/// Write a graphviz dot file containing our IR.
 pub(crate) fn write_dot_file<P>(ctx: &BindgenContext, path: P) -> io::Result<()>
 where
     P: AsRef<Path>,
@@ -58,7 +47,7 @@ where
                     edge_kind,
                     if is_allowlisted { "black" } else { "gray" }
                 ) {
-                    Ok(_) => {}
+                    Ok(_) => {},
                     Err(e) => err = Some(Err(e)),
                 }
             },

@@ -1,5 +1,3 @@
-//! Objective C types
-
 use super::context::{BindgenContext, ItemId};
 use super::function::FunctionSig;
 use super::item::Item;
@@ -17,48 +15,33 @@ use clang::CXCursor_ObjCSuperClassRef;
 use clang::CXCursor_TemplateTypeParameter;
 use proc_macro2::{Ident, Span, TokenStream};
 
-/// Objective C interface as used in TypeKind
-///
-/// Also protocols and categories are parsed as this type
 #[derive(Debug)]
 pub(crate) struct ObjCInterface {
-    /// The name
-    /// like, NSObject
     name: String,
 
     category: Option<String>,
 
     is_protocol: bool,
 
-    /// The list of template names almost always, ObjectType or KeyType
     pub(crate) template_names: Vec<String>,
 
-    /// The list of protocols that this interface conforms to.
     pub(crate) conforms_to: Vec<ItemId>,
 
-    /// The direct parent for this interface.
     pub(crate) parent_class: Option<ItemId>,
 
-    /// List of the methods defined in this interfae
     methods: Vec<ObjCMethod>,
 
     class_methods: Vec<ObjCMethod>,
 }
 
-/// The objective c methods
 #[derive(Debug)]
 pub(crate) struct ObjCMethod {
-    /// The original method selector name
-    /// like, dataWithBytes:length:
     name: String,
 
-    /// Method name as converted to rust
-    /// like, dataWithBytes_length_
     rust_name: String,
 
     signature: FunctionSig,
 
-    /// Is class method?
     is_class_method: bool,
 }
 
@@ -76,15 +59,10 @@ impl ObjCInterface {
         }
     }
 
-    /// The name
-    /// like, NSObject
     pub(crate) fn name(&self) -> &str {
         self.name.as_ref()
     }
 
-    /// Formats the name for rust
-    /// Can be like NSObject, but with categories might be like NSObject_NSCoderMethods
-    /// and protocols are like PNSObject
     pub(crate) fn rust_name(&self) -> String {
         if let Some(ref cat) = self.category {
             format!("{}_{}", self.name(), cat)
@@ -95,32 +73,26 @@ impl ObjCInterface {
         }
     }
 
-    /// Is this a template interface?
     pub(crate) fn is_template(&self) -> bool {
         !self.template_names.is_empty()
     }
 
-    /// List of the methods defined in this interface
     pub(crate) fn methods(&self) -> &Vec<ObjCMethod> {
         &self.methods
     }
 
-    /// Is this a protocol?
     pub(crate) fn is_protocol(&self) -> bool {
         self.is_protocol
     }
 
-    /// Is this a category?
     pub(crate) fn is_category(&self) -> bool {
         self.category.is_some()
     }
 
-    /// List of the class methods defined in this interface
     pub(crate) fn class_methods(&self) -> &Vec<ObjCMethod> {
         &self.class_methods
     }
 
-    /// Parses the Objective C interface from the cursor
     pub(crate) fn from_ty(cursor: &clang::Cursor, ctx: &mut BindgenContext) -> Option<Self> {
         let name = cursor.spelling();
         let mut interface = Self::new(&name);
@@ -205,23 +177,18 @@ impl ObjCMethod {
         }
     }
 
-    /// Method name as converted to rust
-    /// like, dataWithBytes_length_
     pub(crate) fn rust_name(&self) -> &str {
         self.rust_name.as_ref()
     }
 
-    /// Returns the methods signature as FunctionSig
     pub(crate) fn signature(&self) -> &FunctionSig {
         &self.signature
     }
 
-    /// Is this a class method?
     pub(crate) fn is_class_method(&self) -> bool {
         self.is_class_method
     }
 
-    /// Formats the method call
     pub(crate) fn format_method_call(&self, args: &[TokenStream]) -> TokenStream {
         let split_name: Vec<Option<Ident>> = self
             .name
@@ -242,7 +209,6 @@ impl ObjCMethod {
             })
             .collect();
 
-        // No arguments
         if args.is_empty() && split_name.len() == 1 {
             let name = &split_name[0];
             return quote! {
@@ -250,7 +216,6 @@ impl ObjCMethod {
             };
         }
 
-        // Check right amount of arguments
         assert!(
             args.len() == split_name.len() - 1,
             "Incorrect method name or arguments for objc method, {:?} vs {:?}",
@@ -258,7 +223,6 @@ impl ObjCMethod {
             split_name
         );
 
-        // Get arguments without type signatures to pass to `msg_send!`
         let mut args_without_types = vec![];
         for arg in args.iter() {
             let arg = arg.to_string();

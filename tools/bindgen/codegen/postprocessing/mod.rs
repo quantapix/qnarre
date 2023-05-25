@@ -15,8 +15,6 @@ struct PostProcessingPass {
     run: fn(&mut File),
 }
 
-// TODO: This can be a const fn when mutable references are allowed in const
-// context.
 macro_rules! pass {
     ($pass:ident) => {
         PostProcessingPass {
@@ -26,13 +24,9 @@ macro_rules! pass {
     };
 }
 
-const PASSES: &[PostProcessingPass] =
-    &[pass!(merge_extern_blocks), pass!(sort_semantically)];
+const PASSES: &[PostProcessingPass] = &[pass!(merge_extern_blocks), pass!(sort_semantically)];
 
-pub(crate) fn postprocessing(
-    items: Vec<TokenStream>,
-    options: &BindgenOptions,
-) -> TokenStream {
+pub(crate) fn postprocessing(items: Vec<TokenStream>, options: &BindgenOptions) -> TokenStream {
     let items = items.into_iter().collect();
     let require_syn = PASSES.iter().any(|pass| (pass.should_run)(options));
 
@@ -40,11 +34,6 @@ pub(crate) fn postprocessing(
         return items;
     }
 
-    // This syn business is a hack, for now. This means that we are re-parsing already
-    // generated code using `syn` (as opposed to `quote`) because `syn` provides us more
-    // control over the elements.
-    // The `unwrap` here is deliberate because bindgen should generate valid rust items at all
-    // times.
     let mut file = parse2::<File>(items).unwrap();
 
     for pass in PASSES {

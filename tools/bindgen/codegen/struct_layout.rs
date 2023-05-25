@@ -1,5 +1,3 @@
-//! Helpers for code generation that need struct layout
-
 use super::helpers;
 
 use crate::ir::comp::CompInfo;
@@ -11,7 +9,6 @@ use std::cmp;
 
 const MAX_GUARANTEED_ALIGN: usize = 8;
 
-/// Trace the layout of struct.
 #[derive(Debug)]
 pub(crate) struct StructLayoutTracker<'a> {
     name: &'a str,
@@ -28,7 +25,6 @@ pub(crate) struct StructLayoutTracker<'a> {
     last_field_was_bitfield: bool,
 }
 
-/// Returns a size aligned to a given value.
 pub(crate) fn align_to(size: usize, align: usize) -> usize {
     if align == 0 {
         return size;
@@ -42,7 +38,6 @@ pub(crate) fn align_to(size: usize, align: usize) -> usize {
     size + align - rem
 }
 
-/// Returns the lower power of two byte count that can hold at most n bits.
 pub(crate) fn bytes_from_bits_pow2(mut n: usize) -> usize {
     if n == 0 {
         return 0;
@@ -83,16 +78,10 @@ fn test_bytes_from_bits_pow2() {
 }
 
 impl<'a> StructLayoutTracker<'a> {
-    pub(crate) fn new(
-        ctx: &'a BindgenContext,
-        comp: &'a CompInfo,
-        ty: &'a Type,
-        name: &'a str,
-    ) -> Self {
+    pub(crate) fn new(ctx: &'a BindgenContext, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
         let known_type_layout = ty.layout(ctx);
         let is_packed = comp.is_packed(ctx, known_type_layout.as_ref());
-        let (is_rust_union, can_copy_union_fields) =
-            comp.is_rust_union(ctx, known_type_layout.as_ref(), name);
+        let (is_rust_union, can_copy_union_fields) = comp.is_rust_union(ctx, known_type_layout.as_ref(), name);
         StructLayoutTracker {
             name,
             ctx,
@@ -152,13 +141,8 @@ impl<'a> StructLayoutTracker<'a> {
 
         self.latest_field_layout = Some(layout);
         self.last_field_was_bitfield = true;
-        // NB: We intentionally don't update the max_field_align here, since our
-        // bitfields code doesn't necessarily guarantee it, so we need to
-        // actually generate the dummy alignment.
     }
 
-    /// Returns a padding field if necessary for a given new field _before_
-    /// adding that field.
     pub(crate) fn saw_field(
         &mut self,
         field_name: &str,
@@ -167,21 +151,10 @@ impl<'a> StructLayoutTracker<'a> {
     ) -> Option<proc_macro2::TokenStream> {
         let mut field_layout = field_ty.layout(self.ctx)?;
 
-        if let TypeKind::Array(inner, len) =
-            *field_ty.canonical_type(self.ctx).kind()
-        {
-            // FIXME(emilio): As an _ultra_ hack, we correct the layout returned
-            // by arrays of structs that have a bigger alignment than what we
-            // can support.
-            //
-            // This means that the structs in the array are super-unsafe to
-            // access, since they won't be properly aligned, but there's not too
-            // much we can do about it.
-            if let Some(layout) = self.ctx.resolve_type(inner).layout(self.ctx)
-            {
+        if let TypeKind::Array(inner, len) = *field_ty.canonical_type(self.ctx).kind() {
+            if let Some(layout) = self.ctx.resolve_type(inner).layout(self.ctx) {
                 if layout.align > MAX_GUARANTEED_ALIGN {
-                    field_layout.size =
-                        align_to(layout.size, layout.align) * len;
+                    field_layout.size = align_to(layout.size, layout.align) * len;
                     field_layout.align = MAX_GUARANTEED_ALIGN;
                 }
             }
@@ -199,14 +172,9 @@ impl<'a> StructLayoutTracker<'a> {
 
         let is_union = self.comp.is_union();
         let padding_bytes = match field_offset {
-            Some(offset) if offset / 8 > self.latest_offset => {
-                offset / 8 - self.latest_offset
-            }
+            Some(offset) if offset / 8 > self.latest_offset => offset / 8 - self.latest_offset,
             _ => {
-                if will_merge_with_bitfield ||
-                    field_layout.align == 0 ||
-                    is_union
-                {
+                if will_merge_with_bitfield || field_layout.align == 0 || is_union {
                     0
                 } else if !self.is_packed {
                     self.padding_bytes(field_layout)
@@ -215,7 +183,7 @@ impl<'a> StructLayoutTracker<'a> {
                 } else {
                     0
                 }
-            }
+            },
         };
 
         self.latest_offset += padding_bytes;
@@ -225,10 +193,8 @@ impl<'a> StructLayoutTracker<'a> {
         } else {
             let force_padding = self.ctx.options().force_explicit_padding;
 
-            // Otherwise the padding is useless.
-            let need_padding = force_padding ||
-                padding_bytes >= field_layout.align ||
-                field_layout.align > MAX_GUARANTEED_ALIGN;
+            let need_padding =
+                force_padding || padding_bytes >= field_layout.align || field_layout.align > MAX_GUARANTEED_ALIGN;
 
             debug!(
                 "Offset: <padding>: {} -> {}",
@@ -260,8 +226,7 @@ impl<'a> StructLayoutTracker<'a> {
 
         self.latest_offset += field_layout.size;
         self.latest_field_layout = Some(field_layout);
-        self.max_field_align =
-            cmp::max(self.max_field_align, field_layout.align);
+        self.max_field_align = cmp::max(self.max_field_align, field_layout.align);
         self.last_field_was_bitfield = false;
 
         debug!(
@@ -279,19 +244,15 @@ impl<'a> StructLayoutTracker<'a> {
         comp_name: &str,
         comp_layout: Layout,
     ) -> Option<proc_macro2::TokenStream> {
-        // Only emit an padding field at the end of a struct if the
-        // user configures explicit padding.
         if !self.ctx.options().force_explicit_padding {
             return None;
         }
 
-        // Padding doesn't make sense for rust unions.
         if self.is_rust_union {
             return None;
         }
 
         if self.latest_offset == comp_layout.size {
-            // This struct does not contain tail padding.
             return None;
         }
 
@@ -305,14 +266,8 @@ impl<'a> StructLayoutTracker<'a> {
         Some(self.padding_field(Layout::new(size, 0)))
     }
 
-    pub(crate) fn pad_struct(
-        &mut self,
-        layout: Layout,
-    ) -> Option<proc_macro2::TokenStream> {
-        debug!(
-            "pad_struct:\n\tself = {:#?}\n\tlayout = {:#?}",
-            self, layout
-        );
+    pub(crate) fn pad_struct(&mut self, layout: Layout) -> Option<proc_macro2::TokenStream> {
+        debug!("pad_struct:\n\tself = {:#?}\n\tlayout = {:#?}", self, layout);
 
         if layout.size < self.latest_offset {
             warn!(
@@ -330,22 +285,13 @@ impl<'a> StructLayoutTracker<'a> {
 
         let repr_align = self.ctx.options().rust_features().repr_align;
 
-        // We always pad to get to the correct size if the struct is one of
-        // those we can't align properly.
-        //
-        // Note that if the last field we saw was a bitfield, we may need to pad
-        // regardless, because bitfields don't respect alignment as strictly as
-        // other fields.
-        if padding_bytes >= layout.align ||
-            (self.last_field_was_bitfield &&
-                padding_bytes >= self.latest_field_layout.unwrap().align) ||
-            (!repr_align && layout.align > MAX_GUARANTEED_ALIGN)
+        if padding_bytes >= layout.align
+            || (self.last_field_was_bitfield && padding_bytes >= self.latest_field_layout.unwrap().align)
+            || (!repr_align && layout.align > MAX_GUARANTEED_ALIGN)
         {
             let layout = if self.is_packed {
                 Layout::new(padding_bytes, 1)
-            } else if self.last_field_was_bitfield ||
-                layout.align > MAX_GUARANTEED_ALIGN
-            {
+            } else if self.last_field_was_bitfield || layout.align > MAX_GUARANTEED_ALIGN {
                 // We've already given up on alignment here.
                 Layout::for_size(self.ctx, padding_bytes)
             } else {
@@ -363,10 +309,6 @@ impl<'a> StructLayoutTracker<'a> {
     pub(crate) fn requires_explicit_align(&self, layout: Layout) -> bool {
         let repr_align = self.ctx.options().rust_features().repr_align;
 
-        // Always force explicit repr(align) for stuff more than 16-byte aligned
-        // to work-around https://github.com/rust-lang/rust/issues/54341.
-        //
-        // Worst-case this just generates redundant alignment attributes.
         if repr_align && self.max_field_align >= 16 {
             return true;
         }
@@ -375,8 +317,6 @@ impl<'a> StructLayoutTracker<'a> {
             return false;
         }
 
-        // We can only generate up-to a 8-bytes of alignment unless we support
-        // repr(align).
         repr_align || layout.align <= MAX_GUARANTEED_ALIGN
     }
 
@@ -390,10 +330,7 @@ impl<'a> StructLayoutTracker<'a> {
 
         self.padding_count += 1;
 
-        let padding_field_name = Ident::new(
-            &format!("__bindgen_padding_{}", padding_count),
-            Span::call_site(),
-        );
+        let padding_field_name = Ident::new(&format!("__bindgen_padding_{}", padding_count), Span::call_site());
 
         self.max_field_align = cmp::max(self.max_field_align, layout.align);
 
@@ -402,12 +339,8 @@ impl<'a> StructLayoutTracker<'a> {
         }
     }
 
-    /// Returns whether the new field is known to merge with a bitfield.
-    ///
-    /// This is just to avoid doing the same check also in pad_field.
     fn align_to_latest_field(&mut self, new_field_layout: Layout) -> bool {
         if self.is_packed {
-            // Skip to align fields when packed.
             return false;
         }
 
@@ -416,28 +349,21 @@ impl<'a> StructLayoutTracker<'a> {
             None => return false,
         };
 
-        // If it was, we may or may not need to align, depending on what the
-        // current field alignment and the bitfield size and alignment are.
         debug!(
             "align_to_bitfield? {}: {:?} {:?}",
             self.last_field_was_bitfield, layout, new_field_layout
         );
 
-        // Avoid divide-by-zero errors if align is 0.
         let align = cmp::max(1, layout.align);
 
-        if self.last_field_was_bitfield &&
-            new_field_layout.align <= layout.size % align &&
-            new_field_layout.size <= layout.size % align
+        if self.last_field_was_bitfield
+            && new_field_layout.align <= layout.size % align
+            && new_field_layout.size <= layout.size % align
         {
-            // The new field will be coalesced into some of the remaining bits.
-            //
-            // FIXME(emilio): I think this may not catch everything?
             debug!("Will merge with bitfield");
             return true;
         }
 
-        // Else, just align the obvious way.
         self.latest_offset += self.padding_bytes(layout);
         false
     }
