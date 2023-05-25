@@ -522,7 +522,6 @@ impl Cursor {
             for (idx, attr) in attrs.iter().enumerate() {
                 let found_attr = &mut found_attrs[idx];
                 if !*found_attr {
-                    // `attr.name` and` attr.token_kind` are checked against unexposed attributes only.
                     if attr.kind.map_or(false, |k| k == kind)
                         || (kind == CXCursor_UnexposedAttr
                             && cur

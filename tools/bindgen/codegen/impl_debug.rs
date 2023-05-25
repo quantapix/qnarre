@@ -147,18 +147,13 @@ impl<'a> ImplDebug<'a> for Item {
             TypeKind::TypeParam => Some((format!("{}: Non-debuggable generic", name), vec![])),
 
             TypeKind::Array(_, len) => {
-                // Generics are not required to implement Debug
                 if self.has_type_param_in_array(ctx) {
                     Some((format!("{}: Array with length {}", name, len), vec![]))
                 } else if len < RUST_DERIVE_IN_ARRAY_LIMIT || ctx.options().rust_features().larger_arrays {
-                    // The simple case
                     debug_print(name, quote! { #name_ident })
                 } else if ctx.options().use_core {
-                    // There is no String in core; reducing field visibility to avoid breaking
-                    // no_std setups.
                     Some((format!("{}: [...]", name), vec![]))
                 } else {
-                    // Let's implement our own print function
                     Some((
                         format!("{}: [{{}}]", name),
                         vec![quote! {
@@ -173,8 +168,6 @@ impl<'a> ImplDebug<'a> for Item {
             },
             TypeKind::Vector(_, len) => {
                 if ctx.options().use_core {
-                    // There is no format! in core; reducing field visibility to avoid breaking
-                    // no_std setups.
                     Some((format!("{}(...)", name), vec![]))
                 } else {
                     let self_ids = 0..len;
@@ -190,10 +183,7 @@ impl<'a> ImplDebug<'a> for Item {
             TypeKind::ResolvedTypeRef(t)
             | TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
-            | TypeKind::BlockPointer(t) => {
-                // We follow the aliases
-                ctx.resolve_item(t).impl_debug(ctx, name)
-            },
+            | TypeKind::BlockPointer(t) => ctx.resolve_item(t).impl_debug(ctx, name),
 
             TypeKind::Pointer(inner) => {
                 let inner_type = ctx.resolve_type(inner).canonical_type(ctx);

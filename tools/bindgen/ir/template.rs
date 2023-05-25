@@ -106,10 +106,6 @@ impl TemplateInstantiation {
                         return CXVisit_Break;
                     }
 
-                    // Instantiations of template aliases might have the
-                    // TemplateRef to the template alias definition arbitrarily
-                    // deep, so we need to recurse here and not only visit
-                    // direct children.
                     CXChildVisit_Recurse
                 });
 

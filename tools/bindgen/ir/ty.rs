@@ -153,18 +153,14 @@ impl Type {
     }
 
     pub(crate) fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
-        self.layout.or_else(|| {
-            match self.kind {
-                TypeKind::Comp(ref ci) => ci.layout(ctx),
-                TypeKind::Array(inner, length) if length == 0 => {
-                    Some(Layout::new(0, ctx.resolve_type(inner).layout(ctx)?.align))
-                },
-                // FIXME(emilio): This is a hack for anonymous union templates.
-                // Use the actual pointer size!
-                TypeKind::Pointer(..) => Some(Layout::new(ctx.target_pointer_size(), ctx.target_pointer_size())),
-                TypeKind::ResolvedTypeRef(inner) => ctx.resolve_type(inner).layout(ctx),
-                _ => None,
-            }
+        self.layout.or_else(|| match self.kind {
+            TypeKind::Comp(ref ci) => ci.layout(ctx),
+            TypeKind::Array(inner, length) if length == 0 => {
+                Some(Layout::new(0, ctx.resolve_type(inner).layout(ctx)?.align))
+            },
+            TypeKind::Pointer(..) => Some(Layout::new(ctx.target_pointer_size(), ctx.target_pointer_size())),
+            TypeKind::ResolvedTypeRef(inner) => ctx.resolve_type(inner).layout(ctx),
+            _ => None,
         })
     }
 
@@ -538,8 +534,6 @@ impl Type {
             let is_canonical_objcpointer = canonical_ty.kind() == CXType_ObjCObjectPointer;
 
             if is_canonical_objcpointer && is_template_type_param {
-                // Objective-C generics are just ids with fancy name.
-                // To keep it simple, just name them ids
                 name = Some("id".to_owned());
             }
         }
@@ -563,36 +557,18 @@ impl Type {
         } else {
             match ty_kind {
                 CXType_Unexposed
-                    if *ty != canonical_ty &&
-                                    canonical_ty.kind() != CXType_Invalid &&
-                                    ty.ret_type().is_none() &&
-                                    // Sometime clang desugars some types more than
-                                    // what we need, specially with function
-                                    // pointers.
-                                    //
-                                    // We should also try the solution of inverting
-                                    // those checks instead of doing this, that is,
-                                    // something like:
-                                    //
-                                    // CXType_Unexposed if ty.ret_type().is_some()
-                                    //   => { ... }
-                                    //
-                                    // etc.
-                                    !canonical_ty.spelling().contains("type-parameter") =>
+                    if *ty != canonical_ty
+                        && canonical_ty.kind() != CXType_Invalid
+                        && ty.ret_type().is_none()
+                        && !canonical_ty.spelling().contains("type-parameter") =>
                 {
                     debug!("Looking for canonical type: {:?}", canonical_ty);
                     return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
                 },
                 CXType_Unexposed | CXType_Invalid => {
-                    // For some reason Clang doesn't give us any hint in some
-                    // situations where we should generate a function pointer (see
-                    // tests/headers/func_ptr_in_struct.h), so we do a guess here
-                    // trying to see if it has a valid return type.
                     if ty.ret_type().is_some() {
                         let signature = FunctionSig::from_ty(ty, &location, ctx)?;
                         TypeKind::Function(signature)
-                    // Same here, with template specialisations we can safely
-                    // assume this is a Comp(..)
                     } else if ty.is_fully_instantiated_template() {
                         debug!("Template specialization: {:?}, {:?} {:?}", ty, location, canonical_ty);
                         let complex = CompInfo::from_ty(potential_id, ty, Some(location), ctx).expect("C'mon");
@@ -601,45 +577,6 @@ impl Type {
                         match location.kind() {
                             CXCursor_CXXBaseSpecifier | CXCursor_ClassTemplate => {
                                 if location.kind() == CXCursor_CXXBaseSpecifier {
-                                    // In the case we're parsing a base specifier
-                                    // inside an unexposed or invalid type, it means
-                                    // that we're parsing one of two things:
-                                    //
-                                    //  * A template parameter.
-                                    //  * A complex class that isn't exposed.
-                                    //
-                                    // This means, unfortunately, that there's no
-                                    // good way to differentiate between them.
-                                    //
-                                    // Probably we could try to look at the
-                                    // declaration and complicate more this logic,
-                                    // but we'll keep it simple... if it's a valid
-                                    // C++ identifier, we'll consider it as a
-                                    // template parameter.
-                                    //
-                                    // This is because:
-                                    //
-                                    //  * We expect every other base that is a
-                                    //    proper identifier (that is, a simple
-                                    //    struct/union declaration), to be exposed,
-                                    //    so this path can't be reached in that
-                                    //    case.
-                                    //
-                                    //  * Quite conveniently, complex base
-                                    //    specifiers preserve their full names (that
-                                    //    is: Foo<T> instead of Foo). We can take
-                                    //    advantage of this.
-                                    //
-                                    // If we find some edge case where this doesn't
-                                    // work (which I guess is unlikely, see the
-                                    // different test cases[1][2][3][4]), we'd need
-                                    // to find more creative ways of differentiating
-                                    // these two cases.
-                                    //
-                                    // [1]: inherit_named.hpp
-                                    // [2]: forward-inherit-struct-with-fields.hpp
-                                    // [3]: forward-inherit-struct.hpp
-                                    // [4]: inherit-namespaced.hpp
                                     if location.spelling().chars().all(|c| c.is_alphanumeric() || c == '_') {
                                         return Err(ParseError::Recurse);
                                     }
@@ -664,7 +601,6 @@ impl Type {
                             CXCursor_TypeAliasTemplateDecl => {
                                 debug!("TypeAliasTemplateDecl");
 
-                                // We need to manually unwind this one.
                                 let mut inner = Err(ParseError::Continue);
                                 let mut args = vec![];
 
@@ -766,19 +702,10 @@ impl Type {
 
                     return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
                 },
-                // NOTE: We don't resolve pointers eagerly because the pointee type
-                // might not have been parsed, and if it contains templates or
-                // something else we might get confused, see the comment inside
-                // TypeRef.
-                //
-                // We might need to, though, if the context is already in the
-                // process of resolving them.
                 CXType_ObjCObjectPointer | CXType_MemberPointer | CXType_Pointer => {
                     let mut pointee = ty.pointee_type().unwrap();
                     if *ty != canonical_ty {
                         let canonical_pointee = canonical_ty.pointee_type().unwrap();
-                        // clang sometimes loses pointee constness here, see
-                        // #2244.
                         if canonical_pointee.is_const() != pointee.is_const() {
                             pointee = canonical_pointee;
                         }
@@ -791,13 +718,10 @@ impl Type {
                     let inner = Item::from_ty_or_ref(pointee, location, None, ctx);
                     TypeKind::BlockPointer(inner)
                 },
-                // XXX: RValueReference is most likely wrong, but I don't think we
-                // can even add bindings for that, so huh.
                 CXType_RValueReference | CXType_LValueReference => {
                     let inner = Item::from_ty_or_ref(ty.pointee_type().unwrap(), location, None, ctx);
                     TypeKind::Reference(inner)
                 },
-                // XXX DependentSizedArray is wrong
                 CXType_VariableArray | CXType_DependentSizedArray => {
                     let inner = Item::from_ty(ty.elem_type().as_ref().unwrap(), location, None, ctx)
                         .expect("Not able to resolve array element?");
@@ -820,13 +744,8 @@ impl Type {
                             "Generating oqaque type instead of self-referential \
                             typedef"
                         );
-                        // This can happen if we bail out of recursive situations
-                        // within the clang parsing.
                         TypeKind::Opaque
                     } else {
-                        // Check if this type definition is an alias to a pointer of a `struct` /
-                        // `union` / `enum` with the same name and add the `_ptr` suffix to it to
-                        // avoid name collisions.
                         if let Some(ref mut name) = name {
                             if inner.kind() == CXType_Pointer && !ctx.options().c_naming {
                                 let pointee = inner.pointee_type().unwrap();
@@ -855,8 +774,6 @@ impl Type {
                         CompInfo::from_ty(potential_id, ty, Some(location), ctx).expect("Not a complex type?");
 
                     if !is_anonymous {
-                        // The pretty-printed name may contain typedefed name,
-                        // but may also be "struct (anonymous at .h:1)"
                         let pretty_name = ty.spelling();
                         if clang::is_valid_identifier(&pretty_name) {
                             name = Some(pretty_name);

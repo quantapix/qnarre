@@ -332,8 +332,6 @@ impl FunctionSig {
             | CXCursor_ObjCInstanceMethodDecl
             | CXCursor_ObjCClassMethodDecl => args_from_ty_and_cursor(ty, &cursor, ctx),
             _ => {
-                // For non-CXCursor_FunctionDecl, visiting the cursor's children
-                // is the only reliable way to get parameter names.
                 let mut args = vec![];
                 cursor.visit(|c| {
                     if c.kind() == CXCursor_ParmDecl {
@@ -346,10 +344,6 @@ impl FunctionSig {
                 });
 
                 if args.is_empty() {
-                    // FIXME(emilio): Sometimes libclang doesn't expose the
-                    // right AST for functions tagged as stdcall and such...
-                    //
-                    // https://bugs.llvm.org/show_bug.cgi?id=45919
                     args_from_ty_and_cursor(ty, &cursor, ctx)
                 } else {
                     args
@@ -381,8 +375,6 @@ impl FunctionSig {
             if !is_static && !is_virtual {
                 let parent = cursor.semantic_parent();
                 let class = Item::parse(parent, None, ctx).expect("Expected to parse the class");
-                // The `class` most likely is not finished parsing yet, so use
-                // the unchecked variant.
                 let class = class.as_type_id_unchecked();
 
                 let class = if is_const {

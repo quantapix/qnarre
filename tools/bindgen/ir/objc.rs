@@ -105,14 +105,11 @@ impl ObjCInterface {
             match c.kind() {
                 CXCursor_ObjCClassRef => {
                     if cursor.kind() == CXCursor_ObjCCategoryDecl {
-                        // We are actually a category extension, and we found the reference
-                        // to the original interface, so name this interface approriately
                         interface.name = c.spelling();
                         interface.category = Some(cursor.spelling());
                     }
                 },
                 CXCursor_ObjCProtocolRef => {
-                    // Gather protocols this interface conforms to
                     let needle = format!("P{}", c.spelling());
                     let items_map = ctx.items();
                     debug!("Interface {} conforms to {}, find the item", interface.name, needle);
@@ -197,9 +194,6 @@ impl ObjCMethod {
                 if name.is_empty() {
                     None
                 } else {
-                    // Try to parse the current name as an identifier. This might fail if the
-                    // name is a keyword so we try to prepend "r#" to it and parse again. If
-                    // this also fails, we panic with the first error.
                     Some(
                         syn::parse_str::<Ident>(name)
                             .or_else(|err| syn::parse_str::<Ident>(&format!("r#{}", name)).map_err(|_| err))

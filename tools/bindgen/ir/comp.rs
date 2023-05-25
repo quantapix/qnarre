@@ -463,8 +463,6 @@ where
         if !packed {
             if is_ms_struct {
                 if unit_size_in_bits != 0 && (bitfield_width == 0 || bitfield_width > unfilled_bits_in_unit) {
-                    // We've reached the end of this allocation unit, so flush it
-                    // and its bitfields.
                     unit_size_in_bits = align_to(unit_size_in_bits, unit_align * 8);
                     flush_allocation_unit(
                         fields,
@@ -475,8 +473,6 @@ where
                         packed,
                     );
 
-                    // Now we're working on a fresh bitfield allocation unit, so reset
-                    // the current unit size and alignment.
                     offset = 0;
                     unit_align = 0;
                 }
@@ -966,10 +962,6 @@ impl CompInfo {
             if cur.kind() != CXCursor_FieldDecl {
                 if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
                     if cur.kind() == CXCursor_TypedefDecl && cur.typedef_type().unwrap().canonical_type() == clang_ty {
-                        // Typedefs of anonymous structs appear later in the ast
-                        // than the struct itself, that would otherwise be an
-                        // anonymous field. Detect that case here, and do
-                        // nothing.
                     } else {
                         let field = RawField::new(None, ty, None, None, None, public, offset);
                         ci.fields.append_raw_field(field);
@@ -997,8 +989,6 @@ impl CompInfo {
                     let bit_width = if cur.is_bit_field() {
                         let width = cur.bit_width();
 
-                        // Make opaque type if the bit width couldn't be
-                        // evaluated.
                         if width.is_none() {
                             ci.has_unevaluable_bit_field_width = true;
                             return CXChildVisit_Break;
@@ -1017,8 +1007,6 @@ impl CompInfo {
                     let is_public = cur.public_accessible();
                     let offset = cur.offset_of_field().ok();
 
-                    // Name can be empty if there are bitfields, for example,
-                    // see tests/headers/struct_with_bitfields.h
                     assert!(!name.is_empty() || bit_width.is_some(), "Empty field name?");
 
                     let name = if name.is_empty() { None } else { Some(name) };
@@ -1026,7 +1014,6 @@ impl CompInfo {
                     let field = RawField::new(name, field_type, comment, annotations, bit_width, is_public, offset);
                     ci.fields.append_raw_field(field);
 
-                    // No we look for things like attributes and stuff.
                     cur.visit(|cur| {
                         if cur.kind() == CXCursor_UnexposedAttr {
                             ci.found_unknown_attr = true;
@@ -1045,37 +1032,18 @@ impl CompInfo {
                 | CXCursor_UnionDecl
                 | CXCursor_ClassTemplate
                 | CXCursor_ClassDecl => {
-                    // We can find non-semantic children here, clang uses a
-                    // StructDecl to note incomplete structs that haven't been
-                    // forward-declared before, see [1].
-                    //
-                    // Also, clang seems to scope struct definitions inside
-                    // unions, and other named struct definitions inside other
-                    // structs to the whole translation unit.
-                    //
-                    // Let's just assume that if the cursor we've found is a
-                    // definition, it's a valid inner type.
-                    //
-                    // [1]: https://github.com/rust-lang/rust-bindgen/issues/482
                     let is_inner_struct = cur.semantic_parent() == cursor || cur.is_definition();
                     if !is_inner_struct {
                         return CXChildVisit_Continue;
                     }
 
-                    // Even if this is a definition, we may not be the semantic
-                    // parent, see #1281.
                     let inner = Item::parse(cur, Some(potential_id), ctx).expect("Inner ClassDecl");
 
-                    // If we avoided recursion parsing this type (in
-                    // `Item::from_ty_with_id()`), then this might not be a
-                    // valid type ID, so check and gracefully handle this.
                     if ctx.resolve_item_fallible(inner).is_some() {
                         let inner = inner.expect_type_id(ctx);
 
                         ci.inner_types.push(inner);
 
-                        // A declaration of an union or a struct without name
-                        // could also be an unnamed field, unfortunately.
                         if cur.is_anonymous() && cur.kind() != CXCursor_EnumDecl {
                             let ty = cur.cur_type();
                             let public = cur.public_accessible();
@@ -1125,22 +1093,10 @@ impl CompInfo {
                     ci.has_destructor |= cur.kind() == CXCursor_Destructor;
                     ci.has_own_virtual_method |= is_virtual;
 
-                    // This used to not be here, but then I tried generating
-                    // stylo bindings with this (without path filters), and
-                    // cried a lot with a method in gfx/Point.h
-                    // (ToUnknownPoint), that somehow was causing the same type
-                    // to be inserted in the map two times.
-                    //
-                    // I couldn't make a reduced test case, but anyway...
-                    // Methods of template functions not only used to be inlined,
-                    // but also instantiated, and we wouldn't be able to call
-                    // them, so just bail out.
                     if !ci.template_params.is_empty() {
                         return CXChildVisit_Continue;
                     }
 
-                    // NB: This gets us an owned `Function`, not a
-                    // `FunctionSig`.
                     let signature = match Item::parse(cur, Some(potential_id), ctx) {
                         Ok(item) if ctx.resolve_item(item).kind().is_function() => item,
                         _ => return CXChildVisit_Continue,
@@ -1199,7 +1155,6 @@ impl CompInfo {
                         ci.inner_vars.push(item.as_var_id_unchecked());
                     }
                 },
-                // Intentionally not handled
                 CXCursor_CXXAccessSpecifier
                 | CXCursor_CXXFinalAttr
                 | CXCursor_FunctionTemplate

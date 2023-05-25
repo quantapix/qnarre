@@ -165,9 +165,6 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
         item.trace(
             self.ctx,
             &mut |sub_id, edge_kind| {
-                // Ignore ourselves, since union with ourself is a
-                // no-op. Ignore edges that aren't relevant to the
-                // analysis.
                 if sub_id == item.id() || !Self::consider_edge(edge_kind) {
                     return;
                 }
@@ -230,8 +227,6 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
             used.entry(item).or_insert_with(|| Some(ItemSet::new()));
 
             {
-                // We reverse our natural IR graph edges to find dependencies
-                // between nodes.
                 item.trace(
                     ctx,
                     &mut |sub_item: ItemId, _| {
@@ -247,9 +242,6 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
                 let decl = ctx.resolve_type(inst.template_definition());
                 let args = inst.template_arguments();
 
-                // Although template definitions should always have
-                // template parameters, there is a single exception:
-                // opaque templates. Hence the unwrap_or.
                 let params = decl.self_template_params(ctx);
 
                 for (arg, param) in args.iter().zip(params.iter()) {

@@ -150,7 +150,6 @@ impl ClangSubItemParser for Var {
 
                     if cursor.is_macro_function_like() {
                         handle_function_macro(&cursor, callbacks.as_ref());
-                        // We handled the macro, skip macro processing below.
                         return Err(ParseError::Continue);
                     }
                 }
@@ -166,9 +165,6 @@ impl ClangSubItemParser for Var {
 
                 let previously_defined = ctx.parsed_macro(&id);
 
-                // NB: It's important to "note" the macro even if the result is
-                // not an integer, otherwise we might loose other kind of
-                // derived macros.
                 ctx.note_parsed_macro(id.clone(), value.clone());
 
                 if previously_defined {
@@ -177,10 +173,6 @@ impl ClangSubItemParser for Var {
                     return Err(ParseError::Continue);
                 }
 
-                // NOTE: Unwrapping, here and above, is safe, because the
-                // identifier of a token comes straight from clang, and we
-                // enforce utf8 there, so we should have already panicked at
-                // this point.
                 let name = String::from_utf8(id).unwrap();
                 let (type_kind, val) = match value {
                     EvalResult::Invalid => return Err(ParseError::Continue),
@@ -235,7 +227,6 @@ impl ClangSubItemParser for Var {
                         name = nm;
                     }
                 }
-                // No more changes to name
                 let name = name;
 
                 if name.is_empty() {
@@ -252,8 +243,6 @@ impl ClangSubItemParser for Var {
 
                 let ty = cursor.cur_type();
 
-                // TODO(emilio): do we have to special-case constant arrays in
-                // some other places?
                 let is_const = ty.is_const()
                     || ([CXType_ConstantArray, CXType_IncompleteArray].contains(&ty.kind())
                         && ty.elem_type().map_or(false, |element| element.is_const()));
@@ -271,19 +260,11 @@ impl ClangSubItemParser for Var {
                     },
                 };
 
-                // Note: Ty might not be totally resolved yet, see
-                // tests/headers/inner_const.hpp
-                //
-                // That's fine because in that case we know it's not a literal.
                 let canonical_ty = ctx.safe_resolve_type(ty).and_then(|t| t.safe_canonical_type(ctx));
 
                 let is_integer = canonical_ty.map_or(false, |t| t.is_integer());
                 let is_float = canonical_ty.map_or(false, |t| t.is_float());
 
-                // TODO: We could handle `char` more gracefully.
-                // TODO: Strings, though the lookup is a bit more hard (we need
-                // to look at the canonical type of the pointee too, and check
-                // is char, u8, or i8 I guess).
                 let value = if is_integer {
                     let kind = match *canonical_ty.unwrap().kind() {
                         TypeKind::Int(kind) => kind,

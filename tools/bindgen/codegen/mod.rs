@@ -591,8 +591,6 @@ impl CodeGenerator for Var {
                     let len = proc_macro2::Literal::usize_unsuffixed(cstr_bytes.len());
                     let cstr = CStr::from_bytes_with_nul(&cstr_bytes).unwrap();
 
-                    // TODO: Here we ignore the type we just made up, probably
-                    // we should refactor how the variable type and ty ID work.
                     let array_ty = quote! { [u8; #len] };
                     let cstr_ty = quote! { ::#prefix::ffi::CStr };
 
@@ -684,12 +682,7 @@ impl CodeGenerator for Type {
             | TypeKind::Function(..)
             | TypeKind::ResolvedTypeRef(..)
             | TypeKind::Opaque
-            | TypeKind::TypeParam => {
-                // These items don't need code generation, they only need to be
-                // converted to rust types in fields, arguments, and such.
-                // NOTE(emilio): If you add to this list, make sure to also add
-                // it to BindgenContext::compute_allowlisted_and_codegen_items.
-            },
+            | TypeKind::TypeParam => {},
             TypeKind::TemplateInstantiation(ref inst) => inst.codegen(ctx, result, item),
             TypeKind::BlockPointer(inner) => {
                 if !ctx.options().generate_block {
@@ -735,20 +728,11 @@ impl CodeGenerator for Type {
                         .through_type_aliases()
                         .resolve(ctx);
 
-                    // Try to catch the common pattern:
-                    //
-                    // typedef struct foo { ... } foo;
-                    //
-                    // here, and also other more complex cases like #946.
                     if through_type_aliases.canonical_path(ctx) == path {
                         return;
                     }
                 }
 
-                // If this is a known named type, disallow generating anything
-                // for it too. If size_t -> usize conversions are enabled, we
-                // need to check that these conversions are permissible, but
-                // nothing needs to be generated, still.
                 let spelling = self.name().expect("Unnamed alias?");
                 if utils::type_from_named(ctx, spelling).is_some() {
                     if let "size_t" | "ssize_t" = spelling {
@@ -780,9 +764,6 @@ impl CodeGenerator for Type {
                     outer_params = vec![];
                     self.to_opaque(ctx, item)
                 } else {
-                    // Its possible that we have better layout information than
-                    // the inner type does, so fall back to an opaque blob based
-                    // on our layout if converting the inner item fails.
                     let mut inner_ty = inner_item
                         .try_to_rust_ty_or_opaque(ctx, &())
                         .unwrap_or_else(|_| self.to_opaque(ctx, item));
@@ -791,16 +772,6 @@ impl CodeGenerator for Type {
                 };
 
                 {
-                    // FIXME(emilio): This is a workaround to avoid generating
-                    // incorrect type aliases because of types that we haven't
-                    // been able to resolve (because, eg, they depend on a
-                    // template parameter).
-                    //
-                    // It's kind of a shame not generating them even when they
-                    // could be referenced, but we already do the same for items
-                    // with invalid template parameters, and at least this way
-                    // they can be replaced, instead of generating plain invalid
-                    // code.
                     let inner_canon_type = inner_item.expect_type().canonical_type(ctx);
                     if inner_canon_type.is_invalid_type_param() {
                         warn!(
@@ -830,10 +801,6 @@ impl CodeGenerator for Type {
                     ctx.options().default_alias_style
                 };
 
-                // We prefer using `pub use` over `pub type` because of:
-                // https://github.com/rust-lang/rust/issues/26264
-                // These are the only characters allowed in simple
-                // paths, eg `good::dogs::Bront`.
                 if inner_rust_type
                     .to_string()
                     .chars()
@@ -996,10 +963,8 @@ impl<'a> CodeGenerator for Vtable<'a> {
                         _ => panic!("Function signature type mismatch"),
                     };
 
-                    // FIXME: Is there a canonical name without the class prepended?
                     let function_name = function_item.canonical_name(ctx);
 
-                    // FIXME: Need to account for overloading with times_seen (separately from regular function path).
                     let function_name = ctx.rust_ident(function_name);
                     let mut args = utils::fnsig_arguments(ctx, signature);
                     let ret = utils::fnsig_return_ty(ctx, signature);
@@ -1742,8 +1707,6 @@ impl CodeGenerator for CompInfo {
 
         if !forward_decl && zero_sized {
             let has_address = if is_opaque {
-                // Generate the address field if it's an opaque type and
-                // couldn't determine the layout of the blob.
                 layout.is_none()
             } else {
                 layout.map_or(true, |l| l.size != 0)
@@ -1862,8 +1825,6 @@ impl CodeGenerator for CompInfo {
 
         if ctx.options().rust_features().repr_align {
             if let Some(explicit) = explicit_align {
-                // Ensure that the struct has the correct alignment even in
-                // presence of alignas.
                 let explicit = helpers::ast_ty::int_expr(explicit as i64);
                 attributes.push(quote! {
                     #[repr(align(#explicit))]
@@ -2018,12 +1979,7 @@ impl CodeGenerator for CompInfo {
                     };
 
                     let uninit_decl = if !check_field_offset.is_empty() {
-                        // FIXME: When MSRV >= 1.59.0, we can use
-                        // > const PTR: *const #canonical_ident = ::#prefix::mem::MaybeUninit::uninit().as_ptr();
                         Some(quote! {
-                            // Use a shared MaybeUninit so that rustc with
-                            // opt-level=0 doesn't take too much stack space,
-                            // see #2218.
                             const UNINIT: ::#prefix::mem::MaybeUninit<#canonical_ident> = ::#prefix::mem::MaybeUninit::uninit();
                             let ptr = UNINIT.as_ptr();
                         })
@@ -2453,7 +2409,6 @@ impl<'a> EnumBuilder<'a> {
             },
 
             EnumVariation::Rust { .. } => {
-                // `repr` is guaranteed to be Rustified in Enum::codegen
                 attrs.insert(0, quote! { #[repr( #repr )] });
                 let tokens = quote!();
                 EnumBuilder::Rust {
@@ -2717,13 +2672,6 @@ impl CodeGenerator for Enum {
         let repr = match self.repr().map(|repr| ctx.resolve_type(repr)) {
             Some(repr) if !ctx.options().translate_enum_integer_types && !variation.is_rust() => repr,
             repr => {
-                // An enum's integer type is translated to a native Rust
-                // integer type in 3 cases:
-                // * the enum is Rustified and we need a translated type for
-                //   the repr attribute
-                // * the representation couldn't be determined from the C source
-                // * it was explicitly requested as a bindgen option
-
                 let kind = match repr {
                     Some(repr) => match *repr.canonical_type(ctx).kind() {
                         TypeKind::Int(int_kind) => int_kind,
@@ -2890,7 +2838,6 @@ impl CodeGenerator for Enum {
                         };
 
                         let existing_variant_name = entry.get();
-                        // Use associated constants for named enums.
                         if enum_ty.name().is_some() && ctx.options().rust_features().associated_const {
                             let enum_canonical_name = &ident;
                             let variant_name = ctx.rust_ident_raw(&*mangled_name);
@@ -2934,9 +2881,6 @@ impl CodeGenerator for Enum {
 
                     let variant_name = ctx.rust_ident(variant.name());
 
-                    // If it's an unnamed enum, or constification is enforced,
-                    // we also generate a constant so it can be properly
-                    // accessed.
                     if (variation.is_rust() && enum_ty.name().is_none()) || variant.force_constification() {
                         let mangled_name = if is_toplevel {
                             variant_name.clone()
@@ -3226,51 +3170,45 @@ impl TryToRustTy for Type {
         match *self.kind() {
             TypeKind::Void => Ok(c_void(ctx)),
             TypeKind::NullPtr => Ok(c_void(ctx).to_ptr(true)),
-            TypeKind::Int(ik) => {
-                match ik {
-                    IntKind::Bool => Ok(quote! { bool }),
-                    IntKind::Char { .. } => Ok(raw_type(ctx, "c_char")),
-                    IntKind::SChar => Ok(raw_type(ctx, "c_schar")),
-                    IntKind::UChar => Ok(raw_type(ctx, "c_uchar")),
-                    IntKind::Short => Ok(raw_type(ctx, "c_short")),
-                    IntKind::UShort => Ok(raw_type(ctx, "c_ushort")),
-                    IntKind::Int => Ok(raw_type(ctx, "c_int")),
-                    IntKind::UInt => Ok(raw_type(ctx, "c_uint")),
-                    IntKind::Long => Ok(raw_type(ctx, "c_long")),
-                    IntKind::ULong => Ok(raw_type(ctx, "c_ulong")),
-                    IntKind::LongLong => Ok(raw_type(ctx, "c_longlong")),
-                    IntKind::ULongLong => Ok(raw_type(ctx, "c_ulonglong")),
-                    IntKind::WChar => {
-                        let layout = self.layout(ctx).expect("Couldn't compute wchar_t's layout?");
-                        let ty = Layout::known_type_for_size(ctx, layout.size).expect("Non-representable wchar_t?");
-                        let ident = ctx.rust_ident_raw(ty);
-                        Ok(quote! { #ident })
-                    },
+            TypeKind::Int(ik) => match ik {
+                IntKind::Bool => Ok(quote! { bool }),
+                IntKind::Char { .. } => Ok(raw_type(ctx, "c_char")),
+                IntKind::SChar => Ok(raw_type(ctx, "c_schar")),
+                IntKind::UChar => Ok(raw_type(ctx, "c_uchar")),
+                IntKind::Short => Ok(raw_type(ctx, "c_short")),
+                IntKind::UShort => Ok(raw_type(ctx, "c_ushort")),
+                IntKind::Int => Ok(raw_type(ctx, "c_int")),
+                IntKind::UInt => Ok(raw_type(ctx, "c_uint")),
+                IntKind::Long => Ok(raw_type(ctx, "c_long")),
+                IntKind::ULong => Ok(raw_type(ctx, "c_ulong")),
+                IntKind::LongLong => Ok(raw_type(ctx, "c_longlong")),
+                IntKind::ULongLong => Ok(raw_type(ctx, "c_ulonglong")),
+                IntKind::WChar => {
+                    let layout = self.layout(ctx).expect("Couldn't compute wchar_t's layout?");
+                    let ty = Layout::known_type_for_size(ctx, layout.size).expect("Non-representable wchar_t?");
+                    let ident = ctx.rust_ident_raw(ty);
+                    Ok(quote! { #ident })
+                },
 
-                    IntKind::I8 => Ok(quote! { i8 }),
-                    IntKind::U8 => Ok(quote! { u8 }),
-                    IntKind::I16 => Ok(quote! { i16 }),
-                    IntKind::U16 => Ok(quote! { u16 }),
-                    IntKind::I32 => Ok(quote! { i32 }),
-                    IntKind::U32 => Ok(quote! { u32 }),
-                    IntKind::I64 => Ok(quote! { i64 }),
-                    IntKind::U64 => Ok(quote! { u64 }),
-                    IntKind::Custom { name, .. } => Ok(proc_macro2::TokenStream::from_str(name).unwrap()),
-                    IntKind::U128 => {
-                        Ok(if ctx.options().rust_features.i128_and_u128 {
-                            quote! { u128 }
-                        } else {
-                            // Best effort thing, but wrong alignment
-                            // unfortunately.
-                            quote! { [u64; 2] }
-                        })
-                    },
-                    IntKind::I128 => Ok(if ctx.options().rust_features.i128_and_u128 {
-                        quote! { i128 }
-                    } else {
-                        quote! { [u64; 2] }
-                    }),
-                }
+                IntKind::I8 => Ok(quote! { i8 }),
+                IntKind::U8 => Ok(quote! { u8 }),
+                IntKind::I16 => Ok(quote! { i16 }),
+                IntKind::U16 => Ok(quote! { u16 }),
+                IntKind::I32 => Ok(quote! { i32 }),
+                IntKind::U32 => Ok(quote! { u32 }),
+                IntKind::I64 => Ok(quote! { i64 }),
+                IntKind::U64 => Ok(quote! { u64 }),
+                IntKind::Custom { name, .. } => Ok(proc_macro2::TokenStream::from_str(name).unwrap()),
+                IntKind::U128 => Ok(if ctx.options().rust_features.i128_and_u128 {
+                    quote! { u128 }
+                } else {
+                    quote! { [u64; 2] }
+                }),
+                IntKind::I128 => Ok(if ctx.options().rust_features.i128_and_u128 {
+                    quote! { i128 }
+                } else {
+                    quote! { [u64; 2] }
+                }),
             },
             TypeKind::Float(fk) => Ok(float_kind_rust_type(ctx, fk, self.layout(ctx))),
             TypeKind::Complex(fk) => {
@@ -3288,10 +3226,6 @@ impl TryToRustTy for Type {
                 })
             },
             TypeKind::Function(ref fs) => {
-                // We can't rely on the sizeof(Option<NonZero<_>>) ==
-                // sizeof(NonZero<_>) optimization with opaque blobs (because
-                // they aren't NonZero), so don't *ever* use an or_opaque
-                // variant here.
                 let ty = fs.try_to_rust_ty(ctx, &())?;
 
                 let prefix = ctx.trait_prefix();
@@ -3348,14 +3282,9 @@ impl TryToRustTy for Type {
 
                 let is_objc_pointer = matches!(inner_ty.kind(), TypeKind::ObjCInterface(..));
 
-                // Regardless if we can properly represent the inner type, we
-                // should always generate a proper pointer here, so use
-                // infallible conversion of the inner type.
                 let mut ty = inner.to_rust_ty_or_opaque(ctx, &());
                 ty.append_implicit_template_params(ctx, inner);
 
-                // Avoid the first function pointer level, since it's already
-                // represented in Rust.
                 if inner_ty.canonical_type(ctx).is_function() || is_objc_pointer {
                     Ok(ty)
                 } else {
@@ -3496,14 +3425,10 @@ impl CodeGenerator for Function {
 
         if is_internal {
             if !ctx.options().wrap_static_fns {
-                // We cannot do anything with internal functions if we are not wrapping them so
-                // just avoid generating anything for them.
                 return None;
             }
 
             if signature.is_variadic() {
-                // We cannot generate wrappers for variadic static functions so we avoid
-                // generating any code for them.
                 variadic_fn_diagnostic(self.name(), item.location(), ctx);
                 return None;
             }
@@ -4413,14 +4338,6 @@ pub(crate) mod utils {
                 let arg_item = ctx.resolve_item(ty);
                 let arg_ty = arg_item.kind().expect_type();
 
-                // From the C90 standard[1]:
-                //
-                //     A declaration of a parameter as "array of type" shall be
-                //     adjusted to "qualified pointer to type", where the type
-                //     qualifiers (if any) are those specified within the [ and ] of
-                //     the array type derivation.
-                //
-                // [1]: http://c0x.coding-guidelines.com/6.7.5.3.html
                 let arg_ty = match *arg_ty.canonical_type(ctx).kind() {
                     TypeKind::Array(t, _) => {
                         let stream = if ctx.options().array_pointers_in_arguments {

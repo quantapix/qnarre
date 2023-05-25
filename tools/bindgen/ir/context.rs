@@ -501,11 +501,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             }
             declaration = declaration.canonical();
             if !declaration.is_valid() {
-                // This could happen, for example, with types like `int*` or
-                // similar.
-                //
-                // Fortunately, we don't care about those types being
-                // duplicated, so we can just ignore them.
                 debug!(
                     "Invalid declaration {:?} found for type {:?}",
                     declaration,
@@ -774,8 +769,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
             if let Some(replacement) = replacement {
                 if *replacement != id {
-                    // We set this just after parsing the annotation. It's
-                    // very unlikely, but this can happen.
                     if self.resolve_item_fallible(*replacement).is_some() {
                         replacements.push((id.expect_type_id(self), replacement.expect_type_id(self)));
                     }
@@ -794,8 +787,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
             let old_parent = self.resolve_item(replacement_id).parent_id();
             if new_parent == old_parent {
-                // Same parent and therefore also same containing
-                // module. Nothing to do here.
                 continue;
             }
 
@@ -827,7 +818,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             let new_module = new_module.unwrap_or_else(|| self.root_module.into());
 
             if new_module == old_module {
-                // Already in the correct module.
                 continue;
             }
 
@@ -886,9 +876,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
     fn assert_no_dangling_references(&self) {
         if cfg!(feature = "__testing_only_extra_assertions") {
-            for _ in self.assert_no_dangling_item_traversal() {
-                // The iterator's next method does the asserting for us.
-            }
+            for _ in self.assert_no_dangling_item_traversal() {}
         }
     }
 
@@ -1109,13 +1097,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 })
             })
             .or_else(|| {
-                // If we haven't already parsed the declaration of
-                // the template being instantiated, then it *must*
-                // be on the stack of types we are currently
-                // parsing. If it wasn't then clang would have
-                // already errored out before we started
-                // constructing our IR because you can't instantiate
-                // a template until it is fully defined.
                 instantiation
                     .referenced()
                     .and_then(|referenced| {
@@ -1171,12 +1152,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         for child in children.iter().rev() {
             match child.kind() {
                 clang::CXCursor_TypeRef | clang::CXCursor_TypedefDecl | clang::CXCursor_TypeAliasDecl => {
-                    // The `with_id` ID will potentially end up unused if we give up
-                    // on this type (for example, because it has const value
-                    // template args), so if we pass `with_id` as the parent, it is
-                    // potentially a dangling reference. Instead, use the canonical
-                    // template declaration as the parent. It is already parsed and
-                    // has a known-resolvable `ItemId`.
                     let ty = Item::from_ty_or_ref(child.cur_type(), *child, Some(template.into()), self);
                     args.push(ty);
                 },
@@ -1185,15 +1160,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         self.get_declaration_info_for_template_instantiation(child)?;
 
                     if num_expected_template_args == 0 || child.has_at_least_num_children(num_expected_template_args) {
-                        // Do a happy little parse. See comment in the TypeRef
-                        // match arm about parent IDs.
                         let ty = Item::from_ty_or_ref(child.cur_type(), *child, Some(template.into()), self);
                         args.push(ty);
                     } else {
-                        // This is the case mentioned in the doc comment where
-                        // clang gives us a flattened AST and we have to
-                        // reconstruct which template arguments go to which
-                        // instantiation :(
                         let args_len = args.len();
                         if args_len < num_expected_template_args {
                             warn!(
@@ -1207,12 +1176,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         sub_args.reverse();
 
                         let sub_name = Some(template_decl_cursor.spelling());
-                        let sub_inst = TemplateInstantiation::new(
-                            // This isn't guaranteed to be a type that we've
-                            // already finished parsing yet.
-                            template_decl_id.as_type_id_unchecked(),
-                            sub_args,
-                        );
+                        let sub_inst = TemplateInstantiation::new(template_decl_id.as_type_id_unchecked(), sub_args);
                         let sub_kind = TypeKind::TemplateInstantiation(sub_inst);
                         let sub_ty = Type::new(
                             sub_name,
@@ -1230,7 +1194,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                             Some(child.location()),
                         );
 
-                        // Bypass all the validations in add_item explicitly.
                         debug!(
                             "instantiate_template: inserting nested \
                              instantiation item: {:?}",
@@ -1309,25 +1272,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         if let Some(decl) = ty.canonical_declaration(location.as_ref()) {
             if let Some(id) = self.get_resolved_type(&decl) {
                 debug!("Already resolved ty {:?}, {:?}, {:?} {:?}", id, decl, ty, location);
-                // If the declaration already exists, then either:
-                //
-                //   * the declaration is a template declaration of some sort,
-                //     and we are looking at an instantiation or specialization
-                //     of it, or
-                //   * we have already parsed and resolved this type, and
-                //     there's nothing left to do.
                 if let Some(location) = location {
                     if decl.cursor().is_template_like() && *ty != decl.cursor().cur_type() {
-                        // For specialized type aliases, there's no way to get the
-                        // template parameters as of this writing (for a struct
-                        // specialization we wouldn't be in this branch anyway).
-                        //
-                        // Explicitly return `None` if there aren't any
-                        // unspecialized parameters (contains any `TypeRef`) so we
-                        // resolve the canonical type if there is one and it's
-                        // exposed.
-                        //
-                        // This is _tricky_, I know :(
                         if decl.cursor().kind() == CXCursor_TypeAliasTemplateDecl
                             && !location.contains_cursor(CXCursor_TypeRef)
                             && ty.canonical_type().is_valid_and_exposed()
@@ -1526,22 +1472,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 b"inline" => {
                     debug_assert!(kind != ModuleKind::Inline, "Multiple inline keywords?");
                     kind = ModuleKind::Inline;
-                    // When hitting a nested inline namespace we get a spelling
-                    // that looks like ["inline", "foo"]. Deal with it properly.
                     looking_for_name = true;
                 },
-                // The double colon allows us to handle nested namespaces like
-                // namespace foo::bar { }
-                //
-                // libclang still gives us two namespace cursors, which is cool,
-                // but the tokenization of the second begins with the double
-                // colon. That's ok, so we only need to handle the weird
-                // tokenization here.
                 b"namespace" | b"::" => {
                     looking_for_name = true;
                 },
                 b"{" => {
-                    // This should be an anonymous namespace.
                     assert!(looking_for_name);
                     break;
                 },
@@ -1552,15 +1488,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         }
                         break;
                     } else {
-                        // This is _likely_, but not certainly, a macro that's
-                        // been placed just before the namespace keyword.
-                        // Unfortunately, clang tokens don't let us easily see
-                        // through the ifdef tokens, so we don't know what this
-                        // token should really be. Instead of panicking though,
-                        // we warn the user that we assumed the token was blank,
-                        // and then move on.
-                        //
-                        // See also https://github.com/rust-lang/rust-bindgen/issues/1676.
                         warn!(
                             "Ignored unknown namespace prefix '{}' at {:?} in {:?}",
                             String::from_utf8_lossy(name),
@@ -1640,9 +1567,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     .name()
                     .and_then(|name| {
                         if self.options.parse_callbacks.is_empty() {
-                            // Sized integer types from <stdint.h> get mapped to Rust primitive
-                            // types regardless of whether they are blocklisted, so ensure that
-                            // standard traits are considered derivable for them too.
                             if self.is_stdint_type(name) {
                                 Some(CanDerive::Yes)
                             } else {
@@ -1681,36 +1605,25 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let roots = {
             let mut roots = self
                 .items()
-                // Only consider roots that are enabled for codegen.
                 .filter(|&(_, item)| item.is_enabled_for_codegen(self))
                 .filter(|&(_, item)| {
-                    // If nothing is explicitly allowlisted, then everything is fair
-                    // game.
-                    if self.options().allowlisted_types.is_empty() &&
-                        self.options().allowlisted_functions.is_empty() &&
-                        self.options().allowlisted_vars.is_empty() &&
-                        self.options().allowlisted_files.is_empty()
+                    if self.options().allowlisted_types.is_empty()
+                        && self.options().allowlisted_functions.is_empty()
+                        && self.options().allowlisted_vars.is_empty()
+                        && self.options().allowlisted_files.is_empty()
                     {
                         return true;
                     }
 
-                    // If this is a type that explicitly replaces another, we assume
-                    // you know what you're doing.
                     if item.annotations().use_instead_of().is_some() {
                         return true;
                     }
 
-                    // Items with a source location in an explicitly allowlisted file
-                    // are always included.
                     if !self.options().allowlisted_files.is_empty() {
                         if let Some(location) = item.location() {
                             let (file, _, _, _) = location.location();
                             if let Some(filename) = file.name() {
-                                if self
-                                    .options()
-                                    .allowlisted_files
-                                    .matches(filename)
-                                {
+                                if self.options().allowlisted_files.matches(filename) {
                                     return true;
                                 }
                             }
@@ -1721,47 +1634,35 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     debug!("allowlisted_items: testing {:?}", name);
                     match *item.kind() {
                         ItemKind::Module(..) => true,
-                        ItemKind::Function(_) => {
-                            self.options().allowlisted_functions.matches(&name)
-                        }
-                        ItemKind::Var(_) => {
-                            self.options().allowlisted_vars.matches(&name)
-                        }
+                        ItemKind::Function(_) => self.options().allowlisted_functions.matches(&name),
+                        ItemKind::Var(_) => self.options().allowlisted_vars.matches(&name),
                         ItemKind::Type(ref ty) => {
                             if self.options().allowlisted_types.matches(&name) {
                                 return true;
                             }
 
-                            // Auto-allowlist types that don't need code
-                            // generation if not allowlisting recursively, to
-                            // make the #[derive] analysis not be lame.
                             if !self.options().allowlist_recursively {
                                 match *ty.kind() {
-                                    TypeKind::Void |
-                                    TypeKind::NullPtr |
-                                    TypeKind::Int(..) |
-                                    TypeKind::Float(..) |
-                                    TypeKind::Complex(..) |
-                                    TypeKind::Array(..) |
-                                    TypeKind::Vector(..) |
-                                    TypeKind::Pointer(..) |
-                                    TypeKind::Reference(..) |
-                                    TypeKind::Function(..) |
-                                    TypeKind::ResolvedTypeRef(..) |
-                                    TypeKind::Opaque |
-                                    TypeKind::TypeParam => return true,
-                                    _ => {}
+                                    TypeKind::Void
+                                    | TypeKind::NullPtr
+                                    | TypeKind::Int(..)
+                                    | TypeKind::Float(..)
+                                    | TypeKind::Complex(..)
+                                    | TypeKind::Array(..)
+                                    | TypeKind::Vector(..)
+                                    | TypeKind::Pointer(..)
+                                    | TypeKind::Reference(..)
+                                    | TypeKind::Function(..)
+                                    | TypeKind::ResolvedTypeRef(..)
+                                    | TypeKind::Opaque
+                                    | TypeKind::TypeParam => return true,
+                                    _ => {},
                                 }
                                 if self.is_stdint_type(&name) {
                                     return true;
                                 }
                             }
 
-                            // Unnamed top-level enums are special and we
-                            // allowlist them via the `allowlisted_vars` filter,
-                            // since they're effectively top-level constants,
-                            // and there's no way for them to be referenced
-                            // consistently.
                             let parent = self.resolve_item(item.parent_id());
                             if !parent.is_module() {
                                 return false;
@@ -1776,17 +1677,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                 return false;
                             }
 
-                            let mut prefix_path =
-                                parent.path_for_allowlisting(self).clone();
+                            let mut prefix_path = parent.path_for_allowlisting(self).clone();
                             enum_.variants().iter().any(|variant| {
-                                prefix_path.push(
-                                    variant.name_for_allowlisting().into(),
-                                );
+                                prefix_path.push(variant.name_for_allowlisting().into());
                                 let name = prefix_path[1..].join("::");
                                 prefix_path.pop().unwrap();
                                 self.options().allowlisted_vars.matches(name)
                             })
-                        }
+                        },
                     }
                 })
                 .map(|(id, _)| id)
@@ -1850,13 +1748,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let mut enum_typedef_combos = HashSet::default();
         for item in &self.items {
             if let Some(ItemKind::Module(module)) = item.as_ref().map(Item::kind) {
-                // Find typedefs in this module, and build set of their names.
                 let mut names_of_typedefs = HashSet::default();
                 for child_id in module.children() {
                     if let Some(ItemKind::Type(ty)) = self.items[child_id.0].as_ref().map(Item::kind) {
                         if let (Some(name), TypeKind::Alias(type_id)) = (ty.name(), ty.kind()) {
-                            // We disregard aliases that refer to the enum
-                            // itself, such as in `typedef enum { ... } Enum;`.
                             if type_id
                                 .into_resolver()
                                 .through_type_refs()
@@ -1871,8 +1766,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     }
                 }
 
-                // Find enums in this module, and record the ID of each one that
-                // has a typedef.
                 for child_id in module.children() {
                     if let Some(ItemKind::Type(ty)) = self.items[child_id.0].as_ref().map(Item::kind) {
                         if let (Some(name), true) = (ty.name(), ty.is_enum()) {
@@ -2134,9 +2027,6 @@ impl ItemResolver {
                 Some(&TypeKind::ResolvedTypeRef(next_id)) if self.through_type_refs => {
                     id = next_id.into();
                 },
-                // We intentionally ignore template aliases here, as they are
-                // more complicated, and don't represent a simple renaming of
-                // some type.
                 Some(&TypeKind::Alias(next_id)) if self.through_type_aliases => {
                     id = next_id.into();
                 },

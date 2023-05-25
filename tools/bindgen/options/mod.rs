@@ -52,7 +52,6 @@ macro_rules! options {
 
                 let headers = match self.options.input_headers.split_last() {
                     Some((header, headers)) => {
-                        // The last input header is passed as an argument in the first position.
                         args.push(header.clone());
                         headers
                     },
@@ -64,20 +63,16 @@ macro_rules! options {
                     func(&self.options.$field, &mut args);
                 })*
 
-                // Add the `--experimental` flag if `bindgen` is built with the `experimental`
-                // feature.
                 if cfg!(feature = "experimental") {
                     args.push("--experimental".to_owned());
                 }
 
-                // Add all the clang arguments.
                 args.push("--".to_owned());
 
                 if !self.options.clang_args.is_empty() {
                     args.extend_from_slice(&self.options.clang_args);
                 }
 
-                // We need to pass all but the last header via the `-include` clang argument.
                 for header in headers {
                     args.push("-include".to_owned());
                     args.push(header.clone());
@@ -95,7 +90,6 @@ options! {
     blocklisted_types: RegexSet {
         methods: {
             regex_option! {
-                /// Do not generate any bindings for the given type.
                 pub fn blocklist_type<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.blocklisted_types.insert(arg);
                     self
@@ -107,7 +101,6 @@ options! {
     blocklisted_functions: RegexSet {
         methods: {
             regex_option! {
-                /// Do not generate any bindings for the given function.
                 pub fn blocklist_function<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.blocklisted_functions.insert(arg);
                     self
@@ -119,8 +112,6 @@ options! {
     blocklisted_items: RegexSet {
         methods: {
             regex_option! {
-                /// Do not generate any bindings for the given item, regardless of whether it is a
-                /// type, function, module, etc.
                 pub fn blocklist_item<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.blocklisted_items.insert(arg);
                     self
@@ -132,8 +123,6 @@ options! {
     blocklisted_files: RegexSet {
         methods: {
             regex_option! {
-                /// Do not generate any bindings for the contents of the given file, regardless of
-                /// whether the contents of the file are types, functions, modules, etc.
                 pub fn blocklist_file<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.blocklisted_files.insert(arg);
                     self
@@ -145,11 +134,6 @@ options! {
     opaque_types: RegexSet {
         methods: {
             regex_option! {
-                /// Treat the given type as opaque in the generated bindings.
-                ///
-                /// Opaque in this context means that none of the generated bindings will contain
-                /// information about the inner representation of the type and the type itself will
-                /// be represented as a chunk of bytes with the alignment and size of the type.
                 pub fn opaque_type<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.opaque_types.insert(arg);
                     self
@@ -191,10 +175,6 @@ options! {
     allowlisted_types: RegexSet {
         methods: {
             regex_option! {
-                /// Generate bindings for the given type.
-                ///
-                /// This option is transitive by default. Check the documentation of the
-                /// [`Builder::allowlist_recursively`] method for further information.
                 pub fn allowlist_type<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.allowlisted_types.insert(arg);
                     self
@@ -206,10 +186,6 @@ options! {
     allowlisted_functions: RegexSet {
         methods: {
             regex_option! {
-                /// Generate bindings for the given function.
-                ///
-                /// This option is transitive by default. Check the documentation of the
-                /// [`Builder::allowlist_recursively`] method for further information.
                 pub fn allowlist_function<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.allowlisted_functions.insert(arg);
                     self
@@ -221,10 +197,6 @@ options! {
     allowlisted_vars: RegexSet {
         methods: {
             regex_option! {
-                /// Generate bindings for the given variable.
-                ///
-                /// This option is transitive by default. Check the documentation of the
-                /// [`Builder::allowlist_recursively`] method for further information.
                 pub fn allowlist_var<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.allowlisted_vars.insert(arg);
                     self
@@ -236,10 +208,6 @@ options! {
     allowlisted_files: RegexSet {
         methods: {
             regex_option! {
-                /// Generate bindings for the content of the given file.
-                ///
-                /// This option is transitive by default. Check the documentation of the
-                /// [`Builder::allowlist_recursively`] method for further information.
                 pub fn allowlist_file<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.allowlisted_files.insert(arg);
                     self
@@ -268,10 +236,6 @@ options! {
     bitfield_enums: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as being bitfield-like.
-                ///
-                /// This is similar to the [`Builder::newtype_enum`] style, but with the bitwise
-                /// operators implemented.
                 pub fn bitfield_enum<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.bitfield_enums.insert(arg);
                     self
@@ -283,11 +247,6 @@ options! {
     newtype_enums: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as a newtype.
-                ///
-                /// This means that an integer newtype will be declared to represent the `enum`
-                /// type and its variants will be represented as constants inside of this type's
-                /// `impl` block.
                 pub fn newtype_enum<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.newtype_enums.insert(arg);
                     self
@@ -299,11 +258,6 @@ options! {
     newtype_global_enums: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as a global newtype.
-                ///
-                /// This is similar to the [`Builder::newtype_enum`] style, but the constants for
-                /// each variant are free constants instead of being declared inside an `impl`
-                /// block for the newtype.
                 pub fn newtype_global_enum<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.newtype_global_enums.insert(arg);
                     self
@@ -315,14 +269,6 @@ options! {
     rustified_enums: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as a Rust `enum`.
-                ///
-                /// This means that each variant of the `enum` will be represented as a Rust `enum`
-                /// variant.
-                ///
-                /// **Use this with caution**, creating an instance of a Rust `enum` with an
-                /// invalid value will cause undefined behaviour. To avoid this, use the
-                /// [`Builder::newtype_enum`] style instead.
                 pub fn rustified_enum<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.rustified_enums.insert(arg);
                     self
@@ -334,10 +280,6 @@ options! {
     rustified_non_exhaustive_enums: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as a non-exhaustive Rust `enum`.
-                ///
-                /// This is similar to the [`Builder::rustified_enum`] style, but the `enum` is
-                /// tagged with the `#[non_exhaustive]` attribute.
                 pub fn rustified_non_exhaustive_enum<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.rustified_non_exhaustive_enums.insert(arg);
                     self
@@ -349,7 +291,6 @@ options! {
     constified_enum_modules: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as a module with a set of integer constants.
                 pub fn constified_enum_module<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.constified_enum_modules.insert(arg);
                     self
@@ -361,10 +302,6 @@ options! {
     constified_enums: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `enum` as a set o integer constants.
-                ///
-                /// This is similar to the [`Builder::constified_enum_module`] style, but the
-                /// constants are generated in the current module instead of in a new module.
                 pub fn constified_enum<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.constified_enums.insert(arg);
                     self
@@ -408,11 +345,6 @@ options! {
     type_alias: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `typedef` as a regular Rust `type` alias.
-                ///
-                /// This is the default behavior, meaning that this method only comes into effect
-                /// if a style different from [`AliasVariation::TypeAlias`] was passed to the
-                /// [`Builder::default_alias_style`] method.
                 pub fn type_alias<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.type_alias.insert(arg);
                     self
@@ -424,10 +356,6 @@ options! {
     new_type_alias: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `typedef` as a Rust newtype by having the aliased
-                /// type be wrapped in a `struct` with `#[repr(transparent)]`.
-                ///
-                /// This method can be used to enforce stricter type checking.
                 pub fn new_type_alias<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.new_type_alias.insert(arg);
                     self
@@ -439,10 +367,6 @@ options! {
     new_type_alias_deref: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `typedef` to be generated as a newtype that can be dereferenced.
-                ///
-                /// This is similar to the [`Builder::new_type_alias`] style, but the newtype
-                /// implements `Deref` and `DerefMut` with the aliased type as a target.
                 pub fn new_type_alias_deref<T: AsRef<str>>(mut self, arg: T) -> Builder {
                     self.options.new_type_alias_deref.insert(arg);
                     self
@@ -468,12 +392,6 @@ options! {
     bindgen_wrapper_union: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `union` to use a `bindgen`-generated wrapper for its members if at
-                /// least one them is not `Copy`.
-                ///
-                /// This is the default behavior, meaning that this method only comes into effect
-                /// if a style different from [`NonCopyUnionStyle::BindgenWrapper`] was passed to
-                /// the [`Builder::default_non_copy_union_style`] method.
                 pub fn bindgen_wrapper_union<T: AsRef<str>>(mut self, arg: T) -> Self {
                     self.options.bindgen_wrapper_union.insert(arg);
                     self
@@ -485,11 +403,6 @@ options! {
     manually_drop_union: RegexSet {
         methods: {
             regex_option! {
-                /// Mark the given `union` to use [`::core::mem::ManuallyDrop`] for its members if
-                /// at least one of them is not `Copy`.
-                ///
-                /// The `ManuallyDrop` type was stabilized in Rust 1.20.0, do not use this option
-                /// if your target version is lower than this.
                 pub fn manually_drop_union<T: AsRef<str>>(mut self, arg: T) -> Self {
                     self.options.manually_drop_union.insert(arg);
                     self
@@ -831,8 +744,6 @@ options! {
     input_header_contents: Vec<(String, String)> {
         methods: {
             pub fn header_contents(mut self, name: &str, contents: &str) -> Builder {
-                // Apparently clang relies on having virtual FS correspondent to
-                // the real one, so we need absolute paths here
                 let absolute_path = env::current_dir()
                     .expect("Cannot retrieve current directory")
                     .join(name)
@@ -1121,7 +1032,6 @@ options! {
     no_partialeq_types: RegexSet {
         methods: {
             regex_option! {
-                /// Do not derive `PartialEq` for a given type.
                 pub fn no_partialeq<T: Into<String>>(mut self, arg: T) -> Builder {
                     self.options.no_partialeq_types.insert(arg.into());
                     self
@@ -1133,7 +1043,6 @@ options! {
     no_copy_types: RegexSet {
         methods: {
             regex_option! {
-                /// Do not derive `Copy` and `Clone` for a given type.
                 pub fn no_copy<T: Into<String>>(mut self, arg: T) -> Self {
                     self.options.no_copy_types.insert(arg.into());
                     self
@@ -1145,7 +1054,6 @@ options! {
     no_debug_types: RegexSet {
         methods: {
             regex_option! {
-                /// Do not derive `Debug` for a given type.
                 pub fn no_debug<T: Into<String>>(mut self, arg: T) -> Self {
                     self.options.no_debug_types.insert(arg.into());
                     self
@@ -1157,7 +1065,6 @@ options! {
     no_default_types: RegexSet {
         methods: {
             regex_option! {
-                /// Do not derive or implement `Default` for a given type.
                 pub fn no_default<T: Into<String>>(mut self, arg: T) -> Self {
                     self.options.no_default_types.insert(arg.into());
                     self
@@ -1169,7 +1076,6 @@ options! {
     no_hash_types: RegexSet {
         methods: {
             regex_option! {
-                /// Do not derive `Hash` for a given type.
                 pub fn no_hash<T: Into<String>>(mut self, arg: T) -> Builder {
                     self.options.no_hash_types.insert(arg.into());
                     self
@@ -1181,7 +1087,6 @@ options! {
     must_use_types: RegexSet {
         methods: {
             regex_option! {
-                /// Annotate the given type with the `#[must_use]` attribute.
                 pub fn must_use_type<T: Into<String>>(mut self, arg: T) -> Builder {
                     self.options.must_use_types.insert(arg.into());
                     self
@@ -1309,7 +1214,6 @@ options! {
     abi_overrides: HashMap<Abi, RegexSet> {
         methods: {
             regex_option! {
-                /// Override the ABI of a given function.
                 pub fn override_abi<T: Into<String>>(mut self, abi: Abi, arg: T) -> Self {
                     self.options
                         .abi_overrides

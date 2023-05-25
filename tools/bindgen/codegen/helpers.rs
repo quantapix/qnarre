@@ -175,22 +175,16 @@ pub(crate) mod ast_ty {
             (FloatKind::Double, true) => quote! { f64 },
             (FloatKind::Float, false) => raw_type(ctx, "c_float"),
             (FloatKind::Double, false) => raw_type(ctx, "c_double"),
-            (FloatKind::LongDouble, _) => {
-                match layout {
-                    Some(layout) => {
-                        match layout.size {
-                            4 => quote! { f32 },
-                            8 => quote! { f64 },
-                            // TODO(emilio): If rust ever gains f128 we should
-                            // use it here and below.
-                            _ => super::integer_type(ctx, layout).unwrap_or(quote! { f64 }),
-                        }
-                    },
-                    None => {
-                        debug_assert!(false, "How didn't we know the layout for a primitive type?");
-                        quote! { f64 }
-                    },
-                }
+            (FloatKind::LongDouble, _) => match layout {
+                Some(layout) => match layout.size {
+                    4 => quote! { f32 },
+                    8 => quote! { f64 },
+                    _ => super::integer_type(ctx, layout).unwrap_or(quote! { f64 }),
+                },
+                None => {
+                    debug_assert!(false, "How didn't we know the layout for a primitive type?");
+                    quote! { f64 }
+                },
             },
             (FloatKind::Float128, _) => {
                 if ctx.options().rust_features.i128_and_u128 {

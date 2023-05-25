@@ -37,10 +37,7 @@ fn visit_items(items: &mut Vec<Item>) {
         {
             let mut exists = false;
             for extern_block in &mut extern_blocks {
-                // Check if there is a extern block with the same ABI and
-                // attributes.
                 if extern_block.attrs == attrs && extern_block.abi == abi {
-                    // Merge the items of the two blocks.
                     extern_block.items.extend_from_slice(&extern_block_items);
                     exists = true;
                     break;

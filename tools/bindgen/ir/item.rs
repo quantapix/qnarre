@@ -201,30 +201,17 @@ impl Trace for Item {
     {
         match *self.kind() {
             ItemKind::Type(ref ty) => {
-                // There are some types, like resolved type references, where we
-                // don't want to stop collecting types even though they may be
-                // opaque.
                 if ty.should_be_traced_unconditionally() || !self.is_opaque(ctx, &()) {
                     ty.trace(ctx, tracer, self);
                 }
             },
             ItemKind::Function(ref fun) => {
-                // Just the same way, it has not real meaning for a function to
-                // be opaque, so we trace across it.
                 tracer.visit(fun.signature().into());
             },
             ItemKind::Var(ref var) => {
                 tracer.visit_kind(var.ty().into(), EdgeKind::VarType);
             },
-            ItemKind::Module(_) => {
-                // Module -> children edges are "weak", and we do not want to
-                // trace them. If we did, then allowlisting wouldn't work as
-                // expected: everything in every module would end up
-                // allowlisted.
-                //
-                // TODO: make a new edge kind for module -> children edges and
-                // filter them during allowlisting traversals.
-            },
+            ItemKind::Module(_) => {},
         }
     }
 }
@@ -464,7 +451,6 @@ impl Item {
                     ctx.options().blocklisted_types.matches(&name) || ctx.is_replaced_type(path, self.id)
                 },
                 ItemKind::Function(..) => ctx.options().blocklisted_functions.matches(&name),
-                // TODO: Add constant / namespace blocklisting?
                 ItemKind::Var(..) | ItemKind::Module(..) => false,
             }
     }
@@ -536,8 +522,6 @@ impl Item {
             let parent = ctx.resolve_item(self.parent_id());
             if let ItemKind::Type(ref ty) = *parent.kind() {
                 if let TypeKind::Comp(ref ci) = *ty.kind() {
-                    // All the constructors have the same name, so no need to
-                    // resolve and check.
                     return ci.constructors().iter().position(|c| *c == self.id()).or_else(|| {
                         ci.methods()
                             .iter()
@@ -613,11 +597,7 @@ impl Item {
             .parent_id()
             .ancestors(ctx)
             .filter(|id| *id != ctx.root_module())
-            .take_while(|id| {
-                // Stop iterating ancestors once we reach a non-inline namespace
-                // when opt.within_namespaces is set.
-                !opt.within_namespaces || !ctx.resolve_item(*id).is_module()
-            })
+            .take_while(|id| !opt.within_namespaces || !ctx.resolve_item(*id).is_module())
             .filter(|id| {
                 if !ctx.options().conservative_inline_namespaces {
                     if let ItemKind::Module(ref module) = *ctx.resolve_item(*id).kind() {
@@ -719,8 +699,6 @@ impl Item {
         match *type_.kind() {
             TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
             TypeKind::Alias(inner_id) => {
-                // TODO(emilio): Make this "hop through type aliases that aren't
-                // really generated" an option in `ItemResolver`?
                 let inner_item = ctx.resolve_item(inner_id);
                 let name = item.canonical_name(ctx);
 
@@ -1105,7 +1083,6 @@ impl Item {
                     }
                 },
                 _ => {
-                    // ignore toplevel operator overloads
                     let spelling = cursor.spelling();
                     if !spelling.starts_with("operator") {
                         warn!("Unhandled cursor kind {:?}: {:?}", cursor.kind(), cursor);
@@ -1253,7 +1230,6 @@ impl Item {
                 .find(|ty| *ty.decl() == declaration_to_look_for)
             {
                 debug!("Avoiding recursion parsing type: {:?}", ty);
-                // Unchecked because we haven't finished this type yet.
                 return Ok(partial.id().as_type_id_unchecked());
             }
         }
@@ -1288,11 +1264,6 @@ impl Item {
                 debug!("Item::from_ty recursing in the ast");
                 let mut result = Err(ParseError::Recurse);
 
-                // Need to pop here, otherwise we'll get stuck.
-                //
-                // TODO: Find a nicer interface, really. Also, the
-                // declaration_to_look_for suspiciously shares a lot of
-                // logic with ir::context, so we should refactor that.
                 if valid_decl {
                     let finished = ctx.finish_parsing();
                     assert_eq!(*finished.decl(), declaration_to_look_for);
@@ -1305,11 +1276,6 @@ impl Item {
                     ctx.begin_parsing(partial_ty);
                 }
 
-                // If we have recursed into the AST all we know, and we still
-                // haven't found what we've got, let's just try and make a named
-                // type.
-                //
-                // This is what happens with some template members, for example.
                 if let Err(ParseError::Recurse) = result {
                     warn!(
                         "Unknown type, assuming named template type: \
@@ -1369,9 +1335,7 @@ impl Item {
             }
 
             let refd_spelling = refd.spelling();
-            refd_spelling == spelling ||
-                // Allow for anonymous template parameters.
-                (refd_spelling.is_empty() && ANON_TYPE_PARAM_RE.is_match(spelling.as_ref()))
+            refd_spelling == spelling || (refd_spelling.is_empty() && ANON_TYPE_PARAM_RE.is_match(spelling.as_ref()))
         }
 
         let definition = if is_template_with_spelling(&location, &ty_spelling) {

@@ -206,9 +206,6 @@ impl<'ctx> CannotDerive<'ctx> {
                     return CanDerive::No;
                 }
 
-                // NOTE: Take into account that while unions in C and C++ are copied by
-                // default, the may have an explicit destructor in C++, so we can't
-                // defer this check just for the union case.
                 if !self.derive_trait.can_derive_compound_with_destructor()
                     && self.ctx.lookup_has_destructor(item.id().expect_type_id(self.ctx))
                 {
@@ -218,10 +215,9 @@ impl<'ctx> CannotDerive<'ctx> {
 
                 if info.kind() == CompKind::Union {
                     if self.derive_trait.can_derive_union() {
-                        if self.ctx.options().untagged_union &&
-                           // https://github.com/rust-lang/rust/issues/36640
-                           (!info.self_template_params(self.ctx).is_empty() ||
-                            !item.all_template_params(self.ctx).is_empty())
+                        if self.ctx.options().untagged_union
+                            && (!info.self_template_params(self.ctx).is_empty()
+                                || !item.all_template_params(self.ctx).is_empty())
                         {
                             trace!(
                                 "    cannot derive {} for Rust union because issue 36640",
@@ -229,7 +225,6 @@ impl<'ctx> CannotDerive<'ctx> {
                             );
                             return CanDerive::No;
                         }
-                    // fall through to be same as non-union handling
                     } else {
                         if self.ctx.options().untagged_union {
                             trace!("    cannot derive {} for Rust unions", self.derive_trait);
@@ -256,9 +251,6 @@ impl<'ctx> CannotDerive<'ctx> {
                     return CanDerive::No;
                 }
 
-                // Bitfield units are always represented as arrays of u8, but
-                // they're not traced as arrays, so we need to check here
-                // instead.
                 if !self.derive_trait.can_derive_large_array(self.ctx)
                     && info.has_too_large_bitfield_unit()
                     && !item.is_opaque(self.ctx, &())
@@ -297,9 +289,6 @@ impl<'ctx> CannotDerive<'ctx> {
         item.trace(
             self.ctx,
             &mut |sub_id, edge_kind| {
-                // Ignore ourselves, since union with ourself is a
-                // no-op. Ignore edges that aren't relevant to the
-                // analysis.
                 if sub_id == item.id() || !consider_edge(edge_kind) {
                     return;
                 }
@@ -411,9 +400,6 @@ impl DeriveTrait {
     fn can_derive_vector(&self) -> CanDerive {
         match self {
             DeriveTrait::PartialEqOrPartialOrd => {
-                // FIXME: vectors always can derive PartialEq, but they should
-                // not derive PartialOrd:
-                // https://github.com/rust-lang-nursery/packed_simd/issues/48
                 trace!("    vectors cannot derive PartialOrd");
                 CanDerive::No
             },
@@ -531,11 +517,6 @@ impl<'ctx> MonotoneFramework for CannotDerive<'ctx> {
                     if !self.derive_trait.can_derive_large_array(self.ctx)
                         && ty.layout(self.ctx).map_or(false, is_reached_limit)
                     {
-                        // We have to be conservative: the struct *could* have enough
-                        // padding that we emit an array that is longer than
-                        // `RUST_DERIVE_IN_ARRAY_LIMIT`. If we moved padding calculations
-                        // into the IR and computed them before this analysis, then we could
-                        // be precise rather than conservative here.
                         can_derive = CanDerive::Manually;
                     }
                 }

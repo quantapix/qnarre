@@ -568,8 +568,6 @@ impl Bindings {
 
                         let arg = &**arg;
 
-                        // https://clang.llvm.org/docs/ClangCommandLineReference.html
-                        // -isystem and -isystem-after are harmless.
                         if arg == "-I" || arg == "--include-directory" {
                             last_was_include_prefix = true;
                             return false;

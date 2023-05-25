@@ -292,7 +292,6 @@ impl<'a> StructLayoutTracker<'a> {
             let layout = if self.is_packed {
                 Layout::new(padding_bytes, 1)
             } else if self.last_field_was_bitfield || layout.align > MAX_GUARANTEED_ALIGN {
-                // We've already given up on alignment here.
                 Layout::for_size(self.ctx, padding_bytes)
             } else {
                 Layout::new(padding_bytes, layout.align)
