@@ -41,40 +41,14 @@ macro_rules! link {
         #[allow(missing_docs)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum Version {
-            V3_5 = 35,
-            V3_6 = 36,
-            V3_7 = 37,
-            V3_8 = 38,
-            V3_9 = 39,
-            V4_0 = 40,
-            V5_0 = 50,
-            V6_0 = 60,
-            V7_0 = 70,
-            V8_0 = 80,
-            V9_0 = 90,
-            V11_0 = 110,
-            V12_0 = 120,
-            V16_0 = 160,
+            V17_0 = 170,
         }
 
         impl fmt::Display for Version {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 use Version::*;
                 match self {
-                    V3_5 => write!(f, "3.5.x"),
-                    V3_6 => write!(f, "3.6.x"),
-                    V3_7 => write!(f, "3.7.x"),
-                    V3_8 => write!(f, "3.8.x"),
-                    V3_9 => write!(f, "3.9.x"),
-                    V4_0 => write!(f, "4.0.x"),
-                    V5_0 => write!(f, "5.0.x"),
-                    V6_0 => write!(f, "6.0.x"),
-                    V7_0 => write!(f, "7.0.x"),
-                    V8_0 => write!(f, "8.0.x"),
-                    V9_0 => write!(f, "9.0.x - 10.0.x"),
-                    V11_0 => write!(f, "11.0.x"),
-                    V12_0 => write!(f, "12.0.x - 15.0.x"),
-                    V16_0 => write!(f, "16.0.x or later"),
+                    V17_0 => write!(f, "17.0.x or later"),
                 }
             }
         }

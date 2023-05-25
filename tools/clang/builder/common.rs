@@ -71,55 +71,6 @@ pub fn llvm_config(args: &str) -> Option<String> {
     }
 }
 
-/*
-#[cfg(test)]
-pub static RUN_COMMAND_MOCK: std::sync::Mutex<
-    Option<Box<dyn Fn(&str, &str, &[&str]) -> Option<String> + Send + Sync + 'static>>,
-> = std::sync::Mutex::new(None);
-
-fn run_command(name: &str, path: &str, args: &[&str]) -> Option<String> {
-    #[cfg(test)]
-    if let Some(command) = &*RUN_COMMAND_MOCK.lock().unwrap() {
-        return command(name, path, args);
-    }
-}
-*/
-
-const DIRS_LINUX: &[&str] = &[
-    "/usr/local/llvm*/lib*",
-    "/usr/local/lib*/*/*",
-    "/usr/local/lib*/*",
-    "/usr/local/lib*",
-    "/usr/lib*/*/*",
-    "/usr/lib*/*",
-    "/usr/lib*",
-];
-
-fn search_dir(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-    let p = Pattern::escape(dir.to_str().unwrap());
-    let p = Path::new(&p);
-    let ys = files.iter().map(|x| p.join(x).to_str().unwrap().to_owned());
-    let mut opts = MatchOptions::new();
-    opts.require_literal_separator = true;
-    ys.map(|x| glob::glob_with(&x, opts))
-        .filter_map(Result::ok)
-        .flatten()
-        .filter_map(|x| {
-            let p = x.ok()?;
-            let n = p.file_name()?.to_str().unwrap();
-            if n.contains("-cpp.") {
-                return None;
-            }
-            Some((p.to_owned(), n.into()))
-        })
-        .collect::<Vec<_>>()
-}
-
-fn search_dirs(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-    let ys = search_dir(dir, files);
-    ys
-}
-
 pub fn search_clang_dirs(files: &[String], variable: &str) -> Vec<(PathBuf, String)> {
     if let Ok(p) = env::var(variable).map(|x| Path::new(&x).to_path_buf()) {
         if let Some(parent) = p.parent() {
@@ -143,7 +94,7 @@ pub fn search_clang_dirs(files: &[String], variable: &str) -> Vec<(PathBuf, Stri
             ys.extend(search_dirs(&p, files));
         }
     }
-    let ds: Vec<&str> = if target_os!("linux") { DIRS_LINUX.into() } else { vec![] };
+    let ds: Vec<&str> = if target_os!("linux") { DIRS.into() } else { vec![] };
     let ds = if test!() {
         ds.iter()
             .map(|d| d.strip_prefix('/').or_else(|| d.strip_prefix("C:\\")).unwrap_or(d))
@@ -163,3 +114,51 @@ pub fn search_clang_dirs(files: &[String], variable: &str) -> Vec<(PathBuf, Stri
     }
     ys
 }
+
+fn search_dirs(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
+    search_dir(dir, files)
+}
+
+fn search_dir(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
+    let p = Pattern::escape(dir.to_str().unwrap());
+    let p = Path::new(&p);
+    let ys = files.iter().map(|x| p.join(x).to_str().unwrap().to_owned());
+    let mut opts = MatchOptions::new();
+    opts.require_literal_separator = true;
+    ys.map(|x| glob::glob_with(&x, opts))
+        .filter_map(Result::ok)
+        .flatten()
+        .filter_map(|x| {
+            let p = x.ok()?;
+            let n = p.file_name()?.to_str().unwrap();
+            if n.contains("-cpp.") {
+                return None;
+            }
+            Some((p.to_owned(), n.into()))
+        })
+        .collect::<Vec<_>>()
+}
+
+const DIRS: &[&str] = &[
+    "/usr/local/llvm*/lib*",
+    "/usr/local/lib*/*/*",
+    "/usr/local/lib*/*",
+    "/usr/local/lib*",
+    "/usr/lib*/*/*",
+    "/usr/lib*/*",
+    "/usr/lib*",
+];
+
+/*
+#[cfg(test)]
+pub static RUN_COMMAND_MOCK: std::sync::Mutex<
+    Option<Box<dyn Fn(&str, &str, &[&str]) -> Option<String> + Send + Sync + 'static>>,
+> = std::sync::Mutex::new(None);
+
+fn run_command(name: &str, path: &str, args: &[&str]) -> Option<String> {
+    #[cfg(test)]
+    if let Some(command) = &*RUN_COMMAND_MOCK.lock().unwrap() {
+        return command(name, path, args);
+    }
+}
+*/

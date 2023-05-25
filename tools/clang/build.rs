@@ -1,5 +1,3 @@
-#![allow(unused_attributes)]
-
 extern crate glob;
 
 use std::path::Path;

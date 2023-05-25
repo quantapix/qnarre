@@ -6,7 +6,8 @@ build = "build.rs"
 # links = "clang"
 
 [features]
-runtime = ["libloading"]
+default = ["runtime"]
+runtime = ["dep:libloading"]
 static = []
 
 [dependencies]

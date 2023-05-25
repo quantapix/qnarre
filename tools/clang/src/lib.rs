@@ -386,7 +386,6 @@ cenum! {
         const CXCursor_OMPParallelMaskedTaskLoopDirective = 303,
         const CXCursor_OMPParallelMaskedTaskLoopSimdDirective = 304,
         const CXCursor_OMPErrorDirective = 305,
-        const CXCursor_TranslationUnit = 300,
         const CXCursor_TranslationUnit = 350,
         const CXCursor_UnexposedAttr = 400,
         const CXCursor_IBActionAttr = 401,
