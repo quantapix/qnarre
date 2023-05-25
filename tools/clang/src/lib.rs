@@ -386,9 +386,7 @@ cenum! {
         const CXCursor_OMPParallelMaskedTaskLoopDirective = 303,
         const CXCursor_OMPParallelMaskedTaskLoopSimdDirective = 304,
         const CXCursor_OMPErrorDirective = 305,
-        #[cfg(not(feature="clang_15_0"))]
         const CXCursor_TranslationUnit = 300,
-        #[cfg(feature="clang_15_0")]
         const CXCursor_TranslationUnit = 350,
         const CXCursor_UnexposedAttr = 400,
         const CXCursor_IBActionAttr = 401,
@@ -456,7 +454,6 @@ cenum! {
         const CXCursor_ExceptionSpecificationKind_Unevaluated = 6,
         const CXCursor_ExceptionSpecificationKind_Uninstantiated = 7,
         const CXCursor_ExceptionSpecificationKind_Unparsed = 8,
-        #[cfg(feature = "clang_9_0")]
         const CXCursor_ExceptionSpecificationKind_NoThrow = 9,
     }
 }
@@ -1001,7 +998,6 @@ cenum! {
         const CXObjCPropertyAttr_weak = 512;
         const CXObjCPropertyAttr_strong = 1024;
         const CXObjCPropertyAttr_unsafe_unretained = 2048;
-        #[cfg(feature = "clang_3_9")]
         const CXObjCPropertyAttr_class = 4096;
     }
 }
@@ -1044,21 +1040,13 @@ cenum! {
         const CXTranslationUnit_CXXChainedPCH = 32;
         const CXTranslationUnit_SkipFunctionBodies = 64;
         const CXTranslationUnit_IncludeBriefCommentsInCodeCompletion = 128;
-        #[cfg(feature = "clang_3_8")]
         const CXTranslationUnit_CreatePreambleOnFirstParse = 256;
-        #[cfg(feature = "clang_3_9")]
         const CXTranslationUnit_KeepGoing = 512;
-        #[cfg(feature = "clang_5_0")]
         const CXTranslationUnit_SingleFileParse = 1024;
-        #[cfg(feature = "clang_7_0")]
         const CXTranslationUnit_LimitSkipFunctionBodiesToPreamble = 2048;
-        #[cfg(feature = "clang_8_0")]
         const CXTranslationUnit_IncludeAttributedTypes = 4096;
-        #[cfg(feature = "clang_8_0")]
         const CXTranslationUnit_VisitImplicitAttributes = 8192;
-        #[cfg(feature = "clang_9_0")]
         const CXTranslationUnit_IgnoreNonErrorsFromIncludedFiles = 16384;
-        #[cfg(feature = "clang_10_0")]
         const CXTranslationUnit_RetainExcludedConditionalBlocks = 32768;
     }
 }

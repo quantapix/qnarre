@@ -6,8 +6,6 @@ build = "build.rs"
 # links = "clang"
 
 [features]
-clang_15_0 = []
-clang_16_0 = ["clang_15_0"]
 runtime = ["libloading"]
 static = []
 
