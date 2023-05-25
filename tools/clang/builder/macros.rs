@@ -26,6 +26,7 @@ macro_rules! target_pointer_width {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! target_env {
     ($env:expr) => {
         if cfg!(test) && ::std::env::var("_CLANG_TEST").is_ok() {

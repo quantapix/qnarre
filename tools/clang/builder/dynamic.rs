@@ -1,6 +1,6 @@
 use std::env;
 use std::fs::File;
-use std::io::{self, Error, ErrorKind, Read, Seek, SeekFrom};
+use std::io::{self, Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
 use super::common;
@@ -14,24 +14,6 @@ fn parse_elf_header(path: &Path) -> io::Result<u8> {
     } else {
         Err(Error::new(ErrorKind::InvalidData, "invalid ELF header"))
     }
-}
-
-fn parse_pe_header(path: &Path) -> io::Result<u16> {
-    let mut f = File::open(path)?;
-    let mut buf = [0; 4];
-    let start = SeekFrom::Start(0x3C);
-    f.seek(start)?;
-    f.read_exact(&mut buf)?;
-    let off = i32::from_le_bytes(buf);
-    f.seek(SeekFrom::Start(off as u64))?;
-    f.read_exact(&mut buf)?;
-    if buf != [80, 69, 0, 0] {
-        return Err(Error::new(ErrorKind::InvalidData, "invalid PE header"));
-    }
-    let mut buf = [0; 2];
-    f.seek(SeekFrom::Current(20))?;
-    f.read_exact(&mut buf)?;
-    Ok(u16::from_le_bytes(buf))
 }
 
 fn validate_lib(path: &Path) -> Result<(), String> {
@@ -104,7 +86,7 @@ pub fn find(runtime: bool) -> Result<(PathBuf, String), String> {
         .ok_or_else(|| "unreachable".into())
 }
 
-//#[cfg(not(feature = "runtime"))]
+#[cfg(not(feature = "runtime"))]
 pub fn link() {
     let cep = common::CmdErrorPrinter::default();
     let (dir, file) = find(false).unwrap();

@@ -43,7 +43,7 @@ fn main() {
     } else {
         dynamic::link();
     }
-    if let Some(x) = common::run_llvm_config(&["--includedir"]) {
+    if let Some(x) = common::llvm_config("--includedir") {
         let p = Path::new(x.trim_end());
         println!("cargo:include={}", p.display());
     }

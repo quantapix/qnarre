@@ -71,6 +71,7 @@ pub fn llvm_config(args: &str) -> Option<String> {
     }
 }
 
+/*
 #[cfg(test)]
 pub static RUN_COMMAND_MOCK: std::sync::Mutex<
     Option<Box<dyn Fn(&str, &str, &[&str]) -> Option<String> + Send + Sync + 'static>>,
@@ -82,6 +83,7 @@ fn run_command(name: &str, path: &str, args: &[&str]) -> Option<String> {
         return command(name, path, args);
     }
 }
+*/
 
 const DIRS_LINUX: &[&str] = &[
     "/usr/local/llvm*/lib*",
@@ -114,7 +116,7 @@ fn search_dir(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
 }
 
 fn search_dirs(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-    let mut ys = search_dir(dir, files);
+    let ys = search_dir(dir, files);
     ys
 }
 
