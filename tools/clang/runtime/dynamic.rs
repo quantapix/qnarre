@@ -15,7 +15,7 @@ pub fn find(runtime: bool) -> Result<(PathBuf, String), String> {
         .ok_or_else(|| "unreachable".into())
 }
 
-//#[cfg(not(feature = "runtime"))]
+#[cfg(not(feature = "runtime"))]
 pub fn link() {
     let cep = common::CmdErrorPrinter::default();
     let (dir, file) = find(false).unwrap();

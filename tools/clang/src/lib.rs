@@ -21,39 +21,18 @@ pub type CXFieldVisitor = extern "C" fn(CXCursor, CXClientData) -> CXVisitorResu
 pub type CXInclusionVisitor = extern "C" fn(CXFile, *mut CXSourceLocation, c_uint, CXClientData);
 
 macro_rules! cenum {
-    ($(#[$meta:meta])* enum $name:ident {
-        $($(#[$vmeta:meta])* const $variant:ident = $value:expr), +,
+    (enum $name:ident {
+        $(const $variant:ident = $value:expr), +,
     }) => (
         pub type $name = c_int;
-
-        $($(#[$vmeta])* pub const $variant: $name = $value;)+
+        $(pub const $variant: $name = $value;)+
     );
-    ($(#[$meta:meta])* enum $name:ident {
-        $($(#[$vmeta:meta])* const $variant:ident = $value:expr); +;
+    (enum $name:ident {
+        $(const $variant:ident = $value:expr); +;
     }) => (
         pub type $name = c_int;
-
-        $($(#[$vmeta])* pub const $variant: $name = $value;)+
+        $(pub const $variant: $name = $value;)+
     );
-}
-
-macro_rules! default {
-    (#[$meta:meta] $ty:ty) => {
-        #[$meta]
-        impl Default for $ty {
-            fn default() -> $ty {
-                unsafe { mem::zeroed() }
-            }
-        }
-    };
-
-    ($ty:ty) => {
-        impl Default for $ty {
-            fn default() -> $ty {
-                unsafe { mem::zeroed() }
-            }
-        }
-    };
 }
 
 cenum! {
@@ -1076,6 +1055,16 @@ opaque!(CXPrintingPolicy);
 opaque!(CXRemapping);
 opaque!(CXTargetInfo);
 opaque!(CXTranslationUnit);
+
+macro_rules! default {
+    ($ty:ty) => {
+        impl Default for $ty {
+            fn default() -> $ty {
+                unsafe { mem::zeroed() }
+            }
+        }
+    };
+}
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
