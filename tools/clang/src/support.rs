@@ -28,9 +28,9 @@ impl Clang {
 
     pub fn find(path: Option<&Path>, args: &[String]) -> Option<Clang> {
         if let Ok(path) = env::var("CLANG_PATH") {
-            let p = Path::new(&path);
-            if p.is_file() && is_executable(p).unwrap_or(false) {
-                return Some(Clang::new(p, args));
+            let path = Path::new(&path);
+            if path.is_file() && is_executable(path).unwrap_or(false) {
+                return Some(Clang::new(path, args));
             }
         }
         let mut target = None;
@@ -39,24 +39,24 @@ impl Clang {
                 target = Some(&args[i + 1]);
             }
         }
-        let mut paths = vec![];
+        let mut ys = vec![];
         if let Some(path) = path {
-            paths.push(path.into());
+            ys.push(path.into());
         }
-        if let Ok(path) = run_llvm_config(&["--bindir"]) {
-            if let Some(line) = path.lines().next() {
-                paths.push(line.into());
+        if let Ok(path) = llvm_config(&["--bindir"]) {
+            if let Some(y) = path.lines().next() {
+                ys.push(y.into());
             }
         }
         if let Ok(path) = env::var("PATH") {
-            paths.extend(env::split_paths(&path));
+            ys.extend(env::split_paths(&path));
         }
         if let Some(target) = target {
             let default = format!("{}-clang{}", target, env::consts::EXE_SUFFIX);
             let versioned = format!("{}-clang-[0-9]*{}", target, env::consts::EXE_SUFFIX);
             let patterns = &[&default[..], &versioned[..]];
-            for path in &paths {
-                if let Some(path) = find(path, patterns) {
+            for y in &ys {
+                if let Some(path) = find(y, patterns) {
                     return Some(Clang::new(path, args));
                 }
             }
@@ -64,8 +64,8 @@ impl Clang {
         let default = format!("clang{}", env::consts::EXE_SUFFIX);
         let versioned = format!("clang-[0-9]*{}", env::consts::EXE_SUFFIX);
         let patterns = &[&default[..], &versioned[..]];
-        for path in paths {
-            if let Some(path) = find(&path, patterns) {
+        for y in ys {
+            if let Some(path) = find(&y, patterns) {
                 return Some(Clang::new(path, args));
             }
         }
@@ -74,17 +74,77 @@ impl Clang {
     }
 }
 
-fn find(directory: &Path, patterns: &[&str]) -> Option<PathBuf> {
-    let directory = if let Some(directory) = directory.to_str() {
-        Path::new(&Pattern::escape(directory)).to_owned()
+fn parse_version(path: &Path) -> Option<CXVersion> {
+    let y = clang(path, &["--version"]).0;
+    let start = y.find("version ")? + 8;
+    let mut ys = y[start..].split_whitespace().next()?.split('.');
+    let major = ys.next().and_then(parse_v_number)?;
+    let minor = ys.next().and_then(parse_v_number)?;
+    let subminor = ys.next().and_then(parse_v_number).unwrap_or(0);
+    Some(CXVersion {
+        Major: major,
+        Minor: minor,
+        Subminor: subminor,
+    })
+}
+
+fn parse_v_number(x: &str) -> Option<c_int> {
+    x.chars()
+        .take_while(|x| x.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .ok()
+}
+
+fn parse_search_paths(path: &Path, lang: &str, args: &[String]) -> Option<Vec<PathBuf>> {
+    let mut xs = vec!["-E", "-x", lang, "-", "-v"];
+    xs.extend(args.iter().map(|x| &**x));
+    let y = clang(path, &xs).1;
+    let start = y.find("#include <...> search starts here:")? + 34;
+    let end = y.find("End of search list.")?;
+    let ys = y[start..end].replace("(framework directory)", "");
+    Some(
+        ys.lines()
+            .filter(|x| !x.is_empty())
+            .map(|x| Path::new(x.trim()).into())
+            .collect(),
+    )
+}
+
+fn clang(path: &Path, args: &[&str]) -> (String, String) {
+    run(&path.to_string_lossy(), args).unwrap()
+}
+
+const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
+
+fn llvm_config(args: &[&str]) -> Result<String, String> {
+    let p = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
+    run(&p, args).map(|(x, _)| x)
+}
+
+fn run(exe: &str, args: &[&str]) -> Result<(String, String), String> {
+    Command::new(exe)
+        .args(args)
+        .output()
+        .map(|x| {
+            let y = String::from_utf8_lossy(&x.stdout).into_owned();
+            let err = String::from_utf8_lossy(&x.stderr).into_owned();
+            (y, err)
+        })
+        .map_err(|x| format!("could not run executable `{}`: {}", exe, x))
+}
+
+fn find(dir: &Path, patterns: &[&str]) -> Option<PathBuf> {
+    let dir = if let Some(x) = dir.to_str() {
+        Path::new(&Pattern::escape(x)).to_owned()
     } else {
         return None;
     };
-    for pattern in patterns {
-        let pattern = directory.join(pattern).to_string_lossy().into_owned();
-        if let Some(path) = glob::glob(&pattern).ok()?.filter_map(|p| p.ok()).next() {
-            if path.is_file() && is_executable(&path).unwrap_or(false) {
-                return Some(path);
+    for p in patterns {
+        let p = dir.join(p).to_string_lossy().into_owned();
+        if let Some(y) = glob::glob(&p).ok()?.find_map(|x| x.ok()) {
+            if y.is_file() && is_executable(&y).unwrap_or(false) {
+                return Some(y);
             }
         }
     }
@@ -97,66 +157,6 @@ fn is_executable(path: &Path) -> io::Result<bool> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
-    let path = CString::new(path.as_os_str().as_bytes())?;
-    unsafe { Ok(libc::access(path.as_ptr(), libc::X_OK) == 0) }
-}
-
-fn run(executable: &str, arguments: &[&str]) -> Result<(String, String), String> {
-    Command::new(executable)
-        .args(arguments)
-        .output()
-        .map(|o| {
-            let stdout = String::from_utf8_lossy(&o.stdout).into_owned();
-            let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
-            (stdout, stderr)
-        })
-        .map_err(|e| format!("could not run executable `{}`: {}", executable, e))
-}
-
-fn run_clang(path: &Path, arguments: &[&str]) -> (String, String) {
-    run(&path.to_string_lossy(), arguments).unwrap()
-}
-
-fn run_llvm_config(arguments: &[&str]) -> Result<String, String> {
-    let config = env::var("LLVM_CONFIG_PATH").unwrap_or_else(|_| "llvm-config".to_string());
-    run(&config, arguments).map(|(o, _)| o)
-}
-
-fn parse_version_number(number: &str) -> Option<c_int> {
-    number
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .parse()
-        .ok()
-}
-
-fn parse_version(path: &Path) -> Option<CXVersion> {
-    let output = run_clang(path, &["--version"]).0;
-    let start = output.find("version ")? + 8;
-    let mut numbers = output[start..].split_whitespace().next()?.split('.');
-    let major = numbers.next().and_then(parse_version_number)?;
-    let minor = numbers.next().and_then(parse_version_number)?;
-    let subminor = numbers.next().and_then(parse_version_number).unwrap_or(0);
-    Some(CXVersion {
-        Major: major,
-        Minor: minor,
-        Subminor: subminor,
-    })
-}
-
-fn parse_search_paths(path: &Path, language: &str, args: &[String]) -> Option<Vec<PathBuf>> {
-    let mut clang_args = vec!["-E", "-x", language, "-", "-v"];
-    clang_args.extend(args.iter().map(|s| &**s));
-    let output = run_clang(path, &clang_args).1;
-    let start = output.find("#include <...> search starts here:")? + 34;
-    let end = output.find("End of search list.")?;
-    let paths = output[start..end].replace("(framework directory)", "");
-    Some(
-        paths
-            .lines()
-            .filter(|l| !l.is_empty())
-            .map(|l| Path::new(l.trim()).into())
-            .collect(),
-    )
+    let y = CString::new(path.as_os_str().as_bytes())?;
+    unsafe { Ok(libc::access(y.as_ptr(), libc::X_OK) == 0) }
 }

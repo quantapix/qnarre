@@ -70,7 +70,7 @@ impl Env {
 
     fn var(mut self, name: &str, value: Option<&str>) -> Self {
         let previous = env::var(name).ok();
-        self.vars.insert(name.into(), (value.map(|v| v.into()), previous));
+        self.vars.insert(name.into(), (value.map(|x| x.into()), previous));
         self
     }
 
