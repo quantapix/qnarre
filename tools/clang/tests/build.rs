@@ -15,14 +15,14 @@ use serial_test::serial;
 use tempfile::TempDir;
 
 #[macro_use]
-#[path = "../builder/macros.rs"]
+#[path = "../runtime/macros.rs"]
 mod macros;
 
-#[path = "../builder/common.rs"]
+#[path = "../runtime/common.rs"]
 mod common;
-#[path = "../builder/dynamic.rs"]
+#[path = "../runtime/dynamic.rs"]
 mod dynamic;
-#[path = "../builder/static.rs"]
+#[path = "../runtime/static.rs"]
 mod r#static;
 
 #[derive(Debug, Default)]
