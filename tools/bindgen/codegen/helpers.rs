@@ -137,11 +137,7 @@ pub(crate) mod ast_ty {
                 }
             },
             None => {
-                if ctx.options().use_core && ctx.options().rust_features.core_ffi_c_void {
-                    quote! { ::core::ffi::c_void }
-                } else {
-                    quote! { ::std::os::raw::c_void }
-                }
+                quote! { ::core::ffi::c_void }
             },
         }
     }
@@ -156,7 +152,7 @@ pub(crate) mod ast_ty {
                 }
             },
             None => {
-                if ctx.options().use_core && ctx.options().rust_features().core_ffi_c {
+                if ctx.options().use_core {
                     quote! {
                         ::core::ffi::#ident
                     }
@@ -187,11 +183,7 @@ pub(crate) mod ast_ty {
                 },
             },
             (FloatKind::Float128, _) => {
-                if ctx.options().rust_features.i128_and_u128 {
-                    quote! { u128 }
-                } else {
-                    quote! { [u64; 2] }
-                }
+                quote! { u128 }
             },
         }
     }

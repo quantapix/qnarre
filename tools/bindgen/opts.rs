@@ -1,11 +1,12 @@
-#[macro_use]
-mod macros;
-mod as_args;
+use std::env;
+#[cfg(feature = "experimental")]
+use std::path::Path;
+use std::path::PathBuf;
+use std::rc::Rc;
 
 use crate::callbacks::ParseCallbacks;
 use crate::codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 use crate::deps::DepfileSpec;
-use crate::features::{RustFeatures, RustTarget};
 use crate::regex_set::RegexSet;
 use crate::Abi;
 use crate::Builder;
@@ -13,16 +14,71 @@ use crate::CodegenConfig;
 use crate::FieldVisibilityKind;
 use crate::Formatter;
 use crate::HashMap;
+use crate::RegexSet;
 use crate::DEFAULT_ANON_FIELDS_PREFIX;
 
-use std::env;
-#[cfg(feature = "experimental")]
-use std::path::Path;
-use std::path::PathBuf;
-use std::rc::Rc;
+macro_rules! regex_opt {
+    ($(#[$attrs:meta])* pub fn $($tokens:tt)*) => {
+        $(#[$attrs])*
+        pub fn $($tokens)*
+    };
+}
 
-use as_args::AsArgs;
-use macros::ignore;
+macro_rules! default {
+    () => {
+        Default::default()
+    };
+    ($expr:expr) => {
+        $expr
+    };
+}
+
+trait AsArgs {
+    fn as_args(&self, xs: &mut Vec<String>, flag: &str);
+}
+
+impl AsArgs for bool {
+    fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
+        if *self {
+            xs.push(flag.to_string());
+        }
+    }
+}
+
+impl AsArgs for RegexSet {
+    fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
+        for x in self.get_items() {
+            xs.extend_from_slice(&[flag.to_owned(), x.clone()]);
+        }
+    }
+}
+
+impl AsArgs for Option<String> {
+    fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
+        if let Some(x) = self {
+            xs.extend_from_slice(&[flag.to_owned(), x.clone()]);
+        }
+    }
+}
+
+impl AsArgs for Option<PathBuf> {
+    fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
+        if let Some(x) = self {
+            xs.extend_from_slice(&[flag.to_owned(), x.display().to_string()]);
+        }
+    }
+}
+
+macro_rules! as_args {
+    ($flag:literal) => {
+        |field, args| AsArgs::as_args(field, args, $flag)
+    };
+    ($expr:expr) => {
+        $expr
+    };
+}
+
+fn ignore<T>(_: &T, _: &mut Vec<String>) {}
 
 macro_rules! options {
     ($(
@@ -34,11 +90,11 @@ macro_rules! options {
         }$(,)?
     )*) => {
         #[derive(Debug, Clone)]
-        pub(crate) struct BindgenOptions {
+        pub(crate) struct Opts {
             $($(#[doc = $docs])* pub(crate) $field: $ty,)*
         }
 
-        impl Default for BindgenOptions {
+        impl Default for Opts {
             fn default() -> Self {
                 Self {
                     $($field: default!($($default)*),)*
@@ -915,23 +971,6 @@ options! {
             }
         },
         as_args: |x, xs| (!x).as_args(xs, "--no-prepend-enum-name"),
-    },
-    rust_target: RustTarget {
-        methods: {
-            pub fn rust_target(mut self, x: RustTarget) -> Self {
-                self.opts.set_rust_target(x);
-                self
-            }
-        },
-        as_args: |x, xs| {
-            xs.push("--rust-target".to_owned());
-            xs.push((*x).into());
-        },
-    },
-    rust_features: RustFeatures {
-        default: RustTarget::default().into(),
-        methods: {},
-        as_args: ignore,
     },
     untagged_union: bool {
         default: true,

@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{parse2, File};
 
-use crate::BindgenOptions;
+use crate::Opts;
 
 mod merge;
 mod sort;
@@ -11,7 +11,7 @@ use merge::merge_extern_blocks;
 use sort::sort_semantically;
 
 struct PostProcessingPass {
-    should_run: fn(&BindgenOptions) -> bool,
+    should_run: fn(&Opts) -> bool,
     run: fn(&mut File),
 }
 
@@ -26,7 +26,7 @@ macro_rules! pass {
 
 const PASSES: &[PostProcessingPass] = &[pass!(merge_extern_blocks), pass!(sort_semantically)];
 
-pub(crate) fn postproc(xs: Vec<TokenStream>, opts: &BindgenOptions) -> TokenStream {
+pub(crate) fn postproc(xs: Vec<TokenStream>, opts: &Opts) -> TokenStream {
     let xs = xs.into_iter().collect();
     let syn = PASSES.iter().any(|x| (x.should_run)(opts));
     if !syn {

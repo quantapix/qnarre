@@ -104,15 +104,7 @@ fn gen_field(ctx: &BindgenContext, ty_item: &Item, name: &str) -> proc_macro2::T
             }
         },
 
-        TypeKind::Array(_, len) => {
-            if len <= RUST_DERIVE_IN_ARRAY_LIMIT || ctx.options().rust_features().larger_arrays {
-                quote_equals(name_ident)
-            } else {
-                quote! {
-                    &self. #name_ident [..] == &other. #name_ident [..]
-                }
-            }
-        },
+        TypeKind::Array(_, len) => quote_equals(name_ident),
         TypeKind::Vector(_, len) => {
             let self_ids = 0..len;
             let other_ids = 0..len;

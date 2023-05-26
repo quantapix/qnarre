@@ -29,7 +29,7 @@ fn test_layout_for_size() {
 impl Layout {
     pub(crate) fn known_type_for_size(ctx: &BindgenContext, size: usize) -> Option<&'static str> {
         Some(match size {
-            16 if ctx.options().rust_features.i128_and_u128 => "u128",
+            16 => "u128",
             8 => "u64",
             4 => "u32",
             2 => "u16",

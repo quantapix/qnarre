@@ -24,7 +24,7 @@ mod extra_assertions;
 
 mod codegen;
 mod deps;
-mod options;
+mod opts;
 mod timer;
 
 pub mod callbacks;
@@ -32,23 +32,20 @@ pub mod callbacks;
 mod clang;
 #[cfg(feature = "experimental")]
 mod diagnostics;
-mod features;
 mod ir;
 mod parse;
 mod regex_set;
 
 pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
-pub use features::{RustTarget, LATEST_STABLE_RUST, RUST_TARGET_STRINGS};
 pub use ir::annotations::FieldVisibilityKind;
 pub use ir::function::Abi;
 pub use regex_set::RegexSet;
 
 use codegen::CodegenError;
-use features::RustFeatures;
 use ir::comment;
 use ir::context::{BindgenContext, ItemId};
 use ir::item::Item;
-use options::BindgenOptions;
+use opts::Opts;
 use parse::ParseError;
 
 use std::borrow::Cow;
@@ -172,7 +169,7 @@ impl std::fmt::Display for Formatter {
 
 #[derive(Debug, Default, Clone)]
 pub struct Builder {
-    options: BindgenOptions,
+    options: Opts,
 }
 
 pub fn builder() -> Builder {
@@ -258,7 +255,7 @@ impl Builder {
     }
 }
 
-impl BindgenOptions {
+impl Opts {
     fn build(&mut self) {
         const REGEX_SETS_LEN: usize = 27;
 
@@ -340,19 +337,6 @@ impl BindgenOptions {
         for regex_set in self.abi_overrides.values_mut().chain(regex_sets) {
             regex_set.build(record_matches);
         }
-        if !self.rust_features.untagged_union {
-            self.untagged_union = false;
-        }
-    }
-
-    pub fn set_rust_target(&mut self, rust_target: RustTarget) {
-        self.rust_target = rust_target;
-
-        self.rust_features = rust_target.into();
-    }
-
-    pub fn rust_features(&self) -> RustFeatures {
-        self.rust_features
     }
 
     fn last_callback<T>(&self, f: impl Fn(&dyn callbacks::ParseCallbacks) -> Option<T>) -> Option<T> {
@@ -430,7 +414,7 @@ impl std::error::Error for BindgenError {}
 
 #[derive(Debug)]
 pub struct Bindings {
-    options: BindgenOptions,
+    options: Opts,
     module: proc_macro2::TokenStream,
 }
 
@@ -481,7 +465,7 @@ fn find_effective_target(clang_args: &[String]) -> (String, bool) {
 
 impl Bindings {
     pub(crate) fn generate(
-        mut options: BindgenOptions,
+        mut options: Opts,
         input_unsaved_files: Vec<clang::UnsavedFile>,
     ) -> Result<Bindings, BindgenError> {
         ensure_libclang_is_loaded();
@@ -504,7 +488,7 @@ impl Bindings {
             options.clang_args.insert(0, format!("--target={}", effective_target));
         };
 
-        fn detect_include_paths(options: &mut BindgenOptions) {
+        fn detect_include_paths(options: &mut Opts) {
             if !options.detect_include_paths {
                 return;
             }
@@ -749,7 +733,7 @@ impl Bindings {
     }
 }
 
-fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &BindgenOptions) {
+fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &Opts) {
     warn!("{}", msg);
 
     #[cfg(feature = "experimental")]

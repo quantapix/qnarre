@@ -149,21 +149,8 @@ impl<'a> ImplDebug<'a> for Item {
             TypeKind::Array(_, len) => {
                 if self.has_type_param_in_array(ctx) {
                     Some((format!("{}: Array with length {}", name, len), vec![]))
-                } else if len < RUST_DERIVE_IN_ARRAY_LIMIT || ctx.options().rust_features().larger_arrays {
-                    debug_print(name, quote! { #name_ident })
-                } else if ctx.options().use_core {
-                    Some((format!("{}: [...]", name), vec![]))
                 } else {
-                    Some((
-                        format!("{}: [{{}}]", name),
-                        vec![quote! {
-                            self.#name_ident
-                                .iter()
-                                .enumerate()
-                                .map(|(i, v)| format!("{}{:?}", if i > 0 { ", " } else { "" }, v))
-                                .collect::<String>()
-                        }],
-                    ))
+                    debug_print(name, quote! { #name_ident })
                 }
             },
             TypeKind::Vector(_, len) => {

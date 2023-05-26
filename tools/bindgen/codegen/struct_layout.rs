@@ -283,7 +283,7 @@ impl<'a> StructLayoutTracker<'a> {
             return None;
         }
 
-        let repr_align = self.ctx.options().rust_features().repr_align;
+        let repr_align = true;
 
         if padding_bytes >= layout.align
             || (self.last_field_was_bitfield && padding_bytes >= self.latest_field_layout.unwrap().align)
@@ -306,16 +306,13 @@ impl<'a> StructLayoutTracker<'a> {
     }
 
     pub(crate) fn requires_explicit_align(&self, layout: Layout) -> bool {
-        let repr_align = self.ctx.options().rust_features().repr_align;
-
+        let repr_align = true;
         if repr_align && self.max_field_align >= 16 {
             return true;
         }
-
         if self.max_field_align >= layout.align {
             return false;
         }
-
         repr_align || layout.align <= MAX_GUARANTEED_ALIGN
     }
 

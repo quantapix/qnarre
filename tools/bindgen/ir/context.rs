@@ -17,7 +17,7 @@ use super::traversal::{self, Edge, ItemTraversal};
 use super::ty::{FloatKind, Type, TypeKind};
 use crate::clang::{self, Cursor};
 use crate::codegen::CodegenError;
-use crate::BindgenOptions;
+use crate::Opts;
 use crate::{Entry, HashMap, HashSet};
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -265,7 +265,7 @@ pub(crate) struct BindgenContext {
     items: Vec<Option<Item>>,
     modules: HashMap<Cursor, ModuleId>,
     need_bitfield_allocation: Vec<ItemId>,
-    options: BindgenOptions,
+    options: Opts,
     parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
     replacements: HashMap<Vec<String>, ItemId>,
     root_module: ModuleId,
@@ -314,7 +314,7 @@ impl<'ctx> AllowlistedItemsTraversal<'ctx> {
 }
 
 impl BindgenContext {
-    pub(crate) fn new(options: BindgenOptions, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
+    pub(crate) fn new(options: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
         let index = clang::Index::new(false, true);
         let parse_options = clang::CXTranslationUnit_DetailedPreprocessingRecord;
         let translation_unit = {
@@ -761,7 +761,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
     }
 
-    pub(crate) fn gen<F, Out>(mut self, cb: F) -> Result<(Out, BindgenOptions), CodegenError>
+    pub(crate) fn gen<F, Out>(mut self, cb: F) -> Result<(Out, Opts), CodegenError>
     where
         F: FnOnce(&Self) -> Result<Out, CodegenError>,
     {
@@ -1372,7 +1372,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.opts.opaque_types.matches(path[1..].join("::"))
     }
 
-    pub(crate) fn options(&self) -> &BindgenOptions {
+    pub(crate) fn options(&self) -> &Opts {
         &self.opts
     }
 

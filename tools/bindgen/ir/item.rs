@@ -455,8 +455,8 @@ impl Item {
             }
     }
 
-    pub(crate) fn name<'a>(&'a self, ctx: &'a BindgenContext) -> NameOptions<'a> {
-        NameOptions::new(self, ctx)
+    pub(crate) fn name<'a>(&'a self, ctx: &'a BindgenContext) -> NameOpts<'a> {
+        NameOpts::new(self, ctx)
     }
 
     fn name_target(&self, ctx: &BindgenContext) -> ItemId {
@@ -577,7 +577,7 @@ impl Item {
         }
     }
 
-    pub(crate) fn real_canonical_name(&self, ctx: &BindgenContext, opt: &NameOptions) -> String {
+    pub(crate) fn real_canonical_name(&self, ctx: &BindgenContext, opt: &NameOpts) -> String {
         let target = ctx.resolve_item(self.name_target(ctx));
 
         if let Some(path) = target.annotations.use_instead_of() {
@@ -1440,16 +1440,16 @@ enum UserMangled {
 }
 
 #[derive(Debug)]
-pub(crate) struct NameOptions<'a> {
+pub(crate) struct NameOpts<'a> {
     item: &'a Item,
     ctx: &'a BindgenContext,
     within_namespaces: bool,
     user_mangled: UserMangled,
 }
 
-impl<'a> NameOptions<'a> {
+impl<'a> NameOpts<'a> {
     pub(crate) fn new(item: &'a Item, ctx: &'a BindgenContext) -> Self {
-        NameOptions {
+        NameOpts {
             item,
             ctx,
             within_namespaces: false,

@@ -17,7 +17,7 @@ use self::dyngen::DynamicItems;
 use self::helpers::attributes;
 use self::struct_layout::StructLayoutTracker;
 
-use super::BindgenOptions;
+use super::Opts;
 
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
@@ -131,10 +131,7 @@ fn derives_of_item(item: &Item, ctx: &BindgenContext, packed: bool) -> Derivable
 
     if item.can_derive_copy(ctx) && !item.annotations().disallow_copy() {
         derivable_traits |= DerivableTraits::COPY;
-
-        if ctx.options().rust_features().builtin_clone_impls || !all_template_params.is_empty() {
-            derivable_traits |= DerivableTraits::CLONE;
-        }
+        derivable_traits |= DerivableTraits::CLONE;
     } else if packed {
         return derivable_traits;
     }
@@ -584,7 +581,6 @@ impl CodeGenerator for Var {
                     let prefix = ctx.trait_prefix();
 
                     let options = ctx.options();
-                    let rust_features = options.rust_features;
 
                     let mut cstr_bytes = bytes.clone();
                     cstr_bytes.push(0);
@@ -596,7 +592,7 @@ impl CodeGenerator for Var {
 
                     let bytes = proc_macro2::Literal::byte_string(cstr.to_bytes_with_nul());
 
-                    if rust_features.const_cstr && options.generate_cstr {
+                    if options.generate_cstr {
                         result.push(quote! {
                             #(#attrs)*
                             #[allow(unsafe_code)]
@@ -605,13 +601,7 @@ impl CodeGenerator for Var {
                             };
                         });
                     } else {
-                        let lifetime = if rust_features.static_lifetime_elision {
-                            None
-                        } else {
-                            Some(quote! { 'static })
-                        }
-                        .into_iter();
-
+                        let lifetime = None.into_iter();
                         result.push(quote! {
                             #(#attrs)*
                             pub const #canonical_ident: &#(#lifetime )*#array_ty = #bytes ;
@@ -827,12 +817,6 @@ impl CodeGenerator for Type {
                         pub type #rust_name
                     },
                     AliasVariation::NewType | AliasVariation::NewTypeDeref => {
-                        assert!(
-                            ctx.options().rust_features().repr_transparent,
-                            "repr_transparent feature is required to use {:?}",
-                            alias_style
-                        );
-
                         let mut attributes = vec![attributes::repr("transparent")];
                         let packed = false; // Types can't be packed in Rust.
                         let derivable_traits = derives_of_item(item, ctx, packed);
@@ -1436,10 +1420,6 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
                 continue;
             }
 
-            if layout.size > RUST_DERIVE_IN_ARRAY_LIMIT && !ctx.options().rust_features().larger_arrays {
-                continue;
-            }
-
             all_fields_declared_as_public &= bf.is_public();
             let mut bitfield_representable_as_int = true;
             bf.codegen(
@@ -1747,12 +1727,6 @@ impl CodeGenerator for CompInfo {
                         packed = true;
                     } else {
                         explicit_align = Some(layout.align);
-                        if !ctx.options().rust_features.repr_align {
-                            let ty = helpers::blob(ctx, Layout::new(0, layout.align));
-                            fields.push(quote! {
-                                pub __bindgen_align: #ty ,
-                            });
-                        }
                     }
                 }
             }
@@ -1812,7 +1786,6 @@ impl CodeGenerator for CompInfo {
         }
         if packed && !is_opaque {
             let n = layout.map_or(1, |l| l.align);
-            assert!(ctx.options().rust_features().repr_packed_n || n == 1);
             let packed_repr = if n == 1 {
                 "packed".to_string()
             } else {
@@ -1823,13 +1796,11 @@ impl CodeGenerator for CompInfo {
             attributes.push(attributes::repr("C"));
         }
 
-        if ctx.options().rust_features().repr_align {
-            if let Some(explicit) = explicit_align {
-                let explicit = helpers::ast_ty::int_expr(explicit as i64);
-                attributes.push(quote! {
-                    #[repr(align(#explicit))]
-                });
-            }
+        if let Some(explicit) = explicit_align {
+            let explicit = helpers::ast_ty::int_expr(explicit as i64);
+            attributes.push(quote! {
+                #[repr(align(#explicit))]
+            });
         }
 
         let derivable_traits = derives_of_item(item, ctx, packed);
@@ -1936,17 +1907,12 @@ impl CodeGenerator for CompInfo {
                     let size = layout.size;
                     let align = layout.align;
 
-                    let check_struct_align =
-                        if align > ctx.target_pointer_size() && !ctx.options().rust_features().repr_align {
-                            None
-                        } else {
-                            Some(quote! {
-                                assert_eq!(#align_of_expr,
-                                       #align,
-                                       concat!("Alignment of ", stringify!(#canonical_ident)));
+                    let check_struct_align = Some(quote! {
+                        assert_eq!(#align_of_expr,
+                               #align,
+                               concat!("Alignment of ", stringify!(#canonical_ident)));
 
-                            })
-                        };
+                    });
 
                     let should_skip_field_offset_checks = is_opaque;
 
@@ -2050,21 +2016,11 @@ impl CodeGenerator for CompInfo {
 
         if needs_default_impl {
             let prefix = ctx.trait_prefix();
-            let body = if ctx.options().rust_features().maybe_uninit {
-                quote! {
-                    let mut s = ::#prefix::mem::MaybeUninit::<Self>::uninit();
-                    unsafe {
-                        ::#prefix::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
-                        s.assume_init()
-                    }
-                }
-            } else {
-                quote! {
-                    unsafe {
-                        let mut s: Self = ::#prefix::mem::uninitialized();
-                        ::#prefix::ptr::write_bytes(&mut s, 0, 1);
-                        s
-                    }
+            let body = quote! {
+                let mut s = ::#prefix::mem::MaybeUninit::<Self>::uninit();
+                unsafe {
+                    ::#prefix::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+                    s.assume_init()
                 }
             };
             result.push(quote! {
@@ -2164,10 +2120,9 @@ impl Method {
         };
 
         let supported_abi = match signature.abi(ctx, Some(&*name)) {
-            ClangAbi::Known(Abi::ThisCall) => ctx.options().rust_features().thiscall_abi,
-            ClangAbi::Known(Abi::Vectorcall) => ctx.options().rust_features().vectorcall_abi,
-            ClangAbi::Known(Abi::CUnwind) => ctx.options().rust_features().c_unwind_abi,
-            ClangAbi::Known(Abi::EfiApi) => ctx.options().rust_features().abi_efiapi,
+            ClangAbi::Known(Abi::ThisCall) => true,
+            ClangAbi::Known(Abi::Vectorcall) => true,
+            ClangAbi::Known(Abi::CUnwind) => true,
             _ => true,
         };
 
@@ -2222,19 +2177,12 @@ impl Method {
 
         if self.is_constructor() {
             let prefix = ctx.trait_prefix();
-            let tmp_variable_decl = if ctx.options().rust_features().maybe_uninit {
+            let tmp_variable_decl = if true {
                 exprs[0] = quote! {
                     __bindgen_tmp.as_mut_ptr()
                 };
                 quote! {
                     let mut __bindgen_tmp = ::#prefix::mem::MaybeUninit::uninit()
-                }
-            } else {
-                exprs[0] = quote! {
-                    &mut __bindgen_tmp
-                };
-                quote! {
-                    let mut __bindgen_tmp = ::#prefix::mem::uninitialized()
                 }
             };
             stmts.push(tmp_variable_decl);
@@ -2252,14 +2200,8 @@ impl Method {
         stmts.push(call);
 
         if self.is_constructor() {
-            stmts.push(if ctx.options().rust_features().maybe_uninit {
-                quote! {
-                    __bindgen_tmp.assume_init()
-                }
-            } else {
-                quote! {
-                    __bindgen_tmp
-                }
+            stmts.push(quote! {
+                __bindgen_tmp.assume_init()
             })
         }
 
@@ -2267,7 +2209,7 @@ impl Method {
 
         let mut attrs = vec![attributes::inline()];
 
-        if signature.must_use() && ctx.options().rust_features().must_use_function {
+        if signature.must_use() {
             attrs.push(attributes::must_use());
         }
 
@@ -2498,7 +2440,7 @@ impl<'a> EnumBuilder<'a> {
                 is_global,
                 ..
             } => {
-                if ctx.options().rust_features().associated_const && is_ty_named && !is_global {
+                if is_ty_named && !is_global {
                     let enum_ident = ctx.rust_ident(canonical_name);
                     let variant_ident = ctx.rust_ident(variant_name);
 
@@ -2713,18 +2655,12 @@ impl CodeGenerator for Enum {
 
         match variation {
             EnumVariation::Rust { non_exhaustive } => {
-                if non_exhaustive && ctx.options().rust_features().non_exhaustive {
+                if non_exhaustive {
                     attrs.push(attributes::non_exhaustive());
-                } else if non_exhaustive && !ctx.options().rust_features().non_exhaustive {
-                    panic!("The rust target you're using doesn't seem to support non_exhaustive enums");
                 }
             },
             EnumVariation::NewType { .. } => {
-                if ctx.options().rust_features.repr_transparent {
-                    attrs.push(attributes::repr("transparent"));
-                } else {
-                    attrs.push(attributes::repr("C"));
-                }
+                attrs.push(attributes::repr("transparent"));
             },
             _ => {},
         };
@@ -2838,7 +2774,7 @@ impl CodeGenerator for Enum {
                         };
 
                         let existing_variant_name = entry.get();
-                        if enum_ty.name().is_some() && ctx.options().rust_features().associated_const {
+                        if enum_ty.name().is_some() {
                             let enum_canonical_name = &ident;
                             let variant_name = ctx.rust_ident_raw(&*mangled_name);
                             result.push(quote! {
@@ -3199,16 +3135,8 @@ impl TryToRustTy for Type {
                 IntKind::I64 => Ok(quote! { i64 }),
                 IntKind::U64 => Ok(quote! { u64 }),
                 IntKind::Custom { name, .. } => Ok(proc_macro2::TokenStream::from_str(name).unwrap()),
-                IntKind::U128 => Ok(if ctx.options().rust_features.i128_and_u128 {
-                    quote! { u128 }
-                } else {
-                    quote! { [u64; 2] }
-                }),
-                IntKind::I128 => Ok(if ctx.options().rust_features.i128_and_u128 {
-                    quote! { i128 }
-                } else {
-                    quote! { [u64; 2] }
-                }),
+                IntKind::U128 => Ok(quote! { u128 }),
+                IntKind::I128 => Ok(quote! { i128 }),
             },
             TypeKind::Float(fk) => Ok(float_kind_rust_type(ctx, fk, self.layout(ctx))),
             TypeKind::Complex(fk) => {
@@ -3382,22 +3310,6 @@ impl TryToRustTy for FunctionSig {
         let arguments = utils::fnsig_arguments(ctx, self);
 
         match self.abi(ctx, None) {
-            ClangAbi::Known(Abi::ThisCall) if !ctx.options().rust_features().thiscall_abi => {
-                warn!("Skipping function with thiscall ABI that isn't supported by the configured Rust target");
-                Ok(proc_macro2::TokenStream::new())
-            },
-            ClangAbi::Known(Abi::Vectorcall) if !ctx.options().rust_features().vectorcall_abi => {
-                warn!("Skipping function with vectorcall ABI that isn't supported by the configured Rust target");
-                Ok(proc_macro2::TokenStream::new())
-            },
-            ClangAbi::Known(Abi::CUnwind) if !ctx.options().rust_features().c_unwind_abi => {
-                warn!("Skipping function with C-unwind ABI that isn't supported by the configured Rust target");
-                Ok(proc_macro2::TokenStream::new())
-            },
-            ClangAbi::Known(Abi::EfiApi) if !ctx.options().rust_features().abi_efiapi => {
-                warn!("Skipping function with efiapi ABI that isn't supported by the configured Rust target");
-                Ok(proc_macro2::TokenStream::new())
-            },
             abi => Ok(quote! {
                 unsafe extern #abi fn ( #( #arguments ),* ) #ret
             }),
@@ -3464,15 +3376,13 @@ impl CodeGenerator for Function {
 
         let mut attributes = vec![];
 
-        if ctx.options().rust_features().must_use_function {
-            let must_use = signature.must_use() || {
-                let ret_ty = signature.return_type().into_resolver().through_type_refs().resolve(ctx);
-                ret_ty.must_use(ctx)
-            };
+        let must_use = signature.must_use() || {
+            let ret_ty = signature.return_type().into_resolver().through_type_refs().resolve(ctx);
+            ret_ty.must_use(ctx)
+        };
 
-            if must_use {
-                attributes.push(attributes::must_use());
-            }
+        if must_use {
+            attributes.push(attributes::must_use());
         }
 
         if let Some(comment) = item.comment(ctx) {
@@ -3480,32 +3390,6 @@ impl CodeGenerator for Function {
         }
 
         let abi = match signature.abi(ctx, Some(name)) {
-            ClangAbi::Known(Abi::ThisCall) if !ctx.options().rust_features().thiscall_abi => {
-                unsupported_abi_diagnostic::<false>(name, item.location(), "thiscall", ctx);
-                return None;
-            },
-            ClangAbi::Known(Abi::Vectorcall) if !ctx.options().rust_features().vectorcall_abi => {
-                unsupported_abi_diagnostic::<false>(name, item.location(), "vectorcall", ctx);
-                return None;
-            },
-            ClangAbi::Known(Abi::CUnwind) if !ctx.options().rust_features().c_unwind_abi => {
-                unsupported_abi_diagnostic::<false>(name, item.location(), "C-unwind", ctx);
-                return None;
-            },
-            ClangAbi::Known(Abi::EfiApi) if !ctx.options().rust_features().abi_efiapi => {
-                unsupported_abi_diagnostic::<true>(name, item.location(), "efiapi", ctx);
-                return None;
-            },
-            ClangAbi::Known(Abi::Win64) if signature.is_variadic() => {
-                unsupported_abi_diagnostic::<true>(name, item.location(), "Win64", ctx);
-                return None;
-            },
-            ClangAbi::Unknown(unknown_abi) => {
-                panic!(
-                    "Invalid or unknown abi {:?} for function {:?} ({:?})",
-                    unknown_abi, canonical_name, self
-                );
-            },
             abi => abi,
         };
 
@@ -3599,14 +3483,7 @@ fn unsupported_abi_diagnostic<const VARIADIC: bool>(
             ),
             Level::Warn,
         )
-        .add_annotation("No code will be generated for this function.", Level::Warn)
-        .add_annotation(
-            format!(
-                "The configured Rust version is {}.",
-                String::from(_ctx.options().rust_target)
-            ),
-            Level::Note,
-        );
+        .add_annotation("No code will be generated for this function.", Level::Warn);
 
         if let Some(loc) = _location {
             let (file, line, col, _) = loc.location();
@@ -3892,7 +3769,7 @@ impl CodeGenerator for ObjCInterface {
     }
 }
 
-pub(crate) fn codegen(context: BindgenContext) -> Result<(proc_macro2::TokenStream, BindgenOptions), CodegenError> {
+pub(crate) fn codegen(context: BindgenContext) -> Result<(proc_macro2::TokenStream, Opts), CodegenError> {
     context.gen(|context| {
         let _t = context.timer("codegen");
         let counter = Cell::new(0);
@@ -4011,11 +3888,7 @@ pub(crate) mod utils {
 
     pub(crate) fn prepend_bitfield_unit_type(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let bitfield_unit_src = include_str!("./bitfield_unit.rs");
-        let bitfield_unit_src = if ctx.options().rust_features().min_const_fn {
-            Cow::Borrowed(bitfield_unit_src)
-        } else {
-            Cow::Owned(bitfield_unit_src.replace("const fn ", "fn "))
-        };
+        let bitfield_unit_src = Cow::Borrowed(bitfield_unit_src);
         let bitfield_unit_type = proc_macro2::TokenStream::from_str(&bitfield_unit_src).unwrap();
         let bitfield_unit_type = quote!(#bitfield_unit_type);
 
@@ -4064,13 +3937,7 @@ pub(crate) mod utils {
 
     pub(crate) fn prepend_union_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let prefix = ctx.trait_prefix();
-
-        let const_fn = if ctx.options().rust_features().min_const_fn {
-            quote! { const fn }
-        } else {
-            quote! { fn }
-        };
-
+        let const_fn = quote! { const fn };
         let union_field_decl = quote! {
             #[repr(C)]
             pub struct __BindgenUnionField<T>(::#prefix::marker::PhantomData<T>);
@@ -4166,13 +4033,7 @@ pub(crate) mod utils {
 
     pub(crate) fn prepend_incomplete_array_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let prefix = ctx.trait_prefix();
-
-        let const_fn = if ctx.options().rust_features().min_const_fn {
-            quote! { const fn }
-        } else {
-            quote! { fn }
-        };
-
+        let const_fn = quote! { const fn };
         let incomplete_array_decl = quote! {
             #[repr(C)]
             #[derive(Default)]

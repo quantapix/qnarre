@@ -350,11 +350,7 @@ impl DeriveTrait {
     }
 
     fn can_derive_large_array(&self, ctx: &BindgenContext) -> bool {
-        if ctx.options().rust_features().larger_arrays {
-            !matches!(self, DeriveTrait::Default)
-        } else {
-            matches!(self, DeriveTrait::Copy)
-        }
+        !matches!(self, DeriveTrait::Default)
     }
 
     fn can_derive_union(&self) -> bool {

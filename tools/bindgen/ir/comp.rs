@@ -1351,19 +1351,6 @@ impl IsOpaque for CompInfo {
         }) {
             return true;
         }
-
-        if !ctx.options().rust_features().repr_packed_n {
-            if self.is_packed(ctx, layout.as_ref()) && layout.map_or(false, |l| l.align > 1) {
-                warn!(
-                    "Found a type that is both packed and aligned to greater than \
-                       1; Rust before version 1.33 doesn't have `#[repr(packed(N))]`, so we \
-                       are treating it as opaque. You may wish to set bindgen's rust target \
-                       version to 1.33 or later to enable `#[repr(packed(N))]` support."
-                );
-                return true;
-            }
-        }
-
         false
     }
 }
