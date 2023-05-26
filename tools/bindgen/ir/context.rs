@@ -423,7 +423,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn timer<'a>(&self, name: &'a str) -> Timer<'a> {
-        Timer::new(name).with_output(self.options.time_phases)
+        Timer::new(name).with_output(self.opts.time_phases)
     }
 
     pub(crate) fn target_pointer_size(&self) -> usize {
@@ -445,7 +445,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn include_file(&mut self, filename: String) {
-        for cb in &self.options().parse_callbacks {
+        for cb in &self.opts().parse_callbacks {
             cb.include_file(&filename);
         }
         self.deps.insert(filename);
@@ -871,7 +871,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.compute_cannot_derive_partialord_partialeq_or_eq();
 
         let ret = cb(&self)?;
-        Ok((ret, self.options))
+        Ok((ret, self.opts))
     }
 
     fn assert_no_dangling_references(&self) {
@@ -974,7 +974,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
     fn find_used_template_parameters(&mut self) {
         let _t = self.timer("find_used_template_parameters");
-        if self.options.allowlist_recursively {
+        if self.opts.allowlist_recursively {
             let used_params = analyze::<UsedTemplateParameters>(self);
             self.used_template_parameters = Some(used_params);
         } else {
@@ -1449,11 +1449,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
     pub(crate) fn opaque_by_name(&self, path: &[String]) -> bool {
         debug_assert!(self.in_codegen_phase(), "You're not supposed to call this yet");
-        self.options.opaque_types.matches(path[1..].join("::"))
+        self.opts.opaque_types.matches(path[1..].join("::"))
     }
 
     pub(crate) fn options(&self) -> &BindgenOptions {
-        &self.options
+        &self.opts
     }
 
     fn tokenize_namespace(&self, cursor: &clang::Cursor) -> (Option<String>, ModuleKind) {
@@ -1566,14 +1566,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 item.expect_type()
                     .name()
                     .and_then(|name| {
-                        if self.options.parse_callbacks.is_empty() {
+                        if self.opts.parse_callbacks.is_empty() {
                             if self.is_stdint_type(name) {
                                 Some(CanDerive::Yes)
                             } else {
                                 Some(CanDerive::No)
                             }
                         } else {
-                            self.options
+                            self.opts
                                 .last_callback(|cb| cb.blocklisted_type_implements_trait(name, derive_trait))
                         }
                     })
@@ -1585,7 +1585,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         match name {
             "int8_t" | "uint8_t" | "int16_t" | "uint16_t" | "int32_t" | "uint32_t" | "int64_t" | "uint64_t"
             | "uintptr_t" | "intptr_t" | "ptrdiff_t" => true,
-            "size_t" | "ssize_t" => self.options.size_t_is_usize,
+            "size_t" | "ssize_t" => self.opts.size_t_is_usize,
             _ => false,
         }
     }
@@ -1607,10 +1607,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 .items()
                 .filter(|&(_, item)| item.is_enabled_for_codegen(self))
                 .filter(|&(_, item)| {
-                    if self.options().allowlisted_types.is_empty()
-                        && self.options().allowlisted_functions.is_empty()
-                        && self.options().allowlisted_vars.is_empty()
-                        && self.options().allowlisted_files.is_empty()
+                    if self.opts().allowlisted_types.is_empty()
+                        && self.opts().allowlisted_fns.is_empty()
+                        && self.opts().allowlisted_vars.is_empty()
+                        && self.opts().allowlisted_files.is_empty()
                     {
                         return true;
                     }
@@ -1619,11 +1619,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         return true;
                     }
 
-                    if !self.options().allowlisted_files.is_empty() {
+                    if !self.opts().allowlisted_files.is_empty() {
                         if let Some(location) = item.location() {
                             let (file, _, _, _) = location.location();
                             if let Some(filename) = file.name() {
-                                if self.options().allowlisted_files.matches(filename) {
+                                if self.opts().allowlisted_files.matches(filename) {
                                     return true;
                                 }
                             }
@@ -1634,14 +1634,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     debug!("allowlisted_items: testing {:?}", name);
                     match *item.kind() {
                         ItemKind::Module(..) => true,
-                        ItemKind::Function(_) => self.options().allowlisted_functions.matches(&name),
-                        ItemKind::Var(_) => self.options().allowlisted_vars.matches(&name),
+                        ItemKind::Function(_) => self.opts().allowlisted_fns.matches(&name),
+                        ItemKind::Var(_) => self.opts().allowlisted_vars.matches(&name),
                         ItemKind::Type(ref ty) => {
-                            if self.options().allowlisted_types.matches(&name) {
+                            if self.opts().allowlisted_types.matches(&name) {
                                 return true;
                             }
 
-                            if !self.options().allowlist_recursively {
+                            if !self.opts().allowlist_recursively {
                                 match *ty.kind() {
                                     TypeKind::Void
                                     | TypeKind::NullPtr
@@ -1682,7 +1682,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                 prefix_path.push(variant.name_for_allowlisting().into());
                                 let name = prefix_path[1..].join("::");
                                 prefix_path.pop().unwrap();
-                                self.options().allowlisted_vars.matches(name)
+                                self.opts().allowlisted_vars.matches(name)
                             })
                         },
                     }
@@ -1694,7 +1694,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             roots
         };
 
-        let allowlisted_items_predicate = if self.options().allowlist_recursively {
+        let allowlisted_items_predicate = if self.opts().allowlist_recursively {
             traversal::all_edges
         } else {
             traversal::only_inner_type_edges
@@ -1703,7 +1703,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let allowlisted =
             AllowlistedItemsTraversal::new(self, roots.clone(), allowlisted_items_predicate).collect::<ItemSet>();
 
-        let codegen_items = if self.options().allowlist_recursively {
+        let codegen_items = if self.opts().allowlist_recursively {
             AllowlistedItemsTraversal::new(self, roots, traversal::codegen_edges).collect::<ItemSet>()
         } else {
             allowlisted.clone()
@@ -1712,21 +1712,21 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.allowlisted = Some(allowlisted);
         self.codegen_items = Some(codegen_items);
 
-        for item in self.options().allowlisted_functions.unmatched_items() {
+        for item in self.opts().allowlisted_fns.unmatched_items() {
             unused_regex_diagnostic(item, "--allowlist-function", self);
         }
 
-        for item in self.options().allowlisted_vars.unmatched_items() {
+        for item in self.opts().allowlisted_vars.unmatched_items() {
             unused_regex_diagnostic(item, "--allowlist-var", self);
         }
 
-        for item in self.options().allowlisted_types.unmatched_items() {
+        for item in self.opts().allowlisted_types.unmatched_items() {
             unused_regex_diagnostic(item, "--allowlist-type", self);
         }
     }
 
     pub(crate) fn trait_prefix(&self) -> Ident {
-        if self.options().use_core {
+        if self.opts().use_core {
             self.rust_ident_raw("core")
         } else {
             self.rust_ident_raw("std")
@@ -1792,7 +1792,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_cannot_derive_debug(&mut self) {
         let _t = self.timer("compute_cannot_derive_debug");
         assert!(self.cannot_derive_debug.is_none());
-        if self.options.derive_debug {
+        if self.opts.derive_debug {
             self.cannot_derive_debug = Some(as_cannot_derive_set(analyze::<CannotDerive>((
                 self,
                 DeriveTrait::Debug,
@@ -1813,7 +1813,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_cannot_derive_default(&mut self) {
         let _t = self.timer("compute_cannot_derive_default");
         assert!(self.cannot_derive_default.is_none());
-        if self.options.derive_default {
+        if self.opts.derive_default {
             self.cannot_derive_default = Some(as_cannot_derive_set(analyze::<CannotDerive>((
                 self,
                 DeriveTrait::Default,
@@ -1840,7 +1840,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_cannot_derive_hash(&mut self) {
         let _t = self.timer("compute_cannot_derive_hash");
         assert!(self.cannot_derive_hash.is_none());
-        if self.options.derive_hash {
+        if self.opts.derive_hash {
             self.cannot_derive_hash = Some(as_cannot_derive_set(analyze::<CannotDerive>((self, DeriveTrait::Hash))));
         }
     }
@@ -1858,7 +1858,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_cannot_derive_partialord_partialeq_or_eq(&mut self) {
         let _t = self.timer("compute_cannot_derive_partialord_partialeq_or_eq");
         assert!(self.cannot_derive_partialeq_or_partialord.is_none());
-        if self.options.derive_partialord || self.options.derive_partialeq || self.options.derive_eq {
+        if self.opts.derive_partialord || self.opts.derive_partialeq || self.opts.derive_eq {
             self.cannot_derive_partialeq_or_partialord =
                 Some(analyze::<CannotDerive>((self, DeriveTrait::PartialEqOrPartialOrd)));
         }
@@ -1908,7 +1908,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_has_float(&mut self) {
         let _t = self.timer("compute_has_float");
         assert!(self.has_float.is_none());
-        if self.options.derive_eq || self.options.derive_ord {
+        if self.opts.derive_eq || self.opts.derive_ord {
             self.has_float = Some(analyze::<HasFloat>(self));
         }
     }
@@ -1924,36 +1924,36 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
     pub(crate) fn no_partialeq_by_name(&self, item: &Item) -> bool {
         let name = item.path_for_allowlisting(self)[1..].join("::");
-        self.options().no_partialeq_types.matches(name)
+        self.opts().no_partialeq_types.matches(name)
     }
 
     pub(crate) fn no_copy_by_name(&self, item: &Item) -> bool {
         let name = item.path_for_allowlisting(self)[1..].join("::");
-        self.options().no_copy_types.matches(name)
+        self.opts().no_copy_types.matches(name)
     }
 
     pub(crate) fn no_debug_by_name(&self, item: &Item) -> bool {
         let name = item.path_for_allowlisting(self)[1..].join("::");
-        self.options().no_debug_types.matches(name)
+        self.opts().no_debug_types.matches(name)
     }
 
     pub(crate) fn no_default_by_name(&self, item: &Item) -> bool {
         let name = item.path_for_allowlisting(self)[1..].join("::");
-        self.options().no_default_types.matches(name)
+        self.opts().no_default_types.matches(name)
     }
 
     pub(crate) fn no_hash_by_name(&self, item: &Item) -> bool {
         let name = item.path_for_allowlisting(self)[1..].join("::");
-        self.options().no_hash_types.matches(name)
+        self.opts().no_hash_types.matches(name)
     }
 
     pub(crate) fn must_use_type_by_name(&self, item: &Item) -> bool {
         let name = item.path_for_allowlisting(self)[1..].join("::");
-        self.options().must_use_types.matches(name)
+        self.opts().must_use_types.matches(name)
     }
 
     pub(crate) fn wrap_unsafe_ops(&self, tokens: impl ToTokens) -> TokenStream {
-        if self.options.wrap_unsafe_ops {
+        if self.opts.wrap_unsafe_ops {
             quote!(unsafe { #tokens })
         } else {
             tokens.into_token_stream()
@@ -1961,7 +1961,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn wrap_static_fns_suffix(&self) -> &str {
-        self.options()
+        self.opts()
             .wrap_static_fns_suffix
             .as_deref()
             .unwrap_or(crate::DEFAULT_NON_EXTERN_FNS_SUFFIX)

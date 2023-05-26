@@ -1,4 +1,4 @@
-macro_rules! regex_option {
+macro_rules! regex_opt {
     ($(#[$attrs:meta])* pub fn $($tokens:tt)*) => {
         $(#[$attrs])*
         pub fn $($tokens)*

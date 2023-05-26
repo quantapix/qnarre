@@ -513,7 +513,7 @@ impl ClangSubItemParser for Function {
         };
 
         if cursor.is_inlined_function() || cursor.definition().map_or(false, |x| x.is_inlined_function()) {
-            if !context.options().generate_inline_functions && !context.options().wrap_static_fns {
+            if !context.options().generate_inline_fns && !context.options().wrap_static_fns {
                 return Err(ParseError::Continue);
             }
 

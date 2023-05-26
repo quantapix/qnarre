@@ -450,7 +450,7 @@ impl Item {
                 ItemKind::Type(..) => {
                     ctx.options().blocklisted_types.matches(&name) || ctx.is_replaced_type(path, self.id)
                 },
-                ItemKind::Function(..) => ctx.options().blocklisted_functions.matches(&name),
+                ItemKind::Function(..) => ctx.options().blocklisted_fns.matches(&name),
                 ItemKind::Var(..) | ItemKind::Module(..) => false,
             }
     }
