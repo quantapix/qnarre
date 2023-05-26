@@ -3,28 +3,28 @@ use syn::{
     File, Item, ItemMod,
 };
 
-pub(super) fn sort_semantically(file: &mut File) {
-    Visitor.visit_file_mut(file)
+pub(super) fn sort_semantically(x: &mut File) {
+    Visitor.visit_file_mut(x)
 }
 
 struct Visitor;
 
 impl VisitMut for Visitor {
-    fn visit_file_mut(&mut self, file: &mut File) {
-        visit_items(&mut file.items);
-        visit_file_mut(self, file)
+    fn visit_file_mut(&mut self, x: &mut File) {
+        visit_items(&mut x.items);
+        visit_file_mut(self, x)
     }
 
-    fn visit_item_mod_mut(&mut self, item_mod: &mut ItemMod) {
-        if let Some((_, ref mut items)) = item_mod.content {
-            visit_items(items);
+    fn visit_item_mod_mut(&mut self, x: &mut ItemMod) {
+        if let Some((_, ref mut xs)) = x.content {
+            visit_items(xs);
         }
-        visit_item_mod_mut(self, item_mod)
+        visit_item_mod_mut(self, x)
     }
 }
 
-fn visit_items(items: &mut [Item]) {
-    items.sort_by_key(|item| match item {
+fn visit_items(xs: &mut [Item]) {
+    xs.sort_by_key(|x| match x {
         Item::Type(_) => 0,
         Item::Struct(_) => 1,
         Item::Const(_) => 2,

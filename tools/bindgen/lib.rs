@@ -25,7 +25,7 @@ mod extra_assertions;
 mod codegen;
 mod deps;
 mod options;
-mod time;
+mod timer;
 
 pub mod callbacks;
 
@@ -364,7 +364,7 @@ impl BindgenOptions {
     }
 
     fn process_comment(&self, comment: &str) -> String {
-        let comment = comment::preprocess(comment);
+        let comment = comment::preproc(comment);
         self.parse_callbacks
             .last()
             .and_then(|cb| cb.process_comment(&comment))
@@ -616,7 +616,7 @@ impl Bindings {
         }
 
         {
-            let _t = time::Timer::new("parse").with_output(time_phases);
+            let _t = timer::Timer::new("parse").with_output(time_phases);
             parse(&mut context)?;
         }
 
@@ -684,7 +684,7 @@ impl Bindings {
     }
 
     fn format_tokens(&self, tokens: &proc_macro2::TokenStream) -> io::Result<String> {
-        let _t = time::Timer::new("rustfmt_generated_string").with_output(self.opts.time_phases);
+        let _t = timer::Timer::new("rustfmt_generated_string").with_output(self.opts.time_phases);
 
         match self.opts.formatter {
             Formatter::None => return Ok(tokens.to_string()),

@@ -1,8 +1,6 @@
 #![deny(clippy::missing_docs_in_private_items)]
-
 use regex::RegexSet as RxSet;
 use std::cell::Cell;
-
 #[derive(Clone, Debug, Default)]
 pub struct RegexSet {
     items: Vec<String>,
@@ -15,11 +13,9 @@ impl RegexSet {
     pub fn new() -> RegexSet {
         RegexSet::default()
     }
-
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
-
     pub fn insert<S>(&mut self, string: S)
     where
         S: AsRef<str>,
@@ -28,38 +24,31 @@ impl RegexSet {
         self.matched.push(Cell::new(false));
         self.set = None;
     }
-
     pub fn get_items(&self) -> &[String] {
         &self.items[..]
     }
-
     pub fn unmatched_items(&self) -> impl Iterator<Item = &String> {
         self.items.iter().enumerate().filter_map(move |(i, item)| {
             if !self.record_matches || self.matched[i].get() {
                 return None;
             }
-
             Some(item)
         })
     }
-
     #[inline]
     pub fn build(&mut self, record_matches: bool) {
         self.build_inner(record_matches, None)
     }
-
     #[cfg(all(feature = "__cli", feature = "experimental"))]
     #[inline]
     pub fn build_with_diagnostics(&mut self, record_matches: bool, name: Option<&'static str>) {
         self.build_inner(record_matches, name)
     }
-
     #[cfg(all(not(feature = "__cli"), feature = "experimental"))]
     #[inline]
     pub(crate) fn build_with_diagnostics(&mut self, record_matches: bool, name: Option<&'static str>) {
         self.build_inner(record_matches, name)
     }
-
     fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
         let items = self.items.iter().map(|item| format!("^({})$", item));
         self.record_matches = record_matches;
@@ -75,7 +64,6 @@ impl RegexSet {
             },
         }
     }
-
     pub fn matches<S>(&self, string: S) -> bool
     where
         S: AsRef<str>,
@@ -85,11 +73,9 @@ impl RegexSet {
             Some(ref set) => set,
             None => return false,
         };
-
         if !self.record_matches {
             return set.is_match(s);
         }
-
         let matches = set.matches(s);
         if !matches.matched_any() {
             return false;
@@ -97,7 +83,6 @@ impl RegexSet {
         for i in matches.iter() {
             self.matched[i].set(true);
         }
-
         true
     }
 }
@@ -105,16 +90,12 @@ impl RegexSet {
 #[cfg(feature = "experimental")]
 fn invalid_regex_warning(set: &RegexSet, err: regex::Error, name: &'static str) {
     use crate::diagnostics::{Diagnostic, Level, Slice};
-
     let mut diagnostic = Diagnostic::default();
-
     match err {
         regex::Error::Syntax(string) => {
             if string.starts_with("regex parse error:\n") {
                 let mut source = String::new();
-
                 let mut parsing_source = true;
-
                 for line in string.lines().skip(1) {
                     if parsing_source {
                         if line.starts_with(' ') {
@@ -135,7 +116,6 @@ fn invalid_regex_warning(set: &RegexSet, err: regex::Error, name: &'static str) 
                 let mut slice = Slice::default();
                 slice.with_source(source);
                 diagnostic.add_slice(slice);
-
                 diagnostic.with_title("Error while parsing a regular expression.", Level::Warn);
             } else {
                 diagnostic.with_title(string, Level::Warn);
@@ -146,12 +126,10 @@ fn invalid_regex_warning(set: &RegexSet, err: regex::Error, name: &'static str) 
             diagnostic.with_title(err, Level::Warn);
         },
     }
-
     diagnostic.add_annotation(
         format!("This regular expression was passed via `{}`.", name),
         Level::Note,
     );
-
     if set.items.iter().any(|item| item == "*") {
         diagnostic.add_annotation(
             "Wildcard patterns \"*\" are no longer considered valid. Use \".*\" instead.",

@@ -4,48 +4,41 @@ enum Kind {
     MultiLine,
 }
 
-pub(crate) fn preprocess(comment: &str) -> String {
-    match self::kind(comment) {
-        Some(Kind::SingleLines) => preprocess_single_lines(comment),
-        Some(Kind::MultiLine) => preprocess_multi_line(comment),
-        None => comment.to_owned(),
+pub(crate) fn preproc(x: &str) -> String {
+    match self::kind(x) {
+        Some(Kind::SingleLines) => preprocess_single_lines(x),
+        Some(Kind::MultiLine) => preprocess_multi_line(x),
+        None => x.to_owned(),
     }
 }
 
-fn kind(comment: &str) -> Option<Kind> {
-    if comment.starts_with("/*") {
+fn kind(x: &str) -> Option<Kind> {
+    if x.starts_with("/*") {
         Some(Kind::MultiLine)
-    } else if comment.starts_with("//") {
+    } else if x.starts_with("//") {
         Some(Kind::SingleLines)
     } else {
         None
     }
 }
 
-fn preprocess_single_lines(comment: &str) -> String {
-    debug_assert!(comment.starts_with("//"), "comment is not single line");
-
-    let lines: Vec<_> = comment.lines().map(|l| l.trim().trim_start_matches('/')).collect();
-    lines.join("\n")
+fn preprocess_single_lines(x: &str) -> String {
+    debug_assert!(x.starts_with("//"), "comment is not single line");
+    let ys: Vec<_> = x.lines().map(|l| l.trim().trim_start_matches('/')).collect();
+    ys.join("\n")
 }
 
-fn preprocess_multi_line(comment: &str) -> String {
-    let comment = comment
-        .trim_start_matches('/')
-        .trim_end_matches('/')
-        .trim_end_matches('*');
-
-    let mut lines: Vec<_> = comment
+fn preprocess_multi_line(x: &str) -> String {
+    let x = x.trim_start_matches('/').trim_end_matches('/').trim_end_matches('*');
+    let mut ys: Vec<_> = x
         .lines()
-        .map(|line| line.trim().trim_start_matches('*').trim_start_matches('!'))
-        .skip_while(|line| line.trim().is_empty()) // Skip the first empty lines.
+        .map(|x| x.trim().trim_start_matches('*').trim_start_matches('!'))
+        .skip_while(|x| x.trim().is_empty())
         .collect();
-
-    if lines.last().map_or(false, |l| l.trim().is_empty()) {
-        lines.pop();
+    if ys.last().map_or(false, |x| x.trim().is_empty()) {
+        ys.pop();
     }
-
-    lines.join("\n")
+    ys.join("\n")
 }
 
 #[cfg(test)]
@@ -60,21 +53,16 @@ mod test {
 
     #[test]
     fn processes_single_lines_correctly() {
-        assert_eq!(preprocess("///"), "");
-        assert_eq!(preprocess("/// hello"), " hello");
-        assert_eq!(preprocess("// hello"), " hello");
-        assert_eq!(preprocess("//    hello"), "    hello");
+        assert_eq!(preproc("///"), "");
+        assert_eq!(preproc("/// hello"), " hello");
+        assert_eq!(preproc("// hello"), " hello");
+        assert_eq!(preproc("//    hello"), "    hello");
     }
 
     #[test]
     fn processes_multi_lines_correctly() {
-        assert_eq!(preprocess("/**/"), "");
-
-        assert_eq!(
-            preprocess("/** hello \n * world \n * foo \n */"),
-            " hello\n world\n foo"
-        );
-
-        assert_eq!(preprocess("/**\nhello\n*world\n*foo\n*/"), "hello\nworld\nfoo");
+        assert_eq!(preproc("/**/"), "");
+        assert_eq!(preproc("/** hello \n * world \n * foo \n */"), " hello\n world\n foo");
+        assert_eq!(preproc("/**\nhello\n*world\n*foo\n*/"), "hello\nworld\nfoo");
     }
 }

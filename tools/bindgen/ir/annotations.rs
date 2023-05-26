@@ -12,25 +12,25 @@ pub enum FieldVisibilityKind {
 impl FromStr for FieldVisibilityKind {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(x: &str) -> Result<Self, Self::Err> {
+        match x {
             "private" => Ok(Self::Private),
             "crate" => Ok(Self::PublicCrate),
             "public" => Ok(Self::Public),
-            _ => Err(format!("Invalid visibility kind: `{}`", s)),
+            _ => Err(format!("Invalid visibility kind: `{}`", x)),
         }
     }
 }
 
 impl std::fmt::Display for FieldVisibilityKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
+    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let y = match self {
             FieldVisibilityKind::Private => "private",
             FieldVisibilityKind::PublicCrate => "crate",
             FieldVisibilityKind::Public => "public",
         };
 
-        s.fmt(f)
+        y.fmt(x)
     }
 }
 
@@ -48,6 +48,15 @@ pub(crate) enum FieldAccessorKind {
     Immutable,
 }
 
+fn parse_accessor(x: &str) -> FieldAccessorKind {
+    match x {
+        "false" => FieldAccessorKind::None,
+        "unsafe" => FieldAccessorKind::Unsafe,
+        "immutable" => FieldAccessorKind::Immutable,
+        _ => FieldAccessorKind::Regular,
+    }
+}
+
 #[derive(Default, Clone, PartialEq, Eq, Debug)]
 pub(crate) struct Annotations {
     opaque: bool,
@@ -63,21 +72,11 @@ pub(crate) struct Annotations {
     derives: Vec<String>,
 }
 
-fn parse_accessor(s: &str) -> FieldAccessorKind {
-    match s {
-        "false" => FieldAccessorKind::None,
-        "unsafe" => FieldAccessorKind::Unsafe,
-        "immutable" => FieldAccessorKind::Immutable,
-        _ => FieldAccessorKind::Regular,
-    }
-}
-
 impl Annotations {
     pub(crate) fn new(cursor: &clang::Cursor) -> Option<Annotations> {
         let mut anno = Annotations::default();
         let mut matched_one = false;
         anno.parse(&cursor.comment(), &mut matched_one);
-
         if matched_one {
             Some(anno)
         } else {
@@ -132,35 +131,34 @@ impl Annotations {
             && comment
                 .get_tag_attrs()
                 .next()
-                .map_or(false, |attr| attr.name == "rustbindgen")
+                .map_or(false, |x| x.name == "rustbindgen")
         {
             *matched = true;
-            for attr in comment.get_tag_attrs() {
-                match attr.name.as_str() {
+            for x in comment.get_tag_attrs() {
+                match x.name.as_str() {
                     "opaque" => self.opaque = true,
                     "hide" => self.hide = true,
                     "nocopy" => self.disallow_copy = true,
                     "nodebug" => self.disallow_debug = true,
                     "nodefault" => self.disallow_default = true,
                     "mustusetype" => self.must_use_type = true,
-                    "replaces" => self.use_instead_of = Some(attr.value.split("::").map(Into::into).collect()),
-                    "derive" => self.derives.push(attr.value),
+                    "replaces" => self.use_instead_of = Some(x.value.split("::").map(Into::into).collect()),
+                    "derive" => self.derives.push(x.value),
                     "private" => {
-                        self.visibility_kind = if attr.value != "false" {
+                        self.visibility_kind = if x.value != "false" {
                             Some(FieldVisibilityKind::Private)
                         } else {
                             Some(FieldVisibilityKind::Public)
                         };
                     },
-                    "accessor" => self.accessor_kind = Some(parse_accessor(&attr.value)),
+                    "accessor" => self.accessor_kind = Some(parse_accessor(&x.value)),
                     "constant" => self.constify_enum_variant = true,
                     _ => {},
                 }
             }
         }
-
-        for child in comment.get_children() {
-            self.parse(&child, matched);
+        for x in comment.get_children() {
+            self.parse(&x, matched);
         }
     }
 

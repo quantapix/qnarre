@@ -1,4 +1,4 @@
-use super::super::time::Timer;
+use super::super::timer::Timer;
 use super::analysis::{
     analyze, as_cannot_derive_set, CannotDerive, DeriveTrait, HasDestructorAnalysis, HasFloat, HasTypeParameterInArray,
     HasVtableAnalysis, HasVtableResult, SizednessAnalysis, SizednessResult, UsedTemplateParameters,
@@ -109,9 +109,7 @@ item_id_newtype! {
     pub(crate) struct TypeId(ItemId)
     where
         checked = as_type_id with is_type,
-
         expected = expect_type_id,
-
         unchecked = as_type_id_unchecked;
 }
 
@@ -119,9 +117,7 @@ item_id_newtype! {
     pub(crate) struct ModuleId(ItemId)
     where
         checked = as_module_id with is_module,
-
         expected = expect_module_id,
-
         unchecked = as_module_id_unchecked;
 }
 
@@ -129,9 +125,7 @@ item_id_newtype! {
     pub(crate) struct VarId(ItemId)
     where
         checked = as_var_id with is_var,
-
         expected = expect_var_id,
-
         unchecked = as_var_id_unchecked;
 }
 
@@ -139,9 +133,7 @@ item_id_newtype! {
     pub(crate) struct FunctionId(ItemId)
     where
         checked = as_function_id with is_function,
-
         expected = expect_function_id,
-
         unchecked = as_function_id_unchecked;
 }
 
@@ -251,71 +243,39 @@ enum TypeKey {
 
 #[derive(Debug)]
 pub(crate) struct BindgenContext {
-    items: Vec<Option<Item>>,
-
-    types: HashMap<TypeKey, TypeId>,
-
-    type_params: HashMap<clang::Cursor, TypeId>,
-
-    modules: HashMap<Cursor, ModuleId>,
-
-    root_module: ModuleId,
-
-    current_module: ModuleId,
-
-    semantic_parents: HashMap<clang::Cursor, ItemId>,
-
-    currently_parsed_types: Vec<PartialType>,
-
-    parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
-
-    deps: BTreeSet<String>,
-
-    replacements: HashMap<Vec<String>, ItemId>,
-
-    collected_typerefs: bool,
-
-    in_codegen: bool,
-
-    translation_unit: clang::TranslationUnit,
-
-    target_info: clang::TargetInfo,
-
-    options: BindgenOptions,
-
-    generated_bindgen_complex: Cell<bool>,
-
     allowlisted: Option<ItemSet>,
-
     blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, CanDerive>>>,
-
-    codegen_items: Option<ItemSet>,
-
-    used_template_parameters: Option<HashMap<ItemId, ItemSet>>,
-
-    need_bitfield_allocation: Vec<ItemId>,
-
-    enum_typedef_combos: Option<HashSet<ItemId>>,
-
-    cannot_derive_debug: Option<HashSet<ItemId>>,
-
-    cannot_derive_default: Option<HashSet<ItemId>>,
-
     cannot_derive_copy: Option<HashSet<ItemId>>,
-
+    cannot_derive_debug: Option<HashSet<ItemId>>,
+    cannot_derive_default: Option<HashSet<ItemId>>,
     cannot_derive_hash: Option<HashSet<ItemId>>,
-
     cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, CanDerive>>,
-
-    sizedness: Option<HashMap<TypeId, SizednessResult>>,
-
-    have_vtable: Option<HashMap<ItemId, HasVtableResult>>,
-
-    have_destructor: Option<HashSet<ItemId>>,
-
-    has_type_param_in_array: Option<HashSet<ItemId>>,
-
+    codegen_items: Option<ItemSet>,
+    collected_typerefs: bool,
+    current_module: ModuleId,
+    currently_parsed_types: Vec<PartialType>,
+    deps: BTreeSet<String>,
+    enum_typedef_combos: Option<HashSet<ItemId>>,
+    generated_bindgen_complex: Cell<bool>,
     has_float: Option<HashSet<ItemId>>,
+    has_type_param_in_array: Option<HashSet<ItemId>>,
+    have_destructor: Option<HashSet<ItemId>>,
+    have_vtable: Option<HashMap<ItemId, HasVtableResult>>,
+    in_codegen: bool,
+    items: Vec<Option<Item>>,
+    modules: HashMap<Cursor, ModuleId>,
+    need_bitfield_allocation: Vec<ItemId>,
+    options: BindgenOptions,
+    parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
+    replacements: HashMap<Vec<String>, ItemId>,
+    root_module: ModuleId,
+    semantic_parents: HashMap<clang::Cursor, ItemId>,
+    sizedness: Option<HashMap<TypeId, SizednessResult>>,
+    target_info: clang::TargetInfo,
+    translation_unit: clang::TranslationUnit,
+    type_params: HashMap<clang::Cursor, TypeId>,
+    types: HashMap<TypeKey, TypeId>,
+    used_template_parameters: Option<HashMap<ItemId, ItemSet>>,
 }
 
 struct AllowlistedItemsTraversal<'ctx> {
@@ -329,11 +289,9 @@ impl<'ctx> Iterator for AllowlistedItemsTraversal<'ctx> {
     fn next(&mut self) -> Option<ItemId> {
         loop {
             let id = self.traversal.next()?;
-
             if self.ctx.resolve_item(id).is_blocklisted(self.ctx) {
                 continue;
             }
-
             return Some(id);
         }
     }
@@ -358,12 +316,9 @@ impl<'ctx> AllowlistedItemsTraversal<'ctx> {
 impl BindgenContext {
     pub(crate) fn new(options: BindgenOptions, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
         let index = clang::Index::new(false, true);
-
         let parse_options = clang::CXTranslationUnit_DetailedPreprocessingRecord;
-
         let translation_unit = {
             let _t = Timer::new("translation_unit").with_output(options.time_phases);
-
             clang::TranslationUnit::parse(&index, "", &options.clang_args, input_unsaved_files, parse_options).expect(
                 "libclang error; possible causes include:
 - Invalid flag syntax
@@ -378,43 +333,42 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let target_info = clang::TargetInfo::new(&translation_unit);
         let root_module = Self::build_root_module(ItemId(0));
         let root_module_id = root_module.id().as_module_id_unchecked();
-
         let deps = options.input_headers.iter().cloned().collect();
 
         BindgenContext {
-            items: vec![Some(root_module)],
-            deps,
-            types: Default::default(),
-            type_params: Default::default(),
-            modules: Default::default(),
-            root_module: root_module_id,
-            current_module: root_module_id,
-            semantic_parents: Default::default(),
-            currently_parsed_types: vec![],
-            parsed_macros: Default::default(),
-            replacements: Default::default(),
-            collected_typerefs: false,
-            in_codegen: false,
-            translation_unit,
-            target_info,
-            options,
-            generated_bindgen_complex: Cell::new(false),
             allowlisted: None,
             blocklisted_types_implement_traits: Default::default(),
-            codegen_items: None,
-            used_template_parameters: None,
-            need_bitfield_allocation: Default::default(),
-            enum_typedef_combos: None,
+            cannot_derive_copy: None,
             cannot_derive_debug: None,
             cannot_derive_default: None,
-            cannot_derive_copy: None,
             cannot_derive_hash: None,
             cannot_derive_partialeq_or_partialord: None,
-            sizedness: None,
-            have_vtable: None,
-            have_destructor: None,
-            has_type_param_in_array: None,
+            codegen_items: None,
+            collected_typerefs: false,
+            current_module: root_module_id,
+            currently_parsed_types: vec![],
+            deps,
+            enum_typedef_combos: None,
+            generated_bindgen_complex: Cell::new(false),
             has_float: None,
+            has_type_param_in_array: None,
+            have_destructor: None,
+            have_vtable: None,
+            in_codegen: false,
+            items: vec![Some(root_module)],
+            modules: Default::default(),
+            need_bitfield_allocation: Default::default(),
+            options,
+            parsed_macros: Default::default(),
+            replacements: Default::default(),
+            root_module: root_module_id,
+            semantic_parents: Default::default(),
+            sizedness: None,
+            target_info,
+            translation_unit,
+            type_params: Default::default(),
+            types: Default::default(),
+            used_template_parameters: None,
         }
     }
 
@@ -434,8 +388,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         &self.currently_parsed_types[..]
     }
 
-    pub(crate) fn begin_parsing(&mut self, partial_ty: PartialType) {
-        self.currently_parsed_types.push(partial_ty);
+    pub(crate) fn begin_parsing(&mut self, x: PartialType) {
+        self.currently_parsed_types.push(x);
     }
 
     pub(crate) fn finish_parsing(&mut self) -> PartialType {
@@ -444,80 +398,73 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .expect("should have been parsing a type, if we finished parsing a type")
     }
 
-    pub(crate) fn include_file(&mut self, filename: String) {
+    pub(crate) fn include_file(&mut self, x: String) {
         for cb in &self.opts().parse_callbacks {
-            cb.include_file(&filename);
+            cb.include_file(&x);
         }
-        self.deps.insert(filename);
+        self.deps.insert(x);
     }
 
     pub(crate) fn deps(&self) -> &BTreeSet<String> {
         &self.deps
     }
 
-    pub(crate) fn add_item(&mut self, item: Item, declaration: Option<Cursor>, location: Option<Cursor>) {
+    pub(crate) fn add_item(&mut self, item: Item, decl: Option<Cursor>, loc: Option<Cursor>) {
         debug!(
             "BindgenContext::add_item({:?}, declaration: {:?}, loc: {:?}",
-            item, declaration, location
+            item, decl, loc
         );
         debug_assert!(
-            declaration.is_some()
+            decl.is_some()
                 || !item.kind().is_type()
                 || item.kind().expect_type().is_builtin_or_type_param()
                 || item.kind().expect_type().is_opaque(self, &item)
                 || item.kind().expect_type().is_unresolved_ref(),
             "Adding a type without declaration?"
         );
-
         let id = item.id();
         let is_type = item.kind().is_type();
         let is_unnamed = is_type && item.expect_type().name().is_none();
         let is_template_instantiation = is_type && item.expect_type().is_template_instantiation();
-
         if item.id() != self.root_module {
             self.add_item_to_module(&item);
         }
-
         if is_type && item.expect_type().is_comp() {
             self.need_bitfield_allocation.push(id);
         }
-
         let old_item = mem::replace(&mut self.items[id.0], Some(item));
         assert!(
             old_item.is_none(),
             "should not have already associated an item with the given id"
         );
-
         if !is_type || is_template_instantiation {
             return;
         }
-        if let Some(mut declaration) = declaration {
-            if !declaration.is_valid() {
-                if let Some(location) = location {
-                    if location.is_template_like() {
-                        declaration = location;
+        if let Some(mut decl) = decl {
+            if !decl.is_valid() {
+                if let Some(loc) = loc {
+                    if loc.is_template_like() {
+                        decl = loc;
                     }
                 }
             }
-            declaration = declaration.canonical();
-            if !declaration.is_valid() {
+            decl = decl.canonical();
+            if !decl.is_valid() {
                 debug!(
                     "Invalid declaration {:?} found for type {:?}",
-                    declaration,
+                    decl,
                     self.resolve_item_fallible(id).unwrap().kind().expect_type()
                 );
                 return;
             }
-
             let key = if is_unnamed {
-                TypeKey::Declaration(declaration)
-            } else if let Some(usr) = declaration.usr() {
+                TypeKey::Declaration(decl)
+            } else if let Some(usr) = decl.usr() {
                 TypeKey::Usr(usr)
             } else {
-                warn!("Valid declaration with no USR: {:?}, {:?}", declaration, location);
-                TypeKey::Declaration(declaration)
+                warn!("Valid declaration with no USR: {:?}, {:?}", decl, loc);
+                TypeKey::Declaration(decl)
             };
-
             let old = self.types.insert(key, id.as_type_id_unchecked());
             debug_assert_eq!(old, None);
         }
@@ -526,7 +473,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn add_item_to_module(&mut self, item: &Item) {
         assert!(item.id() != self.root_module);
         assert!(self.resolve_item_fallible(item.id()).is_none());
-
         if let Some(ref mut parent) = self.items[item.parent_id().0] {
             if let Some(module) = parent.as_module_mut() {
                 debug!(
@@ -539,13 +485,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 return;
             }
         }
-
         debug!(
             "add_item_to_module: adding {:?} as child of current module {:?}",
             item.id(),
             self.current_module
         );
-
         self.items[(self.current_module.0).0]
             .as_mut()
             .expect("Should always have an item for self.current_module")
@@ -560,22 +504,18 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             "BindgenContext::add_type_param: item = {:?}; definition = {:?}",
             item, definition
         );
-
         assert!(
             item.expect_type().is_type_param(),
             "Should directly be a named type, not a resolved reference or anything"
         );
         assert_eq!(definition.kind(), clang::CXCursor_TemplateTypeParameter);
-
         self.add_item_to_module(&item);
-
         let id = item.id();
         let old_item = mem::replace(&mut self.items[id.0], Some(item));
         assert!(
             old_item.is_none(),
             "should not have already associated an item with the given id"
         );
-
         let old_named_ty = self.type_params.insert(definition, id.as_type_id_unchecked());
         assert!(
             old_named_ty.is_none(),
@@ -587,7 +527,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert_eq!(definition.kind(), clang::CXCursor_TemplateTypeParameter);
         self.type_params.get(definition).cloned()
     }
-
 
     #[rustfmt::skip]
     pub(crate) fn rust_mangle<'a>(&self, name: &'a str) -> Cow<'a, str> {
@@ -649,7 +588,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         debug_assert!(!self.collected_typerefs);
         self.collected_typerefs = true;
         let mut typerefs = vec![];
-
         for (id, item) in self.items() {
             let kind = item.kind();
             let ty = match kind.as_type() {
@@ -666,9 +604,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
     fn resolve_typerefs(&mut self) {
         let _t = self.timer("resolve_typerefs");
-
         let typerefs = self.collect_typerefs();
-
         for (id, ty, loc, parent_id) in typerefs {
             let _resolved = {
                 let resolved = Item::from_ty(&ty, loc, parent_id, self).unwrap_or_else(|_| {
@@ -691,20 +627,15 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         F: (FnOnce(&BindgenContext, &mut Item) -> T),
     {
         let mut item = self.items[id.0].take().unwrap();
-
         let result = f(self, &mut item);
-
         let existing = mem::replace(&mut self.items[id.0], Some(item));
         assert!(existing.is_none());
-
         result
     }
 
     fn compute_bitfield_units(&mut self) {
         let _t = self.timer("compute_bitfield_units");
-
         assert!(self.collected_typerefs());
-
         let need_bitfield_allocation = mem::take(&mut self.need_bitfield_allocation);
         for id in need_bitfield_allocation {
             self.with_loaned_item(id, |ctx, item| {
@@ -717,7 +648,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
     fn deanonymize_fields(&mut self) {
         let _t = self.timer("deanonymize_fields");
-
         let comp_item_ids: Vec<ItemId> = self
             .items()
             .filter_map(|(id, item)| {
@@ -727,7 +657,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 None
             })
             .collect();
-
         for id in comp_item_ids {
             self.with_loaned_item(id, |ctx, item| {
                 item.kind_mut()
@@ -746,27 +675,21 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             debug!("No replacements to process");
             return;
         }
-
         let mut replacements = vec![];
-
         for (id, item) in self.items() {
             if item.annotations().use_instead_of().is_some() {
                 continue;
             }
-
             let ty = match item.kind().as_type() {
                 Some(ty) => ty,
                 None => continue,
             };
-
             match *ty.kind() {
                 TypeKind::Comp(..) | TypeKind::TemplateAlias(..) | TypeKind::Enum(..) | TypeKind::Alias(..) => {},
                 _ => continue,
             }
-
             let path = item.path_for_allowlisting(self);
             let replacement = self.replacements.get(&path[1..]);
-
             if let Some(replacement) = replacement {
                 if *replacement != id {
                     if self.resolve_item_fallible(*replacement).is_some() {
@@ -775,7 +698,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 }
             }
         }
-
         for (id, replacement_id) in replacements {
             debug!("Replacing {:?} with {:?}", id, replacement_id);
             let new_parent = {
@@ -883,7 +805,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn assert_no_dangling_item_traversal(&self) -> traversal::AssertNoDanglingItemsTraversal {
         assert!(self.in_codegen_phase());
         assert!(self.current_module == self.root_module);
-
         let roots = self.items().map(|(id, _)| id);
         traversal::AssertNoDanglingItemsTraversal::new(self, roots, traversal::all_edges)
     }
@@ -892,7 +813,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         if cfg!(feature = "__testing_only_extra_assertions") {
             assert!(self.in_codegen_phase());
             assert!(self.current_module == self.root_module);
-
             for (id, _item) in self.items() {
                 if id == self.root_module {
                     continue;

@@ -5,7 +5,7 @@ use super::function::cursor_mangling;
 use super::int::IntKind;
 use super::item::Item;
 use super::ty::{FloatKind, TypeKind};
-use crate::callbacks::{ItemInfo, ItemKind, MacroParsingBehavior};
+use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
 use crate::clang::ClangToken;
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
@@ -142,10 +142,10 @@ impl ClangSubItemParser for Var {
             CXCursor_MacroDefinition => {
                 for callbacks in &ctx.options().parse_callbacks {
                     match callbacks.will_parse_macro(&cursor.spelling()) {
-                        MacroParsingBehavior::Ignore => {
+                        MacroParsing::Ignore => {
                             return Err(ParseError::Continue);
                         },
-                        MacroParsingBehavior::Default => {},
+                        MacroParsing::Default => {},
                     }
 
                     if cursor.is_macro_function_like() {

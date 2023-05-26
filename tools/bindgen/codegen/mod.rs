@@ -3938,7 +3938,7 @@ pub(crate) fn codegen(context: BindgenContext) -> Result<(proc_macro2::TokenStre
 
         utils::serialize_items(&result, context)?;
 
-        Ok(postprocessing::postprocessing(result.items, context.options()))
+        Ok(postprocessing::postproc(result.items, context.options()))
     })
 }
 
