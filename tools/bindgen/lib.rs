@@ -69,22 +69,19 @@ pub const DEFAULT_ANON_FIELDS_PREFIX: &str = "__bindgen_anon_";
 
 const DEFAULT_NON_EXTERN_FNS_SUFFIX: &str = "__extern";
 
-fn file_is_cpp(name_file: &str) -> bool {
-    name_file.ends_with(".hpp")
-        || name_file.ends_with(".hxx")
-        || name_file.ends_with(".hh")
-        || name_file.ends_with(".h++")
+fn file_is_cpp(x: &str) -> bool {
+    x.ends_with(".hpp") || x.ends_with(".hxx") || x.ends_with(".hh") || x.ends_with(".h++")
 }
 
-fn args_are_cpp(clang_args: &[String]) -> bool {
-    for w in clang_args.windows(2) {
-        if w[0] == "-xc++" || w[1] == "-xc++" {
+fn args_are_cpp(xs: &[String]) -> bool {
+    for x in xs.windows(2) {
+        if x[0] == "-xc++" || x[1] == "-xc++" {
             return true;
         }
-        if w[0] == "-x" && w[1] == "c++" {
+        if x[0] == "-x" && x[1] == "c++" {
             return true;
         }
-        if w[0] == "-include" && file_is_cpp(&w[1]) {
+        if x[0] == "-include" && file_is_cpp(&x[1]) {
             return true;
         }
     }
@@ -152,25 +149,24 @@ impl Default for Formatter {
 impl FromStr for Formatter {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(x: &str) -> Result<Self, Self::Err> {
+        match x {
             "none" => Ok(Self::None),
             "rustfmt" => Ok(Self::Rustfmt),
             "prettyplease" => Ok(Self::Prettyplease),
-            _ => Err(format!("`{}` is not a valid formatter", s)),
+            _ => Err(format!("`{}` is not a valid formatter", x)),
         }
     }
 }
 
 impl std::fmt::Display for Formatter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
+        let y = match self {
             Self::None => "none",
             Self::Rustfmt => "rustfmt",
             Self::Prettyplease => "prettyplease",
         };
-
-        s.fmt(f)
+        y.fmt(f)
     }
 }
 
@@ -183,16 +179,15 @@ pub fn builder() -> Builder {
     Default::default()
 }
 
-fn get_extra_clang_args(parse_callbacks: &[Rc<dyn callbacks::ParseCallbacks>]) -> Vec<String> {
-    let extra_clang_args = match get_target_dependent_env_var(parse_callbacks, "BINDGEN_EXTRA_CLANG_ARGS") {
+fn get_extra_clang_args(xs: &[Rc<dyn callbacks::ParseCallbacks>]) -> Vec<String> {
+    let ys = match get_target_dependent_env_var(xs, "BINDGEN_EXTRA_CLANG_ARGS") {
         None => return vec![],
-        Some(s) => s,
+        Some(x) => x,
     };
-
-    if let Some(strings) = shlex::split(&extra_clang_args) {
-        return strings;
+    if let Some(ys) = shlex::split(&ys) {
+        return ys;
     }
-    vec![extra_clang_args]
+    vec![ys]
 }
 
 impl Builder {
@@ -200,75 +195,58 @@ impl Builder {
         self.options
             .clang_args
             .extend(get_extra_clang_args(&self.options.parse_callbacks));
-
         self.options.clang_args.extend(
             self.options.input_headers[..self.options.input_headers.len().saturating_sub(1)]
                 .iter()
-                .flat_map(|header| ["-include".into(), header.to_string()]),
+                .flat_map(|x| ["-include".into(), x.to_string()]),
         );
-
-        let input_unsaved_files = std::mem::take(&mut self.options.input_header_contents)
+        let ys = std::mem::take(&mut self.options.input_header_contents)
             .into_iter()
             .map(|(name, contents)| clang::UnsavedFile::new(name, contents))
             .collect::<Vec<_>>();
-
-        Bindings::generate(self.options, input_unsaved_files)
+        Bindings::generate(self.options, ys)
     }
 
     pub fn dump_preprocessed_input(&self) -> io::Result<()> {
         let clang = clang::support::Clang::find(None, &[])
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Cannot find clang executable"))?;
-
-        let mut wrapper_contents = String::new();
-
         let mut is_cpp = args_are_cpp(&self.options.clang_args);
-
-        for header in &self.options.input_headers {
-            is_cpp |= file_is_cpp(header);
-
-            wrapper_contents.push_str("#include \"");
-            wrapper_contents.push_str(header);
-            wrapper_contents.push_str("\"\n");
+        let mut y = String::new();
+        for x in &self.options.input_headers {
+            is_cpp |= file_is_cpp(x);
+            y.push_str("#include \"");
+            y.push_str(x);
+            y.push_str("\"\n");
         }
-
         for (name, contents) in &self.options.input_header_contents {
             is_cpp |= file_is_cpp(name);
-
-            wrapper_contents.push_str("#line 0 \"");
-            wrapper_contents.push_str(name);
-            wrapper_contents.push_str("\"\n");
-            wrapper_contents.push_str(contents);
+            y.push_str("#line 0 \"");
+            y.push_str(name);
+            y.push_str("\"\n");
+            y.push_str(contents);
         }
-
-        let wrapper_path = PathBuf::from(if is_cpp { "__bindgen.cpp" } else { "__bindgen.c" });
-
+        let p = PathBuf::from(if is_cpp { "__bindgen.cpp" } else { "__bindgen.c" });
         {
-            let mut wrapper_file = File::create(&wrapper_path)?;
-            wrapper_file.write_all(wrapper_contents.as_bytes())?;
+            let mut f = File::create(&p)?;
+            f.write_all(y.as_bytes())?;
         }
-
         let mut cmd = Command::new(clang.path);
         cmd.arg("-save-temps")
             .arg("-E")
             .arg("-C")
             .arg("-c")
-            .arg(&wrapper_path)
+            .arg(&p)
             .stdout(Stdio::piped());
-
-        for a in &self.options.clang_args {
-            cmd.arg(a);
+        for x in &self.options.clang_args {
+            cmd.arg(x);
         }
-
-        for a in get_extra_clang_args(&self.options.parse_callbacks) {
-            cmd.arg(a);
+        for x in get_extra_clang_args(&self.options.parse_callbacks) {
+            cmd.arg(x);
         }
-
         let mut child = cmd.spawn()?;
-
-        let mut preprocessed = child.stdout.take().unwrap();
-        let mut file = File::create(if is_cpp { "__bindgen.ii" } else { "__bindgen.i" })?;
-        io::copy(&mut preprocessed, &mut file)?;
-
+        let mut preproc = child.stdout.take().unwrap();
+        let mut f = File::create(if is_cpp { "__bindgen.ii" } else { "__bindgen.i" })?;
+        io::copy(&mut preproc, &mut f)?;
         if child.wait()?.success() {
             Ok(())
         } else {
@@ -315,9 +293,9 @@ impl BindgenOptions {
         ];
 
         let record_matches = self.record_matches;
-        #[cfg(feature = "experimental")]
+        //#[cfg(feature = "experimental")]
         {
-            let sets_len = REGEX_SETS_LEN + self.abi_overrides.len();
+            let n = REGEX_SETS_LEN + self.abi_overrides.len();
             let names = if self.emit_diagnostics {
                 <[&str; REGEX_SETS_LEN]>::into_iter([
                     "--blocklist-type",
@@ -352,9 +330,8 @@ impl BindgenOptions {
                 .map(Some)
                 .collect()
             } else {
-                vec![None; sets_len]
+                vec![None; n]
             };
-
             for (regex_set, name) in self.abi_overrides.values_mut().chain(regex_sets).zip(names) {
                 regex_set.build_with_diagnostics(record_matches, name);
             }
@@ -363,13 +340,6 @@ impl BindgenOptions {
         for regex_set in self.abi_overrides.values_mut().chain(regex_sets) {
             regex_set.build(record_matches);
         }
-
-        let rust_target = self.rust_target;
-        #[allow(deprecated)]
-        if rust_target <= RustTarget::Stable_1_30 {
-            deprecated_target_diagnostic(rust_target, self);
-        }
-
         if !self.rust_features.untagged_union {
             self.untagged_union = false;
         }
@@ -399,22 +369,6 @@ impl BindgenOptions {
             .last()
             .and_then(|cb| cb.process_comment(&comment))
             .unwrap_or(comment)
-    }
-}
-
-fn deprecated_target_diagnostic(target: RustTarget, _options: &BindgenOptions) {
-    let target = String::from(target);
-    warn!("The {} Rust target is deprecated. If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues", target,);
-
-    #[cfg(feature = "experimental")]
-    if _options.emit_diagnostics {
-        use crate::diagnostics::{Diagnostic, Level};
-
-        let mut diagnostic = Diagnostic::default();
-        diagnostic.with_title(format!("The {} Rust target is deprecated.", target), Level::Warn);
-        diagnostic.add_annotation("This Rust target was passed to `--rust-target`", Level::Info);
-        diagnostic.add_annotation("If you have a good reason to use this target please report it at https://github.com/rust-lang/rust-bindgen/issues", Level::Help);
-        diagnostic.display();
     }
 }
 

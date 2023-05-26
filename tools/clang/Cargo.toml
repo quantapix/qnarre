@@ -1,5 +1,6 @@
 [package]
 name = "clang"
+license = "https://github.com/KyleMayes/clang-sys"
 version.workspace = true
 edition.workspace = true
 build = "build.rs"

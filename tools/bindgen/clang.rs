@@ -1,14 +1,16 @@
 #![allow(non_upper_case_globals, dead_code)]
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::ir::context::BindgenContext;
-use clang::*;
 use std::ffi::{CStr, CString};
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::os::raw::{c_char, c_int, c_longlong, c_uint, c_ulong, c_ulonglong};
 use std::{mem, ptr, slice};
+
+use clang::*;
+
+use crate::ir::context::BindgenContext;
 
 pub(crate) struct Attribute {
     name: &'static [u8],

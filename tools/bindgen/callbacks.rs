@@ -18,7 +18,6 @@ impl Default for MacroParsingBehavior {
 
 pub trait ParseCallbacks: fmt::Debug {
     #[cfg(feature = "__cli")]
-    #[doc(hidden)]
     fn cli_args(&self) -> Vec<String> {
         vec![]
     }
