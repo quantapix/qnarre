@@ -164,21 +164,21 @@ fn is_exec(path: &Path) -> io::Result<bool> {
     unsafe { Ok(libc::access(y.as_ptr(), libc::X_OK) == 0) }
 }
 
-mod enums {
+pub mod enums {
     use libc::c_int;
 
     macro_rules! cenum {
         (enum $name:ident {
             $(const $variant:ident = $value:expr), +,
         }) => (
-            pub(super) type $name = c_int;
-            $(pub(super) const $variant: $name = $value;)+
+            pub type $name = c_int;
+            $(pub const $variant: $name = $value;)+
         );
         (enum $name:ident {
             $(const $variant:ident = $value:expr); +;
         }) => (
-            pub(super) type $name = c_int;
-            $(pub(super) const $variant: $name = $value;)+
+            pub type $name = c_int;
+            $(pub const $variant: $name = $value;)+
         );
     }
 
@@ -1179,12 +1179,12 @@ mod enums {
 
 use enums::*;
 
-mod types {
+pub mod types {
     use libc::c_void;
 
     macro_rules! opaque {
         ($name:ident) => {
-            pub(super) type $name = *mut c_void;
+            pub type $name = *mut c_void;
         };
     }
 
@@ -1217,7 +1217,7 @@ pub type CXCursorVisitor = extern "C" fn(CXCursor, CXCursor, CXClientData) -> CX
 pub type CXFieldVisitor = extern "C" fn(CXCursor, CXClientData) -> CXVisitorResult;
 pub type CXInclusionVisitor = extern "C" fn(CXFile, *mut CXSourceLocation, c_uint, CXClientData);
 
-mod structs {
+pub mod structs {
     use super::*;
 
     macro_rules! default {
@@ -1232,7 +1232,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXCodeCompleteResults {
+    pub struct CXCodeCompleteResults {
         pub Results: *mut CXCompletionResult,
         pub NumResults: c_uint,
     }
@@ -1241,7 +1241,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXComment {
+    pub struct CXComment {
         pub ASTNode: *const c_void,
         pub TranslationUnit: CXTranslationUnit,
     }
@@ -1250,7 +1250,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXCompletionResult {
+    pub struct CXCompletionResult {
         pub CursorKind: CXCursorKind,
         pub CompletionString: CXCompletionString,
     }
@@ -1259,7 +1259,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXCursor {
+    pub struct CXCursor {
         pub kind: CXCursorKind,
         pub xdata: c_int,
         pub data: [*const c_void; 3],
@@ -1269,7 +1269,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXCursorAndRangeVisitor {
+    pub struct CXCursorAndRangeVisitor {
         pub context: *mut c_void,
         pub visit: Option<extern "C" fn(*mut c_void, CXCursor, CXSourceRange) -> CXVisitorResult>,
     }
@@ -1278,7 +1278,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXFileUniqueID {
+    pub struct CXFileUniqueID {
         pub data: [c_ulonglong; 3],
     }
 
@@ -1286,7 +1286,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxAttrInfo {
+    pub struct CXIdxAttrInfo {
         pub kind: CXIdxAttrKind,
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
@@ -1296,7 +1296,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxBaseClassInfo {
+    pub struct CXIdxBaseClassInfo {
         pub base: *const CXIdxEntityInfo,
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
@@ -1306,7 +1306,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxCXXClassDeclInfo {
+    pub struct CXIdxCXXClassDeclInfo {
         pub declInfo: *const CXIdxDeclInfo,
         pub bases: *const *const CXIdxBaseClassInfo,
         pub numBases: c_uint,
@@ -1316,7 +1316,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxContainerInfo {
+    pub struct CXIdxContainerInfo {
         pub cursor: CXCursor,
     }
 
@@ -1324,7 +1324,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxDeclInfo {
+    pub struct CXIdxDeclInfo {
         pub entityInfo: *const CXIdxEntityInfo,
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
@@ -1344,7 +1344,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxEntityInfo {
+    pub struct CXIdxEntityInfo {
         pub kind: CXIdxEntityKind,
         pub templateKind: CXIdxEntityCXXTemplateKind,
         pub lang: CXIdxEntityLanguage,
@@ -1359,7 +1359,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxEntityRefInfo {
+    pub struct CXIdxEntityRefInfo {
         pub kind: CXIdxEntityRefKind,
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
@@ -1373,7 +1373,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxIBOutletCollectionAttrInfo {
+    pub struct CXIdxIBOutletCollectionAttrInfo {
         pub attrInfo: *const CXIdxAttrInfo,
         pub objcClass: *const CXIdxEntityInfo,
         pub classCursor: CXCursor,
@@ -1384,7 +1384,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxImportedASTFileInfo {
+    pub struct CXIdxImportedASTFileInfo {
         pub file: CXFile,
         pub module: CXModule,
         pub loc: CXIdxLoc,
@@ -1395,7 +1395,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxIncludedFileInfo {
+    pub struct CXIdxIncludedFileInfo {
         pub hashLoc: CXIdxLoc,
         pub filename: *const c_char,
         pub file: CXFile,
@@ -1408,7 +1408,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxLoc {
+    pub struct CXIdxLoc {
         pub ptr_data: [*mut c_void; 2],
         pub int_data: c_uint,
     }
@@ -1417,7 +1417,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxObjCCategoryDeclInfo {
+    pub struct CXIdxObjCCategoryDeclInfo {
         pub containerInfo: *const CXIdxObjCContainerDeclInfo,
         pub objcClass: *const CXIdxEntityInfo,
         pub classCursor: CXCursor,
@@ -1429,7 +1429,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxObjCContainerDeclInfo {
+    pub struct CXIdxObjCContainerDeclInfo {
         pub declInfo: *const CXIdxDeclInfo,
         pub kind: CXIdxObjCContainerKind,
     }
@@ -1438,7 +1438,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxObjCInterfaceDeclInfo {
+    pub struct CXIdxObjCInterfaceDeclInfo {
         pub containerInfo: *const CXIdxObjCContainerDeclInfo,
         pub superInfo: *const CXIdxBaseClassInfo,
         pub protocols: *const CXIdxObjCProtocolRefListInfo,
@@ -1448,7 +1448,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxObjCPropertyDeclInfo {
+    pub struct CXIdxObjCPropertyDeclInfo {
         pub declInfo: *const CXIdxDeclInfo,
         pub getter: *const CXIdxEntityInfo,
         pub setter: *const CXIdxEntityInfo,
@@ -1458,7 +1458,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxObjCProtocolRefInfo {
+    pub struct CXIdxObjCProtocolRefInfo {
         pub protocol: *const CXIdxEntityInfo,
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
@@ -1468,7 +1468,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXIdxObjCProtocolRefListInfo {
+    pub struct CXIdxObjCProtocolRefListInfo {
         pub protocols: *const *const CXIdxObjCProtocolRefInfo,
         pub numProtocols: c_uint,
     }
@@ -1477,7 +1477,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXPlatformAvailability {
+    pub struct CXPlatformAvailability {
         pub Platform: CXString,
         pub Introduced: CXVersion,
         pub Deprecated: CXVersion,
@@ -1490,7 +1490,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXSourceLocation {
+    pub struct CXSourceLocation {
         pub ptr_data: [*const c_void; 2],
         pub int_data: c_uint,
     }
@@ -1499,7 +1499,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXSourceRange {
+    pub struct CXSourceRange {
         pub ptr_data: [*const c_void; 2],
         pub begin_int_data: c_uint,
         pub end_int_data: c_uint,
@@ -1509,7 +1509,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXSourceRangeList {
+    pub struct CXSourceRangeList {
         pub count: c_uint,
         pub ranges: *mut CXSourceRange,
     }
@@ -1518,7 +1518,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXString {
+    pub struct CXString {
         pub data: *const c_void,
         pub private_flags: c_uint,
     }
@@ -1527,7 +1527,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXStringSet {
+    pub struct CXStringSet {
         pub Strings: *mut CXString,
         pub Count: c_uint,
     }
@@ -1536,7 +1536,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXTUResourceUsage {
+    pub struct CXTUResourceUsage {
         pub data: *mut c_void,
         pub numEntries: c_uint,
         pub entries: *mut CXTUResourceUsageEntry,
@@ -1546,7 +1546,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXTUResourceUsageEntry {
+    pub struct CXTUResourceUsageEntry {
         pub kind: CXTUResourceUsageKind,
         pub amount: c_ulong,
     }
@@ -1555,7 +1555,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXToken {
+    pub struct CXToken {
         pub int_data: [c_uint; 4],
         pub ptr_data: *mut c_void,
     }
@@ -1564,7 +1564,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXType {
+    pub struct CXType {
         pub kind: CXTypeKind,
         pub data: [*mut c_void; 2],
     }
@@ -1573,7 +1573,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXUnsavedFile {
+    pub struct CXUnsavedFile {
         pub Filename: *const c_char,
         pub Contents: *const c_char,
         pub Length: c_ulong,
@@ -1583,7 +1583,7 @@ mod structs {
 
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
-    pub(super) struct CXVersion {
+    pub struct CXVersion {
         pub Major: c_int,
         pub Minor: c_int,
         pub Subminor: c_int,
@@ -1594,7 +1594,7 @@ mod structs {
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     #[rustfmt::skip]
-    pub(super) struct IndexerCallbacks {
+    pub struct IndexerCallbacks {
         pub abortQuery: Option<extern "C" fn(CXClientData, *mut c_void) -> c_int>,
         pub diagnostic: Option<extern "C" fn(CXClientData, CXDiagnosticSet, *mut c_void)>,
         pub enteredMainFile: Option<extern "C" fn(CXClientData, CXFile, *mut c_void) -> CXIdxClientFile>,
@@ -1614,22 +1614,20 @@ use structs::*;
 macro_rules! link {
         (
             @LOAD:
-            $(#[doc=$doc:expr])*
             #[cfg($cfg:meta)]
             fn $name:ident($($pname:ident: $pty:ty), *) $(-> $ret:ty)*
         ) => (
-            $(#[doc=$doc])*
             #[cfg($cfg)]
-            pub fn $name(library: &mut super::SharedLibrary) {
-                let symbol = unsafe { library.library.get(stringify!($name).as_bytes()) }.ok();
-                library.functions.$name = match symbol {
+            pub fn $name(x: &mut super::SharedLib) {
+                let symbol = unsafe { x.lib.get(stringify!($name).as_bytes()) }.ok();
+                x.fns.$name = match symbol {
                     Some(s) => *s,
                     None => None,
                 };
             }
 
             #[cfg(not($cfg))]
-            pub fn $name(_: &mut super::SharedLibrary) {}
+            pub fn $name(_: &mut super::SharedLib) {}
         );
 
         (
@@ -1641,7 +1639,7 @@ macro_rules! link {
 
         (
             $(
-                $(#[doc=$doc:expr] #[cfg($cfg:meta)])*
+                $(#[cfg($cfg:meta)])*
                 pub fn $name:ident($($pname:ident: $pty:ty), *) $(-> $ret:ty)*;
             )+
         ) => (
@@ -1665,23 +1663,23 @@ macro_rules! link {
             }
 
             #[derive(Debug, Default)]
-            pub struct Functions {
+            pub struct Fns {
                 $(
-                    $(#[doc=$doc] #[cfg($cfg)])*
+                    $(#[cfg($cfg)])*
                     pub $name: Option<unsafe extern fn($($pname: $pty), *) $(-> $ret)*>,
                 )+
             }
 
             #[derive(Debug)]
-            pub struct SharedLibrary {
-                library: libloading::Library,
+            pub struct SharedLib {
+                lib: libloading::Library,
                 path: PathBuf,
-                pub functions: Functions,
+                pub fns: Fns,
             }
 
-            impl SharedLibrary {
-                fn new(library: libloading::Library, path: PathBuf) -> Self {
-                    Self { library, path, functions: Functions::default() }
+            impl SharedLib {
+                fn new(lib: libloading::Library, path: PathBuf) -> Self {
+                    Self { lib, path, fns: Fns::default() }
                 }
 
                 pub fn path(&self) -> &Path {
@@ -1691,43 +1689,30 @@ macro_rules! link {
                 pub fn version(&self) -> Option<Version> {
                     macro_rules! check {
                         ($fn:expr, $version:ident) => {
-                            if self.library.get::<unsafe extern fn()>($fn).is_ok() {
+                            if self.lib.get::<unsafe extern fn()>($fn).is_ok() {
                                 return Some(Version::$version);
                             }
                         };
                     }
 
                     unsafe {
-                        check!(b"clang_CXXMethod_isCopyAssignmentOperator", V16_0);
-                        check!(b"clang_Cursor_getVarDeclInitializer", V12_0);
-                        check!(b"clang_Type_getValueType", V11_0);
-                        check!(b"clang_Cursor_isAnonymousRecordDecl", V9_0);
-                        check!(b"clang_Cursor_getObjCPropertyGetterName", V8_0);
-                        check!(b"clang_File_tryGetRealPathName", V7_0);
-                        check!(b"clang_CXIndex_setInvocationEmissionPathOption", V6_0);
-                        check!(b"clang_Cursor_isExternalSymbol", V5_0);
-                        check!(b"clang_EvalResult_getAsLongLong", V4_0);
-                        check!(b"clang_CXXConstructor_isConvertingConstructor", V3_9);
-                        check!(b"clang_CXXField_isMutable", V3_8);
-                        check!(b"clang_Cursor_getOffsetOfField", V3_7);
-                        check!(b"clang_Cursor_getStorageClass", V3_6);
-                        check!(b"clang_Type_getNumTemplateArguments", V3_5);
+                        check!(b"clang_CXXMethod_isCopyAssignmentOperator", V17_0);
                     }
 
                     None
                 }
             }
 
-            thread_local!(static LIBRARY: RefCell<Option<Arc<SharedLibrary>>> = RefCell::new(None));
+            thread_local!(static LIBRARY: RefCell<Option<Arc<SharedLib>>> = RefCell::new(None));
 
             pub fn is_loaded() -> bool {
-                LIBRARY.with(|l| l.borrow().is_some())
+                LIBRARY.with(|x| x.borrow().is_some())
             }
 
-            fn with_library<T, F>(f: F) -> Option<T> where F: FnOnce(&SharedLibrary) -> T {
-                LIBRARY.with(|l| {
-                    match l.borrow().as_ref() {
-                        Some(library) => Some(f(&library)),
+            fn with_lib<T, F>(f: F) -> Option<T> where F: FnOnce(&SharedLib) -> T {
+                LIBRARY.with(|x| {
+                    match x.borrow().as_ref() {
+                        Some(lib) => Some(f(&lib)),
                         _ => None,
                     }
                 })
@@ -1736,11 +1721,11 @@ macro_rules! link {
             $(
                 #[cfg_attr(feature="cargo-clippy", allow(clippy::missing_safety_doc))]
                 #[cfg_attr(feature="cargo-clippy", allow(clippy::too_many_arguments))]
-                $(#[doc=$doc] #[cfg($cfg)])*
+                $(#[cfg($cfg)])*
                 pub unsafe fn $name($($pname: $pty), *) $(-> $ret)* {
-                    let f = with_library(|library| {
-                        if let Some(function) = library.functions.$name {
-                            function
+                    let f = with_lib(|lib| {
+                        if let Some(f) = lib.fns.$name {
+                            f
                         } else {
                             panic!(
                                 r#"
@@ -1750,20 +1735,20 @@ macro_rules! link {
         loaded `libclang` instance = {1}
     "#,
                                 stringify!($name),
-                                library
+                                lib
                                     .version()
-                                    .map(|v| format!("{}", v))
+                                    .map(|x| format!("{}", x))
                                     .unwrap_or_else(|| "unsupported version".into()),
                             );
                         }
-                    }).expect("a `libclang` shared library is not loaded on this thread");
+                    }).expect("a `libclang` shared lib is not loaded on this thread");
                     f($($pname), *)
                 }
 
-                $(#[doc=$doc] #[cfg($cfg)])*
+                $(#[cfg($cfg)])*
                 pub mod $name {
                     pub fn is_loaded() -> bool {
-                        super::with_library(|l| l.functions.$name.is_some()).unwrap_or(false)
+                        super::with_lib(|x| x.fns.$name.is_some()).unwrap_or(false)
                     }
                 }
             )+
@@ -1772,54 +1757,52 @@ macro_rules! link {
                 $(link!(@LOAD: $(#[cfg($cfg)])* fn $name($($pname: $pty), *) $(-> $ret)*);)+
             }
 
-            pub fn load_manually() -> Result<SharedLibrary, String> {
+            pub fn load_manually() -> Result<SharedLib, String> {
                 #[allow(dead_code)]
-                mod build {
+                mod runtime {
                     include!(concat!(env!("OUT_DIR"), "/macros.rs"));
                     pub mod common { include!(concat!(env!("OUT_DIR"), "/common.rs")); }
                     pub mod dynamic { include!(concat!(env!("OUT_DIR"), "/dynamic.rs")); }
                 }
 
-                let (directory, filename) = build::dynamic::find(true)?;
-                let path = directory.join(filename);
-
+                let (dir, file) = runtime::dynamic::find(true)?;
+                let path = dir.join(file);
                 unsafe {
-                    let library = libloading::Library::new(&path).map_err(|e| {
+                    let y = libloading::Library::new(&path).map_err(|x| {
                         format!(
-                            "the `libclang` shared library at {} could not be opened: {}",
+                            "the `libclang` shared lib at {} could not be opened: {}",
                             path.display(),
-                            e,
+                            x,
                         )
                     });
-
-                    let mut library = SharedLibrary::new(library?, path);
-                    $(load::$name(&mut library);)+
-                    Ok(library)
+                    let mut y = SharedLib::new(y?, path);
+                    $(load::$name(&mut y);)+
+                    Ok(y)
                 }
             }
 
             #[allow(dead_code)]
             pub fn load() -> Result<(), String> {
-                let library = Arc::new(load_manually()?);
-                LIBRARY.with(|l| *l.borrow_mut() = Some(library));
+                let y = Arc::new(load_manually()?);
+                LIBRARY.with(|x| *x.borrow_mut() = Some(y));
                 Ok(())
             }
 
             pub fn unload() -> Result<(), String> {
-                let library = set_library(None);
-                if library.is_some() {
+                let y = set_lib(None);
+                if y.is_some() {
                     Ok(())
                 } else {
-                    Err("a `libclang` shared library is not in use in the current thread".into())
+                    Err("a `libclang` shared lib is not in use in the current thread".into())
                 }
             }
 
-            pub fn get_library() -> Option<Arc<SharedLibrary>> {
-                LIBRARY.with(|l| l.borrow_mut().clone())
+            pub fn get_lib() -> Option<Arc<SharedLib>> {
+                LIBRARY.with(|x| x.borrow_mut().clone())
             }
 
-            pub fn set_library(library: Option<Arc<SharedLibrary>>) -> Option<Arc<SharedLibrary>> {
-                LIBRARY.with(|l| mem::replace(&mut *l.borrow_mut(), library))
+            pub fn set_lib(lib: Option<Arc<SharedLib>>) -> Option<Arc<SharedLib>> {
+                LIBRARY.with(|x| mem::replace(&mut *x.borrow_mut(), lib))
             }
         )
     }
