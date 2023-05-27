@@ -1,4 +1,4 @@
-use super::{generate_dependencies, ConstrainResult, HasVtable, MonotoneFramework};
+use super::{gen_deps, HasVtable, Monotone, YConstrain};
 use crate::ir::context::{BindgenContext, TypeId};
 use crate::ir::item::IsOpaque;
 use crate::ir::traversal::EdgeKind;
@@ -7,36 +7,33 @@ use crate::{Entry, HashMap};
 use std::{cmp, ops};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum SizednessResult {
+pub(crate) enum YSizedness {
     ZeroSized,
-
     DependsOnTypeParam,
-
     NonZeroSized,
 }
 
-impl Default for SizednessResult {
+impl Default for YSizedness {
     fn default() -> Self {
-        SizednessResult::ZeroSized
+        YSizedness::ZeroSized
     }
 }
 
-impl SizednessResult {
+impl YSizedness {
     pub(crate) fn join(self, rhs: Self) -> Self {
         cmp::max(self, rhs)
     }
 }
 
-impl ops::BitOr for SizednessResult {
+impl ops::BitOr for YSizedness {
     type Output = Self;
-
-    fn bitor(self, rhs: SizednessResult) -> Self::Output {
+    fn bitor(self, rhs: YSizedness) -> Self::Output {
         self.join(rhs)
     }
 }
 
-impl ops::BitOrAssign for SizednessResult {
-    fn bitor_assign(&mut self, rhs: SizednessResult) {
+impl ops::BitOrAssign for YSizedness {
+    fn bitor_assign(&mut self, rhs: YSizedness) {
         *self = self.join(rhs)
     }
 }
@@ -44,14 +41,14 @@ impl ops::BitOrAssign for SizednessResult {
 #[derive(Debug)]
 pub(crate) struct SizednessAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
-    dependencies: HashMap<TypeId, Vec<TypeId>>,
-    sized: HashMap<TypeId, SizednessResult>,
+    deps: HashMap<TypeId, Vec<TypeId>>,
+    sized: HashMap<TypeId, YSizedness>,
 }
 
 impl<'ctx> SizednessAnalysis<'ctx> {
-    fn consider_edge(kind: EdgeKind) -> bool {
+    fn consider_edge(k: EdgeKind) -> bool {
         matches!(
-            kind,
+            k,
             EdgeKind::TemplateArgument
                 | EdgeKind::TemplateParameterDefinition
                 | EdgeKind::TemplateDeclaration
@@ -61,119 +58,101 @@ impl<'ctx> SizednessAnalysis<'ctx> {
         )
     }
 
-    fn insert(&mut self, id: TypeId, result: SizednessResult) -> ConstrainResult {
-        trace!("inserting {:?} for {:?}", result, id);
-
-        if let SizednessResult::ZeroSized = result {
-            return ConstrainResult::Same;
+    fn insert(&mut self, id: TypeId, y: YSizedness) -> YConstrain {
+        trace!("inserting {:?} for {:?}", y, id);
+        if let YSizedness::ZeroSized = y {
+            return YConstrain::Same;
         }
-
         match self.sized.entry(id) {
-            Entry::Occupied(mut entry) => {
-                if *entry.get() < result {
-                    entry.insert(result);
-                    ConstrainResult::Changed
+            Entry::Occupied(mut x) => {
+                if *x.get() < y {
+                    x.insert(y);
+                    YConstrain::Changed
                 } else {
-                    ConstrainResult::Same
+                    YConstrain::Same
                 }
             },
-            Entry::Vacant(entry) => {
-                entry.insert(result);
-                ConstrainResult::Changed
+            Entry::Vacant(x) => {
+                x.insert(y);
+                YConstrain::Changed
             },
         }
     }
 
-    fn forward(&mut self, from: TypeId, to: TypeId) -> ConstrainResult {
+    fn forward(&mut self, from: TypeId, to: TypeId) -> YConstrain {
         match self.sized.get(&from).cloned() {
-            None => ConstrainResult::Same,
-            Some(r) => self.insert(to, r),
+            None => YConstrain::Same,
+            Some(x) => self.insert(to, x),
         }
     }
 }
 
-impl<'ctx> MonotoneFramework for SizednessAnalysis<'ctx> {
+impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
     type Node = TypeId;
     type Extra = &'ctx BindgenContext;
-    type Output = HashMap<TypeId, SizednessResult>;
+    type Output = HashMap<TypeId, YSizedness>;
 
     fn new(ctx: &'ctx BindgenContext) -> SizednessAnalysis<'ctx> {
-        let dependencies = generate_dependencies(ctx, Self::consider_edge)
+        let deps = gen_deps(ctx, Self::consider_edge)
             .into_iter()
-            .filter_map(|(id, sub_ids)| {
+            .filter_map(|(id, subs)| {
                 id.as_type_id(ctx).map(|id| {
                     (
                         id,
-                        sub_ids
-                            .into_iter()
-                            .filter_map(|s| s.as_type_id(ctx))
-                            .collect::<Vec<_>>(),
+                        subs.into_iter().filter_map(|x| x.as_type_id(ctx)).collect::<Vec<_>>(),
                     )
                 })
             })
             .collect();
-
         let sized = HashMap::default();
-
-        SizednessAnalysis {
-            ctx,
-            dependencies,
-            sized,
-        }
+        SizednessAnalysis { ctx, deps, sized }
     }
 
     fn initial_worklist(&self) -> Vec<TypeId> {
         self.ctx
-            .allowlisted_items()
+            .allowed_items()
             .iter()
             .cloned()
-            .filter_map(|id| id.as_type_id(self.ctx))
+            .filter_map(|x| x.as_type_id(self.ctx))
             .collect()
     }
 
-    fn constrain(&mut self, id: TypeId) -> ConstrainResult {
+    fn constrain(&mut self, id: TypeId) -> YConstrain {
         trace!("constrain {:?}", id);
-
-        if let Some(SizednessResult::NonZeroSized) = self.sized.get(&id).cloned() {
+        if let Some(YSizedness::NonZeroSized) = self.sized.get(&id).cloned() {
             trace!("    already know it is not zero-sized");
-            return ConstrainResult::Same;
+            return YConstrain::Same;
         }
-
         if id.has_vtable_ptr(self.ctx) {
             trace!("    has an explicit vtable pointer, therefore is not zero-sized");
-            return self.insert(id, SizednessResult::NonZeroSized);
+            return self.insert(id, YSizedness::NonZeroSized);
         }
-
         let ty = self.ctx.resolve_type(id);
-
         if id.is_opaque(self.ctx, &()) {
             trace!("    type is opaque; checking layout...");
-            let result = ty.layout(self.ctx).map_or(SizednessResult::ZeroSized, |l| {
+            let result = ty.layout(self.ctx).map_or(YSizedness::ZeroSized, |l| {
                 if l.size == 0 {
                     trace!("    ...layout has size == 0");
-                    SizednessResult::ZeroSized
+                    YSizedness::ZeroSized
                 } else {
                     trace!("    ...layout has size > 0");
-                    SizednessResult::NonZeroSized
+                    YSizedness::NonZeroSized
                 }
             });
             return self.insert(id, result);
         }
-
         match *ty.kind() {
             TypeKind::Void => {
                 trace!("    void is zero-sized");
-                self.insert(id, SizednessResult::ZeroSized)
+                self.insert(id, YSizedness::ZeroSized)
             },
-
             TypeKind::TypeParam => {
                 trace!(
                     "    type params sizedness depends on what they're \
                      instantiated as"
                 );
-                self.insert(id, SizednessResult::DependsOnTypeParam)
+                self.insert(id, YSizedness::DependsOnTypeParam)
             },
-
             TypeKind::Int(..)
             | TypeKind::Float(..)
             | TypeKind::Complex(..)
@@ -181,18 +160,10 @@ impl<'ctx> MonotoneFramework for SizednessAnalysis<'ctx> {
             | TypeKind::Enum(..)
             | TypeKind::Reference(..)
             | TypeKind::NullPtr
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel
             | TypeKind::Pointer(..) => {
                 trace!("    {:?} is known not to be zero-sized", ty.kind());
-                self.insert(id, SizednessResult::NonZeroSized)
+                self.insert(id, YSizedness::NonZeroSized)
             },
-
-            TypeKind::ObjCInterface(..) => {
-                trace!("    obj-c interfaces always have at least the `isa` pointer");
-                self.insert(id, SizednessResult::NonZeroSized)
-            },
-
             TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t)
@@ -200,7 +171,6 @@ impl<'ctx> MonotoneFramework for SizednessAnalysis<'ctx> {
                 trace!("    aliases and type refs forward to their inner type");
                 self.forward(t, id)
             },
-
             TypeKind::TemplateInstantiation(ref inst) => {
                 trace!(
                     "    template instantiations are zero-sized if their \
@@ -208,40 +178,34 @@ impl<'ctx> MonotoneFramework for SizednessAnalysis<'ctx> {
                 );
                 self.forward(inst.template_definition(), id)
             },
-
             TypeKind::Array(_, 0) => {
                 trace!("    arrays of zero elements are zero-sized");
-                self.insert(id, SizednessResult::ZeroSized)
+                self.insert(id, YSizedness::ZeroSized)
             },
             TypeKind::Array(..) => {
                 trace!("    arrays of > 0 elements are not zero-sized");
-                self.insert(id, SizednessResult::NonZeroSized)
+                self.insert(id, YSizedness::NonZeroSized)
             },
             TypeKind::Vector(..) => {
                 trace!("    vectors are not zero-sized");
-                self.insert(id, SizednessResult::NonZeroSized)
+                self.insert(id, YSizedness::NonZeroSized)
             },
-
             TypeKind::Comp(ref info) => {
                 trace!("    comp considers its own fields and bases");
-
                 if !info.fields().is_empty() {
-                    return self.insert(id, SizednessResult::NonZeroSized);
+                    return self.insert(id, YSizedness::NonZeroSized);
                 }
-
                 let result = info
                     .base_members()
                     .iter()
                     .filter_map(|base| self.sized.get(&base.ty))
-                    .fold(SizednessResult::ZeroSized, |a, b| a.join(*b));
+                    .fold(YSizedness::ZeroSized, |a, b| a.join(*b));
 
                 self.insert(id, result)
             },
-
             TypeKind::Opaque => {
                 unreachable!("covered by the .is_opaque() check above")
             },
-
             TypeKind::UnresolvedTypeRef(..) => {
                 unreachable!("Should have been resolved after parsing!");
             },
@@ -252,27 +216,25 @@ impl<'ctx> MonotoneFramework for SizednessAnalysis<'ctx> {
     where
         F: FnMut(TypeId),
     {
-        if let Some(edges) = self.dependencies.get(&id) {
-            for ty in edges {
-                trace!("enqueue {:?} into worklist", ty);
-                f(*ty);
+        if let Some(es) = self.deps.get(&id) {
+            for e in es {
+                trace!("enqueue {:?} into worklist", e);
+                f(*e);
             }
         }
     }
 }
 
-impl<'ctx> From<SizednessAnalysis<'ctx>> for HashMap<TypeId, SizednessResult> {
-    fn from(analysis: SizednessAnalysis<'ctx>) -> Self {
-        extra_assert!(analysis.sized.values().all(|v| { *v != SizednessResult::ZeroSized }));
-
-        analysis.sized
+impl<'ctx> From<SizednessAnalysis<'ctx>> for HashMap<TypeId, YSizedness> {
+    fn from(x: SizednessAnalysis<'ctx>) -> Self {
+        extra_assert!(x.sized.values().all(|v| { *v != YSizedness::ZeroSized }));
+        x.sized
     }
 }
 
 pub(crate) trait Sizedness {
-    fn sizedness(&self, ctx: &BindgenContext) -> SizednessResult;
-
+    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness;
     fn is_zero_sized(&self, ctx: &BindgenContext) -> bool {
-        self.sizedness(ctx) == SizednessResult::ZeroSized
+        self.sizedness(ctx) == YSizedness::ZeroSized
     }
 }

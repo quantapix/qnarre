@@ -1,4 +1,4 @@
-use super::{ConstrainResult, MonotoneFramework};
+use super::{Monotone, YConstrain};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::item::{Item, ItemSet};
 use crate::ir::template::{TemplateInstantiation, TemplateParameters};
@@ -7,19 +7,16 @@ use crate::ir::ty::TypeKind;
 use crate::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
-pub(crate) struct UsedTemplateParameters<'ctx> {
+pub(crate) struct UsedTemplateParams<'ctx> {
     ctx: &'ctx BindgenContext,
-
     used: HashMap<ItemId, Option<ItemSet>>,
-
-    dependencies: HashMap<ItemId, Vec<ItemId>>,
-
-    allowlisted_items: HashSet<ItemId>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
+    allowed_items: HashSet<ItemId>,
 }
 
-impl<'ctx> UsedTemplateParameters<'ctx> {
-    fn consider_edge(kind: EdgeKind) -> bool {
-        match kind {
+impl<'ctx> UsedTemplateParams<'ctx> {
+    fn consider_edge(k: EdgeKind) -> bool {
+        match k {
             EdgeKind::TemplateArgument
             | EdgeKind::BaseMember
             | EdgeKind::Field
@@ -29,13 +26,9 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
             | EdgeKind::FunctionReturn
             | EdgeKind::FunctionParameter
             | EdgeKind::TypeReference => true,
-
             EdgeKind::InnerVar | EdgeKind::InnerType => false,
-
             EdgeKind::Method => false,
-
             EdgeKind::TemplateDeclaration | EdgeKind::TemplateParameterDefinition => false,
-
             EdgeKind::Generic => false,
         }
     }
@@ -65,21 +58,20 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
             "    instantiation of blocklisted template, uses all template \
              arguments"
         );
-
         let args = instantiation
             .template_arguments()
             .iter()
-            .map(|a| {
-                a.into_resolver()
+            .map(|x| {
+                x.into_resolver()
                     .through_type_refs()
                     .through_type_aliases()
                     .resolve(self.ctx)
                     .id()
             })
-            .filter(|a| *a != this_id)
-            .flat_map(|a| {
+            .filter(|x| *x != this_id)
+            .flat_map(|x| {
                 self.used
-                    .get(&a)
+                    .get(&x)
                     .expect("Should have a used entry for the template arg")
                     .as_ref()
                     .expect(
@@ -90,7 +82,6 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
                     .iter()
                     .cloned()
             });
-
         used_by_this_id.extend(args);
     }
 
@@ -101,12 +92,9 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
         instantiation: &TemplateInstantiation,
     ) {
         trace!("    template instantiation");
-
         let decl = self.ctx.resolve_type(instantiation.template_definition());
         let args = instantiation.template_arguments();
-
         let params = decl.self_template_params(self.ctx);
-
         debug_assert!(this_id != instantiation.template_definition());
         let used_by_def = self
             .used
@@ -129,18 +117,15 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
 
             if used_by_def.contains(&param.into()) {
                 trace!("        param is used by template definition");
-
                 let arg = arg
                     .into_resolver()
                     .through_type_refs()
                     .through_type_aliases()
                     .resolve(self.ctx)
                     .id();
-
                 if arg == this_id {
                     continue;
                 }
-
                 let used_by_arg = self
                     .used
                     .get(&arg)
@@ -161,14 +146,12 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
 
     fn constrain_join(&self, used_by_this_id: &mut ItemSet, item: &Item) {
         trace!("    other item: join with successors' usage");
-
         item.trace(
             self.ctx,
             &mut |sub_id, edge_kind| {
                 if sub_id == item.id() || !Self::consider_edge(edge_kind) {
                     return;
                 }
-
                 let used_by_sub_id = self
                     .used
                     .get(&sub_id)
@@ -182,13 +165,11 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
                     )
                     .iter()
                     .cloned();
-
                 trace!(
                     "      union with {:?}'s usage: {:?}",
                     sub_id,
                     used_by_sub_id.clone().collect::<Vec<_>>()
                 );
-
                 used_by_this_id.extend(used_by_sub_id);
             },
             &(),
@@ -196,129 +177,114 @@ impl<'ctx> UsedTemplateParameters<'ctx> {
     }
 }
 
-impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
+impl<'ctx> Monotone for UsedTemplateParams<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
     type Output = HashMap<ItemId, ItemSet>;
 
-    fn new(ctx: &'ctx BindgenContext) -> UsedTemplateParameters<'ctx> {
+    fn new(ctx: &'ctx BindgenContext) -> UsedTemplateParams<'ctx> {
         let mut used = HashMap::default();
-        let mut dependencies = HashMap::default();
-        let allowlisted_items: HashSet<_> = ctx.allowlisted_items().iter().cloned().collect();
-
-        let allowlisted_and_blocklisted_items: ItemSet = allowlisted_items
+        let mut deps = HashMap::default();
+        let allowed_items: HashSet<_> = ctx.allowed_items().iter().cloned().collect();
+        let allowed_and_blocklisted_items: ItemSet = allowed_items
             .iter()
             .cloned()
             .flat_map(|i| {
-                let mut reachable = vec![i];
+                let mut ys = vec![i];
                 i.trace(
                     ctx,
-                    &mut |s, _| {
-                        reachable.push(s);
+                    &mut |i2, _| {
+                        ys.push(i2);
                     },
                     &(),
                 );
-                reachable
+                ys
             })
             .collect();
-
-        for item in allowlisted_and_blocklisted_items {
-            dependencies.entry(item).or_insert_with(Vec::new);
-            used.entry(item).or_insert_with(|| Some(ItemSet::new()));
-
+        for i in allowed_and_blocklisted_items {
+            deps.entry(i).or_insert_with(Vec::new);
+            used.entry(i).or_insert_with(|| Some(ItemSet::new()));
             {
-                item.trace(
+                i.trace(
                     ctx,
-                    &mut |sub_item: ItemId, _| {
-                        used.entry(sub_item).or_insert_with(|| Some(ItemSet::new()));
-                        dependencies.entry(sub_item).or_insert_with(Vec::new).push(item);
+                    &mut |i2: ItemId, _| {
+                        used.entry(i2).or_insert_with(|| Some(ItemSet::new()));
+                        deps.entry(i2).or_insert_with(Vec::new).push(i);
                     },
                     &(),
                 );
             }
-
-            let item_kind = ctx.resolve_item(item).as_type().map(|ty| ty.kind());
-            if let Some(TypeKind::TemplateInstantiation(inst)) = item_kind {
+            let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
+            if let Some(TypeKind::TemplateInstantiation(inst)) = k {
                 let decl = ctx.resolve_type(inst.template_definition());
                 let args = inst.template_arguments();
-
-                let params = decl.self_template_params(ctx);
-
-                for (arg, param) in args.iter().zip(params.iter()) {
+                let ps = decl.self_template_params(ctx);
+                for (arg, p) in args.iter().zip(ps.iter()) {
                     let arg = arg
                         .into_resolver()
                         .through_type_aliases()
                         .through_type_refs()
                         .resolve(ctx)
                         .id();
-
-                    let param = param
+                    let p = p
                         .into_resolver()
                         .through_type_aliases()
                         .through_type_refs()
                         .resolve(ctx)
                         .id();
-
                     used.entry(arg).or_insert_with(|| Some(ItemSet::new()));
-                    used.entry(param).or_insert_with(|| Some(ItemSet::new()));
-
-                    dependencies.entry(arg).or_insert_with(Vec::new).push(param);
+                    used.entry(p).or_insert_with(|| Some(ItemSet::new()));
+                    deps.entry(arg).or_insert_with(Vec::new).push(p);
                 }
             }
         }
-
         if cfg!(feature = "__testing_only_extra_assertions") {
-            for item in allowlisted_items.iter() {
-                extra_assert!(used.contains_key(item));
-                extra_assert!(dependencies.contains_key(item));
-                item.trace(
+            for i in allowed_items.iter() {
+                extra_assert!(used.contains_key(i));
+                extra_assert!(deps.contains_key(i));
+                i.trace(
                     ctx,
-                    &mut |sub_item, _| {
-                        extra_assert!(used.contains_key(&sub_item));
-                        extra_assert!(dependencies.contains_key(&sub_item));
+                    &mut |i2, _| {
+                        extra_assert!(used.contains_key(&i2));
+                        extra_assert!(deps.contains_key(&i2));
                     },
                     &(),
                 )
             }
         }
-
-        UsedTemplateParameters {
+        UsedTemplateParams {
             ctx,
             used,
-            dependencies,
-            allowlisted_items,
+            deps,
+            allowed_items,
         }
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
         self.ctx
-            .allowlisted_items()
+            .allowed_items()
             .iter()
             .cloned()
             .flat_map(|i| {
-                let mut reachable = vec![i];
+                let mut ys = vec![i];
                 i.trace(
                     self.ctx,
-                    &mut |s, _| {
-                        reachable.push(s);
+                    &mut |i2, _| {
+                        ys.push(i2);
                     },
                     &(),
                 );
-                reachable
+                ys
             })
             .collect()
     }
 
-    fn constrain(&mut self, id: ItemId) -> ConstrainResult {
+    fn constrain(&mut self, id: ItemId) -> YConstrain {
         extra_assert!(self.used.values().all(|v| v.is_some()));
-
         let mut used_by_this_id = self.take_this_id_usage_set(id);
-
         trace!("constrain {:?}", id);
         trace!("  initially, used set is {:?}", used_by_this_id);
-
         let original_len = used_by_this_id.len();
-
         let item = self.ctx.resolve_item(id);
         let ty_kind = item.as_type().map(|ty| ty.kind());
         match ty_kind {
@@ -327,7 +293,7 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
                 used_by_this_id.insert(id);
             },
             Some(TypeKind::TemplateInstantiation(inst)) => {
-                if self.allowlisted_items.contains(&inst.template_definition().into()) {
+                if self.allowed_items.contains(&inst.template_definition().into()) {
                     self.constrain_instantiation(id, &mut used_by_this_id, inst);
                 } else {
                     self.constrain_instantiation_of_blocklisted_template(id, &mut used_by_this_id, inst);
@@ -335,46 +301,38 @@ impl<'ctx> MonotoneFramework for UsedTemplateParameters<'ctx> {
             },
             _ => self.constrain_join(&mut used_by_this_id, item),
         }
-
         trace!("  finally, used set is {:?}", used_by_this_id);
-
         let new_len = used_by_this_id.len();
         assert!(
             new_len >= original_len,
             "This is the property that ensures this function is monotone -- \
              if it doesn't hold, the analysis might never terminate!"
         );
-
         debug_assert!(self.used[&id].is_none());
         self.used.insert(id, Some(used_by_this_id));
         extra_assert!(self.used.values().all(|v| v.is_some()));
-
         if new_len != original_len {
-            ConstrainResult::Changed
+            YConstrain::Changed
         } else {
-            ConstrainResult::Same
+            YConstrain::Same
         }
     }
 
-    fn each_depending_on<F>(&self, item: ItemId, mut f: F)
+    fn each_depending_on<F>(&self, id: ItemId, mut f: F)
     where
         F: FnMut(ItemId),
     {
-        if let Some(edges) = self.dependencies.get(&item) {
-            for item in edges {
-                trace!("enqueue {:?} into worklist", item);
-                f(*item);
+        if let Some(es) = self.deps.get(&id) {
+            for e in es {
+                trace!("enqueue {:?} into worklist", e);
+                f(*e);
             }
         }
     }
 }
 
-impl<'ctx> From<UsedTemplateParameters<'ctx>> for HashMap<ItemId, ItemSet> {
-    fn from(used_templ_params: UsedTemplateParameters<'ctx>) -> Self {
-        used_templ_params
-            .used
-            .into_iter()
-            .map(|(k, v)| (k, v.unwrap()))
-            .collect()
+impl<'ctx> From<UsedTemplateParams<'ctx>> for HashMap<ItemId, ItemSet> {
+    fn from(x: UsedTemplateParams<'ctx>) -> Self {
+        x.used.into_iter().map(|(k, v)| (k, v.unwrap())).collect()
     }
 }

@@ -1,7 +1,7 @@
 use super::super::timer::Timer;
 use super::analysis::{
     analyze, as_cannot_derive_set, CannotDerive, DeriveTrait, HasDestructorAnalysis, HasFloat, HasTypeParameterInArray,
-    HasVtableAnalysis, HasVtableResult, SizednessAnalysis, SizednessResult, UsedTemplateParameters,
+    HasVtableAnalysis, HasVtableResult, SizednessAnalysis, UsedTemplateParams, YSizedness,
 };
 use super::derive::{
     CanDerive, CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd,
@@ -243,7 +243,7 @@ enum TypeKey {
 
 #[derive(Debug)]
 pub(crate) struct BindgenContext {
-    allowlisted: Option<ItemSet>,
+    allowed: Option<ItemSet>,
     blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, CanDerive>>>,
     cannot_derive_copy: Option<HashSet<ItemId>>,
     cannot_derive_debug: Option<HashSet<ItemId>>,
@@ -270,7 +270,7 @@ pub(crate) struct BindgenContext {
     replacements: HashMap<Vec<String>, ItemId>,
     root_module: ModuleId,
     semantic_parents: HashMap<clang::Cursor, ItemId>,
-    sizedness: Option<HashMap<TypeId, SizednessResult>>,
+    sizedness: Option<HashMap<TypeId, YSizedness>>,
     target_info: clang::TargetInfo,
     translation_unit: clang::TranslationUnit,
     type_params: HashMap<clang::Cursor, TypeId>,
@@ -336,7 +336,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let deps = options.input_headers.iter().cloned().collect();
 
         BindgenContext {
-            allowlisted: None,
+            allowed: None,
             blocklisted_types_implement_traits: Default::default(),
             cannot_derive_copy: None,
             cannot_derive_debug: None,
@@ -775,7 +775,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
         self.assert_no_dangling_references();
 
-        self.compute_allowlisted_and_codegen_items();
+        self.compute_allowed_and_codegen_items();
 
         self.assert_every_item_in_a_module();
 
@@ -846,7 +846,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.sizedness = Some(analyze::<SizednessAnalysis>(self));
     }
 
-    pub(crate) fn lookup_sizedness(&self, id: TypeId) -> SizednessResult {
+    pub(crate) fn lookup_sizedness(&self, id: TypeId) -> YSizedness {
         assert!(
             self.in_codegen_phase(),
             "We only compute sizedness after we've entered codegen"
@@ -857,7 +857,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .unwrap()
             .get(&id)
             .cloned()
-            .unwrap_or(SizednessResult::ZeroSized)
+            .unwrap_or(YSizedness::ZeroSized)
     }
 
     fn compute_has_vtable(&mut self) {
@@ -895,11 +895,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn find_used_template_parameters(&mut self) {
         let _t = self.timer("find_used_template_parameters");
         if self.opts.allowlist_recursively {
-            let used_params = analyze::<UsedTemplateParameters>(self);
+            let used_params = analyze::<UsedTemplateParams>(self);
             self.used_template_parameters = Some(used_params);
         } else {
             let mut used_params = HashMap::default();
-            for &id in self.allowlisted_items() {
+            for &id in self.allowed_items() {
                 used_params
                     .entry(id)
                     .or_insert_with(|| id.self_template_params(self).into_iter().map(|p| p.into()).collect());
@@ -1465,11 +1465,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.current_module = previous_id;
     }
 
-    pub(crate) fn allowlisted_items(&self) -> &ItemSet {
+    pub(crate) fn allowed_items(&self) -> &ItemSet {
         assert!(self.in_codegen_phase());
         assert!(self.current_module == self.root_module);
 
-        self.allowlisted.as_ref().unwrap()
+        self.allowed.as_ref().unwrap()
     }
 
     pub(crate) fn blocklisted_type_implements_trait(&self, item: &Item, derive_trait: DeriveTrait) -> CanDerive {
@@ -1516,21 +1516,21 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.codegen_items.as_ref().unwrap()
     }
 
-    fn compute_allowlisted_and_codegen_items(&mut self) {
+    fn compute_allowed_and_codegen_items(&mut self) {
         assert!(self.in_codegen_phase());
         assert!(self.current_module == self.root_module);
-        assert!(self.allowlisted.is_none());
-        let _t = self.timer("compute_allowlisted_and_codegen_items");
+        assert!(self.allowed.is_none());
+        let _t = self.timer("compute_allowed_and_codegen_items");
 
         let roots = {
             let mut roots = self
                 .items()
                 .filter(|&(_, item)| item.is_enabled_for_codegen(self))
                 .filter(|&(_, item)| {
-                    if self.opts().allowlisted_types.is_empty()
-                        && self.opts().allowlisted_fns.is_empty()
-                        && self.opts().allowlisted_vars.is_empty()
-                        && self.opts().allowlisted_files.is_empty()
+                    if self.opts().allowed_types.is_empty()
+                        && self.opts().allowed_fns.is_empty()
+                        && self.opts().allowed_vars.is_empty()
+                        && self.opts().allowed_files.is_empty()
                     {
                         return true;
                     }
@@ -1539,11 +1539,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         return true;
                     }
 
-                    if !self.opts().allowlisted_files.is_empty() {
+                    if !self.opts().allowed_files.is_empty() {
                         if let Some(location) = item.location() {
                             let (file, _, _, _) = location.location();
                             if let Some(filename) = file.name() {
-                                if self.opts().allowlisted_files.matches(filename) {
+                                if self.opts().allowed_files.matches(filename) {
                                     return true;
                                 }
                             }
@@ -1551,13 +1551,13 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     }
 
                     let name = item.path_for_allowlisting(self)[1..].join("::");
-                    debug!("allowlisted_items: testing {:?}", name);
+                    debug!("allowed_items: testing {:?}", name);
                     match *item.kind() {
                         ItemKind::Module(..) => true,
-                        ItemKind::Function(_) => self.opts().allowlisted_fns.matches(&name),
-                        ItemKind::Var(_) => self.opts().allowlisted_vars.matches(&name),
+                        ItemKind::Function(_) => self.opts().allowed_fns.matches(&name),
+                        ItemKind::Var(_) => self.opts().allowed_vars.matches(&name),
                         ItemKind::Type(ref ty) => {
-                            if self.opts().allowlisted_types.matches(&name) {
+                            if self.opts().allowed_types.matches(&name) {
                                 return true;
                             }
 
@@ -1602,7 +1602,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                 prefix_path.push(variant.name_for_allowlisting().into());
                                 let name = prefix_path[1..].join("::");
                                 prefix_path.pop().unwrap();
-                                self.opts().allowlisted_vars.matches(name)
+                                self.opts().allowed_vars.matches(name)
                             })
                         },
                     }
@@ -1614,33 +1614,32 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             roots
         };
 
-        let allowlisted_items_predicate = if self.opts().allowlist_recursively {
+        let allowed_items_predicate = if self.opts().allowlist_recursively {
             traversal::all_edges
         } else {
             traversal::only_inner_type_edges
         };
 
-        let allowlisted =
-            AllowlistedItemsTraversal::new(self, roots.clone(), allowlisted_items_predicate).collect::<ItemSet>();
+        let allowed = AllowlistedItemsTraversal::new(self, roots.clone(), allowed_items_predicate).collect::<ItemSet>();
 
         let codegen_items = if self.opts().allowlist_recursively {
             AllowlistedItemsTraversal::new(self, roots, traversal::codegen_edges).collect::<ItemSet>()
         } else {
-            allowlisted.clone()
+            allowed.clone()
         };
 
-        self.allowlisted = Some(allowlisted);
+        self.allowed = Some(allowed);
         self.codegen_items = Some(codegen_items);
 
-        for item in self.opts().allowlisted_fns.unmatched_items() {
+        for item in self.opts().allowed_fns.unmatched_items() {
             unused_regex_diagnostic(item, "--allowlist-function", self);
         }
 
-        for item in self.opts().allowlisted_vars.unmatched_items() {
+        for item in self.opts().allowed_vars.unmatched_items() {
             unused_regex_diagnostic(item, "--allowlist-var", self);
         }
 
-        for item in self.opts().allowlisted_types.unmatched_items() {
+        for item in self.opts().allowed_types.unmatched_items() {
             unused_regex_diagnostic(item, "--allowlist-type", self);
         }
     }

@@ -1,4 +1,4 @@
-use super::{generate_dependencies, ConstrainResult, MonotoneFramework};
+use super::{gen_deps, Monotone, YConstrain};
 use crate::ir::comp::{CompKind, Field, FieldMethods};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::traversal::EdgeKind;
@@ -26,7 +26,7 @@ impl<'ctx> HasDestructorAnalysis<'ctx> {
         )
     }
 
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> ConstrainResult {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
         let id = id.into();
         let was_not_already_in_set = self.have_destructor.insert(id);
         assert!(
@@ -35,18 +35,18 @@ impl<'ctx> HasDestructorAnalysis<'ctx> {
              already in the set, `constrain` should have exited early.",
             id
         );
-        ConstrainResult::Changed
+        YConstrain::Changed
     }
 }
 
-impl<'ctx> MonotoneFramework for HasDestructorAnalysis<'ctx> {
+impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
     type Output = HashSet<ItemId>;
 
     fn new(ctx: &'ctx BindgenContext) -> Self {
         let have_destructor = HashSet::default();
-        let dependencies = generate_dependencies(ctx, Self::consider_edge);
+        let dependencies = gen_deps(ctx, Self::consider_edge);
 
         HasDestructorAnalysis {
             ctx,
@@ -56,17 +56,17 @@ impl<'ctx> MonotoneFramework for HasDestructorAnalysis<'ctx> {
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
-        self.ctx.allowlisted_items().iter().cloned().collect()
+        self.ctx.allowed_items().iter().cloned().collect()
     }
 
-    fn constrain(&mut self, id: ItemId) -> ConstrainResult {
+    fn constrain(&mut self, id: ItemId) -> YConstrain {
         if self.have_destructor.contains(&id) {
-            return ConstrainResult::Same;
+            return YConstrain::Same;
         }
 
         let item = self.ctx.resolve_item(id);
         let ty = match item.as_type() {
-            None => return ConstrainResult::Same,
+            None => return YConstrain::Same,
             Some(ty) => ty,
         };
 
@@ -75,7 +75,7 @@ impl<'ctx> MonotoneFramework for HasDestructorAnalysis<'ctx> {
                 if self.have_destructor.contains(&t.into()) {
                     self.insert(id)
                 } else {
-                    ConstrainResult::Same
+                    YConstrain::Same
                 }
             },
 
@@ -85,7 +85,7 @@ impl<'ctx> MonotoneFramework for HasDestructorAnalysis<'ctx> {
                 }
 
                 match info.kind() {
-                    CompKind::Union => ConstrainResult::Same,
+                    CompKind::Union => YConstrain::Same,
                     CompKind::Struct => {
                         let base_or_field_destructor = info
                             .base_members()
@@ -98,7 +98,7 @@ impl<'ctx> MonotoneFramework for HasDestructorAnalysis<'ctx> {
                         if base_or_field_destructor {
                             self.insert(id)
                         } else {
-                            ConstrainResult::Same
+                            YConstrain::Same
                         }
                     },
                 }
@@ -113,11 +113,11 @@ impl<'ctx> MonotoneFramework for HasDestructorAnalysis<'ctx> {
                 if definition_or_arg_destructor {
                     self.insert(id)
                 } else {
-                    ConstrainResult::Same
+                    YConstrain::Same
                 }
             },
 
-            _ => ConstrainResult::Same,
+            _ => YConstrain::Same,
         }
     }
 

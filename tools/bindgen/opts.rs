@@ -220,44 +220,44 @@ options! {
             }
         },
     },
-    allowlisted_types: RegexSet {
+    allowed_types: RegexSet {
         methods: {
             regex_opt! {
                 pub fn allowlist_type<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.allowlisted_types.insert(x);
+                    self.opts.allowed_types.insert(x);
                     self
                 }
             }
         },
         as_args: "--allowlist-type",
     },
-    allowlisted_fns: RegexSet {
+    allowed_fns: RegexSet {
         methods: {
             regex_opt! {
                 pub fn allowlist_function<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.allowlisted_fns.insert(x);
+                    self.opts.allowed_fns.insert(x);
                     self
                 }
             }
         },
         as_args: "--allowlist-function",
     },
-    allowlisted_vars: RegexSet {
+    allowed_vars: RegexSet {
         methods: {
             regex_opt! {
                 pub fn allowlist_var<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.allowlisted_vars.insert(x);
+                    self.opts.allowed_vars.insert(x);
                     self
                 }
             }
         },
         as_args: "--allowlist-var",
     },
-    allowlisted_files: RegexSet {
+    allowed_files: RegexSet {
         methods: {
             regex_opt! {
                 pub fn allowlist_file<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.allowlisted_files.insert(x);
+                    self.opts.allowed_files.insert(x);
                     self
                 }
             }
@@ -895,15 +895,6 @@ options! {
             }
         },
         as_args: |x, xs| (!x).as_args(xs, "--no-recursive-allowlist"),
-    },
-    objc_extern_crate: bool {
-        methods: {
-            pub fn objc_extern_crate(mut self, x: bool) -> Self {
-                self.opts.objc_extern_crate = x;
-                self
-            }
-        },
-        as_args: "--objc-extern-crate",
     },
     generate_block: bool {
         methods: {

@@ -1019,8 +1019,7 @@ impl Type {
             | CXType_RValueReference
             | CXType_LValueReference
             | CXType_MemberPointer
-            | CXType_BlockPointer
-            | CXType_ObjCObjectPointer => {
+            | CXType_BlockPointer => {
                 let ret = Type {
                     x: unsafe { clang_getPointeeType(self.x) },
                 };

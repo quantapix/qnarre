@@ -1,4 +1,4 @@
-use super::{generate_dependencies, ConstrainResult, MonotoneFramework};
+use super::{gen_deps, Monotone, YConstrain};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::traversal::EdgeKind;
 use crate::ir::ty::TypeKind;
@@ -58,9 +58,9 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
         )
     }
 
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id, result: HasVtableResult) -> ConstrainResult {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id, result: HasVtableResult) -> YConstrain {
         if let HasVtableResult::No = result {
-            return ConstrainResult::Same;
+            return YConstrain::Same;
         }
 
         let id = id.into();
@@ -68,19 +68,19 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
             Entry::Occupied(mut entry) => {
                 if *entry.get() < result {
                     entry.insert(result);
-                    ConstrainResult::Changed
+                    YConstrain::Changed
                 } else {
-                    ConstrainResult::Same
+                    YConstrain::Same
                 }
             },
             Entry::Vacant(entry) => {
                 entry.insert(result);
-                ConstrainResult::Changed
+                YConstrain::Changed
             },
         }
     }
 
-    fn forward<Id1, Id2>(&mut self, from: Id1, to: Id2) -> ConstrainResult
+    fn forward<Id1, Id2>(&mut self, from: Id1, to: Id2) -> YConstrain
     where
         Id1: Into<ItemId>,
         Id2: Into<ItemId>,
@@ -89,20 +89,20 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
         let to = to.into();
 
         match self.have_vtable.get(&from).cloned() {
-            None => ConstrainResult::Same,
+            None => YConstrain::Same,
             Some(r) => self.insert(to, r),
         }
     }
 }
 
-impl<'ctx> MonotoneFramework for HasVtableAnalysis<'ctx> {
+impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
     type Output = HashMap<ItemId, HasVtableResult>;
 
     fn new(ctx: &'ctx BindgenContext) -> HasVtableAnalysis<'ctx> {
         let have_vtable = HashMap::default();
-        let dependencies = generate_dependencies(ctx, Self::consider_edge);
+        let dependencies = gen_deps(ctx, Self::consider_edge);
 
         HasVtableAnalysis {
             ctx,
@@ -112,15 +112,15 @@ impl<'ctx> MonotoneFramework for HasVtableAnalysis<'ctx> {
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
-        self.ctx.allowlisted_items().iter().cloned().collect()
+        self.ctx.allowed_items().iter().cloned().collect()
     }
 
-    fn constrain(&mut self, id: ItemId) -> ConstrainResult {
+    fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain {:?}", id);
 
         let item = self.ctx.resolve_item(id);
         let ty = match item.as_type() {
-            None => return ConstrainResult::Same,
+            None => return YConstrain::Same,
             Some(ty) => ty,
         };
 
@@ -155,7 +155,7 @@ impl<'ctx> MonotoneFramework for HasVtableAnalysis<'ctx> {
 
             TypeKind::TemplateInstantiation(ref inst) => self.forward(inst.template_definition(), id),
 
-            _ => ConstrainResult::Same,
+            _ => YConstrain::Same,
         }
     }
 

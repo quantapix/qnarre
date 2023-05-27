@@ -98,7 +98,7 @@ impl<'a> ImplDebug<'a> for Item {
     fn impl_debug(&self, ctx: &BindgenContext, name: &str) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         let name_ident = ctx.rust_ident(name);
 
-        if !ctx.allowlisted_items().contains(&self.id()) {
+        if !ctx.allowed_items().contains(&self.id()) {
             return None;
         }
 
@@ -131,10 +131,7 @@ impl<'a> ImplDebug<'a> for Item {
             | TypeKind::Enum(..)
             | TypeKind::Reference(..)
             | TypeKind::UnresolvedTypeRef(..)
-            | TypeKind::ObjCInterface(..)
-            | TypeKind::ObjCId
-            | TypeKind::Comp(..)
-            | TypeKind::ObjCSel => debug_print(name, quote! { #name_ident }),
+            | TypeKind::Comp(..) => debug_print(name, quote! { #name_ident }),
 
             TypeKind::TemplateInstantiation(ref inst) => {
                 if inst.is_opaque(ctx, self) {

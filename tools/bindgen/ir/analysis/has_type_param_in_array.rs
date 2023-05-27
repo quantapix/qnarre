@@ -1,4 +1,4 @@
-use super::{generate_dependencies, ConstrainResult, MonotoneFramework};
+use super::{gen_deps, Monotone, YConstrain};
 use crate::ir::comp::Field;
 use crate::ir::comp::FieldMethods;
 use crate::ir::context::{BindgenContext, ItemId};
@@ -37,7 +37,7 @@ impl<'ctx> HasTypeParameterInArray<'ctx> {
         }
     }
 
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> ConstrainResult {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} into the has_type_parameter_in_array set", id);
 
@@ -49,18 +49,18 @@ impl<'ctx> HasTypeParameterInArray<'ctx> {
             id
         );
 
-        ConstrainResult::Changed
+        YConstrain::Changed
     }
 }
 
-impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
+impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
     type Output = HashSet<ItemId>;
 
     fn new(ctx: &'ctx BindgenContext) -> HasTypeParameterInArray<'ctx> {
         let has_type_parameter_in_array = HashSet::default();
-        let dependencies = generate_dependencies(ctx, Self::consider_edge);
+        let dependencies = gen_deps(ctx, Self::consider_edge);
 
         HasTypeParameterInArray {
             ctx,
@@ -70,15 +70,15 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
-        self.ctx.allowlisted_items().iter().cloned().collect()
+        self.ctx.allowed_items().iter().cloned().collect()
     }
 
-    fn constrain(&mut self, id: ItemId) -> ConstrainResult {
+    fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
 
         if self.has_type_parameter_in_array.contains(&id) {
             trace!("    already know it do not have array");
-            return ConstrainResult::Same;
+            return YConstrain::Same;
         }
 
         let item = self.ctx.resolve_item(id);
@@ -86,7 +86,7 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
             Some(ty) => ty,
             None => {
                 trace!("    not a type; ignoring");
-                return ConstrainResult::Same;
+                return YConstrain::Same;
             },
         };
 
@@ -103,12 +103,9 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
             | TypeKind::TypeParam
             | TypeKind::Opaque
             | TypeKind::Pointer(..)
-            | TypeKind::UnresolvedTypeRef(..)
-            | TypeKind::ObjCInterface(..)
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel => {
+            | TypeKind::UnresolvedTypeRef(..) => {
                 trace!("    simple type that do not have array");
-                ConstrainResult::Same
+                YConstrain::Same
             },
 
             TypeKind::Array(t, _) => {
@@ -120,7 +117,7 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
                     },
                     _ => {
                         trace!("    Array without Named type does have type parameter");
-                        ConstrainResult::Same
+                        YConstrain::Same
                     },
                 }
             },
@@ -140,7 +137,7 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
                         "    aliases and type refs to T which do not have array \
                             also do not have array"
                     );
-                    ConstrainResult::Same
+                    YConstrain::Same
                 }
             },
 
@@ -163,7 +160,7 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
                 }
 
                 trace!("    comp doesn't have array");
-                ConstrainResult::Same
+                YConstrain::Same
             },
 
             TypeKind::TemplateInstantiation(ref template) => {
@@ -191,7 +188,7 @@ impl<'ctx> MonotoneFramework for HasTypeParameterInArray<'ctx> {
                 }
 
                 trace!("    template instantiation do not have array");
-                ConstrainResult::Same
+                YConstrain::Same
             },
         }
     }

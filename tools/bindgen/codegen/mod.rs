@@ -36,7 +36,6 @@ use crate::ir::item::{IsOpaque, Item, ItemCanonicalName, ItemCanonicalPath};
 use crate::ir::item_kind::ItemKind;
 use crate::ir::layout::Layout;
 use crate::ir::module::Module;
-use crate::ir::objc::{ObjCInterface, ObjCMethod};
 use crate::ir::template::{AsTemplateParam, TemplateInstantiation, TemplateParameters};
 use crate::ir::ty::{Type, TypeKind};
 use crate::ir::var::Var;
@@ -196,8 +195,6 @@ struct CodegenResult<'a> {
 
     saw_incomplete_array: bool,
 
-    saw_objc: bool,
-
     saw_block: bool,
 
     saw_bitfield_unit: bool,
@@ -218,7 +215,6 @@ impl<'a> CodegenResult<'a> {
             dynamic_items: DynamicItems::new(),
             saw_bindgen_union: false,
             saw_incomplete_array: false,
-            saw_objc: false,
             saw_block: false,
             saw_bitfield_unit: false,
             codegen_id,
@@ -240,10 +236,6 @@ impl<'a> CodegenResult<'a> {
 
     fn saw_incomplete_array(&mut self) {
         self.saw_incomplete_array = true;
-    }
-
-    fn saw_objc(&mut self) {
-        self.saw_objc = true;
     }
 
     fn saw_block(&mut self) {
@@ -294,7 +286,6 @@ impl<'a> CodegenResult<'a> {
         cb(&mut new);
 
         self.saw_incomplete_array |= new.saw_incomplete_array;
-        self.saw_objc |= new.saw_objc;
         self.saw_block |= new.saw_block;
         self.saw_bitfield_unit |= new.saw_bitfield_unit;
         self.saw_bindgen_union |= new.saw_bindgen_union;
@@ -359,8 +350,6 @@ impl AppendImplicitTemplateParams for proc_macro2::TokenStream {
             | TypeKind::Opaque
             | TypeKind::Function(..)
             | TypeKind::Enum(..)
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel
             | TypeKind::TemplateInstantiation(..) => return,
             _ => {},
         }
@@ -405,7 +394,7 @@ impl Item {
         }
 
         if !ctx.codegen_items().contains(&self.id()) {
-            warn!("Found non-allowlisted item in code generation: {:?}", self);
+            warn!("Found non-allowed item in code generation: {:?}", self);
         }
 
         result.set_seen(self.id());
@@ -892,13 +881,6 @@ impl CodeGenerator for Type {
                 result.push(tokens);
             },
             TypeKind::Enum(ref ei) => ei.codegen(ctx, result, item),
-            TypeKind::ObjCId | TypeKind::ObjCSel => {
-                result.saw_objc();
-            },
-            TypeKind::ObjCInterface(ref interface) => interface.codegen(ctx, result, item),
-            ref u @ TypeKind::UnresolvedTypeRef(..) => {
-                unreachable!("Should have been resolved after parsing {:?}!", u)
-            },
         }
     }
 }
@@ -3207,13 +3189,10 @@ impl TryToRustTy for Type {
 
                 let inner = inner.into_resolver().through_type_refs().resolve(ctx);
                 let inner_ty = inner.expect_type();
-
-                let is_objc_pointer = matches!(inner_ty.kind(), TypeKind::ObjCInterface(..));
-
                 let mut ty = inner.to_rust_ty_or_opaque(ctx, &());
                 ty.append_implicit_template_params(ctx, inner);
 
-                if inner_ty.canonical_type(ctx).is_function() || is_objc_pointer {
+                if inner_ty.canonical_type(ctx).is_function() {
                     Ok(ty)
                 } else {
                     Ok(ty.to_ptr(is_const))
@@ -3224,18 +3203,6 @@ impl TryToRustTy for Type {
                 let ident = ctx.rust_ident(name);
                 Ok(quote! {
                     #ident
-                })
-            },
-            TypeKind::ObjCSel => Ok(quote! {
-                objc::runtime::Sel
-            }),
-            TypeKind::ObjCId => Ok(quote! {
-                id
-            }),
-            TypeKind::ObjCInterface(ref interface) => {
-                let name = ctx.rust_ident(interface.name());
-                Ok(quote! {
-                    #name
                 })
             },
             ref u @ TypeKind::UnresolvedTypeRef(..) => {
@@ -3536,236 +3503,6 @@ fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::Source
         }
 
         diag.display()
-    }
-}
-
-fn objc_method_codegen(
-    ctx: &BindgenContext,
-    method: &ObjCMethod,
-    methods: &mut Vec<proc_macro2::TokenStream>,
-    class_name: Option<&str>,
-    rust_class_name: &str,
-    prefix: &str,
-) {
-    let name = format!("{}::{}{}", rust_class_name, prefix, method.rust_name());
-    if ctx.options().blocklisted_items.matches(name) {
-        return;
-    }
-
-    let signature = method.signature();
-    let fn_args = utils::fnsig_arguments(ctx, signature);
-    let fn_ret = utils::fnsig_return_ty(ctx, signature);
-
-    let sig = if method.is_class_method() {
-        quote! {
-            ( #( #fn_args ),* ) #fn_ret
-        }
-    } else {
-        let self_arr = [quote! { &self }];
-        let args = self_arr.iter().chain(fn_args.iter());
-        quote! {
-            ( #( #args ),* ) #fn_ret
-        }
-    };
-
-    let methods_and_args = method.format_method_call(&fn_args);
-
-    let body = {
-        let body = if method.is_class_method() {
-            let class_name = ctx.rust_ident(class_name.expect("Generating a class method without class name?"));
-            quote!(msg_send!(class!(#class_name), #methods_and_args))
-        } else {
-            quote!(msg_send!(*self, #methods_and_args))
-        };
-
-        ctx.wrap_unsafe_ops(body)
-    };
-
-    let method_name = ctx.rust_ident(format!("{}{}", prefix, method.rust_name()));
-
-    methods.push(quote! {
-        unsafe fn #method_name #sig where <Self as std::ops::Deref>::Target: objc::Message + Sized {
-            #body
-        }
-    });
-}
-
-impl CodeGenerator for ObjCInterface {
-    type Extra = Item;
-    type Return = ();
-
-    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
-        debug_assert!(item.is_enabled_for_codegen(ctx));
-
-        let mut impl_items = vec![];
-        let rust_class_name = item.path_for_allowlisting(ctx)[1..].join("::");
-
-        for method in self.methods() {
-            objc_method_codegen(ctx, method, &mut impl_items, None, &rust_class_name, "");
-        }
-
-        for class_method in self.class_methods() {
-            let ambiquity = self
-                .methods()
-                .iter()
-                .map(|m| m.rust_name())
-                .any(|x| x == class_method.rust_name());
-            let prefix = if ambiquity { "class_" } else { "" };
-            objc_method_codegen(
-                ctx,
-                class_method,
-                &mut impl_items,
-                Some(self.name()),
-                &rust_class_name,
-                prefix,
-            );
-        }
-
-        let trait_name = ctx.rust_ident(self.rust_name());
-        let trait_constraints = quote! {
-            Sized + std::ops::Deref
-        };
-        let trait_block = if self.is_template() {
-            let template_names: Vec<Ident> = self.template_names.iter().map(|g| ctx.rust_ident(g)).collect();
-
-            quote! {
-                pub trait #trait_name <#(#template_names:'static),*> : #trait_constraints {
-                    #( #impl_items )*
-                }
-            }
-        } else {
-            quote! {
-                pub trait #trait_name : #trait_constraints {
-                    #( #impl_items )*
-                }
-            }
-        };
-
-        let class_name = ctx.rust_ident(self.name());
-        if !self.is_category() && !self.is_protocol() {
-            let struct_block = quote! {
-                #[repr(transparent)]
-                #[derive(Debug, Copy, Clone)]
-                pub struct #class_name(pub id);
-                impl std::ops::Deref for #class_name {
-                    type Target = objc::runtime::Object;
-                    fn deref(&self) -> &Self::Target {
-                        unsafe {
-                            &*self.0
-                        }
-                    }
-                }
-                unsafe impl objc::Message for #class_name { }
-                impl #class_name {
-                    pub fn alloc() -> Self {
-                        Self(unsafe {
-                            msg_send!(class!(#class_name), alloc)
-                        })
-                    }
-                }
-            };
-            result.push(struct_block);
-            let mut protocol_set: HashSet<ItemId> = Default::default();
-            for protocol_id in self.conforms_to.iter() {
-                protocol_set.insert(*protocol_id);
-                let protocol_name = ctx.rust_ident(ctx.resolve_type(protocol_id.expect_type_id(ctx)).name().unwrap());
-                let impl_trait = quote! {
-                    impl #protocol_name for #class_name { }
-                };
-                result.push(impl_trait);
-            }
-            let mut parent_class = self.parent_class;
-            while let Some(parent_id) = parent_class {
-                let parent = parent_id
-                    .expect_type_id(ctx)
-                    .into_resolver()
-                    .through_type_refs()
-                    .resolve(ctx)
-                    .expect_type()
-                    .kind();
-
-                let parent = match parent {
-                    TypeKind::ObjCInterface(ref parent) => parent,
-                    _ => break,
-                };
-                parent_class = parent.parent_class;
-
-                let parent_name = ctx.rust_ident(parent.rust_name());
-                let impl_trait = if parent.is_template() {
-                    let template_names: Vec<Ident> = parent.template_names.iter().map(|g| ctx.rust_ident(g)).collect();
-                    quote! {
-                        impl <#(#template_names :'static),*> #parent_name <#(#template_names),*> for #class_name {
-                        }
-                    }
-                } else {
-                    quote! {
-                        impl #parent_name for #class_name { }
-                    }
-                };
-                result.push(impl_trait);
-                for protocol_id in parent.conforms_to.iter() {
-                    if protocol_set.insert(*protocol_id) {
-                        let protocol_name =
-                            ctx.rust_ident(ctx.resolve_type(protocol_id.expect_type_id(ctx)).name().unwrap());
-                        let impl_trait = quote! {
-                            impl #protocol_name for #class_name { }
-                        };
-                        result.push(impl_trait);
-                    }
-                }
-                if !parent.is_template() {
-                    let parent_struct_name = parent.name();
-                    let child_struct_name = self.name();
-                    let parent_struct = ctx.rust_ident(parent_struct_name);
-                    let from_block = quote! {
-                        impl From<#class_name> for #parent_struct {
-                            fn from(child: #class_name) -> #parent_struct {
-                                #parent_struct(child.0)
-                            }
-                        }
-                    };
-                    result.push(from_block);
-
-                    let error_msg = format!(
-                        "This {} cannot be downcasted to {}",
-                        parent_struct_name, child_struct_name
-                    );
-                    let try_into_block = quote! {
-                        impl std::convert::TryFrom<#parent_struct> for #class_name {
-                            type Error = &'static str;
-                            fn try_from(parent: #parent_struct) -> Result<#class_name, Self::Error> {
-                                let is_kind_of : bool = unsafe { msg_send!(parent, isKindOfClass:class!(#class_name))};
-                                if is_kind_of {
-                                    Ok(#class_name(parent.0))
-                                } else {
-                                    Err(#error_msg)
-                                }
-                            }
-                        }
-                    };
-                    result.push(try_into_block);
-                }
-            }
-        }
-
-        if !self.is_protocol() {
-            let impl_block = if self.is_template() {
-                let template_names: Vec<Ident> = self.template_names.iter().map(|g| ctx.rust_ident(g)).collect();
-                quote! {
-                    impl <#(#template_names :'static),*> #trait_name <#(#template_names),*> for #class_name {
-                    }
-                }
-            } else {
-                quote! {
-                    impl #trait_name for #class_name {
-                    }
-                }
-            };
-            result.push(impl_block);
-        }
-
-        result.push(trait_block);
-        result.saw_objc();
     }
 }
 
@@ -4211,14 +3948,7 @@ pub(crate) mod utils {
                     TypeKind::Pointer(inner) => {
                         let inner = ctx.resolve_item(inner);
                         let inner_ty = inner.expect_type();
-                        if let TypeKind::ObjCInterface(ref interface) = *inner_ty.canonical_type(ctx).kind() {
-                            let name = ctx.rust_ident(interface.name());
-                            quote! {
-                                #name
-                            }
-                        } else {
-                            arg_item.to_rust_ty_or_opaque(ctx, &())
-                        }
+                        arg_item.to_rust_ty_or_opaque(ctx, &())
                     },
                     _ => arg_item.to_rust_ty_or_opaque(ctx, &()),
                 };

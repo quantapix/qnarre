@@ -326,11 +326,9 @@ impl FunctionSig {
         let cursor = if cursor.is_valid() { *cursor } else { ty.declaration() };
 
         let mut args = match kind {
-            CXCursor_FunctionDecl
-            | CXCursor_Constructor
-            | CXCursor_CXXMethod
-            | CXCursor_ObjCInstanceMethodDecl
-            | CXCursor_ObjCClassMethodDecl => args_from_ty_and_cursor(ty, &cursor, ctx),
+            CXCursor_FunctionDecl | CXCursor_Constructor | CXCursor_CXXMethod => {
+                args_from_ty_and_cursor(ty, &cursor, ctx)
+            },
             _ => {
                 let mut args = vec![];
                 cursor.visit(|c| {
@@ -393,13 +391,7 @@ impl FunctionSig {
             }
         }
 
-        let ty_ret_type = if kind == CXCursor_ObjCInstanceMethodDecl || kind == CXCursor_ObjCClassMethodDecl {
-            ty.ret_type()
-                .or_else(|| cursor.ret_type())
-                .ok_or(ParseError::Continue)?
-        } else {
-            ty.ret_type().ok_or(ParseError::Continue)?
-        };
+        let ty_ret_type = ty.ret_type().ok_or(ParseError::Continue)?;
 
         let ret = if is_constructor && ctx.is_target_wasm32() {
             let void = Item::builtin_type(TypeKind::Void, false, ctx);

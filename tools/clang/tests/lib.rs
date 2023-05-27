@@ -40,13 +40,13 @@ fn test() {
 
 #[test]
 fn test_support() {
-    let clang = support::Clang::find(None, &[]).unwrap();
+    let clang = clang::Clang::find(None, &[]).unwrap();
     println!("{:?}", clang);
 }
 
 #[test]
 fn test_support_target() {
     let args = &["-target".into(), "x86_64-unknown-linux-gnu".into()];
-    let clang = support::Clang::find(None, args).unwrap();
+    let clang = clang::Clang::find(None, args).unwrap();
     println!("{:?}", clang);
 }

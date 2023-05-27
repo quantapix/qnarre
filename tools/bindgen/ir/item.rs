@@ -1,5 +1,5 @@
 use super::super::codegen::{EnumVariation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
-use super::analysis::{HasVtable, HasVtableResult, Sizedness, SizednessResult};
+use super::analysis::{HasVtable, HasVtableResult, Sizedness, YSizedness};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::context::{BindgenContext, ItemId, PartialType, TypeId};
@@ -841,15 +841,15 @@ impl<T> Sizedness for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn sizedness(&self, ctx: &BindgenContext) -> SizednessResult {
+    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx)
-            .map_or(SizednessResult::default(), |id| ctx.lookup_sizedness(id))
+            .map_or(YSizedness::default(), |id| ctx.lookup_sizedness(id))
     }
 }
 
 impl Sizedness for Item {
-    fn sizedness(&self, ctx: &BindgenContext) -> SizednessResult {
+    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness {
         self.id().sizedness(ctx)
     }
 }

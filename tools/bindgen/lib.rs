@@ -260,10 +260,10 @@ impl Opts {
         const REGEX_SETS_LEN: usize = 27;
 
         let regex_sets: [_; REGEX_SETS_LEN] = [
-            &mut self.allowlisted_vars,
-            &mut self.allowlisted_types,
-            &mut self.allowlisted_fns,
-            &mut self.allowlisted_files,
+            &mut self.allowed_vars,
+            &mut self.allowed_types,
+            &mut self.allowed_fns,
+            &mut self.allowed_files,
             &mut self.blocklisted_types,
             &mut self.blocklisted_fns,
             &mut self.blocklisted_items,

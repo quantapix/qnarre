@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{generate_dependencies, ConstrainResult, MonotoneFramework};
+use super::{gen_deps, Monotone, YConstrain};
 use crate::ir::analysis::has_vtable::HasVtable;
 use crate::ir::comp::CompKind;
 use crate::ir::context::{BindgenContext, ItemId};
@@ -58,32 +58,32 @@ fn consider_edge_default(kind: EdgeKind) -> bool {
 }
 
 impl<'ctx> CannotDerive<'ctx> {
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id, can_derive: CanDerive) -> ConstrainResult {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id, can_derive: CanDerive) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} can_derive<{}>={:?}", id, self.derive_trait, can_derive);
 
         if let CanDerive::Yes = can_derive {
-            return ConstrainResult::Same;
+            return YConstrain::Same;
         }
 
         match self.can_derive.entry(id) {
             Entry::Occupied(mut entry) => {
                 if *entry.get() < can_derive {
                     entry.insert(can_derive);
-                    ConstrainResult::Changed
+                    YConstrain::Changed
                 } else {
-                    ConstrainResult::Same
+                    YConstrain::Same
                 }
             },
             Entry::Vacant(entry) => {
                 entry.insert(can_derive);
-                ConstrainResult::Changed
+                YConstrain::Changed
             },
         }
     }
 
     fn constrain_type(&mut self, item: &Item, ty: &Type) -> CanDerive {
-        if !self.ctx.allowlisted_items().contains(&item.id()) {
+        if !self.ctx.allowed_items().contains(&item.id()) {
             let can_derive = self.ctx.blocklisted_type_implements_trait(item, self.derive_trait);
             match can_derive {
                 CanDerive::Yes => trace!("    blocklisted type explicitly implements {}", self.derive_trait),
@@ -132,10 +132,7 @@ impl<'ctx> CannotDerive<'ctx> {
             | TypeKind::Enum(..)
             | TypeKind::TypeParam
             | TypeKind::UnresolvedTypeRef(..)
-            | TypeKind::Reference(..)
-            | TypeKind::ObjCInterface(..)
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel => {
+            | TypeKind::Reference(..) => {
                 return self.derive_trait.can_derive_simple(ty.kind());
             },
             TypeKind::Pointer(inner) => {
@@ -425,10 +422,7 @@ impl DeriveTrait {
             | (DeriveTrait::Default, TypeKind::NullPtr)
             | (DeriveTrait::Default, TypeKind::Enum(..))
             | (DeriveTrait::Default, TypeKind::Reference(..))
-            | (DeriveTrait::Default, TypeKind::TypeParam)
-            | (DeriveTrait::Default, TypeKind::ObjCInterface(..))
-            | (DeriveTrait::Default, TypeKind::ObjCId)
-            | (DeriveTrait::Default, TypeKind::ObjCSel) => {
+            | (DeriveTrait::Default, TypeKind::TypeParam) => {
                 trace!("    types that always cannot derive Default");
                 CanDerive::No
             },
@@ -460,14 +454,14 @@ impl fmt::Display for DeriveTrait {
     }
 }
 
-impl<'ctx> MonotoneFramework for CannotDerive<'ctx> {
+impl<'ctx> Monotone for CannotDerive<'ctx> {
     type Node = ItemId;
     type Extra = (&'ctx BindgenContext, DeriveTrait);
     type Output = HashMap<ItemId, CanDerive>;
 
     fn new((ctx, derive_trait): (&'ctx BindgenContext, DeriveTrait)) -> CannotDerive<'ctx> {
         let can_derive = HashMap::default();
-        let dependencies = generate_dependencies(ctx, consider_edge_default);
+        let dependencies = gen_deps(ctx, consider_edge_default);
 
         CannotDerive {
             ctx,
@@ -479,7 +473,7 @@ impl<'ctx> MonotoneFramework for CannotDerive<'ctx> {
 
     fn initial_worklist(&self) -> Vec<ItemId> {
         self.ctx
-            .allowlisted_items()
+            .allowed_items()
             .iter()
             .cloned()
             .flat_map(|i| {
@@ -496,12 +490,12 @@ impl<'ctx> MonotoneFramework for CannotDerive<'ctx> {
             .collect()
     }
 
-    fn constrain(&mut self, id: ItemId) -> ConstrainResult {
+    fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
 
         if let Some(CanDerive::No) = self.can_derive.get(&id).cloned() {
             trace!("    already know it cannot derive {}", self.derive_trait);
-            return ConstrainResult::Same;
+            return YConstrain::Same;
         }
 
         let item = self.ctx.resolve_item(id);

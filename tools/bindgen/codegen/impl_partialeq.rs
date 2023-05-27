@@ -86,9 +86,6 @@ fn gen_field(ctx: &BindgenContext, ty_item: &Item, name: &str) -> proc_macro2::T
         | TypeKind::TypeParam
         | TypeKind::UnresolvedTypeRef(..)
         | TypeKind::Reference(..)
-        | TypeKind::ObjCInterface(..)
-        | TypeKind::ObjCId
-        | TypeKind::ObjCSel
         | TypeKind::Comp(..)
         | TypeKind::Pointer(_)
         | TypeKind::Function(..)

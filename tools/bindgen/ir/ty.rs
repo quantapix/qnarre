@@ -6,7 +6,6 @@ use super::function::FunctionSig;
 use super::int::IntKind;
 use super::item::{IsOpaque, Item};
 use super::layout::{Layout, Opaque};
-use super::objc::ObjCInterface;
 use super::template::{AsTemplateParam, TemplateInstantiation, TemplateParameters};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use crate::clang::{self, Cursor};
@@ -221,10 +220,7 @@ impl Type {
             | TypeKind::Void
             | TypeKind::NullPtr
             | TypeKind::Pointer(..)
-            | TypeKind::BlockPointer(..)
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel
-            | TypeKind::ObjCInterface(..) => Some(self),
+            | TypeKind::BlockPointer(..) => Some(self),
 
             TypeKind::ResolvedTypeRef(inner) | TypeKind::Alias(inner) | TypeKind::TemplateAlias(inner, _) => {
                 ctx.resolve_type(inner).safe_canonical_type(ctx)
@@ -348,9 +344,6 @@ impl TypeKind {
             TypeKind::UnresolvedTypeRef(..) => "UnresolvedTypeRef",
             TypeKind::ResolvedTypeRef(..) => "ResolvedTypeRef",
             TypeKind::TypeParam => "TypeParam",
-            TypeKind::ObjCInterface(..) => "ObjCInterface",
-            TypeKind::ObjCId => "ObjCId",
-            TypeKind::ObjCSel => "ObjCSel",
         }
     }
 }
@@ -427,10 +420,7 @@ impl TemplateParameters for TypeKind {
             | TypeKind::Reference(_)
             | TypeKind::UnresolvedTypeRef(..)
             | TypeKind::TypeParam
-            | TypeKind::Alias(_)
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel
-            | TypeKind::ObjCInterface(_) => vec![],
+            | TypeKind::Alias(_) => vec![],
         }
     }
 }
@@ -446,50 +436,25 @@ pub(crate) enum FloatKind {
 #[derive(Debug)]
 pub(crate) enum TypeKind {
     Void,
-
     NullPtr,
-
     Comp(CompInfo),
-
     Opaque,
-
     Int(IntKind),
-
     Float(FloatKind),
-
     Complex(FloatKind),
-
     Alias(TypeId),
-
     TemplateAlias(TypeId, Vec<TypeId>),
-
     Vector(TypeId, usize),
-
     Array(TypeId, usize),
-
     Function(FunctionSig),
-
     Enum(Enum),
-
     Pointer(TypeId),
-
     BlockPointer(TypeId),
-
     Reference(TypeId),
-
     TemplateInstantiation(TemplateInstantiation),
-
     UnresolvedTypeRef(clang::Type, clang::Cursor, /* parent_id */ Option<ItemId>),
-
     ResolvedTypeRef(TypeId),
-
     TypeParam,
-
-    ObjCInterface(ObjCInterface),
-
-    ObjCId,
-
-    ObjCSel,
 }
 
 impl Type {
@@ -524,18 +489,8 @@ impl Type {
         let canonical_ty = ty.canonical_type();
 
         let mut ty_kind = ty.kind();
-        match location.kind() {
-            CXCursor_ObjCProtocolDecl | CXCursor_ObjCCategoryDecl => ty_kind = CXType_ObjCInterface,
-            _ => {},
-        }
-
         if ty_kind == CXType_Typedef {
             let is_template_type_param = ty.declaration().kind() == CXCursor_TemplateTypeParameter;
-            let is_canonical_objcpointer = canonical_ty.kind() == CXType_ObjCObjectPointer;
-
-            if is_canonical_objcpointer && is_template_type_param {
-                name = Some("id".to_owned());
-            }
         }
 
         if location.kind() == CXCursor_ClassTemplatePartialSpecialization {
@@ -702,7 +657,7 @@ impl Type {
 
                     return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
                 },
-                CXType_ObjCObjectPointer | CXType_MemberPointer | CXType_Pointer => {
+                CXType_MemberPointer | CXType_Pointer => {
                     let mut pointee = ty.pointee_type().unwrap();
                     if *ty != canonical_ty {
                         let canonical_pointee = canonical_ty.pointee_type().unwrap();
@@ -794,15 +749,6 @@ impl Type {
                 CXType_Elaborated => {
                     return Self::from_clang_ty(potential_id, &ty.named(), location, parent_id, ctx);
                 },
-                CXType_ObjCId => TypeKind::ObjCId,
-                CXType_ObjCSel => TypeKind::ObjCSel,
-                CXType_ObjCClass | CXType_ObjCInterface => {
-                    let interface = ObjCInterface::from_ty(&location, ctx).expect("Not a valid objc interface?");
-                    if !is_anonymous {
-                        name = Some(interface.rust_name());
-                    }
-                    TypeKind::ObjCInterface(interface)
-                },
                 CXType_Dependent => {
                     return Err(ParseError::Continue);
                 },
@@ -867,11 +813,6 @@ impl Trace for Type {
             TypeKind::UnresolvedTypeRef(_, _, Some(id)) => {
                 tracer.visit(id);
             },
-
-            TypeKind::ObjCInterface(ref interface) => {
-                interface.trace(context, tracer, &());
-            },
-
             TypeKind::Opaque
             | TypeKind::UnresolvedTypeRef(_, _, None)
             | TypeKind::TypeParam
@@ -879,9 +820,7 @@ impl Trace for Type {
             | TypeKind::NullPtr
             | TypeKind::Int(_)
             | TypeKind::Float(_)
-            | TypeKind::Complex(_)
-            | TypeKind::ObjCId
-            | TypeKind::ObjCSel => {},
+            | TypeKind::Complex(_) => {},
         }
     }
 }
