@@ -13,7 +13,6 @@ impl DepfileSpec {
 
     fn to_string(&self, deps: &BTreeSet<String>) -> String {
         let escape = |s: &str| s.replace('\\', "\\\\").replace(' ', "\\ ");
-
         let mut buf = format!("{}:", escape(&self.output_module));
         for file in deps {
             buf = format!("{} {}", buf, escape(file));

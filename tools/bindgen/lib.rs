@@ -420,24 +420,8 @@ pub struct Bindings {
 
 pub(crate) const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
 
-fn rust_to_clang_target(rust_target: &str) -> String {
-    if rust_target.starts_with("aarch64-apple-") {
-        let mut clang_target = "arm64-apple-".to_owned();
-        clang_target.push_str(rust_target.strip_prefix("aarch64-apple-").unwrap());
-        return clang_target;
-    } else if rust_target.starts_with("riscv64gc-") {
-        let mut clang_target = "riscv64-".to_owned();
-        clang_target.push_str(rust_target.strip_prefix("riscv64gc-").unwrap());
-        return clang_target;
-    } else if rust_target.ends_with("-espidf") {
-        let mut clang_target = rust_target.strip_suffix("-espidf").unwrap().to_owned();
-        clang_target.push_str("-elf");
-        if clang_target.starts_with("riscv32imc-") {
-            clang_target = "riscv32-".to_owned() + clang_target.strip_prefix("riscv32imc-").unwrap();
-        }
-        return clang_target;
-    }
-    rust_target.to_owned()
+fn rust_to_clang_target(x: &str) -> String {
+    x.to_owned()
 }
 
 fn find_effective_target(clang_args: &[String]) -> (String, bool) {
@@ -927,23 +911,4 @@ fn commandline_flag_unit_test_function() {
     println!("{:?}", command_line_flags);
 
     assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
-}
-
-#[test]
-fn test_rust_to_clang_target() {
-    assert_eq!(rust_to_clang_target("aarch64-apple-ios"), "arm64-apple-ios");
-}
-
-#[test]
-fn test_rust_to_clang_target_riscv() {
-    assert_eq!(
-        rust_to_clang_target("riscv64gc-unknown-linux-gnu"),
-        "riscv64-unknown-linux-gnu"
-    )
-}
-
-#[test]
-fn test_rust_to_clang_target_espidf() {
-    assert_eq!(rust_to_clang_target("riscv32imc-esp-espidf"), "riscv32-esp-elf");
-    assert_eq!(rust_to_clang_target("xtensa-esp32-espidf"), "xtensa-esp32-elf");
 }
