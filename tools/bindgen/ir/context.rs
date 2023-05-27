@@ -1,7 +1,7 @@
 use super::super::timer::Timer;
 use super::analysis::{
     analyze, as_cannot_derive_set, DeriveAnalysis, DeriveTrait, HasDestructorAnalysis, HasFloatAnalysis,
-    HasTyParamInArrayAnalysis, HasVtableAnalysis, SizednessAnalysis, UsedTemplateParams, YHasVtable, YSizedness,
+    HasTyParamInArrayAnalysis, HasVtableAnalysis, SizednessAnalysis, UsedTemplParamsAnalysis, YHasVtable, YSizedness,
 };
 use super::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
@@ -886,7 +886,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn find_used_template_parameters(&mut self) {
         let _t = self.timer("find_used_template_parameters");
         if self.opts.allowlist_recursively {
-            let used_params = analyze::<UsedTemplateParams>(self);
+            let used_params = analyze::<UsedTemplParamsAnalysis>(self);
             self.used_template_parameters = Some(used_params);
         } else {
             let mut used_params = HashMap::default();

@@ -37,14 +37,8 @@ impl<'ctx> HasFloatAnalysis<'ctx> {
 
     fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
         let id = id.into();
-        trace!("inserting {:?} into the has_float set", id);
-        let was_not_already_in_set = self.ys.insert(id);
-        assert!(
-            was_not_already_in_set,
-            "We shouldn't try and insert {:?} twice because if it was \
-             already in the set, `constrain` should have exited early.",
-            id
-        );
+        let newly = self.ys.insert(id);
+        assert!(newly);
         YConstrain::Changed
     }
 }

@@ -66,7 +66,6 @@ impl<'ctx> SizednessAnalysis<'ctx> {
     }
 
     fn insert(&mut self, id: TypeId, y: YSizedness) -> YConstrain {
-        trace!("inserting {:?} for {:?}", y, id);
         if let YSizedness::ZeroSized = y {
             return YConstrain::Same;
         }

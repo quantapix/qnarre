@@ -23,15 +23,7 @@ pub enum DeriveTrait {
     PartialEqOrPartialOrd,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct DeriveAnalysis<'ctx> {
-    ctx: &'ctx BindgenContext,
-    derive_trait: DeriveTrait,
-    ys: HashMap<ItemId, YDerive>,
-    deps: HashMap<ItemId, Vec<ItemId>>,
-}
-
-type EdgePredicate = fn(EdgeKind) -> bool;
+type EdgePred = fn(EdgeKind) -> bool;
 
 fn check_edge_default(k: EdgeKind) -> bool {
     match k {
@@ -42,7 +34,6 @@ fn check_edge_default(k: EdgeKind) -> bool {
         | EdgeKind::TemplateArgument
         | EdgeKind::TemplateDeclaration
         | EdgeKind::TemplateParameterDefinition => true,
-
         EdgeKind::Constructor
         | EdgeKind::Destructor
         | EdgeKind::FunctionReturn
@@ -54,24 +45,171 @@ fn check_edge_default(k: EdgeKind) -> bool {
     }
 }
 
+impl DeriveTrait {
+    fn not_by_name(&self, ctx: &BindgenContext, i: &Item) -> bool {
+        match self {
+            DeriveTrait::Copy => ctx.no_copy_by_name(i),
+            DeriveTrait::Debug => ctx.no_debug_by_name(i),
+            DeriveTrait::Default => ctx.no_default_by_name(i),
+            DeriveTrait::Hash => ctx.no_hash_by_name(i),
+            DeriveTrait::PartialEqOrPartialOrd => ctx.no_partialeq_by_name(i),
+        }
+    }
+
+    fn check_edge_comp(&self) -> EdgePred {
+        match self {
+            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
+            _ => |k| matches!(k, EdgeKind::BaseMember | EdgeKind::Field),
+        }
+    }
+
+    fn check_edge_typeref(&self) -> EdgePred {
+        match self {
+            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
+            _ => |k| k == EdgeKind::TypeReference,
+        }
+    }
+
+    fn check_edge_tmpl_inst(&self) -> EdgePred {
+        match self {
+            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
+            _ => |k| matches!(k, EdgeKind::TemplateArgument | EdgeKind::TemplateDeclaration),
+        }
+    }
+
+    fn can_derive_large_array(&self, ctx: &BindgenContext) -> bool {
+        !matches!(self, DeriveTrait::Default)
+    }
+
+    fn can_derive_union(&self) -> bool {
+        matches!(self, DeriveTrait::Copy)
+    }
+
+    fn can_derive_compound_with_destructor(&self) -> bool {
+        !matches!(self, DeriveTrait::Copy)
+    }
+
+    fn can_derive_compound_with_vtable(&self) -> bool {
+        !matches!(self, DeriveTrait::Default)
+    }
+
+    fn can_derive_compound_forward_decl(&self) -> bool {
+        matches!(self, DeriveTrait::Copy | DeriveTrait::Debug)
+    }
+
+    fn can_derive_incomplete_array(&self) -> bool {
+        !matches!(
+            self,
+            DeriveTrait::Copy | DeriveTrait::Hash | DeriveTrait::PartialEqOrPartialOrd
+        )
+    }
+
+    fn can_derive_fnptr(&self, f: &FunctionSig) -> YDerive {
+        match (self, f.function_pointers_can_derive()) {
+            (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => {
+                trace!("    function pointer can derive {}", self);
+                YDerive::Yes
+            },
+            (DeriveTrait::Debug, false) => {
+                trace!("    function pointer cannot derive {}, but it may be implemented", self);
+                YDerive::Manually
+            },
+            (_, false) => {
+                trace!("    function pointer cannot derive {}", self);
+                YDerive::No
+            },
+        }
+    }
+
+    fn can_derive_vec(&self) -> YDerive {
+        match self {
+            DeriveTrait::PartialEqOrPartialOrd => {
+                trace!("    vectors cannot derive PartialOrd");
+                YDerive::No
+            },
+            _ => {
+                trace!("    vector can derive {}", self);
+                YDerive::Yes
+            },
+        }
+    }
+
+    fn can_derive_ptr(&self) -> YDerive {
+        match self {
+            DeriveTrait::Default => {
+                trace!("    pointer cannot derive Default");
+                YDerive::No
+            },
+            _ => {
+                trace!("    pointer can derive {}", self);
+                YDerive::Yes
+            },
+        }
+    }
+
+    fn can_derive_simple(&self, k: &TypeKind) -> YDerive {
+        match (self, k) {
+            (DeriveTrait::Default, TypeKind::Void)
+            | (DeriveTrait::Default, TypeKind::NullPtr)
+            | (DeriveTrait::Default, TypeKind::Enum(..))
+            | (DeriveTrait::Default, TypeKind::Reference(..))
+            | (DeriveTrait::Default, TypeKind::TypeParam) => {
+                trace!("    types that always cannot derive Default");
+                YDerive::No
+            },
+            (DeriveTrait::Default, TypeKind::UnresolvedTypeRef(..)) => {
+                unreachable!("Type with unresolved type ref can't reach derive default")
+            },
+            (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => {
+                trace!("    float cannot derive Hash");
+                YDerive::No
+            },
+            _ => {
+                trace!("    simple type that can always derive {}", self);
+                YDerive::Yes
+            },
+        }
+    }
+}
+
+impl fmt::Display for DeriveTrait {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let y = match self {
+            DeriveTrait::Copy => "Copy",
+            DeriveTrait::Debug => "Debug",
+            DeriveTrait::Default => "Default",
+            DeriveTrait::Hash => "Hash",
+            DeriveTrait::PartialEqOrPartialOrd => "PartialEq/PartialOrd",
+        };
+        y.fmt(f)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DeriveAnalysis<'ctx> {
+    ctx: &'ctx BindgenContext,
+    derive_trait: DeriveTrait,
+    ys: HashMap<ItemId, YDerive>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
+}
+
 impl<'ctx> DeriveAnalysis<'ctx> {
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id, can_derive: YDerive) -> YConstrain {
-        let id = id.into();
-        trace!("inserting {:?} can_derive<{}>={:?}", id, self.derive_trait, can_derive);
-        if let YDerive::Yes = can_derive {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: YDerive) -> YConstrain {
+        if let YDerive::Yes = y {
             return YConstrain::Same;
         }
+        let id = id.into();
         match self.ys.entry(id) {
-            Entry::Occupied(mut entry) => {
-                if *entry.get() < can_derive {
-                    entry.insert(can_derive);
+            Entry::Occupied(mut x) => {
+                if *x.get() < y {
+                    x.insert(y);
                     YConstrain::Changed
                 } else {
                     YConstrain::Same
                 }
             },
-            Entry::Vacant(entry) => {
-                entry.insert(can_derive);
+            Entry::Vacant(x) => {
+                x.insert(y);
                 YConstrain::Changed
             },
         }
@@ -131,7 +269,7 @@ impl<'ctx> DeriveAnalysis<'ctx> {
                 if let TypeKind::Function(ref sig) = *inner_type.kind() {
                     self.derive_trait.can_derive_fnptr(sig)
                 } else {
-                    self.derive_trait.can_derive_pointer()
+                    self.derive_trait.can_derive_ptr()
                 }
             },
             TypeKind::Function(ref sig) => self.derive_trait.can_derive_fnptr(sig),
@@ -180,7 +318,7 @@ impl<'ctx> DeriveAnalysis<'ctx> {
                     return YDerive::No;
                 }
                 assert_ne!(len, 0, "vectors cannot have zero length");
-                self.derive_trait.can_derive_vector()
+                self.derive_trait.can_derive_vec()
             },
 
             TypeKind::Comp(ref info) => {
@@ -271,7 +409,7 @@ impl<'ctx> DeriveAnalysis<'ctx> {
         }
     }
 
-    fn constrain_join(&mut self, item: &Item, check_edge: EdgePredicate) -> YDerive {
+    fn constrain_join(&mut self, item: &Item, check_edge: EdgePred) -> YDerive {
         let mut candidate = None;
 
         item.trace(
@@ -301,158 +439,18 @@ impl<'ctx> DeriveAnalysis<'ctx> {
     }
 }
 
-impl DeriveTrait {
-    fn not_by_name(&self, ctx: &BindgenContext, item: &Item) -> bool {
-        match self {
-            DeriveTrait::Copy => ctx.no_copy_by_name(item),
-            DeriveTrait::Debug => ctx.no_debug_by_name(item),
-            DeriveTrait::Default => ctx.no_default_by_name(item),
-            DeriveTrait::Hash => ctx.no_hash_by_name(item),
-            DeriveTrait::PartialEqOrPartialOrd => ctx.no_partialeq_by_name(item),
-        }
-    }
-
-    fn check_edge_comp(&self) -> EdgePredicate {
-        match self {
-            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-            _ => |kind| matches!(kind, EdgeKind::BaseMember | EdgeKind::Field),
-        }
-    }
-
-    fn check_edge_typeref(&self) -> EdgePredicate {
-        match self {
-            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-            _ => |kind| kind == EdgeKind::TypeReference,
-        }
-    }
-
-    fn check_edge_tmpl_inst(&self) -> EdgePredicate {
-        match self {
-            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-            _ => |kind| matches!(kind, EdgeKind::TemplateArgument | EdgeKind::TemplateDeclaration),
-        }
-    }
-
-    fn can_derive_large_array(&self, ctx: &BindgenContext) -> bool {
-        !matches!(self, DeriveTrait::Default)
-    }
-
-    fn can_derive_union(&self) -> bool {
-        matches!(self, DeriveTrait::Copy)
-    }
-
-    fn can_derive_compound_with_destructor(&self) -> bool {
-        !matches!(self, DeriveTrait::Copy)
-    }
-
-    fn can_derive_compound_with_vtable(&self) -> bool {
-        !matches!(self, DeriveTrait::Default)
-    }
-
-    fn can_derive_compound_forward_decl(&self) -> bool {
-        matches!(self, DeriveTrait::Copy | DeriveTrait::Debug)
-    }
-
-    fn can_derive_incomplete_array(&self) -> bool {
-        !matches!(
-            self,
-            DeriveTrait::Copy | DeriveTrait::Hash | DeriveTrait::PartialEqOrPartialOrd
-        )
-    }
-
-    fn can_derive_fnptr(&self, f: &FunctionSig) -> YDerive {
-        match (self, f.function_pointers_can_derive()) {
-            (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => {
-                trace!("    function pointer can derive {}", self);
-                YDerive::Yes
-            },
-            (DeriveTrait::Debug, false) => {
-                trace!("    function pointer cannot derive {}, but it may be implemented", self);
-                YDerive::Manually
-            },
-            (_, false) => {
-                trace!("    function pointer cannot derive {}", self);
-                YDerive::No
-            },
-        }
-    }
-
-    fn can_derive_vector(&self) -> YDerive {
-        match self {
-            DeriveTrait::PartialEqOrPartialOrd => {
-                trace!("    vectors cannot derive PartialOrd");
-                YDerive::No
-            },
-            _ => {
-                trace!("    vector can derive {}", self);
-                YDerive::Yes
-            },
-        }
-    }
-
-    fn can_derive_pointer(&self) -> YDerive {
-        match self {
-            DeriveTrait::Default => {
-                trace!("    pointer cannot derive Default");
-                YDerive::No
-            },
-            _ => {
-                trace!("    pointer can derive {}", self);
-                YDerive::Yes
-            },
-        }
-    }
-
-    fn can_derive_simple(&self, kind: &TypeKind) -> YDerive {
-        match (self, kind) {
-            (DeriveTrait::Default, TypeKind::Void)
-            | (DeriveTrait::Default, TypeKind::NullPtr)
-            | (DeriveTrait::Default, TypeKind::Enum(..))
-            | (DeriveTrait::Default, TypeKind::Reference(..))
-            | (DeriveTrait::Default, TypeKind::TypeParam) => {
-                trace!("    types that always cannot derive Default");
-                YDerive::No
-            },
-            (DeriveTrait::Default, TypeKind::UnresolvedTypeRef(..)) => {
-                unreachable!("Type with unresolved type ref can't reach derive default")
-            },
-            (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => {
-                trace!("    float cannot derive Hash");
-                YDerive::No
-            },
-            _ => {
-                trace!("    simple type that can always derive {}", self);
-                YDerive::Yes
-            },
-        }
-    }
-}
-
-impl fmt::Display for DeriveTrait {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
-            DeriveTrait::Copy => "Copy",
-            DeriveTrait::Debug => "Debug",
-            DeriveTrait::Default => "Default",
-            DeriveTrait::Hash => "Hash",
-            DeriveTrait::PartialEqOrPartialOrd => "PartialEq/PartialOrd",
-        };
-        s.fmt(f)
-    }
-}
-
 impl<'ctx> Monotone for DeriveAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = (&'ctx BindgenContext, DeriveTrait);
     type Output = HashMap<ItemId, YDerive>;
 
     fn new((ctx, derive_trait): (&'ctx BindgenContext, DeriveTrait)) -> DeriveAnalysis<'ctx> {
-        let can_derive = HashMap::default();
+        let ys = HashMap::default();
         let deps = gen_deps(ctx, check_edge_default);
         DeriveAnalysis {
             ctx,
             derive_trait,
-            ys: can_derive,
+            ys,
             deps,
         }
     }
@@ -521,9 +519,8 @@ impl<'ctx> From<DeriveAnalysis<'ctx>> for HashMap<ItemId, YDerive> {
     }
 }
 
-pub(crate) fn as_cannot_derive_set(can_derive: HashMap<ItemId, YDerive>) -> HashSet<ItemId> {
-    can_derive
-        .into_iter()
+pub(crate) fn as_cannot_derive_set(xs: HashMap<ItemId, YDerive>) -> HashSet<ItemId> {
+    xs.into_iter()
         .filter_map(|(k, v)| if v != YDerive::Yes { Some(k) } else { None })
         .collect()
 }

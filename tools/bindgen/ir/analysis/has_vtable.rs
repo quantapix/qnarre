@@ -58,22 +58,22 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
         )
     }
 
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id, result: YHasVtable) -> YConstrain {
-        if let YHasVtable::No = result {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: YHasVtable) -> YConstrain {
+        if let YHasVtable::No = y {
             return YConstrain::Same;
         }
         let id = id.into();
         match self.ys.entry(id) {
-            Entry::Occupied(mut entry) => {
-                if *entry.get() < result {
-                    entry.insert(result);
+            Entry::Occupied(mut x) => {
+                if *x.get() < y {
+                    x.insert(y);
                     YConstrain::Changed
                 } else {
                     YConstrain::Same
                 }
             },
-            Entry::Vacant(entry) => {
-                entry.insert(result);
+            Entry::Vacant(x) => {
+                x.insert(y);
                 YConstrain::Changed
             },
         }
