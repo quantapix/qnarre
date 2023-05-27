@@ -1,11 +1,11 @@
 use super::super::timer::Timer;
 use super::analysis::{
-    analyze, as_cannot_derive_set, CannotDerive, DeriveTrait, HasDestructorAnalysis, HasFloat, HasTypeParameterInArray,
-    HasVtableAnalysis, SizednessAnalysis, UsedTemplateParams, YHasVtable, YSizedness,
+    analyze, as_cannot_derive_set, DeriveAnalysis, DeriveTrait, HasDestructorAnalysis, HasFloatAnalysis,
+    HasTyParamInArrayAnalysis, HasVtableAnalysis, SizednessAnalysis, UsedTemplateParams, YHasVtable, YSizedness,
 };
 use super::derive::{
-    CanDerive, CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd,
-    CanDerivePartialEq, CanDerivePartialOrd,
+    CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
+    CanDerivePartialOrd, YDerive,
 };
 use super::function::Function;
 use super::int::IntKind;
@@ -200,7 +200,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_partialord(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == CanDerive::Yes
+        ctx.options().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
     }
 }
 
@@ -209,7 +209,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_partialeq(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == CanDerive::Yes
+        ctx.options().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
     }
 }
 
@@ -219,7 +219,7 @@ where
 {
     fn can_derive_eq(&self, ctx: &BindgenContext) -> bool {
         ctx.options().derive_eq
-            && ctx.lookup_can_derive_partialeq_or_partialord(*self) == CanDerive::Yes
+            && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
             && !ctx.lookup_has_float(*self)
     }
 }
@@ -230,7 +230,7 @@ where
 {
     fn can_derive_ord(&self, ctx: &BindgenContext) -> bool {
         ctx.options().derive_ord
-            && ctx.lookup_can_derive_partialeq_or_partialord(*self) == CanDerive::Yes
+            && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
             && !ctx.lookup_has_float(*self)
     }
 }
@@ -244,12 +244,12 @@ enum TypeKey {
 #[derive(Debug)]
 pub(crate) struct BindgenContext {
     allowed: Option<ItemSet>,
-    blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, CanDerive>>>,
+    blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, YDerive>>>,
     cannot_derive_copy: Option<HashSet<ItemId>>,
     cannot_derive_debug: Option<HashSet<ItemId>>,
     cannot_derive_default: Option<HashSet<ItemId>>,
     cannot_derive_hash: Option<HashSet<ItemId>>,
-    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, CanDerive>>,
+    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, YDerive>>,
     codegen_items: Option<ItemSet>,
     collected_typerefs: bool,
     current_module: ModuleId,
@@ -847,11 +847,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn lookup_sizedness(&self, id: TypeId) -> YSizedness {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute sizedness after we've entered codegen"
-        );
-
+        assert!(self.in_codegen_phase());
         self.sizedness
             .as_ref()
             .unwrap()
@@ -867,8 +863,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn lookup_has_vtable(&self, id: TypeId) -> YHasVtable {
-        assert!(self.in_codegen_phase(), "We only compute vtables when we enter codegen");
-
+        assert!(self.in_codegen_phase());
         self.have_vtable
             .as_ref()
             .unwrap()
@@ -884,11 +879,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn lookup_has_destructor(&self, id: TypeId) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute destructors when we enter codegen"
-        );
-
+        assert!(self.in_codegen_phase());
         self.have_destructor.as_ref().unwrap().contains(&id.into())
     }
 
@@ -909,15 +900,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn uses_template_parameter(&self, item: ItemId, template_param: TypeId) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute template parameter usage as we enter codegen"
-        );
-
+        assert!(self.in_codegen_phase());
         if self.resolve_item(item).is_blocklisted(self) {
             return true;
         }
-
         let template_param = template_param
             .into_resolver()
             .through_type_refs()
@@ -1472,7 +1458,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.allowed.as_ref().unwrap()
     }
 
-    pub(crate) fn blocklisted_type_implements_trait(&self, item: &Item, derive_trait: DeriveTrait) -> CanDerive {
+    pub(crate) fn blocklisted_type_implements_trait(&self, item: &Item, derive_trait: DeriveTrait) -> YDerive {
         assert!(self.in_codegen_phase());
         assert!(self.current_module == self.root_module);
 
@@ -1488,16 +1474,16 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     .and_then(|name| {
                         if self.opts.parse_callbacks.is_empty() {
                             if self.is_stdint_type(name) {
-                                Some(CanDerive::Yes)
+                                Some(YDerive::Yes)
                             } else {
-                                Some(CanDerive::No)
+                                Some(YDerive::No)
                             }
                         } else {
                             self.opts
                                 .last_callback(|cb| cb.blocklisted_type_implements_trait(name, derive_trait))
                         }
                     })
-                    .unwrap_or(CanDerive::No)
+                    .unwrap_or(YDerive::No)
             })
     }
 
@@ -1712,7 +1698,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("compute_cannot_derive_debug");
         assert!(self.cannot_derive_debug.is_none());
         if self.opts.derive_debug {
-            self.cannot_derive_debug = Some(as_cannot_derive_set(analyze::<CannotDerive>((
+            self.cannot_derive_debug = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
                 self,
                 DeriveTrait::Debug,
             ))));
@@ -1733,7 +1719,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("compute_cannot_derive_default");
         assert!(self.cannot_derive_default.is_none());
         if self.opts.derive_default {
-            self.cannot_derive_default = Some(as_cannot_derive_set(analyze::<CannotDerive>((
+            self.cannot_derive_default = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
                 self,
                 DeriveTrait::Default,
             ))));
@@ -1753,14 +1739,20 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_cannot_derive_copy(&mut self) {
         let _t = self.timer("compute_cannot_derive_copy");
         assert!(self.cannot_derive_copy.is_none());
-        self.cannot_derive_copy = Some(as_cannot_derive_set(analyze::<CannotDerive>((self, DeriveTrait::Copy))));
+        self.cannot_derive_copy = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
+            self,
+            DeriveTrait::Copy,
+        ))));
     }
 
     fn compute_cannot_derive_hash(&mut self) {
         let _t = self.timer("compute_cannot_derive_hash");
         assert!(self.cannot_derive_hash.is_none());
         if self.opts.derive_hash {
-            self.cannot_derive_hash = Some(as_cannot_derive_set(analyze::<CannotDerive>((self, DeriveTrait::Hash))));
+            self.cannot_derive_hash = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
+                self,
+                DeriveTrait::Hash,
+            ))));
         }
     }
 
@@ -1779,11 +1771,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.cannot_derive_partialeq_or_partialord.is_none());
         if self.opts.derive_partialord || self.opts.derive_partialeq || self.opts.derive_eq {
             self.cannot_derive_partialeq_or_partialord =
-                Some(analyze::<CannotDerive>((self, DeriveTrait::PartialEqOrPartialOrd)));
+                Some(analyze::<DeriveAnalysis>((self, DeriveTrait::PartialEqOrPartialOrd)));
         }
     }
 
-    pub(crate) fn lookup_can_derive_partialeq_or_partialord<Id: Into<ItemId>>(&self, id: Id) -> CanDerive {
+    pub(crate) fn lookup_can_derive_partialeq_or_partialord<Id: Into<ItemId>>(&self, id: Id) -> YDerive {
         let id = id.into();
         assert!(
             self.in_codegen_phase(),
@@ -1795,7 +1787,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .unwrap()
             .get(&id)
             .cloned()
-            .unwrap_or(CanDerive::Yes)
+            .unwrap_or(YDerive::Yes)
     }
 
     pub(crate) fn lookup_can_derive_copy<Id: Into<ItemId>>(&self, id: Id) -> bool {
@@ -1812,7 +1804,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_has_type_param_in_array(&mut self) {
         let _t = self.timer("compute_has_type_param_in_array");
         assert!(self.has_type_param_in_array.is_none());
-        self.has_type_param_in_array = Some(analyze::<HasTypeParameterInArray>(self));
+        self.has_type_param_in_array = Some(analyze::<HasTyParamInArrayAnalysis>(self));
     }
 
     pub(crate) fn lookup_has_type_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {
@@ -1828,7 +1820,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("compute_has_float");
         assert!(self.has_float.is_none());
         if self.opts.derive_eq || self.opts.derive_ord {
-            self.has_float = Some(analyze::<HasFloat>(self));
+            self.has_float = Some(analyze::<HasFloatAnalysis>(self));
         }
     }
 

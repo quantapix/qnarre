@@ -1,4 +1,4 @@
-use super::derive::CanDerive;
+use super::derive::YDerive;
 use super::ty::{Type, TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
 use crate::clang;
 use crate::ir::context::BindgenContext;
@@ -90,14 +90,14 @@ impl Opaque {
         }
     }
 
-    pub(crate) fn array_size_within_derive_limit(&self, ctx: &BindgenContext) -> CanDerive {
+    pub(crate) fn array_size_within_derive_limit(&self, ctx: &BindgenContext) -> YDerive {
         if self
             .array_size(ctx)
             .map_or(false, |size| size <= RUST_DERIVE_IN_ARRAY_LIMIT)
         {
-            CanDerive::Yes
+            YDerive::Yes
         } else {
-            CanDerive::Manually
+            YDerive::Manually
         }
     }
 }

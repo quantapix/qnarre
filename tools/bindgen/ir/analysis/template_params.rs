@@ -15,7 +15,7 @@ pub(crate) struct UsedTemplateParams<'ctx> {
 }
 
 impl<'ctx> UsedTemplateParams<'ctx> {
-    fn consider_edge(k: EdgeKind) -> bool {
+    fn check_edge(k: EdgeKind) -> bool {
         match k {
             EdgeKind::TemplateArgument
             | EdgeKind::BaseMember
@@ -149,7 +149,7 @@ impl<'ctx> UsedTemplateParams<'ctx> {
         item.trace(
             self.ctx,
             &mut |sub_id, edge_kind| {
-                if sub_id == item.id() || !Self::consider_edge(edge_kind) {
+                if sub_id == item.id() || !Self::check_edge(edge_kind) {
                     return;
                 }
                 let used_by_sub_id = self

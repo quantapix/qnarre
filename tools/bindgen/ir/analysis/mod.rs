@@ -2,15 +2,15 @@ mod template_params;
 pub(crate) use self::template_params::UsedTemplateParams;
 mod derive;
 pub use self::derive::DeriveTrait;
-pub(crate) use self::derive::{as_cannot_derive_set, CannotDerive};
+pub(crate) use self::derive::{as_cannot_derive_set, DeriveAnalysis};
 mod has_vtable;
 pub(crate) use self::has_vtable::{HasVtable, HasVtableAnalysis, YHasVtable};
 mod has_destructor;
 pub(crate) use self::has_destructor::HasDestructorAnalysis;
 mod has_type_param_in_array;
-pub(crate) use self::has_type_param_in_array::HasTypeParameterInArray;
+pub(crate) use self::has_type_param_in_array::HasTyParamInArrayAnalysis;
 mod has_float;
-pub(crate) use self::has_float::HasFloat;
+pub(crate) use self::has_float::HasFloatAnalysis;
 mod sizedness;
 pub(crate) use self::sizedness::{Sizedness, SizednessAnalysis, YSizedness};
 

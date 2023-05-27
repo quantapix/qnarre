@@ -25,8 +25,8 @@ use crate::ir::annotations::{Annotations, FieldAccessorKind, FieldVisibilityKind
 use crate::ir::comp::{Bitfield, BitfieldUnit, CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::derive::{
-    CanDerive, CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd,
-    CanDerivePartialEq, CanDerivePartialOrd,
+    CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
+    CanDerivePartialOrd, YDerive,
 };
 use crate::ir::dot;
 use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
@@ -1809,7 +1809,7 @@ impl CodeGenerator for CompInfo {
         if !derivable_traits.contains(DerivableTraits::PARTIAL_EQ) {
             needs_partialeq_impl = ctx.options().derive_partialeq
                 && ctx.options().impl_partialeq
-                && ctx.lookup_can_derive_partialeq_or_partialord(item.id()) == CanDerive::Manually;
+                && ctx.lookup_can_derive_partialeq_or_partialord(item.id()) == YDerive::Manually;
         }
 
         let mut derives: Vec<_> = derivable_traits.into();

@@ -6,6 +6,13 @@ use crate::ir::ty::TypeKind;
 use crate::{Entry, HashMap};
 use std::{cmp, ops};
 
+pub(crate) trait Sizedness {
+    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness;
+    fn is_zero_sized(&self, ctx: &BindgenContext) -> bool {
+        self.sizedness(ctx) == YSizedness::ZeroSized
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum YSizedness {
     ZeroSized,
@@ -42,11 +49,11 @@ impl ops::BitOrAssign for YSizedness {
 pub(crate) struct SizednessAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
     deps: HashMap<TypeId, Vec<TypeId>>,
-    sized: HashMap<TypeId, YSizedness>,
+    ys: HashMap<TypeId, YSizedness>,
 }
 
 impl<'ctx> SizednessAnalysis<'ctx> {
-    fn consider_edge(k: EdgeKind) -> bool {
+    fn check_edge(k: EdgeKind) -> bool {
         matches!(
             k,
             EdgeKind::TemplateArgument
@@ -63,7 +70,7 @@ impl<'ctx> SizednessAnalysis<'ctx> {
         if let YSizedness::ZeroSized = y {
             return YConstrain::Same;
         }
-        match self.sized.entry(id) {
+        match self.ys.entry(id) {
             Entry::Occupied(mut x) => {
                 if *x.get() < y {
                     x.insert(y);
@@ -80,7 +87,7 @@ impl<'ctx> SizednessAnalysis<'ctx> {
     }
 
     fn forward(&mut self, from: TypeId, to: TypeId) -> YConstrain {
-        match self.sized.get(&from).cloned() {
+        match self.ys.get(&from).cloned() {
             None => YConstrain::Same,
             Some(x) => self.insert(to, x),
         }
@@ -93,7 +100,7 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
     type Output = HashMap<TypeId, YSizedness>;
 
     fn new(ctx: &'ctx BindgenContext) -> SizednessAnalysis<'ctx> {
-        let deps = gen_deps(ctx, Self::consider_edge)
+        let deps = gen_deps(ctx, Self::check_edge)
             .into_iter()
             .filter_map(|(id, subs)| {
                 id.as_type_id(ctx).map(|id| {
@@ -104,8 +111,8 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
                 })
             })
             .collect();
-        let sized = HashMap::default();
-        SizednessAnalysis { ctx, deps, sized }
+        let ys = HashMap::default();
+        SizednessAnalysis { ctx, deps, ys }
     }
 
     fn initial_worklist(&self) -> Vec<TypeId> {
@@ -119,7 +126,7 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
 
     fn constrain(&mut self, id: TypeId) -> YConstrain {
         trace!("constrain {:?}", id);
-        if let Some(YSizedness::NonZeroSized) = self.sized.get(&id).cloned() {
+        if let Some(YSizedness::NonZeroSized) = self.ys.get(&id).cloned() {
             trace!("    already know it is not zero-sized");
             return YConstrain::Same;
         }
@@ -198,7 +205,7 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
                 let result = info
                     .base_members()
                     .iter()
-                    .filter_map(|base| self.sized.get(&base.ty))
+                    .filter_map(|base| self.ys.get(&base.ty))
                     .fold(YSizedness::ZeroSized, |a, b| a.join(*b));
 
                 self.insert(id, result)
@@ -227,14 +234,7 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
 
 impl<'ctx> From<SizednessAnalysis<'ctx>> for HashMap<TypeId, YSizedness> {
     fn from(x: SizednessAnalysis<'ctx>) -> Self {
-        extra_assert!(x.sized.values().all(|v| { *v != YSizedness::ZeroSized }));
-        x.sized
-    }
-}
-
-pub(crate) trait Sizedness {
-    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness;
-    fn is_zero_sized(&self, ctx: &BindgenContext) -> bool {
-        self.sizedness(ctx) == YSizedness::ZeroSized
+        extra_assert!(x.ys.values().all(|x| { *x != YSizedness::ZeroSized }));
+        x.ys
     }
 }

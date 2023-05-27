@@ -7,17 +7,15 @@ use crate::ir::ty::TypeKind;
 use crate::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
-pub(crate) struct HasTypeParameterInArray<'ctx> {
+pub(crate) struct HasTyParamInArrayAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
-
-    has_type_parameter_in_array: HashSet<ItemId>,
-
-    dependencies: HashMap<ItemId, Vec<ItemId>>,
+    ys: HashSet<ItemId>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
-impl<'ctx> HasTypeParameterInArray<'ctx> {
-    fn consider_edge(kind: EdgeKind) -> bool {
-        match kind {
+impl<'ctx> HasTyParamInArrayAnalysis<'ctx> {
+    fn check_edge(k: EdgeKind) -> bool {
+        match k {
             EdgeKind::BaseMember
             | EdgeKind::Field
             | EdgeKind::TypeReference
@@ -40,33 +38,26 @@ impl<'ctx> HasTypeParameterInArray<'ctx> {
     fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} into the has_type_parameter_in_array set", id);
-
-        let was_not_already_in_set = self.has_type_parameter_in_array.insert(id);
+        let was_not_already_in_set = self.ys.insert(id);
         assert!(
             was_not_already_in_set,
             "We shouldn't try and insert {:?} twice because if it was \
              already in the set, `constrain` should have exited early.",
             id
         );
-
         YConstrain::Changed
     }
 }
 
-impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
+impl<'ctx> Monotone for HasTyParamInArrayAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
     type Output = HashSet<ItemId>;
 
-    fn new(ctx: &'ctx BindgenContext) -> HasTypeParameterInArray<'ctx> {
-        let has_type_parameter_in_array = HashSet::default();
-        let dependencies = gen_deps(ctx, Self::consider_edge);
-
-        HasTypeParameterInArray {
-            ctx,
-            has_type_parameter_in_array,
-            dependencies,
-        }
+    fn new(ctx: &'ctx BindgenContext) -> HasTyParamInArrayAnalysis<'ctx> {
+        let ys = HashSet::default();
+        let deps = gen_deps(ctx, Self::check_edge);
+        HasTyParamInArrayAnalysis { ctx, ys, deps }
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
@@ -75,12 +66,10 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
-
-        if self.has_type_parameter_in_array.contains(&id) {
+        if self.ys.contains(&id) {
             trace!("    already know it do not have array");
             return YConstrain::Same;
         }
-
         let item = self.ctx.resolve_item(id);
         let ty = match item.as_type() {
             Some(ty) => ty,
@@ -89,7 +78,6 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
                 return YConstrain::Same;
             },
         };
-
         match *ty.kind() {
             TypeKind::Void
             | TypeKind::NullPtr
@@ -107,7 +95,6 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
                 trace!("    simple type that do not have array");
                 YConstrain::Same
             },
-
             TypeKind::Array(t, _) => {
                 let inner_ty = self.ctx.resolve_type(t).canonical_type(self.ctx);
                 match *inner_ty.kind() {
@@ -126,7 +113,7 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
             | TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t) => {
-                if self.has_type_parameter_in_array.contains(&t.into()) {
+                if self.ys.contains(&t.into()) {
                     trace!(
                         "    aliases and type refs to T which have array \
                          also have array"
@@ -142,16 +129,13 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
             },
 
             TypeKind::Comp(ref info) => {
-                let bases_have = info
-                    .base_members()
-                    .iter()
-                    .any(|base| self.has_type_parameter_in_array.contains(&base.ty.into()));
+                let bases_have = info.base_members().iter().any(|base| self.ys.contains(&base.ty.into()));
                 if bases_have {
                     trace!("    bases have array, so we also have");
                     return self.insert(id);
                 }
                 let fields_have = info.fields().iter().any(|f| match *f {
-                    Field::DataMember(ref data) => self.has_type_parameter_in_array.contains(&data.ty().into()),
+                    Field::DataMember(ref data) => self.ys.contains(&data.ty().into()),
                     Field::Bitfields(..) => false,
                 });
                 if fields_have {
@@ -167,7 +151,7 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
                 let args_have = template
                     .template_arguments()
                     .iter()
-                    .any(|arg| self.has_type_parameter_in_array.contains(&arg.into()));
+                    .any(|arg| self.ys.contains(&arg.into()));
                 if args_have {
                     trace!(
                         "    template args have array, so \
@@ -176,9 +160,7 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
                     return self.insert(id);
                 }
 
-                let def_has = self
-                    .has_type_parameter_in_array
-                    .contains(&template.template_definition().into());
+                let def_has = self.ys.contains(&template.template_definition().into());
                 if def_has {
                     trace!(
                         "    template definition has array, so \
@@ -197,17 +179,17 @@ impl<'ctx> Monotone for HasTypeParameterInArray<'ctx> {
     where
         F: FnMut(ItemId),
     {
-        if let Some(edges) = self.dependencies.get(&id) {
-            for item in edges {
-                trace!("enqueue {:?} into worklist", item);
-                f(*item);
+        if let Some(es) = self.deps.get(&id) {
+            for e in es {
+                trace!("enqueue {:?} into worklist", e);
+                f(*e);
             }
         }
     }
 }
 
-impl<'ctx> From<HasTypeParameterInArray<'ctx>> for HashSet<ItemId> {
-    fn from(analysis: HasTypeParameterInArray<'ctx>) -> Self {
-        analysis.has_type_parameter_in_array
+impl<'ctx> From<HasTyParamInArrayAnalysis<'ctx>> for HashSet<ItemId> {
+    fn from(x: HasTyParamInArrayAnalysis<'ctx>) -> Self {
+        x.ys
     }
 }

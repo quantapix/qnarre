@@ -36,35 +36,32 @@ pub(crate) trait CanDeriveOrd {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum CanDerive {
+pub enum YDerive {
     Yes,
-
     Manually,
-
     No,
 }
 
-impl Default for CanDerive {
-    fn default() -> CanDerive {
-        CanDerive::Yes
+impl Default for YDerive {
+    fn default() -> YDerive {
+        YDerive::Yes
     }
 }
 
-impl CanDerive {
+impl YDerive {
     pub(crate) fn join(self, rhs: Self) -> Self {
         cmp::max(self, rhs)
     }
 }
 
-impl ops::BitOr for CanDerive {
+impl ops::BitOr for YDerive {
     type Output = Self;
-
     fn bitor(self, rhs: Self) -> Self::Output {
         self.join(rhs)
     }
 }
 
-impl ops::BitOrAssign for CanDerive {
+impl ops::BitOrAssign for YDerive {
     fn bitor_assign(&mut self, rhs: Self) {
         *self = self.join(rhs)
     }

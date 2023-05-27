@@ -4,7 +4,7 @@ use super::{gen_deps, Monotone, YConstrain};
 use crate::ir::analysis::has_vtable::HasVtable;
 use crate::ir::comp::CompKind;
 use crate::ir::context::{BindgenContext, ItemId};
-use crate::ir::derive::CanDerive;
+use crate::ir::derive::YDerive;
 use crate::ir::function::FunctionSig;
 use crate::ir::item::{IsOpaque, Item};
 use crate::ir::layout::Layout;
@@ -24,16 +24,16 @@ pub enum DeriveTrait {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct CannotDerive<'ctx> {
+pub(crate) struct DeriveAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
     derive_trait: DeriveTrait,
-    can_derive: HashMap<ItemId, CanDerive>,
+    ys: HashMap<ItemId, YDerive>,
     deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
 type EdgePredicate = fn(EdgeKind) -> bool;
 
-fn consider_edge_default(k: EdgeKind) -> bool {
+fn check_edge_default(k: EdgeKind) -> bool {
     match k {
         EdgeKind::BaseMember
         | EdgeKind::Field
@@ -54,14 +54,14 @@ fn consider_edge_default(k: EdgeKind) -> bool {
     }
 }
 
-impl<'ctx> CannotDerive<'ctx> {
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id, can_derive: CanDerive) -> YConstrain {
+impl<'ctx> DeriveAnalysis<'ctx> {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id, can_derive: YDerive) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} can_derive<{}>={:?}", id, self.derive_trait, can_derive);
-        if let CanDerive::Yes = can_derive {
+        if let YDerive::Yes = can_derive {
             return YConstrain::Same;
         }
-        match self.can_derive.entry(id) {
+        match self.ys.entry(id) {
             Entry::Occupied(mut entry) => {
                 if *entry.get() < can_derive {
                     entry.insert(can_derive);
@@ -77,34 +77,34 @@ impl<'ctx> CannotDerive<'ctx> {
         }
     }
 
-    fn constrain_type(&mut self, item: &Item, ty: &Type) -> CanDerive {
+    fn constrain_type(&mut self, item: &Item, ty: &Type) -> YDerive {
         if !self.ctx.allowed_items().contains(&item.id()) {
             let can_derive = self.ctx.blocklisted_type_implements_trait(item, self.derive_trait);
             match can_derive {
-                CanDerive::Yes => trace!("    blocklisted type explicitly implements {}", self.derive_trait),
-                CanDerive::Manually => trace!(
+                YDerive::Yes => trace!("    blocklisted type explicitly implements {}", self.derive_trait),
+                YDerive::Manually => trace!(
                     "    blocklisted type requires manual implementation of {}",
                     self.derive_trait
                 ),
-                CanDerive::No => trace!("    cannot derive {} for blocklisted type", self.derive_trait),
+                YDerive::No => trace!("    cannot derive {} for blocklisted type", self.derive_trait),
             }
             return can_derive;
         }
         if self.derive_trait.not_by_name(self.ctx, item) {
             trace!("    cannot derive {} for explicitly excluded type", self.derive_trait);
-            return CanDerive::No;
+            return YDerive::No;
         }
         trace!("ty: {:?}", ty);
         if item.is_opaque(self.ctx, &()) {
             if !self.derive_trait.can_derive_union() && ty.is_union() && self.ctx.options().untagged_union {
                 trace!("    cannot derive {} for Rust unions", self.derive_trait);
-                return CanDerive::No;
+                return YDerive::No;
             }
             let layout_can_derive = ty
                 .layout(self.ctx)
-                .map_or(CanDerive::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
+                .map_or(YDerive::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
             match layout_can_derive {
-                CanDerive::Yes => {
+                YDerive::Yes => {
                     trace!("    we can trivially derive {} for the layout", self.derive_trait);
                 },
                 _ => {
@@ -137,25 +137,25 @@ impl<'ctx> CannotDerive<'ctx> {
             TypeKind::Function(ref sig) => self.derive_trait.can_derive_fnptr(sig),
 
             TypeKind::Array(t, len) => {
-                let inner_type = self.can_derive.get(&t.into()).cloned().unwrap_or_default();
-                if inner_type != CanDerive::Yes {
+                let inner_type = self.ys.get(&t.into()).cloned().unwrap_or_default();
+                if inner_type != YDerive::Yes {
                     trace!(
                         "    arrays of T for which we cannot derive {} \
                          also cannot derive {}",
                         self.derive_trait,
                         self.derive_trait
                     );
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
 
                 if len == 0 && !self.derive_trait.can_derive_incomplete_array() {
                     trace!("    cannot derive {} for incomplete arrays", self.derive_trait);
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
 
                 if self.derive_trait.can_derive_large_array(self.ctx) {
                     trace!("    array can derive {}", self.derive_trait);
-                    return CanDerive::Yes;
+                    return YDerive::Yes;
                 }
 
                 if len > RUST_DERIVE_IN_ARRAY_LIMIT {
@@ -163,21 +163,21 @@ impl<'ctx> CannotDerive<'ctx> {
                         "    array is too large to derive {}, but it may be implemented",
                         self.derive_trait
                     );
-                    return CanDerive::Manually;
+                    return YDerive::Manually;
                 }
                 trace!("    array is small enough to derive {}", self.derive_trait);
-                CanDerive::Yes
+                YDerive::Yes
             },
             TypeKind::Vector(t, len) => {
-                let inner_type = self.can_derive.get(&t.into()).cloned().unwrap_or_default();
-                if inner_type != CanDerive::Yes {
+                let inner_type = self.ys.get(&t.into()).cloned().unwrap_or_default();
+                if inner_type != YDerive::Yes {
                     trace!(
                         "    vectors of T for which we cannot derive {} \
                          also cannot derive {}",
                         self.derive_trait,
                         self.derive_trait
                     );
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
                 assert_ne!(len, 0, "vectors cannot have zero length");
                 self.derive_trait.can_derive_vector()
@@ -191,14 +191,14 @@ impl<'ctx> CannotDerive<'ctx> {
 
                 if !self.derive_trait.can_derive_compound_forward_decl() && info.is_forward_declaration() {
                     trace!("    cannot derive {} for forward decls", self.derive_trait);
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
 
                 if !self.derive_trait.can_derive_compound_with_destructor()
                     && self.ctx.lookup_has_destructor(item.id().expect_type_id(self.ctx))
                 {
                     trace!("    comp has destructor which cannot derive {}", self.derive_trait);
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
 
                 if info.kind() == CompKind::Union {
@@ -211,19 +211,19 @@ impl<'ctx> CannotDerive<'ctx> {
                                 "    cannot derive {} for Rust union because issue 36640",
                                 self.derive_trait
                             );
-                            return CanDerive::No;
+                            return YDerive::No;
                         }
                     } else {
                         if self.ctx.options().untagged_union {
                             trace!("    cannot derive {} for Rust unions", self.derive_trait);
-                            return CanDerive::No;
+                            return YDerive::No;
                         }
 
                         let layout_can_derive = ty
                             .layout(self.ctx)
-                            .map_or(CanDerive::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
+                            .map_or(YDerive::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
                         match layout_can_derive {
-                            CanDerive::Yes => {
+                            YDerive::Yes => {
                                 trace!("    union layout can trivially derive {}", self.derive_trait);
                             },
                             _ => {
@@ -236,7 +236,7 @@ impl<'ctx> CannotDerive<'ctx> {
 
                 if !self.derive_trait.can_derive_compound_with_vtable() && item.has_vtable(self.ctx) {
                     trace!("    cannot derive {} for comp with vtable", self.derive_trait);
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
 
                 if !self.derive_trait.can_derive_large_array(self.ctx)
@@ -247,10 +247,10 @@ impl<'ctx> CannotDerive<'ctx> {
                         "    cannot derive {} for comp with too large bitfield unit",
                         self.derive_trait
                     );
-                    return CanDerive::No;
+                    return YDerive::No;
                 }
 
-                let pred = self.derive_trait.consider_edge_comp();
+                let pred = self.derive_trait.check_edge_comp();
                 self.constrain_join(item, pred)
             },
 
@@ -258,12 +258,12 @@ impl<'ctx> CannotDerive<'ctx> {
             | TypeKind::TemplateAlias(..)
             | TypeKind::Alias(..)
             | TypeKind::BlockPointer(..) => {
-                let pred = self.derive_trait.consider_edge_typeref();
+                let pred = self.derive_trait.check_edge_typeref();
                 self.constrain_join(item, pred)
             },
 
             TypeKind::TemplateInstantiation(..) => {
-                let pred = self.derive_trait.consider_edge_tmpl_inst();
+                let pred = self.derive_trait.check_edge_tmpl_inst();
                 self.constrain_join(item, pred)
             },
 
@@ -271,26 +271,26 @@ impl<'ctx> CannotDerive<'ctx> {
         }
     }
 
-    fn constrain_join(&mut self, item: &Item, consider_edge: EdgePredicate) -> CanDerive {
+    fn constrain_join(&mut self, item: &Item, check_edge: EdgePredicate) -> YDerive {
         let mut candidate = None;
 
         item.trace(
             self.ctx,
             &mut |sub_id, edge_kind| {
-                if sub_id == item.id() || !consider_edge(edge_kind) {
+                if sub_id == item.id() || !check_edge(edge_kind) {
                     return;
                 }
-                let can_derive = self.can_derive.get(&sub_id).cloned().unwrap_or_default();
+                let can_derive = self.ys.get(&sub_id).cloned().unwrap_or_default();
                 match can_derive {
-                    CanDerive::Yes => trace!("    member {:?} can derive {}", sub_id, self.derive_trait),
-                    CanDerive::Manually => trace!(
+                    YDerive::Yes => trace!("    member {:?} can derive {}", sub_id, self.derive_trait),
+                    YDerive::Manually => trace!(
                         "    member {:?} cannot derive {}, but it may be implemented",
                         sub_id,
                         self.derive_trait
                     ),
-                    CanDerive::No => trace!("    member {:?} cannot derive {}", sub_id, self.derive_trait),
+                    YDerive::No => trace!("    member {:?} cannot derive {}", sub_id, self.derive_trait),
                 }
-                *candidate.get_or_insert(CanDerive::Yes) |= can_derive;
+                *candidate.get_or_insert(YDerive::Yes) |= can_derive;
             },
             &(),
         );
@@ -312,23 +312,23 @@ impl DeriveTrait {
         }
     }
 
-    fn consider_edge_comp(&self) -> EdgePredicate {
+    fn check_edge_comp(&self) -> EdgePredicate {
         match self {
-            DeriveTrait::PartialEqOrPartialOrd => consider_edge_default,
+            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
             _ => |kind| matches!(kind, EdgeKind::BaseMember | EdgeKind::Field),
         }
     }
 
-    fn consider_edge_typeref(&self) -> EdgePredicate {
+    fn check_edge_typeref(&self) -> EdgePredicate {
         match self {
-            DeriveTrait::PartialEqOrPartialOrd => consider_edge_default,
+            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
             _ => |kind| kind == EdgeKind::TypeReference,
         }
     }
 
-    fn consider_edge_tmpl_inst(&self) -> EdgePredicate {
+    fn check_edge_tmpl_inst(&self) -> EdgePredicate {
         match self {
-            DeriveTrait::PartialEqOrPartialOrd => consider_edge_default,
+            DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
             _ => |kind| matches!(kind, EdgeKind::TemplateArgument | EdgeKind::TemplateDeclaration),
         }
     }
@@ -360,50 +360,50 @@ impl DeriveTrait {
         )
     }
 
-    fn can_derive_fnptr(&self, f: &FunctionSig) -> CanDerive {
+    fn can_derive_fnptr(&self, f: &FunctionSig) -> YDerive {
         match (self, f.function_pointers_can_derive()) {
             (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => {
                 trace!("    function pointer can derive {}", self);
-                CanDerive::Yes
+                YDerive::Yes
             },
             (DeriveTrait::Debug, false) => {
                 trace!("    function pointer cannot derive {}, but it may be implemented", self);
-                CanDerive::Manually
+                YDerive::Manually
             },
             (_, false) => {
                 trace!("    function pointer cannot derive {}", self);
-                CanDerive::No
+                YDerive::No
             },
         }
     }
 
-    fn can_derive_vector(&self) -> CanDerive {
+    fn can_derive_vector(&self) -> YDerive {
         match self {
             DeriveTrait::PartialEqOrPartialOrd => {
                 trace!("    vectors cannot derive PartialOrd");
-                CanDerive::No
+                YDerive::No
             },
             _ => {
                 trace!("    vector can derive {}", self);
-                CanDerive::Yes
+                YDerive::Yes
             },
         }
     }
 
-    fn can_derive_pointer(&self) -> CanDerive {
+    fn can_derive_pointer(&self) -> YDerive {
         match self {
             DeriveTrait::Default => {
                 trace!("    pointer cannot derive Default");
-                CanDerive::No
+                YDerive::No
             },
             _ => {
                 trace!("    pointer can derive {}", self);
-                CanDerive::Yes
+                YDerive::Yes
             },
         }
     }
 
-    fn can_derive_simple(&self, kind: &TypeKind) -> CanDerive {
+    fn can_derive_simple(&self, kind: &TypeKind) -> YDerive {
         match (self, kind) {
             (DeriveTrait::Default, TypeKind::Void)
             | (DeriveTrait::Default, TypeKind::NullPtr)
@@ -411,18 +411,18 @@ impl DeriveTrait {
             | (DeriveTrait::Default, TypeKind::Reference(..))
             | (DeriveTrait::Default, TypeKind::TypeParam) => {
                 trace!("    types that always cannot derive Default");
-                CanDerive::No
+                YDerive::No
             },
             (DeriveTrait::Default, TypeKind::UnresolvedTypeRef(..)) => {
                 unreachable!("Type with unresolved type ref can't reach derive default")
             },
             (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => {
                 trace!("    float cannot derive Hash");
-                CanDerive::No
+                YDerive::No
             },
             _ => {
                 trace!("    simple type that can always derive {}", self);
-                CanDerive::Yes
+                YDerive::Yes
             },
         }
     }
@@ -441,19 +441,19 @@ impl fmt::Display for DeriveTrait {
     }
 }
 
-impl<'ctx> Monotone for CannotDerive<'ctx> {
+impl<'ctx> Monotone for DeriveAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = (&'ctx BindgenContext, DeriveTrait);
-    type Output = HashMap<ItemId, CanDerive>;
+    type Output = HashMap<ItemId, YDerive>;
 
-    fn new((ctx, derive_trait): (&'ctx BindgenContext, DeriveTrait)) -> CannotDerive<'ctx> {
+    fn new((ctx, derive_trait): (&'ctx BindgenContext, DeriveTrait)) -> DeriveAnalysis<'ctx> {
         let can_derive = HashMap::default();
-        let dependencies = gen_deps(ctx, consider_edge_default);
-        CannotDerive {
+        let deps = gen_deps(ctx, check_edge_default);
+        DeriveAnalysis {
             ctx,
             derive_trait,
-            can_derive,
-            deps: dependencies,
+            ys: can_derive,
+            deps,
         }
     }
 
@@ -478,7 +478,7 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
-        if let Some(CanDerive::No) = self.can_derive.get(&id).cloned() {
+        if let Some(YDerive::No) = self.ys.get(&id).cloned() {
             trace!("    already know it cannot derive {}", self.derive_trait);
             return YConstrain::Same;
         }
@@ -486,17 +486,17 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
         let can_derive = match item.as_type() {
             Some(ty) => {
                 let mut can_derive = self.constrain_type(item, ty);
-                if let CanDerive::Yes = can_derive {
+                if let YDerive::Yes = can_derive {
                     let is_reached_limit = |l: Layout| l.align > RUST_DERIVE_IN_ARRAY_LIMIT;
                     if !self.derive_trait.can_derive_large_array(self.ctx)
                         && ty.layout(self.ctx).map_or(false, is_reached_limit)
                     {
-                        can_derive = CanDerive::Manually;
+                        can_derive = YDerive::Manually;
                     }
                 }
                 can_derive
             },
-            None => self.constrain_join(item, consider_edge_default),
+            None => self.constrain_join(item, check_edge_default),
         };
         self.insert(id, can_derive)
     }
@@ -514,16 +514,16 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
     }
 }
 
-impl<'ctx> From<CannotDerive<'ctx>> for HashMap<ItemId, CanDerive> {
-    fn from(x: CannotDerive<'ctx>) -> Self {
-        extra_assert!(x.can_derive.values().all(|v| *v != CanDerive::Yes));
-        x.can_derive
+impl<'ctx> From<DeriveAnalysis<'ctx>> for HashMap<ItemId, YDerive> {
+    fn from(x: DeriveAnalysis<'ctx>) -> Self {
+        extra_assert!(x.ys.values().all(|v| *v != YDerive::Yes));
+        x.ys
     }
 }
 
-pub(crate) fn as_cannot_derive_set(can_derive: HashMap<ItemId, CanDerive>) -> HashSet<ItemId> {
+pub(crate) fn as_cannot_derive_set(can_derive: HashMap<ItemId, YDerive>) -> HashSet<ItemId> {
     can_derive
         .into_iter()
-        .filter_map(|(k, v)| if v != CanDerive::Yes { Some(k) } else { None })
+        .filter_map(|(k, v)| if v != YDerive::Yes { Some(k) } else { None })
         .collect()
 }

@@ -844,7 +844,7 @@ where
     fn sizedness(&self, ctx: &BindgenContext) -> YSizedness {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx)
-            .map_or(YSizedness::default(), |id| ctx.lookup_sizedness(id))
+            .map_or(YSizedness::default(), |x| ctx.lookup_sizedness(x))
     }
 }
 

@@ -7,14 +7,14 @@ use crate::ir::ty::TypeKind;
 use crate::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
-pub(crate) struct HasFloat<'ctx> {
+pub(crate) struct HasFloatAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
-    has_float: HashSet<ItemId>,
+    ys: HashSet<ItemId>,
     deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
-impl<'ctx> HasFloat<'ctx> {
-    fn consider_edge(k: EdgeKind) -> bool {
+impl<'ctx> HasFloatAnalysis<'ctx> {
+    fn check_edge(k: EdgeKind) -> bool {
         match k {
             EdgeKind::BaseMember
             | EdgeKind::Field
@@ -38,7 +38,7 @@ impl<'ctx> HasFloat<'ctx> {
     fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} into the has_float set", id);
-        let was_not_already_in_set = self.has_float.insert(id);
+        let was_not_already_in_set = self.ys.insert(id);
         assert!(
             was_not_already_in_set,
             "We shouldn't try and insert {:?} twice because if it was \
@@ -49,15 +49,15 @@ impl<'ctx> HasFloat<'ctx> {
     }
 }
 
-impl<'ctx> Monotone for HasFloat<'ctx> {
+impl<'ctx> Monotone for HasFloatAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
     type Output = HashSet<ItemId>;
 
-    fn new(ctx: &'ctx BindgenContext) -> HasFloat<'ctx> {
-        let has_float = HashSet::default();
-        let deps = gen_deps(ctx, Self::consider_edge);
-        HasFloat { ctx, has_float, deps }
+    fn new(ctx: &'ctx BindgenContext) -> HasFloatAnalysis<'ctx> {
+        let ys = HashSet::default();
+        let deps = gen_deps(ctx, Self::check_edge);
+        HasFloatAnalysis { ctx, ys, deps }
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
@@ -66,7 +66,7 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
-        if self.has_float.contains(&id) {
+        if self.ys.contains(&id) {
             trace!("    already know it do not have float");
             return YConstrain::Same;
         }
@@ -97,7 +97,7 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 self.insert(id)
             },
             TypeKind::Array(t, _) => {
-                if self.has_float.contains(&t.into()) {
+                if self.ys.contains(&t.into()) {
                     trace!("    Array with type T that has float also has float");
                     return self.insert(id);
                 }
@@ -105,7 +105,7 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 YConstrain::Same
             },
             TypeKind::Vector(t, _) => {
-                if self.has_float.contains(&t.into()) {
+                if self.ys.contains(&t.into()) {
                     trace!("    Vector with type T that has float also has float");
                     return self.insert(id);
                 }
@@ -116,7 +116,7 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
             | TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t) => {
-                if self.has_float.contains(&t.into()) {
+                if self.ys.contains(&t.into()) {
                     trace!(
                         "    aliases and type refs to T which have float \
                          also have float"
@@ -131,19 +131,14 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 }
             },
             TypeKind::Comp(ref info) => {
-                let bases_have = info
-                    .base_members()
-                    .iter()
-                    .any(|base| self.has_float.contains(&base.ty.into()));
+                let bases_have = info.base_members().iter().any(|base| self.ys.contains(&base.ty.into()));
                 if bases_have {
                     trace!("    bases have float, so we also have");
                     return self.insert(id);
                 }
                 let fields_have = info.fields().iter().any(|f| match *f {
-                    Field::DataMember(ref data) => self.has_float.contains(&data.ty().into()),
-                    Field::Bitfields(ref bfu) => {
-                        bfu.bitfields().iter().any(|b| self.has_float.contains(&b.ty().into()))
-                    },
+                    Field::DataMember(ref data) => self.ys.contains(&data.ty().into()),
+                    Field::Bitfields(ref bfu) => bfu.bitfields().iter().any(|b| self.ys.contains(&b.ty().into())),
                 });
                 if fields_have {
                     trace!("    fields have float, so we also have");
@@ -156,7 +151,7 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 let args_have = template
                     .template_arguments()
                     .iter()
-                    .any(|arg| self.has_float.contains(&arg.into()));
+                    .any(|arg| self.ys.contains(&arg.into()));
                 if args_have {
                     trace!(
                         "    template args have float, so \
@@ -165,7 +160,7 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                     return self.insert(id);
                 }
 
-                let def_has = self.has_float.contains(&template.template_definition().into());
+                let def_has = self.ys.contains(&template.template_definition().into());
                 if def_has {
                     trace!(
                         "    template definition has float, so \
@@ -193,8 +188,8 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
     }
 }
 
-impl<'ctx> From<HasFloat<'ctx>> for HashSet<ItemId> {
-    fn from(x: HasFloat<'ctx>) -> Self {
-        x.has_float
+impl<'ctx> From<HasFloatAnalysis<'ctx>> for HashSet<ItemId> {
+    fn from(x: HasFloatAnalysis<'ctx>) -> Self {
+        x.ys
     }
 }
