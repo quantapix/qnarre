@@ -9,15 +9,13 @@ use crate::{HashMap, HashSet};
 #[derive(Debug, Clone)]
 pub(crate) struct HasFloat<'ctx> {
     ctx: &'ctx BindgenContext,
-
     has_float: HashSet<ItemId>,
-
-    dependencies: HashMap<ItemId, Vec<ItemId>>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
 impl<'ctx> HasFloat<'ctx> {
-    fn consider_edge(kind: EdgeKind) -> bool {
-        match kind {
+    fn consider_edge(k: EdgeKind) -> bool {
+        match k {
             EdgeKind::BaseMember
             | EdgeKind::Field
             | EdgeKind::TypeReference
@@ -40,7 +38,6 @@ impl<'ctx> HasFloat<'ctx> {
     fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} into the has_float set", id);
-
         let was_not_already_in_set = self.has_float.insert(id);
         assert!(
             was_not_already_in_set,
@@ -48,7 +45,6 @@ impl<'ctx> HasFloat<'ctx> {
              already in the set, `constrain` should have exited early.",
             id
         );
-
         YConstrain::Changed
     }
 }
@@ -60,13 +56,8 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
 
     fn new(ctx: &'ctx BindgenContext) -> HasFloat<'ctx> {
         let has_float = HashSet::default();
-        let dependencies = gen_deps(ctx, Self::consider_edge);
-
-        HasFloat {
-            ctx,
-            has_float,
-            dependencies,
-        }
+        let deps = gen_deps(ctx, Self::consider_edge);
+        HasFloat { ctx, has_float, deps }
     }
 
     fn initial_worklist(&self) -> Vec<ItemId> {
@@ -75,12 +66,10 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
-
         if self.has_float.contains(&id) {
             trace!("    already know it do not have float");
             return YConstrain::Same;
         }
-
         let item = self.ctx.resolve_item(id);
         let ty = match item.as_type() {
             Some(ty) => ty,
@@ -89,7 +78,6 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 return YConstrain::Same;
             },
         };
-
         match *ty.kind() {
             TypeKind::Void
             | TypeKind::NullPtr
@@ -104,12 +92,10 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 trace!("    simple type that do not have float");
                 YConstrain::Same
             },
-
             TypeKind::Float(..) | TypeKind::Complex(..) => {
                 trace!("    float type has float");
                 self.insert(id)
             },
-
             TypeKind::Array(t, _) => {
                 if self.has_float.contains(&t.into()) {
                     trace!("    Array with type T that has float also has float");
@@ -126,7 +112,6 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                 trace!("    Vector with type T that do not have float also do not have float");
                 YConstrain::Same
             },
-
             TypeKind::ResolvedTypeRef(t)
             | TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
@@ -145,7 +130,6 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                     YConstrain::Same
                 }
             },
-
             TypeKind::Comp(ref info) => {
                 let bases_have = info
                     .base_members()
@@ -165,11 +149,9 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
                     trace!("    fields have float, so we also have");
                     return self.insert(id);
                 }
-
                 trace!("    comp doesn't have float");
                 YConstrain::Same
             },
-
             TypeKind::TemplateInstantiation(ref template) => {
                 let args_have = template
                     .template_arguments()
@@ -202,17 +184,17 @@ impl<'ctx> Monotone for HasFloat<'ctx> {
     where
         F: FnMut(ItemId),
     {
-        if let Some(edges) = self.dependencies.get(&id) {
-            for item in edges {
-                trace!("enqueue {:?} into worklist", item);
-                f(*item);
+        if let Some(es) = self.deps.get(&id) {
+            for e in es {
+                trace!("enqueue {:?} into worklist", e);
+                f(*e);
             }
         }
     }
 }
 
 impl<'ctx> From<HasFloat<'ctx>> for HashSet<ItemId> {
-    fn from(analysis: HasFloat<'ctx>) -> Self {
-        analysis.has_float
+    fn from(x: HasFloat<'ctx>) -> Self {
+        x.has_float
     }
 }

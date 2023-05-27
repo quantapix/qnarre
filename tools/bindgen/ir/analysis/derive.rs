@@ -26,18 +26,15 @@ pub enum DeriveTrait {
 #[derive(Debug, Clone)]
 pub(crate) struct CannotDerive<'ctx> {
     ctx: &'ctx BindgenContext,
-
     derive_trait: DeriveTrait,
-
     can_derive: HashMap<ItemId, CanDerive>,
-
-    dependencies: HashMap<ItemId, Vec<ItemId>>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
 type EdgePredicate = fn(EdgeKind) -> bool;
 
-fn consider_edge_default(kind: EdgeKind) -> bool {
-    match kind {
+fn consider_edge_default(k: EdgeKind) -> bool {
+    match k {
         EdgeKind::BaseMember
         | EdgeKind::Field
         | EdgeKind::TypeReference
@@ -61,11 +58,9 @@ impl<'ctx> CannotDerive<'ctx> {
     fn insert<Id: Into<ItemId>>(&mut self, id: Id, can_derive: CanDerive) -> YConstrain {
         let id = id.into();
         trace!("inserting {:?} can_derive<{}>={:?}", id, self.derive_trait, can_derive);
-
         if let CanDerive::Yes = can_derive {
             return YConstrain::Same;
         }
-
         match self.can_derive.entry(id) {
             Entry::Occupied(mut entry) => {
                 if *entry.get() < can_derive {
@@ -95,23 +90,19 @@ impl<'ctx> CannotDerive<'ctx> {
             }
             return can_derive;
         }
-
         if self.derive_trait.not_by_name(self.ctx, item) {
             trace!("    cannot derive {} for explicitly excluded type", self.derive_trait);
             return CanDerive::No;
         }
-
         trace!("ty: {:?}", ty);
         if item.is_opaque(self.ctx, &()) {
             if !self.derive_trait.can_derive_union() && ty.is_union() && self.ctx.options().untagged_union {
                 trace!("    cannot derive {} for Rust unions", self.derive_trait);
                 return CanDerive::No;
             }
-
             let layout_can_derive = ty
                 .layout(self.ctx)
                 .map_or(CanDerive::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
-
             match layout_can_derive {
                 CanDerive::Yes => {
                     trace!("    we can trivially derive {} for the layout", self.derive_trait);
@@ -289,9 +280,7 @@ impl<'ctx> CannotDerive<'ctx> {
                 if sub_id == item.id() || !consider_edge(edge_kind) {
                     return;
                 }
-
                 let can_derive = self.can_derive.get(&sub_id).cloned().unwrap_or_default();
-
                 match can_derive {
                     CanDerive::Yes => trace!("    member {:?} can derive {}", sub_id, self.derive_trait),
                     CanDerive::Manually => trace!(
@@ -301,12 +290,10 @@ impl<'ctx> CannotDerive<'ctx> {
                     ),
                     CanDerive::No => trace!("    member {:?} cannot derive {}", sub_id, self.derive_trait),
                 }
-
                 *candidate.get_or_insert(CanDerive::Yes) |= can_derive;
             },
             &(),
         );
-
         if candidate.is_none() {
             trace!("    can derive {} because there are no members", self.derive_trait);
         }
@@ -462,12 +449,11 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
     fn new((ctx, derive_trait): (&'ctx BindgenContext, DeriveTrait)) -> CannotDerive<'ctx> {
         let can_derive = HashMap::default();
         let dependencies = gen_deps(ctx, consider_edge_default);
-
         CannotDerive {
             ctx,
             derive_trait,
             can_derive,
-            dependencies,
+            deps: dependencies,
         }
     }
 
@@ -477,27 +463,25 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
             .iter()
             .cloned()
             .flat_map(|i| {
-                let mut reachable = vec![i];
+                let mut ys = vec![i];
                 i.trace(
                     self.ctx,
-                    &mut |s, _| {
-                        reachable.push(s);
+                    &mut |i2, _| {
+                        ys.push(i2);
                     },
                     &(),
                 );
-                reachable
+                ys
             })
             .collect()
     }
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
         trace!("constrain: {:?}", id);
-
         if let Some(CanDerive::No) = self.can_derive.get(&id).cloned() {
             trace!("    already know it cannot derive {}", self.derive_trait);
             return YConstrain::Same;
         }
-
         let item = self.ctx.resolve_item(id);
         let can_derive = match item.as_type() {
             Some(ty) => {
@@ -514,7 +498,6 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
             },
             None => self.constrain_join(item, consider_edge_default),
         };
-
         self.insert(id, can_derive)
     }
 
@@ -522,20 +505,19 @@ impl<'ctx> Monotone for CannotDerive<'ctx> {
     where
         F: FnMut(ItemId),
     {
-        if let Some(edges) = self.dependencies.get(&id) {
-            for item in edges {
-                trace!("enqueue {:?} into worklist", item);
-                f(*item);
+        if let Some(es) = self.deps.get(&id) {
+            for e in es {
+                trace!("enqueue {:?} into worklist", e);
+                f(*e);
             }
         }
     }
 }
 
 impl<'ctx> From<CannotDerive<'ctx>> for HashMap<ItemId, CanDerive> {
-    fn from(analysis: CannotDerive<'ctx>) -> Self {
-        extra_assert!(analysis.can_derive.values().all(|v| *v != CanDerive::Yes));
-
-        analysis.can_derive
+    fn from(x: CannotDerive<'ctx>) -> Self {
+        extra_assert!(x.can_derive.values().all(|v| *v != CanDerive::Yes));
+        x.can_derive
     }
 }
 

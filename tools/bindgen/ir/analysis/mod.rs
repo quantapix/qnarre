@@ -4,7 +4,7 @@ mod derive;
 pub use self::derive::DeriveTrait;
 pub(crate) use self::derive::{as_cannot_derive_set, CannotDerive};
 mod has_vtable;
-pub(crate) use self::has_vtable::{HasVtable, HasVtableAnalysis, HasVtableResult};
+pub(crate) use self::has_vtable::{HasVtable, HasVtableAnalysis, YHasVtable};
 mod has_destructor;
 pub(crate) use self::has_destructor::HasDestructorAnalysis;
 mod has_type_param_in_array;

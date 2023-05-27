@@ -7,36 +7,33 @@ use std::cmp;
 use std::ops;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum HasVtableResult {
+pub(crate) enum YHasVtable {
     No,
-
     SelfHasVtable,
-
     BaseHasVtable,
 }
 
-impl Default for HasVtableResult {
+impl Default for YHasVtable {
     fn default() -> Self {
-        HasVtableResult::No
+        YHasVtable::No
     }
 }
 
-impl HasVtableResult {
+impl YHasVtable {
     pub(crate) fn join(self, rhs: Self) -> Self {
         cmp::max(self, rhs)
     }
 }
 
-impl ops::BitOr for HasVtableResult {
+impl ops::BitOr for YHasVtable {
     type Output = Self;
-
-    fn bitor(self, rhs: HasVtableResult) -> Self::Output {
+    fn bitor(self, rhs: YHasVtable) -> Self::Output {
         self.join(rhs)
     }
 }
 
-impl ops::BitOrAssign for HasVtableResult {
-    fn bitor_assign(&mut self, rhs: HasVtableResult) {
+impl ops::BitOrAssign for YHasVtable {
+    fn bitor_assign(&mut self, rhs: YHasVtable) {
         *self = self.join(rhs)
     }
 }
@@ -44,10 +41,8 @@ impl ops::BitOrAssign for HasVtableResult {
 #[derive(Debug, Clone)]
 pub(crate) struct HasVtableAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
-
-    have_vtable: HashMap<ItemId, HasVtableResult>,
-
-    dependencies: HashMap<ItemId, Vec<ItemId>>,
+    have_vtable: HashMap<ItemId, YHasVtable>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
 impl<'ctx> HasVtableAnalysis<'ctx> {
@@ -58,11 +53,10 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
         )
     }
 
-    fn insert<Id: Into<ItemId>>(&mut self, id: Id, result: HasVtableResult) -> YConstrain {
-        if let HasVtableResult::No = result {
+    fn insert<Id: Into<ItemId>>(&mut self, id: Id, result: YHasVtable) -> YConstrain {
+        if let YHasVtable::No = result {
             return YConstrain::Same;
         }
-
         let id = id.into();
         match self.have_vtable.entry(id) {
             Entry::Occupied(mut entry) => {
@@ -87,7 +81,6 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
     {
         let from = from.into();
         let to = to.into();
-
         match self.have_vtable.get(&from).cloned() {
             None => YConstrain::Same,
             Some(r) => self.insert(to, r),
@@ -98,7 +91,7 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
 impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
-    type Output = HashMap<ItemId, HasVtableResult>;
+    type Output = HashMap<ItemId, YHasVtable>;
 
     fn new(ctx: &'ctx BindgenContext) -> HasVtableAnalysis<'ctx> {
         let have_vtable = HashMap::default();
@@ -107,7 +100,7 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
         HasVtableAnalysis {
             ctx,
             have_vtable,
-            dependencies,
+            deps: dependencies,
         }
     }
 
@@ -135,11 +128,11 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
 
             TypeKind::Comp(ref info) => {
                 trace!("    comp considers its own methods and bases");
-                let mut result = HasVtableResult::No;
+                let mut result = YHasVtable::No;
 
                 if info.has_own_virtual_method() {
                     trace!("    comp has its own virtual method");
-                    result |= HasVtableResult::SelfHasVtable;
+                    result |= YHasVtable::SelfHasVtable;
                 }
 
                 let bases_has_vtable = info.base_members().iter().any(|base| {
@@ -147,7 +140,7 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
                     self.have_vtable.contains_key(&base.ty.into())
                 });
                 if bases_has_vtable {
-                    result |= HasVtableResult::BaseHasVtable;
+                    result |= YHasVtable::BaseHasVtable;
                 }
 
                 self.insert(id, result)
@@ -163,7 +156,7 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
     where
         F: FnMut(ItemId),
     {
-        if let Some(edges) = self.dependencies.get(&id) {
+        if let Some(edges) = self.deps.get(&id) {
             for item in edges {
                 trace!("enqueue {:?} into worklist", item);
                 f(*item);
@@ -172,9 +165,9 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
     }
 }
 
-impl<'ctx> From<HasVtableAnalysis<'ctx>> for HashMap<ItemId, HasVtableResult> {
+impl<'ctx> From<HasVtableAnalysis<'ctx>> for HashMap<ItemId, YHasVtable> {
     fn from(analysis: HasVtableAnalysis<'ctx>) -> Self {
-        extra_assert!(analysis.have_vtable.values().all(|v| { *v != HasVtableResult::No }));
+        extra_assert!(analysis.have_vtable.values().all(|v| { *v != YHasVtable::No }));
 
         analysis.have_vtable
     }
@@ -182,6 +175,5 @@ impl<'ctx> From<HasVtableAnalysis<'ctx>> for HashMap<ItemId, HasVtableResult> {
 
 pub(crate) trait HasVtable {
     fn has_vtable(&self, ctx: &BindgenContext) -> bool;
-
     fn has_vtable_ptr(&self, ctx: &BindgenContext) -> bool;
 }

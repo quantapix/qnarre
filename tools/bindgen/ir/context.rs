@@ -1,7 +1,7 @@
 use super::super::timer::Timer;
 use super::analysis::{
     analyze, as_cannot_derive_set, CannotDerive, DeriveTrait, HasDestructorAnalysis, HasFloat, HasTypeParameterInArray,
-    HasVtableAnalysis, HasVtableResult, SizednessAnalysis, UsedTemplateParams, YSizedness,
+    HasVtableAnalysis, SizednessAnalysis, UsedTemplateParams, YHasVtable, YSizedness,
 };
 use super::derive::{
     CanDerive, CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd,
@@ -260,7 +260,7 @@ pub(crate) struct BindgenContext {
     has_float: Option<HashSet<ItemId>>,
     has_type_param_in_array: Option<HashSet<ItemId>>,
     have_destructor: Option<HashSet<ItemId>>,
-    have_vtable: Option<HashMap<ItemId, HasVtableResult>>,
+    have_vtable: Option<HashMap<ItemId, YHasVtable>>,
     in_codegen: bool,
     items: Vec<Option<Item>>,
     modules: HashMap<Cursor, ModuleId>,
@@ -866,7 +866,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.have_vtable = Some(analyze::<HasVtableAnalysis>(self));
     }
 
-    pub(crate) fn lookup_has_vtable(&self, id: TypeId) -> HasVtableResult {
+    pub(crate) fn lookup_has_vtable(&self, id: TypeId) -> YHasVtable {
         assert!(self.in_codegen_phase(), "We only compute vtables when we enter codegen");
 
         self.have_vtable
@@ -874,7 +874,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .unwrap()
             .get(&id.into())
             .cloned()
-            .unwrap_or(HasVtableResult::No)
+            .unwrap_or(YHasVtable::No)
     }
 
     fn compute_has_destructor(&mut self) {

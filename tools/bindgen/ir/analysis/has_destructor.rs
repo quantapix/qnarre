@@ -8,16 +8,14 @@ use crate::{HashMap, HashSet};
 #[derive(Debug, Clone)]
 pub(crate) struct HasDestructorAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
-
     have_destructor: HashSet<ItemId>,
-
-    dependencies: HashMap<ItemId, Vec<ItemId>>,
+    deps: HashMap<ItemId, Vec<ItemId>>,
 }
 
 impl<'ctx> HasDestructorAnalysis<'ctx> {
-    fn consider_edge(kind: EdgeKind) -> bool {
+    fn consider_edge(k: EdgeKind) -> bool {
         matches!(
-            kind,
+            k,
             EdgeKind::TypeReference
                 | EdgeKind::BaseMember
                 | EdgeKind::Field
@@ -51,7 +49,7 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
         HasDestructorAnalysis {
             ctx,
             have_destructor,
-            dependencies,
+            deps: dependencies,
         }
     }
 
@@ -125,10 +123,10 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
     where
         F: FnMut(ItemId),
     {
-        if let Some(edges) = self.dependencies.get(&id) {
-            for item in edges {
-                trace!("enqueue {:?} into worklist", item);
-                f(*item);
+        if let Some(es) = self.deps.get(&id) {
+            for e in es {
+                trace!("enqueue {:?} into worklist", e);
+                f(*e);
             }
         }
     }

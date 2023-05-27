@@ -1,5 +1,5 @@
 use super::super::codegen::{EnumVariation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
-use super::analysis::{HasVtable, HasVtableResult, Sizedness, YSizedness};
+use super::analysis::{HasVtable, Sizedness, YHasVtable, YSizedness};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::context::{BindgenContext, ItemId, PartialType, TypeId};
@@ -816,13 +816,13 @@ where
     fn has_vtable(&self, ctx: &BindgenContext) -> bool {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx)
-            .map_or(false, |id| !matches!(ctx.lookup_has_vtable(id), HasVtableResult::No))
+            .map_or(false, |id| !matches!(ctx.lookup_has_vtable(id), YHasVtable::No))
     }
 
     fn has_vtable_ptr(&self, ctx: &BindgenContext) -> bool {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx).map_or(false, |id| {
-            matches!(ctx.lookup_has_vtable(id), HasVtableResult::SelfHasVtable)
+            matches!(ctx.lookup_has_vtable(id), YHasVtable::SelfHasVtable)
         })
     }
 }
