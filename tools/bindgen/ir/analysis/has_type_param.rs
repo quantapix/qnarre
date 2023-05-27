@@ -59,16 +59,13 @@ impl<'ctx> Monotone for HasTyParamInArrayAnalysis<'ctx> {
     }
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
-        trace!("constrain: {:?}", id);
         if self.ys.contains(&id) {
-            trace!("    already know it do not have array");
             return YConstrain::Same;
         }
-        let item = self.ctx.resolve_item(id);
-        let ty = match item.as_type() {
+        let i = self.ctx.resolve_item(id);
+        let ty = match i.as_type() {
             Some(ty) => ty,
             None => {
-                trace!("    not a type; ignoring");
                 return YConstrain::Same;
             },
         };
@@ -85,85 +82,47 @@ impl<'ctx> Monotone for HasTyParamInArrayAnalysis<'ctx> {
             | TypeKind::TypeParam
             | TypeKind::Opaque
             | TypeKind::Pointer(..)
-            | TypeKind::UnresolvedTypeRef(..) => {
-                trace!("    simple type that do not have array");
-                YConstrain::Same
-            },
+            | TypeKind::UnresolvedTypeRef(..) => YConstrain::Same,
             TypeKind::Array(t, _) => {
-                let inner_ty = self.ctx.resolve_type(t).canonical_type(self.ctx);
-                match *inner_ty.kind() {
-                    TypeKind::TypeParam => {
-                        trace!("    Array with Named type has type parameter");
-                        self.insert(id)
-                    },
-                    _ => {
-                        trace!("    Array without Named type does have type parameter");
-                        YConstrain::Same
-                    },
+                let ty2 = self.ctx.resolve_type(t).canonical_type(self.ctx);
+                match *ty2.kind() {
+                    TypeKind::TypeParam => self.insert(id),
+                    _ => YConstrain::Same,
                 }
             },
-
             TypeKind::ResolvedTypeRef(t)
             | TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t) => {
                 if self.ys.contains(&t.into()) {
-                    trace!(
-                        "    aliases and type refs to T which have array \
-                         also have array"
-                    );
                     self.insert(id)
                 } else {
-                    trace!(
-                        "    aliases and type refs to T which do not have array \
-                            also do not have array"
-                    );
                     YConstrain::Same
                 }
             },
-
             TypeKind::Comp(ref info) => {
-                let bases_have = info.base_members().iter().any(|base| self.ys.contains(&base.ty.into()));
-                if bases_have {
-                    trace!("    bases have array, so we also have");
+                let bases = info.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
+                if bases {
                     return self.insert(id);
                 }
-                let fields_have = info.fields().iter().any(|f| match *f {
-                    Field::DataMember(ref data) => self.ys.contains(&data.ty().into()),
+                let fields = info.fields().iter().any(|x| match *x {
+                    Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
                     Field::Bitfields(..) => false,
                 });
-                if fields_have {
-                    trace!("    fields have array, so we also have");
+                if fields {
                     return self.insert(id);
                 }
-
-                trace!("    comp doesn't have array");
                 YConstrain::Same
             },
-
-            TypeKind::TemplateInstantiation(ref template) => {
-                let args_have = template
-                    .template_arguments()
-                    .iter()
-                    .any(|arg| self.ys.contains(&arg.into()));
-                if args_have {
-                    trace!(
-                        "    template args have array, so \
-                         insantiation also has array"
-                    );
+            TypeKind::TemplateInstantiation(ref t) => {
+                let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                if args {
                     return self.insert(id);
                 }
-
-                let def_has = self.ys.contains(&template.template_definition().into());
-                if def_has {
-                    trace!(
-                        "    template definition has array, so \
-                         insantiation also has"
-                    );
+                let def = self.ys.contains(&t.template_definition().into());
+                if def {
                     return self.insert(id);
                 }
-
-                trace!("    template instantiation do not have array");
                 YConstrain::Same
             },
         }
@@ -175,7 +134,6 @@ impl<'ctx> Monotone for HasTyParamInArrayAnalysis<'ctx> {
     {
         if let Some(es) = self.deps.get(&id) {
             for e in es {
-                trace!("enqueue {:?} into worklist", e);
                 f(*e);
             }
         }

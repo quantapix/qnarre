@@ -8,8 +8,8 @@ use crate::{HashMap, HashSet};
 #[derive(Debug, Clone)]
 pub(crate) struct HasDestructorAnalysis<'ctx> {
     ctx: &'ctx BindgenContext,
-    ys: HashSet<ItemId>,
     deps: HashMap<ItemId, Vec<ItemId>>,
+    ys: HashSet<ItemId>,
 }
 
 impl<'ctx> HasDestructorAnalysis<'ctx> {
@@ -50,8 +50,8 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
         if self.ys.contains(&id) {
             return YConstrain::Same;
         }
-        let item = self.ctx.resolve_item(id);
-        let ty = match item.as_type() {
+        let i = self.ctx.resolve_item(id);
+        let ty = match i.as_type() {
             None => return YConstrain::Same,
             Some(ty) => ty,
         };
@@ -63,21 +63,19 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
                     YConstrain::Same
                 }
             },
-            TypeKind::Comp(ref info) => {
-                if info.has_own_destructor() {
+            TypeKind::Comp(ref x) => {
+                if x.has_own_destructor() {
                     return self.insert(id);
                 }
-
-                match info.kind() {
+                match x.kind() {
                     CompKind::Union => YConstrain::Same,
                     CompKind::Struct => {
-                        let base_or_field_destructor =
-                            info.base_members().iter().any(|base| self.ys.contains(&base.ty.into()))
-                                || info.fields().iter().any(|field| match *field {
-                                    Field::DataMember(ref data) => self.ys.contains(&data.ty().into()),
-                                    Field::Bitfields(_) => false,
-                                });
-                        if base_or_field_destructor {
+                        let destr = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()))
+                            || x.fields().iter().any(|x| match *x {
+                                Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
+                                Field::Bitfields(_) => false,
+                            });
+                        if destr {
                             self.insert(id)
                         } else {
                             YConstrain::Same
@@ -85,13 +83,10 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
                     },
                 }
             },
-            TypeKind::TemplateInstantiation(ref inst) => {
-                let definition_or_arg_destructor = self.ys.contains(&inst.template_definition().into())
-                    || inst
-                        .template_arguments()
-                        .iter()
-                        .any(|arg| self.ys.contains(&arg.into()));
-                if definition_or_arg_destructor {
+            TypeKind::TemplateInstantiation(ref t) => {
+                let destr = self.ys.contains(&t.template_definition().into())
+                    || t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                if destr {
                     self.insert(id)
                 } else {
                     YConstrain::Same
@@ -107,7 +102,6 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
     {
         if let Some(es) = self.deps.get(&id) {
             for e in es {
-                trace!("enqueue {:?} into worklist", e);
                 f(*e);
             }
         }

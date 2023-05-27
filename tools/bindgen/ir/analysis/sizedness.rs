@@ -101,13 +101,9 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
     fn new(ctx: &'ctx BindgenContext) -> SizednessAnalysis<'ctx> {
         let deps = gen_deps(ctx, Self::check_edge)
             .into_iter()
-            .filter_map(|(id, subs)| {
-                id.as_type_id(ctx).map(|id| {
-                    (
-                        id,
-                        subs.into_iter().filter_map(|x| x.as_type_id(ctx)).collect::<Vec<_>>(),
-                    )
-                })
+            .filter_map(|(i, i2)| {
+                i.as_type_id(ctx)
+                    .map(|i| (i, i2.into_iter().filter_map(|x| x.as_type_id(ctx)).collect::<Vec<_>>()))
             })
             .collect();
         let ys = HashMap::default();
@@ -124,41 +120,26 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
     }
 
     fn constrain(&mut self, id: TypeId) -> YConstrain {
-        trace!("constrain {:?}", id);
         if let Some(YSizedness::NonZeroSized) = self.ys.get(&id).cloned() {
-            trace!("    already know it is not zero-sized");
             return YConstrain::Same;
         }
         if id.has_vtable_ptr(self.ctx) {
-            trace!("    has an explicit vtable pointer, therefore is not zero-sized");
             return self.insert(id, YSizedness::NonZeroSized);
         }
         let ty = self.ctx.resolve_type(id);
         if id.is_opaque(self.ctx, &()) {
-            trace!("    type is opaque; checking layout...");
-            let result = ty.layout(self.ctx).map_or(YSizedness::ZeroSized, |l| {
-                if l.size == 0 {
-                    trace!("    ...layout has size == 0");
+            let y = ty.layout(self.ctx).map_or(YSizedness::ZeroSized, |x| {
+                if x.size == 0 {
                     YSizedness::ZeroSized
                 } else {
-                    trace!("    ...layout has size > 0");
                     YSizedness::NonZeroSized
                 }
             });
-            return self.insert(id, result);
+            return self.insert(id, y);
         }
         match *ty.kind() {
-            TypeKind::Void => {
-                trace!("    void is zero-sized");
-                self.insert(id, YSizedness::ZeroSized)
-            },
-            TypeKind::TypeParam => {
-                trace!(
-                    "    type params sizedness depends on what they're \
-                     instantiated as"
-                );
-                self.insert(id, YSizedness::DependsOnTypeParam)
-            },
+            TypeKind::Void => self.insert(id, YSizedness::ZeroSized),
+            TypeKind::TypeParam => self.insert(id, YSizedness::DependsOnTypeParam),
             TypeKind::Int(..)
             | TypeKind::Float(..)
             | TypeKind::Complex(..)
@@ -166,48 +147,26 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
             | TypeKind::Enum(..)
             | TypeKind::Reference(..)
             | TypeKind::NullPtr
-            | TypeKind::Pointer(..) => {
-                trace!("    {:?} is known not to be zero-sized", ty.kind());
-                self.insert(id, YSizedness::NonZeroSized)
-            },
+            | TypeKind::Pointer(..) => self.insert(id, YSizedness::NonZeroSized),
             TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t)
-            | TypeKind::ResolvedTypeRef(t) => {
-                trace!("    aliases and type refs forward to their inner type");
-                self.forward(t, id)
-            },
-            TypeKind::TemplateInstantiation(ref inst) => {
-                trace!(
-                    "    template instantiations are zero-sized if their \
-                     definition is zero-sized"
-                );
-                self.forward(inst.template_definition(), id)
-            },
-            TypeKind::Array(_, 0) => {
-                trace!("    arrays of zero elements are zero-sized");
-                self.insert(id, YSizedness::ZeroSized)
-            },
-            TypeKind::Array(..) => {
-                trace!("    arrays of > 0 elements are not zero-sized");
-                self.insert(id, YSizedness::NonZeroSized)
-            },
-            TypeKind::Vector(..) => {
-                trace!("    vectors are not zero-sized");
-                self.insert(id, YSizedness::NonZeroSized)
-            },
-            TypeKind::Comp(ref info) => {
-                trace!("    comp considers its own fields and bases");
-                if !info.fields().is_empty() {
+            | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
+            TypeKind::TemplateInstantiation(ref inst) => self.forward(inst.template_definition(), id),
+            TypeKind::Array(_, 0) => self.insert(id, YSizedness::ZeroSized),
+            TypeKind::Array(..) => self.insert(id, YSizedness::NonZeroSized),
+            TypeKind::Vector(..) => self.insert(id, YSizedness::NonZeroSized),
+            TypeKind::Comp(ref x) => {
+                if !x.fields().is_empty() {
                     return self.insert(id, YSizedness::NonZeroSized);
                 }
-                let result = info
+                let y = x
                     .base_members()
                     .iter()
-                    .filter_map(|base| self.ys.get(&base.ty))
+                    .filter_map(|x| self.ys.get(&x.ty))
                     .fold(YSizedness::ZeroSized, |a, b| a.join(*b));
 
-                self.insert(id, result)
+                self.insert(id, y)
             },
             TypeKind::Opaque => {
                 unreachable!("covered by the .is_opaque() check above")
@@ -224,7 +183,6 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
     {
         if let Some(es) = self.deps.get(&id) {
             for e in es {
-                trace!("enqueue {:?} into worklist", e);
                 f(*e);
             }
         }

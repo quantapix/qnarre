@@ -59,16 +59,13 @@ impl<'ctx> Monotone for HasFloatAnalysis<'ctx> {
     }
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
-        trace!("constrain: {:?}", id);
         if self.ys.contains(&id) {
-            trace!("    already know it do not have float");
             return YConstrain::Same;
         }
-        let item = self.ctx.resolve_item(id);
-        let ty = match item.as_type() {
+        let i = self.ctx.resolve_item(id);
+        let ty = match i.as_type() {
             Some(ty) => ty,
             None => {
-                trace!("    not a type; ignoring");
                 return YConstrain::Same;
             },
         };
@@ -82,28 +79,18 @@ impl<'ctx> Monotone for HasFloatAnalysis<'ctx> {
             | TypeKind::TypeParam
             | TypeKind::Opaque
             | TypeKind::Pointer(..)
-            | TypeKind::UnresolvedTypeRef(..) => {
-                trace!("    simple type that do not have float");
-                YConstrain::Same
-            },
-            TypeKind::Float(..) | TypeKind::Complex(..) => {
-                trace!("    float type has float");
-                self.insert(id)
-            },
+            | TypeKind::UnresolvedTypeRef(..) => YConstrain::Same,
+            TypeKind::Float(..) | TypeKind::Complex(..) => self.insert(id),
             TypeKind::Array(t, _) => {
                 if self.ys.contains(&t.into()) {
-                    trace!("    Array with type T that has float also has float");
                     return self.insert(id);
                 }
-                trace!("    Array with type T that do not have float also do not have float");
                 YConstrain::Same
             },
             TypeKind::Vector(t, _) => {
                 if self.ys.contains(&t.into()) {
-                    trace!("    Vector with type T that has float also has float");
                     return self.insert(id);
                 }
-                trace!("    Vector with type T that do not have float also do not have float");
                 YConstrain::Same
             },
             TypeKind::ResolvedTypeRef(t)
@@ -111,59 +98,34 @@ impl<'ctx> Monotone for HasFloatAnalysis<'ctx> {
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t) => {
                 if self.ys.contains(&t.into()) {
-                    trace!(
-                        "    aliases and type refs to T which have float \
-                         also have float"
-                    );
                     self.insert(id)
                 } else {
-                    trace!(
-                        "    aliases and type refs to T which do not have float \
-                            also do not have floaarrayt"
-                    );
                     YConstrain::Same
                 }
             },
-            TypeKind::Comp(ref info) => {
-                let bases_have = info.base_members().iter().any(|base| self.ys.contains(&base.ty.into()));
-                if bases_have {
-                    trace!("    bases have float, so we also have");
+            TypeKind::Comp(ref x) => {
+                let bases = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
+                if bases {
                     return self.insert(id);
                 }
-                let fields_have = info.fields().iter().any(|f| match *f {
-                    Field::DataMember(ref data) => self.ys.contains(&data.ty().into()),
-                    Field::Bitfields(ref bfu) => bfu.bitfields().iter().any(|b| self.ys.contains(&b.ty().into())),
+                let fields = x.fields().iter().any(|x| match *x {
+                    Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
+                    Field::Bitfields(ref x) => x.bitfields().iter().any(|x| self.ys.contains(&x.ty().into())),
                 });
-                if fields_have {
-                    trace!("    fields have float, so we also have");
+                if fields {
                     return self.insert(id);
                 }
-                trace!("    comp doesn't have float");
                 YConstrain::Same
             },
-            TypeKind::TemplateInstantiation(ref template) => {
-                let args_have = template
-                    .template_arguments()
-                    .iter()
-                    .any(|arg| self.ys.contains(&arg.into()));
-                if args_have {
-                    trace!(
-                        "    template args have float, so \
-                         insantiation also has float"
-                    );
+            TypeKind::TemplateInstantiation(ref t) => {
+                let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                if args {
                     return self.insert(id);
                 }
-
-                let def_has = self.ys.contains(&template.template_definition().into());
-                if def_has {
-                    trace!(
-                        "    template definition has float, so \
-                         insantiation also has"
-                    );
+                let def = self.ys.contains(&t.template_definition().into());
+                if def {
                     return self.insert(id);
                 }
-
-                trace!("    template instantiation do not have float");
                 YConstrain::Same
             },
         }
@@ -175,7 +137,6 @@ impl<'ctx> Monotone for HasFloatAnalysis<'ctx> {
     {
         if let Some(es) = self.deps.get(&id) {
             for e in es {
-                trace!("enqueue {:?} into worklist", e);
                 f(*e);
             }
         }

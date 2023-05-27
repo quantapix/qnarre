@@ -33,10 +33,10 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
         }
     }
 
-    fn take_this_id_usage_set<Id: Into<ItemId>>(&mut self, this_id: Id) -> ItemSet {
-        let this_id = this_id.into();
+    fn take_this_id_usage_set<Id: Into<ItemId>>(&mut self, id: Id) -> ItemSet {
+        let id = id.into();
         self.ys
-            .get_mut(&this_id)
+            .get_mut(&id)
             .expect(
                 "Should have a set of used template params for every item \
                  id",
@@ -50,15 +50,11 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
 
     fn constrain_instantiation_of_blocklisted_template(
         &self,
-        this_id: ItemId,
-        used_by_this_id: &mut ItemSet,
-        instantiation: &TemplateInstantiation,
+        id: ItemId,
+        y: &mut ItemSet,
+        inst: &TemplateInstantiation,
     ) {
-        trace!(
-            "    instantiation of blocklisted template, uses all template \
-             arguments"
-        );
-        let args = instantiation
+        let args = inst
             .template_arguments()
             .iter()
             .map(|x| {
@@ -68,7 +64,7 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
                     .resolve(self.ctx)
                     .id()
             })
-            .filter(|x| *x != this_id)
+            .filter(|x| *x != id)
             .flat_map(|x| {
                 self.ys
                     .get(&x)
@@ -82,23 +78,17 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
                     .iter()
                     .cloned()
             });
-        used_by_this_id.extend(args);
+        y.extend(args);
     }
 
-    fn constrain_instantiation(
-        &self,
-        this_id: ItemId,
-        used_by_this_id: &mut ItemSet,
-        instantiation: &TemplateInstantiation,
-    ) {
-        trace!("    template instantiation");
-        let decl = self.ctx.resolve_type(instantiation.template_definition());
-        let args = instantiation.template_arguments();
-        let params = decl.self_template_params(self.ctx);
-        debug_assert!(this_id != instantiation.template_definition());
+    fn constrain_instantiation(&self, id: ItemId, y: &mut ItemSet, inst: &TemplateInstantiation) {
+        let decl = self.ctx.resolve_type(inst.template_definition());
+        let args = inst.template_arguments();
+        let ps = decl.self_template_params(self.ctx);
+        debug_assert!(id != inst.template_definition());
         let used_by_def = self
             .ys
-            .get(&instantiation.template_definition().into())
+            .get(&inst.template_definition().into())
             .expect("Should have a used entry for instantiation's template definition")
             .as_ref()
             .expect(
@@ -106,24 +96,15 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
                      instantiation's template definition should never be the \
                      instantiation itself",
             );
-
-        for (arg, param) in args.iter().zip(params.iter()) {
-            trace!(
-                "      instantiation's argument {:?} is used if definition's \
-                 parameter {:?} is used",
-                arg,
-                param
-            );
-
-            if used_by_def.contains(&param.into()) {
-                trace!("        param is used by template definition");
+        for (arg, p) in args.iter().zip(ps.iter()) {
+            if used_by_def.contains(&p.into()) {
                 let arg = arg
                     .into_resolver()
                     .through_type_refs()
                     .through_type_aliases()
                     .resolve(self.ctx)
                     .id();
-                if arg == this_id {
+                if arg == id {
                     continue;
                 }
                 let used_by_arg = self
@@ -139,22 +120,21 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
                     )
                     .iter()
                     .cloned();
-                used_by_this_id.extend(used_by_arg);
+                y.extend(used_by_arg);
             }
         }
     }
 
-    fn constrain_join(&self, used_by_this_id: &mut ItemSet, item: &Item) {
-        trace!("    other item: join with successors' usage");
-        item.trace(
+    fn constrain_join(&self, y: &mut ItemSet, i: &Item) {
+        i.trace(
             self.ctx,
-            &mut |sub_id, edge_kind| {
-                if sub_id == item.id() || !Self::check_edge(edge_kind) {
+            &mut |i2, kind| {
+                if i2 == i.id() || !Self::check_edge(kind) {
                     return;
                 }
-                let used_by_sub_id = self
+                let y2 = self
                     .ys
-                    .get(&sub_id)
+                    .get(&i2)
                     .expect("Should have a used set for the sub_id successor")
                     .as_ref()
                     .expect(
@@ -165,12 +145,7 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
                     )
                     .iter()
                     .cloned();
-                trace!(
-                    "      union with {:?}'s usage: {:?}",
-                    sub_id,
-                    used_by_sub_id.clone().collect::<Vec<_>>()
-                );
-                used_by_this_id.extend(used_by_sub_id);
+                y.extend(y2);
             },
             &(),
         );
@@ -281,37 +256,29 @@ impl<'ctx> Monotone for UsedTemplParamsAnalysis<'ctx> {
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
         extra_assert!(self.ys.values().all(|v| v.is_some()));
-        let mut used_by_this_id = self.take_this_id_usage_set(id);
-        trace!("constrain {:?}", id);
-        trace!("  initially, used set is {:?}", used_by_this_id);
-        let original_len = used_by_this_id.len();
-        let item = self.ctx.resolve_item(id);
-        let ty_kind = item.as_type().map(|ty| ty.kind());
+        let mut y = self.take_this_id_usage_set(id);
+        let len = y.len();
+        let i = self.ctx.resolve_item(id);
+        let ty_kind = i.as_type().map(|x| x.kind());
         match ty_kind {
             Some(&TypeKind::TypeParam) => {
-                trace!("    named type, trivially uses itself");
-                used_by_this_id.insert(id);
+                y.insert(id);
             },
-            Some(TypeKind::TemplateInstantiation(inst)) => {
-                if self.alloweds.contains(&inst.template_definition().into()) {
-                    self.constrain_instantiation(id, &mut used_by_this_id, inst);
+            Some(TypeKind::TemplateInstantiation(x)) => {
+                if self.alloweds.contains(&x.template_definition().into()) {
+                    self.constrain_instantiation(id, &mut y, x);
                 } else {
-                    self.constrain_instantiation_of_blocklisted_template(id, &mut used_by_this_id, inst);
+                    self.constrain_instantiation_of_blocklisted_template(id, &mut y, x);
                 }
             },
-            _ => self.constrain_join(&mut used_by_this_id, item),
+            _ => self.constrain_join(&mut y, i),
         }
-        trace!("  finally, used set is {:?}", used_by_this_id);
-        let new_len = used_by_this_id.len();
-        assert!(
-            new_len >= original_len,
-            "This is the property that ensures this function is monotone -- \
-             if it doesn't hold, the analysis might never terminate!"
-        );
+        let len2 = y.len();
+        assert!(len2 >= len);
         debug_assert!(self.ys[&id].is_none());
-        self.ys.insert(id, Some(used_by_this_id));
+        self.ys.insert(id, Some(y));
         extra_assert!(self.ys.values().all(|v| v.is_some()));
-        if new_len != original_len {
+        if len2 != len {
             YConstrain::Changed
         } else {
             YConstrain::Same
@@ -324,7 +291,6 @@ impl<'ctx> Monotone for UsedTemplParamsAnalysis<'ctx> {
     {
         if let Some(es) = self.deps.get(&id) {
             for e in es {
-                trace!("enqueue {:?} into worklist", e);
                 f(*e);
             }
         }

@@ -88,7 +88,7 @@ impl<'ctx> HasVtableAnalysis<'ctx> {
         let to = to.into();
         match self.ys.get(&from).cloned() {
             None => YConstrain::Same,
-            Some(r) => self.insert(to, r),
+            Some(x) => self.insert(to, x),
         }
     }
 }
@@ -109,44 +109,28 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
     }
 
     fn constrain(&mut self, id: ItemId) -> YConstrain {
-        trace!("constrain {:?}", id);
-        let item = self.ctx.resolve_item(id);
-        let ty = match item.as_type() {
+        let i = self.ctx.resolve_item(id);
+        let ty = match i.as_type() {
             None => return YConstrain::Same,
             Some(ty) => ty,
         };
-
         match *ty.kind() {
             TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::ResolvedTypeRef(t)
-            | TypeKind::Reference(t) => {
-                trace!("    aliases and references forward to their inner type");
-                self.forward(t, id)
-            },
-
+            | TypeKind::Reference(t) => self.forward(t, id),
             TypeKind::Comp(ref info) => {
-                trace!("    comp considers its own methods and bases");
-                let mut result = YHasVtable::No;
-
+                let mut y = YHasVtable::No;
                 if info.has_own_virtual_method() {
-                    trace!("    comp has its own virtual method");
-                    result |= YHasVtable::SelfHasVtable;
+                    y |= YHasVtable::SelfHasVtable;
                 }
-
-                let bases_has_vtable = info.base_members().iter().any(|base| {
-                    trace!("    comp has a base with a vtable: {:?}", base);
-                    self.ys.contains_key(&base.ty.into())
-                });
-                if bases_has_vtable {
-                    result |= YHasVtable::BaseHasVtable;
+                let has_vtable = info.base_members().iter().any(|x| self.ys.contains_key(&x.ty.into()));
+                if has_vtable {
+                    y |= YHasVtable::BaseHasVtable;
                 }
-
-                self.insert(id, result)
+                self.insert(id, y)
             },
-
-            TypeKind::TemplateInstantiation(ref inst) => self.forward(inst.template_definition(), id),
-
+            TypeKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
             _ => YConstrain::Same,
         }
     }
@@ -157,7 +141,6 @@ impl<'ctx> Monotone for HasVtableAnalysis<'ctx> {
     {
         if let Some(es) = self.deps.get(&id) {
             for e in es {
-                trace!("enqueue {:?} into worklist", e);
                 f(*e);
             }
         }
