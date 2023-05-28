@@ -1177,7 +1177,7 @@ pub mod enums {
     }
 }
 
-use enums::*;
+pub use enums::*;
 
 pub mod types {
     use libc::c_void;
@@ -1210,7 +1210,7 @@ pub mod types {
     opaque!(CXTranslationUnit);
 }
 
-use types::*;
+pub use types::*;
 
 pub type CXClientData = *mut c_void;
 pub type CXCursorVisitor = extern "C" fn(CXCursor, CXCursor, CXClientData) -> CXChildVisitResult;
@@ -1608,7 +1608,7 @@ pub mod structs {
     default!(IndexerCallbacks);
 }
 
-use structs::*;
+pub use structs::*;
 
 #[cfg(feature = "runtime")]
 macro_rules! link {
