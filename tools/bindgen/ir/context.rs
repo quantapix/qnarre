@@ -316,7 +316,7 @@ impl<'ctx> AllowlistedItemsTraversal<'ctx> {
 impl BindgenContext {
     pub(crate) fn new(options: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
         let index = clang::Index::new(false, true);
-        let parse_options = clang::CXTranslationUnit_DetailedPreprocessingRecord;
+        let parse_options = clang_lib::CXTranslationUnit_DetailedPreprocessingRecord;
         let translation_unit = {
             let _t = Timer::new("translation_unit").with_output(options.time_phases);
             clang::TranslationUnit::parse(&index, "", &options.clang_args, input_unsaved_files, parse_options).expect(
@@ -508,7 +508,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             item.expect_type().is_type_param(),
             "Should directly be a named type, not a resolved reference or anything"
         );
-        assert_eq!(definition.kind(), clang::CXCursor_TemplateTypeParameter);
+        assert_eq!(definition.kind(), clang_lib::CXCursor_TemplateTypeParameter);
         self.add_item_to_module(&item);
         let id = item.id();
         let old_item = mem::replace(&mut self.items[id.0], Some(item));
@@ -524,7 +524,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn get_type_param(&self, definition: &clang::Cursor) -> Option<TypeId> {
-        assert_eq!(definition.kind(), clang::CXCursor_TemplateTypeParameter);
+        assert_eq!(definition.kind(), clang_lib::CXCursor_TemplateTypeParameter);
         self.type_params.get(definition).cloned()
     }
 
@@ -1043,12 +1043,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let mut children = location.collect_children();
 
         if children.iter().all(|c| !c.has_children()) {
-            let idx = children.iter().position(|c| c.kind() == clang::CXCursor_TemplateRef);
+            let idx = children
+                .iter()
+                .position(|c| c.kind() == clang_lib::CXCursor_TemplateRef);
             if let Some(idx) = idx {
                 if children
                     .iter()
                     .take(idx)
-                    .all(|c| c.kind() == clang::CXCursor_NamespaceRef)
+                    .all(|c| c.kind() == clang_lib::CXCursor_NamespaceRef)
                 {
                     children = children.into_iter().skip(idx + 1).collect();
                 }
@@ -1057,11 +1059,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
 
         for child in children.iter().rev() {
             match child.kind() {
-                clang::CXCursor_TypeRef | clang::CXCursor_TypedefDecl | clang::CXCursor_TypeAliasDecl => {
+                clang_lib::CXCursor_TypeRef | clang_lib::CXCursor_TypedefDecl | clang_lib::CXCursor_TypeAliasDecl => {
                     let ty = Item::from_ty_or_ref(child.cur_type(), *child, Some(template.into()), self);
                     args.push(ty);
                 },
-                clang::CXCursor_TemplateRef => {
+                clang_lib::CXCursor_TemplateRef => {
                     let (template_decl_cursor, template_decl_id, num_expected_template_args) =
                         self.get_declaration_info_for_template_instantiation(child)?;
 
@@ -1169,7 +1171,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         ty: &clang::Type,
         location: Option<clang::Cursor>,
     ) -> Option<TypeId> {
-        use clang::{CXCursor_TypeAliasTemplateDecl, CXCursor_TypeRef};
+        use clang_lib::{CXCursor_TypeAliasTemplateDecl, CXCursor_TypeRef};
         debug!(
             "builtin_or_resolved_ty: {:?}, {:?}, {:?}, {:?}",
             ty, location, with_id, parent_id
@@ -1251,7 +1253,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     fn build_builtin_ty(&mut self, ty: &clang::Type) -> Option<TypeId> {
-        use clang::*;
+        use clang_lib::*;
         let type_kind = match ty.kind() {
             CXType_NullPtr => TypeKind::NullPtr,
             CXType_Void => TypeKind::Void,
@@ -1363,7 +1365,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     fn tokenize_namespace(&self, cursor: &clang::Cursor) -> (Option<String>, ModKind) {
-        assert_eq!(cursor.kind(), ::clang::CXCursor_Namespace, "Be a nice person");
+        assert_eq!(cursor.kind(), ::clang_lib::CXCursor_Namespace, "Be a nice person");
 
         let mut module_name = None;
         let spelling = cursor.spelling();
@@ -1409,7 +1411,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     pub(crate) fn module(&mut self, cursor: clang::Cursor) -> ModuleId {
-        use clang::*;
+        use clang_lib::*;
         assert_eq!(cursor.kind(), CXCursor_Namespace, "Be a nice person");
         let cursor = cursor.canonical();
         if let Some(id) = self.modules.get(&cursor) {
@@ -1974,20 +1976,20 @@ impl TemplParams for PartialType {
 
     fn num_self_template_params(&self, _ctx: &BindgenContext) -> usize {
         match self.decl().kind() {
-            clang::CXCursor_ClassTemplate
-            | clang::CXCursor_FunctionTemplate
-            | clang::CXCursor_TypeAliasTemplateDecl => {
+            clang_lib::CXCursor_ClassTemplate
+            | clang_lib::CXCursor_FunctionTemplate
+            | clang_lib::CXCursor_TypeAliasTemplateDecl => {
                 let mut num_params = 0;
                 self.decl().visit(|c| {
                     match c.kind() {
-                        clang::CXCursor_TemplateTypeParameter
-                        | clang::CXCursor_TemplateTemplateParameter
-                        | clang::CXCursor_NonTypeTemplateParameter => {
+                        clang_lib::CXCursor_TemplateTypeParameter
+                        | clang_lib::CXCursor_TemplateTemplateParameter
+                        | clang_lib::CXCursor_NonTypeTemplateParameter => {
                             num_params += 1;
                         },
                         _ => {},
                     };
-                    clang::CXChildVisit_Continue
+                    clang_lib::CXChildVisit_Continue
                 });
                 num_params
             },

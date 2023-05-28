@@ -56,7 +56,7 @@ impl DotAttrs for Module {
 
 impl ClangSubItemParser for Module {
     fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
-        use clang::*;
+        use clang_lib::*;
         match cursor.kind() {
             CXCursor_Namespace => {
                 let module_id = ctx.module(cursor);

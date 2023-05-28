@@ -12,7 +12,7 @@ path = "lib.rs"
 [dependencies]
 bitflags = "2.2.1"
 cexpr = "0.6"
-clang = { path = "../clang" }
+clang_lib = { path = "../clang", package = "clang" }
 lazycell = "1"
 lazy_static = "1"
 peeking_take_while = "0.1.2"
@@ -30,8 +30,8 @@ log = { version = "0.4", optional = true }
 [features]
 default = ["logging", "runtime", "which-rustfmt"]
 logging = ["log"]
-static = ["clang/static"]
-runtime = ["clang/runtime"]
+static = ["clang_lib/static"]
+runtime = ["clang_lib/runtime"]
 which-rustfmt = ["which"]
 experimental = ["annotate-snippets"]
 

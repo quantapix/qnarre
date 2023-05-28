@@ -931,7 +931,7 @@ impl CompInfo {
         location: Option<clang::Cursor>,
         ctx: &mut BindgenContext,
     ) -> Result<Self, ParseError> {
-        use clang::*;
+        use clang_lib::*;
         assert!(
             ty.template_args().is_none(),
             "We handle template instantiations elsewhere"
@@ -1082,7 +1082,7 @@ impl CompInfo {
                         ty: type_id,
                         kind,
                         field_name,
-                        is_pub: cur.access_specifier() == clang::CX_CXXPublic,
+                        is_pub: cur.access_specifier() == clang_lib::CX_CXXPublic,
                     });
                 },
                 CXCursor_Constructor | CXCursor_Destructor | CXCursor_CXXMethod => {
@@ -1181,7 +1181,7 @@ impl CompInfo {
     }
 
     fn kind_from_cursor(cursor: &clang::Cursor) -> Result<CompKind, ParseError> {
-        use clang::*;
+        use clang_lib::*;
         Ok(match cursor.kind() {
             CXCursor_UnionDecl => CompKind::Union,
             CXCursor_ClassDecl | CXCursor_StructDecl => CompKind::Struct,

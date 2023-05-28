@@ -7,7 +7,7 @@ use super::ty::TypeKind;
 use crate::callbacks::{ItemInfo, ItemKind};
 use crate::clang::{self, Attribute};
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
-use clang::{self, CXCallingConv};
+use clang_lib::{self, CXCallingConv};
 
 use quote::TokenStreamExt;
 use std::io;
@@ -24,16 +24,16 @@ pub(crate) enum FnKind {
 impl FnKind {
     pub(crate) fn from_cursor(cursor: &clang::Cursor) -> Option<FnKind> {
         Some(match cursor.kind() {
-            clang::CXCursor_FunctionDecl => FnKind::Function,
-            clang::CXCursor_Constructor => FnKind::Method(MethodKind::Constructor),
-            clang::CXCursor_Destructor => FnKind::Method(if cursor.method_is_virtual() {
+            clang_lib::CXCursor_FunctionDecl => FnKind::Function,
+            clang_lib::CXCursor_Constructor => FnKind::Method(MethodKind::Constructor),
+            clang_lib::CXCursor_Destructor => FnKind::Method(if cursor.method_is_virtual() {
                 MethodKind::VirtualDestructor {
                     pure_virtual: cursor.method_is_pure_virtual(),
                 }
             } else {
                 MethodKind::Destructor
             }),
-            clang::CXCursor_CXXMethod => {
+            clang_lib::CXCursor_CXXMethod => {
                 if cursor.method_is_virtual() {
                     FnKind::Method(MethodKind::Virtual {
                         pure_virtual: cursor.method_is_pure_virtual(),
@@ -223,7 +223,7 @@ pub(crate) struct FnSig {
 }
 
 fn get_abi(cc: CXCallingConv) -> ClangAbi {
-    use clang::*;
+    use clang_lib::*;
     match cc {
         CXCallingConv_Default => ClangAbi::Known(Abi::C),
         CXCallingConv_C => ClangAbi::Known(Abi::C),
@@ -246,7 +246,7 @@ pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> O
         return None;
     }
 
-    let is_destructor = cursor.kind() == clang::CXCursor_Destructor;
+    let is_destructor = cursor.kind() == clang_lib::CXCursor_Destructor;
     if let Ok(mut manglings) = cursor.cxx_manglings() {
         while let Some(m) = manglings.pop() {
             if is_destructor && !m.ends_with("D1Ev") {
@@ -304,7 +304,7 @@ impl FnSig {
         cursor: &clang::Cursor,
         ctx: &mut BindgenContext,
     ) -> Result<Self, ParseError> {
-        use clang::*;
+        use clang_lib::*;
         debug!("FunctionSig::from_ty {:?} {:?}", ty, cursor);
 
         let kind = cursor.kind();
@@ -480,7 +480,7 @@ impl FnSig {
 
 impl ClangSubItemParser for Function {
     fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
-        use clang::*;
+        use clang_lib::*;
 
         let kind = match FnKind::from_cursor(&cursor) {
             None => return Err(ParseError::Continue),

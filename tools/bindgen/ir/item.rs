@@ -946,8 +946,8 @@ fn visit_child(
     parent_id: Option<ItemId>,
     ctx: &mut BindgenContext,
     result: &mut Result<TypeId, ParseError>,
-) -> clang::CXChildVisitResult {
-    use clang::*;
+) -> clang_lib::CXChildVisitResult {
+    use clang_lib::*;
     if result.is_ok() {
         return CXChildVisit_Break;
     }
@@ -984,7 +984,7 @@ impl Item {
         ctx: &mut BindgenContext,
     ) -> Result<ItemId, ParseError> {
         use crate::ir::var::Var;
-        use clang::*;
+        use clang_lib::*;
 
         if !cursor.is_valid() {
             return Err(ParseError::Continue);
@@ -1166,7 +1166,7 @@ impl Item {
         parent_id: Option<ItemId>,
         ctx: &mut BindgenContext,
     ) -> Result<TypeId, ParseError> {
-        use clang::*;
+        use clang_lib::*;
 
         debug!(
             "Item::from_ty_with_id: {:?}\n\
@@ -1175,7 +1175,7 @@ impl Item {
             id, ty, location
         );
 
-        if ty.kind() == clang::CXType_Unexposed || location.cur_type().kind() == clang::CXType_Unexposed {
+        if ty.kind() == clang_lib::CXType_Unexposed || location.cur_type().kind() == clang_lib::CXType_Unexposed {
             if ty.is_associated_type() || location.cur_type().is_associated_type() {
                 return Ok(Item::new_opaque_type(id, ty, ctx));
             }
@@ -1319,7 +1319,7 @@ impl Item {
             location
         );
 
-        if ty.kind() != clang::CXType_Unexposed {
+        if ty.kind() != clang_lib::CXType_Unexposed {
             return None;
         }
 
@@ -1331,7 +1331,7 @@ impl Item {
                     regex::Regex::new(r"^type\-parameter\-\d+\-\d+$").unwrap();
             }
 
-            if refd.kind() != clang::CXCursor_TemplateTypeParameter {
+            if refd.kind() != clang_lib::CXCursor_TemplateTypeParameter {
                 return false;
             }
 
@@ -1341,7 +1341,7 @@ impl Item {
 
         let definition = if is_template_with_spelling(&location, &ty_spelling) {
             location
-        } else if location.kind() == clang::CXCursor_TypeRef {
+        } else if location.kind() == clang_lib::CXCursor_TypeRef {
             match location.referenced() {
                 Some(refd) if is_template_with_spelling(&refd, &ty_spelling) => refd,
                 _ => return None,
@@ -1351,17 +1351,17 @@ impl Item {
 
             location.visit(|child| {
                 let child_ty = child.cur_type();
-                if child_ty.kind() == clang::CXCursor_TypeRef && child_ty.spelling() == ty_spelling {
+                if child_ty.kind() == clang_lib::CXCursor_TypeRef && child_ty.spelling() == ty_spelling {
                     match child.referenced() {
                         Some(refd) if is_template_with_spelling(&refd, &ty_spelling) => {
                             definition = Some(refd);
-                            return clang::CXChildVisit_Break;
+                            return clang_lib::CXChildVisit_Break;
                         },
                         _ => {},
                     }
                 }
 
-                clang::CXChildVisit_Continue
+                clang_lib::CXChildVisit_Continue
             });
 
             definition?

@@ -8,7 +8,7 @@ use std::hash::Hasher;
 use std::os::raw::{c_char, c_int, c_longlong, c_uint, c_ulong, c_ulonglong};
 use std::{mem, ptr, slice};
 
-use clang::*;
+use clang_lib::*;
 
 use crate::ir::context::BindgenContext;
 
@@ -87,7 +87,7 @@ impl Cursor {
     }
 
     pub(crate) fn cxx_manglings(&self) -> Result<Vec<String>, ()> {
-        use clang::*;
+        use clang_lib::*;
         unsafe {
             let manglings = clang_Cursor_getCXXManglings(self.x);
             if manglings.is_null() {

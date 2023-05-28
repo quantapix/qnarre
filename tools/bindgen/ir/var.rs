@@ -120,7 +120,7 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
 }
 
 fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::ParseCallbacks) {
-    let is_closing_paren = |t: &ClangToken| t.kind == clang::CXToken_Punctuation && t.spelling() == b")";
+    let is_closing_paren = |t: &ClangToken| t.kind == clang_lib::CXToken_Punctuation && t.spelling() == b")";
     let tokens: Vec<_> = cursor.tokens().iter().collect();
     if let Some(boundary) = tokens.iter().position(is_closing_paren) {
         let mut spelled = tokens.iter().map(ClangToken::spelling);
@@ -137,7 +137,7 @@ impl ClangSubItemParser for Var {
     fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
         use cexpr::expr::EvalResult;
         use cexpr::literal::CChar;
-        use clang::*;
+        use clang_lib::*;
         match cursor.kind() {
             CXCursor_MacroDefinition => {
                 for callbacks in &ctx.options().parse_callbacks {
@@ -331,7 +331,7 @@ fn parse_int_literal_tokens(cursor: &clang::Cursor) -> Option<i64> {
 }
 
 fn get_integer_literal_from_cursor(cursor: &clang::Cursor) -> Option<i64> {
-    use clang::*;
+    use clang_lib::*;
     let mut value = None;
     cursor.visit(|c| {
         match c.kind() {

@@ -22,6 +22,8 @@ mod log_stubs;
 #[macro_use]
 mod extra_assertions;
 
+mod clang;
+
 mod codegen;
 mod deps;
 mod opts;
@@ -204,7 +206,7 @@ impl Builder {
     }
 
     pub fn dump_preprocessed_input(&self) -> io::Result<()> {
-        let clang = clang::Clang::find(None, &[])
+        let lib = clang_lib::Clang::find(None, &[])
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Cannot find clang executable"))?;
         let mut is_cpp = args_are_cpp(&self.opts.clang_args);
         let mut y = String::new();
@@ -226,7 +228,7 @@ impl Builder {
             let mut f = File::create(&p)?;
             f.write_all(y.as_bytes())?;
         }
-        let mut cmd = Command::new(clang.path);
+        let mut cmd = Command::new(lib.path);
         cmd.arg("-save-temps")
             .arg("-E")
             .arg("-C")
@@ -357,21 +359,19 @@ impl Opts {
 
 #[cfg(feature = "runtime")]
 fn ensure_libclang_is_loaded() {
-    if clang::is_loaded() {
+    if clang_lib::is_loaded() {
         return;
     }
-
     lazy_static! {
-        static ref LIBCLANG: std::sync::Arc<clang::SharedLibrary> = {
-            clang::load().expect("Unable to find libclang");
-            clang::get_lib().expect(
+        static ref LIBCLANG: std::sync::Arc<clang_lib::SharedLib> = {
+            clang_lib::load().expect("Unable to find libclang");
+            clang_lib::get_lib().expect(
                 "We just loaded libclang and it had better still be \
                  here!",
             )
         };
     }
-
-    clang::set_lib(Some(LIBCLANG.clone()));
+    clang_lib::set_lib(Some(LIBCLANG.clone()));
 }
 
 #[cfg(not(feature = "runtime"))]
@@ -413,7 +413,7 @@ impl std::error::Error for BindgenError {}
 
 #[derive(Debug)]
 pub struct Bindings {
-    options: Opts,
+    opts: Opts,
     module: proc_macro2::TokenStream,
 }
 
@@ -448,7 +448,7 @@ fn find_effective_target(clang_args: &[String]) -> (String, bool) {
 
 impl Bindings {
     pub(crate) fn generate(
-        mut options: Opts,
+        mut opts: Opts,
         input_unsaved_files: Vec<clang::UnsavedFile>,
     ) -> Result<Bindings, BindgenError> {
         ensure_libclang_is_loaded();
@@ -456,30 +456,29 @@ impl Bindings {
         #[cfg(feature = "runtime")]
         debug!(
             "Generating bindings, libclang at {}",
-            clang::get_lib().unwrap().path().display()
+            clang_lib::get_lib().unwrap().path().display()
         );
         #[cfg(not(feature = "runtime"))]
         debug!("Generating bindings, libclang linked");
 
-        options.build();
+        opts.build();
 
-        let (effective_target, explicit_target) = find_effective_target(&options.clang_args);
+        let (effective_target, explicit_target) = find_effective_target(&opts.clang_args);
 
         let is_host_build = rust_to_clang_target(HOST_TARGET) == effective_target;
 
         if !explicit_target && !is_host_build {
-            options.clang_args.insert(0, format!("--target={}", effective_target));
+            opts.clang_args.insert(0, format!("--target={}", effective_target));
         };
 
-        fn detect_include_paths(options: &mut Opts) {
-            if !options.detect_include_paths {
+        fn detect_include_paths(opts: &mut Opts) {
+            if !opts.detect_include_paths {
                 return;
             }
 
             let clang_args_for_clang = {
                 let mut last_was_include_prefix = false;
-                options
-                    .clang_args
+                opts.clang_args
                     .iter()
                     .filter(|arg| {
                         if last_was_include_prefix {
@@ -506,14 +505,14 @@ impl Bindings {
 
             debug!("Trying to find clang with flags: {:?}", clang_args_for_clang);
 
-            let clang = match clang::Clang::find(None, &clang_args_for_clang) {
+            let clang = match clang_lib::Clang::find(None, &clang_args_for_clang) {
                 None => return,
                 Some(clang) => clang,
             };
 
             debug!("Found clang: {:?}", clang);
 
-            let is_cpp = args_are_cpp(&options.clang_args) || options.input_headers.iter().any(|h| file_is_cpp(h));
+            let is_cpp = args_are_cpp(&opts.clang_args) || opts.input_headers.iter().any(|h| file_is_cpp(h));
 
             let search_paths = if is_cpp {
                 clang.cpp_search_paths
@@ -524,14 +523,14 @@ impl Bindings {
             if let Some(search_paths) = search_paths {
                 for path in search_paths.into_iter() {
                     if let Ok(path) = path.into_os_string().into_string() {
-                        options.clang_args.push("-isystem".to_owned());
-                        options.clang_args.push(path);
+                        opts.clang_args.push("-isystem".to_owned());
+                        opts.clang_args.push(path);
                     }
                 }
             }
         }
 
-        detect_include_paths(&mut options);
+        detect_include_paths(&mut opts);
 
         #[cfg(unix)]
         fn can_read(perms: &std::fs::Permissions) -> bool {
@@ -544,7 +543,7 @@ impl Bindings {
             true
         }
 
-        if let Some(h) = options.input_headers.last() {
+        if let Some(h) = opts.input_headers.last() {
             let path = Path::new(h);
             if let Ok(md) = std::fs::metadata(path) {
                 if md.is_dir() {
@@ -554,23 +553,23 @@ impl Bindings {
                     return Err(BindgenError::InsufficientPermissions(path.into()));
                 }
                 let h = h.clone();
-                options.clang_args.push(h);
+                opts.clang_args.push(h);
             } else {
                 return Err(BindgenError::NotExist(path.into()));
             }
         }
 
         for (idx, f) in input_unsaved_files.iter().enumerate() {
-            if idx != 0 || !options.input_headers.is_empty() {
-                options.clang_args.push("-include".to_owned());
+            if idx != 0 || !opts.input_headers.is_empty() {
+                opts.clang_args.push("-include".to_owned());
             }
-            options.clang_args.push(f.name.to_str().unwrap().to_owned())
+            opts.clang_args.push(f.name.to_str().unwrap().to_owned())
         }
 
-        debug!("Fixed-up options: {:?}", options);
+        debug!("Fixed-up options: {:?}", opts);
 
-        let time_phases = options.time_phases;
-        let mut context = BindgenContext::new(options, &input_unsaved_files);
+        let time_phases = opts.time_phases;
+        let mut context = BindgenContext::new(opts, &input_unsaved_files);
 
         if is_host_build {
             debug_assert_eq!(
@@ -589,7 +588,7 @@ impl Bindings {
 
         let (module, options) = codegen::codegen(context).map_err(BindgenError::Codegen)?;
 
-        Ok(Bindings { options, module })
+        Ok(Bindings { opts: options, module })
     }
 
     pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
@@ -666,12 +665,7 @@ impl Bindings {
 
         cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
 
-        if let Some(path) = self
-            .options
-            .rustfmt_configuration_file
-            .as_ref()
-            .and_then(|f| f.to_str())
-        {
+        if let Some(path) = self.opts.rustfmt_configuration_file.as_ref().and_then(|f| f.to_str()) {
             cmd.args(["--config-path", path]);
         }
 
@@ -743,9 +737,9 @@ fn filter_builtins(ctx: &BindgenContext, cursor: &clang::Cursor) -> bool {
     ctx.options().builtins || !cursor.is_builtin()
 }
 
-fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang::CXChildVisitResult {
+fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
     if !filter_builtins(ctx, &cursor) {
-        return clang::CXChildVisit_Continue;
+        return clang_lib::CXChildVisit_Continue;
     }
     match Item::parse(cursor, parent, ctx) {
         Ok(..) => {},
@@ -754,14 +748,14 @@ fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<Ite
             cursor.visit(|child| parse_one(ctx, child, parent));
         },
     }
-    clang::CXChildVisit_Continue
+    clang_lib::CXChildVisit_Continue
 }
 
 fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
     let mut error = None;
     for d in context.translation_unit().diags().iter() {
         let msg = d.format();
-        let is_err = d.severity() >= clang::CXDiagnostic_Error;
+        let is_err = d.severity() >= clang_lib::CXDiagnostic_Error;
         if is_err {
             let error = error.get_or_insert_with(String::new);
             error.push_str(&msg);
@@ -778,11 +772,11 @@ fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
     let cursor = context.translation_unit().cursor();
 
     if context.options().emit_ast {
-        fn dump_if_not_builtin(cur: &clang::Cursor) -> clang::CXChildVisitResult {
+        fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
             if !cur.is_builtin() {
                 clang::ast_dump(cur, 0)
             } else {
-                clang::CXChildVisit_Continue
+                clang_lib::CXChildVisit_Continue
             }
         }
         cursor.visit(|cur| dump_if_not_builtin(&cur));

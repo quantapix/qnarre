@@ -14,7 +14,6 @@ use crate::CodegenConfig;
 use crate::FieldVisibilityKind;
 use crate::Formatter;
 use crate::HashMap;
-use crate::RegexSet;
 use crate::DEFAULT_ANON_FIELDS_PREFIX;
 
 macro_rules! regex_opt {
@@ -82,7 +81,6 @@ fn ignore<T>(_: &T, _: &mut Vec<String>) {}
 
 macro_rules! options {
     ($(
-        $(#[doc = $docs:literal])+
         $field:ident: $ty:ty {
             $(default: $default:expr,)?
             methods: {$($methods_tokens:tt)*}$(,)?
@@ -91,7 +89,7 @@ macro_rules! options {
     )*) => {
         #[derive(Debug, Clone)]
         pub(crate) struct Opts {
-            $($(#[doc = $docs])* pub(crate) $field: $ty,)*
+            $(pub(crate) $field: $ty,)*
         }
 
         impl Default for Opts {
@@ -763,7 +761,7 @@ options! {
     clang_args: Vec<String> {
         methods: {
             pub fn clang_arg<T: Into<String>>(self, x: T) -> Builder {
-                self.clang_args([arg.into()])
+                self.clang_args([x.into()])
             }
             pub fn clang_args<I: IntoIterator>(mut self, xs: I) -> Builder
             where

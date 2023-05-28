@@ -76,7 +76,7 @@ impl TemplInstantiation {
     }
 
     pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplInstantiation> {
-        use clang::*;
+        use clang_lib::*;
 
         let template_args = ty
             .template_args()
