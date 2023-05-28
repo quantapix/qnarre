@@ -29,7 +29,6 @@ mod timer;
 
 pub mod callbacks;
 
-mod clang;
 #[cfg(feature = "experimental")]
 mod diagnostics;
 mod ir;
@@ -169,7 +168,7 @@ impl std::fmt::Display for Formatter {
 
 #[derive(Debug, Default, Clone)]
 pub struct Builder {
-    options: Opts,
+    opts: Opts,
 }
 
 pub fn builder() -> Builder {
@@ -205,7 +204,7 @@ impl Builder {
     }
 
     pub fn dump_preprocessed_input(&self) -> io::Result<()> {
-        let clang = clang::support::Clang::find(None, &[])
+        let clang = clang::Clang::find(None, &[])
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Cannot find clang executable"))?;
         let mut is_cpp = args_are_cpp(&self.opts.clang_args);
         let mut y = String::new();
@@ -365,14 +364,14 @@ fn ensure_libclang_is_loaded() {
     lazy_static! {
         static ref LIBCLANG: std::sync::Arc<clang::SharedLibrary> = {
             clang::load().expect("Unable to find libclang");
-            clang::get_library().expect(
+            clang::get_lib().expect(
                 "We just loaded libclang and it had better still be \
                  here!",
             )
         };
     }
 
-    clang::set_library(Some(LIBCLANG.clone()));
+    clang::set_lib(Some(LIBCLANG.clone()));
 }
 
 #[cfg(not(feature = "runtime"))]
@@ -457,7 +456,7 @@ impl Bindings {
         #[cfg(feature = "runtime")]
         debug!(
             "Generating bindings, libclang at {}",
-            clang::get_library().unwrap().path().display()
+            clang::get_lib().unwrap().path().display()
         );
         #[cfg(not(feature = "runtime"))]
         debug!("Generating bindings, libclang linked");
@@ -507,7 +506,7 @@ impl Bindings {
 
             debug!("Trying to find clang with flags: {:?}", clang_args_for_clang);
 
-            let clang = match clang::support::Clang::find(None, &clang_args_for_clang) {
+            let clang = match clang::Clang::find(None, &clang_args_for_clang) {
                 None => return,
                 Some(clang) => clang,
             };
@@ -746,10 +745,8 @@ fn filter_builtins(ctx: &BindgenContext, cursor: &clang::Cursor) -> bool {
 
 fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang::CXChildVisitResult {
     if !filter_builtins(ctx, &cursor) {
-        return CXChildVisit_Continue;
+        return clang::CXChildVisit_Continue;
     }
-
-    use clang::CXChildVisit_Continue;
     match Item::parse(cursor, parent, ctx) {
         Ok(..) => {},
         Err(ParseError::Continue) => {},
@@ -757,16 +754,14 @@ fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<Ite
             cursor.visit(|child| parse_one(ctx, child, parent));
         },
     }
-    CXChildVisit_Continue
+    clang::CXChildVisit_Continue
 }
 
 fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
-    use clang::*;
-
     let mut error = None;
     for d in context.translation_unit().diags().iter() {
         let msg = d.format();
-        let is_err = d.severity() >= CXDiagnostic_Error;
+        let is_err = d.severity() >= clang::CXDiagnostic_Error;
         if is_err {
             let error = error.get_or_insert_with(String::new);
             error.push_str(&msg);
@@ -783,11 +778,11 @@ fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
     let cursor = context.translation_unit().cursor();
 
     if context.options().emit_ast {
-        fn dump_if_not_builtin(cur: &clang::Cursor) -> CXChildVisitResult {
+        fn dump_if_not_builtin(cur: &clang::Cursor) -> clang::CXChildVisitResult {
             if !cur.is_builtin() {
                 clang::ast_dump(cur, 0)
             } else {
-                CXChildVisit_Continue
+                clang::CXChildVisit_Continue
             }
         }
         cursor.visit(|cur| dump_if_not_builtin(&cur));
