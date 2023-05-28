@@ -3,14 +3,11 @@ pub(crate) use self::used_templ_params::UsedTemplParamsAnalysis;
 mod derive;
 pub use self::derive::DeriveTrait;
 pub(crate) use self::derive::{as_cannot_derive_set, DeriveAnalysis};
-mod has_vtable;
-pub(crate) use self::has_vtable::{HasVtable, HasVtableAnalysis, YHasVtable};
 mod has_destructor;
 pub(crate) use self::has_destructor::HasDestructorAnalysis;
 mod has_type_param;
 pub(crate) use self::has_type_param::HasTyParamInArrayAnalysis;
-mod has_float;
-pub(crate) use self::has_float::HasFloatAnalysis;
+
 mod sizedness;
 pub(crate) use self::sizedness::{Sizedness, SizednessAnalysis, YSizedness};
 
@@ -97,6 +94,316 @@ where
         }
     }
     ys
+}
+
+pub(crate) mod has_float {
+    use super::{gen_deps, Monotone, YConstrain};
+    use crate::ir::comp::Field;
+    use crate::ir::comp::FieldMethods;
+    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::traversal::EdgeKind;
+    use crate::ir::ty::TyKind;
+    use crate::{HashMap, HashSet};
+
+    #[derive(Debug, Clone)]
+    pub struct Analysis<'ctx> {
+        ctx: &'ctx BindgenContext,
+        ys: HashSet<ItemId>,
+        deps: HashMap<ItemId, Vec<ItemId>>,
+    }
+
+    impl<'ctx> Analysis<'ctx> {
+        fn check_edge(k: EdgeKind) -> bool {
+            match k {
+                EdgeKind::BaseMember
+                | EdgeKind::Field
+                | EdgeKind::TypeReference
+                | EdgeKind::VarType
+                | EdgeKind::TemplateArgument
+                | EdgeKind::TemplateDeclaration
+                | EdgeKind::TemplateParameterDefinition => true,
+
+                EdgeKind::Constructor
+                | EdgeKind::Destructor
+                | EdgeKind::FunctionReturn
+                | EdgeKind::FunctionParameter
+                | EdgeKind::InnerType
+                | EdgeKind::InnerVar
+                | EdgeKind::Method => false,
+                EdgeKind::Generic => false,
+            }
+        }
+
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> YConstrain {
+            let id = id.into();
+            let newly = self.ys.insert(id);
+            assert!(newly);
+            YConstrain::Changed
+        }
+    }
+
+    impl<'ctx> Monotone for Analysis<'ctx> {
+        type Node = ItemId;
+        type Extra = &'ctx BindgenContext;
+        type Output = HashSet<ItemId>;
+
+        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+            let ys = HashSet::default();
+            let deps = gen_deps(ctx, Self::check_edge);
+            Analysis { ctx, ys, deps }
+        }
+
+        fn initial_worklist(&self) -> Vec<ItemId> {
+            self.ctx.allowed_items().iter().cloned().collect()
+        }
+
+        fn constrain(&mut self, id: ItemId) -> YConstrain {
+            if self.ys.contains(&id) {
+                return YConstrain::Same;
+            }
+            let i = self.ctx.resolve_item(id);
+            let ty = match i.as_type() {
+                Some(ty) => ty,
+                None => {
+                    return YConstrain::Same;
+                },
+            };
+            match *ty.kind() {
+                TyKind::Void
+                | TyKind::NullPtr
+                | TyKind::Int(..)
+                | TyKind::Function(..)
+                | TyKind::Enum(..)
+                | TyKind::Reference(..)
+                | TyKind::TypeParam
+                | TyKind::Opaque
+                | TyKind::Pointer(..)
+                | TyKind::UnresolvedTypeRef(..) => YConstrain::Same,
+                TyKind::Float(..) | TyKind::Complex(..) => self.insert(id),
+                TyKind::Array(t, _) => {
+                    if self.ys.contains(&t.into()) {
+                        return self.insert(id);
+                    }
+                    YConstrain::Same
+                },
+                TyKind::Vector(t, _) => {
+                    if self.ys.contains(&t.into()) {
+                        return self.insert(id);
+                    }
+                    YConstrain::Same
+                },
+                TyKind::ResolvedTypeRef(t)
+                | TyKind::TemplateAlias(t, _)
+                | TyKind::Alias(t)
+                | TyKind::BlockPointer(t) => {
+                    if self.ys.contains(&t.into()) {
+                        self.insert(id)
+                    } else {
+                        YConstrain::Same
+                    }
+                },
+                TyKind::Comp(ref x) => {
+                    let bases = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
+                    if bases {
+                        return self.insert(id);
+                    }
+                    let fields = x.fields().iter().any(|x| match *x {
+                        Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
+                        Field::Bitfields(ref x) => x.bitfields().iter().any(|x| self.ys.contains(&x.ty().into())),
+                    });
+                    if fields {
+                        return self.insert(id);
+                    }
+                    YConstrain::Same
+                },
+                TyKind::TemplateInstantiation(ref t) => {
+                    let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                    if args {
+                        return self.insert(id);
+                    }
+                    let def = self.ys.contains(&t.template_definition().into());
+                    if def {
+                        return self.insert(id);
+                    }
+                    YConstrain::Same
+                },
+            }
+        }
+
+        fn each_depending_on<F>(&self, id: ItemId, mut f: F)
+        where
+            F: FnMut(ItemId),
+        {
+            if let Some(es) = self.deps.get(&id) {
+                for e in es {
+                    f(*e);
+                }
+            }
+        }
+    }
+
+    impl<'ctx> From<Analysis<'ctx>> for HashSet<ItemId> {
+        fn from(x: Analysis<'ctx>) -> Self {
+            x.ys
+        }
+    }
+}
+
+pub(crate) trait HasVtable {
+    fn has_vtable(&self, ctx: &BindgenContext) -> bool;
+    fn has_vtable_ptr(&self, ctx: &BindgenContext) -> bool;
+}
+
+pub(crate) mod has_vtable {
+    use super::{gen_deps, Monotone, YConstrain};
+    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::traversal::EdgeKind;
+    use crate::ir::ty::TyKind;
+    use crate::{Entry, HashMap};
+    use std::cmp;
+    use std::ops;
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub enum Result {
+        No,
+        SelfHasVtable,
+        BaseHasVtable,
+    }
+
+    impl Default for Result {
+        fn default() -> Self {
+            Result::No
+        }
+    }
+
+    impl Result {
+        pub(crate) fn join(self, rhs: Self) -> Self {
+            cmp::max(self, rhs)
+        }
+    }
+
+    impl ops::BitOr for Result {
+        type Output = Self;
+        fn bitor(self, rhs: Result) -> Self::Output {
+            self.join(rhs)
+        }
+    }
+
+    impl ops::BitOrAssign for Result {
+        fn bitor_assign(&mut self, rhs: Result) {
+            *self = self.join(rhs)
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Analysis<'ctx> {
+        ctx: &'ctx BindgenContext,
+        ys: HashMap<ItemId, Result>,
+        deps: HashMap<ItemId, Vec<ItemId>>,
+    }
+
+    impl<'ctx> Analysis<'ctx> {
+        fn check_edge(k: EdgeKind) -> bool {
+            matches!(
+                k,
+                EdgeKind::TypeReference | EdgeKind::BaseMember | EdgeKind::TemplateDeclaration
+            )
+        }
+
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Result) -> YConstrain {
+            if let Result::No = y {
+                return YConstrain::Same;
+            }
+            let id = id.into();
+            match self.ys.entry(id) {
+                Entry::Occupied(mut x) => {
+                    if *x.get() < y {
+                        x.insert(y);
+                        YConstrain::Changed
+                    } else {
+                        YConstrain::Same
+                    }
+                },
+                Entry::Vacant(x) => {
+                    x.insert(y);
+                    YConstrain::Changed
+                },
+            }
+        }
+
+        fn forward<Id1, Id2>(&mut self, from: Id1, to: Id2) -> YConstrain
+        where
+            Id1: Into<ItemId>,
+            Id2: Into<ItemId>,
+        {
+            let from = from.into();
+            let to = to.into();
+            match self.ys.get(&from).cloned() {
+                None => YConstrain::Same,
+                Some(x) => self.insert(to, x),
+            }
+        }
+    }
+
+    impl<'ctx> Monotone for Analysis<'ctx> {
+        type Node = ItemId;
+        type Extra = &'ctx BindgenContext;
+        type Output = HashMap<ItemId, Result>;
+
+        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+            let ys = HashMap::default();
+            let deps = gen_deps(ctx, Self::check_edge);
+            Analysis { ctx, ys, deps }
+        }
+
+        fn initial_worklist(&self) -> Vec<ItemId> {
+            self.ctx.allowed_items().iter().cloned().collect()
+        }
+
+        fn constrain(&mut self, id: ItemId) -> YConstrain {
+            let i = self.ctx.resolve_item(id);
+            let ty = match i.as_type() {
+                None => return YConstrain::Same,
+                Some(ty) => ty,
+            };
+            match *ty.kind() {
+                TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::ResolvedTypeRef(t) | TyKind::Reference(t) => {
+                    self.forward(t, id)
+                },
+                TyKind::Comp(ref info) => {
+                    let mut y = Result::No;
+                    if info.has_own_virtual_method() {
+                        y |= Result::SelfHasVtable;
+                    }
+                    let has_vtable = info.base_members().iter().any(|x| self.ys.contains_key(&x.ty.into()));
+                    if has_vtable {
+                        y |= Result::BaseHasVtable;
+                    }
+                    self.insert(id, y)
+                },
+                TyKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
+                _ => YConstrain::Same,
+            }
+        }
+
+        fn each_depending_on<F>(&self, id: ItemId, mut f: F)
+        where
+            F: FnMut(ItemId),
+        {
+            if let Some(es) = self.deps.get(&id) {
+                for e in es {
+                    f(*e);
+                }
+            }
+        }
+    }
+
+    impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, Result> {
+        fn from(x: Analysis<'ctx>) -> Self {
+            extra_assert!(x.ys.values().all(|x| { *x != Result::No }));
+            x.ys
+        }
+    }
 }
 
 #[cfg(test)]

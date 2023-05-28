@@ -3,7 +3,7 @@ use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::item::{Item, ItemSet};
 use crate::ir::template::{TemplInstantiation, TemplParams};
 use crate::ir::traversal::{EdgeKind, Trace};
-use crate::ir::ty::TypeKind;
+use crate::ir::ty::TyKind;
 use crate::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
@@ -185,7 +185,7 @@ impl<'ctx> Monotone for UsedTemplParamsAnalysis<'ctx> {
                 );
             }
             let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
-            if let Some(TypeKind::TemplateInstantiation(inst)) = k {
+            if let Some(TyKind::TemplateInstantiation(inst)) = k {
                 let decl = ctx.resolve_type(inst.template_definition());
                 let args = inst.template_arguments();
                 let ps = decl.self_template_params(ctx);
@@ -256,10 +256,10 @@ impl<'ctx> Monotone for UsedTemplParamsAnalysis<'ctx> {
         let i = self.ctx.resolve_item(id);
         let ty_kind = i.as_type().map(|x| x.kind());
         match ty_kind {
-            Some(&TypeKind::TypeParam) => {
+            Some(&TyKind::TypeParam) => {
                 y.insert(id);
             },
-            Some(TypeKind::TemplateInstantiation(x)) => {
+            Some(TyKind::TemplateInstantiation(x)) => {
                 if self.alloweds.contains(&x.template_definition().into()) {
                     self.constrain_instantiation(id, &mut y, x);
                 } else {

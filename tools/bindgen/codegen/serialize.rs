@@ -8,7 +8,7 @@ use crate::ir::function::{FnKind, Function};
 use crate::ir::item::CanonicalName;
 use crate::ir::item::Item;
 use crate::ir::item_kind::ItemKind;
-use crate::ir::ty::{FloatKind, Type, TypeKind};
+use crate::ir::ty::{FloatKind, TyKind, Type};
 
 use super::CodegenError;
 
@@ -68,7 +68,7 @@ impl<'a> CSerialize<'a> for Function {
         }
 
         let signature = match ctx.resolve_type(self.signature()).kind() {
-            TypeKind::Function(signature) => signature,
+            TyKind::Function(signature) => signature,
             _ => unreachable!(),
         };
 
@@ -152,19 +152,19 @@ impl<'a> CSerialize<'a> for Type {
         writer: &mut W,
     ) -> Result<(), CodegenError> {
         match self.kind() {
-            TypeKind::Void => {
+            TyKind::Void => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 write!(writer, "void")?
             },
-            TypeKind::NullPtr => {
+            TyKind::NullPtr => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 write!(writer, "nullptr_t")?
             },
-            TypeKind::Int(int_kind) => {
+            TyKind::Int(int_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -190,7 +190,7 @@ impl<'a> CSerialize<'a> for Type {
                     },
                 }
             },
-            TypeKind::Float(float_kind) => {
+            TyKind::Float(float_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -201,7 +201,7 @@ impl<'a> CSerialize<'a> for Type {
                     FloatKind::Float128 => write!(writer, "__float128")?,
                 }
             },
-            TypeKind::Complex(float_kind) => {
+            TyKind::Complex(float_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -212,7 +212,7 @@ impl<'a> CSerialize<'a> for Type {
                     FloatKind::Float128 => write!(writer, "__complex128")?,
                 }
             },
-            TypeKind::Alias(type_id) => {
+            TyKind::Alias(type_id) => {
                 if let Some(name) = self.name() {
                     if self.is_const() {
                         write!(writer, "const {}", name)?;
@@ -223,11 +223,11 @@ impl<'a> CSerialize<'a> for Type {
                     type_id.serialize(ctx, (), stack, writer)?;
                 }
             },
-            TypeKind::Array(type_id, length) => {
+            TyKind::Array(type_id, length) => {
                 type_id.serialize(ctx, (), stack, writer)?;
                 write!(writer, " [{}]", length)?
             },
-            TypeKind::Function(signature) => {
+            TyKind::Function(signature) => {
                 if self.is_const() {
                     stack.push("const ".to_string());
                 }
@@ -256,13 +256,13 @@ impl<'a> CSerialize<'a> for Type {
                 )?;
                 write!(writer, ")")?
             },
-            TypeKind::ResolvedTypeRef(type_id) => {
+            TyKind::ResolvedTypeRef(type_id) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 type_id.serialize(ctx, (), stack, writer)?
             },
-            TypeKind::Pointer(type_id) => {
+            TyKind::Pointer(type_id) => {
                 if self.is_const() {
                     stack.push("*const ".to_owned());
                 } else {
@@ -270,7 +270,7 @@ impl<'a> CSerialize<'a> for Type {
                 }
                 type_id.serialize(ctx, (), stack, writer)?
             },
-            TypeKind::Comp(comp_info) => {
+            TyKind::Comp(comp_info) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -282,7 +282,7 @@ impl<'a> CSerialize<'a> for Type {
                     CompKind::Union => write!(writer, "union {}", name)?,
                 };
             },
-            TypeKind::Enum(_enum_ty) => {
+            TyKind::Enum(_enum_ty) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }

@@ -11,7 +11,7 @@ use crate::ir::layout::Layout;
 use crate::ir::template::TemplParams;
 use crate::ir::traversal::{EdgeKind, Trace};
 use crate::ir::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
-use crate::ir::ty::{Type, TypeKind};
+use crate::ir::ty::{TyKind, Type};
 use crate::{Entry, HashMap, HashSet};
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -126,17 +126,17 @@ impl DeriveTrait {
         }
     }
 
-    fn can_derive_simple(&self, k: &TypeKind) -> YDerive {
+    fn can_derive_simple(&self, k: &TyKind) -> YDerive {
         match (self, k) {
-            (DeriveTrait::Default, TypeKind::Void)
-            | (DeriveTrait::Default, TypeKind::NullPtr)
-            | (DeriveTrait::Default, TypeKind::Enum(..))
-            | (DeriveTrait::Default, TypeKind::Reference(..))
-            | (DeriveTrait::Default, TypeKind::TypeParam) => YDerive::No,
-            (DeriveTrait::Default, TypeKind::UnresolvedTypeRef(..)) => {
+            (DeriveTrait::Default, TyKind::Void)
+            | (DeriveTrait::Default, TyKind::NullPtr)
+            | (DeriveTrait::Default, TyKind::Enum(..))
+            | (DeriveTrait::Default, TyKind::Reference(..))
+            | (DeriveTrait::Default, TyKind::TypeParam) => YDerive::No,
+            (DeriveTrait::Default, TyKind::UnresolvedTypeRef(..)) => {
                 unreachable!("Type with unresolved type ref can't reach derive default")
             },
-            (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => YDerive::No,
+            (DeriveTrait::Hash, TyKind::Float(..)) | (DeriveTrait::Hash, TyKind::Complex(..)) => YDerive::No,
             _ => YDerive::Yes,
         }
     }
@@ -203,27 +203,27 @@ impl<'ctx> DeriveAnalysis<'ctx> {
             return y;
         }
         match *ty.kind() {
-            TypeKind::Void
-            | TypeKind::NullPtr
-            | TypeKind::Int(..)
-            | TypeKind::Complex(..)
-            | TypeKind::Float(..)
-            | TypeKind::Enum(..)
-            | TypeKind::TypeParam
-            | TypeKind::UnresolvedTypeRef(..)
-            | TypeKind::Reference(..) => {
+            TyKind::Void
+            | TyKind::NullPtr
+            | TyKind::Int(..)
+            | TyKind::Complex(..)
+            | TyKind::Float(..)
+            | TyKind::Enum(..)
+            | TyKind::TypeParam
+            | TyKind::UnresolvedTypeRef(..)
+            | TyKind::Reference(..) => {
                 return self.derive.can_derive_simple(ty.kind());
             },
-            TypeKind::Pointer(x) => {
+            TyKind::Pointer(x) => {
                 let ty2 = self.ctx.resolve_type(x).canonical_type(self.ctx);
-                if let TypeKind::Function(ref sig) = *ty2.kind() {
+                if let TyKind::Function(ref sig) = *ty2.kind() {
                     self.derive.can_derive_fnptr(sig)
                 } else {
                     self.derive.can_derive_ptr()
                 }
             },
-            TypeKind::Function(ref sig) => self.derive.can_derive_fnptr(sig),
-            TypeKind::Array(t, len) => {
+            TyKind::Function(ref sig) => self.derive.can_derive_fnptr(sig),
+            TyKind::Array(t, len) => {
                 let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
                 if ty2 != YDerive::Yes {
                     return YDerive::No;
@@ -239,14 +239,14 @@ impl<'ctx> DeriveAnalysis<'ctx> {
                 }
                 YDerive::Yes
             },
-            TypeKind::Vector(t, len) => {
+            TyKind::Vector(t, len) => {
                 let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
                 if ty2 != YDerive::Yes {
                     return YDerive::No;
                 }
                 self.derive.can_derive_vec()
             },
-            TypeKind::Comp(ref x) => {
+            TyKind::Comp(ref x) => {
                 assert!(!x.has_non_type_template_params());
                 if !self.derive.can_derive_compound_forward_decl() && x.is_forward_declaration() {
                     return YDerive::No;
@@ -285,12 +285,11 @@ impl<'ctx> DeriveAnalysis<'ctx> {
                 }
                 self.constrain_join(i, self.derive.check_edge_comp())
             },
-            TypeKind::ResolvedTypeRef(..)
-            | TypeKind::TemplateAlias(..)
-            | TypeKind::Alias(..)
-            | TypeKind::BlockPointer(..) => self.constrain_join(i, self.derive.check_edge_typeref()),
-            TypeKind::TemplateInstantiation(..) => self.constrain_join(i, self.derive.check_edge_tmpl_inst()),
-            TypeKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
+            TyKind::ResolvedTypeRef(..) | TyKind::TemplateAlias(..) | TyKind::Alias(..) | TyKind::BlockPointer(..) => {
+                self.constrain_join(i, self.derive.check_edge_typeref())
+            },
+            TyKind::TemplateInstantiation(..) => self.constrain_join(i, self.derive.check_edge_tmpl_inst()),
+            TyKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
         }
     }
 

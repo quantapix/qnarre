@@ -3,7 +3,7 @@ use super::context::{BindgenContext, TypeId};
 use super::dot::DotAttrs;
 use super::item::Item;
 use super::traversal::{EdgeKind, Trace, Tracer};
-use super::ty::TypeKind;
+use super::ty::TyKind;
 use crate::callbacks::{ItemInfo, ItemKind};
 use crate::clang::{self, Attribute};
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
@@ -382,11 +382,11 @@ impl FnSig {
                     class
                 };
 
-                let ptr = Item::builtin_type(TypeKind::Pointer(class), false, ctx);
+                let ptr = Item::builtin_type(TyKind::Pointer(class), false, ctx);
                 args.insert(0, (Some("this".into()), ptr));
             } else if is_virtual {
-                let void = Item::builtin_type(TypeKind::Void, false, ctx);
-                let ptr = Item::builtin_type(TypeKind::Pointer(void), false, ctx);
+                let void = Item::builtin_type(TyKind::Void, false, ctx);
+                let ptr = Item::builtin_type(TyKind::Pointer(void), false, ctx);
                 args.insert(0, (Some("this".into()), ptr));
             }
         }
@@ -394,8 +394,8 @@ impl FnSig {
         let ty_ret_type = ty.ret_type().ok_or(ParseError::Continue)?;
 
         let ret = if is_constructor && ctx.is_target_wasm32() {
-            let void = Item::builtin_type(TypeKind::Void, false, ctx);
-            Item::builtin_type(TypeKind::Pointer(void), false, ctx)
+            let void = Item::builtin_type(TyKind::Void, false, ctx);
+            Item::builtin_type(TyKind::Pointer(void), false, ctx)
         } else {
             Item::from_ty_or_ref(ty_ret_type, cursor, None, ctx)
         };

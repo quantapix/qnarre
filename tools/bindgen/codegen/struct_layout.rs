@@ -3,7 +3,7 @@ use super::helpers;
 use crate::ir::comp::CompInfo;
 use crate::ir::context::BindgenContext;
 use crate::ir::layout::Layout;
-use crate::ir::ty::{Type, TypeKind};
+use crate::ir::ty::{TyKind, Type};
 use proc_macro2::{self, Ident, Span};
 use std::cmp;
 
@@ -151,7 +151,7 @@ impl<'a> StructLayoutTracker<'a> {
     ) -> Option<proc_macro2::TokenStream> {
         let mut field_layout = field_ty.layout(self.ctx)?;
 
-        if let TypeKind::Array(inner, len) = *field_ty.canonical_type(self.ctx).kind() {
+        if let TyKind::Array(inner, len) = *field_ty.canonical_type(self.ctx).kind() {
             if let Some(layout) = self.ctx.resolve_type(inner).layout(self.ctx) {
                 if layout.align > MAX_GUARANTEED_ALIGN {
                     field_layout.size = align_to(layout.size, layout.align) * len;

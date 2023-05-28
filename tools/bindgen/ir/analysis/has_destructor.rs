@@ -2,7 +2,7 @@ use super::{gen_deps, Monotone, YConstrain};
 use crate::ir::comp::{CompKind, Field, FieldMethods};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::traversal::EdgeKind;
-use crate::ir::ty::TypeKind;
+use crate::ir::ty::TyKind;
 use crate::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
@@ -56,14 +56,14 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
             Some(ty) => ty,
         };
         match *ty.kind() {
-            TypeKind::TemplateAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedTypeRef(t) => {
+            TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::ResolvedTypeRef(t) => {
                 if self.ys.contains(&t.into()) {
                     self.insert(id)
                 } else {
                     YConstrain::Same
                 }
             },
-            TypeKind::Comp(ref x) => {
+            TyKind::Comp(ref x) => {
                 if x.has_own_destructor() {
                     return self.insert(id);
                 }
@@ -83,7 +83,7 @@ impl<'ctx> Monotone for HasDestructorAnalysis<'ctx> {
                     },
                 }
             },
-            TypeKind::TemplateInstantiation(ref t) => {
+            TyKind::TemplateInstantiation(ref t) => {
                 let destr = self.ys.contains(&t.template_definition().into())
                     || t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
                 if destr {

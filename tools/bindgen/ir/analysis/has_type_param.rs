@@ -3,7 +3,7 @@ use crate::ir::comp::Field;
 use crate::ir::comp::FieldMethods;
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::traversal::EdgeKind;
-use crate::ir::ty::TypeKind;
+use crate::ir::ty::TyKind;
 use crate::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
@@ -70,37 +70,34 @@ impl<'ctx> Monotone for HasTyParamInArrayAnalysis<'ctx> {
             },
         };
         match *ty.kind() {
-            TypeKind::Void
-            | TypeKind::NullPtr
-            | TypeKind::Int(..)
-            | TypeKind::Float(..)
-            | TypeKind::Vector(..)
-            | TypeKind::Complex(..)
-            | TypeKind::Function(..)
-            | TypeKind::Enum(..)
-            | TypeKind::Reference(..)
-            | TypeKind::TypeParam
-            | TypeKind::Opaque
-            | TypeKind::Pointer(..)
-            | TypeKind::UnresolvedTypeRef(..) => YConstrain::Same,
-            TypeKind::Array(t, _) => {
+            TyKind::Void
+            | TyKind::NullPtr
+            | TyKind::Int(..)
+            | TyKind::Float(..)
+            | TyKind::Vector(..)
+            | TyKind::Complex(..)
+            | TyKind::Function(..)
+            | TyKind::Enum(..)
+            | TyKind::Reference(..)
+            | TyKind::TypeParam
+            | TyKind::Opaque
+            | TyKind::Pointer(..)
+            | TyKind::UnresolvedTypeRef(..) => YConstrain::Same,
+            TyKind::Array(t, _) => {
                 let ty2 = self.ctx.resolve_type(t).canonical_type(self.ctx);
                 match *ty2.kind() {
-                    TypeKind::TypeParam => self.insert(id),
+                    TyKind::TypeParam => self.insert(id),
                     _ => YConstrain::Same,
                 }
             },
-            TypeKind::ResolvedTypeRef(t)
-            | TypeKind::TemplateAlias(t, _)
-            | TypeKind::Alias(t)
-            | TypeKind::BlockPointer(t) => {
+            TyKind::ResolvedTypeRef(t) | TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::BlockPointer(t) => {
                 if self.ys.contains(&t.into()) {
                     self.insert(id)
                 } else {
                     YConstrain::Same
                 }
             },
-            TypeKind::Comp(ref info) => {
+            TyKind::Comp(ref info) => {
                 let bases = info.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
                 if bases {
                     return self.insert(id);
@@ -114,7 +111,7 @@ impl<'ctx> Monotone for HasTyParamInArrayAnalysis<'ctx> {
                 }
                 YConstrain::Same
             },
-            TypeKind::TemplateInstantiation(ref t) => {
+            TyKind::TemplateInstantiation(ref t) => {
                 let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
                 if args {
                     return self.insert(id);

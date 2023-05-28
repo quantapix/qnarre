@@ -1,5 +1,5 @@
 use super::derive::YDerive;
-use super::ty::{Type, TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
+use super::ty::{TyKind, Type, RUST_DERIVE_IN_ARRAY_LIMIT};
 use crate::clang;
 use crate::ir::context::BindgenContext;
 use std::cmp;
@@ -73,7 +73,7 @@ pub(crate) struct Opaque(pub(crate) Layout);
 impl Opaque {
     pub(crate) fn from_clang_ty(ty: &clang::Type, ctx: &BindgenContext) -> Type {
         let layout = Layout::new(ty.size(ctx), ty.align(ctx));
-        let ty_kind = TypeKind::Opaque;
+        let ty_kind = TyKind::Opaque;
         let is_const = ty.is_const();
         Type::new(None, Some(layout), ty_kind, is_const)
     }

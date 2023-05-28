@@ -2,7 +2,7 @@ use super::{gen_deps, HasVtable, Monotone, YConstrain};
 use crate::ir::context::{BindgenContext, TypeId};
 use crate::ir::item::IsOpaque;
 use crate::ir::traversal::EdgeKind;
-use crate::ir::ty::TypeKind;
+use crate::ir::ty::TyKind;
 use crate::{Entry, HashMap};
 use std::{cmp, ops};
 
@@ -138,25 +138,24 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
             return self.insert(id, y);
         }
         match *ty.kind() {
-            TypeKind::Void => self.insert(id, YSizedness::ZeroSized),
-            TypeKind::TypeParam => self.insert(id, YSizedness::DependsOnTypeParam),
-            TypeKind::Int(..)
-            | TypeKind::Float(..)
-            | TypeKind::Complex(..)
-            | TypeKind::Function(..)
-            | TypeKind::Enum(..)
-            | TypeKind::Reference(..)
-            | TypeKind::NullPtr
-            | TypeKind::Pointer(..) => self.insert(id, YSizedness::NonZeroSized),
-            TypeKind::TemplateAlias(t, _)
-            | TypeKind::Alias(t)
-            | TypeKind::BlockPointer(t)
-            | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
-            TypeKind::TemplateInstantiation(ref inst) => self.forward(inst.template_definition(), id),
-            TypeKind::Array(_, 0) => self.insert(id, YSizedness::ZeroSized),
-            TypeKind::Array(..) => self.insert(id, YSizedness::NonZeroSized),
-            TypeKind::Vector(..) => self.insert(id, YSizedness::NonZeroSized),
-            TypeKind::Comp(ref x) => {
+            TyKind::Void => self.insert(id, YSizedness::ZeroSized),
+            TyKind::TypeParam => self.insert(id, YSizedness::DependsOnTypeParam),
+            TyKind::Int(..)
+            | TyKind::Float(..)
+            | TyKind::Complex(..)
+            | TyKind::Function(..)
+            | TyKind::Enum(..)
+            | TyKind::Reference(..)
+            | TyKind::NullPtr
+            | TyKind::Pointer(..) => self.insert(id, YSizedness::NonZeroSized),
+            TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::BlockPointer(t) | TyKind::ResolvedTypeRef(t) => {
+                self.forward(t, id)
+            },
+            TyKind::TemplateInstantiation(ref inst) => self.forward(inst.template_definition(), id),
+            TyKind::Array(_, 0) => self.insert(id, YSizedness::ZeroSized),
+            TyKind::Array(..) => self.insert(id, YSizedness::NonZeroSized),
+            TyKind::Vector(..) => self.insert(id, YSizedness::NonZeroSized),
+            TyKind::Comp(ref x) => {
                 if !x.fields().is_empty() {
                     return self.insert(id, YSizedness::NonZeroSized);
                 }
@@ -168,10 +167,10 @@ impl<'ctx> Monotone for SizednessAnalysis<'ctx> {
 
                 self.insert(id, y)
             },
-            TypeKind::Opaque => {
+            TyKind::Opaque => {
                 unreachable!("covered by the .is_opaque() check above")
             },
-            TypeKind::UnresolvedTypeRef(..) => {
+            TyKind::UnresolvedTypeRef(..) => {
                 unreachable!("Should have been resolved after parsing!");
             },
         }

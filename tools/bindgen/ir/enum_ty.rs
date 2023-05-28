@@ -1,7 +1,7 @@
 use super::super::codegen::EnumVariation;
 use super::context::{BindgenContext, TypeId};
 use super::item::Item;
-use super::ty::{Type, TypeKind};
+use super::ty::{TyKind, Type};
 use crate::clang;
 use crate::ir::annotations::Annotations;
 use crate::parse::ParseError;
@@ -51,7 +51,7 @@ impl Enum {
         let is_bool = variant_ty.map_or(false, Type::is_bool);
 
         let is_signed = variant_ty.map_or(true, |ty| match *ty.kind() {
-            TypeKind::Int(ref int_kind) => int_kind.is_signed(),
+            TyKind::Int(ref int_kind) => int_kind.is_signed(),
             ref other => {
                 panic!("Since when enums can be non-integers? {:?}", other)
             },

@@ -4,7 +4,7 @@ use super::dot::DotAttrs;
 use super::function::cursor_mangling;
 use super::int::IntKind;
 use super::item::Item;
-use super::ty::{FloatKind, TypeKind};
+use super::ty::{FloatKind, TyKind};
 use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
 use crate::clang::ClangToken;
@@ -174,7 +174,7 @@ impl ClangSubItemParser for Var {
                 let name = String::from_utf8(id).unwrap();
                 let (type_kind, val) = match value {
                     EvalResult::Invalid => return Err(ParseError::Continue),
-                    EvalResult::Float(f) => (TypeKind::Float(FloatKind::Double), VarType::Float(f)),
+                    EvalResult::Float(f) => (TyKind::Float(FloatKind::Double), VarType::Float(f)),
                     EvalResult::Char(c) => {
                         let c = match c {
                             CChar::Char(c) => {
@@ -187,14 +187,14 @@ impl ClangSubItemParser for Var {
                             },
                         };
 
-                        (TypeKind::Int(IntKind::U8), VarType::Char(c))
+                        (TyKind::Int(IntKind::U8), VarType::Char(c))
                     },
                     EvalResult::Str(val) => {
-                        let char_ty = Item::builtin_type(TypeKind::Int(IntKind::U8), true, ctx);
+                        let char_ty = Item::builtin_type(TyKind::Int(IntKind::U8), true, ctx);
                         for callbacks in &ctx.opts().parse_callbacks {
                             callbacks.str_macro(&name, &val);
                         }
-                        (TypeKind::Pointer(char_ty), VarType::String(val))
+                        (TyKind::Pointer(char_ty), VarType::String(val))
                     },
                     EvalResult::Int(Wrapping(value)) => {
                         let kind = ctx
@@ -202,7 +202,7 @@ impl ClangSubItemParser for Var {
                             .last_callback(|c| c.int_macro(&name, value))
                             .unwrap_or_else(|| default_macro_constant_type(ctx, value));
 
-                        (TypeKind::Int(kind), VarType::Int(value))
+                        (TyKind::Int(kind), VarType::Int(value))
                     },
                 };
 
@@ -265,7 +265,7 @@ impl ClangSubItemParser for Var {
 
                 let value = if is_integer {
                     let kind = match *canonical_ty.unwrap().kind() {
-                        TypeKind::Int(kind) => kind,
+                        TyKind::Int(kind) => kind,
                         _ => unreachable!(),
                     };
 

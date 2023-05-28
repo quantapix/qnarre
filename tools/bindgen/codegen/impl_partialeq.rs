@@ -1,7 +1,7 @@
 use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use crate::ir::context::BindgenContext;
 use crate::ir::item::{IsOpaque, Item};
-use crate::ir::ty::{TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
+use crate::ir::ty::{TyKind, RUST_DERIVE_IN_ARRAY_LIMIT};
 
 pub(crate) fn gen_partialeq_impl(
     ctx: &BindgenContext,
@@ -77,21 +77,21 @@ fn gen_field(ctx: &BindgenContext, ty_item: &Item, name: &str) -> proc_macro2::T
     let ty = ty_item.expect_type();
 
     match *ty.kind() {
-        TypeKind::Void
-        | TypeKind::NullPtr
-        | TypeKind::Int(..)
-        | TypeKind::Complex(..)
-        | TypeKind::Float(..)
-        | TypeKind::Enum(..)
-        | TypeKind::TypeParam
-        | TypeKind::UnresolvedTypeRef(..)
-        | TypeKind::Reference(..)
-        | TypeKind::Comp(..)
-        | TypeKind::Pointer(_)
-        | TypeKind::Function(..)
-        | TypeKind::Opaque => quote_equals(name_ident),
+        TyKind::Void
+        | TyKind::NullPtr
+        | TyKind::Int(..)
+        | TyKind::Complex(..)
+        | TyKind::Float(..)
+        | TyKind::Enum(..)
+        | TyKind::TypeParam
+        | TyKind::UnresolvedTypeRef(..)
+        | TyKind::Reference(..)
+        | TyKind::Comp(..)
+        | TyKind::Pointer(_)
+        | TyKind::Function(..)
+        | TyKind::Opaque => quote_equals(name_ident),
 
-        TypeKind::TemplateInstantiation(ref inst) => {
+        TyKind::TemplateInstantiation(ref inst) => {
             if inst.is_opaque(ctx, ty_item) {
                 quote! {
                     &self. #name_ident [..] == &other. #name_ident [..]
@@ -101,8 +101,8 @@ fn gen_field(ctx: &BindgenContext, ty_item: &Item, name: &str) -> proc_macro2::T
             }
         },
 
-        TypeKind::Array(_, len) => quote_equals(name_ident),
-        TypeKind::Vector(_, len) => {
+        TyKind::Array(_, len) => quote_equals(name_ident),
+        TyKind::Vector(_, len) => {
             let self_ids = 0..len;
             let other_ids = 0..len;
             quote! {
@@ -110,10 +110,7 @@ fn gen_field(ctx: &BindgenContext, ty_item: &Item, name: &str) -> proc_macro2::T
             }
         },
 
-        TypeKind::ResolvedTypeRef(t)
-        | TypeKind::TemplateAlias(t, _)
-        | TypeKind::Alias(t)
-        | TypeKind::BlockPointer(t) => {
+        TyKind::ResolvedTypeRef(t) | TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::BlockPointer(t) => {
             let inner_item = ctx.resolve_item(t);
             gen_field(ctx, inner_item, name)
         },

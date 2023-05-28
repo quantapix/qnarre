@@ -1,5 +1,5 @@
 use super::super::codegen::{EnumVariation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
-use super::analysis::{HasVtable, Sizedness, YHasVtable, YSizedness};
+use super::analysis::{HasVtable, Sizedness, YSizedness, *};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::context::{BindgenContext, ItemId, PartialType, TypeId};
@@ -14,7 +14,7 @@ use super::layout::Opaque;
 use super::module::Module;
 use super::template::{AsTemplParam, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
-use super::ty::{Type, TypeKind};
+use super::ty::{TyKind, Type};
 use crate::clang;
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
 
@@ -471,10 +471,10 @@ impl Item {
 
             match *item.kind() {
                 ItemKind::Type(ref ty) => match *ty.kind() {
-                    TypeKind::ResolvedTypeRef(inner) => {
+                    TyKind::ResolvedTypeRef(inner) => {
                         item = ctx.resolve_item(inner);
                     },
-                    TypeKind::TemplateInstantiation(ref inst) => {
+                    TyKind::TemplateInstantiation(ref inst) => {
                         item = ctx.resolve_item(inst.template_definition());
                     },
                     _ => return item.id(),
@@ -494,7 +494,7 @@ impl Item {
     fn push_disambiguated_name(&self, ctx: &BindgenContext, to: &mut String, level: u8) {
         to.push_str(&self.canonical_name(ctx));
         if let ItemKind::Type(ref ty) = *self.kind() {
-            if let TypeKind::TemplateInstantiation(ref inst) = *ty.kind() {
+            if let TyKind::TemplateInstantiation(ref inst) = *ty.kind() {
                 to.push_str(&format!("_open{}_", level));
                 for arg in inst.template_arguments() {
                     arg.into_resolver()
@@ -519,7 +519,7 @@ impl Item {
         self.func_name().and_then(|func_name| {
             let parent = ctx.resolve_item(self.parent_id());
             if let ItemKind::Type(ref ty) = *parent.kind() {
-                if let TypeKind::Comp(ref ci) = *ty.kind() {
+                if let TyKind::Comp(ref ci) = *ty.kind() {
                     return ci.constructors().iter().position(|c| *c == self.id()).or_else(|| {
                         ci.methods()
                             .iter()
@@ -663,7 +663,7 @@ impl Item {
         let ty_kind = self.kind().as_type().map(|t| t.kind());
         if let Some(ty_kind) = ty_kind {
             match *ty_kind {
-                TypeKind::Comp(..) | TypeKind::TemplateInstantiation(..) | TypeKind::Enum(..) => {
+                TyKind::Comp(..) | TyKind::TemplateInstantiation(..) | TyKind::Enum(..) => {
                     return self.local_id(ctx).to_string()
                 },
                 _ => {},
@@ -695,8 +695,8 @@ impl Item {
         };
 
         match *type_.kind() {
-            TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
-            TypeKind::Alias(inner_id) => {
+            TyKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
+            TyKind::Alias(inner_id) => {
                 let inner_item = ctx.resolve_item(inner_id);
                 let name = item.canonical_name(ctx);
 
@@ -771,11 +771,11 @@ impl Item {
         };
 
         Some(match ty.kind() {
-            TypeKind::Comp(ref ci) => match ci.kind() {
+            TyKind::Comp(ref ci) => match ci.kind() {
                 CompKind::Struct => "struct",
                 CompKind::Union => "union",
             },
-            TypeKind::Enum(..) => "enum",
+            TyKind::Enum(..) => "enum",
             _ => return None,
         })
     }
@@ -815,13 +815,13 @@ where
     fn has_vtable(&self, ctx: &BindgenContext) -> bool {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx)
-            .map_or(false, |id| !matches!(ctx.lookup_has_vtable(id), YHasVtable::No))
+            .map_or(false, |id| !matches!(ctx.lookup_has_vtable(id), has_vtable::Result::No))
     }
 
     fn has_vtable_ptr(&self, ctx: &BindgenContext) -> bool {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx).map_or(false, |id| {
-            matches!(ctx.lookup_has_vtable(id), YHasVtable::SelfHasVtable)
+            matches!(ctx.lookup_has_vtable(id), has_vtable::Result::SelfHasVtable)
         })
     }
 }
@@ -963,9 +963,9 @@ fn visit_child(
 }
 
 impl Item {
-    pub(crate) fn builtin_type(kind: TypeKind, is_const: bool, ctx: &mut BindgenContext) -> TypeId {
+    pub(crate) fn builtin_type(kind: TyKind, is_const: bool, ctx: &mut BindgenContext) -> TypeId {
         match kind {
-            TypeKind::Void | TypeKind::Int(..) | TypeKind::Pointer(..) | TypeKind::Float(..) => {},
+            TyKind::Void | TyKind::Int(..) | TyKind::Pointer(..) | TyKind::Float(..) => {},
             _ => panic!("Unsupported builtin type"),
         }
 
@@ -1129,7 +1129,7 @@ impl Item {
         debug!("New unresolved type reference: {:?}, {:?}", ty, location);
 
         let is_const = ty.is_const();
-        let kind = TypeKind::UnresolvedTypeRef(ty, location, parent_id);
+        let kind = TyKind::UnresolvedTypeRef(ty, location, parent_id);
         let current_module = ctx.current_module();
 
         ctx.add_item(
