@@ -1,11 +1,11 @@
 #![deny(clippy::missing_docs_in_private_items)]
-use regex::RegexSet as RxSet;
 use std::cell::Cell;
+
 #[derive(Clone, Debug, Default)]
 pub struct RegexSet {
     items: Vec<String>,
     matched: Vec<Cell<bool>>,
-    set: Option<RxSet>,
+    set: Option<regex::RegexSet>,
     record_matches: bool,
 }
 
@@ -16,11 +16,11 @@ impl RegexSet {
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
-    pub fn insert<S>(&mut self, string: S)
+    pub fn insert<S>(&mut self, x: S)
     where
         S: AsRef<str>,
     {
-        self.items.push(string.as_ref().to_owned());
+        self.items.push(x.as_ref().to_owned());
         self.matched.push(Cell::new(false));
         self.set = None;
     }
@@ -28,38 +28,24 @@ impl RegexSet {
         &self.items[..]
     }
     pub fn unmatched_items(&self) -> impl Iterator<Item = &String> {
-        self.items.iter().enumerate().filter_map(move |(i, item)| {
+        self.items.iter().enumerate().filter_map(move |(i, x)| {
             if !self.record_matches || self.matched[i].get() {
                 return None;
             }
-            Some(item)
+            Some(x)
         })
     }
     #[inline]
     pub fn build(&mut self, record_matches: bool) {
         self.build_inner(record_matches, None)
     }
-    #[cfg(all(feature = "__cli", feature = "experimental"))]
-    #[inline]
-    pub fn build_with_diagnostics(&mut self, record_matches: bool, name: Option<&'static str>) {
-        self.build_inner(record_matches, name)
-    }
-    #[cfg(all(not(feature = "__cli"), feature = "experimental"))]
-    #[inline]
-    pub(crate) fn build_with_diagnostics(&mut self, record_matches: bool, name: Option<&'static str>) {
-        self.build_inner(record_matches, name)
-    }
     fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
         let items = self.items.iter().map(|item| format!("^({})$", item));
         self.record_matches = record_matches;
-        self.set = match RxSet::new(items) {
+        self.set = match regex::RegexSet::new(items) {
             Ok(x) => Some(x),
             Err(e) => {
                 warn!("Invalid regex in {:?}: {:?}", self.items, e);
-                #[cfg(feature = "experimental")]
-                if let Some(name) = _name {
-                    invalid_regex_warning(self, e, name);
-                }
                 None
             },
         }
@@ -85,56 +71,4 @@ impl RegexSet {
         }
         true
     }
-}
-
-#[cfg(feature = "experimental")]
-fn invalid_regex_warning(set: &RegexSet, err: regex::Error, name: &'static str) {
-    use crate::diagnostics::{Diagnostic, Level, Slice};
-    let mut diagnostic = Diagnostic::default();
-    match err {
-        regex::Error::Syntax(string) => {
-            if string.starts_with("regex parse error:\n") {
-                let mut source = String::new();
-                let mut parsing_source = true;
-                for line in string.lines().skip(1) {
-                    if parsing_source {
-                        if line.starts_with(' ') {
-                            source.push_str(line);
-                            source.push('\n');
-                            continue;
-                        }
-                        parsing_source = false;
-                    }
-                    let error = "error: ";
-                    if line.starts_with(error) {
-                        let (_, msg) = line.split_at(error.len());
-                        diagnostic.add_annotation(msg.to_owned(), Level::Error);
-                    } else {
-                        diagnostic.add_annotation(line.to_owned(), Level::Info);
-                    }
-                }
-                let mut slice = Slice::default();
-                slice.with_source(source);
-                diagnostic.add_slice(slice);
-                diagnostic.with_title("Error while parsing a regular expression.", Level::Warn);
-            } else {
-                diagnostic.with_title(string, Level::Warn);
-            }
-        },
-        err => {
-            let err = err.to_string();
-            diagnostic.with_title(err, Level::Warn);
-        },
-    }
-    diagnostic.add_annotation(
-        format!("This regular expression was passed via `{}`.", name),
-        Level::Note,
-    );
-    if set.items.iter().any(|item| item == "*") {
-        diagnostic.add_annotation(
-            "Wildcard patterns \"*\" are no longer considered valid. Use \".*\" instead.",
-            Level::Help,
-        );
-    }
-    diagnostic.display();
 }

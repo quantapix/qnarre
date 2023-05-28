@@ -238,7 +238,7 @@ fn get_abi(cc: CXCallingConv) -> ClangAbi {
 }
 
 pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<String> {
-    if !ctx.options().enable_mangling {
+    if !ctx.opts().enable_mangling {
         return None;
     }
 
@@ -349,7 +349,7 @@ impl FnSig {
             },
         };
 
-        let (must_use, mut is_divergent) = if ctx.options().enable_function_attribute_detection {
+        let (must_use, mut is_divergent) = if ctx.opts().enable_function_attribute_detection {
             let [must_use, no_return, no_return_cpp] =
                 cursor.has_attrs(&[Attribute::MUST_USE, Attribute::NO_RETURN, Attribute::NO_RETURN_CPP]);
             (must_use, no_return || no_return_cpp)
@@ -436,7 +436,7 @@ impl FnSig {
     pub(crate) fn abi(&self, ctx: &BindgenContext, name: Option<&str>) -> ClangAbi {
         if let Some(name) = name {
             if let Some((abi, _)) = ctx
-                .options()
+                .opts()
                 .abi_overrides
                 .iter()
                 .find(|(_, regex_set)| regex_set.matches(name))
@@ -446,7 +446,7 @@ impl FnSig {
                 self.abi
             }
         } else if let Some((abi, _)) = ctx
-            .options()
+            .opts()
             .abi_overrides
             .iter()
             .find(|(_, regex_set)| regex_set.matches(&self.name))
@@ -505,18 +505,7 @@ impl ClangSubItemParser for Function {
         };
 
         if cursor.is_inlined_function() || cursor.definition().map_or(false, |x| x.is_inlined_function()) {
-            if !context.options().generate_inline_fns && !context.options().wrap_static_fns {
-                return Err(ParseError::Continue);
-            }
-
-            if cursor.is_deleted_function() {
-                return Err(ParseError::Continue);
-            }
-
-            if context.options().wrap_static_fns && cursor.is_inlined_function() && matches!(linkage, Linkage::External)
-            {
-                return Err(ParseError::Continue);
-            }
+            return Err(ParseError::Continue);
         }
 
         let sig = Item::from_ty(&cursor.cur_type(), cursor, None, context)?;
@@ -531,7 +520,7 @@ impl ClangSubItemParser for Function {
 
             name.push_str("_destructor");
         }
-        if let Some(nm) = context.options().last_callback(|callbacks| {
+        if let Some(nm) = context.opts().last_callback(|callbacks| {
             callbacks.generated_name_override(ItemInfo {
                 name: name.as_str(),
                 kind: ItemKind::Function,
@@ -543,7 +532,7 @@ impl ClangSubItemParser for Function {
 
         let mangled_name = cursor_mangling(context, &cursor);
 
-        let link_name = context.options().last_callback(|callbacks| {
+        let link_name = context.opts().last_callback(|callbacks| {
             callbacks.generated_link_name_override(ItemInfo {
                 name: name.as_str(),
                 kind: ItemKind::Function,

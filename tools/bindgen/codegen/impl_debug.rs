@@ -151,7 +151,7 @@ impl<'a> ImplDebug<'a> for Item {
                 }
             },
             TypeKind::Vector(_, len) => {
-                if ctx.options().use_core {
+                if ctx.opts().use_core {
                     Some((format!("{}(...)", name), vec![]))
                 } else {
                     let self_ids = 0..len;

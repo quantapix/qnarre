@@ -191,7 +191,7 @@ impl<'a> StructLayoutTracker<'a> {
         let padding_layout = if self.is_packed || is_union {
             None
         } else {
-            let force_padding = self.ctx.options().force_explicit_padding;
+            let force_padding = self.ctx.opts().force_explicit_padding;
 
             let need_padding =
                 force_padding || padding_bytes >= field_layout.align || field_layout.align > MAX_GUARANTEED_ALIGN;
@@ -244,7 +244,7 @@ impl<'a> StructLayoutTracker<'a> {
         comp_name: &str,
         comp_layout: Layout,
     ) -> Option<proc_macro2::TokenStream> {
-        if !self.ctx.options().force_explicit_padding {
+        if !self.ctx.opts().force_explicit_padding {
             return None;
         }
 

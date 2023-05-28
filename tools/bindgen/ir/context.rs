@@ -164,7 +164,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_debug(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_debug && ctx.lookup_can_derive_debug(*self)
+        ctx.opts().derive_debug && ctx.lookup_can_derive_debug(*self)
     }
 }
 
@@ -173,7 +173,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_default(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_default && ctx.lookup_can_derive_default(*self)
+        ctx.opts().derive_default && ctx.lookup_can_derive_default(*self)
     }
 }
 
@@ -182,7 +182,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_copy(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_copy && ctx.lookup_can_derive_copy(*self)
+        ctx.opts().derive_copy && ctx.lookup_can_derive_copy(*self)
     }
 }
 
@@ -191,7 +191,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_hash(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_hash && ctx.lookup_can_derive_hash(*self)
+        ctx.opts().derive_hash && ctx.lookup_can_derive_hash(*self)
     }
 }
 
@@ -200,7 +200,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_partialord(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
+        ctx.opts().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
     }
 }
 
@@ -209,7 +209,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_partialeq(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
+        ctx.opts().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
     }
 }
 
@@ -218,7 +218,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_eq(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_eq
+        ctx.opts().derive_eq
             && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
             && !ctx.lookup_has_float(*self)
     }
@@ -229,7 +229,7 @@ where
     T: Copy + Into<ItemId>,
 {
     fn can_derive_ord(&self, ctx: &BindgenContext) -> bool {
-        ctx.options().derive_ord
+        ctx.opts().derive_ord
             && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
             && !ctx.lookup_has_float(*self)
     }
@@ -265,7 +265,7 @@ pub(crate) struct BindgenContext {
     items: Vec<Option<Item>>,
     modules: HashMap<Cursor, ModuleId>,
     need_bitfield_allocation: Vec<ItemId>,
-    options: Opts,
+    opts: Opts,
     parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
     replacements: HashMap<Vec<String>, ItemId>,
     root_module: ModuleId,
@@ -314,12 +314,12 @@ impl<'ctx> AllowlistedItemsTraversal<'ctx> {
 }
 
 impl BindgenContext {
-    pub(crate) fn new(options: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
+    pub(crate) fn new(opts: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
         let index = clang::Index::new(false, true);
         let parse_options = clang_lib::CXTranslationUnit_DetailedPreprocessingRecord;
         let translation_unit = {
-            let _t = Timer::new("translation_unit").with_output(options.time_phases);
-            clang::TranslationUnit::parse(&index, "", &options.clang_args, input_unsaved_files, parse_options).expect(
+            let _t = Timer::new("translation_unit").with_output(opts.time_phases);
+            clang::TranslationUnit::parse(&index, "", &opts.clang_args, input_unsaved_files, parse_options).expect(
                 "libclang error; possible causes include:
 - Invalid flag syntax
 - Unrecognized flags
@@ -333,7 +333,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let target_info = clang::TargetInfo::new(&translation_unit);
         let root_module = Self::build_root_module(ItemId(0));
         let root_module_id = root_module.id().as_module_id_unchecked();
-        let deps = options.input_headers.iter().cloned().collect();
+        let deps = opts.input_headers.iter().cloned().collect();
 
         BindgenContext {
             allowed: None,
@@ -358,7 +358,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             items: vec![Some(root_module)],
             modules: Default::default(),
             need_bitfield_allocation: Default::default(),
-            options,
+            opts,
             parsed_macros: Default::default(),
             replacements: Default::default(),
             root_module: root_module_id,
@@ -1360,7 +1360,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.opts.opaque_types.matches(path[1..].join("::"))
     }
 
-    pub(crate) fn options(&self) -> &Opts {
+    pub(crate) fn opts(&self) -> &Opts {
         &self.opts
     }
 
@@ -1872,13 +1872,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             tokens.into_token_stream()
         }
     }
-
-    pub(crate) fn wrap_static_fns_suffix(&self) -> &str {
-        self.opts()
-            .wrap_static_fns_suffix
-            .as_deref()
-            .unwrap_or(crate::DEFAULT_NON_EXTERN_FNS_SUFFIX)
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -2000,17 +1993,4 @@ impl TemplParams for PartialType {
 
 fn unused_regex_diagnostic(item: &str, name: &str, _ctx: &BindgenContext) {
     warn!("unused option: {} {}", name, item);
-
-    #[cfg(feature = "experimental")]
-    if _ctx.options().emit_diagnostics {
-        use crate::diagnostics::{Diagnostic, Level};
-
-        Diagnostic::default()
-            .with_title(format!("Unused regular expression: `{}`.", item), Level::Warn)
-            .add_annotation(
-                format!("This regular expression was passed to `{}`.", name),
-                Level::Note,
-            )
-            .display();
-    }
 }

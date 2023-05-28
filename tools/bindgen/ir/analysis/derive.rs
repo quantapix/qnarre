@@ -194,7 +194,7 @@ impl<'ctx> DeriveAnalysis<'ctx> {
             return YDerive::No;
         }
         if i.is_opaque(self.ctx, &()) {
-            if !self.derive.can_derive_union() && ty.is_union() && self.ctx.options().untagged_union {
+            if !self.derive.can_derive_union() && ty.is_union() && self.ctx.opts().untagged_union {
                 return YDerive::No;
             }
             let y = ty
@@ -258,14 +258,14 @@ impl<'ctx> DeriveAnalysis<'ctx> {
                 }
                 if x.kind() == CompKind::Union {
                     if self.derive.can_derive_union() {
-                        if self.ctx.options().untagged_union
+                        if self.ctx.opts().untagged_union
                             && (!x.self_template_params(self.ctx).is_empty()
                                 || !i.all_template_params(self.ctx).is_empty())
                         {
                             return YDerive::No;
                         }
                     } else {
-                        if self.ctx.options().untagged_union {
+                        if self.ctx.opts().untagged_union {
                             return YDerive::No;
                         }
                         let y = ty

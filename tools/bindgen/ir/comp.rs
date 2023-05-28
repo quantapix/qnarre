@@ -620,7 +620,7 @@ impl CompFields {
                     }
 
                     anon_field_counter += 1;
-                    *name = Some(format!("{}{}", ctx.options().anon_fields_prefix, anon_field_counter));
+                    *name = Some(format!("{}{}", ctx.opts().anon_fields_prefix, anon_field_counter));
                 },
                 Field::Bitfields(ref mut bu) => {
                     for bitfield in &mut bu.bitfields {
@@ -1251,7 +1251,7 @@ impl CompInfo {
             return (false, false);
         }
 
-        if !ctx.options().untagged_union {
+        if !ctx.opts().untagged_union {
             return (false, false);
         }
 
@@ -1259,12 +1259,12 @@ impl CompInfo {
             return (false, false);
         }
 
-        let union_style = if ctx.options().bindgen_wrapper_union.matches(name) {
+        let union_style = if ctx.opts().bindgen_wrapper_union.matches(name) {
             NonCopyUnionStyle::BindgenWrapper
-        } else if ctx.options().manually_drop_union.matches(name) {
+        } else if ctx.opts().manually_drop_union.matches(name) {
             NonCopyUnionStyle::ManuallyDrop
         } else {
-            ctx.options().default_non_copy_union_style
+            ctx.opts().default_non_copy_union_style
         };
 
         let all_can_copy = self.fields().iter().all(|f| match *f {

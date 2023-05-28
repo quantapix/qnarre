@@ -1,6 +1,4 @@
 use std::env;
-#[cfg(feature = "experimental")]
-use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -114,9 +112,6 @@ macro_rules! options {
                     let func: fn(&$ty, &mut Vec<String>) = as_args!($as_args);
                     func(&self.opts.$field, &mut ys);
                 })*
-                if cfg!(feature = "experimental") {
-                    ys.push("--experimental".to_owned());
-                }
                 ys.push("--".to_owned());
                 if !self.opts.clang_args.is_empty() {
                     ys.extend_from_slice(&self.opts.clang_args);
@@ -800,10 +795,6 @@ options! {
             }
         },
         as_args: |_callbacks, _args| {
-            #[cfg(feature = "__cli")]
-            for cb in _callbacks {
-                _args.extend(cb.cli_args());
-            }
         },
     },
     codegen_config: CodegenConfig {
@@ -870,19 +861,6 @@ options! {
             }
         },
         as_args: |x, xs| (!x).as_args(xs, "--no-doc-comments"),
-    },
-    generate_inline_fns: bool {
-        methods: {
-            #[cfg_attr(
-                features = "experimental",
-                doc = "\nCheck the [`Builder::wrap_static_fns`] method for an alternative."
-            )]
-            pub fn generate_inline_fns(mut self, x: bool) -> Self {
-                self.opts.generate_inline_fns = x;
-                self
-            }
-        },
-        as_args: "--generate-inline-functions",
     },
     allowlist_recursively: bool {
         default: true,
@@ -1227,36 +1205,6 @@ options! {
             }
         },
     },
-    wrap_static_fns: bool {
-        methods: {
-            #[cfg(feature = "experimental")]
-            pub fn wrap_static_fns(mut self, x: bool) -> Self {
-                self.opts.wrap_static_fns = x;
-                self
-            }
-        },
-        as_args: "--wrap-static-fns",
-    },
-    wrap_static_fns_suffix: Option<String> {
-        methods: {
-            #[cfg(feature = "experimental")]
-            pub fn wrap_static_fns_suffix<T: AsRef<str>>(mut self, x: T) -> Self {
-                self.opts.wrap_static_fns_suffix = Some(x.as_ref().to_owned());
-                self
-            }
-        },
-        as_args: "--wrap-static-fns-suffix",
-    },
-    wrap_static_fns_path: Option<PathBuf> {
-        methods: {
-            #[cfg(feature = "experimental")]
-            pub fn wrap_static_fns_path<T: AsRef<Path>>(mut self, x: T) -> Self {
-                self.opts.wrap_static_fns_path = Some(x.as_ref().to_owned());
-                self
-            }
-        },
-        as_args: "--wrap-static-fns-path",
-    },
     default_visibility: FieldVisibilityKind {
         methods: {
             pub fn default_visibility(
@@ -1274,14 +1222,4 @@ options! {
             }
         },
     },
-    emit_diagnostics: bool {
-        methods: {
-            #[cfg(feature = "experimental")]
-            pub fn emit_diagnostics(mut self) -> Self {
-                self.opts.emit_diagnostics = true;
-                self
-            }
-        },
-        as_args: "--emit-diagnostics",
-    }
 }

@@ -25,7 +25,7 @@ impl DynItems {
         let init_fields = &self.init_fields;
         let struct_implementation = &self.struct_implementation;
 
-        let from_library = if ctx.options().wrap_unsafe_ops {
+        let from_library = if ctx.opts().wrap_unsafe_ops {
             quote!(unsafe { Self::from_library(library) })
         } else {
             quote!(Self::from_library(library))
@@ -99,7 +99,7 @@ impl DynItems {
         } else {
             quote! { self.#ident.as_ref().expect("Expected function, got error.") }
         };
-        let call_body = if ctx.options().wrap_unsafe_ops {
+        let call_body = if ctx.opts().wrap_unsafe_ops {
             quote!(unsafe { (#fn_)(#( #args_identifiers ),*) })
         } else {
             quote!((#fn_)(#( #args_identifiers ),*) )
@@ -115,7 +115,7 @@ impl DynItems {
         }
 
         let ident_str = codegen::helpers::ast_ty::cstr_expr(ident.to_string());
-        let library_get = if ctx.options().wrap_unsafe_ops {
+        let library_get = if ctx.opts().wrap_unsafe_ops {
             quote!(unsafe { __library.get(#ident_str) })
         } else {
             quote!(__library.get(#ident_str))

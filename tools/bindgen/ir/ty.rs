@@ -702,7 +702,7 @@ impl Type {
                         TypeKind::Opaque
                     } else {
                         if let Some(ref mut name) = name {
-                            if inner.kind() == CXType_Pointer && !ctx.options().c_naming {
+                            if inner.kind() == CXType_Pointer && !ctx.opts().c_naming {
                                 let pointee = inner.pointee_type().unwrap();
                                 if pointee.kind() == CXType_Elaborated && pointee.declaration().spelling() == *name {
                                     *name += "_ptr";

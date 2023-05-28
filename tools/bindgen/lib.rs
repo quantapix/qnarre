@@ -31,8 +31,6 @@ mod timer;
 
 pub mod callbacks;
 
-#[cfg(feature = "experimental")]
-mod diagnostics;
 mod ir;
 mod parse;
 mod regex_set;
@@ -291,50 +289,6 @@ impl Opts {
         ];
 
         let record_matches = self.record_matches;
-        //#[cfg(feature = "experimental")]
-        {
-            let n = REGEX_SETS_LEN + self.abi_overrides.len();
-            let names = if self.emit_diagnostics {
-                <[&str; REGEX_SETS_LEN]>::into_iter([
-                    "--blocklist-type",
-                    "--blocklist-function",
-                    "--blocklist-item",
-                    "--blocklist-file",
-                    "--opaque-type",
-                    "--allowlist-type",
-                    "--allowlist-function",
-                    "--allowlist-var",
-                    "--allowlist-file",
-                    "--bitfield-enum",
-                    "--newtype-enum",
-                    "--newtype-global-enum",
-                    "--rustified-enum",
-                    "--rustified-enum-non-exhaustive",
-                    "--constified-enum-module",
-                    "--constified-enum",
-                    "--type-alias",
-                    "--new-type-alias",
-                    "--new-type-alias-deref",
-                    "--bindgen-wrapper-union",
-                    "--manually-drop-union",
-                    "--no-partialeq",
-                    "--no-copy",
-                    "--no-debug",
-                    "--no-default",
-                    "--no-hash",
-                    "--must-use",
-                ])
-                .chain((0..self.abi_overrides.len()).map(|_| "--override-abi"))
-                .map(Some)
-                .collect()
-            } else {
-                vec![None; n]
-            };
-            for (regex_set, name) in self.abi_overrides.values_mut().chain(regex_sets).zip(names) {
-                regex_set.build_with_diagnostics(record_matches, name);
-            }
-        }
-        #[cfg(not(feature = "experimental"))]
         for regex_set in self.abi_overrides.values_mut().chain(regex_sets) {
             regex_set.build(record_matches);
         }
@@ -712,16 +666,6 @@ impl Bindings {
 
 fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &Opts) {
     warn!("{}", msg);
-
-    #[cfg(feature = "experimental")]
-    if _options.emit_diagnostics {
-        use crate::diagnostics::{Diagnostic, Level};
-
-        Diagnostic::default()
-            .with_title(msg, Level::Warn)
-            .add_annotation("The bindings will be generated but not formatted.", Level::Note)
-            .display();
-    }
 }
 
 impl std::fmt::Display for Bindings {
@@ -734,7 +678,7 @@ impl std::fmt::Display for Bindings {
 }
 
 fn filter_builtins(ctx: &BindgenContext, cursor: &clang::Cursor) -> bool {
-    ctx.options().builtins || !cursor.is_builtin()
+    ctx.opts().builtins || !cursor.is_builtin()
 }
 
 fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
@@ -771,7 +715,7 @@ fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
 
     let cursor = context.translation_unit().cursor();
 
-    if context.options().emit_ast {
+    if context.opts().emit_ast {
         fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
             if !cur.is_builtin() {
                 clang::ast_dump(cur, 0)

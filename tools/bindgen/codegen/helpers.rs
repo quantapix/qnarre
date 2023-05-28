@@ -108,7 +108,7 @@ pub(crate) fn integer_type(ctx: &BindgenContext, layout: Layout) -> Option<Token
 pub(crate) fn bitfield_unit(ctx: &BindgenContext, layout: Layout) -> TokenStream {
     let mut tokens = quote! {};
 
-    if ctx.options().enable_cxx_namespaces {
+    if ctx.opts().enable_cxx_namespaces {
         tokens.append_all(quote! { root:: });
     }
 
@@ -129,7 +129,7 @@ pub(crate) mod ast_ty {
     use std::str::FromStr;
 
     pub(crate) fn c_void(ctx: &BindgenContext) -> TokenStream {
-        match ctx.options().ctypes_prefix {
+        match ctx.opts().ctypes_prefix {
             Some(ref prefix) => {
                 let prefix = TokenStream::from_str(prefix.as_str()).unwrap();
                 quote! {
@@ -144,7 +144,7 @@ pub(crate) mod ast_ty {
 
     pub(crate) fn raw_type(ctx: &BindgenContext, name: &str) -> TokenStream {
         let ident = ctx.rust_ident_raw(name);
-        match ctx.options().ctypes_prefix {
+        match ctx.opts().ctypes_prefix {
             Some(ref prefix) => {
                 let prefix = TokenStream::from_str(prefix.as_str()).unwrap();
                 quote! {
@@ -152,7 +152,7 @@ pub(crate) mod ast_ty {
                 }
             },
             None => {
-                if ctx.options().use_core {
+                if ctx.opts().use_core {
                     quote! {
                         ::core::ffi::#ident
                     }
@@ -166,7 +166,7 @@ pub(crate) mod ast_ty {
     }
 
     pub(crate) fn float_kind_rust_type(ctx: &BindgenContext, fk: FloatKind, layout: Option<Layout>) -> TokenStream {
-        match (fk, ctx.options().convert_floats) {
+        match (fk, ctx.opts().convert_floats) {
             (FloatKind::Float, true) => quote! { f32 },
             (FloatKind::Double, true) => quote! { f64 },
             (FloatKind::Float, false) => raw_type(ctx, "c_float"),

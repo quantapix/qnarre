@@ -95,12 +95,10 @@ impl DotAttrs for Var {
 }
 
 fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
-    if value < 0 || ctx.options().default_macro_constant_type == MacroTypeVariation::Signed {
+    if value < 0 || ctx.opts().default_macro_constant_type == MacroTypeVariation::Signed {
         if value < i32::min_value() as i64 || value > i32::max_value() as i64 {
             IntKind::I64
-        } else if !ctx.options().fit_macro_constants
-            || value < i16::min_value() as i64
-            || value > i16::max_value() as i64
+        } else if !ctx.opts().fit_macro_constants || value < i16::min_value() as i64 || value > i16::max_value() as i64
         {
             IntKind::I32
         } else if value < i8::min_value() as i64 || value > i8::max_value() as i64 {
@@ -110,7 +108,7 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
         }
     } else if value > u32::max_value() as i64 {
         IntKind::U64
-    } else if !ctx.options().fit_macro_constants || value > u16::max_value() as i64 {
+    } else if !ctx.opts().fit_macro_constants || value > u16::max_value() as i64 {
         IntKind::U32
     } else if value > u8::max_value() as i64 {
         IntKind::U16
@@ -140,7 +138,7 @@ impl ClangSubItemParser for Var {
         use clang_lib::*;
         match cursor.kind() {
             CXCursor_MacroDefinition => {
-                for callbacks in &ctx.options().parse_callbacks {
+                for callbacks in &ctx.opts().parse_callbacks {
                     match callbacks.will_parse_macro(&cursor.spelling()) {
                         MacroParsing::Ignore => {
                             return Err(ParseError::Continue);
@@ -193,14 +191,14 @@ impl ClangSubItemParser for Var {
                     },
                     EvalResult::Str(val) => {
                         let char_ty = Item::builtin_type(TypeKind::Int(IntKind::U8), true, ctx);
-                        for callbacks in &ctx.options().parse_callbacks {
+                        for callbacks in &ctx.opts().parse_callbacks {
                             callbacks.str_macro(&name, &val);
                         }
                         (TypeKind::Pointer(char_ty), VarType::String(val))
                     },
                     EvalResult::Int(Wrapping(value)) => {
                         let kind = ctx
-                            .options()
+                            .opts()
                             .last_callback(|c| c.int_macro(&name, value))
                             .unwrap_or_else(|| default_macro_constant_type(ctx, value));
 
@@ -218,7 +216,7 @@ impl ClangSubItemParser for Var {
             CXCursor_VarDecl => {
                 let mut name = cursor.spelling();
                 if cursor.linkage() == CXLinkage_External {
-                    if let Some(nm) = ctx.options().last_callback(|callbacks| {
+                    if let Some(nm) = ctx.opts().last_callback(|callbacks| {
                         callbacks.generated_name_override(ItemInfo {
                             name: name.as_str(),
                             kind: ItemKind::Var,
@@ -234,7 +232,7 @@ impl ClangSubItemParser for Var {
                     return Err(ParseError::Continue);
                 }
 
-                let link_name = ctx.options().last_callback(|callbacks| {
+                let link_name = ctx.opts().last_callback(|callbacks| {
                     callbacks.generated_link_name_override(ItemInfo {
                         name: name.as_str(),
                         kind: ItemKind::Var,
@@ -354,30 +352,4 @@ fn get_integer_literal_from_cursor(cursor: &clang::Cursor) -> Option<i64> {
 
 fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SourceLocation, _ctx: &BindgenContext) {
     warn!("Duplicated macro definition: {}", macro_name);
-
-    #[cfg(feature = "experimental")]
-    #[allow(clippy::overly_complex_bool_expr)]
-    if false && _ctx.options().emit_diagnostics {
-        use crate::diagnostics::{get_line, Diagnostic, Level, Slice};
-        use std::borrow::Cow;
-
-        let mut slice = Slice::default();
-        let mut source = Cow::from(macro_name);
-
-        let (file, line, col, _) = _location.location();
-        if let Some(filename) = file.name() {
-            if let Ok(Some(code)) = get_line(&filename, line) {
-                source = code.into();
-            }
-            slice.with_location(filename, line, col);
-        }
-
-        slice.with_source(source);
-
-        Diagnostic::default()
-            .with_title("Duplicated macro definition.", Level::Warn)
-            .add_slice(slice)
-            .add_annotation("This macro had a duplicate.", Level::Note)
-            .display();
-    }
 }
