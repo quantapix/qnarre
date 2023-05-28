@@ -280,7 +280,7 @@ pub(crate) struct Item {
     annotations: Annotations,
     parent_id: ItemId,
     kind: ItemKind,
-    location: Option<clang::SourceLocation>,
+    location: Option<clang::SrcLoc>,
 }
 
 impl AsRef<ItemId> for Item {
@@ -296,7 +296,7 @@ impl Item {
         annotations: Option<Annotations>,
         parent_id: ItemId,
         kind: ItemKind,
-        location: Option<clang::SourceLocation>,
+        location: Option<clang::SrcLoc>,
     ) -> Self {
         debug_assert!(id != parent_id || kind.is_module());
         Item {
@@ -365,7 +365,7 @@ impl Item {
         &mut self.kind
     }
 
-    pub(crate) fn location(&self) -> Option<&clang::SourceLocation> {
+    pub(crate) fn location(&self) -> Option<&clang::SrcLoc> {
         self.location.as_ref()
     }
 

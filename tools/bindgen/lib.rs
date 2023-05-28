@@ -22,7 +22,7 @@ mod log_stubs;
 #[macro_use]
 mod extra_assertions;
 
-mod clang;
+pub(crate) mod clang;
 
 mod codegen;
 mod deps;

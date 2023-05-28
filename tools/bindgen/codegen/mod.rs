@@ -3409,7 +3409,7 @@ impl CodeGenerator for Function {
 
 fn unsupported_abi_diagnostic<const VARIADIC: bool>(
     fn_name: &str,
-    _location: Option<&crate::clang::SourceLocation>,
+    _location: Option<&crate::clang::SrcLoc>,
     abi: &str,
     _ctx: &BindgenContext,
 ) {
@@ -3421,7 +3421,7 @@ fn unsupported_abi_diagnostic<const VARIADIC: bool>(
     );
 }
 
-fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::SourceLocation>, _ctx: &BindgenContext) {
+fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::SrcLoc>, _ctx: &BindgenContext) {
     warn!(
         "Cannot generate wrapper for the static variadic function `{}`.",
         fn_name,

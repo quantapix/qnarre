@@ -7,7 +7,7 @@ use super::item::Item;
 use super::ty::{FloatKind, TyKind};
 use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
-use crate::clang::ClangToken;
+use crate::clang::Token;
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
 
 use std::io;
@@ -118,10 +118,10 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
 }
 
 fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::ParseCallbacks) {
-    let is_closing_paren = |t: &ClangToken| t.kind == clang_lib::CXToken_Punctuation && t.spelling() == b")";
+    let is_closing_paren = |t: &Token| t.kind == clang_lib::CXToken_Punctuation && t.spelling() == b")";
     let tokens: Vec<_> = cursor.tokens().iter().collect();
     if let Some(boundary) = tokens.iter().position(is_closing_paren) {
-        let mut spelled = tokens.iter().map(ClangToken::spelling);
+        let mut spelled = tokens.iter().map(Token::spelling);
         let left = spelled.by_ref().take(boundary + 1);
         let left = left.collect::<Vec<_>>().concat();
         if let Ok(left) = String::from_utf8(left) {
@@ -350,6 +350,6 @@ fn get_integer_literal_from_cursor(cursor: &clang::Cursor) -> Option<i64> {
     value
 }
 
-fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SourceLocation, _ctx: &BindgenContext) {
+fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SrcLoc, _ctx: &BindgenContext) {
     warn!("Duplicated macro definition: {}", macro_name);
 }

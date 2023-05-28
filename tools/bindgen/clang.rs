@@ -12,53 +12,38 @@ use clang_lib::*;
 
 use crate::ir::context::BindgenContext;
 
-pub(crate) struct Attribute {
+pub struct Attribute {
     name: &'static [u8],
     kind: Option<CXCursorKind>,
-    token_kind: CXTokenKind,
+    tok_kind: CXTokenKind,
 }
 
 impl Attribute {
-    pub(crate) const MUST_USE: Self = Self {
+    pub const MUST_USE: Self = Self {
         name: b"warn_unused_result",
         kind: Some(440),
-        token_kind: CXToken_Identifier,
+        tok_kind: CXToken_Identifier,
     };
-
-    pub(crate) const NO_RETURN: Self = Self {
+    pub const NO_RETURN: Self = Self {
         name: b"_Noreturn",
         kind: None,
-        token_kind: CXToken_Keyword,
+        tok_kind: CXToken_Keyword,
     };
-
-    pub(crate) const NO_RETURN_CPP: Self = Self {
+    pub const NO_RETURN_CPP: Self = Self {
         name: b"noreturn",
         kind: None,
-        token_kind: CXToken_Identifier,
+        tok_kind: CXToken_Identifier,
     };
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct Cursor {
-    x: CXCursor,
-}
-
-impl fmt::Debug for Cursor {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "Cursor({} kind: {}, loc: {}, usr: {:?})",
-            self.spelling(),
-            kind_to_str(self.kind()),
-            self.location(),
-            self.usr()
-        )
-    }
+pub struct Cursor {
+    c: CXCursor,
 }
 
 impl Cursor {
-    pub(crate) fn usr(&self) -> Option<String> {
-        let s = unsafe { cxstring_into_string(clang_getCursorUSR(self.x)) };
+    pub fn usr(&self) -> Option<String> {
+        let s = unsafe { cxstring_into_string(clang_getCursorUSR(self.c)) };
         if s.is_empty() {
             None
         } else {
@@ -66,30 +51,30 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn is_declaration(&self) -> bool {
+    pub fn is_declaration(&self) -> bool {
         unsafe { clang_isDeclaration(self.kind()) != 0 }
     }
 
-    pub(crate) fn is_anonymous(&self) -> bool {
-        unsafe { clang_Cursor_isAnonymous(self.x) != 0 }
+    pub fn is_anonymous(&self) -> bool {
+        unsafe { clang_Cursor_isAnonymous(self.c) != 0 }
     }
 
-    pub(crate) fn spelling(&self) -> String {
-        unsafe { cxstring_into_string(clang_getCursorSpelling(self.x)) }
+    pub fn spelling(&self) -> String {
+        unsafe { cxstring_into_string(clang_getCursorSpelling(self.c)) }
     }
 
-    pub(crate) fn display_name(&self) -> String {
-        unsafe { cxstring_into_string(clang_getCursorDisplayName(self.x)) }
+    pub fn display_name(&self) -> String {
+        unsafe { cxstring_into_string(clang_getCursorDisplayName(self.c)) }
     }
 
-    pub(crate) fn mangling(&self) -> String {
-        unsafe { cxstring_into_string(clang_Cursor_getMangling(self.x)) }
+    pub fn mangling(&self) -> String {
+        unsafe { cxstring_into_string(clang_Cursor_getMangling(self.c)) }
     }
 
-    pub(crate) fn cxx_manglings(&self) -> Result<Vec<String>, ()> {
+    pub fn cxx_manglings(&self) -> Result<Vec<String>, ()> {
         use clang_lib::*;
         unsafe {
-            let manglings = clang_Cursor_getCXXManglings(self.x);
+            let manglings = clang_Cursor_getCXXManglings(self.c);
             if manglings.is_null() {
                 return Err(());
             }
@@ -105,23 +90,23 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn is_builtin(&self) -> bool {
+    pub fn is_builtin(&self) -> bool {
         let (file, _, _, _) = self.location().location();
         file.name().is_none()
     }
 
-    pub(crate) fn lexical_parent(&self) -> Cursor {
+    pub fn lexical_parent(&self) -> Cursor {
         unsafe {
             Cursor {
-                x: clang_getCursorLexicalParent(self.x),
+                c: clang_getCursorLexicalParent(self.c),
             }
         }
     }
 
-    pub(crate) fn fallible_semantic_parent(&self) -> Option<Cursor> {
+    pub fn fallible_semantic_parent(&self) -> Option<Cursor> {
         let sp = unsafe {
             Cursor {
-                x: clang_getCursorSemanticParent(self.x),
+                c: clang_getCursorSemanticParent(self.c),
             }
         };
         if sp == *self || !sp.is_valid() {
@@ -130,15 +115,15 @@ impl Cursor {
         Some(sp)
     }
 
-    pub(crate) fn semantic_parent(&self) -> Cursor {
+    pub fn semantic_parent(&self) -> Cursor {
         self.fallible_semantic_parent().unwrap()
     }
 
-    pub(crate) fn num_template_args(&self) -> Option<u32> {
+    pub fn num_template_args(&self) -> Option<u32> {
         self.cur_type()
             .num_template_args()
             .or_else(|| {
-                let n: c_int = unsafe { clang_Cursor_getNumTemplateArguments(self.x) };
+                let n: c_int = unsafe { clang_Cursor_getNumTemplateArguments(self.c) };
 
                 if n >= 0 {
                     Some(n as u32)
@@ -157,19 +142,19 @@ impl Cursor {
             })
     }
 
-    pub(crate) fn translation_unit(&self) -> Cursor {
+    pub fn translation_unit(&self) -> Cursor {
         assert!(self.is_valid());
         unsafe {
-            let tu = clang_Cursor_getTranslationUnit(self.x);
+            let tu = clang_Cursor_getTranslationUnit(self.c);
             let cursor = Cursor {
-                x: clang_getTranslationUnitCursor(tu),
+                c: clang_getTranslationUnitCursor(tu),
             };
             assert!(cursor.is_valid());
             cursor
         }
     }
 
-    pub(crate) fn is_toplevel(&self) -> bool {
+    pub fn is_toplevel(&self) -> bool {
         let mut semantic_parent = self.fallible_semantic_parent();
 
         while semantic_parent.is_some()
@@ -184,36 +169,36 @@ impl Cursor {
         semantic_parent == tu.fallible_semantic_parent()
     }
 
-    pub(crate) fn is_template_like(&self) -> bool {
+    pub fn is_template_like(&self) -> bool {
         matches!(
             self.kind(),
             CXCursor_ClassTemplate | CXCursor_ClassTemplatePartialSpecialization | CXCursor_TypeAliasTemplateDecl
         )
     }
 
-    pub(crate) fn is_macro_function_like(&self) -> bool {
-        unsafe { clang_Cursor_isMacroFunctionLike(self.x) != 0 }
+    pub fn is_macro_function_like(&self) -> bool {
+        unsafe { clang_Cursor_isMacroFunctionLike(self.c) != 0 }
     }
 
-    pub(crate) fn kind(&self) -> CXCursorKind {
-        self.x.kind
+    pub fn kind(&self) -> CXCursorKind {
+        self.c.kind
     }
 
-    pub(crate) fn is_definition(&self) -> bool {
-        unsafe { clang_isCursorDefinition(self.x) != 0 }
+    pub fn is_definition(&self) -> bool {
+        unsafe { clang_isCursorDefinition(self.c) != 0 }
     }
 
-    pub(crate) fn is_template_specialization(&self) -> bool {
+    pub fn is_template_specialization(&self) -> bool {
         self.specialized().is_some()
     }
 
-    pub(crate) fn is_fully_specialized_template(&self) -> bool {
+    pub fn is_fully_specialized_template(&self) -> bool {
         self.is_template_specialization()
             && self.kind() != CXCursor_ClassTemplatePartialSpecialization
             && self.num_template_args().unwrap_or(0) > 0
     }
 
-    pub(crate) fn is_in_non_fully_specialized_template(&self) -> bool {
+    pub fn is_in_non_fully_specialized_template(&self) -> bool {
         if self.is_toplevel() {
             return false;
         }
@@ -230,14 +215,14 @@ impl Cursor {
         true
     }
 
-    pub(crate) fn is_template_parameter(&self) -> bool {
+    pub fn is_template_parameter(&self) -> bool {
         matches!(
             self.kind(),
             CXCursor_TemplateTemplateParameter | CXCursor_TemplateTypeParameter | CXCursor_NonTypeTemplateParameter
         )
     }
 
-    pub(crate) fn is_dependent_on_template_parameter(&self) -> bool {
+    pub fn is_dependent_on_template_parameter(&self) -> bool {
         fn visitor(found_template_parameter: &mut bool, cur: Cursor) -> CXChildVisitResult {
             if cur.is_template_parameter() {
                 *found_template_parameter = true;
@@ -269,24 +254,24 @@ impl Cursor {
         found_template_parameter
     }
 
-    pub(crate) fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         unsafe { clang_isInvalid(self.kind()) == 0 }
     }
 
-    pub(crate) fn location(&self) -> SourceLocation {
+    pub fn location(&self) -> SrcLoc {
         unsafe {
-            SourceLocation {
-                x: clang_getCursorLocation(self.x),
+            SrcLoc {
+                x: clang_getCursorLocation(self.c),
             }
         }
     }
 
-    pub(crate) fn extent(&self) -> CXSourceRange {
-        unsafe { clang_getCursorExtent(self.x) }
+    pub fn extent(&self) -> CXSourceRange {
+        unsafe { clang_getCursorExtent(self.c) }
     }
 
-    pub(crate) fn raw_comment(&self) -> Option<String> {
-        let s = unsafe { cxstring_into_string(clang_Cursor_getRawCommentText(self.x)) };
+    pub fn raw_comment(&self) -> Option<String> {
+        let s = unsafe { cxstring_into_string(clang_Cursor_getRawCommentText(self.c)) };
         if s.is_empty() {
             None
         } else {
@@ -294,26 +279,26 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn comment(&self) -> Comment {
+    pub fn comment(&self) -> Comment {
         unsafe {
             Comment {
-                x: clang_Cursor_getParsedComment(self.x),
+                c: clang_Cursor_getParsedComment(self.c),
             }
         }
     }
 
-    pub(crate) fn cur_type(&self) -> Type {
+    pub fn cur_type(&self) -> Type {
         unsafe {
             Type {
-                x: clang_getCursorType(self.x),
+                t: clang_getCursorType(self.c),
             }
         }
     }
 
-    pub(crate) fn definition(&self) -> Option<Cursor> {
+    pub fn definition(&self) -> Option<Cursor> {
         unsafe {
             let ret = Cursor {
-                x: clang_getCursorDefinition(self.x),
+                c: clang_getCursorDefinition(self.c),
             };
 
             if ret.is_valid() && ret.kind() != CXCursor_NoDeclFound {
@@ -324,10 +309,10 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn referenced(&self) -> Option<Cursor> {
+    pub fn referenced(&self) -> Option<Cursor> {
         unsafe {
             let ret = Cursor {
-                x: clang_getCursorReferenced(self.x),
+                c: clang_getCursorReferenced(self.c),
             };
 
             if ret.is_valid() {
@@ -338,18 +323,18 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn canonical(&self) -> Cursor {
+    pub fn canonical(&self) -> Cursor {
         unsafe {
             Cursor {
-                x: clang_getCanonicalCursor(self.x),
+                c: clang_getCanonicalCursor(self.c),
             }
         }
     }
 
-    pub(crate) fn specialized(&self) -> Option<Cursor> {
+    pub fn specialized(&self) -> Option<Cursor> {
         unsafe {
             let ret = Cursor {
-                x: clang_getSpecializedCursorTemplate(self.x),
+                c: clang_getSpecializedCursorTemplate(self.c),
             };
             if ret.is_valid() {
                 Some(ret)
@@ -359,21 +344,21 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn template_kind(&self) -> CXCursorKind {
-        unsafe { clang_getTemplateCursorKind(self.x) }
+    pub fn template_kind(&self) -> CXCursorKind {
+        unsafe { clang_getTemplateCursorKind(self.c) }
     }
 
-    pub(crate) fn visit<Visitor>(&self, mut visitor: Visitor)
+    pub fn visit<Visitor>(&self, mut visitor: Visitor)
     where
         Visitor: FnMut(Cursor) -> CXChildVisitResult,
     {
         let data = &mut visitor as *mut Visitor;
         unsafe {
-            clang_visitChildren(self.x, visit_children::<Visitor>, data.cast());
+            clang_visitChildren(self.c, visit_children::<Visitor>, data.cast());
         }
     }
 
-    pub(crate) fn collect_children(&self) -> Vec<Cursor> {
+    pub fn collect_children(&self) -> Vec<Cursor> {
         let mut children = vec![];
         self.visit(|c| {
             children.push(c);
@@ -382,7 +367,7 @@ impl Cursor {
         children
     }
 
-    pub(crate) fn has_children(&self) -> bool {
+    pub fn has_children(&self) -> bool {
         let mut has_children = false;
         self.visit(|_| {
             has_children = true;
@@ -391,7 +376,7 @@ impl Cursor {
         has_children
     }
 
-    pub(crate) fn has_at_least_num_children(&self, n: usize) -> bool {
+    pub fn has_at_least_num_children(&self, n: usize) -> bool {
         assert!(n > 0);
         let mut num_left = n;
         self.visit(|_| {
@@ -405,7 +390,7 @@ impl Cursor {
         num_left == 0
     }
 
-    pub(crate) fn contains_cursor(&self, kind: CXCursorKind) -> bool {
+    pub fn contains_cursor(&self, kind: CXCursorKind) -> bool {
         let mut found = false;
 
         self.visit(|c| {
@@ -420,23 +405,23 @@ impl Cursor {
         found
     }
 
-    pub(crate) fn is_inlined_function(&self) -> bool {
-        unsafe { clang_Cursor_isFunctionInlined(self.x) != 0 }
+    pub fn is_inlined_function(&self) -> bool {
+        unsafe { clang_Cursor_isFunctionInlined(self.c) != 0 }
     }
 
-    pub(crate) fn is_defaulted_function(&self) -> bool {
-        unsafe { clang_CXXMethod_isDefaulted(self.x) != 0 }
+    pub fn is_defaulted_function(&self) -> bool {
+        unsafe { clang_CXXMethod_isDefaulted(self.c) != 0 }
     }
 
-    pub(crate) fn is_deleted_function(&self) -> bool {
+    pub fn is_deleted_function(&self) -> bool {
         self.is_inlined_function() && self.definition().is_none() && !self.is_defaulted_function()
     }
 
-    pub(crate) fn is_bit_field(&self) -> bool {
-        unsafe { clang_Cursor_isBitField(self.x) != 0 }
+    pub fn is_bit_field(&self) -> bool {
+        unsafe { clang_Cursor_isBitField(self.c) != 0 }
     }
 
-    pub(crate) fn bit_width_expr(&self) -> Option<Cursor> {
+    pub fn bit_width_expr(&self) -> Option<Cursor> {
         if !self.is_bit_field() {
             return None;
         }
@@ -455,13 +440,13 @@ impl Cursor {
         result
     }
 
-    pub(crate) fn bit_width(&self) -> Option<u32> {
+    pub fn bit_width(&self) -> Option<u32> {
         if self.bit_width_expr()?.is_dependent_on_template_parameter() {
             return None;
         }
 
         unsafe {
-            let w = clang_getFieldDeclBitWidth(self.x);
+            let w = clang_getFieldDeclBitWidth(self.c);
             if w == -1 {
                 None
             } else {
@@ -470,10 +455,10 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn enum_type(&self) -> Option<Type> {
+    pub fn enum_type(&self) -> Option<Type> {
         unsafe {
             let t = Type {
-                x: clang_getEnumDeclIntegerType(self.x),
+                t: clang_getEnumDeclIntegerType(self.c),
             };
             if t.is_valid() {
                 Some(t)
@@ -483,39 +468,39 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn enum_val_boolean(&self) -> Option<bool> {
+    pub fn enum_val_boolean(&self) -> Option<bool> {
         unsafe {
             if self.kind() == CXCursor_EnumConstantDecl {
-                Some(clang_getEnumConstantDeclValue(self.x) != 0)
+                Some(clang_getEnumConstantDeclValue(self.c) != 0)
             } else {
                 None
             }
         }
     }
 
-    pub(crate) fn enum_val_signed(&self) -> Option<i64> {
-        unsafe {
-            if self.kind() == CXCursor_EnumConstantDecl {
-                #[allow(clippy::unnecessary_cast)]
-                Some(clang_getEnumConstantDeclValue(self.x) as i64)
-            } else {
-                None
-            }
-        }
-    }
-
-    pub(crate) fn enum_val_unsigned(&self) -> Option<u64> {
+    pub fn enum_val_signed(&self) -> Option<i64> {
         unsafe {
             if self.kind() == CXCursor_EnumConstantDecl {
                 #[allow(clippy::unnecessary_cast)]
-                Some(clang_getEnumConstantDeclUnsignedValue(self.x) as u64)
+                Some(clang_getEnumConstantDeclValue(self.c) as i64)
             } else {
                 None
             }
         }
     }
 
-    pub(crate) fn has_attrs<const N: usize>(&self, attrs: &[Attribute; N]) -> [bool; N] {
+    pub fn enum_val_unsigned(&self) -> Option<u64> {
+        unsafe {
+            if self.kind() == CXCursor_EnumConstantDecl {
+                #[allow(clippy::unnecessary_cast)]
+                Some(clang_getEnumConstantDeclUnsignedValue(self.c) as u64)
+            } else {
+                None
+            }
+        }
+    }
+
+    pub fn has_attrs<const N: usize>(&self, attrs: &[Attribute; N]) -> [bool; N] {
         let mut found_attrs = [false; N];
         let mut found_count = 0;
 
@@ -529,7 +514,7 @@ impl Cursor {
                             && cur
                                 .tokens()
                                 .iter()
-                                .any(|t| t.kind == attr.token_kind && t.spelling() == attr.name))
+                                .any(|t| t.kind == attr.tok_kind && t.spelling() == attr.name))
                     {
                         *found_attr = true;
                         found_count += 1;
@@ -547,9 +532,9 @@ impl Cursor {
         found_attrs
     }
 
-    pub(crate) fn typedef_type(&self) -> Option<Type> {
+    pub fn typedef_type(&self) -> Option<Type> {
         let inner = Type {
-            x: unsafe { clang_getTypedefDeclUnderlyingType(self.x) },
+            t: unsafe { clang_getTypedefDeclUnderlyingType(self.c) },
         };
 
         if inner.is_valid() {
@@ -559,27 +544,27 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn linkage(&self) -> CXLinkageKind {
-        unsafe { clang_getCursorLinkage(self.x) }
+    pub fn linkage(&self) -> CXLinkageKind {
+        unsafe { clang_getCursorLinkage(self.c) }
     }
 
-    pub(crate) fn visibility(&self) -> CXVisibilityKind {
-        unsafe { clang_getCursorVisibility(self.x) }
+    pub fn visibility(&self) -> CXVisibilityKind {
+        unsafe { clang_getCursorVisibility(self.c) }
     }
 
-    pub(crate) fn args(&self) -> Option<Vec<Cursor>> {
+    pub fn args(&self) -> Option<Vec<Cursor>> {
         self.num_args().ok().map(|num| {
             (0..num)
                 .map(|i| Cursor {
-                    x: unsafe { clang_Cursor_getArgument(self.x, i as c_uint) },
+                    c: unsafe { clang_Cursor_getArgument(self.c, i as c_uint) },
                 })
                 .collect()
         })
     }
 
-    pub(crate) fn num_args(&self) -> Result<u32, ()> {
+    pub fn num_args(&self) -> Result<u32, ()> {
         unsafe {
-            let w = clang_Cursor_getNumArguments(self.x);
+            let w = clang_Cursor_getNumArguments(self.c);
             if w == -1 {
                 Err(())
             } else {
@@ -588,21 +573,21 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn access_specifier(&self) -> CX_CXXAccessSpecifier {
-        unsafe { clang_getCXXAccessSpecifier(self.x) }
+    pub fn access_specifier(&self) -> CX_CXXAccessSpecifier {
+        unsafe { clang_getCXXAccessSpecifier(self.c) }
     }
 
-    pub(crate) fn public_accessible(&self) -> bool {
+    pub fn public_accessible(&self) -> bool {
         let access = self.access_specifier();
         access == CX_CXXPublic || access == CX_CXXInvalidAccessSpecifier
     }
 
-    pub(crate) fn is_mutable_field(&self) -> bool {
-        unsafe { clang_CXXField_isMutable(self.x) != 0 }
+    pub fn is_mutable_field(&self) -> bool {
+        unsafe { clang_CXXField_isMutable(self.c) != 0 }
     }
 
-    pub(crate) fn offset_of_field(&self) -> Result<usize, LayoutError> {
-        let offset = unsafe { clang_Cursor_getOffsetOfField(self.x) };
+    pub fn offset_of_field(&self) -> Result<usize, LayoutError> {
+        let offset = unsafe { clang_Cursor_getOffsetOfField(self.c) };
 
         if offset < 0 {
             Err(LayoutError::from(offset as i32))
@@ -611,33 +596,33 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn method_is_static(&self) -> bool {
-        unsafe { clang_CXXMethod_isStatic(self.x) != 0 }
+    pub fn method_is_static(&self) -> bool {
+        unsafe { clang_CXXMethod_isStatic(self.c) != 0 }
     }
 
-    pub(crate) fn method_is_const(&self) -> bool {
-        unsafe { clang_CXXMethod_isConst(self.x) != 0 }
+    pub fn method_is_const(&self) -> bool {
+        unsafe { clang_CXXMethod_isConst(self.c) != 0 }
     }
 
-    pub(crate) fn method_is_virtual(&self) -> bool {
-        unsafe { clang_CXXMethod_isVirtual(self.x) != 0 }
+    pub fn method_is_virtual(&self) -> bool {
+        unsafe { clang_CXXMethod_isVirtual(self.c) != 0 }
     }
 
-    pub(crate) fn method_is_pure_virtual(&self) -> bool {
-        unsafe { clang_CXXMethod_isPureVirtual(self.x) != 0 }
+    pub fn method_is_pure_virtual(&self) -> bool {
+        unsafe { clang_CXXMethod_isPureVirtual(self.c) != 0 }
     }
 
-    pub(crate) fn is_virtual_base(&self) -> bool {
-        unsafe { clang_isVirtualBase(self.x) != 0 }
+    pub fn is_virtual_base(&self) -> bool {
+        unsafe { clang_isVirtualBase(self.c) != 0 }
     }
 
-    pub(crate) fn evaluate(&self) -> Option<EvalResult> {
+    pub fn evaluate(&self) -> Option<EvalResult> {
         EvalResult::new(*self)
     }
 
-    pub(crate) fn ret_type(&self) -> Option<Type> {
+    pub fn ret_type(&self) -> Option<Type> {
         let rt = Type {
-            x: unsafe { clang_getCursorResultType(self.x) },
+            t: unsafe { clang_getCursorResultType(self.c) },
         };
         if rt.is_valid() {
             Some(rt)
@@ -646,32 +631,59 @@ impl Cursor {
         }
     }
 
-    pub(crate) fn tokens(&self) -> RawTokens {
+    pub fn tokens(&self) -> RawTokens {
         RawTokens::new(self)
     }
 
-    pub(crate) fn cexpr_tokens(self) -> Vec<cexpr::token::Token> {
+    pub fn cexpr_tokens(self) -> Vec<cexpr::token::Token> {
         self.tokens()
             .iter()
             .filter_map(|token| token.as_cexpr_token())
             .collect()
     }
 
-    pub(crate) fn get_included_file_name(&self) -> Option<String> {
-        let file = unsafe { clang::clang_getIncludedFile(self.x) };
+    pub fn get_included_file_name(&self) -> Option<String> {
+        let file = unsafe { clang_lib::clang_getIncludedFile(self.c) };
         if file.is_null() {
             None
         } else {
-            Some(unsafe { cxstring_into_string(clang::clang_getFileName(file)) })
+            Some(unsafe { cxstring_into_string(clang_lib::clang_getFileName(file)) })
         }
     }
 }
 
-pub(crate) struct RawTokens<'a> {
+impl PartialEq for Cursor {
+    fn eq(&self, x: &Cursor) -> bool {
+        unsafe { clang_equalCursors(self.c, x.c) == 1 }
+    }
+}
+
+impl Eq for Cursor {}
+
+impl Hash for Cursor {
+    fn hash<H: Hasher>(&self, x: &mut H) {
+        unsafe { clang_hashCursor(self.c) }.hash(x)
+    }
+}
+
+impl fmt::Debug for Cursor {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "Cursor({} kind: {}, loc: {}, usr: {:?})",
+            self.spelling(),
+            kind_to_str(self.kind()),
+            self.location(),
+            self.usr()
+        )
+    }
+}
+
+pub struct RawTokens<'a> {
     cursor: &'a Cursor,
     tu: CXTranslationUnit,
     tokens: *mut CXToken,
-    token_count: c_uint,
+    count: c_uint,
 }
 
 impl<'a> RawTokens<'a> {
@@ -679,13 +691,13 @@ impl<'a> RawTokens<'a> {
         let mut tokens = ptr::null_mut();
         let mut token_count = 0;
         let range = cursor.extent();
-        let tu = unsafe { clang_Cursor_getTranslationUnit(cursor.x) };
+        let tu = unsafe { clang_Cursor_getTranslationUnit(cursor.c) };
         unsafe { clang_tokenize(tu, range, &mut tokens, &mut token_count) };
         Self {
             cursor,
             tu,
             tokens,
-            token_count,
+            count: token_count,
         }
     }
 
@@ -693,11 +705,11 @@ impl<'a> RawTokens<'a> {
         if self.tokens.is_null() {
             return &[];
         }
-        unsafe { slice::from_raw_parts(self.tokens, self.token_count as usize) }
+        unsafe { slice::from_raw_parts(self.tokens, self.count as usize) }
     }
 
-    pub(crate) fn iter(&self) -> ClangTokenIterator {
-        ClangTokenIterator {
+    pub fn iter(&self) -> TokenIter {
+        TokenIter {
             tu: self.tu,
             raw: self.as_slice().iter(),
         }
@@ -708,28 +720,27 @@ impl<'a> Drop for RawTokens<'a> {
     fn drop(&mut self) {
         if !self.tokens.is_null() {
             unsafe {
-                clang_disposeTokens(self.tu, self.tokens, self.token_count as c_uint);
+                clang_disposeTokens(self.tu, self.tokens, self.count as c_uint);
             }
         }
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct ClangToken {
+pub struct Token {
     spelling: CXString,
-    pub(crate) extent: CXSourceRange,
-    pub(crate) kind: CXTokenKind,
+    pub extent: CXSourceRange,
+    pub kind: CXTokenKind,
 }
 
-impl ClangToken {
-    pub(crate) fn spelling(&self) -> &[u8] {
-        let c_str = unsafe { CStr::from_ptr(clang_getCString(self.spelling) as *const _) };
-        c_str.to_bytes()
+impl Token {
+    pub fn spelling(&self) -> &[u8] {
+        let y = unsafe { CStr::from_ptr(clang_getCString(self.spelling) as *const _) };
+        y.to_bytes()
     }
 
-    pub(crate) fn as_cexpr_token(&self) -> Option<cexpr::token::Token> {
+    pub fn as_cexpr_token(&self) -> Option<cexpr::token::Token> {
         use cexpr::token;
-
         let kind = match self.kind {
             CXToken_Punctuation => token::Kind::Punctuation,
             CXToken_Literal => token::Kind::Literal,
@@ -741,7 +752,6 @@ impl ClangToken {
                 return None;
             },
         };
-
         Some(token::Token {
             kind,
             raw: self.spelling().to_vec().into_boxed_slice(),
@@ -749,35 +759,33 @@ impl ClangToken {
     }
 }
 
-impl Drop for ClangToken {
+impl Drop for Token {
     fn drop(&mut self) {
         unsafe { clang_disposeString(self.spelling) }
     }
 }
 
-pub(crate) struct ClangTokenIterator<'a> {
+pub struct TokenIter<'a> {
     tu: CXTranslationUnit,
     raw: slice::Iter<'a, CXToken>,
 }
 
-impl<'a> Iterator for ClangTokenIterator<'a> {
-    type Item = ClangToken;
-
+impl<'a> Iterator for TokenIter<'a> {
+    type Item = Token;
     fn next(&mut self) -> Option<Self::Item> {
         let raw = self.raw.next()?;
         unsafe {
             let kind = clang_getTokenKind(*raw);
             let spelling = clang_getTokenSpelling(self.tu, *raw);
             let extent = clang_getTokenExtent(self.tu, *raw);
-            Some(ClangToken { kind, extent, spelling })
+            Some(Token { kind, extent, spelling })
         }
     }
 }
 
-pub(crate) fn is_valid_identifier(name: &str) -> bool {
+pub fn is_valid_identifier(name: &str) -> bool {
     let mut chars = name.chars();
     let first_valid = chars.next().map(|c| c.is_alphabetic() || c == '_').unwrap_or(false);
-
     first_valid && chars.all(|c| c.is_alphanumeric() || c == '_')
 }
 
@@ -786,33 +794,251 @@ where
     Visitor: FnMut(Cursor) -> CXChildVisitResult,
 {
     let func: &mut Visitor = unsafe { &mut *(data as *mut Visitor) };
-    let child = Cursor { x: cur };
+    let child = Cursor { c: cur };
 
     (*func)(child)
 }
 
-impl PartialEq for Cursor {
-    fn eq(&self, other: &Cursor) -> bool {
-        unsafe { clang_equalCursors(self.x, other.x) == 1 }
-    }
-}
-
-impl Eq for Cursor {}
-
-impl Hash for Cursor {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        unsafe { clang_hashCursor(self.x) }.hash(state)
-    }
-}
-
 #[derive(Clone, Copy)]
-pub(crate) struct Type {
-    x: CXType,
+pub struct Type {
+    t: CXType,
+}
+
+impl Type {
+    pub fn kind(&self) -> CXTypeKind {
+        self.t.kind
+    }
+    pub fn declaration(&self) -> Cursor {
+        unsafe {
+            Cursor {
+                c: clang_getTypeDeclaration(self.t),
+            }
+        }
+    }
+    pub fn canonical_declaration(&self, loc: Option<&Cursor>) -> Option<CanonicalTypeDeclaration> {
+        let mut y = self.declaration();
+        if !y.is_valid() {
+            if let Some(loc) = loc {
+                let mut loc = *loc;
+                if let Some(referenced) = loc.referenced() {
+                    loc = referenced;
+                }
+                if loc.is_template_like() {
+                    y = loc;
+                }
+            }
+        }
+        let y = y.canonical();
+        if y.is_valid() && y.kind() != CXCursor_NoDeclFound {
+            Some(CanonicalTypeDeclaration(*self, y))
+        } else {
+            None
+        }
+    }
+    pub fn spelling(&self) -> String {
+        let y = unsafe { cxstring_into_string(clang_getTypeSpelling(self.t)) };
+        if y.split("::").all(is_valid_identifier) {
+            if let Some(y) = y.split("::").last() {
+                return y.to_owned();
+            }
+        }
+        y
+    }
+    pub fn is_const(&self) -> bool {
+        unsafe { clang_isConstQualifiedType(self.t) != 0 }
+    }
+    #[inline]
+    fn is_non_deductible_auto_type(&self) -> bool {
+        debug_assert_eq!(self.kind(), CXType_Auto);
+        self.canonical_type() == *self
+    }
+    #[inline]
+    fn clang_size_of(&self, ctx: &BindgenContext) -> c_longlong {
+        match self.kind() {
+            CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
+            CXType_Auto if self.is_non_deductible_auto_type() => -6,
+            _ => unsafe { clang_Type_getSizeOf(self.t) },
+        }
+    }
+    #[inline]
+    fn clang_align_of(&self, ctx: &BindgenContext) -> c_longlong {
+        match self.kind() {
+            CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
+            CXType_Auto if self.is_non_deductible_auto_type() => -6,
+            _ => unsafe { clang_Type_getAlignOf(self.t) },
+        }
+    }
+    pub fn size(&self, ctx: &BindgenContext) -> usize {
+        let y = self.clang_size_of(ctx);
+        if y < 0 {
+            0
+        } else {
+            y as usize
+        }
+    }
+    pub fn fallible_size(&self, ctx: &BindgenContext) -> Result<usize, LayoutError> {
+        let y = self.clang_size_of(ctx);
+        if y < 0 {
+            Err(LayoutError::from(y as i32))
+        } else {
+            Ok(y as usize)
+        }
+    }
+    pub fn align(&self, ctx: &BindgenContext) -> usize {
+        let y = self.clang_align_of(ctx);
+        if y < 0 {
+            0
+        } else {
+            y as usize
+        }
+    }
+    pub fn fallible_align(&self, ctx: &BindgenContext) -> Result<usize, LayoutError> {
+        let y = self.clang_align_of(ctx);
+        if y < 0 {
+            Err(LayoutError::from(y as i32))
+        } else {
+            Ok(y as usize)
+        }
+    }
+    pub fn fallible_layout(&self, ctx: &BindgenContext) -> Result<crate::ir::layout::Layout, LayoutError> {
+        use crate::ir::layout::Layout;
+        let size = self.fallible_size(ctx)?;
+        let align = self.fallible_align(ctx)?;
+        Ok(Layout::new(size, align))
+    }
+    pub fn num_template_args(&self) -> Option<u32> {
+        let y = unsafe { clang_Type_getNumTemplateArguments(self.t) };
+        if y >= 0 {
+            Some(y as u32)
+        } else {
+            debug_assert_eq!(y, -1);
+            None
+        }
+    }
+    pub fn template_args(&self) -> Option<TypeTemplateArgIterator> {
+        self.num_template_args().map(|n| TypeTemplateArgIterator {
+            x: self.t,
+            length: n,
+            index: 0,
+        })
+    }
+    pub fn args(&self) -> Option<Vec<Type>> {
+        self.num_args().ok().map(|x| {
+            (0..x)
+                .map(|i| Type {
+                    t: unsafe { clang_getArgType(self.t, i as c_uint) },
+                })
+                .collect()
+        })
+    }
+    pub fn num_args(&self) -> Result<u32, ()> {
+        unsafe {
+            let y = clang_getNumArgTypes(self.t);
+            if y == -1 {
+                Err(())
+            } else {
+                Ok(y as u32)
+            }
+        }
+    }
+    pub fn pointee_type(&self) -> Option<Type> {
+        match self.kind() {
+            CXType_Pointer
+            | CXType_RValueReference
+            | CXType_LValueReference
+            | CXType_MemberPointer
+            | CXType_BlockPointer => {
+                let y = Type {
+                    t: unsafe { clang_getPointeeType(self.t) },
+                };
+                debug_assert!(y.is_valid());
+                Some(y)
+            },
+            _ => None,
+        }
+    }
+    pub fn elem_type(&self) -> Option<Type> {
+        let y = Type {
+            t: unsafe { clang_getElementType(self.t) },
+        };
+        if y.is_valid() {
+            Some(y)
+        } else {
+            None
+        }
+    }
+    pub fn num_elements(&self) -> Option<usize> {
+        let y = unsafe { clang_getNumElements(self.t) };
+        if y != -1 {
+            Some(y as usize)
+        } else {
+            None
+        }
+    }
+    pub fn canonical_type(&self) -> Type {
+        unsafe {
+            Type {
+                t: clang_getCanonicalType(self.t),
+            }
+        }
+    }
+    pub fn is_variadic(&self) -> bool {
+        unsafe { clang_isFunctionTypeVariadic(self.t) != 0 }
+    }
+    pub fn ret_type(&self) -> Option<Type> {
+        let y = Type {
+            t: unsafe { clang_getResultType(self.t) },
+        };
+        if y.is_valid() {
+            Some(y)
+        } else {
+            None
+        }
+    }
+    pub fn call_conv(&self) -> CXCallingConv {
+        unsafe { clang_getFunctionTypeCallingConv(self.t) }
+    }
+    pub fn named(&self) -> Type {
+        unsafe {
+            Type {
+                t: clang_Type_getNamedType(self.t),
+            }
+        }
+    }
+    pub fn is_valid(&self) -> bool {
+        self.kind() != CXType_Invalid
+    }
+
+    pub fn is_valid_and_exposed(&self) -> bool {
+        self.is_valid() && self.kind() != CXType_Unexposed
+    }
+
+    pub fn is_fully_instantiated_template(&self) -> bool {
+        self.template_args().map_or(false, |x| x.len() > 0)
+            && !matches!(
+                self.declaration().kind(),
+                CXCursor_ClassTemplatePartialSpecialization
+                    | CXCursor_TypeAliasTemplateDecl
+                    | CXCursor_TemplateTemplateParameter
+            )
+    }
+    pub fn is_associated_type(&self) -> bool {
+        fn hacky_parse_associated_type<S: AsRef<str>>(x: S) -> bool {
+            lazy_static! {
+                static ref ASSOC_TYPE_RE: regex::Regex =
+                    regex::Regex::new(r"typename type\-parameter\-\d+\-\d+::.+").unwrap();
+            }
+            ASSOC_TYPE_RE.is_match(x.as_ref())
+        }
+        self.kind() == CXType_Unexposed
+            && (hacky_parse_associated_type(self.spelling())
+                || hacky_parse_associated_type(self.canonical_type().spelling()))
+    }
 }
 
 impl PartialEq for Type {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { clang_equalTypes(self.x, other.x) != 0 }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { clang_equalTypes(self.t, x.t) != 0 }
     }
 }
 
@@ -833,7 +1059,7 @@ impl fmt::Debug for Type {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub(crate) enum LayoutError {
+pub enum LayoutError {
     Invalid,
     Incomplete,
     Dependent,
@@ -857,281 +1083,20 @@ impl ::std::convert::From<i32> for LayoutError {
     }
 }
 
-impl Type {
-    pub(crate) fn kind(&self) -> CXTypeKind {
-        self.x.kind
-    }
-
-    pub(crate) fn declaration(&self) -> Cursor {
-        unsafe {
-            Cursor {
-                x: clang_getTypeDeclaration(self.x),
-            }
-        }
-    }
-
-    pub(crate) fn canonical_declaration(&self, location: Option<&Cursor>) -> Option<CanonicalTypeDeclaration> {
-        let mut declaration = self.declaration();
-        if !declaration.is_valid() {
-            if let Some(location) = location {
-                let mut location = *location;
-                if let Some(referenced) = location.referenced() {
-                    location = referenced;
-                }
-                if location.is_template_like() {
-                    declaration = location;
-                }
-            }
-        }
-
-        let canonical = declaration.canonical();
-        if canonical.is_valid() && canonical.kind() != CXCursor_NoDeclFound {
-            Some(CanonicalTypeDeclaration(*self, canonical))
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn spelling(&self) -> String {
-        let s = unsafe { cxstring_into_string(clang_getTypeSpelling(self.x)) };
-        if s.split("::").all(is_valid_identifier) {
-            if let Some(s) = s.split("::").last() {
-                return s.to_owned();
-            }
-        }
-
-        s
-    }
-
-    pub(crate) fn is_const(&self) -> bool {
-        unsafe { clang_isConstQualifiedType(self.x) != 0 }
-    }
-
-    #[inline]
-    fn is_non_deductible_auto_type(&self) -> bool {
-        debug_assert_eq!(self.kind(), CXType_Auto);
-        self.canonical_type() == *self
-    }
-
-    #[inline]
-    fn clang_size_of(&self, ctx: &BindgenContext) -> c_longlong {
-        match self.kind() {
-            CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
-            CXType_Auto if self.is_non_deductible_auto_type() => -6,
-            _ => unsafe { clang_Type_getSizeOf(self.x) },
-        }
-    }
-
-    #[inline]
-    fn clang_align_of(&self, ctx: &BindgenContext) -> c_longlong {
-        match self.kind() {
-            CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
-            CXType_Auto if self.is_non_deductible_auto_type() => -6,
-            _ => unsafe { clang_Type_getAlignOf(self.x) },
-        }
-    }
-
-    pub(crate) fn size(&self, ctx: &BindgenContext) -> usize {
-        let val = self.clang_size_of(ctx);
-        if val < 0 {
-            0
-        } else {
-            val as usize
-        }
-    }
-
-    pub(crate) fn fallible_size(&self, ctx: &BindgenContext) -> Result<usize, LayoutError> {
-        let val = self.clang_size_of(ctx);
-        if val < 0 {
-            Err(LayoutError::from(val as i32))
-        } else {
-            Ok(val as usize)
-        }
-    }
-
-    pub(crate) fn align(&self, ctx: &BindgenContext) -> usize {
-        let val = self.clang_align_of(ctx);
-        if val < 0 {
-            0
-        } else {
-            val as usize
-        }
-    }
-
-    pub(crate) fn fallible_align(&self, ctx: &BindgenContext) -> Result<usize, LayoutError> {
-        let val = self.clang_align_of(ctx);
-        if val < 0 {
-            Err(LayoutError::from(val as i32))
-        } else {
-            Ok(val as usize)
-        }
-    }
-
-    pub(crate) fn fallible_layout(&self, ctx: &BindgenContext) -> Result<crate::ir::layout::Layout, LayoutError> {
-        use crate::ir::layout::Layout;
-        let size = self.fallible_size(ctx)?;
-        let align = self.fallible_align(ctx)?;
-        Ok(Layout::new(size, align))
-    }
-
-    pub(crate) fn num_template_args(&self) -> Option<u32> {
-        let n = unsafe { clang_Type_getNumTemplateArguments(self.x) };
-        if n >= 0 {
-            Some(n as u32)
-        } else {
-            debug_assert_eq!(n, -1);
-            None
-        }
-    }
-
-    pub(crate) fn template_args(&self) -> Option<TypeTemplateArgIterator> {
-        self.num_template_args().map(|n| TypeTemplateArgIterator {
-            x: self.x,
-            length: n,
-            index: 0,
-        })
-    }
-
-    pub(crate) fn args(&self) -> Option<Vec<Type>> {
-        self.num_args().ok().map(|num| {
-            (0..num)
-                .map(|i| Type {
-                    x: unsafe { clang_getArgType(self.x, i as c_uint) },
-                })
-                .collect()
-        })
-    }
-
-    pub(crate) fn num_args(&self) -> Result<u32, ()> {
-        unsafe {
-            let w = clang_getNumArgTypes(self.x);
-            if w == -1 {
-                Err(())
-            } else {
-                Ok(w as u32)
-            }
-        }
-    }
-
-    pub(crate) fn pointee_type(&self) -> Option<Type> {
-        match self.kind() {
-            CXType_Pointer
-            | CXType_RValueReference
-            | CXType_LValueReference
-            | CXType_MemberPointer
-            | CXType_BlockPointer => {
-                let ret = Type {
-                    x: unsafe { clang_getPointeeType(self.x) },
-                };
-                debug_assert!(ret.is_valid());
-                Some(ret)
-            },
-            _ => None,
-        }
-    }
-
-    pub(crate) fn elem_type(&self) -> Option<Type> {
-        let current_type = Type {
-            x: unsafe { clang_getElementType(self.x) },
-        };
-        if current_type.is_valid() {
-            Some(current_type)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn num_elements(&self) -> Option<usize> {
-        let num_elements_returned = unsafe { clang_getNumElements(self.x) };
-        if num_elements_returned != -1 {
-            Some(num_elements_returned as usize)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn canonical_type(&self) -> Type {
-        unsafe {
-            Type {
-                x: clang_getCanonicalType(self.x),
-            }
-        }
-    }
-
-    pub(crate) fn is_variadic(&self) -> bool {
-        unsafe { clang_isFunctionTypeVariadic(self.x) != 0 }
-    }
-
-    pub(crate) fn ret_type(&self) -> Option<Type> {
-        let rt = Type {
-            x: unsafe { clang_getResultType(self.x) },
-        };
-        if rt.is_valid() {
-            Some(rt)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn call_conv(&self) -> CXCallingConv {
-        unsafe { clang_getFunctionTypeCallingConv(self.x) }
-    }
-
-    pub(crate) fn named(&self) -> Type {
-        unsafe {
-            Type {
-                x: clang_Type_getNamedType(self.x),
-            }
-        }
-    }
-
-    pub(crate) fn is_valid(&self) -> bool {
-        self.kind() != CXType_Invalid
-    }
-
-    pub(crate) fn is_valid_and_exposed(&self) -> bool {
-        self.is_valid() && self.kind() != CXType_Unexposed
-    }
-
-    pub(crate) fn is_fully_instantiated_template(&self) -> bool {
-        self.template_args().map_or(false, |args| args.len() > 0)
-            && !matches!(
-                self.declaration().kind(),
-                CXCursor_ClassTemplatePartialSpecialization
-                    | CXCursor_TypeAliasTemplateDecl
-                    | CXCursor_TemplateTemplateParameter
-            )
-    }
-
-    pub(crate) fn is_associated_type(&self) -> bool {
-        fn hacky_parse_associated_type<S: AsRef<str>>(spelling: S) -> bool {
-            lazy_static! {
-                static ref ASSOC_TYPE_RE: regex::Regex =
-                    regex::Regex::new(r"typename type\-parameter\-\d+\-\d+::.+").unwrap();
-            }
-            ASSOC_TYPE_RE.is_match(spelling.as_ref())
-        }
-
-        self.kind() == CXType_Unexposed
-            && (hacky_parse_associated_type(self.spelling())
-                || hacky_parse_associated_type(self.canonical_type().spelling()))
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct CanonicalTypeDeclaration(Type, Cursor);
+pub struct CanonicalTypeDeclaration(Type, Cursor);
 
 impl CanonicalTypeDeclaration {
-    pub(crate) fn ty(&self) -> &Type {
+    pub fn ty(&self) -> &Type {
         &self.0
     }
 
-    pub(crate) fn cursor(&self) -> &Cursor {
+    pub fn cursor(&self) -> &Cursor {
         &self.1
     }
 }
 
-pub(crate) struct TypeTemplateArgIterator {
+pub struct TypeTemplateArgIterator {
     x: CXType,
     length: u32,
     index: u32,
@@ -1144,7 +1109,7 @@ impl Iterator for TypeTemplateArgIterator {
             let idx = self.index as c_uint;
             self.index += 1;
             Some(Type {
-                x: unsafe { clang_Type_getTemplateArgumentAsType(self.x, idx) },
+                t: unsafe { clang_Type_getTemplateArgumentAsType(self.x, idx) },
             })
         } else {
             None
@@ -1159,12 +1124,12 @@ impl ExactSizeIterator for TypeTemplateArgIterator {
     }
 }
 
-pub(crate) struct SourceLocation {
+pub struct SrcLoc {
     x: CXSourceLocation,
 }
 
-impl SourceLocation {
-    pub(crate) fn location(&self) -> (File, usize, usize, usize) {
+impl SrcLoc {
+    pub fn location(&self) -> (File, usize, usize, usize) {
         unsafe {
             let mut file = mem::zeroed();
             let mut line = 0;
@@ -1176,7 +1141,7 @@ impl SourceLocation {
     }
 }
 
-impl fmt::Display for SourceLocation {
+impl fmt::Display for SrcLoc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (file, line, col, _) = self.location();
         if let Some(name) = file.name() {
@@ -1187,43 +1152,40 @@ impl fmt::Display for SourceLocation {
     }
 }
 
-impl fmt::Debug for SourceLocation {
+impl fmt::Debug for SrcLoc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-pub(crate) struct Comment {
-    x: CXComment,
+pub struct Comment {
+    c: CXComment,
 }
 
 impl Comment {
-    pub(crate) fn kind(&self) -> CXCommentKind {
-        unsafe { clang_Comment_getKind(self.x) }
+    pub fn kind(&self) -> CXCommentKind {
+        unsafe { clang_Comment_getKind(self.c) }
     }
-
-    pub(crate) fn get_children(&self) -> CommentChildrenIterator {
+    pub fn get_children(&self) -> CommentChildrenIterator {
         CommentChildrenIterator {
-            parent: self.x,
-            length: unsafe { clang_Comment_getNumChildren(self.x) },
+            parent: self.c,
+            length: unsafe { clang_Comment_getNumChildren(self.c) },
             index: 0,
         }
     }
-
-    pub(crate) fn get_tag_name(&self) -> String {
-        unsafe { cxstring_into_string(clang_HTMLTagComment_getTagName(self.x)) }
+    pub fn get_tag_name(&self) -> String {
+        unsafe { cxstring_into_string(clang_HTMLTagComment_getTagName(self.c)) }
     }
-
-    pub(crate) fn get_tag_attrs(&self) -> CommentAttributesIterator {
+    pub fn get_tag_attrs(&self) -> CommentAttributesIterator {
         CommentAttributesIterator {
-            x: self.x,
-            length: unsafe { clang_HTMLStartTag_getNumAttrs(self.x) },
+            x: self.c,
+            length: unsafe { clang_HTMLStartTag_getNumAttrs(self.c) },
             index: 0,
         }
     }
 }
 
-pub(crate) struct CommentChildrenIterator {
+pub struct CommentChildrenIterator {
     parent: CXComment,
     length: c_uint,
     index: c_uint,
@@ -1236,7 +1198,7 @@ impl Iterator for CommentChildrenIterator {
             let idx = self.index;
             self.index += 1;
             Some(Comment {
-                x: unsafe { clang_Comment_getChild(self.parent, idx) },
+                c: unsafe { clang_Comment_getChild(self.parent, idx) },
             })
         } else {
             None
@@ -1244,12 +1206,12 @@ impl Iterator for CommentChildrenIterator {
     }
 }
 
-pub(crate) struct CommentAttribute {
-    pub(crate) name: String,
-    pub(crate) value: String,
+pub struct CommentAttribute {
+    pub name: String,
+    pub value: String,
 }
 
-pub(crate) struct CommentAttributesIterator {
+pub struct CommentAttributesIterator {
     x: CXComment,
     length: c_uint,
     index: c_uint,
@@ -1271,12 +1233,12 @@ impl Iterator for CommentAttributesIterator {
     }
 }
 
-pub(crate) struct File {
+pub struct File {
     x: CXFile,
 }
 
 impl File {
-    pub(crate) fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Option<String> {
         if self.x.is_null() {
             return None;
         }
@@ -1298,12 +1260,12 @@ fn cxstring_into_string(s: CXString) -> String {
     ret
 }
 
-pub(crate) struct Index {
+pub struct Index {
     x: CXIndex,
 }
 
 impl Index {
-    pub(crate) fn new(pch: bool, diag: bool) -> Index {
+    pub fn new(pch: bool, diag: bool) -> Index {
         unsafe {
             Index {
                 x: clang_createIndex(pch as c_int, diag as c_int),
@@ -1326,7 +1288,7 @@ impl Drop for Index {
     }
 }
 
-pub(crate) struct TranslationUnit {
+pub struct TranslationUnit {
     x: CXTranslationUnit,
 }
 
@@ -1337,7 +1299,7 @@ impl fmt::Debug for TranslationUnit {
 }
 
 impl TranslationUnit {
-    pub(crate) fn parse(
+    pub fn parse(
         ix: &Index,
         file: &str,
         cmd_args: &[String],
@@ -1366,7 +1328,7 @@ impl TranslationUnit {
         }
     }
 
-    pub(crate) fn diags(&self) -> Vec<Diagnostic> {
+    pub fn diags(&self) -> Vec<Diagnostic> {
         unsafe {
             let num = clang_getNumDiagnostics(self.x) as usize;
             let mut diags = vec![];
@@ -1379,15 +1341,15 @@ impl TranslationUnit {
         }
     }
 
-    pub(crate) fn cursor(&self) -> Cursor {
+    pub fn cursor(&self) -> Cursor {
         unsafe {
             Cursor {
-                x: clang_getTranslationUnitCursor(self.x),
+                c: clang_getTranslationUnitCursor(self.x),
             }
         }
     }
 
-    pub(crate) fn is_null(&self) -> bool {
+    pub fn is_null(&self) -> bool {
         self.x.is_null()
     }
 }
@@ -1400,19 +1362,19 @@ impl Drop for TranslationUnit {
     }
 }
 
-pub(crate) struct Diagnostic {
+pub struct Diagnostic {
     x: CXDiagnostic,
 }
 
 impl Diagnostic {
-    pub(crate) fn format(&self) -> String {
+    pub fn format(&self) -> String {
         unsafe {
             let opts = clang_defaultDiagnosticDisplayOptions();
             cxstring_into_string(clang_formatDiagnostic(self.x, opts))
         }
     }
 
-    pub(crate) fn severity(&self) -> CXDiagnosticSeverity {
+    pub fn severity(&self) -> CXDiagnosticSeverity {
         unsafe { clang_getDiagnosticSeverity(self.x) }
     }
 }
@@ -1425,14 +1387,14 @@ impl Drop for Diagnostic {
     }
 }
 
-pub(crate) struct UnsavedFile {
+pub struct UnsavedFile {
     x: CXUnsavedFile,
-    pub(crate) name: CString,
+    pub name: CString,
     contents: CString,
 }
 
 impl UnsavedFile {
-    pub(crate) fn new(name: String, contents: String) -> UnsavedFile {
+    pub fn new(name: String, contents: String) -> UnsavedFile {
         let name = CString::new(name).unwrap();
         let contents = CString::new(contents).unwrap();
         let x = CXUnsavedFile {
@@ -1450,15 +1412,15 @@ impl fmt::Debug for UnsavedFile {
     }
 }
 
-pub(crate) fn kind_to_str(x: CXCursorKind) -> String {
+pub fn kind_to_str(x: CXCursorKind) -> String {
     unsafe { cxstring_into_string(clang_getCursorKindSpelling(x)) }
 }
 
-pub(crate) fn type_to_str(x: CXTypeKind) -> String {
+pub fn type_to_str(x: CXTypeKind) -> String {
     unsafe { cxstring_into_string(clang_getTypeKindSpelling(x)) }
 }
 
-pub(crate) fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
+pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
     fn print_indent<S: AsRef<str>>(depth: isize, s: S) {
         for _ in 0..depth {
             print!("    ");
@@ -1551,7 +1513,7 @@ pub(crate) fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
         print_indent(depth, format!(" {}cconv = {}", prefix, ty.call_conv()));
 
         print_indent(depth, format!(" {}spelling = \"{}\"", prefix, ty.spelling()));
-        let num_template_args = unsafe { clang_Type_getNumTemplateArguments(ty.x) };
+        let num_template_args = unsafe { clang_Type_getNumTemplateArguments(ty.t) };
         if num_template_args >= 0 {
             print_indent(
                 depth,
@@ -1624,18 +1586,18 @@ pub(crate) fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
     CXChildVisit_Continue
 }
 
-pub(crate) fn extract_clang_version() -> String {
+pub fn extract_clang_version() -> String {
     unsafe { cxstring_into_string(clang_getClangVersion()) }
 }
 
 #[derive(Debug)]
-pub(crate) struct EvalResult {
+pub struct EvalResult {
     x: CXEvalResult,
     ty: Type,
 }
 
 impl EvalResult {
-    pub(crate) fn new(cursor: Cursor) -> Option<Self> {
+    pub fn new(cursor: Cursor) -> Option<Self> {
         {
             let mut found_cant_eval = false;
             cursor.visit(|c| {
@@ -1652,7 +1614,7 @@ impl EvalResult {
             }
         }
         Some(EvalResult {
-            x: unsafe { clang_Cursor_Evaluate(cursor.x) },
+            x: unsafe { clang_Cursor_Evaluate(cursor.c) },
             ty: cursor.cur_type().canonical_type(),
         })
     }
@@ -1661,14 +1623,14 @@ impl EvalResult {
         unsafe { clang_EvalResult_getKind(self.x) }
     }
 
-    pub(crate) fn as_double(&self) -> Option<f64> {
+    pub fn as_double(&self) -> Option<f64> {
         match self.kind() {
             CXEval_Float => Some(unsafe { clang_EvalResult_getAsDouble(self.x) }),
             _ => None,
         }
     }
 
-    pub(crate) fn as_int(&self) -> Option<i64> {
+    pub fn as_int(&self) -> Option<i64> {
         if self.kind() != CXEval_Int {
             return None;
         }
@@ -1693,7 +1655,7 @@ impl EvalResult {
         Some(value as i64)
     }
 
-    pub(crate) fn as_literal_string(&self) -> Option<Vec<u8>> {
+    pub fn as_literal_string(&self) -> Option<Vec<u8>> {
         if self.kind() != CXEval_StrLiteral {
             return None;
         }
@@ -1719,13 +1681,13 @@ impl Drop for EvalResult {
 }
 
 #[derive(Debug)]
-pub(crate) struct TargetInfo {
-    pub(crate) triple: String,
-    pub(crate) pointer_width: usize,
+pub struct TargetInfo {
+    pub triple: String,
+    pub pointer_width: usize,
 }
 
 impl TargetInfo {
-    pub(crate) fn new(tu: &TranslationUnit) -> Self {
+    pub fn new(tu: &TranslationUnit) -> Self {
         let triple;
         let pointer_width;
         unsafe {
