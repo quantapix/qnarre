@@ -644,10 +644,9 @@ impl CodeGenerator for Type {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
+    fn codegen(&self, ctx: &BindgenContext, y: &mut CodegenResult<'_>, item: &Item) {
         debug!("<Type as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
-
         match *self.kind() {
             TyKind::Void
             | TyKind::NullPtr
@@ -662,15 +661,13 @@ impl CodeGenerator for Type {
             | TyKind::ResolvedTypeRef(..)
             | TyKind::Opaque
             | TyKind::TypeParam => {},
-            TyKind::TemplateInstantiation(ref x) => x.codegen(ctx, result, item),
+            TyKind::TemplateInstantiation(ref x) => x.codegen(ctx, y, item),
             TyKind::BlockPointer(inner) => {
                 if !ctx.opts().generate_block {
                     return;
                 }
-
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = item.canonical_name(ctx);
-
                 let inner_rust_type = {
                     if let TyKind::Function(fnsig) = inner_item.kind().expect_type().kind() {
                         utils::fnsig_block(ctx, fnsig)
@@ -678,28 +675,23 @@ impl CodeGenerator for Type {
                         panic!("invalid block typedef: {:?}", inner_item)
                     }
                 };
-
                 let rust_name = ctx.rust_ident(name);
-
                 let mut tokens = if let Some(comment) = item.comment(ctx) {
                     attributes::doc(comment)
                 } else {
                     quote! {}
                 };
-
                 tokens.append_all(quote! {
                     pub type #rust_name = #inner_rust_type ;
                 });
-
-                result.push(tokens);
-                result.saw_block();
+                y.push(tokens);
+                y.saw_block();
             },
-            TyKind::Comp(ref ci) => ci.codegen(ctx, result, item),
+            TyKind::Comp(ref x) => x.codegen(ctx, y, item),
             TyKind::TemplateAlias(inner, _) | TyKind::Alias(inner) => {
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = item.canonical_name(ctx);
                 let path = item.canonical_path(ctx);
-
                 {
                     let through_type_aliases = inner
                         .into_resolver()
@@ -711,7 +703,6 @@ impl CodeGenerator for Type {
                         return;
                     }
                 }
-
                 let spelling = self.name().expect("Unnamed alias?");
                 if utils::type_from_named(ctx, spelling).is_some() {
                     if let "size_t" | "ssize_t" = spelling {
@@ -735,9 +726,7 @@ impl CodeGenerator for Type {
                     }
                     return;
                 }
-
                 let mut outer_params = item.used_template_params(ctx);
-
                 let is_opaque = item.is_opaque(ctx, &());
                 let inner_rust_type = if is_opaque {
                     outer_params = vec![];
@@ -749,7 +738,6 @@ impl CodeGenerator for Type {
                     inner_ty.append_implicit_template_params(ctx, inner_item);
                     inner_ty
                 };
-
                 {
                     let inner_canon_type = inner_item.expect_type().canonical_type(ctx);
                     if inner_canon_type.is_invalid_type_param() {
@@ -761,9 +749,7 @@ impl CodeGenerator for Type {
                         return;
                     }
                 }
-
                 let rust_name = ctx.rust_ident(&name);
-
                 let mut tokens = if let Some(comment) = item.comment(ctx) {
                     attributes::doc(comment)
                 } else {
@@ -797,7 +783,7 @@ impl CodeGenerator for Type {
                     tokens.append_all(quote! {
                         :: #inner_rust_type  as #rust_name ;
                     });
-                    result.push(tokens);
+                    y.push(tokens);
                     return;
                 }
 
@@ -878,9 +864,9 @@ impl CodeGenerator for Type {
                     });
                 }
 
-                result.push(tokens);
+                y.push(tokens);
             },
-            TyKind::Enum(ref ei) => ei.codegen(ctx, result, item),
+            TyKind::Enum(ref ei) => ei.codegen(ctx, y, item),
         }
     }
 }
@@ -901,7 +887,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
     type Extra = Item;
     type Return = ();
 
-    fn codegen(&self, ctx: &BindgenContext, result: &mut CodegenResult<'_>, item: &Item) {
+    fn codegen(&self, ctx: &BindgenContext, y: &mut CodegenResult<'_>, item: &Item) {
         assert_eq!(item.id(), self.item_id);
         debug_assert!(item.is_enabled_for_codegen(ctx));
         let name = ctx.rust_ident(self.canonical_name(ctx));
@@ -947,7 +933,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
                 })
                 .collect::<Vec<_>>();
 
-            result.push(quote! {
+            y.push(quote! {
                 #[repr(C)]
                 pub struct #name {
                     #( #methods ),*
@@ -956,7 +942,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
         } else {
             let void = helpers::ast_ty::c_void(ctx);
 
-            result.push(quote! {
+            y.push(quote! {
                 #[repr(C)]
                 pub struct #name ( #void );
             });
@@ -3242,7 +3228,6 @@ impl TryToRustTy for TemplInstantiation {
 
         let def_params = def.self_template_params(ctx);
         if def_params.is_empty() {
-            extra_assert!(def.is_opaque(ctx, &()));
             return Err(error::Error::InstantiationOfOpaqueType);
         }
 

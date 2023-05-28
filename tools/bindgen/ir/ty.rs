@@ -9,7 +9,7 @@ use super::layout::{Layout, Opaque};
 use super::template::{AsTemplParam, TemplInstantiation, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use crate::clang::{self, Cursor};
-use crate::parse::{ParseError, ParseResult};
+use crate::parse;
 use std::borrow::Cow;
 use std::io;
 
@@ -459,13 +459,13 @@ impl Type {
         location: Cursor,
         parent_id: Option<ItemId>,
         ctx: &mut BindgenContext,
-    ) -> Result<ParseResult<Self>, ParseError> {
+    ) -> Result<parse::Result<Self>, parse::Error> {
         use clang_lib::*;
         {
             let already_resolved = ctx.builtin_or_resolved_ty(potential_id, parent_id, ty, Some(location));
             if let Some(ty) = already_resolved {
                 debug!("{:?} already resolved: {:?}", ty, location);
-                return Ok(ParseResult::AlreadyResolved(ty.into()));
+                return Ok(parse::Result::AlreadyResolved(ty.into()));
             }
         }
 
@@ -494,7 +494,7 @@ impl Type {
                  support partial template specialization! Constructing \
                  opaque type instead."
             );
-            return Ok(ParseResult::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
+            return Ok(parse::Result::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
         }
 
         let kind = if location.kind() == CXCursor_TemplateRef
@@ -528,12 +528,11 @@ impl Type {
                             CXCursor_CXXBaseSpecifier | CXCursor_ClassTemplate => {
                                 if location.kind() == CXCursor_CXXBaseSpecifier {
                                     if location.spelling().chars().all(|c| c.is_alphanumeric() || c == '_') {
-                                        return Err(ParseError::Recurse);
+                                        return Err(parse::Error::Recurse);
                                     }
                                 } else {
                                     name = Some(location.spelling());
                                 }
-
                                 let complex = CompInfo::from_ty(potential_id, ty, Some(location), ctx);
                                 match complex {
                                     Ok(complex) => TyKind::Comp(complex),
@@ -544,14 +543,14 @@ impl Type {
                                              specifier, using opaque blob"
                                         );
                                         let opaque = Opaque::from_clang_ty(ty, ctx);
-                                        return Ok(ParseResult::New(opaque, None));
+                                        return Ok(parse::Result::New(opaque, None));
                                     },
                                 }
                             },
                             CXCursor_TypeAliasTemplateDecl => {
                                 debug!("TypeAliasTemplateDecl");
 
-                                let mut inner = Err(ParseError::Continue);
+                                let mut inner = Err(parse::Error::Continue);
                                 let mut args = vec![];
 
                                 location.visit(|cur| {
@@ -587,7 +586,7 @@ impl Type {
                                              {:?}",
                                             location
                                         );
-                                        return Err(ParseError::Continue);
+                                        return Err(parse::Error::Continue);
                                     },
                                 };
 
@@ -623,10 +622,10 @@ impl Type {
                                     parent_id,
                                     ctx,
                                 );
-                                return Ok(ParseResult::AlreadyResolved(id.into()));
+                                return Ok(Result::AlreadyResolved(id.into()));
                             },
                             CXCursor_NamespaceRef => {
-                                return Err(ParseError::Continue);
+                                return Err(parse::Error::Continue);
                             },
                             _ => {
                                 if ty.kind() == CXType_Unexposed {
@@ -635,11 +634,11 @@ impl Type {
                                           loc: {:?}",
                                         ty, location
                                     );
-                                    return Err(ParseError::Recurse);
+                                    return Err(parse::Error::Recurse);
                                 }
 
                                 warn!("invalid type {:?}", ty);
-                                return Err(ParseError::Continue);
+                                return Err(parse::Error::Continue);
                             },
                         }
                     }
@@ -647,7 +646,7 @@ impl Type {
                 CXType_Auto => {
                     if canonical_ty == *ty {
                         debug!("Couldn't find deduced type: {:?}", ty);
-                        return Err(ParseError::Continue);
+                        return Err(parse::Error::Continue);
                     }
 
                     return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
@@ -745,7 +744,7 @@ impl Type {
                     return Self::from_clang_ty(potential_id, &ty.named(), location, parent_id, ctx);
                 },
                 CXType_Dependent => {
-                    return Err(ParseError::Continue);
+                    return Err(parse::Error::Continue);
                 },
                 _ => {
                     warn!(
@@ -754,7 +753,7 @@ impl Type {
                         ty,
                         location
                     );
-                    return Err(ParseError::Continue);
+                    return Err(parse::Error::Continue);
                 },
             }
         };
@@ -765,7 +764,7 @@ impl Type {
             || (ty.kind() == CXType_ConstantArray && ty.elem_type().map_or(false, |element| element.is_const()));
 
         let ty = Type::new(name, layout, kind, is_const);
-        Ok(ParseResult::New(ty, Some(cursor.canonical())))
+        Ok(parse::Result::New(ty, Some(cursor.canonical())))
     }
 }
 

@@ -6,7 +6,7 @@ use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::TyKind;
 use crate::callbacks::{ItemInfo, ItemKind};
 use crate::clang::{self, Attribute};
-use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
+use crate::parse;
 use clang_lib::{self, CXCallingConv};
 
 use quote::TokenStreamExt;
@@ -303,24 +303,24 @@ impl FnSig {
         ty: &clang::Type,
         cursor: &clang::Cursor,
         ctx: &mut BindgenContext,
-    ) -> Result<Self, ParseError> {
+    ) -> Result<Self, parse::Error> {
         use clang_lib::*;
         debug!("FunctionSig::from_ty {:?} {:?}", ty, cursor);
 
         let kind = cursor.kind();
         if kind == CXCursor_FunctionTemplate {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         let spelling = cursor.spelling();
 
         let is_operator = |spelling: &str| spelling.starts_with("operator") && !clang::is_valid_identifier(spelling);
         if is_operator(&spelling) {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         if (kind == CXCursor_Constructor || kind == CXCursor_Destructor) && spelling.contains('<') {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         let cursor = if cursor.is_valid() { *cursor } else { ty.declaration() };
@@ -363,7 +363,7 @@ impl FnSig {
         let is_constructor = kind == CXCursor_Constructor;
         let is_destructor = kind == CXCursor_Destructor;
         if (is_constructor || is_destructor || is_method) && cursor.lexical_parent() != cursor.semantic_parent() {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         if is_method || is_constructor || is_destructor {
@@ -391,7 +391,7 @@ impl FnSig {
             }
         }
 
-        let ty_ret_type = ty.ret_type().ok_or(ParseError::Continue)?;
+        let ty_ret_type = ty.ret_type().ok_or(parse::Error::Continue)?;
 
         let ret = if is_constructor && ctx.is_target_wasm32() {
             let void = Item::builtin_type(TyKind::Void, false, ctx);
@@ -478,34 +478,34 @@ impl FnSig {
     }
 }
 
-impl ClangSubItemParser for Function {
-    fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
+impl parse::SubItem for Function {
+    fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
         use clang_lib::*;
 
         let kind = match FnKind::from_cursor(&cursor) {
-            None => return Err(ParseError::Continue),
+            None => return Err(parse::Error::Continue),
             Some(k) => k,
         };
 
         debug!("Function::parse({:?}, {:?})", cursor, cursor.cur_type());
         let visibility = cursor.visibility();
         if visibility != CXVisibility_Default {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         if cursor.access_specifier() == CX_CXXPrivate {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         let linkage = cursor.linkage();
         let linkage = match linkage {
             CXLinkage_External | CXLinkage_UniqueExternal => Linkage::External,
             CXLinkage_Internal => Linkage::Internal,
-            _ => return Err(ParseError::Continue),
+            _ => return Err(parse::Error::Continue),
         };
 
         if cursor.is_inlined_function() || cursor.definition().map_or(false, |x| x.is_inlined_function()) {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         let sig = Item::from_ty(&cursor.cur_type(), cursor, None, context)?;
@@ -538,10 +538,8 @@ impl ClangSubItemParser for Function {
                 kind: ItemKind::Function,
             })
         });
-
         let function = Self::new(name.clone(), mangled_name, link_name, sig, kind, linkage);
-
-        Ok(ParseResult::New(function, Some(cursor)))
+        Ok(parse::Result::New(function, Some(cursor)))
     }
 }
 

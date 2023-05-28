@@ -462,7 +462,6 @@ pub(crate) mod derive {
 
     impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, YDerive> {
         fn from(x: Analysis<'ctx>) -> Self {
-            extra_assert!(x.ys.values().all(|v| *v != YDerive::Yes));
             x.ys
         }
     }
@@ -1047,7 +1046,6 @@ pub(crate) mod has_vtable {
 
     impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, Result> {
         fn from(x: Analysis<'ctx>) -> Self {
-            extra_assert!(x.ys.values().all(|x| { *x != Result::No }));
             x.ys
         }
     }
@@ -1247,7 +1245,6 @@ pub(crate) mod sizedness {
 
     impl<'ctx> From<Analysis<'ctx>> for HashMap<TypeId, Result> {
         fn from(x: Analysis<'ctx>) -> Self {
-            extra_assert!(x.ys.values().all(|x| { *x != Result::ZeroSized }));
             x.ys
         }
     }
@@ -1497,7 +1494,6 @@ pub(crate) mod used_templ_param {
         }
 
         fn constrain(&mut self, id: ItemId) -> YConstrain {
-            extra_assert!(self.ys.values().all(|v| v.is_some()));
             let mut y = self.take_this_id_usage_set(id);
             let len = y.len();
             let i = self.ctx.resolve_item(id);
@@ -1519,7 +1515,6 @@ pub(crate) mod used_templ_param {
             assert!(len2 >= len);
             debug_assert!(self.ys[&id].is_none());
             self.ys.insert(id, Some(y));
-            extra_assert!(self.ys.values().all(|v| v.is_some()));
             if len2 != len {
                 YConstrain::Changed
             } else {

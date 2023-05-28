@@ -10,7 +10,7 @@ use super::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
 use crate::clang;
 use crate::codegen::struct_layout::{align_to, bytes_from_bits_pow2};
 use crate::ir::derive::CanDeriveCopy;
-use crate::parse::ParseError;
+use crate::parse;
 use crate::HashMap;
 use crate::NonCopyUnionStyle;
 use peeking_take_while::PeekableExt;
@@ -930,7 +930,7 @@ impl CompInfo {
         ty: &clang::Type,
         location: Option<clang::Cursor>,
         ctx: &mut BindgenContext,
-    ) -> Result<Self, ParseError> {
+    ) -> Result<Self, parse::Error> {
         use clang_lib::*;
         assert!(
             ty.template_args().is_none(),
@@ -1180,7 +1180,7 @@ impl CompInfo {
         Ok(ci)
     }
 
-    fn kind_from_cursor(cursor: &clang::Cursor) -> Result<CompKind, ParseError> {
+    fn kind_from_cursor(cursor: &clang::Cursor) -> Result<CompKind, parse::Error> {
         use clang_lib::*;
         Ok(match cursor.kind() {
             CXCursor_UnionDecl => CompKind::Union,
@@ -1193,7 +1193,7 @@ impl CompInfo {
             },
             _ => {
                 warn!("Unknown kind for comp type: {:?}", cursor);
-                return Err(ParseError::Continue);
+                return Err(parse::Error::Continue);
             },
         })
     }

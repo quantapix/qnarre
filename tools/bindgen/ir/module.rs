@@ -2,7 +2,7 @@ use super::context::BindgenContext;
 use super::dot::DotAttrs;
 use super::item::ItemSet;
 use crate::clang;
-use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
+use crate::parse;
 use crate::parse_one;
 use std::io;
 
@@ -27,19 +27,15 @@ impl Module {
             children: ItemSet::new(),
         }
     }
-
     pub(crate) fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
-
     pub(crate) fn children_mut(&mut self) -> &mut ItemSet {
         &mut self.children
     }
-
     pub(crate) fn children(&self) -> &ItemSet {
         &self.children
     }
-
     pub(crate) fn is_inline(&self) -> bool {
         self.kind == ModKind::Inline
     }
@@ -54,19 +50,16 @@ impl DotAttrs for Module {
     }
 }
 
-impl ClangSubItemParser for Module {
-    fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
+impl parse::SubItem for Module {
+    fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
         use clang_lib::*;
-        match cursor.kind() {
+        match cur.kind() {
             CXCursor_Namespace => {
-                let module_id = ctx.module(cursor);
-                ctx.with_module(module_id, |ctx| {
-                    cursor.visit(|cursor| parse_one(ctx, cursor, Some(module_id.into())))
-                });
-
-                Ok(ParseResult::AlreadyResolved(module_id.into()))
+                let id = ctx.module(cur);
+                ctx.with_module(id, |ctx| cur.visit(|x| parse_one(ctx, x, Some(id.into()))));
+                Ok(parse::Result::AlreadyResolved(id.into()))
             },
-            _ => Err(ParseError::Continue),
+            _ => Err(parse::Error::Continue),
         }
     }
 }

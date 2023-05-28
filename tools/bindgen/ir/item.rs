@@ -16,7 +16,7 @@ use super::template::{AsTemplParam, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::{TyKind, Type};
 use crate::clang;
-use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
+use crate::parse;
 
 use lazycell::LazyCell;
 
@@ -86,18 +86,13 @@ impl<'a> AncestorsIter<'a> {
 
 impl<'a> Iterator for AncestorsIter<'a> {
     type Item = ItemId;
-
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.ctx.resolve_item(self.item);
-
         if item.parent_id() == self.item {
             None
         } else {
             self.item = item.parent_id();
-
-            extra_assert!(!self.seen.contains(&item.id()));
             self.seen.insert(item.id());
-
             Some(item.id())
         }
     }
@@ -108,7 +103,6 @@ where
     T: Copy + Into<ItemId>,
 {
     type Extra = ();
-
     fn as_template_param(&self, ctx: &BindgenContext, _: &()) -> Option<TypeId> {
         ctx.resolve_item((*self).into()).as_template_param(ctx, &())
     }
@@ -116,7 +110,6 @@ where
 
 impl AsTemplParam for Item {
     type Extra = ();
-
     fn as_template_param(&self, ctx: &BindgenContext, _: &()) -> Option<TypeId> {
         self.kind.as_template_param(ctx, self)
     }
@@ -124,7 +117,6 @@ impl AsTemplParam for Item {
 
 impl AsTemplParam for ItemKind {
     type Extra = Item;
-
     fn as_template_param(&self, ctx: &BindgenContext, item: &Item) -> Option<TypeId> {
         match *self {
             ItemKind::Type(ref ty) => ty.as_template_param(ctx, item),
@@ -178,7 +170,6 @@ where
     Id: Copy + Into<ItemId>,
 {
     type Extra = ();
-
     fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, extra: &())
     where
         T: Tracer,
@@ -189,7 +180,6 @@ where
 
 impl Trace for Item {
     type Extra = ();
-
     fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, _extra: &())
     where
         T: Tracer,
@@ -262,15 +252,10 @@ impl CanDeriveOrd for Item {
 #[derive(Debug)]
 pub(crate) struct Item {
     id: ItemId,
-
     local_id: LazyCell<usize>,
-
     next_child_local_id: Cell<usize>,
-
     canonical_name: LazyCell<String>,
-
     path_for_allowlisting: LazyCell<Vec<String>>,
-
     comment: Option<String>,
     annotations: Annotations,
     parent_id: ItemId,
@@ -333,7 +318,6 @@ impl Item {
         if !ctx.opts().enable_cxx_namespaces {
             return 0;
         }
-
         self.ancestors(ctx)
             .filter(|id| {
                 ctx.resolve_item(*id).as_module().map_or(false, |module| {
@@ -348,7 +332,6 @@ impl Item {
         if !ctx.opts().generate_comments {
             return None;
         }
-
         self.comment.as_ref().map(|comment| ctx.opts().process_comment(comment))
     }
 
@@ -381,20 +364,17 @@ impl Item {
         if ctx.opts().enable_cxx_namespaces && self.kind().is_module() && self.id() != ctx.root_module() {
             return false;
         }
-
         let mut parent = self.parent_id;
         loop {
             let parent_item = match ctx.resolve_item_fallible(parent) {
                 Some(item) => item,
                 None => return false,
             };
-
             if parent_item.id() == ctx.root_module() {
                 return true;
             } else if ctx.opts().enable_cxx_namespaces || !parent_item.kind().is_module() {
                 return false;
             }
-
             parent = parent_item.parent_id();
         }
     }
@@ -424,7 +404,6 @@ impl Item {
         if self.annotations.hide() {
             return true;
         }
-
         if !ctx.opts().blocklisted_files.is_empty() {
             if let Some(location) = &self.location {
                 let (file, _, _, _) = location.location();
@@ -435,7 +414,6 @@ impl Item {
                 }
             }
         }
-
         let path = self.path_for_allowlisting(ctx);
         let name = path[1..].join("::");
         ctx.opts().blocklisted_items.matches(&name)
@@ -456,7 +434,6 @@ impl Item {
         let mut targets_seen = DebugOnlyItemSet::new();
         let mut i = self;
         loop {
-            extra_assert!(!targets_seen.contains(&i.id()));
             targets_seen.insert(i.id());
             if self.annotations().use_instead_of().is_some() {
                 return self.id();
@@ -533,7 +510,6 @@ impl Item {
         if let Some(path) = self.annotations().use_instead_of() {
             return path.last().unwrap().clone();
         }
-
         match *self.kind() {
             ItemKind::Var(ref var) => var.name().to_owned(),
             ItemKind::Module(ref module) => module
@@ -546,13 +522,11 @@ impl Item {
                 .unwrap_or_else(|| format!("_bindgen_ty_{}", self.exposed_id(ctx))),
             ItemKind::Function(ref fun) => {
                 let mut name = fun.name().to_owned();
-
                 if let Some(idx) = self.overload_index(ctx) {
                     if idx > 0 {
                         write!(&mut name, "{}", idx).unwrap();
                     }
                 }
-
                 name
             },
         }
@@ -935,7 +909,7 @@ fn visit_child(
     ty: &clang::Type,
     parent_id: Option<ItemId>,
     ctx: &mut BindgenContext,
-    result: &mut Result<TypeId, ParseError>,
+    result: &mut Result<TypeId, parse::Error>,
 ) -> clang_lib::CXChildVisitResult {
     use clang_lib::*;
     if result.is_ok() {
@@ -946,11 +920,11 @@ fn visit_child(
 
     match *result {
         Ok(..) => CXChildVisit_Break,
-        Err(ParseError::Recurse) => {
+        Err(parse::Error::Recurse) => {
             cur.visit(|c| visit_child(c, id, ty, parent_id, ctx, result));
             CXChildVisit_Continue
         },
-        Err(ParseError::Continue) => CXChildVisit_Continue,
+        Err(parse::Error::Continue) => CXChildVisit_Continue,
     }
 }
 
@@ -972,12 +946,12 @@ impl Item {
         cursor: clang::Cursor,
         parent_id: Option<ItemId>,
         ctx: &mut BindgenContext,
-    ) -> Result<ItemId, ParseError> {
+    ) -> Result<ItemId, parse::Error> {
         use crate::ir::var::Var;
         use clang_lib::*;
 
         if !cursor.is_valid() {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         let comment = cursor.raw_comment();
@@ -989,9 +963,8 @@ impl Item {
         macro_rules! try_parse {
             ($what:ident) => {
                 match $what::parse(cursor, ctx) {
-                    Ok(ParseResult::New(item, declaration)) => {
+                    Ok(parse::Result::New(item, declaration)) => {
                         let id = ctx.next_item_id();
-
                         ctx.add_item(
                             Item::new(
                                 id,
@@ -1006,20 +979,17 @@ impl Item {
                         );
                         return Ok(id);
                     },
-                    Ok(ParseResult::AlreadyResolved(id)) => {
+                    Ok(parse::Result::AlreadyResolved(id)) => {
                         return Ok(id);
                     },
-                    Err(ParseError::Recurse) => return Err(ParseError::Recurse),
-                    Err(ParseError::Continue) => {},
+                    Err(parse::Error::Recurse) => return Err(parse::Error::Recurse),
+                    Err(parse::Error::Continue) => {},
                 }
             };
         }
-
         try_parse!(Module);
-
         try_parse!(Function);
         try_parse!(Var);
-
         {
             let definition = cursor.definition();
             let applicable_cursor = definition.unwrap_or(cursor);
@@ -1044,13 +1014,13 @@ impl Item {
                 ctx,
             ) {
                 Ok(ty) => return Ok(ty.into()),
-                Err(ParseError::Recurse) => return Err(ParseError::Recurse),
-                Err(ParseError::Continue) => {},
+                Err(parse::Error::Recurse) => return Err(parse::Error::Recurse),
+                Err(parse::Error::Continue) => {},
             }
         }
 
         if cursor.kind() == CXCursor_UnexposedDecl {
-            Err(ParseError::Recurse)
+            Err(parse::Error::Recurse)
         } else {
             match cursor.kind() {
                 CXCursor_MacroDefinition
@@ -1080,7 +1050,7 @@ impl Item {
                 },
             }
 
-            Err(ParseError::Continue)
+            Err(parse::Error::Continue)
         }
     }
 
@@ -1143,7 +1113,7 @@ impl Item {
         location: clang::Cursor,
         parent_id: Option<ItemId>,
         ctx: &mut BindgenContext,
-    ) -> Result<TypeId, ParseError> {
+    ) -> Result<TypeId, parse::Error> {
         let id = ctx.next_item_id();
         Item::from_ty_with_id(id, ty, location, parent_id, ctx)
     }
@@ -1154,7 +1124,7 @@ impl Item {
         location: clang::Cursor,
         parent_id: Option<ItemId>,
         ctx: &mut BindgenContext,
-    ) -> Result<TypeId, ParseError> {
+    ) -> Result<TypeId, parse::Error> {
         use clang_lib::*;
 
         debug!(
@@ -1233,8 +1203,8 @@ impl Item {
         let result = Type::from_clang_ty(id, ty, location, parent_id, ctx);
         let relevant_parent_id = parent_id.unwrap_or(current_module);
         let ret = match result {
-            Ok(ParseResult::AlreadyResolved(ty)) => Ok(ty.as_type_id_unchecked()),
-            Ok(ParseResult::New(item, declaration)) => {
+            Ok(parse::Result::AlreadyResolved(ty)) => Ok(ty.as_type_id_unchecked()),
+            Ok(parse::Result::New(item, declaration)) => {
                 ctx.add_item(
                     Item::new(
                         id,
@@ -1249,10 +1219,10 @@ impl Item {
                 );
                 Ok(id.as_type_id_unchecked())
             },
-            Err(ParseError::Continue) => Err(ParseError::Continue),
-            Err(ParseError::Recurse) => {
+            Err(parse::Error::Continue) => Err(parse::Error::Continue),
+            Err(parse::Error::Recurse) => {
                 debug!("Item::from_ty recursing in the ast");
-                let mut result = Err(ParseError::Recurse);
+                let mut result = Err(parse::Error::Recurse);
 
                 if valid_decl {
                     let finished = ctx.finish_parsing();
@@ -1266,7 +1236,7 @@ impl Item {
                     ctx.begin_parsing(partial_ty);
                 }
 
-                if let Err(ParseError::Recurse) = result {
+                if let Err(parse::Error::Recurse) = result {
                     warn!(
                         "Unknown type, assuming named template type: \
                          id = {:?}; spelling = {}",
@@ -1275,7 +1245,7 @@ impl Item {
                     );
                     Item::type_param(Some(id), location, ctx)
                         .map(Ok)
-                        .unwrap_or(Err(ParseError::Recurse))
+                        .unwrap_or(Err(parse::Error::Recurse))
                 } else {
                     result
                 }

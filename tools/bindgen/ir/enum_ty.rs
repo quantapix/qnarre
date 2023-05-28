@@ -4,7 +4,7 @@ use super::item::Item;
 use super::ty::{TyKind, Type};
 use crate::clang;
 use crate::ir::annotations::Annotations;
-use crate::parse::ParseError;
+use crate::parse;
 use crate::regex_set::RegexSet;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -33,12 +33,12 @@ impl Enum {
         &self.variants
     }
 
-    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Result<Self, ParseError> {
+    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Result<Self, parse::Error> {
         use clang_lib::*;
         debug!("Enum::from_ty {:?}", ty);
 
         if ty.kind() != CXType_Enum {
-            return Err(ParseError::Continue);
+            return Err(parse::Error::Continue);
         }
 
         let declaration = ty.declaration().canonical();

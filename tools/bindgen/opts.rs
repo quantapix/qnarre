@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::callbacks::ParseCallbacks;
+use crate::callbacks::Parse;
 use crate::codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 use crate::deps::DepfileSpec;
 use crate::regex_set::RegexSet;
@@ -787,14 +787,14 @@ options! {
         },
         as_args: ignore,
     },
-    parse_callbacks: Vec<Rc<dyn ParseCallbacks>> {
+    parse_callbacks: Vec<Rc<dyn Parse>> {
         methods: {
-            pub fn parse_callbacks(mut self, x: Box<dyn ParseCallbacks>) -> Self {
+            pub fn parse_callbacks(mut self, x: Box<dyn Parse>) -> Self {
                 self.opts.parse_callbacks.push(Rc::from(x));
                 self
             }
         },
-        as_args: |_callbacks, _args| {
+        as_args: |_, _| {
         },
     },
     codegen_config: CodegenConfig {

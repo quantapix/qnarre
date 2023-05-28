@@ -8,7 +8,7 @@ use super::ty::{FloatKind, TyKind};
 use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
 use crate::clang::Token;
-use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
+use crate::parse;
 
 use std::io;
 use std::num::Wrapping;
@@ -117,7 +117,7 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
     }
 }
 
-fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::ParseCallbacks) {
+fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::Parse) {
     let is_closing_paren = |t: &Token| t.kind == clang_lib::CXToken_Punctuation && t.spelling() == b")";
     let tokens: Vec<_> = cursor.tokens().iter().collect();
     if let Some(boundary) = tokens.iter().position(is_closing_paren) {
@@ -131,8 +131,8 @@ fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callback
     }
 }
 
-impl ClangSubItemParser for Var {
-    fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
+impl parse::SubItem for Var {
+    fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
         use cexpr::expr::EvalResult;
         use cexpr::literal::CChar;
         use clang_lib::*;
@@ -141,14 +141,14 @@ impl ClangSubItemParser for Var {
                 for callbacks in &ctx.opts().parse_callbacks {
                     match callbacks.will_parse_macro(&cursor.spelling()) {
                         MacroParsing::Ignore => {
-                            return Err(ParseError::Continue);
+                            return Err(parse::Error::Continue);
                         },
                         MacroParsing::Default => {},
                     }
 
                     if cursor.is_macro_function_like() {
                         handle_function_macro(&cursor, callbacks.as_ref());
-                        return Err(ParseError::Continue);
+                        return Err(parse::Error::Continue);
                     }
                 }
 
@@ -156,7 +156,7 @@ impl ClangSubItemParser for Var {
 
                 let (id, value) = match value {
                     Some(v) => v,
-                    None => return Err(ParseError::Continue),
+                    None => return Err(parse::Error::Continue),
                 };
 
                 assert!(!id.is_empty(), "Empty macro name?");
@@ -168,12 +168,12 @@ impl ClangSubItemParser for Var {
                 if previously_defined {
                     let name = String::from_utf8(id).unwrap();
                     duplicated_macro_diagnostic(&name, cursor.location(), ctx);
-                    return Err(ParseError::Continue);
+                    return Err(parse::Error::Continue);
                 }
 
                 let name = String::from_utf8(id).unwrap();
                 let (type_kind, val) = match value {
-                    EvalResult::Invalid => return Err(ParseError::Continue),
+                    EvalResult::Invalid => return Err(parse::Error::Continue),
                     EvalResult::Float(f) => (TyKind::Float(FloatKind::Double), VarType::Float(f)),
                     EvalResult::Char(c) => {
                         let c = match c {
@@ -208,7 +208,7 @@ impl ClangSubItemParser for Var {
 
                 let ty = Item::builtin_type(type_kind, true, ctx);
 
-                Ok(ParseResult::New(
+                Ok(parse::Result::New(
                     Var::new(name, None, None, ty, Some(val), true),
                     Some(cursor),
                 ))
@@ -229,7 +229,7 @@ impl ClangSubItemParser for Var {
 
                 if name.is_empty() {
                     warn!("Empty constant name?");
-                    return Err(ParseError::Continue);
+                    return Err(parse::Error::Continue);
                 }
 
                 let link_name = ctx.opts().last_callback(|callbacks| {
@@ -257,23 +257,18 @@ impl ClangSubItemParser for Var {
                         return Err(e);
                     },
                 };
-
                 let canonical_ty = ctx.safe_resolve_type(ty).and_then(|t| t.safe_canonical_type(ctx));
-
                 let is_integer = canonical_ty.map_or(false, |t| t.is_integer());
                 let is_float = canonical_ty.map_or(false, |t| t.is_float());
-
                 let value = if is_integer {
                     let kind = match *canonical_ty.unwrap().kind() {
                         TyKind::Int(kind) => kind,
                         _ => unreachable!(),
                     };
-
                     let mut val = cursor.evaluate().and_then(|v| v.as_int());
                     if val.is_none() || !kind.signedness_matches(val.unwrap()) {
                         val = get_integer_literal_from_cursor(&cursor);
                     }
-
                     val.map(|val| {
                         if kind == IntKind::Bool {
                             VarType::Bool(val != 0)
@@ -289,65 +284,58 @@ impl ClangSubItemParser for Var {
                         .and_then(|v| v.as_literal_string())
                         .map(VarType::String)
                 };
-
                 let mangling = cursor_mangling(ctx, &cursor);
                 let var = Var::new(name, mangling, link_name, ty, value, is_const);
-
-                Ok(ParseResult::New(var, Some(cursor)))
+                Ok(parse::Result::New(var, Some(cursor)))
             },
             _ => {
                 /* TODO */
-                Err(ParseError::Continue)
+                Err(parse::Error::Continue)
             },
         }
     }
 }
 
-fn parse_macro(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
+fn parse_macro(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
     use cexpr::expr;
-
-    let cexpr_tokens = cursor.cexpr_tokens();
-
-    let parser = expr::IdentifierParser::new(ctx.parsed_macros());
-
-    match parser.macro_definition(&cexpr_tokens) {
+    let cexpr_tokens = cur.cexpr_tokens();
+    let y = expr::IdentifierParser::new(ctx.parsed_macros());
+    match y.macro_definition(&cexpr_tokens) {
         Ok((_, (id, val))) => Some((id.into(), val)),
         _ => None,
     }
 }
 
-fn parse_int_literal_tokens(cursor: &clang::Cursor) -> Option<i64> {
+fn parse_int_literal_tokens(cur: &clang::Cursor) -> Option<i64> {
     use cexpr::expr;
     use cexpr::expr::EvalResult;
-
-    let cexpr_tokens = cursor.cexpr_tokens();
-
-    match expr::expr(&cexpr_tokens) {
-        Ok((_, EvalResult::Int(Wrapping(val)))) => Some(val),
+    let y = cur.cexpr_tokens();
+    match expr::expr(&y) {
+        Ok((_, EvalResult::Int(Wrapping(x)))) => Some(x),
         _ => None,
     }
 }
 
-fn get_integer_literal_from_cursor(cursor: &clang::Cursor) -> Option<i64> {
+fn get_integer_literal_from_cursor(cur: &clang::Cursor) -> Option<i64> {
     use clang_lib::*;
-    let mut value = None;
-    cursor.visit(|c| {
+    let mut y = None;
+    cur.visit(|c| {
         match c.kind() {
             CXCursor_IntegerLiteral | CXCursor_UnaryOperator => {
-                value = parse_int_literal_tokens(&c);
+                y = parse_int_literal_tokens(&c);
             },
             CXCursor_UnexposedExpr => {
-                value = get_integer_literal_from_cursor(&c);
+                y = get_integer_literal_from_cursor(&c);
             },
             _ => (),
         }
-        if value.is_some() {
+        if y.is_some() {
             CXChildVisit_Break
         } else {
             CXChildVisit_Continue
         }
     });
-    value
+    y
 }
 
 fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SrcLoc, _ctx: &BindgenContext) {
