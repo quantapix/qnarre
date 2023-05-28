@@ -1,9 +1,9 @@
 use super::context::{BindgenContext, ItemId, TypeId};
-use super::item::{IsOpaque, Item, ItemAncestors};
+use super::item::{Ancestors, IsOpaque, Item};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use crate::clang;
 
-pub(crate) trait TemplateParameters: Sized {
+pub(crate) trait TemplParams: Sized {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId>;
 
     fn num_self_template_params(&self, ctx: &BindgenContext) -> usize {
@@ -12,7 +12,7 @@ pub(crate) trait TemplateParameters: Sized {
 
     fn all_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId>
     where
-        Self: ItemAncestors,
+        Self: Ancestors,
     {
         let mut ancestors: Vec<_> = self.ancestors(ctx).collect();
         ancestors.reverse();
@@ -40,7 +40,7 @@ pub(crate) trait TemplateParameters: Sized {
     }
 }
 
-pub(crate) trait AsTemplateParam {
+pub(crate) trait AsTemplParam {
     type Extra;
 
     fn as_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> Option<TypeId>;
@@ -51,17 +51,17 @@ pub(crate) trait AsTemplateParam {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TemplateInstantiation {
+pub(crate) struct TemplInstantiation {
     definition: TypeId,
     args: Vec<TypeId>,
 }
 
-impl TemplateInstantiation {
-    pub(crate) fn new<I>(definition: TypeId, args: I) -> TemplateInstantiation
+impl TemplInstantiation {
+    pub(crate) fn new<I>(definition: TypeId, args: I) -> TemplInstantiation
     where
         I: IntoIterator<Item = TypeId>,
     {
-        TemplateInstantiation {
+        TemplInstantiation {
             definition,
             args: args.into_iter().collect(),
         }
@@ -75,7 +75,7 @@ impl TemplateInstantiation {
         &self.args[..]
     }
 
-    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplateInstantiation> {
+    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplInstantiation> {
         use clang::*;
 
         let template_args = ty
@@ -128,11 +128,11 @@ impl TemplateInstantiation {
 
         let template_definition = Item::from_ty_or_ref(definition.cur_type(), definition, None, ctx);
 
-        Some(TemplateInstantiation::new(template_definition, template_args))
+        Some(TemplInstantiation::new(template_definition, template_args))
     }
 }
 
-impl IsOpaque for TemplateInstantiation {
+impl IsOpaque for TemplInstantiation {
     type Extra = Item;
 
     fn is_opaque(&self, ctx: &BindgenContext, item: &Item) -> bool {
@@ -160,7 +160,7 @@ impl IsOpaque for TemplateInstantiation {
     }
 }
 
-impl Trace for TemplateInstantiation {
+impl Trace for TemplInstantiation {
     type Extra = ();
 
     fn trace<T>(&self, _ctx: &BindgenContext, tracer: &mut T, _: &())

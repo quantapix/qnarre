@@ -13,7 +13,7 @@ pub(crate) mod bitfield_unit;
 #[cfg(all(test, target_endian = "little"))]
 mod bitfield_unit_tests;
 
-use self::dyngen::DynamicItems;
+use self::dyngen::DynItems;
 use self::helpers::attributes;
 use self::struct_layout::StructLayoutTracker;
 
@@ -30,13 +30,13 @@ use crate::ir::derive::{
 };
 use crate::ir::dot;
 use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
-use crate::ir::function::{Abi, ClangAbi, Function, FunctionKind, FunctionSig, Linkage};
+use crate::ir::function::{Abi, ClangAbi, FnKind, FnSig, Function, Linkage};
 use crate::ir::int::IntKind;
-use crate::ir::item::{IsOpaque, Item, ItemCanonicalName, ItemCanonicalPath};
+use crate::ir::item::{CanonicalName, CanonicalPath, IsOpaque, Item};
 use crate::ir::item_kind::ItemKind;
 use crate::ir::layout::Layout;
 use crate::ir::module::Module;
-use crate::ir::template::{AsTemplateParam, TemplateInstantiation, TemplateParameters};
+use crate::ir::template::{AsTemplParam, TemplInstantiation, TemplParams};
 use crate::ir::ty::{Type, TypeKind};
 use crate::ir::var::Var;
 
@@ -187,7 +187,7 @@ impl From<DerivableTraits> for Vec<&'static str> {
 
 struct CodegenResult<'a> {
     items: Vec<proc_macro2::TokenStream>,
-    dynamic_items: DynamicItems,
+    dynamic_items: DynItems,
 
     codegen_id: &'a Cell<usize>,
 
@@ -212,7 +212,7 @@ impl<'a> CodegenResult<'a> {
     fn new(codegen_id: &'a Cell<usize>) -> Self {
         CodegenResult {
             items: vec![],
-            dynamic_items: DynamicItems::new(),
+            dynamic_items: DynItems::new(),
             saw_bindgen_union: false,
             saw_incomplete_array: false,
             saw_block: false,
@@ -226,7 +226,7 @@ impl<'a> CodegenResult<'a> {
         }
     }
 
-    fn dynamic_items(&mut self) -> &mut DynamicItems {
+    fn dynamic_items(&mut self) -> &mut DynItems {
         &mut self.dynamic_items
     }
 
@@ -964,7 +964,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
     }
 }
 
-impl<'a> ItemCanonicalName for Vtable<'a> {
+impl<'a> CanonicalName for Vtable<'a> {
     fn canonical_name(&self, ctx: &BindgenContext) -> String {
         format!("{}__bindgen_vtable", self.item_id.canonical_name(ctx))
     }
@@ -981,7 +981,7 @@ impl<'a> TryToRustTy for Vtable<'a> {
     }
 }
 
-impl CodeGenerator for TemplateInstantiation {
+impl CodeGenerator for TemplInstantiation {
     type Extra = Item;
     type Return = ();
 
@@ -3212,7 +3212,7 @@ impl TryToRustTy for Type {
     }
 }
 
-impl TryToOpaque for TemplateInstantiation {
+impl TryToOpaque for TemplInstantiation {
     type Extra = Item;
 
     fn try_get_layout(&self, ctx: &BindgenContext, item: &Item) -> error::Result<Layout> {
@@ -3222,7 +3222,7 @@ impl TryToOpaque for TemplateInstantiation {
     }
 }
 
-impl TryToRustTy for TemplateInstantiation {
+impl TryToRustTy for TemplInstantiation {
     type Extra = Item;
 
     fn try_to_rust_ty(&self, ctx: &BindgenContext, item: &Item) -> error::Result<proc_macro2::TokenStream> {
@@ -3269,7 +3269,7 @@ impl TryToRustTy for TemplateInstantiation {
     }
 }
 
-impl TryToRustTy for FunctionSig {
+impl TryToRustTy for FnSig {
     type Extra = ();
 
     fn try_to_rust_ty(&self, ctx: &BindgenContext, _: &()) -> error::Result<proc_macro2::TokenStream> {
@@ -3314,10 +3314,10 @@ impl CodeGenerator for Function {
         }
 
         let is_dynamic_function = match self.kind() {
-            FunctionKind::Method(ref method_kind) if method_kind.is_pure_virtual() => {
+            FnKind::Method(ref method_kind) if method_kind.is_pure_virtual() => {
                 return None;
             },
-            FunctionKind::Function => ctx.options().dynamic_library_name.is_some(),
+            FnKind::Function => ctx.options().dynamic_library_name.is_some(),
             _ => false,
         };
 
@@ -3560,8 +3560,8 @@ pub(crate) mod utils {
     use super::serialize::CSerialize;
     use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
     use crate::ir::context::BindgenContext;
-    use crate::ir::function::{Abi, ClangAbi, FunctionSig};
-    use crate::ir::item::{Item, ItemCanonicalPath};
+    use crate::ir::function::{Abi, ClangAbi, FnSig};
+    use crate::ir::item::{CanonicalPath, Item};
     use crate::ir::ty::TypeKind;
     use crate::{args_are_cpp, file_is_cpp};
     use std::borrow::Cow;
@@ -3882,11 +3882,7 @@ pub(crate) mod utils {
         })
     }
 
-    fn fnsig_return_ty_internal(
-        ctx: &BindgenContext,
-        sig: &FunctionSig,
-        include_arrow: bool,
-    ) -> proc_macro2::TokenStream {
+    fn fnsig_return_ty_internal(ctx: &BindgenContext, sig: &FnSig, include_arrow: bool) -> proc_macro2::TokenStream {
         if sig.is_divergent() {
             return if include_arrow {
                 quote! { -> ! }
@@ -3921,11 +3917,11 @@ pub(crate) mod utils {
         }
     }
 
-    pub(crate) fn fnsig_return_ty(ctx: &BindgenContext, sig: &FunctionSig) -> proc_macro2::TokenStream {
+    pub(crate) fn fnsig_return_ty(ctx: &BindgenContext, sig: &FnSig) -> proc_macro2::TokenStream {
         fnsig_return_ty_internal(ctx, sig, /* include_arrow = */ true)
     }
 
-    pub(crate) fn fnsig_arguments(ctx: &BindgenContext, sig: &FunctionSig) -> Vec<proc_macro2::TokenStream> {
+    pub(crate) fn fnsig_arguments(ctx: &BindgenContext, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
         use super::ToPtr;
 
         let mut unnamed_arguments = 0;
@@ -3977,7 +3973,7 @@ pub(crate) mod utils {
         args
     }
 
-    pub(crate) fn fnsig_argument_identifiers(ctx: &BindgenContext, sig: &FunctionSig) -> Vec<proc_macro2::TokenStream> {
+    pub(crate) fn fnsig_argument_identifiers(ctx: &BindgenContext, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
         let mut unnamed_arguments = 0;
         let args = sig
             .argument_types()
@@ -4003,7 +3999,7 @@ pub(crate) mod utils {
         args
     }
 
-    pub(crate) fn fnsig_block(ctx: &BindgenContext, sig: &FunctionSig) -> proc_macro2::TokenStream {
+    pub(crate) fn fnsig_block(ctx: &BindgenContext, sig: &FnSig) -> proc_macro2::TokenStream {
         let args = sig.argument_types().iter().map(|&(_, ty)| {
             let arg_item = ctx.resolve_item(ty);
 

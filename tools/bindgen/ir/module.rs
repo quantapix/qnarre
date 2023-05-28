@@ -1,5 +1,5 @@
 use super::context::BindgenContext;
-use super::dot::DotAttributes;
+use super::dot::DotAttrs;
 use super::item::ItemSet;
 use crate::clang;
 use crate::parse::{ClangSubItemParser, ParseError, ParseResult};
@@ -7,7 +7,7 @@ use crate::parse_one;
 use std::io;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum ModuleKind {
+pub(crate) enum ModKind {
     Normal,
     Inline,
 }
@@ -15,12 +15,12 @@ pub(crate) enum ModuleKind {
 #[derive(Clone, Debug)]
 pub(crate) struct Module {
     name: Option<String>,
-    kind: ModuleKind,
+    kind: ModKind,
     children: ItemSet,
 }
 
 impl Module {
-    pub(crate) fn new(name: Option<String>, kind: ModuleKind) -> Self {
+    pub(crate) fn new(name: Option<String>, kind: ModKind) -> Self {
         Module {
             name,
             kind,
@@ -41,11 +41,11 @@ impl Module {
     }
 
     pub(crate) fn is_inline(&self) -> bool {
-        self.kind == ModuleKind::Inline
+        self.kind == ModKind::Inline
     }
 }
 
-impl DotAttributes for Module {
+impl DotAttrs for Module {
     fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,

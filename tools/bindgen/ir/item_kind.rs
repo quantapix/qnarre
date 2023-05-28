@@ -1,5 +1,5 @@
 use super::context::BindgenContext;
-use super::dot::DotAttributes;
+use super::dot::DotAttrs;
 use super::function::Function;
 use super::module::Module;
 use super::ty::Type;
@@ -87,7 +87,7 @@ impl ItemKind {
     }
 }
 
-impl DotAttributes for ItemKind {
+impl DotAttrs for ItemKind {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,

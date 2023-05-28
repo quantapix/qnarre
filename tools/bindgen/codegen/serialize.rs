@@ -4,9 +4,9 @@ use crate::callbacks::IntKind;
 
 use crate::ir::comp::CompKind;
 use crate::ir::context::{BindgenContext, TypeId};
-use crate::ir::function::{Function, FunctionKind};
+use crate::ir::function::{FnKind, Function};
+use crate::ir::item::CanonicalName;
 use crate::ir::item::Item;
-use crate::ir::item::ItemCanonicalName;
 use crate::ir::item_kind::ItemKind;
 use crate::ir::ty::{FloatKind, Type, TypeKind};
 
@@ -60,7 +60,7 @@ impl<'a> CSerialize<'a> for Function {
         stack: &mut Vec<String>,
         writer: &mut W,
     ) -> Result<(), CodegenError> {
-        if self.kind() != FunctionKind::Function {
+        if self.kind() != FnKind::Function {
             return Err(CodegenError::Serialize {
                 msg: format!("Cannot serialize function kind {:?}", self.kind(),),
                 loc: get_loc(item),

@@ -5,10 +5,10 @@ use crate::ir::analysis::has_vtable::HasVtable;
 use crate::ir::comp::CompKind;
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::derive::YDerive;
-use crate::ir::function::FunctionSig;
+use crate::ir::function::FnSig;
 use crate::ir::item::{IsOpaque, Item};
 use crate::ir::layout::Layout;
-use crate::ir::template::TemplateParameters;
+use crate::ir::template::TemplParams;
 use crate::ir::traversal::{EdgeKind, Trace};
 use crate::ir::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
 use crate::ir::ty::{Type, TypeKind};
@@ -104,7 +104,7 @@ impl DeriveTrait {
         )
     }
 
-    fn can_derive_fnptr(&self, f: &FunctionSig) -> YDerive {
+    fn can_derive_fnptr(&self, f: &FnSig) -> YDerive {
         match (self, f.function_pointers_can_derive()) {
             (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => YDerive::Yes,
             (DeriveTrait::Debug, false) => YDerive::Manually,

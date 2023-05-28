@@ -1,7 +1,7 @@
 use super::{Monotone, YConstrain};
 use crate::ir::context::{BindgenContext, ItemId};
 use crate::ir::item::{Item, ItemSet};
-use crate::ir::template::{TemplateInstantiation, TemplateParameters};
+use crate::ir::template::{TemplInstantiation, TemplParams};
 use crate::ir::traversal::{EdgeKind, Trace};
 use crate::ir::ty::TypeKind;
 use crate::{HashMap, HashSet};
@@ -48,12 +48,7 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
             )
     }
 
-    fn constrain_instantiation_of_blocklisted_template(
-        &self,
-        id: ItemId,
-        y: &mut ItemSet,
-        inst: &TemplateInstantiation,
-    ) {
+    fn constrain_instantiation_of_blocklisted_template(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInstantiation) {
         let args = inst
             .template_arguments()
             .iter()
@@ -81,7 +76,7 @@ impl<'ctx> UsedTemplParamsAnalysis<'ctx> {
         y.extend(args);
     }
 
-    fn constrain_instantiation(&self, id: ItemId, y: &mut ItemSet, inst: &TemplateInstantiation) {
+    fn constrain_instantiation(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInstantiation) {
         let decl = self.ctx.resolve_type(inst.template_definition());
         let args = inst.template_arguments();
         let ps = decl.self_template_params(self.ctx);

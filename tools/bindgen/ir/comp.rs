@@ -1,10 +1,10 @@
 use super::analysis::Sizedness;
 use super::annotations::Annotations;
 use super::context::{BindgenContext, FunctionId, ItemId, TypeId, VarId};
-use super::dot::DotAttributes;
+use super::dot::DotAttrs;
 use super::item::{IsOpaque, Item};
 use super::layout::Layout;
-use super::template::TemplateParameters;
+use super::template::TemplParams;
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
 use crate::clang;
@@ -164,7 +164,7 @@ impl Trace for Field {
     }
 }
 
-impl DotAttributes for Field {
+impl DotAttrs for Field {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -198,7 +198,7 @@ impl DotAttributes for Field {
     }
 }
 
-impl DotAttributes for FieldData {
+impl DotAttrs for FieldData {
     fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -212,7 +212,7 @@ impl DotAttributes for FieldData {
     }
 }
 
-impl DotAttributes for Bitfield {
+impl DotAttrs for Bitfield {
     fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -1284,7 +1284,7 @@ impl CompInfo {
     }
 }
 
-impl DotAttributes for CompInfo {
+impl DotAttrs for CompInfo {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -1355,7 +1355,7 @@ impl IsOpaque for CompInfo {
     }
 }
 
-impl TemplateParameters for CompInfo {
+impl TemplParams for CompInfo {
     fn self_template_params(&self, _ctx: &BindgenContext) -> Vec<TypeId> {
         self.template_params.clone()
     }

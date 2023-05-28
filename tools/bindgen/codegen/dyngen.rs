@@ -4,7 +4,7 @@ use crate::ir::function::ClangAbi;
 use proc_macro2::Ident;
 
 #[derive(Default)]
-pub(crate) struct DynamicItems {
+pub(crate) struct DynItems {
     struct_members: Vec<proc_macro2::TokenStream>,
 
     struct_implementation: Vec<proc_macro2::TokenStream>,
@@ -14,7 +14,7 @@ pub(crate) struct DynamicItems {
     init_fields: Vec<proc_macro2::TokenStream>,
 }
 
-impl DynamicItems {
+impl DynItems {
     pub(crate) fn new() -> Self {
         Self::default()
     }

@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-pub(crate) trait DotAttributes {
+pub(crate) trait DotAttrs {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write;

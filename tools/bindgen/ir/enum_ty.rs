@@ -17,7 +17,6 @@ pub enum EnumVariantCustomBehavior {
 #[derive(Debug)]
 pub(crate) struct Enum {
     repr: Option<TypeId>,
-
     variants: Vec<EnumVariant>,
 }
 
@@ -152,13 +151,9 @@ impl Enum {
 #[derive(Debug)]
 pub(crate) struct EnumVariant {
     name: String,
-
     name_for_allowlisting: String,
-
     comment: Option<String>,
-
     val: EnumVariantValue,
-
     custom_behavior: Option<EnumVariantCustomBehavior>,
 }
 

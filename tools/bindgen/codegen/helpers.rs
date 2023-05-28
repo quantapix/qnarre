@@ -122,7 +122,7 @@ pub(crate) fn bitfield_unit(ctx: &BindgenContext, layout: Layout) -> TokenStream
 
 pub(crate) mod ast_ty {
     use crate::ir::context::BindgenContext;
-    use crate::ir::function::FunctionSig;
+    use crate::ir::function::FnSig;
     use crate::ir::layout::Layout;
     use crate::ir::ty::FloatKind;
     use proc_macro2::{self, TokenStream};
@@ -237,7 +237,7 @@ pub(crate) mod ast_ty {
         Err(())
     }
 
-    pub(crate) fn arguments_from_signature(signature: &FunctionSig, ctx: &BindgenContext) -> Vec<TokenStream> {
+    pub(crate) fn arguments_from_signature(signature: &FnSig, ctx: &BindgenContext) -> Vec<TokenStream> {
         let mut unnamed_arguments = 0;
         signature
             .argument_types()

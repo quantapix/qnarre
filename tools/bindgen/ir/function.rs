@@ -1,6 +1,6 @@
 use super::comp::MethodKind;
 use super::context::{BindgenContext, TypeId};
-use super::dot::DotAttributes;
+use super::dot::DotAttrs;
 use super::item::Item;
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::TypeKind;
@@ -16,17 +16,17 @@ use std::str::FromStr;
 const RUST_DERIVE_FUNPTR_LIMIT: usize = 12;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum FunctionKind {
+pub(crate) enum FnKind {
     Function,
     Method(MethodKind),
 }
 
-impl FunctionKind {
-    pub(crate) fn from_cursor(cursor: &clang::Cursor) -> Option<FunctionKind> {
+impl FnKind {
+    pub(crate) fn from_cursor(cursor: &clang::Cursor) -> Option<FnKind> {
         Some(match cursor.kind() {
-            clang::CXCursor_FunctionDecl => FunctionKind::Function,
-            clang::CXCursor_Constructor => FunctionKind::Method(MethodKind::Constructor),
-            clang::CXCursor_Destructor => FunctionKind::Method(if cursor.method_is_virtual() {
+            clang::CXCursor_FunctionDecl => FnKind::Function,
+            clang::CXCursor_Constructor => FnKind::Method(MethodKind::Constructor),
+            clang::CXCursor_Destructor => FnKind::Method(if cursor.method_is_virtual() {
                 MethodKind::VirtualDestructor {
                     pure_virtual: cursor.method_is_pure_virtual(),
                 }
@@ -35,13 +35,13 @@ impl FunctionKind {
             }),
             clang::CXCursor_CXXMethod => {
                 if cursor.method_is_virtual() {
-                    FunctionKind::Method(MethodKind::Virtual {
+                    FnKind::Method(MethodKind::Virtual {
                         pure_virtual: cursor.method_is_pure_virtual(),
                     })
                 } else if cursor.method_is_static() {
-                    FunctionKind::Method(MethodKind::Static)
+                    FnKind::Method(MethodKind::Static)
                 } else {
-                    FunctionKind::Method(MethodKind::Normal)
+                    FnKind::Method(MethodKind::Normal)
                 }
             },
             _ => return None,
@@ -65,7 +65,7 @@ pub(crate) struct Function {
 
     signature: TypeId,
 
-    kind: FunctionKind,
+    kind: FnKind,
 
     linkage: Linkage,
 }
@@ -76,7 +76,7 @@ impl Function {
         mangled_name: Option<String>,
         link_name: Option<String>,
         signature: TypeId,
-        kind: FunctionKind,
+        kind: FnKind,
         linkage: Linkage,
     ) -> Self {
         Function {
@@ -105,7 +105,7 @@ impl Function {
         self.signature
     }
 
-    pub(crate) fn kind(&self) -> FunctionKind {
+    pub(crate) fn kind(&self) -> FnKind {
         self.kind
     }
 
@@ -114,7 +114,7 @@ impl Function {
     }
 }
 
-impl DotAttributes for Function {
+impl DotAttrs for Function {
     fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -207,7 +207,7 @@ impl quote::ToTokens for ClangAbi {
 }
 
 #[derive(Debug)]
-pub(crate) struct FunctionSig {
+pub(crate) struct FnSig {
     name: String,
 
     return_type: TypeId,
@@ -298,7 +298,7 @@ fn args_from_ty_and_cursor(
         .collect()
 }
 
-impl FunctionSig {
+impl FnSig {
     pub(crate) fn from_ty(
         ty: &clang::Type,
         cursor: &clang::Cursor,
@@ -482,7 +482,7 @@ impl ClangSubItemParser for Function {
     fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError> {
         use clang::*;
 
-        let kind = match FunctionKind::from_cursor(&cursor) {
+        let kind = match FnKind::from_cursor(&cursor) {
             None => return Err(ParseError::Continue),
             Some(k) => k,
         };
@@ -556,7 +556,7 @@ impl ClangSubItemParser for Function {
     }
 }
 
-impl Trace for FunctionSig {
+impl Trace for FnSig {
     type Extra = ();
 
     fn trace<T>(&self, _: &BindgenContext, tracer: &mut T, _: &())

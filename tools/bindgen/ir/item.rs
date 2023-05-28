@@ -7,12 +7,12 @@ use super::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
     CanDerivePartialOrd,
 };
-use super::dot::DotAttributes;
-use super::function::{Function, FunctionKind};
+use super::dot::DotAttrs;
+use super::function::{FnKind, Function};
 use super::item_kind::ItemKind;
 use super::layout::Opaque;
 use super::module::Module;
-use super::template::{AsTemplateParam, TemplateParameters};
+use super::template::{AsTemplParam, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::{Type, TypeKind};
 use crate::clang;
@@ -26,11 +26,11 @@ use std::fmt::Write;
 use std::io;
 use std::iter;
 
-pub(crate) trait ItemCanonicalName {
+pub(crate) trait CanonicalName {
     fn canonical_name(&self, ctx: &BindgenContext) -> String;
 }
 
-pub(crate) trait ItemCanonicalPath {
+pub(crate) trait CanonicalPath {
     fn namespace_aware_canonical_path(&self, ctx: &BindgenContext) -> Vec<String>;
 
     fn canonical_path(&self, ctx: &BindgenContext) -> Vec<String>;
@@ -50,8 +50,8 @@ pub(crate) trait HasFloat {
     fn has_float(&self, ctx: &BindgenContext) -> bool;
 }
 
-pub(crate) trait ItemAncestors {
-    fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> ItemAncestorsIter<'a>;
+pub(crate) trait Ancestors {
+    fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> AncestorsIter<'a>;
 }
 
 #[cfg(__testing_only_extra_assertions)]
@@ -73,15 +73,15 @@ impl DebugOnlyItemSet {
     fn insert(&mut self, _id: ItemId) {}
 }
 
-pub(crate) struct ItemAncestorsIter<'a> {
+pub(crate) struct AncestorsIter<'a> {
     item: ItemId,
     ctx: &'a BindgenContext,
     seen: DebugOnlyItemSet,
 }
 
-impl<'a> ItemAncestorsIter<'a> {
+impl<'a> AncestorsIter<'a> {
     fn new<Id: Into<ItemId>>(ctx: &'a BindgenContext, id: Id) -> Self {
-        ItemAncestorsIter {
+        AncestorsIter {
             item: id.into(),
             ctx,
             seen: DebugOnlyItemSet::new(),
@@ -89,7 +89,7 @@ impl<'a> ItemAncestorsIter<'a> {
     }
 }
 
-impl<'a> Iterator for ItemAncestorsIter<'a> {
+impl<'a> Iterator for AncestorsIter<'a> {
     type Item = ItemId;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -108,7 +108,7 @@ impl<'a> Iterator for ItemAncestorsIter<'a> {
     }
 }
 
-impl<T> AsTemplateParam for T
+impl<T> AsTemplParam for T
 where
     T: Copy + Into<ItemId>,
 {
@@ -119,7 +119,7 @@ where
     }
 }
 
-impl AsTemplateParam for Item {
+impl AsTemplParam for Item {
     type Extra = ();
 
     fn as_template_param(&self, ctx: &BindgenContext, _: &()) -> Option<TypeId> {
@@ -127,7 +127,7 @@ impl AsTemplateParam for Item {
     }
 }
 
-impl AsTemplateParam for ItemKind {
+impl AsTemplParam for ItemKind {
     type Extra = Item;
 
     fn as_template_param(&self, ctx: &BindgenContext, item: &Item) -> Option<TypeId> {
@@ -138,7 +138,7 @@ impl AsTemplateParam for ItemKind {
     }
 }
 
-impl<T> ItemCanonicalName for T
+impl<T> CanonicalName for T
 where
     T: Copy + Into<ItemId>,
 {
@@ -148,7 +148,7 @@ where
     }
 }
 
-impl<T> ItemCanonicalPath for T
+impl<T> CanonicalPath for T
 where
     T: Copy + Into<ItemId>,
 {
@@ -163,17 +163,17 @@ where
     }
 }
 
-impl<T> ItemAncestors for T
+impl<T> Ancestors for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> ItemAncestorsIter<'a> {
-        ItemAncestorsIter::new(ctx, *self)
+    fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> AncestorsIter<'a> {
+        AncestorsIter::new(ctx, *self)
     }
 }
 
-impl ItemAncestors for Item {
-    fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> ItemAncestorsIter<'a> {
+impl Ancestors for Item {
+    fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> AncestorsIter<'a> {
         self.id().ancestors(ctx)
     }
 }
@@ -719,13 +719,14 @@ impl Item {
             ItemKind::Var(_) => cc.vars(),
             ItemKind::Type(_) => cc.types(),
             ItemKind::Function(ref f) => match f.kind() {
-                FunctionKind::Function => cc.functions(),
-                FunctionKind::Method(MethodKind::Constructor) => cc.constructors(),
-                FunctionKind::Method(MethodKind::Destructor)
-                | FunctionKind::Method(MethodKind::VirtualDestructor { .. }) => cc.destructors(),
-                FunctionKind::Method(MethodKind::Static)
-                | FunctionKind::Method(MethodKind::Normal)
-                | FunctionKind::Method(MethodKind::Virtual { .. }) => cc.methods(),
+                FnKind::Function => cc.functions(),
+                FnKind::Method(MethodKind::Constructor) => cc.constructors(),
+                FnKind::Method(MethodKind::Destructor) | FnKind::Method(MethodKind::VirtualDestructor { .. }) => {
+                    cc.destructors()
+                },
+                FnKind::Method(MethodKind::Static)
+                | FnKind::Method(MethodKind::Normal)
+                | FnKind::Method(MethodKind::Virtual { .. }) => cc.methods(),
             },
         }
     }
@@ -890,7 +891,7 @@ impl HasFloat for Item {
 
 pub(crate) type ItemSet = BTreeSet<ItemId>;
 
-impl DotAttributes for Item {
+impl DotAttrs for Item {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -911,7 +912,7 @@ impl DotAttributes for Item {
     }
 }
 
-impl<T> TemplateParameters for T
+impl<T> TemplParams for T
 where
     T: Copy + Into<ItemId>,
 {
@@ -921,13 +922,13 @@ where
     }
 }
 
-impl TemplateParameters for Item {
+impl TemplParams for Item {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
         self.kind.self_template_params(ctx)
     }
 }
 
-impl TemplateParameters for ItemKind {
+impl TemplParams for ItemKind {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
         match *self {
             ItemKind::Type(ref ty) => ty.self_template_params(ctx),
@@ -1185,7 +1186,7 @@ impl Item {
         }
 
         if let Some(ref parent) = ty.declaration().fallible_semantic_parent() {
-            if FunctionKind::from_cursor(parent).is_some() {
+            if FnKind::from_cursor(parent).is_some() {
                 debug!("Skipping type declared inside function: {:?}", ty);
                 return Ok(Item::new_opaque_type(id, ty, ctx));
             }
@@ -1393,7 +1394,7 @@ impl Item {
     }
 }
 
-impl ItemCanonicalName for Item {
+impl CanonicalName for Item {
     fn canonical_name(&self, ctx: &BindgenContext) -> String {
         debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
         self.canonical_name
@@ -1410,7 +1411,7 @@ impl ItemCanonicalName for Item {
     }
 }
 
-impl ItemCanonicalPath for Item {
+impl CanonicalPath for Item {
     fn namespace_aware_canonical_path(&self, ctx: &BindgenContext) -> Vec<String> {
         let mut path = self.canonical_path(ctx);
 

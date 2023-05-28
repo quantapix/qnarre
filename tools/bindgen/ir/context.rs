@@ -9,10 +9,10 @@ use super::derive::{
 };
 use super::function::Function;
 use super::int::IntKind;
-use super::item::{IsOpaque, Item, ItemAncestors, ItemSet};
+use super::item::{Ancestors, IsOpaque, Item, ItemSet};
 use super::item_kind::ItemKind;
-use super::module::{Module, ModuleKind};
-use super::template::{TemplateInstantiation, TemplateParameters};
+use super::module::{ModKind, Module};
+use super::template::{TemplInstantiation, TemplParams};
 use super::traversal::{self, Edge, ItemTraversal};
 use super::ty::{FloatKind, Type, TypeKind};
 use crate::clang::{self, Cursor};
@@ -941,7 +941,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     fn build_root_module(id: ItemId) -> Item {
-        let module = Module::new(Some("root".into()), ModuleKind::Normal);
+        let module = Module::new(Some("root".into()), ModKind::Normal);
         Item::new(id, None, None, id, ItemKind::Module(module), None)
     }
 
@@ -1082,7 +1082,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         sub_args.reverse();
 
                         let sub_name = Some(template_decl_cursor.spelling());
-                        let sub_inst = TemplateInstantiation::new(template_decl_id.as_type_id_unchecked(), sub_args);
+                        let sub_inst = TemplInstantiation::new(template_decl_id.as_type_id_unchecked(), sub_args);
                         let sub_kind = TypeKind::TemplateInstantiation(sub_inst);
                         let sub_ty = Type::new(
                             sub_name,
@@ -1135,7 +1135,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
 
         args.reverse();
-        let type_kind = TypeKind::TemplateInstantiation(TemplateInstantiation::new(template, args));
+        let type_kind = TypeKind::TemplateInstantiation(TemplInstantiation::new(template, args));
         let name = ty.spelling();
         let name = if name.is_empty() { None } else { Some(name) };
         let ty = Type::new(name, ty.fallible_layout(self).ok(), type_kind, ty.is_const());
@@ -1362,7 +1362,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         &self.opts
     }
 
-    fn tokenize_namespace(&self, cursor: &clang::Cursor) -> (Option<String>, ModuleKind) {
+    fn tokenize_namespace(&self, cursor: &clang::Cursor) -> (Option<String>, ModKind) {
         assert_eq!(cursor.kind(), ::clang::CXCursor_Namespace, "Be a nice person");
 
         let mut module_name = None;
@@ -1371,13 +1371,13 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             module_name = Some(spelling)
         }
 
-        let mut kind = ModuleKind::Normal;
+        let mut kind = ModKind::Normal;
         let mut looking_for_name = false;
         for token in cursor.tokens().iter() {
             match token.spelling() {
                 b"inline" => {
-                    debug_assert!(kind != ModuleKind::Inline, "Multiple inline keywords?");
-                    kind = ModuleKind::Inline;
+                    debug_assert!(kind != ModKind::Inline, "Multiple inline keywords?");
+                    kind = ModKind::Inline;
                     looking_for_name = true;
                 },
                 b"namespace" | b"::" => {
@@ -1967,7 +1967,7 @@ impl PartialType {
     }
 }
 
-impl TemplateParameters for PartialType {
+impl TemplParams for PartialType {
     fn self_template_params(&self, _ctx: &BindgenContext) -> Vec<TypeId> {
         vec![]
     }

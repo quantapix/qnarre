@@ -1,12 +1,12 @@
 use super::comp::CompInfo;
 use super::context::{BindgenContext, ItemId, TypeId};
-use super::dot::DotAttributes;
+use super::dot::DotAttrs;
 use super::enum_ty::Enum;
-use super::function::FunctionSig;
+use super::function::FnSig;
 use super::int::IntKind;
 use super::item::{IsOpaque, Item};
 use super::layout::{Layout, Opaque};
-use super::template::{AsTemplateParam, TemplateInstantiation, TemplateParameters};
+use super::template::{AsTemplParam, TemplInstantiation, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use crate::clang::{self, Cursor};
 use crate::parse::{ParseError, ParseResult};
@@ -261,7 +261,7 @@ impl IsOpaque for Type {
     }
 }
 
-impl AsTemplateParam for Type {
+impl AsTemplParam for Type {
     type Extra = Item;
 
     fn as_template_param(&self, ctx: &BindgenContext, item: &Item) -> Option<TypeId> {
@@ -269,7 +269,7 @@ impl AsTemplateParam for Type {
     }
 }
 
-impl AsTemplateParam for TypeKind {
+impl AsTemplParam for TypeKind {
     type Extra = Item;
 
     fn as_template_param(&self, ctx: &BindgenContext, item: &Item) -> Option<TypeId> {
@@ -281,7 +281,7 @@ impl AsTemplateParam for TypeKind {
     }
 }
 
-impl DotAttributes for Type {
+impl DotAttrs for Type {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -306,7 +306,7 @@ impl DotAttributes for Type {
     }
 }
 
-impl DotAttributes for TypeKind {
+impl DotAttrs for TypeKind {
     fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -391,13 +391,13 @@ fn is_invalid_type_param_empty_name() {
     assert!(ty.is_invalid_type_param())
 }
 
-impl TemplateParameters for Type {
+impl TemplParams for Type {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
         self.kind.self_template_params(ctx)
     }
 }
 
-impl TemplateParameters for TypeKind {
+impl TemplParams for TypeKind {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
         match *self {
             TypeKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_template_params(ctx),
@@ -446,12 +446,12 @@ pub(crate) enum TypeKind {
     TemplateAlias(TypeId, Vec<TypeId>),
     Vector(TypeId, usize),
     Array(TypeId, usize),
-    Function(FunctionSig),
+    Function(FnSig),
     Enum(Enum),
     Pointer(TypeId),
     BlockPointer(TypeId),
     Reference(TypeId),
-    TemplateInstantiation(TemplateInstantiation),
+    TemplateInstantiation(TemplInstantiation),
     UnresolvedTypeRef(clang::Type, clang::Cursor, /* parent_id */ Option<ItemId>),
     ResolvedTypeRef(TypeId),
     TypeParam,
@@ -505,7 +505,7 @@ impl Type {
         let kind = if location.kind() == CXCursor_TemplateRef
             || (ty.template_args().is_some() && ty_kind != CXType_Typedef)
         {
-            match TemplateInstantiation::from_ty(ty, ctx) {
+            match TemplInstantiation::from_ty(ty, ctx) {
                 Some(inst) => TypeKind::TemplateInstantiation(inst),
                 None => TypeKind::Opaque,
             }
@@ -522,7 +522,7 @@ impl Type {
                 },
                 CXType_Unexposed | CXType_Invalid => {
                     if ty.ret_type().is_some() {
-                        let signature = FunctionSig::from_ty(ty, &location, ctx)?;
+                        let signature = FnSig::from_ty(ty, &location, ctx)?;
                         TypeKind::Function(signature)
                     } else if ty.is_fully_instantiated_template() {
                         debug!("Template specialization: {:?}, {:?} {:?}", ty, location, canonical_ty);
@@ -688,7 +688,7 @@ impl Type {
                     TypeKind::Array(inner, 0)
                 },
                 CXType_FunctionNoProto | CXType_FunctionProto => {
-                    let signature = FunctionSig::from_ty(ty, &location, ctx)?;
+                    let signature = FnSig::from_ty(ty, &location, ctx)?;
                     TypeKind::Function(signature)
                 },
                 CXType_Typedef => {

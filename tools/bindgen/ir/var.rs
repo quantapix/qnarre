@@ -1,6 +1,6 @@
 use super::super::codegen::MacroTypeVariation;
 use super::context::{BindgenContext, TypeId};
-use super::dot::DotAttributes;
+use super::dot::DotAttrs;
 use super::function::cursor_mangling;
 use super::int::IntKind;
 use super::item::Item;
@@ -77,7 +77,7 @@ impl Var {
     }
 }
 
-impl DotAttributes for Var {
+impl DotAttrs for Var {
     fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
