@@ -1469,20 +1469,6 @@ pub(crate) mod used_templ_param {
                     }
                 }
             }
-            if cfg!(feature = "__testing_only_extra_assertions") {
-                for i in alloweds.iter() {
-                    extra_assert!(ys.contains_key(i));
-                    extra_assert!(deps.contains_key(i));
-                    i.trace(
-                        ctx,
-                        &mut |i2, _| {
-                            extra_assert!(ys.contains_key(&i2));
-                            extra_assert!(deps.contains_key(&i2));
-                        },
-                        &(),
-                    )
-                }
-            }
             Analysis {
                 ctx,
                 ys,

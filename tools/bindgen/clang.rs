@@ -1,6 +1,3 @@
-#![allow(non_upper_case_globals, dead_code)]
-#![deny(clippy::missing_docs_in_private_items)]
-
 use std::ffi::{CStr, CString};
 use std::fmt;
 use std::hash::Hash;
@@ -1651,7 +1648,6 @@ impl EvalResult {
         if value < i64::min_value() as c_longlong {
             return None;
         }
-        #[allow(clippy::unnecessary_cast)]
         Some(value as i64)
     }
 

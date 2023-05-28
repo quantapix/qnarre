@@ -1,7 +1,7 @@
-#![deny(missing_docs)]
-#![deny(unused_extern_crates)]
+#![allow(missing_docs)]
+#![allow(non_upper_case_globals, dead_code)]
 #![deny(clippy::disallowed_methods)]
-#![allow(non_upper_case_globals)]
+#![deny(unused_extern_crates)]
 #![recursion_limit = "128"]
 
 #[macro_use]
@@ -15,20 +15,11 @@ extern crate quote;
 #[macro_use]
 extern crate log;
 
-#[cfg(not(feature = "logging"))]
-#[macro_use]
-mod log_stubs;
-
-#[macro_use]
-mod extra_assertions;
-
 pub(crate) mod clang;
 
 mod codegen;
-mod deps;
-mod opts;
 
-pub mod callbacks;
+mod opts;
 
 mod ir;
 
@@ -800,8 +791,165 @@ impl callbacks::ParseCallbacks for CargoCallbacks {
     }
 }
 
+mod deps {
+    use std::{collections::BTreeSet, path::PathBuf};
+
+    #[derive(Clone, Debug)]
+    pub(crate) struct DepfileSpec {
+        pub output_module: String,
+        pub depfile_path: PathBuf,
+    }
+
+    impl DepfileSpec {
+        pub fn write(&self, deps: &BTreeSet<String>) -> std::io::Result<()> {
+            std::fs::write(&self.depfile_path, &self.to_string(deps))
+        }
+
+        fn to_string(&self, deps: &BTreeSet<String>) -> String {
+            let escape = |s: &str| s.replace('\\', "\\\\").replace(' ', "\\ ");
+            let mut buf = format!("{}:", escape(&self.output_module));
+            for file in deps {
+                buf = format!("{} {}", buf, escape(file));
+            }
+            buf
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn escaping_depfile() {
+            let spec = DepfileSpec {
+                output_module: "Mod Name".to_owned(),
+                depfile_path: PathBuf::new(),
+            };
+
+            let deps: BTreeSet<String> = vec![
+                r"/absolute/path".to_owned(),
+                r"C:\win\absolute\path".to_owned(),
+                r"../relative/path".to_owned(),
+                r"..\win\relative\path".to_owned(),
+                r"../path/with spaces/in/it".to_owned(),
+                r"..\win\path\with spaces\in\it".to_owned(),
+                r"path\with/mixed\separators".to_owned(),
+            ]
+            .into_iter()
+            .collect();
+            assert_eq!(
+                spec.to_string(&deps),
+                "Mod\\ Name: \
+            ../path/with\\ spaces/in/it \
+            ../relative/path \
+            ..\\\\win\\\\path\\\\with\\ spaces\\\\in\\\\it \
+            ..\\\\win\\\\relative\\\\path \
+            /absolute/path \
+            C:\\\\win\\\\absolute\\\\path \
+            path\\\\with/mixed\\\\separators"
+            );
+        }
+    }
+}
+
+pub mod callbacks {
+    pub use crate::ir::analysis::DeriveTrait;
+    pub use crate::ir::derive::YDerive as ImplementsTrait;
+    pub use crate::ir::enum_ty::{EnumVariantCustomBehavior, EnumVariantValue};
+    pub use crate::ir::int::IntKind;
+    use std::fmt;
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum MacroParsing {
+        Ignore,
+        Default,
+    }
+
+    impl Default for MacroParsing {
+        fn default() -> Self {
+            MacroParsing::Default
+        }
+    }
+
+    pub trait ParseCallbacks: fmt::Debug {
+        fn will_parse_macro(&self, _name: &str) -> MacroParsing {
+            MacroParsing::Default
+        }
+        fn generated_name_override(&self, _item_info: ItemInfo<'_>) -> Option<String> {
+            None
+        }
+        fn generated_link_name_override(&self, _item_info: ItemInfo<'_>) -> Option<String> {
+            None
+        }
+        fn int_macro(&self, _name: &str, _value: i64) -> Option<IntKind> {
+            None
+        }
+        fn str_macro(&self, _name: &str, _value: &[u8]) {}
+        fn func_macro(&self, _name: &str, _value: &[&[u8]]) {}
+        fn enum_variant_behavior(
+            &self,
+            _enum_name: Option<&str>,
+            _original_variant_name: &str,
+            _variant_value: EnumVariantValue,
+        ) -> Option<EnumVariantCustomBehavior> {
+            None
+        }
+        fn enum_variant_name(
+            &self,
+            _enum_name: Option<&str>,
+            _original_variant_name: &str,
+            _variant_value: EnumVariantValue,
+        ) -> Option<String> {
+            None
+        }
+        fn item_name(&self, _original_item_name: &str) -> Option<String> {
+            None
+        }
+        fn include_file(&self, _filename: &str) {}
+        fn read_env_var(&self, _key: &str) {}
+        fn blocklisted_type_implements_trait(
+            &self,
+            _name: &str,
+            _derive_trait: DeriveTrait,
+        ) -> Option<ImplementsTrait> {
+            None
+        }
+        fn add_derives(&self, _info: &DeriveInfo<'_>) -> Vec<String> {
+            vec![]
+        }
+        fn process_comment(&self, _comment: &str) -> Option<String> {
+            None
+        }
+    }
+
+    #[derive(Debug)]
+    #[non_exhaustive]
+    pub struct DeriveInfo<'a> {
+        pub name: &'a str,
+        pub kind: TypeKind,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum TypeKind {
+        Struct,
+        Enum,
+        Union,
+    }
+
+    #[non_exhaustive]
+    pub struct ItemInfo<'a> {
+        pub name: &'a str,
+        pub kind: ItemKind,
+    }
+
+    #[non_exhaustive]
+    pub enum ItemKind {
+        Function,
+        Var,
+    }
+}
+
 pub(crate) mod parse {
-    #![deny(clippy::missing_docs_in_private_items)]
     use crate::clang;
     use crate::ir::context::{BindgenContext, ItemId};
 
@@ -823,7 +971,6 @@ pub(crate) mod parse {
 }
 
 mod regex_set {
-    #![deny(clippy::missing_docs_in_private_items)]
     use std::cell::Cell;
 
     #[derive(Clone, Debug, Default)]

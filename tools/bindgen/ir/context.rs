@@ -793,11 +793,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         Ok((ret, self.opts))
     }
 
-    fn assert_no_dangling_references(&self) {
-        if cfg!(feature = "__testing_only_extra_assertions") {
-            for _ in self.assert_no_dangling_item_traversal() {}
-        }
-    }
+    fn assert_no_dangling_references(&self) {}
 
     fn assert_no_dangling_item_traversal(&self) -> traversal::AssertNoDanglingItemsTraversal {
         assert!(self.in_codegen_phase());
@@ -806,36 +802,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         traversal::AssertNoDanglingItemsTraversal::new(self, roots, traversal::all_edges)
     }
 
-    fn assert_every_item_in_a_module(&self) {
-        if cfg!(feature = "__testing_only_extra_assertions") {
-            assert!(self.in_codegen_phase());
-            assert!(self.current_module == self.root_module);
-            for (id, _item) in self.items() {
-                if id == self.root_module {
-                    continue;
-                }
-
-                assert!(
-                    {
-                        let id = id
-                            .into_resolver()
-                            .through_type_refs()
-                            .through_type_aliases()
-                            .resolve(self)
-                            .id();
-                        id.ancestors(self).chain(Some(self.root_module.into())).any(|ancestor| {
-                            debug!("Checking if {:?} is a child of {:?}", id, ancestor);
-                            self.resolve_item(ancestor)
-                                .as_module()
-                                .map_or(false, |m| m.children().contains(&id))
-                        })
-                    },
-                    "{:?} should be in some ancestor module's children set",
-                    id
-                );
-            }
-        }
-    }
+    fn assert_every_item_in_a_module(&self) {}
 
     fn compute_sizedness(&mut self) {
         let _t = self.timer("compute_sizedness");

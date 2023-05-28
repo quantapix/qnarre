@@ -54,13 +54,8 @@ pub(crate) trait Ancestors {
     fn ancestors<'a>(&self, ctx: &'a BindgenContext) -> AncestorsIter<'a>;
 }
 
-#[cfg(__testing_only_extra_assertions)]
-type DebugOnlyItemSet = ItemSet;
-
-#[cfg(not(__testing_only_extra_assertions))]
 struct DebugOnlyItemSet;
 
-#[cfg(not(__testing_only_extra_assertions))]
 impl DebugOnlyItemSet {
     fn new() -> Self {
         DebugOnlyItemSet
@@ -991,7 +986,6 @@ impl Item {
         let current_module = ctx.current_module().into();
         let relevant_parent_id = parent_id.unwrap_or(current_module);
 
-        #[allow(clippy::missing_docs_in_private_items)]
         macro_rules! try_parse {
             ($what:ident) => {
                 match $what::parse(cursor, ctx) {

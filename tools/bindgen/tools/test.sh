@@ -107,9 +107,6 @@ get_cargo_args() {
   if [ "$BINDGEN_FEATURE_RUNTIME" == "1"  ]; then
     features+="runtime"
   fi
-  if [ "$BINDGEN_FEATURE_EXTRA_ASSERTS" == "1"  ]; then
-    features+=" __testing_only_extra_assertions"
-  fi
   if [ ! -z "$features" ]; then
     args+=" --features $(echo $features | tr ' ' ',')"
   fi

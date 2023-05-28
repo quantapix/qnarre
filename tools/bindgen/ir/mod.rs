@@ -1,5 +1,3 @@
-#![deny(clippy::missing_docs_in_private_items)]
-
 pub(crate) mod analysis;
 pub(crate) mod annotations;
 pub(crate) mod comment;
