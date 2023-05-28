@@ -27,13 +27,10 @@ pub(crate) mod clang;
 mod codegen;
 mod deps;
 mod opts;
-mod timer;
 
 pub mod callbacks;
 
 mod ir;
-mod parse;
-mod regex_set;
 
 pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 pub use ir::annotations::FieldVisibilityKind;
@@ -737,14 +734,13 @@ fn parse(context: &mut BindgenContext) -> Result<(), BindgenError> {
 }
 
 #[derive(Debug)]
-pub struct ClangVersion {
+pub struct Version {
     pub parsed: Option<(u32, u32)>,
     pub full: String,
 }
 
-pub fn clang_version() -> ClangVersion {
+pub fn clang_version() -> Version {
     ensure_libclang_is_loaded();
-
     let raw_v: String = clang::extract_clang_version();
     let split_v: Option<Vec<&str>> = raw_v
         .split_whitespace()
@@ -755,14 +751,14 @@ pub fn clang_version() -> ClangVersion {
             let maybe_major = v[0].parse::<u32>();
             let maybe_minor = v[1].parse::<u32>();
             if let (Ok(major), Ok(minor)) = (maybe_major, maybe_minor) {
-                return ClangVersion {
+                return Version {
                     parsed: Some((major, minor)),
                     full: raw_v.clone(),
                 };
             }
         }
     };
-    ClangVersion {
+    Version {
         parsed: None,
         full: raw_v.clone(),
     }
@@ -801,6 +797,148 @@ impl callbacks::ParseCallbacks for CargoCallbacks {
 
     fn read_env_var(&self, key: &str) {
         println!("cargo:rerun-if-env-changed={}", key);
+    }
+}
+
+pub(crate) mod parse {
+    #![deny(clippy::missing_docs_in_private_items)]
+    use crate::clang;
+    use crate::ir::context::{BindgenContext, ItemId};
+
+    #[derive(Debug)]
+    enum ParseError {
+        Recurse,
+        Continue,
+    }
+
+    #[derive(Debug)]
+    enum ParseResult<T> {
+        AlreadyResolved(ItemId),
+        New(T, Option<clang::Cursor>),
+    }
+
+    trait ClangSubItemParser: Sized {
+        fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<ParseResult<Self>, ParseError>;
+    }
+}
+
+mod regex_set {
+    #![deny(clippy::missing_docs_in_private_items)]
+    use std::cell::Cell;
+
+    #[derive(Clone, Debug, Default)]
+    pub struct RegexSet {
+        items: Vec<String>,
+        matched: Vec<Cell<bool>>,
+        set: Option<regex::RegexSet>,
+        record_matches: bool,
+    }
+
+    impl RegexSet {
+        pub fn new() -> RegexSet {
+            RegexSet::default()
+        }
+        pub fn is_empty(&self) -> bool {
+            self.items.is_empty()
+        }
+        pub fn insert<S>(&mut self, x: S)
+        where
+            S: AsRef<str>,
+        {
+            self.items.push(x.as_ref().to_owned());
+            self.matched.push(Cell::new(false));
+            self.set = None;
+        }
+        pub fn get_items(&self) -> &[String] {
+            &self.items[..]
+        }
+        pub fn unmatched_items(&self) -> impl Iterator<Item = &String> {
+            self.items.iter().enumerate().filter_map(move |(i, x)| {
+                if !self.record_matches || self.matched[i].get() {
+                    return None;
+                }
+                Some(x)
+            })
+        }
+        #[inline]
+        pub fn build(&mut self, record_matches: bool) {
+            self.build_inner(record_matches, None)
+        }
+        fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
+            let items = self.items.iter().map(|item| format!("^({})$", item));
+            self.record_matches = record_matches;
+            self.set = match regex::RegexSet::new(items) {
+                Ok(x) => Some(x),
+                Err(e) => {
+                    warn!("Invalid regex in {:?}: {:?}", self.items, e);
+                    None
+                },
+            }
+        }
+        pub fn matches<S>(&self, x: S) -> bool
+        where
+            S: AsRef<str>,
+        {
+            let s = x.as_ref();
+            let set = match self.set {
+                Some(ref set) => set,
+                None => return false,
+            };
+            if !self.record_matches {
+                return set.is_match(s);
+            }
+            let ys = set.matches(s);
+            if !ys.matched_any() {
+                return false;
+            }
+            for i in ys.iter() {
+                self.matched[i].set(true);
+            }
+            true
+        }
+    }
+}
+
+mod timer {
+    use std::io::{self, Write};
+    use std::time::{Duration, Instant};
+
+    #[derive(Debug)]
+    pub struct Timer<'a> {
+        output: bool,
+        name: &'a str,
+        start: Instant,
+    }
+
+    impl<'a> Timer<'a> {
+        pub fn new(name: &'a str) -> Self {
+            Timer {
+                output: true,
+                name,
+                start: Instant::now(),
+            }
+        }
+        pub fn with_output(mut self, x: bool) -> Self {
+            self.output = x;
+            self
+        }
+        pub fn elapsed(&self) -> Duration {
+            Instant::now() - self.start
+        }
+        fn print_elapsed(&mut self) {
+            if self.output {
+                let d = self.elapsed();
+                let ms = (d.as_secs() as f64) * 1e3 + (d.subsec_nanos() as f64) / 1e6;
+                let e = io::stderr();
+                writeln!(e.lock(), "  time: {:>9.3} ms.\t{}", ms, self.name).expect("should not fail");
+            }
+        }
+    }
+
+    impl<'a> Drop for Timer<'a> {
+        fn drop(&mut self) {
+            self.print_elapsed();
+        }
     }
 }
 
