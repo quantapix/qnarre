@@ -662,7 +662,7 @@ impl CodeGenerator for Type {
             | TyKind::ResolvedTypeRef(..)
             | TyKind::Opaque
             | TyKind::TypeParam => {},
-            TyKind::TemplateInstantiation(ref inst) => inst.codegen(ctx, result, item),
+            TyKind::TemplateInstantiation(ref x) => x.codegen(ctx, result, item),
             TyKind::BlockPointer(inner) => {
                 if !ctx.opts().generate_block {
                     return;
@@ -3154,7 +3154,7 @@ impl TryToRustTy for Type {
                 let path = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
                 Ok(quote!(#path))
             },
-            TyKind::TemplateInstantiation(ref inst) => inst.try_to_rust_ty(ctx, item),
+            TyKind::TemplateInstantiation(ref x) => x.try_to_rust_ty(ctx, item),
             TyKind::ResolvedTypeRef(inner) => inner.try_to_rust_ty(ctx, &()),
             TyKind::TemplateAlias(..) | TyKind::Alias(..) | TyKind::BlockPointer(..) => {
                 if self.is_block_pointer() && !ctx.opts().generate_block {

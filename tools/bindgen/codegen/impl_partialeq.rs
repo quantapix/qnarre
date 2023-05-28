@@ -91,8 +91,8 @@ fn gen_field(ctx: &BindgenContext, ty_item: &Item, name: &str) -> proc_macro2::T
         | TyKind::Function(..)
         | TyKind::Opaque => quote_equals(name_ident),
 
-        TyKind::TemplateInstantiation(ref inst) => {
-            if inst.is_opaque(ctx, ty_item) {
+        TyKind::TemplateInstantiation(ref x) => {
+            if x.is_opaque(ctx, ty_item) {
                 quote! {
                     &self. #name_ident [..] == &other. #name_ident [..]
                 }

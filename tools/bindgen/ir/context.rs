@@ -1,8 +1,5 @@
 use super::super::timer::Timer;
-use super::analysis::{
-    analyze, as_cannot_derive_set, DeriveAnalysis, DeriveTrait, HasDestructorAnalysis, HasTyParamInArrayAnalysis,
-    SizednessAnalysis, UsedTemplParamsAnalysis, YSizedness, *,
-};
+use super::analysis::{analyze, as_cannot_derive_set, DeriveTrait, *};
 use super::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
     CanDerivePartialOrd, YDerive,
@@ -270,7 +267,7 @@ pub(crate) struct BindgenContext {
     replacements: HashMap<Vec<String>, ItemId>,
     root_module: ModuleId,
     semantic_parents: HashMap<clang::Cursor, ItemId>,
-    sizedness: Option<HashMap<TypeId, YSizedness>>,
+    sizedness: Option<HashMap<TypeId, sizedness::Result>>,
     target_info: clang::TargetInfo,
     translation_unit: clang::TranslationUnit,
     type_params: HashMap<clang::Cursor, TypeId>,
@@ -843,17 +840,17 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_sizedness(&mut self) {
         let _t = self.timer("compute_sizedness");
         assert!(self.sizedness.is_none());
-        self.sizedness = Some(analyze::<SizednessAnalysis>(self));
+        self.sizedness = Some(analyze::<sizedness::Analysis>(self));
     }
 
-    pub(crate) fn lookup_sizedness(&self, id: TypeId) -> YSizedness {
+    pub(crate) fn lookup_sizedness(&self, id: TypeId) -> sizedness::Result {
         assert!(self.in_codegen_phase());
         self.sizedness
             .as_ref()
             .unwrap()
             .get(&id)
             .cloned()
-            .unwrap_or(YSizedness::ZeroSized)
+            .unwrap_or(sizedness::Result::ZeroSized)
     }
 
     fn compute_has_vtable(&mut self) {
@@ -875,7 +872,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_has_destructor(&mut self) {
         let _t = self.timer("compute_has_destructor");
         assert!(self.have_destructor.is_none());
-        self.have_destructor = Some(analyze::<HasDestructorAnalysis>(self));
+        self.have_destructor = Some(analyze::<has_destructor::Analysis>(self));
     }
 
     pub(crate) fn lookup_has_destructor(&self, id: TypeId) -> bool {
@@ -886,7 +883,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn find_used_template_parameters(&mut self) {
         let _t = self.timer("find_used_template_parameters");
         if self.opts.allowlist_recursively {
-            let used_params = analyze::<UsedTemplParamsAnalysis>(self);
+            let used_params = analyze::<used_templ_param::Analysis>(self);
             self.used_template_parameters = Some(used_params);
         } else {
             let mut used_params = HashMap::default();
@@ -1700,7 +1697,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("compute_cannot_derive_debug");
         assert!(self.cannot_derive_debug.is_none());
         if self.opts.derive_debug {
-            self.cannot_derive_debug = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
+            self.cannot_derive_debug = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
                 self,
                 DeriveTrait::Debug,
             ))));
@@ -1721,7 +1718,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("compute_cannot_derive_default");
         assert!(self.cannot_derive_default.is_none());
         if self.opts.derive_default {
-            self.cannot_derive_default = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
+            self.cannot_derive_default = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
                 self,
                 DeriveTrait::Default,
             ))));
@@ -1741,7 +1738,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_cannot_derive_copy(&mut self) {
         let _t = self.timer("compute_cannot_derive_copy");
         assert!(self.cannot_derive_copy.is_none());
-        self.cannot_derive_copy = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
+        self.cannot_derive_copy = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
             self,
             DeriveTrait::Copy,
         ))));
@@ -1751,7 +1748,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("compute_cannot_derive_hash");
         assert!(self.cannot_derive_hash.is_none());
         if self.opts.derive_hash {
-            self.cannot_derive_hash = Some(as_cannot_derive_set(analyze::<DeriveAnalysis>((
+            self.cannot_derive_hash = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
                 self,
                 DeriveTrait::Hash,
             ))));
@@ -1773,7 +1770,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.cannot_derive_partialeq_or_partialord.is_none());
         if self.opts.derive_partialord || self.opts.derive_partialeq || self.opts.derive_eq {
             self.cannot_derive_partialeq_or_partialord =
-                Some(analyze::<DeriveAnalysis>((self, DeriveTrait::PartialEqOrPartialOrd)));
+                Some(analyze::<derive::Analysis>((self, DeriveTrait::PartialEqOrPartialOrd)));
         }
     }
 
@@ -1806,7 +1803,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_has_type_param_in_array(&mut self) {
         let _t = self.timer("compute_has_type_param_in_array");
         assert!(self.has_type_param_in_array.is_none());
-        self.has_type_param_in_array = Some(analyze::<HasTyParamInArrayAnalysis>(self));
+        self.has_type_param_in_array = Some(analyze::<has_ty_param::Analysis>(self));
     }
 
     pub(crate) fn lookup_has_type_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {

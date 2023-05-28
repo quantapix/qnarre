@@ -120,7 +120,6 @@ impl<'a> ImplDebug<'a> for Item {
                 }],
             ))
         }
-
         match *ty.kind() {
             TyKind::Void
             | TyKind::NullPtr
@@ -133,8 +132,8 @@ impl<'a> ImplDebug<'a> for Item {
             | TyKind::UnresolvedTypeRef(..)
             | TyKind::Comp(..) => debug_print(name, quote! { #name_ident }),
 
-            TyKind::TemplateInstantiation(ref inst) => {
-                if inst.is_opaque(ctx, self) {
+            TyKind::TemplateInstantiation(ref x) => {
+                if x.is_opaque(ctx, self) {
                     Some((format!("{}: opaque", name), vec![]))
                 } else {
                     debug_print(name, quote! { #name_ident })

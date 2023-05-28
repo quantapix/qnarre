@@ -225,9 +225,7 @@ impl Type {
             TyKind::ResolvedTypeRef(inner) | TyKind::Alias(inner) | TyKind::TemplateAlias(inner, _) => {
                 ctx.resolve_type(inner).safe_canonical_type(ctx)
             },
-            TyKind::TemplateInstantiation(ref inst) => {
-                ctx.resolve_type(inst.template_definition()).safe_canonical_type(ctx)
-            },
+            TyKind::TemplateInstantiation(ref x) => ctx.resolve_type(x.template_definition()).safe_canonical_type(ctx),
 
             TyKind::UnresolvedTypeRef(..) => None,
         }
@@ -249,13 +247,12 @@ impl Type {
 
 impl IsOpaque for Type {
     type Extra = Item;
-
-    fn is_opaque(&self, ctx: &BindgenContext, item: &Item) -> bool {
+    fn is_opaque(&self, ctx: &BindgenContext, i: &Item) -> bool {
         match self.kind {
             TyKind::Opaque => true,
-            TyKind::TemplateInstantiation(ref inst) => inst.is_opaque(ctx, item),
-            TyKind::Comp(ref comp) => comp.is_opaque(ctx, &self.layout),
-            TyKind::ResolvedTypeRef(to) => to.is_opaque(ctx, &()),
+            TyKind::TemplateInstantiation(ref x) => x.is_opaque(ctx, i),
+            TyKind::Comp(ref x) => x.is_opaque(ctx, &self.layout),
+            TyKind::ResolvedTypeRef(x) => x.is_opaque(ctx, &()),
             _ => false,
         }
     }
@@ -263,18 +260,16 @@ impl IsOpaque for Type {
 
 impl AsTemplParam for Type {
     type Extra = Item;
-
-    fn as_template_param(&self, ctx: &BindgenContext, item: &Item) -> Option<TypeId> {
-        self.kind.as_template_param(ctx, item)
+    fn as_template_param(&self, ctx: &BindgenContext, i: &Item) -> Option<TypeId> {
+        self.kind.as_template_param(ctx, i)
     }
 }
 
 impl AsTemplParam for TyKind {
     type Extra = Item;
-
-    fn as_template_param(&self, ctx: &BindgenContext, item: &Item) -> Option<TypeId> {
+    fn as_template_param(&self, ctx: &BindgenContext, i: &Item) -> Option<TypeId> {
         match *self {
-            TyKind::TypeParam => Some(item.id().expect_type_id(ctx)),
+            TyKind::TypeParam => Some(i.id().expect_type_id(ctx)),
             TyKind::ResolvedTypeRef(id) => id.as_template_param(ctx, &()),
             _ => None,
         }
@@ -800,8 +795,8 @@ impl Trace for Type {
                     tracer.visit_kind(param.into(), EdgeKind::TemplateParameterDefinition);
                 }
             },
-            TyKind::TemplateInstantiation(ref inst) => {
-                inst.trace(context, tracer, &());
+            TyKind::TemplateInstantiation(ref x) => {
+                x.trace(context, tracer, &());
             },
             TyKind::Comp(ref ci) => ci.trace(context, tracer, item),
             TyKind::Function(ref sig) => sig.trace(context, tracer, &()),

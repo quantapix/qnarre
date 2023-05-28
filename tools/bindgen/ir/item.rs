@@ -1,5 +1,5 @@
 use super::super::codegen::{EnumVariation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
-use super::analysis::{HasVtable, Sizedness, YSizedness, *};
+use super::analysis::{HasVtable, Sizedness, *};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::context::{BindgenContext, ItemId, PartialType, TypeId};
@@ -459,27 +459,24 @@ impl Item {
 
     fn name_target(&self, ctx: &BindgenContext) -> ItemId {
         let mut targets_seen = DebugOnlyItemSet::new();
-        let mut item = self;
-
+        let mut i = self;
         loop {
-            extra_assert!(!targets_seen.contains(&item.id()));
-            targets_seen.insert(item.id());
-
+            extra_assert!(!targets_seen.contains(&i.id()));
+            targets_seen.insert(i.id());
             if self.annotations().use_instead_of().is_some() {
                 return self.id();
             }
-
-            match *item.kind() {
+            match *i.kind() {
                 ItemKind::Type(ref ty) => match *ty.kind() {
                     TyKind::ResolvedTypeRef(inner) => {
-                        item = ctx.resolve_item(inner);
+                        i = ctx.resolve_item(inner);
                     },
-                    TyKind::TemplateInstantiation(ref inst) => {
-                        item = ctx.resolve_item(inst.template_definition());
+                    TyKind::TemplateInstantiation(ref x) => {
+                        i = ctx.resolve_item(x.template_definition());
                     },
-                    _ => return item.id(),
+                    _ => return i.id(),
                 },
-                _ => return item.id(),
+                _ => return i.id(),
             }
         }
     }
@@ -494,9 +491,9 @@ impl Item {
     fn push_disambiguated_name(&self, ctx: &BindgenContext, to: &mut String, level: u8) {
         to.push_str(&self.canonical_name(ctx));
         if let ItemKind::Type(ref ty) = *self.kind() {
-            if let TyKind::TemplateInstantiation(ref inst) = *ty.kind() {
+            if let TyKind::TemplateInstantiation(ref x) = *ty.kind() {
                 to.push_str(&format!("_open{}_", level));
-                for arg in inst.template_arguments() {
+                for arg in x.template_arguments() {
                     arg.into_resolver()
                         .through_type_refs()
                         .resolve(ctx)
@@ -840,15 +837,15 @@ impl<T> Sizedness for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness {
+    fn sizedness(&self, ctx: &BindgenContext) -> sizedness::Result {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx)
-            .map_or(YSizedness::default(), |x| ctx.lookup_sizedness(x))
+            .map_or(sizedness::Result::default(), |x| ctx.lookup_sizedness(x))
     }
 }
 
 impl Sizedness for Item {
-    fn sizedness(&self, ctx: &BindgenContext) -> YSizedness {
+    fn sizedness(&self, ctx: &BindgenContext) -> sizedness::Result {
         self.id().sizedness(ctx)
     }
 }
