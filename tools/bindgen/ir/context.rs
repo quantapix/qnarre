@@ -697,7 +697,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             for &id in self.allowed_items() {
                 used_params
                     .entry(id)
-                    .or_insert_with(|| id.self_template_params(self).into_iter().map(|p| p.into()).collect());
+                    .or_insert_with(|| id.self_templ_params(self).into_iter().map(|p| p.into()).collect());
             }
             self.used_template_parameters = Some(used_params);
         }
@@ -782,7 +782,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .canonical_declaration(Some(instantiation))
             .and_then(|canon_decl| {
                 self.get_resolved_type(&canon_decl).and_then(|template_decl_id| {
-                    let num_params = template_decl_id.num_self_template_params(self);
+                    let num_params = template_decl_id.num_self_templ_params(self);
                     if num_params == 0 {
                         None
                     } else {
@@ -800,7 +800,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                             .cloned()
                     })
                     .and_then(|template_decl| {
-                        let num_template_params = template_decl.num_self_template_params(self);
+                        let num_template_params = template_decl.num_self_templ_params(self);
                         if num_template_params == 0 {
                             None
                         } else {
@@ -816,7 +816,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         ty: &clang::Type,
         location: clang::Cursor,
     ) -> Option<TypeId> {
-        let num_expected_args = self.resolve_type(template).num_self_template_params(self);
+        let num_expected_args = self.resolve_type(template).num_self_templ_params(self);
         if num_expected_args == 0 {
             warn!(
                 "Tried to instantiate a template for which we could not \
@@ -1498,7 +1498,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn compute_has_type_param_in_array(&mut self) {
         let _t = self.timer("compute_has_type_param_in_array");
         assert!(self.has_type_param_in_array.is_none());
-        self.has_type_param_in_array = Some(analyze::<has_ty_param::Analysis>(self));
+        self.has_type_param_in_array = Some(analyze::<has_type_param::Analysis>(self));
     }
     pub fn lookup_has_type_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {
         assert!(
@@ -1630,10 +1630,10 @@ impl PartialType {
     }
 }
 impl TemplParams for PartialType {
-    fn self_template_params(&self, _ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_params(&self, _ctx: &Context) -> Vec<TypeId> {
         vec![]
     }
-    fn num_self_template_params(&self, _ctx: &Context) -> usize {
+    fn num_self_templ_params(&self, _ctx: &Context) -> usize {
         match self.decl().kind() {
             clang_lib::CXCursor_ClassTemplate
             | clang_lib::CXCursor_FunctionTemplate

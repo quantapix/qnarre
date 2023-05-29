@@ -534,14 +534,14 @@ impl DotAttrs for Type {
     }
 }
 impl TemplParams for Type {
-    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
-        self.kind.self_template_params(ctx)
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+        self.kind.self_templ_params(ctx)
     }
 }
 impl AsTemplParam for Type {
     type Extra = Item;
-    fn as_template_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
-        self.kind.as_template_param(ctx, i)
+    fn as_templ_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
+        self.kind.as_templ_param(ctx, i)
     }
 }
 impl Trace for Type {
@@ -664,10 +664,10 @@ impl DotAttrs for TypeKind {
     }
 }
 impl TemplParams for TypeKind {
-    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
-            TypeKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_template_params(ctx),
-            TypeKind::Comp(ref comp) => comp.self_template_params(ctx),
+            TypeKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_templ_params(ctx),
+            TypeKind::Comp(ref comp) => comp.self_templ_params(ctx),
             TypeKind::TemplateAlias(_, ref args) => args.clone(),
             TypeKind::Opaque
             | TypeKind::TemplateInstantiation(..)
@@ -691,10 +691,10 @@ impl TemplParams for TypeKind {
 }
 impl AsTemplParam for TypeKind {
     type Extra = Item;
-    fn as_template_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
+    fn as_templ_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
         match *self {
             TypeKind::TypeParam => Some(i.id().expect_type_id(ctx)),
-            TypeKind::ResolvedTypeRef(id) => id.as_template_param(ctx, &()),
+            TypeKind::ResolvedTypeRef(id) => id.as_templ_param(ctx, &()),
             _ => None,
         }
     }

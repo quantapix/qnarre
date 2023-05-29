@@ -1,10 +1,10 @@
 use crate::ir::comp::{BitfieldUnit, CompKind, Field, FieldData, FieldMethods};
-use crate::ir::item::{CanonicalName, HasTypeParamInArray, IsOpaque, Item};
+use crate::ir::item::{CanonName, HasTypeParam, IsOpaque, Item};
 use crate::ir::typ::TypeKind;
 use crate::ir::Context;
 
 pub(crate) fn gen_debug_impl(ctx: &Context, fields: &[Field], item: &Item, kind: CompKind) -> proc_macro2::TokenStream {
-    let struct_name = item.canonical_name(ctx);
+    let struct_name = item.canon_name(ctx);
     let mut format_string = format!("{} {{{{ ", struct_name);
     let mut tokens = vec![];
 

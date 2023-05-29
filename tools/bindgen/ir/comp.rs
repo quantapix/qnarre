@@ -1017,7 +1017,7 @@ impl IsOpaque for CompInfo {
     }
 }
 impl TemplParams for CompInfo {
-    fn self_template_params(&self, _ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_params(&self, _ctx: &Context) -> Vec<TypeId> {
         self.template_params.clone()
     }
 }
@@ -1027,7 +1027,7 @@ impl Trace for CompInfo {
     where
         T: Tracer,
     {
-        for p in i.all_template_params(ctx) {
+        for p in i.all_templ_params(ctx) {
             tracer.visit_kind(p.into(), EdgeKind::TemplateParameterDefinition);
         }
         for ty in self.inner_types() {

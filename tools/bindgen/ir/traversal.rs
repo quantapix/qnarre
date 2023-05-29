@@ -141,6 +141,19 @@ pub trait Trace {
     where
         T: Tracer;
 }
+impl<Id> Trace for Id
+where
+    Id: Copy + Into<ItemId>,
+{
+    type Extra = ();
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, extra: &())
+    where
+        T: Tracer,
+    {
+        ctx.resolve_item(*self).trace(ctx, tracer, extra);
+    }
+}
+
 pub struct ItemTraversal<'ctx, Storage, Queue>
 where
     Storage: TraversalStorage<'ctx>,

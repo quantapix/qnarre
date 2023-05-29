@@ -13,33 +13,224 @@ use super::traversal::{EdgeKind, Trace, Tracer};
 use super::typ::{Type, TypeKind};
 use super::{Context, ItemId, TypeId};
 use crate::clang;
-use crate::parse;
+use crate::parse::{self, SubItem};
 use lazycell::LazyCell;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::io;
 use std::iter;
-pub trait CanonicalName {
-    fn canonical_name(&self, ctx: &Context) -> String;
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum UserMangled {
+    No,
+    Yes,
 }
-pub trait CanonicalPath {
-    fn namespace_aware_canonical_path(&self, ctx: &Context) -> Vec<String>;
-    fn canonical_path(&self, ctx: &Context) -> Vec<String>;
+#[derive(Debug)]
+pub struct NameOpts<'a> {
+    item: &'a Item,
+    ctx: &'a Context,
+    within_namespaces: bool,
+    user_mangled: UserMangled,
 }
+impl<'a> NameOpts<'a> {
+    pub fn new(item: &'a Item, ctx: &'a Context) -> Self {
+        NameOpts {
+            item,
+            ctx,
+            within_namespaces: false,
+            user_mangled: UserMangled::Yes,
+        }
+    }
+    pub fn within_namespaces(&mut self) -> &mut Self {
+        self.within_namespaces = true;
+        self
+    }
+    fn user_mangled(&mut self, user_mangled: UserMangled) -> &mut Self {
+        self.user_mangled = user_mangled;
+        self
+    }
+    pub fn get(&self) -> String {
+        self.item.real_canonical_name(self.ctx, self)
+    }
+}
+
+pub trait CanonName {
+    fn canon_name(&self, ctx: &Context) -> String;
+}
+impl<T> CanonName for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn canon_name(&self, ctx: &Context) -> String {
+        ctx.resolve_item(*self).canon_name(ctx)
+    }
+}
+impl CanonName for Item {
+    fn canon_name(&self, ctx: &Context) -> String {
+        self.canonical_name
+            .borrow_with(|| {
+                let in_namespace = ctx.opts().enable_cxx_namespaces || ctx.opts().disable_name_namespacing;
+                if in_namespace {
+                    self.name(ctx).within_namespaces().get()
+                } else {
+                    self.name(ctx).get()
+                }
+            })
+            .clone()
+    }
+}
+
+pub trait CanonPath {
+    fn canon_path(&self, ctx: &Context) -> Vec<String>;
+    fn namespace_aware_canon_path(&self, ctx: &Context) -> Vec<String>;
+}
+impl<T> CanonPath for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn canon_path(&self, ctx: &Context) -> Vec<String> {
+        ctx.resolve_item(*self).canon_path(ctx)
+    }
+    fn namespace_aware_canon_path(&self, ctx: &Context) -> Vec<String> {
+        ctx.resolve_item(*self).namespace_aware_canon_path(ctx)
+    }
+}
+impl CanonPath for Item {
+    fn canon_path(&self, ctx: &Context) -> Vec<String> {
+        self.compute_path(ctx, UserMangled::Yes)
+    }
+    fn namespace_aware_canon_path(&self, ctx: &Context) -> Vec<String> {
+        let mut y = self.canon_path(ctx);
+        if ctx.opts().disable_name_namespacing {
+            let idx = y.len() - 1;
+            y = y.split_off(idx);
+        } else if !ctx.opts().enable_cxx_namespaces {
+            y = vec![y[1..].join("_")];
+        }
+        if self.is_constified_enum_module(ctx) {
+            y.push(CONSTIFIED_ENUM_MODULE_REPR_NAME.into());
+        }
+        y
+    }
+}
+
 pub trait IsOpaque {
     type Extra;
     fn is_opaque(&self, ctx: &Context, extra: &Self::Extra) -> bool;
 }
-pub trait HasTypeParamInArray {
-    fn has_type_param_in_array(&self, ctx: &Context) -> bool;
+impl<T> IsOpaque for T
+where
+    T: Copy + Into<ItemId>,
+{
+    type Extra = ();
+    fn is_opaque(&self, ctx: &Context, _: &()) -> bool {
+        ctx.resolve_item((*self).into()).is_opaque(ctx, &())
+    }
 }
+impl IsOpaque for Item {
+    type Extra = ();
+    fn is_opaque(&self, ctx: &Context, _: &()) -> bool {
+        self.annotations.opaque()
+            || self.as_type().map_or(false, |ty| ty.is_opaque(ctx, self))
+            || ctx.opaque_by_name(self.path_for_allowlisting(ctx))
+    }
+}
+
 pub trait HasFloat {
     fn has_float(&self, ctx: &Context) -> bool;
 }
+impl<T> HasFloat for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn has_float(&self, ctx: &Context) -> bool {
+        ctx.lookup_has_float(*self)
+    }
+}
+impl HasFloat for Item {
+    fn has_float(&self, ctx: &Context) -> bool {
+        ctx.lookup_has_float(self.id())
+    }
+}
+
+pub trait HasTypeParam {
+    fn has_type_param_in_array(&self, ctx: &Context) -> bool;
+}
+impl<T> HasTypeParam for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn has_type_param_in_array(&self, ctx: &Context) -> bool {
+        ctx.lookup_has_type_param_in_array(*self)
+    }
+}
+impl HasTypeParam for Item {
+    fn has_type_param_in_array(&self, ctx: &Context) -> bool {
+        ctx.lookup_has_type_param_in_array(self.id())
+    }
+}
+
+impl<T> HasVtable for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn has_vtable(&self, ctx: &Context) -> bool {
+        let id: ItemId = (*self).into();
+        id.as_type_id(ctx)
+            .map_or(false, |x| !matches!(ctx.lookup_has_vtable(x), has_vtable::Resolved::No))
+    }
+    fn has_vtable_ptr(&self, ctx: &Context) -> bool {
+        let id: ItemId = (*self).into();
+        id.as_type_id(ctx).map_or(false, |x| {
+            matches!(ctx.lookup_has_vtable(x), has_vtable::Resolved::SelfHasVtable)
+        })
+    }
+}
+impl HasVtable for Item {
+    fn has_vtable(&self, ctx: &Context) -> bool {
+        self.id().has_vtable(ctx)
+    }
+    fn has_vtable_ptr(&self, ctx: &Context) -> bool {
+        self.id().has_vtable_ptr(ctx)
+    }
+}
+
+impl<T> Sizedness for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved {
+        let id: ItemId = (*self).into();
+        id.as_type_id(ctx)
+            .map_or(sizedness::Resolved::default(), |x| ctx.lookup_sizedness(x))
+    }
+}
+impl Sizedness for Item {
+    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved {
+        self.id().sizedness(ctx)
+    }
+}
+
 pub trait Ancestors {
     fn ancestors<'a>(&self, ctx: &'a Context) -> AncestorsIter<'a>;
 }
+impl<T> Ancestors for T
+where
+    T: Copy + Into<ItemId>,
+{
+    fn ancestors<'a>(&self, ctx: &'a Context) -> AncestorsIter<'a> {
+        AncestorsIter::new(ctx, *self)
+    }
+}
+impl Ancestors for Item {
+    fn ancestors<'a>(&self, ctx: &'a Context) -> AncestorsIter<'a> {
+        self.id().ancestors(ctx)
+    }
+}
+
+pub type ItemSet = BTreeSet<ItemId>;
+
 struct DebugOnlyItemSet;
 impl DebugOnlyItemSet {
     fn new() -> Self {
@@ -50,6 +241,7 @@ impl DebugOnlyItemSet {
     }
     fn insert(&mut self, _id: ItemId) {}
 }
+
 pub struct AncestorsIter<'a> {
     item: ItemId,
     ctx: &'a Context,
@@ -77,99 +269,7 @@ impl<'a> Iterator for AncestorsIter<'a> {
         }
     }
 }
-impl<T> AsTemplParam for T
-where
-    T: Copy + Into<ItemId>,
-{
-    type Extra = ();
-    fn as_template_param(&self, ctx: &Context, _: &()) -> Option<TypeId> {
-        ctx.resolve_item((*self).into()).as_template_param(ctx, &())
-    }
-}
-impl AsTemplParam for Item {
-    type Extra = ();
-    fn as_template_param(&self, ctx: &Context, _: &()) -> Option<TypeId> {
-        self.kind.as_template_param(ctx, self)
-    }
-}
-impl AsTemplParam for ItemKind {
-    type Extra = Item;
-    fn as_template_param(&self, ctx: &Context, item: &Item) -> Option<TypeId> {
-        match *self {
-            ItemKind::Type(ref ty) => ty.as_template_param(ctx, item),
-            ItemKind::Module(..) | ItemKind::Function(..) | ItemKind::Var(..) => None,
-        }
-    }
-}
-impl<T> CanonicalName for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn canonical_name(&self, ctx: &Context) -> String {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.resolve_item(*self).canonical_name(ctx)
-    }
-}
-impl<T> CanonicalPath for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn namespace_aware_canonical_path(&self, ctx: &Context) -> Vec<String> {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.resolve_item(*self).namespace_aware_canonical_path(ctx)
-    }
-    fn canonical_path(&self, ctx: &Context) -> Vec<String> {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.resolve_item(*self).canonical_path(ctx)
-    }
-}
-impl<T> Ancestors for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn ancestors<'a>(&self, ctx: &'a Context) -> AncestorsIter<'a> {
-        AncestorsIter::new(ctx, *self)
-    }
-}
-impl Ancestors for Item {
-    fn ancestors<'a>(&self, ctx: &'a Context) -> AncestorsIter<'a> {
-        self.id().ancestors(ctx)
-    }
-}
-impl<Id> Trace for Id
-where
-    Id: Copy + Into<ItemId>,
-{
-    type Extra = ();
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, extra: &())
-    where
-        T: Tracer,
-    {
-        ctx.resolve_item(*self).trace(ctx, tracer, extra);
-    }
-}
-impl Trace for Item {
-    type Extra = ();
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, _extra: &())
-    where
-        T: Tracer,
-    {
-        match *self.kind() {
-            ItemKind::Type(ref ty) => {
-                if ty.should_be_traced_unconditionally() || !self.is_opaque(ctx, &()) {
-                    ty.trace(ctx, tracer, self);
-                }
-            },
-            ItemKind::Function(ref fun) => {
-                tracer.visit(fun.sig().into());
-            },
-            ItemKind::Var(ref var) => {
-                tracer.visit_kind(var.ty().into(), EdgeKind::VarType);
-            },
-            ItemKind::Module(_) => {},
-        }
-    }
-}
+
 #[derive(Debug)]
 pub struct Item {
     id: ItemId,
@@ -182,11 +282,6 @@ pub struct Item {
     parent_id: ItemId,
     kind: ItemKind,
     location: Option<clang::SrcLoc>,
-}
-impl AsRef<ItemId> for Item {
-    fn as_ref(&self) -> &ItemId {
-        &self.id
-    }
 }
 impl Item {
     pub fn new(
@@ -358,7 +453,7 @@ impl Item {
         s
     }
     fn push_disambiguated_name(&self, ctx: &Context, to: &mut String, level: u8) {
-        to.push_str(&self.canonical_name(ctx));
+        to.push_str(&self.canon_name(ctx));
         if let ItemKind::Type(ref ty) = *self.kind() {
             if let TypeKind::TemplateInstantiation(ref x) = *ty.kind() {
                 to.push_str(&format!("_open{}_", level));
@@ -533,8 +628,8 @@ impl Item {
             TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
             TypeKind::Alias(inner_id) => {
                 let inner_item = ctx.resolve_item(inner_id);
-                let name = item.canonical_name(ctx);
-                if inner_item.canonical_name(ctx) == name {
+                let name = item.canon_name(ctx);
+                if inner_item.canon_name(ctx) == name {
                     inner_item.is_constified_enum_module(ctx)
                 } else {
                     false
@@ -610,162 +705,6 @@ impl Item {
     pub fn must_use(&self, ctx: &Context) -> bool {
         self.annotations().must_use_type() || ctx.must_use_type_by_name(self)
     }
-}
-impl<T> IsOpaque for T
-where
-    T: Copy + Into<ItemId>,
-{
-    type Extra = ();
-    fn is_opaque(&self, ctx: &Context, _: &()) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.resolve_item((*self).into()).is_opaque(ctx, &())
-    }
-}
-impl IsOpaque for Item {
-    type Extra = ();
-    fn is_opaque(&self, ctx: &Context, _: &()) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        self.annotations.opaque()
-            || self.as_type().map_or(false, |ty| ty.is_opaque(ctx, self))
-            || ctx.opaque_by_name(self.path_for_allowlisting(ctx))
-    }
-}
-impl<T> HasVtable for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn has_vtable(&self, ctx: &Context) -> bool {
-        let id: ItemId = (*self).into();
-        id.as_type_id(ctx).map_or(false, |id| {
-            !matches!(ctx.lookup_has_vtable(id), has_vtable::Resolved::No)
-        })
-    }
-    fn has_vtable_ptr(&self, ctx: &Context) -> bool {
-        let id: ItemId = (*self).into();
-        id.as_type_id(ctx).map_or(false, |id| {
-            matches!(ctx.lookup_has_vtable(id), has_vtable::Resolved::SelfHasVtable)
-        })
-    }
-}
-impl HasVtable for Item {
-    fn has_vtable(&self, ctx: &Context) -> bool {
-        self.id().has_vtable(ctx)
-    }
-    fn has_vtable_ptr(&self, ctx: &Context) -> bool {
-        self.id().has_vtable_ptr(ctx)
-    }
-}
-impl<T> Sizedness for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved {
-        let id: ItemId = (*self).into();
-        id.as_type_id(ctx)
-            .map_or(sizedness::Resolved::default(), |x| ctx.lookup_sizedness(x))
-    }
-}
-impl Sizedness for Item {
-    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved {
-        self.id().sizedness(ctx)
-    }
-}
-impl<T> HasTypeParamInArray for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn has_type_param_in_array(&self, ctx: &Context) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.lookup_has_type_param_in_array(*self)
-    }
-}
-impl HasTypeParamInArray for Item {
-    fn has_type_param_in_array(&self, ctx: &Context) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.lookup_has_type_param_in_array(self.id())
-    }
-}
-impl<T> HasFloat for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn has_float(&self, ctx: &Context) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.lookup_has_float(*self)
-    }
-}
-impl HasFloat for Item {
-    fn has_float(&self, ctx: &Context) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        ctx.lookup_has_float(self.id())
-    }
-}
-pub type ItemSet = BTreeSet<ItemId>;
-impl DotAttrs for Item {
-    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        writeln!(
-            y,
-            "<tr><td>{:?}</td></tr>
-                       <tr><td>name</td><td>{}</td></tr>",
-            self.id,
-            self.name(ctx).get()
-        )?;
-        if self.is_opaque(ctx, &()) {
-            writeln!(y, "<tr><td>opaque</td><td>true</td></tr>")?;
-        }
-        self.kind.dot_attrs(ctx, y)
-    }
-}
-impl<T> TemplParams for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
-        ctx.resolve_item_fallible(*self)
-            .map_or(vec![], |item| item.self_template_params(ctx))
-    }
-}
-impl TemplParams for Item {
-    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
-        self.kind.self_template_params(ctx)
-    }
-}
-impl TemplParams for ItemKind {
-    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
-        match *self {
-            ItemKind::Type(ref ty) => ty.self_template_params(ctx),
-            ItemKind::Function(_) | ItemKind::Module(_) | ItemKind::Var(_) => {
-                vec![]
-            },
-        }
-    }
-}
-fn visit_child(
-    cur: clang::Cursor,
-    id: ItemId,
-    ty: &clang::Type,
-    parent_id: Option<ItemId>,
-    ctx: &mut Context,
-    result: &mut Result<TypeId, parse::Error>,
-) -> clang_lib::CXChildVisitResult {
-    use clang_lib::*;
-    if result.is_ok() {
-        return CXChildVisit_Break;
-    }
-    *result = Item::from_ty_with_id(id, ty, cur, parent_id, ctx);
-    match *result {
-        Ok(..) => CXChildVisit_Break,
-        Err(parse::Error::Recurse) => {
-            cur.visit(|c| visit_child(c, id, ty, parent_id, ctx, result));
-            CXChildVisit_Continue
-        },
-        Err(parse::Error::Continue) => CXChildVisit_Continue,
-    }
-}
-impl Item {
     pub fn builtin_type(kind: TypeKind, is_const: bool, ctx: &mut Context) -> TypeId {
         match kind {
             TypeKind::Void | TypeKind::Int(..) | TypeKind::Pointer(..) | TypeKind::Float(..) => {},
@@ -789,8 +728,8 @@ impl Item {
         let relevant_parent_id = parent_id.unwrap_or(current_module);
         macro_rules! try_parse {
             ($what:ident) => {
-                match $what::parse(cursor, ctx) {
-                    Ok(parse::Resolved::New(item, declaration)) => {
+                match $what::parse(cur, ctx) {
+                    Ok(parse::Resolved::New(item, decl)) => {
                         let id = ctx.next_item_id();
                         ctx.add_item(
                             Item::new(
@@ -799,10 +738,10 @@ impl Item {
                                 annotations,
                                 relevant_parent_id,
                                 ItemKind::$what(item),
-                                Some(cursor.location()),
+                                Some(cur.location()),
                             ),
-                            declaration,
-                            Some(cursor),
+                            decl,
+                            Some(cur),
                         );
                         return Ok(id);
                     },
@@ -1128,69 +1067,101 @@ impl Item {
         Some(id.as_type_id_unchecked())
     }
 }
-impl CanonicalName for Item {
-    fn canonical_name(&self, ctx: &Context) -> String {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        self.canonical_name
-            .borrow_with(|| {
-                let in_namespace = ctx.opts().enable_cxx_namespaces || ctx.opts().disable_name_namespacing;
-                if in_namespace {
-                    self.name(ctx).within_namespaces().get()
-                } else {
-                    self.name(ctx).get()
+impl DotAttrs for Item {
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        writeln!(
+            y,
+            "<tr><td>{:?}</td></tr>
+                       <tr><td>name</td><td>{}</td></tr>",
+            self.id,
+            self.name(ctx).get()
+        )?;
+        if self.is_opaque(ctx, &()) {
+            writeln!(y, "<tr><td>opaque</td><td>true</td></tr>")?;
+        }
+        self.kind.dot_attrs(ctx, y)
+    }
+}
+impl AsRef<ItemId> for Item {
+    fn as_ref(&self) -> &ItemId {
+        &self.id
+    }
+}
+impl TemplParams for Item {
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+        self.kind.self_templ_params(ctx)
+    }
+}
+impl AsTemplParam for Item {
+    type Extra = ();
+    fn as_templ_param(&self, ctx: &Context, _: &()) -> Option<TypeId> {
+        self.kind.as_templ_param(ctx, self)
+    }
+}
+impl TemplParams for ItemKind {
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+        match *self {
+            ItemKind::Type(ref x) => x.self_templ_params(ctx),
+            ItemKind::Function(_) | ItemKind::Module(_) | ItemKind::Var(_) => {
+                vec![]
+            },
+        }
+    }
+}
+impl AsTemplParam for ItemKind {
+    type Extra = Item;
+    fn as_templ_param(&self, ctx: &Context, item: &Item) -> Option<TypeId> {
+        match *self {
+            ItemKind::Type(ref x) => x.as_templ_param(ctx, item),
+            ItemKind::Module(..) | ItemKind::Function(..) | ItemKind::Var(..) => None,
+        }
+    }
+}
+impl Trace for Item {
+    type Extra = ();
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, _extra: &())
+    where
+        T: Tracer,
+    {
+        match *self.kind() {
+            ItemKind::Type(ref ty) => {
+                if ty.should_be_traced_unconditionally() || !self.is_opaque(ctx, &()) {
+                    ty.trace(ctx, tracer, self);
                 }
-            })
-            .clone()
-    }
-}
-impl CanonicalPath for Item {
-    fn namespace_aware_canonical_path(&self, ctx: &Context) -> Vec<String> {
-        let mut path = self.canonical_path(ctx);
-        if ctx.opts().disable_name_namespacing {
-            let split_idx = path.len() - 1;
-            path = path.split_off(split_idx);
-        } else if !ctx.opts().enable_cxx_namespaces {
-            path = vec![path[1..].join("_")];
-        }
-        if self.is_constified_enum_module(ctx) {
-            path.push(CONSTIFIED_ENUM_MODULE_REPR_NAME.into());
-        }
-        path
-    }
-    fn canonical_path(&self, ctx: &Context) -> Vec<String> {
-        self.compute_path(ctx, UserMangled::Yes)
-    }
-}
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum UserMangled {
-    No,
-    Yes,
-}
-#[derive(Debug)]
-pub struct NameOpts<'a> {
-    item: &'a Item,
-    ctx: &'a Context,
-    within_namespaces: bool,
-    user_mangled: UserMangled,
-}
-impl<'a> NameOpts<'a> {
-    pub fn new(item: &'a Item, ctx: &'a Context) -> Self {
-        NameOpts {
-            item,
-            ctx,
-            within_namespaces: false,
-            user_mangled: UserMangled::Yes,
+            },
+            ItemKind::Function(ref fun) => {
+                tracer.visit(fun.sig().into());
+            },
+            ItemKind::Var(ref var) => {
+                tracer.visit_kind(var.ty().into(), EdgeKind::VarType);
+            },
+            ItemKind::Module(_) => {},
         }
     }
-    pub fn within_namespaces(&mut self) -> &mut Self {
-        self.within_namespaces = true;
-        self
+}
+
+fn visit_child(
+    cur: clang::Cursor,
+    id: ItemId,
+    ty: &clang::Type,
+    parent_id: Option<ItemId>,
+    ctx: &mut Context,
+    result: &mut Result<TypeId, parse::Error>,
+) -> clang_lib::CXChildVisitResult {
+    use clang_lib::*;
+    if result.is_ok() {
+        return CXChildVisit_Break;
     }
-    fn user_mangled(&mut self, user_mangled: UserMangled) -> &mut Self {
-        self.user_mangled = user_mangled;
-        self
-    }
-    pub fn get(&self) -> String {
-        self.item.real_canonical_name(self.ctx, self)
+    *result = Item::from_ty_with_id(id, ty, cur, parent_id, ctx);
+    match *result {
+        Ok(..) => CXChildVisit_Break,
+        Err(parse::Error::Recurse) => {
+            cur.visit(|c| visit_child(c, id, ty, parent_id, ctx, result));
+            CXChildVisit_Continue
+        },
+        Err(parse::Error::Continue) => CXChildVisit_Continue,
     }
 }

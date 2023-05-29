@@ -935,21 +935,21 @@ pub mod template {
     use super::{Context, ItemId, TypeId};
     use crate::clang;
     pub trait TemplParams: Sized {
-        fn self_template_params(&self, ctx: &Context) -> Vec<TypeId>;
-        fn num_self_template_params(&self, ctx: &Context) -> usize {
-            self.self_template_params(ctx).len()
+        fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId>;
+        fn num_self_templ_params(&self, ctx: &Context) -> usize {
+            self.self_templ_params(ctx).len()
         }
-        fn all_template_params(&self, ctx: &Context) -> Vec<TypeId>
+        fn all_templ_params(&self, ctx: &Context) -> Vec<TypeId>
         where
             Self: Ancestors,
         {
             let mut ys: Vec<_> = self.ancestors(ctx).collect();
             ys.reverse();
             ys.into_iter()
-                .flat_map(|id| id.self_template_params(ctx).into_iter())
+                .flat_map(|x| x.self_templ_params(ctx).into_iter())
                 .collect()
         }
-        fn used_template_params(&self, ctx: &Context) -> Vec<TypeId>
+        fn used_templ_params(&self, ctx: &Context) -> Vec<TypeId>
         where
             Self: AsRef<ItemId>,
         {
@@ -959,19 +959,39 @@ pub mod template {
             );
             let id = *self.as_ref();
             ctx.resolve_item(id)
-                .all_template_params(ctx)
+                .all_templ_params(ctx)
                 .into_iter()
-                .filter(|p| ctx.uses_template_parameter(id, *p))
+                .filter(|x| ctx.uses_template_parameter(id, *x))
                 .collect()
         }
     }
-    pub trait AsTemplParam {
-        type Extra;
-        fn as_template_param(&self, ctx: &Context, extra: &Self::Extra) -> Option<TypeId>;
-        fn is_template_param(&self, ctx: &Context, extra: &Self::Extra) -> bool {
-            self.as_template_param(ctx, extra).is_some()
+    impl<T> TemplParams for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+            ctx.resolve_item_fallible(*self)
+                .map_or(vec![], |x| x.self_templ_params(ctx))
         }
     }
+
+    pub trait AsTemplParam {
+        type Extra;
+        fn as_templ_param(&self, ctx: &Context, extra: &Self::Extra) -> Option<TypeId>;
+        fn is_template_param(&self, ctx: &Context, extra: &Self::Extra) -> bool {
+            self.as_templ_param(ctx, extra).is_some()
+        }
+    }
+    impl<T> AsTemplParam for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        type Extra = ();
+        fn as_templ_param(&self, ctx: &Context, _: &()) -> Option<TypeId> {
+            ctx.resolve_item((*self).into()).as_templ_param(ctx, &())
+        }
+    }
+
     #[derive(Clone, Debug)]
     pub struct TemplInstantiation {
         def: TypeId,
@@ -995,19 +1015,19 @@ pub mod template {
         }
         pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInstantiation> {
             use clang_lib::*;
-            let template_args = ty
+            let args = ty
                 .template_args()
-                .map_or(vec![], |args| match ty.canonical_type().template_args() {
-                    Some(canonical_args) => {
-                        let arg_count = args.len();
-                        args.chain(canonical_args.skip(arg_count))
-                            .filter(|t| t.kind() != CXType_Invalid)
-                            .map(|t| Item::from_ty_or_ref(t, t.declaration(), None, ctx))
+                .map_or(vec![], |x| match ty.canonical_type().template_args() {
+                    Some(x2) => {
+                        let len = x.len();
+                        x.chain(x2.skip(len))
+                            .filter(|x| x.kind() != CXType_Invalid)
+                            .map(|x| Item::from_ty_or_ref(x, x.declaration(), None, ctx))
                             .collect()
                     },
-                    None => args
-                        .filter(|t| t.kind() != CXType_Invalid)
-                        .map(|t| Item::from_ty_or_ref(t, t.declaration(), None, ctx))
+                    None => x
+                        .filter(|x| x.kind() != CXType_Invalid)
+                        .map(|x| Item::from_ty_or_ref(x, x.declaration(), None, ctx))
                         .collect(),
                 });
             let decl = ty.declaration();
@@ -1015,15 +1035,15 @@ pub mod template {
                 Some(decl)
             } else {
                 decl.specialized().or_else(|| {
-                    let mut template_ref = None;
-                    ty.declaration().visit(|child| {
-                        if child.kind() == CXCursor_TemplateRef {
-                            template_ref = Some(child);
+                    let mut y = None;
+                    ty.declaration().visit(|x| {
+                        if x.kind() == CXCursor_TemplateRef {
+                            y = Some(x);
                             return CXVisit_Break;
                         }
                         CXChildVisit_Recurse
                     });
-                    template_ref.and_then(|cur| cur.referenced())
+                    y.and_then(|x| x.referenced())
                 })
             };
             let def = match def {
@@ -1038,8 +1058,8 @@ pub mod template {
                     return None;
                 },
             };
-            let template_definition = Item::from_ty_or_ref(def.cur_type(), def, None, ctx);
-            Some(TemplInstantiation::new(template_definition, template_args))
+            let def = Item::from_ty_or_ref(def.cur_type(), def, None, ctx);
+            Some(TemplInstantiation::new(def, args))
         }
     }
     impl IsOpaque for TemplInstantiation {

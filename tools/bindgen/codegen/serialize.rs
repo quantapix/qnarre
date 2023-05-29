@@ -4,7 +4,7 @@ use crate::callbacks::IntKind;
 
 use crate::ir::comp::CompKind;
 use crate::ir::function::{FnKind, Function};
-use crate::ir::item::CanonicalName;
+use crate::ir::item::CanonName;
 use crate::ir::item::Item;
 use crate::ir::item_kind::ItemKind;
 use crate::ir::typ::{FloatKind, Type, TypeKind};
@@ -275,7 +275,7 @@ impl<'a> CSerialize<'a> for Type {
                     write!(writer, "const ")?;
                 }
 
-                let name = item.canonical_name(ctx);
+                let name = item.canon_name(ctx);
 
                 match comp_info.kind() {
                     CompKind::Struct => write!(writer, "struct {}", name)?,
@@ -287,7 +287,7 @@ impl<'a> CSerialize<'a> for Type {
                     write!(writer, "const ")?;
                 }
 
-                let name = item.canonical_name(ctx);
+                let name = item.canon_name(ctx);
                 write!(writer, "enum {}", name)?;
             },
             ty => {

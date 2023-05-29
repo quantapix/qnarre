@@ -277,7 +277,7 @@ use crate::ir::dot;
 use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
 use crate::ir::function::{Abi, ClangAbi, FnKind, FnSig, Function, Linkage};
 use crate::ir::int::IntKind;
-use crate::ir::item::{CanonicalName, CanonicalPath, IsOpaque, Item};
+use crate::ir::item::{CanonName, CanonPath, IsOpaque, Item};
 use crate::ir::item_kind::ItemKind;
 use crate::ir::layout::Layout;
 use crate::ir::module::Module;
@@ -329,7 +329,7 @@ fn root_import(ctx: &Context, module: &Item) -> proc_macro2::TokenStream {
     assert!(ctx.opts().enable_cxx_namespaces, "Somebody messed it up");
     assert!(module.is_module());
     let mut path = top_level_path(ctx, module);
-    let root = ctx.root_module().canonical_name(ctx);
+    let root = ctx.root_module().canon_name(ctx);
     let root_ident = ctx.rust_ident(root);
     path.push(quote! { #root_ident });
     let mut tokens = quote! {};
@@ -355,7 +355,7 @@ bitflags! {
 }
 fn derives_of_item(item: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
     let mut derivable_traits = DerivableTraits::empty();
-    let all_template_params = item.all_template_params(ctx);
+    let all_template_params = item.all_templ_params(ctx);
     if item.can_derive_copy(ctx) && !item.annotations().disallow_copy() {
         derivable_traits |= DerivableTraits::COPY;
         derivable_traits |= DerivableTraits::CLONE;
@@ -538,7 +538,7 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
             _ => {},
         }
         let params: Vec<_> = item
-            .used_template_params(ctx)
+            .used_templ_params(ctx)
             .iter()
             .map(|p| {
                 p.try_to_rust_ty(ctx, &())
@@ -638,7 +638,7 @@ impl CodeGenerator for Module {
         let mut found_any = false;
         let inner_items = result.inner(|result| {
             result.push(root_import(ctx, item));
-            let path = item.namespace_aware_canonical_path(ctx).join("::");
+            let path = item.namespace_aware_canon_path(ctx).join("::");
             if let Some(raw_lines) = ctx.opts().module_lines.get(&path) {
                 for raw_line in raw_lines {
                     found_any = true;
@@ -650,7 +650,7 @@ impl CodeGenerator for Module {
         if !found_any {
             return;
         }
-        let name = item.canonical_name(ctx);
+        let name = item.canon_name(ctx);
         let ident = ctx.rust_ident(name);
         result.push(if item.id() == ctx.root_module() {
             quote! {
@@ -675,13 +675,13 @@ impl CodeGenerator for Var {
         use crate::ir::var::VarType;
         debug!("<Var as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
-        let canonical_name = item.canonical_name(ctx);
+        let canonical_name = item.canon_name(ctx);
         if result.seen_var(&canonical_name) {
             return;
         }
         result.saw_var(&canonical_name);
         let canonical_ident = ctx.rust_ident(&canonical_name);
-        if !item.all_template_params(ctx).is_empty() {
+        if !item.all_templ_params(ctx).is_empty() {
             return;
         }
         let mut attrs = vec![];
@@ -808,7 +808,7 @@ impl CodeGenerator for Type {
                     return;
                 }
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
-                let name = item.canonical_name(ctx);
+                let name = item.canon_name(ctx);
                 let inner_rust_type = {
                     if let TypeKind::Function(fnsig) = inner_item.kind().expect_type().kind() {
                         utils::fnsig_block(ctx, fnsig)
@@ -831,15 +831,15 @@ impl CodeGenerator for Type {
             TypeKind::Comp(ref x) => x.codegen(ctx, y, item),
             TypeKind::TemplateAlias(inner, _) | TypeKind::Alias(inner) => {
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
-                let name = item.canonical_name(ctx);
-                let path = item.canonical_path(ctx);
+                let name = item.canon_name(ctx);
+                let path = item.canon_path(ctx);
                 {
                     let through_type_aliases = inner
                         .into_resolver()
                         .through_type_refs()
                         .through_type_aliases()
                         .resolve(ctx);
-                    if through_type_aliases.canonical_path(ctx) == path {
+                    if through_type_aliases.canon_path(ctx) == path {
                         return;
                     }
                 }
@@ -866,7 +866,7 @@ impl CodeGenerator for Type {
                     }
                     return;
                 }
-                let mut outer_params = item.used_template_params(ctx);
+                let mut outer_params = item.used_templ_params(ctx);
                 let is_opaque = item.is_opaque(ctx, &());
                 let inner_rust_type = if is_opaque {
                     outer_params = vec![];
@@ -944,7 +944,7 @@ impl CodeGenerator for Type {
                 });
                 let params: Vec<_> = outer_params
                     .into_iter()
-                    .filter_map(|p| p.as_template_param(ctx, &()))
+                    .filter_map(|p| p.as_templ_param(ctx, &()))
                     .collect();
                 if params.iter().any(|p| ctx.resolve_type(*p).is_invalid_type_param()) {
                     warn!(
@@ -1017,12 +1017,12 @@ impl<'a> CodeGenerator for Vtable<'a> {
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, item: &Item) {
         assert_eq!(item.id(), self.item_id);
         debug_assert!(item.is_enabled_for_codegen(ctx));
-        let name = ctx.rust_ident(self.canonical_name(ctx));
+        let name = ctx.rust_ident(self.canon_name(ctx));
         if ctx.opts().vtable_generation
             && self.comp_info.base_members().is_empty()
             && self.comp_info.destructor().is_none()
         {
-            let class_ident = ctx.rust_ident(self.item_id.canonical_name(ctx));
+            let class_ident = ctx.rust_ident(self.item_id.canon_name(ctx));
             let methods = self
                 .comp_info
                 .methods()
@@ -1038,7 +1038,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
                         TypeKind::Function(ref sig) => sig,
                         _ => panic!("Function signature type mismatch"),
                     };
-                    let function_name = function_item.canonical_name(ctx);
+                    let function_name = function_item.canon_name(ctx);
                     let function_name = ctx.rust_ident(function_name);
                     let mut args = utils::fnsig_arguments(ctx, signature);
                     let ret = utils::fnsig_return_ty(ctx, signature);
@@ -1067,9 +1067,9 @@ impl<'a> CodeGenerator for Vtable<'a> {
         }
     }
 }
-impl<'a> CanonicalName for Vtable<'a> {
-    fn canonical_name(&self, ctx: &Context) -> String {
-        format!("{}__bindgen_vtable", self.item_id.canonical_name(ctx))
+impl<'a> CanonName for Vtable<'a> {
+    fn canon_name(&self, ctx: &Context) -> String {
+        format!("{}__bindgen_vtable", self.item_id.canon_name(ctx))
     }
 }
 impl CodeGenerator for TemplInstantiation {
@@ -1599,7 +1599,7 @@ impl CodeGenerator for CompInfo {
         let ty = item.expect_type();
         let layout = ty.layout(ctx);
         let mut packed = self.is_packed(ctx, layout.as_ref());
-        let canonical_name = item.canonical_name(ctx);
+        let canonical_name = item.canon_name(ctx);
         let canonical_ident = ctx.rust_ident(&canonical_name);
         let is_opaque = item.is_opaque(ctx, &());
         let mut fields = vec![];
@@ -1729,7 +1729,7 @@ impl CodeGenerator for CompInfo {
             });
         }
         let mut generic_param_names = vec![];
-        for (idx, ty) in item.used_template_params(ctx).iter().enumerate() {
+        for (idx, ty) in item.used_templ_params(ctx).iter().enumerate() {
             let param = ctx.resolve_type(*ty);
             let name = param.name().unwrap();
             let ident = ctx.rust_ident(name);
@@ -1788,7 +1788,7 @@ impl CodeGenerator for CompInfo {
                 && !ctx.no_default_by_name(item)
                 && !item.annotations().disallow_default();
         }
-        let all_template_params = item.all_template_params(ctx);
+        let all_template_params = item.all_templ_params(ctx);
         if derivable_traits.contains(DerivableTraits::COPY) && !derivable_traits.contains(DerivableTraits::CLONE) {
             needs_clone_impl = true;
         }
@@ -2077,7 +2077,7 @@ impl Method {
             name = new_name;
         }
         method_names.insert(name.clone());
-        let mut function_name = function_item.canonical_name(ctx);
+        let mut function_name = function_item.canon_name(ctx);
         if times_seen > 0 {
             write!(&mut function_name, "{}", times_seen).unwrap();
         }
@@ -2479,7 +2479,7 @@ impl CodeGenerator for Enum {
     fn codegen(&self, ctx: &Context, result: &mut CodegenResult<'_>, item: &Item) {
         debug!("<Enum as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
-        let name = item.canonical_name(ctx);
+        let name = item.canon_name(ctx);
         let ident = ctx.rust_ident(&name);
         let enum_ty = item.expect_type();
         let layout = enum_ty.layout(ctx);
@@ -2593,7 +2593,7 @@ impl CodeGenerator for Enum {
         let parent_canonical_name = if is_toplevel {
             None
         } else {
-            Some(item.parent_id().canonical_name(ctx))
+            Some(item.parent_id().canon_name(ctx))
         };
         let constant_mangling_prefix = if ctx.opts().prepend_enum_name {
             if enum_ty.name().is_none() {
@@ -2910,9 +2910,9 @@ impl TryToRustTy for TemplInstantiation {
             .through_type_refs()
             .resolve(ctx);
         let mut ty = quote! {};
-        let def_path = def.namespace_aware_canonical_path(ctx);
+        let def_path = def.namespace_aware_canon_path(ctx);
         ty.append_separated(def_path.into_iter().map(|p| ctx.rust_ident(p)), quote!(::));
-        let def_params = def.self_template_params(ctx);
+        let def_params = def.self_templ_params(ctx);
         if def_params.is_empty() {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
@@ -3002,7 +3002,7 @@ impl TryToRustTy for Type {
                 })
             },
             TypeKind::Enum(..) => {
-                let path = item.namespace_aware_canonical_path(ctx);
+                let path = item.namespace_aware_canon_path(ctx);
                 let path = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
                 Ok(quote!(#path))
             },
@@ -3015,7 +3015,7 @@ impl TryToRustTy for Type {
                 }
                 if item.is_opaque(ctx, &())
                     && item
-                        .used_template_params(ctx)
+                        .used_templ_params(ctx)
                         .into_iter()
                         .any(|param| param.is_template_param(ctx, &()))
                 {
@@ -3027,7 +3027,7 @@ impl TryToRustTy for Type {
                 }
             },
             TypeKind::Comp(ref info) => {
-                let template_params = item.all_template_params(ctx);
+                let template_params = item.all_templ_params(ctx);
                 if info.has_non_type_template_params() || (item.is_opaque(ctx, &()) && !template_params.is_empty()) {
                     return self.try_to_opaque(ctx, item);
                 }
@@ -3047,7 +3047,7 @@ impl TryToRustTy for Type {
                 }
             },
             TypeKind::TypeParam => {
-                let name = item.canonical_name(ctx);
+                let name = item.canon_name(ctx);
                 let ident = ctx.rust_ident(name);
                 Ok(quote! {
                     #ident
@@ -3062,7 +3062,7 @@ impl TryToRustTy for Type {
 impl<'a> TryToRustTy for Vtable<'a> {
     type Extra = ();
     fn try_to_rust_ty(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
-        let y = ctx.rust_ident(self.canonical_name(ctx));
+        let y = ctx.rust_ident(self.canon_name(ctx));
         Ok(quote! {
             #y
         })
@@ -3111,11 +3111,11 @@ impl CodeGenerator for Function {
             FnKind::Function => ctx.opts().dynamic_library_name.is_some(),
             _ => false,
         };
-        if !item.all_template_params(ctx).is_empty() {
+        if !item.all_templ_params(ctx).is_empty() {
             return None;
         }
         let name = self.name();
-        let mut canonical_name = item.canonical_name(ctx);
+        let mut canonical_name = item.canon_name(ctx);
         let mangled_name = self.mangled_name();
         {
             let seen_symbol_name = mangled_name.unwrap_or(&canonical_name);
@@ -3251,7 +3251,7 @@ pub mod utils {
     use super::serialize::CSerialize;
     use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
     use crate::ir::function::{Abi, ClangAbi, FnSig};
-    use crate::ir::item::{CanonicalPath, Item};
+    use crate::ir::item::{CanonPath, Item};
     use crate::ir::typ::TypeKind;
     use crate::ir::Context;
     use crate::{args_are_cpp, file_is_cpp};
@@ -3471,7 +3471,7 @@ pub mod utils {
         y.extend(old_items.into_iter());
     }
     pub fn build_path(it: &Item, ctx: &Context) -> error::Result<proc_macro2::TokenStream> {
-        let path = it.namespace_aware_canonical_path(ctx);
+        let path = it.namespace_aware_canon_path(ctx);
         let ys = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
         Ok(ys)
     }

@@ -337,8 +337,8 @@ pub mod derive {
                     if x.kind() == CompKind::Union {
                         if self.derive.can_derive_union() {
                             if self.ctx.opts().untagged_union
-                                && (!x.self_template_params(self.ctx).is_empty()
-                                    || !i.all_template_params(self.ctx).is_empty())
+                                && (!x.self_templ_params(self.ctx).is_empty()
+                                    || !i.all_templ_params(self.ctx).is_empty())
                             {
                                 return Resolved::No;
                             }
@@ -733,7 +733,7 @@ pub mod has_float {
     }
 }
 
-pub mod has_ty_param {
+pub mod has_type_param {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
@@ -1311,7 +1311,7 @@ pub mod used_templ_param {
         fn constrain_instantiation(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInstantiation) {
             let decl = self.ctx.resolve_type(inst.template_definition());
             let args = inst.template_arguments();
-            let ps = decl.self_template_params(self.ctx);
+            let ps = decl.self_templ_params(self.ctx);
             debug_assert!(id != inst.template_definition());
             let used_by_def = self
                 .ys
@@ -1419,7 +1419,7 @@ pub mod used_templ_param {
                 if let Some(TypeKind::TemplateInstantiation(inst)) = k {
                     let decl = ctx.resolve_type(inst.template_definition());
                     let args = inst.template_arguments();
-                    let ps = decl.self_template_params(ctx);
+                    let ps = decl.self_templ_params(ctx);
                     for (arg, p) in args.iter().zip(ps.iter()) {
                         let arg = arg
                             .into_resolver()
