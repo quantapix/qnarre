@@ -165,12 +165,12 @@ impl Trace for Field {
 }
 
 impl DotAttrs for Field {
-    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         match *self {
-            Field::DataMember(ref data) => data.dot_attributes(ctx, out),
+            Field::DataMember(ref data) => data.dot_attrs(ctx, out),
             Field::Bitfields(BitfieldUnit {
                 layout, ref bitfields, ..
             }) => {
@@ -190,7 +190,7 @@ impl DotAttrs for Field {
                     layout.size, layout.align
                 )?;
                 for bf in bitfields {
-                    bf.dot_attributes(ctx, out)?;
+                    bf.dot_attrs(ctx, out)?;
                 }
                 writeln!(out, "</table></td></tr>")
             },
@@ -199,7 +199,7 @@ impl DotAttrs for Field {
 }
 
 impl DotAttrs for FieldData {
-    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -213,7 +213,7 @@ impl DotAttrs for FieldData {
 }
 
 impl DotAttrs for Bitfield {
-    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -644,7 +644,7 @@ impl CompFields {
 impl Trace for CompFields {
     type Extra = ();
 
-    fn trace<T>(&self, context: &BindgenContext, tracer: &mut T, _: &())
+    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, _: &())
     where
         T: Tracer,
     {
@@ -657,7 +657,7 @@ impl Trace for CompFields {
             },
             CompFields::After { ref fields, .. } => {
                 for f in fields {
-                    f.trace(context, tracer, &());
+                    f.trace(ctx, tracer, &());
                 }
             },
         }
@@ -936,7 +936,6 @@ impl CompInfo {
             ty.template_args().is_none(),
             "We handle template instantiations elsewhere"
         );
-
         let mut cursor = ty.declaration();
         let mut kind = Self::kind_from_cursor(&cursor);
         if kind.is_err() {
@@ -945,35 +944,31 @@ impl CompInfo {
                 cursor = location;
             }
         }
-
         let kind = kind?;
-
         debug!("CompInfo::from_ty({:?}, {:?})", kind, cursor);
-
         let mut ci = CompInfo::new(kind);
         ci.is_forward_declaration = location.map_or(true, |cur| match cur.kind() {
             CXCursor_ParmDecl => true,
             CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !cur.is_definition(),
             _ => false,
         });
-
         let mut maybe_anonymous_struct_field = None;
-        cursor.visit(|cur| {
-            if cur.kind() != CXCursor_FieldDecl {
+        cursor.visit(|cur2| {
+            if cur2.kind() != CXCursor_FieldDecl {
                 if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
-                    if cur.kind() == CXCursor_TypedefDecl && cur.typedef_type().unwrap().canonical_type() == clang_ty {
+                    if cur2.kind() == CXCursor_TypedefDecl && cur2.typedef_type().unwrap().canonical_type() == clang_ty
+                    {
                     } else {
                         let field = RawField::new(None, ty, None, None, None, public, offset);
                         ci.fields.append_raw_field(field);
                     }
                 }
             }
-
-            match cur.kind() {
+            match cur2.kind() {
                 CXCursor_FieldDecl => {
                     if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
                         let mut used = false;
-                        cur.visit(|child| {
+                        cur2.visit(|child| {
                             if child.cur_type() == clang_ty {
                                 used = true;
                             }
@@ -985,10 +980,8 @@ impl CompInfo {
                             ci.fields.append_raw_field(field);
                         }
                     }
-
-                    let bit_width = if cur.is_bit_field() {
-                        let width = cur.bit_width();
-
+                    let bit_width = if cur2.is_bit_field() {
+                        let width = cur2.bit_width();
                         if width.is_none() {
                             ci.has_unevaluable_bit_field_width = true;
                             return CXChildVisit_Break;
@@ -998,24 +991,18 @@ impl CompInfo {
                     } else {
                         None
                     };
-
-                    let field_type = Item::from_ty_or_ref(cur.cur_type(), cur, Some(potential_id), ctx);
-
-                    let comment = cur.raw_comment();
-                    let annotations = Annotations::new(&cur);
-                    let name = cur.spelling();
-                    let is_public = cur.public_accessible();
-                    let offset = cur.offset_of_field().ok();
-
+                    let field_type = Item::from_ty_or_ref(cur2.cur_type(), cur2, Some(potential_id), ctx);
+                    let comment = cur2.raw_comment();
+                    let annotations = Annotations::new(&cur2);
+                    let name = cur2.spelling();
+                    let is_public = cur2.public_accessible();
+                    let offset = cur2.offset_of_field().ok();
                     assert!(!name.is_empty() || bit_width.is_some(), "Empty field name?");
-
                     let name = if name.is_empty() { None } else { Some(name) };
-
                     let field = RawField::new(name, field_type, comment, annotations, bit_width, is_public, offset);
                     ci.fields.append_raw_field(field);
-
-                    cur.visit(|cur| {
-                        if cur.kind() == CXCursor_UnexposedAttr {
+                    cur2.visit(|x| {
+                        if x.kind() == CXCursor_UnexposedAttr {
                             ci.found_unknown_attr = true;
                         }
                         CXChildVisit_Continue
@@ -1032,23 +1019,18 @@ impl CompInfo {
                 | CXCursor_UnionDecl
                 | CXCursor_ClassTemplate
                 | CXCursor_ClassDecl => {
-                    let is_inner_struct = cur.semantic_parent() == cursor || cur.is_definition();
+                    let is_inner_struct = cur2.semantic_parent() == cursor || cur2.is_definition();
                     if !is_inner_struct {
                         return CXChildVisit_Continue;
                     }
-
-                    let inner = Item::parse(cur, Some(potential_id), ctx).expect("Inner ClassDecl");
-
+                    let inner = Item::parse(cur2, Some(potential_id), ctx).expect("Inner ClassDecl");
                     if ctx.resolve_item_fallible(inner).is_some() {
                         let inner = inner.expect_type_id(ctx);
-
                         ci.inner_types.push(inner);
-
-                        if cur.is_anonymous() && cur.kind() != CXCursor_EnumDecl {
-                            let ty = cur.cur_type();
-                            let public = cur.public_accessible();
-                            let offset = cur.offset_of_field().ok();
-
+                        if cur2.is_anonymous() && cur2.kind() != CXCursor_EnumDecl {
+                            let ty = cur2.cur_type();
+                            let public = cur2.public_accessible();
+                            let offset = cur2.offset_of_field().ok();
                             maybe_anonymous_struct_field = Some((inner, ty, public, offset));
                         }
                     }
@@ -1057,61 +1039,54 @@ impl CompInfo {
                     ci.packed_attr = true;
                 },
                 CXCursor_TemplateTypeParameter => {
-                    let param = Item::type_param(None, cur, ctx).expect(
+                    let param = Item::type_param(None, cur2, ctx).expect(
                         "Item::type_param should't fail when pointing \
                          at a TemplateTypeParameter",
                     );
                     ci.template_params.push(param);
                 },
                 CXCursor_CXXBaseSpecifier => {
-                    let is_virtual_base = cur.is_virtual_base();
+                    let is_virtual_base = cur2.is_virtual_base();
                     ci.has_own_virtual_method |= is_virtual_base;
-
                     let kind = if is_virtual_base {
                         BaseKind::Virtual
                     } else {
                         BaseKind::Normal
                     };
-
                     let field_name = match ci.base_members.len() {
                         0 => "_base".into(),
                         n => format!("_base_{}", n),
                     };
-                    let type_id = Item::from_ty_or_ref(cur.cur_type(), cur, None, ctx);
+                    let type_id = Item::from_ty_or_ref(cur2.cur_type(), cur2, None, ctx);
                     ci.base_members.push(Base {
                         ty: type_id,
                         kind,
                         field_name,
-                        is_pub: cur.access_specifier() == clang_lib::CX_CXXPublic,
+                        is_pub: cur2.access_specifier() == clang_lib::CX_CXXPublic,
                     });
                 },
                 CXCursor_Constructor | CXCursor_Destructor | CXCursor_CXXMethod => {
-                    let is_virtual = cur.method_is_virtual();
-                    let is_static = cur.method_is_static();
+                    let is_virtual = cur2.method_is_virtual();
+                    let is_static = cur2.method_is_static();
                     debug_assert!(!(is_static && is_virtual), "How?");
-
-                    ci.has_destructor |= cur.kind() == CXCursor_Destructor;
+                    ci.has_destructor |= cur2.kind() == CXCursor_Destructor;
                     ci.has_own_virtual_method |= is_virtual;
-
                     if !ci.template_params.is_empty() {
                         return CXChildVisit_Continue;
                     }
-
-                    let signature = match Item::parse(cur, Some(potential_id), ctx) {
+                    let signature = match Item::parse(cur2, Some(potential_id), ctx) {
                         Ok(item) if ctx.resolve_item(item).kind().is_function() => item,
                         _ => return CXChildVisit_Continue,
                     };
-
                     let signature = signature.expect_function_id(ctx);
-
-                    match cur.kind() {
+                    match cur2.kind() {
                         CXCursor_Constructor => {
                             ci.constructors.push(signature);
                         },
                         CXCursor_Destructor => {
                             let kind = if is_virtual {
                                 MethodKind::VirtualDestructor {
-                                    pure_virtual: cur.method_is_pure_virtual(),
+                                    pure_virtual: cur2.method_is_pure_virtual(),
                                 }
                             } else {
                                 MethodKind::Destructor
@@ -1119,12 +1094,12 @@ impl CompInfo {
                             ci.destructor = Some((kind, signature));
                         },
                         CXCursor_CXXMethod => {
-                            let is_const = cur.method_is_const();
+                            let is_const = cur2.method_is_const();
                             let method_kind = if is_static {
                                 MethodKind::Static
                             } else if is_virtual {
                                 MethodKind::Virtual {
-                                    pure_virtual: cur.method_is_pure_virtual(),
+                                    pure_virtual: cur2.method_is_pure_virtual(),
                                 }
                             } else {
                                 MethodKind::Normal
@@ -1141,17 +1116,15 @@ impl CompInfo {
                     ci.has_non_type_template_params = true;
                 },
                 CXCursor_VarDecl => {
-                    let linkage = cur.linkage();
+                    let linkage = cur2.linkage();
                     if linkage != CXLinkage_External && linkage != CXLinkage_UniqueExternal {
                         return CXChildVisit_Continue;
                     }
-
-                    let visibility = cur.visibility();
+                    let visibility = cur2.visibility();
                     if visibility != CXVisibility_Default {
                         return CXChildVisit_Continue;
                     }
-
-                    if let Ok(item) = Item::parse(cur, Some(potential_id), ctx) {
+                    if let Ok(item) = Item::parse(cur2, Some(potential_id), ctx) {
                         ci.inner_vars.push(item.as_var_id_unchecked());
                     }
                 },
@@ -1162,37 +1135,35 @@ impl CompInfo {
                 _ => {
                     warn!(
                         "unhandled comp member `{}` (kind {:?}) in `{}` ({})",
-                        cur.spelling(),
-                        clang::kind_to_str(cur.kind()),
+                        cur2.spelling(),
+                        clang::kind_to_str(cur2.kind()),
                         cursor.spelling(),
-                        cur.location()
+                        cur2.location()
                     );
                 },
             }
             CXChildVisit_Continue
         });
-
         if let Some((ty, _, public, offset)) = maybe_anonymous_struct_field {
             let field = RawField::new(None, ty, None, None, None, public, offset);
             ci.fields.append_raw_field(field);
         }
-
         Ok(ci)
     }
 
-    fn kind_from_cursor(cursor: &clang::Cursor) -> Result<CompKind, parse::Error> {
+    fn kind_from_cursor(cur: &clang::Cursor) -> Result<CompKind, parse::Error> {
         use clang_lib::*;
-        Ok(match cursor.kind() {
+        Ok(match cur.kind() {
             CXCursor_UnionDecl => CompKind::Union,
             CXCursor_ClassDecl | CXCursor_StructDecl => CompKind::Struct,
             CXCursor_CXXBaseSpecifier | CXCursor_ClassTemplatePartialSpecialization | CXCursor_ClassTemplate => {
-                match cursor.template_kind() {
+                match cur.template_kind() {
                     CXCursor_UnionDecl => CompKind::Union,
                     _ => CompKind::Struct,
                 }
             },
             _ => {
-                warn!("Unknown kind for comp type: {:?}", cursor);
+                warn!("Unknown kind for comp type: {:?}", cur);
                 return Err(parse::Error::Continue);
             },
         })
@@ -1285,7 +1256,7 @@ impl CompInfo {
 }
 
 impl DotAttrs for CompInfo {
-    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -1318,7 +1289,7 @@ impl DotAttrs for CompInfo {
         if !self.fields().is_empty() {
             writeln!(out, r#"<tr><td>fields</td><td><table border="0">"#)?;
             for field in self.fields() {
-                field.dot_attributes(ctx, out)?;
+                field.dot_attrs(ctx, out)?;
             }
             writeln!(out, "</table></td></tr>")?;
         }
@@ -1363,43 +1334,34 @@ impl TemplParams for CompInfo {
 
 impl Trace for CompInfo {
     type Extra = Item;
-
-    fn trace<T>(&self, context: &BindgenContext, tracer: &mut T, item: &Item)
+    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, i: &Item)
     where
         T: Tracer,
     {
-        for p in item.all_template_params(context) {
+        for p in i.all_template_params(ctx) {
             tracer.visit_kind(p.into(), EdgeKind::TemplateParameterDefinition);
         }
-
         for ty in self.inner_types() {
             tracer.visit_kind(ty.into(), EdgeKind::InnerType);
         }
-
         for &var in self.inner_vars() {
             tracer.visit_kind(var.into(), EdgeKind::InnerVar);
         }
-
         for method in self.methods() {
             tracer.visit_kind(method.signature.into(), EdgeKind::Method);
         }
-
         if let Some((_kind, signature)) = self.destructor() {
             tracer.visit_kind(signature.into(), EdgeKind::Destructor);
         }
-
         for ctor in self.constructors() {
             tracer.visit_kind(ctor.into(), EdgeKind::Constructor);
         }
-
-        if item.is_opaque(context, &()) {
+        if i.is_opaque(ctx, &()) {
             return;
         }
-
         for base in self.base_members() {
             tracer.visit_kind(base.ty.into(), EdgeKind::BaseMember);
         }
-
-        self.fields.trace(context, tracer, &());
+        self.fields.trace(ctx, tracer, &());
     }
 }

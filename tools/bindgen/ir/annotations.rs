@@ -73,10 +73,10 @@ pub(crate) struct Annotations {
 }
 
 impl Annotations {
-    pub(crate) fn new(cursor: &clang::Cursor) -> Option<Annotations> {
+    pub(crate) fn new(cur: &clang::Cursor) -> Option<Annotations> {
         let mut anno = Annotations::default();
         let mut matched_one = false;
-        anno.parse(&cursor.comment(), &mut matched_one);
+        anno.parse(&cur.comment(), &mut matched_one);
         if matched_one {
             Some(anno)
         } else {

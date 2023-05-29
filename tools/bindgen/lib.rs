@@ -616,19 +616,19 @@ impl std::fmt::Display for Bindings {
     }
 }
 
-fn filter_builtins(ctx: &BindgenContext, cursor: &clang::Cursor) -> bool {
-    ctx.opts().builtins || !cursor.is_builtin()
+fn filter_builtins(ctx: &BindgenContext, cur: &clang::Cursor) -> bool {
+    ctx.opts().builtins || !cur.is_builtin()
 }
 
-fn parse_one(ctx: &mut BindgenContext, cursor: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
-    if !filter_builtins(ctx, &cursor) {
+fn parse_one(ctx: &mut BindgenContext, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
+    if !filter_builtins(ctx, &cur) {
         return clang_lib::CXChildVisit_Continue;
     }
-    match Item::parse(cursor, parent, ctx) {
+    match Item::parse(cur, parent, ctx) {
         Ok(..) => {},
         Err(Error::Continue) => {},
         Err(Error::Recurse) => {
-            cursor.visit(|child| parse_one(ctx, child, parent));
+            cur.visit(|x| parse_one(ctx, x, parent));
         },
     }
     clang_lib::CXChildVisit_Continue
@@ -640,9 +640,9 @@ fn parse(ctx: &mut BindgenContext) -> Result<(), BindgenError> {
         let msg = d.format();
         let is_err = d.severity() >= clang_lib::CXDiagnostic_Error;
         if is_err {
-            let error = error.get_or_insert_with(String::new);
-            error.push_str(&msg);
-            error.push('\n');
+            let y = error.get_or_insert_with(String::new);
+            y.push_str(&msg);
+            y.push('\n');
         } else {
             eprintln!("clang diag: {}", msg);
         }
@@ -650,7 +650,7 @@ fn parse(ctx: &mut BindgenContext) -> Result<(), BindgenError> {
     if let Some(x) = error {
         return Err(BindgenError::ClangDiagnostic(x));
     }
-    let cursor = ctx.translation_unit().cursor();
+    let cur = ctx.translation_unit().cursor();
     if ctx.opts().emit_ast {
         fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
             if !cur.is_builtin() {
@@ -659,10 +659,10 @@ fn parse(ctx: &mut BindgenContext) -> Result<(), BindgenError> {
                 clang_lib::CXChildVisit_Continue
             }
         }
-        cursor.visit(|cur| dump_if_not_builtin(&cur));
+        cur.visit(|x| dump_if_not_builtin(&x));
     }
     let root = ctx.root_module();
-    ctx.with_module(root, |context| cursor.visit(|cursor| parse_one(context, cursor, None)));
+    ctx.with_module(root, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, None)));
     assert!(ctx.current_module() == ctx.root_module(), "How did this happen?");
     Ok(())
 }

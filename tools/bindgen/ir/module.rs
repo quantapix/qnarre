@@ -7,42 +7,42 @@ use crate::parse_one;
 use std::io;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum ModKind {
+pub enum ModKind {
     Normal,
     Inline,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Module {
+pub struct Module {
     name: Option<String>,
     kind: ModKind,
     children: ItemSet,
 }
 
 impl Module {
-    pub(crate) fn new(name: Option<String>, kind: ModKind) -> Self {
+    pub fn new(name: Option<String>, kind: ModKind) -> Self {
         Module {
             name,
             kind,
             children: ItemSet::new(),
         }
     }
-    pub(crate) fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
-    pub(crate) fn children_mut(&mut self) -> &mut ItemSet {
+    pub fn children_mut(&mut self) -> &mut ItemSet {
         &mut self.children
     }
-    pub(crate) fn children(&self) -> &ItemSet {
+    pub fn children(&self) -> &ItemSet {
         &self.children
     }
-    pub(crate) fn is_inline(&self) -> bool {
+    pub fn is_inline(&self) -> bool {
         self.kind == ModKind::Inline
     }
 }
 
 impl DotAttrs for Module {
-    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {

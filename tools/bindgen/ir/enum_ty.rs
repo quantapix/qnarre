@@ -36,44 +36,38 @@ impl Enum {
     pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Result<Self, parse::Error> {
         use clang_lib::*;
         debug!("Enum::from_ty {:?}", ty);
-
         if ty.kind() != CXType_Enum {
             return Err(parse::Error::Continue);
         }
-
         let declaration = ty.declaration().canonical();
         let repr = declaration
             .enum_type()
             .and_then(|et| Item::from_ty(&et, declaration, None, ctx).ok());
         let mut variants = vec![];
-
         let variant_ty = repr.and_then(|r| ctx.resolve_type(r).safe_canonical_type(ctx));
         let is_bool = variant_ty.map_or(false, Type::is_bool);
-
         let is_signed = variant_ty.map_or(true, |ty| match *ty.kind() {
             TyKind::Int(ref int_kind) => int_kind.is_signed(),
             ref other => {
                 panic!("Since when enums can be non-integers? {:?}", other)
             },
         });
-
         let type_name = ty.spelling();
         let type_name = if type_name.is_empty() { None } else { Some(type_name) };
         let type_name = type_name.as_deref();
-
         let definition = declaration.definition().unwrap_or(declaration);
-        definition.visit(|cursor| {
-            if cursor.kind() == CXCursor_EnumConstantDecl {
+        definition.visit(|cur| {
+            if cur.kind() == CXCursor_EnumConstantDecl {
                 let value = if is_bool {
-                    cursor.enum_val_boolean().map(EnumVariantValue::Boolean)
+                    cur.enum_val_boolean().map(EnumVariantValue::Boolean)
                 } else if is_signed {
-                    cursor.enum_val_signed().map(EnumVariantValue::Signed)
+                    cur.enum_val_signed().map(EnumVariantValue::Signed)
                 } else {
-                    cursor.enum_val_unsigned().map(EnumVariantValue::Unsigned)
+                    cur.enum_val_unsigned().map(EnumVariantValue::Unsigned)
                 };
                 if let Some(val) = value {
-                    let name = cursor.spelling();
-                    let annotations = Annotations::new(&cursor);
+                    let name = cur.spelling();
+                    let annotations = Annotations::new(&cur);
                     let custom_behavior = ctx
                         .opts()
                         .last_callback(|callbacks| callbacks.enum_variant_behavior(type_name, &name, val))
@@ -87,14 +81,12 @@ impl Enum {
                                 None
                             }
                         });
-
                     let new_name = ctx
                         .opts()
                         .last_callback(|callbacks| callbacks.enum_variant_name(type_name, &name, val))
                         .or_else(|| annotations.as_ref()?.use_instead_of()?.last().cloned())
                         .unwrap_or_else(|| name.clone());
-
-                    let comment = cursor.raw_comment();
+                    let comment = cur.raw_comment();
                     variants.push(EnumVariant::new(new_name, name, comment, val, custom_behavior));
                 }
             }

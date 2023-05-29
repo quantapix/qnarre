@@ -3,7 +3,7 @@ use super::item::{Ancestors, IsOpaque, Item};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use crate::clang;
 
-pub(crate) trait TemplParams: Sized {
+pub trait TemplParams: Sized {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId>;
 
     fn num_self_template_params(&self, ctx: &BindgenContext) -> usize {
@@ -14,10 +14,9 @@ pub(crate) trait TemplParams: Sized {
     where
         Self: Ancestors,
     {
-        let mut ancestors: Vec<_> = self.ancestors(ctx).collect();
-        ancestors.reverse();
-        ancestors
-            .into_iter()
+        let mut ys: Vec<_> = self.ancestors(ctx).collect();
+        ys.reverse();
+        ys.into_iter()
             .flat_map(|id| id.self_template_params(ctx).into_iter())
             .collect()
     }
@@ -30,7 +29,6 @@ pub(crate) trait TemplParams: Sized {
             ctx.in_codegen_phase(),
             "template parameter usage is not computed until codegen"
         );
-
         let id = *self.as_ref();
         ctx.resolve_item(id)
             .all_template_params(ctx)
@@ -40,44 +38,41 @@ pub(crate) trait TemplParams: Sized {
     }
 }
 
-pub(crate) trait AsTemplParam {
+pub trait AsTemplParam {
     type Extra;
-
     fn as_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> Option<TypeId>;
-
     fn is_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> bool {
         self.as_template_param(ctx, extra).is_some()
     }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TemplInstantiation {
-    definition: TypeId,
+pub struct TemplInstantiation {
+    def: TypeId,
     args: Vec<TypeId>,
 }
 
 impl TemplInstantiation {
-    pub(crate) fn new<I>(definition: TypeId, args: I) -> TemplInstantiation
+    pub fn new<I>(def: TypeId, args: I) -> TemplInstantiation
     where
         I: IntoIterator<Item = TypeId>,
     {
         TemplInstantiation {
-            definition,
+            def,
             args: args.into_iter().collect(),
         }
     }
 
-    pub(crate) fn template_definition(&self) -> TypeId {
-        self.definition
+    pub fn template_definition(&self) -> TypeId {
+        self.def
     }
 
-    pub(crate) fn template_arguments(&self) -> &[TypeId] {
+    pub fn template_arguments(&self) -> &[TypeId] {
         &self.args[..]
     }
 
-    pub(crate) fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplInstantiation> {
+    pub fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplInstantiation> {
         use clang_lib::*;
-
         let template_args = ty
             .template_args()
             .map_or(vec![], |args| match ty.canonical_type().template_args() {
@@ -93,28 +88,24 @@ impl TemplInstantiation {
                     .map(|t| Item::from_ty_or_ref(t, t.declaration(), None, ctx))
                     .collect(),
             });
-
-        let declaration = ty.declaration();
-        let definition = if declaration.kind() == CXCursor_TypeAliasTemplateDecl {
-            Some(declaration)
+        let decl = ty.declaration();
+        let def = if decl.kind() == CXCursor_TypeAliasTemplateDecl {
+            Some(decl)
         } else {
-            declaration.specialized().or_else(|| {
+            decl.specialized().or_else(|| {
                 let mut template_ref = None;
                 ty.declaration().visit(|child| {
                     if child.kind() == CXCursor_TemplateRef {
                         template_ref = Some(child);
                         return CXVisit_Break;
                     }
-
                     CXChildVisit_Recurse
                 });
-
                 template_ref.and_then(|cur| cur.referenced())
             })
         };
-
-        let definition = match definition {
-            Some(def) => def,
+        let def = match def {
+            Some(x) => x,
             None => {
                 if !ty.declaration().is_builtin() {
                     warn!(
@@ -125,22 +116,18 @@ impl TemplInstantiation {
                 return None;
             },
         };
-
-        let template_definition = Item::from_ty_or_ref(definition.cur_type(), definition, None, ctx);
-
+        let template_definition = Item::from_ty_or_ref(def.cur_type(), def, None, ctx);
         Some(TemplInstantiation::new(template_definition, template_args))
     }
 }
 
 impl IsOpaque for TemplInstantiation {
     type Extra = Item;
-
-    fn is_opaque(&self, ctx: &BindgenContext, item: &Item) -> bool {
+    fn is_opaque(&self, ctx: &BindgenContext, it: &Item) -> bool {
         if self.template_definition().is_opaque(ctx, &()) {
             return true;
         }
-
-        let mut path = item.path_for_allowlisting(ctx).clone();
+        let mut path = it.path_for_allowlisting(ctx).clone();
         let args: Vec<_> = self
             .template_arguments()
             .iter()
@@ -155,19 +142,17 @@ impl IsOpaque for TemplInstantiation {
             last.push_str(&args.join(", "));
             last.push('>');
         }
-
         ctx.opaque_by_name(&path)
     }
 }
 
 impl Trace for TemplInstantiation {
     type Extra = ();
-
     fn trace<T>(&self, _ctx: &BindgenContext, tracer: &mut T, _: &())
     where
         T: Tracer,
     {
-        tracer.visit_kind(self.definition.into(), EdgeKind::TemplateDeclaration);
+        tracer.visit_kind(self.def.into(), EdgeKind::TemplateDeclaration);
         for arg in self.template_arguments() {
             tracer.visit_kind(arg.into(), EdgeKind::TemplateArgument);
         }

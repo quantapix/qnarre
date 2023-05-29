@@ -909,7 +909,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
 
                     let function_item = ctx.resolve_item(m.signature());
                     let function = function_item.expect_function();
-                    let signature_item = ctx.resolve_item(function.signature());
+                    let signature_item = ctx.resolve_item(function.sig());
                     let signature = match signature_item.expect_type().kind() {
                         TyKind::Function(ref sig) => sig,
                         _ => panic!("Function signature type mismatch"),
@@ -2075,7 +2075,7 @@ impl Method {
             Some(seen) => seen,
             None => return,
         };
-        let signature_item = ctx.resolve_item(function.signature());
+        let signature_item = ctx.resolve_item(function.sig());
         let mut name = match self.kind() {
             MethodKind::Constructor => "new".into(),
             MethodKind::Destructor => "destruct".into(),
@@ -3280,7 +3280,7 @@ impl CodeGenerator for Function {
 
         let is_internal = matches!(self.linkage(), Linkage::Internal);
 
-        let signature_item = ctx.resolve_item(self.signature());
+        let signature_item = ctx.resolve_item(self.sig());
         let signature = signature_item.kind().expect_type().canonical_type(ctx);
         let signature = match *signature.kind() {
             TyKind::Function(ref sig) => sig,
@@ -3413,32 +3413,28 @@ fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::SrcLoc
     );
 }
 
-pub(crate) fn codegen(context: BindgenContext) -> Result<(proc_macro2::TokenStream, Opts), CodegenError> {
-    context.gen(|context| {
-        let _t = context.timer("codegen");
+pub(crate) fn codegen(ctx: BindgenContext) -> Result<(proc_macro2::TokenStream, Opts), CodegenError> {
+    ctx.gen(|ctx2| {
+        let _t = ctx2.timer("codegen");
         let counter = Cell::new(0);
-        let mut result = CodegenResult::new(&counter);
-
-        debug!("codegen: {:?}", context.opts());
-
-        if context.opts().emit_ir {
-            let codegen_items = context.codegen_items();
-            for (id, item) in context.items() {
+        let mut y = CodegenResult::new(&counter);
+        debug!("codegen: {:?}", ctx2.opts());
+        if ctx2.opts().emit_ir {
+            let codegen_items = ctx2.codegen_items();
+            for (id, item) in ctx2.items() {
                 if codegen_items.contains(&id) {
                     println!("ir: {:?} = {:#?}", id, item);
                 }
             }
         }
-
-        if let Some(path) = context.opts().emit_ir_graphviz.as_ref() {
-            match dot::write_dot_file(context, path) {
+        if let Some(path) = ctx2.opts().emit_ir_graphviz.as_ref() {
+            match dot::write_dot_file(ctx2, path) {
                 Ok(()) => info!("Your dot file was generated successfully into: {}", path),
                 Err(e) => warn!("{}", e),
             }
         }
-
-        if let Some(spec) = context.opts().depfile.as_ref() {
-            match spec.write(context.deps()) {
+        if let Some(spec) = ctx2.opts().depfile.as_ref() {
+            match spec.write(ctx2.deps()) {
                 Ok(()) => info!(
                     "Your depfile was generated successfully into: {}",
                     spec.depfile_path.display()
@@ -3446,20 +3442,14 @@ pub(crate) fn codegen(context: BindgenContext) -> Result<(proc_macro2::TokenStre
                 Err(e) => warn!("{}", e),
             }
         }
-
-        context
-            .resolve_item(context.root_module())
-            .codegen(context, &mut result, &());
-
-        if let Some(ref lib_name) = context.opts().dynamic_library_name {
-            let lib_ident = context.rust_ident(lib_name);
-            let dynamic_items_tokens = result.dynamic_items().get_tokens(lib_ident, context);
-            result.push(dynamic_items_tokens);
+        ctx2.resolve_item(ctx2.root_module()).codegen(ctx2, &mut y, &());
+        if let Some(ref lib_name) = ctx2.opts().dynamic_library_name {
+            let lib_ident = ctx2.rust_ident(lib_name);
+            let dynamic_items_tokens = y.dynamic_items().get_tokens(lib_ident, ctx2);
+            y.push(dynamic_items_tokens);
         }
-
-        utils::serialize_items(&result, context)?;
-
-        Ok(postprocessing::postproc(result.items, context.opts()))
+        utils::serialize_items(&y, ctx2)?;
+        Ok(postprocessing::postproc(y.items, ctx2.opts()))
     })
 }
 
@@ -3477,56 +3467,41 @@ pub(crate) mod utils {
     use std::path::PathBuf;
     use std::str::FromStr;
 
-    pub(super) fn serialize_items(result: &CodegenResult, context: &BindgenContext) -> Result<(), CodegenError> {
+    pub(super) fn serialize_items(result: &CodegenResult, ctx: &BindgenContext) -> Result<(), CodegenError> {
         if result.items_to_serialize.is_empty() {
             return Ok(());
         }
-
-        let path = context
+        let path = ctx
             .opts()
             .wrap_static_fns_path
             .as_ref()
             .map(PathBuf::from)
             .unwrap_or_else(|| std::env::temp_dir().join("bindgen").join("extern"));
-
         let dir = path.parent().unwrap();
-
         if !dir.exists() {
             std::fs::create_dir_all(dir)?;
         }
-
-        let is_cpp =
-            args_are_cpp(&context.opts().clang_args) || context.opts().input_headers.iter().any(|h| file_is_cpp(h));
-
+        let is_cpp = args_are_cpp(&ctx.opts().clang_args) || ctx.opts().input_headers.iter().any(|h| file_is_cpp(h));
         let source_path = path.with_extension(if is_cpp { "cpp" } else { "c" });
-
         let mut code = Vec::new();
-
-        if !context.opts().input_headers.is_empty() {
-            for header in &context.opts().input_headers {
+        if !ctx.opts().input_headers.is_empty() {
+            for header in &ctx.opts().input_headers {
                 writeln!(code, "#include \"{}\"", header)?;
             }
-
             writeln!(code)?;
         }
-
-        if !context.opts().input_header_contents.is_empty() {
-            for (name, contents) in &context.opts().input_header_contents {
+        if !ctx.opts().input_header_contents.is_empty() {
+            for (name, contents) in &ctx.opts().input_header_contents {
                 writeln!(code, "// {}\n{}", name, contents)?;
             }
-
             writeln!(code)?;
         }
-
         writeln!(code, "// Static wrappers\n")?;
-
         for &id in &result.items_to_serialize {
-            let item = context.resolve_item(id);
-            item.serialize(context, (), &mut vec![], &mut code)?;
+            let item = ctx.resolve_item(id);
+            item.serialize(ctx, (), &mut vec![], &mut code)?;
         }
-
         std::fs::write(source_path, code)?;
-
         Ok(())
     }
 

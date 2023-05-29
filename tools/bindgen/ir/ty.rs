@@ -14,24 +14,24 @@ use std::borrow::Cow;
 use std::io;
 
 #[derive(Debug)]
-pub(crate) struct Type {
+pub struct Type {
     name: Option<String>,
     layout: Option<Layout>,
     kind: TyKind,
     is_const: bool,
 }
 
-pub(crate) const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
+pub const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
 
 impl Type {
-    pub(crate) fn as_comp_mut(&mut self) -> Option<&mut CompInfo> {
+    pub fn as_comp_mut(&mut self) -> Option<&mut CompInfo> {
         match self.kind {
             TyKind::Comp(ref mut ci) => Some(ci),
             _ => None,
         }
     }
 
-    pub(crate) fn new(name: Option<String>, layout: Option<Layout>, kind: TyKind, is_const: bool) -> Self {
+    pub fn new(name: Option<String>, layout: Option<Layout>, kind: TyKind, is_const: bool) -> Self {
         Type {
             name,
             layout,
@@ -40,57 +40,57 @@ impl Type {
         }
     }
 
-    pub(crate) fn kind(&self) -> &TyKind {
+    pub fn kind(&self) -> &TyKind {
         &self.kind
     }
 
-    pub(crate) fn kind_mut(&mut self) -> &mut TyKind {
+    pub fn kind_mut(&mut self) -> &mut TyKind {
         &mut self.kind
     }
 
-    pub(crate) fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 
-    pub(crate) fn is_block_pointer(&self) -> bool {
+    pub fn is_block_pointer(&self) -> bool {
         matches!(self.kind, TyKind::BlockPointer(..))
     }
 
-    pub(crate) fn is_int(&self) -> bool {
+    pub fn is_int(&self) -> bool {
         matches!(self.kind, TyKind::Int(_))
     }
 
-    pub(crate) fn is_comp(&self) -> bool {
+    pub fn is_comp(&self) -> bool {
         matches!(self.kind, TyKind::Comp(..))
     }
 
-    pub(crate) fn is_union(&self) -> bool {
+    pub fn is_union(&self) -> bool {
         match self.kind {
             TyKind::Comp(ref comp) => comp.is_union(),
             _ => false,
         }
     }
 
-    pub(crate) fn is_type_param(&self) -> bool {
+    pub fn is_type_param(&self) -> bool {
         matches!(self.kind, TyKind::TypeParam)
     }
 
-    pub(crate) fn is_template_instantiation(&self) -> bool {
+    pub fn is_template_instantiation(&self) -> bool {
         matches!(self.kind, TyKind::TemplateInstantiation(..))
     }
 
-    pub(crate) fn is_function(&self) -> bool {
+    pub fn is_function(&self) -> bool {
         matches!(self.kind, TyKind::Function(..))
     }
 
-    pub(crate) fn is_enum(&self) -> bool {
+    pub fn is_enum(&self) -> bool {
         matches!(self.kind, TyKind::Enum(..))
     }
 
-    pub(crate) fn is_void(&self) -> bool {
+    pub fn is_void(&self) -> bool {
         matches!(self.kind, TyKind::Void)
     }
-    pub(crate) fn is_builtin_or_type_param(&self) -> bool {
+    pub fn is_builtin_or_type_param(&self) -> bool {
         matches!(
             self.kind,
             TyKind::Void
@@ -105,39 +105,39 @@ impl Type {
         )
     }
 
-    pub(crate) fn named(name: String) -> Self {
+    pub fn named(name: String) -> Self {
         let name = if name.is_empty() { None } else { Some(name) };
         Self::new(name, None, TyKind::TypeParam, false)
     }
 
-    pub(crate) fn is_float(&self) -> bool {
+    pub fn is_float(&self) -> bool {
         matches!(self.kind, TyKind::Float(..))
     }
 
-    pub(crate) fn is_bool(&self) -> bool {
+    pub fn is_bool(&self) -> bool {
         matches!(self.kind, TyKind::Int(IntKind::Bool))
     }
 
-    pub(crate) fn is_integer(&self) -> bool {
+    pub fn is_integer(&self) -> bool {
         matches!(self.kind, TyKind::Int(..))
     }
 
-    pub(crate) fn as_integer(&self) -> Option<IntKind> {
+    pub fn as_integer(&self) -> Option<IntKind> {
         match self.kind {
             TyKind::Int(int_kind) => Some(int_kind),
             _ => None,
         }
     }
 
-    pub(crate) fn is_const(&self) -> bool {
+    pub fn is_const(&self) -> bool {
         self.is_const
     }
 
-    pub(crate) fn is_unresolved_ref(&self) -> bool {
+    pub fn is_unresolved_ref(&self) -> bool {
         matches!(self.kind, TyKind::UnresolvedTypeRef(_, _, _))
     }
 
-    pub(crate) fn is_incomplete_array(&self, ctx: &BindgenContext) -> Option<ItemId> {
+    pub fn is_incomplete_array(&self, ctx: &BindgenContext) -> Option<ItemId> {
         match self.kind {
             TyKind::Array(item, len) => {
                 if len == 0 {
@@ -151,7 +151,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
+    pub fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
         self.layout.or_else(|| match self.kind {
             TyKind::Comp(ref ci) => ci.layout(ctx),
             TyKind::Array(inner, length) if length == 0 => {
@@ -163,7 +163,7 @@ impl Type {
         })
     }
 
-    pub(crate) fn is_invalid_type_param(&self) -> bool {
+    pub fn is_invalid_type_param(&self) -> bool {
         match self.kind {
             TyKind::TypeParam => {
                 let name = self.name().expect("Unnamed named type?");
@@ -182,7 +182,7 @@ impl Type {
         Cow::Owned(name)
     }
 
-    pub(crate) fn sanitized_name<'a>(&'a self, ctx: &BindgenContext) -> Option<Cow<'a, str>> {
+    pub fn sanitized_name<'a>(&'a self, ctx: &BindgenContext) -> Option<Cow<'a, str>> {
         let name_info = match *self.kind() {
             TyKind::Pointer(inner) => Some((inner, Cow::Borrowed("ptr"))),
             TyKind::Reference(inner) => Some((inner, Cow::Borrowed("ref"))),
@@ -199,12 +199,12 @@ impl Type {
         }
     }
 
-    pub(crate) fn canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> &'tr Type {
+    pub fn canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> &'tr Type {
         self.safe_canonical_type(ctx)
             .expect("Should have been resolved after parsing!")
     }
 
-    pub(crate) fn safe_canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> Option<&'tr Type> {
+    pub fn safe_canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> Option<&'tr Type> {
         match self.kind {
             TyKind::TypeParam
             | TyKind::Array(..)
@@ -231,7 +231,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn should_be_traced_unconditionally(&self) -> bool {
+    pub fn should_be_traced_unconditionally(&self) -> bool {
         matches!(
             self.kind,
             TyKind::Comp(..)
@@ -277,7 +277,7 @@ impl AsTemplParam for TyKind {
 }
 
 impl DotAttrs for Type {
-    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -297,19 +297,19 @@ impl DotAttrs for Type {
             writeln!(out, "<tr><td>const</td><td>true</td></tr>")?;
         }
 
-        self.kind.dot_attributes(ctx, out)
+        self.kind.dot_attrs(ctx, out)
     }
 }
 
 impl DotAttrs for TyKind {
-    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         writeln!(out, "<tr><td>type kind</td><td>{}</td></tr>", self.kind_name())?;
 
         if let TyKind::Comp(ref comp) = *self {
-            comp.dot_attributes(ctx, out)?;
+            comp.dot_attrs(ctx, out)?;
         }
 
         Ok(())
@@ -421,7 +421,7 @@ impl TemplParams for TyKind {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum FloatKind {
+pub enum FloatKind {
     Float,
     Double,
     LongDouble,
@@ -429,7 +429,7 @@ pub(crate) enum FloatKind {
 }
 
 #[derive(Debug)]
-pub(crate) enum TyKind {
+pub enum TyKind {
     Void,
     NullPtr,
     Comp(CompInfo),
@@ -453,7 +453,7 @@ pub(crate) enum TyKind {
 }
 
 impl Type {
-    pub(crate) fn from_clang_ty(
+    pub fn from_clang_ty(
         potential_id: ItemId,
         ty: &clang::Type,
         location: Cursor,
@@ -468,26 +468,21 @@ impl Type {
                 return Ok(parse::Result::AlreadyResolved(ty.into()));
             }
         }
-
         let layout = ty.fallible_layout(ctx).ok();
-        let cursor = ty.declaration();
-        let is_anonymous = cursor.is_anonymous();
+        let cur = ty.declaration();
+        let is_anonymous = cur.is_anonymous();
         let mut name = if is_anonymous {
             None
         } else {
-            Some(cursor.spelling()).filter(|n| !n.is_empty())
+            Some(cur.spelling()).filter(|n| !n.is_empty())
         };
-
         debug!("from_clang_ty: {:?}, ty: {:?}, loc: {:?}", potential_id, ty, location);
         debug!("currently_parsed_types: {:?}", ctx.currently_parsed_types());
-
         let canonical_ty = ty.canonical_type();
-
         let mut ty_kind = ty.kind();
         if ty_kind == CXType_Typedef {
             let is_template_type_param = ty.declaration().kind() == CXCursor_TemplateTypeParameter;
         }
-
         if location.kind() == CXCursor_ClassTemplatePartialSpecialization {
             warn!(
                 "Found a partial template specialization; bindgen does not \
@@ -496,7 +491,6 @@ impl Type {
             );
             return Ok(parse::Result::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
         }
-
         let kind = if location.kind() == CXCursor_TemplateRef
             || (ty.template_args().is_some() && ty_kind != CXType_Typedef)
         {
@@ -686,7 +680,7 @@ impl Type {
                     TyKind::Function(signature)
                 },
                 CXType_Typedef => {
-                    let inner = cursor.typedef_type().expect("Not valid Type?");
+                    let inner = cur.typedef_type().expect("Not valid Type?");
                     let inner_id = Item::from_ty_or_ref(inner, location, None, ctx);
                     if inner_id == potential_id {
                         warn!(
@@ -757,25 +751,22 @@ impl Type {
                 },
             }
         };
-
         name = name.filter(|n| !n.is_empty());
-
         let is_const = ty.is_const()
             || (ty.kind() == CXType_ConstantArray && ty.elem_type().map_or(false, |element| element.is_const()));
-
         let ty = Type::new(name, layout, kind, is_const);
-        Ok(parse::Result::New(ty, Some(cursor.canonical())))
+        Ok(parse::Result::New(ty, Some(cur.canonical())))
     }
 }
 
 impl Trace for Type {
     type Extra = Item;
 
-    fn trace<T>(&self, context: &BindgenContext, tracer: &mut T, item: &Item)
+    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, i: &Item)
     where
         T: Tracer,
     {
-        if self.name().map_or(false, |name| context.is_stdint_type(name)) {
+        if self.name().map_or(false, |x| ctx.is_stdint_type(x)) {
             return;
         }
         match *self.kind() {
@@ -795,13 +786,13 @@ impl Trace for Type {
                 }
             },
             TyKind::TemplateInstantiation(ref x) => {
-                x.trace(context, tracer, &());
+                x.trace(ctx, tracer, &());
             },
-            TyKind::Comp(ref ci) => ci.trace(context, tracer, item),
-            TyKind::Function(ref sig) => sig.trace(context, tracer, &()),
-            TyKind::Enum(ref en) => {
-                if let Some(repr) = en.repr() {
-                    tracer.visit(repr.into());
+            TyKind::Comp(ref x) => x.trace(ctx, tracer, i),
+            TyKind::Function(ref x) => x.trace(ctx, tracer, &()),
+            TyKind::Enum(ref x) => {
+                if let Some(x) = x.repr() {
+                    tracer.visit(x.into());
                 }
             },
             TyKind::UnresolvedTypeRef(_, _, Some(id)) => {

@@ -191,7 +191,7 @@ impl Trace for Item {
                 }
             },
             ItemKind::Function(ref fun) => {
-                tracer.visit(fun.signature().into());
+                tracer.visit(fun.sig().into());
             },
             ItemKind::Var(ref var) => {
                 tracer.visit_kind(var.ty().into(), EdgeKind::VarType);
@@ -856,7 +856,7 @@ impl HasFloat for Item {
 pub(crate) type ItemSet = BTreeSet<ItemId>;
 
 impl DotAttrs for Item {
-    fn dot_attributes<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -872,7 +872,7 @@ impl DotAttrs for Item {
             writeln!(out, "<tr><td>opaque</td><td>true</td></tr>")?;
         }
 
-        self.kind.dot_attributes(ctx, out)
+        self.kind.dot_attrs(ctx, out)
     }
 }
 
@@ -943,23 +943,19 @@ impl Item {
     }
 
     pub(crate) fn parse(
-        cursor: clang::Cursor,
+        cur: clang::Cursor,
         parent_id: Option<ItemId>,
         ctx: &mut BindgenContext,
     ) -> Result<ItemId, parse::Error> {
         use crate::ir::var::Var;
         use clang_lib::*;
-
-        if !cursor.is_valid() {
+        if !cur.is_valid() {
             return Err(parse::Error::Continue);
         }
-
-        let comment = cursor.raw_comment();
-        let annotations = Annotations::new(&cursor);
-
+        let comment = cur.raw_comment();
+        let annotations = Annotations::new(&cur);
         let current_module = ctx.current_module().into();
         let relevant_parent_id = parent_id.unwrap_or(current_module);
-
         macro_rules! try_parse {
             ($what:ident) => {
                 match $what::parse(cursor, ctx) {
@@ -991,14 +987,13 @@ impl Item {
         try_parse!(Function);
         try_parse!(Var);
         {
-            let definition = cursor.definition();
-            let applicable_cursor = definition.unwrap_or(cursor);
-
+            let definition = cur.definition();
+            let applicable_cursor = definition.unwrap_or(cur);
             let relevant_parent_id = match definition {
                 Some(definition) => {
-                    if definition != cursor {
+                    if definition != cur {
                         ctx.add_semantic_parent(definition, relevant_parent_id);
-                        return Ok(Item::from_ty_or_ref(applicable_cursor.cur_type(), cursor, parent_id, ctx).into());
+                        return Ok(Item::from_ty_or_ref(applicable_cursor.cur_type(), cur, parent_id, ctx).into());
                     }
                     ctx.known_semantic_parent(definition)
                         .or(parent_id)
@@ -1006,7 +1001,6 @@ impl Item {
                 },
                 None => relevant_parent_id,
             };
-
             match Item::from_ty(
                 &applicable_cursor.cur_type(),
                 applicable_cursor,
@@ -1018,24 +1012,23 @@ impl Item {
                 Err(parse::Error::Continue) => {},
             }
         }
-
-        if cursor.kind() == CXCursor_UnexposedDecl {
+        if cur.kind() == CXCursor_UnexposedDecl {
             Err(parse::Error::Recurse)
         } else {
-            match cursor.kind() {
+            match cur.kind() {
                 CXCursor_MacroDefinition
                 | CXCursor_MacroExpansion
                 | CXCursor_UsingDeclaration
                 | CXCursor_UsingDirective
                 | CXCursor_StaticAssert
                 | CXCursor_FunctionTemplate => {
-                    debug!("Unhandled cursor kind {:?}: {:?}", cursor.kind(), cursor);
+                    debug!("Unhandled cursor kind {:?}: {:?}", cur.kind(), cur);
                 },
                 CXCursor_InclusionDirective => {
-                    let file = cursor.get_included_file_name();
+                    let file = cur.get_included_file_name();
                     match file {
                         None => {
-                            warn!("Inclusion of a nameless file in {:?}", cursor);
+                            warn!("Inclusion of a nameless file in {:?}", cur);
                         },
                         Some(filename) => {
                             ctx.include_file(filename);
@@ -1043,13 +1036,12 @@ impl Item {
                     }
                 },
                 _ => {
-                    let spelling = cursor.spelling();
+                    let spelling = cur.spelling();
                     if !spelling.starts_with("operator") {
-                        warn!("Unhandled cursor kind {:?}: {:?}", cursor.kind(), cursor);
+                        warn!("Unhandled cursor kind {:?}: {:?}", cur.kind(), cur);
                     }
                 },
             }
-
             Err(parse::Error::Continue)
         }
     }

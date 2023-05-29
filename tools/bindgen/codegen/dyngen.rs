@@ -6,11 +6,8 @@ use proc_macro2::Ident;
 #[derive(Default)]
 pub(crate) struct DynItems {
     struct_members: Vec<proc_macro2::TokenStream>,
-
     struct_implementation: Vec<proc_macro2::TokenStream>,
-
     constructor_inits: Vec<proc_macro2::TokenStream>,
-
     init_fields: Vec<proc_macro2::TokenStream>,
 }
 

@@ -14,7 +14,7 @@ use std::io;
 use std::num::Wrapping;
 
 #[derive(Debug)]
-pub(crate) enum VarType {
+pub enum VarType {
     Bool(bool),
     Int(i64),
     Float(f64),
@@ -23,7 +23,7 @@ pub(crate) enum VarType {
 }
 
 #[derive(Debug)]
-pub(crate) struct Var {
+pub struct Var {
     name: String,
     mangled_name: Option<String>,
     link_name: Option<String>,
@@ -33,7 +33,7 @@ pub(crate) struct Var {
 }
 
 impl Var {
-    pub(crate) fn new(
+    pub fn new(
         name: String,
         mangled_name: Option<String>,
         link_name: Option<String>,
@@ -52,23 +52,23 @@ impl Var {
         }
     }
 
-    pub(crate) fn is_const(&self) -> bool {
+    pub fn is_const(&self) -> bool {
         self.is_const
     }
 
-    pub(crate) fn val(&self) -> Option<&VarType> {
+    pub fn val(&self) -> Option<&VarType> {
         self.val.as_ref()
     }
 
-    pub(crate) fn ty(&self) -> TypeId {
+    pub fn ty(&self) -> TypeId {
         self.ty
     }
 
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub(crate) fn mangled_name(&self) -> Option<&str> {
+    pub fn mangled_name(&self) -> Option<&str> {
         self.mangled_name.as_deref()
     }
 
@@ -78,18 +78,16 @@ impl Var {
 }
 
 impl DotAttrs for Var {
-    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         if self.is_const {
             writeln!(out, "<tr><td>const</td><td>true</td></tr>")?;
         }
-
         if let Some(ref mangled) = self.mangled_name {
             writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", mangled)?;
         }
-
         Ok(())
     }
 }
@@ -117,9 +115,9 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
     }
 }
 
-fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callbacks::Parse) {
+fn handle_function_macro(cur: &clang::Cursor, callbacks: &dyn crate::callbacks::Parse) {
     let is_closing_paren = |t: &Token| t.kind == clang_lib::CXToken_Punctuation && t.spelling() == b")";
-    let tokens: Vec<_> = cursor.tokens().iter().collect();
+    let tokens: Vec<_> = cur.tokens().iter().collect();
     if let Some(boundary) = tokens.iter().position(is_closing_paren) {
         let mut spelled = tokens.iter().map(Token::spelling);
         let left = spelled.by_ref().take(boundary + 1);
@@ -132,45 +130,37 @@ fn handle_function_macro(cursor: &clang::Cursor, callbacks: &dyn crate::callback
 }
 
 impl parse::SubItem for Var {
-    fn parse(cursor: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
+    fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
         use cexpr::expr::EvalResult;
         use cexpr::literal::CChar;
         use clang_lib::*;
-        match cursor.kind() {
+        match cur.kind() {
             CXCursor_MacroDefinition => {
                 for callbacks in &ctx.opts().parse_callbacks {
-                    match callbacks.will_parse_macro(&cursor.spelling()) {
+                    match callbacks.will_parse_macro(&cur.spelling()) {
                         MacroParsing::Ignore => {
                             return Err(parse::Error::Continue);
                         },
                         MacroParsing::Default => {},
                     }
-
-                    if cursor.is_macro_function_like() {
-                        handle_function_macro(&cursor, callbacks.as_ref());
+                    if cur.is_macro_function_like() {
+                        handle_function_macro(&cur, callbacks.as_ref());
                         return Err(parse::Error::Continue);
                     }
                 }
-
-                let value = parse_macro(ctx, &cursor);
-
+                let value = parse_macro(ctx, &cur);
                 let (id, value) = match value {
                     Some(v) => v,
                     None => return Err(parse::Error::Continue),
                 };
-
                 assert!(!id.is_empty(), "Empty macro name?");
-
                 let previously_defined = ctx.parsed_macro(&id);
-
                 ctx.note_parsed_macro(id.clone(), value.clone());
-
                 if previously_defined {
                     let name = String::from_utf8(id).unwrap();
-                    duplicated_macro_diagnostic(&name, cursor.location(), ctx);
+                    duplicated_macro_diagnostic(&name, cur.location(), ctx);
                     return Err(parse::Error::Continue);
                 }
-
                 let name = String::from_utf8(id).unwrap();
                 let (type_kind, val) = match value {
                     EvalResult::Invalid => return Err(parse::Error::Continue),
@@ -205,17 +195,15 @@ impl parse::SubItem for Var {
                         (TyKind::Int(kind), VarType::Int(value))
                     },
                 };
-
                 let ty = Item::builtin_type(type_kind, true, ctx);
-
                 Ok(parse::Result::New(
                     Var::new(name, None, None, ty, Some(val), true),
-                    Some(cursor),
+                    Some(cur),
                 ))
             },
             CXCursor_VarDecl => {
-                let mut name = cursor.spelling();
-                if cursor.linkage() == CXLinkage_External {
+                let mut name = cur.spelling();
+                if cur.linkage() == CXLinkage_External {
                     if let Some(nm) = ctx.opts().last_callback(|callbacks| {
                         callbacks.generated_name_override(ItemInfo {
                             name: name.as_str(),
@@ -226,26 +214,21 @@ impl parse::SubItem for Var {
                     }
                 }
                 let name = name;
-
                 if name.is_empty() {
                     warn!("Empty constant name?");
                     return Err(parse::Error::Continue);
                 }
-
                 let link_name = ctx.opts().last_callback(|callbacks| {
                     callbacks.generated_link_name_override(ItemInfo {
                         name: name.as_str(),
                         kind: ItemKind::Var,
                     })
                 });
-
-                let ty = cursor.cur_type();
-
+                let ty = cur.cur_type();
                 let is_const = ty.is_const()
                     || ([CXType_ConstantArray, CXType_IncompleteArray].contains(&ty.kind())
                         && ty.elem_type().map_or(false, |element| element.is_const()));
-
-                let ty = match Item::from_ty(&ty, cursor, None, ctx) {
+                let ty = match Item::from_ty(&ty, cur, None, ctx) {
                     Ok(ty) => ty,
                     Err(e) => {
                         assert!(
@@ -265,9 +248,9 @@ impl parse::SubItem for Var {
                         TyKind::Int(kind) => kind,
                         _ => unreachable!(),
                     };
-                    let mut val = cursor.evaluate().and_then(|v| v.as_int());
+                    let mut val = cur.evaluate().and_then(|v| v.as_int());
                     if val.is_none() || !kind.signedness_matches(val.unwrap()) {
-                        val = get_integer_literal_from_cursor(&cursor);
+                        val = get_integer_literal_from_cursor(&cur);
                     }
                     val.map(|val| {
                         if kind == IntKind::Bool {
@@ -277,16 +260,13 @@ impl parse::SubItem for Var {
                         }
                     })
                 } else if is_float {
-                    cursor.evaluate().and_then(|v| v.as_double()).map(VarType::Float)
+                    cur.evaluate().and_then(|v| v.as_double()).map(VarType::Float)
                 } else {
-                    cursor
-                        .evaluate()
-                        .and_then(|v| v.as_literal_string())
-                        .map(VarType::String)
+                    cur.evaluate().and_then(|v| v.as_literal_string()).map(VarType::String)
                 };
-                let mangling = cursor_mangling(ctx, &cursor);
+                let mangling = cursor_mangling(ctx, &cur);
                 let var = Var::new(name, mangling, link_name, ty, value, is_const);
-                Ok(parse::Result::New(var, Some(cursor)))
+                Ok(parse::Result::New(var, Some(cur)))
             },
             _ => {
                 /* TODO */

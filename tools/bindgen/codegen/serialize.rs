@@ -67,7 +67,7 @@ impl<'a> CSerialize<'a> for Function {
             });
         }
 
-        let signature = match ctx.resolve_type(self.signature()).kind() {
+        let signature = match ctx.resolve_type(self.sig()).kind() {
             TyKind::Function(signature) => signature,
             _ => unreachable!(),
         };

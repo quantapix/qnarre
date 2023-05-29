@@ -143,27 +143,25 @@ impl Cursor {
         assert!(self.is_valid());
         unsafe {
             let tu = clang_Cursor_getTranslationUnit(self.c);
-            let cursor = Cursor {
+            let y = Cursor {
                 c: clang_getTranslationUnitCursor(tu),
             };
-            assert!(cursor.is_valid());
-            cursor
+            assert!(y.is_valid());
+            y
         }
     }
 
     pub fn is_toplevel(&self) -> bool {
-        let mut semantic_parent = self.fallible_semantic_parent();
-
-        while semantic_parent.is_some()
-            && (semantic_parent.unwrap().kind() == CXCursor_Namespace
-                || semantic_parent.unwrap().kind() == CXCursor_NamespaceAlias
-                || semantic_parent.unwrap().kind() == CXCursor_NamespaceRef)
+        let mut y = self.fallible_semantic_parent();
+        while y.is_some()
+            && (y.unwrap().kind() == CXCursor_Namespace
+                || y.unwrap().kind() == CXCursor_NamespaceAlias
+                || y.unwrap().kind() == CXCursor_NamespaceRef)
         {
-            semantic_parent = semantic_parent.unwrap().fallible_semantic_parent();
+            y = y.unwrap().fallible_semantic_parent();
         }
-
         let tu = self.translation_unit();
-        semantic_parent == tu.fallible_semantic_parent()
+        y == tu.fallible_semantic_parent()
     }
 
     pub fn is_template_like(&self) -> bool {
@@ -677,25 +675,20 @@ impl fmt::Debug for Cursor {
 }
 
 pub struct RawTokens<'a> {
-    cursor: &'a Cursor,
+    cur: &'a Cursor,
     tu: CXTranslationUnit,
     tokens: *mut CXToken,
     count: c_uint,
 }
 
 impl<'a> RawTokens<'a> {
-    fn new(cursor: &'a Cursor) -> Self {
+    fn new(cur: &'a Cursor) -> Self {
         let mut tokens = ptr::null_mut();
-        let mut token_count = 0;
-        let range = cursor.extent();
-        let tu = unsafe { clang_Cursor_getTranslationUnit(cursor.c) };
-        unsafe { clang_tokenize(tu, range, &mut tokens, &mut token_count) };
-        Self {
-            cursor,
-            tu,
-            tokens,
-            count: token_count,
-        }
+        let mut count = 0;
+        let range = cur.extent();
+        let tu = unsafe { clang_Cursor_getTranslationUnit(cur.c) };
+        unsafe { clang_tokenize(tu, range, &mut tokens, &mut count) };
+        Self { cur, tu, tokens, count }
     }
 
     fn as_slice(&self) -> &[CXToken] {
@@ -1594,25 +1587,24 @@ pub struct EvalResult {
 }
 
 impl EvalResult {
-    pub fn new(cursor: Cursor) -> Option<Self> {
+    pub fn new(cur: Cursor) -> Option<Self> {
         {
             let mut found_cant_eval = false;
-            cursor.visit(|c| {
-                if c.kind() == CXCursor_TypeRef && c.cur_type().canonical_type().kind() == CXType_Unexposed {
+            cur.visit(|x| {
+                if x.kind() == CXCursor_TypeRef && x.cur_type().canonical_type().kind() == CXType_Unexposed {
                     found_cant_eval = true;
                     return CXChildVisit_Break;
                 }
 
                 CXChildVisit_Recurse
             });
-
             if found_cant_eval {
                 return None;
             }
         }
         Some(EvalResult {
-            x: unsafe { clang_Cursor_Evaluate(cursor.c) },
-            ty: cursor.cur_type().canonical_type(),
+            x: unsafe { clang_Cursor_Evaluate(cur.c) },
+            ty: cur.cur_type().canonical_type(),
         })
     }
 

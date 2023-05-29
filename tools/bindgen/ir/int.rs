@@ -49,7 +49,7 @@ impl IntKind {
         })
     }
 
-    pub(crate) fn signedness_matches(&self, val: i64) -> bool {
-        val >= 0 || self.is_signed()
+    pub(crate) fn signedness_matches(&self, x: i64) -> bool {
+        x >= 0 || self.is_signed()
     }
 }

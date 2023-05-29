@@ -22,23 +22,23 @@ pub(crate) enum FnKind {
 }
 
 impl FnKind {
-    pub(crate) fn from_cursor(cursor: &clang::Cursor) -> Option<FnKind> {
-        Some(match cursor.kind() {
+    pub(crate) fn from_cursor(cur: &clang::Cursor) -> Option<FnKind> {
+        Some(match cur.kind() {
             clang_lib::CXCursor_FunctionDecl => FnKind::Function,
             clang_lib::CXCursor_Constructor => FnKind::Method(MethodKind::Constructor),
-            clang_lib::CXCursor_Destructor => FnKind::Method(if cursor.method_is_virtual() {
+            clang_lib::CXCursor_Destructor => FnKind::Method(if cur.method_is_virtual() {
                 MethodKind::VirtualDestructor {
-                    pure_virtual: cursor.method_is_pure_virtual(),
+                    pure_virtual: cur.method_is_pure_virtual(),
                 }
             } else {
                 MethodKind::Destructor
             }),
             clang_lib::CXCursor_CXXMethod => {
-                if cursor.method_is_virtual() {
+                if cur.method_is_virtual() {
                     FnKind::Method(MethodKind::Virtual {
-                        pure_virtual: cursor.method_is_pure_virtual(),
+                        pure_virtual: cur.method_is_pure_virtual(),
                     })
-                } else if cursor.method_is_static() {
+                } else if cur.method_is_static() {
                     FnKind::Method(MethodKind::Static)
                 } else {
                     FnKind::Method(MethodKind::Normal)
@@ -58,15 +58,10 @@ pub(crate) enum Linkage {
 #[derive(Debug)]
 pub(crate) struct Function {
     name: String,
-
     mangled_name: Option<String>,
-
     link_name: Option<String>,
-
-    signature: TypeId,
-
+    sig: TypeId,
     kind: FnKind,
-
     linkage: Linkage,
 }
 
@@ -83,47 +78,40 @@ impl Function {
             name,
             mangled_name,
             link_name,
-            signature,
+            sig: signature,
             kind,
             linkage,
         }
     }
-
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
-
     pub(crate) fn mangled_name(&self) -> Option<&str> {
         self.mangled_name.as_deref()
     }
-
     pub fn link_name(&self) -> Option<&str> {
         self.link_name.as_deref()
     }
-
-    pub(crate) fn signature(&self) -> TypeId {
-        self.signature
+    pub(crate) fn sig(&self) -> TypeId {
+        self.sig
     }
-
     pub(crate) fn kind(&self) -> FnKind {
         self.kind
     }
-
     pub(crate) fn linkage(&self) -> Linkage {
         self.linkage
     }
 }
 
 impl DotAttrs for Function {
-    fn dot_attributes<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
-        if let Some(ref mangled) = self.mangled_name {
-            let mangled: String = mangled.chars().flat_map(|c| c.escape_default()).collect();
-            writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", mangled)?;
+        if let Some(ref x) = self.mangled_name {
+            let x: String = x.chars().flat_map(|c| c.escape_default()).collect();
+            writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", x)?;
         }
-
         Ok(())
     }
 }
@@ -143,9 +131,8 @@ pub enum Abi {
 
 impl FromStr for Abi {
     type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(x: &str) -> Result<Self, Self::Err> {
+        match x {
             "C" => Ok(Self::C),
             "stdcall" => Ok(Self::Stdcall),
             "efiapi" => Ok(Self::EfiApi),
@@ -155,14 +142,14 @@ impl FromStr for Abi {
             "aapcs" => Ok(Self::Aapcs),
             "win64" => Ok(Self::Win64),
             "C-unwind" => Ok(Self::CUnwind),
-            _ => Err(format!("Invalid or unknown ABI {:?}", s)),
+            _ => Err(format!("Invalid or unknown ABI {:?}", x)),
         }
     }
 }
 
 impl std::fmt::Display for Abi {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match *self {
+        let y = match *self {
             Self::C => "C",
             Self::Stdcall => "stdcall",
             Self::EfiApi => "efiapi",
@@ -173,15 +160,14 @@ impl std::fmt::Display for Abi {
             Self::Win64 => "win64",
             Self::CUnwind => "C-unwind",
         };
-
-        s.fmt(f)
+        y.fmt(f)
     }
 }
 
 impl quote::ToTokens for Abi {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    fn to_tokens(&self, toks: &mut proc_macro2::TokenStream) {
         let abi = self.to_string();
-        tokens.append_all(quote! { #abi });
+        toks.append_all(quote! { #abi });
     }
 }
 
@@ -198,10 +184,10 @@ impl ClangAbi {
 }
 
 impl quote::ToTokens for ClangAbi {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    fn to_tokens(&self, toks: &mut proc_macro2::TokenStream) {
         match *self {
-            Self::Known(abi) => abi.to_tokens(tokens),
-            Self::Unknown(cc) => panic!("Cannot turn unknown calling convention to tokens: {:?}", cc),
+            Self::Known(x) => x.to_tokens(toks),
+            Self::Unknown(x) => panic!("Cannot turn unknown calling convention to tokens: {:?}", x),
         }
     }
 }
@@ -209,22 +195,17 @@ impl quote::ToTokens for ClangAbi {
 #[derive(Debug)]
 pub(crate) struct FnSig {
     name: String,
-
     return_type: TypeId,
-
     argument_types: Vec<(Option<String>, TypeId)>,
-
     is_variadic: bool,
     is_divergent: bool,
-
     must_use: bool,
-
     abi: ClangAbi,
 }
 
-fn get_abi(cc: CXCallingConv) -> ClangAbi {
+fn get_abi(x: CXCallingConv) -> ClangAbi {
     use clang_lib::*;
-    match cc {
+    match x {
         CXCallingConv_Default => ClangAbi::Known(Abi::C),
         CXCallingConv_C => ClangAbi::Known(Abi::C),
         CXCallingConv_X86StdCall => ClangAbi::Known(Abi::Stdcall),
@@ -233,54 +214,45 @@ fn get_abi(cc: CXCallingConv) -> ClangAbi {
         CXCallingConv_X86VectorCall => ClangAbi::Known(Abi::Vectorcall),
         CXCallingConv_AAPCS => ClangAbi::Known(Abi::Aapcs),
         CXCallingConv_X86_64Win64 => ClangAbi::Known(Abi::Win64),
-        other => ClangAbi::Unknown(other),
+        x => ClangAbi::Unknown(x),
     }
 }
 
-pub(crate) fn cursor_mangling(ctx: &BindgenContext, cursor: &clang::Cursor) -> Option<String> {
+pub(crate) fn cursor_mangling(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<String> {
     if !ctx.opts().enable_mangling {
         return None;
     }
-
-    if cursor.is_in_non_fully_specialized_template() {
+    if cur.is_in_non_fully_specialized_template() {
         return None;
     }
-
-    let is_destructor = cursor.kind() == clang_lib::CXCursor_Destructor;
-    if let Ok(mut manglings) = cursor.cxx_manglings() {
+    let is_destructor = cur.kind() == clang_lib::CXCursor_Destructor;
+    if let Ok(mut manglings) = cur.cxx_manglings() {
         while let Some(m) = manglings.pop() {
             if is_destructor && !m.ends_with("D1Ev") {
                 continue;
             }
-
             return Some(m);
         }
     }
-
-    let mut mangling = cursor.mangling();
+    let mut mangling = cur.mangling();
     if mangling.is_empty() {
         return None;
     }
-
-    if is_destructor {
-        if mangling.ends_with("D0Ev") {
-            let new_len = mangling.len() - 4;
-            mangling.truncate(new_len);
-            mangling.push_str("D1Ev");
-        }
+    if is_destructor && mangling.ends_with("D0Ev") {
+        let new_len = mangling.len() - 4;
+        mangling.truncate(new_len);
+        mangling.push_str("D1Ev");
     }
-
     Some(mangling)
 }
 
 fn args_from_ty_and_cursor(
     ty: &clang::Type,
-    cursor: &clang::Cursor,
+    cur: &clang::Cursor,
     ctx: &mut BindgenContext,
 ) -> Vec<(Option<String>, TypeId)> {
-    let cursor_args = cursor.args().unwrap_or_default().into_iter();
+    let cursor_args = cur.args().unwrap_or_default().into_iter();
     let type_args = ty.args().unwrap_or_default().into_iter();
-
     cursor_args
         .map(Some)
         .chain(std::iter::repeat(None))
@@ -291,7 +263,7 @@ fn args_from_ty_and_cursor(
                 .map(|a| a.spelling())
                 .and_then(|name| if name.is_empty() { None } else { Some(name) });
 
-            let cursor = arg_cur.unwrap_or(*cursor);
+            let cursor = arg_cur.unwrap_or(*cur);
             let ty = arg_ty.unwrap_or_else(|| cursor.cur_type());
             (name, Item::from_ty_or_ref(ty, cursor, None, ctx))
         })
@@ -301,37 +273,31 @@ fn args_from_ty_and_cursor(
 impl FnSig {
     pub(crate) fn from_ty(
         ty: &clang::Type,
-        cursor: &clang::Cursor,
+        cur: &clang::Cursor,
         ctx: &mut BindgenContext,
     ) -> Result<Self, parse::Error> {
         use clang_lib::*;
-        debug!("FunctionSig::from_ty {:?} {:?}", ty, cursor);
-
-        let kind = cursor.kind();
+        debug!("FunctionSig::from_ty {:?} {:?}", ty, cur);
+        let kind = cur.kind();
         if kind == CXCursor_FunctionTemplate {
             return Err(parse::Error::Continue);
         }
-
-        let spelling = cursor.spelling();
-
+        let spelling = cur.spelling();
         let is_operator = |spelling: &str| spelling.starts_with("operator") && !clang::is_valid_identifier(spelling);
         if is_operator(&spelling) {
             return Err(parse::Error::Continue);
         }
-
         if (kind == CXCursor_Constructor || kind == CXCursor_Destructor) && spelling.contains('<') {
             return Err(parse::Error::Continue);
         }
-
-        let cursor = if cursor.is_valid() { *cursor } else { ty.declaration() };
-
+        let cur2 = if cur.is_valid() { *cur } else { ty.declaration() };
         let mut args = match kind {
             CXCursor_FunctionDecl | CXCursor_Constructor | CXCursor_CXXMethod => {
-                args_from_ty_and_cursor(ty, &cursor, ctx)
+                args_from_ty_and_cursor(ty, &cur2, ctx)
             },
             _ => {
                 let mut args = vec![];
-                cursor.visit(|c| {
+                cur2.visit(|c| {
                     if c.kind() == CXCursor_ParmDecl {
                         let ty = Item::from_ty_or_ref(c.cur_type(), c, None, ctx);
                         let name = c.spelling();
@@ -340,18 +306,16 @@ impl FnSig {
                     }
                     CXChildVisit_Continue
                 });
-
                 if args.is_empty() {
-                    args_from_ty_and_cursor(ty, &cursor, ctx)
+                    args_from_ty_and_cursor(ty, &cur2, ctx)
                 } else {
                     args
                 }
             },
         };
-
         let (must_use, mut is_divergent) = if ctx.opts().enable_function_attribute_detection {
             let [must_use, no_return, no_return_cpp] =
-                cursor.has_attrs(&[Attribute::MUST_USE, Attribute::NO_RETURN, Attribute::NO_RETURN_CPP]);
+                cur2.has_attrs(&[Attribute::MUST_USE, Attribute::NO_RETURN, Attribute::NO_RETURN_CPP]);
             (must_use, no_return || no_return_cpp)
         } else {
             Default::default()
@@ -362,16 +326,16 @@ impl FnSig {
         let is_method = kind == CXCursor_CXXMethod;
         let is_constructor = kind == CXCursor_Constructor;
         let is_destructor = kind == CXCursor_Destructor;
-        if (is_constructor || is_destructor || is_method) && cursor.lexical_parent() != cursor.semantic_parent() {
+        if (is_constructor || is_destructor || is_method) && cur2.lexical_parent() != cur2.semantic_parent() {
             return Err(parse::Error::Continue);
         }
 
         if is_method || is_constructor || is_destructor {
-            let is_const = is_method && cursor.method_is_const();
-            let is_virtual = is_method && cursor.method_is_virtual();
-            let is_static = is_method && cursor.method_is_static();
+            let is_const = is_method && cur2.method_is_const();
+            let is_virtual = is_method && cur2.method_is_virtual();
+            let is_static = is_method && cur2.method_is_static();
             if !is_static && !is_virtual {
-                let parent = cursor.semantic_parent();
+                let parent = cur2.semantic_parent();
                 let class = Item::parse(parent, None, ctx).expect("Expected to parse the class");
                 let class = class.as_type_id_unchecked();
 
@@ -390,30 +354,24 @@ impl FnSig {
                 args.insert(0, (Some("this".into()), ptr));
             }
         }
-
         let ty_ret_type = ty.ret_type().ok_or(parse::Error::Continue)?;
-
         let ret = if is_constructor && ctx.is_target_wasm32() {
             let void = Item::builtin_type(TyKind::Void, false, ctx);
             Item::builtin_type(TyKind::Pointer(void), false, ctx)
         } else {
-            Item::from_ty_or_ref(ty_ret_type, cursor, None, ctx)
+            Item::from_ty_or_ref(ty_ret_type, cur2, None, ctx)
         };
-
         let mut call_conv = ty.call_conv();
-        if let Some(ty) = cursor.cur_type().canonical_type().pointee_type() {
+        if let Some(ty) = cur2.cur_type().canonical_type().pointee_type() {
             let cursor_call_conv = ty.call_conv();
             if cursor_call_conv != CXCallingConv_Invalid {
                 call_conv = cursor_call_conv;
             }
         }
-
         let abi = get_abi(call_conv);
-
         if abi.is_unknown() {
             warn!("Unknown calling convention: {:?}", call_conv);
         }
-
         Ok(Self {
             name: spelling,
             return_type: ret,
@@ -469,7 +427,6 @@ impl FnSig {
         if self.argument_types.len() > RUST_DERIVE_FUNPTR_LIMIT {
             return false;
         }
-
         matches!(self.abi, ClangAbi::Known(Abi::C) | ClangAbi::Unknown(..))
     }
 
@@ -479,48 +436,40 @@ impl FnSig {
 }
 
 impl parse::SubItem for Function {
-    fn parse(cursor: clang::Cursor, context: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
+    fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
         use clang_lib::*;
-
-        let kind = match FnKind::from_cursor(&cursor) {
+        let kind = match FnKind::from_cursor(&cur) {
             None => return Err(parse::Error::Continue),
             Some(k) => k,
         };
-
-        debug!("Function::parse({:?}, {:?})", cursor, cursor.cur_type());
-        let visibility = cursor.visibility();
+        debug!("Function::parse({:?}, {:?})", cur, cur.cur_type());
+        let visibility = cur.visibility();
         if visibility != CXVisibility_Default {
             return Err(parse::Error::Continue);
         }
-
-        if cursor.access_specifier() == CX_CXXPrivate {
+        if cur.access_specifier() == CX_CXXPrivate {
             return Err(parse::Error::Continue);
         }
-
-        let linkage = cursor.linkage();
+        let linkage = cur.linkage();
         let linkage = match linkage {
             CXLinkage_External | CXLinkage_UniqueExternal => Linkage::External,
             CXLinkage_Internal => Linkage::Internal,
             _ => return Err(parse::Error::Continue),
         };
-
-        if cursor.is_inlined_function() || cursor.definition().map_or(false, |x| x.is_inlined_function()) {
+        if cur.is_inlined_function() || cur.definition().map_or(false, |x| x.is_inlined_function()) {
             return Err(parse::Error::Continue);
         }
-
-        let sig = Item::from_ty(&cursor.cur_type(), cursor, None, context)?;
-
-        let mut name = cursor.spelling();
+        let sig = Item::from_ty(&cur.cur_type(), cur, None, ctx)?;
+        let mut name = cur.spelling();
         assert!(!name.is_empty(), "Empty function name?");
-
-        if cursor.kind() == CXCursor_Destructor {
+        if cur.kind() == CXCursor_Destructor {
             if name.starts_with('~') {
                 name.remove(0);
             }
 
             name.push_str("_destructor");
         }
-        if let Some(nm) = context.opts().last_callback(|callbacks| {
+        if let Some(nm) = ctx.opts().last_callback(|callbacks| {
             callbacks.generated_name_override(ItemInfo {
                 name: name.as_str(),
                 kind: ItemKind::Function,
@@ -529,23 +478,20 @@ impl parse::SubItem for Function {
             name = nm;
         }
         assert!(!name.is_empty(), "Empty function name.");
-
-        let mangled_name = cursor_mangling(context, &cursor);
-
-        let link_name = context.opts().last_callback(|callbacks| {
+        let mangled_name = cursor_mangling(ctx, &cur);
+        let link_name = ctx.opts().last_callback(|callbacks| {
             callbacks.generated_link_name_override(ItemInfo {
                 name: name.as_str(),
                 kind: ItemKind::Function,
             })
         });
         let function = Self::new(name.clone(), mangled_name, link_name, sig, kind, linkage);
-        Ok(parse::Result::New(function, Some(cursor)))
+        Ok(parse::Result::New(function, Some(cur)))
     }
 }
 
 impl Trace for FnSig {
     type Extra = ();
-
     fn trace<T>(&self, _: &BindgenContext, tracer: &mut T, _: &())
     where
         T: Tracer,
