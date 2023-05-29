@@ -14,7 +14,7 @@ use super::layout::Opaque;
 use super::module::Module;
 use super::template::{AsTemplParam, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
-use super::ty::{TyKind, Type};
+use super::typ::{Type, TypeKind};
 use super::{Context, ItemId, TypeId};
 use crate::clang;
 use crate::parse;
@@ -383,10 +383,10 @@ impl Item {
             }
             match *i.kind() {
                 ItemKind::Type(ref ty) => match *ty.kind() {
-                    TyKind::ResolvedTypeRef(inner) => {
+                    TypeKind::ResolvedTypeRef(inner) => {
                         i = ctx.resolve_item(inner);
                     },
-                    TyKind::TemplateInstantiation(ref x) => {
+                    TypeKind::TemplateInstantiation(ref x) => {
                         i = ctx.resolve_item(x.template_definition());
                     },
                     _ => return i.id(),
@@ -404,7 +404,7 @@ impl Item {
     fn push_disambiguated_name(&self, ctx: &Context, to: &mut String, level: u8) {
         to.push_str(&self.canonical_name(ctx));
         if let ItemKind::Type(ref ty) = *self.kind() {
-            if let TyKind::TemplateInstantiation(ref x) = *ty.kind() {
+            if let TypeKind::TemplateInstantiation(ref x) = *ty.kind() {
                 to.push_str(&format!("_open{}_", level));
                 for arg in x.template_arguments() {
                     arg.into_resolver()
@@ -427,7 +427,7 @@ impl Item {
         self.func_name().and_then(|func_name| {
             let parent = ctx.resolve_item(self.parent_id());
             if let ItemKind::Type(ref ty) = *parent.kind() {
-                if let TyKind::Comp(ref ci) = *ty.kind() {
+                if let TypeKind::Comp(ref ci) = *ty.kind() {
                     return ci.constructors().iter().position(|c| *c == self.id()).or_else(|| {
                         ci.methods()
                             .iter()
@@ -547,7 +547,7 @@ impl Item {
         let ty_kind = self.kind().as_type().map(|t| t.kind());
         if let Some(ty_kind) = ty_kind {
             match *ty_kind {
-                TyKind::Comp(..) | TyKind::TemplateInstantiation(..) | TyKind::Enum(..) => {
+                TypeKind::Comp(..) | TypeKind::TemplateInstantiation(..) | TypeKind::Enum(..) => {
                     return self.local_id(ctx).to_string()
                 },
                 _ => {},
@@ -574,8 +574,8 @@ impl Item {
             _ => return false,
         };
         match *type_.kind() {
-            TyKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
-            TyKind::Alias(inner_id) => {
+            TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
+            TypeKind::Alias(inner_id) => {
                 let inner_item = ctx.resolve_item(inner_id);
                 let name = item.canonical_name(ctx);
                 if inner_item.canonical_name(ctx) == name {
@@ -643,11 +643,11 @@ impl Item {
             _ => return None,
         };
         Some(match ty.kind() {
-            TyKind::Comp(ref ci) => match ci.kind() {
+            TypeKind::Comp(ref ci) => match ci.kind() {
                 CompKind::Struct => "struct",
                 CompKind::Union => "union",
             },
-            TyKind::Enum(..) => "enum",
+            TypeKind::Enum(..) => "enum",
             _ => return None,
         })
     }
@@ -810,9 +810,9 @@ fn visit_child(
     }
 }
 impl Item {
-    pub fn builtin_type(kind: TyKind, is_const: bool, ctx: &mut Context) -> TypeId {
+    pub fn builtin_type(kind: TypeKind, is_const: bool, ctx: &mut Context) -> TypeId {
         match kind {
-            TyKind::Void | TyKind::Int(..) | TyKind::Pointer(..) | TyKind::Float(..) => {},
+            TypeKind::Void | TypeKind::Int(..) | TypeKind::Pointer(..) | TypeKind::Float(..) => {},
             _ => panic!("Unsupported builtin type"),
         }
         let ty = Type::new(None, None, kind, is_const);
@@ -834,7 +834,7 @@ impl Item {
         macro_rules! try_parse {
             ($what:ident) => {
                 match $what::parse(cursor, ctx) {
-                    Ok(parse::Result::New(item, declaration)) => {
+                    Ok(parse::Resolved::New(item, declaration)) => {
                         let id = ctx.next_item_id();
                         ctx.add_item(
                             Item::new(
@@ -850,7 +850,7 @@ impl Item {
                         );
                         return Ok(id);
                     },
-                    Ok(parse::Result::AlreadyResolved(id)) => {
+                    Ok(parse::Resolved::AlreadyResolved(id)) => {
                         return Ok(id);
                     },
                     Err(parse::Error::Recurse) => return Err(parse::Error::Recurse),
@@ -951,7 +951,7 @@ impl Item {
         }
         debug!("New unresolved type reference: {:?}, {:?}", ty, location);
         let is_const = ty.is_const();
-        let kind = TyKind::UnresolvedTypeRef(ty, location, parent_id);
+        let kind = TypeKind::UnresolvedTypeRef(ty, location, parent_id);
         let current_module = ctx.current_module();
         ctx.add_item(
             Item::new(

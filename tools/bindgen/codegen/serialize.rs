@@ -7,7 +7,7 @@ use crate::ir::function::{FnKind, Function};
 use crate::ir::item::CanonicalName;
 use crate::ir::item::Item;
 use crate::ir::item_kind::ItemKind;
-use crate::ir::ty::{FloatKind, TyKind, Type};
+use crate::ir::typ::{FloatKind, Type, TypeKind};
 use crate::ir::{Context, TypeId};
 
 use super::CodegenError;
@@ -68,7 +68,7 @@ impl<'a> CSerialize<'a> for Function {
         }
 
         let signature = match ctx.resolve_type(self.sig()).kind() {
-            TyKind::Function(signature) => signature,
+            TypeKind::Function(signature) => signature,
             _ => unreachable!(),
         };
 
@@ -80,7 +80,7 @@ impl<'a> CSerialize<'a> for Function {
             let mut count = 0;
 
             signature
-                .argument_types()
+                .arg_types()
                 .iter()
                 .cloned()
                 .map(|(opt_name, type_id)| {
@@ -99,7 +99,7 @@ impl<'a> CSerialize<'a> for Function {
         let wrap_name = format!("{}{}", name, ctx.wrap_static_fns_suffix());
 
         let ret_ty = {
-            let type_id = signature.return_type();
+            let type_id = signature.ret_type();
             let item = ctx.resolve_item(type_id);
             let ret_ty = item.expect_type();
 
@@ -152,19 +152,19 @@ impl<'a> CSerialize<'a> for Type {
         writer: &mut W,
     ) -> Result<(), CodegenError> {
         match self.kind() {
-            TyKind::Void => {
+            TypeKind::Void => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 write!(writer, "void")?
             },
-            TyKind::NullPtr => {
+            TypeKind::NullPtr => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 write!(writer, "nullptr_t")?
             },
-            TyKind::Int(int_kind) => {
+            TypeKind::Int(int_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -190,7 +190,7 @@ impl<'a> CSerialize<'a> for Type {
                     },
                 }
             },
-            TyKind::Float(float_kind) => {
+            TypeKind::Float(float_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -201,7 +201,7 @@ impl<'a> CSerialize<'a> for Type {
                     FloatKind::Float128 => write!(writer, "__float128")?,
                 }
             },
-            TyKind::Complex(float_kind) => {
+            TypeKind::Complex(float_kind) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -212,7 +212,7 @@ impl<'a> CSerialize<'a> for Type {
                     FloatKind::Float128 => write!(writer, "__complex128")?,
                 }
             },
-            TyKind::Alias(type_id) => {
+            TypeKind::Alias(type_id) => {
                 if let Some(name) = self.name() {
                     if self.is_const() {
                         write!(writer, "const {}", name)?;
@@ -223,16 +223,16 @@ impl<'a> CSerialize<'a> for Type {
                     type_id.serialize(ctx, (), stack, writer)?;
                 }
             },
-            TyKind::Array(type_id, length) => {
+            TypeKind::Array(type_id, length) => {
                 type_id.serialize(ctx, (), stack, writer)?;
                 write!(writer, " [{}]", length)?
             },
-            TyKind::Function(signature) => {
+            TypeKind::Function(signature) => {
                 if self.is_const() {
                     stack.push("const ".to_string());
                 }
 
-                signature.return_type().serialize(ctx, (), &mut vec![], writer)?;
+                signature.ret_type().serialize(ctx, (), &mut vec![], writer)?;
 
                 write!(writer, " (")?;
                 while let Some(item) = stack.pop() {
@@ -243,7 +243,7 @@ impl<'a> CSerialize<'a> for Type {
                 write!(writer, " (")?;
                 serialize_sep(
                     ", ",
-                    signature.argument_types().iter(),
+                    signature.arg_types().iter(),
                     ctx,
                     writer,
                     |(name, type_id), ctx, buf| {
@@ -256,13 +256,13 @@ impl<'a> CSerialize<'a> for Type {
                 )?;
                 write!(writer, ")")?
             },
-            TyKind::ResolvedTypeRef(type_id) => {
+            TypeKind::ResolvedTypeRef(type_id) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
                 type_id.serialize(ctx, (), stack, writer)?
             },
-            TyKind::Pointer(type_id) => {
+            TypeKind::Pointer(type_id) => {
                 if self.is_const() {
                     stack.push("*const ".to_owned());
                 } else {
@@ -270,7 +270,7 @@ impl<'a> CSerialize<'a> for Type {
                 }
                 type_id.serialize(ctx, (), stack, writer)?
             },
-            TyKind::Comp(comp_info) => {
+            TypeKind::Comp(comp_info) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
@@ -282,7 +282,7 @@ impl<'a> CSerialize<'a> for Type {
                     CompKind::Union => write!(writer, "union {}", name)?,
                 };
             },
-            TyKind::Enum(_enum_ty) => {
+            TypeKind::Enum(_enum_ty) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }

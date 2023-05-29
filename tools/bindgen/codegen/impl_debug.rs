@@ -1,6 +1,6 @@
 use crate::ir::comp::{BitfieldUnit, CompKind, Field, FieldData, FieldMethods};
 use crate::ir::item::{CanonicalName, HasTypeParamInArray, IsOpaque, Item};
-use crate::ir::ty::TyKind;
+use crate::ir::typ::TypeKind;
 use crate::ir::Context;
 
 pub(crate) fn gen_debug_impl(ctx: &Context, fields: &[Field], item: &Item, kind: CompKind) -> proc_macro2::TokenStream {
@@ -116,18 +116,18 @@ impl<'a> ImplDebug<'a> for Item {
             ))
         }
         match *ty.kind() {
-            TyKind::Void
-            | TyKind::NullPtr
-            | TyKind::Int(..)
-            | TyKind::Float(..)
-            | TyKind::Complex(..)
-            | TyKind::Function(..)
-            | TyKind::Enum(..)
-            | TyKind::Reference(..)
-            | TyKind::UnresolvedTypeRef(..)
-            | TyKind::Comp(..) => debug_print(name, quote! { #name_ident }),
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Function(..)
+            | TypeKind::Enum(..)
+            | TypeKind::Reference(..)
+            | TypeKind::UnresolvedTypeRef(..)
+            | TypeKind::Comp(..) => debug_print(name, quote! { #name_ident }),
 
-            TyKind::TemplateInstantiation(ref x) => {
+            TypeKind::TemplateInstantiation(ref x) => {
                 if x.is_opaque(ctx, self) {
                     Some((format!("{}: opaque", name), vec![]))
                 } else {
@@ -135,16 +135,16 @@ impl<'a> ImplDebug<'a> for Item {
                 }
             },
 
-            TyKind::TypeParam => Some((format!("{}: Non-debuggable generic", name), vec![])),
+            TypeKind::TypeParam => Some((format!("{}: Non-debuggable generic", name), vec![])),
 
-            TyKind::Array(_, len) => {
+            TypeKind::Array(_, len) => {
                 if self.has_type_param_in_array(ctx) {
                     Some((format!("{}: Array with length {}", name, len), vec![]))
                 } else {
                     debug_print(name, quote! { #name_ident })
                 }
             },
-            TyKind::Vector(_, len) => {
+            TypeKind::Vector(_, len) => {
                 if ctx.opts().use_core {
                     Some((format!("{}(...)", name), vec![]))
                 } else {
@@ -158,21 +158,22 @@ impl<'a> ImplDebug<'a> for Item {
                 }
             },
 
-            TyKind::ResolvedTypeRef(t) | TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::BlockPointer(t) => {
-                ctx.resolve_item(t).impl_debug(ctx, name)
-            },
+            TypeKind::ResolvedTypeRef(t)
+            | TypeKind::TemplateAlias(t, _)
+            | TypeKind::Alias(t)
+            | TypeKind::BlockPointer(t) => ctx.resolve_item(t).impl_debug(ctx, name),
 
-            TyKind::Pointer(inner) => {
+            TypeKind::Pointer(inner) => {
                 let inner_type = ctx.resolve_type(inner).canonical_type(ctx);
                 match *inner_type.kind() {
-                    TyKind::Function(ref sig) if !sig.function_pointers_can_derive() => {
+                    TypeKind::Function(ref sig) if !sig.fn_ptrs_can_derive() => {
                         Some((format!("{}: FunctionPointer", name), vec![]))
                     },
                     _ => debug_print(name, quote! { #name_ident }),
                 }
             },
 
-            TyKind::Opaque => None,
+            TypeKind::Opaque => None,
         }
     }
 }

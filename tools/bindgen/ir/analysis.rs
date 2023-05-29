@@ -97,8 +97,8 @@ pub mod derive {
     use crate::ir::layout::Layout;
     use crate::ir::template::TemplParams;
     use crate::ir::traversal::{EdgeKind, Trace};
-    use crate::ir::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
-    use crate::ir::ty::{TyKind, Type};
+    use crate::ir::typ::{Type, TypeKind};
+    use crate::ir::RUST_DERIVE_IN_ARRAY_LIMIT;
     use crate::ir::{Context, ItemId};
     use crate::{Entry, HashMap, HashSet};
     use std::fmt;
@@ -185,7 +185,7 @@ pub mod derive {
         }
 
         fn can_derive_fnptr(&self, f: &FnSig) -> Resolved {
-            match (self, f.function_pointers_can_derive()) {
+            match (self, f.fn_ptrs_can_derive()) {
                 (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => Resolved::Yes,
                 (DeriveTrait::Debug, false) => Resolved::Manually,
                 (_, false) => Resolved::No,
@@ -206,17 +206,17 @@ pub mod derive {
             }
         }
 
-        fn can_derive_simple(&self, k: &TyKind) -> Resolved {
+        fn can_derive_simple(&self, k: &TypeKind) -> Resolved {
             match (self, k) {
-                (DeriveTrait::Default, TyKind::Void)
-                | (DeriveTrait::Default, TyKind::NullPtr)
-                | (DeriveTrait::Default, TyKind::Enum(..))
-                | (DeriveTrait::Default, TyKind::Reference(..))
-                | (DeriveTrait::Default, TyKind::TypeParam) => Resolved::No,
-                (DeriveTrait::Default, TyKind::UnresolvedTypeRef(..)) => {
+                (DeriveTrait::Default, TypeKind::Void)
+                | (DeriveTrait::Default, TypeKind::NullPtr)
+                | (DeriveTrait::Default, TypeKind::Enum(..))
+                | (DeriveTrait::Default, TypeKind::Reference(..))
+                | (DeriveTrait::Default, TypeKind::TypeParam) => Resolved::No,
+                (DeriveTrait::Default, TypeKind::UnresolvedTypeRef(..)) => {
                     unreachable!("Type with unresolved type ref can't reach derive default")
                 },
-                (DeriveTrait::Hash, TyKind::Float(..)) | (DeriveTrait::Hash, TyKind::Complex(..)) => Resolved::No,
+                (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => Resolved::No,
                 _ => Resolved::Yes,
             }
         }
@@ -281,27 +281,27 @@ pub mod derive {
                 return y;
             }
             match *ty.kind() {
-                TyKind::Void
-                | TyKind::NullPtr
-                | TyKind::Int(..)
-                | TyKind::Complex(..)
-                | TyKind::Float(..)
-                | TyKind::Enum(..)
-                | TyKind::TypeParam
-                | TyKind::UnresolvedTypeRef(..)
-                | TyKind::Reference(..) => {
+                TypeKind::Void
+                | TypeKind::NullPtr
+                | TypeKind::Int(..)
+                | TypeKind::Complex(..)
+                | TypeKind::Float(..)
+                | TypeKind::Enum(..)
+                | TypeKind::TypeParam
+                | TypeKind::UnresolvedTypeRef(..)
+                | TypeKind::Reference(..) => {
                     return self.derive.can_derive_simple(ty.kind());
                 },
-                TyKind::Pointer(x) => {
+                TypeKind::Pointer(x) => {
                     let ty2 = self.ctx.resolve_type(x).canonical_type(self.ctx);
-                    if let TyKind::Function(ref sig) = *ty2.kind() {
+                    if let TypeKind::Function(ref sig) = *ty2.kind() {
                         self.derive.can_derive_fnptr(sig)
                     } else {
                         self.derive.can_derive_ptr()
                     }
                 },
-                TyKind::Function(ref sig) => self.derive.can_derive_fnptr(sig),
-                TyKind::Array(t, len) => {
+                TypeKind::Function(ref sig) => self.derive.can_derive_fnptr(sig),
+                TypeKind::Array(t, len) => {
                     let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
                     if ty2 != Resolved::Yes {
                         return Resolved::No;
@@ -317,14 +317,14 @@ pub mod derive {
                     }
                     Resolved::Yes
                 },
-                TyKind::Vector(t, len) => {
+                TypeKind::Vector(t, len) => {
                     let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
                     if ty2 != Resolved::Yes {
                         return Resolved::No;
                     }
                     self.derive.can_derive_vec()
                 },
-                TyKind::Comp(ref x) => {
+                TypeKind::Comp(ref x) => {
                     assert!(!x.has_non_type_template_params());
                     if !self.derive.can_derive_compound_forward_decl() && x.is_forward_declaration() {
                         return Resolved::No;
@@ -363,12 +363,12 @@ pub mod derive {
                     }
                     self.constrain_join(i, self.derive.check_edge_comp())
                 },
-                TyKind::ResolvedTypeRef(..)
-                | TyKind::TemplateAlias(..)
-                | TyKind::Alias(..)
-                | TyKind::BlockPointer(..) => self.constrain_join(i, self.derive.check_edge_typeref()),
-                TyKind::TemplateInstantiation(..) => self.constrain_join(i, self.derive.check_edge_tmpl_inst()),
-                TyKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
+                TypeKind::ResolvedTypeRef(..)
+                | TypeKind::TemplateAlias(..)
+                | TypeKind::Alias(..)
+                | TypeKind::BlockPointer(..) => self.constrain_join(i, self.derive.check_edge_typeref()),
+                TypeKind::TemplateInstantiation(..) => self.constrain_join(i, self.derive.check_edge_tmpl_inst()),
+                TypeKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
             }
         }
 
@@ -470,7 +470,7 @@ pub mod has_destructor {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::{CompKind, Field, FieldMethods};
     use crate::ir::traversal::EdgeKind;
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
@@ -523,14 +523,14 @@ pub mod has_destructor {
                 Some(ty) => ty,
             };
             match *ty.kind() {
-                TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::ResolvedTypeRef(t) => {
+                TypeKind::TemplateAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedTypeRef(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
                         YConstrain::Same
                     }
                 },
-                TyKind::Comp(ref x) => {
+                TypeKind::Comp(ref x) => {
                     if x.has_own_destructor() {
                         return self.insert(id);
                     }
@@ -550,7 +550,7 @@ pub mod has_destructor {
                         },
                     }
                 },
-                TyKind::TemplateInstantiation(ref t) => {
+                TypeKind::TemplateInstantiation(ref t) => {
                     let destr = self.ys.contains(&t.template_definition().into())
                         || t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
                     if destr {
@@ -587,7 +587,7 @@ pub mod has_float {
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
     use crate::ir::traversal::EdgeKind;
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
@@ -653,40 +653,40 @@ pub mod has_float {
                 },
             };
             match *ty.kind() {
-                TyKind::Void
-                | TyKind::NullPtr
-                | TyKind::Int(..)
-                | TyKind::Function(..)
-                | TyKind::Enum(..)
-                | TyKind::Reference(..)
-                | TyKind::TypeParam
-                | TyKind::Opaque
-                | TyKind::Pointer(..)
-                | TyKind::UnresolvedTypeRef(..) => YConstrain::Same,
-                TyKind::Float(..) | TyKind::Complex(..) => self.insert(id),
-                TyKind::Array(t, _) => {
+                TypeKind::Void
+                | TypeKind::NullPtr
+                | TypeKind::Int(..)
+                | TypeKind::Function(..)
+                | TypeKind::Enum(..)
+                | TypeKind::Reference(..)
+                | TypeKind::TypeParam
+                | TypeKind::Opaque
+                | TypeKind::Pointer(..)
+                | TypeKind::UnresolvedTypeRef(..) => YConstrain::Same,
+                TypeKind::Float(..) | TypeKind::Complex(..) => self.insert(id),
+                TypeKind::Array(t, _) => {
                     if self.ys.contains(&t.into()) {
                         return self.insert(id);
                     }
                     YConstrain::Same
                 },
-                TyKind::Vector(t, _) => {
+                TypeKind::Vector(t, _) => {
                     if self.ys.contains(&t.into()) {
                         return self.insert(id);
                     }
                     YConstrain::Same
                 },
-                TyKind::ResolvedTypeRef(t)
-                | TyKind::TemplateAlias(t, _)
-                | TyKind::Alias(t)
-                | TyKind::BlockPointer(t) => {
+                TypeKind::ResolvedTypeRef(t)
+                | TypeKind::TemplateAlias(t, _)
+                | TypeKind::Alias(t)
+                | TypeKind::BlockPointer(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
                         YConstrain::Same
                     }
                 },
-                TyKind::Comp(ref x) => {
+                TypeKind::Comp(ref x) => {
                     let bases = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
                     if bases {
                         return self.insert(id);
@@ -700,7 +700,7 @@ pub mod has_float {
                     }
                     YConstrain::Same
                 },
-                TyKind::TemplateInstantiation(ref t) => {
+                TypeKind::TemplateInstantiation(ref t) => {
                     let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
@@ -738,7 +738,7 @@ pub mod has_ty_param {
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
     use crate::ir::traversal::EdgeKind;
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
@@ -804,37 +804,37 @@ pub mod has_ty_param {
                 },
             };
             match *ty.kind() {
-                TyKind::Void
-                | TyKind::NullPtr
-                | TyKind::Int(..)
-                | TyKind::Float(..)
-                | TyKind::Vector(..)
-                | TyKind::Complex(..)
-                | TyKind::Function(..)
-                | TyKind::Enum(..)
-                | TyKind::Reference(..)
-                | TyKind::TypeParam
-                | TyKind::Opaque
-                | TyKind::Pointer(..)
-                | TyKind::UnresolvedTypeRef(..) => YConstrain::Same,
-                TyKind::Array(t, _) => {
+                TypeKind::Void
+                | TypeKind::NullPtr
+                | TypeKind::Int(..)
+                | TypeKind::Float(..)
+                | TypeKind::Vector(..)
+                | TypeKind::Complex(..)
+                | TypeKind::Function(..)
+                | TypeKind::Enum(..)
+                | TypeKind::Reference(..)
+                | TypeKind::TypeParam
+                | TypeKind::Opaque
+                | TypeKind::Pointer(..)
+                | TypeKind::UnresolvedTypeRef(..) => YConstrain::Same,
+                TypeKind::Array(t, _) => {
                     let ty2 = self.ctx.resolve_type(t).canonical_type(self.ctx);
                     match *ty2.kind() {
-                        TyKind::TypeParam => self.insert(id),
+                        TypeKind::TypeParam => self.insert(id),
                         _ => YConstrain::Same,
                     }
                 },
-                TyKind::ResolvedTypeRef(t)
-                | TyKind::TemplateAlias(t, _)
-                | TyKind::Alias(t)
-                | TyKind::BlockPointer(t) => {
+                TypeKind::ResolvedTypeRef(t)
+                | TypeKind::TemplateAlias(t, _)
+                | TypeKind::Alias(t)
+                | TypeKind::BlockPointer(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
                         YConstrain::Same
                     }
                 },
-                TyKind::Comp(ref info) => {
+                TypeKind::Comp(ref info) => {
                     let bases = info.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
                     if bases {
                         return self.insert(id);
@@ -848,7 +848,7 @@ pub mod has_ty_param {
                     }
                     YConstrain::Same
                 },
-                TyKind::TemplateInstantiation(ref t) => {
+                TypeKind::TemplateInstantiation(ref t) => {
                     let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
@@ -889,7 +889,7 @@ pub trait HasVtable {
 pub mod has_vtable {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::traversal::EdgeKind;
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::{Context, ItemId};
     use crate::{Entry, HashMap};
     use std::cmp;
@@ -993,10 +993,11 @@ pub mod has_vtable {
                 Some(ty) => ty,
             };
             match *ty.kind() {
-                TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::ResolvedTypeRef(t) | TyKind::Reference(t) => {
-                    self.forward(t, id)
-                },
-                TyKind::Comp(ref info) => {
+                TypeKind::TemplateAlias(t, _)
+                | TypeKind::Alias(t)
+                | TypeKind::ResolvedTypeRef(t)
+                | TypeKind::Reference(t) => self.forward(t, id),
+                TypeKind::Comp(ref info) => {
                     let mut y = Resolved::No;
                     if info.has_own_virtual_method() {
                         y |= Resolved::SelfHasVtable;
@@ -1007,7 +1008,7 @@ pub mod has_vtable {
                     }
                     self.insert(id, y)
                 },
-                TyKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
+                TypeKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
                 _ => YConstrain::Same,
             }
         }
@@ -1042,7 +1043,7 @@ pub mod sizedness {
     use super::{gen_deps, HasVtable, Monotone, YConstrain};
     use crate::ir::item::IsOpaque;
     use crate::ir::traversal::EdgeKind;
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::{Context, TypeId};
     use crate::{Entry, HashMap};
     use std::{cmp, ops};
@@ -1166,25 +1167,25 @@ pub mod sizedness {
                 return self.insert(id, y);
             }
             match *ty.kind() {
-                TyKind::Void => self.insert(id, Resolved::ZeroSized),
-                TyKind::TypeParam => self.insert(id, Resolved::DependsOnTypeParam),
-                TyKind::Int(..)
-                | TyKind::Float(..)
-                | TyKind::Complex(..)
-                | TyKind::Function(..)
-                | TyKind::Enum(..)
-                | TyKind::Reference(..)
-                | TyKind::NullPtr
-                | TyKind::Pointer(..) => self.insert(id, Resolved::NonZeroSized),
-                TyKind::TemplateAlias(t, _)
-                | TyKind::Alias(t)
-                | TyKind::BlockPointer(t)
-                | TyKind::ResolvedTypeRef(t) => self.forward(t, id),
-                TyKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
-                TyKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
-                TyKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
-                TyKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
-                TyKind::Comp(ref x) => {
+                TypeKind::Void => self.insert(id, Resolved::ZeroSized),
+                TypeKind::TypeParam => self.insert(id, Resolved::DependsOnTypeParam),
+                TypeKind::Int(..)
+                | TypeKind::Float(..)
+                | TypeKind::Complex(..)
+                | TypeKind::Function(..)
+                | TypeKind::Enum(..)
+                | TypeKind::Reference(..)
+                | TypeKind::NullPtr
+                | TypeKind::Pointer(..) => self.insert(id, Resolved::NonZeroSized),
+                TypeKind::TemplateAlias(t, _)
+                | TypeKind::Alias(t)
+                | TypeKind::BlockPointer(t)
+                | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
+                TypeKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
+                TypeKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
+                TypeKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
+                TypeKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
+                TypeKind::Comp(ref x) => {
                     if !x.fields().is_empty() {
                         return self.insert(id, Resolved::NonZeroSized);
                     }
@@ -1196,10 +1197,10 @@ pub mod sizedness {
 
                     self.insert(id, y)
                 },
-                TyKind::Opaque => {
+                TypeKind::Opaque => {
                     unreachable!("covered by the .is_opaque() check above")
                 },
-                TyKind::UnresolvedTypeRef(..) => {
+                TypeKind::UnresolvedTypeRef(..) => {
                     unreachable!("Should have been resolved after parsing!");
                 },
             }
@@ -1229,7 +1230,7 @@ pub mod used_templ_param {
     use crate::ir::item::{Item, ItemSet};
     use crate::ir::template::{TemplInstantiation, TemplParams};
     use crate::ir::traversal::{EdgeKind, Trace};
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
@@ -1415,7 +1416,7 @@ pub mod used_templ_param {
                     );
                 }
                 let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
-                if let Some(TyKind::TemplateInstantiation(inst)) = k {
+                if let Some(TypeKind::TemplateInstantiation(inst)) = k {
                     let decl = ctx.resolve_type(inst.template_definition());
                     let args = inst.template_arguments();
                     let ps = decl.self_template_params(ctx);
@@ -1471,10 +1472,10 @@ pub mod used_templ_param {
             let i = self.ctx.resolve_item(id);
             let ty_kind = i.as_type().map(|x| x.kind());
             match ty_kind {
-                Some(&TyKind::TypeParam) => {
+                Some(&TypeKind::TypeParam) => {
                     y.insert(id);
                 },
-                Some(TyKind::TemplateInstantiation(x)) => {
+                Some(TypeKind::TemplateInstantiation(x)) => {
                     if self.alloweds.contains(&x.template_definition().into()) {
                         self.constrain_instantiation(id, &mut y, x);
                     } else {

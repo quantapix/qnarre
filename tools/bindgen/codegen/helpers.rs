@@ -123,7 +123,7 @@ pub(crate) fn bitfield_unit(ctx: &Context, layout: Layout) -> TokenStream {
 pub(crate) mod ast_ty {
     use crate::ir::function::FnSig;
     use crate::ir::layout::Layout;
-    use crate::ir::ty::FloatKind;
+    use crate::ir::typ::FloatKind;
     use crate::ir::Context;
     use proc_macro2::{self, TokenStream};
     use std::str::FromStr;
@@ -240,7 +240,7 @@ pub(crate) mod ast_ty {
     pub(crate) fn arguments_from_signature(signature: &FnSig, ctx: &Context) -> Vec<TokenStream> {
         let mut unnamed_arguments = 0;
         signature
-            .argument_types()
+            .arg_types()
             .iter()
             .map(|&(ref name, _ty)| match *name {
                 Some(ref name) => {

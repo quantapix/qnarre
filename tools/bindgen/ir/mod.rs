@@ -409,7 +409,7 @@ pub mod dot {
 pub mod enum_ty {
     use super::super::codegen::EnumVariation;
     use super::item::Item;
-    use super::ty::{TyKind, Type};
+    use super::typ::{Type, TypeKind};
     use super::{Context, TypeId};
     use crate::clang;
     use crate::ir::annotations::Annotations;
@@ -450,7 +450,7 @@ pub mod enum_ty {
             let variant_ty = repr.and_then(|r| ctx.resolve_type(r).safe_canonical_type(ctx));
             let is_bool = variant_ty.map_or(false, Type::is_bool);
             let is_signed = variant_ty.map_or(true, |ty| match *ty.kind() {
-                TyKind::Int(ref int_kind) => int_kind.is_signed(),
+                TypeKind::Int(ref int_kind) => int_kind.is_signed(),
                 ref other => {
                     panic!("Since when enums can be non-integers? {:?}", other)
                 },
@@ -649,7 +649,7 @@ pub mod item_kind {
     use super::dot::DotAttrs;
     use super::function::Function;
     use super::module::Module;
-    use super::ty::Type;
+    use super::typ::Type;
     use super::var::Var;
     use super::Context;
     use std::io;
@@ -733,9 +733,11 @@ pub mod item_kind {
         }
     }
 }
+pub const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
 pub mod layout {
     use super::derive::Resolved;
-    use super::ty::{TyKind, Type, RUST_DERIVE_IN_ARRAY_LIMIT};
+    use super::typ::{Type, TypeKind};
+    use super::RUST_DERIVE_IN_ARRAY_LIMIT;
     use crate::clang;
     use crate::ir::Context;
     use std::cmp;
@@ -799,7 +801,7 @@ pub mod layout {
     impl Opaque {
         pub fn from_clang_ty(ty: &clang::Type, ctx: &Context) -> Type {
             let layout = Layout::new(ty.size(ctx), ty.align(ctx));
-            let ty_kind = TyKind::Opaque;
+            let ty_kind = TypeKind::Opaque;
             let is_const = ty.is_const();
             Type::new(None, Some(layout), ty_kind, is_const)
         }
@@ -1037,5 +1039,5 @@ pub mod template {
     }
 }
 pub mod traversal;
-pub mod ty;
+pub mod typ;
 pub mod var;

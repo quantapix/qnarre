@@ -8,7 +8,7 @@ use super::item_kind::ItemKind;
 use super::module::{ModKind, Module};
 use super::template::{TemplInstantiation, TemplParams};
 use super::traversal::{self, Edge, ItemTraversal};
-use super::ty::{FloatKind, TyKind, Type};
+use super::typ::{FloatKind, Type, TypeKind};
 use crate::clang::{self, Cursor};
 use crate::codegen::CodegenError;
 use crate::Opts;
@@ -465,7 +465,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 Some(ty) => ty,
                 None => continue,
             };
-            if let TyKind::UnresolvedTypeRef(ref ty, loc, parent_id) = *ty.kind() {
+            if let TypeKind::UnresolvedTypeRef(ref ty, loc, parent_id) = *ty.kind() {
                 typerefs.push((id, *ty, loc, parent_id));
             };
         }
@@ -484,7 +484,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     Item::new_opaque_type(self.next_item_id(), &ty, self)
                 });
                 let item = self.items[id.0].as_mut().unwrap();
-                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TyKind::ResolvedTypeRef(resolved);
+                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedTypeRef(resolved);
                 resolved
             };
         }
@@ -549,7 +549,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 None => continue,
             };
             match *ty.kind() {
-                TyKind::Comp(..) | TyKind::TemplateAlias(..) | TyKind::Enum(..) | TyKind::Alias(..) => {},
+                TypeKind::Comp(..) | TypeKind::TemplateAlias(..) | TypeKind::Enum(..) | TypeKind::Alias(..) => {},
                 _ => continue,
             }
             let path = item.path_for_allowlisting(self);
@@ -565,7 +565,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             let new_parent = {
                 let item_id: ItemId = id.into();
                 let item = self.items[item_id.0].as_mut().unwrap();
-                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TyKind::ResolvedTypeRef(replacement_id);
+                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedTypeRef(replacement_id);
                 item.parent_id()
             };
             let old_parent = self.resolve_item(replacement_id).parent_id();
@@ -866,7 +866,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         sub_args.reverse();
                         let sub_name = Some(template_decl_cursor.spelling());
                         let sub_inst = TemplInstantiation::new(template_decl_id.as_type_id_unchecked(), sub_args);
-                        let sub_kind = TyKind::TemplateInstantiation(sub_inst);
+                        let sub_kind = TypeKind::TemplateInstantiation(sub_inst);
                         let sub_ty = Type::new(
                             sub_name,
                             template_decl_cursor.cur_type().fallible_layout(self).ok(),
@@ -914,7 +914,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             return None;
         }
         args.reverse();
-        let type_kind = TyKind::TemplateInstantiation(TemplInstantiation::new(template, args));
+        let type_kind = TypeKind::TemplateInstantiation(TemplInstantiation::new(template, args));
         let name = ty.spelling();
         let name = if name.is_empty() { None } else { Some(name) };
         let ty = Type::new(name, ty.fallible_layout(self).ok(), type_kind, ty.is_const());
@@ -999,7 +999,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let spelling = ty.spelling();
         let layout = ty.fallible_layout(self).ok();
         let location = ty.declaration().location();
-        let type_kind = TyKind::ResolvedTypeRef(wrapped_id);
+        let type_kind = TypeKind::ResolvedTypeRef(wrapped_id);
         let ty = Type::new(Some(spelling), layout, type_kind, is_const);
         let item = Item::new(
             with_id,
@@ -1020,30 +1020,30 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn build_builtin_ty(&mut self, ty: &clang::Type) -> Option<TypeId> {
         use clang_lib::*;
         let type_kind = match ty.kind() {
-            CXType_NullPtr => TyKind::NullPtr,
-            CXType_Void => TyKind::Void,
-            CXType_Bool => TyKind::Int(IntKind::Bool),
-            CXType_Int => TyKind::Int(IntKind::Int),
-            CXType_UInt => TyKind::Int(IntKind::UInt),
-            CXType_Char_S => TyKind::Int(IntKind::Char { is_signed: true }),
-            CXType_Char_U => TyKind::Int(IntKind::Char { is_signed: false }),
-            CXType_SChar => TyKind::Int(IntKind::SChar),
-            CXType_UChar => TyKind::Int(IntKind::UChar),
-            CXType_Short => TyKind::Int(IntKind::Short),
-            CXType_UShort => TyKind::Int(IntKind::UShort),
-            CXType_WChar => TyKind::Int(IntKind::WChar),
-            CXType_Char16 => TyKind::Int(IntKind::U16),
-            CXType_Char32 => TyKind::Int(IntKind::U32),
-            CXType_Long => TyKind::Int(IntKind::Long),
-            CXType_ULong => TyKind::Int(IntKind::ULong),
-            CXType_LongLong => TyKind::Int(IntKind::LongLong),
-            CXType_ULongLong => TyKind::Int(IntKind::ULongLong),
-            CXType_Int128 => TyKind::Int(IntKind::I128),
-            CXType_UInt128 => TyKind::Int(IntKind::U128),
-            CXType_Float => TyKind::Float(FloatKind::Float),
-            CXType_Double => TyKind::Float(FloatKind::Double),
-            CXType_LongDouble => TyKind::Float(FloatKind::LongDouble),
-            CXType_Float128 => TyKind::Float(FloatKind::Float128),
+            CXType_NullPtr => TypeKind::NullPtr,
+            CXType_Void => TypeKind::Void,
+            CXType_Bool => TypeKind::Int(IntKind::Bool),
+            CXType_Int => TypeKind::Int(IntKind::Int),
+            CXType_UInt => TypeKind::Int(IntKind::UInt),
+            CXType_Char_S => TypeKind::Int(IntKind::Char { is_signed: true }),
+            CXType_Char_U => TypeKind::Int(IntKind::Char { is_signed: false }),
+            CXType_SChar => TypeKind::Int(IntKind::SChar),
+            CXType_UChar => TypeKind::Int(IntKind::UChar),
+            CXType_Short => TypeKind::Int(IntKind::Short),
+            CXType_UShort => TypeKind::Int(IntKind::UShort),
+            CXType_WChar => TypeKind::Int(IntKind::WChar),
+            CXType_Char16 => TypeKind::Int(IntKind::U16),
+            CXType_Char32 => TypeKind::Int(IntKind::U32),
+            CXType_Long => TypeKind::Int(IntKind::Long),
+            CXType_ULong => TypeKind::Int(IntKind::ULong),
+            CXType_LongLong => TypeKind::Int(IntKind::LongLong),
+            CXType_ULongLong => TypeKind::Int(IntKind::ULongLong),
+            CXType_Int128 => TypeKind::Int(IntKind::I128),
+            CXType_UInt128 => TypeKind::Int(IntKind::U128),
+            CXType_Float => TypeKind::Float(FloatKind::Float),
+            CXType_Double => TypeKind::Float(FloatKind::Double),
+            CXType_LongDouble => TypeKind::Float(FloatKind::LongDouble),
+            CXType_Float128 => TypeKind::Float(FloatKind::Float128),
             CXType_Complex => {
                 let float_type = ty.elem_type().expect("Not able to resolve complex type?");
                 let float_kind = match float_type.kind() {
@@ -1053,7 +1053,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     CXType_Float128 => FloatKind::Float128,
                     _ => panic!("Non floating-type complex? {:?}, {:?}", ty, float_type,),
                 };
-                TyKind::Complex(float_kind)
+                TypeKind::Complex(float_kind)
             },
             _ => return None,
         };
@@ -1280,19 +1280,19 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                             }
                             if !self.opts().allowlist_recursively {
                                 match *ty.kind() {
-                                    TyKind::Void
-                                    | TyKind::NullPtr
-                                    | TyKind::Int(..)
-                                    | TyKind::Float(..)
-                                    | TyKind::Complex(..)
-                                    | TyKind::Array(..)
-                                    | TyKind::Vector(..)
-                                    | TyKind::Pointer(..)
-                                    | TyKind::Reference(..)
-                                    | TyKind::Function(..)
-                                    | TyKind::ResolvedTypeRef(..)
-                                    | TyKind::Opaque
-                                    | TyKind::TypeParam => return true,
+                                    TypeKind::Void
+                                    | TypeKind::NullPtr
+                                    | TypeKind::Int(..)
+                                    | TypeKind::Float(..)
+                                    | TypeKind::Complex(..)
+                                    | TypeKind::Array(..)
+                                    | TypeKind::Vector(..)
+                                    | TypeKind::Pointer(..)
+                                    | TypeKind::Reference(..)
+                                    | TypeKind::Function(..)
+                                    | TypeKind::ResolvedTypeRef(..)
+                                    | TypeKind::Opaque
+                                    | TypeKind::TypeParam => return true,
                                     _ => {},
                                 }
                                 if self.is_stdint_type(&name) {
@@ -1304,7 +1304,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                 return false;
                             }
                             let enum_ = match *ty.kind() {
-                                TyKind::Enum(ref e) => e,
+                                TypeKind::Enum(ref e) => e,
                                 _ => return false,
                             };
                             if ty.name().is_some() {
@@ -1370,7 +1370,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 let mut names_of_typedefs = HashSet::default();
                 for child_id in module.children() {
                     if let Some(ItemKind::Type(ty)) = self.items[child_id.0].as_ref().map(Item::kind) {
-                        if let (Some(name), TyKind::Alias(type_id)) = (ty.name(), ty.kind()) {
+                        if let (Some(name), TypeKind::Alias(type_id)) = (ty.name(), ty.kind()) {
                             if type_id
                                 .into_resolver()
                                 .through_type_refs()
@@ -1588,10 +1588,10 @@ impl ItemResolver {
             }
             let ty_kind = item.as_type().map(|t| t.kind());
             match ty_kind {
-                Some(&TyKind::ResolvedTypeRef(next_id)) if self.through_type_refs => {
+                Some(&TypeKind::ResolvedTypeRef(next_id)) if self.through_type_refs => {
                     id = next_id.into();
                 },
-                Some(&TyKind::Alias(next_id)) if self.through_type_aliases => {
+                Some(&TypeKind::Alias(next_id)) if self.through_type_aliases => {
                     id = next_id.into();
                 },
                 _ => return item,

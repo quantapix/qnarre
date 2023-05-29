@@ -5,7 +5,7 @@ use super::item::{IsOpaque, Item};
 use super::layout::Layout;
 use super::template::TemplParams;
 use super::traversal::{EdgeKind, Trace, Tracer};
-use super::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
+use super::RUST_DERIVE_IN_ARRAY_LIMIT;
 use super::{Context, FnId, ItemId, TypeId, VarId};
 use crate::clang;
 use crate::codegen::struct_layout::{align_to, bytes_from_bits_pow2};
@@ -17,11 +17,13 @@ use peeking_take_while::PeekableExt;
 use std::cmp;
 use std::io;
 use std::mem;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CompKind {
     Struct,
     Union,
 }
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MethodKind {
     Constructor,
@@ -42,6 +44,7 @@ impl MethodKind {
         }
     }
 }
+
 #[derive(Debug)]
 pub struct Method {
     kind: MethodKind,
@@ -74,6 +77,7 @@ impl Method {
         self.is_const
     }
 }
+
 pub trait FieldMethods {
     fn name(&self) -> Option<&str>;
     fn ty(&self) -> TypeId;
@@ -83,6 +87,7 @@ pub trait FieldMethods {
     fn annotations(&self) -> &Annotations;
     fn offset(&self) -> Option<usize>;
 }
+
 #[derive(Debug)]
 pub struct BitfieldUnit {
     nth: usize,
@@ -100,6 +105,7 @@ impl BitfieldUnit {
         &self.bitfields
     }
 }
+
 #[derive(Debug)]
 pub enum Field {
     DataMember(FieldData),
@@ -164,33 +170,7 @@ impl DotAttrs for Field {
         }
     }
 }
-impl DotAttrs for FieldData {
-    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        writeln!(
-            y,
-            "<tr><td>{}</td><td>{:?}</td></tr>",
-            self.name().unwrap_or("(anonymous)"),
-            self.ty()
-        )
-    }
-}
-impl DotAttrs for Bitfield {
-    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        writeln!(
-            y,
-            "<tr><td>{} : {}</td><td>{:?}</td></tr>",
-            self.name().unwrap_or("(anonymous)"),
-            self.width(),
-            self.ty()
-        )
-    }
-}
+
 #[derive(Debug)]
 pub struct Bitfield {
     offset_into_unit: usize,
@@ -252,176 +232,21 @@ impl FieldMethods for Bitfield {
         self.data.offset()
     }
 }
-#[derive(Debug)]
-struct RawField(FieldData);
-impl RawField {
-    fn new(
-        name: Option<String>,
-        ty: TypeId,
-        comment: Option<String>,
-        annotations: Option<Annotations>,
-        bitfield_width: Option<u32>,
-        public: bool,
-        offset: Option<usize>,
-    ) -> RawField {
-        RawField(FieldData {
-            name,
-            ty,
-            comment,
-            annotations: annotations.unwrap_or_default(),
-            bitfield_width,
-            public,
-            offset,
-        })
-    }
-}
-impl FieldMethods for RawField {
-    fn name(&self) -> Option<&str> {
-        self.0.name()
-    }
-    fn ty(&self) -> TypeId {
-        self.0.ty()
-    }
-    fn comment(&self) -> Option<&str> {
-        self.0.comment()
-    }
-    fn bitfield_width(&self) -> Option<u32> {
-        self.0.bitfield_width()
-    }
-    fn is_public(&self) -> bool {
-        self.0.is_public()
-    }
-    fn annotations(&self) -> &Annotations {
-        self.0.annotations()
-    }
-    fn offset(&self) -> Option<usize> {
-        self.0.offset()
-    }
-}
-fn raw_fields_to_fields_and_bitfield_units<I>(
-    ctx: &Context,
-    raw_fields: I,
-    packed: bool,
-) -> Result<(Vec<Field>, bool), ()>
-where
-    I: IntoIterator<Item = RawField>,
-{
-    let mut raw_fields = raw_fields.into_iter().fuse().peekable();
-    let mut fields = vec![];
-    let mut bitfield_unit_count = 0;
-    loop {
-        {
-            let non_bitfields = raw_fields
-                .by_ref()
-                .peeking_take_while(|f| f.bitfield_width().is_none())
-                .map(|f| Field::DataMember(f.0));
-            fields.extend(non_bitfields);
-        }
-        let mut bitfields = raw_fields
-            .by_ref()
-            .peeking_take_while(|f| f.bitfield_width().is_some())
-            .peekable();
-        if bitfields.peek().is_none() {
-            break;
-        }
-        bitfields_to_allocation_units(ctx, &mut bitfield_unit_count, &mut fields, bitfields, packed)?;
-    }
-    assert!(
-        raw_fields.next().is_none(),
-        "The above loop should consume all items in `raw_fields`"
-    );
-    Ok((fields, bitfield_unit_count != 0))
-}
-fn bitfields_to_allocation_units<E, I>(
-    ctx: &Context,
-    bitfield_unit_count: &mut usize,
-    fields: &mut E,
-    raw_bitfields: I,
-    packed: bool,
-) -> Result<(), ()>
-where
-    E: Extend<Field>,
-    I: IntoIterator<Item = RawField>,
-{
-    assert!(ctx.collected_typerefs());
-    fn flush_allocation_unit<E>(
-        fields: &mut E,
-        bitfield_unit_count: &mut usize,
-        unit_size_in_bits: usize,
-        unit_align_in_bits: usize,
-        bitfields: Vec<Bitfield>,
-        packed: bool,
-    ) where
-        E: Extend<Field>,
+impl DotAttrs for Bitfield {
+    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
     {
-        *bitfield_unit_count += 1;
-        let align = if packed {
-            1
-        } else {
-            bytes_from_bits_pow2(unit_align_in_bits)
-        };
-        let size = align_to(unit_size_in_bits, 8) / 8;
-        let layout = Layout::new(size, align);
-        fields.extend(Some(Field::Bitfields(BitfieldUnit {
-            nth: *bitfield_unit_count,
-            layout,
-            bitfields,
-        })));
+        writeln!(
+            y,
+            "<tr><td>{} : {}</td><td>{:?}</td></tr>",
+            self.name().unwrap_or("(anonymous)"),
+            self.width(),
+            self.ty()
+        )
     }
-    let mut max_align = 0;
-    let mut unfilled_bits_in_unit = 0;
-    let mut unit_size_in_bits = 0;
-    let mut unit_align = 0;
-    let mut bitfields_in_unit = vec![];
-    const is_ms_struct: bool = false;
-    for bitfield in raw_bitfields {
-        let bitfield_width = bitfield.bitfield_width().unwrap() as usize;
-        let bitfield_layout = ctx.resolve_type(bitfield.ty()).layout(ctx).ok_or(())?;
-        let bitfield_size = bitfield_layout.size;
-        let bitfield_align = bitfield_layout.align;
-        let mut offset = unit_size_in_bits;
-        if !packed {
-            if is_ms_struct {
-                if unit_size_in_bits != 0 && (bitfield_width == 0 || bitfield_width > unfilled_bits_in_unit) {
-                    unit_size_in_bits = align_to(unit_size_in_bits, unit_align * 8);
-                    flush_allocation_unit(
-                        fields,
-                        bitfield_unit_count,
-                        unit_size_in_bits,
-                        unit_align,
-                        mem::take(&mut bitfields_in_unit),
-                        packed,
-                    );
-                    offset = 0;
-                    unit_align = 0;
-                }
-            } else if offset != 0
-                && (bitfield_width == 0 || (offset & (bitfield_align * 8 - 1)) + bitfield_width > bitfield_size * 8)
-            {
-                offset = align_to(offset, bitfield_align * 8);
-            }
-        }
-        if bitfield.name().is_some() {
-            max_align = cmp::max(max_align, bitfield_align);
-            unit_align = cmp::max(unit_align, bitfield_width);
-        }
-        bitfields_in_unit.push(Bitfield::new(offset, bitfield));
-        unit_size_in_bits = offset + bitfield_width;
-        let data_size = align_to(unit_size_in_bits, bitfield_align * 8);
-        unfilled_bits_in_unit = data_size - unit_size_in_bits;
-    }
-    if unit_size_in_bits != 0 {
-        flush_allocation_unit(
-            fields,
-            bitfield_unit_count,
-            unit_size_in_bits,
-            unit_align,
-            bitfields_in_unit,
-            packed,
-        );
-    }
-    Ok(())
 }
+
 #[derive(Debug)]
 enum CompFields {
     Before(Vec<RawField>),
@@ -430,11 +255,6 @@ enum CompFields {
         has_bitfield_units: bool,
     },
     Error,
-}
-impl Default for CompFields {
-    fn default() -> CompFields {
-        CompFields::Before(vec![])
-    }
 }
 impl CompFields {
     fn append_raw_field(&mut self, raw: RawField) {
@@ -539,6 +359,11 @@ impl CompFields {
         }
     }
 }
+impl Default for CompFields {
+    fn default() -> CompFields {
+        CompFields::Before(vec![])
+    }
+}
 impl Trace for CompFields {
     type Extra = ();
     fn trace<T>(&self, ctx: &Context, tracer: &mut T, _: &())
@@ -560,6 +385,7 @@ impl Trace for CompFields {
         }
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct FieldData {
     name: Option<String>,
@@ -593,11 +419,73 @@ impl FieldMethods for FieldData {
         self.offset
     }
 }
+impl DotAttrs for FieldData {
+    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        writeln!(
+            y,
+            "<tr><td>{}</td><td>{:?}</td></tr>",
+            self.name().unwrap_or("(anonymous)"),
+            self.ty()
+        )
+    }
+}
+
+#[derive(Debug)]
+struct RawField(FieldData);
+impl RawField {
+    fn new(
+        name: Option<String>,
+        ty: TypeId,
+        comment: Option<String>,
+        annotations: Option<Annotations>,
+        bitfield_width: Option<u32>,
+        public: bool,
+        offset: Option<usize>,
+    ) -> RawField {
+        RawField(FieldData {
+            name,
+            ty,
+            comment,
+            annotations: annotations.unwrap_or_default(),
+            bitfield_width,
+            public,
+            offset,
+        })
+    }
+}
+impl FieldMethods for RawField {
+    fn name(&self) -> Option<&str> {
+        self.0.name()
+    }
+    fn ty(&self) -> TypeId {
+        self.0.ty()
+    }
+    fn comment(&self) -> Option<&str> {
+        self.0.comment()
+    }
+    fn bitfield_width(&self) -> Option<u32> {
+        self.0.bitfield_width()
+    }
+    fn is_public(&self) -> bool {
+        self.0.is_public()
+    }
+    fn annotations(&self) -> &Annotations {
+        self.0.annotations()
+    }
+    fn offset(&self) -> Option<usize> {
+        self.0.offset()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BaseKind {
     Normal,
     Virtual,
 }
+
 #[derive(Clone, Debug)]
 pub struct Base {
     pub ty: TypeId,
@@ -622,6 +510,7 @@ impl Base {
         self.is_pub
     }
 }
+
 #[derive(Debug)]
 pub struct CompInfo {
     kind: CompKind,
@@ -1164,4 +1053,130 @@ impl Trace for CompInfo {
         }
         self.fields.trace(ctx, tracer, &());
     }
+}
+
+fn raw_fields_to_fields_and_bitfield_units<I>(
+    ctx: &Context,
+    raw_fields: I,
+    packed: bool,
+) -> Result<(Vec<Field>, bool), ()>
+where
+    I: IntoIterator<Item = RawField>,
+{
+    let mut raw_fields = raw_fields.into_iter().fuse().peekable();
+    let mut fields = vec![];
+    let mut bitfield_unit_count = 0;
+    loop {
+        {
+            let non_bitfields = raw_fields
+                .by_ref()
+                .peeking_take_while(|f| f.bitfield_width().is_none())
+                .map(|f| Field::DataMember(f.0));
+            fields.extend(non_bitfields);
+        }
+        let mut bitfields = raw_fields
+            .by_ref()
+            .peeking_take_while(|f| f.bitfield_width().is_some())
+            .peekable();
+        if bitfields.peek().is_none() {
+            break;
+        }
+        bitfields_to_allocation_units(ctx, &mut bitfield_unit_count, &mut fields, bitfields, packed)?;
+    }
+    assert!(
+        raw_fields.next().is_none(),
+        "The above loop should consume all items in `raw_fields`"
+    );
+    Ok((fields, bitfield_unit_count != 0))
+}
+
+fn bitfields_to_allocation_units<E, I>(
+    ctx: &Context,
+    bitfield_unit_count: &mut usize,
+    fields: &mut E,
+    raw_bitfields: I,
+    packed: bool,
+) -> Result<(), ()>
+where
+    E: Extend<Field>,
+    I: IntoIterator<Item = RawField>,
+{
+    assert!(ctx.collected_typerefs());
+    fn flush_allocation_unit<E>(
+        fields: &mut E,
+        bitfield_unit_count: &mut usize,
+        unit_size_in_bits: usize,
+        unit_align_in_bits: usize,
+        bitfields: Vec<Bitfield>,
+        packed: bool,
+    ) where
+        E: Extend<Field>,
+    {
+        *bitfield_unit_count += 1;
+        let align = if packed {
+            1
+        } else {
+            bytes_from_bits_pow2(unit_align_in_bits)
+        };
+        let size = align_to(unit_size_in_bits, 8) / 8;
+        let layout = Layout::new(size, align);
+        fields.extend(Some(Field::Bitfields(BitfieldUnit {
+            nth: *bitfield_unit_count,
+            layout,
+            bitfields,
+        })));
+    }
+    let mut max_align = 0;
+    let mut unfilled_bits_in_unit = 0;
+    let mut unit_size_in_bits = 0;
+    let mut unit_align = 0;
+    let mut bitfields_in_unit = vec![];
+    const is_ms_struct: bool = false;
+    for bitfield in raw_bitfields {
+        let bitfield_width = bitfield.bitfield_width().unwrap() as usize;
+        let bitfield_layout = ctx.resolve_type(bitfield.ty()).layout(ctx).ok_or(())?;
+        let bitfield_size = bitfield_layout.size;
+        let bitfield_align = bitfield_layout.align;
+        let mut offset = unit_size_in_bits;
+        if !packed {
+            if is_ms_struct {
+                if unit_size_in_bits != 0 && (bitfield_width == 0 || bitfield_width > unfilled_bits_in_unit) {
+                    unit_size_in_bits = align_to(unit_size_in_bits, unit_align * 8);
+                    flush_allocation_unit(
+                        fields,
+                        bitfield_unit_count,
+                        unit_size_in_bits,
+                        unit_align,
+                        mem::take(&mut bitfields_in_unit),
+                        packed,
+                    );
+                    offset = 0;
+                    unit_align = 0;
+                }
+            } else if offset != 0
+                && (bitfield_width == 0 || (offset & (bitfield_align * 8 - 1)) + bitfield_width > bitfield_size * 8)
+            {
+                offset = align_to(offset, bitfield_align * 8);
+            }
+        }
+        if bitfield.name().is_some() {
+            max_align = cmp::max(max_align, bitfield_align);
+            unit_align = cmp::max(unit_align, bitfield_width);
+        }
+        bitfields_in_unit.push(Bitfield::new(offset, bitfield));
+        unit_size_in_bits = offset + bitfield_width;
+        let data_size = align_to(unit_size_in_bits, bitfield_align * 8);
+        unfilled_bits_in_unit = data_size - unit_size_in_bits;
+    }
+    if unit_size_in_bits != 0 {
+        flush_allocation_unit(
+            fields,
+            bitfield_unit_count,
+            unit_size_in_bits,
+            unit_align,
+            bitfields_in_unit,
+            packed,
+        );
+    }
+    Ok(())
 }

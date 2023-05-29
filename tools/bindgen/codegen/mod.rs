@@ -145,7 +145,7 @@ mod impl_debug;
 mod impl_partialeq {
     use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
     use crate::ir::item::{IsOpaque, Item};
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::Context;
     pub fn gen_partialeq_impl(
         ctx: &Context,
@@ -213,20 +213,20 @@ mod impl_partialeq {
         let name_ident = ctx.rust_ident(name);
         let ty = ty_item.expect_type();
         match *ty.kind() {
-            TyKind::Void
-            | TyKind::NullPtr
-            | TyKind::Int(..)
-            | TyKind::Complex(..)
-            | TyKind::Float(..)
-            | TyKind::Enum(..)
-            | TyKind::TypeParam
-            | TyKind::UnresolvedTypeRef(..)
-            | TyKind::Reference(..)
-            | TyKind::Comp(..)
-            | TyKind::Pointer(_)
-            | TyKind::Function(..)
-            | TyKind::Opaque => quote_equals(name_ident),
-            TyKind::TemplateInstantiation(ref x) => {
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Float(..)
+            | TypeKind::Enum(..)
+            | TypeKind::TypeParam
+            | TypeKind::UnresolvedTypeRef(..)
+            | TypeKind::Reference(..)
+            | TypeKind::Comp(..)
+            | TypeKind::Pointer(_)
+            | TypeKind::Function(..)
+            | TypeKind::Opaque => quote_equals(name_ident),
+            TypeKind::TemplateInstantiation(ref x) => {
                 if x.is_opaque(ctx, ty_item) {
                     quote! {
                         &self. #name_ident [..] == &other. #name_ident [..]
@@ -235,15 +235,18 @@ mod impl_partialeq {
                     quote_equals(name_ident)
                 }
             },
-            TyKind::Array(_, len) => quote_equals(name_ident),
-            TyKind::Vector(_, len) => {
+            TypeKind::Array(_, len) => quote_equals(name_ident),
+            TypeKind::Vector(_, len) => {
                 let self_ids = 0..len;
                 let other_ids = 0..len;
                 quote! {
                     #(self.#self_ids == other.#other_ids &&)* true
                 }
             },
-            TyKind::ResolvedTypeRef(t) | TyKind::TemplateAlias(t, _) | TyKind::Alias(t) | TyKind::BlockPointer(t) => {
+            TypeKind::ResolvedTypeRef(t)
+            | TypeKind::TemplateAlias(t, _)
+            | TypeKind::Alias(t)
+            | TypeKind::BlockPointer(t) => {
                 let inner_item = ctx.resolve_item(t);
                 gen_field(ctx, inner_item, name)
             },
@@ -279,7 +282,7 @@ use crate::ir::item_kind::ItemKind;
 use crate::ir::layout::Layout;
 use crate::ir::module::Module;
 use crate::ir::template::{AsTemplParam, TemplInstantiation, TemplParams};
-use crate::ir::ty::{TyKind, Type};
+use crate::ir::typ::{Type, TypeKind};
 use crate::ir::var::Var;
 use crate::ir::{Context, ItemId};
 use crate::{Entry, HashMap, HashSet};
@@ -513,25 +516,25 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
     fn append_implicit_template_params(&mut self, ctx: &Context, item: &Item) {
         let item = item.id().into_resolver().through_type_refs().resolve(ctx);
         match *item.expect_type().kind() {
-            TyKind::UnresolvedTypeRef(..) => {
+            TypeKind::UnresolvedTypeRef(..) => {
                 unreachable!("already resolved unresolved type refs")
             },
-            TyKind::ResolvedTypeRef(..) => {
+            TypeKind::ResolvedTypeRef(..) => {
                 unreachable!("we resolved item through type refs")
             },
-            TyKind::Void
-            | TyKind::NullPtr
-            | TyKind::Pointer(..)
-            | TyKind::Reference(..)
-            | TyKind::Int(..)
-            | TyKind::Float(..)
-            | TyKind::Complex(..)
-            | TyKind::Array(..)
-            | TyKind::TypeParam
-            | TyKind::Opaque
-            | TyKind::Function(..)
-            | TyKind::Enum(..)
-            | TyKind::TemplateInstantiation(..) => return,
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Pointer(..)
+            | TypeKind::Reference(..)
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Array(..)
+            | TypeKind::TypeParam
+            | TypeKind::Opaque
+            | TypeKind::Function(..)
+            | TypeKind::Enum(..)
+            | TypeKind::TemplateInstantiation(..) => return,
             _ => {},
         }
         let params: Vec<_> = item
@@ -786,28 +789,28 @@ impl CodeGenerator for Type {
         debug!("<Type as CodeGenerator>::codegen: item = {:?}", item);
         debug_assert!(item.is_enabled_for_codegen(ctx));
         match *self.kind() {
-            TyKind::Void
-            | TyKind::NullPtr
-            | TyKind::Int(..)
-            | TyKind::Float(..)
-            | TyKind::Complex(..)
-            | TyKind::Array(..)
-            | TyKind::Vector(..)
-            | TyKind::Pointer(..)
-            | TyKind::Reference(..)
-            | TyKind::Function(..)
-            | TyKind::ResolvedTypeRef(..)
-            | TyKind::Opaque
-            | TyKind::TypeParam => {},
-            TyKind::TemplateInstantiation(ref x) => x.codegen(ctx, y, item),
-            TyKind::BlockPointer(inner) => {
+            TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(..)
+            | TypeKind::Float(..)
+            | TypeKind::Complex(..)
+            | TypeKind::Array(..)
+            | TypeKind::Vector(..)
+            | TypeKind::Pointer(..)
+            | TypeKind::Reference(..)
+            | TypeKind::Function(..)
+            | TypeKind::ResolvedTypeRef(..)
+            | TypeKind::Opaque
+            | TypeKind::TypeParam => {},
+            TypeKind::TemplateInstantiation(ref x) => x.codegen(ctx, y, item),
+            TypeKind::BlockPointer(inner) => {
                 if !ctx.opts().generate_block {
                     return;
                 }
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = item.canonical_name(ctx);
                 let inner_rust_type = {
-                    if let TyKind::Function(fnsig) = inner_item.kind().expect_type().kind() {
+                    if let TypeKind::Function(fnsig) = inner_item.kind().expect_type().kind() {
                         utils::fnsig_block(ctx, fnsig)
                     } else {
                         panic!("invalid block typedef: {:?}", inner_item)
@@ -825,8 +828,8 @@ impl CodeGenerator for Type {
                 y.push(tokens);
                 y.saw_block();
             },
-            TyKind::Comp(ref x) => x.codegen(ctx, y, item),
-            TyKind::TemplateAlias(inner, _) | TyKind::Alias(inner) => {
+            TypeKind::Comp(ref x) => x.codegen(ctx, y, item),
+            TypeKind::TemplateAlias(inner, _) | TypeKind::Alias(inner) => {
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = item.canonical_name(ctx);
                 let path = item.canonical_path(ctx);
@@ -994,7 +997,7 @@ impl CodeGenerator for Type {
                 }
                 y.push(tokens);
             },
-            TyKind::Enum(ref ei) => ei.codegen(ctx, y, item),
+            TypeKind::Enum(ref ei) => ei.codegen(ctx, y, item),
         }
     }
 }
@@ -1032,7 +1035,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
                     let function = function_item.expect_function();
                     let signature_item = ctx.resolve_item(function.sig());
                     let signature = match signature_item.expect_type().kind() {
-                        TyKind::Function(ref sig) => sig,
+                        TypeKind::Function(ref sig) => sig,
                         _ => panic!("Function signature type mismatch"),
                     };
                     let function_name = function_item.canonical_name(ctx);
@@ -1403,7 +1406,7 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
         F: Extend<proc_macro2::TokenStream>,
         M: Extend<proc_macro2::TokenStream>,
     {
-        use crate::ir::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
+        use crate::ir::RUST_DERIVE_IN_ARRAY_LIMIT;
         result.saw_bitfield_unit();
         let layout = self.layout();
         let unit_field_ty = helpers::bitfield_unit(ctx, layout);
@@ -2047,7 +2050,7 @@ impl Method {
             _ => function.name().to_owned(),
         };
         let signature = match *signature_item.expect_type().kind() {
-            TyKind::Function(ref sig) => sig,
+            TypeKind::Function(ref sig) => sig,
             _ => panic!("How in the world?"),
         };
         let supported_abi = match signature.abi(ctx, Some(&*name)) {
@@ -2487,7 +2490,7 @@ impl CodeGenerator for Enum {
             repr => {
                 let kind = match repr {
                     Some(repr) => match *repr.canonical_type(ctx).kind() {
-                        TyKind::Int(int_kind) => int_kind,
+                        TypeKind::Int(int_kind) => int_kind,
                         _ => panic!("Unexpected type as enum repr"),
                     },
                     None => {
@@ -2514,7 +2517,7 @@ impl CodeGenerator for Enum {
                         IntKind::I32
                     },
                 };
-                repr_translated = Type::new(None, None, TyKind::Int(translated), false);
+                repr_translated = Type::new(None, None, TypeKind::Int(translated), false);
                 &repr_translated
             },
         };
@@ -2938,9 +2941,9 @@ impl TryToRustTy for Type {
     fn try_to_rust_ty(&self, ctx: &Context, item: &Item) -> error::Result<proc_macro2::TokenStream> {
         use self::helpers::ast_ty::*;
         match *self.kind() {
-            TyKind::Void => Ok(c_void(ctx)),
-            TyKind::NullPtr => Ok(c_void(ctx).to_ptr(true)),
-            TyKind::Int(ik) => match ik {
+            TypeKind::Void => Ok(c_void(ctx)),
+            TypeKind::NullPtr => Ok(c_void(ctx).to_ptr(true)),
+            TypeKind::Int(ik) => match ik {
                 IntKind::Bool => Ok(quote! { bool }),
                 IntKind::Char { .. } => Ok(raw_type(ctx, "c_char")),
                 IntKind::SChar => Ok(raw_type(ctx, "c_schar")),
@@ -2971,8 +2974,8 @@ impl TryToRustTy for Type {
                 IntKind::U128 => Ok(quote! { u128 }),
                 IntKind::I128 => Ok(quote! { i128 }),
             },
-            TyKind::Float(fk) => Ok(float_kind_rust_type(ctx, fk, self.layout(ctx))),
-            TyKind::Complex(fk) => {
+            TypeKind::Float(fk) => Ok(float_kind_rust_type(ctx, fk, self.layout(ctx))),
+            TypeKind::Complex(fk) => {
                 let float_path = float_kind_rust_type(ctx, fk, self.layout(ctx));
                 ctx.generated_bindgen_complex();
                 Ok(if ctx.opts().enable_cxx_namespaces {
@@ -2985,27 +2988,27 @@ impl TryToRustTy for Type {
                     }
                 })
             },
-            TyKind::Function(ref fs) => {
+            TypeKind::Function(ref fs) => {
                 let ty = fs.try_to_rust_ty(ctx, &())?;
                 let prefix = ctx.trait_prefix();
                 Ok(quote! {
                     ::#prefix::option::Option<#ty>
                 })
             },
-            TyKind::Array(item, len) | TyKind::Vector(item, len) => {
+            TypeKind::Array(item, len) | TypeKind::Vector(item, len) => {
                 let ty = item.try_to_rust_ty(ctx, &())?;
                 Ok(quote! {
                     [ #ty ; #len ]
                 })
             },
-            TyKind::Enum(..) => {
+            TypeKind::Enum(..) => {
                 let path = item.namespace_aware_canonical_path(ctx);
                 let path = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
                 Ok(quote!(#path))
             },
-            TyKind::TemplateInstantiation(ref x) => x.try_to_rust_ty(ctx, item),
-            TyKind::ResolvedTypeRef(inner) => inner.try_to_rust_ty(ctx, &()),
-            TyKind::TemplateAlias(..) | TyKind::Alias(..) | TyKind::BlockPointer(..) => {
+            TypeKind::TemplateInstantiation(ref x) => x.try_to_rust_ty(ctx, item),
+            TypeKind::ResolvedTypeRef(inner) => inner.try_to_rust_ty(ctx, &()),
+            TypeKind::TemplateAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
                 if self.is_block_pointer() && !ctx.opts().generate_block {
                     let void = c_void(ctx);
                     return Ok(void.to_ptr(/* is_const = */ false));
@@ -3023,15 +3026,15 @@ impl TryToRustTy for Type {
                     utils::build_path(item, ctx)
                 }
             },
-            TyKind::Comp(ref info) => {
+            TypeKind::Comp(ref info) => {
                 let template_params = item.all_template_params(ctx);
                 if info.has_non_type_template_params() || (item.is_opaque(ctx, &()) && !template_params.is_empty()) {
                     return self.try_to_opaque(ctx, item);
                 }
                 utils::build_path(item, ctx)
             },
-            TyKind::Opaque => self.try_to_opaque(ctx, item),
-            TyKind::Pointer(inner) | TyKind::Reference(inner) => {
+            TypeKind::Opaque => self.try_to_opaque(ctx, item),
+            TypeKind::Pointer(inner) | TypeKind::Reference(inner) => {
                 let is_const = ctx.resolve_type(inner).is_const();
                 let inner = inner.into_resolver().through_type_refs().resolve(ctx);
                 let inner_ty = inner.expect_type();
@@ -3043,14 +3046,14 @@ impl TryToRustTy for Type {
                     Ok(ty.to_ptr(is_const))
                 }
             },
-            TyKind::TypeParam => {
+            TypeKind::TypeParam => {
                 let name = item.canonical_name(ctx);
                 let ident = ctx.rust_ident(name);
                 Ok(quote! {
                     #ident
                 })
             },
-            ref u @ TyKind::UnresolvedTypeRef(..) => {
+            ref u @ TypeKind::UnresolvedTypeRef(..) => {
                 unreachable!("Should have been resolved after parsing {:?}!", u)
             },
         }
@@ -3095,7 +3098,7 @@ impl CodeGenerator for Function {
         let signature_item = ctx.resolve_item(self.sig());
         let signature = signature_item.kind().expect_type().canonical_type(ctx);
         let signature = match *signature.kind() {
-            TyKind::Function(ref sig) => sig,
+            TypeKind::Function(ref sig) => sig,
             _ => panic!("Signature kind is not a Function: {:?}", signature),
         };
         if is_internal {
@@ -3125,7 +3128,7 @@ impl CodeGenerator for Function {
         let ret = utils::fnsig_return_ty(ctx, signature);
         let mut attributes = vec![];
         let must_use = signature.must_use() || {
-            let ret_ty = signature.return_type().into_resolver().through_type_refs().resolve(ctx);
+            let ret_ty = signature.ret_type().into_resolver().through_type_refs().resolve(ctx);
             ret_ty.must_use(ctx)
         };
         if must_use {
@@ -3249,7 +3252,7 @@ pub mod utils {
     use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
     use crate::ir::function::{Abi, ClangAbi, FnSig};
     use crate::ir::item::{CanonicalPath, Item};
-    use crate::ir::ty::TyKind;
+    use crate::ir::typ::TypeKind;
     use crate::ir::Context;
     use crate::{args_are_cpp, file_is_cpp};
     use std::borrow::Cow;
@@ -3504,7 +3507,7 @@ pub mod utils {
             };
         }
         let canonical_type_kind = sig
-            .return_type()
+            .ret_type()
             .into_resolver()
             .through_type_refs()
             .through_type_aliases()
@@ -3512,14 +3515,14 @@ pub mod utils {
             .kind()
             .expect_type()
             .kind();
-        if let TyKind::Void = canonical_type_kind {
+        if let TypeKind::Void = canonical_type_kind {
             return if include_arrow {
                 quote! {}
             } else {
                 quote! { () }
             };
         }
-        let ret_ty = sig.return_type().to_rust_ty_or_opaque(ctx, &());
+        let ret_ty = sig.ret_type().to_rust_ty_or_opaque(ctx, &());
         if include_arrow {
             quote! { -> #ret_ty }
         } else {
@@ -3533,13 +3536,13 @@ pub mod utils {
         use super::ToPtr;
         let mut unnamed_arguments = 0;
         let mut args = sig
-            .argument_types()
+            .arg_types()
             .iter()
             .map(|&(ref name, ty)| {
                 let arg_item = ctx.resolve_item(ty);
                 let arg_ty = arg_item.kind().expect_type();
                 let arg_ty = match *arg_ty.canonical_type(ctx).kind() {
-                    TyKind::Array(t, _) => {
+                    TypeKind::Array(t, _) => {
                         let stream = if ctx.opts().array_pointers_in_arguments {
                             arg_ty.to_rust_ty_or_opaque(ctx, arg_item)
                         } else {
@@ -3547,7 +3550,7 @@ pub mod utils {
                         };
                         stream.to_ptr(ctx.resolve_type(t).is_const())
                     },
-                    TyKind::Pointer(inner) => {
+                    TypeKind::Pointer(inner) => {
                         let inner = ctx.resolve_item(inner);
                         let inner_ty = inner.expect_type();
                         arg_item.to_rust_ty_or_opaque(ctx, &())
@@ -3576,7 +3579,7 @@ pub mod utils {
     pub fn fnsig_argument_identifiers(ctx: &Context, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
         let mut unnamed_arguments = 0;
         let args = sig
-            .argument_types()
+            .arg_types()
             .iter()
             .map(|&(ref name, _ty)| {
                 let arg_name = match *name {
@@ -3596,7 +3599,7 @@ pub mod utils {
         args
     }
     pub fn fnsig_block(ctx: &Context, sig: &FnSig) -> proc_macro2::TokenStream {
-        let args = sig.argument_types().iter().map(|&(_, ty)| {
+        let args = sig.arg_types().iter().map(|&(_, ty)| {
             let arg_item = ctx.resolve_item(ty);
             arg_item.to_rust_ty_or_opaque(ctx, &())
         });
