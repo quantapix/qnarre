@@ -10,7 +10,7 @@ use std::cmp;
 const MAX_GUARANTEED_ALIGN: usize = 8;
 
 #[derive(Debug)]
-pub(crate) struct StructLayoutTracker<'a> {
+pub struct StructLayoutTracker<'a> {
     name: &'a str,
     ctx: &'a BindgenContext,
     comp: &'a CompInfo,
@@ -25,32 +25,27 @@ pub(crate) struct StructLayoutTracker<'a> {
     last_field_was_bitfield: bool,
 }
 
-pub(crate) fn align_to(size: usize, align: usize) -> usize {
+pub fn align_to(size: usize, align: usize) -> usize {
     if align == 0 {
         return size;
     }
-
     let rem = size % align;
     if rem == 0 {
         return size;
     }
-
     size + align - rem
 }
 
-pub(crate) fn bytes_from_bits_pow2(mut n: usize) -> usize {
+pub fn bytes_from_bits_pow2(mut n: usize) -> usize {
     if n == 0 {
         return 0;
     }
-
     if n <= 8 {
         return 1;
     }
-
     if !n.is_power_of_two() {
         n = n.next_power_of_two();
     }
-
     n / 8
 }
 
@@ -78,7 +73,7 @@ fn test_bytes_from_bits_pow2() {
 }
 
 impl<'a> StructLayoutTracker<'a> {
-    pub(crate) fn new(ctx: &'a BindgenContext, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
+    pub fn new(ctx: &'a BindgenContext, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
         let known_type_layout = ty.layout(ctx);
         let is_packed = comp.is_packed(ctx, known_type_layout.as_ref());
         let (is_rust_union, can_copy_union_fields) = comp.is_rust_union(ctx, known_type_layout.as_ref(), name);
@@ -97,16 +92,13 @@ impl<'a> StructLayoutTracker<'a> {
             last_field_was_bitfield: false,
         }
     }
-
-    pub(crate) fn can_copy_union_fields(&self) -> bool {
+    pub fn can_copy_union_fields(&self) -> bool {
         self.can_copy_union_fields
     }
-
-    pub(crate) fn is_rust_union(&self) -> bool {
+    pub fn is_rust_union(&self) -> bool {
         self.is_rust_union
     }
-
-    pub(crate) fn saw_vtable(&mut self) {
+    pub fn saw_vtable(&mut self) {
         debug!("saw vtable for {}", self.name);
 
         let ptr_size = self.ctx.target_pointer_size();
@@ -114,19 +106,17 @@ impl<'a> StructLayoutTracker<'a> {
         self.latest_field_layout = Some(Layout::new(ptr_size, ptr_size));
         self.max_field_align = ptr_size;
     }
-
-    pub(crate) fn saw_base(&mut self, base_ty: &Type) {
+    pub fn saw_base(&mut self, base_ty: &Type) {
         debug!("saw base for {}", self.name);
         if let Some(layout) = base_ty.layout(self.ctx) {
             self.align_to_latest_field(layout);
-
             self.latest_offset += self.padding_bytes(layout) + layout.size;
             self.latest_field_layout = Some(layout);
             self.max_field_align = cmp::max(self.max_field_align, layout.align);
         }
     }
 
-    pub(crate) fn saw_bitfield_unit(&mut self, layout: Layout) {
+    pub fn saw_bitfield_unit(&mut self, layout: Layout) {
         debug!("saw bitfield unit for {}: {:?}", self.name, layout);
 
         self.align_to_latest_field(layout);
@@ -143,7 +133,7 @@ impl<'a> StructLayoutTracker<'a> {
         self.last_field_was_bitfield = true;
     }
 
-    pub(crate) fn saw_field(
+    pub fn saw_field(
         &mut self,
         field_name: &str,
         field_ty: &Type,
@@ -162,7 +152,7 @@ impl<'a> StructLayoutTracker<'a> {
         self.saw_field_with_layout(field_name, field_layout, field_offset)
     }
 
-    pub(crate) fn saw_field_with_layout(
+    pub fn saw_field_with_layout(
         &mut self,
         field_name: &str,
         field_layout: Layout,
@@ -239,11 +229,7 @@ impl<'a> StructLayoutTracker<'a> {
         padding_layout.map(|layout| self.padding_field(layout))
     }
 
-    pub(crate) fn add_tail_padding(
-        &mut self,
-        comp_name: &str,
-        comp_layout: Layout,
-    ) -> Option<proc_macro2::TokenStream> {
+    pub fn add_tail_padding(&mut self, comp_name: &str, comp_layout: Layout) -> Option<proc_macro2::TokenStream> {
         if !self.ctx.opts().force_explicit_padding {
             return None;
         }
@@ -266,7 +252,7 @@ impl<'a> StructLayoutTracker<'a> {
         Some(self.padding_field(Layout::new(size, 0)))
     }
 
-    pub(crate) fn pad_struct(&mut self, layout: Layout) -> Option<proc_macro2::TokenStream> {
+    pub fn pad_struct(&mut self, layout: Layout) -> Option<proc_macro2::TokenStream> {
         debug!("pad_struct:\n\tself = {:#?}\n\tlayout = {:#?}", self, layout);
 
         if layout.size < self.latest_offset {
@@ -305,7 +291,7 @@ impl<'a> StructLayoutTracker<'a> {
         }
     }
 
-    pub(crate) fn requires_explicit_align(&self, layout: Layout) -> bool {
+    pub fn requires_explicit_align(&self, layout: Layout) -> bool {
         let repr_align = true;
         if repr_align && self.max_field_align >= 16 {
             return true;

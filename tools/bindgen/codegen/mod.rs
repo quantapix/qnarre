@@ -1,15 +1,37 @@
 mod dyngen;
-mod error;
+mod error {
+    use std::error;
+    use std::fmt;
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum Error {
+        NoLayoutForOpaqueBlob,
+        InstantiationOfOpaqueType,
+    }
+    impl fmt::Display for Error {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str(match *self {
+                Error::NoLayoutForOpaqueBlob => "Tried to generate an opaque blob, but had no layout",
+                Error::InstantiationOfOpaqueType => {
+                    "Instantiation of opaque template type or partial template \
+                 specialization"
+                },
+            })
+        }
+    }
+    impl error::Error for Error {}
+    pub type Result<T> = ::std::result::Result<T, Error>;
+}
 mod helpers;
 mod impl_debug;
 mod impl_partialeq;
-mod postprocessing;
+mod postproc;
 mod serialize;
-pub(crate) mod struct_layout;
+pub mod struct_layout;
 
 #[cfg(test)]
 #[allow(warnings)]
-pub(crate) mod bitfield_unit;
+pub mod bitfield_unit;
 #[cfg(all(test, target_endian = "little"))]
 mod bitfield_unit_tests;
 
@@ -75,7 +97,7 @@ impl fmt::Display for CodegenError {
     }
 }
 
-pub(crate) static CONSTIFIED_ENUM_MODULE_REPR_NAME: &str = "Type";
+pub static CONSTIFIED_ENUM_MODULE_REPR_NAME: &str = "Type";
 
 fn top_level_path(ctx: &BindgenContext, item: &Item) -> Vec<proc_macro2::TokenStream> {
     let mut path = vec![quote! { self }];
@@ -1195,7 +1217,7 @@ impl<'a> FieldCodegen<'a> for FieldData {
             },
             FieldVisibilityKind::PublicCrate => {
                 field.append_all(quote! {
-                    pub(crate) #field_ident : #ty ,
+                    pub #field_ident : #ty ,
                 });
             },
             FieldVisibilityKind::Public => {
@@ -1302,7 +1324,7 @@ impl Bitfield {
 fn access_specifier(visibility: FieldVisibilityKind) -> proc_macro2::TokenStream {
     match visibility {
         FieldVisibilityKind::Private => quote! {},
-        FieldVisibilityKind::PublicCrate => quote! { pub(crate) },
+        FieldVisibilityKind::PublicCrate => quote! { pub },
         FieldVisibilityKind::Public => quote! { pub },
     }
 }
@@ -3413,7 +3435,7 @@ fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::SrcLoc
     );
 }
 
-pub(crate) fn codegen(ctx: BindgenContext) -> Result<(proc_macro2::TokenStream, Opts), CodegenError> {
+pub fn codegen(ctx: BindgenContext) -> Result<(proc_macro2::TokenStream, Opts), CodegenError> {
     ctx.gen(|ctx2| {
         let _t = ctx2.timer("codegen");
         let counter = Cell::new(0);
@@ -3449,11 +3471,11 @@ pub(crate) fn codegen(ctx: BindgenContext) -> Result<(proc_macro2::TokenStream, 
             y.push(dynamic_items_tokens);
         }
         utils::serialize_items(&y, ctx2)?;
-        Ok(postprocessing::postproc(y.items, ctx2.opts()))
+        Ok(postproc::postproc(y.items, ctx2.opts()))
     })
 }
 
-pub(crate) mod utils {
+pub mod utils {
     use super::serialize::CSerialize;
     use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
     use crate::ir::context::BindgenContext;
@@ -3505,7 +3527,7 @@ pub(crate) mod utils {
         Ok(())
     }
 
-    pub(crate) fn prepend_bitfield_unit_type(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
+    pub fn prepend_bitfield_unit_type(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let bitfield_unit_src = include_str!("./bitfield_unit.rs");
         let bitfield_unit_src = Cow::Borrowed(bitfield_unit_src);
         let bitfield_unit_type = proc_macro2::TokenStream::from_str(&bitfield_unit_src).unwrap();
@@ -3516,7 +3538,7 @@ pub(crate) mod utils {
         result.extend(old_items);
     }
 
-    pub(crate) fn prepend_objc_header(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
+    pub fn prepend_objc_header(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let use_objc = if ctx.opts().objc_extern_crate {
             quote! {
                 #[macro_use]
@@ -3538,7 +3560,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_block_header(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
+    pub fn prepend_block_header(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let use_block = if ctx.opts().block_extern_crate {
             quote! {
                 extern crate block;
@@ -3554,7 +3576,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_union_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
+    pub fn prepend_union_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let prefix = ctx.trait_prefix();
         let const_fn = quote! { const fn };
         let union_field_decl = quote! {
@@ -3650,7 +3672,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_incomplete_array_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
+    pub fn prepend_incomplete_array_types(ctx: &BindgenContext, result: &mut Vec<proc_macro2::TokenStream>) {
         let prefix = ctx.trait_prefix();
         let const_fn = quote! { const fn };
         let incomplete_array_decl = quote! {
@@ -3715,7 +3737,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn prepend_complex_type(result: &mut Vec<proc_macro2::TokenStream>) {
+    pub fn prepend_complex_type(result: &mut Vec<proc_macro2::TokenStream>) {
         let complex_type = quote! {
             #[derive(PartialEq, Copy, Clone, Hash, Debug, Default)]
             #[repr(C)]
@@ -3730,7 +3752,7 @@ pub(crate) mod utils {
         result.extend(old_items.into_iter());
     }
 
-    pub(crate) fn build_path(item: &Item, ctx: &BindgenContext) -> error::Result<proc_macro2::TokenStream> {
+    pub fn build_path(item: &Item, ctx: &BindgenContext) -> error::Result<proc_macro2::TokenStream> {
         let path = item.namespace_aware_canonical_path(ctx);
         let tokens = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
 
@@ -3744,7 +3766,7 @@ pub(crate) mod utils {
         }
     }
 
-    pub(crate) fn type_from_named(ctx: &BindgenContext, name: &str) -> Option<proc_macro2::TokenStream> {
+    pub fn type_from_named(ctx: &BindgenContext, name: &str) -> Option<proc_macro2::TokenStream> {
         Some(match name {
             "int8_t" => primitive_ty(ctx, "i8"),
             "uint8_t" => primitive_ty(ctx, "u8"),
@@ -3799,11 +3821,11 @@ pub(crate) mod utils {
         }
     }
 
-    pub(crate) fn fnsig_return_ty(ctx: &BindgenContext, sig: &FnSig) -> proc_macro2::TokenStream {
+    pub fn fnsig_return_ty(ctx: &BindgenContext, sig: &FnSig) -> proc_macro2::TokenStream {
         fnsig_return_ty_internal(ctx, sig, /* include_arrow = */ true)
     }
 
-    pub(crate) fn fnsig_arguments(ctx: &BindgenContext, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
+    pub fn fnsig_arguments(ctx: &BindgenContext, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
         use super::ToPtr;
 
         let mut unnamed_arguments = 0;
@@ -3855,7 +3877,7 @@ pub(crate) mod utils {
         args
     }
 
-    pub(crate) fn fnsig_argument_identifiers(ctx: &BindgenContext, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
+    pub fn fnsig_argument_identifiers(ctx: &BindgenContext, sig: &FnSig) -> Vec<proc_macro2::TokenStream> {
         let mut unnamed_arguments = 0;
         let args = sig
             .argument_types()
@@ -3881,7 +3903,7 @@ pub(crate) mod utils {
         args
     }
 
-    pub(crate) fn fnsig_block(ctx: &BindgenContext, sig: &FnSig) -> proc_macro2::TokenStream {
+    pub fn fnsig_block(ctx: &BindgenContext, sig: &FnSig) -> proc_macro2::TokenStream {
         let args = sig.argument_types().iter().map(|&(_, ty)| {
             let arg_item = ctx.resolve_item(ty);
 
@@ -3894,7 +3916,7 @@ pub(crate) mod utils {
         }
     }
 
-    pub(crate) fn names_will_be_identical_after_mangling(
+    pub fn names_will_be_identical_after_mangling(
         canonical_name: &str,
         mangled_name: &str,
         call_conv: Option<ClangAbi>,
