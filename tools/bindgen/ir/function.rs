@@ -1,5 +1,5 @@
 use super::comp::MethodKind;
-use super::context::{BindgenContext, TypeId};
+use super::context::{Context, TypeId};
 use super::dot::DotAttrs;
 use super::item::Item;
 use super::traversal::{EdgeKind, Trace, Tracer};
@@ -96,7 +96,7 @@ impl Function {
     }
 }
 impl DotAttrs for Function {
-    fn dot_attrs<W>(&self, _ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -200,7 +200,7 @@ fn get_abi(x: CXCallingConv) -> ClangAbi {
         x => ClangAbi::Unknown(x),
     }
 }
-pub fn cursor_mangling(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<String> {
+pub fn cursor_mangling(ctx: &Context, cur: &clang::Cursor) -> Option<String> {
     if !ctx.opts().enable_mangling {
         return None;
     }
@@ -227,11 +227,7 @@ pub fn cursor_mangling(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<Stri
     }
     Some(mangling)
 }
-fn args_from_ty_and_cursor(
-    ty: &clang::Type,
-    cur: &clang::Cursor,
-    ctx: &mut BindgenContext,
-) -> Vec<(Option<String>, TypeId)> {
+fn args_from_ty_and_cursor(ty: &clang::Type, cur: &clang::Cursor, ctx: &mut Context) -> Vec<(Option<String>, TypeId)> {
     let cursor_args = cur.args().unwrap_or_default().into_iter();
     let type_args = ty.args().unwrap_or_default().into_iter();
     cursor_args
@@ -250,7 +246,7 @@ fn args_from_ty_and_cursor(
         .collect()
 }
 impl FnSig {
-    pub fn from_ty(ty: &clang::Type, cur: &clang::Cursor, ctx: &mut BindgenContext) -> Result<Self, parse::Error> {
+    pub fn from_ty(ty: &clang::Type, cur: &clang::Cursor, ctx: &mut Context) -> Result<Self, parse::Error> {
         use clang_lib::*;
         debug!("FunctionSig::from_ty {:?} {:?}", ty, cur);
         let kind = cur.kind();
@@ -358,7 +354,7 @@ impl FnSig {
     pub fn argument_types(&self) -> &[(Option<String>, TypeId)] {
         &self.argument_types
     }
-    pub fn abi(&self, ctx: &BindgenContext, name: Option<&str>) -> ClangAbi {
+    pub fn abi(&self, ctx: &Context, name: Option<&str>) -> ClangAbi {
         if let Some(name) = name {
             if let Some((abi, _)) = ctx
                 .opts()
@@ -398,7 +394,7 @@ impl FnSig {
     }
 }
 impl parse::SubItem for Function {
-    fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
+    fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Result<Self>, parse::Error> {
         use clang_lib::*;
         let kind = match FnKind::from_cursor(&cur) {
             None => return Err(parse::Error::Continue),
@@ -452,7 +448,7 @@ impl parse::SubItem for Function {
 }
 impl Trace for FnSig {
     type Extra = ();
-    fn trace<T>(&self, _: &BindgenContext, tracer: &mut T, _: &())
+    fn trace<T>(&self, _: &Context, tracer: &mut T, _: &())
     where
         T: Tracer,
     {

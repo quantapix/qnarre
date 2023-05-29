@@ -1,6 +1,6 @@
 use super::analysis::Sizedness;
 use super::annotations::Annotations;
-use super::context::{BindgenContext, FunctionId, ItemId, TypeId, VarId};
+use super::context::{Context, FunctionId, ItemId, TypeId, VarId};
 use super::dot::DotAttrs;
 use super::item::{IsOpaque, Item};
 use super::layout::Layout;
@@ -106,7 +106,7 @@ pub enum Field {
     Bitfields(BitfieldUnit),
 }
 impl Field {
-    pub fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
+    pub fn layout(&self, ctx: &Context) -> Option<Layout> {
         match *self {
             Field::Bitfields(BitfieldUnit { layout, .. }) => Some(layout),
             Field::DataMember(ref x) => ctx.resolve_type(x.ty).layout(ctx),
@@ -115,7 +115,7 @@ impl Field {
 }
 impl Trace for Field {
     type Extra = ();
-    fn trace<T>(&self, _: &BindgenContext, tracer: &mut T, _: &())
+    fn trace<T>(&self, _: &Context, tracer: &mut T, _: &())
     where
         T: Tracer,
     {
@@ -132,7 +132,7 @@ impl Trace for Field {
     }
 }
 impl DotAttrs for Field {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -165,7 +165,7 @@ impl DotAttrs for Field {
     }
 }
 impl DotAttrs for FieldData {
-    fn dot_attrs<W>(&self, _: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -178,7 +178,7 @@ impl DotAttrs for FieldData {
     }
 }
 impl DotAttrs for Bitfield {
-    fn dot_attrs<W>(&self, _: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -299,7 +299,7 @@ impl FieldMethods for RawField {
     }
 }
 fn raw_fields_to_fields_and_bitfield_units<I>(
-    ctx: &BindgenContext,
+    ctx: &Context,
     raw_fields: I,
     packed: bool,
 ) -> Result<(Vec<Field>, bool), ()>
@@ -333,7 +333,7 @@ where
     Ok((fields, bitfield_unit_count != 0))
 }
 fn bitfields_to_allocation_units<E, I>(
-    ctx: &BindgenContext,
+    ctx: &Context,
     bitfield_unit_count: &mut usize,
     fields: &mut E,
     raw_bitfields: I,
@@ -447,7 +447,7 @@ impl CompFields {
             },
         }
     }
-    fn compute_bitfield_units(&mut self, ctx: &BindgenContext, packed: bool) {
+    fn compute_bitfield_units(&mut self, ctx: &Context, packed: bool) {
         let raws = match *self {
             CompFields::Before(ref mut xs) => mem::take(xs),
             _ => {
@@ -467,7 +467,7 @@ impl CompFields {
             },
         }
     }
-    fn deanonymize_fields(&mut self, ctx: &BindgenContext, methods: &[Method]) {
+    fn deanonymize_fields(&mut self, ctx: &Context, methods: &[Method]) {
         let fields = match *self {
             CompFields::After { ref mut fields, .. } => fields,
             CompFields::Error => return,
@@ -475,7 +475,7 @@ impl CompFields {
                 panic!("Not yet computed bitfield units.");
             },
         };
-        fn has_method(methods: &[Method], ctx: &BindgenContext, name: &str) -> bool {
+        fn has_method(methods: &[Method], ctx: &Context, name: &str) -> bool {
             methods.iter().any(|method| {
                 let method_name = ctx.resolve_func(method.sig()).name();
                 method_name == name || ctx.rust_mangle(method_name) == name
@@ -541,7 +541,7 @@ impl CompFields {
 }
 impl Trace for CompFields {
     type Extra = ();
-    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, _: &())
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, _: &())
     where
         T: Tracer,
     {
@@ -609,7 +609,7 @@ impl Base {
     pub fn is_virtual(&self) -> bool {
         self.kind == BaseKind::Virtual
     }
-    pub fn requires_storage(&self, ctx: &BindgenContext) -> bool {
+    pub fn requires_storage(&self, ctx: &Context) -> bool {
         if self.is_virtual() {
             return false;
         }
@@ -664,7 +664,7 @@ impl CompInfo {
             is_forward_declaration: false,
         }
     }
-    pub fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
+    pub fn layout(&self, ctx: &Context) -> Option<Layout> {
         if self.kind == CompKind::Struct {
             return None;
         }
@@ -698,7 +698,7 @@ impl CompInfo {
             CompFields::Before(ref raw_fields) => !raw_fields.is_empty(),
         }
     }
-    fn each_known_field_layout(&self, ctx: &BindgenContext, mut callback: impl FnMut(Layout)) {
+    fn each_known_field_layout(&self, ctx: &Context, mut callback: impl FnMut(Layout)) {
         match self.fields {
             CompFields::Error => {},
             CompFields::After { ref fields, .. } => {
@@ -767,7 +767,7 @@ impl CompInfo {
         potential_id: ItemId,
         ty: &clang::Type,
         location: Option<clang::Cursor>,
-        ctx: &mut BindgenContext,
+        ctx: &mut Context,
     ) -> Result<Self, parse::Error> {
         use clang_lib::*;
         assert!(
@@ -1010,7 +1010,7 @@ impl CompInfo {
     pub fn found_unknown_attr(&self) -> bool {
         self.found_unknown_attr
     }
-    pub fn is_packed(&self, ctx: &BindgenContext, layout: Option<&Layout>) -> bool {
+    pub fn is_packed(&self, ctx: &Context, layout: Option<&Layout>) -> bool {
         if self.packed_attr {
             return true;
         }
@@ -1032,14 +1032,14 @@ impl CompInfo {
     pub fn is_forward_declaration(&self) -> bool {
         self.is_forward_declaration
     }
-    pub fn compute_bitfield_units(&mut self, ctx: &BindgenContext, layout: Option<&Layout>) {
+    pub fn compute_bitfield_units(&mut self, ctx: &Context, layout: Option<&Layout>) {
         let packed = self.is_packed(ctx, layout);
         self.fields.compute_bitfield_units(ctx, packed)
     }
-    pub fn deanonymize_fields(&mut self, ctx: &BindgenContext) {
+    pub fn deanonymize_fields(&mut self, ctx: &Context) {
         self.fields.deanonymize_fields(ctx, &self.methods);
     }
-    pub fn is_rust_union(&self, ctx: &BindgenContext, layout: Option<&Layout>, name: &str) -> (bool, bool) {
+    pub fn is_rust_union(&self, ctx: &Context, layout: Option<&Layout>, name: &str) -> (bool, bool) {
         if !self.is_union() {
             return (false, false);
         }
@@ -1070,7 +1070,7 @@ impl CompInfo {
     }
 }
 impl DotAttrs for CompInfo {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -1105,7 +1105,7 @@ impl DotAttrs for CompInfo {
 }
 impl IsOpaque for CompInfo {
     type Extra = Option<Layout>;
-    fn is_opaque(&self, ctx: &BindgenContext, layout: &Option<Layout>) -> bool {
+    fn is_opaque(&self, ctx: &Context, layout: &Option<Layout>) -> bool {
         if self.has_non_type_template_params || self.has_unevaluable_bit_field_width {
             return true;
         }
@@ -1128,13 +1128,13 @@ impl IsOpaque for CompInfo {
     }
 }
 impl TemplParams for CompInfo {
-    fn self_template_params(&self, _ctx: &BindgenContext) -> Vec<TypeId> {
+    fn self_template_params(&self, _ctx: &Context) -> Vec<TypeId> {
         self.template_params.clone()
     }
 }
 impl Trace for CompInfo {
     type Extra = Item;
-    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, i: &Item)
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, i: &Item)
     where
         T: Tracer,
     {

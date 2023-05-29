@@ -1,4 +1,4 @@
-use crate::ir::context::{BindgenContext, ItemId};
+use crate::ir::context::{Context, ItemId};
 use crate::ir::traversal::{EdgeKind, Trace};
 use crate::HashMap;
 use std::fmt;
@@ -21,13 +21,11 @@ pub enum YConstrain {
     Changed,
     Same,
 }
-
 impl Default for YConstrain {
     fn default() -> Self {
         YConstrain::Same
     }
 }
-
 impl ops::BitOr for YConstrain {
     type Output = Self;
     fn bitor(self, rhs: YConstrain) -> Self::Output {
@@ -38,30 +36,13 @@ impl ops::BitOr for YConstrain {
         }
     }
 }
-
 impl ops::BitOrAssign for YConstrain {
     fn bitor_assign(&mut self, rhs: YConstrain) {
         *self = *self | rhs;
     }
 }
 
-pub fn analyze<T>(x: T::Extra) -> T::Output
-where
-    T: Monotone,
-{
-    let mut y = T::new(x);
-    let mut ns = y.initial_worklist();
-    while let Some(n) = ns.pop() {
-        if let YConstrain::Changed = y.constrain(n) {
-            y.each_depending_on(n, |x| {
-                ns.push(x);
-            });
-        }
-    }
-    y.into()
-}
-
-pub fn gen_deps<F>(ctx: &BindgenContext, f: F) -> HashMap<ItemId, Vec<ItemId>>
+pub fn gen_deps<F>(ctx: &Context, f: F) -> HashMap<ItemId, Vec<ItemId>>
 where
     F: Fn(EdgeKind) -> bool,
 {
@@ -82,6 +63,21 @@ where
     }
     ys
 }
+pub fn analyze<T>(x: T::Extra) -> T::Output
+where
+    T: Monotone,
+{
+    let mut y = T::new(x);
+    let mut ns = y.initial_worklist();
+    while let Some(n) = ns.pop() {
+        if let YConstrain::Changed = y.constrain(n) {
+            y.each_depending_on(n, |x| {
+                ns.push(x);
+            });
+        }
+    }
+    y.into()
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum DeriveTrait {
@@ -93,11 +89,9 @@ pub enum DeriveTrait {
 }
 
 pub mod derive {
-    use std::fmt;
-
     use super::{gen_deps, DeriveTrait, HasVtable, Monotone, YConstrain};
     use crate::ir::comp::CompKind;
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     use crate::ir::derive::YDerive;
     use crate::ir::function::FnSig;
     use crate::ir::item::{IsOpaque, Item};
@@ -107,6 +101,7 @@ pub mod derive {
     use crate::ir::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
     use crate::ir::ty::{TyKind, Type};
     use crate::{Entry, HashMap, HashSet};
+    use std::fmt;
 
     type EdgePred = fn(EdgeKind) -> bool;
 
@@ -131,7 +126,7 @@ pub mod derive {
     }
 
     impl DeriveTrait {
-        fn not_by_name(&self, ctx: &BindgenContext, i: &Item) -> bool {
+        fn not_by_name(&self, ctx: &Context, i: &Item) -> bool {
             match self {
                 DeriveTrait::Copy => ctx.no_copy_by_name(i),
                 DeriveTrait::Debug => ctx.no_debug_by_name(i),
@@ -162,7 +157,7 @@ pub mod derive {
             }
         }
 
-        fn can_derive_large_array(&self, ctx: &BindgenContext) -> bool {
+        fn can_derive_large_array(&self, ctx: &Context) -> bool {
             !matches!(self, DeriveTrait::Default)
         }
 
@@ -226,7 +221,6 @@ pub mod derive {
             }
         }
     }
-
     impl fmt::Display for DeriveTrait {
         fn fmt(&self, x: &mut fmt::Formatter) -> fmt::Result {
             let y = match self {
@@ -242,12 +236,11 @@ pub mod derive {
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         deps: HashMap<ItemId, Vec<ItemId>>,
         ys: HashMap<ItemId, YDerive>,
         derive: DeriveTrait,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: YDerive) -> YConstrain {
             if let YDerive::Yes = y {
@@ -395,13 +388,12 @@ pub mod derive {
             y.unwrap_or_default()
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
-        type Extra = (&'ctx BindgenContext, DeriveTrait);
+        type Extra = (&'ctx Context, DeriveTrait);
         type Output = HashMap<ItemId, YDerive>;
 
-        fn new((ctx, derive): (&'ctx BindgenContext, DeriveTrait)) -> Analysis<'ctx> {
+        fn new((ctx, derive): (&'ctx Context, DeriveTrait)) -> Analysis<'ctx> {
             let ys = HashMap::default();
             let deps = gen_deps(ctx, check_edge_default);
             Analysis { ctx, derive, ys, deps }
@@ -477,18 +469,17 @@ pub use self::derive::as_cannot_derive_set;
 pub mod has_destructor {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::{CompKind, Field, FieldMethods};
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         deps: HashMap<ItemId, Vec<ItemId>>,
         ys: HashSet<ItemId>,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             matches!(
@@ -508,12 +499,11 @@ pub mod has_destructor {
             YConstrain::Changed
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
-        type Extra = &'ctx BindgenContext;
+        type Extra = &'ctx Context;
         type Output = HashSet<ItemId>;
-        fn new(ctx: &'ctx BindgenContext) -> Self {
+        fn new(ctx: &'ctx Context) -> Self {
             let ys = HashSet::default();
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
@@ -596,18 +586,17 @@ pub mod has_float {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         ys: HashSet<ItemId>,
         deps: HashMap<ItemId, Vec<ItemId>>,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             match k {
@@ -637,13 +626,12 @@ pub mod has_float {
             YConstrain::Changed
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
-        type Extra = &'ctx BindgenContext;
+        type Extra = &'ctx Context;
         type Output = HashSet<ItemId>;
 
-        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+        fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let ys = HashSet::default();
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
@@ -749,18 +737,17 @@ pub mod has_ty_param {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         ys: HashSet<ItemId>,
         deps: HashMap<ItemId, Vec<ItemId>>,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             match k {
@@ -790,13 +777,12 @@ pub mod has_ty_param {
             YConstrain::Changed
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
-        type Extra = &'ctx BindgenContext;
+        type Extra = &'ctx Context;
         type Output = HashSet<ItemId>;
 
-        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+        fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let ys = HashSet::default();
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
@@ -896,13 +882,13 @@ pub mod has_ty_param {
 }
 
 pub trait HasVtable {
-    fn has_vtable(&self, ctx: &BindgenContext) -> bool;
-    fn has_vtable_ptr(&self, ctx: &BindgenContext) -> bool;
+    fn has_vtable(&self, ctx: &Context) -> bool;
+    fn has_vtable_ptr(&self, ctx: &Context) -> bool;
 }
 
 pub mod has_vtable {
     use super::{gen_deps, Monotone, YConstrain};
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
     use crate::{Entry, HashMap};
@@ -915,26 +901,22 @@ pub mod has_vtable {
         SelfHasVtable,
         BaseHasVtable,
     }
-
-    impl Default for Result {
-        fn default() -> Self {
-            Result::No
-        }
-    }
-
     impl Result {
         pub fn join(self, rhs: Self) -> Self {
             cmp::max(self, rhs)
         }
     }
-
+    impl Default for Result {
+        fn default() -> Self {
+            Result::No
+        }
+    }
     impl ops::BitOr for Result {
         type Output = Self;
         fn bitor(self, rhs: Result) -> Self::Output {
             self.join(rhs)
         }
     }
-
     impl ops::BitOrAssign for Result {
         fn bitor_assign(&mut self, rhs: Result) {
             *self = self.join(rhs)
@@ -943,11 +925,10 @@ pub mod has_vtable {
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         ys: HashMap<ItemId, Result>,
         deps: HashMap<ItemId, Vec<ItemId>>,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             matches!(
@@ -990,13 +971,12 @@ pub mod has_vtable {
             }
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
-        type Extra = &'ctx BindgenContext;
+        type Extra = &'ctx Context;
         type Output = HashMap<ItemId, Result>;
 
-        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+        fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let ys = HashMap::default();
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
@@ -1052,15 +1032,15 @@ pub mod has_vtable {
 }
 
 pub trait Sizedness {
-    fn sizedness(&self, ctx: &BindgenContext) -> sizedness::Result;
-    fn is_zero_sized(&self, ctx: &BindgenContext) -> bool {
+    fn sizedness(&self, ctx: &Context) -> sizedness::Result;
+    fn is_zero_sized(&self, ctx: &Context) -> bool {
         self.sizedness(ctx) == sizedness::Result::ZeroSized
     }
 }
 
 pub mod sizedness {
     use super::{gen_deps, HasVtable, Monotone, YConstrain};
-    use crate::ir::context::{BindgenContext, TypeId};
+    use crate::ir::context::{Context, TypeId};
     use crate::ir::item::IsOpaque;
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
@@ -1073,26 +1053,22 @@ pub mod sizedness {
         DependsOnTypeParam,
         NonZeroSized,
     }
-
-    impl Default for Result {
-        fn default() -> Self {
-            Result::ZeroSized
-        }
-    }
-
     impl Result {
         pub fn join(self, rhs: Self) -> Self {
             cmp::max(self, rhs)
         }
     }
-
+    impl Default for Result {
+        fn default() -> Self {
+            Result::ZeroSized
+        }
+    }
     impl ops::BitOr for Result {
         type Output = Self;
         fn bitor(self, rhs: Result) -> Self::Output {
             self.join(rhs)
         }
     }
-
     impl ops::BitOrAssign for Result {
         fn bitor_assign(&mut self, rhs: Result) {
             *self = self.join(rhs)
@@ -1101,11 +1077,10 @@ pub mod sizedness {
 
     #[derive(Debug)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         deps: HashMap<TypeId, Vec<TypeId>>,
         ys: HashMap<TypeId, Result>,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             matches!(
@@ -1146,13 +1121,12 @@ pub mod sizedness {
             }
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = TypeId;
-        type Extra = &'ctx BindgenContext;
+        type Extra = &'ctx Context;
         type Output = HashMap<TypeId, Result>;
 
-        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+        fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let deps = gen_deps(ctx, Self::check_edge)
                 .into_iter()
                 .filter_map(|(i, i2)| {
@@ -1252,7 +1226,7 @@ pub mod sizedness {
 
 pub mod used_templ_param {
     use super::{Monotone, YConstrain};
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     use crate::ir::item::{Item, ItemSet};
     use crate::ir::template::{TemplInstantiation, TemplParams};
     use crate::ir::traversal::{EdgeKind, Trace};
@@ -1261,12 +1235,11 @@ pub mod used_templ_param {
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
-        ctx: &'ctx BindgenContext,
+        ctx: &'ctx Context,
         ys: HashMap<ItemId, Option<ItemSet>>,
         deps: HashMap<ItemId, Vec<ItemId>>,
         alloweds: HashSet<ItemId>,
     }
-
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             match k {
@@ -1404,13 +1377,12 @@ pub mod used_templ_param {
             );
         }
     }
-
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
-        type Extra = &'ctx BindgenContext;
+        type Extra = &'ctx Context;
         type Output = HashMap<ItemId, ItemSet>;
 
-        fn new(ctx: &'ctx BindgenContext) -> Analysis<'ctx> {
+        fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let mut ys = HashMap::default();
             let mut deps = HashMap::default();
             let alloweds: HashSet<_> = ctx.allowed_items().iter().cloned().collect();
@@ -1551,7 +1523,6 @@ mod tests {
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
     struct Graph(HashMap<Node, Vec<Node>>);
-
     impl Graph {
         fn make_test_graph() -> Graph {
             let mut y = Graph::default();
@@ -1584,7 +1555,6 @@ mod tests {
         graph: &'a Graph,
         reversed: Graph,
     }
-
     impl<'a> Monotone for ReachableFrom<'a> {
         type Node = Node;
         type Extra = &'a Graph;

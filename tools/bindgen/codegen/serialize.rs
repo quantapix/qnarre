@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::callbacks::IntKind;
 
 use crate::ir::comp::CompKind;
-use crate::ir::context::{BindgenContext, TypeId};
+use crate::ir::context::{Context, TypeId};
 use crate::ir::function::{FnKind, Function};
 use crate::ir::item::CanonicalName;
 use crate::ir::item::Item;
@@ -23,7 +23,7 @@ pub(crate) trait CSerialize<'a> {
 
     fn serialize<W: Write>(
         &self,
-        ctx: &BindgenContext,
+        ctx: &Context,
         extra: Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
@@ -35,7 +35,7 @@ impl<'a> CSerialize<'a> for Item {
 
     fn serialize<W: Write>(
         &self,
-        ctx: &BindgenContext,
+        ctx: &Context,
         (): Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
@@ -55,7 +55,7 @@ impl<'a> CSerialize<'a> for Function {
 
     fn serialize<W: Write>(
         &self,
-        ctx: &BindgenContext,
+        ctx: &Context,
         item: Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
@@ -131,7 +131,7 @@ impl<'a> CSerialize<'a> for TypeId {
 
     fn serialize<W: Write>(
         &self,
-        ctx: &BindgenContext,
+        ctx: &Context,
         (): Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
@@ -146,7 +146,7 @@ impl<'a> CSerialize<'a> for Type {
 
     fn serialize<W: Write>(
         &self,
-        ctx: &BindgenContext,
+        ctx: &Context,
         item: Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
@@ -309,11 +309,7 @@ impl<'a> CSerialize<'a> for Type {
     }
 }
 
-fn serialize_args<W: Write>(
-    args: &[(String, TypeId)],
-    ctx: &BindgenContext,
-    writer: &mut W,
-) -> Result<(), CodegenError> {
+fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &mut W) -> Result<(), CodegenError> {
     if args.is_empty() {
         write!(writer, "void")?;
     } else {
@@ -325,10 +321,10 @@ fn serialize_args<W: Write>(
     Ok(())
 }
 
-fn serialize_sep<W: Write, F: FnMut(I::Item, &BindgenContext, &mut W) -> Result<(), CodegenError>, I: Iterator>(
+fn serialize_sep<W: Write, F: FnMut(I::Item, &Context, &mut W) -> Result<(), CodegenError>, I: Iterator>(
     sep: &str,
     mut iter: I,
-    ctx: &BindgenContext,
+    ctx: &Context,
     buf: &mut W,
     mut f: F,
 ) -> Result<(), CodegenError> {

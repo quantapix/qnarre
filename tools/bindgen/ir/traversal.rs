@@ -1,4 +1,4 @@
-use super::context::{BindgenContext, ItemId};
+use super::context::{Context, ItemId};
 use super::item::ItemSet;
 use std::collections::{BTreeMap, VecDeque};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -34,14 +34,14 @@ pub enum EdgeKind {
     VarType,
     TypeReference,
 }
-pub type TraversalPredicate = for<'a> fn(&'a BindgenContext, Edge) -> bool;
-pub fn all_edges(_: &BindgenContext, _: Edge) -> bool {
+pub type TraversalPredicate = for<'a> fn(&'a Context, Edge) -> bool;
+pub fn all_edges(_: &Context, _: Edge) -> bool {
     true
 }
-pub fn only_inner_type_edges(_: &BindgenContext, edge: Edge) -> bool {
+pub fn only_inner_type_edges(_: &Context, edge: Edge) -> bool {
     edge.kind == EdgeKind::InnerType
 }
-pub fn codegen_edges(ctx: &BindgenContext, edge: Edge) -> bool {
+pub fn codegen_edges(ctx: &Context, edge: Edge) -> bool {
     let cc = &ctx.opts().codegen_config;
     match edge.kind {
         EdgeKind::Generic => ctx.resolve_item(edge.to).is_enabled_for_codegen(ctx),
@@ -62,11 +62,11 @@ pub fn codegen_edges(ctx: &BindgenContext, edge: Edge) -> bool {
     }
 }
 pub trait TraversalStorage<'ctx> {
-    fn new(ctx: &'ctx BindgenContext) -> Self;
+    fn new(ctx: &'ctx Context) -> Self;
     fn add(&mut self, from: Option<ItemId>, id: ItemId) -> bool;
 }
 impl<'ctx> TraversalStorage<'ctx> for ItemSet {
-    fn new(_: &'ctx BindgenContext) -> Self {
+    fn new(_: &'ctx Context) -> Self {
         ItemSet::new()
     }
     fn add(&mut self, _: Option<ItemId>, id: ItemId) -> bool {
@@ -74,9 +74,9 @@ impl<'ctx> TraversalStorage<'ctx> for ItemSet {
     }
 }
 #[derive(Debug)]
-pub struct Paths<'ctx>(BTreeMap<ItemId, ItemId>, &'ctx BindgenContext);
+pub struct Paths<'ctx>(BTreeMap<ItemId, ItemId>, &'ctx Context);
 impl<'ctx> TraversalStorage<'ctx> for Paths<'ctx> {
-    fn new(ctx: &'ctx BindgenContext) -> Self {
+    fn new(ctx: &'ctx Context) -> Self {
         Paths(BTreeMap::new(), ctx)
     }
     fn add(&mut self, from: Option<ItemId>, id: ItemId) -> bool {
@@ -137,7 +137,7 @@ where
 }
 pub trait Trace {
     type Extra;
-    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, extra: &Self::Extra)
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, extra: &Self::Extra)
     where
         T: Tracer;
 }
@@ -146,7 +146,7 @@ where
     Storage: TraversalStorage<'ctx>,
     Queue: TraversalQueue,
 {
-    ctx: &'ctx BindgenContext,
+    ctx: &'ctx Context,
     seen: Storage,
     queue: Queue,
     pred: TraversalPredicate,
@@ -157,7 +157,7 @@ where
     Storage: TraversalStorage<'ctx>,
     Queue: TraversalQueue,
 {
-    pub fn new<R>(ctx: &'ctx BindgenContext, roots: R, pred: TraversalPredicate) -> ItemTraversal<'ctx, Storage, Queue>
+    pub fn new<R>(ctx: &'ctx Context, roots: R, pred: TraversalPredicate) -> ItemTraversal<'ctx, Storage, Queue>
     where
         R: IntoIterator<Item = ItemId>,
     {

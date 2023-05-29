@@ -142,7 +142,7 @@ impl<T> CanDeriveDebug for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_debug(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_debug(&self, ctx: &Context) -> bool {
         ctx.opts().derive_debug && ctx.lookup_can_derive_debug(*self)
     }
 }
@@ -150,7 +150,7 @@ impl<T> CanDeriveDefault for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_default(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_default(&self, ctx: &Context) -> bool {
         ctx.opts().derive_default && ctx.lookup_can_derive_default(*self)
     }
 }
@@ -158,7 +158,7 @@ impl<T> CanDeriveCopy for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_copy(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_copy(&self, ctx: &Context) -> bool {
         ctx.opts().derive_copy && ctx.lookup_can_derive_copy(*self)
     }
 }
@@ -166,7 +166,7 @@ impl<T> CanDeriveHash for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_hash(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_hash(&self, ctx: &Context) -> bool {
         ctx.opts().derive_hash && ctx.lookup_can_derive_hash(*self)
     }
 }
@@ -174,7 +174,7 @@ impl<T> CanDerivePartialOrd for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_partialord(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_partialord(&self, ctx: &Context) -> bool {
         ctx.opts().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
     }
 }
@@ -182,7 +182,7 @@ impl<T> CanDerivePartialEq for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_partialeq(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_partialeq(&self, ctx: &Context) -> bool {
         ctx.opts().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
     }
 }
@@ -190,7 +190,7 @@ impl<T> CanDeriveEq for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_eq(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_eq(&self, ctx: &Context) -> bool {
         ctx.opts().derive_eq
             && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
             && !ctx.lookup_has_float(*self)
@@ -200,7 +200,7 @@ impl<T> CanDeriveOrd for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn can_derive_ord(&self, ctx: &BindgenContext) -> bool {
+    fn can_derive_ord(&self, ctx: &Context) -> bool {
         ctx.opts().derive_ord
             && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
             && !ctx.lookup_has_float(*self)
@@ -212,7 +212,7 @@ enum TypeKey {
     Declaration(Cursor),
 }
 #[derive(Debug)]
-pub struct BindgenContext {
+pub struct Context {
     allowed: Option<ItemSet>,
     blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, YDerive>>>,
     cannot_derive_copy: Option<HashSet<ItemId>>,
@@ -248,7 +248,7 @@ pub struct BindgenContext {
     used_template_parameters: Option<HashMap<ItemId, ItemSet>>,
 }
 struct AllowlistedItemsTraversal<'ctx> {
-    ctx: &'ctx BindgenContext,
+    ctx: &'ctx Context,
     traversal: ItemTraversal<'ctx, ItemSet, Vec<ItemId>>,
 }
 impl<'ctx> Iterator for AllowlistedItemsTraversal<'ctx> {
@@ -264,7 +264,7 @@ impl<'ctx> Iterator for AllowlistedItemsTraversal<'ctx> {
     }
 }
 impl<'ctx> AllowlistedItemsTraversal<'ctx> {
-    pub fn new<R>(ctx: &'ctx BindgenContext, roots: R, predicate: for<'a> fn(&'a BindgenContext, Edge) -> bool) -> Self
+    pub fn new<R>(ctx: &'ctx Context, roots: R, predicate: for<'a> fn(&'a Context, Edge) -> bool) -> Self
     where
         R: IntoIterator<Item = ItemId>,
     {
@@ -274,7 +274,7 @@ impl<'ctx> AllowlistedItemsTraversal<'ctx> {
         }
     }
 }
-impl BindgenContext {
+impl Context {
     pub fn new(opts: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
         let index = clang::Index::new(false, true);
         let parse_options = clang_lib::CXTranslationUnit_DetailedPreprocessingRecord;
@@ -294,7 +294,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let root_module = Self::build_root_module(ItemId(0));
         let root_module_id = root_module.id().as_module_id_unchecked();
         let deps = opts.input_headers.iter().cloned().collect();
-        BindgenContext {
+        Context {
             allowed: None,
             blocklisted_types_implement_traits: Default::default(),
             cannot_derive_copy: None,
@@ -560,7 +560,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     fn with_loaned_item<F, T>(&mut self, id: ItemId, f: F) -> T
     where
-        F: (FnOnce(&BindgenContext, &mut Item) -> T),
+        F: (FnOnce(&Context, &mut Item) -> T),
     {
         let mut item = self.items[id.0].take().unwrap();
         let result = f(self, &mut item);
@@ -1660,7 +1660,7 @@ impl ItemResolver {
         self.through_type_aliases = true;
         self
     }
-    pub fn resolve(self, ctx: &BindgenContext) -> &Item {
+    pub fn resolve(self, ctx: &Context) -> &Item {
         assert!(ctx.collected_typerefs());
         let mut id = self.id;
         let mut seen_ids = HashSet::default();
@@ -1699,10 +1699,10 @@ impl PartialType {
     }
 }
 impl TemplParams for PartialType {
-    fn self_template_params(&self, _ctx: &BindgenContext) -> Vec<TypeId> {
+    fn self_template_params(&self, _ctx: &Context) -> Vec<TypeId> {
         vec![]
     }
-    fn num_self_template_params(&self, _ctx: &BindgenContext) -> usize {
+    fn num_self_template_params(&self, _ctx: &Context) -> usize {
         match self.decl().kind() {
             clang_lib::CXCursor_ClassTemplate
             | clang_lib::CXCursor_FunctionTemplate
@@ -1725,6 +1725,6 @@ impl TemplParams for PartialType {
         }
     }
 }
-fn unused_regex_diagnostic(item: &str, name: &str, _ctx: &BindgenContext) {
+fn unused_regex_diagnostic(item: &str, name: &str, _ctx: &Context) {
     warn!("unused option: {} {}", name, item);
 }

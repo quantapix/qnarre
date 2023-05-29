@@ -1,4 +1,4 @@
-use crate::ir::context::BindgenContext;
+use crate::ir::context::Context;
 use crate::ir::layout::Layout;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::TokenStreamExt;
@@ -73,7 +73,7 @@ pub(crate) mod attributes {
     }
 }
 
-pub(crate) fn blob(ctx: &BindgenContext, layout: Layout) -> TokenStream {
+pub(crate) fn blob(ctx: &Context, layout: Layout) -> TokenStream {
     let opaque = layout.opaque();
 
     let ty_name = match opaque.known_rust_type_for_array(ctx) {
@@ -99,13 +99,13 @@ pub(crate) fn blob(ctx: &BindgenContext, layout: Layout) -> TokenStream {
     }
 }
 
-pub(crate) fn integer_type(ctx: &BindgenContext, layout: Layout) -> Option<TokenStream> {
+pub(crate) fn integer_type(ctx: &Context, layout: Layout) -> Option<TokenStream> {
     let name = Layout::known_type_for_size(ctx, layout.size)?;
     let name = Ident::new(name, Span::call_site());
     Some(quote! { #name })
 }
 
-pub(crate) fn bitfield_unit(ctx: &BindgenContext, layout: Layout) -> TokenStream {
+pub(crate) fn bitfield_unit(ctx: &Context, layout: Layout) -> TokenStream {
     let mut tokens = quote! {};
 
     if ctx.opts().enable_cxx_namespaces {
@@ -121,14 +121,14 @@ pub(crate) fn bitfield_unit(ctx: &BindgenContext, layout: Layout) -> TokenStream
 }
 
 pub(crate) mod ast_ty {
-    use crate::ir::context::BindgenContext;
+    use crate::ir::context::Context;
     use crate::ir::function::FnSig;
     use crate::ir::layout::Layout;
     use crate::ir::ty::FloatKind;
     use proc_macro2::{self, TokenStream};
     use std::str::FromStr;
 
-    pub(crate) fn c_void(ctx: &BindgenContext) -> TokenStream {
+    pub(crate) fn c_void(ctx: &Context) -> TokenStream {
         match ctx.opts().ctypes_prefix {
             Some(ref prefix) => {
                 let prefix = TokenStream::from_str(prefix.as_str()).unwrap();
@@ -142,7 +142,7 @@ pub(crate) mod ast_ty {
         }
     }
 
-    pub(crate) fn raw_type(ctx: &BindgenContext, name: &str) -> TokenStream {
+    pub(crate) fn raw_type(ctx: &Context, name: &str) -> TokenStream {
         let ident = ctx.rust_ident_raw(name);
         match ctx.opts().ctypes_prefix {
             Some(ref prefix) => {
@@ -165,7 +165,7 @@ pub(crate) mod ast_ty {
         }
     }
 
-    pub(crate) fn float_kind_rust_type(ctx: &BindgenContext, fk: FloatKind, layout: Option<Layout>) -> TokenStream {
+    pub(crate) fn float_kind_rust_type(ctx: &Context, fk: FloatKind, layout: Option<Layout>) -> TokenStream {
         match (fk, ctx.opts().convert_floats) {
             (FloatKind::Float, true) => quote! { f32 },
             (FloatKind::Double, true) => quote! { f64 },
@@ -206,7 +206,7 @@ pub(crate) mod ast_ty {
         }
     }
 
-    pub(crate) fn float_expr(ctx: &BindgenContext, f: f64) -> Result<TokenStream, ()> {
+    pub(crate) fn float_expr(ctx: &Context, f: f64) -> Result<TokenStream, ()> {
         if f.is_finite() {
             let val = proc_macro2::Literal::f64_unsuffixed(f);
 
@@ -237,7 +237,7 @@ pub(crate) mod ast_ty {
         Err(())
     }
 
-    pub(crate) fn arguments_from_signature(signature: &FnSig, ctx: &BindgenContext) -> Vec<TokenStream> {
+    pub(crate) fn arguments_from_signature(signature: &FnSig, ctx: &Context) -> Vec<TokenStream> {
         let mut unnamed_arguments = 0;
         signature
             .argument_types()

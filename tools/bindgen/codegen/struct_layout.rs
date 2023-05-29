@@ -1,7 +1,7 @@
 use super::helpers;
 
 use crate::ir::comp::CompInfo;
-use crate::ir::context::BindgenContext;
+use crate::ir::context::Context;
 use crate::ir::layout::Layout;
 use crate::ir::ty::{TyKind, Type};
 use proc_macro2::{self, Ident, Span};
@@ -12,7 +12,7 @@ const MAX_GUARANTEED_ALIGN: usize = 8;
 #[derive(Debug)]
 pub struct StructLayoutTracker<'a> {
     name: &'a str,
-    ctx: &'a BindgenContext,
+    ctx: &'a Context,
     comp: &'a CompInfo,
     is_packed: bool,
     known_type_layout: Option<Layout>,
@@ -73,7 +73,7 @@ fn test_bytes_from_bits_pow2() {
 }
 
 impl<'a> StructLayoutTracker<'a> {
-    pub fn new(ctx: &'a BindgenContext, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
+    pub fn new(ctx: &'a Context, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
         let known_type_layout = ty.layout(ctx);
         let is_packed = comp.is_packed(ctx, known_type_layout.as_ref());
         let (is_rust_union, can_copy_union_fields) = comp.is_rust_union(ctx, known_type_layout.as_ref(), name);

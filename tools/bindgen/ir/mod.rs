@@ -211,32 +211,32 @@ pub mod comment {
 pub mod comp;
 pub mod context;
 pub mod derive {
-    use super::context::BindgenContext;
+    use super::context::Context;
     use std::cmp;
     use std::ops;
     pub trait CanDeriveDebug {
-        fn can_derive_debug(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_debug(&self, ctx: &Context) -> bool;
     }
     pub trait CanDeriveCopy {
-        fn can_derive_copy(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_copy(&self, ctx: &Context) -> bool;
     }
     pub trait CanDeriveDefault {
-        fn can_derive_default(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_default(&self, ctx: &Context) -> bool;
     }
     pub trait CanDeriveHash {
-        fn can_derive_hash(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_hash(&self, ctx: &Context) -> bool;
     }
     pub trait CanDerivePartialEq {
-        fn can_derive_partialeq(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_partialeq(&self, ctx: &Context) -> bool;
     }
     pub trait CanDerivePartialOrd {
-        fn can_derive_partialord(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_partialord(&self, ctx: &Context) -> bool;
     }
     pub trait CanDeriveEq {
-        fn can_derive_eq(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_eq(&self, ctx: &Context) -> bool;
     }
     pub trait CanDeriveOrd {
-        fn can_derive_ord(&self, ctx: &BindgenContext) -> bool;
+        fn can_derive_ord(&self, ctx: &Context) -> bool;
     }
     #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub enum YDerive {
@@ -267,17 +267,17 @@ pub mod derive {
     }
 }
 pub mod dot {
-    use super::context::{BindgenContext, ItemId};
+    use super::context::{Context, ItemId};
     use super::traversal::Trace;
     use std::fs::File;
     use std::io::{self, Write};
     use std::path::Path;
     pub trait DotAttrs {
-        fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+        fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
         where
             W: io::Write;
     }
-    pub fn write_dot_file<P>(ctx: &BindgenContext, path: P) -> io::Result<()>
+    pub fn write_dot_file<P>(ctx: &Context, path: P) -> io::Result<()>
     where
         P: AsRef<Path>,
     {
@@ -334,7 +334,7 @@ pub mod dot {
 }
 pub mod enum_ty {
     use super::super::codegen::EnumVariation;
-    use super::context::{BindgenContext, TypeId};
+    use super::context::{Context, TypeId};
     use super::item::Item;
     use super::ty::{TyKind, Type};
     use crate::clang;
@@ -362,7 +362,7 @@ pub mod enum_ty {
         pub fn variants(&self) -> &[EnumVariant] {
             &self.variants
         }
-        pub fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Result<Self, parse::Error> {
+        pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Result<Self, parse::Error> {
             use clang_lib::*;
             debug!("Enum::from_ty {:?}", ty);
             if ty.kind() != CXType_Enum {
@@ -423,7 +423,7 @@ pub mod enum_ty {
             });
             Ok(Enum::new(repr, variants))
         }
-        fn is_matching_enum(&self, ctx: &BindgenContext, enums: &RegexSet, item: &Item) -> bool {
+        fn is_matching_enum(&self, ctx: &Context, enums: &RegexSet, item: &Item) -> bool {
             let path = item.path_for_allowlisting(ctx);
             let enum_ty = item.expect_type();
             if enums.matches(path[1..].join("::")) {
@@ -434,7 +434,7 @@ pub mod enum_ty {
             }
             self.variants().iter().any(|v| enums.matches(v.name()))
         }
-        pub fn computed_enum_variation(&self, ctx: &BindgenContext, item: &Item) -> EnumVariation {
+        pub fn computed_enum_variation(&self, ctx: &Context, item: &Item) -> EnumVariation {
             if self.is_matching_enum(ctx, &ctx.opts().constified_enum_modules, item) {
                 EnumVariation::ModuleConsts
             } else if self.is_matching_enum(ctx, &ctx.opts().bitfield_enums, item) {
@@ -572,7 +572,7 @@ pub mod int {
 }
 pub mod item;
 pub mod item_kind {
-    use super::context::BindgenContext;
+    use super::context::Context;
     use super::dot::DotAttrs;
     use super::function::Function;
     use super::module::Module;
@@ -645,7 +645,7 @@ pub mod item_kind {
         }
     }
     impl DotAttrs for ItemKind {
-        fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+        fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
         where
             W: io::Write,
         {
@@ -663,7 +663,7 @@ pub mod layout {
     use super::derive::YDerive;
     use super::ty::{TyKind, Type, RUST_DERIVE_IN_ARRAY_LIMIT};
     use crate::clang;
-    use crate::ir::context::BindgenContext;
+    use crate::ir::context::Context;
     use std::cmp;
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Layout {
@@ -685,7 +685,7 @@ pub mod layout {
         );
     }
     impl Layout {
-        pub fn known_type_for_size(ctx: &BindgenContext, size: usize) -> Option<&'static str> {
+        pub fn known_type_for_size(ctx: &Context, size: usize) -> Option<&'static str> {
             Some(match size {
                 16 => "u128",
                 8 => "u64",
@@ -713,7 +713,7 @@ pub mod layout {
                 packed: false,
             }
         }
-        pub fn for_size(ctx: &BindgenContext, size: usize) -> Self {
+        pub fn for_size(ctx: &Context, size: usize) -> Self {
             Self::for_size_internal(ctx.target_pointer_size(), size)
         }
         pub fn opaque(&self) -> Opaque {
@@ -723,23 +723,23 @@ pub mod layout {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Opaque(pub Layout);
     impl Opaque {
-        pub fn from_clang_ty(ty: &clang::Type, ctx: &BindgenContext) -> Type {
+        pub fn from_clang_ty(ty: &clang::Type, ctx: &Context) -> Type {
             let layout = Layout::new(ty.size(ctx), ty.align(ctx));
             let ty_kind = TyKind::Opaque;
             let is_const = ty.is_const();
             Type::new(None, Some(layout), ty_kind, is_const)
         }
-        pub fn known_rust_type_for_array(&self, ctx: &BindgenContext) -> Option<&'static str> {
+        pub fn known_rust_type_for_array(&self, ctx: &Context) -> Option<&'static str> {
             Layout::known_type_for_size(ctx, self.0.align)
         }
-        pub fn array_size(&self, ctx: &BindgenContext) -> Option<usize> {
+        pub fn array_size(&self, ctx: &Context) -> Option<usize> {
             if self.known_rust_type_for_array(ctx).is_some() {
                 Some(self.0.size / cmp::max(self.0.align, 1))
             } else {
                 None
             }
         }
-        pub fn array_size_within_derive_limit(&self, ctx: &BindgenContext) -> YDerive {
+        pub fn array_size_within_derive_limit(&self, ctx: &Context) -> YDerive {
             if self
                 .array_size(ctx)
                 .map_or(false, |size| size <= RUST_DERIVE_IN_ARRAY_LIMIT)
@@ -752,7 +752,7 @@ pub mod layout {
     }
 }
 pub mod module {
-    use super::context::BindgenContext;
+    use super::context::Context;
     use super::dot::DotAttrs;
     use super::item::ItemSet;
     use crate::clang;
@@ -792,7 +792,7 @@ pub mod module {
         }
     }
     impl DotAttrs for Module {
-        fn dot_attrs<W>(&self, _: &BindgenContext, y: &mut W) -> io::Result<()>
+        fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
         where
             W: io::Write,
         {
@@ -800,7 +800,7 @@ pub mod module {
         }
     }
     impl parse::SubItem for Module {
-        fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
+        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Result<Self>, parse::Error> {
             match cur.kind() {
                 clang_lib::CXCursor_Namespace => {
                     let id = ctx.module(cur);
@@ -813,16 +813,16 @@ pub mod module {
     }
 }
 pub mod template {
-    use super::context::{BindgenContext, ItemId, TypeId};
+    use super::context::{Context, ItemId, TypeId};
     use super::item::{Ancestors, IsOpaque, Item};
     use super::traversal::{EdgeKind, Trace, Tracer};
     use crate::clang;
     pub trait TemplParams: Sized {
-        fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId>;
-        fn num_self_template_params(&self, ctx: &BindgenContext) -> usize {
+        fn self_template_params(&self, ctx: &Context) -> Vec<TypeId>;
+        fn num_self_template_params(&self, ctx: &Context) -> usize {
             self.self_template_params(ctx).len()
         }
-        fn all_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId>
+        fn all_template_params(&self, ctx: &Context) -> Vec<TypeId>
         where
             Self: Ancestors,
         {
@@ -832,7 +832,7 @@ pub mod template {
                 .flat_map(|id| id.self_template_params(ctx).into_iter())
                 .collect()
         }
-        fn used_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId>
+        fn used_template_params(&self, ctx: &Context) -> Vec<TypeId>
         where
             Self: AsRef<ItemId>,
         {
@@ -850,8 +850,8 @@ pub mod template {
     }
     pub trait AsTemplParam {
         type Extra;
-        fn as_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> Option<TypeId>;
-        fn is_template_param(&self, ctx: &BindgenContext, extra: &Self::Extra) -> bool {
+        fn as_template_param(&self, ctx: &Context, extra: &Self::Extra) -> Option<TypeId>;
+        fn is_template_param(&self, ctx: &Context, extra: &Self::Extra) -> bool {
             self.as_template_param(ctx, extra).is_some()
         }
     }
@@ -876,7 +876,7 @@ pub mod template {
         pub fn template_arguments(&self) -> &[TypeId] {
             &self.args[..]
         }
-        pub fn from_ty(ty: &clang::Type, ctx: &mut BindgenContext) -> Option<TemplInstantiation> {
+        pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInstantiation> {
             use clang_lib::*;
             let template_args = ty
                 .template_args()
@@ -927,7 +927,7 @@ pub mod template {
     }
     impl IsOpaque for TemplInstantiation {
         type Extra = Item;
-        fn is_opaque(&self, ctx: &BindgenContext, it: &Item) -> bool {
+        fn is_opaque(&self, ctx: &Context, it: &Item) -> bool {
             if self.template_definition().is_opaque(ctx, &()) {
                 return true;
             }
@@ -951,7 +951,7 @@ pub mod template {
     }
     impl Trace for TemplInstantiation {
         type Extra = ();
-        fn trace<T>(&self, _ctx: &BindgenContext, tracer: &mut T, _: &())
+        fn trace<T>(&self, _ctx: &Context, tracer: &mut T, _: &())
         where
             T: Tracer,
         {

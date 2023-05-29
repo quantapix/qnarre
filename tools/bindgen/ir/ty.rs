@@ -1,5 +1,5 @@
 use super::comp::CompInfo;
-use super::context::{BindgenContext, ItemId, TypeId};
+use super::context::{Context, ItemId, TypeId};
 use super::dot::DotAttrs;
 use super::enum_ty::Enum;
 use super::function::FnSig;
@@ -113,7 +113,7 @@ impl Type {
     pub fn is_unresolved_ref(&self) -> bool {
         matches!(self.kind, TyKind::UnresolvedTypeRef(_, _, _))
     }
-    pub fn is_incomplete_array(&self, ctx: &BindgenContext) -> Option<ItemId> {
+    pub fn is_incomplete_array(&self, ctx: &Context) -> Option<ItemId> {
         match self.kind {
             TyKind::Array(item, len) => {
                 if len == 0 {
@@ -126,7 +126,7 @@ impl Type {
             _ => None,
         }
     }
-    pub fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
+    pub fn layout(&self, ctx: &Context) -> Option<Layout> {
         self.layout.or_else(|| match self.kind {
             TyKind::Comp(ref ci) => ci.layout(ctx),
             TyKind::Array(inner, length) if length == 0 => {
@@ -153,7 +153,7 @@ impl Type {
         let name = name.replace(|c| c == ' ' || c == ':' || c == '.', "_");
         Cow::Owned(name)
     }
-    pub fn sanitized_name<'a>(&'a self, ctx: &BindgenContext) -> Option<Cow<'a, str>> {
+    pub fn sanitized_name<'a>(&'a self, ctx: &Context) -> Option<Cow<'a, str>> {
         let name_info = match *self.kind() {
             TyKind::Pointer(inner) => Some((inner, Cow::Borrowed("ptr"))),
             TyKind::Reference(inner) => Some((inner, Cow::Borrowed("ref"))),
@@ -169,11 +169,11 @@ impl Type {
             self.name().map(Self::sanitize_name)
         }
     }
-    pub fn canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> &'tr Type {
+    pub fn canonical_type<'tr>(&'tr self, ctx: &'tr Context) -> &'tr Type {
         self.safe_canonical_type(ctx)
             .expect("Should have been resolved after parsing!")
     }
-    pub fn safe_canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> Option<&'tr Type> {
+    pub fn safe_canonical_type<'tr>(&'tr self, ctx: &'tr Context) -> Option<&'tr Type> {
         match self.kind {
             TyKind::TypeParam
             | TyKind::Array(..)
@@ -212,7 +212,7 @@ impl Type {
 }
 impl IsOpaque for Type {
     type Extra = Item;
-    fn is_opaque(&self, ctx: &BindgenContext, i: &Item) -> bool {
+    fn is_opaque(&self, ctx: &Context, i: &Item) -> bool {
         match self.kind {
             TyKind::Opaque => true,
             TyKind::TemplateInstantiation(ref x) => x.is_opaque(ctx, i),
@@ -224,13 +224,13 @@ impl IsOpaque for Type {
 }
 impl AsTemplParam for Type {
     type Extra = Item;
-    fn as_template_param(&self, ctx: &BindgenContext, i: &Item) -> Option<TypeId> {
+    fn as_template_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
         self.kind.as_template_param(ctx, i)
     }
 }
 impl AsTemplParam for TyKind {
     type Extra = Item;
-    fn as_template_param(&self, ctx: &BindgenContext, i: &Item) -> Option<TypeId> {
+    fn as_template_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
         match *self {
             TyKind::TypeParam => Some(i.id().expect_type_id(ctx)),
             TyKind::ResolvedTypeRef(id) => id.as_template_param(ctx, &()),
@@ -239,7 +239,7 @@ impl AsTemplParam for TyKind {
     }
 }
 impl DotAttrs for Type {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -261,7 +261,7 @@ impl DotAttrs for Type {
     }
 }
 impl DotAttrs for TyKind {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -335,12 +335,12 @@ fn is_invalid_type_param_empty_name() {
     assert!(ty.is_invalid_type_param())
 }
 impl TemplParams for Type {
-    fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
+    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
         self.kind.self_template_params(ctx)
     }
 }
 impl TemplParams for TyKind {
-    fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
+    fn self_template_params(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
             TyKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_template_params(ctx),
             TyKind::Comp(ref comp) => comp.self_template_params(ctx),
@@ -401,7 +401,7 @@ impl Type {
         ty: &clang::Type,
         location: Cursor,
         parent_id: Option<ItemId>,
-        ctx: &mut BindgenContext,
+        ctx: &mut Context,
     ) -> Result<parse::Result<Self>, parse::Error> {
         use clang_lib::*;
         {
@@ -686,7 +686,7 @@ impl Type {
 }
 impl Trace for Type {
     type Extra = Item;
-    fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, i: &Item)
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, i: &Item)
     where
         T: Tracer,
     {

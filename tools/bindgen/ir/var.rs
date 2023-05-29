@@ -1,5 +1,5 @@
 use super::super::codegen::MacroTypeVariation;
-use super::context::{BindgenContext, TypeId};
+use super::context::{Context, TypeId};
 use super::dot::DotAttrs;
 use super::function::cursor_mangling;
 use super::int::IntKind;
@@ -68,7 +68,7 @@ impl Var {
     }
 }
 impl DotAttrs for Var {
-    fn dot_attrs<W>(&self, _ctx: &BindgenContext, y: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -81,7 +81,7 @@ impl DotAttrs for Var {
         Ok(())
     }
 }
-fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
+fn default_macro_constant_type(ctx: &Context, value: i64) -> IntKind {
     if value < 0 || ctx.opts().default_macro_constant_type == MacroTypeVariation::Signed {
         if value < i32::min_value() as i64 || value > i32::max_value() as i64 {
             IntKind::I64
@@ -117,7 +117,7 @@ fn handle_function_macro(cur: &clang::Cursor, callbacks: &dyn crate::callbacks::
     }
 }
 impl parse::SubItem for Var {
-    fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
+    fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Result<Self>, parse::Error> {
         use cexpr::expr::EvalResult;
         use cexpr::literal::CChar;
         use clang_lib::*;
@@ -260,7 +260,7 @@ impl parse::SubItem for Var {
         }
     }
 }
-fn parse_macro(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
+fn parse_macro(ctx: &Context, cur: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
     use cexpr::expr;
     let cexpr_tokens = cur.cexpr_tokens();
     let y = expr::IdentifierParser::new(ctx.parsed_macros());
@@ -299,6 +299,6 @@ fn get_integer_literal_from_cursor(cur: &clang::Cursor) -> Option<i64> {
     });
     y
 }
-fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SrcLoc, _ctx: &BindgenContext) {
+fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SrcLoc, _ctx: &Context) {
     warn!("Duplicated macro definition: {}", macro_name);
 }

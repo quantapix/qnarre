@@ -1,4 +1,4 @@
-use crate::ir::context::BindgenContext;
+use crate::ir::context::Context;
 use clang_lib::*;
 use std::ffi::{CStr, CString};
 use std::fmt;
@@ -711,7 +711,7 @@ impl Type {
         self.canonical_type() == *self
     }
     #[inline]
-    fn clang_size_of(&self, ctx: &BindgenContext) -> c_longlong {
+    fn clang_size_of(&self, ctx: &Context) -> c_longlong {
         match self.kind() {
             CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
             CXType_Auto if self.is_non_deductible_auto_type() => -6,
@@ -719,14 +719,14 @@ impl Type {
         }
     }
     #[inline]
-    fn clang_align_of(&self, ctx: &BindgenContext) -> c_longlong {
+    fn clang_align_of(&self, ctx: &Context) -> c_longlong {
         match self.kind() {
             CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
             CXType_Auto if self.is_non_deductible_auto_type() => -6,
             _ => unsafe { clang_Type_getAlignOf(self.ty) },
         }
     }
-    pub fn size(&self, ctx: &BindgenContext) -> usize {
+    pub fn size(&self, ctx: &Context) -> usize {
         let y = self.clang_size_of(ctx);
         if y < 0 {
             0
@@ -734,7 +734,7 @@ impl Type {
             y as usize
         }
     }
-    pub fn fallible_size(&self, ctx: &BindgenContext) -> Result<usize, LayoutError> {
+    pub fn fallible_size(&self, ctx: &Context) -> Result<usize, LayoutError> {
         let y = self.clang_size_of(ctx);
         if y < 0 {
             Err(LayoutError::from(y as i32))
@@ -742,7 +742,7 @@ impl Type {
             Ok(y as usize)
         }
     }
-    pub fn align(&self, ctx: &BindgenContext) -> usize {
+    pub fn align(&self, ctx: &Context) -> usize {
         let y = self.clang_align_of(ctx);
         if y < 0 {
             0
@@ -750,7 +750,7 @@ impl Type {
             y as usize
         }
     }
-    pub fn fallible_align(&self, ctx: &BindgenContext) -> Result<usize, LayoutError> {
+    pub fn fallible_align(&self, ctx: &Context) -> Result<usize, LayoutError> {
         let y = self.clang_align_of(ctx);
         if y < 0 {
             Err(LayoutError::from(y as i32))
@@ -758,7 +758,7 @@ impl Type {
             Ok(y as usize)
         }
     }
-    pub fn fallible_layout(&self, ctx: &BindgenContext) -> Result<crate::ir::layout::Layout, LayoutError> {
+    pub fn fallible_layout(&self, ctx: &Context) -> Result<crate::ir::layout::Layout, LayoutError> {
         use crate::ir::layout::Layout;
         let size = self.fallible_size(ctx)?;
         let align = self.fallible_align(ctx)?;

@@ -21,7 +21,7 @@ use codegen::CodegenError;
 pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 pub use ir::annotations::FieldVisibilityKind;
 use ir::comment;
-use ir::context::{BindgenContext, ItemId};
+use ir::context::{Context, ItemId};
 pub use ir::function::Abi;
 use ir::item::Item;
 use opts::Opts;
@@ -380,7 +380,7 @@ impl Bindings {
         }
         debug!("Fixed-up options: {:?}", opts);
         let time_phases = opts.time_phases;
-        let mut ctx = BindgenContext::new(opts, &input_unsaved_files);
+        let mut ctx = Context::new(opts, &input_unsaved_files);
         if is_host_build {
             debug_assert_eq!(
                 ctx.target_pointer_size(),
@@ -661,7 +661,7 @@ pub mod callbacks {
 }
 pub(crate) mod parse {
     use crate::clang;
-    use crate::ir::context::{BindgenContext, ItemId};
+    use crate::ir::context::{Context, ItemId};
     #[derive(Debug)]
     pub enum Error {
         Recurse,
@@ -673,7 +673,7 @@ pub(crate) mod parse {
         New(T, Option<clang::Cursor>),
     }
     pub trait SubItem: Sized {
-        fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<Result<Self>, Error>;
+        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<Result<Self>, Error>;
     }
 }
 mod regex_set {
@@ -907,10 +907,10 @@ fn find_effective_target(xs: &[String]) -> (String, bool) {
 fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &Opts) {
     warn!("{}", msg);
 }
-fn filter_builtins(ctx: &BindgenContext, cur: &clang::Cursor) -> bool {
+fn filter_builtins(ctx: &Context, cur: &clang::Cursor) -> bool {
     ctx.opts().builtins || !cur.is_builtin()
 }
-fn parse_one(ctx: &mut BindgenContext, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
+fn parse_one(ctx: &mut Context, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
     if !filter_builtins(ctx, &cur) {
         return clang_lib::CXChildVisit_Continue;
     }
@@ -923,7 +923,7 @@ fn parse_one(ctx: &mut BindgenContext, cur: clang::Cursor, parent: Option<ItemId
     }
     clang_lib::CXChildVisit_Continue
 }
-fn parse(ctx: &mut BindgenContext) -> Result<(), BindgenError> {
+fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
     let mut error = None;
     for d in ctx.translation_unit().diags().iter() {
         let msg = d.format();
