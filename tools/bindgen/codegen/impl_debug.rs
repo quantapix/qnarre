@@ -1,7 +1,7 @@
 use crate::ir::comp::{BitfieldUnit, CompKind, Field, FieldData, FieldMethods};
 use crate::ir::context::BindgenContext;
 use crate::ir::item::{CanonicalName, HasTypeParamInArray, IsOpaque, Item};
-use crate::ir::ty::{TyKind, RUST_DERIVE_IN_ARRAY_LIMIT};
+use crate::ir::ty::TyKind;
 
 pub(crate) fn gen_debug_impl(
     ctx: &BindgenContext,
