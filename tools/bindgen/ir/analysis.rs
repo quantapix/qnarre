@@ -4,7 +4,7 @@ use crate::HashMap;
 use std::fmt;
 use std::ops;
 
-pub(crate) trait Monotone: Sized + fmt::Debug {
+pub trait Monotone: Sized + fmt::Debug {
     type Node: Copy;
     type Extra: Sized;
     type Output: From<Self> + fmt::Debug;
@@ -17,7 +17,7 @@ pub(crate) trait Monotone: Sized + fmt::Debug {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum YConstrain {
+pub enum YConstrain {
     Changed,
     Same,
 }
@@ -45,7 +45,7 @@ impl ops::BitOrAssign for YConstrain {
     }
 }
 
-pub(crate) fn analyze<T>(x: T::Extra) -> T::Output
+pub fn analyze<T>(x: T::Extra) -> T::Output
 where
     T: Monotone,
 {
@@ -61,7 +61,7 @@ where
     y.into()
 }
 
-pub(crate) fn gen_deps<F>(ctx: &BindgenContext, f: F) -> HashMap<ItemId, Vec<ItemId>>
+pub fn gen_deps<F>(ctx: &BindgenContext, f: F) -> HashMap<ItemId, Vec<ItemId>>
 where
     F: Fn(EdgeKind) -> bool,
 {
@@ -92,7 +92,7 @@ pub enum DeriveTrait {
     PartialEqOrPartialOrd,
 }
 
-pub(crate) mod derive {
+pub mod derive {
     use std::fmt;
 
     use super::{gen_deps, DeriveTrait, HasVtable, Monotone, YConstrain};
@@ -472,9 +472,9 @@ pub(crate) mod derive {
             .collect()
     }
 }
-pub(crate) use self::derive::as_cannot_derive_set;
+pub use self::derive::as_cannot_derive_set;
 
-pub(crate) mod has_destructor {
+pub mod has_destructor {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::{CompKind, Field, FieldMethods};
     use crate::ir::context::{BindgenContext, ItemId};
@@ -592,7 +592,7 @@ pub(crate) mod has_destructor {
     }
 }
 
-pub(crate) mod has_float {
+pub mod has_float {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
@@ -745,7 +745,7 @@ pub(crate) mod has_float {
     }
 }
 
-pub(crate) mod has_ty_param {
+pub mod has_ty_param {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
@@ -895,12 +895,12 @@ pub(crate) mod has_ty_param {
     }
 }
 
-pub(crate) trait HasVtable {
+pub trait HasVtable {
     fn has_vtable(&self, ctx: &BindgenContext) -> bool;
     fn has_vtable_ptr(&self, ctx: &BindgenContext) -> bool;
 }
 
-pub(crate) mod has_vtable {
+pub mod has_vtable {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::context::{BindgenContext, ItemId};
     use crate::ir::traversal::EdgeKind;
@@ -1051,14 +1051,14 @@ pub(crate) mod has_vtable {
     }
 }
 
-pub(crate) trait Sizedness {
+pub trait Sizedness {
     fn sizedness(&self, ctx: &BindgenContext) -> sizedness::Result;
     fn is_zero_sized(&self, ctx: &BindgenContext) -> bool {
         self.sizedness(ctx) == sizedness::Result::ZeroSized
     }
 }
 
-pub(crate) mod sizedness {
+pub mod sizedness {
     use super::{gen_deps, HasVtable, Monotone, YConstrain};
     use crate::ir::context::{BindgenContext, TypeId};
     use crate::ir::item::IsOpaque;
@@ -1250,7 +1250,7 @@ pub(crate) mod sizedness {
     }
 }
 
-pub(crate) mod used_templ_param {
+pub mod used_templ_param {
     use super::{Monotone, YConstrain};
     use crate::ir::context::{BindgenContext, ItemId};
     use crate::ir::item::{Item, ItemSet};

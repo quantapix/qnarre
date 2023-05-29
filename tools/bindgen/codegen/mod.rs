@@ -756,10 +756,10 @@ impl CodeGenerator for Var {
                 },
             }
         } else {
-            if let Some(link_name) = self.link_name() {
+            if let Some(link_name) = self.link() {
                 attrs.push(attributes::link_name::<false>(link_name));
             } else {
-                let link_name = self.mangled_name().unwrap_or_else(|| self.name());
+                let link_name = self.mangled().unwrap_or_else(|| self.name());
                 if !utils::names_will_be_identical_after_mangling(&canonical_name, link_name, None) {
                     attrs.push(attributes::link_name::<false>(link_name));
                 }

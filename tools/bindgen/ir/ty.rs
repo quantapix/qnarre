@@ -12,7 +12,6 @@ use crate::clang::{self, Cursor};
 use crate::parse;
 use std::borrow::Cow;
 use std::io;
-
 #[derive(Debug)]
 pub struct Type {
     name: Option<String>,
@@ -20,9 +19,7 @@ pub struct Type {
     kind: TyKind,
     is_const: bool,
 }
-
 pub const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
-
 impl Type {
     pub fn as_comp_mut(&mut self) -> Option<&mut CompInfo> {
         match self.kind {
@@ -30,7 +27,6 @@ impl Type {
             _ => None,
         }
     }
-
     pub fn new(name: Option<String>, layout: Option<Layout>, kind: TyKind, is_const: bool) -> Self {
         Type {
             name,
@@ -39,54 +35,42 @@ impl Type {
             is_const,
         }
     }
-
     pub fn kind(&self) -> &TyKind {
         &self.kind
     }
-
     pub fn kind_mut(&mut self) -> &mut TyKind {
         &mut self.kind
     }
-
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
-
     pub fn is_block_pointer(&self) -> bool {
         matches!(self.kind, TyKind::BlockPointer(..))
     }
-
     pub fn is_int(&self) -> bool {
         matches!(self.kind, TyKind::Int(_))
     }
-
     pub fn is_comp(&self) -> bool {
         matches!(self.kind, TyKind::Comp(..))
     }
-
     pub fn is_union(&self) -> bool {
         match self.kind {
             TyKind::Comp(ref comp) => comp.is_union(),
             _ => false,
         }
     }
-
     pub fn is_type_param(&self) -> bool {
         matches!(self.kind, TyKind::TypeParam)
     }
-
     pub fn is_template_instantiation(&self) -> bool {
         matches!(self.kind, TyKind::TemplateInstantiation(..))
     }
-
     pub fn is_function(&self) -> bool {
         matches!(self.kind, TyKind::Function(..))
     }
-
     pub fn is_enum(&self) -> bool {
         matches!(self.kind, TyKind::Enum(..))
     }
-
     pub fn is_void(&self) -> bool {
         matches!(self.kind, TyKind::Void)
     }
@@ -104,39 +88,31 @@ impl Type {
                 | TyKind::TypeParam
         )
     }
-
     pub fn named(name: String) -> Self {
         let name = if name.is_empty() { None } else { Some(name) };
         Self::new(name, None, TyKind::TypeParam, false)
     }
-
     pub fn is_float(&self) -> bool {
         matches!(self.kind, TyKind::Float(..))
     }
-
     pub fn is_bool(&self) -> bool {
         matches!(self.kind, TyKind::Int(IntKind::Bool))
     }
-
     pub fn is_integer(&self) -> bool {
         matches!(self.kind, TyKind::Int(..))
     }
-
     pub fn as_integer(&self) -> Option<IntKind> {
         match self.kind {
             TyKind::Int(int_kind) => Some(int_kind),
             _ => None,
         }
     }
-
     pub fn is_const(&self) -> bool {
         self.is_const
     }
-
     pub fn is_unresolved_ref(&self) -> bool {
         matches!(self.kind, TyKind::UnresolvedTypeRef(_, _, _))
     }
-
     pub fn is_incomplete_array(&self, ctx: &BindgenContext) -> Option<ItemId> {
         match self.kind {
             TyKind::Array(item, len) => {
@@ -150,7 +126,6 @@ impl Type {
             _ => None,
         }
     }
-
     pub fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
         self.layout.or_else(|| match self.kind {
             TyKind::Comp(ref ci) => ci.layout(ctx),
@@ -162,7 +137,6 @@ impl Type {
             _ => None,
         })
     }
-
     pub fn is_invalid_type_param(&self) -> bool {
         match self.kind {
             TyKind::TypeParam => {
@@ -172,16 +146,13 @@ impl Type {
             _ => false,
         }
     }
-
     fn sanitize_name(name: &str) -> Cow<str> {
         if clang::is_valid_identifier(name) {
             return Cow::Borrowed(name);
         }
-
         let name = name.replace(|c| c == ' ' || c == ':' || c == '.', "_");
         Cow::Owned(name)
     }
-
     pub fn sanitized_name<'a>(&'a self, ctx: &BindgenContext) -> Option<Cow<'a, str>> {
         let name_info = match *self.kind() {
             TyKind::Pointer(inner) => Some((inner, Cow::Borrowed("ptr"))),
@@ -198,12 +169,10 @@ impl Type {
             self.name().map(Self::sanitize_name)
         }
     }
-
     pub fn canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> &'tr Type {
         self.safe_canonical_type(ctx)
             .expect("Should have been resolved after parsing!")
     }
-
     pub fn safe_canonical_type<'tr>(&'tr self, ctx: &'tr BindgenContext) -> Option<&'tr Type> {
         match self.kind {
             TyKind::TypeParam
@@ -221,16 +190,13 @@ impl Type {
             | TyKind::NullPtr
             | TyKind::Pointer(..)
             | TyKind::BlockPointer(..) => Some(self),
-
             TyKind::ResolvedTypeRef(inner) | TyKind::Alias(inner) | TyKind::TemplateAlias(inner, _) => {
                 ctx.resolve_type(inner).safe_canonical_type(ctx)
             },
             TyKind::TemplateInstantiation(ref x) => ctx.resolve_type(x.template_definition()).safe_canonical_type(ctx),
-
             TyKind::UnresolvedTypeRef(..) => None,
         }
     }
-
     pub fn should_be_traced_unconditionally(&self) -> bool {
         matches!(
             self.kind,
@@ -244,7 +210,6 @@ impl Type {
         )
     }
 }
-
 impl IsOpaque for Type {
     type Extra = Item;
     fn is_opaque(&self, ctx: &BindgenContext, i: &Item) -> bool {
@@ -257,14 +222,12 @@ impl IsOpaque for Type {
         }
     }
 }
-
 impl AsTemplParam for Type {
     type Extra = Item;
     fn as_template_param(&self, ctx: &BindgenContext, i: &Item) -> Option<TypeId> {
         self.kind.as_template_param(ctx, i)
     }
 }
-
 impl AsTemplParam for TyKind {
     type Extra = Item;
     fn as_template_param(&self, ctx: &BindgenContext, i: &Item) -> Option<TypeId> {
@@ -275,7 +238,6 @@ impl AsTemplParam for TyKind {
         }
     }
 }
-
 impl DotAttrs for Type {
     fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
@@ -292,30 +254,24 @@ impl DotAttrs for Type {
                 writeln!(out, "<tr><td>packed</td><td>true</td></tr>")?;
             }
         }
-
         if self.is_const {
             writeln!(out, "<tr><td>const</td><td>true</td></tr>")?;
         }
-
         self.kind.dot_attrs(ctx, out)
     }
 }
-
 impl DotAttrs for TyKind {
     fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         writeln!(out, "<tr><td>type kind</td><td>{}</td></tr>", self.kind_name())?;
-
         if let TyKind::Comp(ref comp) = *self {
             comp.dot_attrs(ctx, out)?;
         }
-
         Ok(())
     }
 }
-
 impl TyKind {
     fn kind_name(&self) -> &'static str {
         match *self {
@@ -342,63 +298,53 @@ impl TyKind {
         }
     }
 }
-
 #[test]
 fn is_invalid_type_param_valid() {
     let ty = Type::new(Some("foo".into()), None, TyKind::TypeParam, false);
     assert!(!ty.is_invalid_type_param())
 }
-
 #[test]
 fn is_invalid_type_param_valid_underscore_and_numbers() {
     let ty = Type::new(Some("_foo123456789_".into()), None, TyKind::TypeParam, false);
     assert!(!ty.is_invalid_type_param())
 }
-
 #[test]
 fn is_invalid_type_param_valid_unnamed_kind() {
     let ty = Type::new(Some("foo".into()), None, TyKind::Void, false);
     assert!(!ty.is_invalid_type_param())
 }
-
 #[test]
 fn is_invalid_type_param_invalid_start() {
     let ty = Type::new(Some("1foo".into()), None, TyKind::TypeParam, false);
     assert!(ty.is_invalid_type_param())
 }
-
 #[test]
 fn is_invalid_type_param_invalid_remaing() {
     let ty = Type::new(Some("foo-".into()), None, TyKind::TypeParam, false);
     assert!(ty.is_invalid_type_param())
 }
-
 #[test]
 #[should_panic]
 fn is_invalid_type_param_unnamed() {
     let ty = Type::new(None, None, TyKind::TypeParam, false);
     assert!(ty.is_invalid_type_param())
 }
-
 #[test]
 fn is_invalid_type_param_empty_name() {
     let ty = Type::new(Some("".into()), None, TyKind::TypeParam, false);
     assert!(ty.is_invalid_type_param())
 }
-
 impl TemplParams for Type {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
         self.kind.self_template_params(ctx)
     }
 }
-
 impl TemplParams for TyKind {
     fn self_template_params(&self, ctx: &BindgenContext) -> Vec<TypeId> {
         match *self {
             TyKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_template_params(ctx),
             TyKind::Comp(ref comp) => comp.self_template_params(ctx),
             TyKind::TemplateAlias(_, ref args) => args.clone(),
-
             TyKind::Opaque
             | TyKind::TemplateInstantiation(..)
             | TyKind::Void
@@ -419,7 +365,6 @@ impl TemplParams for TyKind {
         }
     }
 }
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FloatKind {
     Float,
@@ -427,7 +372,6 @@ pub enum FloatKind {
     LongDouble,
     Float128,
 }
-
 #[derive(Debug)]
 pub enum TyKind {
     Void,
@@ -451,7 +395,6 @@ pub enum TyKind {
     ResolvedTypeRef(TypeId),
     TypeParam,
 }
-
 impl Type {
     pub fn from_clang_ty(
         potential_id: ItemId,
@@ -543,19 +486,14 @@ impl Type {
                             },
                             CXCursor_TypeAliasTemplateDecl => {
                                 debug!("TypeAliasTemplateDecl");
-
                                 let mut inner = Err(parse::Error::Continue);
                                 let mut args = vec![];
-
                                 location.visit(|cur| {
                                     match cur.kind() {
                                         CXCursor_TypeAliasDecl => {
                                             let current = cur.cur_type();
-
                                             debug_assert_eq!(current.kind(), CXType_Typedef);
-
                                             name = Some(location.spelling());
-
                                             let inner_ty = cur.typedef_type().expect("Not valid Type?");
                                             inner = Ok(Item::from_ty_or_ref(inner_ty, cur, Some(potential_id), ctx));
                                         },
@@ -571,7 +509,6 @@ impl Type {
                                     }
                                     CXChildVisit_Continue
                                 });
-
                                 let inner_type = match inner {
                                     Ok(inner) => inner,
                                     Err(..) => {
@@ -583,32 +520,27 @@ impl Type {
                                         return Err(parse::Error::Continue);
                                     },
                                 };
-
                                 TyKind::TemplateAlias(inner_type, args)
                             },
                             CXCursor_TemplateRef => {
                                 let referenced = location.referenced().unwrap();
                                 let referenced_ty = referenced.cur_type();
-
                                 debug!(
                                     "TemplateRef: location = {:?}; referenced = \
                                         {:?}; referenced_ty = {:?}",
                                     location, referenced, referenced_ty
                                 );
-
                                 return Self::from_clang_ty(potential_id, &referenced_ty, referenced, parent_id, ctx);
                             },
                             CXCursor_TypeRef => {
                                 let referenced = location.referenced().unwrap();
                                 let referenced_ty = referenced.cur_type();
                                 let declaration = referenced_ty.declaration();
-
                                 debug!(
                                     "TypeRef: location = {:?}; referenced = \
                                      {:?}; referenced_ty = {:?}",
                                     location, referenced, referenced_ty
                                 );
-
                                 let id = Item::from_ty_or_ref_with_id(
                                     potential_id,
                                     referenced_ty,
@@ -630,7 +562,6 @@ impl Type {
                                     );
                                     return Err(parse::Error::Recurse);
                                 }
-
                                 warn!("invalid type {:?}", ty);
                                 return Err(parse::Error::Continue);
                             },
@@ -642,7 +573,6 @@ impl Type {
                         debug!("Couldn't find deduced type: {:?}", ty);
                         return Err(parse::Error::Continue);
                     }
-
                     return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
                 },
                 CXType_MemberPointer | CXType_Pointer => {
@@ -702,27 +632,23 @@ impl Type {
                 },
                 CXType_Enum => {
                     let enum_ = Enum::from_ty(ty, ctx).expect("Not an enum?");
-
                     if !is_anonymous {
                         let pretty_name = ty.spelling();
                         if clang::is_valid_identifier(&pretty_name) {
                             name = Some(pretty_name);
                         }
                     }
-
                     TyKind::Enum(enum_)
                 },
                 CXType_Record => {
                     let complex =
                         CompInfo::from_ty(potential_id, ty, Some(location), ctx).expect("Not a complex type?");
-
                     if !is_anonymous {
                         let pretty_name = ty.spelling();
                         if clang::is_valid_identifier(&pretty_name) {
                             name = Some(pretty_name);
                         }
                     }
-
                     TyKind::Comp(complex)
                 },
                 CXType_Vector => {
@@ -758,10 +684,8 @@ impl Type {
         Ok(parse::Result::New(ty, Some(cur.canonical())))
     }
 }
-
 impl Trace for Type {
     type Extra = Item;
-
     fn trace<T>(&self, ctx: &BindgenContext, tracer: &mut T, i: &Item)
     where
         T: Tracer,

@@ -9,7 +9,6 @@ use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
 use crate::clang::Token;
 use crate::parse;
-
 use std::io;
 use std::num::Wrapping;
 
@@ -21,22 +20,20 @@ pub enum VarType {
     Char(u8),
     String(Vec<u8>),
 }
-
 #[derive(Debug)]
 pub struct Var {
     name: String,
-    mangled_name: Option<String>,
-    link_name: Option<String>,
+    mangled: Option<String>,
+    link: Option<String>,
     ty: TypeId,
     val: Option<VarType>,
     is_const: bool,
 }
-
 impl Var {
     pub fn new(
         name: String,
-        mangled_name: Option<String>,
-        link_name: Option<String>,
+        mangled: Option<String>,
+        link: Option<String>,
         ty: TypeId,
         val: Option<VarType>,
         is_const: bool,
@@ -44,39 +41,32 @@ impl Var {
         assert!(!name.is_empty());
         Var {
             name,
-            mangled_name,
-            link_name,
+            mangled,
+            link,
             ty,
             val,
             is_const,
         }
     }
-
     pub fn is_const(&self) -> bool {
         self.is_const
     }
-
     pub fn val(&self) -> Option<&VarType> {
         self.val.as_ref()
     }
-
     pub fn ty(&self) -> TypeId {
         self.ty
     }
-
     pub fn name(&self) -> &str {
         &self.name
     }
-
-    pub fn mangled_name(&self) -> Option<&str> {
-        self.mangled_name.as_deref()
+    pub fn mangled(&self) -> Option<&str> {
+        self.mangled.as_deref()
     }
-
-    pub fn link_name(&self) -> Option<&str> {
-        self.link_name.as_deref()
+    pub fn link(&self) -> Option<&str> {
+        self.link.as_deref()
     }
 }
-
 impl DotAttrs for Var {
     fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
     where
@@ -85,13 +75,12 @@ impl DotAttrs for Var {
         if self.is_const {
             writeln!(out, "<tr><td>const</td><td>true</td></tr>")?;
         }
-        if let Some(ref mangled) = self.mangled_name {
+        if let Some(ref mangled) = self.mangled {
             writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", mangled)?;
         }
         Ok(())
     }
 }
-
 fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
     if value < 0 || ctx.opts().default_macro_constant_type == MacroTypeVariation::Signed {
         if value < i32::min_value() as i64 || value > i32::max_value() as i64 {
@@ -114,7 +103,6 @@ fn default_macro_constant_type(ctx: &BindgenContext, value: i64) -> IntKind {
         IntKind::U8
     }
 }
-
 fn handle_function_macro(cur: &clang::Cursor, callbacks: &dyn crate::callbacks::Parse) {
     let is_closing_paren = |t: &Token| t.kind == clang_lib::CXToken_Punctuation && t.spelling() == b")";
     let tokens: Vec<_> = cur.tokens().iter().collect();
@@ -128,7 +116,6 @@ fn handle_function_macro(cur: &clang::Cursor, callbacks: &dyn crate::callbacks::
         }
     }
 }
-
 impl parse::SubItem for Var {
     fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<parse::Result<Self>, parse::Error> {
         use cexpr::expr::EvalResult;
@@ -176,7 +163,6 @@ impl parse::SubItem for Var {
                                 c as u8
                             },
                         };
-
                         (TyKind::Int(IntKind::U8), VarType::Char(c))
                     },
                     EvalResult::Str(val) => {
@@ -191,7 +177,6 @@ impl parse::SubItem for Var {
                             .opts()
                             .last_callback(|c| c.int_macro(&name, value))
                             .unwrap_or_else(|| default_macro_constant_type(ctx, value));
-
                         (TyKind::Int(kind), VarType::Int(value))
                     },
                 };
@@ -275,7 +260,6 @@ impl parse::SubItem for Var {
         }
     }
 }
-
 fn parse_macro(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
     use cexpr::expr;
     let cexpr_tokens = cur.cexpr_tokens();
@@ -285,7 +269,6 @@ fn parse_macro(ctx: &BindgenContext, cur: &clang::Cursor) -> Option<(Vec<u8>, ce
         _ => None,
     }
 }
-
 fn parse_int_literal_tokens(cur: &clang::Cursor) -> Option<i64> {
     use cexpr::expr;
     use cexpr::expr::EvalResult;
@@ -295,7 +278,6 @@ fn parse_int_literal_tokens(cur: &clang::Cursor) -> Option<i64> {
         _ => None,
     }
 }
-
 fn get_integer_literal_from_cursor(cur: &clang::Cursor) -> Option<i64> {
     use clang_lib::*;
     let mut y = None;
@@ -317,7 +299,6 @@ fn get_integer_literal_from_cursor(cur: &clang::Cursor) -> Option<i64> {
     });
     y
 }
-
 fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SrcLoc, _ctx: &BindgenContext) {
     warn!("Duplicated macro definition: {}", macro_name);
 }
