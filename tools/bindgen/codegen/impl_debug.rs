@@ -2,13 +2,11 @@ use crate::ir::comp::{BitfieldUnit, CompKind, Field, FieldData, FieldMethods};
 use crate::ir::item::{CanonName, HasTypeParam, IsOpaque, Item};
 use crate::ir::typ::TypeKind;
 use crate::ir::Context;
-
-pub(crate) fn gen_debug_impl(ctx: &Context, fields: &[Field], item: &Item, kind: CompKind) -> proc_macro2::TokenStream {
-    let struct_name = item.canon_name(ctx);
+pub fn gen_debug_impl(ctx: &Context, fields: &[Field], it: &Item, kind: CompKind) -> proc_macro2::TokenStream {
+    let struct_name = it.canon_name(ctx);
     let mut format_string = format!("{} {{{{ ", struct_name);
     let mut tokens = vec![];
-
-    if item.is_opaque(ctx, &()) {
+    if it.is_opaque(ctx, &()) {
         format_string.push_str("opaque");
     } else {
         match kind {
@@ -20,7 +18,6 @@ pub(crate) fn gen_debug_impl(ctx: &Context, fields: &[Field], item: &Item, kind:
                     Field::DataMember(ref fd) => fd.impl_debug(ctx, ()),
                     Field::Bitfields(ref bu) => bu.impl_debug(ctx, ()),
                 });
-
                 for (i, (fstring, toks)) in processed_fields.enumerate() {
                     if i > 0 {
                         format_string.push_str(", ");
@@ -31,28 +28,21 @@ pub(crate) fn gen_debug_impl(ctx: &Context, fields: &[Field], item: &Item, kind:
             },
         }
     }
-
     format_string.push_str(" }}");
     tokens.insert(0, quote! { #format_string });
-
     let prefix = ctx.trait_prefix();
-
     quote! {
         fn fmt(&self, f: &mut ::#prefix::fmt::Formatter<'_>) -> ::#prefix ::fmt::Result {
             write!(f, #( #tokens ),*)
         }
     }
 }
-
-pub(crate) trait ImplDebug<'a> {
+pub trait ImplDebug<'a> {
     type Extra;
-
     fn impl_debug(&self, ctx: &Context, extra: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)>;
 }
-
 impl<'a> ImplDebug<'a> for FieldData {
     type Extra = ();
-
     fn impl_debug(&self, ctx: &Context, _: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         if let Some(name) = self.name() {
             ctx.resolve_item(self.ty()).impl_debug(ctx, name)
@@ -61,10 +51,8 @@ impl<'a> ImplDebug<'a> for FieldData {
         }
     }
 }
-
 impl<'a> ImplDebug<'a> for BitfieldUnit {
     type Extra = ();
-
     fn impl_debug(&self, ctx: &Context, _: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         let mut format_string = String::new();
         let mut tokens = vec![];
@@ -72,7 +60,6 @@ impl<'a> ImplDebug<'a> for BitfieldUnit {
             if i > 0 {
                 format_string.push_str(", ");
             }
-
             if let Some(bitfield_name) = bitfield.name() {
                 format_string.push_str(&format!("{} : {{:?}}", bitfield_name));
                 let getter_name = bitfield.getter();
@@ -82,28 +69,22 @@ impl<'a> ImplDebug<'a> for BitfieldUnit {
                 });
             }
         }
-
         Some((format_string, tokens))
     }
 }
-
 impl<'a> ImplDebug<'a> for Item {
     type Extra = &'a str;
-
     fn impl_debug(&self, ctx: &Context, name: &str) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         let name_ident = ctx.rust_ident(name);
-
         if !ctx.allowed_items().contains(&self.id()) {
             return None;
         }
-
         let ty = match self.as_type() {
             Some(ty) => ty,
             None => {
                 return None;
             },
         };
-
         fn debug_print(
             name: &str,
             name_ident: proc_macro2::TokenStream,
@@ -126,7 +107,6 @@ impl<'a> ImplDebug<'a> for Item {
             | TypeKind::Reference(..)
             | TypeKind::UnresolvedTypeRef(..)
             | TypeKind::Comp(..) => debug_print(name, quote! { #name_ident }),
-
             TypeKind::TemplateInstantiation(ref x) => {
                 if x.is_opaque(ctx, self) {
                     Some((format!("{}: opaque", name), vec![]))
@@ -134,9 +114,7 @@ impl<'a> ImplDebug<'a> for Item {
                     debug_print(name, quote! { #name_ident })
                 }
             },
-
             TypeKind::TypeParam => Some((format!("{}: Non-debuggable generic", name), vec![])),
-
             TypeKind::Array(_, len) => {
                 if self.has_type_param_in_array(ctx) {
                     Some((format!("{}: Array with length {}", name, len), vec![]))
@@ -157,12 +135,10 @@ impl<'a> ImplDebug<'a> for Item {
                     ))
                 }
             },
-
             TypeKind::ResolvedTypeRef(t)
             | TypeKind::TemplateAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t) => ctx.resolve_item(t).impl_debug(ctx, name),
-
             TypeKind::Pointer(inner) => {
                 let inner_type = ctx.resolve_type(inner).canonical_type(ctx);
                 match *inner_type.kind() {
@@ -172,7 +148,6 @@ impl<'a> ImplDebug<'a> for Item {
                     _ => debug_print(name, quote! { #name_ident }),
                 }
             },
-
             TypeKind::Opaque => None,
         }
     }

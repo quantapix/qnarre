@@ -538,9 +538,9 @@ pub mod enum_ty {
             });
             Ok(Enum::new(repr, variants))
         }
-        fn is_matching_enum(&self, ctx: &Context, enums: &RegexSet, item: &Item) -> bool {
-            let path = item.path_for_allowlisting(ctx);
-            let enum_ty = item.expect_type();
+        fn is_matching_enum(&self, ctx: &Context, enums: &RegexSet, it: &Item) -> bool {
+            let path = it.path_for_allowlisting(ctx);
+            let enum_ty = it.expect_type();
             if enums.matches(path[1..].join("::")) {
                 return true;
             }
@@ -549,29 +549,29 @@ pub mod enum_ty {
             }
             self.variants().iter().any(|v| enums.matches(v.name()))
         }
-        pub fn computed_enum_variation(&self, ctx: &Context, item: &Item) -> EnumVariation {
-            if self.is_matching_enum(ctx, &ctx.opts().constified_enum_modules, item) {
+        pub fn computed_enum_variation(&self, ctx: &Context, it: &Item) -> EnumVariation {
+            if self.is_matching_enum(ctx, &ctx.opts().constified_enum_modules, it) {
                 EnumVariation::ModuleConsts
-            } else if self.is_matching_enum(ctx, &ctx.opts().bitfield_enums, item) {
+            } else if self.is_matching_enum(ctx, &ctx.opts().bitfield_enums, it) {
                 EnumVariation::NewType {
                     is_bitfield: true,
                     is_global: false,
                 }
-            } else if self.is_matching_enum(ctx, &ctx.opts().newtype_enums, item) {
+            } else if self.is_matching_enum(ctx, &ctx.opts().newtype_enums, it) {
                 EnumVariation::NewType {
                     is_bitfield: false,
                     is_global: false,
                 }
-            } else if self.is_matching_enum(ctx, &ctx.opts().newtype_global_enums, item) {
+            } else if self.is_matching_enum(ctx, &ctx.opts().newtype_global_enums, it) {
                 EnumVariation::NewType {
                     is_bitfield: false,
                     is_global: true,
                 }
-            } else if self.is_matching_enum(ctx, &ctx.opts().rustified_enums, item) {
+            } else if self.is_matching_enum(ctx, &ctx.opts().rustified_enums, it) {
                 EnumVariation::Rust { non_exhaustive: false }
-            } else if self.is_matching_enum(ctx, &ctx.opts().rustified_non_exhaustive_enums, item) {
+            } else if self.is_matching_enum(ctx, &ctx.opts().rustified_non_exhaustive_enums, it) {
                 EnumVariation::Rust { non_exhaustive: true }
-            } else if self.is_matching_enum(ctx, &ctx.opts().constified_enums, item) {
+            } else if self.is_matching_enum(ctx, &ctx.opts().constified_enums, it) {
                 EnumVariation::Consts
             } else {
                 ctx.opts().default_enum_style

@@ -1,7 +1,5 @@
-use std::io::Write;
-
+use super::CodegenError;
 use crate::callbacks::IntKind;
-
 use crate::ir::comp::CompKind;
 use crate::ir::function::{FnKind, Function};
 use crate::ir::item::CanonName;
@@ -9,18 +7,14 @@ use crate::ir::item::Item;
 use crate::ir::item_kind::ItemKind;
 use crate::ir::typ::{FloatKind, Type, TypeKind};
 use crate::ir::{Context, TypeId};
-
-use super::CodegenError;
-
-fn get_loc(item: &Item) -> String {
-    item.location()
+use std::io::Write;
+fn get_loc(it: &Item) -> String {
+    it.location()
         .map(|x| x.to_string())
         .unwrap_or_else(|| "unknown".to_owned())
 }
-
-pub(crate) trait CSerialize<'a> {
+pub trait CSerialize<'a> {
     type Extra;
-
     fn serialize<W: Write>(
         &self,
         ctx: &Context,
@@ -29,10 +23,8 @@ pub(crate) trait CSerialize<'a> {
         writer: &mut W,
     ) -> Result<(), CodegenError>;
 }
-
 impl<'a> CSerialize<'a> for Item {
     type Extra = ();
-
     fn serialize<W: Write>(
         &self,
         ctx: &Context,
@@ -49,10 +41,8 @@ impl<'a> CSerialize<'a> for Item {
         }
     }
 }
-
 impl<'a> CSerialize<'a> for Function {
     type Extra = &'a Item;
-
     fn serialize<W: Write>(
         &self,
         ctx: &Context,
@@ -66,19 +56,14 @@ impl<'a> CSerialize<'a> for Function {
                 loc: get_loc(item),
             });
         }
-
         let signature = match ctx.resolve_type(self.sig()).kind() {
             TypeKind::Function(signature) => signature,
             _ => unreachable!(),
         };
-
         assert!(!signature.is_variadic());
-
         let name = self.name();
-
         let args = {
             let mut count = 0;
-
             signature
                 .arg_types()
                 .iter()
@@ -95,40 +80,30 @@ impl<'a> CSerialize<'a> for Function {
                 })
                 .collect::<Vec<_>>()
         };
-
         let wrap_name = format!("{}{}", name, ctx.wrap_static_fns_suffix());
-
         let ret_ty = {
             let type_id = signature.ret_type();
             let item = ctx.resolve_item(type_id);
             let ret_ty = item.expect_type();
-
             ret_ty.serialize(ctx, item, stack, writer)?;
-
             ret_ty
         };
-
         write!(writer, " {}(", wrap_name)?;
         serialize_args(&args, ctx, writer)?;
-
         if ret_ty.is_void() {
             write!(writer, ") {{ {}(", name)?;
         } else {
             write!(writer, ") {{ return {}(", name)?;
         }
-
         serialize_sep(", ", args.iter(), ctx, writer, |(name, _), _, buf| {
             write!(buf, "{}", name).map_err(From::from)
         })?;
         writeln!(writer, "); }}")?;
-
         Ok(())
     }
 }
-
 impl<'a> CSerialize<'a> for TypeId {
     type Extra = ();
-
     fn serialize<W: Write>(
         &self,
         ctx: &Context,
@@ -140,10 +115,8 @@ impl<'a> CSerialize<'a> for TypeId {
         item.expect_type().serialize(ctx, item, stack, writer)
     }
 }
-
 impl<'a> CSerialize<'a> for Type {
     type Extra = &'a Item;
-
     fn serialize<W: Write>(
         &self,
         ctx: &Context,
@@ -231,15 +204,12 @@ impl<'a> CSerialize<'a> for Type {
                 if self.is_const() {
                     stack.push("const ".to_string());
                 }
-
                 signature.ret_type().serialize(ctx, (), &mut vec![], writer)?;
-
                 write!(writer, " (")?;
                 while let Some(item) = stack.pop() {
                     write!(writer, "{}", item)?;
                 }
                 write!(writer, ")")?;
-
                 write!(writer, " (")?;
                 serialize_sep(
                     ", ",
@@ -274,9 +244,7 @@ impl<'a> CSerialize<'a> for Type {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
-
                 let name = item.canon_name(ctx);
-
                 match comp_info.kind() {
                     CompKind::Struct => write!(writer, "struct {}", name)?,
                     CompKind::Union => write!(writer, "union {}", name)?,
@@ -286,7 +254,6 @@ impl<'a> CSerialize<'a> for Type {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
-
                 let name = item.canon_name(ctx);
                 write!(writer, "enum {}", name)?;
             },
@@ -297,18 +264,15 @@ impl<'a> CSerialize<'a> for Type {
                 })
             },
         };
-
         if !stack.is_empty() {
             write!(writer, " ")?;
             while let Some(item) = stack.pop() {
                 write!(writer, "{}", item)?;
             }
         }
-
         Ok(())
     }
 }
-
 fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &mut W) -> Result<(), CodegenError> {
     if args.is_empty() {
         write!(writer, "void")?;
@@ -317,10 +281,8 @@ fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &m
             type_id.serialize(ctx, (), &mut vec![name.clone()], buf)
         })?;
     }
-
     Ok(())
 }
-
 fn serialize_sep<W: Write, F: FnMut(I::Item, &Context, &mut W) -> Result<(), CodegenError>, I: Iterator>(
     sep: &str,
     mut iter: I,
@@ -336,6 +298,5 @@ fn serialize_sep<W: Write, F: FnMut(I::Item, &Context, &mut W) -> Result<(), Cod
             f(item, ctx, buf)?;
         }
     }
-
     Ok(())
 }

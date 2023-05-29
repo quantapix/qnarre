@@ -1023,11 +1023,11 @@ impl TemplParams for CompInfo {
 }
 impl Trace for CompInfo {
     type Extra = Item;
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, i: &Item)
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, it: &Item)
     where
         T: Tracer,
     {
-        for p in i.all_templ_params(ctx) {
+        for p in it.all_templ_params(ctx) {
             tracer.visit_kind(p.into(), EdgeKind::TemplateParameterDefinition);
         }
         for ty in self.inner_types() {
@@ -1045,7 +1045,7 @@ impl Trace for CompInfo {
         for ctor in self.constructors() {
             tracer.visit_kind(ctor.into(), EdgeKind::Constructor);
         }
-        if i.is_opaque(ctx, &()) {
+        if it.is_opaque(ctx, &()) {
             return;
         }
         for base in self.base_members() {

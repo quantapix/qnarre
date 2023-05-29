@@ -501,10 +501,10 @@ impl Type {
 }
 impl IsOpaque for Type {
     type Extra = Item;
-    fn is_opaque(&self, ctx: &Context, i: &Item) -> bool {
+    fn is_opaque(&self, ctx: &Context, it: &Item) -> bool {
         match self.kind {
             TypeKind::Opaque => true,
-            TypeKind::TemplateInstantiation(ref x) => x.is_opaque(ctx, i),
+            TypeKind::TemplateInstantiation(ref x) => x.is_opaque(ctx, it),
             TypeKind::Comp(ref x) => x.is_opaque(ctx, &self.layout),
             TypeKind::ResolvedTypeRef(x) => x.is_opaque(ctx, &()),
             _ => false,
@@ -540,13 +540,13 @@ impl TemplParams for Type {
 }
 impl AsTemplParam for Type {
     type Extra = Item;
-    fn as_templ_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
-        self.kind.as_templ_param(ctx, i)
+    fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
+        self.kind.as_templ_param(ctx, it)
     }
 }
 impl Trace for Type {
     type Extra = Item;
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, i: &Item)
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, it: &Item)
     where
         T: Tracer,
     {
@@ -572,7 +572,7 @@ impl Trace for Type {
             TypeKind::TemplateInstantiation(ref x) => {
                 x.trace(ctx, tracer, &());
             },
-            TypeKind::Comp(ref x) => x.trace(ctx, tracer, i),
+            TypeKind::Comp(ref x) => x.trace(ctx, tracer, it),
             TypeKind::Function(ref x) => x.trace(ctx, tracer, &()),
             TypeKind::Enum(ref x) => {
                 if let Some(x) = x.repr() {
@@ -691,9 +691,9 @@ impl TemplParams for TypeKind {
 }
 impl AsTemplParam for TypeKind {
     type Extra = Item;
-    fn as_templ_param(&self, ctx: &Context, i: &Item) -> Option<TypeId> {
+    fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
         match *self {
-            TypeKind::TypeParam => Some(i.id().expect_type_id(ctx)),
+            TypeKind::TypeParam => Some(it.id().expect_type_id(ctx)),
             TypeKind::ResolvedTypeRef(id) => id.as_templ_param(ctx, &()),
             _ => None,
         }

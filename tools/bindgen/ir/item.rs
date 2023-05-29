@@ -1113,9 +1113,9 @@ impl TemplParams for ItemKind {
 }
 impl AsTemplParam for ItemKind {
     type Extra = Item;
-    fn as_templ_param(&self, ctx: &Context, item: &Item) -> Option<TypeId> {
+    fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
         match *self {
-            ItemKind::Type(ref x) => x.as_templ_param(ctx, item),
+            ItemKind::Type(ref x) => x.as_templ_param(ctx, it),
             ItemKind::Module(..) | ItemKind::Function(..) | ItemKind::Var(..) => None,
         }
     }

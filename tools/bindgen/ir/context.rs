@@ -293,27 +293,27 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     pub fn deps(&self) -> &BTreeSet<String> {
         &self.deps
     }
-    pub fn add_item(&mut self, item: Item, decl: Option<Cursor>, loc: Option<Cursor>) {
-        debug!("Context::add_item({:?}, declaration: {:?}, loc: {:?}", item, decl, loc);
+    pub fn add_item(&mut self, it: Item, decl: Option<Cursor>, loc: Option<Cursor>) {
+        debug!("Context::add_item({:?}, declaration: {:?}, loc: {:?}", it, decl, loc);
         debug_assert!(
             decl.is_some()
-                || !item.kind().is_type()
-                || item.kind().expect_type().is_builtin_or_type_param()
-                || item.kind().expect_type().is_opaque(self, &item)
-                || item.kind().expect_type().is_unresolved_ref(),
+                || !it.kind().is_type()
+                || it.kind().expect_type().is_builtin_or_type_param()
+                || it.kind().expect_type().is_opaque(self, &it)
+                || it.kind().expect_type().is_unresolved_ref(),
             "Adding a type without declaration?"
         );
-        let id = item.id();
-        let is_type = item.kind().is_type();
-        let is_unnamed = is_type && item.expect_type().name().is_none();
-        let is_template_instantiation = is_type && item.expect_type().is_template_instantiation();
-        if item.id() != self.root_module {
-            self.add_item_to_module(&item);
+        let id = it.id();
+        let is_type = it.kind().is_type();
+        let is_unnamed = is_type && it.expect_type().name().is_none();
+        let is_template_instantiation = is_type && it.expect_type().is_template_instantiation();
+        if it.id() != self.root_module {
+            self.add_item_to_module(&it);
         }
-        if is_type && item.expect_type().is_comp() {
+        if is_type && it.expect_type().is_comp() {
             self.need_bitfield_allocation.push(id);
         }
-        let old_item = mem::replace(&mut self.items[id.0], Some(item));
+        let old_item = mem::replace(&mut self.items[id.0], Some(it));
         assert!(
             old_item.is_none(),
             "should not have already associated an item with the given id"
@@ -350,23 +350,23 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             debug_assert_eq!(old, None);
         }
     }
-    fn add_item_to_module(&mut self, item: &Item) {
-        assert!(item.id() != self.root_module);
-        assert!(self.resolve_item_fallible(item.id()).is_none());
-        if let Some(ref mut parent) = self.items[item.parent_id().0] {
+    fn add_item_to_module(&mut self, it: &Item) {
+        assert!(it.id() != self.root_module);
+        assert!(self.resolve_item_fallible(it.id()).is_none());
+        if let Some(ref mut parent) = self.items[it.parent_id().0] {
             if let Some(module) = parent.as_module_mut() {
                 debug!(
                     "add_item_to_module: adding {:?} as child of parent module {:?}",
-                    item.id(),
-                    item.parent_id()
+                    it.id(),
+                    it.parent_id()
                 );
-                module.children_mut().insert(item.id());
+                module.children_mut().insert(it.id());
                 return;
             }
         }
         debug!(
             "add_item_to_module: adding {:?} as child of current module {:?}",
-            item.id(),
+            it.id(),
             self.current_module
         );
         self.items[(self.current_module.0).0]
@@ -375,21 +375,21 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .as_module_mut()
             .expect("self.current_module should always be a module")
             .children_mut()
-            .insert(item.id());
+            .insert(it.id());
     }
-    pub fn add_type_param(&mut self, item: Item, definition: clang::Cursor) {
+    pub fn add_type_param(&mut self, it: Item, definition: clang::Cursor) {
         debug!(
             "Context::add_type_param: item = {:?}; definition = {:?}",
-            item, definition
+            it, definition
         );
         assert!(
-            item.expect_type().is_type_param(),
+            it.expect_type().is_type_param(),
             "Should directly be a named type, not a resolved reference or anything"
         );
         assert_eq!(definition.kind(), clang_lib::CXCursor_TemplateTypeParameter);
-        self.add_item_to_module(&item);
-        let id = item.id();
-        let old_item = mem::replace(&mut self.items[id.0], Some(item));
+        self.add_item_to_module(&it);
+        let id = it.id();
+        let old_item = mem::replace(&mut self.items[id.0], Some(it));
         assert!(
             old_item.is_none(),
             "should not have already associated an item with the given id"
@@ -702,12 +702,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             self.used_template_parameters = Some(used_params);
         }
     }
-    pub fn uses_template_parameter(&self, item: ItemId, template_param: TypeId) -> bool {
+    pub fn uses_template_parameter(&self, id: ItemId, templ_param: TypeId) -> bool {
         assert!(self.in_codegen_phase());
-        if self.resolve_item(item).is_blocklisted(self) {
+        if self.resolve_item(id).is_blocklisted(self) {
             return true;
         }
-        let template_param = template_param
+        let templ_param = templ_param
             .into_resolver()
             .through_type_refs()
             .through_type_aliases()
@@ -716,10 +716,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.used_template_parameters
             .as_ref()
             .expect("should have found template parameter usage if we're in codegen")
-            .get(&item)
-            .map_or(false, |items_used_params| items_used_params.contains(&template_param))
+            .get(&id)
+            .map_or(false, |x| x.contains(&templ_param))
     }
-    pub fn uses_any_template_parameters(&self, item: ItemId) -> bool {
+    pub fn uses_any_template_parameters(&self, id: ItemId) -> bool {
         assert!(
             self.in_codegen_phase(),
             "We only compute template parameter usage as we enter codegen"
@@ -727,15 +727,15 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.used_template_parameters
             .as_ref()
             .expect("should have template parameter usage info in codegen phase")
-            .get(&item)
-            .map_or(false, |used| !used.is_empty())
+            .get(&id)
+            .map_or(false, |x| !x.is_empty())
     }
-    fn add_builtin_item(&mut self, item: Item) {
-        debug!("add_builtin_item: item = {:?}", item);
-        debug_assert!(item.kind().is_type());
-        self.add_item_to_module(&item);
-        let id = item.id();
-        let old_item = mem::replace(&mut self.items[id.0], Some(item));
+    fn add_builtin_item(&mut self, it: Item) {
+        debug!("add_builtin_item: item = {:?}", it);
+        debug_assert!(it.kind().is_type());
+        self.add_item_to_module(&it);
+        let id = it.id();
+        let old_item = mem::replace(&mut self.items[id.0], Some(it));
         assert!(old_item.is_none(), "Inserted type twice?");
     }
     fn build_root_module(id: ItemId) -> Item {
@@ -1198,7 +1198,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.current_module == self.root_module);
         self.allowed.as_ref().unwrap()
     }
-    pub fn blocklisted_type_implements_trait(&self, item: &Item, derive_trait: DeriveTrait) -> Resolved {
+    pub fn blocklisted_type_implements_trait(&self, it: &Item, derive_trait: DeriveTrait) -> Resolved {
         assert!(self.in_codegen_phase());
         assert!(self.current_module == self.root_module);
         *self
@@ -1206,9 +1206,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .borrow_mut()
             .entry(derive_trait)
             .or_default()
-            .entry(item.id())
+            .entry(it.id())
             .or_insert_with(|| {
-                item.expect_type()
+                it.expect_type()
                     .name()
                     .and_then(|name| {
                         if self.opts.parse_callbacks.is_empty() {
@@ -1521,28 +1521,28 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         );
         self.has_float.as_ref().unwrap().contains(&id.into())
     }
-    pub fn no_partialeq_by_name(&self, item: &Item) -> bool {
-        let name = item.path_for_allowlisting(self)[1..].join("::");
+    pub fn no_partialeq_by_name(&self, it: &Item) -> bool {
+        let name = it.path_for_allowlisting(self)[1..].join("::");
         self.opts().no_partialeq_types.matches(name)
     }
-    pub fn no_copy_by_name(&self, item: &Item) -> bool {
-        let name = item.path_for_allowlisting(self)[1..].join("::");
+    pub fn no_copy_by_name(&self, it: &Item) -> bool {
+        let name = it.path_for_allowlisting(self)[1..].join("::");
         self.opts().no_copy_types.matches(name)
     }
-    pub fn no_debug_by_name(&self, item: &Item) -> bool {
-        let name = item.path_for_allowlisting(self)[1..].join("::");
+    pub fn no_debug_by_name(&self, it: &Item) -> bool {
+        let name = it.path_for_allowlisting(self)[1..].join("::");
         self.opts().no_debug_types.matches(name)
     }
-    pub fn no_default_by_name(&self, item: &Item) -> bool {
-        let name = item.path_for_allowlisting(self)[1..].join("::");
+    pub fn no_default_by_name(&self, it: &Item) -> bool {
+        let name = it.path_for_allowlisting(self)[1..].join("::");
         self.opts().no_default_types.matches(name)
     }
-    pub fn no_hash_by_name(&self, item: &Item) -> bool {
-        let name = item.path_for_allowlisting(self)[1..].join("::");
+    pub fn no_hash_by_name(&self, it: &Item) -> bool {
+        let name = it.path_for_allowlisting(self)[1..].join("::");
         self.opts().no_hash_types.matches(name)
     }
-    pub fn must_use_type_by_name(&self, item: &Item) -> bool {
-        let name = item.path_for_allowlisting(self)[1..].join("::");
+    pub fn must_use_type_by_name(&self, it: &Item) -> bool {
+        let name = it.path_for_allowlisting(self)[1..].join("::");
         self.opts().must_use_types.matches(name)
     }
     pub fn wrap_unsafe_ops(&self, tokens: impl ToTokens) -> TokenStream {

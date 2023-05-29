@@ -126,13 +126,13 @@ pub mod derive {
     }
 
     impl DeriveTrait {
-        fn not_by_name(&self, ctx: &Context, i: &Item) -> bool {
+        fn not_by_name(&self, ctx: &Context, it: &Item) -> bool {
             match self {
-                DeriveTrait::Copy => ctx.no_copy_by_name(i),
-                DeriveTrait::Debug => ctx.no_debug_by_name(i),
-                DeriveTrait::Default => ctx.no_default_by_name(i),
-                DeriveTrait::Hash => ctx.no_hash_by_name(i),
-                DeriveTrait::PartialEqOrPartialOrd => ctx.no_partialeq_by_name(i),
+                DeriveTrait::Copy => ctx.no_copy_by_name(it),
+                DeriveTrait::Debug => ctx.no_debug_by_name(it),
+                DeriveTrait::Default => ctx.no_default_by_name(it),
+                DeriveTrait::Hash => ctx.no_hash_by_name(it),
+                DeriveTrait::PartialEqOrPartialOrd => ctx.no_partialeq_by_name(it),
             }
         }
 
@@ -263,15 +263,15 @@ pub mod derive {
             }
         }
 
-        fn constrain_type(&mut self, i: &Item, ty: &Type) -> Resolved {
-            if !self.ctx.allowed_items().contains(&i.id()) {
-                let y = self.ctx.blocklisted_type_implements_trait(i, self.derive);
+        fn constrain_type(&mut self, it: &Item, ty: &Type) -> Resolved {
+            if !self.ctx.allowed_items().contains(&it.id()) {
+                let y = self.ctx.blocklisted_type_implements_trait(it, self.derive);
                 return y;
             }
-            if self.derive.not_by_name(self.ctx, i) {
+            if self.derive.not_by_name(self.ctx, it) {
                 return Resolved::No;
             }
-            if i.is_opaque(self.ctx, &()) {
+            if it.is_opaque(self.ctx, &()) {
                 if !self.derive.can_derive_union() && ty.is_union() && self.ctx.opts().untagged_union {
                     return Resolved::No;
                 }
@@ -330,7 +330,7 @@ pub mod derive {
                         return Resolved::No;
                     }
                     if !self.derive.can_derive_compound_with_destructor()
-                        && self.ctx.lookup_has_destructor(i.id().expect_type_id(self.ctx))
+                        && self.ctx.lookup_has_destructor(it.id().expect_type_id(self.ctx))
                     {
                         return Resolved::No;
                     }
@@ -338,7 +338,7 @@ pub mod derive {
                         if self.derive.can_derive_union() {
                             if self.ctx.opts().untagged_union
                                 && (!x.self_templ_params(self.ctx).is_empty()
-                                    || !i.all_templ_params(self.ctx).is_empty())
+                                    || !it.all_templ_params(self.ctx).is_empty())
                             {
                                 return Resolved::No;
                             }
@@ -352,32 +352,32 @@ pub mod derive {
                             return y;
                         }
                     }
-                    if !self.derive.can_derive_compound_with_vtable() && i.has_vtable(self.ctx) {
+                    if !self.derive.can_derive_compound_with_vtable() && it.has_vtable(self.ctx) {
                         return Resolved::No;
                     }
                     if !self.derive.can_derive_large_array(self.ctx)
                         && x.has_too_large_bitfield_unit()
-                        && !i.is_opaque(self.ctx, &())
+                        && !it.is_opaque(self.ctx, &())
                     {
                         return Resolved::No;
                     }
-                    self.constrain_join(i, self.derive.check_edge_comp())
+                    self.constrain_join(it, self.derive.check_edge_comp())
                 },
                 TypeKind::ResolvedTypeRef(..)
                 | TypeKind::TemplateAlias(..)
                 | TypeKind::Alias(..)
-                | TypeKind::BlockPointer(..) => self.constrain_join(i, self.derive.check_edge_typeref()),
-                TypeKind::TemplateInstantiation(..) => self.constrain_join(i, self.derive.check_edge_tmpl_inst()),
+                | TypeKind::BlockPointer(..) => self.constrain_join(it, self.derive.check_edge_typeref()),
+                TypeKind::TemplateInstantiation(..) => self.constrain_join(it, self.derive.check_edge_tmpl_inst()),
                 TypeKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
             }
         }
 
-        fn constrain_join(&mut self, i: &Item, f: EdgePred) -> Resolved {
+        fn constrain_join(&mut self, it: &Item, f: EdgePred) -> Resolved {
             let mut y = None;
-            i.trace(
+            it.trace(
                 self.ctx,
                 &mut |i2, kind| {
-                    if i2 == i.id() || !f(kind) {
+                    if i2 == it.id() || !f(kind) {
                         return;
                     }
                     let y2 = self.ys.get(&i2).cloned().unwrap_or_default();
@@ -1352,11 +1352,11 @@ pub mod used_templ_param {
             }
         }
 
-        fn constrain_join(&self, y: &mut ItemSet, i: &Item) {
-            i.trace(
+        fn constrain_join(&self, y: &mut ItemSet, it: &Item) {
+            it.trace(
                 self.ctx,
                 &mut |i2, kind| {
-                    if i2 == i.id() || !Self::check_edge(kind) {
+                    if i2 == it.id() || !Self::check_edge(kind) {
                         return;
                     }
                     let y2 = self

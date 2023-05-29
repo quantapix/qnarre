@@ -2,19 +2,16 @@ use crate::ir::layout::Layout;
 use crate::ir::Context;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::TokenStreamExt;
-
-pub(crate) mod attributes {
+pub mod attributes {
     use proc_macro2::{Ident, Span, TokenStream};
     use std::{borrow::Cow, str::FromStr};
-
-    pub(crate) fn repr(which: &str) -> TokenStream {
+    pub fn repr(which: &str) -> TokenStream {
         let which = Ident::new(which, Span::call_site());
         quote! {
             #[repr( #which )]
         }
     }
-
-    pub(crate) fn repr_list(which_ones: &[&str]) -> TokenStream {
+    pub fn repr_list(which_ones: &[&str]) -> TokenStream {
         let which_ones = which_ones
             .iter()
             .cloned()
@@ -23,8 +20,7 @@ pub(crate) mod attributes {
             #[repr( #( #which_ones ),* )]
         }
     }
-
-    pub(crate) fn derives(which_ones: &[&str]) -> TokenStream {
+    pub fn derives(which_ones: &[&str]) -> TokenStream {
         let which_ones = which_ones
             .iter()
             .cloned()
@@ -33,49 +29,41 @@ pub(crate) mod attributes {
             #[derive( #( #which_ones ),* )]
         }
     }
-
-    pub(crate) fn inline() -> TokenStream {
+    pub fn inline() -> TokenStream {
         quote! {
             #[inline]
         }
     }
-
-    pub(crate) fn must_use() -> TokenStream {
+    pub fn must_use() -> TokenStream {
         quote! {
             #[must_use]
         }
     }
-
-    pub(crate) fn non_exhaustive() -> TokenStream {
+    pub fn non_exhaustive() -> TokenStream {
         quote! {
             #[non_exhaustive]
         }
     }
-
-    pub(crate) fn doc(comment: String) -> TokenStream {
+    pub fn doc(comment: String) -> TokenStream {
         if comment.is_empty() {
             quote!()
         } else {
             quote!(#[doc = #comment])
         }
     }
-
-    pub(crate) fn link_name<const MANGLE: bool>(name: &str) -> TokenStream {
+    pub fn link_name<const MANGLE: bool>(name: &str) -> TokenStream {
         let name: Cow<'_, str> = if MANGLE {
             name.into()
         } else {
             format!("\u{1}{}", name).into()
         };
-
         quote! {
             #[link_name = #name]
         }
     }
 }
-
-pub(crate) fn blob(ctx: &Context, layout: Layout) -> TokenStream {
+pub fn blob(ctx: &Context, layout: Layout) -> TokenStream {
     let opaque = layout.opaque();
-
     let ty_name = match opaque.known_rust_type_for_array(ctx) {
         Some(ty) => ty,
         None => {
@@ -83,11 +71,8 @@ pub(crate) fn blob(ctx: &Context, layout: Layout) -> TokenStream {
             "u8"
         },
     };
-
     let ty_name = Ident::new(ty_name, Span::call_site());
-
     let data_len = opaque.array_size(ctx).unwrap_or(layout.size);
-
     if data_len == 1 {
         quote! {
             #ty_name
@@ -98,37 +83,30 @@ pub(crate) fn blob(ctx: &Context, layout: Layout) -> TokenStream {
         }
     }
 }
-
-pub(crate) fn integer_type(ctx: &Context, layout: Layout) -> Option<TokenStream> {
+pub fn integer_type(ctx: &Context, layout: Layout) -> Option<TokenStream> {
     let name = Layout::known_type_for_size(ctx, layout.size)?;
     let name = Ident::new(name, Span::call_site());
     Some(quote! { #name })
 }
-
-pub(crate) fn bitfield_unit(ctx: &Context, layout: Layout) -> TokenStream {
+pub fn bitfield_unit(ctx: &Context, layout: Layout) -> TokenStream {
     let mut tokens = quote! {};
-
     if ctx.opts().enable_cxx_namespaces {
         tokens.append_all(quote! { root:: });
     }
-
     let size = layout.size;
     tokens.append_all(quote! {
         __BindgenBitfieldUnit<[u8; #size]>
     });
-
     tokens
 }
-
-pub(crate) mod ast_ty {
+pub mod ast_ty {
     use crate::ir::function::FnSig;
     use crate::ir::layout::Layout;
     use crate::ir::typ::FloatKind;
     use crate::ir::Context;
     use proc_macro2::{self, TokenStream};
     use std::str::FromStr;
-
-    pub(crate) fn c_void(ctx: &Context) -> TokenStream {
+    pub fn c_void(ctx: &Context) -> TokenStream {
         match ctx.opts().ctypes_prefix {
             Some(ref prefix) => {
                 let prefix = TokenStream::from_str(prefix.as_str()).unwrap();
@@ -141,8 +119,7 @@ pub(crate) mod ast_ty {
             },
         }
     }
-
-    pub(crate) fn raw_type(ctx: &Context, name: &str) -> TokenStream {
+    pub fn raw_type(ctx: &Context, name: &str) -> TokenStream {
         let ident = ctx.rust_ident_raw(name);
         match ctx.opts().ctypes_prefix {
             Some(ref prefix) => {
@@ -164,8 +141,7 @@ pub(crate) mod ast_ty {
             },
         }
     }
-
-    pub(crate) fn float_kind_rust_type(ctx: &Context, fk: FloatKind, layout: Option<Layout>) -> TokenStream {
+    pub fn float_kind_rust_type(ctx: &Context, fk: FloatKind, layout: Option<Layout>) -> TokenStream {
         match (fk, ctx.opts().convert_floats) {
             (FloatKind::Float, true) => quote! { f32 },
             (FloatKind::Double, true) => quote! { f64 },
@@ -187,40 +163,32 @@ pub(crate) mod ast_ty {
             },
         }
     }
-
-    pub(crate) fn int_expr(val: i64) -> TokenStream {
+    pub fn int_expr(val: i64) -> TokenStream {
         let val = proc_macro2::Literal::i64_unsuffixed(val);
         quote!(#val)
     }
-
-    pub(crate) fn uint_expr(val: u64) -> TokenStream {
+    pub fn uint_expr(val: u64) -> TokenStream {
         let val = proc_macro2::Literal::u64_unsuffixed(val);
         quote!(#val)
     }
-
-    pub(crate) fn cstr_expr(mut string: String) -> TokenStream {
+    pub fn cstr_expr(mut string: String) -> TokenStream {
         string.push('\0');
         let b = proc_macro2::Literal::byte_string(string.as_bytes());
         quote! {
             #b
         }
     }
-
-    pub(crate) fn float_expr(ctx: &Context, f: f64) -> Result<TokenStream, ()> {
+    pub fn float_expr(ctx: &Context, f: f64) -> Result<TokenStream, ()> {
         if f.is_finite() {
             let val = proc_macro2::Literal::f64_unsuffixed(f);
-
             return Ok(quote!(#val));
         }
-
         let prefix = ctx.trait_prefix();
-
         if f.is_nan() {
             return Ok(quote! {
                 ::#prefix::f64::NAN
             });
         }
-
         if f.is_infinite() {
             return Ok(if f.is_sign_positive() {
                 quote! {
@@ -232,12 +200,10 @@ pub(crate) mod ast_ty {
                 }
             });
         }
-
         warn!("Unknown non-finite float number: {:?}", f);
         Err(())
     }
-
-    pub(crate) fn arguments_from_signature(signature: &FnSig, ctx: &Context) -> Vec<TokenStream> {
+    pub fn arguments_from_signature(signature: &FnSig, ctx: &Context) -> Vec<TokenStream> {
         let mut unnamed_arguments = 0;
         signature
             .arg_types()
