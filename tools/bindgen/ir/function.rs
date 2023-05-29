@@ -96,13 +96,13 @@ impl Function {
     }
 }
 impl DotAttrs for Function {
-    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         if let Some(ref x) = self.mangled_name {
             let x: String = x.chars().flat_map(|c| c.escape_default()).collect();
-            writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", x)?;
+            writeln!(y, "<tr><td>mangled name</td><td>{}</td></tr>", x)?;
         }
         Ok(())
     }

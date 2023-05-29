@@ -239,35 +239,35 @@ impl AsTemplParam for TyKind {
     }
 }
 impl DotAttrs for Type {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         if let Some(ref layout) = self.layout {
             writeln!(
-                out,
+                y,
                 "<tr><td>size</td><td>{}</td></tr>
                            <tr><td>align</td><td>{}</td></tr>",
                 layout.size, layout.align
             )?;
             if layout.packed {
-                writeln!(out, "<tr><td>packed</td><td>true</td></tr>")?;
+                writeln!(y, "<tr><td>packed</td><td>true</td></tr>")?;
             }
         }
         if self.is_const {
-            writeln!(out, "<tr><td>const</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>const</td><td>true</td></tr>")?;
         }
-        self.kind.dot_attrs(ctx, out)
+        self.kind.dot_attrs(ctx, y)
     }
 }
 impl DotAttrs for TyKind {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
-        writeln!(out, "<tr><td>type kind</td><td>{}</td></tr>", self.kind_name())?;
-        if let TyKind::Comp(ref comp) = *self {
-            comp.dot_attrs(ctx, out)?;
+        writeln!(y, "<tr><td>type kind</td><td>{}</td></tr>", self.kind_name())?;
+        if let TyKind::Comp(ref x) = *self {
+            x.dot_attrs(ctx, y)?;
         }
         Ok(())
     }

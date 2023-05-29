@@ -45,16 +45,12 @@ impl MethodKind {
 #[derive(Debug)]
 pub struct Method {
     kind: MethodKind,
-    signature: FunctionId,
+    sig: FunctionId,
     is_const: bool,
 }
 impl Method {
-    pub fn new(kind: MethodKind, signature: FunctionId, is_const: bool) -> Self {
-        Method {
-            kind,
-            signature,
-            is_const,
-        }
+    pub fn new(kind: MethodKind, sig: FunctionId, is_const: bool) -> Self {
+        Method { kind, sig, is_const }
     }
     pub fn kind(&self) -> MethodKind {
         self.kind
@@ -71,8 +67,8 @@ impl Method {
     pub fn is_static(&self) -> bool {
         self.kind == MethodKind::Static
     }
-    pub fn signature(&self) -> FunctionId {
-        self.signature
+    pub fn sig(&self) -> FunctionId {
+        self.sig
     }
     pub fn is_const(&self) -> bool {
         self.is_const
@@ -113,7 +109,7 @@ impl Field {
     pub fn layout(&self, ctx: &BindgenContext) -> Option<Layout> {
         match *self {
             Field::Bitfields(BitfieldUnit { layout, .. }) => Some(layout),
-            Field::DataMember(ref data) => ctx.resolve_type(data.ty).layout(ctx),
+            Field::DataMember(ref x) => ctx.resolve_type(x.ty).layout(ctx),
         }
     }
 }
@@ -124,29 +120,29 @@ impl Trace for Field {
         T: Tracer,
     {
         match *self {
-            Field::DataMember(ref data) => {
-                tracer.visit_kind(data.ty.into(), EdgeKind::Field);
+            Field::DataMember(ref x) => {
+                tracer.visit_kind(x.ty.into(), EdgeKind::Field);
             },
             Field::Bitfields(BitfieldUnit { ref bitfields, .. }) => {
-                for bf in bitfields {
-                    tracer.visit_kind(bf.ty().into(), EdgeKind::Field);
+                for x in bitfields {
+                    tracer.visit_kind(x.ty().into(), EdgeKind::Field);
                 }
             },
         }
     }
 }
 impl DotAttrs for Field {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         match *self {
-            Field::DataMember(ref data) => data.dot_attrs(ctx, out),
+            Field::DataMember(ref x) => x.dot_attrs(ctx, y),
             Field::Bitfields(BitfieldUnit {
                 layout, ref bitfields, ..
             }) => {
                 writeln!(
-                    out,
+                    y,
                     r#"<tr>
                               <td>bitfield unit</td>
                               <td>
@@ -160,21 +156,21 @@ impl DotAttrs for Field {
                          "#,
                     layout.size, layout.align
                 )?;
-                for bf in bitfields {
-                    bf.dot_attrs(ctx, out)?;
+                for x in bitfields {
+                    x.dot_attrs(ctx, y)?;
                 }
-                writeln!(out, "</table></td></tr>")
+                writeln!(y, "</table></td></tr>")
             },
         }
     }
 }
 impl DotAttrs for FieldData {
-    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         writeln!(
-            out,
+            y,
             "<tr><td>{}</td><td>{:?}</td></tr>",
             self.name().unwrap_or("(anonymous)"),
             self.ty()
@@ -182,12 +178,12 @@ impl DotAttrs for FieldData {
     }
 }
 impl DotAttrs for Bitfield {
-    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         writeln!(
-            out,
+            y,
             "<tr><td>{} : {}</td><td>{:?}</td></tr>",
             self.name().unwrap_or("(anonymous)"),
             self.width(),
@@ -199,8 +195,8 @@ impl DotAttrs for Bitfield {
 pub struct Bitfield {
     offset_into_unit: usize,
     data: FieldData,
-    getter_name: Option<String>,
-    setter_name: Option<String>,
+    getter: Option<String>,
+    setter: Option<String>,
 }
 impl Bitfield {
     fn new(offset_into_unit: usize, raw: RawField) -> Bitfield {
@@ -208,8 +204,8 @@ impl Bitfield {
         Bitfield {
             offset_into_unit,
             data: raw.0,
-            getter_name: None,
-            setter_name: None,
+            getter: None,
+            setter: None,
         }
     }
     pub fn offset_into_unit(&self) -> usize {
@@ -218,22 +214,16 @@ impl Bitfield {
     pub fn width(&self) -> u32 {
         self.data.bitfield_width().unwrap()
     }
-    pub fn getter_name(&self) -> &str {
-        assert!(
-            self.name().is_some(),
-            "`Bitfield::getter_name` called on anonymous field"
-        );
-        self.getter_name.as_ref().expect(
+    pub fn getter(&self) -> &str {
+        assert!(self.name().is_some());
+        self.getter.as_ref().expect(
             "`Bitfield::getter_name` should only be called after\
              assigning bitfield accessor names",
         )
     }
-    pub fn setter_name(&self) -> &str {
-        assert!(
-            self.name().is_some(),
-            "`Bitfield::setter_name` called on anonymous field"
-        );
-        self.setter_name.as_ref().expect(
+    pub fn setter(&self) -> &str {
+        assert!(self.name().is_some());
+        self.setter.as_ref().expect(
             "`Bitfield::setter_name` should only be called\
              after assigning bitfield accessor names",
         )
@@ -449,8 +439,8 @@ impl Default for CompFields {
 impl CompFields {
     fn append_raw_field(&mut self, raw: RawField) {
         match *self {
-            CompFields::Before(ref mut raws) => {
-                raws.push(raw);
+            CompFields::Before(ref mut xs) => {
+                xs.push(raw);
             },
             _ => {
                 panic!("Must not append new fields after computing bitfield allocation units");
@@ -459,13 +449,13 @@ impl CompFields {
     }
     fn compute_bitfield_units(&mut self, ctx: &BindgenContext, packed: bool) {
         let raws = match *self {
-            CompFields::Before(ref mut raws) => mem::take(raws),
+            CompFields::Before(ref mut xs) => mem::take(xs),
             _ => {
                 panic!("Already computed bitfield units");
             },
         };
-        let result = raw_fields_to_fields_and_bitfield_units(ctx, raws, packed);
-        match result {
+        let y = raw_fields_to_fields_and_bitfield_units(ctx, raws, packed);
+        match y {
             Ok((fields, has_bitfield_units)) => {
                 *self = CompFields::After {
                     fields,
@@ -487,7 +477,7 @@ impl CompFields {
         };
         fn has_method(methods: &[Method], ctx: &BindgenContext, name: &str) -> bool {
             methods.iter().any(|method| {
-                let method_name = ctx.resolve_func(method.signature()).name();
+                let method_name = ctx.resolve_func(method.sig()).name();
                 method_name == name || ctx.rust_mangle(method_name) == name
             })
         }
@@ -501,7 +491,7 @@ impl CompFields {
                 Field::Bitfields(ref bu) => &*bu.bitfields,
                 Field::DataMember(_) => &[],
             })
-            .filter_map(|bitfield| bitfield.name())
+            .filter_map(|x| x.name())
             .map(|bitfield_name| {
                 let bitfield_name = bitfield_name.to_string();
                 let getter = {
@@ -540,8 +530,8 @@ impl CompFields {
                         if let Some(AccessorNamesPair { getter, setter }) =
                             accessor_names.remove(bitfield.name().unwrap())
                         {
-                            bitfield.getter_name = Some(getter);
-                            bitfield.setter_name = Some(setter);
+                            bitfield.getter = Some(getter);
+                            bitfield.setter = Some(setter);
                         }
                     }
                 },
@@ -1080,35 +1070,35 @@ impl CompInfo {
     }
 }
 impl DotAttrs for CompInfo {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
-        writeln!(out, "<tr><td>CompKind</td><td>{:?}</td></tr>", self.kind)?;
+        writeln!(y, "<tr><td>CompKind</td><td>{:?}</td></tr>", self.kind)?;
         if self.has_own_virtual_method {
-            writeln!(out, "<tr><td>has_vtable</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>has_vtable</td><td>true</td></tr>")?;
         }
         if self.has_destructor {
-            writeln!(out, "<tr><td>has_destructor</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>has_destructor</td><td>true</td></tr>")?;
         }
         if self.has_nonempty_base {
-            writeln!(out, "<tr><td>has_nonempty_base</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>has_nonempty_base</td><td>true</td></tr>")?;
         }
         if self.has_non_type_template_params {
-            writeln!(out, "<tr><td>has_non_type_template_params</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>has_non_type_template_params</td><td>true</td></tr>")?;
         }
         if self.packed_attr {
-            writeln!(out, "<tr><td>packed_attr</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>packed_attr</td><td>true</td></tr>")?;
         }
         if self.is_forward_declaration {
-            writeln!(out, "<tr><td>is_forward_declaration</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>is_forward_declaration</td><td>true</td></tr>")?;
         }
         if !self.fields().is_empty() {
-            writeln!(out, r#"<tr><td>fields</td><td><table border="0">"#)?;
+            writeln!(y, r#"<tr><td>fields</td><td><table border="0">"#)?;
             for field in self.fields() {
-                field.dot_attrs(ctx, out)?;
+                field.dot_attrs(ctx, y)?;
             }
-            writeln!(out, "</table></td></tr>")?;
+            writeln!(y, "</table></td></tr>")?;
         }
         Ok(())
     }
@@ -1158,7 +1148,7 @@ impl Trace for CompInfo {
             tracer.visit_kind(var.into(), EdgeKind::InnerVar);
         }
         for method in self.methods() {
-            tracer.visit_kind(method.signature.into(), EdgeKind::Method);
+            tracer.visit_kind(method.sig.into(), EdgeKind::Method);
         }
         if let Some((_kind, signature)) = self.destructor() {
             tracer.visit_kind(signature.into(), EdgeKind::Destructor);

@@ -68,15 +68,15 @@ impl Var {
     }
 }
 impl DotAttrs for Var {
-    fn dot_attrs<W>(&self, _ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, _ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         if self.is_const {
-            writeln!(out, "<tr><td>const</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>const</td><td>true</td></tr>")?;
         }
-        if let Some(ref mangled) = self.mangled {
-            writeln!(out, "<tr><td>mangled name</td><td>{}</td></tr>", mangled)?;
+        if let Some(ref x) = self.mangled {
+            writeln!(y, "<tr><td>mangled name</td><td>{}</td></tr>", x)?;
         }
         Ok(())
     }

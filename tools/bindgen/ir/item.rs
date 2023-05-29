@@ -431,11 +431,11 @@ impl Item {
                         ci.methods()
                             .iter()
                             .filter(|m| {
-                                let item = ctx.resolve_item(m.signature());
+                                let item = ctx.resolve_item(m.sig());
                                 let func = item.expect_function();
                                 func.name() == func_name
                             })
-                            .position(|m| m.signature() == self.id())
+                            .position(|m| m.sig() == self.id())
                     });
                 }
             }
@@ -744,21 +744,21 @@ impl HasFloat for Item {
 }
 pub type ItemSet = BTreeSet<ItemId>;
 impl DotAttrs for Item {
-    fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+    fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
         writeln!(
-            out,
+            y,
             "<tr><td>{:?}</td></tr>
                        <tr><td>name</td><td>{}</td></tr>",
             self.id,
             self.name(ctx).get()
         )?;
         if self.is_opaque(ctx, &()) {
-            writeln!(out, "<tr><td>opaque</td><td>true</td></tr>")?;
+            writeln!(y, "<tr><td>opaque</td><td>true</td></tr>")?;
         }
-        self.kind.dot_attrs(ctx, out)
+        self.kind.dot_attrs(ctx, y)
     }
 }
 impl<T> TemplParams for T

@@ -80,7 +80,7 @@ impl<'a> ImplDebug<'a> for BitfieldUnit {
 
             if let Some(bitfield_name) = bitfield.name() {
                 format_string.push_str(&format!("{} : {{:?}}", bitfield_name));
-                let getter_name = bitfield.getter_name();
+                let getter_name = bitfield.getter();
                 let name_ident = ctx.rust_ident_raw(getter_name);
                 tokens.push(quote! {
                     self.#name_ident ()

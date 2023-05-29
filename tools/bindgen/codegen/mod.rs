@@ -189,7 +189,7 @@ mod impl_partialeq {
                     Field::Bitfields(ref bu) => {
                         for bitfield in bu.bitfields() {
                             if bitfield.name().is_some() {
-                                let getter_name = bitfield.getter_name();
+                                let getter_name = bitfield.getter();
                                 let name_ident = ctx.rust_ident_raw(getter_name);
                                 tokens.push(quote! {
                                     self.#name_ident () == other.#name_ident ()
@@ -1028,7 +1028,7 @@ impl<'a> CodeGenerator for Vtable<'a> {
                     if !m.is_virtual() {
                         return None;
                     }
-                    let function_item = ctx.resolve_item(m.signature());
+                    let function_item = ctx.resolve_item(m.sig());
                     let function = function_item.expect_function();
                     let signature_item = ctx.resolve_item(function.sig());
                     let signature = match signature_item.expect_type().kind() {
@@ -1487,12 +1487,12 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
     }
 }
 fn bitfield_getter_name(ctx: &BindgenContext, bitfield: &Bitfield) -> proc_macro2::TokenStream {
-    let name = bitfield.getter_name();
+    let name = bitfield.getter();
     let name = ctx.rust_ident_raw(name);
     quote! { #name }
 }
 fn bitfield_setter_name(ctx: &BindgenContext, bitfield: &Bitfield) -> proc_macro2::TokenStream {
-    let setter = bitfield.setter_name();
+    let setter = bitfield.setter();
     let setter = ctx.rust_ident_raw(setter);
     quote! { #setter }
 }
@@ -2030,7 +2030,7 @@ impl Method {
         if self.is_virtual() {
             return; // FIXME
         }
-        let function_item = ctx.resolve_item(self.signature());
+        let function_item = ctx.resolve_item(self.sig());
         if !function_item.process_before_codegen(ctx, result) {
             return;
         }

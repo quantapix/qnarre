@@ -273,7 +273,7 @@ pub mod dot {
     use std::io::{self, Write};
     use std::path::Path;
     pub trait DotAttrs {
-        fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+        fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
         where
             W: io::Write;
     }
@@ -645,16 +645,16 @@ pub mod item_kind {
         }
     }
     impl DotAttrs for ItemKind {
-        fn dot_attrs<W>(&self, ctx: &BindgenContext, out: &mut W) -> io::Result<()>
+        fn dot_attrs<W>(&self, ctx: &BindgenContext, y: &mut W) -> io::Result<()>
         where
             W: io::Write,
         {
-            writeln!(out, "<tr><td>kind</td><td>{}</td></tr>", self.kind_name())?;
+            writeln!(y, "<tr><td>kind</td><td>{}</td></tr>", self.kind_name())?;
             match *self {
-                ItemKind::Module(ref x) => x.dot_attrs(ctx, out),
-                ItemKind::Type(ref x) => x.dot_attrs(ctx, out),
-                ItemKind::Function(ref x) => x.dot_attrs(ctx, out),
-                ItemKind::Var(ref x) => x.dot_attrs(ctx, out),
+                ItemKind::Module(ref x) => x.dot_attrs(ctx, y),
+                ItemKind::Type(ref x) => x.dot_attrs(ctx, y),
+                ItemKind::Function(ref x) => x.dot_attrs(ctx, y),
+                ItemKind::Var(ref x) => x.dot_attrs(ctx, y),
             }
         }
     }
