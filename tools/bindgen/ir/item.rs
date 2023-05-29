@@ -2,7 +2,7 @@ use super::super::codegen::{EnumVariation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
 use super::analysis::{HasVtable, Sizedness, *};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
-use super::context::{Context, ItemId, PartialType, TypeId};
+use super::context::PartialType;
 use super::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
     CanDerivePartialOrd,
@@ -15,6 +15,7 @@ use super::module::Module;
 use super::template::{AsTemplParam, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::{TyKind, Type};
+use super::{Context, ItemId, TypeId};
 use crate::clang;
 use crate::parse;
 use lazycell::LazyCell;
@@ -679,13 +680,14 @@ where
 {
     fn has_vtable(&self, ctx: &Context) -> bool {
         let id: ItemId = (*self).into();
-        id.as_type_id(ctx)
-            .map_or(false, |id| !matches!(ctx.lookup_has_vtable(id), has_vtable::Result::No))
+        id.as_type_id(ctx).map_or(false, |id| {
+            !matches!(ctx.lookup_has_vtable(id), has_vtable::Resolved::No)
+        })
     }
     fn has_vtable_ptr(&self, ctx: &Context) -> bool {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx).map_or(false, |id| {
-            matches!(ctx.lookup_has_vtable(id), has_vtable::Result::SelfHasVtable)
+            matches!(ctx.lookup_has_vtable(id), has_vtable::Resolved::SelfHasVtable)
         })
     }
 }
@@ -701,14 +703,14 @@ impl<T> Sizedness for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn sizedness(&self, ctx: &Context) -> sizedness::Result {
+    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved {
         let id: ItemId = (*self).into();
         id.as_type_id(ctx)
-            .map_or(sizedness::Result::default(), |x| ctx.lookup_sizedness(x))
+            .map_or(sizedness::Resolved::default(), |x| ctx.lookup_sizedness(x))
     }
 }
 impl Sizedness for Item {
-    fn sizedness(&self, ctx: &Context) -> sizedness::Result {
+    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved {
         self.id().sizedness(ctx)
     }
 }
@@ -1046,8 +1048,8 @@ impl Item {
         let result = Type::from_clang_ty(id, ty, location, parent_id, ctx);
         let relevant_parent_id = parent_id.unwrap_or(current_module);
         let ret = match result {
-            Ok(parse::Result::AlreadyResolved(ty)) => Ok(ty.as_type_id_unchecked()),
-            Ok(parse::Result::New(item, declaration)) => {
+            Ok(parse::Resolved::AlreadyResolved(ty)) => Ok(ty.as_type_id_unchecked()),
+            Ok(parse::Resolved::New(item, declaration)) => {
                 ctx.add_item(
                     Item::new(
                         id,

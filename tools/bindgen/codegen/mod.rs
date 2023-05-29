@@ -1,7 +1,7 @@
 mod dyngen {
     use crate::codegen;
-    use crate::ir::context::Context;
     use crate::ir::function::ClangAbi;
+    use crate::ir::Context;
     use proc_macro2::Ident;
     #[derive(Default)]
     pub struct DynItems {
@@ -144,9 +144,9 @@ mod helpers;
 mod impl_debug;
 mod impl_partialeq {
     use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
-    use crate::ir::context::Context;
     use crate::ir::item::{IsOpaque, Item};
     use crate::ir::ty::TyKind;
+    use crate::ir::Context;
     pub fn gen_partialeq_impl(
         ctx: &Context,
         comp_info: &CompInfo,
@@ -266,10 +266,9 @@ use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
 use crate::ir::annotations::{Annotations, FieldAccessorKind, FieldVisibilityKind};
 use crate::ir::comp::{Bitfield, BitfieldUnit, CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
-use crate::ir::context::{Context, ItemId};
 use crate::ir::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
-    CanDerivePartialOrd, YDerive,
+    CanDerivePartialOrd, Resolved,
 };
 use crate::ir::dot;
 use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
@@ -282,6 +281,7 @@ use crate::ir::module::Module;
 use crate::ir::template::{AsTemplParam, TemplInstantiation, TemplParams};
 use crate::ir::ty::{TyKind, Type};
 use crate::ir::var::Var;
+use crate::ir::{Context, ItemId};
 use crate::{Entry, HashMap, HashSet};
 use proc_macro2::{self, Ident, Span};
 use quote::TokenStreamExt;
@@ -1792,7 +1792,7 @@ impl CodeGenerator for CompInfo {
         if !derivable_traits.contains(DerivableTraits::PARTIAL_EQ) {
             needs_partialeq_impl = ctx.opts().derive_partialeq
                 && ctx.opts().impl_partialeq
-                && ctx.lookup_can_derive_partialeq_or_partialord(item.id()) == YDerive::Manually;
+                && ctx.lookup_can_derive_partialeq_or_partialord(item.id()) == Resolved::Manually;
         }
         let mut derives: Vec<_> = derivable_traits.into();
         derives.extend(item.annotations().derives().iter().map(String::as_str));
@@ -3247,10 +3247,10 @@ pub fn codegen(ctx: Context) -> Result<(proc_macro2::TokenStream, Opts), Codegen
 pub mod utils {
     use super::serialize::CSerialize;
     use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
-    use crate::ir::context::Context;
     use crate::ir::function::{Abi, ClangAbi, FnSig};
     use crate::ir::item::{CanonicalPath, Item};
     use crate::ir::ty::TyKind;
+    use crate::ir::Context;
     use crate::{args_are_cpp, file_is_cpp};
     use std::borrow::Cow;
     use std::io::Write;

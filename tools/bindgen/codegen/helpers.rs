@@ -1,5 +1,5 @@
-use crate::ir::context::Context;
 use crate::ir::layout::Layout;
+use crate::ir::Context;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::TokenStreamExt;
 
@@ -121,10 +121,10 @@ pub(crate) fn bitfield_unit(ctx: &Context, layout: Layout) -> TokenStream {
 }
 
 pub(crate) mod ast_ty {
-    use crate::ir::context::Context;
     use crate::ir::function::FnSig;
     use crate::ir::layout::Layout;
     use crate::ir::ty::FloatKind;
+    use crate::ir::Context;
     use proc_macro2::{self, TokenStream};
     use std::str::FromStr;
 

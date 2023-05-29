@@ -1,9 +1,9 @@
 use super::helpers;
 
 use crate::ir::comp::CompInfo;
-use crate::ir::context::Context;
 use crate::ir::layout::Layout;
 use crate::ir::ty::{TyKind, Type};
+use crate::ir::Context;
 use proc_macro2::{self, Ident, Span};
 use std::cmp;
 

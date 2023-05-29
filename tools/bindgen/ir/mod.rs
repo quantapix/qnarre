@@ -210,65 +210,139 @@ pub mod comment {
 }
 pub mod comp;
 pub mod context;
+pub use context::Context;
+pub use context::FnId;
+pub use context::ItemId;
+pub use context::TypeId;
+pub use context::VarId;
 pub mod derive {
-    use super::context::Context;
+    use super::{Context, ItemId};
     use std::cmp;
     use std::ops;
+    pub trait CanDeriveCopy {
+        fn can_derive_copy(&self, ctx: &Context) -> bool;
+    }
+    impl<T> CanDeriveCopy for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_copy(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_copy && ctx.lookup_can_derive_copy(*self)
+        }
+    }
     pub trait CanDeriveDebug {
         fn can_derive_debug(&self, ctx: &Context) -> bool;
     }
-    pub trait CanDeriveCopy {
-        fn can_derive_copy(&self, ctx: &Context) -> bool;
+    impl<T> CanDeriveDebug for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_debug(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_debug && ctx.lookup_can_derive_debug(*self)
+        }
     }
     pub trait CanDeriveDefault {
         fn can_derive_default(&self, ctx: &Context) -> bool;
     }
-    pub trait CanDeriveHash {
-        fn can_derive_hash(&self, ctx: &Context) -> bool;
-    }
-    pub trait CanDerivePartialEq {
-        fn can_derive_partialeq(&self, ctx: &Context) -> bool;
-    }
-    pub trait CanDerivePartialOrd {
-        fn can_derive_partialord(&self, ctx: &Context) -> bool;
+    impl<T> CanDeriveDefault for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_default(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_default && ctx.lookup_can_derive_default(*self)
+        }
     }
     pub trait CanDeriveEq {
         fn can_derive_eq(&self, ctx: &Context) -> bool;
     }
+    impl<T> CanDeriveEq for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_eq(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_eq
+                && ctx.lookup_can_derive_partialeq_or_partialord(*self) == Resolved::Yes
+                && !ctx.lookup_has_float(*self)
+        }
+    }
+    pub trait CanDeriveHash {
+        fn can_derive_hash(&self, ctx: &Context) -> bool;
+    }
+    impl<T> CanDeriveHash for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_hash(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_hash && ctx.lookup_can_derive_hash(*self)
+        }
+    }
     pub trait CanDeriveOrd {
         fn can_derive_ord(&self, ctx: &Context) -> bool;
     }
+    impl<T> CanDeriveOrd for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_ord(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_ord
+                && ctx.lookup_can_derive_partialeq_or_partialord(*self) == Resolved::Yes
+                && !ctx.lookup_has_float(*self)
+        }
+    }
+    pub trait CanDerivePartialEq {
+        fn can_derive_partialeq(&self, ctx: &Context) -> bool;
+    }
+    impl<T> CanDerivePartialEq for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_partialeq(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == Resolved::Yes
+        }
+    }
+    pub trait CanDerivePartialOrd {
+        fn can_derive_partialord(&self, ctx: &Context) -> bool;
+    }
+    impl<T> CanDerivePartialOrd for T
+    where
+        T: Copy + Into<ItemId>,
+    {
+        fn can_derive_partialord(&self, ctx: &Context) -> bool {
+            ctx.opts().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == Resolved::Yes
+        }
+    }
+
     #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub enum YDerive {
+    pub enum Resolved {
         Yes,
         Manually,
         No,
     }
-    impl Default for YDerive {
-        fn default() -> YDerive {
-            YDerive::Yes
+    impl Default for Resolved {
+        fn default() -> Resolved {
+            Resolved::Yes
         }
     }
-    impl YDerive {
+    impl Resolved {
         pub fn join(self, rhs: Self) -> Self {
             cmp::max(self, rhs)
         }
     }
-    impl ops::BitOr for YDerive {
+    impl ops::BitOr for Resolved {
         type Output = Self;
         fn bitor(self, rhs: Self) -> Self::Output {
             self.join(rhs)
         }
     }
-    impl ops::BitOrAssign for YDerive {
+    impl ops::BitOrAssign for Resolved {
         fn bitor_assign(&mut self, rhs: Self) {
             *self = self.join(rhs)
         }
     }
 }
 pub mod dot {
-    use super::context::{Context, ItemId};
     use super::traversal::Trace;
+    use super::{Context, ItemId};
     use std::fs::File;
     use std::io::{self, Write};
     use std::path::Path;
@@ -334,9 +408,9 @@ pub mod dot {
 }
 pub mod enum_ty {
     use super::super::codegen::EnumVariation;
-    use super::context::{Context, TypeId};
     use super::item::Item;
     use super::ty::{TyKind, Type};
+    use super::{Context, TypeId};
     use crate::clang;
     use crate::ir::annotations::Annotations;
     use crate::parse;
@@ -572,12 +646,12 @@ pub mod int {
 }
 pub mod item;
 pub mod item_kind {
-    use super::context::Context;
     use super::dot::DotAttrs;
     use super::function::Function;
     use super::module::Module;
     use super::ty::Type;
     use super::var::Var;
+    use super::Context;
     use std::io;
     #[derive(Debug)]
     pub enum ItemKind {
@@ -660,10 +734,10 @@ pub mod item_kind {
     }
 }
 pub mod layout {
-    use super::derive::YDerive;
+    use super::derive::Resolved;
     use super::ty::{TyKind, Type, RUST_DERIVE_IN_ARRAY_LIMIT};
     use crate::clang;
-    use crate::ir::context::Context;
+    use crate::ir::Context;
     use std::cmp;
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Layout {
@@ -739,22 +813,22 @@ pub mod layout {
                 None
             }
         }
-        pub fn array_size_within_derive_limit(&self, ctx: &Context) -> YDerive {
+        pub fn array_size_within_derive_limit(&self, ctx: &Context) -> Resolved {
             if self
                 .array_size(ctx)
                 .map_or(false, |size| size <= RUST_DERIVE_IN_ARRAY_LIMIT)
             {
-                YDerive::Yes
+                Resolved::Yes
             } else {
-                YDerive::Manually
+                Resolved::Manually
             }
         }
     }
 }
 pub mod module {
-    use super::context::Context;
     use super::dot::DotAttrs;
     use super::item::ItemSet;
+    use super::Context;
     use crate::clang;
     use crate::parse;
     use crate::parse_one;
@@ -800,12 +874,12 @@ pub mod module {
         }
     }
     impl parse::SubItem for Module {
-        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Result<Self>, parse::Error> {
+        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Resolved<Self>, parse::Error> {
             match cur.kind() {
                 clang_lib::CXCursor_Namespace => {
                     let id = ctx.module(cur);
                     ctx.with_module(id, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, Some(id.into()))));
-                    Ok(parse::Result::AlreadyResolved(id.into()))
+                    Ok(parse::Resolved::AlreadyResolved(id.into()))
                 },
                 _ => Err(parse::Error::Continue),
             }
@@ -813,9 +887,9 @@ pub mod module {
     }
 }
 pub mod template {
-    use super::context::{Context, ItemId, TypeId};
     use super::item::{Ancestors, IsOpaque, Item};
     use super::traversal::{EdgeKind, Trace, Tracer};
+    use super::{Context, ItemId, TypeId};
     use crate::clang;
     pub trait TemplParams: Sized {
         fn self_template_params(&self, ctx: &Context) -> Vec<TypeId>;

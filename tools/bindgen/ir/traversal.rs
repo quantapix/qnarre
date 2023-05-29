@@ -1,5 +1,5 @@
-use super::context::{Context, ItemId};
 use super::item::ItemSet;
+use super::{Context, ItemId};
 use std::collections::{BTreeMap, VecDeque};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Edge {

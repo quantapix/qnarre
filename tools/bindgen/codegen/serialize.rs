@@ -3,12 +3,12 @@ use std::io::Write;
 use crate::callbacks::IntKind;
 
 use crate::ir::comp::CompKind;
-use crate::ir::context::{Context, TypeId};
 use crate::ir::function::{FnKind, Function};
 use crate::ir::item::CanonicalName;
 use crate::ir::item::Item;
 use crate::ir::item_kind::ItemKind;
 use crate::ir::ty::{FloatKind, TyKind, Type};
+use crate::ir::{Context, TypeId};
 
 use super::CodegenError;
 

@@ -1,12 +1,12 @@
 use super::analysis::Sizedness;
 use super::annotations::Annotations;
-use super::context::{Context, FunctionId, ItemId, TypeId, VarId};
 use super::dot::DotAttrs;
 use super::item::{IsOpaque, Item};
 use super::layout::Layout;
 use super::template::TemplParams;
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
+use super::{Context, FnId, ItemId, TypeId, VarId};
 use crate::clang;
 use crate::codegen::struct_layout::{align_to, bytes_from_bits_pow2};
 use crate::ir::derive::CanDeriveCopy;
@@ -45,11 +45,11 @@ impl MethodKind {
 #[derive(Debug)]
 pub struct Method {
     kind: MethodKind,
-    sig: FunctionId,
+    sig: FnId,
     is_const: bool,
 }
 impl Method {
-    pub fn new(kind: MethodKind, sig: FunctionId, is_const: bool) -> Self {
+    pub fn new(kind: MethodKind, sig: FnId, is_const: bool) -> Self {
         Method { kind, sig, is_const }
     }
     pub fn kind(&self) -> MethodKind {
@@ -67,7 +67,7 @@ impl Method {
     pub fn is_static(&self) -> bool {
         self.kind == MethodKind::Static
     }
-    pub fn sig(&self) -> FunctionId {
+    pub fn sig(&self) -> FnId {
         self.sig
     }
     pub fn is_const(&self) -> bool {
@@ -628,8 +628,8 @@ pub struct CompInfo {
     fields: CompFields,
     template_params: Vec<TypeId>,
     methods: Vec<Method>,
-    constructors: Vec<FunctionId>,
-    destructor: Option<(MethodKind, FunctionId)>,
+    constructors: Vec<FnId>,
+    destructor: Option<(MethodKind, FnId)>,
     base_members: Vec<Base>,
     inner_types: Vec<TypeId>,
     inner_vars: Vec<VarId>,
@@ -748,10 +748,10 @@ impl CompInfo {
     pub fn methods(&self) -> &[Method] {
         &self.methods
     }
-    pub fn constructors(&self) -> &[FunctionId] {
+    pub fn constructors(&self) -> &[FnId] {
         &self.constructors
     }
-    pub fn destructor(&self) -> Option<(MethodKind, FunctionId)> {
+    pub fn destructor(&self) -> Option<(MethodKind, FnId)> {
         self.destructor
     }
     pub fn kind(&self) -> CompKind {

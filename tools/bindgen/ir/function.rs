@@ -1,9 +1,9 @@
 use super::comp::MethodKind;
-use super::context::{Context, TypeId};
 use super::dot::DotAttrs;
 use super::item::Item;
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::ty::TyKind;
+use super::{Context, TypeId};
 use crate::callbacks::{ItemInfo, ItemKind};
 use crate::clang::{self, Attribute};
 use crate::parse;
@@ -394,7 +394,7 @@ impl FnSig {
     }
 }
 impl parse::SubItem for Function {
-    fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Result<Self>, parse::Error> {
+    fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Resolved<Self>, parse::Error> {
         use clang_lib::*;
         let kind = match FnKind::from_cursor(&cur) {
             None => return Err(parse::Error::Continue),
@@ -443,7 +443,7 @@ impl parse::SubItem for Function {
             })
         });
         let function = Self::new(name.clone(), mangled_name, link_name, sig, kind, linkage);
-        Ok(parse::Result::New(function, Some(cur)))
+        Ok(parse::Resolved::New(function, Some(cur)))
     }
 }
 impl Trace for FnSig {

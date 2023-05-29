@@ -1,9 +1,6 @@
 use super::super::timer::Timer;
 use super::analysis::{analyze, as_cannot_derive_set, DeriveTrait, *};
-use super::derive::{
-    CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
-    CanDerivePartialOrd, YDerive,
-};
+use super::derive::Resolved;
 use super::function::Function;
 use super::int::IntKind;
 use super::item::{Ancestors, IsOpaque, Item, ItemSet};
@@ -23,8 +20,29 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap as StdHashMap};
 use std::iter::IntoIterator;
 use std::mem;
+
 #[derive(Debug, Copy, Clone, Eq, PartialOrd, Ord, Hash)]
 pub struct ItemId(usize);
+impl ItemId {
+    pub fn as_usize(&self) -> usize {
+        (*self).into()
+    }
+}
+impl From<ItemId> for usize {
+    fn from(id: ItemId) -> usize {
+        id.0
+    }
+}
+impl<T> ::std::cmp::PartialEq<T> for ItemId
+where
+    T: Copy + Into<ItemId>,
+{
+    fn eq(&self, rhs: &T) -> bool {
+        let rhs: ItemId = (*rhs).into();
+        self.0 == rhs.0
+    }
+}
+
 macro_rules! item_id_newtype {
     (
         $( #[$attr:meta] )*
@@ -47,15 +65,6 @@ macro_rules! item_id_newtype {
                 id.into()
             }
         }
-        impl<T> ::std::cmp::PartialEq<T> for $name
-        where
-            T: Copy + Into<ItemId>
-        {
-            fn eq(&self, rhs: &T) -> bool {
-                let rhs: ItemId = (*rhs).into();
-                self.0 == rhs
-            }
-        }
         impl From<$name> for ItemId {
             fn from(id: $name) -> ItemId {
                 id.0
@@ -66,10 +75,19 @@ macro_rules! item_id_newtype {
                 id.0
             }
         }
+        impl<T> ::std::cmp::PartialEq<T> for $name
+        where
+            T: Copy + Into<ItemId>
+        {
+            fn eq(&self, rhs: &T) -> bool {
+                let rhs: ItemId = (*rhs).into();
+                self.0 == rhs
+            }
+        }
         #[allow(dead_code)]
         impl ItemId {
             $( #[$checked_attr] )*
-            pub fn $checked(&self, ctx: &BindgenContext) -> Option<$name> {
+            pub fn $checked(&self, ctx: &Context) -> Option<$name> {
                 if ctx.resolve_item(*self).kind().$check_method() {
                     Some($name(*self))
                 } else {
@@ -77,7 +95,7 @@ macro_rules! item_id_newtype {
                 }
             }
             $( #[$expected_attr] )*
-            pub fn $expected(&self, ctx: &BindgenContext) -> $name {
+            pub fn $expected(&self, ctx: &Context) -> $name {
                 self.$checked(ctx)
                     .expect(concat!(
                         stringify!($expected),
@@ -113,145 +131,29 @@ item_id_newtype! {
         unchecked = as_var_id_unchecked;
 }
 item_id_newtype! {
-    pub struct FunctionId(ItemId)
+    pub struct FnId(ItemId)
     where
         checked = as_function_id with is_function,
         expected = expect_function_id,
         unchecked = as_function_id_unchecked;
 }
-impl From<ItemId> for usize {
-    fn from(id: ItemId) -> usize {
-        id.0
-    }
-}
-impl ItemId {
-    pub fn as_usize(&self) -> usize {
-        (*self).into()
-    }
-}
-impl<T> ::std::cmp::PartialEq<T> for ItemId
-where
-    T: Copy + Into<ItemId>,
-{
-    fn eq(&self, rhs: &T) -> bool {
-        let rhs: ItemId = (*rhs).into();
-        self.0 == rhs.0
-    }
-}
-impl<T> CanDeriveDebug for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_debug(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_debug && ctx.lookup_can_derive_debug(*self)
-    }
-}
-impl<T> CanDeriveDefault for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_default(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_default && ctx.lookup_can_derive_default(*self)
-    }
-}
-impl<T> CanDeriveCopy for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_copy(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_copy && ctx.lookup_can_derive_copy(*self)
-    }
-}
-impl<T> CanDeriveHash for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_hash(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_hash && ctx.lookup_can_derive_hash(*self)
-    }
-}
-impl<T> CanDerivePartialOrd for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_partialord(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
-    }
-}
-impl<T> CanDerivePartialEq for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_partialeq(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
-    }
-}
-impl<T> CanDeriveEq for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_eq(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_eq
-            && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
-            && !ctx.lookup_has_float(*self)
-    }
-}
-impl<T> CanDeriveOrd for T
-where
-    T: Copy + Into<ItemId>,
-{
-    fn can_derive_ord(&self, ctx: &Context) -> bool {
-        ctx.opts().derive_ord
-            && ctx.lookup_can_derive_partialeq_or_partialord(*self) == YDerive::Yes
-            && !ctx.lookup_has_float(*self)
-    }
-}
-#[derive(Eq, PartialEq, Hash, Debug)]
-enum TypeKey {
-    Usr(String),
-    Declaration(Cursor),
-}
-#[derive(Debug)]
-pub struct Context {
-    allowed: Option<ItemSet>,
-    blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, YDerive>>>,
-    cannot_derive_copy: Option<HashSet<ItemId>>,
-    cannot_derive_debug: Option<HashSet<ItemId>>,
-    cannot_derive_default: Option<HashSet<ItemId>>,
-    cannot_derive_hash: Option<HashSet<ItemId>>,
-    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, YDerive>>,
-    codegen_items: Option<ItemSet>,
-    collected_typerefs: bool,
-    current_module: ModuleId,
-    currently_parsed_types: Vec<PartialType>,
-    deps: BTreeSet<String>,
-    enum_typedef_combos: Option<HashSet<ItemId>>,
-    generated_bindgen_complex: Cell<bool>,
-    has_float: Option<HashSet<ItemId>>,
-    has_type_param_in_array: Option<HashSet<ItemId>>,
-    have_destructor: Option<HashSet<ItemId>>,
-    have_vtable: Option<HashMap<ItemId, has_vtable::Result>>,
-    in_codegen: bool,
-    items: Vec<Option<Item>>,
-    modules: HashMap<Cursor, ModuleId>,
-    need_bitfield_allocation: Vec<ItemId>,
-    opts: Opts,
-    parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
-    replacements: HashMap<Vec<String>, ItemId>,
-    root_module: ModuleId,
-    semantic_parents: HashMap<clang::Cursor, ItemId>,
-    sizedness: Option<HashMap<TypeId, sizedness::Result>>,
-    target_info: clang::TargetInfo,
-    translation_unit: clang::TranslationUnit,
-    type_params: HashMap<clang::Cursor, TypeId>,
-    types: HashMap<TypeKey, TypeId>,
-    used_template_parameters: Option<HashMap<ItemId, ItemSet>>,
-}
-struct AllowlistedItemsTraversal<'ctx> {
+
+struct AllowedItemsTraversal<'ctx> {
     ctx: &'ctx Context,
     traversal: ItemTraversal<'ctx, ItemSet, Vec<ItemId>>,
 }
-impl<'ctx> Iterator for AllowlistedItemsTraversal<'ctx> {
+impl<'ctx> AllowedItemsTraversal<'ctx> {
+    pub fn new<R>(ctx: &'ctx Context, roots: R, predicate: for<'a> fn(&'a Context, Edge) -> bool) -> Self
+    where
+        R: IntoIterator<Item = ItemId>,
+    {
+        AllowedItemsTraversal {
+            ctx,
+            traversal: ItemTraversal::new(ctx, roots, predicate),
+        }
+    }
+}
+impl<'ctx> Iterator for AllowedItemsTraversal<'ctx> {
     type Item = ItemId;
     fn next(&mut self) -> Option<ItemId> {
         loop {
@@ -263,16 +165,48 @@ impl<'ctx> Iterator for AllowlistedItemsTraversal<'ctx> {
         }
     }
 }
-impl<'ctx> AllowlistedItemsTraversal<'ctx> {
-    pub fn new<R>(ctx: &'ctx Context, roots: R, predicate: for<'a> fn(&'a Context, Edge) -> bool) -> Self
-    where
-        R: IntoIterator<Item = ItemId>,
-    {
-        AllowlistedItemsTraversal {
-            ctx,
-            traversal: ItemTraversal::new(ctx, roots, predicate),
-        }
-    }
+
+#[derive(Eq, PartialEq, Hash, Debug)]
+enum TypeKey {
+    Usr(String),
+    Declaration(Cursor),
+}
+
+#[derive(Debug)]
+pub struct Context {
+    allowed: Option<ItemSet>,
+    blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, Resolved>>>,
+    cannot_derive_copy: Option<HashSet<ItemId>>,
+    cannot_derive_debug: Option<HashSet<ItemId>>,
+    cannot_derive_default: Option<HashSet<ItemId>>,
+    cannot_derive_hash: Option<HashSet<ItemId>>,
+    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, Resolved>>,
+    codegen_items: Option<ItemSet>,
+    collected_typerefs: bool,
+    current_module: ModuleId,
+    currently_parsed_types: Vec<PartialType>,
+    deps: BTreeSet<String>,
+    enum_typedef_combos: Option<HashSet<ItemId>>,
+    generated_bindgen_complex: Cell<bool>,
+    has_float: Option<HashSet<ItemId>>,
+    has_type_param_in_array: Option<HashSet<ItemId>>,
+    have_destructor: Option<HashSet<ItemId>>,
+    have_vtable: Option<HashMap<ItemId, has_vtable::Resolved>>,
+    in_codegen: bool,
+    items: Vec<Option<Item>>,
+    modules: HashMap<Cursor, ModuleId>,
+    need_bitfield_allocation: Vec<ItemId>,
+    opts: Opts,
+    parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
+    replacements: HashMap<Vec<String>, ItemId>,
+    root_module: ModuleId,
+    semantic_parents: HashMap<clang::Cursor, ItemId>,
+    sizedness: Option<HashMap<TypeId, sizedness::Resolved>>,
+    target_info: clang::TargetInfo,
+    translation_unit: clang::TranslationUnit,
+    type_params: HashMap<clang::Cursor, TypeId>,
+    types: HashMap<TypeKey, TypeId>,
+    used_template_parameters: Option<HashMap<ItemId, ItemSet>>,
 }
 impl Context {
     pub fn new(opts: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
@@ -360,10 +294,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         &self.deps
     }
     pub fn add_item(&mut self, item: Item, decl: Option<Cursor>, loc: Option<Cursor>) {
-        debug!(
-            "BindgenContext::add_item({:?}, declaration: {:?}, loc: {:?}",
-            item, decl, loc
-        );
+        debug!("Context::add_item({:?}, declaration: {:?}, loc: {:?}", item, decl, loc);
         debug_assert!(
             decl.is_some()
                 || !item.kind().is_type()
@@ -448,7 +379,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     pub fn add_type_param(&mut self, item: Item, definition: clang::Cursor) {
         debug!(
-            "BindgenContext::add_type_param: item = {:?}; definition = {:?}",
+            "Context::add_type_param: item = {:?}; definition = {:?}",
             item, definition
         );
         assert!(
@@ -624,10 +555,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             let path = item.path_for_allowlisting(self);
             let replacement = self.replacements.get(&path[1..]);
             if let Some(replacement) = replacement {
-                if *replacement != id {
-                    if self.resolve_item_fallible(*replacement).is_some() {
-                        replacements.push((id.expect_type_id(self), replacement.expect_type_id(self)));
-                    }
+                if *replacement != id && self.resolve_item_fallible(*replacement).is_some() {
+                    replacements.push((id.expect_type_id(self), replacement.expect_type_id(self)));
                 }
             }
         }
@@ -726,28 +655,28 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.sizedness.is_none());
         self.sizedness = Some(analyze::<sizedness::Analysis>(self));
     }
-    pub fn lookup_sizedness(&self, id: TypeId) -> sizedness::Result {
+    pub fn lookup_sizedness(&self, id: TypeId) -> sizedness::Resolved {
         assert!(self.in_codegen_phase());
         self.sizedness
             .as_ref()
             .unwrap()
             .get(&id)
             .cloned()
-            .unwrap_or(sizedness::Result::ZeroSized)
+            .unwrap_or(sizedness::Resolved::ZeroSized)
     }
     fn compute_has_vtable(&mut self) {
         let _t = self.timer("compute_has_vtable");
         assert!(self.have_vtable.is_none());
         self.have_vtable = Some(analyze::<has_vtable::Analysis>(self));
     }
-    pub fn lookup_has_vtable(&self, id: TypeId) -> has_vtable::Result {
+    pub fn lookup_has_vtable(&self, id: TypeId) -> has_vtable::Resolved {
         assert!(self.in_codegen_phase());
         self.have_vtable
             .as_ref()
             .unwrap()
             .get(&id.into())
             .cloned()
-            .unwrap_or(has_vtable::Result::No)
+            .unwrap_or(has_vtable::Resolved::No)
     }
     fn compute_has_destructor(&mut self) {
         let _t = self.timer("compute_has_destructor");
@@ -819,7 +748,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     pub fn resolve_type(&self, type_id: TypeId) -> &Type {
         self.resolve_item(type_id).kind().expect_type()
     }
-    pub fn resolve_func(&self, func_id: FunctionId) -> &Function {
+    pub fn resolve_func(&self, func_id: FnId) -> &Function {
         self.resolve_item(func_id).kind().expect_function()
     }
     pub fn safe_resolve_type(&self, type_id: TypeId) -> Option<&Type> {
@@ -1269,7 +1198,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.current_module == self.root_module);
         self.allowed.as_ref().unwrap()
     }
-    pub fn blocklisted_type_implements_trait(&self, item: &Item, derive_trait: DeriveTrait) -> YDerive {
+    pub fn blocklisted_type_implements_trait(&self, item: &Item, derive_trait: DeriveTrait) -> Resolved {
         assert!(self.in_codegen_phase());
         assert!(self.current_module == self.root_module);
         *self
@@ -1284,16 +1213,16 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     .and_then(|name| {
                         if self.opts.parse_callbacks.is_empty() {
                             if self.is_stdint_type(name) {
-                                Some(YDerive::Yes)
+                                Some(Resolved::Yes)
                             } else {
-                                Some(YDerive::No)
+                                Some(Resolved::No)
                             }
                         } else {
                             self.opts
                                 .last_callback(|cb| cb.blocklisted_type_implements_trait(name, derive_trait))
                         }
                     })
-                    .unwrap_or(YDerive::No)
+                    .unwrap_or(Resolved::No)
             })
     }
     pub fn is_stdint_type(&self, name: &str) -> bool {
@@ -1401,9 +1330,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         } else {
             traversal::only_inner_type_edges
         };
-        let allowed = AllowlistedItemsTraversal::new(self, roots.clone(), allowed_items_predicate).collect::<ItemSet>();
+        let allowed = AllowedItemsTraversal::new(self, roots.clone(), allowed_items_predicate).collect::<ItemSet>();
         let codegen_items = if self.opts().allowlist_recursively {
-            AllowlistedItemsTraversal::new(self, roots, traversal::codegen_edges).collect::<ItemSet>()
+            AllowedItemsTraversal::new(self, roots, traversal::codegen_edges).collect::<ItemSet>()
         } else {
             allowed.clone()
         };
@@ -1545,7 +1474,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 Some(analyze::<derive::Analysis>((self, DeriveTrait::PartialEqOrPartialOrd)));
         }
     }
-    pub fn lookup_can_derive_partialeq_or_partialord<Id: Into<ItemId>>(&self, id: Id) -> YDerive {
+    pub fn lookup_can_derive_partialeq_or_partialord<Id: Into<ItemId>>(&self, id: Id) -> Resolved {
         let id = id.into();
         assert!(
             self.in_codegen_phase(),
@@ -1556,7 +1485,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .unwrap()
             .get(&id)
             .cloned()
-            .unwrap_or(YDerive::Yes)
+            .unwrap_or(Resolved::Yes)
     }
     pub fn lookup_can_derive_copy<Id: Into<ItemId>>(&self, id: Id) -> bool {
         assert!(
@@ -1624,24 +1553,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
     }
 }
+
 #[derive(Debug, Copy, Clone)]
 pub struct ItemResolver {
     id: ItemId,
     through_type_refs: bool,
     through_type_aliases: bool,
-}
-impl ItemId {
-    pub fn into_resolver(self) -> ItemResolver {
-        self.into()
-    }
-}
-impl<T> From<T> for ItemResolver
-where
-    T: Into<ItemId>,
-{
-    fn from(id: T) -> ItemResolver {
-        ItemResolver::new(id)
-    }
 }
 impl ItemResolver {
     pub fn new<Id: Into<ItemId>>(id: Id) -> ItemResolver {
@@ -1682,6 +1599,20 @@ impl ItemResolver {
         }
     }
 }
+impl ItemId {
+    pub fn into_resolver(self) -> ItemResolver {
+        self.into()
+    }
+}
+impl<T> From<T> for ItemResolver
+where
+    T: Into<ItemId>,
+{
+    fn from(id: T) -> ItemResolver {
+        ItemResolver::new(id)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PartialType {
     decl: Cursor,
@@ -1725,6 +1656,7 @@ impl TemplParams for PartialType {
         }
     }
 }
+
 fn unused_regex_diagnostic(item: &str, name: &str, _ctx: &Context) {
     warn!("unused option: {} {}", name, item);
 }

@@ -1,4 +1,4 @@
-use crate::ir::context::Context;
+use crate::ir::Context;
 use clang_lib::*;
 use std::ffi::{CStr, CString};
 use std::fmt;

@@ -1,5 +1,4 @@
 use super::comp::CompInfo;
-use super::context::{Context, ItemId, TypeId};
 use super::dot::DotAttrs;
 use super::enum_ty::Enum;
 use super::function::FnSig;
@@ -8,6 +7,7 @@ use super::item::{IsOpaque, Item};
 use super::layout::{Layout, Opaque};
 use super::template::{AsTemplParam, TemplInstantiation, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
+use super::{Context, ItemId, TypeId};
 use crate::clang::{self, Cursor};
 use crate::parse;
 use std::borrow::Cow;
@@ -402,13 +402,13 @@ impl Type {
         location: Cursor,
         parent_id: Option<ItemId>,
         ctx: &mut Context,
-    ) -> Result<parse::Result<Self>, parse::Error> {
+    ) -> Result<parse::Resolved<Self>, parse::Error> {
         use clang_lib::*;
         {
             let already_resolved = ctx.builtin_or_resolved_ty(potential_id, parent_id, ty, Some(location));
             if let Some(ty) = already_resolved {
                 debug!("{:?} already resolved: {:?}", ty, location);
-                return Ok(parse::Result::AlreadyResolved(ty.into()));
+                return Ok(parse::Resolved::AlreadyResolved(ty.into()));
             }
         }
         let layout = ty.fallible_layout(ctx).ok();
@@ -432,7 +432,7 @@ impl Type {
                  support partial template specialization! Constructing \
                  opaque type instead."
             );
-            return Ok(parse::Result::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
+            return Ok(parse::Resolved::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
         }
         let kind = if location.kind() == CXCursor_TemplateRef
             || (ty.template_args().is_some() && ty_kind != CXType_Typedef)
@@ -480,7 +480,7 @@ impl Type {
                                              specifier, using opaque blob"
                                         );
                                         let opaque = Opaque::from_clang_ty(ty, ctx);
-                                        return Ok(parse::Result::New(opaque, None));
+                                        return Ok(parse::Resolved::New(opaque, None));
                                     },
                                 }
                             },
@@ -681,7 +681,7 @@ impl Type {
         let is_const = ty.is_const()
             || (ty.kind() == CXType_ConstantArray && ty.elem_type().map_or(false, |element| element.is_const()));
         let ty = Type::new(name, layout, kind, is_const);
-        Ok(parse::Result::New(ty, Some(cur.canonical())))
+        Ok(parse::Resolved::New(ty, Some(cur.canonical())))
     }
 }
 impl Trace for Type {

@@ -1,5 +1,5 @@
-use crate::ir::context::{Context, ItemId};
 use crate::ir::traversal::{EdgeKind, Trace};
+use crate::ir::{Context, ItemId};
 use crate::HashMap;
 use std::fmt;
 use std::ops;
@@ -91,8 +91,7 @@ pub enum DeriveTrait {
 pub mod derive {
     use super::{gen_deps, DeriveTrait, HasVtable, Monotone, YConstrain};
     use crate::ir::comp::CompKind;
-    use crate::ir::context::{Context, ItemId};
-    use crate::ir::derive::YDerive;
+    use crate::ir::derive::Resolved;
     use crate::ir::function::FnSig;
     use crate::ir::item::{IsOpaque, Item};
     use crate::ir::layout::Layout;
@@ -100,6 +99,7 @@ pub mod derive {
     use crate::ir::traversal::{EdgeKind, Trace};
     use crate::ir::ty::RUST_DERIVE_IN_ARRAY_LIMIT;
     use crate::ir::ty::{TyKind, Type};
+    use crate::ir::{Context, ItemId};
     use crate::{Entry, HashMap, HashSet};
     use std::fmt;
 
@@ -184,40 +184,40 @@ pub mod derive {
             )
         }
 
-        fn can_derive_fnptr(&self, f: &FnSig) -> YDerive {
+        fn can_derive_fnptr(&self, f: &FnSig) -> Resolved {
             match (self, f.function_pointers_can_derive()) {
-                (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => YDerive::Yes,
-                (DeriveTrait::Debug, false) => YDerive::Manually,
-                (_, false) => YDerive::No,
+                (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => Resolved::Yes,
+                (DeriveTrait::Debug, false) => Resolved::Manually,
+                (_, false) => Resolved::No,
             }
         }
 
-        fn can_derive_vec(&self) -> YDerive {
+        fn can_derive_vec(&self) -> Resolved {
             match self {
-                DeriveTrait::PartialEqOrPartialOrd => YDerive::No,
-                _ => YDerive::Yes,
+                DeriveTrait::PartialEqOrPartialOrd => Resolved::No,
+                _ => Resolved::Yes,
             }
         }
 
-        fn can_derive_ptr(&self) -> YDerive {
+        fn can_derive_ptr(&self) -> Resolved {
             match self {
-                DeriveTrait::Default => YDerive::No,
-                _ => YDerive::Yes,
+                DeriveTrait::Default => Resolved::No,
+                _ => Resolved::Yes,
             }
         }
 
-        fn can_derive_simple(&self, k: &TyKind) -> YDerive {
+        fn can_derive_simple(&self, k: &TyKind) -> Resolved {
             match (self, k) {
                 (DeriveTrait::Default, TyKind::Void)
                 | (DeriveTrait::Default, TyKind::NullPtr)
                 | (DeriveTrait::Default, TyKind::Enum(..))
                 | (DeriveTrait::Default, TyKind::Reference(..))
-                | (DeriveTrait::Default, TyKind::TypeParam) => YDerive::No,
+                | (DeriveTrait::Default, TyKind::TypeParam) => Resolved::No,
                 (DeriveTrait::Default, TyKind::UnresolvedTypeRef(..)) => {
                     unreachable!("Type with unresolved type ref can't reach derive default")
                 },
-                (DeriveTrait::Hash, TyKind::Float(..)) | (DeriveTrait::Hash, TyKind::Complex(..)) => YDerive::No,
-                _ => YDerive::Yes,
+                (DeriveTrait::Hash, TyKind::Float(..)) | (DeriveTrait::Hash, TyKind::Complex(..)) => Resolved::No,
+                _ => Resolved::Yes,
             }
         }
     }
@@ -238,12 +238,12 @@ pub mod derive {
     pub struct Analysis<'ctx> {
         ctx: &'ctx Context,
         deps: HashMap<ItemId, Vec<ItemId>>,
-        ys: HashMap<ItemId, YDerive>,
+        ys: HashMap<ItemId, Resolved>,
         derive: DeriveTrait,
     }
     impl<'ctx> Analysis<'ctx> {
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: YDerive) -> YConstrain {
-            if let YDerive::Yes = y {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> YConstrain {
+            if let Resolved::Yes = y {
                 return YConstrain::Same;
             }
             let id = id.into();
@@ -263,21 +263,21 @@ pub mod derive {
             }
         }
 
-        fn constrain_type(&mut self, i: &Item, ty: &Type) -> YDerive {
+        fn constrain_type(&mut self, i: &Item, ty: &Type) -> Resolved {
             if !self.ctx.allowed_items().contains(&i.id()) {
                 let y = self.ctx.blocklisted_type_implements_trait(i, self.derive);
                 return y;
             }
             if self.derive.not_by_name(self.ctx, i) {
-                return YDerive::No;
+                return Resolved::No;
             }
             if i.is_opaque(self.ctx, &()) {
                 if !self.derive.can_derive_union() && ty.is_union() && self.ctx.opts().untagged_union {
-                    return YDerive::No;
+                    return Resolved::No;
                 }
                 let y = ty
                     .layout(self.ctx)
-                    .map_or(YDerive::Yes, |x| x.opaque().array_size_within_derive_limit(self.ctx));
+                    .map_or(Resolved::Yes, |x| x.opaque().array_size_within_derive_limit(self.ctx));
                 return y;
             }
             match *ty.kind() {
@@ -303,36 +303,36 @@ pub mod derive {
                 TyKind::Function(ref sig) => self.derive.can_derive_fnptr(sig),
                 TyKind::Array(t, len) => {
                     let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
-                    if ty2 != YDerive::Yes {
-                        return YDerive::No;
+                    if ty2 != Resolved::Yes {
+                        return Resolved::No;
                     }
                     if len == 0 && !self.derive.can_derive_incomplete_array() {
-                        return YDerive::No;
+                        return Resolved::No;
                     }
                     if self.derive.can_derive_large_array(self.ctx) {
-                        return YDerive::Yes;
+                        return Resolved::Yes;
                     }
                     if len > RUST_DERIVE_IN_ARRAY_LIMIT {
-                        return YDerive::Manually;
+                        return Resolved::Manually;
                     }
-                    YDerive::Yes
+                    Resolved::Yes
                 },
                 TyKind::Vector(t, len) => {
                     let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
-                    if ty2 != YDerive::Yes {
-                        return YDerive::No;
+                    if ty2 != Resolved::Yes {
+                        return Resolved::No;
                     }
                     self.derive.can_derive_vec()
                 },
                 TyKind::Comp(ref x) => {
                     assert!(!x.has_non_type_template_params());
                     if !self.derive.can_derive_compound_forward_decl() && x.is_forward_declaration() {
-                        return YDerive::No;
+                        return Resolved::No;
                     }
                     if !self.derive.can_derive_compound_with_destructor()
                         && self.ctx.lookup_has_destructor(i.id().expect_type_id(self.ctx))
                     {
-                        return YDerive::No;
+                        return Resolved::No;
                     }
                     if x.kind() == CompKind::Union {
                         if self.derive.can_derive_union() {
@@ -340,26 +340,26 @@ pub mod derive {
                                 && (!x.self_template_params(self.ctx).is_empty()
                                     || !i.all_template_params(self.ctx).is_empty())
                             {
-                                return YDerive::No;
+                                return Resolved::No;
                             }
                         } else {
                             if self.ctx.opts().untagged_union {
-                                return YDerive::No;
+                                return Resolved::No;
                             }
                             let y = ty
                                 .layout(self.ctx)
-                                .map_or(YDerive::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
+                                .map_or(Resolved::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
                             return y;
                         }
                     }
                     if !self.derive.can_derive_compound_with_vtable() && i.has_vtable(self.ctx) {
-                        return YDerive::No;
+                        return Resolved::No;
                     }
                     if !self.derive.can_derive_large_array(self.ctx)
                         && x.has_too_large_bitfield_unit()
                         && !i.is_opaque(self.ctx, &())
                     {
-                        return YDerive::No;
+                        return Resolved::No;
                     }
                     self.constrain_join(i, self.derive.check_edge_comp())
                 },
@@ -372,7 +372,7 @@ pub mod derive {
             }
         }
 
-        fn constrain_join(&mut self, i: &Item, f: EdgePred) -> YDerive {
+        fn constrain_join(&mut self, i: &Item, f: EdgePred) -> Resolved {
             let mut y = None;
             i.trace(
                 self.ctx,
@@ -381,7 +381,7 @@ pub mod derive {
                         return;
                     }
                     let y2 = self.ys.get(&i2).cloned().unwrap_or_default();
-                    *y.get_or_insert(YDerive::Yes) |= y2;
+                    *y.get_or_insert(Resolved::Yes) |= y2;
                 },
                 &(),
             );
@@ -391,7 +391,7 @@ pub mod derive {
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
         type Extra = (&'ctx Context, DeriveTrait);
-        type Output = HashMap<ItemId, YDerive>;
+        type Output = HashMap<ItemId, Resolved>;
 
         fn new((ctx, derive): (&'ctx Context, DeriveTrait)) -> Analysis<'ctx> {
             let ys = HashMap::default();
@@ -419,18 +419,18 @@ pub mod derive {
         }
 
         fn constrain(&mut self, id: ItemId) -> YConstrain {
-            if let Some(YDerive::No) = self.ys.get(&id).cloned() {
+            if let Some(Resolved::No) = self.ys.get(&id).cloned() {
                 return YConstrain::Same;
             }
             let i = self.ctx.resolve_item(id);
             let y = match i.as_type() {
                 Some(ty) => {
                     let mut y = self.constrain_type(i, ty);
-                    if let YDerive::Yes = y {
+                    if let Resolved::Yes = y {
                         let at_limit = |x: Layout| x.align > RUST_DERIVE_IN_ARRAY_LIMIT;
                         if !self.derive.can_derive_large_array(self.ctx) && ty.layout(self.ctx).map_or(false, at_limit)
                         {
-                            y = YDerive::Manually;
+                            y = Resolved::Manually;
                         }
                     }
                     y
@@ -452,15 +452,15 @@ pub mod derive {
         }
     }
 
-    impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, YDerive> {
+    impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, Resolved> {
         fn from(x: Analysis<'ctx>) -> Self {
             x.ys
         }
     }
 
-    pub fn as_cannot_derive_set(xs: HashMap<ItemId, YDerive>) -> HashSet<ItemId> {
+    pub fn as_cannot_derive_set(xs: HashMap<ItemId, Resolved>) -> HashSet<ItemId> {
         xs.into_iter()
-            .filter_map(|(k, v)| if v != YDerive::Yes { Some(k) } else { None })
+            .filter_map(|(k, v)| if v != Resolved::Yes { Some(k) } else { None })
             .collect()
     }
 }
@@ -469,9 +469,9 @@ pub use self::derive::as_cannot_derive_set;
 pub mod has_destructor {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::{CompKind, Field, FieldMethods};
-    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
+    use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
@@ -586,9 +586,9 @@ pub mod has_float {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
-    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
+    use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
@@ -737,9 +737,9 @@ pub mod has_ty_param {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
-    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
+    use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
@@ -888,37 +888,37 @@ pub trait HasVtable {
 
 pub mod has_vtable {
     use super::{gen_deps, Monotone, YConstrain};
-    use crate::ir::context::{Context, ItemId};
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
+    use crate::ir::{Context, ItemId};
     use crate::{Entry, HashMap};
     use std::cmp;
     use std::ops;
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-    pub enum Result {
+    pub enum Resolved {
         No,
         SelfHasVtable,
         BaseHasVtable,
     }
-    impl Result {
+    impl Resolved {
         pub fn join(self, rhs: Self) -> Self {
             cmp::max(self, rhs)
         }
     }
-    impl Default for Result {
+    impl Default for Resolved {
         fn default() -> Self {
-            Result::No
+            Resolved::No
         }
     }
-    impl ops::BitOr for Result {
+    impl ops::BitOr for Resolved {
         type Output = Self;
-        fn bitor(self, rhs: Result) -> Self::Output {
+        fn bitor(self, rhs: Resolved) -> Self::Output {
             self.join(rhs)
         }
     }
-    impl ops::BitOrAssign for Result {
-        fn bitor_assign(&mut self, rhs: Result) {
+    impl ops::BitOrAssign for Resolved {
+        fn bitor_assign(&mut self, rhs: Resolved) {
             *self = self.join(rhs)
         }
     }
@@ -926,7 +926,7 @@ pub mod has_vtable {
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
         ctx: &'ctx Context,
-        ys: HashMap<ItemId, Result>,
+        ys: HashMap<ItemId, Resolved>,
         deps: HashMap<ItemId, Vec<ItemId>>,
     }
     impl<'ctx> Analysis<'ctx> {
@@ -937,8 +937,8 @@ pub mod has_vtable {
             )
         }
 
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Result) -> YConstrain {
-            if let Result::No = y {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> YConstrain {
+            if let Resolved::No = y {
                 return YConstrain::Same;
             }
             let id = id.into();
@@ -974,7 +974,7 @@ pub mod has_vtable {
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
         type Extra = &'ctx Context;
-        type Output = HashMap<ItemId, Result>;
+        type Output = HashMap<ItemId, Resolved>;
 
         fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let ys = HashMap::default();
@@ -997,13 +997,13 @@ pub mod has_vtable {
                     self.forward(t, id)
                 },
                 TyKind::Comp(ref info) => {
-                    let mut y = Result::No;
+                    let mut y = Resolved::No;
                     if info.has_own_virtual_method() {
-                        y |= Result::SelfHasVtable;
+                        y |= Resolved::SelfHasVtable;
                     }
                     let has_vtable = info.base_members().iter().any(|x| self.ys.contains_key(&x.ty.into()));
                     if has_vtable {
-                        y |= Result::BaseHasVtable;
+                        y |= Resolved::BaseHasVtable;
                     }
                     self.insert(id, y)
                 },
@@ -1024,7 +1024,7 @@ pub mod has_vtable {
         }
     }
 
-    impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, Result> {
+    impl<'ctx> From<Analysis<'ctx>> for HashMap<ItemId, Resolved> {
         fn from(x: Analysis<'ctx>) -> Self {
             x.ys
         }
@@ -1032,45 +1032,45 @@ pub mod has_vtable {
 }
 
 pub trait Sizedness {
-    fn sizedness(&self, ctx: &Context) -> sizedness::Result;
+    fn sizedness(&self, ctx: &Context) -> sizedness::Resolved;
     fn is_zero_sized(&self, ctx: &Context) -> bool {
-        self.sizedness(ctx) == sizedness::Result::ZeroSized
+        self.sizedness(ctx) == sizedness::Resolved::ZeroSized
     }
 }
 
 pub mod sizedness {
     use super::{gen_deps, HasVtable, Monotone, YConstrain};
-    use crate::ir::context::{Context, TypeId};
     use crate::ir::item::IsOpaque;
     use crate::ir::traversal::EdgeKind;
     use crate::ir::ty::TyKind;
+    use crate::ir::{Context, TypeId};
     use crate::{Entry, HashMap};
     use std::{cmp, ops};
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-    pub enum Result {
+    pub enum Resolved {
         ZeroSized,
         DependsOnTypeParam,
         NonZeroSized,
     }
-    impl Result {
+    impl Resolved {
         pub fn join(self, rhs: Self) -> Self {
             cmp::max(self, rhs)
         }
     }
-    impl Default for Result {
+    impl Default for Resolved {
         fn default() -> Self {
-            Result::ZeroSized
+            Resolved::ZeroSized
         }
     }
-    impl ops::BitOr for Result {
+    impl ops::BitOr for Resolved {
         type Output = Self;
-        fn bitor(self, rhs: Result) -> Self::Output {
+        fn bitor(self, rhs: Resolved) -> Self::Output {
             self.join(rhs)
         }
     }
-    impl ops::BitOrAssign for Result {
-        fn bitor_assign(&mut self, rhs: Result) {
+    impl ops::BitOrAssign for Resolved {
+        fn bitor_assign(&mut self, rhs: Resolved) {
             *self = self.join(rhs)
         }
     }
@@ -1079,7 +1079,7 @@ pub mod sizedness {
     pub struct Analysis<'ctx> {
         ctx: &'ctx Context,
         deps: HashMap<TypeId, Vec<TypeId>>,
-        ys: HashMap<TypeId, Result>,
+        ys: HashMap<TypeId, Resolved>,
     }
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
@@ -1094,8 +1094,8 @@ pub mod sizedness {
             )
         }
 
-        fn insert(&mut self, id: TypeId, y: Result) -> YConstrain {
-            if let Result::ZeroSized = y {
+        fn insert(&mut self, id: TypeId, y: Resolved) -> YConstrain {
+            if let Resolved::ZeroSized = y {
                 return YConstrain::Same;
             }
             match self.ys.entry(id) {
@@ -1124,7 +1124,7 @@ pub mod sizedness {
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = TypeId;
         type Extra = &'ctx Context;
-        type Output = HashMap<TypeId, Result>;
+        type Output = HashMap<TypeId, Resolved>;
 
         fn new(ctx: &'ctx Context) -> Analysis<'ctx> {
             let deps = gen_deps(ctx, Self::check_edge)
@@ -1148,26 +1148,26 @@ pub mod sizedness {
         }
 
         fn constrain(&mut self, id: TypeId) -> YConstrain {
-            if let Some(Result::NonZeroSized) = self.ys.get(&id).cloned() {
+            if let Some(Resolved::NonZeroSized) = self.ys.get(&id).cloned() {
                 return YConstrain::Same;
             }
             if id.has_vtable_ptr(self.ctx) {
-                return self.insert(id, Result::NonZeroSized);
+                return self.insert(id, Resolved::NonZeroSized);
             }
             let ty = self.ctx.resolve_type(id);
             if id.is_opaque(self.ctx, &()) {
-                let y = ty.layout(self.ctx).map_or(Result::ZeroSized, |x| {
+                let y = ty.layout(self.ctx).map_or(Resolved::ZeroSized, |x| {
                     if x.size == 0 {
-                        Result::ZeroSized
+                        Resolved::ZeroSized
                     } else {
-                        Result::NonZeroSized
+                        Resolved::NonZeroSized
                     }
                 });
                 return self.insert(id, y);
             }
             match *ty.kind() {
-                TyKind::Void => self.insert(id, Result::ZeroSized),
-                TyKind::TypeParam => self.insert(id, Result::DependsOnTypeParam),
+                TyKind::Void => self.insert(id, Resolved::ZeroSized),
+                TyKind::TypeParam => self.insert(id, Resolved::DependsOnTypeParam),
                 TyKind::Int(..)
                 | TyKind::Float(..)
                 | TyKind::Complex(..)
@@ -1175,24 +1175,24 @@ pub mod sizedness {
                 | TyKind::Enum(..)
                 | TyKind::Reference(..)
                 | TyKind::NullPtr
-                | TyKind::Pointer(..) => self.insert(id, Result::NonZeroSized),
+                | TyKind::Pointer(..) => self.insert(id, Resolved::NonZeroSized),
                 TyKind::TemplateAlias(t, _)
                 | TyKind::Alias(t)
                 | TyKind::BlockPointer(t)
                 | TyKind::ResolvedTypeRef(t) => self.forward(t, id),
                 TyKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
-                TyKind::Array(_, 0) => self.insert(id, Result::ZeroSized),
-                TyKind::Array(..) => self.insert(id, Result::NonZeroSized),
-                TyKind::Vector(..) => self.insert(id, Result::NonZeroSized),
+                TyKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
+                TyKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
+                TyKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
                 TyKind::Comp(ref x) => {
                     if !x.fields().is_empty() {
-                        return self.insert(id, Result::NonZeroSized);
+                        return self.insert(id, Resolved::NonZeroSized);
                     }
                     let y = x
                         .base_members()
                         .iter()
                         .filter_map(|x| self.ys.get(&x.ty))
-                        .fold(Result::ZeroSized, |a, b| a.join(*b));
+                        .fold(Resolved::ZeroSized, |a, b| a.join(*b));
 
                     self.insert(id, y)
                 },
@@ -1217,7 +1217,7 @@ pub mod sizedness {
         }
     }
 
-    impl<'ctx> From<Analysis<'ctx>> for HashMap<TypeId, Result> {
+    impl<'ctx> From<Analysis<'ctx>> for HashMap<TypeId, Resolved> {
         fn from(x: Analysis<'ctx>) -> Self {
             x.ys
         }
@@ -1226,11 +1226,11 @@ pub mod sizedness {
 
 pub mod used_templ_param {
     use super::{Monotone, YConstrain};
-    use crate::ir::context::{Context, ItemId};
     use crate::ir::item::{Item, ItemSet};
     use crate::ir::template::{TemplInstantiation, TemplParams};
     use crate::ir::traversal::{EdgeKind, Trace};
     use crate::ir::ty::TyKind;
+    use crate::ir::{Context, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]

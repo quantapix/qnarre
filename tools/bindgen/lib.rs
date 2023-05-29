@@ -21,9 +21,9 @@ use codegen::CodegenError;
 pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 pub use ir::annotations::FieldVisibilityKind;
 use ir::comment;
-use ir::context::{Context, ItemId};
 pub use ir::function::Abi;
 use ir::item::Item;
+use ir::{Context, ItemId};
 use opts::Opts;
 use parse::Error;
 pub use regex_set::RegexSet;
@@ -581,7 +581,7 @@ mod deps {
 }
 pub mod callbacks {
     pub use crate::ir::analysis::DeriveTrait;
-    pub use crate::ir::derive::YDerive as ImplementsTrait;
+    pub use crate::ir::derive::Resolved as ImplementsTrait;
     pub use crate::ir::enum_ty::{EnumVariantCustomBehavior, EnumVariantValue};
     pub use crate::ir::int::IntKind;
     use std::fmt;
@@ -661,19 +661,19 @@ pub mod callbacks {
 }
 pub(crate) mod parse {
     use crate::clang;
-    use crate::ir::context::{Context, ItemId};
+    use crate::ir::{Context, ItemId};
     #[derive(Debug)]
     pub enum Error {
         Recurse,
         Continue,
     }
     #[derive(Debug)]
-    pub enum Result<T> {
+    pub enum Resolved<T> {
         AlreadyResolved(ItemId),
         New(T, Option<clang::Cursor>),
     }
     pub trait SubItem: Sized {
-        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<Result<Self>, Error>;
+        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<Resolved<Self>, Error>;
     }
 }
 mod regex_set {

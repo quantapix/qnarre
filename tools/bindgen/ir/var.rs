@@ -1,10 +1,10 @@
 use super::super::codegen::MacroTypeVariation;
-use super::context::{Context, TypeId};
 use super::dot::DotAttrs;
 use super::function::cursor_mangling;
 use super::int::IntKind;
 use super::item::Item;
 use super::ty::{FloatKind, TyKind};
+use super::{Context, TypeId};
 use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
 use crate::clang::Token;
@@ -117,7 +117,7 @@ fn handle_function_macro(cur: &clang::Cursor, callbacks: &dyn crate::callbacks::
     }
 }
 impl parse::SubItem for Var {
-    fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Result<Self>, parse::Error> {
+    fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Resolved<Self>, parse::Error> {
         use cexpr::expr::EvalResult;
         use cexpr::literal::CChar;
         use clang_lib::*;
@@ -181,7 +181,7 @@ impl parse::SubItem for Var {
                     },
                 };
                 let ty = Item::builtin_type(type_kind, true, ctx);
-                Ok(parse::Result::New(
+                Ok(parse::Resolved::New(
                     Var::new(name, None, None, ty, Some(val), true),
                     Some(cur),
                 ))
@@ -251,7 +251,7 @@ impl parse::SubItem for Var {
                 };
                 let mangling = cursor_mangling(ctx, &cur);
                 let var = Var::new(name, mangling, link_name, ty, value, is_const);
-                Ok(parse::Result::New(var, Some(cur)))
+                Ok(parse::Resolved::New(var, Some(cur)))
             },
             _ => {
                 /* TODO */

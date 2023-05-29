@@ -1,7 +1,7 @@
 use crate::ir::comp::{BitfieldUnit, CompKind, Field, FieldData, FieldMethods};
-use crate::ir::context::Context;
 use crate::ir::item::{CanonicalName, HasTypeParamInArray, IsOpaque, Item};
 use crate::ir::ty::TyKind;
+use crate::ir::Context;
 
 pub(crate) fn gen_debug_impl(ctx: &Context, fields: &[Field], item: &Item, kind: CompKind) -> proc_macro2::TokenStream {
     let struct_name = item.canonical_name(ctx);
