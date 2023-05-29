@@ -216,6 +216,7 @@ pub use context::ItemId;
 pub use context::TypeId;
 pub use context::VarId;
 pub mod derive {
+    use super::item::Item;
     use super::{Context, ItemId};
     use std::cmp;
     use std::ops;
@@ -230,6 +231,11 @@ pub mod derive {
             ctx.opts().derive_copy && ctx.lookup_can_derive_copy(*self)
         }
     }
+    impl CanDeriveCopy for Item {
+        fn can_derive_copy(&self, ctx: &Context) -> bool {
+            self.id().can_derive_copy(ctx)
+        }
+    }
     pub trait CanDeriveDebug {
         fn can_derive_debug(&self, ctx: &Context) -> bool;
     }
@@ -241,6 +247,11 @@ pub mod derive {
             ctx.opts().derive_debug && ctx.lookup_can_derive_debug(*self)
         }
     }
+    impl CanDeriveDebug for Item {
+        fn can_derive_debug(&self, ctx: &Context) -> bool {
+            self.id().can_derive_debug(ctx)
+        }
+    }
     pub trait CanDeriveDefault {
         fn can_derive_default(&self, ctx: &Context) -> bool;
     }
@@ -250,6 +261,11 @@ pub mod derive {
     {
         fn can_derive_default(&self, ctx: &Context) -> bool {
             ctx.opts().derive_default && ctx.lookup_can_derive_default(*self)
+        }
+    }
+    impl CanDeriveDefault for Item {
+        fn can_derive_default(&self, ctx: &Context) -> bool {
+            self.id().can_derive_default(ctx)
         }
     }
     pub trait CanDeriveEq {
@@ -265,6 +281,11 @@ pub mod derive {
                 && !ctx.lookup_has_float(*self)
         }
     }
+    impl CanDeriveEq for Item {
+        fn can_derive_eq(&self, ctx: &Context) -> bool {
+            self.id().can_derive_eq(ctx)
+        }
+    }
     pub trait CanDeriveHash {
         fn can_derive_hash(&self, ctx: &Context) -> bool;
     }
@@ -274,6 +295,11 @@ pub mod derive {
     {
         fn can_derive_hash(&self, ctx: &Context) -> bool {
             ctx.opts().derive_hash && ctx.lookup_can_derive_hash(*self)
+        }
+    }
+    impl CanDeriveHash for Item {
+        fn can_derive_hash(&self, ctx: &Context) -> bool {
+            self.id().can_derive_hash(ctx)
         }
     }
     pub trait CanDeriveOrd {
@@ -289,6 +315,11 @@ pub mod derive {
                 && !ctx.lookup_has_float(*self)
         }
     }
+    impl CanDeriveOrd for Item {
+        fn can_derive_ord(&self, ctx: &Context) -> bool {
+            self.id().can_derive_ord(ctx)
+        }
+    }
     pub trait CanDerivePartialEq {
         fn can_derive_partialeq(&self, ctx: &Context) -> bool;
     }
@@ -300,6 +331,11 @@ pub mod derive {
             ctx.opts().derive_partialeq && ctx.lookup_can_derive_partialeq_or_partialord(*self) == Resolved::Yes
         }
     }
+    impl CanDerivePartialEq for Item {
+        fn can_derive_partialeq(&self, ctx: &Context) -> bool {
+            self.id().can_derive_partialeq(ctx)
+        }
+    }
     pub trait CanDerivePartialOrd {
         fn can_derive_partialord(&self, ctx: &Context) -> bool;
     }
@@ -309,6 +345,11 @@ pub mod derive {
     {
         fn can_derive_partialord(&self, ctx: &Context) -> bool {
             ctx.opts().derive_partialord && ctx.lookup_can_derive_partialeq_or_partialord(*self) == Resolved::Yes
+        }
+    }
+    impl CanDerivePartialOrd for Item {
+        fn can_derive_partialord(&self, ctx: &Context) -> bool {
+            self.id().can_derive_partialord(ctx)
         }
     }
 

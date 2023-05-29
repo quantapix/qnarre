@@ -3,10 +3,6 @@ use super::analysis::{HasVtable, Sizedness, *};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::context::PartialType;
-use super::derive::{
-    CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
-    CanDerivePartialOrd,
-};
 use super::dot::DotAttrs;
 use super::function::{FnKind, Function};
 use super::item_kind::ItemKind;
@@ -172,46 +168,6 @@ impl Trace for Item {
             },
             ItemKind::Module(_) => {},
         }
-    }
-}
-impl CanDeriveDebug for Item {
-    fn can_derive_debug(&self, ctx: &Context) -> bool {
-        self.id().can_derive_debug(ctx)
-    }
-}
-impl CanDeriveDefault for Item {
-    fn can_derive_default(&self, ctx: &Context) -> bool {
-        self.id().can_derive_default(ctx)
-    }
-}
-impl CanDeriveCopy for Item {
-    fn can_derive_copy(&self, ctx: &Context) -> bool {
-        self.id().can_derive_copy(ctx)
-    }
-}
-impl CanDeriveHash for Item {
-    fn can_derive_hash(&self, ctx: &Context) -> bool {
-        self.id().can_derive_hash(ctx)
-    }
-}
-impl CanDerivePartialOrd for Item {
-    fn can_derive_partialord(&self, ctx: &Context) -> bool {
-        self.id().can_derive_partialord(ctx)
-    }
-}
-impl CanDerivePartialEq for Item {
-    fn can_derive_partialeq(&self, ctx: &Context) -> bool {
-        self.id().can_derive_partialeq(ctx)
-    }
-}
-impl CanDeriveEq for Item {
-    fn can_derive_eq(&self, ctx: &Context) -> bool {
-        self.id().can_derive_eq(ctx)
-    }
-}
-impl CanDeriveOrd for Item {
-    fn can_derive_ord(&self, ctx: &Context) -> bool {
-        self.id().can_derive_ord(ctx)
     }
 }
 #[derive(Debug)]
