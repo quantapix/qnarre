@@ -1,7 +1,3 @@
-use std::env;
-use std::path::PathBuf;
-use std::rc::Rc;
-
 use crate::callbacks::Parse;
 use crate::codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 use crate::deps::DepfileSpec;
@@ -13,6 +9,9 @@ use crate::FieldVisibilityKind;
 use crate::Formatter;
 use crate::HashMap;
 use crate::DEFAULT_ANON_FIELDS_PREFIX;
+use std::env;
+use std::path::PathBuf;
+use std::rc::Rc;
 
 macro_rules! regex_opt {
     ($(#[$attrs:meta])* pub fn $($tokens:tt)*) => {
@@ -20,7 +19,6 @@ macro_rules! regex_opt {
         pub fn $($tokens)*
     };
 }
-
 macro_rules! default {
     () => {
         Default::default()
@@ -33,7 +31,6 @@ macro_rules! default {
 trait AsArgs {
     fn as_args(&self, xs: &mut Vec<String>, flag: &str);
 }
-
 impl AsArgs for bool {
     fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
         if *self {
@@ -41,7 +38,6 @@ impl AsArgs for bool {
         }
     }
 }
-
 impl AsArgs for RegexSet {
     fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
         for x in self.get_items() {
@@ -49,7 +45,6 @@ impl AsArgs for RegexSet {
         }
     }
 }
-
 impl AsArgs for Option<String> {
     fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
         if let Some(x) = self {
@@ -57,7 +52,6 @@ impl AsArgs for Option<String> {
         }
     }
 }
-
 impl AsArgs for Option<PathBuf> {
     fn as_args(&self, xs: &mut Vec<String>, flag: &str) {
         if let Some(x) = self {
@@ -89,7 +83,6 @@ macro_rules! options {
         pub(crate) struct Opts {
             $(pub(crate) $field: $ty,)*
         }
-
         impl Default for Opts {
             fn default() -> Self {
                 Self {
@@ -97,7 +90,6 @@ macro_rules! options {
                 }
             }
         }
-
         impl Builder {
             pub fn command_line_flags(&self) -> Vec<String> {
                 let mut ys = vec![];
@@ -126,7 +118,6 @@ macro_rules! options {
         }
     };
 }
-
 options! {
     blocklisted_types: RegexSet {
         methods: {
@@ -503,7 +494,6 @@ options! {
                 self.opts.enable_function_attribute_detection = true;
                 self
             }
-
         },
         as_args: "--enable-function-attribute-detection",
     },
@@ -906,7 +896,6 @@ options! {
                 self.opts.enable_mangling = x;
                 self
             }
-
         },
         as_args: |x, xs| (!x).as_args(xs, "--distrust-clang-mangling"),
     },
@@ -1116,7 +1105,6 @@ options! {
                 self.opts.respect_cxx_access_specs = x;
                 self
             }
-
         },
         as_args: "--respect-cxx-access-specs",
     },

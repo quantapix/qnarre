@@ -1003,7 +1003,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.items[with_id.0] = Some(item);
         Some(with_id.as_type_id_unchecked())
     }
-    pub fn get_resolved_type(&self, decl: &clang::CanonicalTypeDeclaration) -> Option<TypeId> {
+    pub fn get_resolved_type(&self, decl: &clang::CanonTyDecl) -> Option<TypeId> {
         self.types
             .get(&TypeKey::Declaration(*decl.cursor()))
             .or_else(|| decl.cursor().usr().and_then(|usr| self.types.get(&TypeKey::Usr(usr))))

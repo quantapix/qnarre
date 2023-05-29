@@ -3,7 +3,6 @@
 #![deny(clippy::disallowed_methods)]
 #![deny(unused_extern_crates)]
 #![recursion_limit = "128"]
-
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
@@ -14,23 +13,20 @@ extern crate log;
 extern crate quote;
 
 pub(crate) mod clang;
-
 mod codegen;
 mod ir;
 mod opts;
 
+use codegen::CodegenError;
 pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 pub use ir::annotations::FieldVisibilityKind;
-pub use ir::function::Abi;
-pub use regex_set::RegexSet;
-
-use codegen::CodegenError;
 use ir::comment;
 use ir::context::{BindgenContext, ItemId};
+pub use ir::function::Abi;
 use ir::item::Item;
 use opts::Opts;
 use parse::Error;
-
+pub use regex_set::RegexSet;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::env;
@@ -46,27 +42,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 type HashSet<K> = rustc_hash::FxHashSet<K>;
 
 pub const DEFAULT_ANON_FIELDS_PREFIX: &str = "__bindgen_anon_";
-
 const DEFAULT_NON_EXTERN_FNS_SUFFIX: &str = "__extern";
-
-fn file_is_cpp(x: &str) -> bool {
-    x.ends_with(".hpp") || x.ends_with(".hxx") || x.ends_with(".hh") || x.ends_with(".h++")
-}
-
-fn args_are_cpp(xs: &[String]) -> bool {
-    for x in xs.windows(2) {
-        if x[0] == "-xc++" || x[1] == "-xc++" {
-            return true;
-        }
-        if x[0] == "-x" && x[1] == "c++" {
-            return true;
-        }
-        if x[0] == "-include" && file_is_cpp(&x[1]) {
-            return true;
-        }
-    }
-    false
-}
 
 bitflags! {
     #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -84,28 +60,22 @@ impl CodegenConfig {
     pub fn functions(self) -> bool {
         self.contains(CodegenConfig::FUNCTIONS)
     }
-
     pub fn types(self) -> bool {
         self.contains(CodegenConfig::TYPES)
     }
-
     pub fn vars(self) -> bool {
         self.contains(CodegenConfig::VARS)
     }
-
     pub fn methods(self) -> bool {
         self.contains(CodegenConfig::METHODS)
     }
-
     pub fn constructors(self) -> bool {
         self.contains(CodegenConfig::CONSTRUCTORS)
     }
-
     pub fn destructors(self) -> bool {
         self.contains(CodegenConfig::DESTRUCTORS)
     }
 }
-
 impl Default for CodegenConfig {
     fn default() -> Self {
         CodegenConfig::all()
@@ -119,16 +89,13 @@ pub enum Formatter {
     Rustfmt,
     Prettyplease,
 }
-
 impl Default for Formatter {
     fn default() -> Self {
         Self::Rustfmt
     }
 }
-
 impl FromStr for Formatter {
     type Err = String;
-
     fn from_str(x: &str) -> Result<Self, Self::Err> {
         match x {
             "none" => Ok(Self::None),
@@ -138,7 +105,6 @@ impl FromStr for Formatter {
         }
     }
 }
-
 impl std::fmt::Display for Formatter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let y = match self {
@@ -154,22 +120,6 @@ impl std::fmt::Display for Formatter {
 pub struct Builder {
     opts: Opts,
 }
-
-pub fn builder() -> Builder {
-    Default::default()
-}
-
-fn get_extra_clang_args(xs: &[Rc<dyn callbacks::Parse>]) -> Vec<String> {
-    let ys = match get_target_dependent_env_var(xs, "BINDGEN_EXTRA_CLANG_ARGS") {
-        None => return vec![],
-        Some(x) => x,
-    };
-    if let Some(ys) = shlex::split(&ys) {
-        return ys;
-    }
-    vec![ys]
-}
-
 impl Builder {
     pub fn generate(mut self) -> Result<Bindings, BindgenError> {
         self.opts
@@ -186,7 +136,6 @@ impl Builder {
             .collect::<Vec<_>>();
         Bindings::generate(self.opts, ys)
     }
-
     pub fn dump_preprocessed_input(&self) -> io::Result<()> {
         let lib = clang_lib::Clang::find(None, &[])
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Cannot find clang executable"))?;
@@ -237,6 +186,9 @@ impl Builder {
         }
     }
 }
+pub fn builder() -> Builder {
+    Default::default()
+}
 
 impl Opts {
     fn build(&mut self) {
@@ -275,15 +227,12 @@ impl Opts {
             y.build(ms);
         }
     }
-
     fn last_callback<T>(&self, f: impl Fn(&dyn callbacks::Parse) -> Option<T>) -> Option<T> {
         self.parse_callbacks.iter().filter_map(|x| f(x.as_ref())).last()
     }
-
     fn all_callbacks<T>(&self, f: impl Fn(&dyn callbacks::Parse) -> Vec<T>) -> Vec<T> {
         self.parse_callbacks.iter().flat_map(|x| f(x.as_ref())).collect()
     }
-
     fn process_comment(&self, comment: &str) -> String {
         let comment = comment::preproc(comment);
         self.parse_callbacks
@@ -292,26 +241,6 @@ impl Opts {
             .unwrap_or(comment)
     }
 }
-
-#[cfg(feature = "runtime")]
-fn ensure_libclang_is_loaded() {
-    if clang_lib::is_loaded() {
-        return;
-    }
-    lazy_static! {
-        static ref LIBCLANG: std::sync::Arc<clang_lib::SharedLib> = {
-            clang_lib::load().expect("Unable to find libclang");
-            clang_lib::get_lib().expect(
-                "We just loaded libclang and it had better still be \
-                 here!",
-            )
-        };
-    }
-    clang_lib::set_lib(Some(LIBCLANG.clone()));
-}
-
-#[cfg(not(feature = "runtime"))]
-fn ensure_libclang_is_loaded() {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -322,7 +251,6 @@ pub enum BindgenError {
     ClangDiagnostic(String),
     Codegen(CodegenError),
 }
-
 impl std::fmt::Display for BindgenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -344,47 +272,21 @@ impl std::fmt::Display for BindgenError {
         }
     }
 }
-
 impl std::error::Error for BindgenError {}
+
+pub(crate) const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
 
 #[derive(Debug)]
 pub struct Bindings {
     opts: Opts,
     module: proc_macro2::TokenStream,
 }
-
-pub(crate) const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
-
-fn rust_to_clang_target(x: &str) -> String {
-    x.to_owned()
-}
-
-fn find_effective_target(xs: &[String]) -> (String, bool) {
-    let mut args = xs.iter();
-    while let Some(opt) = args.next() {
-        if opt.starts_with("--target=") {
-            let mut split = opt.split('=');
-            split.next();
-            return (split.next().unwrap().to_owned(), true);
-        }
-        if opt == "-target" {
-            if let Some(x) = args.next() {
-                return (x.clone(), true);
-            }
-        }
-    }
-    if let Ok(t) = env::var("TARGET") {
-        return (rust_to_clang_target(&t), false);
-    }
-    (rust_to_clang_target(HOST_TARGET), false)
-}
-
 impl Bindings {
     pub(crate) fn generate(
         mut opts: Opts,
         input_unsaved_files: Vec<clang::UnsavedFile>,
     ) -> Result<Bindings, BindgenError> {
-        ensure_libclang_is_loaded();
+        load_libclang();
         #[cfg(feature = "runtime")]
         debug!(
             "Generating bindings, libclang at {}",
@@ -398,7 +300,6 @@ impl Bindings {
         if !explicit_target && !is_host_build {
             opts.clang_args.insert(0, format!("--target={}", effective_target));
         };
-
         fn detect_include_paths(opts: &mut Opts) {
             if !opts.detect_include_paths {
                 return;
@@ -496,7 +397,6 @@ impl Bindings {
         let (module, opts) = codegen::codegen(ctx).map_err(BindgenError::Codegen)?;
         Ok(Bindings { opts, module })
     }
-
     pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let y = OpenOptions::new()
             .write(true)
@@ -506,7 +406,6 @@ impl Bindings {
         self.write(Box::new(y))?;
         Ok(())
     }
-
     pub fn write<'a>(&self, mut writer: Box<dyn Write + 'a>) -> io::Result<()> {
         if !self.opts.disable_header_comment {
             let version = option_env!("CARGO_PKG_VERSION");
@@ -534,7 +433,6 @@ impl Bindings {
         }
         Ok(())
     }
-
     fn rustfmt_path(&self) -> io::Result<Cow<PathBuf>> {
         debug_assert!(matches!(self.opts.formatter, Formatter::Rustfmt));
         if let Some(ref p) = self.opts.rustfmt_path {
@@ -551,7 +449,6 @@ impl Bindings {
         #[cfg(not(feature = "which-rustfmt"))]
         Ok(Cow::Owned("rustfmt".into()))
     }
-
     fn format_tokens(&self, tokens: &proc_macro2::TokenStream) -> io::Result<String> {
         let _t = timer::Timer::new("rustfmt_generated_string").with_output(self.opts.time_phases);
         match self.opts.formatter {
@@ -602,11 +499,6 @@ impl Bindings {
         }
     }
 }
-
-fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &Opts) {
-    warn!("{}", msg);
-}
-
 impl std::fmt::Display for Bindings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut bytes = vec![];
@@ -616,113 +508,14 @@ impl std::fmt::Display for Bindings {
     }
 }
 
-fn filter_builtins(ctx: &BindgenContext, cur: &clang::Cursor) -> bool {
-    ctx.opts().builtins || !cur.is_builtin()
-}
-
-fn parse_one(ctx: &mut BindgenContext, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
-    if !filter_builtins(ctx, &cur) {
-        return clang_lib::CXChildVisit_Continue;
-    }
-    match Item::parse(cur, parent, ctx) {
-        Ok(..) => {},
-        Err(Error::Continue) => {},
-        Err(Error::Recurse) => {
-            cur.visit(|x| parse_one(ctx, x, parent));
-        },
-    }
-    clang_lib::CXChildVisit_Continue
-}
-
-fn parse(ctx: &mut BindgenContext) -> Result<(), BindgenError> {
-    let mut error = None;
-    for d in ctx.translation_unit().diags().iter() {
-        let msg = d.format();
-        let is_err = d.severity() >= clang_lib::CXDiagnostic_Error;
-        if is_err {
-            let y = error.get_or_insert_with(String::new);
-            y.push_str(&msg);
-            y.push('\n');
-        } else {
-            eprintln!("clang diag: {}", msg);
-        }
-    }
-    if let Some(x) = error {
-        return Err(BindgenError::ClangDiagnostic(x));
-    }
-    let cur = ctx.translation_unit().cursor();
-    if ctx.opts().emit_ast {
-        fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
-            if !cur.is_builtin() {
-                clang::ast_dump(cur, 0)
-            } else {
-                clang_lib::CXChildVisit_Continue
-            }
-        }
-        cur.visit(|x| dump_if_not_builtin(&x));
-    }
-    let root = ctx.root_module();
-    ctx.with_module(root, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, None)));
-    assert!(ctx.current_module() == ctx.root_module(), "How did this happen?");
-    Ok(())
-}
-
 #[derive(Debug)]
 pub struct Version {
     pub parsed: Option<(u32, u32)>,
     pub full: String,
 }
 
-pub fn clang_version() -> Version {
-    ensure_libclang_is_loaded();
-    let raw_v: String = clang::extract_clang_version();
-    let split_v: Option<Vec<&str>> = raw_v
-        .split_whitespace()
-        .find(|t| t.chars().next().map_or(false, |v| v.is_ascii_digit()))
-        .map(|v| v.split('.').collect());
-    if let Some(v) = split_v {
-        if v.len() >= 2 {
-            let maybe_major = v[0].parse::<u32>();
-            let maybe_minor = v[1].parse::<u32>();
-            if let (Ok(major), Ok(minor)) = (maybe_major, maybe_minor) {
-                return Version {
-                    parsed: Some((major, minor)),
-                    full: raw_v.clone(),
-                };
-            }
-        }
-    };
-    Version {
-        parsed: None,
-        full: raw_v.clone(),
-    }
-}
-
-fn env_var<K: AsRef<str> + AsRef<OsStr>>(
-    parse_callbacks: &[Rc<dyn callbacks::Parse>],
-    key: K,
-) -> Result<String, std::env::VarError> {
-    for x in parse_callbacks {
-        x.read_env_var(key.as_ref());
-    }
-    std::env::var(key)
-}
-
-fn get_target_dependent_env_var(xs: &[Rc<dyn callbacks::Parse>], var: &str) -> Option<String> {
-    if let Ok(x) = env_var(xs, "TARGET") {
-        if let Ok(x) = env_var(xs, format!("{}_{}", var, x)) {
-            return Some(x);
-        }
-        if let Ok(x) = env_var(xs, format!("{}_{}", var, x.replace('-', "_"))) {
-            return Some(x);
-        }
-    }
-    env_var(xs, var).ok()
-}
-
 #[derive(Debug)]
 pub struct CargoCallbacks;
-
 impl callbacks::Parse for CargoCallbacks {
     fn include_file(&self, x: &str) {
         println!("cargo:rerun-if-changed={}", x);
@@ -734,13 +527,11 @@ impl callbacks::Parse for CargoCallbacks {
 
 mod deps {
     use std::{collections::BTreeSet, path::PathBuf};
-
     #[derive(Clone, Debug)]
     pub(crate) struct DepfileSpec {
         pub output_module: String,
         pub depfile_path: PathBuf,
     }
-
     impl DepfileSpec {
         pub fn write(&self, deps: &BTreeSet<String>) -> std::io::Result<()> {
             std::fs::write(&self.depfile_path, &self.to_string(deps))
@@ -754,18 +545,15 @@ mod deps {
             buf
         }
     }
-
     #[cfg(test)]
     mod tests {
         use super::*;
-
         #[test]
         fn escaping_depfile() {
             let spec = DepfileSpec {
                 output_module: "Mod Name".to_owned(),
                 depfile_path: PathBuf::new(),
             };
-
             let deps: BTreeSet<String> = vec![
                 r"/absolute/path".to_owned(),
                 r"C:\win\absolute\path".to_owned(),
@@ -791,26 +579,22 @@ mod deps {
         }
     }
 }
-
 pub mod callbacks {
     pub use crate::ir::analysis::DeriveTrait;
     pub use crate::ir::derive::YDerive as ImplementsTrait;
     pub use crate::ir::enum_ty::{EnumVariantCustomBehavior, EnumVariantValue};
     pub use crate::ir::int::IntKind;
     use std::fmt;
-
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
     pub enum MacroParsing {
         Ignore,
         Default,
     }
-
     impl Default for MacroParsing {
         fn default() -> Self {
             MacroParsing::Default
         }
     }
-
     pub trait Parse: fmt::Debug {
         fn will_parse_macro(&self, _name: &str) -> MacroParsing {
             MacroParsing::Default
@@ -852,58 +636,48 @@ pub mod callbacks {
             None
         }
     }
-
     #[derive(Debug)]
     #[non_exhaustive]
     pub struct DeriveInfo<'a> {
         pub name: &'a str,
         pub kind: TypeKind,
     }
-
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum TypeKind {
         Struct,
         Enum,
         Union,
     }
-
     #[non_exhaustive]
     pub struct ItemInfo<'a> {
         pub name: &'a str,
         pub kind: ItemKind,
     }
-
     #[non_exhaustive]
     pub enum ItemKind {
         Function,
         Var,
     }
 }
-
 pub(crate) mod parse {
     use crate::clang;
     use crate::ir::context::{BindgenContext, ItemId};
-
     #[derive(Debug)]
     pub enum Error {
         Recurse,
         Continue,
     }
-
     #[derive(Debug)]
     pub enum Result<T> {
         AlreadyResolved(ItemId),
         New(T, Option<clang::Cursor>),
     }
-
     pub trait SubItem: Sized {
         fn parse(cur: clang::Cursor, ctx: &mut BindgenContext) -> Result<Result<Self>, Error>;
     }
 }
-
 mod regex_set {
     use std::cell::Cell;
-
     #[derive(Clone, Debug, Default)]
     pub struct RegexSet {
         items: Vec<String>,
@@ -911,7 +685,6 @@ mod regex_set {
         set: Option<regex::RegexSet>,
         record_matches: bool,
     }
-
     impl RegexSet {
         pub fn new() -> RegexSet {
             RegexSet::default()
@@ -976,18 +749,15 @@ mod regex_set {
         }
     }
 }
-
 mod timer {
     use std::io::{self, Write};
     use std::time::{Duration, Instant};
-
     #[derive(Debug)]
     pub struct Timer<'a> {
         output: bool,
         name: &'a str,
         start: Instant,
     }
-
     impl<'a> Timer<'a> {
         pub fn new(name: &'a str) -> Self {
             Timer {
@@ -1012,7 +782,6 @@ mod timer {
             }
         }
     }
-
     impl<'a> Drop for Timer<'a> {
         fn drop(&mut self) {
             self.print_elapsed();
@@ -1020,11 +789,177 @@ mod timer {
     }
 }
 
+#[cfg(feature = "runtime")]
+fn load_libclang() {
+    if clang_lib::is_loaded() {
+        return;
+    }
+    lazy_static! {
+        static ref LIBCLANG: std::sync::Arc<clang_lib::SharedLib> = {
+            clang_lib::load().expect("Unable to find libclang");
+            clang_lib::get_lib().expect(
+                "We just loaded libclang and it had better still be \
+                 here!",
+            )
+        };
+    }
+    clang_lib::set_lib(Some(LIBCLANG.clone()));
+}
+#[cfg(not(feature = "runtime"))]
+fn load_libclang() {}
+
+fn file_is_cpp(x: &str) -> bool {
+    x.ends_with(".hpp") || x.ends_with(".hxx") || x.ends_with(".hh") || x.ends_with(".h++")
+}
+fn args_are_cpp(xs: &[String]) -> bool {
+    for x in xs.windows(2) {
+        if x[0] == "-xc++" || x[1] == "-xc++" {
+            return true;
+        }
+        if x[0] == "-x" && x[1] == "c++" {
+            return true;
+        }
+        if x[0] == "-include" && file_is_cpp(&x[1]) {
+            return true;
+        }
+    }
+    false
+}
+
+fn get_extra_clang_args(xs: &[Rc<dyn callbacks::Parse>]) -> Vec<String> {
+    let ys = match get_target_dependent_env_var(xs, "BINDGEN_EXTRA_CLANG_ARGS") {
+        None => return vec![],
+        Some(x) => x,
+    };
+    if let Some(ys) = shlex::split(&ys) {
+        return ys;
+    }
+    vec![ys]
+}
+
+pub fn clang_version() -> Version {
+    load_libclang();
+    let raw_v: String = clang::extract_clang_version();
+    let split_v: Option<Vec<&str>> = raw_v
+        .split_whitespace()
+        .find(|t| t.chars().next().map_or(false, |v| v.is_ascii_digit()))
+        .map(|v| v.split('.').collect());
+    if let Some(v) = split_v {
+        if v.len() >= 2 {
+            let maybe_major = v[0].parse::<u32>();
+            let maybe_minor = v[1].parse::<u32>();
+            if let (Ok(major), Ok(minor)) = (maybe_major, maybe_minor) {
+                return Version {
+                    parsed: Some((major, minor)),
+                    full: raw_v.clone(),
+                };
+            }
+        }
+    };
+    Version {
+        parsed: None,
+        full: raw_v.clone(),
+    }
+}
+fn env_var<K: AsRef<str> + AsRef<OsStr>>(
+    parse_callbacks: &[Rc<dyn callbacks::Parse>],
+    key: K,
+) -> Result<String, std::env::VarError> {
+    for x in parse_callbacks {
+        x.read_env_var(key.as_ref());
+    }
+    std::env::var(key)
+}
+fn get_target_dependent_env_var(xs: &[Rc<dyn callbacks::Parse>], var: &str) -> Option<String> {
+    if let Ok(x) = env_var(xs, "TARGET") {
+        if let Ok(x) = env_var(xs, format!("{}_{}", var, x)) {
+            return Some(x);
+        }
+        if let Ok(x) = env_var(xs, format!("{}_{}", var, x.replace('-', "_"))) {
+            return Some(x);
+        }
+    }
+    env_var(xs, var).ok()
+}
+
+fn rust_to_clang_target(x: &str) -> String {
+    x.to_owned()
+}
+fn find_effective_target(xs: &[String]) -> (String, bool) {
+    let mut args = xs.iter();
+    while let Some(opt) = args.next() {
+        if opt.starts_with("--target=") {
+            let mut split = opt.split('=');
+            split.next();
+            return (split.next().unwrap().to_owned(), true);
+        }
+        if opt == "-target" {
+            if let Some(x) = args.next() {
+                return (x.clone(), true);
+            }
+        }
+    }
+    if let Ok(t) = env::var("TARGET") {
+        return (rust_to_clang_target(&t), false);
+    }
+    (rust_to_clang_target(HOST_TARGET), false)
+}
+fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &Opts) {
+    warn!("{}", msg);
+}
+fn filter_builtins(ctx: &BindgenContext, cur: &clang::Cursor) -> bool {
+    ctx.opts().builtins || !cur.is_builtin()
+}
+fn parse_one(ctx: &mut BindgenContext, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
+    if !filter_builtins(ctx, &cur) {
+        return clang_lib::CXChildVisit_Continue;
+    }
+    match Item::parse(cur, parent, ctx) {
+        Ok(..) => {},
+        Err(Error::Continue) => {},
+        Err(Error::Recurse) => {
+            cur.visit(|x| parse_one(ctx, x, parent));
+        },
+    }
+    clang_lib::CXChildVisit_Continue
+}
+fn parse(ctx: &mut BindgenContext) -> Result<(), BindgenError> {
+    let mut error = None;
+    for d in ctx.translation_unit().diags().iter() {
+        let msg = d.format();
+        let is_err = d.severity() >= clang_lib::CXDiagnostic_Error;
+        if is_err {
+            let y = error.get_or_insert_with(String::new);
+            y.push_str(&msg);
+            y.push('\n');
+        } else {
+            eprintln!("clang diag: {}", msg);
+        }
+    }
+    if let Some(x) = error {
+        return Err(BindgenError::ClangDiagnostic(x));
+    }
+    let cur = ctx.translation_unit().cursor();
+    if ctx.opts().emit_ast {
+        fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
+            if !cur.is_builtin() {
+                clang::ast_dump(cur, 0)
+            } else {
+                clang_lib::CXChildVisit_Continue
+            }
+        }
+        cur.visit(|x| dump_if_not_builtin(&x));
+    }
+    let root = ctx.root_module();
+    ctx.with_module(root, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, None)));
+    assert!(ctx.current_module() == ctx.root_module(), "How did this happen?");
+    Ok(())
+}
+
 #[test]
 fn commandline_flag_unit_test_function() {
     let bindings = crate::builder();
     let command_line_flags = bindings.command_line_flags();
-
     let test_cases = vec![
         "--rust-target",
         "--no-derive-default",
@@ -1034,14 +969,11 @@ fn commandline_flag_unit_test_function() {
     .iter()
     .map(|&x| x.into())
     .collect::<Vec<String>>();
-
     assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
-
     let bindings = crate::builder()
         .header("input_header")
         .allowlist_type("Distinct_Type")
         .allowlist_function("safe_function");
-
     let command_line_flags = bindings.command_line_flags();
     let test_cases = vec![
         "--rust-target",
@@ -1058,6 +990,5 @@ fn commandline_flag_unit_test_function() {
     .map(|&x| x.into())
     .collect::<Vec<String>>();
     println!("{:?}", command_line_flags);
-
     assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
 }
