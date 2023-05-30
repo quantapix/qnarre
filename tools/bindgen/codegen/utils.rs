@@ -617,3 +617,191 @@ pub mod ast_ty {
             .collect()
     }
 }
+pub mod variation {
+    use std::fmt;
+
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    pub enum Enum {
+        Rust { non_exhaustive: bool },
+        NewType { is_bitfield: bool, is_global: bool },
+        Consts,
+        ModuleConsts,
+    }
+    impl Enum {
+        pub fn is_rust(&self) -> bool {
+            matches!(*self, Enum::Rust { .. })
+        }
+        pub fn is_const(&self) -> bool {
+            matches!(*self, Enum::Consts | Enum::ModuleConsts)
+        }
+    }
+    impl Default for Enum {
+        fn default() -> Enum {
+            Enum::Consts
+        }
+    }
+    impl fmt::Display for Enum {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let y = match self {
+                Self::Rust { non_exhaustive: false } => "rust",
+                Self::Rust { non_exhaustive: true } => "rust_non_exhaustive",
+                Self::NewType { is_bitfield: true, .. } => "bitfield",
+                Self::NewType {
+                    is_bitfield: false,
+                    is_global,
+                } => {
+                    if *is_global {
+                        "newtype_global"
+                    } else {
+                        "newtype"
+                    }
+                },
+                Self::Consts => "consts",
+                Self::ModuleConsts => "moduleconsts",
+            };
+            y.fmt(f)
+        }
+    }
+    impl std::str::FromStr for Enum {
+        type Err = std::io::Error;
+        fn from_str(x: &str) -> Result<Self, Self::Err> {
+            match x {
+                "rust" => Ok(Enum::Rust { non_exhaustive: false }),
+                "rust_non_exhaustive" => Ok(Enum::Rust { non_exhaustive: true }),
+                "bitfield" => Ok(Enum::NewType {
+                    is_bitfield: true,
+                    is_global: false,
+                }),
+                "consts" => Ok(Enum::Consts),
+                "moduleconsts" => Ok(Enum::ModuleConsts),
+                "newtype" => Ok(Enum::NewType {
+                    is_bitfield: false,
+                    is_global: false,
+                }),
+                "newtype_global" => Ok(Enum::NewType {
+                    is_bitfield: false,
+                    is_global: true,
+                }),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    concat!(
+                        "Got an invalid variation::Enum. Accepted values ",
+                        "are 'rust', 'rust_non_exhaustive', 'bitfield', 'consts',",
+                        "'moduleconsts', 'newtype' and 'newtype_global'."
+                    ),
+                )),
+            }
+        }
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    pub enum MacroType {
+        Signed,
+        Unsigned,
+    }
+    impl fmt::Display for MacroType {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let y = match self {
+                Self::Signed => "signed",
+                Self::Unsigned => "unsigned",
+            };
+            y.fmt(f)
+        }
+    }
+    impl Default for MacroType {
+        fn default() -> MacroType {
+            MacroType::Unsigned
+        }
+    }
+    impl std::str::FromStr for MacroType {
+        type Err = std::io::Error;
+        fn from_str(x: &str) -> Result<Self, Self::Err> {
+            match x {
+                "signed" => Ok(MacroType::Signed),
+                "unsigned" => Ok(MacroType::Unsigned),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    concat!(
+                        "Got an invalid variation::MacroType. Accepted values ",
+                        "are 'signed' and 'unsigned'"
+                    ),
+                )),
+            }
+        }
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    pub enum Alias {
+        TypeAlias,
+        NewType,
+        NewTypeDeref,
+    }
+    impl fmt::Display for Alias {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let y = match self {
+                Self::TypeAlias => "type_alias",
+                Self::NewType => "new_type",
+                Self::NewTypeDeref => "new_type_deref",
+            };
+            y.fmt(f)
+        }
+    }
+    impl Default for Alias {
+        fn default() -> Alias {
+            Alias::TypeAlias
+        }
+    }
+    impl std::str::FromStr for Alias {
+        type Err = std::io::Error;
+        fn from_str(x: &str) -> Result<Self, Self::Err> {
+            match x {
+                "type_alias" => Ok(Alias::TypeAlias),
+                "new_type" => Ok(Alias::NewType),
+                "new_type_deref" => Ok(Alias::NewTypeDeref),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    concat!(
+                        "Got an invalid variation::Alias. Accepted values ",
+                        "are 'type_alias', 'new_type', and 'new_type_deref'"
+                    ),
+                )),
+            }
+        }
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    pub enum NonCopyUnion {
+        BindgenWrapper,
+        ManuallyDrop,
+    }
+    impl fmt::Display for NonCopyUnion {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let s = match self {
+                Self::BindgenWrapper => "bindgen_wrapper",
+                Self::ManuallyDrop => "manually_drop",
+            };
+            s.fmt(f)
+        }
+    }
+    impl Default for NonCopyUnion {
+        fn default() -> Self {
+            Self::BindgenWrapper
+        }
+    }
+    impl std::str::FromStr for NonCopyUnion {
+        type Err = std::io::Error;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "bindgen_wrapper" => Ok(Self::BindgenWrapper),
+                "manually_drop" => Ok(Self::ManuallyDrop),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    concat!(
+                        "Got an invalid variation::NonCopyUnion. Accepted values ",
+                        "are 'bindgen_wrapper' and 'manually_drop'"
+                    ),
+                )),
+            }
+        }
+    }
+}

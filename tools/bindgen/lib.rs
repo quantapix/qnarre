@@ -17,8 +17,8 @@ mod codegen;
 mod ir;
 mod opts;
 
+pub use codegen::utils::variation;
 use codegen::CodegenError;
-pub use codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
 pub use ir::annotations::FieldVisibilityKind;
 use ir::comment;
 pub use ir::function::Abi;

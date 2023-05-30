@@ -9,10 +9,10 @@ use super::RUST_DERIVE_IN_ARRAY_LIMIT;
 use super::{Context, FnId, ItemId, TypeId, VarId};
 use crate::clang;
 use crate::codegen::struct_layout::{align_to, bytes_from_bits_pow2};
+use crate::codegen::utils::variation;
 use crate::ir::derive::CanDeriveCopy;
 use crate::parse;
 use crate::HashMap;
-use crate::NonCopyUnionStyle;
 use peeking_take_while::PeekableExt;
 use std::cmp;
 use std::io;
@@ -936,9 +936,9 @@ impl CompInfo {
             return (false, false);
         }
         let union_style = if ctx.opts().bindgen_wrapper_union.matches(name) {
-            NonCopyUnionStyle::BindgenWrapper
+            variation::NonCopyUnion::BindgenWrapper
         } else if ctx.opts().manually_drop_union.matches(name) {
-            NonCopyUnionStyle::ManuallyDrop
+            variation::NonCopyUnion::ManuallyDrop
         } else {
             ctx.opts().default_non_copy_union_style
         };
@@ -946,7 +946,7 @@ impl CompInfo {
             Field::DataMember(ref field_data) => field_data.ty().can_derive_copy(ctx),
             Field::Bitfields(_) => true,
         });
-        if !all_can_copy && union_style == NonCopyUnionStyle::BindgenWrapper {
+        if !all_can_copy && union_style == variation::NonCopyUnion::BindgenWrapper {
             return (false, false);
         }
         if layout.map_or(false, |l| l.size == 0) {

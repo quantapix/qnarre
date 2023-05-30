@@ -448,11 +448,11 @@ pub mod dot {
     }
 }
 pub mod enum_ty {
-    use super::super::codegen::EnumVariation;
     use super::item::Item;
     use super::typ::{Type, TypeKind};
     use super::{Context, TypeId};
     use crate::clang;
+    use crate::codegen::utils::variation;
     use crate::ir::annotations::Annotations;
     use crate::parse;
     use crate::regex_set::RegexSet;
@@ -549,30 +549,30 @@ pub mod enum_ty {
             }
             self.variants().iter().any(|v| enums.matches(v.name()))
         }
-        pub fn computed_enum_variation(&self, ctx: &Context, it: &Item) -> EnumVariation {
+        pub fn computed_enum_variation(&self, ctx: &Context, it: &Item) -> variation::Enum {
             if self.is_matching_enum(ctx, &ctx.opts().constified_enum_modules, it) {
-                EnumVariation::ModuleConsts
+                variation::Enum::ModuleConsts
             } else if self.is_matching_enum(ctx, &ctx.opts().bitfield_enums, it) {
-                EnumVariation::NewType {
+                variation::Enum::NewType {
                     is_bitfield: true,
                     is_global: false,
                 }
             } else if self.is_matching_enum(ctx, &ctx.opts().newtype_enums, it) {
-                EnumVariation::NewType {
+                variation::Enum::NewType {
                     is_bitfield: false,
                     is_global: false,
                 }
             } else if self.is_matching_enum(ctx, &ctx.opts().newtype_global_enums, it) {
-                EnumVariation::NewType {
+                variation::Enum::NewType {
                     is_bitfield: false,
                     is_global: true,
                 }
             } else if self.is_matching_enum(ctx, &ctx.opts().rustified_enums, it) {
-                EnumVariation::Rust { non_exhaustive: false }
+                variation::Enum::Rust { non_exhaustive: false }
             } else if self.is_matching_enum(ctx, &ctx.opts().rustified_non_exhaustive_enums, it) {
-                EnumVariation::Rust { non_exhaustive: true }
+                variation::Enum::Rust { non_exhaustive: true }
             } else if self.is_matching_enum(ctx, &ctx.opts().constified_enums, it) {
-                EnumVariation::Consts
+                variation::Enum::Consts
             } else {
                 ctx.opts().default_enum_style
             }

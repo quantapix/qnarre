@@ -1,4 +1,3 @@
-use super::super::codegen::MacroTypeVariation;
 use super::dot::DotAttrs;
 use super::function::cursor_mangling;
 use super::int::IntKind;
@@ -8,6 +7,7 @@ use super::{Context, TypeId};
 use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
 use crate::clang;
 use crate::clang::Token;
+use crate::codegen::utils::variation;
 use crate::parse;
 use std::io;
 use std::num::Wrapping;
@@ -82,7 +82,7 @@ impl DotAttrs for Var {
     }
 }
 fn default_macro_constant_type(ctx: &Context, value: i64) -> IntKind {
-    if value < 0 || ctx.opts().default_macro_constant_type == MacroTypeVariation::Signed {
+    if value < 0 || ctx.opts().default_macro_constant_type == variation::MacroType::Signed {
         if value < i32::min_value() as i64 || value > i32::max_value() as i64 {
             IntKind::I64
         } else if !ctx.opts().fit_macro_constants || value < i16::min_value() as i64 || value > i16::max_value() as i64

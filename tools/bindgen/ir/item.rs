@@ -1,4 +1,4 @@
-use super::super::codegen::{EnumVariation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
+use super::super::codegen::{utils::variation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
 use super::analysis::{HasVtable, Sizedness, *};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
@@ -625,7 +625,7 @@ impl Item {
             _ => return false,
         };
         match *type_.kind() {
-            TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == EnumVariation::ModuleConsts,
+            TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == variation::Enum::ModuleConsts,
             TypeKind::Alias(inner_id) => {
                 let inner_item = ctx.resolve_item(inner_id);
                 let name = item.canon_name(ctx);

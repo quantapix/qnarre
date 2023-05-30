@@ -1,5 +1,5 @@
 use crate::callbacks::Parse;
-use crate::codegen::{AliasVariation, EnumVariation, MacroTypeVariation, NonCopyUnionStyle};
+use crate::codegen::utils::variation;
 use crate::deps::DepfileSpec;
 use crate::regex_set::RegexSet;
 use crate::Abi;
@@ -248,11 +248,11 @@ options! {
         },
         as_args: "--allowlist-file",
     },
-    default_enum_style: EnumVariation {
+    default_enum_style: variation::Enum {
         methods: {
             pub fn default_enum_style(
                 mut self,
-                arg: EnumVariation,
+                arg: variation::Enum,
             ) -> Builder {
                 self.opts.default_enum_style = arg;
                 self
@@ -342,9 +342,9 @@ options! {
         },
         as_args: "--constified-enum",
     },
-    default_macro_constant_type: MacroTypeVariation {
+    default_macro_constant_type: variation::MacroType {
         methods: {
-            pub fn default_macro_constant_type(mut self, x: MacroTypeVariation) -> Builder {
+            pub fn default_macro_constant_type(mut self, x: variation::MacroType) -> Builder {
                 self.opts.default_macro_constant_type = x;
                 self
             }
@@ -356,11 +356,11 @@ options! {
             }
         },
     },
-    default_alias_style: AliasVariation {
+    default_alias_style: variation::Alias {
         methods: {
             pub fn default_alias_style(
                 mut self,
-                x: AliasVariation,
+                x: variation::Alias,
             ) -> Builder {
                 self.opts.default_alias_style = x;
                 self
@@ -406,9 +406,9 @@ options! {
         },
         as_args: "--new-type-alias-deref",
     },
-    default_non_copy_union_style: NonCopyUnionStyle {
+    default_non_copy_union_style: variation::NonCopyUnion {
         methods: {
-            pub fn default_non_copy_union_style(mut self, x: NonCopyUnionStyle) -> Self {
+            pub fn default_non_copy_union_style(mut self, x: variation::NonCopyUnion) -> Self {
                 self.opts.default_non_copy_union_style = x;
                 self
             }

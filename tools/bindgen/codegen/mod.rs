@@ -174,7 +174,8 @@ mod error {
     pub type Result<T> = ::std::result::Result<T, Error>;
 }
 mod impl_debug;
-mod utils;
+pub mod utils;
+use utils::variation;
 mod impl_partialeq {
     use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
     use crate::ir::item::{IsOpaque, Item};
@@ -552,7 +553,7 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
     }
 }
 
-trait CodeGenerator {
+trait Generator {
     type Extra;
     type Return;
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, extra: &Self::Extra) -> Self::Return;
@@ -577,7 +578,7 @@ impl Item {
         true
     }
 }
-impl CodeGenerator for Item {
+impl Generator for Item {
     type Extra = ();
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, _extra: &()) {
@@ -601,7 +602,7 @@ impl CodeGenerator for Item {
         }
     }
 }
-impl CodeGenerator for Module {
+impl Generator for Module {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -667,7 +668,7 @@ impl CodeGenerator for Module {
         });
     }
 }
-impl CodeGenerator for Var {
+impl Generator for Var {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -781,7 +782,7 @@ impl CodeGenerator for Var {
         }
     }
 }
-impl CodeGenerator for Type {
+impl Generator for Type {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -895,11 +896,11 @@ impl CodeGenerator for Type {
                     quote! {}
                 };
                 let alias_style = if ctx.opts().type_alias.matches(&name) {
-                    AliasVariation::TypeAlias
+                    variation::Alias::TypeAlias
                 } else if ctx.opts().new_type_alias.matches(&name) {
-                    AliasVariation::NewType
+                    variation::Alias::NewType
                 } else if ctx.opts().new_type_alias_deref.matches(&name) {
-                    AliasVariation::NewTypeDeref
+                    variation::Alias::NewTypeDeref
                 } else {
                     ctx.opts().default_alias_style
                 };
@@ -909,7 +910,7 @@ impl CodeGenerator for Type {
                     .all(|c| matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | ':' | '_' | ' '))
                     && outer_params.is_empty()
                     && !is_opaque
-                    && alias_style == AliasVariation::TypeAlias
+                    && alias_style == variation::Alias::TypeAlias
                     && inner_item.expect_type().canonical_type(ctx).is_enum()
                 {
                     tokens.append_all(quote! {
@@ -924,10 +925,10 @@ impl CodeGenerator for Type {
                     return;
                 }
                 tokens.append_all(match alias_style {
-                    AliasVariation::TypeAlias => quote! {
+                    variation::Alias::TypeAlias => quote! {
                         pub type #rust_name
                     },
-                    AliasVariation::NewType | AliasVariation::NewTypeDeref => {
+                    variation::Alias::NewType | variation::Alias::NewTypeDeref => {
                         let mut attributes = vec![attributes::repr("transparent")];
                         let packed = false; // Types can't be packed in Rust.
                         let derivable_traits = derives_of_item(it, ctx, packed);
@@ -967,16 +968,16 @@ impl CodeGenerator for Type {
                 }
                 let access_spec = access_specifier(ctx.opts().default_visibility);
                 tokens.append_all(match alias_style {
-                    AliasVariation::TypeAlias => quote! {
+                    variation::Alias::TypeAlias => quote! {
                         = #inner_rust_type ;
                     },
-                    AliasVariation::NewType | AliasVariation::NewTypeDeref => {
+                    variation::Alias::NewType | variation::Alias::NewTypeDeref => {
                         quote! {
                             (#access_spec #inner_rust_type) ;
                         }
                     },
                 });
-                if alias_style == AliasVariation::NewTypeDeref {
+                if alias_style == variation::Alias::NewTypeDeref {
                     let prefix = ctx.trait_prefix();
                     tokens.append_all(quote! {
                         impl ::#prefix::ops::Deref for #rust_name {
@@ -1014,7 +1015,7 @@ impl<'a> Vtable<'a> {
         Vtable { id, info }
     }
 }
-impl<'a> CodeGenerator for Vtable<'a> {
+impl<'a> Generator for Vtable<'a> {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -1073,7 +1074,7 @@ impl<'a> CanonName for Vtable<'a> {
     }
 }
 
-impl CodeGenerator for TemplInstantiation {
+impl Generator for TemplInstantiation {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -1589,7 +1590,7 @@ impl<'a> FieldCodegen<'a> for Bitfield {
         }
     }
 }
-impl CodeGenerator for CompInfo {
+impl Generator for CompInfo {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -2133,79 +2134,6 @@ impl Method {
         });
     }
 }
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum EnumVariation {
-    Rust { non_exhaustive: bool },
-    NewType { is_bitfield: bool, is_global: bool },
-    Consts,
-    ModuleConsts,
-}
-impl EnumVariation {
-    fn is_rust(&self) -> bool {
-        matches!(*self, EnumVariation::Rust { .. })
-    }
-    fn is_const(&self) -> bool {
-        matches!(*self, EnumVariation::Consts | EnumVariation::ModuleConsts)
-    }
-}
-impl Default for EnumVariation {
-    fn default() -> EnumVariation {
-        EnumVariation::Consts
-    }
-}
-impl fmt::Display for EnumVariation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let y = match self {
-            Self::Rust { non_exhaustive: false } => "rust",
-            Self::Rust { non_exhaustive: true } => "rust_non_exhaustive",
-            Self::NewType { is_bitfield: true, .. } => "bitfield",
-            Self::NewType {
-                is_bitfield: false,
-                is_global,
-            } => {
-                if *is_global {
-                    "newtype_global"
-                } else {
-                    "newtype"
-                }
-            },
-            Self::Consts => "consts",
-            Self::ModuleConsts => "moduleconsts",
-        };
-        y.fmt(f)
-    }
-}
-impl std::str::FromStr for EnumVariation {
-    type Err = std::io::Error;
-    fn from_str(x: &str) -> Result<Self, Self::Err> {
-        match x {
-            "rust" => Ok(EnumVariation::Rust { non_exhaustive: false }),
-            "rust_non_exhaustive" => Ok(EnumVariation::Rust { non_exhaustive: true }),
-            "bitfield" => Ok(EnumVariation::NewType {
-                is_bitfield: true,
-                is_global: false,
-            }),
-            "consts" => Ok(EnumVariation::Consts),
-            "moduleconsts" => Ok(EnumVariation::ModuleConsts),
-            "newtype" => Ok(EnumVariation::NewType {
-                is_bitfield: false,
-                is_global: false,
-            }),
-            "newtype_global" => Ok(EnumVariation::NewType {
-                is_bitfield: false,
-                is_global: true,
-            }),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                concat!(
-                    "Got an invalid EnumVariation. Accepted values ",
-                    "are 'rust', 'rust_non_exhaustive', 'bitfield', 'consts',",
-                    "'moduleconsts', 'newtype' and 'newtype_global'."
-                ),
-            )),
-        }
-    }
-}
 
 enum EnumBuilder<'a> {
     Rust {
@@ -2236,12 +2164,12 @@ impl<'a> EnumBuilder<'a> {
         name: &'a str,
         mut attrs: Vec<proc_macro2::TokenStream>,
         repr: proc_macro2::TokenStream,
-        enum_variation: EnumVariation,
+        enum_variation: variation::Enum,
         has_typedef: bool,
     ) -> Self {
         let ident = Ident::new(name, Span::call_site());
         match enum_variation {
-            EnumVariation::NewType { is_bitfield, is_global } => EnumBuilder::NewType {
+            variation::Enum::NewType { is_bitfield, is_global } => EnumBuilder::NewType {
                 canonical_name: name,
                 tokens: quote! {
                     #( #attrs )*
@@ -2250,7 +2178,7 @@ impl<'a> EnumBuilder<'a> {
                 is_bitfield,
                 is_global,
             },
-            EnumVariation::Rust { .. } => {
+            variation::Enum::Rust { .. } => {
                 attrs.insert(0, quote! { #[repr( #repr )] });
                 let tokens = quote!();
                 EnumBuilder::Rust {
@@ -2260,7 +2188,7 @@ impl<'a> EnumBuilder<'a> {
                     emitted_any_variants: false,
                 }
             },
-            EnumVariation::Consts => {
+            variation::Enum::Consts => {
                 let mut variants = Vec::new();
                 if !has_typedef {
                     variants.push(quote! {
@@ -2270,7 +2198,7 @@ impl<'a> EnumBuilder<'a> {
                 }
                 EnumBuilder::Consts { variants }
             },
-            EnumVariation::ModuleConsts => {
+            variation::Enum::ModuleConsts => {
                 let ident = Ident::new(CONSTIFIED_ENUM_MODULE_REPR_NAME, Span::call_site());
                 let type_definition = quote! {
                     #( #attrs )*
@@ -2470,7 +2398,7 @@ impl<'a> EnumBuilder<'a> {
         }
     }
 }
-impl CodeGenerator for Enum {
+impl Generator for Enum {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
@@ -2520,12 +2448,12 @@ impl CodeGenerator for Enum {
         };
         let mut attrs = vec![];
         match variation {
-            EnumVariation::Rust { non_exhaustive } => {
+            variation::Enum::Rust { non_exhaustive } => {
                 if non_exhaustive {
                     attrs.push(attributes::non_exhaustive());
                 }
             },
-            EnumVariation::NewType { .. } => {
+            variation::Enum::NewType { .. } => {
                 attrs.push(attributes::repr("transparent"));
             },
             _ => {},
@@ -2686,117 +2614,6 @@ impl CodeGenerator for Enum {
         }
         let item = builder.build(ctx, enum_rust_ty, y);
         y.push(item);
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum MacroTypeVariation {
-    Signed,
-    Unsigned,
-}
-impl fmt::Display for MacroTypeVariation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let y = match self {
-            Self::Signed => "signed",
-            Self::Unsigned => "unsigned",
-        };
-        y.fmt(f)
-    }
-}
-impl Default for MacroTypeVariation {
-    fn default() -> MacroTypeVariation {
-        MacroTypeVariation::Unsigned
-    }
-}
-impl std::str::FromStr for MacroTypeVariation {
-    type Err = std::io::Error;
-    fn from_str(x: &str) -> Result<Self, Self::Err> {
-        match x {
-            "signed" => Ok(MacroTypeVariation::Signed),
-            "unsigned" => Ok(MacroTypeVariation::Unsigned),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                concat!(
-                    "Got an invalid MacroTypeVariation. Accepted values ",
-                    "are 'signed' and 'unsigned'"
-                ),
-            )),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum AliasVariation {
-    TypeAlias,
-    NewType,
-    NewTypeDeref,
-}
-impl fmt::Display for AliasVariation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let y = match self {
-            Self::TypeAlias => "type_alias",
-            Self::NewType => "new_type",
-            Self::NewTypeDeref => "new_type_deref",
-        };
-        y.fmt(f)
-    }
-}
-impl Default for AliasVariation {
-    fn default() -> AliasVariation {
-        AliasVariation::TypeAlias
-    }
-}
-impl std::str::FromStr for AliasVariation {
-    type Err = std::io::Error;
-    fn from_str(x: &str) -> Result<Self, Self::Err> {
-        match x {
-            "type_alias" => Ok(AliasVariation::TypeAlias),
-            "new_type" => Ok(AliasVariation::NewType),
-            "new_type_deref" => Ok(AliasVariation::NewTypeDeref),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                concat!(
-                    "Got an invalid AliasVariation. Accepted values ",
-                    "are 'type_alias', 'new_type', and 'new_type_deref'"
-                ),
-            )),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum NonCopyUnionStyle {
-    BindgenWrapper,
-    ManuallyDrop,
-}
-impl fmt::Display for NonCopyUnionStyle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::BindgenWrapper => "bindgen_wrapper",
-            Self::ManuallyDrop => "manually_drop",
-        };
-        s.fmt(f)
-    }
-}
-impl Default for NonCopyUnionStyle {
-    fn default() -> Self {
-        Self::BindgenWrapper
-    }
-}
-impl std::str::FromStr for NonCopyUnionStyle {
-    type Err = std::io::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "bindgen_wrapper" => Ok(Self::BindgenWrapper),
-            "manually_drop" => Ok(Self::ManuallyDrop),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                concat!(
-                    "Got an invalid NonCopyUnionStyle. Accepted values ",
-                    "are 'bindgen_wrapper' and 'manually_drop'"
-                ),
-            )),
-        }
     }
 }
 
@@ -3078,7 +2895,7 @@ impl TryToOpaque for Type {
     }
 }
 
-impl CodeGenerator for Function {
+impl Generator for Function {
     type Extra = Item;
     type Return = Option<u32>;
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) -> Self::Return {
