@@ -2,14 +2,17 @@ use crate::Opts;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{parse2, File};
+
 mod merge {
     use syn::{
         visit_mut::{visit_file_mut, visit_item_mod_mut, VisitMut},
         File, Item, ItemForeignMod, ItemMod,
     };
+
     pub fn extern_blocks(x: &mut File) {
         Visitor.visit_file_mut(x)
     }
+
     struct Visitor;
     impl VisitMut for Visitor {
         fn visit_file_mut(&mut self, x: &mut File) {
@@ -65,9 +68,11 @@ mod sort {
         visit_mut::{visit_file_mut, visit_item_mod_mut, VisitMut},
         File, Item, ItemMod,
     };
+
     pub fn semantically(x: &mut File) {
         Visitor.visit_file_mut(x)
     }
+
     struct Visitor;
     impl VisitMut for Visitor {
         fn visit_file_mut(&mut self, x: &mut File) {
@@ -105,7 +110,8 @@ mod sort {
 }
 use merge::extern_blocks as merge_extern_blocks;
 use sort::semantically as sort_semantically;
-struct PostProcessingPass {
+
+struct PostProcPass {
     should_run: fn(&Opts) -> bool,
     run: fn(&mut File),
 }
@@ -117,8 +123,9 @@ macro_rules! pass {
         }
     };
 }
-const PASSES: &[PostProcessingPass] = &[pass!(merge_extern_blocks), pass!(sort_semantically)];
-pub(crate) fn postproc(xs: Vec<TokenStream>, opts: &Opts) -> TokenStream {
+const PASSES: &[PostProcPass] = &[pass!(merge_extern_blocks), pass!(sort_semantically)];
+
+pub fn postproc(xs: Vec<TokenStream>, opts: &Opts) -> TokenStream {
     let xs = xs.into_iter().collect();
     let syn = PASSES.iter().any(|x| (x.should_run)(opts));
     if !syn {

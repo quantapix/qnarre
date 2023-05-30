@@ -173,6 +173,7 @@ mod error {
     pub type Result<T> = ::std::result::Result<T, Error>;
 }
 mod impl_debug;
+mod postproc;
 pub mod utils;
 use utils::variation;
 
@@ -2947,8 +2948,5 @@ pub fn codegen(ctx: Context) -> Result<(proc_macro2::TokenStream, Opts), Codegen
 #[allow(warnings)]
 pub mod bitfield_unit;
 
-#[cfg(all(test, target_endian = "little"))]
-mod bitfield_unit_tests;
-mod postproc;
 mod serialize;
 pub mod struct_layout;
