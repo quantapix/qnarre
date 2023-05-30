@@ -1,4 +1,4 @@
-use super::helpers;
+use super::utils;
 use crate::ir::comp::CompInfo;
 use crate::ir::layout::Layout;
 use crate::ir::typ::{Type, TypeKind};
@@ -265,7 +265,7 @@ impl<'a> StructLayoutTracker<'a> {
         align_to(self.latest_offset, layout.align) - self.latest_offset
     }
     fn padding_field(&mut self, layout: Layout) -> proc_macro2::TokenStream {
-        let ty = helpers::blob(self.ctx, layout);
+        let ty = utils::blob(self.ctx, layout);
         let padding_count = self.padding_count;
         self.padding_count += 1;
         let padding_field_name = Ident::new(&format!("__bindgen_padding_{}", padding_count), Span::call_site());
