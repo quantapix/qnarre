@@ -109,15 +109,15 @@ pub mod derive {
         match k {
             EdgeKind::BaseMember
             | EdgeKind::Field
-            | EdgeKind::TypeReference
+            | EdgeKind::TypeRef
             | EdgeKind::VarType
-            | EdgeKind::TemplateArgument
-            | EdgeKind::TemplateDeclaration
-            | EdgeKind::TemplateParameterDefinition => true,
+            | EdgeKind::TemplArg
+            | EdgeKind::TemplDecl
+            | EdgeKind::TemplParamDef => true,
             EdgeKind::Constructor
             | EdgeKind::Destructor
-            | EdgeKind::FunctionReturn
-            | EdgeKind::FunctionParameter
+            | EdgeKind::FnReturn
+            | EdgeKind::FnParameter
             | EdgeKind::InnerType
             | EdgeKind::InnerVar
             | EdgeKind::Method
@@ -146,14 +146,14 @@ pub mod derive {
         fn check_edge_typeref(&self) -> EdgePred {
             match self {
                 DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |k| k == EdgeKind::TypeReference,
+                _ => |k| k == EdgeKind::TypeRef,
             }
         }
 
         fn check_edge_tmpl_inst(&self) -> EdgePred {
             match self {
                 DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |k| matches!(k, EdgeKind::TemplateArgument | EdgeKind::TemplateDeclaration),
+                _ => |k| matches!(k, EdgeKind::TemplArg | EdgeKind::TemplDecl),
             }
         }
 
@@ -325,7 +325,7 @@ pub mod derive {
                     self.derive.can_derive_vec()
                 },
                 TypeKind::Comp(ref x) => {
-                    assert!(!x.has_non_type_template_params());
+                    assert!(!x.has_non_type_templ_params());
                     if !self.derive.can_derive_compound_forward_decl() && x.is_forward_declaration() {
                         return Resolved::No;
                     }
@@ -484,11 +484,7 @@ pub mod has_destructor {
         fn check_edge(k: EdgeKind) -> bool {
             matches!(
                 k,
-                EdgeKind::TypeReference
-                    | EdgeKind::BaseMember
-                    | EdgeKind::Field
-                    | EdgeKind::TemplateArgument
-                    | EdgeKind::TemplateDeclaration
+                EdgeKind::TypeRef | EdgeKind::BaseMember | EdgeKind::Field | EdgeKind::TemplArg | EdgeKind::TemplDecl
             )
         }
 
@@ -551,8 +547,8 @@ pub mod has_destructor {
                     }
                 },
                 TypeKind::TemplateInstantiation(ref t) => {
-                    let destr = self.ys.contains(&t.template_definition().into())
-                        || t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                    let destr = self.ys.contains(&t.templ_def().into())
+                        || t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if destr {
                         self.insert(id)
                     } else {
@@ -602,16 +598,16 @@ pub mod has_float {
             match k {
                 EdgeKind::BaseMember
                 | EdgeKind::Field
-                | EdgeKind::TypeReference
+                | EdgeKind::TypeRef
                 | EdgeKind::VarType
-                | EdgeKind::TemplateArgument
-                | EdgeKind::TemplateDeclaration
-                | EdgeKind::TemplateParameterDefinition => true,
+                | EdgeKind::TemplArg
+                | EdgeKind::TemplDecl
+                | EdgeKind::TemplParamDef => true,
 
                 EdgeKind::Constructor
                 | EdgeKind::Destructor
-                | EdgeKind::FunctionReturn
-                | EdgeKind::FunctionParameter
+                | EdgeKind::FnReturn
+                | EdgeKind::FnParameter
                 | EdgeKind::InnerType
                 | EdgeKind::InnerVar
                 | EdgeKind::Method => false,
@@ -701,11 +697,11 @@ pub mod has_float {
                     YConstrain::Same
                 },
                 TypeKind::TemplateInstantiation(ref t) => {
-                    let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                    let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
                     }
-                    let def = self.ys.contains(&t.template_definition().into());
+                    let def = self.ys.contains(&t.templ_def().into());
                     if def {
                         return self.insert(id);
                     }
@@ -753,16 +749,16 @@ pub mod has_type_param {
             match k {
                 EdgeKind::BaseMember
                 | EdgeKind::Field
-                | EdgeKind::TypeReference
+                | EdgeKind::TypeRef
                 | EdgeKind::VarType
-                | EdgeKind::TemplateArgument
-                | EdgeKind::TemplateDeclaration
-                | EdgeKind::TemplateParameterDefinition => true,
+                | EdgeKind::TemplArg
+                | EdgeKind::TemplDecl
+                | EdgeKind::TemplParamDef => true,
 
                 EdgeKind::Constructor
                 | EdgeKind::Destructor
-                | EdgeKind::FunctionReturn
-                | EdgeKind::FunctionParameter
+                | EdgeKind::FnReturn
+                | EdgeKind::FnParameter
                 | EdgeKind::InnerType
                 | EdgeKind::InnerVar
                 | EdgeKind::Method => false,
@@ -849,11 +845,11 @@ pub mod has_type_param {
                     YConstrain::Same
                 },
                 TypeKind::TemplateInstantiation(ref t) => {
-                    let args = t.template_arguments().iter().any(|x| self.ys.contains(&x.into()));
+                    let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
                     }
-                    let def = self.ys.contains(&t.template_definition().into());
+                    let def = self.ys.contains(&t.templ_def().into());
                     if def {
                         return self.insert(id);
                     }
@@ -931,10 +927,7 @@ pub mod has_vtable {
     }
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
-            matches!(
-                k,
-                EdgeKind::TypeReference | EdgeKind::BaseMember | EdgeKind::TemplateDeclaration
-            )
+            matches!(k, EdgeKind::TypeRef | EdgeKind::BaseMember | EdgeKind::TemplDecl)
         }
 
         fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> YConstrain {
@@ -1008,7 +1001,7 @@ pub mod has_vtable {
                     }
                     self.insert(id, y)
                 },
-                TypeKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
+                TypeKind::TemplateInstantiation(ref x) => self.forward(x.templ_def(), id),
                 _ => YConstrain::Same,
             }
         }
@@ -1086,10 +1079,10 @@ pub mod sizedness {
         fn check_edge(k: EdgeKind) -> bool {
             matches!(
                 k,
-                EdgeKind::TemplateArgument
-                    | EdgeKind::TemplateParameterDefinition
-                    | EdgeKind::TemplateDeclaration
-                    | EdgeKind::TypeReference
+                EdgeKind::TemplArg
+                    | EdgeKind::TemplParamDef
+                    | EdgeKind::TemplDecl
+                    | EdgeKind::TypeRef
                     | EdgeKind::BaseMember
                     | EdgeKind::Field
             )
@@ -1181,7 +1174,7 @@ pub mod sizedness {
                 | TypeKind::Alias(t)
                 | TypeKind::BlockPointer(t)
                 | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
-                TypeKind::TemplateInstantiation(ref x) => self.forward(x.template_definition(), id),
+                TypeKind::TemplateInstantiation(ref x) => self.forward(x.templ_def(), id),
                 TypeKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
                 TypeKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
                 TypeKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
@@ -1244,18 +1237,18 @@ pub mod used_templ_param {
     impl<'ctx> Analysis<'ctx> {
         fn check_edge(k: EdgeKind) -> bool {
             match k {
-                EdgeKind::TemplateArgument
+                EdgeKind::TemplArg
                 | EdgeKind::BaseMember
                 | EdgeKind::Field
                 | EdgeKind::Constructor
                 | EdgeKind::Destructor
                 | EdgeKind::VarType
-                | EdgeKind::FunctionReturn
-                | EdgeKind::FunctionParameter
-                | EdgeKind::TypeReference => true,
+                | EdgeKind::FnReturn
+                | EdgeKind::FnParameter
+                | EdgeKind::TypeRef => true,
                 EdgeKind::InnerVar | EdgeKind::InnerType => false,
                 EdgeKind::Method => false,
-                EdgeKind::TemplateDeclaration | EdgeKind::TemplateParameterDefinition => false,
+                EdgeKind::TemplDecl | EdgeKind::TemplParamDef => false,
                 EdgeKind::Generic => false,
             }
         }
@@ -1282,7 +1275,7 @@ pub mod used_templ_param {
             inst: &TemplInstantiation,
         ) {
             let args = inst
-                .template_arguments()
+                .templ_args()
                 .iter()
                 .map(|x| {
                     x.into_resolver()
@@ -1309,13 +1302,13 @@ pub mod used_templ_param {
         }
 
         fn constrain_instantiation(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInstantiation) {
-            let decl = self.ctx.resolve_type(inst.template_definition());
-            let args = inst.template_arguments();
+            let decl = self.ctx.resolve_type(inst.templ_def());
+            let args = inst.templ_args();
             let ps = decl.self_templ_params(self.ctx);
-            debug_assert!(id != inst.template_definition());
+            debug_assert!(id != inst.templ_def());
             let used_by_def = self
                 .ys
-                .get(&inst.template_definition().into())
+                .get(&inst.templ_def().into())
                 .expect("Should have a used entry for instantiation's template definition")
                 .as_ref()
                 .expect(
@@ -1417,8 +1410,8 @@ pub mod used_templ_param {
                 }
                 let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
                 if let Some(TypeKind::TemplateInstantiation(inst)) = k {
-                    let decl = ctx.resolve_type(inst.template_definition());
-                    let args = inst.template_arguments();
+                    let decl = ctx.resolve_type(inst.templ_def());
+                    let args = inst.templ_args();
                     let ps = decl.self_templ_params(ctx);
                     for (arg, p) in args.iter().zip(ps.iter()) {
                         let arg = arg
@@ -1476,7 +1469,7 @@ pub mod used_templ_param {
                     y.insert(id);
                 },
                 Some(TypeKind::TemplateInstantiation(x)) => {
-                    if self.alloweds.contains(&x.template_definition().into()) {
+                    if self.alloweds.contains(&x.templ_def().into()) {
                         self.constrain_instantiation(id, &mut y, x);
                     } else {
                         self.constrain_instantiation_of_blocklisted_template(id, &mut y, x);

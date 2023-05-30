@@ -354,36 +354,36 @@ bitflags! {
     }
 }
 fn derives_of_item(it: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
-    let mut derivable_traits = DerivableTraits::empty();
-    let all_template_params = it.all_templ_params(ctx);
+    let mut ys = DerivableTraits::empty();
+    let ps = it.all_templ_params(ctx);
     if it.can_derive_copy(ctx) && !it.annotations().disallow_copy() {
-        derivable_traits |= DerivableTraits::COPY;
-        derivable_traits |= DerivableTraits::CLONE;
+        ys |= DerivableTraits::COPY;
+        ys |= DerivableTraits::CLONE;
     } else if packed {
-        return derivable_traits;
+        return ys;
     }
     if it.can_derive_debug(ctx) && !it.annotations().disallow_debug() {
-        derivable_traits |= DerivableTraits::DEBUG;
+        ys |= DerivableTraits::DEBUG;
     }
     if it.can_derive_default(ctx) && !it.annotations().disallow_default() {
-        derivable_traits |= DerivableTraits::DEFAULT;
+        ys |= DerivableTraits::DEFAULT;
     }
     if it.can_derive_hash(ctx) {
-        derivable_traits |= DerivableTraits::HASH;
+        ys |= DerivableTraits::HASH;
     }
     if it.can_derive_partialord(ctx) {
-        derivable_traits |= DerivableTraits::PARTIAL_ORD;
+        ys |= DerivableTraits::PARTIAL_ORD;
     }
     if it.can_derive_ord(ctx) {
-        derivable_traits |= DerivableTraits::ORD;
+        ys |= DerivableTraits::ORD;
     }
     if it.can_derive_partialeq(ctx) {
-        derivable_traits |= DerivableTraits::PARTIAL_EQ;
+        ys |= DerivableTraits::PARTIAL_EQ;
     }
     if it.can_derive_eq(ctx) {
-        derivable_traits |= DerivableTraits::EQ;
+        ys |= DerivableTraits::EQ;
     }
-    derivable_traits
+    ys
 }
 impl From<DerivableTraits> for Vec<&'static str> {
     fn from(derivable_traits: DerivableTraits) -> Vec<&'static str> {
@@ -510,10 +510,10 @@ impl ToPtr for proc_macro2::TokenStream {
     }
 }
 trait AppendImplicitTemplParams {
-    fn append_implicit_template_params(&mut self, ctx: &Context, it: &Item);
+    fn append_implicit_templ_params(&mut self, ctx: &Context, it: &Item);
 }
 impl AppendImplicitTemplParams for proc_macro2::TokenStream {
-    fn append_implicit_template_params(&mut self, ctx: &Context, it: &Item) {
+    fn append_implicit_templ_params(&mut self, ctx: &Context, it: &Item) {
         let it = it.id().into_resolver().through_type_refs().resolve(ctx);
         match *it.expect_type().kind() {
             TypeKind::UnresolvedTypeRef(..) => {
@@ -875,7 +875,7 @@ impl CodeGenerator for Type {
                     let mut inner_ty = inner_item
                         .try_to_rust_ty_or_opaque(ctx, &())
                         .unwrap_or_else(|_| self.to_opaque(ctx, it));
-                    inner_ty.append_implicit_template_params(ctx, inner_item);
+                    inner_ty.append_implicit_templ_params(ctx, inner_item);
                     inner_ty
                 };
                 {
@@ -1080,7 +1080,7 @@ impl CodeGenerator for TemplInstantiation {
         if !ctx.opts().layout_tests || self.is_opaque(ctx, it) {
             return;
         }
-        if ctx.uses_any_template_parameters(it.id()) {
+        if ctx.uses_any_templ_params(it.id()) {
             return;
         }
         let layout = it.kind().expect_type().layout(ctx);
@@ -1231,7 +1231,7 @@ impl<'a> FieldCodegen<'a> for FieldData {
         let field_item = self.ty().into_resolver().through_type_refs().resolve(ctx);
         let field_ty = field_item.expect_type();
         let mut ty = self.ty().to_rust_ty_or_opaque(ctx, &());
-        ty.append_implicit_template_params(ctx, field_item);
+        ty.append_implicit_templ_params(ctx, field_item);
         let ty = if parent.is_union() {
             wrap_union_field_if_needed(ctx, struct_layout, ty, result)
         } else if let Some(item) = field_ty.is_incomplete_array(ctx) {
@@ -1593,7 +1593,7 @@ impl CodeGenerator for CompInfo {
     fn codegen(&self, ctx: &Context, y: &mut CodegenResult<'_>, it: &Item) {
         debug!("<CompInfo as CodeGenerator>::codegen: item = {:?}", it);
         debug_assert!(it.is_enabled_for_codegen(ctx));
-        if self.has_non_type_template_params() {
+        if self.has_non_type_templ_params() {
             return;
         }
         let ty = it.expect_type();
@@ -1623,7 +1623,7 @@ impl CodeGenerator for CompInfo {
                 }
                 let inner_item = ctx.resolve_item(base.ty);
                 let mut inner = inner_item.to_rust_ty_or_opaque(ctx, &());
-                inner.append_implicit_template_params(ctx, inner_item);
+                inner.append_implicit_templ_params(ctx, inner_item);
                 let field_name = ctx.rust_ident(&base.field_name);
                 struct_layout.saw_base(inner_item.expect_type());
                 let visibility = match (base.is_public(), ctx.opts().respect_cxx_access_specs) {
@@ -1788,7 +1788,7 @@ impl CodeGenerator for CompInfo {
                 && !ctx.no_default_by_name(it)
                 && !it.annotations().disallow_default();
         }
-        let all_template_params = it.all_templ_params(ctx);
+        let all_templ_params = it.all_templ_params(ctx);
         if derivable_traits.contains(DerivableTraits::COPY) && !derivable_traits.contains(DerivableTraits::CLONE) {
             needs_clone_impl = true;
         }
@@ -1844,7 +1844,7 @@ impl CodeGenerator for CompInfo {
                 canonical_ident
             );
         }
-        if all_template_params.is_empty() {
+        if all_templ_params.is_empty() {
             if !is_opaque {
                 for var in self.inner_vars() {
                     ctx.resolve_item(*var).codegen(ctx, y, &());
@@ -2892,11 +2892,7 @@ impl TryToRustTy for TemplInstantiation {
         if self.is_opaque(ctx, it) {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
-        let def = self
-            .template_definition()
-            .into_resolver()
-            .through_type_refs()
-            .resolve(ctx);
+        let def = self.templ_def().into_resolver().through_type_refs().resolve(ctx);
         let mut ty = quote! {};
         let def_path = def.namespace_aware_canon_path(ctx);
         ty.append_separated(def_path.into_iter().map(|p| ctx.rust_ident(p)), quote!(::));
@@ -2904,23 +2900,23 @@ impl TryToRustTy for TemplInstantiation {
         if def_params.is_empty() {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
-        let template_args = self
-            .template_arguments()
+        let templ_args = self
+            .templ_args()
             .iter()
             .zip(def_params.iter())
-            .filter(|&(_, param)| ctx.uses_template_parameter(def.id(), *param))
+            .filter(|&(_, param)| ctx.uses_templ_param(def.id(), *param))
             .map(|(arg, _)| {
                 let arg = arg.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = arg.try_to_rust_ty(ctx, &())?;
-                ty.append_implicit_template_params(ctx, arg);
+                ty.append_implicit_templ_params(ctx, arg);
                 Ok(ty)
             })
             .collect::<error::Result<Vec<_>>>()?;
-        if template_args.is_empty() {
+        if templ_args.is_empty() {
             return Ok(ty);
         }
         Ok(quote! {
-            #ty < #( #template_args ),* >
+            #ty < #( #templ_args ),* >
         })
     }
 }
@@ -3005,7 +3001,7 @@ impl TryToRustTy for Type {
                     && it
                         .used_templ_params(ctx)
                         .into_iter()
-                        .any(|param| param.is_template_param(ctx, &()))
+                        .any(|param| param.is_templ_param(ctx, &()))
                 {
                     self.try_to_opaque(ctx, it)
                 } else if let Some(ty) = self.name().and_then(|name| utils::type_from_named(ctx, name)) {
@@ -3015,8 +3011,8 @@ impl TryToRustTy for Type {
                 }
             },
             TypeKind::Comp(ref info) => {
-                let template_params = it.all_templ_params(ctx);
-                if info.has_non_type_template_params() || (it.is_opaque(ctx, &()) && !template_params.is_empty()) {
+                let ps = it.all_templ_params(ctx);
+                if info.has_non_type_templ_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
                     return self.try_to_opaque(ctx, it);
                 }
                 utils::build_path(it, ctx)
@@ -3027,7 +3023,7 @@ impl TryToRustTy for Type {
                 let inner = inner.into_resolver().through_type_refs().resolve(ctx);
                 let inner_ty = inner.expect_type();
                 let mut ty = inner.to_rust_ty_or_opaque(ctx, &());
-                ty.append_implicit_template_params(ctx, inner);
+                ty.append_implicit_templ_params(ctx, inner);
                 if inner_ty.canonical_type(ctx).is_function() {
                     Ok(ty)
                 } else {

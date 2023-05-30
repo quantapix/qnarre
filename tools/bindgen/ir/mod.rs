@@ -961,7 +961,7 @@ pub mod template {
             ctx.resolve_item(id)
                 .all_templ_params(ctx)
                 .into_iter()
-                .filter(|x| ctx.uses_template_parameter(id, *x))
+                .filter(|x| ctx.uses_templ_param(id, *x))
                 .collect()
         }
     }
@@ -978,7 +978,7 @@ pub mod template {
     pub trait AsTemplParam {
         type Extra;
         fn as_templ_param(&self, ctx: &Context, extra: &Self::Extra) -> Option<TypeId>;
-        fn is_template_param(&self, ctx: &Context, extra: &Self::Extra) -> bool {
+        fn is_templ_param(&self, ctx: &Context, extra: &Self::Extra) -> bool {
             self.as_templ_param(ctx, extra).is_some()
         }
     }
@@ -1007,17 +1007,17 @@ pub mod template {
                 args: args.into_iter().collect(),
             }
         }
-        pub fn template_definition(&self) -> TypeId {
+        pub fn templ_def(&self) -> TypeId {
             self.def
         }
-        pub fn template_arguments(&self) -> &[TypeId] {
+        pub fn templ_args(&self) -> &[TypeId] {
             &self.args[..]
         }
         pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInstantiation> {
             use clang_lib::*;
             let args = ty
-                .template_args()
-                .map_or(vec![], |x| match ty.canonical_type().template_args() {
+                .templ_args()
+                .map_or(vec![], |x| match ty.canonical_type().templ_args() {
                     Some(x2) => {
                         let len = x.len();
                         x.chain(x2.skip(len))
@@ -1065,12 +1065,12 @@ pub mod template {
     impl IsOpaque for TemplInstantiation {
         type Extra = Item;
         fn is_opaque(&self, ctx: &Context, it: &Item) -> bool {
-            if self.template_definition().is_opaque(ctx, &()) {
+            if self.templ_def().is_opaque(ctx, &()) {
                 return true;
             }
             let mut path = it.path_for_allowlisting(ctx).clone();
             let args: Vec<_> = self
-                .template_arguments()
+                .templ_args()
                 .iter()
                 .map(|arg| {
                     let arg_path = ctx.resolve_item(*arg).path_for_allowlisting(ctx);
@@ -1092,9 +1092,9 @@ pub mod template {
         where
             T: Tracer,
         {
-            tracer.visit_kind(self.def.into(), EdgeKind::TemplateDeclaration);
-            for arg in self.template_arguments() {
-                tracer.visit_kind(arg.into(), EdgeKind::TemplateArgument);
+            tracer.visit_kind(self.def.into(), EdgeKind::TemplDecl);
+            for arg in self.templ_args() {
+                tracer.visit_kind(arg.into(), EdgeKind::TemplArg);
             }
         }
     }

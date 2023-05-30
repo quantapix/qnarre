@@ -397,9 +397,9 @@ impl Trace for FnSig {
     where
         T: Tracer,
     {
-        tracer.visit_kind(self.ret_type().into(), EdgeKind::FunctionReturn);
+        tracer.visit_kind(self.ret_type().into(), EdgeKind::FnReturn);
         for &(_, ty) in self.arg_types() {
-            tracer.visit_kind(ty.into(), EdgeKind::FunctionParameter);
+            tracer.visit_kind(ty.into(), EdgeKind::FnParameter);
         }
     }
 }
@@ -423,7 +423,7 @@ pub fn cursor_mangling(ctx: &Context, cur: &clang::Cursor) -> Option<String> {
     if !ctx.opts().enable_mangling {
         return None;
     }
-    if cur.is_in_non_fully_specialized_template() {
+    if cur.is_in_non_fully_specialized_templ() {
         return None;
     }
     let is_destructor = cur.kind() == clang_lib::CXCursor_Destructor;

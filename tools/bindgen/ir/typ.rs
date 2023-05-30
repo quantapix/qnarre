@@ -62,7 +62,7 @@ impl Type {
     pub fn is_type_param(&self) -> bool {
         matches!(self.kind, TypeKind::TypeParam)
     }
-    pub fn is_template_instantiation(&self) -> bool {
+    pub fn is_templ_instantiation(&self) -> bool {
         matches!(self.kind, TypeKind::TemplateInstantiation(..))
     }
     pub fn is_function(&self) -> bool {
@@ -193,9 +193,7 @@ impl Type {
             TypeKind::ResolvedTypeRef(inner) | TypeKind::Alias(inner) | TypeKind::TemplateAlias(inner, _) => {
                 ctx.resolve_type(inner).safe_canonical_type(ctx)
             },
-            TypeKind::TemplateInstantiation(ref x) => {
-                ctx.resolve_type(x.template_definition()).safe_canonical_type(ctx)
-            },
+            TypeKind::TemplateInstantiation(ref x) => ctx.resolve_type(x.templ_def()).safe_canonical_type(ctx),
             TypeKind::UnresolvedTypeRef(..) => None,
         }
     }
@@ -250,7 +248,7 @@ impl Type {
             return Ok(parse::Resolved::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
         }
         let kind = if location.kind() == CXCursor_TemplateRef
-            || (ty.template_args().is_some() && ty_kind != CXType_Typedef)
+            || (ty.templ_args().is_some() && ty_kind != CXType_Typedef)
         {
             match TemplInstantiation::from_ty(ty, ctx) {
                 Some(inst) => TypeKind::TemplateInstantiation(inst),
@@ -271,7 +269,7 @@ impl Type {
                     if ty.ret_type().is_some() {
                         let signature = FnSig::from_ty(ty, &location, ctx)?;
                         TypeKind::Function(signature)
-                    } else if ty.is_fully_instantiated_template() {
+                    } else if ty.is_fully_instantiated_templ() {
                         debug!("Template specialization: {:?}, {:?} {:?}", ty, location, canonical_ty);
                         let complex = CompInfo::from_ty(potential_id, ty, Some(location), ctx).expect("C'mon");
                         TypeKind::Comp(complex)
@@ -561,12 +559,12 @@ impl Trace for Type {
             | TypeKind::BlockPointer(inner)
             | TypeKind::Alias(inner)
             | TypeKind::ResolvedTypeRef(inner) => {
-                tracer.visit_kind(inner.into(), EdgeKind::TypeReference);
+                tracer.visit_kind(inner.into(), EdgeKind::TypeRef);
             },
-            TypeKind::TemplateAlias(inner, ref template_params) => {
-                tracer.visit_kind(inner.into(), EdgeKind::TypeReference);
-                for param in template_params {
-                    tracer.visit_kind(param.into(), EdgeKind::TemplateParameterDefinition);
+            TypeKind::TemplateAlias(inner, ref ps) => {
+                tracer.visit_kind(inner.into(), EdgeKind::TypeRef);
+                for p in ps {
+                    tracer.visit_kind(p.into(), EdgeKind::TemplParamDef);
                 }
             },
             TypeKind::TemplateInstantiation(ref x) => {

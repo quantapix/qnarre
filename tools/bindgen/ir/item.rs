@@ -438,7 +438,7 @@ impl Item {
                         i = ctx.resolve_item(inner);
                     },
                     TypeKind::TemplateInstantiation(ref x) => {
-                        i = ctx.resolve_item(x.template_definition());
+                        i = ctx.resolve_item(x.templ_def());
                     },
                     _ => return i.id(),
                 },
@@ -457,7 +457,7 @@ impl Item {
         if let ItemKind::Type(ref ty) = *self.kind() {
             if let TypeKind::TemplateInstantiation(ref x) = *ty.kind() {
                 to.push_str(&format!("_open{}_", level));
-                for arg in x.template_arguments() {
+                for arg in x.templ_args() {
                     arg.into_resolver()
                         .through_type_refs()
                         .resolve(ctx)
@@ -536,7 +536,7 @@ impl Item {
             return path.join("_");
         }
         let base_name = target.base_name(ctx);
-        if target.is_template_param(ctx, &()) {
+        if target.is_templ_param(ctx, &()) {
             return base_name;
         }
         let mut ids_iter = target
@@ -1009,7 +1009,7 @@ impl Item {
             return None;
         }
         let ty_spelling = ty.spelling();
-        fn is_template_with_spelling(refd: &clang::Cursor, spelling: &str) -> bool {
+        fn is_templ_with_spelling(refd: &clang::Cursor, spelling: &str) -> bool {
             lazy_static! {
                 static ref ANON_TYPE_PARAM_RE: regex::Regex =
                     regex::Regex::new(r"^type\-parameter\-\d+\-\d+$").unwrap();
@@ -1020,11 +1020,11 @@ impl Item {
             let refd_spelling = refd.spelling();
             refd_spelling == spelling || (refd_spelling.is_empty() && ANON_TYPE_PARAM_RE.is_match(spelling.as_ref()))
         }
-        let definition = if is_template_with_spelling(&location, &ty_spelling) {
+        let definition = if is_templ_with_spelling(&location, &ty_spelling) {
             location
         } else if location.kind() == clang_lib::CXCursor_TypeRef {
             match location.referenced() {
-                Some(refd) if is_template_with_spelling(&refd, &ty_spelling) => refd,
+                Some(refd) if is_templ_with_spelling(&refd, &ty_spelling) => refd,
                 _ => return None,
             }
         } else {
@@ -1033,7 +1033,7 @@ impl Item {
                 let child_ty = child.cur_type();
                 if child_ty.kind() == clang_lib::CXCursor_TypeRef && child_ty.spelling() == ty_spelling {
                     match child.referenced() {
-                        Some(refd) if is_template_with_spelling(&refd, &ty_spelling) => {
+                        Some(refd) if is_templ_with_spelling(&refd, &ty_spelling) => {
                             definition = Some(refd);
                             return clang_lib::CXChildVisit_Break;
                         },
@@ -1044,7 +1044,7 @@ impl Item {
             });
             definition?
         };
-        assert!(is_template_with_spelling(&definition, &ty_spelling));
+        assert!(is_templ_with_spelling(&definition, &ty_spelling));
         let parent = ctx.root_module().into();
         if let Some(id) = ctx.get_type_param(&definition) {
             if let Some(with_id) = with_id {

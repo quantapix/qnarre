@@ -206,7 +206,7 @@ pub struct Context {
     translation_unit: clang::TranslationUnit,
     type_params: HashMap<clang::Cursor, TypeId>,
     types: HashMap<TypeKey, TypeId>,
-    used_template_parameters: Option<HashMap<ItemId, ItemSet>>,
+    used_templ_params: Option<HashMap<ItemId, ItemSet>>,
 }
 impl Context {
     pub fn new(opts: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
@@ -261,7 +261,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             translation_unit,
             type_params: Default::default(),
             types: Default::default(),
-            used_template_parameters: None,
+            used_templ_params: None,
         }
     }
     pub fn is_target_wasm32(&self) -> bool {
@@ -306,7 +306,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let id = it.id();
         let is_type = it.kind().is_type();
         let is_unnamed = is_type && it.expect_type().name().is_none();
-        let is_template_instantiation = is_type && it.expect_type().is_template_instantiation();
+        let is_template_instantiation = is_type && it.expect_type().is_templ_instantiation();
         if it.id() != self.root_module {
             self.add_item_to_module(&it);
         }
@@ -324,7 +324,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         if let Some(mut decl) = decl {
             if !decl.is_valid() {
                 if let Some(loc) = loc {
-                    if loc.is_template_like() {
+                    if loc.is_templ_like() {
                         decl = loc;
                     }
                 }
@@ -630,7 +630,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.compute_has_vtable();
         self.compute_sizedness();
         self.compute_has_destructor();
-        self.find_used_template_parameters();
+        self.find_used_templ_params();
         self.compute_enum_typedef_combos();
         self.compute_cannot_derive_debug();
         self.compute_cannot_derive_default();
@@ -687,11 +687,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.in_codegen_phase());
         self.have_destructor.as_ref().unwrap().contains(&id.into())
     }
-    fn find_used_template_parameters(&mut self) {
-        let _t = self.timer("find_used_template_parameters");
+    fn find_used_templ_params(&mut self) {
+        let _t = self.timer("find_used_templ_params");
         if self.opts.allowlist_recursively {
             let used_params = analyze::<used_templ_param::Analysis>(self);
-            self.used_template_parameters = Some(used_params);
+            self.used_templ_params = Some(used_params);
         } else {
             let mut used_params = HashMap::default();
             for &id in self.allowed_items() {
@@ -699,10 +699,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     .entry(id)
                     .or_insert_with(|| id.self_templ_params(self).into_iter().map(|p| p.into()).collect());
             }
-            self.used_template_parameters = Some(used_params);
+            self.used_templ_params = Some(used_params);
         }
     }
-    pub fn uses_template_parameter(&self, id: ItemId, templ_param: TypeId) -> bool {
+    pub fn uses_templ_param(&self, id: ItemId, templ_param: TypeId) -> bool {
         assert!(self.in_codegen_phase());
         if self.resolve_item(id).is_blocklisted(self) {
             return true;
@@ -713,18 +713,18 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .through_type_aliases()
             .resolve(self)
             .id();
-        self.used_template_parameters
+        self.used_templ_params
             .as_ref()
             .expect("should have found template parameter usage if we're in codegen")
             .get(&id)
             .map_or(false, |x| x.contains(&templ_param))
     }
-    pub fn uses_any_template_parameters(&self, id: ItemId) -> bool {
+    pub fn uses_any_templ_params(&self, id: ItemId) -> bool {
         assert!(
             self.in_codegen_phase(),
             "We only compute template parameter usage as we enter codegen"
         );
-        self.used_template_parameters
+        self.used_templ_params
             .as_ref()
             .expect("should have template parameter usage info in codegen phase")
             .get(&id)
@@ -773,43 +773,33 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     pub fn known_semantic_parent(&self, definition: clang::Cursor) -> Option<ItemId> {
         self.semantic_parents.get(&definition).cloned()
     }
-    fn get_declaration_info_for_template_instantiation(
-        &self,
-        instantiation: &Cursor,
-    ) -> Option<(Cursor, ItemId, usize)> {
-        instantiation
-            .cur_type()
-            .canonical_declaration(Some(instantiation))
-            .and_then(|canon_decl| {
-                self.get_resolved_type(&canon_decl).and_then(|template_decl_id| {
-                    let num_params = template_decl_id.num_self_templ_params(self);
-                    if num_params == 0 {
+    fn get_declaration_info_for_templ_instantiation(&self, cur: &Cursor) -> Option<(Cursor, ItemId, usize)> {
+        cur.cur_type()
+            .canonical_declaration(Some(cur))
+            .and_then(|x| {
+                self.get_resolved_type(&x).and_then(|x2| {
+                    let n = x2.num_self_templ_params(self);
+                    if n == 0 {
                         None
                     } else {
-                        Some((*canon_decl.cursor(), template_decl_id.into(), num_params))
+                        Some((*x.cursor(), x2.into(), n))
                     }
                 })
             })
             .or_else(|| {
-                instantiation
-                    .referenced()
-                    .and_then(|referenced| {
-                        self.currently_parsed_types()
-                            .iter()
-                            .find(|partial_ty| *partial_ty.decl() == referenced)
-                            .cloned()
-                    })
-                    .and_then(|template_decl| {
-                        let num_template_params = template_decl.num_self_templ_params(self);
-                        if num_template_params == 0 {
+                cur.referenced()
+                    .and_then(|x| self.currently_parsed_types().iter().find(|x2| *x2.decl() == x).cloned())
+                    .and_then(|x| {
+                        let n = x.num_self_templ_params(self);
+                        if n == 0 {
                             None
                         } else {
-                            Some((*template_decl.decl(), template_decl.id(), num_template_params))
+                            Some((*x.decl(), x.id(), n))
                         }
                     })
             })
     }
-    fn instantiate_template(
+    fn instantiate_templ(
         &mut self,
         with_id: ItemId,
         template: TypeId,
@@ -849,7 +839,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 },
                 clang_lib::CXCursor_TemplateRef => {
                     let (template_decl_cursor, template_decl_id, num_expected_template_args) =
-                        self.get_declaration_info_for_template_instantiation(child)?;
+                        self.get_declaration_info_for_templ_instantiation(child)?;
                     if num_expected_template_args == 0 || child.has_at_least_num_children(num_expected_template_args) {
                         let ty = Item::from_ty_or_ref(child.cur_type(), *child, Some(template.into()), self);
                         args.push(ty);
@@ -954,14 +944,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             if let Some(id) = self.get_resolved_type(&decl) {
                 debug!("Already resolved ty {:?}, {:?}, {:?} {:?}", id, decl, ty, location);
                 if let Some(location) = location {
-                    if decl.cursor().is_template_like() && *ty != decl.cursor().cur_type() {
+                    if decl.cursor().is_templ_like() && *ty != decl.cursor().cur_type() {
                         if decl.cursor().kind() == CXCursor_TypeAliasTemplateDecl
                             && !location.contains_cursor(CXCursor_TypeRef)
                             && ty.canonical_type().is_valid_and_exposed()
                         {
                             return None;
                         }
-                        return self.instantiate_template(with_id, id, ty, location).or(Some(id));
+                        return self.instantiate_templ(with_id, id, ty, location).or(Some(id));
                     }
                 }
                 return Some(self.build_ty_wrapper(with_id, id, parent_id, ty));

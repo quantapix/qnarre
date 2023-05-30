@@ -515,7 +515,7 @@ impl Base {
 pub struct CompInfo {
     kind: CompKind,
     fields: CompFields,
-    template_params: Vec<TypeId>,
+    templ_params: Vec<TypeId>,
     methods: Vec<Method>,
     constructors: Vec<FnId>,
     destructor: Option<(MethodKind, FnId)>,
@@ -525,7 +525,7 @@ pub struct CompInfo {
     has_own_virtual_method: bool,
     has_destructor: bool,
     has_nonempty_base: bool,
-    has_non_type_template_params: bool,
+    has_non_type_templ_params: bool,
     has_unevaluable_bit_field_width: bool,
     packed_attr: bool,
     found_unknown_attr: bool,
@@ -536,7 +536,7 @@ impl CompInfo {
         CompInfo {
             kind,
             fields: CompFields::default(),
-            template_params: vec![],
+            templ_params: vec![],
             methods: vec![],
             constructors: vec![],
             destructor: None,
@@ -546,7 +546,7 @@ impl CompInfo {
             has_own_virtual_method: false,
             has_destructor: false,
             has_nonempty_base: false,
-            has_non_type_template_params: false,
+            has_non_type_templ_params: false,
             has_unevaluable_bit_field_width: false,
             packed_attr: false,
             found_unknown_attr: false,
@@ -625,8 +625,8 @@ impl CompInfo {
             Field::Bitfields(ref unit) => unit.layout.size > RUST_DERIVE_IN_ARRAY_LIMIT,
         })
     }
-    pub fn has_non_type_template_params(&self) -> bool {
-        self.has_non_type_template_params
+    pub fn has_non_type_templ_params(&self) -> bool {
+        self.has_non_type_templ_params
     }
     pub fn has_own_virtual_method(&self) -> bool {
         self.has_own_virtual_method
@@ -659,10 +659,7 @@ impl CompInfo {
         ctx: &mut Context,
     ) -> Result<Self, parse::Error> {
         use clang_lib::*;
-        assert!(
-            ty.template_args().is_none(),
-            "We handle template instantiations elsewhere"
-        );
+        assert!(ty.templ_args().is_none(), "We handle template instantiations elsewhere");
         let mut cursor = ty.declaration();
         let mut kind = Self::kind_from_cursor(&cursor);
         if kind.is_err() {
@@ -768,7 +765,7 @@ impl CompInfo {
                         "Item::type_param should't fail when pointing \
                          at a TemplateTypeParameter",
                     );
-                    ci.template_params.push(param);
+                    ci.templ_params.push(param);
                 },
                 CXCursor_CXXBaseSpecifier => {
                     let is_virtual_base = cur2.is_virtual_base();
@@ -796,7 +793,7 @@ impl CompInfo {
                     debug_assert!(!(is_static && is_virtual), "How?");
                     ci.has_destructor |= cur2.kind() == CXCursor_Destructor;
                     ci.has_own_virtual_method |= is_virtual;
-                    if !ci.template_params.is_empty() {
+                    if !ci.templ_params.is_empty() {
                         return CXChildVisit_Continue;
                     }
                     let signature = match Item::parse(cur2, Some(potential_id), ctx) {
@@ -836,7 +833,7 @@ impl CompInfo {
                     }
                 },
                 CXCursor_NonTypeTemplateParameter => {
-                    ci.has_non_type_template_params = true;
+                    ci.has_non_type_templ_params = true;
                 },
                 CXCursor_VarDecl => {
                     let linkage = cur2.linkage();
@@ -879,7 +876,7 @@ impl CompInfo {
             CXCursor_UnionDecl => CompKind::Union,
             CXCursor_ClassDecl | CXCursor_StructDecl => CompKind::Struct,
             CXCursor_CXXBaseSpecifier | CXCursor_ClassTemplatePartialSpecialization | CXCursor_ClassTemplate => {
-                match cur.template_kind() {
+                match cur.templ_kind() {
                     CXCursor_UnionDecl => CompKind::Union,
                     _ => CompKind::Struct,
                 }
@@ -973,8 +970,8 @@ impl DotAttrs for CompInfo {
         if self.has_nonempty_base {
             writeln!(y, "<tr><td>has_nonempty_base</td><td>true</td></tr>")?;
         }
-        if self.has_non_type_template_params {
-            writeln!(y, "<tr><td>has_non_type_template_params</td><td>true</td></tr>")?;
+        if self.has_non_type_templ_params {
+            writeln!(y, "<tr><td>has_non_type_templ_params</td><td>true</td></tr>")?;
         }
         if self.packed_attr {
             writeln!(y, "<tr><td>packed_attr</td><td>true</td></tr>")?;
@@ -995,7 +992,7 @@ impl DotAttrs for CompInfo {
 impl IsOpaque for CompInfo {
     type Extra = Option<Layout>;
     fn is_opaque(&self, ctx: &Context, layout: &Option<Layout>) -> bool {
-        if self.has_non_type_template_params || self.has_unevaluable_bit_field_width {
+        if self.has_non_type_templ_params || self.has_unevaluable_bit_field_width {
             return true;
         }
         if let CompFields::Error = self.fields {
@@ -1018,7 +1015,7 @@ impl IsOpaque for CompInfo {
 }
 impl TemplParams for CompInfo {
     fn self_templ_params(&self, _ctx: &Context) -> Vec<TypeId> {
-        self.template_params.clone()
+        self.templ_params.clone()
     }
 }
 impl Trace for CompInfo {
@@ -1028,7 +1025,7 @@ impl Trace for CompInfo {
         T: Tracer,
     {
         for p in it.all_templ_params(ctx) {
-            tracer.visit_kind(p.into(), EdgeKind::TemplateParameterDefinition);
+            tracer.visit_kind(p.into(), EdgeKind::TemplParamDef);
         }
         for ty in self.inner_types() {
             tracer.visit_kind(ty.into(), EdgeKind::InnerType);

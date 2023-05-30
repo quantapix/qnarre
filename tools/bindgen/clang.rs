@@ -99,9 +99,9 @@ impl Cursor {
     pub fn semantic_parent(&self) -> Cursor {
         self.fallible_semantic_parent().unwrap()
     }
-    pub fn num_template_args(&self) -> Option<u32> {
+    pub fn num_templ_args(&self) -> Option<u32> {
         self.cur_type()
-            .num_template_args()
+            .num_templ_args()
             .or_else(|| {
                 let y: c_int = unsafe { clang_Cursor_getNumTemplateArguments(self.cur) };
                 if y >= 0 {
@@ -114,7 +114,7 @@ impl Cursor {
             .or_else(|| {
                 let y = self.canonical();
                 if y != *self {
-                    y.num_template_args()
+                    y.num_templ_args()
                 } else {
                     None
                 }
@@ -143,7 +143,7 @@ impl Cursor {
         let tu = self.translation_unit();
         y == tu.fallible_semantic_parent()
     }
-    pub fn is_template_like(&self) -> bool {
+    pub fn is_templ_like(&self) -> bool {
         matches!(
             self.kind(),
             CXCursor_ClassTemplate | CXCursor_ClassTemplatePartialSpecialization | CXCursor_TypeAliasTemplateDecl
@@ -158,41 +158,41 @@ impl Cursor {
     pub fn is_definition(&self) -> bool {
         unsafe { clang_isCursorDefinition(self.cur) != 0 }
     }
-    pub fn is_template_specialization(&self) -> bool {
+    pub fn is_templ_specialization(&self) -> bool {
         self.specialized().is_some()
     }
-    pub fn is_fully_specialized_template(&self) -> bool {
-        self.is_template_specialization()
+    pub fn is_fully_specialized_templ(&self) -> bool {
+        self.is_templ_specialization()
             && self.kind() != CXCursor_ClassTemplatePartialSpecialization
-            && self.num_template_args().unwrap_or(0) > 0
+            && self.num_templ_args().unwrap_or(0) > 0
     }
-    pub fn is_in_non_fully_specialized_template(&self) -> bool {
+    pub fn is_in_non_fully_specialized_templ(&self) -> bool {
         if self.is_toplevel() {
             return false;
         }
         let y = self.semantic_parent();
-        if y.is_fully_specialized_template() {
+        if y.is_fully_specialized_templ() {
             return false;
         }
-        if !y.is_template_like() {
-            return y.is_in_non_fully_specialized_template();
+        if !y.is_templ_like() {
+            return y.is_in_non_fully_specialized_templ();
         }
         true
     }
-    pub fn is_template_parameter(&self) -> bool {
+    pub fn is_templ_param(&self) -> bool {
         matches!(
             self.kind(),
             CXCursor_TemplateTemplateParameter | CXCursor_TemplateTypeParameter | CXCursor_NonTypeTemplateParameter
         )
     }
-    pub fn is_dependent_on_template_parameter(&self) -> bool {
+    pub fn is_dependent_on_templ_param(&self) -> bool {
         fn visitor(y: &mut bool, cur: Cursor) -> CXChildVisitResult {
-            if cur.is_template_parameter() {
+            if cur.is_templ_param() {
                 *y = true;
                 return CXChildVisit_Break;
             }
             if let Some(x) = cur.referenced() {
-                if x.is_template_parameter() {
+                if x.is_templ_param() {
                     *y = true;
                     return CXChildVisit_Break;
                 }
@@ -203,7 +203,7 @@ impl Cursor {
             }
             CXChildVisit_Recurse
         }
-        if self.is_template_parameter() {
+        if self.is_templ_param() {
             return true;
         }
         let mut y = false;
@@ -288,7 +288,7 @@ impl Cursor {
             }
         }
     }
-    pub fn template_kind(&self) -> CXCursorKind {
+    pub fn templ_kind(&self) -> CXCursorKind {
         unsafe { clang_getTemplateCursorKind(self.cur) }
     }
     pub fn visit<Visitor>(&self, mut v: Visitor)
@@ -368,7 +368,7 @@ impl Cursor {
         y
     }
     pub fn bit_width(&self) -> Option<u32> {
-        if self.bit_width_expr()?.is_dependent_on_template_parameter() {
+        if self.bit_width_expr()?.is_dependent_on_templ_param() {
             return None;
         }
         unsafe {
@@ -681,7 +681,7 @@ impl Type {
                 if let Some(x) = loc.referenced() {
                     loc = x;
                 }
-                if loc.is_template_like() {
+                if loc.is_templ_like() {
                     y = loc;
                 }
             }
@@ -764,7 +764,7 @@ impl Type {
         let align = self.fallible_align(ctx)?;
         Ok(Layout::new(size, align))
     }
-    pub fn num_template_args(&self) -> Option<u32> {
+    pub fn num_templ_args(&self) -> Option<u32> {
         let y = unsafe { clang_Type_getNumTemplateArguments(self.ty) };
         if y >= 0 {
             Some(y as u32)
@@ -773,8 +773,8 @@ impl Type {
             None
         }
     }
-    pub fn template_args(&self) -> Option<TyTemplArgIter> {
-        self.num_template_args().map(|length| TyTemplArgIter {
+    pub fn templ_args(&self) -> Option<TyTemplArgIter> {
+        self.num_templ_args().map(|length| TyTemplArgIter {
             x: self.ty,
             length,
             idx: 0,
@@ -869,8 +869,8 @@ impl Type {
     pub fn is_valid_and_exposed(&self) -> bool {
         self.is_valid() && self.kind() != CXType_Unexposed
     }
-    pub fn is_fully_instantiated_template(&self) -> bool {
-        self.template_args().map_or(false, |x| x.len() > 0)
+    pub fn is_fully_instantiated_templ(&self) -> bool {
+        self.templ_args().map_or(false, |x| x.len() > 0)
             && !matches!(
                 self.declaration().kind(),
                 CXCursor_ClassTemplatePartialSpecialization
@@ -1360,9 +1360,9 @@ pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
             depth,
             format!(" {}is-inlined-function? {}", prefix, c.is_inlined_function()),
         );
-        let templ_kind = c.template_kind();
+        let templ_kind = c.templ_kind();
         if templ_kind != CXCursor_NoDeclFound {
-            print_indent(depth, format!(" {}template-kind = {}", prefix, kind_to_str(templ_kind)));
+            print_indent(depth, format!(" {}templ-kind = {}", prefix, kind_to_str(templ_kind)));
         }
         if let Some(usr) = c.usr() {
             print_indent(depth, format!(" {}usr = \"{}\"", prefix, usr));
@@ -1370,7 +1370,7 @@ pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
         if let Ok(num) = c.num_args() {
             print_indent(depth, format!(" {}number-of-args = {}", prefix, num));
         }
-        if let Some(num) = c.num_template_args() {
+        if let Some(num) = c.num_templ_args() {
             print_indent(depth, format!(" {}number-of-template-args = {}", prefix, num));
         }
         if c.is_bit_field() {
@@ -1423,12 +1423,9 @@ pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
         }
         print_indent(depth, format!(" {}cconv = {}", prefix, ty.call_conv()));
         print_indent(depth, format!(" {}spelling = \"{}\"", prefix, ty.spelling()));
-        let num_template_args = unsafe { clang_Type_getNumTemplateArguments(ty.ty) };
-        if num_template_args >= 0 {
-            print_indent(
-                depth,
-                format!(" {}number-of-template-args = {}", prefix, num_template_args),
-            );
+        let n = unsafe { clang_Type_getNumTemplateArguments(ty.ty) };
+        if n >= 0 {
+            print_indent(depth, format!(" {}number-of-template-args = {}", prefix, n));
         }
         if let Some(num) = ty.num_elements() {
             print_indent(depth, format!(" {}number-of-elements = {}", prefix, num));
