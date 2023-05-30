@@ -549,7 +549,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 None => continue,
             };
             match *ty.kind() {
-                TypeKind::Comp(..) | TypeKind::TemplateAlias(..) | TypeKind::Enum(..) | TypeKind::Alias(..) => {},
+                TypeKind::Comp(..) | TypeKind::TemplAlias(..) | TypeKind::Enum(..) | TypeKind::Alias(..) => {},
                 _ => continue,
             }
             let path = item.path_for_allowlisting(self);
@@ -856,7 +856,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         sub_args.reverse();
                         let sub_name = Some(template_decl_cursor.spelling());
                         let sub_inst = TemplInstantiation::new(template_decl_id.as_type_id_unchecked(), sub_args);
-                        let sub_kind = TypeKind::TemplateInstantiation(sub_inst);
+                        let sub_kind = TypeKind::TemplInstantiation(sub_inst);
                         let sub_ty = Type::new(
                             sub_name,
                             template_decl_cursor.cur_type().fallible_layout(self).ok(),
@@ -904,7 +904,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             return None;
         }
         args.reverse();
-        let type_kind = TypeKind::TemplateInstantiation(TemplInstantiation::new(template, args));
+        let type_kind = TypeKind::TemplInstantiation(TemplInstantiation::new(template, args));
         let name = ty.spelling();
         let name = if name.is_empty() { None } else { Some(name) };
         let ty = Type::new(name, ty.fallible_layout(self).ok(), type_kind, ty.is_const());

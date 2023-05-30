@@ -437,7 +437,7 @@ impl Item {
                     TypeKind::ResolvedTypeRef(inner) => {
                         i = ctx.resolve_item(inner);
                     },
-                    TypeKind::TemplateInstantiation(ref x) => {
+                    TypeKind::TemplInstantiation(ref x) => {
                         i = ctx.resolve_item(x.templ_def());
                     },
                     _ => return i.id(),
@@ -455,7 +455,7 @@ impl Item {
     fn push_disambiguated_name(&self, ctx: &Context, to: &mut String, level: u8) {
         to.push_str(&self.canon_name(ctx));
         if let ItemKind::Type(ref ty) = *self.kind() {
-            if let TypeKind::TemplateInstantiation(ref x) = *ty.kind() {
+            if let TypeKind::TemplInstantiation(ref x) = *ty.kind() {
                 to.push_str(&format!("_open{}_", level));
                 for arg in x.templ_args() {
                     arg.into_resolver()
@@ -598,7 +598,7 @@ impl Item {
         let ty_kind = self.kind().as_type().map(|t| t.kind());
         if let Some(ty_kind) = ty_kind {
             match *ty_kind {
-                TypeKind::Comp(..) | TypeKind::TemplateInstantiation(..) | TypeKind::Enum(..) => {
+                TypeKind::Comp(..) | TypeKind::TemplInstantiation(..) | TypeKind::Enum(..) => {
                     return self.local_id(ctx).to_string()
                 },
                 _ => {},

@@ -364,10 +364,10 @@ pub mod derive {
                     self.constrain_join(it, self.derive.check_edge_comp())
                 },
                 TypeKind::ResolvedTypeRef(..)
-                | TypeKind::TemplateAlias(..)
+                | TypeKind::TemplAlias(..)
                 | TypeKind::Alias(..)
                 | TypeKind::BlockPointer(..) => self.constrain_join(it, self.derive.check_edge_typeref()),
-                TypeKind::TemplateInstantiation(..) => self.constrain_join(it, self.derive.check_edge_tmpl_inst()),
+                TypeKind::TemplInstantiation(..) => self.constrain_join(it, self.derive.check_edge_tmpl_inst()),
                 TypeKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
             }
         }
@@ -519,7 +519,7 @@ pub mod has_destructor {
                 Some(ty) => ty,
             };
             match *ty.kind() {
-                TypeKind::TemplateAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedTypeRef(t) => {
+                TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedTypeRef(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
@@ -546,7 +546,7 @@ pub mod has_destructor {
                         },
                     }
                 },
-                TypeKind::TemplateInstantiation(ref t) => {
+                TypeKind::TemplInstantiation(ref t) => {
                     let destr = self.ys.contains(&t.templ_def().into())
                         || t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if destr {
@@ -673,7 +673,7 @@ pub mod has_float {
                     YConstrain::Same
                 },
                 TypeKind::ResolvedTypeRef(t)
-                | TypeKind::TemplateAlias(t, _)
+                | TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
                 | TypeKind::BlockPointer(t) => {
                     if self.ys.contains(&t.into()) {
@@ -696,7 +696,7 @@ pub mod has_float {
                     }
                     YConstrain::Same
                 },
-                TypeKind::TemplateInstantiation(ref t) => {
+                TypeKind::TemplInstantiation(ref t) => {
                     let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
@@ -821,7 +821,7 @@ pub mod has_type_param {
                     }
                 },
                 TypeKind::ResolvedTypeRef(t)
-                | TypeKind::TemplateAlias(t, _)
+                | TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
                 | TypeKind::BlockPointer(t) => {
                     if self.ys.contains(&t.into()) {
@@ -844,7 +844,7 @@ pub mod has_type_param {
                     }
                     YConstrain::Same
                 },
-                TypeKind::TemplateInstantiation(ref t) => {
+                TypeKind::TemplInstantiation(ref t) => {
                     let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
@@ -986,7 +986,7 @@ pub mod has_vtable {
                 Some(ty) => ty,
             };
             match *ty.kind() {
-                TypeKind::TemplateAlias(t, _)
+                TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
                 | TypeKind::ResolvedTypeRef(t)
                 | TypeKind::Reference(t) => self.forward(t, id),
@@ -1001,7 +1001,7 @@ pub mod has_vtable {
                     }
                     self.insert(id, y)
                 },
-                TypeKind::TemplateInstantiation(ref x) => self.forward(x.templ_def(), id),
+                TypeKind::TemplInstantiation(ref x) => self.forward(x.templ_def(), id),
                 _ => YConstrain::Same,
             }
         }
@@ -1170,11 +1170,11 @@ pub mod sizedness {
                 | TypeKind::Reference(..)
                 | TypeKind::NullPtr
                 | TypeKind::Pointer(..) => self.insert(id, Resolved::NonZeroSized),
-                TypeKind::TemplateAlias(t, _)
+                TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
                 | TypeKind::BlockPointer(t)
                 | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
-                TypeKind::TemplateInstantiation(ref x) => self.forward(x.templ_def(), id),
+                TypeKind::TemplInstantiation(ref x) => self.forward(x.templ_def(), id),
                 TypeKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
                 TypeKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
                 TypeKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
@@ -1409,7 +1409,7 @@ pub mod used_templ_param {
                     );
                 }
                 let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
-                if let Some(TypeKind::TemplateInstantiation(inst)) = k {
+                if let Some(TypeKind::TemplInstantiation(inst)) = k {
                     let decl = ctx.resolve_type(inst.templ_def());
                     let args = inst.templ_args();
                     let ps = decl.self_templ_params(ctx);
@@ -1468,7 +1468,7 @@ pub mod used_templ_param {
                 Some(&TypeKind::TypeParam) => {
                     y.insert(id);
                 },
-                Some(TypeKind::TemplateInstantiation(x)) => {
+                Some(TypeKind::TemplInstantiation(x)) => {
                     if self.alloweds.contains(&x.templ_def().into()) {
                         self.constrain_instantiation(id, &mut y, x);
                     } else {

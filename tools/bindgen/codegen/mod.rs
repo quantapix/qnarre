@@ -160,12 +160,11 @@ mod error {
         InstantiationOfOpaqueType,
     }
     impl fmt::Display for Error {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str(match *self {
+        fn fmt(&self, x: &mut fmt::Formatter) -> fmt::Result {
+            x.write_str(match *self {
                 Error::NoLayoutForOpaqueBlob => "Tried to generate an opaque blob, but had no layout",
                 Error::InstantiationOfOpaqueType => {
-                    "Instantiation of opaque template type or partial template \
-                 specialization"
+                    "Instantiation of opaque template type or partial template specialization"
                 },
             })
         }
@@ -176,117 +175,6 @@ mod error {
 mod impl_debug;
 pub mod utils;
 use utils::variation;
-mod impl_partialeq {
-    use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
-    use crate::ir::item::{IsOpaque, Item};
-    use crate::ir::typ::TypeKind;
-    use crate::ir::Context;
-    pub fn gen_partialeq_impl(
-        ctx: &Context,
-        comp_info: &CompInfo,
-        it: &Item,
-        ty_for_impl: &proc_macro2::TokenStream,
-    ) -> Option<proc_macro2::TokenStream> {
-        let mut tokens = vec![];
-        if it.is_opaque(ctx, &()) {
-            tokens.push(quote! {
-                &self._bindgen_opaque_blob[..] == &other._bindgen_opaque_blob[..]
-            });
-        } else if comp_info.kind() == CompKind::Union {
-            assert!(!ctx.opts().untagged_union);
-            tokens.push(quote! {
-                &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
-            });
-        } else {
-            for base in comp_info.base_members().iter() {
-                if !base.requires_storage(ctx) {
-                    continue;
-                }
-                let ty_item = ctx.resolve_item(base.ty);
-                let field_name = &base.field_name;
-                if ty_item.is_opaque(ctx, &()) {
-                    let field_name = ctx.rust_ident(field_name);
-                    tokens.push(quote! {
-                        &self. #field_name [..] == &other. #field_name [..]
-                    });
-                } else {
-                    tokens.push(gen_field(ctx, ty_item, field_name));
-                }
-            }
-            for field in comp_info.fields() {
-                match *field {
-                    Field::DataMember(ref fd) => {
-                        let ty_item = ctx.resolve_item(fd.ty());
-                        let name = fd.name().unwrap();
-                        tokens.push(gen_field(ctx, ty_item, name));
-                    },
-                    Field::Bitfields(ref bu) => {
-                        for bitfield in bu.bitfields() {
-                            if bitfield.name().is_some() {
-                                let getter_name = bitfield.getter();
-                                let name_ident = ctx.rust_ident_raw(getter_name);
-                                tokens.push(quote! {
-                                    self.#name_ident () == other.#name_ident ()
-                                });
-                            }
-                        }
-                    },
-                }
-            }
-        }
-        Some(quote! {
-            fn eq(&self, other: & #ty_for_impl) -> bool {
-                #( #tokens )&&*
-            }
-        })
-    }
-    fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
-        fn quote_equals(name_ident: proc_macro2::Ident) -> proc_macro2::TokenStream {
-            quote! { self.#name_ident == other.#name_ident }
-        }
-        let name_ident = ctx.rust_ident(name);
-        let ty = it.expect_type();
-        match *ty.kind() {
-            TypeKind::Void
-            | TypeKind::NullPtr
-            | TypeKind::Int(..)
-            | TypeKind::Complex(..)
-            | TypeKind::Float(..)
-            | TypeKind::Enum(..)
-            | TypeKind::TypeParam
-            | TypeKind::UnresolvedTypeRef(..)
-            | TypeKind::Reference(..)
-            | TypeKind::Comp(..)
-            | TypeKind::Pointer(_)
-            | TypeKind::Function(..)
-            | TypeKind::Opaque => quote_equals(name_ident),
-            TypeKind::TemplateInstantiation(ref x) => {
-                if x.is_opaque(ctx, it) {
-                    quote! {
-                        &self. #name_ident [..] == &other. #name_ident [..]
-                    }
-                } else {
-                    quote_equals(name_ident)
-                }
-            },
-            TypeKind::Array(_, len) => quote_equals(name_ident),
-            TypeKind::Vector(_, len) => {
-                let self_ids = 0..len;
-                let other_ids = 0..len;
-                quote! {
-                    #(self.#self_ids == other.#other_ids &&)* true
-                }
-            },
-            TypeKind::ResolvedTypeRef(t)
-            | TypeKind::TemplateAlias(t, _)
-            | TypeKind::Alias(t)
-            | TypeKind::BlockPointer(t) => {
-                let inner_item = ctx.resolve_item(t);
-                gen_field(ctx, inner_item, name)
-            },
-        }
-    }
-}
 
 use self::dyngen::DynItems;
 use self::utils::attributes;
@@ -297,17 +185,17 @@ pub enum CodegenError {
     Io(String),
 }
 impl From<std::io::Error> for CodegenError {
-    fn from(err: std::io::Error) -> Self {
-        Self::Io(err.to_string())
+    fn from(x: std::io::Error) -> Self {
+        Self::Io(x.to_string())
     }
 }
 impl fmt::Display for CodegenError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Serialize { msg, loc } => {
-                write!(f, "serialization error at {}: {}", loc, msg)
+                write!(x, "serialization error at {}: {}", loc, msg)
             },
-            Self::Io(err) => err.fmt(f),
+            Self::Io(x2) => x2.fmt(x),
         }
     }
 }
@@ -534,7 +422,7 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
             | TypeKind::Opaque
             | TypeKind::Function(..)
             | TypeKind::Enum(..)
-            | TypeKind::TemplateInstantiation(..) => return,
+            | TypeKind::TemplInstantiation(..) => return,
             _ => {},
         }
         let ys: Vec<_> = it
@@ -802,7 +690,7 @@ impl Generator for Type {
             | TypeKind::ResolvedTypeRef(..)
             | TypeKind::Opaque
             | TypeKind::TypeParam => {},
-            TypeKind::TemplateInstantiation(ref x) => x.codegen(ctx, y, it),
+            TypeKind::TemplInstantiation(ref x) => x.codegen(ctx, y, it),
             TypeKind::BlockPointer(inner) => {
                 if !ctx.opts().generate_block {
                     return;
@@ -829,7 +717,7 @@ impl Generator for Type {
                 y.saw_block();
             },
             TypeKind::Comp(ref x) => x.codegen(ctx, y, it),
-            TypeKind::TemplateAlias(inner, _) | TypeKind::Alias(inner) => {
+            TypeKind::TemplAlias(inner, _) | TypeKind::Alias(inner) => {
                 let inner_item = inner.into_resolver().through_type_refs().resolve(ctx);
                 let name = it.canon_name(ctx);
                 let path = it.canon_path(ctx);
@@ -1983,7 +1871,7 @@ impl Generator for CompInfo {
             });
         }
         if needs_partialeq_impl {
-            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, it, &ty_for_impl) {
+            if let Some(impl_) = utils::gen_partialeq_impl(ctx, self, it, &ty_for_impl) {
                 let partialeq_bounds = if !generic_param_names.is_empty() {
                     let bounds = generic_param_names.iter().map(|t| {
                         quote! { #t: PartialEq }
@@ -2814,9 +2702,9 @@ impl TryToRustTy for Type {
                 let path = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
                 Ok(quote!(#path))
             },
-            TypeKind::TemplateInstantiation(ref x) => x.try_to_rust_ty(ctx, it),
+            TypeKind::TemplInstantiation(ref x) => x.try_to_rust_ty(ctx, it),
             TypeKind::ResolvedTypeRef(inner) => inner.try_to_rust_ty(ctx, &()),
-            TypeKind::TemplateAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
+            TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
                 if self.is_block_pointer() && !ctx.opts().generate_block {
                     let void = c_void(ctx);
                     return Ok(void.to_ptr(/* is_const = */ false));

@@ -63,7 +63,7 @@ impl Type {
         matches!(self.kind, TypeKind::TypeParam)
     }
     pub fn is_templ_instantiation(&self) -> bool {
-        matches!(self.kind, TypeKind::TemplateInstantiation(..))
+        matches!(self.kind, TypeKind::TemplInstantiation(..))
     }
     pub fn is_function(&self) -> bool {
         matches!(self.kind, TypeKind::Function(..))
@@ -190,10 +190,10 @@ impl Type {
             | TypeKind::NullPtr
             | TypeKind::Pointer(..)
             | TypeKind::BlockPointer(..) => Some(self),
-            TypeKind::ResolvedTypeRef(inner) | TypeKind::Alias(inner) | TypeKind::TemplateAlias(inner, _) => {
+            TypeKind::ResolvedTypeRef(inner) | TypeKind::Alias(inner) | TypeKind::TemplAlias(inner, _) => {
                 ctx.resolve_type(inner).safe_canonical_type(ctx)
             },
-            TypeKind::TemplateInstantiation(ref x) => ctx.resolve_type(x.templ_def()).safe_canonical_type(ctx),
+            TypeKind::TemplInstantiation(ref x) => ctx.resolve_type(x.templ_def()).safe_canonical_type(ctx),
             TypeKind::UnresolvedTypeRef(..) => None,
         }
     }
@@ -205,7 +205,7 @@ impl Type {
                 | TypeKind::Pointer(..)
                 | TypeKind::Array(..)
                 | TypeKind::Reference(..)
-                | TypeKind::TemplateInstantiation(..)
+                | TypeKind::TemplInstantiation(..)
                 | TypeKind::ResolvedTypeRef(..)
         )
     }
@@ -251,7 +251,7 @@ impl Type {
             || (ty.templ_args().is_some() && ty_kind != CXType_Typedef)
         {
             match TemplInstantiation::from_ty(ty, ctx) {
-                Some(inst) => TypeKind::TemplateInstantiation(inst),
+                Some(inst) => TypeKind::TemplInstantiation(inst),
                 None => TypeKind::Opaque,
             }
         } else {
@@ -333,7 +333,7 @@ impl Type {
                                         return Err(parse::Error::Continue);
                                     },
                                 };
-                                TypeKind::TemplateAlias(inner_type, args)
+                                TypeKind::TemplAlias(inner_type, args)
                             },
                             CXCursor_TemplateRef => {
                                 let referenced = location.referenced().unwrap();
@@ -502,7 +502,7 @@ impl IsOpaque for Type {
     fn is_opaque(&self, ctx: &Context, it: &Item) -> bool {
         match self.kind {
             TypeKind::Opaque => true,
-            TypeKind::TemplateInstantiation(ref x) => x.is_opaque(ctx, it),
+            TypeKind::TemplInstantiation(ref x) => x.is_opaque(ctx, it),
             TypeKind::Comp(ref x) => x.is_opaque(ctx, &self.layout),
             TypeKind::ResolvedTypeRef(x) => x.is_opaque(ctx, &()),
             _ => false,
@@ -561,13 +561,13 @@ impl Trace for Type {
             | TypeKind::ResolvedTypeRef(inner) => {
                 tracer.visit_kind(inner.into(), EdgeKind::TypeRef);
             },
-            TypeKind::TemplateAlias(inner, ref ps) => {
+            TypeKind::TemplAlias(inner, ref ps) => {
                 tracer.visit_kind(inner.into(), EdgeKind::TypeRef);
                 for p in ps {
                     tracer.visit_kind(p.into(), EdgeKind::TemplParamDef);
                 }
             },
-            TypeKind::TemplateInstantiation(ref x) => {
+            TypeKind::TemplInstantiation(ref x) => {
                 x.trace(ctx, tracer, &());
             },
             TypeKind::Comp(ref x) => x.trace(ctx, tracer, it),
@@ -610,7 +610,7 @@ pub enum TypeKind {
     Float(FloatKind),
     Complex(FloatKind),
     Alias(TypeId),
-    TemplateAlias(TypeId, Vec<TypeId>),
+    TemplAlias(TypeId, Vec<TypeId>),
     Vector(TypeId, usize),
     Array(TypeId, usize),
     Function(FnSig),
@@ -618,7 +618,7 @@ pub enum TypeKind {
     Pointer(TypeId),
     BlockPointer(TypeId),
     Reference(TypeId),
-    TemplateInstantiation(TemplInstantiation),
+    TemplInstantiation(TemplInstantiation),
     UnresolvedTypeRef(clang::Type, clang::Cursor, /* parent_id */ Option<ItemId>),
     ResolvedTypeRef(TypeId),
     TypeParam,
@@ -634,7 +634,7 @@ impl TypeKind {
             TypeKind::Float(..) => "Float",
             TypeKind::Complex(..) => "Complex",
             TypeKind::Alias(..) => "Alias",
-            TypeKind::TemplateAlias(..) => "TemplateAlias",
+            TypeKind::TemplAlias(..) => "TemplateAlias",
             TypeKind::Array(..) => "Array",
             TypeKind::Vector(..) => "Vector",
             TypeKind::Function(..) => "Function",
@@ -642,7 +642,7 @@ impl TypeKind {
             TypeKind::Pointer(..) => "Pointer",
             TypeKind::BlockPointer(..) => "BlockPointer",
             TypeKind::Reference(..) => "Reference",
-            TypeKind::TemplateInstantiation(..) => "TemplateInstantiation",
+            TypeKind::TemplInstantiation(..) => "TemplateInstantiation",
             TypeKind::UnresolvedTypeRef(..) => "UnresolvedTypeRef",
             TypeKind::ResolvedTypeRef(..) => "ResolvedTypeRef",
             TypeKind::TypeParam => "TypeParam",
@@ -666,9 +666,9 @@ impl TemplParams for TypeKind {
         match *self {
             TypeKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_templ_params(ctx),
             TypeKind::Comp(ref comp) => comp.self_templ_params(ctx),
-            TypeKind::TemplateAlias(_, ref args) => args.clone(),
+            TypeKind::TemplAlias(_, ref args) => args.clone(),
             TypeKind::Opaque
-            | TypeKind::TemplateInstantiation(..)
+            | TypeKind::TemplInstantiation(..)
             | TypeKind::Void
             | TypeKind::NullPtr
             | TypeKind::Int(_)

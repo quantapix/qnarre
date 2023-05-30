@@ -107,7 +107,7 @@ impl<'a> ImplDebug<'a> for Item {
             | TypeKind::Reference(..)
             | TypeKind::UnresolvedTypeRef(..)
             | TypeKind::Comp(..) => debug_print(name, quote! { #name_ident }),
-            TypeKind::TemplateInstantiation(ref x) => {
+            TypeKind::TemplInstantiation(ref x) => {
                 if x.is_opaque(ctx, self) {
                     Some((format!("{}: opaque", name), vec![]))
                 } else {
@@ -136,7 +136,7 @@ impl<'a> ImplDebug<'a> for Item {
                 }
             },
             TypeKind::ResolvedTypeRef(t)
-            | TypeKind::TemplateAlias(t, _)
+            | TypeKind::TemplAlias(t, _)
             | TypeKind::Alias(t)
             | TypeKind::BlockPointer(t) => ctx.resolve_item(t).impl_debug(ctx, name),
             TypeKind::Pointer(inner) => {

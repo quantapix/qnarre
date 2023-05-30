@@ -1,11 +1,13 @@
 use super::serialize::CSerialize;
 use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
+use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use crate::ir::function::{Abi, ClangAbi, FnSig};
-use crate::ir::item::{CanonPath, Item};
+use crate::ir::item::{CanonPath, IsOpaque, Item};
 use crate::ir::layout::Layout;
 use crate::ir::typ::TypeKind;
 use crate::ir::Context;
 use crate::{args_are_cpp, file_is_cpp};
+
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::TokenStreamExt;
 use std::borrow::Cow;
@@ -803,5 +805,108 @@ pub mod variation {
                 )),
             }
         }
+    }
+}
+
+pub fn gen_partialeq_impl(
+    ctx: &Context,
+    comp: &CompInfo,
+    it: &Item,
+    ty: &proc_macro2::TokenStream,
+) -> Option<proc_macro2::TokenStream> {
+    let mut ys = vec![];
+    if it.is_opaque(ctx, &()) {
+        ys.push(quote! {
+            &self._bindgen_opaque_blob[..] == &other._bindgen_opaque_blob[..]
+        });
+    } else if comp.kind() == CompKind::Union {
+        assert!(!ctx.opts().untagged_union);
+        ys.push(quote! {
+            &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
+        });
+    } else {
+        for x in comp.base_members().iter() {
+            if !x.requires_storage(ctx) {
+                continue;
+            }
+            let ty = ctx.resolve_item(x.ty);
+            let x = &x.field_name;
+            if ty.is_opaque(ctx, &()) {
+                let x = ctx.rust_ident(x);
+                ys.push(quote! {
+                    &self. #x [..] == &other. #x [..]
+                });
+            } else {
+                ys.push(gen_field(ctx, ty, x));
+            }
+        }
+        for f in comp.fields() {
+            match *f {
+                Field::DataMember(ref x) => {
+                    let ty = ctx.resolve_item(x.ty());
+                    let x = x.name().unwrap();
+                    ys.push(gen_field(ctx, ty, x));
+                },
+                Field::Bitfields(ref x) => {
+                    for x in x.bitfields() {
+                        if x.name().is_some() {
+                            let x = x.getter();
+                            let x = ctx.rust_ident_raw(x);
+                            ys.push(quote! {
+                                self.#x () == other.#x ()
+                            });
+                        }
+                    }
+                },
+            }
+        }
+    }
+    Some(quote! {
+        fn eq(&self, other: & #ty) -> bool {
+            #( #ys )&&*
+        }
+    })
+}
+fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
+    fn quote_equals(x: proc_macro2::Ident) -> proc_macro2::TokenStream {
+        quote! { self.#x == other.#x }
+    }
+    let y = ctx.rust_ident(name);
+    let ty = it.expect_type();
+    match *ty.kind() {
+        TypeKind::Void
+        | TypeKind::NullPtr
+        | TypeKind::Int(..)
+        | TypeKind::Complex(..)
+        | TypeKind::Float(..)
+        | TypeKind::Enum(..)
+        | TypeKind::TypeParam
+        | TypeKind::UnresolvedTypeRef(..)
+        | TypeKind::Reference(..)
+        | TypeKind::Comp(..)
+        | TypeKind::Pointer(_)
+        | TypeKind::Function(..)
+        | TypeKind::Opaque => quote_equals(y),
+        TypeKind::TemplInstantiation(ref x) => {
+            if x.is_opaque(ctx, it) {
+                quote! {
+                    &self. #y [..] == &other. #y [..]
+                }
+            } else {
+                quote_equals(y)
+            }
+        },
+        TypeKind::Array(_, len) => quote_equals(y),
+        TypeKind::Vector(_, len) => {
+            let self_ids = 0..len;
+            let other_ids = 0..len;
+            quote! {
+                #(self.#self_ids == other.#other_ids &&)* true
+            }
+        },
+        TypeKind::ResolvedTypeRef(x) | TypeKind::TemplAlias(x, _) | TypeKind::Alias(x) | TypeKind::BlockPointer(x) => {
+            let it2 = ctx.resolve_item(x);
+            gen_field(ctx, it2, name)
+        },
     }
 }
