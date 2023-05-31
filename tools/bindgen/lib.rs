@@ -18,7 +18,7 @@ mod ir;
 mod opts;
 
 pub use codegen::utils::variation;
-use codegen::CodegenError;
+use codegen::GenError;
 pub use ir::annotations::FieldVisibilityKind;
 use ir::comment;
 pub use ir::function::Abi;
@@ -249,7 +249,7 @@ pub enum BindgenError {
     InsufficientPermissions(PathBuf),
     NotExist(PathBuf),
     ClangDiagnostic(String),
-    Codegen(CodegenError),
+    Codegen(GenError),
 }
 impl std::fmt::Display for BindgenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,5 +1,5 @@
 use super::serialize::CSerialize;
-use super::{error, CodegenError, CodegenResult, ToRustOrOpaque};
+use super::{error, GenError, GenResult, ToRustOrOpaque};
 use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use crate::ir::function::{Abi, ClangAbi, FnSig};
 use crate::ir::item::{CanonPath, IsOpaque, Item};
@@ -16,8 +16,8 @@ use std::mem;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub(super) fn serialize_items(result: &CodegenResult, ctx: &Context) -> Result<(), CodegenError> {
-    if result.items_to_serialize.is_empty() {
+pub(super) fn serialize_items(result: &GenResult, ctx: &Context) -> Result<(), GenError> {
+    if result.to_serialize.is_empty() {
         return Ok(());
     }
     let path = ctx
@@ -46,7 +46,7 @@ pub(super) fn serialize_items(result: &CodegenResult, ctx: &Context) -> Result<(
         writeln!(code)?;
     }
     writeln!(code, "// Static wrappers\n")?;
-    for &id in &result.items_to_serialize {
+    for &id in &result.to_serialize {
         let item = ctx.resolve_item(id);
         item.serialize(ctx, (), &mut vec![], &mut code)?;
     }

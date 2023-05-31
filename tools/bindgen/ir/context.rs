@@ -10,7 +10,7 @@ use super::template::{TemplInstantiation, TemplParams};
 use super::traversal::{self, Edge, ItemTraversal};
 use super::typ::{FloatKind, Type, TypeKind};
 use crate::clang::{self, Cursor};
-use crate::codegen::CodegenError;
+use crate::codegen::GenError;
 use crate::Opts;
 use crate::{Entry, HashMap, HashSet};
 use proc_macro2::{Ident, Span, TokenStream};
@@ -615,9 +615,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 .insert(replacement_id.into());
         }
     }
-    pub fn gen<F, Out>(mut self, cb: F) -> Result<(Out, Opts), CodegenError>
+    pub fn gen<F, Out>(mut self, cb: F) -> Result<(Out, Opts), GenError>
     where
-        F: FnOnce(&Self) -> Result<Out, CodegenError>,
+        F: FnOnce(&Self) -> Result<Out, GenError>,
     {
         self.in_codegen = true;
         self.resolve_typerefs();

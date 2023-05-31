@@ -1,4 +1,4 @@
-use super::CodegenError;
+use super::GenError;
 use crate::callbacks::IntKind;
 use crate::ir::comp::CompKind;
 use crate::ir::function::{FnKind, Function};
@@ -21,7 +21,7 @@ pub trait CSerialize<'a> {
         extra: Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
-    ) -> Result<(), CodegenError>;
+    ) -> Result<(), GenError>;
 }
 impl<'a> CSerialize<'a> for Item {
     type Extra = ();
@@ -31,10 +31,10 @@ impl<'a> CSerialize<'a> for Item {
         (): Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
-    ) -> Result<(), CodegenError> {
+    ) -> Result<(), GenError> {
         match self.kind() {
             ItemKind::Function(func) => func.serialize(ctx, self, stack, writer),
-            kind => Err(CodegenError::Serialize {
+            kind => Err(GenError::Serialize {
                 msg: format!("Cannot serialize item kind {:?}", kind),
                 loc: get_loc(self),
             }),
@@ -49,9 +49,9 @@ impl<'a> CSerialize<'a> for Function {
         item: Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
-    ) -> Result<(), CodegenError> {
+    ) -> Result<(), GenError> {
         if self.kind() != FnKind::Function {
-            return Err(CodegenError::Serialize {
+            return Err(GenError::Serialize {
                 msg: format!("Cannot serialize function kind {:?}", self.kind(),),
                 loc: get_loc(item),
             });
@@ -110,7 +110,7 @@ impl<'a> CSerialize<'a> for TypeId {
         (): Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
-    ) -> Result<(), CodegenError> {
+    ) -> Result<(), GenError> {
         let item = ctx.resolve_item(*self);
         item.expect_type().serialize(ctx, item, stack, writer)
     }
@@ -123,7 +123,7 @@ impl<'a> CSerialize<'a> for Type {
         item: Self::Extra,
         stack: &mut Vec<String>,
         writer: &mut W,
-    ) -> Result<(), CodegenError> {
+    ) -> Result<(), GenError> {
         match self.kind() {
             TypeKind::Void => {
                 if self.is_const() {
@@ -156,7 +156,7 @@ impl<'a> CSerialize<'a> for Type {
                     IntKind::ULongLong => write!(writer, "unsigned long long")?,
                     IntKind::Char { .. } => write!(writer, "char")?,
                     int_kind => {
-                        return Err(CodegenError::Serialize {
+                        return Err(GenError::Serialize {
                             msg: format!("Cannot serialize integer kind {:?}", int_kind),
                             loc: get_loc(item),
                         })
@@ -258,7 +258,7 @@ impl<'a> CSerialize<'a> for Type {
                 write!(writer, "enum {}", name)?;
             },
             ty => {
-                return Err(CodegenError::Serialize {
+                return Err(GenError::Serialize {
                     msg: format!("Cannot serialize type kind {:?}", ty),
                     loc: get_loc(item),
                 })
@@ -273,7 +273,7 @@ impl<'a> CSerialize<'a> for Type {
         Ok(())
     }
 }
-fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &mut W) -> Result<(), CodegenError> {
+fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &mut W) -> Result<(), GenError> {
     if args.is_empty() {
         write!(writer, "void")?;
     } else {
@@ -283,13 +283,13 @@ fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &m
     }
     Ok(())
 }
-fn serialize_sep<W: Write, F: FnMut(I::Item, &Context, &mut W) -> Result<(), CodegenError>, I: Iterator>(
+fn serialize_sep<W: Write, F: FnMut(I::Item, &Context, &mut W) -> Result<(), GenError>, I: Iterator>(
     sep: &str,
     mut iter: I,
     ctx: &Context,
     buf: &mut W,
     mut f: F,
-) -> Result<(), CodegenError> {
+) -> Result<(), GenError> {
     if let Some(item) = iter.next() {
         f(item, ctx, buf)?;
         let sep = sep.as_bytes();
