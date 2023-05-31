@@ -1,4 +1,4 @@
-use self::struct_layout::StructLayoutTracker;
+use self::structure::Structure;
 use super::Opts;
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
@@ -146,7 +146,7 @@ impl Generator for CompInfo {
         let canon_ident = ctx.rust_ident(&canon_name);
         let is_opaque = it.is_opaque(ctx, &());
         let mut fields = vec![];
-        let mut structure = StructLayoutTracker::new(ctx, self, ty, &canon_name);
+        let mut structure = Structure::new(ctx, self, ty, &canon_name);
         if !is_opaque {
             if it.has_vtable_ptr(ctx) {
                 let x = Vtable::new(it.id(), self);
@@ -249,7 +249,7 @@ impl Generator for CompInfo {
             if structure.requires_explicit_align(x) {
                 explicit_align = Some(x.align);
             }
-            if !structure.is_rust_union() {
+            if !structure.is_union() {
                 let ty = utils::blob(ctx, x);
                 fields.push(quote! {
                     pub bindgen_union_field: #ty ,
@@ -332,7 +332,7 @@ impl Generator for CompInfo {
         }
         let mut derives: Vec<_> = traits.into();
         derives.extend(it.annotations().derives().iter().map(String::as_str));
-        let is_union = is_union && structure.is_rust_union();
+        let is_union = is_union && structure.is_union();
         let custom_derives = ctx.opts().all_callbacks(|x| {
             x.add_derives(&DeriveInfo {
                 name: &canon_name,
@@ -500,7 +500,7 @@ impl Generator for CompInfo {
             });
         }
         if needs_debug {
-            let x = impl_debug::gen_debug_impl(ctx, self.fields(), it, self.kind());
+            let x = debug::gen_debug_impl(ctx, self.fields(), it, self.kind());
             let pre = ctx.trait_prefix();
             y.push(quote! {
                 impl #generics ::#pre::fmt::Debug for #ty {
@@ -1532,7 +1532,7 @@ trait FieldGen<'a> {
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
         y: &mut GenResult,
-        struct_layout: &mut StructLayoutTracker,
+        struct_layout: &mut Structure,
         fields: &mut F,
         methods: &mut M,
         extra: Self::Extra,
@@ -1549,7 +1549,7 @@ impl<'a> FieldGen<'a> for Bitfield {
         _accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
         y: &mut GenResult,
-        struct_layout: &mut StructLayoutTracker,
+        struct_layout: &mut Structure,
         _fields: &mut F,
         methods: &mut M,
         (unit_field_name, bitfield_representable_as_int): (&'a str, &mut bool),
@@ -1579,7 +1579,7 @@ impl<'a> FieldGen<'a> for Bitfield {
         let width = self.width() as u8;
         let visibility_kind = compute_visibility(ctx, self.is_public(), Some(self.annotations()), visibility_kind);
         let access_spec = access_specifier(visibility_kind);
-        if parent.is_union() && !struct_layout.is_rust_union() {
+        if parent.is_union() && !struct_layout.is_union() {
             methods.extend(Some(quote! {
                 #[inline]
                 #access_spec fn #getter_name(&self) -> #bitfield_ty {
@@ -1637,7 +1637,7 @@ impl<'a> FieldGen<'a> for BitfieldUnit {
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
         y: &mut GenResult,
-        struct_layout: &mut StructLayoutTracker,
+        struct_layout: &mut Structure,
         fields: &mut F,
         methods: &mut M,
         _: (),
@@ -1719,13 +1719,13 @@ impl<'a> FieldGen<'a> for BitfieldUnit {
             methods.extend(Some(quote! {
                 #[inline]
                 #access_spec fn #ctor_name ( #( #ctor_params ),* ) -> #unit_field_ty {
-                    let mut __bindgen_bitfield_unit: #unit_field_ty = Default::default();
+                    let mut __bitfield_unit: #unit_field_ty = Default::default();
                     #ctor_impl
-                    __bindgen_bitfield_unit
+                    __bitfield_unit
                 }
             }));
         }
-        struct_layout.saw_bitfield_unit(layout);
+        struct_layout.saw_bitfield(layout);
     }
 }
 impl<'a> FieldGen<'a> for Field {
@@ -1737,7 +1737,7 @@ impl<'a> FieldGen<'a> for Field {
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
         y: &mut GenResult,
-        struct_layout: &mut StructLayoutTracker,
+        struct_layout: &mut Structure,
         fields: &mut F,
         methods: &mut M,
         _: (),
@@ -1784,7 +1784,7 @@ impl<'a> FieldGen<'a> for FieldData {
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
         y: &mut GenResult,
-        struct_layout: &mut StructLayoutTracker,
+        struct_layout: &mut Structure,
         fields: &mut F,
         methods: &mut M,
         _: (),
@@ -1910,7 +1910,7 @@ impl Bitfield {
         let width = self.width() as u8;
         let prefix = ctx.trait_prefix();
         ctor_impl.append_all(quote! {
-            __bindgen_bitfield_unit.set(
+            __bitfield_unit.set(
                 #offset,
                 #width,
                 {
@@ -1934,7 +1934,6 @@ impl BitfieldUnit {
 }
 
 pub static CONSTIFIED_ENUM_MODULE_REPR_NAME: &str = "Type";
-
 enum EnumBuilder<'a> {
     Rust {
         attrs: Vec<proc_macro2::TokenStream>,
@@ -2342,18 +2341,14 @@ mod error {
     impl error::Error for Error {}
     pub type Result<T> = ::std::result::Result<T, Error>;
 }
-mod impl_debug;
+mod debug;
 mod postproc;
 
 pub mod utils;
 use self::utils::{attrs, variation};
 
-#[cfg(test)]
-#[allow(warnings)]
-pub mod bitfield_unit;
-
 mod serialize;
-pub mod struct_layout;
+pub mod structure;
 
 bitflags! {
     #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -2842,11 +2837,11 @@ fn derives_of_item(it: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
 
 fn wrap_union_field_if_needed(
     ctx: &Context,
-    struct_layout: &StructLayoutTracker,
+    struct_layout: &Structure,
     ty: proc_macro2::TokenStream,
     y: &mut GenResult,
 ) -> proc_macro2::TokenStream {
-    if struct_layout.is_rust_union() {
+    if struct_layout.is_union() {
         if struct_layout.can_copy_union_fields() {
             ty
         } else {

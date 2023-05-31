@@ -8,7 +8,7 @@ use super::traversal::{EdgeKind, Trace, Tracer};
 use super::RUST_DERIVE_IN_ARRAY_LIMIT;
 use super::{Context, FnId, ItemId, TypeId, VarId};
 use crate::clang;
-use crate::codegen::struct_layout::{align_to, bytes_from_bits_pow2};
+use crate::codegen::structure::{align_to, bytes_from_bits_pow2};
 use crate::codegen::utils::variation;
 use crate::ir::derive::CanDeriveCopy;
 use crate::parse;

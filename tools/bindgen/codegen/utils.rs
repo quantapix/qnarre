@@ -492,7 +492,7 @@ pub fn bitfield_unit(ctx: &Context, layout: Layout) -> TokenStream {
     }
     let size = layout.size;
     tokens.append_all(quote! {
-        __BindgenBitfieldUnit<[u8; #size]>
+        __BitfieldUnit<[u8; #size]>
     });
     tokens
 }
@@ -909,4 +909,278 @@ fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
             gen_field(ctx, it2, name)
         },
     }
+}
+
+#[cfg(test)]
+#[allow(warnings)]
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct __BitfieldUnit<Storage> {
+    storage: Storage,
+}
+#[cfg(test)]
+#[allow(warnings)]
+impl<Storage> __BitfieldUnit<Storage> {
+    #[inline]
+    pub const fn new(storage: Storage) -> Self {
+        Self { storage }
+    }
+}
+#[cfg(test)]
+#[allow(warnings)]
+impl<Storage> __BitfieldUnit<Storage>
+where
+    Storage: AsRef<[u8]> + AsMut<[u8]>,
+{
+    #[inline]
+    pub fn get_bit(&self, index: usize) -> bool {
+        debug_assert!(index / 8 < self.storage.as_ref().len());
+        let byte_index = index / 8;
+        let byte = self.storage.as_ref()[byte_index];
+        let bit_index = if cfg!(target_endian = "big") {
+            7 - (index % 8)
+        } else {
+            index % 8
+        };
+        let mask = 1 << bit_index;
+        byte & mask == mask
+    }
+    #[inline]
+    pub fn set_bit(&mut self, index: usize, val: bool) {
+        debug_assert!(index / 8 < self.storage.as_ref().len());
+        let byte_index = index / 8;
+        let byte = &mut self.storage.as_mut()[byte_index];
+        let bit_index = if cfg!(target_endian = "big") {
+            7 - (index % 8)
+        } else {
+            index % 8
+        };
+        let mask = 1 << bit_index;
+        if val {
+            *byte |= mask;
+        } else {
+            *byte &= !mask;
+        }
+    }
+    #[inline]
+    pub fn get(&self, bit_offset: usize, bit_width: u8) -> u64 {
+        debug_assert!(bit_width <= 64);
+        debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len());
+        let mut val = 0;
+        for i in 0..(bit_width as usize) {
+            if self.get_bit(i + bit_offset) {
+                let index = if cfg!(target_endian = "big") {
+                    bit_width as usize - 1 - i
+                } else {
+                    i
+                };
+                val |= 1 << index;
+            }
+        }
+        val
+    }
+    #[inline]
+    pub fn set(&mut self, bit_offset: usize, bit_width: u8, val: u64) {
+        debug_assert!(bit_width <= 64);
+        debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len());
+        for i in 0..(bit_width as usize) {
+            let mask = 1 << i;
+            let val_bit_is_set = val & mask == mask;
+            let index = if cfg!(target_endian = "big") {
+                bit_width as usize - 1 - i
+            } else {
+                i
+            };
+            self.set_bit(index + bit_offset, val_bit_is_set);
+        }
+    }
+}
+
+//#[cfg(all(test, target_endian = "little"))]
+#[test]
+fn bitfield_unit_get_bit() {
+    let unit = __BitfieldUnit::<[u8; 2]>::new([0b10011101, 0b00011101]);
+    let mut bits = vec![];
+    for i in 0..16 {
+        bits.push(unit.get_bit(i));
+    }
+    println!();
+    println!("bits = {:?}", bits);
+    assert_eq!(
+        bits,
+        &[
+            true, false, true, true, true, false, false, true, // 0b00011101
+            true, false, true, true, true, false, false, false
+        ]
+    );
+}
+#[test]
+fn bitfield_unit_set_bit() {
+    let mut unit = __BitfieldUnit::<[u8; 2]>::new([0b00000000, 0b00000000]);
+    for i in 0..16 {
+        if i % 3 == 0 {
+            unit.set_bit(i, true);
+        }
+    }
+    for i in 0..16 {
+        assert_eq!(unit.get_bit(i), i % 3 == 0);
+    }
+    let mut unit = __BitfieldUnit::<[u8; 2]>::new([0b11111111, 0b11111111]);
+    for i in 0..16 {
+        if i % 3 == 0 {
+            unit.set_bit(i, false);
+        }
+    }
+    for i in 0..16 {
+        assert_eq!(unit.get_bit(i), i % 3 != 0);
+    }
+}
+
+macro_rules! bitfield_unit_get {
+    (
+        $(
+            With $storage:expr , then get($start:expr, $len:expr) is $expected:expr;
+        )*
+    ) => {
+        #[test]
+        fn bitfield_unit_get() {
+            $({
+                let expected = $expected;
+                let unit = __BitfieldUnit::<_>::new($storage);
+                let actual = unit.get($start, $len);
+                println!();
+                println!("expected = {:064b}", expected);
+                println!("actual   = {:064b}", actual);
+                assert_eq!(expected, actual);
+            })*
+        }
+   }
+}
+bitfield_unit_get! {
+    With [0b11100010], then get(0, 1) is 0;
+    With [0b11100010], then get(1, 1) is 1;
+    With [0b11100010], then get(2, 1) is 0;
+    With [0b11100010], then get(3, 1) is 0;
+    With [0b11100010], then get(4, 1) is 0;
+    With [0b11100010], then get(5, 1) is 1;
+    With [0b11100010], then get(6, 1) is 1;
+    With [0b11100010], then get(7, 1) is 1;
+    With [0b11100010], then get(0, 2) is 0b10;
+    With [0b11100010], then get(1, 2) is 0b01;
+    With [0b11100010], then get(2, 2) is 0b00;
+    With [0b11100010], then get(3, 2) is 0b00;
+    With [0b11100010], then get(4, 2) is 0b10;
+    With [0b11100010], then get(5, 2) is 0b11;
+    With [0b11100010], then get(6, 2) is 0b11;
+    With [0b11100010], then get(0, 3) is 0b010;
+    With [0b11100010], then get(1, 3) is 0b001;
+    With [0b11100010], then get(2, 3) is 0b000;
+    With [0b11100010], then get(3, 3) is 0b100;
+    With [0b11100010], then get(4, 3) is 0b110;
+    With [0b11100010], then get(5, 3) is 0b111;
+    With [0b11100010], then get(0, 4) is 0b0010;
+    With [0b11100010], then get(1, 4) is 0b0001;
+    With [0b11100010], then get(2, 4) is 0b1000;
+    With [0b11100010], then get(3, 4) is 0b1100;
+    With [0b11100010], then get(4, 4) is 0b1110;
+    With [0b11100010], then get(0, 5) is 0b00010;
+    With [0b11100010], then get(1, 5) is 0b10001;
+    With [0b11100010], then get(2, 5) is 0b11000;
+    With [0b11100010], then get(3, 5) is 0b11100;
+    With [0b11100010], then get(0, 6) is 0b100010;
+    With [0b11100010], then get(1, 6) is 0b110001;
+    With [0b11100010], then get(2, 6) is 0b111000;
+    With [0b11100010], then get(0, 7) is 0b1100010;
+    With [0b11100010], then get(1, 7) is 0b1110001;
+    With [0b11100010], then get(0, 8) is 0b11100010;
+
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(0, 16) is 0b1111111101010101;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(1, 16) is 0b0111111110101010;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(2, 16) is 0b0011111111010101;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(3, 16) is 0b0001111111101010;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(4, 16) is 0b0000111111110101;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(5, 16) is 0b0000011111111010;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(6, 16) is 0b0000001111111101;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(7, 16) is 0b0000000111111110;
+    With [0b01010101, 0b11111111, 0b00000000, 0b11111111],
+    then get(8, 16) is 0b0000000011111111;
+}
+macro_rules! bitfield_unit_set {
+    (
+        $(
+            set($start:expr, $len:expr, $val:expr) is $expected:expr;
+        )*
+    ) => {
+        #[test]
+        fn bitfield_unit_set() {
+            $(
+                let mut unit = __BitfieldUnit::<[u8; 4]>::new([0, 0, 0, 0]);
+                unit.set($start, $len, $val);
+                let actual = unit.get(0, 32);
+                println!();
+                println!("set({}, {}, {:032b}", $start, $len, $val);
+                println!("expected = {:064b}", $expected);
+                println!("actual   = {:064b}", actual);
+                assert_eq!($expected, actual);
+            )*
+        }
+    }
+}
+bitfield_unit_set! {
+    set(0, 1, 0b11111111) is 0b00000001;
+    set(1, 1, 0b11111111) is 0b00000010;
+    set(2, 1, 0b11111111) is 0b00000100;
+    set(3, 1, 0b11111111) is 0b00001000;
+    set(4, 1, 0b11111111) is 0b00010000;
+    set(5, 1, 0b11111111) is 0b00100000;
+    set(6, 1, 0b11111111) is 0b01000000;
+    set(7, 1, 0b11111111) is 0b10000000;
+    set(0, 2, 0b11111111) is 0b00000011;
+    set(1, 2, 0b11111111) is 0b00000110;
+    set(2, 2, 0b11111111) is 0b00001100;
+    set(3, 2, 0b11111111) is 0b00011000;
+    set(4, 2, 0b11111111) is 0b00110000;
+    set(5, 2, 0b11111111) is 0b01100000;
+    set(6, 2, 0b11111111) is 0b11000000;
+    set(0, 3, 0b11111111) is 0b00000111;
+    set(1, 3, 0b11111111) is 0b00001110;
+    set(2, 3, 0b11111111) is 0b00011100;
+    set(3, 3, 0b11111111) is 0b00111000;
+    set(4, 3, 0b11111111) is 0b01110000;
+    set(5, 3, 0b11111111) is 0b11100000;
+    set(0, 4, 0b11111111) is 0b00001111;
+    set(1, 4, 0b11111111) is 0b00011110;
+    set(2, 4, 0b11111111) is 0b00111100;
+    set(3, 4, 0b11111111) is 0b01111000;
+    set(4, 4, 0b11111111) is 0b11110000;
+    set(0, 5, 0b11111111) is 0b00011111;
+    set(1, 5, 0b11111111) is 0b00111110;
+    set(2, 5, 0b11111111) is 0b01111100;
+    set(3, 5, 0b11111111) is 0b11111000;
+    set(0, 6, 0b11111111) is 0b00111111;
+    set(1, 6, 0b11111111) is 0b01111110;
+    set(2, 6, 0b11111111) is 0b11111100;
+    set(0, 7, 0b11111111) is 0b01111111;
+    set(1, 7, 0b11111111) is 0b11111110;
+    set(0, 8, 0b11111111) is 0b11111111;
+
+    set(0, 16, 0b1111111111111111) is 0b00000000000000001111111111111111;
+    set(1, 16, 0b1111111111111111) is 0b00000000000000011111111111111110;
+    set(2, 16, 0b1111111111111111) is 0b00000000000000111111111111111100;
+    set(3, 16, 0b1111111111111111) is 0b00000000000001111111111111111000;
+    set(4, 16, 0b1111111111111111) is 0b00000000000011111111111111110000;
+    set(5, 16, 0b1111111111111111) is 0b00000000000111111111111111100000;
+    set(6, 16, 0b1111111111111111) is 0b00000000001111111111111111000000;
+    set(7, 16, 0b1111111111111111) is 0b00000000011111111111111110000000;
+    set(8, 16, 0b1111111111111111) is 0b00000000111111111111111100000000;
 }

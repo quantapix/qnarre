@@ -7,13 +7,13 @@ use proc_macro2::{self, Ident, Span};
 use std::cmp;
 const MAX_GUARANTEED_ALIGN: usize = 8;
 #[derive(Debug)]
-pub struct StructLayoutTracker<'a> {
+pub struct Structure<'a> {
     name: &'a str,
     ctx: &'a Context,
     comp: &'a CompInfo,
     is_packed: bool,
     known_type_layout: Option<Layout>,
-    is_rust_union: bool,
+    is_union: bool,
     can_copy_union_fields: bool,
     latest_offset: usize,
     padding_count: usize,
@@ -21,61 +21,18 @@ pub struct StructLayoutTracker<'a> {
     max_field_align: usize,
     last_field_was_bitfield: bool,
 }
-pub fn align_to(size: usize, align: usize) -> usize {
-    if align == 0 {
-        return size;
-    }
-    let rem = size % align;
-    if rem == 0 {
-        return size;
-    }
-    size + align - rem
-}
-pub fn bytes_from_bits_pow2(mut n: usize) -> usize {
-    if n == 0 {
-        return 0;
-    }
-    if n <= 8 {
-        return 1;
-    }
-    if !n.is_power_of_two() {
-        n = n.next_power_of_two();
-    }
-    n / 8
-}
-#[test]
-fn test_align_to() {
-    assert_eq!(align_to(1, 1), 1);
-    assert_eq!(align_to(1, 2), 2);
-    assert_eq!(align_to(1, 4), 4);
-    assert_eq!(align_to(5, 1), 5);
-    assert_eq!(align_to(17, 4), 20);
-}
-#[test]
-fn test_bytes_from_bits_pow2() {
-    assert_eq!(bytes_from_bits_pow2(0), 0);
-    for i in 1..9 {
-        assert_eq!(bytes_from_bits_pow2(i), 1);
-    }
-    for i in 9..17 {
-        assert_eq!(bytes_from_bits_pow2(i), 2);
-    }
-    for i in 17..33 {
-        assert_eq!(bytes_from_bits_pow2(i), 4);
-    }
-}
-impl<'a> StructLayoutTracker<'a> {
+impl<'a> Structure<'a> {
     pub fn new(ctx: &'a Context, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
         let known_type_layout = ty.layout(ctx);
         let is_packed = comp.is_packed(ctx, known_type_layout.as_ref());
-        let (is_rust_union, can_copy_union_fields) = comp.is_rust_union(ctx, known_type_layout.as_ref(), name);
-        StructLayoutTracker {
+        let (is_union, can_copy_union_fields) = comp.is_rust_union(ctx, known_type_layout.as_ref(), name);
+        Structure {
             name,
             ctx,
             comp,
             is_packed,
             known_type_layout,
-            is_rust_union,
+            is_union,
             can_copy_union_fields,
             latest_offset: 0,
             padding_count: 0,
@@ -87,8 +44,8 @@ impl<'a> StructLayoutTracker<'a> {
     pub fn can_copy_union_fields(&self) -> bool {
         self.can_copy_union_fields
     }
-    pub fn is_rust_union(&self) -> bool {
-        self.is_rust_union
+    pub fn is_union(&self) -> bool {
+        self.is_union
     }
     pub fn saw_vtable(&mut self) {
         debug!("saw vtable for {}", self.name);
@@ -106,7 +63,7 @@ impl<'a> StructLayoutTracker<'a> {
             self.max_field_align = cmp::max(self.max_field_align, layout.align);
         }
     }
-    pub fn saw_bitfield_unit(&mut self, layout: Layout) {
+    pub fn saw_bitfield(&mut self, layout: Layout) {
         debug!("saw bitfield unit for {}: {:?}", self.name, layout);
         self.align_to_latest_field(layout);
         self.latest_offset += layout.size;
@@ -204,7 +161,7 @@ impl<'a> StructLayoutTracker<'a> {
         if !self.ctx.opts().force_explicit_padding {
             return None;
         }
-        if self.is_rust_union {
+        if self.is_union {
             return None;
         }
         if self.latest_offset == comp_layout.size {
@@ -296,5 +253,51 @@ impl<'a> StructLayoutTracker<'a> {
         }
         self.latest_offset += self.padding_bytes(layout);
         false
+    }
+}
+
+pub fn align_to(size: usize, align: usize) -> usize {
+    if align == 0 {
+        return size;
+    }
+    let rem = size % align;
+    if rem == 0 {
+        return size;
+    }
+    size + align - rem
+}
+
+pub fn bytes_from_bits_pow2(mut n: usize) -> usize {
+    if n == 0 {
+        return 0;
+    }
+    if n <= 8 {
+        return 1;
+    }
+    if !n.is_power_of_two() {
+        n = n.next_power_of_two();
+    }
+    n / 8
+}
+
+#[test]
+fn test_align_to() {
+    assert_eq!(align_to(1, 1), 1);
+    assert_eq!(align_to(1, 2), 2);
+    assert_eq!(align_to(1, 4), 4);
+    assert_eq!(align_to(5, 1), 5);
+    assert_eq!(align_to(17, 4), 20);
+}
+#[test]
+fn test_bytes_from_bits_pow2() {
+    assert_eq!(bytes_from_bits_pow2(0), 0);
+    for i in 1..9 {
+        assert_eq!(bytes_from_bits_pow2(i), 1);
+    }
+    for i in 9..17 {
+        assert_eq!(bytes_from_bits_pow2(i), 2);
+    }
+    for i in 17..33 {
+        assert_eq!(bytes_from_bits_pow2(i), 4);
     }
 }
