@@ -1,5 +1,5 @@
 use super::serialize::CSerialize;
-use super::{error, CodegenError, CodegenResult, ToRustTyOrOpaque};
+use super::{error, CodegenError, CodegenResult, ToRustOrOpaque};
 use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use crate::ir::function::{Abi, ClangAbi, FnSig};
 use crate::ir::item::{CanonPath, IsOpaque, Item};
@@ -278,7 +278,7 @@ fn fnsig_return_ty_internal(ctx: &Context, sig: &FnSig, include_arrow: bool) -> 
             quote! { () }
         };
     }
-    let ret_ty = sig.ret_type().to_rust_ty_or_opaque(ctx, &());
+    let ret_ty = sig.ret_type().to_rust_or_opaque(ctx, &());
     if include_arrow {
         quote! { -> #ret_ty }
     } else {
@@ -300,18 +300,18 @@ pub fn fnsig_arguments(ctx: &Context, sig: &FnSig) -> Vec<proc_macro2::TokenStre
             let arg_ty = match *arg_ty.canonical_type(ctx).kind() {
                 TypeKind::Array(t, _) => {
                     let stream = if ctx.opts().array_pointers_in_arguments {
-                        arg_ty.to_rust_ty_or_opaque(ctx, arg_item)
+                        arg_ty.to_rust_or_opaque(ctx, arg_item)
                     } else {
-                        t.to_rust_ty_or_opaque(ctx, &())
+                        t.to_rust_or_opaque(ctx, &())
                     };
                     stream.to_ptr(ctx.resolve_type(t).is_const())
                 },
                 TypeKind::Pointer(inner) => {
                     let inner = ctx.resolve_item(inner);
                     let inner_ty = inner.expect_type();
-                    arg_item.to_rust_ty_or_opaque(ctx, &())
+                    arg_item.to_rust_or_opaque(ctx, &())
                 },
-                _ => arg_item.to_rust_ty_or_opaque(ctx, &()),
+                _ => arg_item.to_rust_or_opaque(ctx, &()),
             };
             let arg_name = match *name {
                 Some(ref name) => ctx.rust_mangle(name).into_owned(),
@@ -357,7 +357,7 @@ pub fn fnsig_argument_identifiers(ctx: &Context, sig: &FnSig) -> Vec<proc_macro2
 pub fn fnsig_block(ctx: &Context, sig: &FnSig) -> proc_macro2::TokenStream {
     let args = sig.arg_types().iter().map(|&(_, ty)| {
         let arg_item = ctx.resolve_item(ty);
-        arg_item.to_rust_ty_or_opaque(ctx, &())
+        arg_item.to_rust_or_opaque(ctx, &())
     });
     let ret_ty = fnsig_return_ty_internal(ctx, sig, /* include_arrow = */ false);
     quote! {

@@ -1328,15 +1328,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         };
         self.allowed = Some(allowed);
         self.codegen_items = Some(codegen_items);
-        for item in self.opts().allowed_fns.unmatched_items() {
-            unused_regex_diagnostic(item, "--allowlist-function", self);
-        }
-        for item in self.opts().allowed_vars.unmatched_items() {
-            unused_regex_diagnostic(item, "--allowlist-var", self);
-        }
-        for item in self.opts().allowed_types.unmatched_items() {
-            unused_regex_diagnostic(item, "--allowlist-type", self);
-        }
     }
     pub fn trait_prefix(&self) -> Ident {
         if self.opts().use_core {
@@ -1645,8 +1636,4 @@ impl TemplParams for PartialType {
             _ => 0,
         }
     }
-}
-
-fn unused_regex_diagnostic(item: &str, name: &str, _ctx: &Context) {
-    warn!("unused option: {} {}", name, item);
 }

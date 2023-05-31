@@ -486,10 +486,7 @@ impl Bindings {
                     io::ErrorKind::Other,
                     "Rustfmt parsing errors.".to_string(),
                 )),
-                Some(3) => {
-                    rustfmt_non_fatal_error_diagnostic("Rustfmt could not format some lines", &self.opts);
-                    Ok(bindings)
-                },
+                Some(3) => Ok(bindings),
                 _ => Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Internal rustfmt error".to_string(),
@@ -903,9 +900,6 @@ fn find_effective_target(xs: &[String]) -> (String, bool) {
         return (rust_to_clang_target(&t), false);
     }
     (rust_to_clang_target(HOST_TARGET), false)
-}
-fn rustfmt_non_fatal_error_diagnostic(msg: &str, _options: &Opts) {
-    warn!("{}", msg);
 }
 fn filter_builtins(ctx: &Context, cur: &clang::Cursor) -> bool {
     ctx.opts().builtins || !cur.is_builtin()

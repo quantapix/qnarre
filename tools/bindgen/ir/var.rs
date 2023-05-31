@@ -144,8 +144,6 @@ impl parse::SubItem for Var {
                 let previously_defined = ctx.parsed_macro(&id);
                 ctx.note_parsed_macro(id.clone(), value.clone());
                 if previously_defined {
-                    let name = String::from_utf8(id).unwrap();
-                    duplicated_macro_diagnostic(&name, cur.location(), ctx);
                     return Err(parse::Error::Continue);
                 }
                 let name = String::from_utf8(id).unwrap();
@@ -298,7 +296,4 @@ fn get_integer_literal_from_cursor(cur: &clang::Cursor) -> Option<i64> {
         }
     });
     y
-}
-fn duplicated_macro_diagnostic(macro_name: &str, _location: crate::clang::SrcLoc, _ctx: &Context) {
-    warn!("Duplicated macro definition: {}", macro_name);
 }

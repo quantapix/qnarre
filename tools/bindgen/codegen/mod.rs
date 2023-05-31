@@ -430,7 +430,7 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
             .used_templ_params(ctx)
             .iter()
             .map(|p| {
-                p.try_to_rust_ty(ctx, &())
+                p.try_to_rust(ctx, &())
                     .expect("template params cannot fail to be a rust type")
             })
             .collect();
@@ -577,7 +577,7 @@ impl Generator for Var {
         if let Some(x) = it.comment(ctx) {
             attrs.push(attributes::doc(x));
         }
-        let ty = self.ty().to_rust_ty_or_opaque(ctx, &());
+        let ty = self.ty().to_rust_or_opaque(ctx, &());
         if let Some(x) = self.val() {
             match *x {
                 VarType::Bool(x) => {
@@ -762,7 +762,7 @@ impl Generator for Type {
                     self.to_opaque(ctx, it)
                 } else {
                     let mut inner_ty = inner_item
-                        .try_to_rust_ty_or_opaque(ctx, &())
+                        .try_to_rust_or_opaque(ctx, &())
                         .unwrap_or_else(|_| self.to_opaque(ctx, it));
                     inner_ty.append_implicit_templ_params(ctx, inner_item);
                     inner_ty
@@ -846,7 +846,7 @@ impl Generator for Type {
                 let params: Vec<_> = params
                     .iter()
                     .map(|p| {
-                        p.try_to_rust_ty(ctx, &())
+                        p.try_to_rust(ctx, &())
                             .expect("type parameters can always convert to rust ty OK")
                     })
                     .collect();
@@ -986,7 +986,7 @@ impl Generator for TemplInstantiation {
             }
             let fn_name = ctx.rust_ident_raw(fn_name);
             let prefix = ctx.trait_prefix();
-            let ident = it.to_rust_ty_or_opaque(ctx, &());
+            let ident = it.to_rust_or_opaque(ctx, &());
             let size_of_expr = quote! {
                 ::#prefix::mem::size_of::<#ident>()
             };
@@ -1122,13 +1122,13 @@ impl<'a> FieldCodegen<'a> for FieldData {
         assert!(self.bitfield_width().is_none());
         let field_item = self.ty().into_resolver().through_type_refs().resolve(ctx);
         let field_ty = field_item.expect_type();
-        let mut ty = self.ty().to_rust_ty_or_opaque(ctx, &());
+        let mut ty = self.ty().to_rust_or_opaque(ctx, &());
         ty.append_implicit_templ_params(ctx, field_item);
         let ty = if parent.is_union() {
             wrap_union_field_if_needed(ctx, struct_layout, ty, result)
         } else if let Some(item) = field_ty.is_incomplete_array(ctx) {
             result.saw_incomplete_array();
-            let inner = item.to_rust_ty_or_opaque(ctx, &());
+            let inner = item.to_rust_or_opaque(ctx, &());
             if ctx.opts().enable_cxx_namespaces {
                 quote! {
                     root::__IncompleteArrayField<#inner>
@@ -1356,7 +1356,7 @@ impl<'a> FieldCodegen<'a> for BitfieldUnit {
             let param_name = bitfield_getter_name(ctx, bf);
             let bitfield_ty_item = ctx.resolve_item(bf.ty());
             let bitfield_ty = bitfield_ty_item.expect_type();
-            let bitfield_ty = bitfield_ty.to_rust_ty_or_opaque(ctx, bitfield_ty_item);
+            let bitfield_ty = bitfield_ty.to_rust_or_opaque(ctx, bitfield_ty_item);
             ctor_params.push(quote! {
                 #param_name : #bitfield_ty
             });
@@ -1425,7 +1425,7 @@ impl<'a> FieldCodegen<'a> for Bitfield {
                 return;
             },
         };
-        let bitfield_ty = bitfield_ty.to_rust_ty_or_opaque(ctx, bitfield_ty_item);
+        let bitfield_ty = bitfield_ty.to_rust_or_opaque(ctx, bitfield_ty_item);
         let offset = self.offset_into_unit();
         let width = self.width() as u8;
         let visibility_kind = compute_visibility(ctx, self.is_public(), Some(self.annotations()), visibility_kind);
@@ -1501,7 +1501,7 @@ impl Generator for CompInfo {
                 let vtable = Vtable::new(it.id(), self);
                 vtable.codegen(ctx, y, it);
                 let vtable_type = vtable
-                    .try_to_rust_ty(ctx, &())
+                    .try_to_rust(ctx, &())
                     .expect("vtable to Rust type conversion is infallible")
                     .to_ptr(true);
                 fields.push(quote! {
@@ -1514,7 +1514,7 @@ impl Generator for CompInfo {
                     continue;
                 }
                 let inner_item = ctx.resolve_item(base.ty);
-                let mut inner = inner_item.to_rust_ty_or_opaque(ctx, &());
+                let mut inner = inner_item.to_rust_or_opaque(ctx, &());
                 inner.append_implicit_templ_params(ctx, inner_item);
                 let field_name = ctx.rust_ident(&base.field_name);
                 struct_layout.saw_base(inner_item.expect_type());
@@ -2398,11 +2398,11 @@ impl Generator for Enum {
                     #enum_canonical_name :: #referenced_name ;
             });
         }
-        let repr = repr.to_rust_ty_or_opaque(ctx, it);
+        let repr = repr.to_rust_or_opaque(ctx, it);
         let has_typedef = ctx.is_enum_typedef_combo(it.id());
         let mut builder = EnumBuilder::new(&name, attrs, repr, variation, has_typedef);
         let mut seen_values = HashMap::<_, Ident>::default();
-        let enum_rust_ty = it.to_rust_ty_or_opaque(ctx, &());
+        let enum_rust_ty = it.to_rust_or_opaque(ctx, &());
         let is_toplevel = it.is_toplevel(ctx);
         let parent_canonical_name = if is_toplevel {
             None
@@ -2503,284 +2503,6 @@ impl Generator for Enum {
         }
         let item = builder.build(ctx, enum_rust_ty, y);
         y.push(item);
-    }
-}
-
-trait TryToRustTy {
-    type Extra;
-    fn try_to_rust_ty(&self, ctx: &Context, x: &Self::Extra) -> error::Result<proc_macro2::TokenStream>;
-}
-impl<T> TryToRustTy for T
-where
-    T: Copy + Into<ItemId>,
-{
-    type Extra = ();
-    fn try_to_rust_ty(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
-        ctx.resolve_item((*self).into()).try_to_rust_ty(ctx, &())
-    }
-}
-trait TryToOpaque {
-    type Extra;
-    fn try_get_layout(&self, ctx: &Context, x: &Self::Extra) -> error::Result<Layout>;
-    fn try_to_opaque(&self, ctx: &Context, x: &Self::Extra) -> error::Result<proc_macro2::TokenStream> {
-        self.try_get_layout(ctx, x).map(|x| utils::blob(ctx, x))
-    }
-}
-impl<T> TryToOpaque for T
-where
-    T: Copy + Into<ItemId>,
-{
-    type Extra = ();
-    fn try_get_layout(&self, ctx: &Context, _: &()) -> error::Result<Layout> {
-        ctx.resolve_item((*self).into()).try_get_layout(ctx, &())
-    }
-}
-trait ToOpaque: TryToOpaque {
-    fn get_layout(&self, ctx: &Context, x: &Self::Extra) -> Layout {
-        self.try_get_layout(ctx, x).unwrap_or_else(|_| Layout::for_size(ctx, 1))
-    }
-    fn to_opaque(&self, ctx: &Context, x: &Self::Extra) -> proc_macro2::TokenStream {
-        utils::blob(ctx, self.get_layout(ctx, x))
-    }
-}
-impl<T> ToOpaque for T where T: TryToOpaque {}
-trait TryToRustTyOrOpaque: TryToRustTy + TryToOpaque {
-    type Extra;
-    fn try_to_rust_ty_or_opaque(
-        &self,
-        ctx: &Context,
-        x: &<Self as TryToRustTyOrOpaque>::Extra,
-    ) -> error::Result<proc_macro2::TokenStream>;
-}
-impl<E, T> TryToRustTyOrOpaque for T
-where
-    T: TryToRustTy<Extra = E> + TryToOpaque<Extra = E>,
-{
-    type Extra = E;
-    fn try_to_rust_ty_or_opaque(&self, ctx: &Context, x: &E) -> error::Result<proc_macro2::TokenStream> {
-        self.try_to_rust_ty(ctx, x).or_else(|_| {
-            if let Ok(x) = self.try_get_layout(ctx, x) {
-                Ok(utils::blob(ctx, x))
-            } else {
-                Err(error::Error::NoLayoutForOpaqueBlob)
-            }
-        })
-    }
-}
-trait ToRustTyOrOpaque: TryToRustTy + ToOpaque {
-    type Extra;
-    fn to_rust_ty_or_opaque(&self, ctx: &Context, x: &<Self as ToRustTyOrOpaque>::Extra) -> proc_macro2::TokenStream;
-}
-impl<E, T> ToRustTyOrOpaque for T
-where
-    T: TryToRustTy<Extra = E> + ToOpaque<Extra = E>,
-{
-    type Extra = E;
-    fn to_rust_ty_or_opaque(&self, ctx: &Context, extra: &E) -> proc_macro2::TokenStream {
-        self.try_to_rust_ty(ctx, extra)
-            .unwrap_or_else(|_| self.to_opaque(ctx, extra))
-    }
-}
-impl TryToRustTy for FnSig {
-    type Extra = ();
-    fn try_to_rust_ty(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
-        let y = utils::fnsig_return_ty(ctx, self);
-        let args = utils::fnsig_arguments(ctx, self);
-        match self.abi(ctx, None) {
-            abi => Ok(quote! {
-                unsafe extern #abi fn ( #( #args ),* ) #y
-            }),
-        }
-    }
-}
-impl TryToRustTy for Item {
-    type Extra = ();
-    fn try_to_rust_ty(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
-        self.kind().expect_type().try_to_rust_ty(ctx, self)
-    }
-}
-impl TryToRustTy for TemplInstantiation {
-    type Extra = Item;
-    fn try_to_rust_ty(&self, ctx: &Context, it: &Item) -> error::Result<proc_macro2::TokenStream> {
-        if self.is_opaque(ctx, it) {
-            return Err(error::Error::InstantiationOfOpaqueType);
-        }
-        let def = self.templ_def().into_resolver().through_type_refs().resolve(ctx);
-        let mut ty = quote! {};
-        let def_path = def.namespace_aware_canon_path(ctx);
-        ty.append_separated(def_path.into_iter().map(|p| ctx.rust_ident(p)), quote!(::));
-        let def_params = def.self_templ_params(ctx);
-        if def_params.is_empty() {
-            return Err(error::Error::InstantiationOfOpaqueType);
-        }
-        let templ_args = self
-            .templ_args()
-            .iter()
-            .zip(def_params.iter())
-            .filter(|&(_, param)| ctx.uses_templ_param(def.id(), *param))
-            .map(|(arg, _)| {
-                let arg = arg.into_resolver().through_type_refs().resolve(ctx);
-                let mut ty = arg.try_to_rust_ty(ctx, &())?;
-                ty.append_implicit_templ_params(ctx, arg);
-                Ok(ty)
-            })
-            .collect::<error::Result<Vec<_>>>()?;
-        if templ_args.is_empty() {
-            return Ok(ty);
-        }
-        Ok(quote! {
-            #ty < #( #templ_args ),* >
-        })
-    }
-}
-impl TryToRustTy for Type {
-    type Extra = Item;
-    fn try_to_rust_ty(&self, ctx: &Context, it: &Item) -> error::Result<proc_macro2::TokenStream> {
-        use self::utils::ast_ty::*;
-        match *self.kind() {
-            TypeKind::Void => Ok(c_void(ctx)),
-            TypeKind::NullPtr => Ok(c_void(ctx).to_ptr(true)),
-            TypeKind::Int(ik) => match ik {
-                IntKind::Bool => Ok(quote! { bool }),
-                IntKind::Char { .. } => Ok(raw_type(ctx, "c_char")),
-                IntKind::SChar => Ok(raw_type(ctx, "c_schar")),
-                IntKind::UChar => Ok(raw_type(ctx, "c_uchar")),
-                IntKind::Short => Ok(raw_type(ctx, "c_short")),
-                IntKind::UShort => Ok(raw_type(ctx, "c_ushort")),
-                IntKind::Int => Ok(raw_type(ctx, "c_int")),
-                IntKind::UInt => Ok(raw_type(ctx, "c_uint")),
-                IntKind::Long => Ok(raw_type(ctx, "c_long")),
-                IntKind::ULong => Ok(raw_type(ctx, "c_ulong")),
-                IntKind::LongLong => Ok(raw_type(ctx, "c_longlong")),
-                IntKind::ULongLong => Ok(raw_type(ctx, "c_ulonglong")),
-                IntKind::WChar => {
-                    let layout = self.layout(ctx).expect("Couldn't compute wchar_t's layout?");
-                    let ty = Layout::known_type_for_size(ctx, layout.size).expect("Non-representable wchar_t?");
-                    let ident = ctx.rust_ident_raw(ty);
-                    Ok(quote! { #ident })
-                },
-                IntKind::I8 => Ok(quote! { i8 }),
-                IntKind::U8 => Ok(quote! { u8 }),
-                IntKind::I16 => Ok(quote! { i16 }),
-                IntKind::U16 => Ok(quote! { u16 }),
-                IntKind::I32 => Ok(quote! { i32 }),
-                IntKind::U32 => Ok(quote! { u32 }),
-                IntKind::I64 => Ok(quote! { i64 }),
-                IntKind::U64 => Ok(quote! { u64 }),
-                IntKind::Custom { name, .. } => Ok(proc_macro2::TokenStream::from_str(name).unwrap()),
-                IntKind::U128 => Ok(quote! { u128 }),
-                IntKind::I128 => Ok(quote! { i128 }),
-            },
-            TypeKind::Float(fk) => Ok(float_kind_rust_type(ctx, fk, self.layout(ctx))),
-            TypeKind::Complex(fk) => {
-                let float_path = float_kind_rust_type(ctx, fk, self.layout(ctx));
-                ctx.generated_bindgen_complex();
-                Ok(if ctx.opts().enable_cxx_namespaces {
-                    quote! {
-                        root::__BindgenComplex<#float_path>
-                    }
-                } else {
-                    quote! {
-                        __BindgenComplex<#float_path>
-                    }
-                })
-            },
-            TypeKind::Function(ref fs) => {
-                let ty = fs.try_to_rust_ty(ctx, &())?;
-                let prefix = ctx.trait_prefix();
-                Ok(quote! {
-                    ::#prefix::option::Option<#ty>
-                })
-            },
-            TypeKind::Array(item, len) | TypeKind::Vector(item, len) => {
-                let ty = item.try_to_rust_ty(ctx, &())?;
-                Ok(quote! {
-                    [ #ty ; #len ]
-                })
-            },
-            TypeKind::Enum(..) => {
-                let path = it.namespace_aware_canon_path(ctx);
-                let path = proc_macro2::TokenStream::from_str(&path.join("::")).unwrap();
-                Ok(quote!(#path))
-            },
-            TypeKind::TemplInstantiation(ref x) => x.try_to_rust_ty(ctx, it),
-            TypeKind::ResolvedTypeRef(inner) => inner.try_to_rust_ty(ctx, &()),
-            TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
-                if self.is_block_pointer() && !ctx.opts().generate_block {
-                    let void = c_void(ctx);
-                    return Ok(void.to_ptr(/* is_const = */ false));
-                }
-                if it.is_opaque(ctx, &())
-                    && it
-                        .used_templ_params(ctx)
-                        .into_iter()
-                        .any(|param| param.is_templ_param(ctx, &()))
-                {
-                    self.try_to_opaque(ctx, it)
-                } else if let Some(ty) = self.name().and_then(|name| utils::type_from_named(ctx, name)) {
-                    Ok(ty)
-                } else {
-                    utils::build_path(it, ctx)
-                }
-            },
-            TypeKind::Comp(ref info) => {
-                let ps = it.all_templ_params(ctx);
-                if info.has_non_type_templ_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
-                    return self.try_to_opaque(ctx, it);
-                }
-                utils::build_path(it, ctx)
-            },
-            TypeKind::Opaque => self.try_to_opaque(ctx, it),
-            TypeKind::Pointer(inner) | TypeKind::Reference(inner) => {
-                let is_const = ctx.resolve_type(inner).is_const();
-                let inner = inner.into_resolver().through_type_refs().resolve(ctx);
-                let inner_ty = inner.expect_type();
-                let mut ty = inner.to_rust_ty_or_opaque(ctx, &());
-                ty.append_implicit_templ_params(ctx, inner);
-                if inner_ty.canonical_type(ctx).is_function() {
-                    Ok(ty)
-                } else {
-                    Ok(ty.to_ptr(is_const))
-                }
-            },
-            TypeKind::TypeParam => {
-                let name = it.canon_name(ctx);
-                let ident = ctx.rust_ident(name);
-                Ok(quote! {
-                    #ident
-                })
-            },
-            ref u @ TypeKind::UnresolvedTypeRef(..) => {
-                unreachable!("Should have been resolved after parsing {:?}!", u)
-            },
-        }
-    }
-}
-impl<'a> TryToRustTy for Vtable<'a> {
-    type Extra = ();
-    fn try_to_rust_ty(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
-        let y = ctx.rust_ident(self.canon_name(ctx));
-        Ok(quote! {
-            #y
-        })
-    }
-}
-impl TryToOpaque for Item {
-    type Extra = ();
-    fn try_get_layout(&self, ctx: &Context, _: &()) -> error::Result<Layout> {
-        self.kind().expect_type().try_get_layout(ctx, self)
-    }
-}
-impl TryToOpaque for TemplInstantiation {
-    type Extra = Item;
-    fn try_get_layout(&self, ctx: &Context, it: &Item) -> error::Result<Layout> {
-        it.expect_type().layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)
-    }
-}
-impl TryToOpaque for Type {
-    type Extra = Item;
-    fn try_get_layout(&self, ctx: &Context, _: &Item) -> error::Result<Layout> {
-        self.layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)
     }
 }
 
@@ -2885,25 +2607,6 @@ impl Generator for Function {
         Some(times_seen)
     }
 }
-fn unsupported_abi_diagnostic<const VARIADIC: bool>(
-    fn_name: &str,
-    _location: Option<&crate::clang::SrcLoc>,
-    abi: &str,
-    _ctx: &Context,
-) {
-    warn!(
-        "Skipping {}function `{}` with the {} ABI that isn't supported by the configured Rust target",
-        if VARIADIC { "variadic " } else { "" },
-        fn_name,
-        abi
-    );
-}
-fn variadic_fn_diagnostic(fn_name: &str, _location: Option<&crate::clang::SrcLoc>, _ctx: &Context) {
-    warn!(
-        "Cannot generate wrapper for the static variadic function `{}`.",
-        fn_name,
-    );
-}
 pub fn codegen(ctx: Context) -> Result<(proc_macro2::TokenStream, Opts), CodegenError> {
     ctx.gen(|ctx2| {
         let _t = ctx2.timer("codegen");
@@ -2950,3 +2653,282 @@ pub mod bitfield_unit;
 
 mod serialize;
 pub mod struct_layout;
+
+trait TryToRust {
+    type Extra;
+    fn try_to_rust(&self, ctx: &Context, x: &Self::Extra) -> error::Result<proc_macro2::TokenStream>;
+}
+impl<T> TryToRust for T
+where
+    T: Copy + Into<ItemId>,
+{
+    type Extra = ();
+    fn try_to_rust(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
+        ctx.resolve_item((*self).into()).try_to_rust(ctx, &())
+    }
+}
+impl TryToRust for FnSig {
+    type Extra = ();
+    fn try_to_rust(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
+        let ty = utils::fnsig_return_ty(ctx, self);
+        let args = utils::fnsig_arguments(ctx, self);
+        match self.abi(ctx, None) {
+            abi => Ok(quote! {
+                unsafe extern #abi fn ( #( #args ),* ) #ty
+            }),
+        }
+    }
+}
+impl TryToRust for Item {
+    type Extra = ();
+    fn try_to_rust(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
+        self.kind().expect_type().try_to_rust(ctx, self)
+    }
+}
+impl TryToRust for TemplInstantiation {
+    type Extra = Item;
+    fn try_to_rust(&self, ctx: &Context, it: &Item) -> error::Result<proc_macro2::TokenStream> {
+        if self.is_opaque(ctx, it) {
+            return Err(error::Error::InstantiationOfOpaqueType);
+        }
+        let def = self.templ_def().into_resolver().through_type_refs().resolve(ctx);
+        let mut ty = quote! {};
+        let path = def.namespace_aware_canon_path(ctx);
+        ty.append_separated(path.into_iter().map(|x| ctx.rust_ident(x)), quote!(::));
+        let ps = def.self_templ_params(ctx);
+        if ps.is_empty() {
+            return Err(error::Error::InstantiationOfOpaqueType);
+        }
+        let args = self
+            .templ_args()
+            .iter()
+            .zip(ps.iter())
+            .filter(|&(_, x)| ctx.uses_templ_param(def.id(), *x))
+            .map(|(x, _)| {
+                let x = x.into_resolver().through_type_refs().resolve(ctx);
+                let mut ty = x.try_to_rust(ctx, &())?;
+                ty.append_implicit_templ_params(ctx, x);
+                Ok(ty)
+            })
+            .collect::<error::Result<Vec<_>>>()?;
+        if args.is_empty() {
+            return Ok(ty);
+        }
+        Ok(quote! {
+            #ty < #( #args ),* >
+        })
+    }
+}
+impl TryToRust for Type {
+    type Extra = Item;
+    fn try_to_rust(&self, ctx: &Context, it: &Item) -> error::Result<proc_macro2::TokenStream> {
+        use self::utils::ast_ty::*;
+        match *self.kind() {
+            TypeKind::Void => Ok(c_void(ctx)),
+            TypeKind::NullPtr => Ok(c_void(ctx).to_ptr(true)),
+            TypeKind::Int(ik) => match ik {
+                IntKind::Bool => Ok(quote! { bool }),
+                IntKind::Char { .. } => Ok(raw_type(ctx, "c_char")),
+                IntKind::SChar => Ok(raw_type(ctx, "c_schar")),
+                IntKind::UChar => Ok(raw_type(ctx, "c_uchar")),
+                IntKind::Short => Ok(raw_type(ctx, "c_short")),
+                IntKind::UShort => Ok(raw_type(ctx, "c_ushort")),
+                IntKind::Int => Ok(raw_type(ctx, "c_int")),
+                IntKind::UInt => Ok(raw_type(ctx, "c_uint")),
+                IntKind::Long => Ok(raw_type(ctx, "c_long")),
+                IntKind::ULong => Ok(raw_type(ctx, "c_ulong")),
+                IntKind::LongLong => Ok(raw_type(ctx, "c_longlong")),
+                IntKind::ULongLong => Ok(raw_type(ctx, "c_ulonglong")),
+                IntKind::WChar => {
+                    let x = self.layout(ctx).expect("Couldn't compute wchar_t's layout?");
+                    let ty = Layout::known_type_for_size(ctx, x.size).expect("Non-representable wchar_t?");
+                    let ty = ctx.rust_ident_raw(ty);
+                    Ok(quote! { #ty })
+                },
+                IntKind::I8 => Ok(quote! { i8 }),
+                IntKind::U8 => Ok(quote! { u8 }),
+                IntKind::I16 => Ok(quote! { i16 }),
+                IntKind::U16 => Ok(quote! { u16 }),
+                IntKind::I32 => Ok(quote! { i32 }),
+                IntKind::U32 => Ok(quote! { u32 }),
+                IntKind::I64 => Ok(quote! { i64 }),
+                IntKind::U64 => Ok(quote! { u64 }),
+                IntKind::Custom { name, .. } => Ok(proc_macro2::TokenStream::from_str(name).unwrap()),
+                IntKind::U128 => Ok(quote! { u128 }),
+                IntKind::I128 => Ok(quote! { i128 }),
+            },
+            TypeKind::Float(x) => Ok(float_kind_rust_type(ctx, x, self.layout(ctx))),
+            TypeKind::Complex(x) => {
+                let ty = float_kind_rust_type(ctx, x, self.layout(ctx));
+                ctx.generated_bindgen_complex();
+                Ok(if ctx.opts().enable_cxx_namespaces {
+                    quote! {
+                        root::__BindgenComplex<#ty>
+                    }
+                } else {
+                    quote! {
+                        __BindgenComplex<#ty>
+                    }
+                })
+            },
+            TypeKind::Function(ref x) => {
+                let ty = x.try_to_rust(ctx, &())?;
+                let prefix = ctx.trait_prefix();
+                Ok(quote! {
+                    ::#prefix::option::Option<#ty>
+                })
+            },
+            TypeKind::Array(item, len) | TypeKind::Vector(item, len) => {
+                let ty = item.try_to_rust(ctx, &())?;
+                Ok(quote! {
+                    [ #ty ; #len ]
+                })
+            },
+            TypeKind::Enum(..) => {
+                let y = it.namespace_aware_canon_path(ctx);
+                let y = proc_macro2::TokenStream::from_str(&y.join("::")).unwrap();
+                Ok(quote!(#y))
+            },
+            TypeKind::TemplInstantiation(ref x) => x.try_to_rust(ctx, it),
+            TypeKind::ResolvedTypeRef(x) => x.try_to_rust(ctx, &()),
+            TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
+                if self.is_block_pointer() && !ctx.opts().generate_block {
+                    let y = c_void(ctx);
+                    return Ok(y.to_ptr(/* is_const = */ false));
+                }
+                if it.is_opaque(ctx, &())
+                    && it
+                        .used_templ_params(ctx)
+                        .into_iter()
+                        .any(|x| x.is_templ_param(ctx, &()))
+                {
+                    self.try_to_opaque(ctx, it)
+                } else if let Some(ty) = self.name().and_then(|x| utils::type_from_named(ctx, x)) {
+                    Ok(ty)
+                } else {
+                    utils::build_path(it, ctx)
+                }
+            },
+            TypeKind::Comp(ref x) => {
+                let ps = it.all_templ_params(ctx);
+                if x.has_non_type_templ_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
+                    return self.try_to_opaque(ctx, it);
+                }
+                utils::build_path(it, ctx)
+            },
+            TypeKind::Opaque => self.try_to_opaque(ctx, it),
+            TypeKind::Pointer(x) | TypeKind::Reference(x) => {
+                let is_const = ctx.resolve_type(x).is_const();
+                let x = x.into_resolver().through_type_refs().resolve(ctx);
+                let mut ty = x.to_rust_or_opaque(ctx, &());
+                ty.append_implicit_templ_params(ctx, x);
+                if x.expect_type().canonical_type(ctx).is_function() {
+                    Ok(ty)
+                } else {
+                    Ok(ty.to_ptr(is_const))
+                }
+            },
+            TypeKind::TypeParam => {
+                let y = it.canon_name(ctx);
+                let y = ctx.rust_ident(y);
+                Ok(quote! {
+                    #y
+                })
+            },
+            ref u @ TypeKind::UnresolvedTypeRef(..) => {
+                unreachable!("Should have been resolved after parsing {:?}!", u)
+            },
+        }
+    }
+}
+impl<'a> TryToRust for Vtable<'a> {
+    type Extra = ();
+    fn try_to_rust(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
+        let y = ctx.rust_ident(self.canon_name(ctx));
+        Ok(quote! {
+            #y
+        })
+    }
+}
+
+trait TryToOpaque {
+    type Extra;
+    fn try_get_layout(&self, ctx: &Context, x: &Self::Extra) -> error::Result<Layout>;
+    fn try_to_opaque(&self, ctx: &Context, x: &Self::Extra) -> error::Result<proc_macro2::TokenStream> {
+        self.try_get_layout(ctx, x).map(|x| utils::blob(ctx, x))
+    }
+}
+impl<T> TryToOpaque for T
+where
+    T: Copy + Into<ItemId>,
+{
+    type Extra = ();
+    fn try_get_layout(&self, ctx: &Context, _: &()) -> error::Result<Layout> {
+        ctx.resolve_item((*self).into()).try_get_layout(ctx, &())
+    }
+}
+impl TryToOpaque for Item {
+    type Extra = ();
+    fn try_get_layout(&self, ctx: &Context, _: &()) -> error::Result<Layout> {
+        self.kind().expect_type().try_get_layout(ctx, self)
+    }
+}
+impl TryToOpaque for TemplInstantiation {
+    type Extra = Item;
+    fn try_get_layout(&self, ctx: &Context, it: &Item) -> error::Result<Layout> {
+        it.expect_type().layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)
+    }
+}
+impl TryToOpaque for Type {
+    type Extra = Item;
+    fn try_get_layout(&self, ctx: &Context, _: &Item) -> error::Result<Layout> {
+        self.layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)
+    }
+}
+
+trait TryToRustOrOpaque: TryToRust + TryToOpaque {
+    type Extra;
+    fn try_to_rust_or_opaque(
+        &self,
+        ctx: &Context,
+        x: &<Self as TryToRustOrOpaque>::Extra,
+    ) -> error::Result<proc_macro2::TokenStream>;
+}
+impl<E, T> TryToRustOrOpaque for T
+where
+    T: TryToRust<Extra = E> + TryToOpaque<Extra = E>,
+{
+    type Extra = E;
+    fn try_to_rust_or_opaque(&self, ctx: &Context, x: &E) -> error::Result<proc_macro2::TokenStream> {
+        self.try_to_rust(ctx, x).or_else(|_| {
+            if let Ok(x) = self.try_get_layout(ctx, x) {
+                Ok(utils::blob(ctx, x))
+            } else {
+                Err(error::Error::NoLayoutForOpaqueBlob)
+            }
+        })
+    }
+}
+
+trait ToOpaque: TryToOpaque {
+    fn get_layout(&self, ctx: &Context, x: &Self::Extra) -> Layout {
+        self.try_get_layout(ctx, x).unwrap_or_else(|_| Layout::for_size(ctx, 1))
+    }
+    fn to_opaque(&self, ctx: &Context, x: &Self::Extra) -> proc_macro2::TokenStream {
+        utils::blob(ctx, self.get_layout(ctx, x))
+    }
+}
+impl<T> ToOpaque for T where T: TryToOpaque {}
+trait ToRustOrOpaque: TryToRust + ToOpaque {
+    type Extra;
+    fn to_rust_or_opaque(&self, ctx: &Context, x: &<Self as ToRustOrOpaque>::Extra) -> proc_macro2::TokenStream;
+}
+impl<E, T> ToRustOrOpaque for T
+where
+    T: TryToRust<Extra = E> + ToOpaque<Extra = E>,
+{
+    type Extra = E;
+    fn to_rust_or_opaque(&self, ctx: &Context, x: &E) -> proc_macro2::TokenStream {
+        self.try_to_rust(ctx, x).unwrap_or_else(|_| self.to_opaque(ctx, x))
+    }
+}
