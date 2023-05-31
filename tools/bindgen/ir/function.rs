@@ -198,7 +198,7 @@ impl quote::ToTokens for Abi {
     }
 }
 impl std::fmt::Display for Abi {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let y = match *self {
             Self::C => "C",
             Self::Stdcall => "stdcall",
@@ -210,7 +210,7 @@ impl std::fmt::Display for Abi {
             Self::Win64 => "win64",
             Self::CUnwind => "C-unwind",
         };
-        y.fmt(f)
+        y.fmt(x)
     }
 }
 

@@ -34,7 +34,7 @@ use std::str::{self, FromStr};
 struct GenResult<'a> {
     items: Vec<proc_macro2::TokenStream>,
     dyn_items: DynItems,
-    codegen_id: &'a Cell<usize>,
+    id: &'a Cell<usize>,
     saw_bindgen_union: bool,
     saw_incomplete_array: bool,
     saw_block: bool,
@@ -46,7 +46,7 @@ struct GenResult<'a> {
     to_serialize: Vec<ItemId>,
 }
 impl<'a> GenResult<'a> {
-    fn new(codegen_id: &'a Cell<usize>) -> Self {
+    fn new(id: &'a Cell<usize>) -> Self {
         GenResult {
             items: vec![],
             dyn_items: DynItems::new(),
@@ -54,7 +54,7 @@ impl<'a> GenResult<'a> {
             saw_incomplete_array: false,
             saw_block: false,
             saw_bitfield_unit: false,
-            codegen_id,
+            id,
             items_seen: Default::default(),
             fns_seen: Default::default(),
             vars_seen: Default::default(),
@@ -83,10 +83,10 @@ impl<'a> GenResult<'a> {
     fn set_seen<Id: Into<ItemId>>(&mut self, id: Id) {
         self.items_seen.insert(id.into());
     }
-    fn seen_function(&self, name: &str) -> bool {
+    fn seen_fn(&self, name: &str) -> bool {
         self.fns_seen.contains(name)
     }
-    fn saw_function(&mut self, name: &str) {
+    fn saw_fn(&mut self, name: &str) {
         self.fns_seen.insert(name.into());
     }
     fn overload_number(&mut self, name: &str) -> u32 {
@@ -105,7 +105,7 @@ impl<'a> GenResult<'a> {
     where
         F: FnOnce(&mut Self),
     {
-        let mut y = Self::new(self.codegen_id);
+        let mut y = Self::new(self.id);
         f(&mut y);
         self.saw_incomplete_array |= y.saw_incomplete_array;
         self.saw_block |= y.saw_block;
@@ -135,7 +135,6 @@ impl Generator for CompInfo {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        debug!("<CompInfo as CodeGenerator>::codegen: item = {:?}", it);
         debug_assert!(it.is_enabled_for_codegen(ctx));
         if self.has_non_type_templ_params() {
             return;
@@ -294,13 +293,13 @@ impl Generator for CompInfo {
         } else {
             quote! {}
         };
-        let mut attributes = vec![];
+        let mut attrs = vec![];
         let mut needs_clone_impl = false;
         let mut needs_default_impl = false;
         let mut needs_debug_impl = false;
         let mut needs_partialeq_impl = false;
         if let Some(comment) = it.comment(ctx) {
-            attributes.push(attributes::doc(comment));
+            attrs.push(attrs::doc(comment));
         }
         if packed && !is_opaque {
             let n = layout.map_or(1, |l| l.align);
@@ -309,13 +308,13 @@ impl Generator for CompInfo {
             } else {
                 format!("packed({})", n)
             };
-            attributes.push(attributes::repr_list(&["C", &packed_repr]));
+            attrs.push(attrs::repr_list(&["C", &packed_repr]));
         } else {
-            attributes.push(attributes::repr("C"));
+            attrs.push(attrs::repr("C"));
         }
         if let Some(explicit) = explicit_align {
             let explicit = utils::ast_ty::int_expr(explicit as i64);
-            attributes.push(quote! {
+            attrs.push(quote! {
                 #[repr(align(#explicit))]
             });
         }
@@ -356,28 +355,28 @@ impl Generator for CompInfo {
         });
         derives.extend(custom_derives.iter().map(|s| s.as_str()));
         if !derives.is_empty() {
-            attributes.push(attributes::derives(&derives))
+            attrs.push(attrs::derives(&derives))
         }
         if it.must_use(ctx) {
-            attributes.push(attributes::must_use());
+            attrs.push(attrs::must_use());
         }
-        let mut tokens = if is_rust_union {
+        let mut toks = if is_rust_union {
             quote! {
-                #( #attributes )*
+                #( #attrs )*
                 pub union #canonical_ident
             }
         } else {
             quote! {
-                #( #attributes )*
+                #( #attrs )*
                 pub struct #canonical_ident
             }
         };
-        tokens.append_all(quote! {
+        toks.append_all(quote! {
             #generics {
                 #( #fields )*
             }
         });
-        y.push(tokens);
+        y.push(toks);
         for ty in self.inner_types() {
             let child_item = ctx.resolve_item(*ty);
             child_item.codegen(ctx, y, &());
@@ -554,7 +553,6 @@ impl Generator for Enum {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        debug!("<Enum as CodeGenerator>::codegen: item = {:?}", it);
         debug_assert!(it.is_enabled_for_codegen(ctx));
         let name = it.canon_name(ctx);
         let ident = ctx.rust_ident(&name);
@@ -602,22 +600,22 @@ impl Generator for Enum {
         match variation {
             variation::Enum::Rust { non_exhaustive } => {
                 if non_exhaustive {
-                    attrs.push(attributes::non_exhaustive());
+                    attrs.push(attrs::non_exhaustive());
                 }
             },
             variation::Enum::NewType { .. } => {
-                attrs.push(attributes::repr("transparent"));
+                attrs.push(attrs::repr("transparent"));
             },
             _ => {},
         };
-        if let Some(comment) = it.comment(ctx) {
-            attrs.push(attributes::doc(comment));
+        if let Some(x) = it.comment(ctx) {
+            attrs.push(attrs::doc(x));
         }
         if it.must_use(ctx) {
-            attrs.push(attributes::must_use());
+            attrs.push(attrs::must_use());
         }
         if !variation.is_const() {
-            let packed = false; // Enums can't be packed in Rust.
+            let packed = false;
             let mut derives = derives_of_item(it, ctx, packed);
             derives.insert(
                 DerivableTraits::CLONE | DerivableTraits::HASH | DerivableTraits::PARTIAL_EQ | DerivableTraits::EQ,
@@ -635,7 +633,7 @@ impl Generator for Enum {
                 })
             });
             derives.extend(custom_derives.iter().map(|s| s.as_str()));
-            attrs.push(attributes::derives(&derives));
+            attrs.push(attrs::derives(&derives));
         }
         fn add_constant(
             ctx: &Context,
@@ -644,7 +642,7 @@ impl Generator for Enum {
             variant_name: &Ident,
             referenced_name: &Ident,
             enum_rust_ty: proc_macro2::TokenStream,
-            result: &mut GenResult<'_>,
+            y: &mut GenResult<'_>,
         ) {
             let constant_name = if enum_.name().is_some() {
                 if ctx.opts().prepend_enum_name {
@@ -656,7 +654,7 @@ impl Generator for Enum {
                 format!("{}", variant_name)
             };
             let constant_name = ctx.rust_ident(constant_name);
-            result.push(quote! {
+            y.push(quote! {
                 pub const #constant_name : #enum_rust_ty =
                     #enum_canonical_name :: #referenced_name ;
             });
@@ -772,20 +770,19 @@ impl Generator for Function {
     type Extra = Item;
     type Return = Option<u32>;
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) -> Self::Return {
-        debug!("<Function as CodeGenerator>::codegen: item = {:?}", it);
         debug_assert!(it.is_enabled_for_codegen(ctx));
         let is_internal = matches!(self.linkage(), Linkage::Internal);
-        let signature_item = ctx.resolve_item(self.sig());
-        let signature = signature_item.kind().expect_type().canonical_type(ctx);
-        let signature = match *signature.kind() {
-            TypeKind::Function(ref sig) => sig,
-            _ => panic!("Signature kind is not a Function: {:?}", signature),
+        let sig = ctx.resolve_item(self.sig());
+        let sig = sig.kind().expect_type().canonical_type(ctx);
+        let sig = match *sig.kind() {
+            TypeKind::Function(ref x) => x,
+            _ => panic!("Signature kind is not a Function: {:?}", sig),
         };
         if is_internal {
             return None;
         }
-        let is_dynamic_function = match self.kind() {
-            FnKind::Method(ref method_kind) if method_kind.is_pure_virtual() => {
+        let is_dynamic = match self.kind() {
+            FnKind::Method(ref x) if x.is_pure_virtual() => {
                 return None;
             },
             FnKind::Function => ctx.opts().dynamic_library_name.is_some(),
@@ -795,76 +792,71 @@ impl Generator for Function {
             return None;
         }
         let name = self.name();
-        let mut canonical_name = it.canon_name(ctx);
-        let mangled_name = self.mangled_name();
+        let mut canon_name = it.canon_name(ctx);
+        let mangled = self.mangled_name();
         {
-            let seen_symbol_name = mangled_name.unwrap_or(&canonical_name);
-            if y.seen_function(seen_symbol_name) {
+            let x = mangled.unwrap_or(&canon_name);
+            if y.seen_fn(x) {
                 return None;
             }
-            y.saw_function(seen_symbol_name);
+            y.saw_fn(x);
         }
-        let args = utils::fnsig_arguments(ctx, signature);
-        let ret = utils::fnsig_return_ty(ctx, signature);
-        let mut attributes = vec![];
-        let must_use = signature.must_use() || {
-            let ret_ty = signature.ret_type().into_resolver().through_type_refs().resolve(ctx);
-            ret_ty.must_use(ctx)
+        let args = utils::fnsig_arguments(ctx, sig);
+        let ret = utils::fnsig_return_ty(ctx, sig);
+        let mut attrs = vec![];
+        let must_use = sig.must_use() || {
+            let x = sig.ret_type().into_resolver().through_type_refs().resolve(ctx);
+            x.must_use(ctx)
         };
         if must_use {
-            attributes.push(attributes::must_use());
+            attrs.push(attrs::must_use());
         }
-        if let Some(comment) = it.comment(ctx) {
-            attributes.push(attributes::doc(comment));
+        if let Some(x) = it.comment(ctx) {
+            attrs.push(attrs::doc(x));
         }
-        let abi = match signature.abi(ctx, Some(name)) {
+        let abi = match sig.abi(ctx, Some(name)) {
             abi => abi,
         };
-        let times_seen = y.overload_number(&canonical_name);
+        let times_seen = y.overload_number(&canon_name);
         if times_seen > 0 {
-            write!(&mut canonical_name, "{}", times_seen).unwrap();
+            write!(&mut canon_name, "{}", times_seen).unwrap();
         }
-        let mut has_link_name_attr = false;
-        if let Some(link_name) = self.link_name() {
-            attributes.push(attributes::link_name::<false>(link_name));
-            has_link_name_attr = true;
+        if let Some(x) = self.link_name() {
+            attrs.push(attrs::link_name::<false>(x));
         } else {
-            let link_name = mangled_name.unwrap_or(name);
-            if !is_dynamic_function
-                && !utils::names_will_be_identical_after_mangling(&canonical_name, link_name, Some(abi))
-            {
-                attributes.push(attributes::link_name::<false>(link_name));
-                has_link_name_attr = true;
+            let link = mangled.unwrap_or(name);
+            if !is_dynamic && !utils::names_will_be_identical_after_mangling(&canon_name, link, Some(abi)) {
+                attrs.push(attrs::link_name::<false>(link));
             }
         }
-        let wasm_link_attribute = ctx.opts().wasm_import_module_name.as_ref().map(|name| {
-            quote! { #[link(wasm_import_module = #name)] }
+        let wasm_link_attr = ctx.opts().wasm_import_module_name.as_ref().map(|x| {
+            quote! { #[link(wasm_import_module = #x)] }
         });
-        let ident = ctx.rust_ident(canonical_name);
-        let tokens = quote! {
-            #wasm_link_attribute
+        let ident = ctx.rust_ident(canon_name);
+        let toks = quote! {
+            #wasm_link_attr
             extern #abi {
-                #(#attributes)*
+                #(#attrs)*
                 pub fn #ident ( #( #args ),* ) #ret;
             }
         };
-        if is_dynamic_function {
-            let args_identifiers = utils::fnsig_argument_identifiers(ctx, signature);
-            let ret_ty = utils::fnsig_return_ty(ctx, signature);
+        if is_dynamic {
+            let args_identifiers = utils::fnsig_argument_identifiers(ctx, sig);
+            let ret_ty = utils::fnsig_return_ty(ctx, sig);
             y.dyn_items().push(
                 ident,
                 abi,
-                signature.is_variadic(),
+                sig.is_variadic(),
                 ctx.opts().dynamic_link_require_all,
                 args,
                 args_identifiers,
                 ret,
                 ret_ty,
-                attributes,
+                attrs,
                 ctx,
             );
         } else {
-            y.push(tokens);
+            y.push(toks);
         }
         Some(times_seen)
     }
@@ -926,16 +918,16 @@ impl Generator for Module {
             return;
         }
         let mut done = false;
-        let ys = y.inner(|y| {
-            y.push(root_import(ctx, it));
+        let ys = y.inner(|x| {
+            x.push(root_import(ctx, it));
             let path = it.namespace_aware_canon_path(ctx).join("::");
             if let Some(xs) = ctx.opts().module_lines.get(&path) {
-                for x in xs {
+                for x2 in xs {
                     done = true;
-                    y.push(proc_macro2::TokenStream::from_str(x).unwrap());
+                    x.push(proc_macro2::TokenStream::from_str(x2).unwrap());
                 }
             }
-            f(y, &mut done);
+            f(x, &mut done);
         });
         if !done {
             return;
@@ -974,7 +966,7 @@ impl Generator for Var {
         }
         let mut attrs = vec![];
         if let Some(x) = it.comment(ctx) {
-            attrs.push(attributes::doc(x));
+            attrs.push(attrs::doc(x));
         }
         let ty = self.ty().to_rust_or_opaque(ctx, &());
         if let Some(x) = self.val() {
@@ -1006,7 +998,7 @@ impl Generator for Var {
                     });
                 },
                 VarType::String(ref x) => {
-                    let prefix = ctx.trait_prefix();
+                    let pre = ctx.trait_prefix();
                     let opts = ctx.opts();
                     let mut x = x.clone();
                     x.push(0);
@@ -1014,7 +1006,7 @@ impl Generator for Var {
                     let x = CStr::from_bytes_with_nul(&x).unwrap();
                     let x = proc_macro2::Literal::byte_string(x.to_bytes_with_nul());
                     if opts.generate_cstr {
-                        let ty = quote! { ::#prefix::ffi::CStr };
+                        let ty = quote! { ::#pre::ffi::CStr };
                         y.push(quote! {
                             #(#attrs)*
                             #[allow(unsafe_code)]
@@ -1048,11 +1040,11 @@ impl Generator for Var {
             }
         } else {
             if let Some(x) = self.link() {
-                attrs.push(attributes::link_name::<false>(x));
+                attrs.push(attrs::link_name::<false>(x));
             } else {
                 let n = self.mangled().unwrap_or_else(|| self.name());
                 if !utils::names_will_be_identical_after_mangling(&name, n, None) {
-                    attrs.push(attributes::link_name::<false>(n));
+                    attrs.push(attrs::link_name::<false>(n));
                 }
             }
             let maybe_mut = if self.is_const() {
@@ -1150,7 +1142,7 @@ impl Generator for Type {
                 };
                 let rust_name = ctx.rust_ident(name);
                 let mut tokens = if let Some(comment) = it.comment(ctx) {
-                    attributes::doc(comment)
+                    attrs::doc(comment)
                 } else {
                     quote! {}
                 };
@@ -1223,7 +1215,7 @@ impl Generator for Type {
                 }
                 let rust_name = ctx.rust_ident(&name);
                 let mut tokens = if let Some(comment) = it.comment(ctx) {
-                    attributes::doc(comment)
+                    attrs::doc(comment)
                 } else {
                     quote! {}
                 };
@@ -1261,12 +1253,12 @@ impl Generator for Type {
                         pub type #rust_name
                     },
                     variation::Alias::NewType | variation::Alias::NewTypeDeref => {
-                        let mut attributes = vec![attributes::repr("transparent")];
+                        let mut attributes = vec![attrs::repr("transparent")];
                         let packed = false; // Types can't be packed in Rust.
                         let derivable_traits = derives_of_item(it, ctx, packed);
                         if !derivable_traits.is_empty() {
                             let derives: Vec<_> = derivable_traits.into();
-                            attributes.push(attributes::derives(&derives))
+                            attributes.push(attrs::derives(&derives))
                         }
                         quote! {
                             #( #attributes )*
@@ -1358,7 +1350,7 @@ impl Method {
         ctx: &Context,
         methods: &mut Vec<proc_macro2::TokenStream>,
         method_names: &mut HashSet<String>,
-        result: &mut GenResult<'_>,
+        y: &mut GenResult<'_>,
         _parent: &CompInfo,
     ) {
         assert!({
@@ -1374,11 +1366,11 @@ impl Method {
             return; // FIXME
         }
         let function_item = ctx.resolve_item(self.sig());
-        if !function_item.before_codegen(ctx, result) {
+        if !function_item.before_codegen(ctx, y) {
             return;
         }
         let function = function_item.expect_function();
-        let times_seen = function.codegen(ctx, result, function_item);
+        let times_seen = function.codegen(ctx, y, function_item);
         let times_seen = match times_seen {
             Some(seen) => seen,
             None => return,
@@ -1464,9 +1456,9 @@ impl Method {
             })
         }
         let block = ctx.wrap_unsafe_ops(quote! ( #( #stmts );*));
-        let mut attrs = vec![attributes::inline()];
+        let mut attrs = vec![attrs::inline()];
         if signature.must_use() {
-            attrs.push(attributes::must_use());
+            attrs.push(attrs::must_use());
         }
         let name = ctx.rust_ident(&name);
         methods.push(quote! {
@@ -1556,7 +1548,7 @@ trait FieldGen<'a> {
         visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
-        result: &mut GenResult,
+        y: &mut GenResult,
         struct_layout: &mut StructLayoutTracker,
         fields: &mut F,
         methods: &mut M,
@@ -1573,7 +1565,7 @@ impl<'a> FieldGen<'a> for Bitfield {
         visibility_kind: FieldVisibilityKind,
         _accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
-        _result: &mut GenResult,
+        y: &mut GenResult,
         struct_layout: &mut StructLayoutTracker,
         _fields: &mut F,
         methods: &mut M,
@@ -1661,7 +1653,7 @@ impl<'a> FieldGen<'a> for BitfieldUnit {
         visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
-        result: &mut GenResult,
+        y: &mut GenResult,
         struct_layout: &mut StructLayoutTracker,
         fields: &mut F,
         methods: &mut M,
@@ -1671,13 +1663,13 @@ impl<'a> FieldGen<'a> for BitfieldUnit {
         M: Extend<proc_macro2::TokenStream>,
     {
         use crate::ir::RUST_DERIVE_IN_ARRAY_LIMIT;
-        result.saw_bitfield_unit();
+        y.saw_bitfield_unit();
         let layout = self.layout();
         let unit_field_ty = utils::bitfield_unit(ctx, layout);
         let field_ty = {
             let unit_field_ty = unit_field_ty.clone();
             if parent.is_union() {
-                wrap_union_field_if_needed(ctx, struct_layout, unit_field_ty, result)
+                wrap_union_field_if_needed(ctx, struct_layout, unit_field_ty, y)
             } else {
                 unit_field_ty
             }
@@ -1715,7 +1707,7 @@ impl<'a> FieldGen<'a> for BitfieldUnit {
                 visibility_kind,
                 accessor_kind,
                 parent,
-                result,
+                y,
                 struct_layout,
                 fields,
                 methods,
@@ -1761,7 +1753,7 @@ impl<'a> FieldGen<'a> for Field {
         visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
-        result: &mut GenResult,
+        y: &mut GenResult,
         struct_layout: &mut StructLayoutTracker,
         fields: &mut F,
         methods: &mut M,
@@ -1777,7 +1769,7 @@ impl<'a> FieldGen<'a> for Field {
                     visibility_kind,
                     accessor_kind,
                     parent,
-                    result,
+                    y,
                     struct_layout,
                     fields,
                     methods,
@@ -1790,7 +1782,7 @@ impl<'a> FieldGen<'a> for Field {
                     visibility_kind,
                     accessor_kind,
                     parent,
-                    result,
+                    y,
                     struct_layout,
                     fields,
                     methods,
@@ -1808,7 +1800,7 @@ impl<'a> FieldGen<'a> for FieldData {
         parent_visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
         parent: &CompInfo,
-        result: &mut GenResult,
+        y: &mut GenResult,
         struct_layout: &mut StructLayoutTracker,
         fields: &mut F,
         methods: &mut M,
@@ -1823,9 +1815,9 @@ impl<'a> FieldGen<'a> for FieldData {
         let mut ty = self.ty().to_rust_or_opaque(ctx, &());
         ty.append_implicit_templ_params(ctx, field_item);
         let ty = if parent.is_union() {
-            wrap_union_field_if_needed(ctx, struct_layout, ty, result)
+            wrap_union_field_if_needed(ctx, struct_layout, ty, y)
         } else if let Some(item) = field_ty.is_incomplete_array(ctx) {
-            result.saw_incomplete_array();
+            y.saw_incomplete_array();
             let inner = item.to_rust_or_opaque(ctx, &());
             if ctx.opts().enable_cxx_namespaces {
                 quote! {
@@ -1843,7 +1835,7 @@ impl<'a> FieldGen<'a> for FieldData {
         if ctx.opts().generate_comments {
             if let Some(raw_comment) = self.comment() {
                 let comment = ctx.opts().process_comment(raw_comment);
-                field = attributes::doc(comment);
+                field = attrs::doc(comment);
             }
         }
         let field_name = self
@@ -2042,7 +2034,7 @@ impl<'a> EnumBuilder<'a> {
         variant: &EnumVariant,
         mangling_prefix: Option<&str>,
         rust_ty: proc_macro2::TokenStream,
-        result: &mut GenResult<'_>,
+        y: &mut GenResult<'_>,
         is_ty_named: bool,
     ) -> Self {
         let variant_name = ctx.rust_mangle(variant.name());
@@ -2057,7 +2049,7 @@ impl<'a> EnumBuilder<'a> {
         if ctx.opts().generate_comments {
             if let Some(raw_comment) = variant.comment() {
                 let comment = ctx.opts().process_comment(raw_comment);
-                doc = attributes::doc(comment);
+                doc = attrs::doc(comment);
             }
         }
         match self {
@@ -2087,7 +2079,7 @@ impl<'a> EnumBuilder<'a> {
                 if is_ty_named && !is_global {
                     let enum_ident = ctx.rust_ident(canonical_name);
                     let variant_ident = ctx.rust_ident(variant_name);
-                    result.push(quote! {
+                    y.push(quote! {
                         impl #enum_ident {
                             #doc
                             pub const #variant_ident : #rust_ty = #rust_ty ( #expr );
@@ -2098,7 +2090,7 @@ impl<'a> EnumBuilder<'a> {
                         Some(prefix) => Cow::Owned(format!("{}_{}", prefix, variant_name)),
                         None => variant_name,
                     });
-                    result.push(quote! {
+                    y.push(quote! {
                         #doc
                         pub const #ident : #rust_ty = #rust_ty ( #expr );
                     });
@@ -2111,7 +2103,7 @@ impl<'a> EnumBuilder<'a> {
                     None => variant_name,
                 };
                 let ident = ctx.rust_ident(constant_name);
-                result.push(quote! {
+                y.push(quote! {
                     #doc
                     pub const #ident : #rust_ty = #expr ;
                 });
@@ -2138,7 +2130,7 @@ impl<'a> EnumBuilder<'a> {
         self,
         ctx: &Context,
         rust_ty: proc_macro2::TokenStream,
-        result: &mut GenResult<'_>,
+        y: &mut GenResult<'_>,
     ) -> proc_macro2::TokenStream {
         match self {
             EnumBuilder::Rust {
@@ -2171,7 +2163,7 @@ impl<'a> EnumBuilder<'a> {
                 }
                 let rust_ty_name = ctx.rust_ident_raw(canonical_name);
                 let prefix = ctx.trait_prefix();
-                result.push(quote! {
+                y.push(quote! {
                     impl ::#prefix::ops::BitOr<#rust_ty> for #rust_ty {
                         type Output = Self;
                         #[inline]
@@ -2180,7 +2172,7 @@ impl<'a> EnumBuilder<'a> {
                         }
                     }
                 });
-                result.push(quote! {
+                y.push(quote! {
                     impl ::#prefix::ops::BitOrAssign for #rust_ty {
                         #[inline]
                         fn bitor_assign(&mut self, rhs: #rust_ty) {
@@ -2188,7 +2180,7 @@ impl<'a> EnumBuilder<'a> {
                         }
                     }
                 });
-                result.push(quote! {
+                y.push(quote! {
                     impl ::#prefix::ops::BitAnd<#rust_ty> for #rust_ty {
                         type Output = Self;
                         #[inline]
@@ -2197,7 +2189,7 @@ impl<'a> EnumBuilder<'a> {
                         }
                     }
                 });
-                result.push(quote! {
+                y.push(quote! {
                     impl ::#prefix::ops::BitAndAssign for #rust_ty {
                         #[inline]
                         fn bitand_assign(&mut self, rhs: #rust_ty) {
@@ -2371,7 +2363,7 @@ mod impl_debug;
 mod postproc;
 
 pub mod utils;
-use self::utils::{attributes, variation};
+use self::utils::{attrs, variation};
 
 #[cfg(test)]
 #[allow(warnings)]
@@ -2869,7 +2861,7 @@ fn wrap_union_field_if_needed(
     ctx: &Context,
     struct_layout: &StructLayoutTracker,
     ty: proc_macro2::TokenStream,
-    result: &mut GenResult,
+    y: &mut GenResult,
 ) -> proc_macro2::TokenStream {
     if struct_layout.is_rust_union() {
         if struct_layout.can_copy_union_fields() {
@@ -2881,7 +2873,7 @@ fn wrap_union_field_if_needed(
             }
         }
     } else {
-        result.saw_bindgen_union();
+        y.saw_bindgen_union();
         if ctx.opts().enable_cxx_namespaces {
             quote! {
                 root::__BindgenUnionField<#ty>

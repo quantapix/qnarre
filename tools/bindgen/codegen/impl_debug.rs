@@ -32,8 +32,8 @@ pub fn gen_debug_impl(ctx: &Context, fields: &[Field], it: &Item, kind: CompKind
     tokens.insert(0, quote! { #format_string });
     let prefix = ctx.trait_prefix();
     quote! {
-        fn fmt(&self, f: &mut ::#prefix::fmt::Formatter<'_>) -> ::#prefix ::fmt::Result {
-            write!(f, #( #tokens ),*)
+        fn fmt(&self, x: &mut ::#prefix::fmt::Formatter<'_>) -> ::#prefix ::fmt::Result {
+            write!(x, #( #tokens ),*)
         }
     }
 }

@@ -106,13 +106,13 @@ impl FromStr for Formatter {
     }
 }
 impl std::fmt::Display for Formatter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let y = match self {
             Self::None => "none",
             Self::Rustfmt => "rustfmt",
             Self::Prettyplease => "prettyplease",
         };
-        y.fmt(f)
+        y.fmt(x)
     }
 }
 
@@ -252,22 +252,22 @@ pub enum BindgenError {
     Codegen(GenError),
 }
 impl std::fmt::Display for BindgenError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BindgenError::FolderAsHeader(h) => {
-                write!(f, "'{}' is a folder", h.display())
+                write!(x, "'{}' is a folder", h.display())
             },
             BindgenError::InsufficientPermissions(h) => {
-                write!(f, "insufficient permissions to read '{}'", h.display())
+                write!(x, "insufficient permissions to read '{}'", h.display())
             },
             BindgenError::NotExist(h) => {
-                write!(f, "header '{}' does not exist.", h.display())
+                write!(x, "header '{}' does not exist.", h.display())
             },
             BindgenError::ClangDiagnostic(message) => {
-                write!(f, "clang diagnosed error: {}", message)
+                write!(x, "clang diagnosed error: {}", message)
             },
             BindgenError::Codegen(err) => {
-                write!(f, "codegen error: {}", err)
+                write!(x, "codegen error: {}", err)
             },
         }
     }
@@ -497,11 +497,11 @@ impl Bindings {
     }
 }
 impl std::fmt::Display for Bindings {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut bytes = vec![];
         self.write(Box::new(&mut bytes) as Box<dyn Write>)
             .expect("writing to a vec cannot fail");
-        f.write_str(std::str::from_utf8(&bytes).expect("we should only write bindings that are valid utf-8"))
+        x.write_str(std::str::from_utf8(&bytes).expect("we should only write bindings that are valid utf-8"))
     }
 }
 

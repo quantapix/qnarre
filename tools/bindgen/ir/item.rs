@@ -1149,17 +1149,17 @@ fn visit_child(
     ty: &clang::Type,
     parent_id: Option<ItemId>,
     ctx: &mut Context,
-    result: &mut Result<TypeId, parse::Error>,
+    y: &mut Result<TypeId, parse::Error>,
 ) -> clang_lib::CXChildVisitResult {
     use clang_lib::*;
-    if result.is_ok() {
+    if y.is_ok() {
         return CXChildVisit_Break;
     }
-    *result = Item::from_ty_with_id(id, ty, cur, parent_id, ctx);
-    match *result {
+    *y = Item::from_ty_with_id(id, ty, cur, parent_id, ctx);
+    match *y {
         Ok(..) => CXChildVisit_Break,
         Err(parse::Error::Recurse) => {
-            cur.visit(|c| visit_child(c, id, ty, parent_id, ctx, result));
+            cur.visit(|c| visit_child(c, id, ty, parent_id, ctx, y));
             CXChildVisit_Continue
         },
         Err(parse::Error::Continue) => CXChildVisit_Continue,

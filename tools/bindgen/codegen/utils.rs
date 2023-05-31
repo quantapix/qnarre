@@ -53,16 +53,16 @@ pub(super) fn serialize_items(result: &GenResult, ctx: &Context) -> Result<(), G
     std::fs::write(source_path, code)?;
     Ok(())
 }
-pub fn prepend_bitfield_unit_type(ctx: &Context, result: &mut Vec<proc_macro2::TokenStream>) {
+pub fn prepend_bitfield_unit_type(ctx: &Context, y: &mut Vec<proc_macro2::TokenStream>) {
     let bitfield_unit_src = include_str!("./bitfield_unit.rs");
     let bitfield_unit_src = Cow::Borrowed(bitfield_unit_src);
     let bitfield_unit_type = proc_macro2::TokenStream::from_str(&bitfield_unit_src).unwrap();
     let bitfield_unit_type = quote!(#bitfield_unit_type);
     let items = vec![bitfield_unit_type];
-    let old_items = mem::replace(result, items);
-    result.extend(old_items);
+    let old_items = mem::replace(y, items);
+    y.extend(old_items);
 }
-pub fn prepend_block_header(ctx: &Context, result: &mut Vec<proc_macro2::TokenStream>) {
+pub fn prepend_block_header(ctx: &Context, y: &mut Vec<proc_macro2::TokenStream>) {
     let use_block = if ctx.opts().block_extern_crate {
         quote! {
             extern crate block;
@@ -73,10 +73,10 @@ pub fn prepend_block_header(ctx: &Context, result: &mut Vec<proc_macro2::TokenSt
         }
     };
     let items = vec![use_block];
-    let old_items = mem::replace(result, items);
-    result.extend(old_items.into_iter());
+    let old_items = mem::replace(y, items);
+    y.extend(old_items.into_iter());
 }
-pub fn prepend_union_types(ctx: &Context, result: &mut Vec<proc_macro2::TokenStream>) {
+pub fn prepend_union_types(ctx: &Context, y: &mut Vec<proc_macro2::TokenStream>) {
     let prefix = ctx.trait_prefix();
     let const_fn = quote! { const fn };
     let union_field_decl = quote! {
@@ -155,10 +155,10 @@ pub fn prepend_union_types(ctx: &Context, result: &mut Vec<proc_macro2::TokenStr
         union_field_partialeq_impl,
         union_field_eq_impl,
     ];
-    let old_items = mem::replace(result, items);
-    result.extend(old_items.into_iter());
+    let old_items = mem::replace(y, items);
+    y.extend(old_items.into_iter());
 }
-pub fn prepend_incomplete_array_types(ctx: &Context, result: &mut Vec<proc_macro2::TokenStream>) {
+pub fn prepend_incomplete_array_types(ctx: &Context, y: &mut Vec<proc_macro2::TokenStream>) {
     let prefix = ctx.trait_prefix();
     let const_fn = quote! { const fn };
     let incomplete_array_decl = quote! {
@@ -210,8 +210,8 @@ pub fn prepend_incomplete_array_types(ctx: &Context, result: &mut Vec<proc_macro
         incomplete_array_impl,
         incomplete_array_debug_impl,
     ];
-    let old_items = mem::replace(result, items);
-    result.extend(old_items.into_iter());
+    let old_items = mem::replace(y, items);
+    y.extend(old_items.into_iter());
 }
 pub fn prepend_complex_type(y: &mut Vec<proc_macro2::TokenStream>) {
     let complex_type = quote! {
@@ -399,7 +399,7 @@ pub fn names_will_be_identical_after_mangling(canonical: &str, mangled: &str, ca
     true
 }
 
-pub mod attributes {
+pub mod attrs {
     use proc_macro2::{Ident, Span, TokenStream};
     use std::{borrow::Cow, str::FromStr};
     pub fn repr(which: &str) -> TokenStream {
@@ -643,7 +643,7 @@ pub mod variation {
         }
     }
     impl fmt::Display for Enum {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
             let y = match self {
                 Self::Rust { non_exhaustive: false } => "rust",
                 Self::Rust { non_exhaustive: true } => "rust_non_exhaustive",
@@ -661,7 +661,7 @@ pub mod variation {
                 Self::Consts => "consts",
                 Self::ModuleConsts => "moduleconsts",
             };
-            y.fmt(f)
+            y.fmt(x)
         }
     }
     impl std::str::FromStr for Enum {
@@ -702,12 +702,12 @@ pub mod variation {
         Unsigned,
     }
     impl fmt::Display for MacroType {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
             let y = match self {
                 Self::Signed => "signed",
                 Self::Unsigned => "unsigned",
             };
-            y.fmt(f)
+            y.fmt(x)
         }
     }
     impl Default for MacroType {
@@ -739,13 +739,13 @@ pub mod variation {
         NewTypeDeref,
     }
     impl fmt::Display for Alias {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
             let y = match self {
                 Self::TypeAlias => "type_alias",
                 Self::NewType => "new_type",
                 Self::NewTypeDeref => "new_type_deref",
             };
-            y.fmt(f)
+            y.fmt(x)
         }
     }
     impl Default for Alias {
@@ -777,12 +777,12 @@ pub mod variation {
         ManuallyDrop,
     }
     impl fmt::Display for NonCopyUnion {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
             let s = match self {
                 Self::BindgenWrapper => "bindgen_wrapper",
                 Self::ManuallyDrop => "manually_drop",
             };
-            s.fmt(f)
+            s.fmt(x)
         }
     }
     impl Default for NonCopyUnion {
