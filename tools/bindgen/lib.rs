@@ -244,22 +244,22 @@ pub enum BindgenError {
     Codegen(GenError),
 }
 impl std::fmt::Display for BindgenError {
-    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, y: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BindgenError::FolderAsHeader(x) => {
-                write!(x, "'{}' is a folder", x.display())
+                write!(y, "'{}' is a folder", x.display())
             },
             BindgenError::NoReadPerms(x) => {
-                write!(x, "insufficient permissions to read '{}'", x.display())
+                write!(y, "insufficient permissions to read '{}'", x.display())
             },
             BindgenError::NotExist(x) => {
-                write!(x, "header '{}' does not exist.", x.display())
+                write!(y, "header '{}' does not exist.", x.display())
             },
             BindgenError::Diagnostic(x) => {
-                write!(x, "clang diagnosed error: {}", x)
+                write!(y, "clang diagnosed error: {}", x)
             },
             BindgenError::Codegen(x) => {
-                write!(x, "codegen error: {}", x)
+                write!(y, "codegen error: {}", x)
             },
         }
     }
