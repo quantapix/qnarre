@@ -1,5 +1,4 @@
-use crate::ir::traversal::{EdgeKind, Trace};
-use crate::ir::{Context, ItemId};
+use crate::ir::{Context, EdgeKind, ItemId, Trace};
 use crate::HashMap;
 use std::fmt;
 use std::ops;
@@ -96,10 +95,9 @@ pub mod derive {
     use crate::ir::item::{IsOpaque, Item};
     use crate::ir::layout::Layout;
     use crate::ir::template::TemplParams;
-    use crate::ir::traversal::{EdgeKind, Trace};
     use crate::ir::typ::{Type, TypeKind};
     use crate::ir::RUST_DERIVE_IN_ARRAY_LIMIT;
-    use crate::ir::{Context, ItemId};
+    use crate::ir::{Context, EdgeKind, ItemId, Trace};
     use crate::{Entry, HashMap, HashSet};
     use std::fmt;
 
@@ -469,9 +467,8 @@ pub use self::derive::as_cannot_derive_set;
 pub mod has_destructor {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::{CompKind, Field, FieldMethods};
-    use crate::ir::traversal::EdgeKind;
     use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, ItemId};
+    use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
@@ -581,9 +578,8 @@ pub mod has_float {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
-    use crate::ir::traversal::EdgeKind;
     use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, ItemId};
+    use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
@@ -731,9 +727,8 @@ pub mod has_type_param {
     use super::{gen_deps, Monotone, YConstrain};
     use crate::ir::comp::Field;
     use crate::ir::comp::FieldMethods;
-    use crate::ir::traversal::EdgeKind;
     use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, ItemId};
+    use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]
@@ -881,9 +876,8 @@ pub trait HasVtable {
 
 pub mod has_vtable {
     use super::{gen_deps, Monotone, YConstrain};
-    use crate::ir::traversal::EdgeKind;
     use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, ItemId};
+    use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{Entry, HashMap};
     use std::cmp;
     use std::ops;
@@ -1032,9 +1026,8 @@ pub trait Sizedness {
 pub mod sizedness {
     use super::{gen_deps, HasVtable, Monotone, YConstrain};
     use crate::ir::item::IsOpaque;
-    use crate::ir::traversal::EdgeKind;
     use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, TypeId};
+    use crate::ir::{Context, EdgeKind, TypeId};
     use crate::{Entry, HashMap};
     use std::{cmp, ops};
 
@@ -1219,9 +1212,8 @@ pub mod used_templ_param {
     use super::{Monotone, YConstrain};
     use crate::ir::item::{Item, ItemSet};
     use crate::ir::template::{TemplInstantiation, TemplParams};
-    use crate::ir::traversal::{EdgeKind, Trace};
     use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, ItemId};
+    use crate::ir::{Context, EdgeKind, ItemId, Trace};
     use crate::{HashMap, HashSet};
 
     #[derive(Debug, Clone)]

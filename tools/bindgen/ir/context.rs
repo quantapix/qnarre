@@ -1,16 +1,15 @@
-use super::super::timer::Timer;
 use super::analysis::{analyze, as_cannot_derive_set, DeriveTrait, *};
 use super::derive::Resolved;
 use super::func::Func;
 use super::int::IntKind;
 use super::item::{Ancestors, IsOpaque, Item, ItemSet};
-use super::item_kind::ItemKind;
 use super::module::{Mod, ModKind};
 use super::template::{TemplInstantiation, TemplParams};
-use super::traversal::{self, Edge, Traversal};
 use super::typ::{FloatKind, Type, TypeKind};
+use super::{Edge, ItemKind, Traversal};
 use crate::clang::{self, Cursor};
 use crate::codegen::GenError;
+use crate::timer::Timer;
 use crate::Opts;
 use crate::{Entry, HashMap, HashSet};
 use proc_macro2::{Ident, Span, TokenStream};
@@ -628,11 +627,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         Ok((ret, self.opts))
     }
     fn assert_no_dangling_references(&self) {}
-    fn assert_no_dangling_item_traversal(&self) -> traversal::AssertNoDanglingItemsTraversal {
+    fn assert_no_dangling_item_traversal(&self) -> super::AssertNoDangling {
         assert!(self.in_codegen_phase());
         assert!(self.current_mod == self.root_mod);
         let roots = self.items().map(|(id, _)| id);
-        traversal::AssertNoDanglingItemsTraversal::new(self, roots, traversal::all_edges)
+        super::AssertNoDangling::new(self, roots, super::all_edges)
     }
     fn assert_every_item_in_mod(&self) {}
     fn compute_sizedness(&mut self) {
@@ -1294,13 +1293,13 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             roots
         };
         let pred = if self.opts().allowlist_recursively {
-            traversal::all_edges
+            super::all_edges
         } else {
-            traversal::only_inner_types
+            super::only_inner_types
         };
         let allowed = AllowedItemsTraversal::new(self, roots.clone(), pred).collect::<ItemSet>();
         let codegen_items = if self.opts().allowlist_recursively {
-            AllowedItemsTraversal::new(self, roots, traversal::enabled_edges).collect::<ItemSet>()
+            AllowedItemsTraversal::new(self, roots, super::enabled_edges).collect::<ItemSet>()
         } else {
             allowed.clone()
         };

@@ -4,9 +4,8 @@ use crate::ir::comp::CompKind;
 use crate::ir::func::{FnKind, Func};
 use crate::ir::item::CanonName;
 use crate::ir::item::Item;
-use crate::ir::item_kind::ItemKind;
 use crate::ir::typ::{FloatKind, Type, TypeKind};
-use crate::ir::{Context, TypeId};
+use crate::ir::{Context, ItemKind, TypeId};
 use std::io::Write;
 fn get_loc(it: &Item) -> String {
     it.loc().map(|x| x.to_string()).unwrap_or_else(|| "unknown".to_owned())

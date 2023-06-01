@@ -1,9 +1,8 @@
 use super::comp::MethodKind;
 use super::dot::DotAttrs;
 use super::item::Item;
-use super::traversal::{EdgeKind, Trace, Tracer};
 use super::typ::TypeKind;
-use super::{Context, TypeId};
+use super::{Context, EdgeKind, Trace, Tracer, TypeId};
 use crate::callbacks::{ItemInfo, ItemKind};
 use crate::clang::{self, Attribute};
 use crate::parse;
