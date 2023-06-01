@@ -1,11 +1,11 @@
 use super::super::timer::Timer;
 use super::analysis::{analyze, as_cannot_derive_set, DeriveTrait, *};
 use super::derive::Resolved;
-use super::function::Function;
+use super::func::Func;
 use super::int::IntKind;
 use super::item::{Ancestors, IsOpaque, Item, ItemSet};
 use super::item_kind::ItemKind;
-use super::module::{ModKind, Module};
+use super::module::{Mod, ModKind};
 use super::template::{TemplInstantiation, TemplParams};
 use super::traversal::{self, Edge, Traversal};
 use super::typ::{FloatKind, Type, TypeKind};
@@ -117,11 +117,11 @@ item_id_newtype! {
         unchecked = as_type_id_unchecked;
 }
 item_id_newtype! {
-    pub struct ModuleId(ItemId)
+    pub struct ModId(ItemId)
     where
-        checked = as_module_id with is_module,
-        expected = expect_module_id,
-        unchecked = as_module_id_unchecked;
+        checked = as_mod_id with is_mod,
+        expected = expect_mod_id,
+        unchecked = as_mod_id_unchecked;
 }
 item_id_newtype! {
     pub struct VarId(ItemId)
@@ -133,9 +133,9 @@ item_id_newtype! {
 item_id_newtype! {
     pub struct FnId(ItemId)
     where
-        checked = as_function_id with is_function,
-        expected = expect_function_id,
-        unchecked = as_function_id_unchecked;
+        checked = as_fn_id with is_fn,
+        expected = expect_fn_id,
+        unchecked = as_fn_id_unchecked;
 }
 
 struct AllowedItemsTraversal<'ctx> {
@@ -183,7 +183,7 @@ pub struct Context {
     cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, Resolved>>,
     codegen_items: Option<ItemSet>,
     collected_typerefs: bool,
-    current_module: ModuleId,
+    current_mod: ModId,
     currently_parsed_types: Vec<PartialType>,
     deps: BTreeSet<String>,
     enum_typedef_combos: Option<HashSet<ItemId>>,
@@ -194,12 +194,12 @@ pub struct Context {
     have_vtable: Option<HashMap<ItemId, has_vtable::Resolved>>,
     in_codegen: bool,
     items: Vec<Option<Item>>,
-    modules: HashMap<Cursor, ModuleId>,
+    modules: HashMap<Cursor, ModId>,
     need_bitfield_allocation: Vec<ItemId>,
     opts: Opts,
     parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
     replacements: HashMap<Vec<String>, ItemId>,
-    root_module: ModuleId,
+    root_mod: ModId,
     semantic_parents: HashMap<clang::Cursor, ItemId>,
     sizedness: Option<HashMap<TypeId, sizedness::Resolved>>,
     target_info: clang::TargetInfo,
@@ -225,8 +225,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             )
         };
         let target_info = clang::TargetInfo::new(&translation_unit);
-        let root_module = Self::build_root_module(ItemId(0));
-        let root_module_id = root_module.id().as_module_id_unchecked();
+        let root_mod = Self::build_root_mod(ItemId(0));
+        let root_mod_id = root_mod.id().as_mod_id_unchecked();
         let deps = opts.input_headers.iter().cloned().collect();
         Context {
             allowed: None,
@@ -238,7 +238,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             cannot_derive_partialeq_or_partialord: None,
             codegen_items: None,
             collected_typerefs: false,
-            current_module: root_module_id,
+            current_mod: root_mod_id,
             currently_parsed_types: vec![],
             deps,
             enum_typedef_combos: None,
@@ -248,13 +248,13 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             have_destructor: None,
             have_vtable: None,
             in_codegen: false,
-            items: vec![Some(root_module)],
+            items: vec![Some(root_mod)],
             modules: Default::default(),
             need_bitfield_allocation: Default::default(),
             opts,
             parsed_macros: Default::default(),
             replacements: Default::default(),
-            root_module: root_module_id,
+            root_mod: root_mod_id,
             semantic_parents: Default::default(),
             sizedness: None,
             target_info,
@@ -294,7 +294,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         &self.deps
     }
     pub fn add_item(&mut self, it: Item, decl: Option<Cursor>, loc: Option<Cursor>) {
-        debug!("Context::add_item({:?}, declaration: {:?}, loc: {:?}", it, decl, loc);
         debug_assert!(
             decl.is_some()
                 || !it.kind().is_type()
@@ -307,8 +306,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let is_type = it.kind().is_type();
         let is_unnamed = is_type && it.expect_type().name().is_none();
         let is_template_instantiation = is_type && it.expect_type().is_templ_instantiation();
-        if it.id() != self.root_module {
-            self.add_item_to_module(&it);
+        if it.id() != self.root_mod {
+            self.add_item_to_mod(&it);
         }
         if is_type && it.expect_type().is_comp() {
             self.need_bitfield_allocation.push(id);
@@ -350,44 +349,30 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             debug_assert_eq!(old, None);
         }
     }
-    fn add_item_to_module(&mut self, it: &Item) {
-        assert!(it.id() != self.root_module);
+    fn add_item_to_mod(&mut self, it: &Item) {
+        assert!(it.id() != self.root_mod);
         assert!(self.resolve_item_fallible(it.id()).is_none());
         if let Some(ref mut parent) = self.items[it.parent().0] {
-            if let Some(module) = parent.as_module_mut() {
-                debug!(
-                    "add_item_to_module: adding {:?} as child of parent module {:?}",
-                    it.id(),
-                    it.parent()
-                );
+            if let Some(module) = parent.as_mod_mut() {
                 module.children_mut().insert(it.id());
                 return;
             }
         }
-        debug!(
-            "add_item_to_module: adding {:?} as child of current module {:?}",
-            it.id(),
-            self.current_module
-        );
-        self.items[(self.current_module.0).0]
+        self.items[(self.current_mod.0).0]
             .as_mut()
-            .expect("Should always have an item for self.current_module")
-            .as_module_mut()
-            .expect("self.current_module should always be a module")
+            .expect("Should always have an item for self.current_mod")
+            .as_mod_mut()
+            .expect("self.current_mod should always be a module")
             .children_mut()
             .insert(it.id());
     }
     pub fn add_type_param(&mut self, it: Item, definition: clang::Cursor) {
-        debug!(
-            "Context::add_type_param: item = {:?}; definition = {:?}",
-            it, definition
-        );
         assert!(
             it.expect_type().is_type_param(),
             "Should directly be a named type, not a resolved reference or anything"
         );
         assert_eq!(definition.kind(), clang_lib::CXCursor_TemplateTypeParameter);
-        self.add_item_to_module(&it);
+        self.add_item_to_mod(&it);
         let id = it.id();
         let old_item = mem::replace(&mut self.items[id.0], Some(it));
         assert!(
@@ -577,39 +562,39 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 .as_mut()
                 .unwrap()
                 .set_parent_for_replacement(new_parent);
-            let old_module = {
+            let old_mod = {
                 let immut_self = &*self;
                 old_parent
                     .ancestors(immut_self)
-                    .chain(Some(immut_self.root_module.into()))
+                    .chain(Some(immut_self.root_mod.into()))
                     .find(|id| {
                         let item = immut_self.resolve_item(*id);
-                        item.as_module()
+                        item.as_mod()
                             .map_or(false, |m| m.children().contains(&replacement_id.into()))
                     })
             };
-            let old_module = old_module.expect("Every replacement item should be in a module");
-            let new_module = {
+            let old_mod = old_mod.expect("Every replacement item should be in a module");
+            let new_mod = {
                 let immut_self = &*self;
                 new_parent
                     .ancestors(immut_self)
-                    .find(|id| immut_self.resolve_item(*id).is_module())
+                    .find(|id| immut_self.resolve_item(*id).is_mod())
             };
-            let new_module = new_module.unwrap_or_else(|| self.root_module.into());
-            if new_module == old_module {
+            let new_mod = new_mod.unwrap_or_else(|| self.root_mod.into());
+            if new_mod == old_mod {
                 continue;
             }
-            self.items[old_module.0]
+            self.items[old_mod.0]
                 .as_mut()
                 .unwrap()
-                .as_module_mut()
+                .as_mod_mut()
                 .unwrap()
                 .children_mut()
                 .remove(&replacement_id.into());
-            self.items[new_module.0]
+            self.items[new_mod.0]
                 .as_mut()
                 .unwrap()
-                .as_module_mut()
+                .as_mod_mut()
                 .unwrap()
                 .children_mut()
                 .insert(replacement_id.into());
@@ -626,7 +611,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.deanonymize_fields();
         self.assert_no_dangling_references();
         self.compute_allowed_and_codegen_items();
-        self.assert_every_item_in_a_module();
+        self.assert_every_item_in_mod();
         self.compute_has_vtable();
         self.compute_sizedness();
         self.compute_has_destructor();
@@ -645,11 +630,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn assert_no_dangling_references(&self) {}
     fn assert_no_dangling_item_traversal(&self) -> traversal::AssertNoDanglingItemsTraversal {
         assert!(self.in_codegen_phase());
-        assert!(self.current_module == self.root_module);
+        assert!(self.current_mod == self.root_mod);
         let roots = self.items().map(|(id, _)| id);
         traversal::AssertNoDanglingItemsTraversal::new(self, roots, traversal::all_edges)
     }
-    fn assert_every_item_in_a_module(&self) {}
+    fn assert_every_item_in_mod(&self) {}
     fn compute_sizedness(&mut self) {
         let _t = self.timer("compute_sizedness");
         assert!(self.sizedness.is_none());
@@ -733,26 +718,26 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn add_builtin_item(&mut self, it: Item) {
         debug!("add_builtin_item: item = {:?}", it);
         debug_assert!(it.kind().is_type());
-        self.add_item_to_module(&it);
+        self.add_item_to_mod(&it);
         let id = it.id();
         let old_item = mem::replace(&mut self.items[id.0], Some(it));
         assert!(old_item.is_none(), "Inserted type twice?");
     }
-    fn build_root_module(id: ItemId) -> Item {
-        let module = Module::new(Some("root".into()), ModKind::Normal);
-        Item::new(id, None, None, id, ItemKind::Module(module), None)
+    fn build_root_mod(id: ItemId) -> Item {
+        let module = Mod::new(Some("root".into()), ModKind::Normal);
+        Item::new(id, None, None, id, ItemKind::Mod(module), None)
     }
-    pub fn root_module(&self) -> ModuleId {
-        self.root_module
+    pub fn root_mod(&self) -> ModId {
+        self.root_mod
     }
-    pub fn resolve_type(&self, type_id: TypeId) -> &Type {
-        self.resolve_item(type_id).kind().expect_type()
+    pub fn resolve_type(&self, id: TypeId) -> &Type {
+        self.resolve_item(id).kind().expect_type()
     }
-    pub fn resolve_func(&self, func_id: FnId) -> &Function {
-        self.resolve_item(func_id).kind().expect_function()
+    pub fn resolve_fn(&self, id: FnId) -> &Func {
+        self.resolve_item(id).kind().expect_fn()
     }
-    pub fn safe_resolve_type(&self, type_id: TypeId) -> Option<&Type> {
-        self.resolve_item_fallible(type_id).map(|t| t.kind().expect_type())
+    pub fn safe_resolve_type(&self, id: TypeId) -> Option<&Type> {
+        self.resolve_item_fallible(id).map(|x| x.kind().expect_type())
     }
     pub fn resolve_item_fallible<Id: Into<ItemId>>(&self, id: Id) -> Option<&Item> {
         self.items.get(id.into().0)?.as_ref()
@@ -764,14 +749,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             None => panic!("Not an item: {:?}", item_id),
         }
     }
-    pub fn current_module(&self) -> ModuleId {
-        self.current_module
+    pub fn current_mod(&self) -> ModId {
+        self.current_mod
     }
-    pub fn add_semantic_parent(&mut self, definition: clang::Cursor, parent_id: ItemId) {
-        self.semantic_parents.insert(definition, parent_id);
+    pub fn add_semantic_parent(&mut self, cur: clang::Cursor, id: ItemId) {
+        self.semantic_parents.insert(cur, id);
     }
-    pub fn known_semantic_parent(&self, definition: clang::Cursor) -> Option<ItemId> {
-        self.semantic_parents.get(&definition).cloned()
+    pub fn known_semantic_parent(&self, cur: clang::Cursor) -> Option<ItemId> {
+        self.semantic_parents.get(&cur).cloned()
     }
     fn get_declaration_info_for_templ_instantiation(&self, cur: &Cursor) -> Option<(Cursor, ItemId, usize)> {
         cur.cur_type()
@@ -868,7 +853,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                             sub_id,
                             None,
                             None,
-                            self.current_module.into(),
+                            self.current_mod.into(),
                             ItemKind::Type(sub_ty),
                             Some(child.location()),
                         );
@@ -877,7 +862,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                              instantiation item: {:?}",
                             sub_item
                         );
-                        self.add_item_to_module(&sub_item);
+                        self.add_item_to_mod(&sub_item);
                         debug_assert_eq!(sub_id, sub_item.id());
                         self.items[sub_id.0] = Some(sub_item);
                         args.push(sub_id.as_type_id_unchecked());
@@ -912,12 +897,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             with_id,
             None,
             None,
-            self.current_module.into(),
+            self.current_mod.into(),
             ItemKind::Type(ty),
             Some(location.location()),
         );
         debug!("instantiate_template: inserting item: {:?}", item);
-        self.add_item_to_module(&item);
+        self.add_item_to_mod(&item);
         debug_assert_eq!(with_id, item.id());
         self.items[with_id.0] = Some(item);
         Some(with_id.as_type_id_unchecked())
@@ -963,39 +948,39 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     pub fn build_ty_wrapper(
         &mut self,
         with_id: ItemId,
-        wrapped_id: TypeId,
-        parent_id: Option<ItemId>,
+        wrapped: TypeId,
+        parent: Option<ItemId>,
         ty: &clang::Type,
     ) -> TypeId {
-        self.build_wrapper(with_id, wrapped_id, parent_id, ty, ty.is_const())
+        self.build_wrapper(with_id, wrapped, parent, ty, ty.is_const())
     }
     pub fn build_const_wrapper(
         &mut self,
         with_id: ItemId,
-        wrapped_id: TypeId,
-        parent_id: Option<ItemId>,
+        wrapped: TypeId,
+        parent: Option<ItemId>,
         ty: &clang::Type,
     ) -> TypeId {
-        self.build_wrapper(with_id, wrapped_id, parent_id, ty, /* is_const = */ true)
+        self.build_wrapper(with_id, wrapped, parent, ty, /* is_const = */ true)
     }
     fn build_wrapper(
         &mut self,
         with_id: ItemId,
-        wrapped_id: TypeId,
-        parent_id: Option<ItemId>,
+        wrapped: TypeId,
+        parent: Option<ItemId>,
         ty: &clang::Type,
         is_const: bool,
     ) -> TypeId {
         let spelling = ty.spelling();
         let layout = ty.fallible_layout(self).ok();
         let location = ty.declaration().location();
-        let type_kind = TypeKind::ResolvedTypeRef(wrapped_id);
+        let type_kind = TypeKind::ResolvedTypeRef(wrapped);
         let ty = Type::new(Some(spelling), layout, type_kind, is_const);
         let item = Item::new(
             with_id,
             None,
             None,
-            parent_id.unwrap_or_else(|| self.current_module.into()),
+            parent.unwrap_or_else(|| self.current_mod.into()),
             ItemKind::Type(ty),
             Some(location),
         );
@@ -1053,14 +1038,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let location = ty.declaration().location();
         let ty = Type::new(Some(spelling), layout, type_kind, is_const);
         let id = self.next_item_id();
-        let item = Item::new(
-            id,
-            None,
-            None,
-            self.root_module.into(),
-            ItemKind::Type(ty),
-            Some(location),
-        );
+        let item = Item::new(id, None, None, self.root_mod.into(), ItemKind::Type(ty), Some(location));
         self.add_builtin_item(item);
         Some(id.as_type_id_unchecked())
     }
@@ -1117,7 +1095,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
         let mut kind = ModKind::Normal;
         let mut looking_for_name = false;
-        for token in cursor.tokens().iter() {
+        for token in cursor.toks().iter() {
             match token.spelling() {
                 b"inline" => {
                     debug_assert!(kind != ModKind::Inline, "Multiple inline keywords?");
@@ -1150,7 +1128,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
         (module_name, kind)
     }
-    pub fn module(&mut self, cursor: clang::Cursor) -> ModuleId {
+    pub fn module(&mut self, cursor: clang::Cursor) -> ModId {
         use clang_lib::*;
         assert_eq!(cursor.kind(), CXCursor_Namespace, "Be a nice person");
         let cursor = cursor.canonical();
@@ -1159,38 +1137,38 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
         let (module_name, kind) = self.tokenize_namespace(&cursor);
         let module_id = self.next_item_id();
-        let module = Module::new(module_name, kind);
+        let module = Mod::new(module_name, kind);
         let module = Item::new(
             module_id,
             None,
             None,
-            self.current_module.into(),
-            ItemKind::Module(module),
+            self.current_mod.into(),
+            ItemKind::Mod(module),
             Some(cursor.location()),
         );
-        let module_id = module.id().as_module_id_unchecked();
+        let module_id = module.id().as_mod_id_unchecked();
         self.modules.insert(cursor, module_id);
         self.add_item(module, None, None);
         module_id
     }
-    pub fn with_module<F>(&mut self, module_id: ModuleId, cb: F)
+    pub fn with_mod<F>(&mut self, id: ModId, cb: F)
     where
         F: FnOnce(&mut Self),
     {
-        debug_assert!(self.resolve_item(module_id).kind().is_module(), "Wat");
-        let previous_id = self.current_module;
-        self.current_module = module_id;
+        debug_assert!(self.resolve_item(id).kind().is_mod(), "Wat");
+        let previous_id = self.current_mod;
+        self.current_mod = id;
         cb(self);
-        self.current_module = previous_id;
+        self.current_mod = previous_id;
     }
     pub fn allowed_items(&self) -> &ItemSet {
         assert!(self.in_codegen_phase());
-        assert!(self.current_module == self.root_module);
+        assert!(self.current_mod == self.root_mod);
         self.allowed.as_ref().unwrap()
     }
     pub fn blocklisted_type_implements_trait(&self, it: &Item, derive_trait: DeriveTrait) -> Resolved {
         assert!(self.in_codegen_phase());
-        assert!(self.current_module == self.root_module);
+        assert!(self.current_mod == self.root_mod);
         *self
             .blocklisted_types_implement_traits
             .borrow_mut()
@@ -1225,12 +1203,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     pub fn codegen_items(&self) -> &ItemSet {
         assert!(self.in_codegen_phase());
-        assert!(self.current_module == self.root_module);
+        assert!(self.current_mod == self.root_mod);
         self.codegen_items.as_ref().unwrap()
     }
     fn compute_allowed_and_codegen_items(&mut self) {
         assert!(self.in_codegen_phase());
-        assert!(self.current_module == self.root_module);
+        assert!(self.current_mod == self.root_mod);
         assert!(self.allowed.is_none());
         let _t = self.timer("compute_allowed_and_codegen_items");
         let roots = {
@@ -1261,8 +1239,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     let name = item.path_for_allowlisting(self)[1..].join("::");
                     debug!("allowed_items: testing {:?}", name);
                     match *item.kind() {
-                        ItemKind::Module(..) => true,
-                        ItemKind::Function(_) => self.opts().allowed_fns.matches(&name),
+                        ItemKind::Mod(..) => true,
+                        ItemKind::Func(_) => self.opts().allowed_fns.matches(&name),
                         ItemKind::Var(_) => self.opts().allowed_vars.matches(&name),
                         ItemKind::Type(ref ty) => {
                             if self.opts().allowed_types.matches(&name) {
@@ -1279,7 +1257,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                     | TypeKind::Vector(..)
                                     | TypeKind::Pointer(..)
                                     | TypeKind::Reference(..)
-                                    | TypeKind::Function(..)
+                                    | TypeKind::Func(..)
                                     | TypeKind::ResolvedTypeRef(..)
                                     | TypeKind::Opaque
                                     | TypeKind::TypeParam => return true,
@@ -1290,7 +1268,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                 }
                             }
                             let parent = self.resolve_item(item.parent());
-                            if !parent.is_module() {
+                            if !parent.is_mod() {
                                 return false;
                             }
                             let enum_ = match *ty.kind() {
@@ -1347,7 +1325,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.enum_typedef_combos.is_none());
         let mut enum_typedef_combos = HashSet::default();
         for item in &self.items {
-            if let Some(ItemKind::Module(module)) = item.as_ref().map(Item::kind) {
+            if let Some(ItemKind::Mod(module)) = item.as_ref().map(Item::kind) {
                 let mut names_of_typedefs = HashSet::default();
                 for child_id in module.children() {
                     if let Some(ItemKind::Type(ty)) = self.items[child_id.0].as_ref().map(Item::kind) {

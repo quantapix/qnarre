@@ -92,7 +92,7 @@ pub mod derive {
     use super::{gen_deps, DeriveTrait, HasVtable, Monotone, YConstrain};
     use crate::ir::comp::CompKind;
     use crate::ir::derive::Resolved;
-    use crate::ir::function::FnSig;
+    use crate::ir::func::FnSig;
     use crate::ir::item::{IsOpaque, Item};
     use crate::ir::layout::Layout;
     use crate::ir::template::TemplParams;
@@ -294,13 +294,13 @@ pub mod derive {
                 },
                 TypeKind::Pointer(x) => {
                     let ty2 = self.ctx.resolve_type(x).canon_type(self.ctx);
-                    if let TypeKind::Function(ref sig) = *ty2.kind() {
+                    if let TypeKind::Func(ref sig) = *ty2.kind() {
                         self.derive.can_derive_fnptr(sig)
                     } else {
                         self.derive.can_derive_ptr()
                     }
                 },
-                TypeKind::Function(ref sig) => self.derive.can_derive_fnptr(sig),
+                TypeKind::Func(ref sig) => self.derive.can_derive_fnptr(sig),
                 TypeKind::Array(t, len) => {
                     let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
                     if ty2 != Resolved::Yes {
@@ -326,7 +326,7 @@ pub mod derive {
                 },
                 TypeKind::Comp(ref x) => {
                     assert!(!x.has_non_type_templ_params());
-                    if !self.derive.can_derive_compound_forward_decl() && x.is_forward_declaration() {
+                    if !self.derive.can_derive_compound_forward_decl() && x.is_fwd_decl() {
                         return Resolved::No;
                     }
                     if !self.derive.can_derive_compound_with_destructor()
@@ -651,7 +651,7 @@ pub mod has_float {
                 TypeKind::Void
                 | TypeKind::NullPtr
                 | TypeKind::Int(..)
-                | TypeKind::Function(..)
+                | TypeKind::Func(..)
                 | TypeKind::Enum(..)
                 | TypeKind::Reference(..)
                 | TypeKind::TypeParam
@@ -804,7 +804,7 @@ pub mod has_type_param {
                 | TypeKind::Float(..)
                 | TypeKind::Vector(..)
                 | TypeKind::Complex(..)
-                | TypeKind::Function(..)
+                | TypeKind::Func(..)
                 | TypeKind::Enum(..)
                 | TypeKind::Reference(..)
                 | TypeKind::TypeParam
@@ -989,7 +989,7 @@ pub mod has_vtable {
                 | TypeKind::Reference(t) => self.forward(t, id),
                 TypeKind::Comp(ref info) => {
                     let mut y = Resolved::No;
-                    if info.has_own_virtual_method() {
+                    if info.has_own_virt_method() {
                         y |= Resolved::SelfHasVtable;
                     }
                     let has_vtable = info.base_members().iter().any(|x| self.ys.contains_key(&x.ty.into()));
@@ -1162,7 +1162,7 @@ pub mod sizedness {
                 TypeKind::Int(..)
                 | TypeKind::Float(..)
                 | TypeKind::Complex(..)
-                | TypeKind::Function(..)
+                | TypeKind::Func(..)
                 | TypeKind::Enum(..)
                 | TypeKind::Reference(..)
                 | TypeKind::NullPtr

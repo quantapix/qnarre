@@ -1,5 +1,5 @@
 use super::dot::DotAttrs;
-use super::function::cursor_mangling;
+use super::func::cursor_mangling;
 use super::int::IntKind;
 use super::item::Item;
 use super::typ::{FloatKind, TypeKind};
@@ -96,7 +96,7 @@ impl parse::SubItem for Var {
                         },
                         MacroParsing::Default => {},
                     }
-                    if cur.is_macro_function_like() {
+                    if cur.is_macro_fn_like() {
                         handle_fn_macro(&cur, x.as_ref());
                         return Err(parse::Error::Continue);
                     }
@@ -154,7 +154,7 @@ impl parse::SubItem for Var {
                 let mut name = cur.spelling();
                 if cur.linkage() == CXLinkage_External {
                     if let Some(x) = ctx.opts().last_callback(|x| {
-                        x.generated_name_override(ItemInfo {
+                        x.gen_name_override(ItemInfo {
                             name: name.as_str(),
                             kind: ItemKind::Var,
                         })
@@ -168,7 +168,7 @@ impl parse::SubItem for Var {
                     return Err(parse::Error::Continue);
                 }
                 let link = ctx.opts().last_callback(|x| {
-                    x.generated_link_name_override(ItemInfo {
+                    x.gen_link_name_override(ItemInfo {
                         name: name.as_str(),
                         kind: ItemKind::Var,
                     })
@@ -241,21 +241,21 @@ fn default_macro_const(ctx: &Context, x: i64) -> IntKind {
 
 fn handle_fn_macro(cur: &clang::Cursor, cb: &dyn crate::callbacks::Parse) {
     let is_closing = |x: &Token| x.kind == clang_lib::CXToken_Punctuation && x.spelling() == b")";
-    let toks: Vec<_> = cur.tokens().iter().collect();
+    let toks: Vec<_> = cur.toks().iter().collect();
     if let Some(x) = toks.iter().position(is_closing) {
         let mut y = toks.iter().map(Token::spelling);
         let left = y.by_ref().take(x + 1);
         let left = left.collect::<Vec<_>>().concat();
         if let Ok(x) = String::from_utf8(left) {
             let right: Vec<_> = y.collect();
-            cb.func_macro(&x, &right);
+            cb.fn_macro(&x, &right);
         }
     }
 }
 
 fn parse_macro(ctx: &Context, cur: &clang::Cursor) -> Option<(Vec<u8>, cexpr::expr::EvalResult)> {
     use cexpr::expr;
-    let toks = cur.cexpr_tokens();
+    let toks = cur.cexpr_toks();
     let y = expr::IdentifierParser::new(ctx.parsed_macros());
     match y.macro_definition(&toks) {
         Ok((_, (id, x))) => Some((id.into(), x)),
@@ -266,7 +266,7 @@ fn parse_macro(ctx: &Context, cur: &clang::Cursor) -> Option<(Vec<u8>, cexpr::ex
 fn parse_int_literal(cur: &clang::Cursor) -> Option<i64> {
     use cexpr::expr;
     use cexpr::expr::EvalResult;
-    let y = cur.cexpr_tokens();
+    let y = cur.cexpr_toks();
     match expr::expr(&y) {
         Ok((_, EvalResult::Int(Wrapping(x)))) => Some(x),
         _ => None,

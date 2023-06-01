@@ -10,12 +10,12 @@ use crate::ir::derive::{
 };
 use crate::ir::dot;
 use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
-use crate::ir::function::{Abi, ClangAbi, FnKind, FnSig, Function, Linkage};
+use crate::ir::func::{Abi, ClangAbi, FnKind, FnSig, Func, Linkage};
 use crate::ir::int::IntKind;
 use crate::ir::item::{CanonName, CanonPath, IsOpaque, Item};
 use crate::ir::item_kind::ItemKind;
 use crate::ir::layout::Layout;
-use crate::ir::module::Module;
+use crate::ir::module::Mod;
 use crate::ir::template::{AsTemplParam, TemplInstantiation, TemplParams};
 use crate::ir::typ::{Type, TypeKind};
 use crate::ir::var::Var;
@@ -192,7 +192,7 @@ impl Generator for CompInfo {
         let is_union = self.kind() == CompKind::Union;
         let layout = it.kind().expect_type().layout(ctx);
         let zero_sized = it.is_zero_sized(ctx);
-        let fwd_decl = self.is_forward_declaration();
+        let fwd_decl = self.is_fwd_decl();
         let mut explicit_align = None;
         if !fwd_decl && zero_sized {
             let has_addr = if is_opaque {
@@ -308,7 +308,7 @@ impl Generator for CompInfo {
         }
         if !traits.contains(DerivableTraits::DEFAULT) {
             needs_default = ctx.opts().derive_default
-                && !self.is_forward_declaration()
+                && !self.is_fwd_decl()
                 && !ctx.no_default_by_name(it)
                 && !it.annos().disallow_default();
         }
@@ -371,7 +371,7 @@ impl Generator for CompInfo {
                     ctx.resolve_item(*x).codegen(ctx, y, &());
                 }
             }
-            if ctx.opts().layout_tests && !self.is_forward_declaration() {
+            if ctx.opts().layout_tests && !self.is_fwd_decl() {
                 if let Some(x) = layout {
                     let size = x.size;
                     let align = x.align;
@@ -441,13 +441,13 @@ impl Generator for CompInfo {
             let mut method_names = Default::default();
             if ctx.opts().config.methods() {
                 for x in self.methods() {
-                    assert!(x.kind() != MethodKind::Constructor);
+                    assert!(x.kind() != MethodKind::Constr);
                     x.codegen(ctx, &mut methods, &mut method_names, y, self);
                 }
             }
-            if ctx.opts().config.constructors() {
+            if ctx.opts().config.constrs() {
                 for x in self.constructors() {
-                    Method::new(MethodKind::Constructor, *x, /* const */ false).codegen(
+                    Method::new(MethodKind::Constr, *x, /* const */ false).codegen(
                         ctx,
                         &mut methods,
                         &mut method_names,
@@ -456,9 +456,9 @@ impl Generator for CompInfo {
                     );
                 }
             }
-            if ctx.opts().config.destructors() {
+            if ctx.opts().config.destrs() {
                 if let Some((kind, x)) = self.destructor() {
-                    debug_assert!(kind.is_destructor());
+                    debug_assert!(kind.is_destr());
                     Method::new(kind, x, false).codegen(ctx, &mut methods, &mut method_names, y, self);
                 }
             }
@@ -737,7 +737,7 @@ impl Generator for Enum {
         y.push(item);
     }
 }
-impl Generator for Function {
+impl Generator for Func {
     type Extra = Item;
     type Return = Option<u32>;
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) -> Self::Return {
@@ -746,17 +746,17 @@ impl Generator for Function {
         let sig = ctx.resolve_item(self.sig());
         let sig = sig.kind().expect_type().canon_type(ctx);
         let sig = match *sig.kind() {
-            TypeKind::Function(ref x) => x,
-            _ => panic!("Signature kind is not a Function: {:?}", sig),
+            TypeKind::Func(ref x) => x,
+            _ => panic!("Signature kind is not a Func: {:?}", sig),
         };
         if is_internal {
             return None;
         }
         let is_dynamic = match self.kind() {
-            FnKind::Method(ref x) if x.is_pure_virtual() => {
+            FnKind::Method(ref x) if x.is_pure_virt() => {
                 return None;
             },
-            FnKind::Function => ctx.opts().dynamic_library_name.is_some(),
+            FnKind::Func => ctx.opts().dynamic_library_name.is_some(),
             _ => false,
         };
         if !it.all_templ_params(ctx).is_empty() {
@@ -800,7 +800,7 @@ impl Generator for Function {
                 attrs.push(attrs::link_name::<false>(link));
             }
         }
-        let wasm_link_attr = ctx.opts().wasm_import_module_name.as_ref().map(|x| {
+        let wasm_link_attr = ctx.opts().wasm_import_mod_name.as_ref().map(|x| {
             quote! { #[link(wasm_import_module = #x)] }
         });
         let ident = ctx.rust_ident(canon_name);
@@ -840,10 +840,10 @@ impl Generator for Item {
             return;
         }
         match *self.kind() {
-            ItemKind::Module(ref x) => {
+            ItemKind::Mod(ref x) => {
                 x.codegen(ctx, y, self);
             },
-            ItemKind::Function(ref x) => {
+            ItemKind::Func(ref x) => {
                 x.codegen(ctx, y, self);
             },
             ItemKind::Var(ref x) => {
@@ -855,7 +855,7 @@ impl Generator for Item {
         }
     }
 }
-impl Generator for Module {
+impl Generator for Mod {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
@@ -866,7 +866,7 @@ impl Generator for Module {
                     ctx.resolve_item(*x).codegen(ctx, y, &());
                 }
             }
-            if it.id() == ctx.root_module() {
+            if it.id() == ctx.root_mod() {
                 if y.saw_block {
                     utils::prepend_block_header(ctx, &mut *y);
                 }
@@ -901,7 +901,7 @@ impl Generator for Module {
             return;
         }
         let ident = ctx.rust_ident(it.canon_name(ctx));
-        y.push(if it.id() == ctx.root_module() {
+        y.push(if it.id() == ctx.root_mod() {
             quote! {
                 #[allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
                 pub mod #ident {
@@ -1090,7 +1090,7 @@ impl Generator for Type {
             | TypeKind::Vector(..)
             | TypeKind::Pointer(..)
             | TypeKind::Reference(..)
-            | TypeKind::Function(..)
+            | TypeKind::Func(..)
             | TypeKind::ResolvedTypeRef(..)
             | TypeKind::Opaque
             | TypeKind::TypeParam => {},
@@ -1102,7 +1102,7 @@ impl Generator for Type {
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let name = it.canon_name(ctx);
                 let ty = {
-                    if let TypeKind::Function(x) = x.kind().expect_type().kind() {
+                    if let TypeKind::Func(x) = x.kind().expect_type().kind() {
                         utils::fnsig_block(ctx, x)
                     } else {
                         panic!("invalid block typedef: {:?}", x)
@@ -1324,20 +1324,20 @@ impl Method {
         assert!({
             let cc = &ctx.opts().config;
             match self.kind() {
-                MethodKind::Constructor => cc.constructors(),
-                MethodKind::Destructor => cc.destructors(),
-                MethodKind::VirtualDestructor { .. } => cc.destructors(),
-                MethodKind::Static | MethodKind::Normal | MethodKind::Virtual { .. } => cc.methods(),
+                MethodKind::Constr => cc.constrs(),
+                MethodKind::Destr => cc.destrs(),
+                MethodKind::VirtDestr { .. } => cc.destrs(),
+                MethodKind::Static | MethodKind::Normal | MethodKind::Virt { .. } => cc.methods(),
             }
         });
-        if self.is_virtual() {
+        if self.is_virt() {
             return;
         }
         let function_item = ctx.resolve_item(self.sig());
         if !function_item.before_codegen(ctx, y) {
             return;
         }
-        let function = function_item.expect_function();
+        let function = function_item.expect_fn();
         let times_seen = function.codegen(ctx, y, function_item);
         let times_seen = match times_seen {
             Some(seen) => seen,
@@ -1345,12 +1345,12 @@ impl Method {
         };
         let signature_item = ctx.resolve_item(function.sig());
         let mut name = match self.kind() {
-            MethodKind::Constructor => "new".into(),
-            MethodKind::Destructor => "destruct".into(),
+            MethodKind::Constr => "new".into(),
+            MethodKind::Destr => "destruct".into(),
             _ => function.name().to_owned(),
         };
         let signature = match *signature_item.expect_type().kind() {
-            TypeKind::Function(ref sig) => sig,
+            TypeKind::Func(ref sig) => sig,
             _ => panic!("How in the world?"),
         };
         let supported_abi = match signature.abi(ctx, Some(&*name)) {
@@ -1384,20 +1384,20 @@ impl Method {
         let function_name = ctx.rust_ident(function_name);
         let mut args = utils::fnsig_arguments(ctx, signature);
         let mut ret = utils::fnsig_return_ty(ctx, signature);
-        if !self.is_static() && !self.is_constructor() {
+        if !self.is_static() && !self.is_constr() {
             args[0] = if self.is_const() {
                 quote! { &self }
             } else {
                 quote! { &mut self }
             };
         }
-        if self.is_constructor() {
+        if self.is_constr() {
             args.remove(0);
             ret = quote! { -> Self };
         }
         let mut exprs = utils::ast_ty::arguments_from_signature(signature, ctx);
         let mut stmts = vec![];
-        if self.is_constructor() {
+        if self.is_constr() {
             let prefix = ctx.trait_prefix();
             let tmp_variable_decl = {
                 exprs[0] = quote! {
@@ -1418,7 +1418,7 @@ impl Method {
             #function_name (#( #exprs ),* )
         };
         stmts.push(call);
-        if self.is_constructor() {
+        if self.is_constr() {
             stmts.push(quote! {
                 __bindgen_tmp.assume_init()
             })
@@ -1462,15 +1462,15 @@ impl<'a> Generator for Vtable<'a> {
                 .methods()
                 .iter()
                 .filter_map(|m| {
-                    if !m.is_virtual() {
+                    if !m.is_virt() {
                         return None;
                     }
                     let function_item = ctx.resolve_item(m.sig());
-                    let function = function_item.expect_function();
+                    let function = function_item.expect_fn();
                     let signature_item = ctx.resolve_item(function.sig());
                     let signature = match signature_item.expect_type().kind() {
-                        TypeKind::Function(ref sig) => sig,
-                        _ => panic!("Function signature type mismatch"),
+                        TypeKind::Func(ref sig) => sig,
+                        _ => panic!("Func signature type mismatch"),
                     };
                     let function_name = function_item.canon_name(ctx);
                     let function_name = ctx.rust_ident(function_name);
@@ -1688,7 +1688,7 @@ enum EnumBuilder<'a> {
     Consts {
         variants: Vec<proc_macro2::TokenStream>,
     },
-    ModuleConsts {
+    ModConsts {
         module_name: &'a str,
         module_items: Vec<proc_macro2::TokenStream>,
     },
@@ -1726,13 +1726,13 @@ impl<'a> EnumBuilder<'a> {
                 }
                 EnumBuilder::Consts { variants }
             },
-            variation::Enum::ModuleConsts => {
+            variation::Enum::ModConsts => {
                 let ident = Ident::new(CONSTIFIED_ENUM_MODULE_REPR_NAME, Span::call_site());
                 let type_definition = quote! {
                     #( #attrs )*
                     pub type #ident = #repr;
                 };
-                EnumBuilder::ModuleConsts {
+                EnumBuilder::ModConsts {
                     module_name: name,
                     module_items: vec![type_definition],
                 }
@@ -1794,7 +1794,7 @@ impl<'a> EnumBuilder<'a> {
                 });
                 self
             },
-            EnumBuilder::ModuleConsts {
+            EnumBuilder::ModConsts {
                 module_name,
                 mut module_items,
             } => {
@@ -1804,7 +1804,7 @@ impl<'a> EnumBuilder<'a> {
                     #doc
                     pub const #name : #ty = #expr ;
                 });
-                EnumBuilder::ModuleConsts {
+                EnumBuilder::ModConsts {
                     module_name,
                     module_items,
                 }
@@ -1838,7 +1838,7 @@ impl<'a> EnumBuilder<'a> {
                 }
             },
             EnumBuilder::Consts { variants, .. } => quote! { #( #variants )* },
-            EnumBuilder::ModuleConsts {
+            EnumBuilder::ModConsts {
                 module_items,
                 module_name,
                 ..
@@ -1856,7 +1856,7 @@ impl<'a> EnumBuilder<'a> {
 
 mod dyngen {
     use crate::codegen;
-    use crate::ir::function::ClangAbi;
+    use crate::ir::func::ClangAbi;
     use crate::ir::Context;
     use proc_macro2::Ident;
     #[derive(Default)]
@@ -2062,7 +2062,7 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
             | TypeKind::Array(..)
             | TypeKind::TypeParam
             | TypeKind::Opaque
-            | TypeKind::Function(..)
+            | TypeKind::Func(..)
             | TypeKind::Enum(..)
             | TypeKind::TemplInstantiation(..) => return,
             _ => {},
@@ -2210,7 +2210,7 @@ impl TryToRust for Type {
                     }
                 })
             },
-            TypeKind::Function(ref x) => {
+            TypeKind::Func(ref x) => {
                 let ty = x.try_to_rust(ctx, &())?;
                 let prefix = ctx.trait_prefix();
                 Ok(quote! {
@@ -2261,7 +2261,7 @@ impl TryToRust for Type {
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = x.to_rust_or_opaque(ctx, &());
                 ty.append_implicit_templ_params(ctx, x);
-                if x.expect_type().canon_type(ctx).is_function() {
+                if x.expect_type().canon_type(ctx).is_fn() {
                     Ok(ty)
                 } else {
                     Ok(ty.to_ptr(is_const))
@@ -2417,12 +2417,12 @@ pub fn codegen(ctx: Context) -> Result<(proc_macro2::TokenStream, Opts), GenErro
             match spec.write(ctx2.deps()) {
                 Ok(()) => info!(
                     "Your depfile was generated successfully into: {}",
-                    spec.depfile_path.display()
+                    spec.dep_path.display()
                 ),
                 Err(e) => warn!("{}", e),
             }
         }
-        ctx2.resolve_item(ctx2.root_module()).codegen(ctx2, &mut y, &());
+        ctx2.resolve_item(ctx2.root_mod()).codegen(ctx2, &mut y, &());
         if let Some(ref lib_name) = ctx2.opts().dynamic_library_name {
             let lib_ident = ctx2.rust_ident(lib_name);
             let dynamic_items_tokens = y.dyn_items().get_tokens(lib_ident, ctx2);
@@ -2445,9 +2445,9 @@ fn top_level_path(ctx: &Context, it: &Item) -> Vec<proc_macro2::TokenStream> {
 
 fn root_import(ctx: &Context, it: &Item) -> proc_macro2::TokenStream {
     assert!(ctx.opts().enable_cxx_namespaces, "Somebody messed it up");
-    assert!(it.is_module());
+    assert!(it.is_mod());
     let mut path = top_level_path(ctx, it);
-    let root = ctx.root_module().canon_name(ctx);
+    let root = ctx.root_mod().canon_name(ctx);
     let root_ident = ctx.rust_ident(root);
     path.push(quote! { #root_ident });
     let mut tokens = quote! {};

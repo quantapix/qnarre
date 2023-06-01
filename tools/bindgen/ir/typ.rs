@@ -1,7 +1,7 @@
 use super::comp::CompInfo;
 use super::dot::DotAttrs;
 use super::enum_ty::Enum;
-use super::function::FnSig;
+use super::func::FnSig;
 use super::int::IntKind;
 use super::item::{IsOpaque, Item};
 use super::layout::{Layout, Opaque};
@@ -34,7 +34,7 @@ pub enum TypeKind {
     TemplAlias(TypeId, Vec<TypeId>),
     Vector(TypeId, usize),
     Array(TypeId, usize),
-    Function(FnSig),
+    Func(FnSig),
     Enum(Enum),
     Pointer(TypeId),
     BlockPtr(TypeId),
@@ -58,7 +58,7 @@ impl TypeKind {
             TypeKind::TemplAlias(..) => "TemplateAlias",
             TypeKind::Array(..) => "Array",
             TypeKind::Vector(..) => "Vector",
-            TypeKind::Function(..) => "Function",
+            TypeKind::Func(..) => "Func",
             TypeKind::Enum(..) => "Enum",
             TypeKind::Pointer(..) => "Pointer",
             TypeKind::BlockPtr(..) => "BlockPtr",
@@ -97,7 +97,7 @@ impl TemplParams for TypeKind {
             | TypeKind::Complex(_)
             | TypeKind::Array(..)
             | TypeKind::Vector(..)
-            | TypeKind::Function(_)
+            | TypeKind::Func(_)
             | TypeKind::Enum(_)
             | TypeKind::Pointer(_)
             | TypeKind::BlockPtr(_)
@@ -171,8 +171,8 @@ impl Type {
     pub fn is_templ_instantiation(&self) -> bool {
         matches!(self.kind, TypeKind::TemplInstantiation(..))
     }
-    pub fn is_function(&self) -> bool {
-        matches!(self.kind, TypeKind::Function(..))
+    pub fn is_fn(&self) -> bool {
+        matches!(self.kind, TypeKind::Func(..))
     }
     pub fn is_enum(&self) -> bool {
         matches!(self.kind, TypeKind::Enum(..))
@@ -185,7 +185,7 @@ impl Type {
             self.kind,
             TypeKind::Void
                 | TypeKind::NullPtr
-                | TypeKind::Function(..)
+                | TypeKind::Func(..)
                 | TypeKind::Array(..)
                 | TypeKind::Reference(..)
                 | TypeKind::Pointer(..)
@@ -287,7 +287,7 @@ impl Type {
             | TypeKind::Int(..)
             | TypeKind::Float(..)
             | TypeKind::Complex(..)
-            | TypeKind::Function(..)
+            | TypeKind::Func(..)
             | TypeKind::Enum(..)
             | TypeKind::Reference(..)
             | TypeKind::Void
@@ -305,7 +305,7 @@ impl Type {
         matches!(
             self.kind,
             TypeKind::Comp(..)
-                | TypeKind::Function(..)
+                | TypeKind::Func(..)
                 | TypeKind::Pointer(..)
                 | TypeKind::Array(..)
                 | TypeKind::Reference(..)
@@ -324,7 +324,7 @@ impl Type {
         {
             let y = ctx.builtin_or_resolved_ty(id, parent, ty, Some(cur));
             if let Some(x) = y {
-                return Ok(parse::Resolved::AlreadyResolved(x.into()));
+                return Ok(parse::Resolved::AlreadyDone(x.into()));
             }
         }
         let layout = ty.fallible_layout(ctx).ok();
@@ -363,7 +363,7 @@ impl Type {
                 CXType_Unexposed | CXType_Invalid => {
                     if ty.ret_type().is_some() {
                         let x = FnSig::from_ty(ty, &cur, ctx)?;
-                        TypeKind::Function(x)
+                        TypeKind::Func(x)
                     } else if ty.is_fully_instantiated_templ() {
                         let x = CompInfo::from_ty(id, ty, Some(cur), ctx).expect("C'mon");
                         TypeKind::Comp(x)
@@ -424,7 +424,7 @@ impl Type {
                                 let ty = x.cur_type();
                                 let decl = ty.declaration();
                                 let y = Item::from_ty_or_ref_with_id(id, ty, decl, parent, ctx);
-                                return Ok(parse::Resolved::AlreadyResolved(y.into()));
+                                return Ok(parse::Resolved::AlreadyDone(y.into()));
                             },
                             CXCursor_NamespaceRef => {
                                 return Err(parse::Error::Continue);
@@ -478,7 +478,7 @@ impl Type {
                 },
                 CXType_FunctionNoProto | CXType_FunctionProto => {
                     let y = FnSig::from_ty(ty, &cur, ctx)?;
-                    TypeKind::Function(y)
+                    TypeKind::Func(y)
                 },
                 CXType_Typedef => {
                     let x = cur.typedef_type().expect("Not valid Type?");
@@ -619,7 +619,7 @@ impl Trace for Type {
                 x.trace(ctx, tracer, &());
             },
             TypeKind::Comp(ref x) => x.trace(ctx, tracer, it),
-            TypeKind::Function(ref x) => x.trace(ctx, tracer, &()),
+            TypeKind::Func(ref x) => x.trace(ctx, tracer, &()),
             TypeKind::Enum(ref x) => {
                 if let Some(x) = x.repr() {
                     tracer.visit(x.into());

@@ -21,7 +21,7 @@ pub use codegen::utils::variation;
 use codegen::GenError;
 pub use ir::annotations::FieldVisibilityKind;
 use ir::comment;
-pub use ir::function::Abi;
+pub use ir::func::Abi;
 use ir::item::Item;
 use ir::{Context, ItemId};
 use opts::Opts;
@@ -44,21 +44,21 @@ type HashSet<K> = rustc_hash::FxHashSet<K>;
 bitflags! {
     #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct Config: u32 {
-        const FUNCTIONS = 1 << 0;
-        const TYPES = 1 << 1;
+        const FNS = 1 << 0;
+        const TYPS = 1 << 1;
         const VARS = 1 << 2;
         const METHODS = 1 << 3;
-        const CONSTRUCTORS = 1 << 4;
-        const DESTRUCTORS = 1 << 5;
+        const CONSTRS = 1 << 4;
+        const DESTRS = 1 << 5;
     }
 }
 
 impl Config {
-    pub fn functions(self) -> bool {
-        self.contains(Config::FUNCTIONS)
+    pub fn fns(self) -> bool {
+        self.contains(Config::FNS)
     }
-    pub fn types(self) -> bool {
-        self.contains(Config::TYPES)
+    pub fn typs(self) -> bool {
+        self.contains(Config::TYPS)
     }
     pub fn vars(self) -> bool {
         self.contains(Config::VARS)
@@ -66,11 +66,11 @@ impl Config {
     pub fn methods(self) -> bool {
         self.contains(Config::METHODS)
     }
-    pub fn constructors(self) -> bool {
-        self.contains(Config::CONSTRUCTORS)
+    pub fn constrs(self) -> bool {
+        self.contains(Config::CONSTRS)
     }
-    pub fn destructors(self) -> bool {
-        self.contains(Config::DESTRUCTORS)
+    pub fn destrs(self) -> bool {
+        self.contains(Config::DESTRS)
     }
 }
 impl Default for Config {
@@ -119,9 +119,7 @@ pub struct Builder {
 }
 impl Builder {
     pub fn generate(mut self) -> Result<Bindings, BindgenError> {
-        self.opts
-            .clang_args
-            .extend(get_extra_clang_args(&self.opts.parse_callbacks));
+        self.opts.clang_args.extend(get_extra_args(&self.opts.parse_callbacks));
         self.opts.clang_args.extend(
             self.opts.input_headers[..self.opts.input_headers.len().saturating_sub(1)]
                 .iter()
@@ -166,7 +164,7 @@ impl Builder {
         for x in &self.opts.clang_args {
             cmd.arg(x);
         }
-        for x in get_extra_clang_args(&self.opts.parse_callbacks) {
+        for x in get_extra_args(&self.opts.parse_callbacks) {
             cmd.arg(x);
         }
         let mut child = cmd.spawn()?;
@@ -201,7 +199,7 @@ impl Opts {
             &mut self.blocklisted_files,
             &mut self.opaque_types,
             &mut self.constified_enums,
-            &mut self.constified_enum_modules,
+            &mut self.constified_enum_mods,
             &mut self.rustified_enums,
             &mut self.rustified_non_exhaustive_enums,
             &mut self.type_alias,
@@ -240,28 +238,28 @@ impl Opts {
 #[non_exhaustive]
 pub enum BindgenError {
     FolderAsHeader(PathBuf),
-    InsufficientPermissions(PathBuf),
+    NoReadPerms(PathBuf),
     NotExist(PathBuf),
-    ClangDiagnostic(String),
+    Diagnostic(String),
     Codegen(GenError),
 }
 impl std::fmt::Display for BindgenError {
     fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BindgenError::FolderAsHeader(h) => {
-                write!(x, "'{}' is a folder", h.display())
+            BindgenError::FolderAsHeader(x) => {
+                write!(x, "'{}' is a folder", x.display())
             },
-            BindgenError::InsufficientPermissions(h) => {
-                write!(x, "insufficient permissions to read '{}'", h.display())
+            BindgenError::NoReadPerms(x) => {
+                write!(x, "insufficient permissions to read '{}'", x.display())
             },
-            BindgenError::NotExist(h) => {
-                write!(x, "header '{}' does not exist.", h.display())
+            BindgenError::NotExist(x) => {
+                write!(x, "header '{}' does not exist.", x.display())
             },
-            BindgenError::ClangDiagnostic(message) => {
-                write!(x, "clang diagnosed error: {}", message)
+            BindgenError::Diagnostic(x) => {
+                write!(x, "clang diagnosed error: {}", x)
             },
-            BindgenError::Codegen(err) => {
-                write!(x, "codegen error: {}", err)
+            BindgenError::Codegen(x) => {
+                write!(x, "codegen error: {}", x)
             },
         }
     }
@@ -281,13 +279,6 @@ impl Bindings {
         input_unsaved_files: Vec<clang::UnsavedFile>,
     ) -> Result<Bindings, BindgenError> {
         load_libclang();
-        #[cfg(feature = "runtime")]
-        debug!(
-            "Generating bindings, libclang at {}",
-            clang_lib::get_lib().unwrap().path().display()
-        );
-        #[cfg(not(feature = "runtime"))]
-        debug!("Generating bindings, libclang linked");
         opts.build();
         let (effective_target, explicit_target) = find_effective_target(&opts.clang_args);
         let is_host_build = rust_to_clang_target(HOST_TARGET) == effective_target;
@@ -320,12 +311,10 @@ impl Bindings {
                     .cloned()
                     .collect::<Vec<_>>()
             };
-            debug!("Trying to find clang with flags: {:?}", clang_args_for_clang);
             let clang = match clang_lib::Clang::find(None, &clang_args_for_clang) {
                 None => return,
                 Some(x) => x,
             };
-            debug!("Found clang: {:?}", clang);
             let is_cpp = args_are_cpp(&opts.clang_args) || opts.input_headers.iter().any(|h| file_is_cpp(h));
             let paths = if is_cpp {
                 clang.cpp_search_paths
@@ -354,7 +343,7 @@ impl Bindings {
                     return Err(BindgenError::FolderAsHeader(path.into()));
                 }
                 if !can_read(&md.permissions()) {
-                    return Err(BindgenError::InsufficientPermissions(path.into()));
+                    return Err(BindgenError::NoReadPerms(path.into()));
                 }
                 let h = h.clone();
                 opts.clang_args.push(h);
@@ -368,7 +357,6 @@ impl Bindings {
             }
             opts.clang_args.push(f.name.to_str().unwrap().to_owned())
         }
-        debug!("Fixed-up options: {:?}", opts);
         let time_phases = opts.time_phases;
         let mut ctx = Context::new(opts, &input_unsaved_files);
         if is_host_build {
@@ -412,7 +400,7 @@ impl Bindings {
         if !self.opts.raw_lines.is_empty() {
             writer.write_all("\n".as_bytes())?;
         }
-        match self.format_tokens(&self.module) {
+        match self.format_toks(&self.module) {
             Ok(x) => {
                 writer.write_all(x.as_bytes())?;
             },
@@ -439,7 +427,7 @@ impl Bindings {
         #[cfg(not(feature = "which-rustfmt"))]
         Ok(Cow::Owned("rustfmt".into()))
     }
-    fn format_tokens(&self, tokens: &proc_macro2::TokenStream) -> io::Result<String> {
+    fn format_toks(&self, tokens: &proc_macro2::TokenStream) -> io::Result<String> {
         let _t = timer::Timer::new("rustfmt_generated_string").with_output(self.opts.time_phases);
         match self.opts.formatter {
             Formatter::None => return Ok(tokens.to_string()),
@@ -470,13 +458,13 @@ impl Bindings {
              anything that could panic",
         );
         match String::from_utf8(output) {
-            Ok(bindings) => match status.code() {
-                Some(0) => Ok(bindings),
+            Ok(x) => match status.code() {
+                Some(0) => Ok(x),
                 Some(2) => Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Rustfmt parsing errors.".to_string(),
                 )),
-                Some(3) => Ok(bindings),
+                Some(3) => Ok(x),
                 _ => Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Internal rustfmt error".to_string(),
@@ -516,16 +504,16 @@ mod deps {
     use std::{collections::BTreeSet, path::PathBuf};
     #[derive(Clone, Debug)]
     pub(crate) struct DepfileSpec {
-        pub output_module: String,
-        pub depfile_path: PathBuf,
+        pub out_mod: String,
+        pub dep_path: PathBuf,
     }
     impl DepfileSpec {
         pub fn write(&self, deps: &BTreeSet<String>) -> std::io::Result<()> {
-            std::fs::write(&self.depfile_path, &self.to_string(deps))
+            std::fs::write(&self.dep_path, &self.to_string(deps))
         }
         fn to_string(&self, deps: &BTreeSet<String>) -> String {
             let escape = |s: &str| s.replace('\\', "\\\\").replace(' ', "\\ ");
-            let mut buf = format!("{}:", escape(&self.output_module));
+            let mut buf = format!("{}:", escape(&self.out_mod));
             for file in deps {
                 buf = format!("{} {}", buf, escape(file));
             }
@@ -538,8 +526,8 @@ mod deps {
         #[test]
         fn escaping_depfile() {
             let spec = DepfileSpec {
-                output_module: "Mod Name".to_owned(),
-                depfile_path: PathBuf::new(),
+                out_mod: "Mod Name".to_owned(),
+                dep_path: PathBuf::new(),
             };
             let deps: BTreeSet<String> = vec![
                 r"/absolute/path".to_owned(),
@@ -586,17 +574,17 @@ pub mod callbacks {
         fn will_parse_macro(&self, _name: &str) -> MacroParsing {
             MacroParsing::Default
         }
-        fn generated_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
+        fn gen_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
             None
         }
-        fn generated_link_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
+        fn gen_link_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
             None
         }
         fn int_macro(&self, _name: &str, _value: i64) -> Option<IntKind> {
             None
         }
         fn str_macro(&self, _name: &str, _value: &[u8]) {}
-        fn func_macro(&self, _name: &str, _value: &[&[u8]]) {}
+        fn fn_macro(&self, _name: &str, _value: &[&[u8]]) {}
         fn enum_variant_behavior(
             &self,
             _name: Option<&str>,
@@ -642,7 +630,7 @@ pub mod callbacks {
     }
     #[non_exhaustive]
     pub enum ItemKind {
-        Function,
+        Func,
         Var,
     }
 }
@@ -656,7 +644,7 @@ pub(crate) mod parse {
     }
     #[derive(Debug)]
     pub enum Resolved<T> {
-        AlreadyResolved(ItemId),
+        AlreadyDone(ItemId),
         New(T, Option<clang::Cursor>),
     }
     pub trait SubItem: Sized {
@@ -813,7 +801,7 @@ fn args_are_cpp(xs: &[String]) -> bool {
     false
 }
 
-fn get_extra_clang_args(xs: &[Rc<dyn callbacks::Parse>]) -> Vec<String> {
+fn get_extra_args(xs: &[Rc<dyn callbacks::Parse>]) -> Vec<String> {
     let ys = match get_target_dependent_env_var(xs, "BINDGEN_EXTRA_CLANG_ARGS") {
         None => return vec![],
         Some(x) => x,
@@ -921,7 +909,7 @@ fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
         }
     }
     if let Some(x) = error {
-        return Err(BindgenError::ClangDiagnostic(x));
+        return Err(BindgenError::Diagnostic(x));
     }
     let cur = ctx.translation_unit().cursor();
     if ctx.opts().emit_ast {
@@ -934,14 +922,14 @@ fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
         }
         cur.visit(|x| dump_if_not_builtin(&x));
     }
-    let root = ctx.root_module();
-    ctx.with_module(root, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, None)));
-    assert!(ctx.current_module() == ctx.root_module(), "How did this happen?");
+    let root = ctx.root_mod();
+    ctx.with_mod(root, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, None)));
+    assert!(ctx.current_mod() == ctx.root_mod(), "How did this happen?");
     Ok(())
 }
 
 #[test]
-fn commandline_flag_unit_test_function() {
+fn commandline_flag_unit_test() {
     let bindings = crate::builder();
     let command_line_flags = bindings.command_line_flags();
     let test_cases = vec![
@@ -957,7 +945,7 @@ fn commandline_flag_unit_test_function() {
     let bindings = crate::builder()
         .header("input_header")
         .allowlist_type("Distinct_Type")
-        .allowlist_function("safe_function");
+        .allowlist_fn("safe_function");
     let command_line_flags = bindings.command_line_flags();
     let test_cases = vec![
         "--rust-target",

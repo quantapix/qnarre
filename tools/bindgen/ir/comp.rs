@@ -25,20 +25,20 @@ pub enum CompKind {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MethodKind {
-    Constructor,
-    Destructor,
-    VirtualDestructor { pure_virtual: bool },
+    Constr,
+    Destr,
+    VirtDestr { pure: bool },
     Static,
     Normal,
-    Virtual { pure_virtual: bool },
+    Virt { pure: bool },
 }
 impl MethodKind {
-    pub fn is_destructor(&self) -> bool {
-        matches!(*self, MethodKind::Destructor | MethodKind::VirtualDestructor { .. })
+    pub fn is_destr(&self) -> bool {
+        matches!(*self, MethodKind::Destr | MethodKind::VirtDestr { .. })
     }
-    pub fn is_pure_virtual(&self) -> bool {
+    pub fn is_pure_virt(&self) -> bool {
         match *self {
-            MethodKind::Virtual { pure_virtual } | MethodKind::VirtualDestructor { pure_virtual } => pure_virtual,
+            MethodKind::Virt { pure } | MethodKind::VirtDestr { pure } => pure,
             _ => false,
         }
     }
@@ -57,14 +57,11 @@ impl Method {
     pub fn kind(&self) -> MethodKind {
         self.kind
     }
-    pub fn is_constructor(&self) -> bool {
-        self.kind == MethodKind::Constructor
+    pub fn is_constr(&self) -> bool {
+        self.kind == MethodKind::Constr
     }
-    pub fn is_virtual(&self) -> bool {
-        matches!(
-            self.kind,
-            MethodKind::Virtual { .. } | MethodKind::VirtualDestructor { .. }
-        )
+    pub fn is_virt(&self) -> bool {
+        matches!(self.kind, MethodKind::Virt { .. } | MethodKind::VirtDestr { .. })
     }
     pub fn is_static(&self) -> bool {
         self.kind == MethodKind::Static
@@ -172,7 +169,7 @@ impl CompFields {
         };
         fn has_method(methods: &[Method], ctx: &Context, name: &str) -> bool {
             methods.iter().any(|method| {
-                let method_name = ctx.resolve_func(method.sig()).name();
+                let method_name = ctx.resolve_fn(method.sig()).name();
                 method_name == name || ctx.rust_mangle(method_name) == name
             })
         }
@@ -344,7 +341,7 @@ impl FieldMethods for RawField {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BaseKind {
     Normal,
-    Virtual,
+    Virt,
 }
 
 #[derive(Clone, Debug)]
@@ -355,11 +352,11 @@ pub struct Base {
     pub is_pub: bool,
 }
 impl Base {
-    pub fn is_virtual(&self) -> bool {
-        self.kind == BaseKind::Virtual
+    pub fn is_virt(&self) -> bool {
+        self.kind == BaseKind::Virt
     }
     pub fn requires_storage(&self, ctx: &Context) -> bool {
-        if self.is_virtual() {
+        if self.is_virt() {
             return false;
         }
         if self.ty.is_zero_sized(ctx) {
@@ -383,7 +380,7 @@ pub struct CompInfo {
     base_members: Vec<Base>,
     inner_types: Vec<TypeId>,
     inner_vars: Vec<VarId>,
-    has_own_virtual_method: bool,
+    has_own_virt_method: bool,
     has_destructor: bool,
     has_nonempty_base: bool,
     has_non_type_templ_params: bool,
@@ -404,7 +401,7 @@ impl CompInfo {
             base_members: vec![],
             inner_types: vec![],
             inner_vars: vec![],
-            has_own_virtual_method: false,
+            has_own_virt_method: false,
             has_destructor: false,
             has_nonempty_base: false,
             has_non_type_templ_params: false,
@@ -418,7 +415,7 @@ impl CompInfo {
         if self.kind == CompKind::Struct {
             return None;
         }
-        if self.is_forward_declaration() {
+        if self.is_fwd_decl() {
             return None;
         }
         if !self.has_fields() {
@@ -488,8 +485,8 @@ impl CompInfo {
     pub fn has_non_type_templ_params(&self) -> bool {
         self.has_non_type_templ_params
     }
-    pub fn has_own_virtual_method(&self) -> bool {
-        self.has_own_virtual_method
+    pub fn has_own_virt_method(&self) -> bool {
+        self.has_own_virt_method
     }
     pub fn has_own_destructor(&self) -> bool {
         self.has_destructor
@@ -515,7 +512,7 @@ impl CompInfo {
     pub fn from_ty(
         potential_id: ItemId,
         ty: &clang::Type,
-        location: Option<clang::Cursor>,
+        cur: Option<clang::Cursor>,
         ctx: &mut Context,
     ) -> Result<Self, parse::Error> {
         use clang_lib::*;
@@ -523,15 +520,15 @@ impl CompInfo {
         let mut cursor = ty.declaration();
         let mut kind = Self::kind_from_cursor(&cursor);
         if kind.is_err() {
-            if let Some(location) = location {
-                kind = Self::kind_from_cursor(&location);
-                cursor = location;
+            if let Some(x) = cur {
+                kind = Self::kind_from_cursor(&x);
+                cursor = x;
             }
         }
         let kind = kind?;
         debug!("CompInfo::from_ty({:?}, {:?})", kind, cursor);
         let mut ci = CompInfo::new(kind);
-        ci.is_forward_declaration = location.map_or(true, |cur| match cur.kind() {
+        ci.is_forward_declaration = cur.map_or(true, |cur| match cur.kind() {
             CXCursor_ParmDecl => true,
             CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !cur.is_definition(),
             _ => false,
@@ -628,13 +625,9 @@ impl CompInfo {
                     ci.templ_params.push(param);
                 },
                 CXCursor_CXXBaseSpecifier => {
-                    let is_virtual_base = cur2.is_virtual_base();
-                    ci.has_own_virtual_method |= is_virtual_base;
-                    let kind = if is_virtual_base {
-                        BaseKind::Virtual
-                    } else {
-                        BaseKind::Normal
-                    };
+                    let is_virt_base = cur2.is_virt_base();
+                    ci.has_own_virt_method |= is_virt_base;
+                    let kind = if is_virt_base { BaseKind::Virt } else { BaseKind::Normal };
                     let field_name = match ci.base_members.len() {
                         0 => "_base".into(),
                         n => format!("_base_{}", n),
@@ -648,30 +641,30 @@ impl CompInfo {
                     });
                 },
                 CXCursor_Constructor | CXCursor_Destructor | CXCursor_CXXMethod => {
-                    let is_virtual = cur2.method_is_virtual();
+                    let is_virt = cur2.method_is_virt();
                     let is_static = cur2.method_is_static();
-                    debug_assert!(!(is_static && is_virtual), "How?");
+                    debug_assert!(!(is_static && is_virt), "How?");
                     ci.has_destructor |= cur2.kind() == CXCursor_Destructor;
-                    ci.has_own_virtual_method |= is_virtual;
+                    ci.has_own_virt_method |= is_virt;
                     if !ci.templ_params.is_empty() {
                         return CXChildVisit_Continue;
                     }
                     let signature = match Item::parse(cur2, Some(potential_id), ctx) {
-                        Ok(item) if ctx.resolve_item(item).kind().is_function() => item,
+                        Ok(item) if ctx.resolve_item(item).kind().is_fn() => item,
                         _ => return CXChildVisit_Continue,
                     };
-                    let signature = signature.expect_function_id(ctx);
+                    let signature = signature.expect_fn_id(ctx);
                     match cur2.kind() {
                         CXCursor_Constructor => {
                             ci.constructors.push(signature);
                         },
                         CXCursor_Destructor => {
-                            let kind = if is_virtual {
-                                MethodKind::VirtualDestructor {
-                                    pure_virtual: cur2.method_is_pure_virtual(),
+                            let kind = if is_virt {
+                                MethodKind::VirtDestr {
+                                    pure: cur2.method_is_pure_virt(),
                                 }
                             } else {
-                                MethodKind::Destructor
+                                MethodKind::Destr
                             };
                             ci.destructor = Some((kind, signature));
                         },
@@ -679,9 +672,9 @@ impl CompInfo {
                             let is_const = cur2.method_is_const();
                             let method_kind = if is_static {
                                 MethodKind::Static
-                            } else if is_virtual {
-                                MethodKind::Virtual {
-                                    pure_virtual: cur2.method_is_pure_virtual(),
+                            } else if is_virt {
+                                MethodKind::Virt {
+                                    pure: cur2.method_is_pure_virt(),
                                 }
                             } else {
                                 MethodKind::Normal
@@ -769,13 +762,13 @@ impl CompInfo {
                 info!("Found a struct that was defined within `#pragma packed(...)`");
                 return true;
             }
-            if self.has_own_virtual_method && parent_layout.align == 1 {
+            if self.has_own_virt_method && parent_layout.align == 1 {
                 return true;
             }
         }
         false
     }
-    pub fn is_forward_declaration(&self) -> bool {
+    pub fn is_fwd_decl(&self) -> bool {
         self.is_forward_declaration
     }
     pub fn compute_bitfield_units(&mut self, ctx: &Context, layout: Option<&Layout>) {
@@ -792,7 +785,7 @@ impl CompInfo {
         if !ctx.opts().untagged_union {
             return (false, false);
         }
-        if self.is_forward_declaration() {
+        if self.is_fwd_decl() {
             return (false, false);
         }
         let union_style = if ctx.opts().bindgen_wrapper_union.matches(name) {
@@ -820,7 +813,7 @@ impl DotAttrs for CompInfo {
         W: io::Write,
     {
         writeln!(y, "<tr><td>CompKind</td><td>{:?}</td></tr>", self.kind)?;
-        if self.has_own_virtual_method {
+        if self.has_own_virt_method {
             writeln!(y, "<tr><td>has_vtable</td><td>true</td></tr>")?;
         }
         if self.has_destructor {

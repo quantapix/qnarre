@@ -149,7 +149,7 @@ impl Cursor {
             CXCursor_ClassTemplate | CXCursor_ClassTemplatePartialSpecialization | CXCursor_TypeAliasTemplateDecl
         )
     }
-    pub fn is_macro_function_like(&self) -> bool {
+    pub fn is_macro_fn_like(&self) -> bool {
         unsafe { clang_Cursor_isMacroFunctionLike(self.cur) != 0 }
     }
     pub fn kind(&self) -> CXCursorKind {
@@ -341,14 +341,14 @@ impl Cursor {
         });
         y
     }
-    pub fn is_inlined_function(&self) -> bool {
+    pub fn is_inlined_fn(&self) -> bool {
         unsafe { clang_Cursor_isFunctionInlined(self.cur) != 0 }
     }
-    pub fn is_defaulted_function(&self) -> bool {
+    pub fn is_defaulted_fn(&self) -> bool {
         unsafe { clang_CXXMethod_isDefaulted(self.cur) != 0 }
     }
-    pub fn is_deleted_function(&self) -> bool {
-        self.is_inlined_function() && self.definition().is_none() && !self.is_defaulted_function()
+    pub fn is_deleted_fn(&self) -> bool {
+        self.is_inlined_fn() && self.definition().is_none() && !self.is_defaulted_fn()
     }
     pub fn is_bit_field(&self) -> bool {
         unsafe { clang_Cursor_isBitField(self.cur) != 0 }
@@ -392,7 +392,7 @@ impl Cursor {
             }
         }
     }
-    pub fn enum_val_boolean(&self) -> Option<bool> {
+    pub fn enum_val_bool(&self) -> Option<bool> {
         unsafe {
             if self.kind() == CXCursor_EnumConstantDecl {
                 Some(clang_getEnumConstantDeclValue(self.cur) != 0)
@@ -432,7 +432,7 @@ impl Cursor {
                     && (attr.kind.map_or(false, |x| x == kind)
                         || (kind == CXCursor_UnexposedAttr
                             && cur
-                                .tokens()
+                                .toks()
                                 .iter()
                                 .any(|x| x.kind == attr.tok_kind && x.spelling() == attr.name)))
                 {
@@ -489,7 +489,7 @@ impl Cursor {
         let y = self.access_specifier();
         y == CX_CXXPublic || y == CX_CXXInvalidAccessSpecifier
     }
-    pub fn is_mutable_field(&self) -> bool {
+    pub fn is_mut_field(&self) -> bool {
         unsafe { clang_CXXField_isMutable(self.cur) != 0 }
     }
     pub fn offset_of_field(&self) -> Result<usize, LayoutError> {
@@ -506,13 +506,13 @@ impl Cursor {
     pub fn method_is_const(&self) -> bool {
         unsafe { clang_CXXMethod_isConst(self.cur) != 0 }
     }
-    pub fn method_is_virtual(&self) -> bool {
+    pub fn method_is_virt(&self) -> bool {
         unsafe { clang_CXXMethod_isVirtual(self.cur) != 0 }
     }
-    pub fn method_is_pure_virtual(&self) -> bool {
+    pub fn method_is_pure_virt(&self) -> bool {
         unsafe { clang_CXXMethod_isPureVirtual(self.cur) != 0 }
     }
-    pub fn is_virtual_base(&self) -> bool {
+    pub fn is_virt_base(&self) -> bool {
         unsafe { clang_isVirtualBase(self.cur) != 0 }
     }
     pub fn evaluate(&self) -> Option<EvalResult> {
@@ -528,11 +528,11 @@ impl Cursor {
             None
         }
     }
-    pub fn tokens(&self) -> RawToks {
+    pub fn toks(&self) -> RawToks {
         RawToks::new(self)
     }
-    pub fn cexpr_tokens(self) -> Vec<cexpr::token::Token> {
-        self.tokens().iter().filter_map(|x| x.as_cexpr_token()).collect()
+    pub fn cexpr_toks(self) -> Vec<cexpr::token::Token> {
+        self.toks().iter().filter_map(|x| x.as_cexpr_token()).collect()
     }
     pub fn get_included_file_name(&self) -> Option<String> {
         let y = unsafe { clang_getIncludedFile(self.cur) };
@@ -1356,10 +1356,7 @@ pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
         print_indent(depth, format!(" {}location = {}", prefix, c.location()));
         print_indent(depth, format!(" {}is-definition? {}", prefix, c.is_definition()));
         print_indent(depth, format!(" {}is-declaration? {}", prefix, c.is_declaration()));
-        print_indent(
-            depth,
-            format!(" {}is-inlined-function? {}", prefix, c.is_inlined_function()),
-        );
+        print_indent(depth, format!(" {}is-inlined-function? {}", prefix, c.is_inlined_fn()));
         let templ_kind = c.templ_kind();
         if templ_kind != CXCursor_NoDeclFound {
             print_indent(depth, format!(" {}templ-kind = {}", prefix, kind_to_str(templ_kind)));

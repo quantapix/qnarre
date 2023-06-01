@@ -80,7 +80,7 @@ impl<'a> ImplDebug<'a> for Item {
             | TypeKind::Int(..)
             | TypeKind::Float(..)
             | TypeKind::Complex(..)
-            | TypeKind::Function(..)
+            | TypeKind::Func(..)
             | TypeKind::Enum(..)
             | TypeKind::Reference(..)
             | TypeKind::UnresolvedTypeRef(..)
@@ -116,11 +116,11 @@ impl<'a> ImplDebug<'a> for Item {
             TypeKind::ResolvedTypeRef(t) | TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) => {
                 ctx.resolve_item(t).impl_debug(ctx, name)
             },
-            TypeKind::Pointer(inner) => {
-                let inner_type = ctx.resolve_type(inner).canon_type(ctx);
+            TypeKind::Pointer(x) => {
+                let inner_type = ctx.resolve_type(x).canon_type(ctx);
                 match *inner_type.kind() {
-                    TypeKind::Function(ref sig) if !sig.fn_ptrs_can_derive() => {
-                        Some((format!("{}: FunctionPointer", name), vec![]))
+                    TypeKind::Func(ref sig) if !sig.fn_ptrs_can_derive() => {
+                        Some((format!("{}: FnPointer", name), vec![]))
                     },
                     _ => debug_print(name, quote! { #name_ident }),
                 }

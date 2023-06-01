@@ -4,10 +4,10 @@ use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::context::PartialType;
 use super::dot::DotAttrs;
-use super::function::{FnKind, Function};
+use super::func::{FnKind, Func};
 use super::item_kind::ItemKind;
 use super::layout::Opaque;
-use super::module::Module;
+use super::module::Mod;
 use super::template::{AsTemplParam, TemplParams};
 use super::traversal::{EdgeKind, Trace, Tracer};
 use super::typ::{Type, TypeKind};
@@ -103,7 +103,7 @@ impl CanonPath for Item {
         } else if !ctx.opts().enable_cxx_namespaces {
             y = vec![y[1..].join("_")];
         }
-        if self.is_constified_enum_module(ctx) {
+        if self.is_constified_enum_mod(ctx) {
             y.push(CONSTIFIED_ENUM_MODULE_REPR_NAME.into());
         }
         y
@@ -231,10 +231,10 @@ impl DebugOnlyItemSet {
     fn new() -> Self {
         DebugOnlyItemSet
     }
-    fn contains(&self, _id: &ItemId) -> bool {
+    fn contains(&self, _: &ItemId) -> bool {
         false
     }
-    fn insert(&mut self, _id: ItemId) {}
+    fn insert(&mut self, _: ItemId) {}
 }
 
 pub struct AncestorsIter<'a> {
@@ -304,7 +304,7 @@ impl Item {
         let loc = ty.declaration().location();
         let ty = Opaque::from_clang_ty(ty, ctx);
         let kind = ItemKind::Type(ty);
-        let parent = ctx.root_module().into();
+        let parent = ctx.root_mod().into();
         ctx.add_item(Item::new(id, None, None, parent, kind, Some(loc)), None, None);
         id.as_type_id_unchecked()
     }
@@ -324,7 +324,7 @@ impl Item {
         self.ancestors(ctx)
             .filter(|x| {
                 ctx.resolve_item(*x)
-                    .as_module()
+                    .as_mod()
                     .map_or(false, |x| !x.is_inline() || ctx.opts().conservative_inline_namespaces)
             })
             .count()
@@ -357,7 +357,7 @@ impl Item {
         y
     }
     pub fn is_toplevel(&self, ctx: &Context) -> bool {
-        if ctx.opts().enable_cxx_namespaces && self.kind().is_module() && self.id() != ctx.root_module() {
+        if ctx.opts().enable_cxx_namespaces && self.kind().is_mod() && self.id() != ctx.root_mod() {
             return false;
         }
         let mut y = self.parent;
@@ -366,9 +366,9 @@ impl Item {
                 Some(x) => x,
                 None => return false,
             };
-            if x.id() == ctx.root_module() {
+            if x.id() == ctx.root_mod() {
                 return true;
-            } else if ctx.opts().enable_cxx_namespaces || !x.kind().is_module() {
+            } else if ctx.opts().enable_cxx_namespaces || !x.kind().is_mod() {
                 return false;
             }
             y = x.parent();
@@ -380,11 +380,11 @@ impl Item {
     pub fn as_type(&self) -> Option<&Type> {
         self.kind().as_type()
     }
-    pub fn expect_function(&self) -> &Function {
-        self.kind().expect_function()
+    pub fn expect_fn(&self) -> &Func {
+        self.kind().expect_fn()
     }
-    pub fn is_module(&self) -> bool {
-        matches!(self.kind, ItemKind::Module(..))
+    pub fn is_mod(&self) -> bool {
+        matches!(self.kind, ItemKind::Mod(..))
     }
     pub fn annos(&self) -> &Annotations {
         &self.annos
@@ -410,8 +410,8 @@ impl Item {
                 ItemKind::Type(..) => {
                     ctx.opts().blocklisted_types.matches(&name) || ctx.is_replaced_type(path, self.id)
                 },
-                ItemKind::Function(..) => ctx.opts().blocklisted_fns.matches(&name),
-                ItemKind::Var(..) | ItemKind::Module(..) => false,
+                ItemKind::Func(..) => ctx.opts().blocklisted_fns.matches(&name),
+                ItemKind::Var(..) | ItemKind::Mod(..) => false,
             }
     }
     pub fn name<'a>(&'a self, ctx: &'a Context) -> NameOpts<'a> {
@@ -460,7 +460,7 @@ impl Item {
     }
     fn func_name(&self) -> Option<&str> {
         match *self.kind() {
-            ItemKind::Function(ref x) => Some(x.name()),
+            ItemKind::Func(ref x) => Some(x.name()),
             _ => None,
         }
     }
@@ -474,7 +474,7 @@ impl Item {
                             .iter()
                             .filter(|x| {
                                 let x = ctx.resolve_item(x.sig());
-                                let x = x.expect_function();
+                                let x = x.expect_fn();
                                 x.name() == name
                             })
                             .position(|x| x.sig() == self.id())
@@ -490,7 +490,7 @@ impl Item {
         }
         match *self.kind() {
             ItemKind::Var(ref x) => x.name().to_owned(),
-            ItemKind::Module(ref x) => x
+            ItemKind::Mod(ref x) => x
                 .name()
                 .map(ToOwned::to_owned)
                 .unwrap_or_else(|| format!("_bindgen_mod_{}", self.exposed_id(ctx))),
@@ -498,7 +498,7 @@ impl Item {
                 .sanitized_name(ctx)
                 .map(Into::into)
                 .unwrap_or_else(|| format!("_bindgen_ty_{}", self.exposed_id(ctx))),
-            ItemKind::Function(ref x) => {
+            ItemKind::Func(ref x) => {
                 let mut name = x.name().to_owned();
                 if let Some(x) = self.overload_index(ctx) {
                     if x > 0 {
@@ -511,9 +511,9 @@ impl Item {
     }
     fn is_anon(&self) -> bool {
         match self.kind() {
-            ItemKind::Module(x) => x.name().is_none(),
+            ItemKind::Mod(x) => x.name().is_none(),
             ItemKind::Type(x) => x.name().is_none(),
-            ItemKind::Function(_) => false,
+            ItemKind::Func(_) => false,
             ItemKind::Var(_) => false,
         }
     }
@@ -532,11 +532,11 @@ impl Item {
         let mut ids_iter = target
             .parent()
             .ancestors(ctx)
-            .filter(|x| *x != ctx.root_module())
-            .take_while(|x| !opt.namespaces || !ctx.resolve_item(*x).is_module())
+            .filter(|x| *x != ctx.root_mod())
+            .take_while(|x| !opt.namespaces || !ctx.resolve_item(*x).is_mod())
             .filter(|x| {
                 if !ctx.opts().conservative_inline_namespaces {
-                    if let ItemKind::Module(ref x) = *ctx.resolve_item(*x).kind() {
+                    if let ItemKind::Mod(ref x) = *ctx.resolve_item(*x).kind() {
                         return !x.is_inline();
                     }
                 }
@@ -594,31 +594,31 @@ impl Item {
         }
         format!("id_{}", self.id().as_usize())
     }
-    pub fn as_module(&self) -> Option<&Module> {
+    pub fn as_mod(&self) -> Option<&Mod> {
         match self.kind {
-            ItemKind::Module(ref x) => Some(x),
+            ItemKind::Mod(ref x) => Some(x),
             _ => None,
         }
     }
-    pub fn as_module_mut(&mut self) -> Option<&mut Module> {
+    pub fn as_mod_mut(&mut self) -> Option<&mut Mod> {
         match self.kind {
-            ItemKind::Module(ref mut x) => Some(x),
+            ItemKind::Mod(ref mut x) => Some(x),
             _ => None,
         }
     }
-    fn is_constified_enum_module(&self, ctx: &Context) -> bool {
+    fn is_constified_enum_mod(&self, ctx: &Context) -> bool {
         let item = self.id.into_resolver().through_type_refs().resolve(ctx);
         let y = match *item.kind() {
             ItemKind::Type(ref x) => x,
             _ => return false,
         };
         match *y.kind() {
-            TypeKind::Enum(ref x) => x.computed_enum_variation(ctx, self) == variation::Enum::ModuleConsts,
+            TypeKind::Enum(ref x) => x.computed_enum_variation(ctx, self) == variation::Enum::ModConsts,
             TypeKind::Alias(x) => {
                 let x = ctx.resolve_item(x);
                 let name = item.canon_name(ctx);
                 if x.canon_name(ctx) == name {
-                    x.is_constified_enum_module(ctx)
+                    x.is_constified_enum_mod(ctx)
                 } else {
                     false
                 }
@@ -629,18 +629,16 @@ impl Item {
     pub fn is_enabled_for_codegen(&self, ctx: &Context) -> bool {
         let y = &ctx.opts().config;
         match *self.kind() {
-            ItemKind::Module(..) => true,
+            ItemKind::Mod(..) => true,
             ItemKind::Var(_) => y.vars(),
-            ItemKind::Type(_) => y.types(),
-            ItemKind::Function(ref f) => match f.kind() {
-                FnKind::Function => y.functions(),
-                FnKind::Method(MethodKind::Constructor) => y.constructors(),
-                FnKind::Method(MethodKind::Destructor) | FnKind::Method(MethodKind::VirtualDestructor { .. }) => {
-                    y.destructors()
-                },
+            ItemKind::Type(_) => y.typs(),
+            ItemKind::Func(ref f) => match f.kind() {
+                FnKind::Func => y.fns(),
+                FnKind::Method(MethodKind::Constr) => y.constrs(),
+                FnKind::Method(MethodKind::Destr) | FnKind::Method(MethodKind::VirtDestr { .. }) => y.destrs(),
                 FnKind::Method(MethodKind::Static)
                 | FnKind::Method(MethodKind::Normal)
-                | FnKind::Method(MethodKind::Virtual { .. }) => y.methods(),
+                | FnKind::Method(MethodKind::Virt { .. }) => y.methods(),
             },
         }
     }
@@ -649,18 +647,18 @@ impl Item {
     }
     fn compute_path(&self, ctx: &Context, mangled: bool) -> Vec<String> {
         if let Some(x) = self.annos().use_instead_of() {
-            let mut y = vec![ctx.resolve_item(ctx.root_module()).name(ctx).get()];
+            let mut y = vec![ctx.resolve_item(ctx.root_mod()).name(ctx).get()];
             y.extend_from_slice(x);
             return y;
         }
         let target = ctx.resolve_item(self.name_target(ctx));
         let mut y: Vec<_> = target
             .ancestors(ctx)
-            .chain(iter::once(ctx.root_module().into()))
+            .chain(iter::once(ctx.root_mod().into()))
             .map(|x| ctx.resolve_item(x))
             .filter(|x| {
                 x.id() == target.id()
-                    || x.as_module()
+                    || x.as_mod()
                         .map_or(false, |x| !x.is_inline() || ctx.opts().conservative_inline_namespaces)
             })
             .map(|x| {
@@ -698,7 +696,7 @@ impl Item {
         }
         let ty = Type::new(None, None, kind, is_const);
         let id = ctx.next_item_id();
-        let module = ctx.root_module().into();
+        let module = ctx.root_mod().into();
         ctx.add_item(Item::new(id, None, None, module, ItemKind::Type(ty), None), None, None);
         id.as_type_id_unchecked()
     }
@@ -710,8 +708,8 @@ impl Item {
         }
         let comment = cur.raw_comment();
         let annos = Annotations::new(&cur);
-        let current_module = ctx.current_module().into();
-        let relevant_parent_id = parent.unwrap_or(current_module);
+        let current_mod = ctx.current_mod().into();
+        let relevant_parent_id = parent.unwrap_or(current_mod);
         macro_rules! try_parse {
             ($what:ident) => {
                 match $what::parse(cur, ctx) {
@@ -731,7 +729,7 @@ impl Item {
                         );
                         return Ok(id);
                     },
-                    Ok(parse::Resolved::AlreadyResolved(id)) => {
+                    Ok(parse::Resolved::AlreadyDone(id)) => {
                         return Ok(id);
                     },
                     Err(parse::Error::Recurse) => return Err(parse::Error::Recurse),
@@ -739,8 +737,8 @@ impl Item {
                 }
             };
         }
-        try_parse!(Module);
-        try_parse!(Function);
+        try_parse!(Mod);
+        try_parse!(Func);
         try_parse!(Var);
         {
             let definition = cur.definition();
@@ -753,7 +751,7 @@ impl Item {
                     }
                     ctx.known_semantic_parent(definition)
                         .or(parent)
-                        .unwrap_or_else(|| ctx.current_module().into())
+                        .unwrap_or_else(|| ctx.current_mod().into())
                 },
                 None => relevant_parent_id,
             };
@@ -821,7 +819,7 @@ impl Item {
         }
         let is_const = ty.is_const();
         let kind = TypeKind::UnresolvedTypeRef(ty, cur, parent);
-        let x = ctx.current_module();
+        let x = ctx.current_mod();
         ctx.add_item(
             Item::new(
                 id,
@@ -901,15 +899,15 @@ impl Item {
                 return Ok(x.id().as_type_id_unchecked());
             }
         }
-        let current_module = ctx.current_module().into();
+        let current_mod = ctx.current_mod().into();
         let partial_ty = PartialType::new(declaration_to_look_for, id);
         if valid {
             ctx.begin_parsing(partial_ty);
         }
         let result = Type::from_clang_ty(id, ty, cur, parent, ctx);
-        let relevant_parent_id = parent.unwrap_or(current_module);
+        let relevant_parent_id = parent.unwrap_or(current_mod);
         let y = match result {
-            Ok(parse::Resolved::AlreadyResolved(x)) => Ok(x.as_type_id_unchecked()),
+            Ok(parse::Resolved::AlreadyDone(x)) => Ok(x.as_type_id_unchecked()),
             Ok(parse::Resolved::New(item, decl)) => {
                 ctx.add_item(
                     Item::new(
@@ -1000,7 +998,7 @@ impl Item {
             definition?
         };
         assert!(is_templ_with_spelling(&definition, &ty_spelling));
-        let parent = ctx.root_module().into();
+        let parent = ctx.root_mod().into();
         if let Some(x) = ctx.get_type_param(&definition) {
             if let Some(x2) = id {
                 return Some(ctx.build_ty_wrapper(x2, x, Some(parent), &ty));
@@ -1060,7 +1058,7 @@ impl TemplParams for ItemKind {
     fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
             ItemKind::Type(ref x) => x.self_templ_params(ctx),
-            ItemKind::Function(_) | ItemKind::Module(_) | ItemKind::Var(_) => {
+            ItemKind::Func(_) | ItemKind::Mod(_) | ItemKind::Var(_) => {
                 vec![]
             },
         }
@@ -1071,7 +1069,7 @@ impl AsTemplParam for ItemKind {
     fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
         match *self {
             ItemKind::Type(ref x) => x.as_templ_param(ctx, it),
-            ItemKind::Module(..) | ItemKind::Function(..) | ItemKind::Var(..) => None,
+            ItemKind::Mod(..) | ItemKind::Func(..) | ItemKind::Var(..) => None,
         }
     }
 }
@@ -1087,13 +1085,13 @@ impl Trace for Item {
                     x.trace(ctx, tracer, self);
                 }
             },
-            ItemKind::Function(ref x) => {
+            ItemKind::Func(ref x) => {
                 tracer.visit(x.sig().into());
             },
             ItemKind::Var(ref x) => {
                 tracer.visit_kind(x.ty().into(), EdgeKind::VarType);
             },
-            ItemKind::Module(_) => {},
+            ItemKind::Mod(_) => {},
         }
     }
 }

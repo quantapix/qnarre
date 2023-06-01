@@ -135,7 +135,7 @@ options! {
     blocklisted_fns: RegexSet {
         methods: {
             regex_opt! {
-                pub fn blocklist_function<T: AsRef<str>>(mut self, x: T) -> Builder {
+                pub fn blocklist_fn<T: AsRef<str>>(mut self, x: T) -> Builder {
                     self.opts.blocklisted_fns.insert(x);
                     self
                 }
@@ -189,12 +189,12 @@ options! {
         methods: {
             pub fn depfile<H: Into<String>, D: Into<PathBuf>>(
                 mut self,
-                output_module: H,
+                out_mod: H,
                 depfile: D,
             ) -> Builder {
                 self.opts.depfile = Some(DepfileSpec {
-                    output_module: output_module.into(),
-                    depfile_path: depfile.into(),
+                    out_mod: out_mod.into(),
+                    dep_path: depfile.into(),
                 });
                 self
             }
@@ -202,7 +202,7 @@ options! {
         as_args: |x, xs| {
             if let Some(x) = x {
                 xs.push("--depfile".into());
-                xs.push(x.depfile_path.display().to_string());
+                xs.push(x.dep_path.display().to_string());
             }
         },
     },
@@ -220,13 +220,13 @@ options! {
     allowed_fns: RegexSet {
         methods: {
             regex_opt! {
-                pub fn allowlist_function<T: AsRef<str>>(mut self, x: T) -> Builder {
+                pub fn allowlist_fn<T: AsRef<str>>(mut self, x: T) -> Builder {
                     self.opts.allowed_fns.insert(x);
                     self
                 }
             }
         },
-        as_args: "--allowlist-function",
+        as_args: "--allowlist-fn",
     },
     allowed_vars: RegexSet {
         methods: {
@@ -289,16 +289,16 @@ options! {
         },
         as_args: "--rustified-non-exhaustive-enums",
     },
-    constified_enum_modules: RegexSet {
+    constified_enum_mods: RegexSet {
         methods: {
             regex_opt! {
-                pub fn constified_enum_module<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.constified_enum_modules.insert(x);
+                pub fn constified_enum_mod<T: AsRef<str>>(mut self, x: T) -> Builder {
+                    self.opts.constified_enum_mods.insert(x);
                     self
                 }
             }
         },
-        as_args: "--constified-enum-module",
+        as_args: "--constified-enum-mod",
     },
     constified_enums: RegexSet {
         methods: {
@@ -457,14 +457,14 @@ options! {
         },
         as_args: "--enable-cxx-namespaces",
     },
-    enable_function_attribute_detection: bool {
+    enable_fn_attr_detection: bool {
         methods: {
-            pub fn enable_function_attribute_detection(mut self) -> Self {
-                self.opts.enable_function_attribute_detection = true;
+            pub fn enable_fn_attr_detection(mut self) -> Self {
+                self.opts.enable_fn_attr_detection = true;
                 self
             }
         },
-        as_args: "--enable-function-attribute-detection",
+        as_args: "--enable-fn-attr-detection",
     },
     disable_name_namespacing: bool {
         methods: {
@@ -760,7 +760,7 @@ options! {
         default: Config::all(),
         methods: {
             pub fn ignore_fns(mut self) -> Builder {
-                self.opts.config.remove(Config::FUNCTIONS);
+                self.opts.config.remove(Config::FNS);
                 self
             }
             pub fn ignore_methods(mut self) -> Builder {
@@ -773,15 +773,15 @@ options! {
             }
         },
         as_args: |x, xs| {
-            if !x.functions() {
+            if !x.fns() {
                 xs.push("--ignore-functions".to_owned());
             }
             xs.push("--generate".to_owned());
             let mut ys: Vec<String> = Vec::new();
-            if x.functions() {
+            if x.fns() {
                 ys.push("functions".to_owned());
             }
-            if x.types() {
+            if x.typs() {
                 ys.push("types".to_owned());
             }
             if x.vars() {
@@ -790,10 +790,10 @@ options! {
             if x.methods() {
                 ys.push("methods".to_owned());
             }
-            if x.constructors() {
+            if x.constrs() {
                 ys.push("constructors".to_owned());
             }
-            if x.destructors() {
+            if x.destrs() {
                 ys.push("destructors".to_owned());
             }
             xs.push(ys.join(","));
@@ -1035,17 +1035,17 @@ options! {
         },
         as_args: "--use-array-pointers-in-arguments",
     },
-    wasm_import_module_name: Option<String> {
+    wasm_import_mod_name: Option<String> {
         methods: {
-            pub fn wasm_import_module_name<T: Into<String>>(
+            pub fn wasm_import_mod_name<T: Into<String>>(
                 mut self,
                 x: T,
             ) -> Self {
-                self.opts.wasm_import_module_name = Some(x.into());
+                self.opts.wasm_import_mod_name = Some(x.into());
                 self
             }
         },
-        as_args: "--wasm-import-module-name",
+        as_args: "--wasm-import-mod-name",
     },
     dynamic_library_name: Option<String> {
         methods: {

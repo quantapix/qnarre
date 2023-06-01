@@ -432,7 +432,7 @@ pub mod dot {
             if let Some(x) = err {
                 return x;
             }
-            if let Some(x) = it.as_module() {
+            if let Some(x) = it.as_mod() {
                 for x in x.children() {
                     writeln!(
                         &mut y,
@@ -458,7 +458,7 @@ pub mod enum_ty {
     use crate::regex_set::RegexSet;
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
     pub enum EnumVariantCustomBehavior {
-        ModuleConstify,
+        ModConstify,
         Constify,
         Hide,
     }
@@ -503,7 +503,7 @@ pub mod enum_ty {
             definition.visit(|cur| {
                 if cur.kind() == CXCursor_EnumConstantDecl {
                     let value = if is_bool {
-                        cur.enum_val_boolean().map(EnumVariantValue::Boolean)
+                        cur.enum_val_bool().map(EnumVariantValue::Boolean)
                     } else if is_signed {
                         cur.enum_val_signed().map(EnumVariantValue::Signed)
                     } else {
@@ -550,8 +550,8 @@ pub mod enum_ty {
             self.variants().iter().any(|v| enums.matches(v.name()))
         }
         pub fn computed_enum_variation(&self, ctx: &Context, it: &Item) -> variation::Enum {
-            if self.is_matching_enum(ctx, &ctx.opts().constified_enum_modules, it) {
-                variation::Enum::ModuleConsts
+            if self.is_matching_enum(ctx, &ctx.opts().constified_enum_mods, it) {
+                variation::Enum::ModConsts
             } else if self.is_matching_enum(ctx, &ctx.opts().rustified_enums, it) {
                 variation::Enum::Rust { non_exhaustive: false }
             } else if self.is_matching_enum(ctx, &ctx.opts().rustified_non_exhaustive_enums, it) {
@@ -615,7 +615,7 @@ pub mod enum_ty {
         }
     }
 }
-pub mod function;
+pub mod func;
 pub mod int {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub enum IntKind {
@@ -673,48 +673,49 @@ pub mod int {
 pub mod item;
 pub mod item_kind {
     use super::dot::DotAttrs;
-    use super::function::Function;
-    use super::module::Module;
+    use super::func::Func;
+    use super::module::Mod;
     use super::typ::Type;
     use super::var::Var;
     use super::Context;
     use std::io;
+
     #[derive(Debug)]
     pub enum ItemKind {
-        Module(Module),
+        Mod(Mod),
         Type(Type),
-        Function(Function),
+        Func(Func),
         Var(Var),
     }
     impl ItemKind {
-        pub fn as_module(&self) -> Option<&Module> {
+        pub fn as_mod(&self) -> Option<&Mod> {
             match *self {
-                ItemKind::Module(ref x) => Some(x),
+                ItemKind::Mod(ref x) => Some(x),
                 _ => None,
             }
         }
         pub fn kind_name(&self) -> &'static str {
             match *self {
-                ItemKind::Module(..) => "Module",
+                ItemKind::Mod(..) => "Mod",
                 ItemKind::Type(..) => "Type",
-                ItemKind::Function(..) => "Function",
+                ItemKind::Func(..) => "Func",
                 ItemKind::Var(..) => "Var",
             }
         }
-        pub fn is_module(&self) -> bool {
-            self.as_module().is_some()
+        pub fn is_mod(&self) -> bool {
+            self.as_mod().is_some()
         }
-        pub fn as_function(&self) -> Option<&Function> {
+        pub fn as_fn(&self) -> Option<&Func> {
             match *self {
-                ItemKind::Function(ref x) => Some(x),
+                ItemKind::Func(ref x) => Some(x),
                 _ => None,
             }
         }
-        pub fn is_function(&self) -> bool {
-            self.as_function().is_some()
+        pub fn is_fn(&self) -> bool {
+            self.as_fn().is_some()
         }
-        pub fn expect_function(&self) -> &Function {
-            self.as_function().expect("Not a function")
+        pub fn expect_fn(&self) -> &Func {
+            self.as_fn().expect("Not a function")
         }
         pub fn as_type(&self) -> Option<&Type> {
             match *self {
@@ -751,9 +752,9 @@ pub mod item_kind {
         {
             writeln!(y, "<tr><td>kind</td><td>{}</td></tr>", self.kind_name())?;
             match *self {
-                ItemKind::Module(ref x) => x.dot_attrs(ctx, y),
+                ItemKind::Mod(ref x) => x.dot_attrs(ctx, y),
                 ItemKind::Type(ref x) => x.dot_attrs(ctx, y),
-                ItemKind::Function(ref x) => x.dot_attrs(ctx, y),
+                ItemKind::Func(ref x) => x.dot_attrs(ctx, y),
                 ItemKind::Var(ref x) => x.dot_attrs(ctx, y),
             }
         }
@@ -867,14 +868,14 @@ pub mod module {
         Inline,
     }
     #[derive(Clone, Debug)]
-    pub struct Module {
+    pub struct Mod {
         name: Option<String>,
         kind: ModKind,
         children: ItemSet,
     }
-    impl Module {
+    impl Mod {
         pub fn new(name: Option<String>, kind: ModKind) -> Self {
-            Module {
+            Mod {
                 name,
                 kind,
                 children: ItemSet::new(),
@@ -893,21 +894,21 @@ pub mod module {
             self.kind == ModKind::Inline
         }
     }
-    impl DotAttrs for Module {
+    impl DotAttrs for Mod {
         fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
         where
             W: io::Write,
         {
-            writeln!(y, "<tr><td>ModuleKind</td><td>{:?}</td></tr>", self.kind)
+            writeln!(y, "<tr><td>ModKind</td><td>{:?}</td></tr>", self.kind)
         }
     }
-    impl parse::SubItem for Module {
+    impl parse::SubItem for Mod {
         fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Resolved<Self>, parse::Error> {
             match cur.kind() {
                 clang_lib::CXCursor_Namespace => {
                     let id = ctx.module(cur);
-                    ctx.with_module(id, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, Some(id.into()))));
-                    Ok(parse::Resolved::AlreadyResolved(id.into()))
+                    ctx.with_mod(id, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, Some(id.into()))));
+                    Ok(parse::Resolved::AlreadyDone(id.into()))
                 },
                 _ => Err(parse::Error::Continue),
             }

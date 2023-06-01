@@ -1,7 +1,7 @@
 use super::GenError;
 use crate::callbacks::IntKind;
 use crate::ir::comp::CompKind;
-use crate::ir::function::{FnKind, Function};
+use crate::ir::func::{FnKind, Func};
 use crate::ir::item::CanonName;
 use crate::ir::item::Item;
 use crate::ir::item_kind::ItemKind;
@@ -31,7 +31,7 @@ impl<'a> CSerialize<'a> for Item {
         writer: &mut W,
     ) -> Result<(), GenError> {
         match self.kind() {
-            ItemKind::Function(func) => func.serialize(ctx, self, stack, writer),
+            ItemKind::Func(x) => x.serialize(ctx, self, stack, writer),
             kind => Err(GenError::Serialize {
                 msg: format!("Cannot serialize item kind {:?}", kind),
                 loc: get_loc(self),
@@ -39,7 +39,7 @@ impl<'a> CSerialize<'a> for Item {
         }
     }
 }
-impl<'a> CSerialize<'a> for Function {
+impl<'a> CSerialize<'a> for Func {
     type Extra = &'a Item;
     fn serialize<W: Write>(
         &self,
@@ -48,14 +48,14 @@ impl<'a> CSerialize<'a> for Function {
         stack: &mut Vec<String>,
         writer: &mut W,
     ) -> Result<(), GenError> {
-        if self.kind() != FnKind::Function {
+        if self.kind() != FnKind::Func {
             return Err(GenError::Serialize {
                 msg: format!("Cannot serialize function kind {:?}", self.kind(),),
                 loc: get_loc(item),
             });
         }
         let signature = match ctx.resolve_type(self.sig()).kind() {
-            TypeKind::Function(signature) => signature,
+            TypeKind::Func(signature) => signature,
             _ => unreachable!(),
         };
         assert!(!signature.is_variadic());
@@ -198,7 +198,7 @@ impl<'a> CSerialize<'a> for Type {
                 type_id.serialize(ctx, (), stack, writer)?;
                 write!(writer, " [{}]", length)?
             },
-            TypeKind::Function(signature) => {
+            TypeKind::Func(signature) => {
                 if self.is_const() {
                     stack.push("const ".to_string());
                 }

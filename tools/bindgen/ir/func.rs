@@ -14,25 +14,25 @@ use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FnKind {
-    Function,
+    Func,
     Method(MethodKind),
 }
 impl FnKind {
     pub fn from_cursor(cur: &clang::Cursor) -> Option<FnKind> {
         Some(match cur.kind() {
-            clang_lib::CXCursor_FunctionDecl => FnKind::Function,
-            clang_lib::CXCursor_Constructor => FnKind::Method(MethodKind::Constructor),
-            clang_lib::CXCursor_Destructor => FnKind::Method(if cur.method_is_virtual() {
-                MethodKind::VirtualDestructor {
-                    pure_virtual: cur.method_is_pure_virtual(),
+            clang_lib::CXCursor_FunctionDecl => FnKind::Func,
+            clang_lib::CXCursor_Constructor => FnKind::Method(MethodKind::Constr),
+            clang_lib::CXCursor_Destructor => FnKind::Method(if cur.method_is_virt() {
+                MethodKind::VirtDestr {
+                    pure: cur.method_is_pure_virt(),
                 }
             } else {
-                MethodKind::Destructor
+                MethodKind::Destr
             }),
             clang_lib::CXCursor_CXXMethod => {
-                if cur.method_is_virtual() {
-                    FnKind::Method(MethodKind::Virtual {
-                        pure_virtual: cur.method_is_pure_virtual(),
+                if cur.method_is_virt() {
+                    FnKind::Method(MethodKind::Virt {
+                        pure: cur.method_is_pure_virt(),
                     })
                 } else if cur.method_is_static() {
                     FnKind::Method(MethodKind::Static)
@@ -52,7 +52,7 @@ pub enum Linkage {
 }
 
 #[derive(Debug)]
-pub struct Function {
+pub struct Func {
     name: String,
     mangled: Option<String>,
     link: Option<String>,
@@ -60,7 +60,7 @@ pub struct Function {
     kind: FnKind,
     linkage: Linkage,
 }
-impl Function {
+impl Func {
     pub fn new(
         name: String,
         mangled: Option<String>,
@@ -69,7 +69,7 @@ impl Function {
         kind: FnKind,
         linkage: Linkage,
     ) -> Self {
-        Function {
+        Func {
             name,
             mangled,
             link,
@@ -97,7 +97,7 @@ impl Function {
         self.linkage
     }
 }
-impl DotAttrs for Function {
+impl DotAttrs for Func {
     fn dot_attrs<W>(&self, _ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -109,14 +109,13 @@ impl DotAttrs for Function {
         Ok(())
     }
 }
-impl parse::SubItem for Function {
+impl parse::SubItem for Func {
     fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<parse::Resolved<Self>, parse::Error> {
         use clang_lib::*;
         let kind = match FnKind::from_cursor(&cur) {
             None => return Err(parse::Error::Continue),
             Some(x) => x,
         };
-        debug!("Function::parse({:?}, {:?})", cur, cur.cur_type());
         if cur.visibility() != CXVisibility_Default {
             return Err(parse::Error::Continue);
         }
@@ -129,7 +128,7 @@ impl parse::SubItem for Function {
             CXLinkage_Internal => Linkage::Internal,
             _ => return Err(parse::Error::Continue),
         };
-        if cur.is_inlined_function() || cur.definition().map_or(false, |x| x.is_inlined_function()) {
+        if cur.is_inlined_fn() || cur.definition().map_or(false, |x| x.is_inlined_fn()) {
             return Err(parse::Error::Continue);
         }
         let sig = Item::from_ty(&cur.cur_type(), cur, None, ctx)?;
@@ -142,9 +141,9 @@ impl parse::SubItem for Function {
             name.push_str("_destructor");
         }
         if let Some(x) = ctx.opts().last_callback(|x| {
-            x.generated_name_override(ItemInfo {
+            x.gen_name_override(ItemInfo {
                 name: name.as_str(),
-                kind: ItemKind::Function,
+                kind: ItemKind::Func,
             })
         }) {
             name = x;
@@ -152,9 +151,9 @@ impl parse::SubItem for Function {
         assert!(!name.is_empty());
         let mangled = cursor_mangling(ctx, &cur);
         let link = ctx.opts().last_callback(|x| {
-            x.generated_link_name_override(ItemInfo {
+            x.gen_link_name_override(ItemInfo {
                 name: name.as_str(),
-                kind: ItemKind::Function,
+                kind: ItemKind::Func,
             })
         });
         let y = Self::new(name.clone(), mangled, link, sig, kind, linkage);
@@ -248,7 +247,6 @@ pub struct FnSig {
 impl FnSig {
     pub fn from_ty(ty: &clang::Type, cur: &clang::Cursor, ctx: &mut Context) -> Result<Self, parse::Error> {
         use clang_lib::*;
-        debug!("FunctionSig::from_ty {:?} {:?}", ty, cur);
         let kind = cur.kind();
         if kind == CXCursor_FunctionTemplate {
             return Err(parse::Error::Continue);
@@ -282,7 +280,7 @@ impl FnSig {
                 }
             },
         };
-        let (must_use, mut is_divergent) = if ctx.opts().enable_function_attribute_detection {
+        let (must_use, mut is_divergent) = if ctx.opts().enable_fn_attr_detection {
             let [must_use, no_return, no_return_cpp] =
                 cur.has_attrs(&[Attribute::MUST_USE, Attribute::NO_RETURN, Attribute::NO_RETURN_CPP]);
             (must_use, no_return || no_return_cpp)
@@ -298,7 +296,7 @@ impl FnSig {
         }
         if is_method || is_constr || is_destr {
             let is_const = is_method && cur.method_is_const();
-            let is_virt = is_method && cur.method_is_virtual();
+            let is_virt = is_method && cur.method_is_virt();
             let is_static = is_method && cur.method_is_static();
             if !is_static && !is_virt {
                 let parent = cur.semantic_parent();

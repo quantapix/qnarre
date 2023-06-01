@@ -194,11 +194,11 @@ pub fn enabled_edges(ctx: &Context, x: Edge) -> bool {
         | EdgeKind::FnReturn
         | EdgeKind::FnParameter
         | EdgeKind::VarType
-        | EdgeKind::TypeRef => y.types(),
+        | EdgeKind::TypeRef => y.typs(),
         EdgeKind::InnerVar => y.vars(),
         EdgeKind::Method => y.methods(),
-        EdgeKind::Constructor => y.constructors(),
-        EdgeKind::Destructor => y.destructors(),
+        EdgeKind::Constructor => y.constrs(),
+        EdgeKind::Destructor => y.destrs(),
     }
 }
 

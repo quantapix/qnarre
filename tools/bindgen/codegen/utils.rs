@@ -1,7 +1,7 @@
 use super::serialize::CSerialize;
 use super::{error, GenError, GenResult, ToRustOrOpaque};
 use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
-use crate::ir::function::{Abi, ClangAbi, FnSig};
+use crate::ir::func::{Abi, ClangAbi, FnSig};
 use crate::ir::item::{CanonPath, IsOpaque, Item};
 use crate::ir::layout::Layout;
 use crate::ir::typ::TypeKind;
@@ -475,7 +475,7 @@ pub fn integer_type(ctx: &Context, layout: Layout) -> Option<TokenStream> {
     Some(quote! { #name })
 }
 pub mod ast_ty {
-    use crate::ir::function::FnSig;
+    use crate::ir::func::FnSig;
     use crate::ir::layout::Layout;
     use crate::ir::typ::FloatKind;
     use crate::ir::Context;
@@ -604,14 +604,14 @@ pub mod variation {
     pub enum Enum {
         Rust { non_exhaustive: bool },
         Consts,
-        ModuleConsts,
+        ModConsts,
     }
     impl Enum {
         pub fn is_rust(&self) -> bool {
             matches!(*self, Enum::Rust { .. })
         }
         pub fn is_const(&self) -> bool {
-            matches!(*self, Enum::Consts | Enum::ModuleConsts)
+            matches!(*self, Enum::Consts | Enum::ModConsts)
         }
     }
     impl Default for Enum {
@@ -625,7 +625,7 @@ pub mod variation {
                 Self::Rust { non_exhaustive: false } => "rust",
                 Self::Rust { non_exhaustive: true } => "rust_non_exhaustive",
                 Self::Consts => "consts",
-                Self::ModuleConsts => "moduleconsts",
+                Self::ModConsts => "moduleconsts",
             };
             y.fmt(x)
         }
@@ -637,7 +637,7 @@ pub mod variation {
                 "rust" => Ok(Enum::Rust { non_exhaustive: false }),
                 "rust_non_exhaustive" => Ok(Enum::Rust { non_exhaustive: true }),
                 "consts" => Ok(Enum::Consts),
-                "moduleconsts" => Ok(Enum::ModuleConsts),
+                "moduleconsts" => Ok(Enum::ModConsts),
                 _ => Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     concat!(
@@ -828,7 +828,7 @@ fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
         | TypeKind::Reference(..)
         | TypeKind::Comp(..)
         | TypeKind::Pointer(_)
-        | TypeKind::Function(..)
+        | TypeKind::Func(..)
         | TypeKind::Opaque => quote_equals(y),
         TypeKind::TemplInstantiation(ref x) => {
             if x.is_opaque(ctx, it) {
