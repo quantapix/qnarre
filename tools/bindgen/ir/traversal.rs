@@ -221,7 +221,7 @@ pub fn only_inner_type_edges(_: &Context, edge: Edge) -> bool {
 }
 
 pub fn codegen_edges(ctx: &Context, edge: Edge) -> bool {
-    let cc = &ctx.opts().codegen_config;
+    let cc = &ctx.opts().config;
     match edge.kind {
         EdgeKind::Generic => ctx.resolve_item(edge.to).is_enabled_for_codegen(ctx),
         EdgeKind::TemplParamDef

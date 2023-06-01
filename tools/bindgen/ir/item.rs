@@ -639,7 +639,7 @@ impl Item {
         }
     }
     pub fn is_enabled_for_codegen(&self, ctx: &Context) -> bool {
-        let cc = &ctx.opts().codegen_config;
+        let cc = &ctx.opts().config;
         match *self.kind() {
             ItemKind::Module(..) => true,
             ItemKind::Var(_) => cc.vars(),

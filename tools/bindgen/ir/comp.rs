@@ -5,7 +5,6 @@ use super::item::{IsOpaque, Item};
 use super::layout::Layout;
 use super::template::TemplParams;
 use super::traversal::{EdgeKind, Trace, Tracer};
-use super::RUST_DERIVE_IN_ARRAY_LIMIT;
 use super::{Context, FnId, ItemId, TypeId, VarId};
 use crate::clang;
 use crate::codegen::structure::{align_to, bytes_from_bits_pow2};

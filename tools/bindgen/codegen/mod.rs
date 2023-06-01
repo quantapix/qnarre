@@ -442,13 +442,13 @@ impl Generator for CompInfo {
                 }
             }
             let mut method_names = Default::default();
-            if ctx.opts().codegen_config.methods() {
+            if ctx.opts().config.methods() {
                 for x in self.methods() {
                     assert!(x.kind() != MethodKind::Constructor);
                     x.codegen(ctx, &mut methods, &mut method_names, y, self);
                 }
             }
-            if ctx.opts().codegen_config.constructors() {
+            if ctx.opts().config.constructors() {
                 for x in self.constructors() {
                     Method::new(MethodKind::Constructor, *x, /* const */ false).codegen(
                         ctx,
@@ -459,7 +459,7 @@ impl Generator for CompInfo {
                     );
                 }
             }
-            if ctx.opts().codegen_config.destructors() {
+            if ctx.opts().config.destructors() {
                 if let Some((kind, x)) = self.destructor() {
                     debug_assert!(kind.is_destructor());
                     Method::new(kind, x, false).codegen(ctx, &mut methods, &mut method_names, y, self);
@@ -1325,7 +1325,7 @@ impl Method {
         _parent: &CompInfo,
     ) {
         assert!({
-            let cc = &ctx.opts().codegen_config;
+            let cc = &ctx.opts().config;
             match self.kind() {
                 MethodKind::Constructor => cc.constructors(),
                 MethodKind::Destructor => cc.destructors(),

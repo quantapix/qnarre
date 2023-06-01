@@ -9,8 +9,6 @@ use crate::ir::Context;
 use crate::{args_are_cpp, file_is_cpp};
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::TokenStreamExt;
-use std::borrow::Cow;
 use std::io::Write;
 use std::mem;
 use std::path::PathBuf;

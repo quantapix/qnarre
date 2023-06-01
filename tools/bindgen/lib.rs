@@ -41,12 +41,9 @@ use std::str::FromStr;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 type HashSet<K> = rustc_hash::FxHashSet<K>;
 
-pub const DEFAULT_ANON_FIELDS_PREFIX: &str = "__bindgen_anon_";
-const DEFAULT_NON_EXTERN_FNS_SUFFIX: &str = "__extern";
-
 bitflags! {
     #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-    pub struct CodegenConfig: u32 {
+    pub struct Config: u32 {
         const FUNCTIONS = 1 << 0;
         const TYPES = 1 << 1;
         const VARS = 1 << 2;
@@ -56,29 +53,29 @@ bitflags! {
     }
 }
 
-impl CodegenConfig {
+impl Config {
     pub fn functions(self) -> bool {
-        self.contains(CodegenConfig::FUNCTIONS)
+        self.contains(Config::FUNCTIONS)
     }
     pub fn types(self) -> bool {
-        self.contains(CodegenConfig::TYPES)
+        self.contains(Config::TYPES)
     }
     pub fn vars(self) -> bool {
-        self.contains(CodegenConfig::VARS)
+        self.contains(Config::VARS)
     }
     pub fn methods(self) -> bool {
-        self.contains(CodegenConfig::METHODS)
+        self.contains(Config::METHODS)
     }
     pub fn constructors(self) -> bool {
-        self.contains(CodegenConfig::CONSTRUCTORS)
+        self.contains(Config::CONSTRUCTORS)
     }
     pub fn destructors(self) -> bool {
-        self.contains(CodegenConfig::DESTRUCTORS)
+        self.contains(Config::DESTRUCTORS)
     }
 }
-impl Default for CodegenConfig {
+impl Default for Config {
     fn default() -> Self {
-        CodegenConfig::all()
+        Config::all()
     }
 }
 
@@ -230,12 +227,12 @@ impl Opts {
     fn all_callbacks<T>(&self, f: impl Fn(&dyn callbacks::Parse) -> Vec<T>) -> Vec<T> {
         self.parse_callbacks.iter().flat_map(|x| f(x.as_ref())).collect()
     }
-    fn process_comment(&self, comment: &str) -> String {
-        let comment = comment::preproc(comment);
+    fn process_comment(&self, x: &str) -> String {
+        let y = comment::preproc(x);
         self.parse_callbacks
             .last()
-            .and_then(|cb| cb.process_comment(&comment))
-            .unwrap_or(comment)
+            .and_then(|x| x.process_comment(&y))
+            .unwrap_or(y)
     }
 }
 
@@ -349,10 +346,6 @@ impl Bindings {
         fn can_read(perms: &std::fs::Permissions) -> bool {
             use std::os::unix::fs::PermissionsExt;
             perms.mode() & 0o444 > 0
-        }
-        #[cfg(not(unix))]
-        fn can_read(_: &std::fs::Permissions) -> bool {
-            true
         }
         if let Some(h) = opts.input_headers.last() {
             let path = Path::new(h);

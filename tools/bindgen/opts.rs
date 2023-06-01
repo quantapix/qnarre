@@ -4,11 +4,10 @@ use crate::deps::DepfileSpec;
 use crate::regex_set::RegexSet;
 use crate::Abi;
 use crate::Builder;
-use crate::CodegenConfig;
+use crate::Config;
 use crate::FieldVisibilityKind;
 use crate::Formatter;
 use crate::HashMap;
-use crate::DEFAULT_ANON_FIELDS_PREFIX;
 use std::env;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -118,6 +117,9 @@ macro_rules! options {
         }
     };
 }
+
+const DEFAULT_ANON_FIELDS_PREFIX: &str = "__bindgen_anon_";
+
 options! {
     blocklisted_types: RegexSet {
         methods: {
@@ -754,19 +756,19 @@ options! {
         as_args: |_, _| {
         },
     },
-    codegen_config: CodegenConfig {
-        default: CodegenConfig::all(),
+    config: Config {
+        default: Config::all(),
         methods: {
             pub fn ignore_fns(mut self) -> Builder {
-                self.opts.codegen_config.remove(CodegenConfig::FUNCTIONS);
+                self.opts.config.remove(Config::FUNCTIONS);
                 self
             }
             pub fn ignore_methods(mut self) -> Builder {
-                self.opts.codegen_config.remove(CodegenConfig::METHODS);
+                self.opts.config.remove(Config::METHODS);
                 self
             }
-            pub fn with_codegen_config(mut self, config: CodegenConfig) -> Self {
-                self.opts.codegen_config = config;
+            pub fn with_config(mut self, x: Config) -> Self {
+                self.opts.config = x;
                 self
             }
         },
