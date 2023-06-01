@@ -536,7 +536,6 @@ pub mod has_destructor {
                             let destr = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()))
                                 || x.fields().iter().any(|x| match *x {
                                     Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
-                                    Field::Bitfields(_) => false,
                                 });
                             if destr {
                                 self.insert(id)
@@ -689,7 +688,6 @@ pub mod has_float {
                     }
                     let fields = x.fields().iter().any(|x| match *x {
                         Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
-                        Field::Bitfields(ref x) => x.bitfields().iter().any(|x| self.ys.contains(&x.ty().into())),
                     });
                     if fields {
                         return self.insert(id);
@@ -837,7 +835,6 @@ pub mod has_type_param {
                     }
                     let fields = info.fields().iter().any(|x| match *x {
                         Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
-                        Field::Bitfields(..) => false,
                     });
                     if fields {
                         return self.insert(id);

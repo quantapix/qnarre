@@ -3,7 +3,7 @@ use super::Opts;
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
 use crate::ir::annotations::{Annotations, FieldAccessorKind, FieldVisibilityKind};
-use crate::ir::comp::{Bitfield, BitfieldUnit, CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
+use crate::ir::comp::{CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
 use crate::ir::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
     CanDerivePartialOrd, Resolved,
@@ -38,7 +38,6 @@ struct GenResult<'a> {
     saw_union: bool,
     saw_array: bool,
     saw_block: bool,
-    saw_bitfield: bool,
     items_seen: HashSet<ItemId>,
     fns_seen: HashSet<String>,
     vars_seen: HashSet<String>,
@@ -53,7 +52,6 @@ impl<'a> GenResult<'a> {
             saw_union: false,
             saw_array: false,
             saw_block: false,
-            saw_bitfield: false,
             id,
             items_seen: Default::default(),
             fns_seen: Default::default(),
@@ -73,9 +71,6 @@ impl<'a> GenResult<'a> {
     }
     fn saw_block(&mut self) {
         self.saw_block = true;
-    }
-    fn saw_bitfield(&mut self) {
-        self.saw_bitfield = true;
     }
     fn seen<Id: Into<ItemId>>(&self, id: Id) -> bool {
         self.items_seen.contains(&id.into())
@@ -109,7 +104,6 @@ impl<'a> GenResult<'a> {
         f(&mut y);
         self.saw_array |= y.saw_array;
         self.saw_block |= y.saw_block;
-        self.saw_bitfield |= y.saw_bitfield;
         self.saw_union |= y.saw_union;
         y.items
     }
@@ -586,9 +580,6 @@ impl Generator for Enum {
                     attrs.push(attrs::non_exhaustive());
                 }
             },
-            variation::Enum::NewType { .. } => {
-                attrs.push(attrs::repr("transparent"));
-            },
             _ => {},
         };
         if let Some(x) = it.comment(ctx) {
@@ -890,9 +881,6 @@ impl Generator for Module {
                 }
                 if ctx.need_bindgen_complex_type() {
                     utils::prepend_complex_type(&mut *y);
-                }
-                if y.saw_bitfield {
-                    utils::prepend_bitfield_unit_type(ctx, &mut *y);
                 }
             }
         };
@@ -1540,194 +1528,6 @@ trait FieldGen<'a> {
         F: Extend<proc_macro2::TokenStream>,
         M: Extend<proc_macro2::TokenStream>;
 }
-impl<'a> FieldGen<'a> for Bitfield {
-    type Extra = (&'a str, &'a mut bool);
-    fn codegen<F, M>(
-        &self,
-        ctx: &Context,
-        visibility_kind: FieldVisibilityKind,
-        _accessor_kind: FieldAccessorKind,
-        parent: &CompInfo,
-        y: &mut GenResult,
-        struct_layout: &mut Structure,
-        _fields: &mut F,
-        methods: &mut M,
-        (unit_field_name, bitfield_representable_as_int): (&'a str, &mut bool),
-    ) where
-        F: Extend<proc_macro2::TokenStream>,
-        M: Extend<proc_macro2::TokenStream>,
-    {
-        let prefix = ctx.trait_prefix();
-        let getter_name = bitfield_getter(ctx, self);
-        let setter_name = bitfield_setter(ctx, self);
-        let unit_field_ident = Ident::new(unit_field_name, Span::call_site());
-        let bitfield_ty_item = ctx.resolve_item(self.ty());
-        let bitfield_ty = bitfield_ty_item.expect_type();
-        let bitfield_ty_layout = bitfield_ty.layout(ctx).expect("Bitfield without layout? Gah!");
-        let bitfield_int_ty = match utils::integer_type(ctx, bitfield_ty_layout) {
-            Some(int_ty) => {
-                *bitfield_representable_as_int = true;
-                int_ty
-            },
-            None => {
-                *bitfield_representable_as_int = false;
-                return;
-            },
-        };
-        let bitfield_ty = bitfield_ty.to_rust_or_opaque(ctx, bitfield_ty_item);
-        let offset = self.offset_into_unit();
-        let width = self.width() as u8;
-        let visibility_kind = compute_visibility(ctx, self.is_public(), Some(self.annotations()), visibility_kind);
-        let access_spec = access_specifier(visibility_kind);
-        if parent.is_union() && !struct_layout.is_union() {
-            methods.extend(Some(quote! {
-                #[inline]
-                #access_spec fn #getter_name(&self) -> #bitfield_ty {
-                    unsafe {
-                        ::#prefix::mem::transmute(
-                            self.#unit_field_ident.as_ref().get(#offset, #width)
-                                as #bitfield_int_ty
-                        )
-                    }
-                }
-                #[inline]
-                #access_spec fn #setter_name(&mut self, val: #bitfield_ty) {
-                    unsafe {
-                        let val: #bitfield_int_ty = ::#prefix::mem::transmute(val);
-                        self.#unit_field_ident.as_mut().set(
-                            #offset,
-                            #width,
-                            val as u64
-                        )
-                    }
-                }
-            }));
-        } else {
-            methods.extend(Some(quote! {
-                #[inline]
-                #access_spec fn #getter_name(&self) -> #bitfield_ty {
-                    unsafe {
-                        ::#prefix::mem::transmute(
-                            self.#unit_field_ident.get(#offset, #width)
-                                as #bitfield_int_ty
-                        )
-                    }
-                }
-                #[inline]
-                #access_spec fn #setter_name(&mut self, val: #bitfield_ty) {
-                    unsafe {
-                        let val: #bitfield_int_ty = ::#prefix::mem::transmute(val);
-                        self.#unit_field_ident.set(
-                            #offset,
-                            #width,
-                            val as u64
-                        )
-                    }
-                }
-            }));
-        }
-    }
-}
-impl<'a> FieldGen<'a> for BitfieldUnit {
-    type Extra = ();
-    fn codegen<F, M>(
-        &self,
-        ctx: &Context,
-        visibility_kind: FieldVisibilityKind,
-        accessor_kind: FieldAccessorKind,
-        parent: &CompInfo,
-        y: &mut GenResult,
-        struct_layout: &mut Structure,
-        fields: &mut F,
-        methods: &mut M,
-        _: (),
-    ) where
-        F: Extend<proc_macro2::TokenStream>,
-        M: Extend<proc_macro2::TokenStream>,
-    {
-        use crate::ir::RUST_DERIVE_IN_ARRAY_LIMIT;
-        y.saw_bitfield();
-        let layout = self.layout();
-        let unit_field_ty = utils::bitfield_unit(ctx, layout);
-        let field_ty = {
-            let unit_field_ty = unit_field_ty.clone();
-            if parent.is_union() {
-                wrap_union_field_if_needed(ctx, struct_layout, unit_field_ty, y)
-            } else {
-                unit_field_ty
-            }
-        };
-        {
-            let align_field_name = format!("_bitfield_align_{}", self.nth());
-            let align_field_ident = ctx.rust_ident(align_field_name);
-            let align_ty = match self.layout().align {
-                n if n >= 8 => quote! { u64 },
-                4 => quote! { u32 },
-                2 => quote! { u16 },
-                _ => quote! { u8  },
-            };
-            let access_spec = access_specifier(visibility_kind);
-            let align_field = quote! {
-                #access_spec #align_field_ident: [#align_ty; 0],
-            };
-            fields.extend(Some(align_field));
-        }
-        let unit_field_name = format!("_bitfield_{}", self.nth());
-        let unit_field_ident = ctx.rust_ident(&unit_field_name);
-        let ctor_name = self.ctor_name();
-        let mut ctor_params = vec![];
-        let mut ctor_impl = quote! {};
-        let mut generate_ctor = layout.size <= RUST_DERIVE_IN_ARRAY_LIMIT;
-        let mut all_fields_declared_as_public = true;
-        for bf in self.bitfields() {
-            if bf.name().is_none() {
-                continue;
-            }
-            all_fields_declared_as_public &= bf.is_public();
-            let mut bitfield_representable_as_int = true;
-            bf.codegen(
-                ctx,
-                visibility_kind,
-                accessor_kind,
-                parent,
-                y,
-                struct_layout,
-                fields,
-                methods,
-                (&unit_field_name, &mut bitfield_representable_as_int),
-            );
-            if !bitfield_representable_as_int {
-                generate_ctor = false;
-                continue;
-            }
-            let param_name = bitfield_getter(ctx, bf);
-            let bitfield_ty_item = ctx.resolve_item(bf.ty());
-            let bitfield_ty = bitfield_ty_item.expect_type();
-            let bitfield_ty = bitfield_ty.to_rust_or_opaque(ctx, bitfield_ty_item);
-            ctor_params.push(quote! {
-                #param_name : #bitfield_ty
-            });
-            ctor_impl = bf.extend_ctor_impl(ctx, param_name, ctor_impl);
-        }
-        let visibility_kind = compute_visibility(ctx, all_fields_declared_as_public, None, visibility_kind);
-        let access_spec = access_specifier(visibility_kind);
-        let field = quote! {
-            #access_spec #unit_field_ident : #field_ty ,
-        };
-        fields.extend(Some(field));
-        if generate_ctor {
-            methods.extend(Some(quote! {
-                #[inline]
-                #access_spec fn #ctor_name ( #( #ctor_params ),* ) -> #unit_field_ty {
-                    let mut __bitfield_unit: #unit_field_ty = Default::default();
-                    #ctor_impl
-                    __bitfield_unit
-                }
-            }));
-        }
-        struct_layout.saw_bitfield(layout);
-    }
-}
 impl<'a> FieldGen<'a> for Field {
     type Extra = ();
     fn codegen<F, M>(
@@ -1748,19 +1548,6 @@ impl<'a> FieldGen<'a> for Field {
         match *self {
             Field::DataMember(ref data) => {
                 data.codegen(
-                    ctx,
-                    visibility_kind,
-                    accessor_kind,
-                    parent,
-                    y,
-                    struct_layout,
-                    fields,
-                    methods,
-                    (),
-                );
-            },
-            Field::Bitfields(ref unit) => {
-                unit.codegen(
                     ctx,
                     visibility_kind,
                     accessor_kind,
@@ -1893,46 +1680,6 @@ impl<'a> FieldGen<'a> for FieldData {
     }
 }
 
-impl Bitfield {
-    fn extend_ctor_impl(
-        &self,
-        ctx: &Context,
-        param_name: proc_macro2::TokenStream,
-        mut ctor_impl: proc_macro2::TokenStream,
-    ) -> proc_macro2::TokenStream {
-        let bitfield_ty = ctx.resolve_type(self.ty());
-        let bitfield_ty_layout = bitfield_ty.layout(ctx).expect("Bitfield without layout? Gah!");
-        let bitfield_int_ty = utils::integer_type(ctx, bitfield_ty_layout).expect(
-            "Should already have verified that the bitfield is \
-                 representable as an int",
-        );
-        let offset = self.offset_into_unit();
-        let width = self.width() as u8;
-        let prefix = ctx.trait_prefix();
-        ctor_impl.append_all(quote! {
-            __bitfield_unit.set(
-                #offset,
-                #width,
-                {
-                    let #param_name: #bitfield_int_ty = unsafe {
-                        ::#prefix::mem::transmute(#param_name)
-                    };
-                    #param_name as u64
-                }
-            );
-        });
-        ctor_impl
-    }
-}
-impl BitfieldUnit {
-    fn ctor_name(&self) -> proc_macro2::TokenStream {
-        let y = Ident::new(&format!("new_bitfield_{}", self.nth()), Span::call_site());
-        quote! {
-            #y
-        }
-    }
-}
-
 pub static CONSTIFIED_ENUM_MODULE_REPR_NAME: &str = "Type";
 enum EnumBuilder<'a> {
     Rust {
@@ -1940,12 +1687,6 @@ enum EnumBuilder<'a> {
         ident: Ident,
         tokens: proc_macro2::TokenStream,
         emitted_any_variants: bool,
-    },
-    NewType {
-        canonical_name: &'a str,
-        tokens: proc_macro2::TokenStream,
-        is_bitfield: bool,
-        is_global: bool,
     },
     Consts {
         variants: Vec<proc_macro2::TokenStream>,
@@ -1968,15 +1709,6 @@ impl<'a> EnumBuilder<'a> {
     ) -> Self {
         let ident = Ident::new(name, Span::call_site());
         match enum_variation {
-            variation::Enum::NewType { is_bitfield, is_global } => EnumBuilder::NewType {
-                canonical_name: name,
-                tokens: quote! {
-                    #( #attrs )*
-                    pub struct #ident (pub #repr);
-                },
-                is_bitfield,
-                is_global,
-            },
             variation::Enum::Rust { .. } => {
                 attrs.insert(0, quote! { #[repr( #repr )] });
                 let tokens = quote!();
@@ -2053,32 +1785,6 @@ impl<'a> EnumBuilder<'a> {
                     emitted_any_variants: true,
                 }
             },
-            EnumBuilder::NewType {
-                canonical_name,
-                is_global,
-                ..
-            } => {
-                if is_ty_named && !is_global {
-                    let enum_ident = ctx.rust_ident(canonical_name);
-                    let variant_ident = ctx.rust_ident(variant_name);
-                    y.push(quote! {
-                        impl #enum_ident {
-                            #doc
-                            pub const #variant_ident : #rust_ty = #rust_ty ( #expr );
-                        }
-                    });
-                } else {
-                    let ident = ctx.rust_ident(match mangling_prefix {
-                        Some(prefix) => Cow::Owned(format!("{}_{}", prefix, variant_name)),
-                        None => variant_name,
-                    });
-                    y.push(quote! {
-                        #doc
-                        pub const #ident : #rust_ty = #rust_ty ( #expr );
-                    });
-                }
-                self
-            },
             EnumBuilder::Consts { .. } => {
                 let constant_name = match mangling_prefix {
                     Some(prefix) => Cow::Owned(format!("{}_{}", prefix, variant_name)),
@@ -2133,53 +1839,6 @@ impl<'a> EnumBuilder<'a> {
                         #variants
                     }
                 }
-            },
-            EnumBuilder::NewType {
-                canonical_name,
-                tokens,
-                is_bitfield,
-                ..
-            } => {
-                if !is_bitfield {
-                    return tokens;
-                }
-                let rust_ty_name = ctx.rust_ident_raw(canonical_name);
-                let prefix = ctx.trait_prefix();
-                y.push(quote! {
-                    impl ::#prefix::ops::BitOr<#rust_ty> for #rust_ty {
-                        type Output = Self;
-                        #[inline]
-                        fn bitor(self, other: Self) -> Self {
-                            #rust_ty_name(self.0 | other.0)
-                        }
-                    }
-                });
-                y.push(quote! {
-                    impl ::#prefix::ops::BitOrAssign for #rust_ty {
-                        #[inline]
-                        fn bitor_assign(&mut self, rhs: #rust_ty) {
-                            self.0 |= rhs.0;
-                        }
-                    }
-                });
-                y.push(quote! {
-                    impl ::#prefix::ops::BitAnd<#rust_ty> for #rust_ty {
-                        type Output = Self;
-                        #[inline]
-                        fn bitand(self, other: Self) -> Self {
-                            #rust_ty_name(self.0 & other.0)
-                        }
-                    }
-                });
-                y.push(quote! {
-                    impl ::#prefix::ops::BitAndAssign for #rust_ty {
-                        #[inline]
-                        fn bitand_assign(&mut self, rhs: #rust_ty) {
-                            self.0 &= rhs.0;
-                        }
-                    }
-                });
-                tokens
             },
             EnumBuilder::Consts { variants, .. } => quote! { #( #variants )* },
             EnumBuilder::ModuleConsts {
@@ -2887,16 +2546,4 @@ fn compute_visibility(
         (false, true, annotated_visibility) => annotated_visibility.unwrap_or(FieldVisibilityKind::Private),
         (_, false, annotated_visibility) => annotated_visibility.unwrap_or(default_kind),
     }
-}
-
-fn bitfield_getter(ctx: &Context, x: &Bitfield) -> proc_macro2::TokenStream {
-    let y = x.getter();
-    let y = ctx.rust_ident_raw(y);
-    quote! { #y }
-}
-
-fn bitfield_setter(ctx: &Context, x: &Bitfield) -> proc_macro2::TokenStream {
-    let y = x.setter();
-    let y = ctx.rust_ident_raw(y);
-    quote! { #y }
 }

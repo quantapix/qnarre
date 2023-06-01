@@ -552,21 +552,6 @@ pub mod enum_ty {
         pub fn computed_enum_variation(&self, ctx: &Context, it: &Item) -> variation::Enum {
             if self.is_matching_enum(ctx, &ctx.opts().constified_enum_modules, it) {
                 variation::Enum::ModuleConsts
-            } else if self.is_matching_enum(ctx, &ctx.opts().bitfield_enums, it) {
-                variation::Enum::NewType {
-                    is_bitfield: true,
-                    is_global: false,
-                }
-            } else if self.is_matching_enum(ctx, &ctx.opts().newtype_enums, it) {
-                variation::Enum::NewType {
-                    is_bitfield: false,
-                    is_global: false,
-                }
-            } else if self.is_matching_enum(ctx, &ctx.opts().newtype_global_enums, it) {
-                variation::Enum::NewType {
-                    is_bitfield: false,
-                    is_global: true,
-                }
             } else if self.is_matching_enum(ctx, &ctx.opts().rustified_enums, it) {
                 variation::Enum::Rust { non_exhaustive: false }
             } else if self.is_matching_enum(ctx, &ctx.opts().rustified_non_exhaustive_enums, it) {

@@ -1,4 +1,4 @@
-use crate::ir::comp::{BitfieldUnit, CompKind, Field, FieldData, FieldMethods};
+use crate::ir::comp::{CompKind, Field, FieldData, FieldMethods};
 use crate::ir::item::{CanonName, HasTypeParam, IsOpaque, Item};
 use crate::ir::typ::TypeKind;
 use crate::ir::Context;
@@ -16,7 +16,6 @@ pub fn gen_debug_impl(ctx: &Context, fields: &[Field], it: &Item, kind: CompKind
             CompKind::Struct => {
                 let processed_fields = fields.iter().filter_map(|f| match f {
                     Field::DataMember(ref fd) => fd.impl_debug(ctx, ()),
-                    Field::Bitfields(ref bu) => bu.impl_debug(ctx, ()),
                 });
                 for (i, (fstring, toks)) in processed_fields.enumerate() {
                     if i > 0 {
@@ -49,27 +48,6 @@ impl<'a> ImplDebug<'a> for FieldData {
         } else {
             None
         }
-    }
-}
-impl<'a> ImplDebug<'a> for BitfieldUnit {
-    type Extra = ();
-    fn impl_debug(&self, ctx: &Context, _: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
-        let mut format_string = String::new();
-        let mut tokens = vec![];
-        for (i, bitfield) in self.bitfields().iter().enumerate() {
-            if i > 0 {
-                format_string.push_str(", ");
-            }
-            if let Some(bitfield_name) = bitfield.name() {
-                format_string.push_str(&format!("{} : {{:?}}", bitfield_name));
-                let getter_name = bitfield.getter();
-                let name_ident = ctx.rust_ident_raw(getter_name);
-                tokens.push(quote! {
-                    self.#name_ident ()
-                });
-            }
-        }
-        Some((format_string, tokens))
     }
 }
 impl<'a> ImplDebug<'a> for Item {

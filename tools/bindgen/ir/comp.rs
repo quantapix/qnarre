@@ -89,32 +89,12 @@ pub trait FieldMethods {
 }
 
 #[derive(Debug)]
-pub struct BitfieldUnit {
-    nth: usize,
-    layout: Layout,
-    bitfields: Vec<Bitfield>,
-}
-impl BitfieldUnit {
-    pub fn nth(&self) -> usize {
-        self.nth
-    }
-    pub fn layout(&self) -> Layout {
-        self.layout
-    }
-    pub fn bitfields(&self) -> &[Bitfield] {
-        &self.bitfields
-    }
-}
-
-#[derive(Debug)]
 pub enum Field {
     DataMember(FieldData),
-    Bitfields(BitfieldUnit),
 }
 impl Field {
     pub fn layout(&self, ctx: &Context) -> Option<Layout> {
         match *self {
-            Field::Bitfields(BitfieldUnit { layout, .. }) => Some(layout),
             Field::DataMember(ref x) => ctx.resolve_type(x.ty).layout(ctx),
         }
     }
@@ -129,11 +109,6 @@ impl Trace for Field {
             Field::DataMember(ref x) => {
                 tracer.visit_kind(x.ty.into(), EdgeKind::Field);
             },
-            Field::Bitfields(BitfieldUnit { ref bitfields, .. }) => {
-                for x in bitfields {
-                    tracer.visit_kind(x.ty().into(), EdgeKind::Field);
-                }
-            },
         }
     }
 }
@@ -144,106 +119,7 @@ impl DotAttrs for Field {
     {
         match *self {
             Field::DataMember(ref x) => x.dot_attrs(ctx, y),
-            Field::Bitfields(BitfieldUnit {
-                layout, ref bitfields, ..
-            }) => {
-                writeln!(
-                    y,
-                    r#"<tr>
-                              <td>bitfield unit</td>
-                              <td>
-                                <table border="0">
-                                  <tr>
-                                    <td>unit.size</td><td>{}</td>
-                                  </tr>
-                                  <tr>
-                                    <td>unit.align</td><td>{}</td>
-                                  </tr>
-                         "#,
-                    layout.size, layout.align
-                )?;
-                for x in bitfields {
-                    x.dot_attrs(ctx, y)?;
-                }
-                writeln!(y, "</table></td></tr>")
-            },
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct Bitfield {
-    offset_into_unit: usize,
-    data: FieldData,
-    getter: Option<String>,
-    setter: Option<String>,
-}
-impl Bitfield {
-    fn new(offset_into_unit: usize, raw: RawField) -> Bitfield {
-        assert!(raw.bitfield_width().is_some());
-        Bitfield {
-            offset_into_unit,
-            data: raw.0,
-            getter: None,
-            setter: None,
-        }
-    }
-    pub fn offset_into_unit(&self) -> usize {
-        self.offset_into_unit
-    }
-    pub fn width(&self) -> u32 {
-        self.data.bitfield_width().unwrap()
-    }
-    pub fn getter(&self) -> &str {
-        assert!(self.name().is_some());
-        self.getter.as_ref().expect(
-            "`Bitfield::getter_name` should only be called after\
-             assigning bitfield accessor names",
-        )
-    }
-    pub fn setter(&self) -> &str {
-        assert!(self.name().is_some());
-        self.setter.as_ref().expect(
-            "`Bitfield::setter_name` should only be called\
-             after assigning bitfield accessor names",
-        )
-    }
-}
-impl FieldMethods for Bitfield {
-    fn name(&self) -> Option<&str> {
-        self.data.name()
-    }
-    fn ty(&self) -> TypeId {
-        self.data.ty()
-    }
-    fn comment(&self) -> Option<&str> {
-        self.data.comment()
-    }
-    fn bitfield_width(&self) -> Option<u32> {
-        self.data.bitfield_width()
-    }
-    fn is_public(&self) -> bool {
-        self.data.is_public()
-    }
-    fn annotations(&self) -> &Annotations {
-        self.data.annotations()
-    }
-    fn offset(&self) -> Option<usize> {
-        self.data.offset()
-    }
-}
-impl DotAttrs for Bitfield {
-    fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        writeln!(
-            y,
-            "<tr><td>{} : {}</td><td>{:?}</td></tr>",
-            self.name().unwrap_or("(anonymous)"),
-            self.width(),
-            self.ty()
-        )
     }
 }
 
@@ -308,7 +184,6 @@ impl CompFields {
         let mut accessor_names: HashMap<String, AccessorNamesPair> = fields
             .iter()
             .flat_map(|field| match *field {
-                Field::Bitfields(ref bu) => &*bu.bitfields,
                 Field::DataMember(_) => &[],
             })
             .filter_map(|x| x.name())
@@ -341,19 +216,6 @@ impl CompFields {
                     }
                     anon_field_counter += 1;
                     *name = Some(format!("{}{}", ctx.opts().anon_fields_prefix, anon_field_counter));
-                },
-                Field::Bitfields(ref mut bu) => {
-                    for bitfield in &mut bu.bitfields {
-                        if bitfield.name().is_none() {
-                            continue;
-                        }
-                        if let Some(AccessorNamesPair { getter, setter }) =
-                            accessor_names.remove(bitfield.name().unwrap())
-                        {
-                            bitfield.getter = Some(getter);
-                            bitfield.setter = Some(setter);
-                        }
-                    }
                 },
             }
         }
@@ -622,7 +484,6 @@ impl CompInfo {
         }
         self.fields().iter().any(|field| match *field {
             Field::DataMember(..) => false,
-            Field::Bitfields(ref unit) => unit.layout.size > RUST_DERIVE_IN_ARRAY_LIMIT,
         })
     }
     pub fn has_non_type_templ_params(&self) -> bool {
@@ -944,7 +805,6 @@ impl CompInfo {
         };
         let all_can_copy = self.fields().iter().all(|f| match *f {
             Field::DataMember(ref field_data) => field_data.ty().can_derive_copy(ctx),
-            Field::Bitfields(_) => true,
         });
         if !all_can_copy && union_style == variation::NonCopyUnion::BindgenWrapper {
             return (false, false);
@@ -1000,13 +860,6 @@ impl IsOpaque for CompInfo {
         }
         if self.fields().iter().any(|f| match *f {
             Field::DataMember(_) => false,
-            Field::Bitfields(ref unit) => unit.bitfields().iter().any(|bf| {
-                let bitfield_layout = ctx
-                    .resolve_type(bf.ty())
-                    .layout(ctx)
-                    .expect("Bitfield without layout? Gah!");
-                bf.width() / 8 > bitfield_layout.size as u32
-            }),
         }) {
             return true;
         }

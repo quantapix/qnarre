@@ -265,39 +265,6 @@ options! {
             }
         },
     },
-    bitfield_enums: RegexSet {
-        methods: {
-            regex_opt! {
-                pub fn bitfield_enum<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.bitfield_enums.insert(x);
-                    self
-                }
-            }
-        },
-        as_args: "--bitfield-enum",
-    },
-    newtype_enums: RegexSet {
-        methods: {
-            regex_opt! {
-                pub fn newtype_enum<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.newtype_enums.insert(x);
-                    self
-                }
-            }
-        },
-        as_args: "--newtype-enum",
-    },
-    newtype_global_enums: RegexSet {
-        methods: {
-            regex_opt! {
-                pub fn newtype_global_enum<T: AsRef<str>>(mut self, x: T) -> Builder {
-                    self.opts.newtype_global_enums.insert(x);
-                    self
-                }
-            }
-        },
-        as_args: "--newtype-global-enum",
-    },
     rustified_enums: RegexSet {
         methods: {
             regex_opt! {

@@ -192,7 +192,7 @@ pub fn builder() -> Builder {
 
 impl Opts {
     fn build(&mut self) {
-        const REGEX_SETS_LEN: usize = 27;
+        const REGEX_SETS_LEN: usize = 24;
         let ys: [_; REGEX_SETS_LEN] = [
             &mut self.allowed_vars,
             &mut self.allowed_types,
@@ -203,11 +203,8 @@ impl Opts {
             &mut self.blocklisted_items,
             &mut self.blocklisted_files,
             &mut self.opaque_types,
-            &mut self.bitfield_enums,
             &mut self.constified_enums,
             &mut self.constified_enum_modules,
-            &mut self.newtype_enums,
-            &mut self.newtype_global_enums,
             &mut self.rustified_enums,
             &mut self.rustified_non_exhaustive_enums,
             &mut self.type_alias,
