@@ -488,8 +488,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.collected_typerefs());
         let need_bitfield_allocation = mem::take(&mut self.need_bitfield_allocation);
         for id in need_bitfield_allocation {
-            self.with_loaned_item(id, |ctx, item| {
-                let ty = item.kind_mut().as_type_mut().unwrap();
+            self.with_loaned_item(id, |ctx, x| {
+                let ty = x.kind_mut().as_type_mut().unwrap();
                 let layout = ty.layout(ctx);
                 ty.as_comp_mut().unwrap().compute_bitfield_units(ctx, layout.as_ref());
             });
@@ -499,16 +499,16 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let _t = self.timer("deanonymize_fields");
         let comp_item_ids: Vec<ItemId> = self
             .items()
-            .filter_map(|(id, item)| {
-                if item.kind().as_type()?.is_comp() {
+            .filter_map(|(id, x)| {
+                if x.kind().as_type()?.is_comp() {
                     return Some(id);
                 }
                 None
             })
             .collect();
         for id in comp_item_ids {
-            self.with_loaned_item(id, |ctx, item| {
-                item.kind_mut()
+            self.with_loaned_item(id, |ctx, x| {
+                x.kind_mut()
                     .as_type_mut()
                     .unwrap()
                     .as_comp_mut()
@@ -566,10 +566,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 old_parent
                     .ancestors(immut_self)
                     .chain(Some(immut_self.root_mod.into()))
-                    .find(|id| {
-                        let item = immut_self.resolve_item(*id);
+                    .find(|x| {
+                        let item = immut_self.resolve_item(*x);
                         item.as_mod()
-                            .map_or(false, |m| m.children().contains(&replacement_id.into()))
+                            .map_or(false, |x| x.children().contains(&replacement_id.into()))
                     })
             };
             let old_mod = old_mod.expect("Every replacement item should be in a module");
@@ -577,7 +577,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 let immut_self = &*self;
                 new_parent
                     .ancestors(immut_self)
-                    .find(|id| immut_self.resolve_item(*id).is_mod())
+                    .find(|x| immut_self.resolve_item(*x).is_mod())
             };
             let new_mod = new_mod.unwrap_or_else(|| self.root_mod.into());
             if new_mod == old_mod {
@@ -681,7 +681,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             for &id in self.allowed_items() {
                 used_params
                     .entry(id)
-                    .or_insert_with(|| id.self_templ_params(self).into_iter().map(|p| p.into()).collect());
+                    .or_insert_with(|| id.self_templ_params(self).into_iter().map(|x| x.into()).collect());
             }
             self.used_templ_params = Some(used_params);
         }

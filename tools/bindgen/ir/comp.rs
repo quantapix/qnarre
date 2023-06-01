@@ -167,9 +167,9 @@ impl CompFields {
             },
         };
         fn has_method(methods: &[Method], ctx: &Context, name: &str) -> bool {
-            methods.iter().any(|method| {
-                let method_name = ctx.resolve_fn(method.sig()).name();
-                method_name == name || ctx.rust_mangle(method_name) == name
+            methods.iter().any(|x| {
+                let x = ctx.resolve_fn(x.sig()).name();
+                x == name || ctx.rust_mangle(x) == name
             })
         }
         struct AccessorNamesPair {
@@ -178,28 +178,28 @@ impl CompFields {
         }
         let mut accessor_names: HashMap<String, AccessorNamesPair> = fields
             .iter()
-            .flat_map(|field| match *field {
+            .flat_map(|x| match *x {
                 Field::DataMember(_) => &[],
             })
             .filter_map(|x| x.name())
-            .map(|bitfield_name| {
-                let bitfield_name = bitfield_name.to_string();
+            .map(|x| {
+                let x = x.to_string();
                 let getter = {
-                    let mut getter = ctx.rust_mangle(&bitfield_name).to_string();
+                    let mut getter = ctx.rust_mangle(&x).to_string();
                     if has_method(methods, ctx, &getter) {
                         getter.push_str("_bindgen_bitfield");
                     }
                     getter
                 };
                 let setter = {
-                    let setter = format!("set_{}", bitfield_name);
+                    let setter = format!("set_{}", x);
                     let mut setter = ctx.rust_mangle(&setter).to_string();
                     if has_method(methods, ctx, &setter) {
                         setter.push_str("_bindgen_bitfield");
                     }
                     setter
                 };
-                (bitfield_name, AccessorNamesPair { getter, setter })
+                (x, AccessorNamesPair { getter, setter })
             })
             .collect();
         let mut anon_field_counter = 0;
@@ -477,7 +477,7 @@ impl CompInfo {
         if !self.has_bitfields() {
             return false;
         }
-        self.fields().iter().any(|field| match *field {
+        self.fields().iter().any(|x| match *x {
             Field::DataMember(..) => false,
         })
     }
@@ -527,9 +527,9 @@ impl CompInfo {
         let kind = kind?;
         debug!("CompInfo::from_ty({:?}, {:?})", kind, cursor);
         let mut ci = CompInfo::new(kind);
-        ci.is_forward_declaration = cur.map_or(true, |cur| match cur.kind() {
+        ci.is_forward_declaration = cur.map_or(true, |x| match x.kind() {
             CXCursor_ParmDecl => true,
-            CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !cur.is_definition(),
+            CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !x.is_definition(),
             _ => false,
         });
         let mut maybe_anonymous_struct_field = None;
@@ -548,8 +548,8 @@ impl CompInfo {
                 CXCursor_FieldDecl => {
                     if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
                         let mut used = false;
-                        cur2.visit(|child| {
-                            if child.cur_type() == clang_ty {
+                        cur2.visit(|x| {
+                            if x.cur_type() == clang_ty {
                                 used = true;
                             }
                             CXChildVisit_Continue
@@ -754,8 +754,8 @@ impl CompInfo {
         }
         if let Some(parent_layout) = layout {
             let mut packed = false;
-            self.each_known_field_layout(ctx, |layout| {
-                packed = packed || layout.align > parent_layout.align;
+            self.each_known_field_layout(ctx, |x| {
+                packed = packed || x.align > parent_layout.align;
             });
             if packed {
                 info!("Found a struct that was defined within `#pragma packed(...)`");

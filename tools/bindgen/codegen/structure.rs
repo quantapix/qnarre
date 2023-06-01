@@ -155,7 +155,7 @@ impl<'a> Structure<'a> {
             self.latest_offset - field_layout.size,
             self.latest_offset
         );
-        padding_layout.map(|layout| self.padding_field(layout))
+        padding_layout.map(|x| self.padding_field(x))
     }
     pub fn add_tail_padding(&mut self, comp_name: &str, comp_layout: Layout) -> Option<proc_macro2::TokenStream> {
         if !self.ctx.opts().force_explicit_padding {

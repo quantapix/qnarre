@@ -1198,7 +1198,7 @@ impl Generator for Type {
                 if ty
                     .to_string()
                     .chars()
-                    .all(|c| matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | ':' | '_' | ' '))
+                    .all(|x| matches!(x, 'A'..='Z' | 'a'..='z' | '0'..='9' | ':' | '_' | ' '))
                     && outer_params.is_empty()
                     && !is_opaque
                     && alias_style == variation::Alias::TypeAlias
@@ -1606,7 +1606,7 @@ impl<'a> FieldGen<'a> for FieldData {
         }
         let field_name = self
             .name()
-            .map(|name| ctx.rust_mangle(name).into_owned())
+            .map(|x| ctx.rust_mangle(x).into_owned())
             .expect("Each field should have a name in codegen!");
         let field_ident = ctx.rust_ident_raw(field_name.as_str());
         if let Some(padding_field) = struct_layout.saw_field(&field_name, field_ty, self.offset()) {
@@ -1960,11 +1960,11 @@ mod dyngen {
             };
             self.constructor_inits.push(if is_required {
                 quote! {
-                    let #ident = #library_get.map(|sym| *sym)?;
+                    let #ident = #library_get.map(|x| *x)?;
                 }
             } else {
                 quote! {
-                    let #ident = #library_get.map(|sym| *sym);
+                    let #ident = #library_get.map(|x| *x);
                 }
             });
             self.init_fields.push(quote! {

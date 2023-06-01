@@ -137,21 +137,21 @@ pub mod derive {
         fn check_edge_comp(&self) -> EdgePred {
             match self {
                 DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |k| matches!(k, EdgeKind::BaseMember | EdgeKind::Field),
+                _ => |x| matches!(x, EdgeKind::BaseMember | EdgeKind::Field),
             }
         }
 
         fn check_edge_typeref(&self) -> EdgePred {
             match self {
                 DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |k| k == EdgeKind::TypeRef,
+                _ => |x| x == EdgeKind::TypeRef,
             }
         }
 
         fn check_edge_tmpl_inst(&self) -> EdgePred {
             match self {
                 DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |k| matches!(k, EdgeKind::TemplArg | EdgeKind::TemplDecl),
+                _ => |x| matches!(x, EdgeKind::TemplArg | EdgeKind::TemplDecl),
             }
         }
 

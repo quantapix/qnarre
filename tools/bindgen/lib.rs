@@ -127,7 +127,7 @@ impl Builder {
         );
         let ys = std::mem::take(&mut self.opts.input_header_contents)
             .into_iter()
-            .map(|(name, contents)| clang::UnsavedFile::new(name, contents))
+            .map(|(name, x)| clang::UnsavedFile::new(name, x))
             .collect::<Vec<_>>();
         Bindings::generate(self.opts, ys)
     }
@@ -293,17 +293,17 @@ impl Bindings {
                 let mut last_was_include_prefix = false;
                 opts.clang_args
                     .iter()
-                    .filter(|arg| {
+                    .filter(|x| {
                         if last_was_include_prefix {
                             last_was_include_prefix = false;
                             return false;
                         }
-                        let arg = &**arg;
-                        if arg == "-I" || arg == "--include-directory" {
+                        let x = &**x;
+                        if x == "-I" || x == "--include-directory" {
                             last_was_include_prefix = true;
                             return false;
                         }
-                        if arg.starts_with("-I") || arg.starts_with("--include-directory=") {
+                        if x.starts_with("-I") || x.starts_with("--include-directory=") {
                             return false;
                         }
                         true
@@ -315,7 +315,7 @@ impl Bindings {
                 None => return,
                 Some(x) => x,
             };
-            let is_cpp = args_are_cpp(&opts.clang_args) || opts.input_headers.iter().any(|h| file_is_cpp(h));
+            let is_cpp = args_are_cpp(&opts.clang_args) || opts.input_headers.iter().any(|x| file_is_cpp(x));
             let paths = if is_cpp {
                 clang.cpp_search_paths
             } else {
@@ -512,7 +512,7 @@ mod deps {
             std::fs::write(&self.dep_path, &self.to_string(deps))
         }
         fn to_string(&self, deps: &BTreeSet<String>) -> String {
-            let escape = |s: &str| s.replace('\\', "\\\\").replace(' ', "\\ ");
+            let escape = |x: &str| x.replace('\\', "\\\\").replace(' ', "\\ ");
             let mut buf = format!("{}:", escape(&self.out_mod));
             for file in deps {
                 buf = format!("{} {}", buf, escape(file));
@@ -691,7 +691,7 @@ mod regex_set {
             self.build_inner(record_matches, None)
         }
         fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
-            let items = self.items.iter().map(|item| format!("^({})$", item));
+            let items = self.items.iter().map(|x| format!("^({})$", x));
             self.record_matches = record_matches;
             self.set = match regex::RegexSet::new(items) {
                 Ok(x) => Some(x),
@@ -817,8 +817,8 @@ pub fn clang_version() -> Version {
     let raw_v: String = clang::extract_clang_version();
     let split_v: Option<Vec<&str>> = raw_v
         .split_whitespace()
-        .find(|t| t.chars().next().map_or(false, |v| v.is_ascii_digit()))
-        .map(|v| v.split('.').collect());
+        .find(|x| x.chars().next().map_or(false, |x| x.is_ascii_digit()))
+        .map(|x| x.split('.').collect());
     if let Some(v) = split_v {
         if v.len() >= 2 {
             let maybe_major = v[0].parse::<u32>();
@@ -923,7 +923,7 @@ fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
         cur.visit(|x| dump_if_not_builtin(&x));
     }
     let root = ctx.root_mod();
-    ctx.with_mod(root, |ctx2| cur.visit(|cur2| parse_one(ctx2, cur2, None)));
+    ctx.with_mod(root, |x| cur.visit(|x2| parse_one(x, x2, None)));
     assert!(ctx.current_mod() == ctx.root_mod(), "How did this happen?");
     Ok(())
 }

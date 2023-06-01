@@ -609,11 +609,11 @@ pub mod enum_ty {
             let declaration = ty.declaration().canonical();
             let repr = declaration
                 .enum_type()
-                .and_then(|et| Item::from_ty(&et, declaration, None, ctx).ok());
+                .and_then(|x| Item::from_ty(&x, declaration, None, ctx).ok());
             let mut variants = vec![];
-            let variant_ty = repr.and_then(|r| ctx.resolve_type(r).safe_canon_type(ctx));
+            let variant_ty = repr.and_then(|x| ctx.resolve_type(x).safe_canon_type(ctx));
             let is_bool = variant_ty.map_or(false, Type::is_bool);
-            let is_signed = variant_ty.map_or(true, |ty| match *ty.kind() {
+            let is_signed = variant_ty.map_or(true, |x| match *x.kind() {
                 TypeKind::Int(ref int_kind) => int_kind.is_signed(),
                 ref other => {
                     panic!("Since when enums can be non-integers? {:?}", other)
@@ -637,7 +637,7 @@ pub mod enum_ty {
                         let annotations = Annotations::new(&cur);
                         let custom_behavior = ctx
                             .opts()
-                            .last_callback(|callbacks| callbacks.enum_variant_behavior(type_name, &name, val))
+                            .last_callback(|x| x.enum_variant_behavior(type_name, &name, val))
                             .or_else(|| {
                                 let annotations = annotations.as_ref()?;
                                 if annotations.hide() {
@@ -650,7 +650,7 @@ pub mod enum_ty {
                             });
                         let new_name = ctx
                             .opts()
-                            .last_callback(|callbacks| callbacks.enum_variant_name(type_name, &name, val))
+                            .last_callback(|x| x.enum_variant_name(type_name, &name, val))
                             .or_else(|| annotations.as_ref()?.use_instead_of()?.last().cloned())
                             .unwrap_or_else(|| name.clone());
                         let comment = cur.raw_comment();
@@ -877,10 +877,7 @@ pub mod layout {
             }
         }
         pub fn array_size_within_derive_limit(&self, ctx: &Context) -> Resolved {
-            if self
-                .array_size(ctx)
-                .map_or(false, |size| size <= RUST_DERIVE_IN_ARRAY_LIMIT)
-            {
+            if self.array_size(ctx).map_or(false, |x| x <= RUST_DERIVE_IN_ARRAY_LIMIT) {
                 Resolved::Yes
             } else {
                 Resolved::Manually
@@ -1092,9 +1089,9 @@ pub mod template {
             let args: Vec<_> = self
                 .templ_args()
                 .iter()
-                .map(|arg| {
-                    let arg_path = ctx.resolve_item(*arg).path_for_allowlisting(ctx);
-                    arg_path[1..].join("::")
+                .map(|x| {
+                    let y = ctx.resolve_item(*x).path_for_allowlisting(ctx);
+                    y[1..].join("::")
                 })
                 .collect();
             {

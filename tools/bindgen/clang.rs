@@ -424,15 +424,14 @@ impl Cursor {
     pub fn has_attrs<const N: usize>(&self, attrs: &[Attribute; N]) -> [bool; N] {
         let mut ys = [false; N];
         let mut count = 0;
-        self.visit(|cur| {
-            let kind = cur.kind();
+        self.visit(|x| {
+            let kind = x.kind();
             for (i, attr) in attrs.iter().enumerate() {
                 let y = &mut ys[i];
                 if !*y
                     && (attr.kind.map_or(false, |x| x == kind)
                         || (kind == CXCursor_UnexposedAttr
-                            && cur
-                                .toks()
+                            && x.toks()
                                 .iter()
                                 .any(|x| x.kind == attr.tok_kind && x.spelling() == attr.name)))
                 {

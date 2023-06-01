@@ -61,7 +61,7 @@ impl AsArgs for Option<PathBuf> {
 
 macro_rules! as_args {
     ($flag:literal) => {
-        |field, args| AsArgs::as_args(field, args, $flag)
+        |x, xs| AsArgs::as_args(x, xs, $flag)
     };
     ($expr:expr) => {
         $expr
@@ -1155,9 +1155,9 @@ options! {
         },
         as_args: |overrides, xs| {
             for (abi, set) in overrides {
-                for item in set.get_items() {
+                for x in set.get_items() {
                     xs.push("--override-abi".to_owned());
-                    xs.push(format!("{}={}", item, abi));
+                    xs.push(format!("{}={}", x, abi));
                 }
             }
         },

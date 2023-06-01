@@ -28,7 +28,7 @@ pub(super) fn serialize_items(result: &GenResult, ctx: &Context) -> Result<(), G
     if !dir.exists() {
         std::fs::create_dir_all(dir)?;
     }
-    let is_cpp = args_are_cpp(&ctx.opts().clang_args) || ctx.opts().input_headers.iter().any(|h| file_is_cpp(h));
+    let is_cpp = args_are_cpp(&ctx.opts().clang_args) || ctx.opts().input_headers.iter().any(|x| file_is_cpp(x));
     let source_path = path.with_extension(if is_cpp { "cpp" } else { "c" });
     let mut code = Vec::new();
     if !ctx.opts().input_headers.is_empty() {
@@ -401,7 +401,7 @@ pub mod attrs {
         let which_ones = which_ones
             .iter()
             .cloned()
-            .map(|one| TokenStream::from_str(one).expect("repr to be valid"));
+            .map(|x| TokenStream::from_str(x).expect("repr to be valid"));
         quote! {
             #[repr( #( #which_ones ),* )]
         }
@@ -410,7 +410,7 @@ pub mod attrs {
         let which_ones = which_ones
             .iter()
             .cloned()
-            .map(|one| TokenStream::from_str(one).expect("derive to be valid"));
+            .map(|x| TokenStream::from_str(x).expect("derive to be valid"));
         quote! {
             #[derive( #( #which_ones ),* )]
         }
