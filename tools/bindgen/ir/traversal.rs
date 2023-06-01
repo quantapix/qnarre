@@ -37,13 +37,13 @@ impl From<Edge> for ItemId {
     }
 }
 
-pub type TraversPredicate = for<'a> fn(&'a Context, Edge) -> bool;
+pub type Predicate = for<'a> fn(&'a Context, Edge) -> bool;
 
-pub trait TraversStorage<'ctx> {
+pub trait Storage<'ctx> {
     fn new(ctx: &'ctx Context) -> Self;
     fn add(&mut self, from: Option<ItemId>, id: ItemId) -> bool;
 }
-impl<'ctx> TraversStorage<'ctx> for ItemSet {
+impl<'ctx> Storage<'ctx> for ItemSet {
     fn new(_: &'ctx Context) -> Self {
         ItemSet::new()
     }
@@ -51,10 +51,10 @@ impl<'ctx> TraversStorage<'ctx> for ItemSet {
         self.insert(id)
     }
 }
-#[derive(Debug)]
 
+#[derive(Debug)]
 pub struct Paths<'ctx>(BTreeMap<ItemId, ItemId>, &'ctx Context);
-impl<'ctx> TraversStorage<'ctx> for Paths<'ctx> {
+impl<'ctx> Storage<'ctx> for Paths<'ctx> {
     fn new(ctx: &'ctx Context) -> Self {
         Paths(BTreeMap::new(), ctx)
     }
@@ -62,30 +62,27 @@ impl<'ctx> TraversStorage<'ctx> for Paths<'ctx> {
         let y = self.0.insert(id, from.unwrap_or(id)).is_none();
         if self.1.resolve_item_fallible(id).is_none() {
             let mut path = vec![];
-            let mut current = id;
+            let mut i = id;
             loop {
-                let predecessor = *self.0.get(&current).expect(
-                    "We know we found this item id, so it must have a \
-                     predecessor",
-                );
-                if predecessor == current {
+                let x = *self.0.get(&i).expect("Must have a predecessor");
+                if x == i {
                     break;
                 }
-                path.push(predecessor);
-                current = predecessor;
+                path.push(x);
+                i = x;
             }
             path.reverse();
-            panic!("Found reference to dangling id = {:?}\nvia path = {:?}", id, path);
+            panic!("Reference to dangling id = {:?} via path = {:?}", id, path);
         }
         y
     }
 }
 
-pub trait TraversQueue: Default {
+pub trait Queue: Default {
     fn push(&mut self, id: ItemId);
     fn next(&mut self) -> Option<ItemId>;
 }
-impl TraversQueue for Vec<ItemId> {
+impl Queue for Vec<ItemId> {
     fn push(&mut self, id: ItemId) {
         self.push(id);
     }
@@ -93,7 +90,7 @@ impl TraversQueue for Vec<ItemId> {
         self.pop()
     }
 }
-impl TraversQueue for VecDeque<ItemId> {
+impl Queue for VecDeque<ItemId> {
     fn push(&mut self, id: ItemId) {
         self.push_back(id);
     }
@@ -119,7 +116,7 @@ where
 
 pub trait Trace {
     type Extra;
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, extra: &Self::Extra)
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, x: &Self::Extra)
     where
         T: Tracer;
 }
@@ -128,41 +125,41 @@ where
     Id: Copy + Into<ItemId>,
 {
     type Extra = ();
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, extra: &())
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, x: &Self::Extra)
     where
         T: Tracer,
     {
-        ctx.resolve_item(*self).trace(ctx, tracer, extra);
+        ctx.resolve_item(*self).trace(ctx, tracer, x);
     }
 }
 
-pub struct ItemTraversal<'ctx, Storage, Queue>
+pub struct Traversal<'ctx, S, Q>
 where
-    Storage: TraversStorage<'ctx>,
-    Queue: TraversQueue,
+    S: Storage<'ctx>,
+    Q: Queue,
 {
     ctx: &'ctx Context,
-    seen: Storage,
-    queue: Queue,
-    pred: TraversPredicate,
+    seen: S,
+    queue: Q,
+    pred: Predicate,
     current: Option<ItemId>,
 }
-impl<'ctx, Storage, Queue> ItemTraversal<'ctx, Storage, Queue>
+impl<'ctx, S, Q> Traversal<'ctx, S, Q>
 where
-    Storage: TraversStorage<'ctx>,
-    Queue: TraversQueue,
+    S: Storage<'ctx>,
+    Q: Queue,
 {
-    pub fn new<R>(ctx: &'ctx Context, roots: R, pred: TraversPredicate) -> ItemTraversal<'ctx, Storage, Queue>
+    pub fn new<R>(ctx: &'ctx Context, roots: R, pred: Predicate) -> Traversal<'ctx, S, Q>
     where
         R: IntoIterator<Item = ItemId>,
     {
-        let mut seen = Storage::new(ctx);
-        let mut queue = Queue::default();
-        for id in roots {
-            seen.add(None, id);
-            queue.push(id);
+        let mut seen = S::new(ctx);
+        let mut queue = Q::default();
+        for x in roots {
+            seen.add(None, x);
+            queue.push(x);
         }
-        ItemTraversal {
+        Traversal {
             ctx,
             seen,
             queue,
@@ -171,59 +168,57 @@ where
         }
     }
 }
-impl<'ctx, Storage, Queue> Tracer for ItemTraversal<'ctx, Storage, Queue>
+impl<'ctx, S, Q> Tracer for Traversal<'ctx, S, Q>
 where
-    Storage: TraversStorage<'ctx>,
-    Queue: TraversQueue,
+    S: Storage<'ctx>,
+    Q: Queue,
 {
     fn visit_kind(&mut self, id: ItemId, kind: EdgeKind) {
-        let edge = Edge::new(id, kind);
-        if !(self.pred)(self.ctx, edge) {
+        let x = Edge::new(id, kind);
+        if !(self.pred)(self.ctx, x) {
             return;
         }
-        let is_newly_discovered = self.seen.add(self.current, id);
-        if is_newly_discovered {
+        let newly = self.seen.add(self.current, id);
+        if newly {
             self.queue.push(id)
         }
     }
 }
-impl<'ctx, Storage, Queue> Iterator for ItemTraversal<'ctx, Storage, Queue>
+impl<'ctx, S, Q> Iterator for Traversal<'ctx, S, Q>
 where
-    Storage: TraversStorage<'ctx>,
-    Queue: TraversQueue,
+    S: Storage<'ctx>,
+    Q: Queue,
 {
     type Item = ItemId;
     fn next(&mut self) -> Option<Self::Item> {
-        let id = self.queue.next()?;
-        let newly_discovered = self.seen.add(None, id);
+        let y = self.queue.next()?;
+        let newly = self.seen.add(None, y);
+        debug_assert!(!newly, "should have already seen anything we get out of our queue");
         debug_assert!(
-            !newly_discovered,
-            "should have already seen anything we get out of our queue"
-        );
-        debug_assert!(
-            self.ctx.resolve_item_fallible(id).is_some(),
+            self.ctx.resolve_item_fallible(y).is_some(),
             "should only get IDs of actual items in our context during traversal"
         );
-        self.current = Some(id);
-        id.trace(self.ctx, self, &());
+        self.current = Some(y);
+        y.trace(self.ctx, self, &());
         self.current = None;
-        Some(id)
+        Some(y)
     }
 }
-pub type AssertNoDanglingItemsTraversal<'ctx> = ItemTraversal<'ctx, Paths<'ctx>, VecDeque<ItemId>>;
+
+pub type AssertNoDanglingItemsTraversal<'ctx> = Traversal<'ctx, Paths<'ctx>, VecDeque<ItemId>>;
 
 pub fn all_edges(_: &Context, _: Edge) -> bool {
     true
 }
 
-pub fn only_inner_type_edges(_: &Context, edge: Edge) -> bool {
-    edge.kind == EdgeKind::InnerType
+pub fn only_inner_types(_: &Context, x: Edge) -> bool {
+    x.kind == EdgeKind::InnerType
 }
 
-pub fn codegen_edges(ctx: &Context, edge: Edge) -> bool {
-    let cc = &ctx.opts().config;
-    match edge.kind {
-        EdgeKind::Generic => ctx.resolve_item(edge.to).is_enabled_for_codegen(ctx),
+pub fn enabled_edges(ctx: &Context, x: Edge) -> bool {
+    let y = &ctx.opts().config;
+    match x.kind {
+        EdgeKind::Generic => ctx.resolve_item(x.to).is_enabled_for_codegen(ctx),
         EdgeKind::TemplParamDef
         | EdgeKind::TemplArg
         | EdgeKind::TemplDecl
@@ -233,10 +228,10 @@ pub fn codegen_edges(ctx: &Context, edge: Edge) -> bool {
         | EdgeKind::FnReturn
         | EdgeKind::FnParameter
         | EdgeKind::VarType
-        | EdgeKind::TypeRef => cc.types(),
-        EdgeKind::InnerVar => cc.vars(),
-        EdgeKind::Method => cc.methods(),
-        EdgeKind::Constructor => cc.constructors(),
-        EdgeKind::Destructor => cc.destructors(),
+        | EdgeKind::TypeRef => y.types(),
+        EdgeKind::InnerVar => y.vars(),
+        EdgeKind::Method => y.methods(),
+        EdgeKind::Constructor => y.constructors(),
+        EdgeKind::Destructor => y.destructors(),
     }
 }

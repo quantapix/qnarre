@@ -7,7 +7,7 @@ use super::item::{Ancestors, IsOpaque, Item, ItemSet};
 use super::item_kind::ItemKind;
 use super::module::{ModKind, Module};
 use super::template::{TemplInstantiation, TemplParams};
-use super::traversal::{self, Edge, ItemTraversal};
+use super::traversal::{self, Edge, Traversal};
 use super::typ::{FloatKind, Type, TypeKind};
 use crate::clang::{self, Cursor};
 use crate::codegen::GenError;
@@ -140,7 +140,7 @@ item_id_newtype! {
 
 struct AllowedItemsTraversal<'ctx> {
     ctx: &'ctx Context,
-    traversal: ItemTraversal<'ctx, ItemSet, Vec<ItemId>>,
+    traversal: Traversal<'ctx, ItemSet, Vec<ItemId>>,
 }
 impl<'ctx> AllowedItemsTraversal<'ctx> {
     pub fn new<R>(ctx: &'ctx Context, roots: R, predicate: for<'a> fn(&'a Context, Edge) -> bool) -> Self
@@ -149,7 +149,7 @@ impl<'ctx> AllowedItemsTraversal<'ctx> {
     {
         AllowedItemsTraversal {
             ctx,
-            traversal: ItemTraversal::new(ctx, roots, predicate),
+            traversal: Traversal::new(ctx, roots, predicate),
         }
     }
 }
@@ -1315,14 +1315,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             roots.reverse();
             roots
         };
-        let allowed_items_predicate = if self.opts().allowlist_recursively {
+        let pred = if self.opts().allowlist_recursively {
             traversal::all_edges
         } else {
-            traversal::only_inner_type_edges
+            traversal::only_inner_types
         };
-        let allowed = AllowedItemsTraversal::new(self, roots.clone(), allowed_items_predicate).collect::<ItemSet>();
+        let allowed = AllowedItemsTraversal::new(self, roots.clone(), pred).collect::<ItemSet>();
         let codegen_items = if self.opts().allowlist_recursively {
-            AllowedItemsTraversal::new(self, roots, traversal::codegen_edges).collect::<ItemSet>()
+            AllowedItemsTraversal::new(self, roots, traversal::enabled_edges).collect::<ItemSet>()
         } else {
             allowed.clone()
         };
