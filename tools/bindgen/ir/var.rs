@@ -139,7 +139,7 @@ impl parse::SubItem for Var {
                     EvalResult::Int(Wrapping(x)) => {
                         let ty = ctx
                             .opts()
-                            .last_callback(|x| x.int_macro(&name, x))
+                            .last_callback(|x2| x2.int_macro(&name, x))
                             .unwrap_or_else(|| default_macro_const(ctx, x));
                         (TypeKind::Int(ty), VarKind::Int(x))
                     },

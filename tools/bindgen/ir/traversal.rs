@@ -99,40 +99,6 @@ impl Queue for VecDeque<ItemId> {
     }
 }
 
-pub trait Tracer {
-    fn visit_kind(&mut self, id: ItemId, kind: EdgeKind);
-    fn visit(&mut self, id: ItemId) {
-        self.visit_kind(id, EdgeKind::Generic);
-    }
-}
-impl<F> Tracer for F
-where
-    F: FnMut(ItemId, EdgeKind),
-{
-    fn visit_kind(&mut self, id: ItemId, kind: EdgeKind) {
-        (*self)(id, kind)
-    }
-}
-
-pub trait Trace {
-    type Extra;
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, x: &Self::Extra)
-    where
-        T: Tracer;
-}
-impl<Id> Trace for Id
-where
-    Id: Copy + Into<ItemId>,
-{
-    type Extra = ();
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, x: &Self::Extra)
-    where
-        T: Tracer,
-    {
-        ctx.resolve_item(*self).trace(ctx, tracer, x);
-    }
-}
-
 pub struct Traversal<'ctx, S, Q>
 where
     S: Storage<'ctx>,
@@ -233,5 +199,39 @@ pub fn enabled_edges(ctx: &Context, x: Edge) -> bool {
         EdgeKind::Method => y.methods(),
         EdgeKind::Constructor => y.constructors(),
         EdgeKind::Destructor => y.destructors(),
+    }
+}
+
+pub trait Tracer {
+    fn visit_kind(&mut self, id: ItemId, kind: EdgeKind);
+    fn visit(&mut self, id: ItemId) {
+        self.visit_kind(id, EdgeKind::Generic);
+    }
+}
+impl<F> Tracer for F
+where
+    F: FnMut(ItemId, EdgeKind),
+{
+    fn visit_kind(&mut self, id: ItemId, kind: EdgeKind) {
+        (*self)(id, kind)
+    }
+}
+
+pub trait Trace {
+    type Extra;
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, x: &Self::Extra)
+    where
+        T: Tracer;
+}
+impl<Id> Trace for Id
+where
+    Id: Copy + Into<ItemId>,
+{
+    type Extra = ();
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, x: &Self::Extra)
+    where
+        T: Tracer,
+    {
+        ctx.resolve_item(*self).trace(ctx, tracer, x);
     }
 }
