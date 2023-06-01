@@ -176,11 +176,8 @@ impl Generator for CompInfo {
         }
         let mut methods = vec![];
         if !is_opaque {
-            let vis = it
-                .annotations()
-                .visibility_kind()
-                .unwrap_or(ctx.opts().default_visibility);
-            let kind = it.annotations().accessor_kind().unwrap_or(FieldAccessorKind::None);
+            let vis = it.annos().visibility_kind().unwrap_or(ctx.opts().default_visibility);
+            let kind = it.annos().accessor_kind().unwrap_or(FieldAccessorKind::None);
             for x in self.fields() {
                 x.codegen(ctx, vis, kind, self, y, &mut structure, &mut fields, &mut methods, ());
             }
@@ -307,13 +304,13 @@ impl Generator for CompInfo {
             needs_debug = ctx.opts().derive_debug
                 && ctx.opts().impl_debug
                 && !ctx.no_debug_by_name(it)
-                && !it.annotations().disallow_debug();
+                && !it.annos().disallow_debug();
         }
         if !traits.contains(DerivableTraits::DEFAULT) {
             needs_default = ctx.opts().derive_default
                 && !self.is_forward_declaration()
                 && !ctx.no_default_by_name(it)
-                && !it.annotations().disallow_default();
+                && !it.annos().disallow_default();
         }
         let all_templ_params = it.all_templ_params(ctx);
         if traits.contains(DerivableTraits::COPY) && !traits.contains(DerivableTraits::CLONE) {
@@ -325,7 +322,7 @@ impl Generator for CompInfo {
                 && ctx.lookup_can_derive_partialeq_or_partialord(it.id()) == Resolved::Manually;
         }
         let mut derives: Vec<_> = traits.into();
-        derives.extend(it.annotations().derives().iter().map(String::as_str));
+        derives.extend(it.annos().derives().iter().map(String::as_str));
         let is_union = is_union && structure.is_union();
         let custom_derives = ctx.opts().all_callbacks(|x| {
             x.add_derives(&DeriveInfo {
@@ -595,7 +592,7 @@ impl Generator for Enum {
                 DerivableTraits::CLONE | DerivableTraits::HASH | DerivableTraits::PARTIAL_EQ | DerivableTraits::EQ,
             );
             let mut ys: Vec<_> = ys.into();
-            for x in it.annotations().derives().iter() {
+            for x in it.annos().derives().iter() {
                 if !ys.contains(&x.as_str()) {
                     ys.push(x);
                 }
@@ -642,7 +639,7 @@ impl Generator for Enum {
         let parent_canonical_name = if is_toplevel {
             None
         } else {
-            Some(it.parent_id().canon_name(ctx))
+            Some(it.parent().canon_name(ctx))
         };
         let constant_mangling_prefix = if ctx.opts().prepend_enum_name {
             if enum_ty.name().is_none() {
@@ -2464,16 +2461,16 @@ fn root_import(ctx: &Context, it: &Item) -> proc_macro2::TokenStream {
 fn derives_of_item(it: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
     let mut ys = DerivableTraits::empty();
     let ps = it.all_templ_params(ctx);
-    if it.can_derive_copy(ctx) && !it.annotations().disallow_copy() {
+    if it.can_derive_copy(ctx) && !it.annos().disallow_copy() {
         ys |= DerivableTraits::COPY;
         ys |= DerivableTraits::CLONE;
     } else if packed {
         return ys;
     }
-    if it.can_derive_debug(ctx) && !it.annotations().disallow_debug() {
+    if it.can_derive_debug(ctx) && !it.annos().disallow_debug() {
         ys |= DerivableTraits::DEBUG;
     }
-    if it.can_derive_default(ctx) && !it.annotations().disallow_default() {
+    if it.can_derive_default(ctx) && !it.annos().disallow_default() {
         ys |= DerivableTraits::DEFAULT;
     }
     if it.can_derive_hash(ctx) {

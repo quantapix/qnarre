@@ -9,9 +9,7 @@ use crate::ir::typ::{FloatKind, Type, TypeKind};
 use crate::ir::{Context, TypeId};
 use std::io::Write;
 fn get_loc(it: &Item) -> String {
-    it.location()
-        .map(|x| x.to_string())
-        .unwrap_or_else(|| "unknown".to_owned())
+    it.loc().map(|x| x.to_string()).unwrap_or_else(|| "unknown".to_owned())
 }
 pub trait CSerialize<'a> {
     type Extra;

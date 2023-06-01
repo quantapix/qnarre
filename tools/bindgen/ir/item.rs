@@ -21,37 +21,32 @@ use std::fmt::Write;
 use std::io;
 use std::iter;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum UserMangled {
-    No,
-    Yes,
-}
 #[derive(Debug)]
 pub struct NameOpts<'a> {
     item: &'a Item,
     ctx: &'a Context,
-    within_namespaces: bool,
-    user_mangled: UserMangled,
+    namespaces: bool,
+    mangled: bool,
 }
 impl<'a> NameOpts<'a> {
     pub fn new(item: &'a Item, ctx: &'a Context) -> Self {
         NameOpts {
             item,
             ctx,
-            within_namespaces: false,
-            user_mangled: UserMangled::Yes,
+            namespaces: false,
+            mangled: true,
         }
     }
     pub fn within_namespaces(&mut self) -> &mut Self {
-        self.within_namespaces = true;
+        self.namespaces = true;
         self
     }
-    fn user_mangled(&mut self, user_mangled: UserMangled) -> &mut Self {
-        self.user_mangled = user_mangled;
+    fn mangled(&mut self, x: bool) -> &mut Self {
+        self.mangled = x;
         self
     }
     pub fn get(&self) -> String {
-        self.item.real_canonical_name(self.ctx, self)
+        self.item.real_canon_name(self.ctx, self)
     }
 }
 
@@ -68,10 +63,10 @@ where
 }
 impl CanonName for Item {
     fn canon_name(&self, ctx: &Context) -> String {
-        self.canonical_name
+        self.canon_name
             .borrow_with(|| {
-                let in_namespace = ctx.opts().enable_cxx_namespaces || ctx.opts().disable_name_namespacing;
-                if in_namespace {
+                let x = ctx.opts().enable_cxx_namespaces || ctx.opts().disable_name_namespacing;
+                if x {
                     self.name(ctx).within_namespaces().get()
                 } else {
                     self.name(ctx).get()
@@ -98,7 +93,7 @@ where
 }
 impl CanonPath for Item {
     fn canon_path(&self, ctx: &Context) -> Vec<String> {
-        self.compute_path(ctx, UserMangled::Yes)
+        self.compute_path(ctx, true)
     }
     fn namespace_aware_canon_path(&self, ctx: &Context) -> Vec<String> {
         let mut y = self.canon_path(ctx);
@@ -131,8 +126,8 @@ where
 impl IsOpaque for Item {
     type Extra = ();
     fn is_opaque(&self, ctx: &Context, _: &()) -> bool {
-        self.annotations.opaque()
-            || self.as_type().map_or(false, |ty| ty.is_opaque(ctx, self))
+        self.annos.opaque()
+            || self.as_type().map_or(false, |x| x.is_opaque(ctx, self))
             || ctx.opaque_by_name(self.path_for_allowlisting(ctx))
     }
 }
@@ -260,10 +255,10 @@ impl<'a> Iterator for AncestorsIter<'a> {
     type Item = ItemId;
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.ctx.resolve_item(self.item);
-        if item.parent_id() == self.item {
+        if item.parent() == self.item {
             None
         } else {
-            self.item = item.parent_id();
+            self.item = item.parent();
             self.seen.insert(item.id());
             Some(item.id())
         }
@@ -275,63 +270,62 @@ pub struct Item {
     id: ItemId,
     local_id: LazyCell<usize>,
     next_child_local_id: Cell<usize>,
-    canonical_name: LazyCell<String>,
+    canon_name: LazyCell<String>,
     path_for_allowlisting: LazyCell<Vec<String>>,
     comment: Option<String>,
-    annotations: Annotations,
-    parent_id: ItemId,
+    annos: Annotations,
+    parent: ItemId,
     kind: ItemKind,
-    location: Option<clang::SrcLoc>,
+    loc: Option<clang::SrcLoc>,
 }
 impl Item {
     pub fn new(
         id: ItemId,
         comment: Option<String>,
-        annotations: Option<Annotations>,
-        parent_id: ItemId,
+        annos: Option<Annotations>,
+        parent: ItemId,
         kind: ItemKind,
-        location: Option<clang::SrcLoc>,
+        loc: Option<clang::SrcLoc>,
     ) -> Self {
-        debug_assert!(id != parent_id || kind.is_module());
         Item {
             id,
             local_id: LazyCell::new(),
             next_child_local_id: Cell::new(1),
-            canonical_name: LazyCell::new(),
+            canon_name: LazyCell::new(),
             path_for_allowlisting: LazyCell::new(),
-            parent_id,
+            parent,
             comment,
-            annotations: annotations.unwrap_or_default(),
+            annos: annos.unwrap_or_default(),
             kind,
-            location,
+            loc,
         }
     }
-    pub fn new_opaque_type(with_id: ItemId, ty: &clang::Type, ctx: &mut Context) -> TypeId {
-        let location = ty.declaration().location();
+    pub fn new_opaque_type(id: ItemId, ty: &clang::Type, ctx: &mut Context) -> TypeId {
+        let loc = ty.declaration().location();
         let ty = Opaque::from_clang_ty(ty, ctx);
         let kind = ItemKind::Type(ty);
         let parent = ctx.root_module().into();
-        ctx.add_item(Item::new(with_id, None, None, parent, kind, Some(location)), None, None);
-        with_id.as_type_id_unchecked()
+        ctx.add_item(Item::new(id, None, None, parent, kind, Some(loc)), None, None);
+        id.as_type_id_unchecked()
     }
     pub fn id(&self) -> ItemId {
         self.id
     }
-    pub fn parent_id(&self) -> ItemId {
-        self.parent_id
+    pub fn parent(&self) -> ItemId {
+        self.parent
     }
     pub fn set_parent_for_replacement<Id: Into<ItemId>>(&mut self, id: Id) {
-        self.parent_id = id.into();
+        self.parent = id.into();
     }
     pub fn codegen_depth(&self, ctx: &Context) -> usize {
         if !ctx.opts().enable_cxx_namespaces {
             return 0;
         }
         self.ancestors(ctx)
-            .filter(|id| {
-                ctx.resolve_item(*id).as_module().map_or(false, |module| {
-                    !module.is_inline() || ctx.opts().conservative_inline_namespaces
-                })
+            .filter(|x| {
+                ctx.resolve_item(*x)
+                    .as_module()
+                    .map_or(false, |x| !x.is_inline() || ctx.opts().conservative_inline_namespaces)
             })
             .count()
             + 1
@@ -340,7 +334,7 @@ impl Item {
         if !ctx.opts().generate_comments {
             return None;
         }
-        self.comment.as_ref().map(|comment| ctx.opts().process_comment(comment))
+        self.comment.as_ref().map(|x| ctx.opts().process_comment(x))
     }
     pub fn kind(&self) -> &ItemKind {
         &self.kind
@@ -348,36 +342,36 @@ impl Item {
     pub fn kind_mut(&mut self) -> &mut ItemKind {
         &mut self.kind
     }
-    pub fn location(&self) -> Option<&clang::SrcLoc> {
-        self.location.as_ref()
+    pub fn loc(&self) -> Option<&clang::SrcLoc> {
+        self.loc.as_ref()
     }
     pub fn local_id(&self, ctx: &Context) -> usize {
         *self.local_id.borrow_with(|| {
-            let parent = ctx.resolve_item(self.parent_id);
-            parent.next_child_local_id()
+            let y = ctx.resolve_item(self.parent);
+            y.next_child_local_id()
         })
     }
     pub fn next_child_local_id(&self) -> usize {
-        let local_id = self.next_child_local_id.get();
-        self.next_child_local_id.set(local_id + 1);
-        local_id
+        let y = self.next_child_local_id.get();
+        self.next_child_local_id.set(y + 1);
+        y
     }
     pub fn is_toplevel(&self, ctx: &Context) -> bool {
         if ctx.opts().enable_cxx_namespaces && self.kind().is_module() && self.id() != ctx.root_module() {
             return false;
         }
-        let mut parent = self.parent_id;
+        let mut y = self.parent;
         loop {
-            let parent_item = match ctx.resolve_item_fallible(parent) {
-                Some(item) => item,
+            let x = match ctx.resolve_item_fallible(y) {
+                Some(x) => x,
                 None => return false,
             };
-            if parent_item.id() == ctx.root_module() {
+            if x.id() == ctx.root_module() {
                 return true;
-            } else if ctx.opts().enable_cxx_namespaces || !parent_item.kind().is_module() {
+            } else if ctx.opts().enable_cxx_namespaces || !x.kind().is_module() {
                 return false;
             }
-            parent = parent_item.parent_id();
+            y = x.parent();
         }
     }
     pub fn expect_type(&self) -> &Type {
@@ -392,19 +386,18 @@ impl Item {
     pub fn is_module(&self) -> bool {
         matches!(self.kind, ItemKind::Module(..))
     }
-    pub fn annotations(&self) -> &Annotations {
-        &self.annotations
+    pub fn annos(&self) -> &Annotations {
+        &self.annos
     }
     pub fn is_blocklisted(&self, ctx: &Context) -> bool {
-        debug_assert!(ctx.in_codegen_phase(), "You're not supposed to call this yet");
-        if self.annotations.hide() {
+        if self.annos.hide() {
             return true;
         }
         if !ctx.opts().blocklisted_files.is_empty() {
-            if let Some(location) = &self.location {
-                let (file, _, _, _) = location.location();
-                if let Some(filename) = file.name() {
-                    if ctx.opts().blocklisted_files.matches(filename) {
+            if let Some(x) = &self.loc {
+                let (x, _, _, _) = x.location();
+                if let Some(x) = x.name() {
+                    if ctx.opts().blocklisted_files.matches(x) {
                         return true;
                     }
                 }
@@ -425,17 +418,15 @@ impl Item {
         NameOpts::new(self, ctx)
     }
     fn name_target(&self, ctx: &Context) -> ItemId {
-        let mut targets_seen = DebugOnlyItemSet::new();
         let mut i = self;
         loop {
-            targets_seen.insert(i.id());
-            if self.annotations().use_instead_of().is_some() {
+            if self.annos().use_instead_of().is_some() {
                 return self.id();
             }
             match *i.kind() {
-                ItemKind::Type(ref ty) => match *ty.kind() {
-                    TypeKind::ResolvedTypeRef(inner) => {
-                        i = ctx.resolve_item(inner);
+                ItemKind::Type(ref x) => match *x.kind() {
+                    TypeKind::ResolvedTypeRef(x) => {
+                        i = ctx.resolve_item(x);
                     },
                     TypeKind::TemplInstantiation(ref x) => {
                         i = ctx.resolve_item(x.templ_def());
@@ -447,18 +438,17 @@ impl Item {
         }
     }
     pub fn full_disambiguated_name(&self, ctx: &Context) -> String {
-        let mut s = String::new();
-        let level = 0;
-        self.push_disambiguated_name(ctx, &mut s, level);
-        s
+        let mut y = String::new();
+        self.push_disambiguated_name(ctx, &mut y, 0);
+        y
     }
     fn push_disambiguated_name(&self, ctx: &Context, to: &mut String, level: u8) {
         to.push_str(&self.canon_name(ctx));
-        if let ItemKind::Type(ref ty) = *self.kind() {
-            if let TypeKind::TemplInstantiation(ref x) = *ty.kind() {
+        if let ItemKind::Type(ref x) = *self.kind() {
+            if let TypeKind::TemplInstantiation(ref x) = *x.kind() {
                 to.push_str(&format!("_open{}_", level));
-                for arg in x.templ_args() {
-                    arg.into_resolver()
+                for y in x.templ_args() {
+                    y.into_resolver()
                         .through_type_refs()
                         .resolve(ctx)
                         .push_disambiguated_name(ctx, to, level + 1);
@@ -470,24 +460,24 @@ impl Item {
     }
     fn func_name(&self) -> Option<&str> {
         match *self.kind() {
-            ItemKind::Function(ref func) => Some(func.name()),
+            ItemKind::Function(ref x) => Some(x.name()),
             _ => None,
         }
     }
     fn overload_index(&self, ctx: &Context) -> Option<usize> {
-        self.func_name().and_then(|func_name| {
-            let parent = ctx.resolve_item(self.parent_id());
-            if let ItemKind::Type(ref ty) = *parent.kind() {
-                if let TypeKind::Comp(ref ci) = *ty.kind() {
-                    return ci.constructors().iter().position(|c| *c == self.id()).or_else(|| {
-                        ci.methods()
+        self.func_name().and_then(|name| {
+            let parent = ctx.resolve_item(self.parent());
+            if let ItemKind::Type(ref x) = *parent.kind() {
+                if let TypeKind::Comp(ref x) = *x.kind() {
+                    return x.constructors().iter().position(|x| *x == self.id()).or_else(|| {
+                        x.methods()
                             .iter()
-                            .filter(|m| {
-                                let item = ctx.resolve_item(m.sig());
-                                let func = item.expect_function();
-                                func.name() == func_name
+                            .filter(|x| {
+                                let x = ctx.resolve_item(x.sig());
+                                let x = x.expect_function();
+                                x.name() == name
                             })
-                            .position(|m| m.sig() == self.id())
+                            .position(|x| x.sig() == self.id())
                     });
                 }
             }
@@ -495,24 +485,24 @@ impl Item {
         })
     }
     fn base_name(&self, ctx: &Context) -> String {
-        if let Some(path) = self.annotations().use_instead_of() {
-            return path.last().unwrap().clone();
+        if let Some(x) = self.annos().use_instead_of() {
+            return x.last().unwrap().clone();
         }
         match *self.kind() {
-            ItemKind::Var(ref var) => var.name().to_owned(),
-            ItemKind::Module(ref module) => module
+            ItemKind::Var(ref x) => x.name().to_owned(),
+            ItemKind::Module(ref x) => x
                 .name()
                 .map(ToOwned::to_owned)
                 .unwrap_or_else(|| format!("_bindgen_mod_{}", self.exposed_id(ctx))),
-            ItemKind::Type(ref ty) => ty
+            ItemKind::Type(ref x) => x
                 .sanitized_name(ctx)
                 .map(Into::into)
                 .unwrap_or_else(|| format!("_bindgen_ty_{}", self.exposed_id(ctx))),
-            ItemKind::Function(ref fun) => {
-                let mut name = fun.name().to_owned();
-                if let Some(idx) = self.overload_index(ctx) {
-                    if idx > 0 {
-                        write!(&mut name, "{}", idx).unwrap();
+            ItemKind::Function(ref x) => {
+                let mut name = x.name().to_owned();
+                if let Some(x) = self.overload_index(ctx) {
+                    if x > 0 {
+                        write!(&mut name, "{}", x).unwrap();
                     }
                 }
                 name
@@ -521,33 +511,33 @@ impl Item {
     }
     fn is_anon(&self) -> bool {
         match self.kind() {
-            ItemKind::Module(module) => module.name().is_none(),
-            ItemKind::Type(ty) => ty.name().is_none(),
+            ItemKind::Module(x) => x.name().is_none(),
+            ItemKind::Type(x) => x.name().is_none(),
             ItemKind::Function(_) => false,
             ItemKind::Var(_) => false,
         }
     }
-    pub fn real_canonical_name(&self, ctx: &Context, opt: &NameOpts) -> String {
+    pub fn real_canon_name(&self, ctx: &Context, opt: &NameOpts) -> String {
         let target = ctx.resolve_item(self.name_target(ctx));
-        if let Some(path) = target.annotations.use_instead_of() {
+        if let Some(x) = target.annos.use_instead_of() {
             if ctx.opts().enable_cxx_namespaces {
-                return path.last().unwrap().clone();
+                return x.last().unwrap().clone();
             }
-            return path.join("_");
+            return x.join("_");
         }
         let base_name = target.base_name(ctx);
         if target.is_templ_param(ctx, &()) {
             return base_name;
         }
         let mut ids_iter = target
-            .parent_id()
+            .parent()
             .ancestors(ctx)
-            .filter(|id| *id != ctx.root_module())
-            .take_while(|id| !opt.within_namespaces || !ctx.resolve_item(*id).is_module())
-            .filter(|id| {
+            .filter(|x| *x != ctx.root_module())
+            .take_while(|x| !opt.namespaces || !ctx.resolve_item(*x).is_module())
+            .filter(|x| {
                 if !ctx.opts().conservative_inline_namespaces {
-                    if let ItemKind::Module(ref module) = *ctx.resolve_item(*id).kind() {
-                        return !module.is_inline();
+                    if let ItemKind::Module(ref x) = *ctx.resolve_item(*x).kind() {
+                        return !x.is_inline();
                     }
                 }
                 true
@@ -568,36 +558,34 @@ impl Item {
         };
         let mut names: Vec<_> = ids
             .into_iter()
-            .map(|id| {
-                let item = ctx.resolve_item(id);
-                let target = ctx.resolve_item(item.name_target(ctx));
-                target.base_name(ctx)
+            .map(|x| {
+                let x = ctx.resolve_item(x);
+                let x = ctx.resolve_item(x.name_target(ctx));
+                x.base_name(ctx)
             })
-            .filter(|name| !name.is_empty())
+            .filter(|x| !x.is_empty())
             .collect();
         names.reverse();
         if !base_name.is_empty() {
             names.push(base_name);
         }
         if ctx.opts().c_naming {
-            if let Some(prefix) = self.c_naming_prefix() {
-                names.insert(0, prefix.to_string());
+            if let Some(x) = self.c_naming_prefix() {
+                names.insert(0, x.to_string());
             }
         }
         let name = names.join("_");
-        let name = if opt.user_mangled == UserMangled::Yes {
-            ctx.opts()
-                .last_callback(|callbacks| callbacks.item_name(&name))
-                .unwrap_or(name)
+        let name = if opt.mangled {
+            ctx.opts().last_callback(|x| x.item_name(&name)).unwrap_or(name)
         } else {
             name
         };
         ctx.rust_mangle(&name).into_owned()
     }
     pub fn exposed_id(&self, ctx: &Context) -> String {
-        let ty_kind = self.kind().as_type().map(|t| t.kind());
-        if let Some(ty_kind) = ty_kind {
-            match *ty_kind {
+        let y = self.kind().as_type().map(|x| x.kind());
+        if let Some(x) = y {
+            match *x {
                 TypeKind::Comp(..) | TypeKind::TemplInstantiation(..) | TypeKind::Enum(..) => {
                     return self.local_id(ctx).to_string()
                 },
@@ -608,29 +596,29 @@ impl Item {
     }
     pub fn as_module(&self) -> Option<&Module> {
         match self.kind {
-            ItemKind::Module(ref module) => Some(module),
+            ItemKind::Module(ref x) => Some(x),
             _ => None,
         }
     }
     pub fn as_module_mut(&mut self) -> Option<&mut Module> {
         match self.kind {
-            ItemKind::Module(ref mut module) => Some(module),
+            ItemKind::Module(ref mut x) => Some(x),
             _ => None,
         }
     }
     fn is_constified_enum_module(&self, ctx: &Context) -> bool {
         let item = self.id.into_resolver().through_type_refs().resolve(ctx);
-        let type_ = match *item.kind() {
-            ItemKind::Type(ref type_) => type_,
+        let y = match *item.kind() {
+            ItemKind::Type(ref x) => x,
             _ => return false,
         };
-        match *type_.kind() {
-            TypeKind::Enum(ref enum_) => enum_.computed_enum_variation(ctx, self) == variation::Enum::ModuleConsts,
-            TypeKind::Alias(inner_id) => {
-                let inner_item = ctx.resolve_item(inner_id);
+        match *y.kind() {
+            TypeKind::Enum(ref x) => x.computed_enum_variation(ctx, self) == variation::Enum::ModuleConsts,
+            TypeKind::Alias(x) => {
+                let x = ctx.resolve_item(x);
                 let name = item.canon_name(ctx);
-                if inner_item.canon_name(ctx) == name {
-                    inner_item.is_constified_enum_module(ctx)
+                if x.canon_name(ctx) == name {
+                    x.is_constified_enum_module(ctx)
                 } else {
                     false
                 }
@@ -639,62 +627,60 @@ impl Item {
         }
     }
     pub fn is_enabled_for_codegen(&self, ctx: &Context) -> bool {
-        let cc = &ctx.opts().config;
+        let y = &ctx.opts().config;
         match *self.kind() {
             ItemKind::Module(..) => true,
-            ItemKind::Var(_) => cc.vars(),
-            ItemKind::Type(_) => cc.types(),
+            ItemKind::Var(_) => y.vars(),
+            ItemKind::Type(_) => y.types(),
             ItemKind::Function(ref f) => match f.kind() {
-                FnKind::Function => cc.functions(),
-                FnKind::Method(MethodKind::Constructor) => cc.constructors(),
+                FnKind::Function => y.functions(),
+                FnKind::Method(MethodKind::Constructor) => y.constructors(),
                 FnKind::Method(MethodKind::Destructor) | FnKind::Method(MethodKind::VirtualDestructor { .. }) => {
-                    cc.destructors()
+                    y.destructors()
                 },
                 FnKind::Method(MethodKind::Static)
                 | FnKind::Method(MethodKind::Normal)
-                | FnKind::Method(MethodKind::Virtual { .. }) => cc.methods(),
+                | FnKind::Method(MethodKind::Virtual { .. }) => y.methods(),
             },
         }
     }
     pub fn path_for_allowlisting(&self, ctx: &Context) -> &Vec<String> {
-        self.path_for_allowlisting
-            .borrow_with(|| self.compute_path(ctx, UserMangled::No))
+        self.path_for_allowlisting.borrow_with(|| self.compute_path(ctx, false))
     }
-    fn compute_path(&self, ctx: &Context, mangled: UserMangled) -> Vec<String> {
-        if let Some(path) = self.annotations().use_instead_of() {
-            let mut ret = vec![ctx.resolve_item(ctx.root_module()).name(ctx).get()];
-            ret.extend_from_slice(path);
-            return ret;
+    fn compute_path(&self, ctx: &Context, mangled: bool) -> Vec<String> {
+        if let Some(x) = self.annos().use_instead_of() {
+            let mut y = vec![ctx.resolve_item(ctx.root_module()).name(ctx).get()];
+            y.extend_from_slice(x);
+            return y;
         }
         let target = ctx.resolve_item(self.name_target(ctx));
-        let mut path: Vec<_> = target
+        let mut y: Vec<_> = target
             .ancestors(ctx)
             .chain(iter::once(ctx.root_module().into()))
-            .map(|id| ctx.resolve_item(id))
-            .filter(|item| {
-                item.id() == target.id()
-                    || item.as_module().map_or(false, |module| {
-                        !module.is_inline() || ctx.opts().conservative_inline_namespaces
-                    })
+            .map(|x| ctx.resolve_item(x))
+            .filter(|x| {
+                x.id() == target.id()
+                    || x.as_module()
+                        .map_or(false, |x| !x.is_inline() || ctx.opts().conservative_inline_namespaces)
             })
-            .map(|item| {
-                ctx.resolve_item(item.name_target(ctx))
+            .map(|x| {
+                ctx.resolve_item(x.name_target(ctx))
                     .name(ctx)
                     .within_namespaces()
-                    .user_mangled(mangled)
+                    .mangled(mangled)
                     .get()
             })
             .collect();
-        path.reverse();
-        path
+        y.reverse();
+        y
     }
     fn c_naming_prefix(&self) -> Option<&str> {
         let ty = match self.kind {
-            ItemKind::Type(ref ty) => ty,
+            ItemKind::Type(ref x) => x,
             _ => return None,
         };
         Some(match ty.kind() {
-            TypeKind::Comp(ref ci) => match ci.kind() {
+            TypeKind::Comp(ref x) => match x.kind() {
                 CompKind::Struct => "struct",
                 CompKind::Union => "union",
             },
@@ -703,7 +689,7 @@ impl Item {
         })
     }
     pub fn must_use(&self, ctx: &Context) -> bool {
-        self.annotations().must_use_type() || ctx.must_use_type_by_name(self)
+        self.annos().must_use_type() || ctx.must_use_type_by_name(self)
     }
     pub fn builtin_type(kind: TypeKind, is_const: bool, ctx: &mut Context) -> TypeId {
         match kind {
@@ -716,16 +702,16 @@ impl Item {
         ctx.add_item(Item::new(id, None, None, module, ItemKind::Type(ty), None), None, None);
         id.as_type_id_unchecked()
     }
-    pub fn parse(cur: clang::Cursor, parent_id: Option<ItemId>, ctx: &mut Context) -> Result<ItemId, parse::Error> {
+    pub fn parse(cur: clang::Cursor, parent: Option<ItemId>, ctx: &mut Context) -> Result<ItemId, parse::Error> {
         use crate::ir::var::Var;
         use clang_lib::*;
         if !cur.is_valid() {
             return Err(parse::Error::Continue);
         }
         let comment = cur.raw_comment();
-        let annotations = Annotations::new(&cur);
+        let annos = Annotations::new(&cur);
         let current_module = ctx.current_module().into();
-        let relevant_parent_id = parent_id.unwrap_or(current_module);
+        let relevant_parent_id = parent.unwrap_or(current_module);
         macro_rules! try_parse {
             ($what:ident) => {
                 match $what::parse(cur, ctx) {
@@ -735,7 +721,7 @@ impl Item {
                             Item::new(
                                 id,
                                 comment,
-                                annotations,
+                                annos,
                                 relevant_parent_id,
                                 ItemKind::$what(item),
                                 Some(cur.location()),
@@ -763,10 +749,10 @@ impl Item {
                 Some(definition) => {
                     if definition != cur {
                         ctx.add_semantic_parent(definition, relevant_parent_id);
-                        return Ok(Item::from_ty_or_ref(applicable_cursor.cur_type(), cur, parent_id, ctx).into());
+                        return Ok(Item::from_ty_or_ref(applicable_cursor.cur_type(), cur, parent, ctx).into());
                     }
                     ctx.known_semantic_parent(definition)
-                        .or(parent_id)
+                        .or(parent)
                         .unwrap_or_else(|| ctx.current_module().into())
                 },
                 None => relevant_parent_id,
@@ -777,7 +763,7 @@ impl Item {
                 Some(relevant_parent_id),
                 ctx,
             ) {
-                Ok(ty) => return Ok(ty.into()),
+                Ok(x) => return Ok(x.into()),
                 Err(parse::Error::Recurse) => return Err(parse::Error::Recurse),
                 Err(parse::Error::Continue) => {},
             }
@@ -792,7 +778,7 @@ impl Item {
                 | CXCursor_UsingDirective
                 | CXCursor_StaticAssert
                 | CXCursor_FunctionTemplate => {
-                    debug!("Unhandled cursor kind {:?}: {:?}", cur.kind(), cur);
+                    warn!("Unhandled cursor kind {:?}: {:?}", cur.kind(), cur);
                 },
                 CXCursor_InclusionDirective => {
                     let file = cur.get_included_file_name();
@@ -800,14 +786,14 @@ impl Item {
                         None => {
                             warn!("Inclusion of a nameless file in {:?}", cur);
                         },
-                        Some(filename) => {
-                            ctx.include_file(filename);
+                        Some(x) => {
+                            ctx.include_file(x);
                         },
                     }
                 },
                 _ => {
-                    let spelling = cur.spelling();
-                    if !spelling.starts_with("operator") {
+                    let x = cur.spelling();
+                    if !x.starts_with("operator") {
                         warn!("Unhandled cursor kind {:?}: {:?}", cur.kind(), cur);
                     }
                 },
@@ -815,196 +801,165 @@ impl Item {
             Err(parse::Error::Continue)
         }
     }
-    pub fn from_ty_or_ref(
-        ty: clang::Type,
-        location: clang::Cursor,
-        parent_id: Option<ItemId>,
-        ctx: &mut Context,
-    ) -> TypeId {
+    pub fn from_ty_or_ref(ty: clang::Type, cur: clang::Cursor, parent: Option<ItemId>, ctx: &mut Context) -> TypeId {
         let id = ctx.next_item_id();
-        Self::from_ty_or_ref_with_id(id, ty, location, parent_id, ctx)
+        Self::from_ty_or_ref_with_id(id, ty, cur, parent, ctx)
     }
     pub fn from_ty_or_ref_with_id(
-        potential_id: ItemId,
+        id: ItemId,
         ty: clang::Type,
-        location: clang::Cursor,
-        parent_id: Option<ItemId>,
+        cur: clang::Cursor,
+        parent: Option<ItemId>,
         ctx: &mut Context,
     ) -> TypeId {
-        debug!(
-            "from_ty_or_ref_with_id: {:?} {:?}, {:?}, {:?}",
-            potential_id, ty, location, parent_id
-        );
         if ctx.collected_typerefs() {
-            debug!("refs already collected, resolving directly");
-            return Item::from_ty_with_id(potential_id, &ty, location, parent_id, ctx)
-                .unwrap_or_else(|_| Item::new_opaque_type(potential_id, &ty, ctx));
+            return Item::from_ty_with_id(id, &ty, cur, parent, ctx)
+                .unwrap_or_else(|_| Item::new_opaque_type(id, &ty, ctx));
         }
-        if let Some(ty) = ctx.builtin_or_resolved_ty(potential_id, parent_id, &ty, Some(location)) {
-            debug!("{:?} already resolved: {:?}", ty, location);
-            return ty;
+        if let Some(x) = ctx.builtin_or_resolved_ty(id, parent, &ty, Some(cur)) {
+            return x;
         }
-        debug!("New unresolved type reference: {:?}, {:?}", ty, location);
         let is_const = ty.is_const();
-        let kind = TypeKind::UnresolvedTypeRef(ty, location, parent_id);
-        let current_module = ctx.current_module();
+        let kind = TypeKind::UnresolvedTypeRef(ty, cur, parent);
+        let x = ctx.current_module();
         ctx.add_item(
             Item::new(
-                potential_id,
+                id,
                 None,
                 None,
-                parent_id.unwrap_or_else(|| current_module.into()),
+                parent.unwrap_or_else(|| x.into()),
                 ItemKind::Type(Type::new(None, None, kind, is_const)),
-                Some(location.location()),
+                Some(cur.location()),
             ),
             None,
             None,
         );
-        potential_id.as_type_id_unchecked()
+        id.as_type_id_unchecked()
     }
     pub fn from_ty(
         ty: &clang::Type,
-        location: clang::Cursor,
-        parent_id: Option<ItemId>,
+        cur: clang::Cursor,
+        parent: Option<ItemId>,
         ctx: &mut Context,
     ) -> Result<TypeId, parse::Error> {
         let id = ctx.next_item_id();
-        Item::from_ty_with_id(id, ty, location, parent_id, ctx)
+        Item::from_ty_with_id(id, ty, cur, parent, ctx)
     }
     pub fn from_ty_with_id(
         id: ItemId,
         ty: &clang::Type,
-        location: clang::Cursor,
-        parent_id: Option<ItemId>,
+        cur: clang::Cursor,
+        parent: Option<ItemId>,
         ctx: &mut Context,
     ) -> Result<TypeId, parse::Error> {
         use clang_lib::*;
-        debug!(
-            "Item::from_ty_with_id: {:?}\n\
-             \tty = {:?},\n\
-             \tlocation = {:?}",
-            id, ty, location
-        );
-        if ty.kind() == clang_lib::CXType_Unexposed || location.cur_type().kind() == clang_lib::CXType_Unexposed {
-            if ty.is_associated_type() || location.cur_type().is_associated_type() {
+        if ty.kind() == clang_lib::CXType_Unexposed || cur.cur_type().kind() == clang_lib::CXType_Unexposed {
+            if ty.is_associated_type() || cur.cur_type().is_associated_type() {
                 return Ok(Item::new_opaque_type(id, ty, ctx));
             }
-            if let Some(param_id) = Item::type_param(None, location, ctx) {
-                return Ok(ctx.build_ty_wrapper(id, param_id, None, ty));
+            if let Some(x) = Item::type_param(None, cur, ctx) {
+                return Ok(ctx.build_ty_wrapper(id, x, None, ty));
             }
         }
-        if let Some(ref parent) = ty.declaration().fallible_semantic_parent() {
-            if FnKind::from_cursor(parent).is_some() {
-                debug!("Skipping type declared inside function: {:?}", ty);
+        if let Some(ref x) = ty.declaration().fallible_semantic_parent() {
+            if FnKind::from_cursor(x).is_some() {
                 return Ok(Item::new_opaque_type(id, ty, ctx));
             }
         }
         let decl = {
-            let canonical_def = ty.canonical_type().declaration().definition();
-            canonical_def.unwrap_or_else(|| ty.declaration())
+            let x = ty.canonical_type().declaration().definition();
+            x.unwrap_or_else(|| ty.declaration())
         };
-        let comment = location
+        let comment = cur
             .raw_comment()
             .or_else(|| decl.raw_comment())
-            .or_else(|| location.raw_comment());
-        let annotations = Annotations::new(&decl).or_else(|| Annotations::new(&location));
-        if let Some(ref annotations) = annotations {
-            if let Some(replaced) = annotations.use_instead_of() {
-                ctx.replace(replaced, id);
+            .or_else(|| cur.raw_comment());
+        let annos = Annotations::new(&decl).or_else(|| Annotations::new(&cur));
+        if let Some(ref x) = annos {
+            if let Some(x) = x.use_instead_of() {
+                ctx.replace(x, id);
             }
         }
-        if let Some(ty) = ctx.builtin_or_resolved_ty(id, parent_id, ty, Some(location)) {
-            return Ok(ty);
+        if let Some(x) = ctx.builtin_or_resolved_ty(id, parent, ty, Some(cur)) {
+            return Ok(x);
         }
-        let mut valid_decl = decl.kind() != CXCursor_NoDeclFound;
-        let declaration_to_look_for = if valid_decl {
+        let mut valid = decl.kind() != CXCursor_NoDeclFound;
+        let declaration_to_look_for = if valid {
             decl.canonical()
-        } else if location.kind() == CXCursor_ClassTemplate {
-            valid_decl = true;
-            location
+        } else if cur.kind() == CXCursor_ClassTemplate {
+            valid = true;
+            cur
         } else {
             decl
         };
-        if valid_decl {
-            if let Some(partial) = ctx
+        if valid {
+            if let Some(x) = ctx
                 .currently_parsed_types()
                 .iter()
-                .find(|ty| *ty.decl() == declaration_to_look_for)
+                .find(|x| *x.decl() == declaration_to_look_for)
             {
-                debug!("Avoiding recursion parsing type: {:?}", ty);
-                return Ok(partial.id().as_type_id_unchecked());
+                return Ok(x.id().as_type_id_unchecked());
             }
         }
         let current_module = ctx.current_module().into();
         let partial_ty = PartialType::new(declaration_to_look_for, id);
-        if valid_decl {
+        if valid {
             ctx.begin_parsing(partial_ty);
         }
-        let result = Type::from_clang_ty(id, ty, location, parent_id, ctx);
-        let relevant_parent_id = parent_id.unwrap_or(current_module);
-        let ret = match result {
-            Ok(parse::Resolved::AlreadyResolved(ty)) => Ok(ty.as_type_id_unchecked()),
-            Ok(parse::Resolved::New(item, declaration)) => {
+        let result = Type::from_clang_ty(id, ty, cur, parent, ctx);
+        let relevant_parent_id = parent.unwrap_or(current_module);
+        let y = match result {
+            Ok(parse::Resolved::AlreadyResolved(x)) => Ok(x.as_type_id_unchecked()),
+            Ok(parse::Resolved::New(item, decl)) => {
                 ctx.add_item(
                     Item::new(
                         id,
                         comment,
-                        annotations,
+                        annos,
                         relevant_parent_id,
                         ItemKind::Type(item),
-                        Some(location.location()),
+                        Some(cur.location()),
                     ),
-                    declaration,
-                    Some(location),
+                    decl,
+                    Some(cur),
                 );
                 Ok(id.as_type_id_unchecked())
             },
             Err(parse::Error::Continue) => Err(parse::Error::Continue),
             Err(parse::Error::Recurse) => {
-                debug!("Item::from_ty recursing in the ast");
-                let mut result = Err(parse::Error::Recurse);
-                if valid_decl {
-                    let finished = ctx.finish_parsing();
-                    assert_eq!(*finished.decl(), declaration_to_look_for);
+                let mut y = Err(parse::Error::Recurse);
+                if valid {
+                    let x = ctx.finish_parsing();
+                    assert_eq!(*x.decl(), declaration_to_look_for);
                 }
-                location.visit(|cur| visit_child(cur, id, ty, parent_id, ctx, &mut result));
-                if valid_decl {
-                    let partial_ty = PartialType::new(declaration_to_look_for, id);
-                    ctx.begin_parsing(partial_ty);
+                cur.visit(|x| visit_child(x, id, ty, parent, ctx, &mut y));
+                if valid {
+                    let x = PartialType::new(declaration_to_look_for, id);
+                    ctx.begin_parsing(x);
                 }
-                if let Err(parse::Error::Recurse) = result {
+                if let Err(parse::Error::Recurse) = y {
                     warn!(
                         "Unknown type, assuming named template type: \
                          id = {:?}; spelling = {}",
                         id,
                         ty.spelling()
                     );
-                    Item::type_param(Some(id), location, ctx)
+                    Item::type_param(Some(id), cur, ctx)
                         .map(Ok)
                         .unwrap_or(Err(parse::Error::Recurse))
                 } else {
-                    result
+                    y
                 }
             },
         };
-        if valid_decl {
-            let partial_ty = ctx.finish_parsing();
-            assert_eq!(*partial_ty.decl(), declaration_to_look_for);
+        if valid {
+            let x = ctx.finish_parsing();
+            assert_eq!(*x.decl(), declaration_to_look_for);
         }
-        ret
+        y
     }
-    pub fn type_param(with_id: Option<ItemId>, location: clang::Cursor, ctx: &mut Context) -> Option<TypeId> {
-        let ty = location.cur_type();
-        debug!(
-            "Item::type_param:\n\
-             \twith_id = {:?},\n\
-             \tty = {} {:?},\n\
-             \tlocation: {:?}",
-            with_id,
-            ty.spelling(),
-            ty,
-            location
-        );
+    pub fn type_param(id: Option<ItemId>, cur: clang::Cursor, ctx: &mut Context) -> Option<TypeId> {
+        let ty = cur.cur_type();
         if ty.kind() != clang_lib::CXType_Unexposed {
             return None;
         }
@@ -1020,21 +975,21 @@ impl Item {
             let refd_spelling = refd.spelling();
             refd_spelling == spelling || (refd_spelling.is_empty() && ANON_TYPE_PARAM_RE.is_match(spelling.as_ref()))
         }
-        let definition = if is_templ_with_spelling(&location, &ty_spelling) {
-            location
-        } else if location.kind() == clang_lib::CXCursor_TypeRef {
-            match location.referenced() {
-                Some(refd) if is_templ_with_spelling(&refd, &ty_spelling) => refd,
+        let definition = if is_templ_with_spelling(&cur, &ty_spelling) {
+            cur
+        } else if cur.kind() == clang_lib::CXCursor_TypeRef {
+            match cur.referenced() {
+                Some(x) if is_templ_with_spelling(&x, &ty_spelling) => x,
                 _ => return None,
             }
         } else {
             let mut definition = None;
-            location.visit(|child| {
-                let child_ty = child.cur_type();
+            cur.visit(|x| {
+                let child_ty = x.cur_type();
                 if child_ty.kind() == clang_lib::CXCursor_TypeRef && child_ty.spelling() == ty_spelling {
-                    match child.referenced() {
-                        Some(refd) if is_templ_with_spelling(&refd, &ty_spelling) => {
-                            definition = Some(refd);
+                    match x.referenced() {
+                        Some(x) if is_templ_with_spelling(&x, &ty_spelling) => {
+                            definition = Some(x);
                             return clang_lib::CXChildVisit_Break;
                         },
                         _ => {},
@@ -1046,22 +1001,22 @@ impl Item {
         };
         assert!(is_templ_with_spelling(&definition, &ty_spelling));
         let parent = ctx.root_module().into();
-        if let Some(id) = ctx.get_type_param(&definition) {
-            if let Some(with_id) = with_id {
-                return Some(ctx.build_ty_wrapper(with_id, id, Some(parent), &ty));
+        if let Some(x) = ctx.get_type_param(&definition) {
+            if let Some(x2) = id {
+                return Some(ctx.build_ty_wrapper(x2, x, Some(parent), &ty));
             } else {
-                return Some(id);
+                return Some(x);
             }
         }
         let name = ty_spelling.replace("const ", "").replace('.', "");
-        let id = with_id.unwrap_or_else(|| ctx.next_item_id());
+        let id = id.unwrap_or_else(|| ctx.next_item_id());
         let item = Item::new(
             id,
             None,
             None,
             parent,
             ItemKind::Type(Type::named(name)),
-            Some(location.location()),
+            Some(cur.location()),
         );
         ctx.add_type_param(item, definition);
         Some(id.as_type_id_unchecked())
@@ -1097,7 +1052,7 @@ impl TemplParams for Item {
 }
 impl AsTemplParam for Item {
     type Extra = ();
-    fn as_templ_param(&self, ctx: &Context, _: &()) -> Option<TypeId> {
+    fn as_templ_param(&self, ctx: &Context, _: &Self::Extra) -> Option<TypeId> {
         self.kind.as_templ_param(ctx, self)
     }
 }
@@ -1122,21 +1077,21 @@ impl AsTemplParam for ItemKind {
 }
 impl Trace for Item {
     type Extra = ();
-    fn trace<T>(&self, ctx: &Context, tracer: &mut T, _extra: &())
+    fn trace<T>(&self, ctx: &Context, tracer: &mut T, _: &Self::Extra)
     where
         T: Tracer,
     {
         match *self.kind() {
-            ItemKind::Type(ref ty) => {
-                if ty.should_be_traced_unconditionally() || !self.is_opaque(ctx, &()) {
-                    ty.trace(ctx, tracer, self);
+            ItemKind::Type(ref x) => {
+                if x.should_be_traced_unconditionally() || !self.is_opaque(ctx, &()) {
+                    x.trace(ctx, tracer, self);
                 }
             },
-            ItemKind::Function(ref fun) => {
-                tracer.visit(fun.sig().into());
+            ItemKind::Function(ref x) => {
+                tracer.visit(x.sig().into());
             },
-            ItemKind::Var(ref var) => {
-                tracer.visit_kind(var.ty().into(), EdgeKind::VarType);
+            ItemKind::Var(ref x) => {
+                tracer.visit_kind(x.ty().into(), EdgeKind::VarType);
             },
             ItemKind::Module(_) => {},
         }
@@ -1147,7 +1102,7 @@ fn visit_child(
     cur: clang::Cursor,
     id: ItemId,
     ty: &clang::Type,
-    parent_id: Option<ItemId>,
+    parent: Option<ItemId>,
     ctx: &mut Context,
     y: &mut Result<TypeId, parse::Error>,
 ) -> clang_lib::CXChildVisitResult {
@@ -1155,11 +1110,11 @@ fn visit_child(
     if y.is_ok() {
         return CXChildVisit_Break;
     }
-    *y = Item::from_ty_with_id(id, ty, cur, parent_id, ctx);
+    *y = Item::from_ty_with_id(id, ty, cur, parent, ctx);
     match *y {
         Ok(..) => CXChildVisit_Break,
         Err(parse::Error::Recurse) => {
-            cur.visit(|c| visit_child(c, id, ty, parent_id, ctx, y));
+            cur.visit(|x| visit_child(x, id, ty, parent, ctx, y));
             CXChildVisit_Continue
         },
         Err(parse::Error::Continue) => CXChildVisit_Continue,

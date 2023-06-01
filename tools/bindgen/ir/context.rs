@@ -353,12 +353,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn add_item_to_module(&mut self, it: &Item) {
         assert!(it.id() != self.root_module);
         assert!(self.resolve_item_fallible(it.id()).is_none());
-        if let Some(ref mut parent) = self.items[it.parent_id().0] {
+        if let Some(ref mut parent) = self.items[it.parent().0] {
             if let Some(module) = parent.as_module_mut() {
                 debug!(
                     "add_item_to_module: adding {:?} as child of parent module {:?}",
                     it.id(),
-                    it.parent_id()
+                    it.parent()
                 );
                 module.children_mut().insert(it.id());
                 return;
@@ -541,7 +541,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
         let mut replacements = vec![];
         for (id, item) in self.items() {
-            if item.annotations().use_instead_of().is_some() {
+            if item.annos().use_instead_of().is_some() {
                 continue;
             }
             let ty = match item.kind().as_type() {
@@ -566,9 +566,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 let item_id: ItemId = id.into();
                 let item = self.items[item_id.0].as_mut().unwrap();
                 *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedTypeRef(replacement_id);
-                item.parent_id()
+                item.parent()
             };
-            let old_parent = self.resolve_item(replacement_id).parent_id();
+            let old_parent = self.resolve_item(replacement_id).parent();
             if new_parent == old_parent {
                 continue;
             }
@@ -1245,11 +1245,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     {
                         return true;
                     }
-                    if item.annotations().use_instead_of().is_some() {
+                    if item.annos().use_instead_of().is_some() {
                         return true;
                     }
                     if !self.opts().allowed_files.is_empty() {
-                        if let Some(location) = item.location() {
+                        if let Some(location) = item.loc() {
                             let (file, _, _, _) = location.location();
                             if let Some(filename) = file.name() {
                                 if self.opts().allowed_files.matches(filename) {
@@ -1289,7 +1289,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                     return true;
                                 }
                             }
-                            let parent = self.resolve_item(item.parent_id());
+                            let parent = self.resolve_item(item.parent());
                             if !parent.is_module() {
                                 return false;
                             }
