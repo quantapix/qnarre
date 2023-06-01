@@ -113,12 +113,11 @@ impl<'a> ImplDebug<'a> for Item {
                     ))
                 }
             },
-            TypeKind::ResolvedTypeRef(t)
-            | TypeKind::TemplAlias(t, _)
-            | TypeKind::Alias(t)
-            | TypeKind::BlockPointer(t) => ctx.resolve_item(t).impl_debug(ctx, name),
+            TypeKind::ResolvedTypeRef(t) | TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) => {
+                ctx.resolve_item(t).impl_debug(ctx, name)
+            },
             TypeKind::Pointer(inner) => {
-                let inner_type = ctx.resolve_type(inner).canonical_type(ctx);
+                let inner_type = ctx.resolve_type(inner).canon_type(ctx);
                 match *inner_type.kind() {
                     TypeKind::Function(ref sig) if !sig.fn_ptrs_can_derive() => {
                         Some((format!("{}: FunctionPointer", name), vec![]))

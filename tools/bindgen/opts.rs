@@ -311,16 +311,16 @@ options! {
         },
         as_args: "--constified-enum",
     },
-    default_macro_constant_type: variation::MacroType {
+    default_macro_const: variation::MacroType {
         methods: {
-            pub fn default_macro_constant_type(mut self, x: variation::MacroType) -> Builder {
-                self.opts.default_macro_constant_type = x;
+            pub fn default_macro_const(mut self, x: variation::MacroType) -> Builder {
+                self.opts.default_macro_const = x;
                 self
             }
         },
         as_args: |x, xs| {
             if *x != Default::default() {
-                xs.push("--default-macro-constant-type".to_owned());
+                xs.push("--default-macro-const-type".to_owned());
                 xs.push(x.to_string());
             }
         },
@@ -878,10 +878,10 @@ options! {
         },
         as_args: |x, xs| (!x).as_args(xs, "--no-include-path-detection"),
     },
-    fit_macro_constants: bool {
+    fit_macro_const: bool {
         methods: {
-            pub fn fit_macro_constants(mut self, x: bool) -> Self {
-                self.opts.fit_macro_constants = x;
+            pub fn fit_macro_const(mut self, x: bool) -> Self {
+                self.opts.fit_macro_const = x;
                 self
             }
         },

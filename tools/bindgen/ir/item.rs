@@ -1083,7 +1083,7 @@ impl Trace for Item {
     {
         match *self.kind() {
             ItemKind::Type(ref x) => {
-                if x.should_be_traced_unconditionally() || !self.is_opaque(ctx, &()) {
+                if x.should_be_traced() || !self.is_opaque(ctx, &()) {
                     x.trace(ctx, tracer, self);
                 }
             },

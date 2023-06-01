@@ -286,7 +286,7 @@ pub fn fnsig_arguments(ctx: &Context, sig: &FnSig) -> Vec<proc_macro2::TokenStre
         .map(|&(ref name, ty)| {
             let arg_item = ctx.resolve_item(ty);
             let arg_ty = arg_item.kind().expect_type();
-            let arg_ty = match *arg_ty.canonical_type(ctx).kind() {
+            let arg_ty = match *arg_ty.canon_type(ctx).kind() {
                 TypeKind::Array(t, _) => {
                     let stream = if ctx.opts().array_pointers_in_arguments {
                         arg_ty.to_rust_or_opaque(ctx, arg_item)
@@ -847,7 +847,7 @@ fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
                 #(self.#self_ids == other.#other_ids &&)* true
             }
         },
-        TypeKind::ResolvedTypeRef(x) | TypeKind::TemplAlias(x, _) | TypeKind::Alias(x) | TypeKind::BlockPointer(x) => {
+        TypeKind::ResolvedTypeRef(x) | TypeKind::TemplAlias(x, _) | TypeKind::Alias(x) | TypeKind::BlockPtr(x) => {
             let it2 = ctx.resolve_item(x);
             gen_field(ctx, it2, name)
         },

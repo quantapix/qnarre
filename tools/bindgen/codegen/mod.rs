@@ -541,7 +541,7 @@ impl Generator for Enum {
             Some(x) if !ctx.opts().translate_enum_integer_types && !variation.is_rust() => x,
             x => {
                 let kind = match x {
-                    Some(x) => match *x.canonical_type(ctx).kind() {
+                    Some(x) => match *x.canon_type(ctx).kind() {
                         TypeKind::Int(x) => x,
                         _ => panic!("Unexpected type as enum repr"),
                     },
@@ -744,7 +744,7 @@ impl Generator for Function {
         debug_assert!(it.is_enabled_for_codegen(ctx));
         let is_internal = matches!(self.linkage(), Linkage::Internal);
         let sig = ctx.resolve_item(self.sig());
-        let sig = sig.kind().expect_type().canonical_type(ctx);
+        let sig = sig.kind().expect_type().canon_type(ctx);
         let sig = match *sig.kind() {
             TypeKind::Function(ref x) => x,
             _ => panic!("Signature kind is not a Function: {:?}", sig),
@@ -921,7 +921,7 @@ impl Generator for Var {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        use crate::ir::var::VarType;
+        use crate::ir::var::VarKind;
         debug_assert!(it.is_enabled_for_codegen(ctx));
         let name = it.canon_name(ctx);
         if y.seen_var(&name) {
@@ -939,13 +939,13 @@ impl Generator for Var {
         let ty = self.ty().to_rust_or_opaque(ctx, &());
         if let Some(x) = self.val() {
             match *x {
-                VarType::Bool(x) => {
+                VarKind::Bool(x) => {
                     y.push(quote! {
                         #(#attrs)*
                         pub const #ident : #ty = #x ;
                     });
                 },
-                VarType::Int(x) => {
+                VarKind::Int(x) => {
                     let kind = self
                         .ty()
                         .into_resolver()
@@ -965,7 +965,7 @@ impl Generator for Var {
                         pub const #ident : #ty = #x ;
                     });
                 },
-                VarType::String(ref x) => {
+                VarKind::String(ref x) => {
                     let pre = ctx.trait_prefix();
                     let opts = ctx.opts();
                     let mut x = x.clone();
@@ -991,7 +991,7 @@ impl Generator for Var {
                         });
                     }
                 },
-                VarType::Float(x) => {
+                VarKind::Float(x) => {
                     if let Ok(x) = utils::ast_ty::float_expr(ctx, x) {
                         y.push(quote! {
                             #(#attrs)*
@@ -999,7 +999,7 @@ impl Generator for Var {
                         });
                     }
                 },
-                VarType::Char(x) => {
+                VarKind::Char(x) => {
                     y.push(quote! {
                         #(#attrs)*
                         pub const #ident : #ty = #x ;
@@ -1095,7 +1095,7 @@ impl Generator for Type {
             | TypeKind::Opaque
             | TypeKind::TypeParam => {},
             TypeKind::TemplInstantiation(ref x) => x.codegen(ctx, y, it),
-            TypeKind::BlockPointer(x) => {
+            TypeKind::BlockPtr(x) => {
                 if !ctx.opts().generate_block {
                     return;
                 }
@@ -1171,7 +1171,7 @@ impl Generator for Type {
                     ty
                 };
                 {
-                    let inner_canon_type = inner_item.expect_type().canonical_type(ctx);
+                    let inner_canon_type = inner_item.expect_type().canon_type(ctx);
                     if inner_canon_type.is_invalid_type_param() {
                         warn!(
                             "Item contained invalid named type, skipping: \
@@ -1203,7 +1203,7 @@ impl Generator for Type {
                     && outer_params.is_empty()
                     && !is_opaque
                     && alias_style == variation::Alias::TypeAlias
-                    && inner_item.expect_type().canonical_type(ctx).is_enum()
+                    && inner_item.expect_type().canon_type(ctx).is_enum()
                 {
                     toks.append_all(quote! {
                         pub use
@@ -2230,8 +2230,8 @@ impl TryToRust for Type {
             },
             TypeKind::TemplInstantiation(ref x) => x.try_to_rust(ctx, it),
             TypeKind::ResolvedTypeRef(x) => x.try_to_rust(ctx, &()),
-            TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPointer(..) => {
-                if self.is_block_pointer() && !ctx.opts().generate_block {
+            TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPtr(..) => {
+                if self.is_block_ptr() && !ctx.opts().generate_block {
                     let y = c_void(ctx);
                     return Ok(y.to_ptr(/* is_const = */ false));
                 }
@@ -2261,7 +2261,7 @@ impl TryToRust for Type {
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = x.to_rust_or_opaque(ctx, &());
                 ty.append_implicit_templ_params(ctx, x);
-                if x.expect_type().canonical_type(ctx).is_function() {
+                if x.expect_type().canon_type(ctx).is_function() {
                     Ok(ty)
                 } else {
                     Ok(ty.to_ptr(is_const))

@@ -293,7 +293,7 @@ pub mod derive {
                     return self.derive.can_derive_simple(ty.kind());
                 },
                 TypeKind::Pointer(x) => {
-                    let ty2 = self.ctx.resolve_type(x).canonical_type(self.ctx);
+                    let ty2 = self.ctx.resolve_type(x).canon_type(self.ctx);
                     if let TypeKind::Function(ref sig) = *ty2.kind() {
                         self.derive.can_derive_fnptr(sig)
                     } else {
@@ -366,7 +366,7 @@ pub mod derive {
                 TypeKind::ResolvedTypeRef(..)
                 | TypeKind::TemplAlias(..)
                 | TypeKind::Alias(..)
-                | TypeKind::BlockPointer(..) => self.constrain_join(it, self.derive.check_edge_typeref()),
+                | TypeKind::BlockPtr(..) => self.constrain_join(it, self.derive.check_edge_typeref()),
                 TypeKind::TemplInstantiation(..) => self.constrain_join(it, self.derive.check_edge_tmpl_inst()),
                 TypeKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
             }
@@ -674,7 +674,7 @@ pub mod has_float {
                 TypeKind::ResolvedTypeRef(t)
                 | TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
-                | TypeKind::BlockPointer(t) => {
+                | TypeKind::BlockPtr(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
@@ -812,7 +812,7 @@ pub mod has_type_param {
                 | TypeKind::Pointer(..)
                 | TypeKind::UnresolvedTypeRef(..) => YConstrain::Same,
                 TypeKind::Array(t, _) => {
-                    let ty2 = self.ctx.resolve_type(t).canonical_type(self.ctx);
+                    let ty2 = self.ctx.resolve_type(t).canon_type(self.ctx);
                     match *ty2.kind() {
                         TypeKind::TypeParam => self.insert(id),
                         _ => YConstrain::Same,
@@ -821,7 +821,7 @@ pub mod has_type_param {
                 TypeKind::ResolvedTypeRef(t)
                 | TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
-                | TypeKind::BlockPointer(t) => {
+                | TypeKind::BlockPtr(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
@@ -1169,7 +1169,7 @@ pub mod sizedness {
                 | TypeKind::Pointer(..) => self.insert(id, Resolved::NonZeroSized),
                 TypeKind::TemplAlias(t, _)
                 | TypeKind::Alias(t)
-                | TypeKind::BlockPointer(t)
+                | TypeKind::BlockPtr(t)
                 | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
                 TypeKind::TemplInstantiation(ref x) => self.forward(x.templ_def(), id),
                 TypeKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),

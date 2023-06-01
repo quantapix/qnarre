@@ -13,6 +13,112 @@ use crate::parse;
 use std::borrow::Cow;
 use std::io;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum FloatKind {
+    Float,
+    Double,
+    LongDouble,
+    Float128,
+}
+
+#[derive(Debug)]
+pub enum TypeKind {
+    Void,
+    NullPtr,
+    Comp(CompInfo),
+    Opaque,
+    Int(IntKind),
+    Float(FloatKind),
+    Complex(FloatKind),
+    Alias(TypeId),
+    TemplAlias(TypeId, Vec<TypeId>),
+    Vector(TypeId, usize),
+    Array(TypeId, usize),
+    Function(FnSig),
+    Enum(Enum),
+    Pointer(TypeId),
+    BlockPtr(TypeId),
+    Reference(TypeId),
+    TemplInstantiation(TemplInstantiation),
+    UnresolvedTypeRef(clang::Type, clang::Cursor, /* parent_id */ Option<ItemId>),
+    ResolvedTypeRef(TypeId),
+    TypeParam,
+}
+impl TypeKind {
+    fn kind_name(&self) -> &'static str {
+        match *self {
+            TypeKind::Void => "Void",
+            TypeKind::NullPtr => "NullPtr",
+            TypeKind::Comp(..) => "Comp",
+            TypeKind::Opaque => "Opaque",
+            TypeKind::Int(..) => "Int",
+            TypeKind::Float(..) => "Float",
+            TypeKind::Complex(..) => "Complex",
+            TypeKind::Alias(..) => "Alias",
+            TypeKind::TemplAlias(..) => "TemplateAlias",
+            TypeKind::Array(..) => "Array",
+            TypeKind::Vector(..) => "Vector",
+            TypeKind::Function(..) => "Function",
+            TypeKind::Enum(..) => "Enum",
+            TypeKind::Pointer(..) => "Pointer",
+            TypeKind::BlockPtr(..) => "BlockPtr",
+            TypeKind::Reference(..) => "Reference",
+            TypeKind::TemplInstantiation(..) => "TemplateInstantiation",
+            TypeKind::UnresolvedTypeRef(..) => "UnresolvedTypeRef",
+            TypeKind::ResolvedTypeRef(..) => "ResolvedTypeRef",
+            TypeKind::TypeParam => "TypeParam",
+        }
+    }
+}
+impl DotAttrs for TypeKind {
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        writeln!(y, "<tr><td>type kind</td><td>{}</td></tr>", self.kind_name())?;
+        if let TypeKind::Comp(ref x) = *self {
+            x.dot_attrs(ctx, y)?;
+        }
+        Ok(())
+    }
+}
+impl TemplParams for TypeKind {
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+        match *self {
+            TypeKind::ResolvedTypeRef(x) => ctx.resolve_type(x).self_templ_params(ctx),
+            TypeKind::Comp(ref x) => x.self_templ_params(ctx),
+            TypeKind::TemplAlias(_, ref x) => x.clone(),
+            TypeKind::Opaque
+            | TypeKind::TemplInstantiation(..)
+            | TypeKind::Void
+            | TypeKind::NullPtr
+            | TypeKind::Int(_)
+            | TypeKind::Float(_)
+            | TypeKind::Complex(_)
+            | TypeKind::Array(..)
+            | TypeKind::Vector(..)
+            | TypeKind::Function(_)
+            | TypeKind::Enum(_)
+            | TypeKind::Pointer(_)
+            | TypeKind::BlockPtr(_)
+            | TypeKind::Reference(_)
+            | TypeKind::UnresolvedTypeRef(..)
+            | TypeKind::TypeParam
+            | TypeKind::Alias(_) => vec![],
+        }
+    }
+}
+impl AsTemplParam for TypeKind {
+    type Extra = Item;
+    fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
+        match *self {
+            TypeKind::TypeParam => Some(it.id().expect_type_id(ctx)),
+            TypeKind::ResolvedTypeRef(x) => x.as_templ_param(ctx, &()),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Type {
     name: Option<String>,
@@ -23,7 +129,7 @@ pub struct Type {
 impl Type {
     pub fn as_comp_mut(&mut self) -> Option<&mut CompInfo> {
         match self.kind {
-            TypeKind::Comp(ref mut ci) => Some(ci),
+            TypeKind::Comp(ref mut x) => Some(x),
             _ => None,
         }
     }
@@ -44,8 +150,8 @@ impl Type {
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
-    pub fn is_block_pointer(&self) -> bool {
-        matches!(self.kind, TypeKind::BlockPointer(..))
+    pub fn is_block_ptr(&self) -> bool {
+        matches!(self.kind, TypeKind::BlockPtr(..))
     }
     pub fn is_int(&self) -> bool {
         matches!(self.kind, TypeKind::Int(_))
@@ -55,7 +161,7 @@ impl Type {
     }
     pub fn is_union(&self) -> bool {
         match self.kind {
-            TypeKind::Comp(ref comp) => comp.is_union(),
+            TypeKind::Comp(ref x) => x.is_union(),
             _ => false,
         }
     }
@@ -103,7 +209,7 @@ impl Type {
     }
     pub fn as_integer(&self) -> Option<IntKind> {
         match self.kind {
-            TypeKind::Int(int_kind) => Some(int_kind),
+            TypeKind::Int(x) => Some(x),
             _ => None,
         }
     }
@@ -115,25 +221,23 @@ impl Type {
     }
     pub fn is_incomplete_array(&self, ctx: &Context) -> Option<ItemId> {
         match self.kind {
-            TypeKind::Array(item, len) => {
+            TypeKind::Array(x, len) => {
                 if len == 0 {
-                    Some(item.into())
+                    Some(x.into())
                 } else {
                     None
                 }
             },
-            TypeKind::ResolvedTypeRef(inner) => ctx.resolve_type(inner).is_incomplete_array(ctx),
+            TypeKind::ResolvedTypeRef(x) => ctx.resolve_type(x).is_incomplete_array(ctx),
             _ => None,
         }
     }
     pub fn layout(&self, ctx: &Context) -> Option<Layout> {
         self.layout.or_else(|| match self.kind {
-            TypeKind::Comp(ref ci) => ci.layout(ctx),
-            TypeKind::Array(inner, length) if length == 0 => {
-                Some(Layout::new(0, ctx.resolve_type(inner).layout(ctx)?.align))
-            },
+            TypeKind::Comp(ref x) => x.layout(ctx),
+            TypeKind::Array(x, len) if len == 0 => Some(Layout::new(0, ctx.resolve_type(x).layout(ctx)?.align)),
             TypeKind::Pointer(..) => Some(Layout::new(ctx.target_pointer_size(), ctx.target_pointer_size())),
-            TypeKind::ResolvedTypeRef(inner) => ctx.resolve_type(inner).layout(ctx),
+            TypeKind::ResolvedTypeRef(x) => ctx.resolve_type(x).layout(ctx),
             _ => None,
         })
     }
@@ -150,30 +254,30 @@ impl Type {
         if clang::is_valid_identifier(name) {
             return Cow::Borrowed(name);
         }
-        let name = name.replace(|c| c == ' ' || c == ':' || c == '.', "_");
+        let name = name.replace(|x| x == ' ' || x == ':' || x == '.', "_");
         Cow::Owned(name)
     }
     pub fn sanitized_name<'a>(&'a self, ctx: &Context) -> Option<Cow<'a, str>> {
-        let name_info = match *self.kind() {
-            TypeKind::Pointer(inner) => Some((inner, Cow::Borrowed("ptr"))),
-            TypeKind::Reference(inner) => Some((inner, Cow::Borrowed("ref"))),
-            TypeKind::Array(inner, length) => Some((inner, format!("array{}", length).into())),
+        let y = match *self.kind() {
+            TypeKind::Pointer(x) => Some((x, Cow::Borrowed("ptr"))),
+            TypeKind::Reference(x) => Some((x, Cow::Borrowed("ref"))),
+            TypeKind::Array(x, len) => Some((x, format!("array{}", len).into())),
             _ => None,
         };
-        if let Some((inner, prefix)) = name_info {
-            ctx.resolve_item(inner)
+        if let Some((x, pre)) = y {
+            ctx.resolve_item(x)
                 .expect_type()
                 .sanitized_name(ctx)
-                .map(|name| format!("{}_{}", prefix, name).into())
+                .map(|x| format!("{}_{}", pre, x).into())
         } else {
             self.name().map(Self::sanitize_name)
         }
     }
-    pub fn canonical_type<'tr>(&'tr self, ctx: &'tr Context) -> &'tr Type {
-        self.safe_canonical_type(ctx)
+    pub fn canon_type<'tr>(&'tr self, ctx: &'tr Context) -> &'tr Type {
+        self.safe_canon_type(ctx)
             .expect("Should have been resolved after parsing!")
     }
-    pub fn safe_canonical_type<'tr>(&'tr self, ctx: &'tr Context) -> Option<&'tr Type> {
+    pub fn safe_canon_type<'tr>(&'tr self, ctx: &'tr Context) -> Option<&'tr Type> {
         match self.kind {
             TypeKind::TypeParam
             | TypeKind::Array(..)
@@ -189,15 +293,15 @@ impl Type {
             | TypeKind::Void
             | TypeKind::NullPtr
             | TypeKind::Pointer(..)
-            | TypeKind::BlockPointer(..) => Some(self),
-            TypeKind::ResolvedTypeRef(inner) | TypeKind::Alias(inner) | TypeKind::TemplAlias(inner, _) => {
-                ctx.resolve_type(inner).safe_canonical_type(ctx)
+            | TypeKind::BlockPtr(..) => Some(self),
+            TypeKind::ResolvedTypeRef(x) | TypeKind::Alias(x) | TypeKind::TemplAlias(x, _) => {
+                ctx.resolve_type(x).safe_canon_type(ctx)
             },
-            TypeKind::TemplInstantiation(ref x) => ctx.resolve_type(x.templ_def()).safe_canonical_type(ctx),
+            TypeKind::TemplInstantiation(ref x) => ctx.resolve_type(x.templ_def()).safe_canon_type(ctx),
             TypeKind::UnresolvedTypeRef(..) => None,
         }
     }
-    pub fn should_be_traced_unconditionally(&self) -> bool {
+    pub fn should_be_traced(&self) -> bool {
         matches!(
             self.kind,
             TypeKind::Comp(..)
@@ -210,169 +314,123 @@ impl Type {
         )
     }
     pub fn from_clang_ty(
-        potential_id: ItemId,
+        id: ItemId,
         ty: &clang::Type,
-        location: Cursor,
-        parent_id: Option<ItemId>,
+        cur: Cursor,
+        parent: Option<ItemId>,
         ctx: &mut Context,
     ) -> Result<parse::Resolved<Self>, parse::Error> {
         use clang_lib::*;
         {
-            let already_resolved = ctx.builtin_or_resolved_ty(potential_id, parent_id, ty, Some(location));
-            if let Some(ty) = already_resolved {
-                debug!("{:?} already resolved: {:?}", ty, location);
-                return Ok(parse::Resolved::AlreadyResolved(ty.into()));
+            let y = ctx.builtin_or_resolved_ty(id, parent, ty, Some(cur));
+            if let Some(x) = y {
+                return Ok(parse::Resolved::AlreadyResolved(x.into()));
             }
         }
         let layout = ty.fallible_layout(ctx).ok();
         let cur = ty.declaration();
-        let is_anonymous = cur.is_anonymous();
-        let mut name = if is_anonymous {
+        let is_anon = cur.is_anonymous();
+        let mut name = if is_anon {
             None
         } else {
-            Some(cur.spelling()).filter(|n| !n.is_empty())
+            Some(cur.spelling()).filter(|x| !x.is_empty())
         };
-        debug!("from_clang_ty: {:?}, ty: {:?}, loc: {:?}", potential_id, ty, location);
+        debug!("from_clang_ty: {:?}, ty: {:?}, loc: {:?}", id, ty, cur);
         debug!("currently_parsed_types: {:?}", ctx.currently_parsed_types());
-        let canonical_ty = ty.canonical_type();
+        let canon_ty = ty.canonical_type();
         let mut ty_kind = ty.kind();
         if ty_kind == CXType_Typedef {
-            let is_template_type_param = ty.declaration().kind() == CXCursor_TemplateTypeParameter;
+            let is_templ = ty.declaration().kind() == CXCursor_TemplateTypeParameter;
         }
-        if location.kind() == CXCursor_ClassTemplatePartialSpecialization {
-            warn!(
-                "Found a partial template specialization; bindgen does not \
-                 support partial template specialization! Constructing \
-                 opaque type instead."
-            );
-            return Ok(parse::Resolved::New(Opaque::from_clang_ty(&canonical_ty, ctx), None));
+        if cur.kind() == CXCursor_ClassTemplatePartialSpecialization {
+            return Ok(parse::Resolved::New(Opaque::from_clang_ty(&canon_ty, ctx), None));
         }
-        let kind = if location.kind() == CXCursor_TemplateRef
-            || (ty.templ_args().is_some() && ty_kind != CXType_Typedef)
-        {
+        let kind = if cur.kind() == CXCursor_TemplateRef || (ty.templ_args().is_some() && ty_kind != CXType_Typedef) {
             match TemplInstantiation::from_ty(ty, ctx) {
-                Some(inst) => TypeKind::TemplInstantiation(inst),
+                Some(x) => TypeKind::TemplInstantiation(x),
                 None => TypeKind::Opaque,
             }
         } else {
             match ty_kind {
                 CXType_Unexposed
-                    if *ty != canonical_ty
-                        && canonical_ty.kind() != CXType_Invalid
+                    if *ty != canon_ty
+                        && canon_ty.kind() != CXType_Invalid
                         && ty.ret_type().is_none()
-                        && !canonical_ty.spelling().contains("type-parameter") =>
+                        && !canon_ty.spelling().contains("type-parameter") =>
                 {
-                    debug!("Looking for canonical type: {:?}", canonical_ty);
-                    return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
+                    return Self::from_clang_ty(id, &canon_ty, cur, parent, ctx);
                 },
                 CXType_Unexposed | CXType_Invalid => {
                     if ty.ret_type().is_some() {
-                        let signature = FnSig::from_ty(ty, &location, ctx)?;
-                        TypeKind::Function(signature)
+                        let x = FnSig::from_ty(ty, &cur, ctx)?;
+                        TypeKind::Function(x)
                     } else if ty.is_fully_instantiated_templ() {
-                        debug!("Template specialization: {:?}, {:?} {:?}", ty, location, canonical_ty);
-                        let complex = CompInfo::from_ty(potential_id, ty, Some(location), ctx).expect("C'mon");
-                        TypeKind::Comp(complex)
+                        let x = CompInfo::from_ty(id, ty, Some(cur), ctx).expect("C'mon");
+                        TypeKind::Comp(x)
                     } else {
-                        match location.kind() {
+                        match cur.kind() {
                             CXCursor_CXXBaseSpecifier | CXCursor_ClassTemplate => {
-                                if location.kind() == CXCursor_CXXBaseSpecifier {
-                                    if location.spelling().chars().all(|c| c.is_alphanumeric() || c == '_') {
+                                if cur.kind() == CXCursor_CXXBaseSpecifier {
+                                    if cur.spelling().chars().all(|x| x.is_alphanumeric() || x == '_') {
                                         return Err(parse::Error::Recurse);
                                     }
                                 } else {
-                                    name = Some(location.spelling());
+                                    name = Some(cur.spelling());
                                 }
-                                let complex = CompInfo::from_ty(potential_id, ty, Some(location), ctx);
-                                match complex {
-                                    Ok(complex) => TypeKind::Comp(complex),
+                                let x = CompInfo::from_ty(id, ty, Some(cur), ctx);
+                                match x {
+                                    Ok(x) => TypeKind::Comp(x),
                                     Err(_) => {
-                                        warn!(
-                                            "Could not create complex type \
-                                             from class template or base \
-                                             specifier, using opaque blob"
-                                        );
-                                        let opaque = Opaque::from_clang_ty(ty, ctx);
-                                        return Ok(parse::Resolved::New(opaque, None));
+                                        let x = Opaque::from_clang_ty(ty, ctx);
+                                        return Ok(parse::Resolved::New(x, None));
                                     },
                                 }
                             },
                             CXCursor_TypeAliasTemplateDecl => {
-                                debug!("TypeAliasTemplateDecl");
-                                let mut inner = Err(parse::Error::Continue);
+                                let mut y = Err(parse::Error::Continue);
                                 let mut args = vec![];
-                                location.visit(|cur| {
-                                    match cur.kind() {
+                                cur.visit(|x| {
+                                    match x.kind() {
                                         CXCursor_TypeAliasDecl => {
-                                            let current = cur.cur_type();
-                                            debug_assert_eq!(current.kind(), CXType_Typedef);
-                                            name = Some(location.spelling());
-                                            let inner_ty = cur.typedef_type().expect("Not valid Type?");
-                                            inner = Ok(Item::from_ty_or_ref(inner_ty, cur, Some(potential_id), ctx));
+                                            debug_assert_eq!(x.cur_type().kind(), CXType_Typedef);
+                                            name = Some(x.spelling());
+                                            let x2 = x.typedef_type().expect("Not valid Type?");
+                                            y = Ok(Item::from_ty_or_ref(x2, x, Some(id), ctx));
                                         },
                                         CXCursor_TemplateTypeParameter => {
-                                            let param = Item::type_param(None, cur, ctx).expect(
-                                                "Item::type_param shouldn't \
-                                                 ever fail if we are looking \
-                                                 at a TemplateTypeParameter",
-                                            );
-                                            args.push(param);
+                                            let x = Item::type_param(None, x, ctx).expect("A TemplateTypeParameter");
+                                            args.push(x);
                                         },
                                         _ => {},
                                     }
                                     CXChildVisit_Continue
                                 });
-                                let inner_type = match inner {
-                                    Ok(inner) => inner,
+                                let y = match y {
+                                    Ok(x) => x,
                                     Err(..) => {
-                                        warn!(
-                                            "Failed to parse template alias \
-                                             {:?}",
-                                            location
-                                        );
+                                        warn!("Failed to parse template alias {:?}", cur);
                                         return Err(parse::Error::Continue);
                                     },
                                 };
-                                TypeKind::TemplAlias(inner_type, args)
+                                TypeKind::TemplAlias(y, args)
                             },
                             CXCursor_TemplateRef => {
-                                let referenced = location.referenced().unwrap();
-                                let referenced_ty = referenced.cur_type();
-                                debug!(
-                                    "TemplateRef: location = {:?}; referenced = \
-                                        {:?}; referenced_ty = {:?}",
-                                    location, referenced, referenced_ty
-                                );
-                                return Self::from_clang_ty(potential_id, &referenced_ty, referenced, parent_id, ctx);
+                                let x = cur.referenced().unwrap();
+                                let ty = x.cur_type();
+                                return Self::from_clang_ty(id, &ty, x, parent, ctx);
                             },
                             CXCursor_TypeRef => {
-                                let referenced = location.referenced().unwrap();
-                                let referenced_ty = referenced.cur_type();
-                                let declaration = referenced_ty.declaration();
-                                debug!(
-                                    "TypeRef: location = {:?}; referenced = \
-                                     {:?}; referenced_ty = {:?}",
-                                    location, referenced, referenced_ty
-                                );
-                                let id = Item::from_ty_or_ref_with_id(
-                                    potential_id,
-                                    referenced_ty,
-                                    declaration,
-                                    parent_id,
-                                    ctx,
-                                );
-                                return Ok(parse::Resolved::AlreadyResolved(id.into()));
+                                let x = cur.referenced().unwrap();
+                                let ty = x.cur_type();
+                                let decl = ty.declaration();
+                                let y = Item::from_ty_or_ref_with_id(id, ty, decl, parent, ctx);
+                                return Ok(parse::Resolved::AlreadyResolved(y.into()));
                             },
                             CXCursor_NamespaceRef => {
                                 return Err(parse::Error::Continue);
                             },
                             _ => {
                                 if ty.kind() == CXType_Unexposed {
-                                    warn!(
-                                        "Unexposed type {:?}, recursing inside, \
-                                          loc: {:?}",
-                                        ty, location
-                                    );
                                     return Err(parse::Error::Recurse);
                                 }
                                 warn!("invalid type {:?}", ty);
@@ -382,119 +440,109 @@ impl Type {
                     }
                 },
                 CXType_Auto => {
-                    if canonical_ty == *ty {
+                    if canon_ty == *ty {
                         debug!("Couldn't find deduced type: {:?}", ty);
                         return Err(parse::Error::Continue);
                     }
-                    return Self::from_clang_ty(potential_id, &canonical_ty, location, parent_id, ctx);
+                    return Self::from_clang_ty(id, &canon_ty, cur, parent, ctx);
                 },
                 CXType_MemberPointer | CXType_Pointer => {
-                    let mut pointee = ty.pointee_type().unwrap();
-                    if *ty != canonical_ty {
-                        let canonical_pointee = canonical_ty.pointee_type().unwrap();
-                        if canonical_pointee.is_const() != pointee.is_const() {
-                            pointee = canonical_pointee;
+                    let mut y = ty.pointee_type().unwrap();
+                    if *ty != canon_ty {
+                        let x = canon_ty.pointee_type().unwrap();
+                        if x.is_const() != y.is_const() {
+                            y = x;
                         }
                     }
-                    let inner = Item::from_ty_or_ref(pointee, location, None, ctx);
-                    TypeKind::Pointer(inner)
+                    let y = Item::from_ty_or_ref(y, cur, None, ctx);
+                    TypeKind::Pointer(y)
                 },
                 CXType_BlockPointer => {
-                    let pointee = ty.pointee_type().expect("Not valid Type?");
-                    let inner = Item::from_ty_or_ref(pointee, location, None, ctx);
-                    TypeKind::BlockPointer(inner)
+                    let x = ty.pointee_type().expect("Not valid Type?");
+                    let y = Item::from_ty_or_ref(x, cur, None, ctx);
+                    TypeKind::BlockPtr(y)
                 },
                 CXType_RValueReference | CXType_LValueReference => {
-                    let inner = Item::from_ty_or_ref(ty.pointee_type().unwrap(), location, None, ctx);
-                    TypeKind::Reference(inner)
+                    let y = Item::from_ty_or_ref(ty.pointee_type().unwrap(), cur, None, ctx);
+                    TypeKind::Reference(y)
                 },
                 CXType_VariableArray | CXType_DependentSizedArray => {
-                    let inner = Item::from_ty(ty.elem_type().as_ref().unwrap(), location, None, ctx)
+                    let y = Item::from_ty(ty.elem_type().as_ref().unwrap(), cur, None, ctx)
                         .expect("Not able to resolve array element?");
-                    TypeKind::Pointer(inner)
+                    TypeKind::Pointer(y)
                 },
                 CXType_IncompleteArray => {
-                    let inner = Item::from_ty(ty.elem_type().as_ref().unwrap(), location, None, ctx)
+                    let y = Item::from_ty(ty.elem_type().as_ref().unwrap(), cur, None, ctx)
                         .expect("Not able to resolve array element?");
-                    TypeKind::Array(inner, 0)
+                    TypeKind::Array(y, 0)
                 },
                 CXType_FunctionNoProto | CXType_FunctionProto => {
-                    let signature = FnSig::from_ty(ty, &location, ctx)?;
-                    TypeKind::Function(signature)
+                    let y = FnSig::from_ty(ty, &cur, ctx)?;
+                    TypeKind::Function(y)
                 },
                 CXType_Typedef => {
-                    let inner = cur.typedef_type().expect("Not valid Type?");
-                    let inner_id = Item::from_ty_or_ref(inner, location, None, ctx);
-                    if inner_id == potential_id {
-                        warn!(
-                            "Generating oqaque type instead of self-referential \
-                            typedef"
-                        );
+                    let x = cur.typedef_type().expect("Not valid Type?");
+                    let y = Item::from_ty_or_ref(x, cur, None, ctx);
+                    if y == id {
                         TypeKind::Opaque
                     } else {
                         if let Some(ref mut name) = name {
-                            if inner.kind() == CXType_Pointer && !ctx.opts().c_naming {
-                                let pointee = inner.pointee_type().unwrap();
-                                if pointee.kind() == CXType_Elaborated && pointee.declaration().spelling() == *name {
+                            if x.kind() == CXType_Pointer && !ctx.opts().c_naming {
+                                let x = x.pointee_type().unwrap();
+                                if x.kind() == CXType_Elaborated && x.declaration().spelling() == *name {
                                     *name += "_ptr";
                                 }
                             }
                         }
-                        TypeKind::Alias(inner_id)
+                        TypeKind::Alias(y)
                     }
                 },
                 CXType_Enum => {
-                    let enum_ = Enum::from_ty(ty, ctx).expect("Not an enum?");
-                    if !is_anonymous {
-                        let pretty_name = ty.spelling();
-                        if clang::is_valid_identifier(&pretty_name) {
-                            name = Some(pretty_name);
+                    let y = Enum::from_ty(ty, ctx).expect("Not an enum?");
+                    if !is_anon {
+                        let x = ty.spelling();
+                        if clang::is_valid_identifier(&x) {
+                            name = Some(x);
                         }
                     }
-                    TypeKind::Enum(enum_)
+                    TypeKind::Enum(y)
                 },
                 CXType_Record => {
-                    let complex =
-                        CompInfo::from_ty(potential_id, ty, Some(location), ctx).expect("Not a complex type?");
-                    if !is_anonymous {
-                        let pretty_name = ty.spelling();
-                        if clang::is_valid_identifier(&pretty_name) {
-                            name = Some(pretty_name);
+                    let y = CompInfo::from_ty(id, ty, Some(cur), ctx).expect("Not a complex type?");
+                    if !is_anon {
+                        let x = ty.spelling();
+                        if clang::is_valid_identifier(&x) {
+                            name = Some(x);
                         }
                     }
-                    TypeKind::Comp(complex)
+                    TypeKind::Comp(y)
                 },
                 CXType_Vector => {
-                    let inner = Item::from_ty(ty.elem_type().as_ref().unwrap(), location, None, ctx)?;
-                    TypeKind::Vector(inner, ty.num_elements().unwrap())
+                    let y = Item::from_ty(ty.elem_type().as_ref().unwrap(), cur, None, ctx)?;
+                    TypeKind::Vector(y, ty.num_elements().unwrap())
                 },
                 CXType_ConstantArray => {
-                    let inner = Item::from_ty(ty.elem_type().as_ref().unwrap(), location, None, ctx)
+                    let y = Item::from_ty(ty.elem_type().as_ref().unwrap(), cur, None, ctx)
                         .expect("Not able to resolve array element?");
-                    TypeKind::Array(inner, ty.num_elements().unwrap())
+                    TypeKind::Array(y, ty.num_elements().unwrap())
                 },
                 CXType_Elaborated => {
-                    return Self::from_clang_ty(potential_id, &ty.named(), location, parent_id, ctx);
+                    return Self::from_clang_ty(id, &ty.named(), cur, parent, ctx);
                 },
                 CXType_Dependent => {
                     return Err(parse::Error::Continue);
                 },
                 _ => {
-                    warn!(
-                        "unsupported type: kind = {:?}; ty = {:?}; at {:?}",
-                        ty.kind(),
-                        ty,
-                        location
-                    );
+                    warn!("unsupported type: kind = {:?}; ty = {:?}; at {:?}", ty.kind(), ty, cur);
                     return Err(parse::Error::Continue);
                 },
             }
         };
-        name = name.filter(|n| !n.is_empty());
-        let is_const = ty.is_const()
-            || (ty.kind() == CXType_ConstantArray && ty.elem_type().map_or(false, |element| element.is_const()));
-        let ty = Type::new(name, layout, kind, is_const);
-        Ok(parse::Resolved::New(ty, Some(cur.canonical())))
+        name = name.filter(|x| !x.is_empty());
+        let is_const =
+            ty.is_const() || (ty.kind() == CXType_ConstantArray && ty.elem_type().map_or(false, |x| x.is_const()));
+        let y = Type::new(name, layout, kind, is_const);
+        Ok(parse::Resolved::New(y, Some(cur.canonical())))
     }
 }
 impl IsOpaque for Type {
@@ -514,14 +562,14 @@ impl DotAttrs for Type {
     where
         W: io::Write,
     {
-        if let Some(ref layout) = self.layout {
+        if let Some(ref x) = self.layout {
             writeln!(
                 y,
                 "<tr><td>size</td><td>{}</td></tr>
                            <tr><td>align</td><td>{}</td></tr>",
-                layout.size, layout.align
+                x.size, x.align
             )?;
-            if layout.packed {
+            if x.packed {
                 writeln!(y, "<tr><td>packed</td><td>true</td></tr>")?;
             }
         }
@@ -552,17 +600,17 @@ impl Trace for Type {
             return;
         }
         match *self.kind() {
-            TypeKind::Pointer(inner)
-            | TypeKind::Reference(inner)
-            | TypeKind::Array(inner, _)
-            | TypeKind::Vector(inner, _)
-            | TypeKind::BlockPointer(inner)
-            | TypeKind::Alias(inner)
-            | TypeKind::ResolvedTypeRef(inner) => {
-                tracer.visit_kind(inner.into(), EdgeKind::TypeRef);
+            TypeKind::Pointer(x)
+            | TypeKind::Reference(x)
+            | TypeKind::Array(x, _)
+            | TypeKind::Vector(x, _)
+            | TypeKind::BlockPtr(x)
+            | TypeKind::Alias(x)
+            | TypeKind::ResolvedTypeRef(x) => {
+                tracer.visit_kind(x.into(), EdgeKind::TypeRef);
             },
-            TypeKind::TemplAlias(inner, ref ps) => {
-                tracer.visit_kind(inner.into(), EdgeKind::TypeRef);
+            TypeKind::TemplAlias(x, ref ps) => {
+                tracer.visit_kind(x.into(), EdgeKind::TypeRef);
                 for p in ps {
                     tracer.visit_kind(p.into(), EdgeKind::TemplParamDef);
                 }
@@ -577,8 +625,8 @@ impl Trace for Type {
                     tracer.visit(x.into());
                 }
             },
-            TypeKind::UnresolvedTypeRef(_, _, Some(id)) => {
-                tracer.visit(id);
+            TypeKind::UnresolvedTypeRef(_, _, Some(x)) => {
+                tracer.visit(x);
             },
             TypeKind::Opaque
             | TypeKind::UnresolvedTypeRef(_, _, None)
@@ -592,145 +640,39 @@ impl Trace for Type {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum FloatKind {
-    Float,
-    Double,
-    LongDouble,
-    Float128,
-}
-
-#[derive(Debug)]
-pub enum TypeKind {
-    Void,
-    NullPtr,
-    Comp(CompInfo),
-    Opaque,
-    Int(IntKind),
-    Float(FloatKind),
-    Complex(FloatKind),
-    Alias(TypeId),
-    TemplAlias(TypeId, Vec<TypeId>),
-    Vector(TypeId, usize),
-    Array(TypeId, usize),
-    Function(FnSig),
-    Enum(Enum),
-    Pointer(TypeId),
-    BlockPointer(TypeId),
-    Reference(TypeId),
-    TemplInstantiation(TemplInstantiation),
-    UnresolvedTypeRef(clang::Type, clang::Cursor, /* parent_id */ Option<ItemId>),
-    ResolvedTypeRef(TypeId),
-    TypeParam,
-}
-impl TypeKind {
-    fn kind_name(&self) -> &'static str {
-        match *self {
-            TypeKind::Void => "Void",
-            TypeKind::NullPtr => "NullPtr",
-            TypeKind::Comp(..) => "Comp",
-            TypeKind::Opaque => "Opaque",
-            TypeKind::Int(..) => "Int",
-            TypeKind::Float(..) => "Float",
-            TypeKind::Complex(..) => "Complex",
-            TypeKind::Alias(..) => "Alias",
-            TypeKind::TemplAlias(..) => "TemplateAlias",
-            TypeKind::Array(..) => "Array",
-            TypeKind::Vector(..) => "Vector",
-            TypeKind::Function(..) => "Function",
-            TypeKind::Enum(..) => "Enum",
-            TypeKind::Pointer(..) => "Pointer",
-            TypeKind::BlockPointer(..) => "BlockPointer",
-            TypeKind::Reference(..) => "Reference",
-            TypeKind::TemplInstantiation(..) => "TemplateInstantiation",
-            TypeKind::UnresolvedTypeRef(..) => "UnresolvedTypeRef",
-            TypeKind::ResolvedTypeRef(..) => "ResolvedTypeRef",
-            TypeKind::TypeParam => "TypeParam",
-        }
-    }
-}
-impl DotAttrs for TypeKind {
-    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        writeln!(y, "<tr><td>type kind</td><td>{}</td></tr>", self.kind_name())?;
-        if let TypeKind::Comp(ref x) = *self {
-            x.dot_attrs(ctx, y)?;
-        }
-        Ok(())
-    }
-}
-impl TemplParams for TypeKind {
-    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
-        match *self {
-            TypeKind::ResolvedTypeRef(id) => ctx.resolve_type(id).self_templ_params(ctx),
-            TypeKind::Comp(ref comp) => comp.self_templ_params(ctx),
-            TypeKind::TemplAlias(_, ref args) => args.clone(),
-            TypeKind::Opaque
-            | TypeKind::TemplInstantiation(..)
-            | TypeKind::Void
-            | TypeKind::NullPtr
-            | TypeKind::Int(_)
-            | TypeKind::Float(_)
-            | TypeKind::Complex(_)
-            | TypeKind::Array(..)
-            | TypeKind::Vector(..)
-            | TypeKind::Function(_)
-            | TypeKind::Enum(_)
-            | TypeKind::Pointer(_)
-            | TypeKind::BlockPointer(_)
-            | TypeKind::Reference(_)
-            | TypeKind::UnresolvedTypeRef(..)
-            | TypeKind::TypeParam
-            | TypeKind::Alias(_) => vec![],
-        }
-    }
-}
-impl AsTemplParam for TypeKind {
-    type Extra = Item;
-    fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
-        match *self {
-            TypeKind::TypeParam => Some(it.id().expect_type_id(ctx)),
-            TypeKind::ResolvedTypeRef(id) => id.as_templ_param(ctx, &()),
-            _ => None,
-        }
-    }
-}
-
 #[test]
 fn is_invalid_type_param_valid() {
-    let ty = Type::new(Some("foo".into()), None, TypeKind::TypeParam, false);
-    assert!(!ty.is_invalid_type_param())
+    let y = Type::new(Some("foo".into()), None, TypeKind::TypeParam, false);
+    assert!(!y.is_invalid_type_param())
 }
 #[test]
-fn is_invalid_type_param_valid_underscore_and_numbers() {
-    let ty = Type::new(Some("_foo123456789_".into()), None, TypeKind::TypeParam, false);
-    assert!(!ty.is_invalid_type_param())
+fn is_invalid_type_param_valid_underscore() {
+    let y = Type::new(Some("_foo123456789_".into()), None, TypeKind::TypeParam, false);
+    assert!(!y.is_invalid_type_param())
 }
 #[test]
-fn is_invalid_type_param_valid_unnamed_kind() {
-    let ty = Type::new(Some("foo".into()), None, TypeKind::Void, false);
-    assert!(!ty.is_invalid_type_param())
+fn is_invalid_type_param_valid_unnamed() {
+    let y = Type::new(Some("foo".into()), None, TypeKind::Void, false);
+    assert!(!y.is_invalid_type_param())
 }
 #[test]
 fn is_invalid_type_param_invalid_start() {
-    let ty = Type::new(Some("1foo".into()), None, TypeKind::TypeParam, false);
-    assert!(ty.is_invalid_type_param())
+    let y = Type::new(Some("1foo".into()), None, TypeKind::TypeParam, false);
+    assert!(y.is_invalid_type_param())
 }
 #[test]
 fn is_invalid_type_param_invalid_remaing() {
-    let ty = Type::new(Some("foo-".into()), None, TypeKind::TypeParam, false);
-    assert!(ty.is_invalid_type_param())
+    let y = Type::new(Some("foo-".into()), None, TypeKind::TypeParam, false);
+    assert!(y.is_invalid_type_param())
 }
 #[test]
 #[should_panic]
 fn is_invalid_type_param_unnamed() {
-    let ty = Type::new(None, None, TypeKind::TypeParam, false);
-    assert!(ty.is_invalid_type_param())
+    let y = Type::new(None, None, TypeKind::TypeParam, false);
+    assert!(y.is_invalid_type_param())
 }
 #[test]
 fn is_invalid_type_param_empty_name() {
-    let ty = Type::new(Some("".into()), None, TypeKind::TypeParam, false);
-    assert!(ty.is_invalid_type_param())
+    let y = Type::new(Some("".into()), None, TypeKind::TypeParam, false);
+    assert!(y.is_invalid_type_param())
 }

@@ -82,7 +82,7 @@ impl<'a> Structure<'a> {
         field_offset: Option<usize>,
     ) -> Option<proc_macro2::TokenStream> {
         let mut field_layout = field_ty.layout(self.ctx)?;
-        if let TypeKind::Array(inner, len) = *field_ty.canonical_type(self.ctx).kind() {
+        if let TypeKind::Array(inner, len) = *field_ty.canon_type(self.ctx).kind() {
             if let Some(layout) = self.ctx.resolve_type(inner).layout(self.ctx) {
                 if layout.align > MAX_GUARANTEED_ALIGN {
                     field_layout.size = align_to(layout.size, layout.align) * len;

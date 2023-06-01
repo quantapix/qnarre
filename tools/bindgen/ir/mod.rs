@@ -488,7 +488,7 @@ pub mod enum_ty {
                 .enum_type()
                 .and_then(|et| Item::from_ty(&et, declaration, None, ctx).ok());
             let mut variants = vec![];
-            let variant_ty = repr.and_then(|r| ctx.resolve_type(r).safe_canonical_type(ctx));
+            let variant_ty = repr.and_then(|r| ctx.resolve_type(r).safe_canon_type(ctx));
             let is_bool = variant_ty.map_or(false, Type::is_bool);
             let is_signed = variant_ty.map_or(true, |ty| match *ty.kind() {
                 TypeKind::Int(ref int_kind) => int_kind.is_signed(),
