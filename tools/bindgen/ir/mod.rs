@@ -333,12 +333,12 @@ pub mod comment {
     }
 }
 pub mod comp;
-pub mod context;
-pub use context::Context;
-pub use context::FnId;
-pub use context::ItemId;
-pub use context::TypeId;
-pub use context::VarId;
+pub mod ctx;
+pub use ctx::Context;
+pub use ctx::FnId;
+pub use ctx::ItemId;
+pub use ctx::TypeId;
+pub use ctx::VarId;
 pub mod derive {
     use super::item::Item;
     use super::{Context, ItemId};

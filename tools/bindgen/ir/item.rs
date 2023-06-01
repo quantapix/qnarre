@@ -2,7 +2,7 @@ use super::super::codegen::{utils::variation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
 use super::analysis::{HasVtable, Sizedness, *};
 use super::annotations::Annotations;
 use super::comp::{CompKind, MethodKind};
-use super::context::PartialType;
+use super::ctx::PartialType;
 use super::dot::DotAttrs;
 use super::func::{FnKind, Func};
 use super::layout::Opaque;
