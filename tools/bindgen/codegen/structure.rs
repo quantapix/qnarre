@@ -1,5 +1,5 @@
 use super::utils;
-use crate::ir::comp::CompInfo;
+use crate::ir::comp::Comp;
 use crate::ir::layout::Layout;
 use crate::ir::typ::{Type, TypeKind};
 use crate::ir::Context;
@@ -12,7 +12,7 @@ const MAX_GUARANTEED_ALIGN: usize = 8;
 pub struct Structure<'a> {
     name: &'a str,
     ctx: &'a Context,
-    comp: &'a CompInfo,
+    comp: &'a Comp,
     is_packed: bool,
     known_type_layout: Option<Layout>,
     is_union: bool,
@@ -24,7 +24,7 @@ pub struct Structure<'a> {
     last_field_was_bitfield: bool,
 }
 impl<'a> Structure<'a> {
-    pub fn new(ctx: &'a Context, comp: &'a CompInfo, ty: &'a Type, name: &'a str) -> Self {
+    pub fn new(ctx: &'a Context, comp: &'a Comp, ty: &'a Type, name: &'a str) -> Self {
         let known_type_layout = ty.layout(ctx);
         let is_packed = comp.is_packed(ctx, known_type_layout.as_ref());
         let (is_union, can_copy_union_fields) = comp.is_rust_union(ctx, known_type_layout.as_ref(), name);

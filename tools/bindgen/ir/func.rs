@@ -1,4 +1,4 @@
-use super::comp::MethodKind;
+use super::comp::MethKind;
 use super::dot::DotAttrs;
 use super::item::Item;
 use super::typ::TypeKind;
@@ -14,29 +14,29 @@ use std::str::FromStr;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FnKind {
     Func,
-    Method(MethodKind),
+    Method(MethKind),
 }
 impl FnKind {
     pub fn from_cursor(cur: &clang::Cursor) -> Option<FnKind> {
         Some(match cur.kind() {
             clang_lib::CXCursor_FunctionDecl => FnKind::Func,
-            clang_lib::CXCursor_Constructor => FnKind::Method(MethodKind::Constr),
+            clang_lib::CXCursor_Constructor => FnKind::Method(MethKind::Constr),
             clang_lib::CXCursor_Destructor => FnKind::Method(if cur.method_is_virt() {
-                MethodKind::VirtDestr {
+                MethKind::VirtDestr {
                     pure: cur.method_is_pure_virt(),
                 }
             } else {
-                MethodKind::Destr
+                MethKind::Destr
             }),
             clang_lib::CXCursor_CXXMethod => {
                 if cur.method_is_virt() {
-                    FnKind::Method(MethodKind::Virt {
+                    FnKind::Method(MethKind::Virt {
                         pure: cur.method_is_pure_virt(),
                     })
                 } else if cur.method_is_static() {
-                    FnKind::Method(MethodKind::Static)
+                    FnKind::Method(MethKind::Static)
                 } else {
-                    FnKind::Method(MethodKind::Normal)
+                    FnKind::Method(MethKind::Normal)
                 }
             },
             _ => return None,

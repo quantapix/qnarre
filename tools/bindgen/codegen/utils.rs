@@ -1,6 +1,6 @@
 use super::serial::CSerialize;
 use super::{error, GenError, GenResult, ToRustOrOpaque};
-use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
+use crate::ir::comp::{Comp, CompKind, Field, FieldMeths};
 use crate::ir::func::{Abi, ClangAbi, FnSig};
 use crate::ir::item::{CanonPath, IsOpaque, Item};
 use crate::ir::layout::Layout;
@@ -763,7 +763,7 @@ pub mod variation {
 
 pub fn gen_partialeq_impl(
     ctx: &Context,
-    comp: &CompInfo,
+    comp: &Comp,
     it: &Item,
     ty: &proc_macro2::TokenStream,
 ) -> Option<proc_macro2::TokenStream> {

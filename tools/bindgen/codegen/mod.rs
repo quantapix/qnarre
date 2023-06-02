@@ -3,7 +3,7 @@ use super::Opts;
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
 use crate::ir::annos::{Annotations, FieldAccessorKind, FieldVisibilityKind};
-use crate::ir::comp::{CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
+use crate::ir::comp::{Comp, CompKind, Data, Field, FieldMeths, MethKind, Method};
 use crate::ir::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
     CanDerivePartialOrd, Resolved,
@@ -124,12 +124,12 @@ trait Generator {
     type Return;
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, x: &Self::Extra) -> Self::Return;
 }
-impl Generator for CompInfo {
+impl Generator for Comp {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
         debug_assert!(it.is_enabled_for_gen(ctx));
-        if self.has_non_type_templ_params() {
+        if self.has_non_type_templ_ps() {
             return;
         }
         let ty = it.expect_type();
@@ -159,7 +159,7 @@ impl Generator for CompInfo {
                 }
                 let it = ctx.resolve_item(x.ty);
                 let mut y = it.to_rust_or_opaque(ctx, &());
-                y.append_implicit_templ_params(ctx, it);
+                y.append_implicit_templ_ps(ctx, it);
                 let field = ctx.rust_ident(&x.field_name);
                 structure.saw_base(it.expect_type());
                 let vis = match (x.is_public(), ctx.opts().respect_cxx_access_specs) {
@@ -252,7 +252,7 @@ impl Generator for CompInfo {
             });
         }
         let mut generic_params = vec![];
-        for (idx, ty) in it.used_templ_params(ctx).iter().enumerate() {
+        for (idx, ty) in it.used_templ_ps(ctx).iter().enumerate() {
             let x = ctx.resolve_type(*ty);
             let x = x.name().unwrap();
             let ident = ctx.rust_ident(x);
@@ -311,7 +311,7 @@ impl Generator for CompInfo {
                 && !ctx.no_default_by_name(it)
                 && !it.annos().disallow_default();
         }
-        let all_templ_params = it.all_templ_params(ctx);
+        let all_templ_ps = it.all_templ_ps(ctx);
         if traits.contains(DerivableTraits::COPY) && !traits.contains(DerivableTraits::CLONE) {
             needs_clone = true;
         }
@@ -364,7 +364,7 @@ impl Generator for CompInfo {
         if self.found_unknown_attr() {
             warn!("Type {} has an unknown attribute that may affect layout", canon_ident);
         }
-        if all_templ_params.is_empty() {
+        if all_templ_ps.is_empty() {
             if !is_opaque {
                 for x in self.inner_vars() {
                     ctx.resolve_item(*x).codegen(ctx, y, &());
@@ -440,13 +440,13 @@ impl Generator for CompInfo {
             let mut method_names = Default::default();
             if ctx.opts().config.methods() {
                 for x in self.methods() {
-                    assert!(x.kind() != MethodKind::Constr);
+                    assert!(x.kind() != MethKind::Constr);
                     x.codegen(ctx, &mut methods, &mut method_names, y, self);
                 }
             }
             if ctx.opts().config.constrs() {
                 for x in self.constrs() {
-                    Method::new(MethodKind::Constr, *x, /* const */ false).codegen(
+                    Method::new(MethKind::Constr, *x, /* const */ false).codegen(
                         ctx,
                         &mut methods,
                         &mut method_names,
@@ -758,7 +758,7 @@ impl Generator for Func {
             FnKind::Func => ctx.opts().dynamic_library_name.is_some(),
             _ => false,
         };
-        if !it.all_templ_params(ctx).is_empty() {
+        if !it.all_templ_ps(ctx).is_empty() {
             return None;
         }
         let name = self.name();
@@ -928,7 +928,7 @@ impl Generator for Var {
         }
         y.saw_var(&name);
         let ident = ctx.rust_ident(&name);
-        if !it.all_templ_params(ctx).is_empty() {
+        if !it.all_templ_ps(ctx).is_empty() {
             return;
         }
         let mut attrs = vec![];
@@ -1037,7 +1037,7 @@ impl Generator for TemplInst {
         if !ctx.opts().layout_tests || self.is_opaque(ctx, it) {
             return;
         }
-        if ctx.uses_any_templ_params(it.id()) {
+        if ctx.uses_any_templ_ps(it.id()) {
             return;
         }
         let layout = it.kind().expect_type().layout(ctx);
@@ -1157,7 +1157,7 @@ impl Generator for Type {
                     }
                     return;
                 }
-                let mut outer_params = it.used_templ_params(ctx);
+                let mut outer_params = it.used_templ_ps(ctx);
                 let is_opaque = it.is_opaque(ctx, &());
                 let ty = if is_opaque {
                     outer_params = vec![];
@@ -1166,7 +1166,7 @@ impl Generator for Type {
                     let mut ty = inner_item
                         .try_to_rust_or_opaque(ctx, &())
                         .unwrap_or_else(|_| self.to_opaque(ctx, it));
-                    ty.append_implicit_templ_params(ctx, inner_item);
+                    ty.append_implicit_templ_ps(ctx, inner_item);
                     ty
                 };
                 {
@@ -1318,15 +1318,15 @@ impl Method {
         methods: &mut Vec<proc_macro2::TokenStream>,
         method_names: &mut HashSet<String>,
         y: &mut GenResult<'_>,
-        _parent: &CompInfo,
+        _parent: &Comp,
     ) {
         assert!({
             let cc = &ctx.opts().config;
             match self.kind() {
-                MethodKind::Constr => cc.constrs(),
-                MethodKind::Destr => cc.destrs(),
-                MethodKind::VirtDestr { .. } => cc.destrs(),
-                MethodKind::Static | MethodKind::Normal | MethodKind::Virt { .. } => cc.methods(),
+                MethKind::Constr => cc.constrs(),
+                MethKind::Destr => cc.destrs(),
+                MethKind::VirtDestr { .. } => cc.destrs(),
+                MethKind::Static | MethKind::Normal | MethKind::Virt { .. } => cc.methods(),
             }
         });
         if self.is_virt() {
@@ -1344,8 +1344,8 @@ impl Method {
         };
         let signature_item = ctx.resolve_item(function.sig());
         let mut name = match self.kind() {
-            MethodKind::Constr => "new".into(),
-            MethodKind::Destr => "destruct".into(),
+            MethKind::Constr => "new".into(),
+            MethKind::Destr => "destruct".into(),
             _ => function.name().to_owned(),
         };
         let signature = match *signature_item.expect_type().kind() {
@@ -1440,10 +1440,10 @@ impl Method {
 struct Vtable<'a> {
     id: ItemId,
     #[allow(dead_code)]
-    info: &'a CompInfo,
+    info: &'a Comp,
 }
 impl<'a> Vtable<'a> {
-    fn new(id: ItemId, info: &'a CompInfo) -> Self {
+    fn new(id: ItemId, info: &'a Comp) -> Self {
         Vtable { id, info }
     }
 }
@@ -1514,7 +1514,7 @@ trait FieldGen<'a> {
         ctx: &Context,
         visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
-        parent: &CompInfo,
+        parent: &Comp,
         y: &mut GenResult,
         struct_layout: &mut Structure,
         fields: &mut F,
@@ -1531,7 +1531,7 @@ impl<'a> FieldGen<'a> for Field {
         ctx: &Context,
         visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
-        parent: &CompInfo,
+        parent: &Comp,
         y: &mut GenResult,
         struct_layout: &mut Structure,
         fields: &mut F,
@@ -1558,14 +1558,14 @@ impl<'a> FieldGen<'a> for Field {
         }
     }
 }
-impl<'a> FieldGen<'a> for FieldData {
+impl<'a> FieldGen<'a> for Data {
     type Extra = ();
     fn codegen<F, M>(
         &self,
         ctx: &Context,
         parent_visibility_kind: FieldVisibilityKind,
         accessor_kind: FieldAccessorKind,
-        parent: &CompInfo,
+        parent: &Comp,
         y: &mut GenResult,
         struct_layout: &mut Structure,
         fields: &mut F,
@@ -1579,7 +1579,7 @@ impl<'a> FieldGen<'a> for FieldData {
         let field_item = self.ty().into_resolver().through_type_refs().resolve(ctx);
         let field_ty = field_item.expect_type();
         let mut ty = self.ty().to_rust_or_opaque(ctx, &());
-        ty.append_implicit_templ_params(ctx, field_item);
+        ty.append_implicit_templ_ps(ctx, field_item);
         let ty = if parent.is_union() {
             wrap_union_field_if_needed(ctx, struct_layout, ty, y)
         } else if let Some(item) = field_ty.is_incomplete_array(ctx) {
@@ -2039,10 +2039,10 @@ impl From<DerivableTraits> for Vec<&'static str> {
 }
 
 trait AppendImplicitTemplParams {
-    fn append_implicit_templ_params(&mut self, ctx: &Context, it: &Item);
+    fn append_implicit_templ_ps(&mut self, ctx: &Context, it: &Item);
 }
 impl AppendImplicitTemplParams for proc_macro2::TokenStream {
-    fn append_implicit_templ_params(&mut self, ctx: &Context, it: &Item) {
+    fn append_implicit_templ_ps(&mut self, ctx: &Context, it: &Item) {
         let it = it.id().into_resolver().through_type_refs().resolve(ctx);
         match *it.expect_type().kind() {
             TypeKind::UnresolvedRef(..) => {
@@ -2067,7 +2067,7 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
             _ => {},
         }
         let ys: Vec<_> = it
-            .used_templ_params(ctx)
+            .used_templ_ps(ctx)
             .iter()
             .map(|x| x.try_to_rust(ctx, &()).expect("templ params must be rust types"))
             .collect();
@@ -2133,7 +2133,7 @@ impl TryToRust for TemplInst {
         let mut ty = quote! {};
         let path = def.namespace_aware_canon_path(ctx);
         ty.append_separated(path.into_iter().map(|x| ctx.rust_ident(x)), quote!(::));
-        let ps = def.self_templ_params(ctx);
+        let ps = def.self_templ_ps(ctx);
         if ps.is_empty() {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
@@ -2145,7 +2145,7 @@ impl TryToRust for TemplInst {
             .map(|(x, _)| {
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = x.try_to_rust(ctx, &())?;
-                ty.append_implicit_templ_params(ctx, x);
+                ty.append_implicit_templ_ps(ctx, x);
                 Ok(ty)
             })
             .collect::<error::Result<Vec<_>>>()?;
@@ -2234,12 +2234,7 @@ impl TryToRust for Type {
                     let y = c_void(ctx);
                     return Ok(y.to_ptr(/* is_const = */ false));
                 }
-                if it.is_opaque(ctx, &())
-                    && it
-                        .used_templ_params(ctx)
-                        .into_iter()
-                        .any(|x| x.is_templ_param(ctx, &()))
-                {
+                if it.is_opaque(ctx, &()) && it.used_templ_ps(ctx).into_iter().any(|x| x.is_templ_param(ctx, &())) {
                     self.try_to_opaque(ctx, it)
                 } else if let Some(ty) = self.name().and_then(|x| utils::type_from_named(ctx, x)) {
                     Ok(ty)
@@ -2248,8 +2243,8 @@ impl TryToRust for Type {
                 }
             },
             TypeKind::Comp(ref x) => {
-                let ps = it.all_templ_params(ctx);
-                if x.has_non_type_templ_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
+                let ps = it.all_templ_ps(ctx);
+                if x.has_non_type_templ_ps() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
                     return self.try_to_opaque(ctx, it);
                 }
                 utils::build_path(it, ctx)
@@ -2259,7 +2254,7 @@ impl TryToRust for Type {
                 let is_const = ctx.resolve_type(x).is_const();
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = x.to_rust_or_opaque(ctx, &());
-                ty.append_implicit_templ_params(ctx, x);
+                ty.append_implicit_templ_ps(ctx, x);
                 if x.expect_type().canon_type(ctx).is_fn() {
                     Ok(ty)
                 } else {
@@ -2459,7 +2454,7 @@ fn root_import(ctx: &Context, it: &Item) -> proc_macro2::TokenStream {
 
 fn derives_of_item(it: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
     let mut ys = DerivableTraits::empty();
-    let ps = it.all_templ_params(ctx);
+    let ps = it.all_templ_ps(ctx);
     if it.can_derive_copy(ctx) && !it.annos().disallow_copy() {
         ys |= DerivableTraits::COPY;
         ys |= DerivableTraits::CLONE;

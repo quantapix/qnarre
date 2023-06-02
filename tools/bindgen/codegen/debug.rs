@@ -1,4 +1,4 @@
-use crate::ir::comp::{CompKind, Field, FieldData, FieldMethods};
+use crate::ir::comp::{CompKind, Data, Field, FieldMeths};
 use crate::ir::item::{CanonName, HasTypeParam, IsOpaque, Item};
 use crate::ir::typ::TypeKind;
 use crate::ir::Context;
@@ -40,7 +40,7 @@ pub trait ImplDebug<'a> {
     type Extra;
     fn impl_debug(&self, ctx: &Context, extra: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)>;
 }
-impl<'a> ImplDebug<'a> for FieldData {
+impl<'a> ImplDebug<'a> for Data {
     type Extra = ();
     fn impl_debug(&self, ctx: &Context, _: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)> {
         if let Some(name) = self.name() {

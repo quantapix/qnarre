@@ -1,7 +1,7 @@
 use super::super::codegen::{utils::variation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
 use super::analysis::{HasVtable, Sizedness, *};
 use super::annos::Annotations;
-use super::comp::{CompKind, MethodKind};
+use super::comp::{CompKind, MethKind};
 use super::ctx::PartialType;
 use super::dot::DotAttrs;
 use super::func::{FnKind, Func};
@@ -632,11 +632,11 @@ impl Item {
             ItemKind::Type(_) => y.typs(),
             ItemKind::Func(ref f) => match f.kind() {
                 FnKind::Func => y.fns(),
-                FnKind::Method(MethodKind::Constr) => y.constrs(),
-                FnKind::Method(MethodKind::Destr) | FnKind::Method(MethodKind::VirtDestr { .. }) => y.destrs(),
-                FnKind::Method(MethodKind::Static)
-                | FnKind::Method(MethodKind::Normal)
-                | FnKind::Method(MethodKind::Virt { .. }) => y.methods(),
+                FnKind::Method(MethKind::Constr) => y.constrs(),
+                FnKind::Method(MethKind::Destr) | FnKind::Method(MethKind::VirtDestr { .. }) => y.destrs(),
+                FnKind::Method(MethKind::Static)
+                | FnKind::Method(MethKind::Normal)
+                | FnKind::Method(MethKind::Virt { .. }) => y.methods(),
             },
         }
     }
@@ -1042,8 +1042,8 @@ impl AsRef<ItemId> for Item {
     }
 }
 impl TemplParams for Item {
-    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
-        self.kind.self_templ_params(ctx)
+    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
+        self.kind.self_templ_ps(ctx)
     }
 }
 impl AsTemplParam for Item {
@@ -1053,9 +1053,9 @@ impl AsTemplParam for Item {
     }
 }
 impl TemplParams for ItemKind {
-    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
-            ItemKind::Type(ref x) => x.self_templ_params(ctx),
+            ItemKind::Type(ref x) => x.self_templ_ps(ctx),
             ItemKind::Func(_) | ItemKind::Mod(_) | ItemKind::Var(_) => {
                 vec![]
             },

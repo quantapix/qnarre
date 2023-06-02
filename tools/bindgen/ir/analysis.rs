@@ -272,7 +272,7 @@ pub mod derive {
                     self.derive.can_derive_vec()
                 },
                 TypeKind::Comp(ref x) => {
-                    assert!(!x.has_non_type_templ_params());
+                    assert!(!x.has_non_type_templ_ps());
                     if !self.derive.can_derive_comp_fwd_decl() && x.is_fwd_decl() {
                         return Resolved::No;
                     }
@@ -284,8 +284,7 @@ pub mod derive {
                     if x.kind() == CompKind::Union {
                         if self.derive.can_derive_union() {
                             if self.ctx.opts().untagged_union
-                                && (!x.self_templ_params(self.ctx).is_empty()
-                                    || !it.all_templ_params(self.ctx).is_empty())
+                                && (!x.self_templ_ps(self.ctx).is_empty() || !it.all_templ_ps(self.ctx).is_empty())
                             {
                                 return Resolved::No;
                             }
@@ -410,7 +409,7 @@ pub use self::derive::as_cannot_derive_set;
 
 pub mod has_destructor {
     use super::{gen_deps, Monotone};
-    use crate::ir::comp::{CompKind, Field, FieldMethods};
+    use crate::ir::comp::{CompKind, Field, FieldMeths};
     use crate::ir::typ::TypeKind;
     use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{HashMap, HashSet};
@@ -518,7 +517,7 @@ pub mod has_destructor {
 pub mod has_float {
     use super::{gen_deps, Monotone};
     use crate::ir::comp::Field;
-    use crate::ir::comp::FieldMethods;
+    use crate::ir::comp::FieldMeths;
     use crate::ir::typ::TypeKind;
     use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{HashMap, HashSet};
@@ -660,7 +659,7 @@ pub mod has_float {
 pub mod has_type_param {
     use super::{gen_deps, Monotone};
     use crate::ir::comp::Field;
-    use crate::ir::comp::FieldMethods;
+    use crate::ir::comp::FieldMeths;
     use crate::ir::typ::TypeKind;
     use crate::ir::{Context, EdgeKind, ItemId};
     use crate::{HashMap, HashSet};
@@ -1203,7 +1202,7 @@ pub mod used_templ_param {
         fn constrain_inst(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInst) {
             let decl = self.ctx.resolve_type(inst.templ_def());
             let args = inst.templ_args();
-            let ps = decl.self_templ_params(self.ctx);
+            let ps = decl.self_templ_ps(self.ctx);
             debug_assert!(id != inst.templ_def());
             let used_by_def = self
                 .ys
@@ -1311,7 +1310,7 @@ pub mod used_templ_param {
                 if let Some(TypeKind::TemplInst(inst)) = k {
                     let decl = ctx.resolve_type(inst.templ_def());
                     let args = inst.templ_args();
-                    let ps = decl.self_templ_params(ctx);
+                    let ps = decl.self_templ_ps(ctx);
                     for (arg, p) in args.iter().zip(ps.iter()) {
                         let arg = arg
                             .into_resolver()

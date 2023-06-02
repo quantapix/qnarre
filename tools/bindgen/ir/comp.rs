@@ -23,7 +23,7 @@ pub enum CompKind {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum MethodKind {
+pub enum MethKind {
     Constr,
     Destr,
     VirtDestr { pure: bool },
@@ -31,13 +31,13 @@ pub enum MethodKind {
     Normal,
     Virt { pure: bool },
 }
-impl MethodKind {
+impl MethKind {
     pub fn is_destr(&self) -> bool {
-        matches!(*self, MethodKind::Destr | MethodKind::VirtDestr { .. })
+        matches!(*self, MethKind::Destr | MethKind::VirtDestr { .. })
     }
     pub fn is_pure_virt(&self) -> bool {
         match *self {
-            MethodKind::Virt { pure } | MethodKind::VirtDestr { pure } => pure,
+            MethKind::Virt { pure } | MethKind::VirtDestr { pure } => pure,
             _ => false,
         }
     }
@@ -45,25 +45,25 @@ impl MethodKind {
 
 #[derive(Debug)]
 pub struct Method {
-    kind: MethodKind,
+    kind: MethKind,
     sig: FnId,
     is_const: bool,
 }
 impl Method {
-    pub fn new(kind: MethodKind, sig: FnId, is_const: bool) -> Self {
+    pub fn new(kind: MethKind, sig: FnId, is_const: bool) -> Self {
         Method { kind, sig, is_const }
     }
-    pub fn kind(&self) -> MethodKind {
+    pub fn kind(&self) -> MethKind {
         self.kind
     }
     pub fn is_constr(&self) -> bool {
-        self.kind == MethodKind::Constr
+        self.kind == MethKind::Constr
     }
     pub fn is_virt(&self) -> bool {
-        matches!(self.kind, MethodKind::Virt { .. } | MethodKind::VirtDestr { .. })
+        matches!(self.kind, MethKind::Virt { .. } | MethKind::VirtDestr { .. })
     }
     pub fn is_static(&self) -> bool {
-        self.kind == MethodKind::Static
+        self.kind == MethKind::Static
     }
     pub fn sig(&self) -> FnId {
         self.sig
@@ -73,7 +73,7 @@ impl Method {
     }
 }
 
-pub trait FieldMethods {
+pub trait FieldMeths {
     fn name(&self) -> Option<&str>;
     fn ty(&self) -> TypeId;
     fn comment(&self) -> Option<&str>;
@@ -85,7 +85,7 @@ pub trait FieldMethods {
 
 #[derive(Debug)]
 pub enum Field {
-    Data(FieldData),
+    Data(Data),
 }
 impl Field {
     pub fn layout(&self, ctx: &Context) -> Option<Layout> {
@@ -205,7 +205,7 @@ impl CompFields {
         let mut anon_field_counter = 0;
         for field in fields.iter_mut() {
             match *field {
-                Field::Data(FieldData { ref mut name, .. }) => {
+                Field::Data(Data { ref mut name, .. }) => {
                     if name.is_some() {
                         continue;
                     }
@@ -244,7 +244,7 @@ impl Trace for CompFields {
 }
 
 #[derive(Clone, Debug)]
-pub struct FieldData {
+pub struct Data {
     name: Option<String>,
     ty: TypeId,
     comment: Option<String>,
@@ -253,7 +253,7 @@ pub struct FieldData {
     public: bool,
     offset: Option<usize>,
 }
-impl FieldMethods for FieldData {
+impl FieldMeths for Data {
     fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
@@ -276,7 +276,7 @@ impl FieldMethods for FieldData {
         self.offset
     }
 }
-impl DotAttrs for FieldData {
+impl DotAttrs for Data {
     fn dot_attrs<W>(&self, _: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -291,7 +291,7 @@ impl DotAttrs for FieldData {
 }
 
 #[derive(Debug)]
-struct RawField(FieldData);
+struct RawField(Data);
 impl RawField {
     fn new(
         name: Option<String>,
@@ -302,7 +302,7 @@ impl RawField {
         public: bool,
         offset: Option<usize>,
     ) -> RawField {
-        RawField(FieldData {
+        RawField(Data {
             name,
             ty,
             comment,
@@ -313,7 +313,7 @@ impl RawField {
         })
     }
 }
-impl FieldMethods for RawField {
+impl FieldMeths for RawField {
     fn name(&self) -> Option<&str> {
         self.0.name()
     }
@@ -369,31 +369,31 @@ impl Base {
 }
 
 #[derive(Debug)]
-pub struct CompInfo {
+pub struct Comp {
     kind: CompKind,
     fields: CompFields,
-    templ_params: Vec<TypeId>,
+    templ_ps: Vec<TypeId>,
     methods: Vec<Method>,
     constrs: Vec<FnId>,
-    destr: Option<(MethodKind, FnId)>,
+    destr: Option<(MethKind, FnId)>,
     base_members: Vec<Base>,
     inner_types: Vec<TypeId>,
     inner_vars: Vec<VarId>,
     has_own_virt_method: bool,
     has_destr: bool,
     has_nonempty_base: bool,
-    has_non_type_templ_params: bool,
+    has_non_type_templ_ps: bool,
     has_unevaluable_bit_field_width: bool,
     packed_attr: bool,
     found_unknown_attr: bool,
     is_fwd_decl: bool,
 }
-impl CompInfo {
+impl Comp {
     pub fn new(kind: CompKind) -> Self {
-        CompInfo {
+        Comp {
             kind,
             fields: CompFields::default(),
-            templ_params: vec![],
+            templ_ps: vec![],
             methods: vec![],
             constrs: vec![],
             destr: None,
@@ -403,7 +403,7 @@ impl CompInfo {
             has_own_virt_method: false,
             has_destr: false,
             has_nonempty_base: false,
-            has_non_type_templ_params: false,
+            has_non_type_templ_ps: false,
             has_unevaluable_bit_field_width: false,
             packed_attr: false,
             found_unknown_attr: false,
@@ -481,8 +481,8 @@ impl CompInfo {
             Field::Data(..) => false,
         })
     }
-    pub fn has_non_type_templ_params(&self) -> bool {
-        self.has_non_type_templ_params
+    pub fn has_non_type_templ_ps(&self) -> bool {
+        self.has_non_type_templ_ps
     }
     pub fn has_own_virt_method(&self) -> bool {
         self.has_own_virt_method
@@ -496,7 +496,7 @@ impl CompInfo {
     pub fn constrs(&self) -> &[FnId] {
         &self.constrs
     }
-    pub fn destr(&self) -> Option<(MethodKind, FnId)> {
+    pub fn destr(&self) -> Option<(MethKind, FnId)> {
         self.destr
     }
     pub fn kind(&self) -> CompKind {
@@ -526,7 +526,7 @@ impl CompInfo {
         }
         let kind = kind?;
         debug!("CompInfo::from_ty({:?}, {:?})", kind, cursor);
-        let mut ci = CompInfo::new(kind);
+        let mut ci = Comp::new(kind);
         ci.is_fwd_decl = cur.map_or(true, |x| match x.kind() {
             CXCursor_ParmDecl => true,
             CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !x.is_definition(),
@@ -621,7 +621,7 @@ impl CompInfo {
                         "Item::type_param should't fail when pointing \
                          at a TemplateTypeParameter",
                     );
-                    ci.templ_params.push(param);
+                    ci.templ_ps.push(param);
                 },
                 CXCursor_CXXBaseSpecifier => {
                     let is_virt_base = cur2.is_virt_base();
@@ -645,7 +645,7 @@ impl CompInfo {
                     debug_assert!(!(is_static && is_virt), "How?");
                     ci.has_destr |= cur2.kind() == CXCursor_Destructor;
                     ci.has_own_virt_method |= is_virt;
-                    if !ci.templ_params.is_empty() {
+                    if !ci.templ_ps.is_empty() {
                         return CXChildVisit_Continue;
                     }
                     let signature = match Item::parse(cur2, Some(potential_id), ctx) {
@@ -659,24 +659,24 @@ impl CompInfo {
                         },
                         CXCursor_Destructor => {
                             let kind = if is_virt {
-                                MethodKind::VirtDestr {
+                                MethKind::VirtDestr {
                                     pure: cur2.method_is_pure_virt(),
                                 }
                             } else {
-                                MethodKind::Destr
+                                MethKind::Destr
                             };
                             ci.destr = Some((kind, signature));
                         },
                         CXCursor_CXXMethod => {
                             let is_const = cur2.method_is_const();
                             let method_kind = if is_static {
-                                MethodKind::Static
+                                MethKind::Static
                             } else if is_virt {
-                                MethodKind::Virt {
+                                MethKind::Virt {
                                     pure: cur2.method_is_pure_virt(),
                                 }
                             } else {
-                                MethodKind::Normal
+                                MethKind::Normal
                             };
                             let method = Method::new(method_kind, signature, is_const);
                             ci.methods.push(method);
@@ -685,7 +685,7 @@ impl CompInfo {
                     }
                 },
                 CXCursor_NonTypeTemplateParameter => {
-                    ci.has_non_type_templ_params = true;
+                    ci.has_non_type_templ_ps = true;
                 },
                 CXCursor_VarDecl => {
                     let linkage = cur2.linkage();
@@ -806,7 +806,7 @@ impl CompInfo {
         (true, all_can_copy)
     }
 }
-impl DotAttrs for CompInfo {
+impl DotAttrs for Comp {
     fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -821,8 +821,8 @@ impl DotAttrs for CompInfo {
         if self.has_nonempty_base {
             writeln!(y, "<tr><td>has_nonempty_base</td><td>true</td></tr>")?;
         }
-        if self.has_non_type_templ_params {
-            writeln!(y, "<tr><td>has_non_type_templ_params</td><td>true</td></tr>")?;
+        if self.has_non_type_templ_ps {
+            writeln!(y, "<tr><td>has_non_type_templ_ps</td><td>true</td></tr>")?;
         }
         if self.packed_attr {
             writeln!(y, "<tr><td>packed_attr</td><td>true</td></tr>")?;
@@ -840,10 +840,10 @@ impl DotAttrs for CompInfo {
         Ok(())
     }
 }
-impl IsOpaque for CompInfo {
+impl IsOpaque for Comp {
     type Extra = Option<Layout>;
     fn is_opaque(&self, ctx: &Context, layout: &Option<Layout>) -> bool {
-        if self.has_non_type_templ_params || self.has_unevaluable_bit_field_width {
+        if self.has_non_type_templ_ps || self.has_unevaluable_bit_field_width {
             return true;
         }
         if let CompFields::Error = self.fields {
@@ -857,18 +857,18 @@ impl IsOpaque for CompInfo {
         false
     }
 }
-impl TemplParams for CompInfo {
-    fn self_templ_params(&self, _ctx: &Context) -> Vec<TypeId> {
-        self.templ_params.clone()
+impl TemplParams for Comp {
+    fn self_templ_ps(&self, _ctx: &Context) -> Vec<TypeId> {
+        self.templ_ps.clone()
     }
 }
-impl Trace for CompInfo {
+impl Trace for Comp {
     type Extra = Item;
     fn trace<T>(&self, ctx: &Context, tracer: &mut T, it: &Item)
     where
         T: Tracer,
     {
-        for p in it.all_templ_params(ctx) {
+        for p in it.all_templ_ps(ctx) {
             tracer.visit_kind(p.into(), EdgeKind::TemplParamDef);
         }
         for ty in self.inner_types() {
@@ -904,30 +904,27 @@ fn raw_fields_to_fields_and_bitfield_units<I>(
 where
     I: IntoIterator<Item = RawField>,
 {
-    let mut raw_fields = raw_fields.into_iter().fuse().peekable();
+    let mut raws = raw_fields.into_iter().fuse().peekable();
     let mut fields = vec![];
     let mut bitfield_unit_count = 0;
     loop {
         {
-            let non_bitfields = raw_fields
+            let non_bfs = raws
                 .by_ref()
-                .peeking_take_while(|f| f.bitfield_width().is_none())
-                .map(|f| Field::Data(f.0));
-            fields.extend(non_bitfields);
+                .peeking_take_while(|x| x.bitfield_width().is_none())
+                .map(|x| Field::Data(x.0));
+            fields.extend(non_bfs);
         }
-        let mut bitfields = raw_fields
+        let mut bfs = raws
             .by_ref()
-            .peeking_take_while(|f| f.bitfield_width().is_some())
+            .peeking_take_while(|x| x.bitfield_width().is_some())
             .peekable();
-        if bitfields.peek().is_none() {
+        if bfs.peek().is_none() {
             break;
         }
-        bitfields_to_allocation_units(ctx, &mut bitfield_unit_count, &mut fields, bitfields, packed)?;
+        bitfields_to_allocation_units(ctx, &mut bitfield_unit_count, &mut fields, bfs, packed)?;
     }
-    assert!(
-        raw_fields.next().is_none(),
-        "The above loop should consume all items in `raw_fields`"
-    );
+    assert!(raws.next().is_none());
     Ok((fields, bitfield_unit_count != 0))
 }
 
@@ -935,7 +932,7 @@ fn bitfields_to_allocation_units<E, I>(
     ctx: &Context,
     bitfield_unit_count: &mut usize,
     fields: &mut E,
-    raw_bitfields: I,
+    raw_bfs: I,
     packed: bool,
 ) -> Result<(), ()>
 where
@@ -973,7 +970,7 @@ where
     let mut unit_align = 0;
     let mut bitfields_in_unit = vec![];
     const is_ms_struct: bool = false;
-    for bitfield in raw_bitfields {
+    for bitfield in raw_bfs {
         let bitfield_width = bitfield.bitfield_width().unwrap() as usize;
         let bitfield_layout = ctx.resolve_type(bitfield.ty()).layout(ctx).ok_or(())?;
         let bitfield_size = bitfield_layout.size;

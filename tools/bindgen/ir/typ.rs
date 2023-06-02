@@ -1,4 +1,4 @@
-use super::comp::CompInfo;
+use super::comp::Comp;
 use super::dot::DotAttrs;
 use super::enum_ty::Enum;
 use super::func::FnSig;
@@ -25,7 +25,7 @@ pub enum TypeKind {
     Alias(TypeId),
     Array(TypeId, usize),
     BlockPtr(TypeId),
-    Comp(CompInfo),
+    Comp(Comp),
     Complex(FloatKind),
     Enum(Enum),
     Float(FloatKind),
@@ -82,10 +82,10 @@ impl DotAttrs for TypeKind {
     }
 }
 impl TemplParams for TypeKind {
-    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
-            TypeKind::ResolvedRef(x) => ctx.resolve_type(x).self_templ_params(ctx),
-            TypeKind::Comp(ref x) => x.self_templ_params(ctx),
+            TypeKind::ResolvedRef(x) => ctx.resolve_type(x).self_templ_ps(ctx),
+            TypeKind::Comp(ref x) => x.self_templ_ps(ctx),
             TypeKind::TemplAlias(_, ref x) => x.clone(),
             TypeKind::Opaque
             | TypeKind::TemplInst(..)
@@ -126,7 +126,7 @@ pub struct Type {
     is_const: bool,
 }
 impl Type {
-    pub fn as_comp_mut(&mut self) -> Option<&mut CompInfo> {
+    pub fn as_comp_mut(&mut self) -> Option<&mut Comp> {
         match self.kind {
             TypeKind::Comp(ref mut x) => Some(x),
             _ => None,
@@ -362,7 +362,7 @@ impl Type {
                         let x = FnSig::from_ty(ty, &cur, ctx)?;
                         TypeKind::Func(x)
                     } else if ty.is_fully_instantiated_templ() {
-                        let x = CompInfo::from_ty(id, ty, Some(cur), ctx).expect("C'mon");
+                        let x = Comp::from_ty(id, ty, Some(cur), ctx).expect("C'mon");
                         TypeKind::Comp(x)
                     } else {
                         match cur.kind() {
@@ -374,7 +374,7 @@ impl Type {
                                 } else {
                                     name = Some(cur.spelling());
                                 }
-                                let x = CompInfo::from_ty(id, ty, Some(cur), ctx);
+                                let x = Comp::from_ty(id, ty, Some(cur), ctx);
                                 match x {
                                     Ok(x) => TypeKind::Comp(x),
                                     Err(_) => {
@@ -504,7 +504,7 @@ impl Type {
                     TypeKind::Enum(y)
                 },
                 CXType_Record => {
-                    let y = CompInfo::from_ty(id, ty, Some(cur), ctx).expect("Not a complex type?");
+                    let y = Comp::from_ty(id, ty, Some(cur), ctx).expect("Not a complex type?");
                     if !is_anon {
                         let x = ty.spelling();
                         if clang::is_valid_identifier(&x) {
@@ -576,8 +576,8 @@ impl DotAttrs for Type {
     }
 }
 impl TemplParams for Type {
-    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
-        self.kind.self_templ_params(ctx)
+    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
+        self.kind.self_templ_ps(ctx)
     }
 }
 impl AsTemplParam for Type {
