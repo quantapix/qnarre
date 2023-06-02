@@ -1,28 +1,18 @@
-#![deny(missing_debug_implementations)]
-#![cfg_attr(feature = "nightly", feature(doc_cfg))]
-
 #[macro_use]
 extern crate inkwell_internals;
 
 #[macro_use]
 pub mod support;
-#[deny(missing_docs)]
 pub mod attributes;
-#[deny(missing_docs)]
 pub mod basic_block;
 pub mod builder;
-#[deny(missing_docs)]
-#[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
 pub mod comdat;
-#[deny(missing_docs)]
 pub mod context;
 pub mod data_layout;
-#[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
 pub mod debug_info;
 pub mod execution_engine;
 pub mod intrinsics;
 pub mod memory_buffer;
-#[deny(missing_docs)]
 pub mod module;
 pub mod object_file;
 pub mod passes;
@@ -30,74 +20,14 @@ pub mod targets;
 pub mod types;
 pub mod values;
 
-#[cfg(feature = "llvm10-0")]
-extern crate llvm_lib_100 as llvm_lib;
-#[cfg(feature = "llvm11-0")]
-extern crate llvm_lib_110 as llvm_lib;
-#[cfg(feature = "llvm12-0")]
-extern crate llvm_lib_120 as llvm_lib;
-#[cfg(feature = "llvm13-0")]
-extern crate llvm_lib_130 as llvm_lib;
-#[cfg(feature = "llvm14-0")]
-extern crate llvm_lib_140 as llvm_lib;
-#[cfg(feature = "llvm15-0")]
-extern crate llvm_lib_150 as llvm_lib;
-#[cfg(feature = "llvm16-0")]
-extern crate llvm_lib_160 as llvm_lib;
-#[cfg(feature = "llvm4-0")]
-extern crate llvm_lib_40 as llvm_lib;
-#[cfg(feature = "llvm5-0")]
-extern crate llvm_lib_50 as llvm_lib;
-#[cfg(feature = "llvm6-0")]
-extern crate llvm_lib_60 as llvm_lib;
-#[cfg(feature = "llvm7-0")]
-extern crate llvm_lib_70 as llvm_lib;
-#[cfg(feature = "llvm8-0")]
-extern crate llvm_lib_80 as llvm_lib;
-#[cfg(feature = "llvm9-0")]
-extern crate llvm_lib_90 as llvm_lib;
-
+use llvm_lib::LLVMInlineAsmDialect;
 use llvm_lib::{
     LLVMAtomicOrdering, LLVMAtomicRMWBinOp, LLVMDLLStorageClass, LLVMIntPredicate, LLVMRealPredicate,
     LLVMThreadLocalMode, LLVMVisibility,
 };
 
-#[llvm_versions(7.0..=latest)]
-use llvm_lib::LLVMInlineAsmDialect;
-
 use std::convert::TryFrom;
 
-macro_rules! assert_unique_features {
-    () => {};
-    ($first:tt $(,$rest:tt)*) => {
-        $(
-            #[cfg(all(feature = $first, feature = $rest))]
-            compile_error!(concat!("features \"", $first, "\" and \"", $rest, "\" cannot be used together"));
-        )*
-        assert_unique_features!($($rest),*);
-    }
-}
-
-macro_rules! assert_used_features {
-    ($($all:tt),*) => {
-        #[cfg(not(any($(feature = $all),*)))]
-        compile_error!(concat!("One of the LLVM feature flags must be provided: ", $($all, " "),*));
-    }
-}
-
-macro_rules! assert_unique_used_features {
-    ($($all:tt),*) => {
-        assert_unique_features!($($all),*);
-        assert_used_features!($($all),*);
-    }
-}
-
-assert_unique_used_features! {"llvm4-0", "llvm5-0", "llvm6-0", "llvm7-0", "llvm8-0", "llvm9-0", "llvm10-0", "llvm11-0", "llvm12-0", "llvm13-0", "llvm14-0", "llvm15-0", "llvm16-0"}
-
-///
-///
-///
-///
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct AddressSpace(u32);
 
@@ -266,24 +196,19 @@ pub enum AtomicRMWBinOp {
     #[llvm_variant(LLVMAtomicRMWBinOpUMin)]
     UMin,
 
-    #[llvm_versions(10.0..=latest)]
     #[llvm_variant(LLVMAtomicRMWBinOpFAdd)]
     FAdd,
 
-    #[llvm_versions(10.0..=latest)]
     #[llvm_variant(LLVMAtomicRMWBinOpFSub)]
     FSub,
 
-    #[llvm_versions(15.0..=latest)]
     #[llvm_variant(LLVMAtomicRMWBinOpFMax)]
     FMax,
 
-    #[llvm_versions(15.0..=latest)]
     #[llvm_variant(LLVMAtomicRMWBinOpFMin)]
     FMin,
 }
 
-///
 #[repr(u32)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OptimizationLevel {
@@ -362,7 +287,6 @@ impl Default for DLLStorageClass {
     }
 }
 
-#[llvm_versions(7.0..=latest)]
 #[llvm_enum(LLVMInlineAsmDialect)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum InlineAsmDialect {
