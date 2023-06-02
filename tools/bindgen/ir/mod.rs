@@ -489,19 +489,19 @@ pub mod derive {
         }
     }
     impl Resolved {
-        pub fn join(self, rhs: Self) -> Self {
-            cmp::max(self, rhs)
+        pub fn join(self, x: Self) -> Self {
+            cmp::max(self, x)
         }
     }
     impl ops::BitOr for Resolved {
         type Output = Self;
-        fn bitor(self, rhs: Self) -> Self::Output {
-            self.join(rhs)
+        fn bitor(self, x: Self) -> Self::Output {
+            self.join(x)
         }
     }
     impl ops::BitOrAssign for Resolved {
-        fn bitor_assign(&mut self, rhs: Self) {
-            *self = self.join(rhs)
+        fn bitor_assign(&mut self, x: Self) {
+            *self = self.join(x)
         }
     }
 }
@@ -605,7 +605,7 @@ pub mod enum_ty {
             if ty.kind() != CXType_Enum {
                 return Err(parse::Error::Continue);
             }
-            let declaration = ty.declaration().canonical();
+            let declaration = ty.decl().canonical();
             let repr = declaration
                 .enum_type()
                 .and_then(|x| Item::from_ty(&x, declaration, None, ctx).ok());
@@ -850,7 +850,7 @@ pub mod layout {
             }
         }
         pub fn for_size(ctx: &Context, size: usize) -> Self {
-            Self::for_size_internal(ctx.target_pointer_size(), size)
+            Self::for_size_internal(ctx.target_ptr_size(), size)
         }
         pub fn opaque(&self) -> Opaque {
             Opaque(*self)
@@ -968,7 +968,7 @@ pub mod template {
             Self: AsRef<ItemId>,
         {
             assert!(
-                ctx.in_codegen_phase(),
+                ctx.in_gen_phase(),
                 "template parameter usage is not computed until codegen"
             );
             let id = *self.as_ref();
@@ -1029,28 +1029,26 @@ pub mod template {
         }
         pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInst> {
             use clang_lib::*;
-            let args = ty
-                .templ_args()
-                .map_or(vec![], |x| match ty.canonical_type().templ_args() {
-                    Some(x2) => {
-                        let len = x.len();
-                        x.chain(x2.skip(len))
-                            .filter(|x| x.kind() != CXType_Invalid)
-                            .map(|x| Item::from_ty_or_ref(x, x.declaration(), None, ctx))
-                            .collect()
-                    },
-                    None => x
+            let args = ty.templ_args().map_or(vec![], |x| match ty.canon_type().templ_args() {
+                Some(x2) => {
+                    let len = x.len();
+                    x.chain(x2.skip(len))
                         .filter(|x| x.kind() != CXType_Invalid)
-                        .map(|x| Item::from_ty_or_ref(x, x.declaration(), None, ctx))
-                        .collect(),
-                });
-            let decl = ty.declaration();
+                        .map(|x| Item::from_ty_or_ref(x, x.decl(), None, ctx))
+                        .collect()
+                },
+                None => x
+                    .filter(|x| x.kind() != CXType_Invalid)
+                    .map(|x| Item::from_ty_or_ref(x, x.decl(), None, ctx))
+                    .collect(),
+            });
+            let decl = ty.decl();
             let def = if decl.kind() == CXCursor_TypeAliasTemplateDecl {
                 Some(decl)
             } else {
                 decl.specialized().or_else(|| {
                     let mut y = None;
-                    ty.declaration().visit(|x| {
+                    ty.decl().visit(|x| {
                         if x.kind() == CXCursor_TemplateRef {
                             y = Some(x);
                             return CXVisit_Break;
@@ -1063,7 +1061,7 @@ pub mod template {
             let def = match def {
                 Some(x) => x,
                 None => {
-                    if !ty.declaration().is_builtin() {
+                    if !ty.decl().is_builtin() {
                         warn!(
                             "Could not find template definition for template \
                          instantiation"

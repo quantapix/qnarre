@@ -361,7 +361,7 @@ impl Bindings {
         let mut ctx = Context::new(opts, &input_unsaved_files);
         if is_host_build {
             debug_assert_eq!(
-                ctx.target_pointer_size(),
+                ctx.target_ptr_size(),
                 std::mem::size_of::<*mut ()>(),
                 "{:?} {:?}",
                 effective_target,

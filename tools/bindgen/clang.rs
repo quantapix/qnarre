@@ -491,10 +491,10 @@ impl Cursor {
     pub fn is_mut_field(&self) -> bool {
         unsafe { clang_CXXField_isMutable(self.cur) != 0 }
     }
-    pub fn offset_of_field(&self) -> Result<usize, LayoutError> {
+    pub fn offset_of_field(&self) -> Result<usize, LayoutErr> {
         let y = unsafe { clang_Cursor_getOffsetOfField(self.cur) };
         if y < 0 {
-            Err(LayoutError::from(y as i32))
+            Err(LayoutErr::from(y as i32))
         } else {
             Ok(y as usize)
         }
@@ -665,15 +665,15 @@ impl Type {
     pub fn kind(&self) -> CXTypeKind {
         self.ty.kind
     }
-    pub fn declaration(&self) -> Cursor {
+    pub fn decl(&self) -> Cursor {
         unsafe {
             Cursor {
                 cur: clang_getTypeDeclaration(self.ty),
             }
         }
     }
-    pub fn canonical_declaration(&self, x: Option<&Cursor>) -> Option<CanonTyDecl> {
-        let mut y = self.declaration();
+    pub fn canon_decl(&self, x: Option<&Cursor>) -> Option<CanonTyDecl> {
+        let mut y = self.decl();
         if !y.is_valid() {
             if let Some(x) = x {
                 let mut loc = *x;
@@ -694,7 +694,7 @@ impl Type {
     }
     pub fn spelling(&self) -> String {
         let y = unsafe { cxstring_into_string(clang_getTypeSpelling(self.ty)) };
-        if y.split("::").all(is_valid_identifier) {
+        if y.split("::").all(is_valid_ident) {
             if let Some(y) = y.split("::").last() {
                 return y.to_owned();
             }
@@ -707,12 +707,12 @@ impl Type {
     #[inline]
     fn is_non_deductible_auto_type(&self) -> bool {
         debug_assert_eq!(self.kind(), CXType_Auto);
-        self.canonical_type() == *self
+        self.canon_type() == *self
     }
     #[inline]
     fn clang_size_of(&self, ctx: &Context) -> c_longlong {
         match self.kind() {
-            CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
+            CXType_RValueReference | CXType_LValueReference => ctx.target_ptr_size() as c_longlong,
             CXType_Auto if self.is_non_deductible_auto_type() => -6,
             _ => unsafe { clang_Type_getSizeOf(self.ty) },
         }
@@ -720,7 +720,7 @@ impl Type {
     #[inline]
     fn clang_align_of(&self, ctx: &Context) -> c_longlong {
         match self.kind() {
-            CXType_RValueReference | CXType_LValueReference => ctx.target_pointer_size() as c_longlong,
+            CXType_RValueReference | CXType_LValueReference => ctx.target_ptr_size() as c_longlong,
             CXType_Auto if self.is_non_deductible_auto_type() => -6,
             _ => unsafe { clang_Type_getAlignOf(self.ty) },
         }
@@ -733,10 +733,10 @@ impl Type {
             y as usize
         }
     }
-    pub fn fallible_size(&self, ctx: &Context) -> Result<usize, LayoutError> {
+    pub fn fallible_size(&self, ctx: &Context) -> Result<usize, LayoutErr> {
         let y = self.clang_size_of(ctx);
         if y < 0 {
-            Err(LayoutError::from(y as i32))
+            Err(LayoutErr::from(y as i32))
         } else {
             Ok(y as usize)
         }
@@ -749,15 +749,15 @@ impl Type {
             y as usize
         }
     }
-    pub fn fallible_align(&self, ctx: &Context) -> Result<usize, LayoutError> {
+    pub fn fallible_align(&self, ctx: &Context) -> Result<usize, LayoutErr> {
         let y = self.clang_align_of(ctx);
         if y < 0 {
-            Err(LayoutError::from(y as i32))
+            Err(LayoutErr::from(y as i32))
         } else {
             Ok(y as usize)
         }
     }
-    pub fn fallible_layout(&self, ctx: &Context) -> Result<crate::ir::layout::Layout, LayoutError> {
+    pub fn fallible_layout(&self, ctx: &Context) -> Result<crate::ir::layout::Layout, LayoutErr> {
         use crate::ir::layout::Layout;
         let size = self.fallible_size(ctx)?;
         let align = self.fallible_align(ctx)?;
@@ -772,8 +772,8 @@ impl Type {
             None
         }
     }
-    pub fn templ_args(&self) -> Option<TyTemplArgIter> {
-        self.num_templ_args().map(|length| TyTemplArgIter {
+    pub fn templ_args(&self) -> Option<TemplArgIter> {
+        self.num_templ_args().map(|length| TemplArgIter {
             x: self.ty,
             length,
             idx: 0,
@@ -824,7 +824,7 @@ impl Type {
             None
         }
     }
-    pub fn num_elements(&self) -> Option<usize> {
+    pub fn num_elems(&self) -> Option<usize> {
         let y = unsafe { clang_getNumElements(self.ty) };
         if y != -1 {
             Some(y as usize)
@@ -832,7 +832,7 @@ impl Type {
             None
         }
     }
-    pub fn canonical_type(&self) -> Type {
+    pub fn canon_type(&self) -> Type {
         unsafe {
             Type {
                 ty: clang_getCanonicalType(self.ty),
@@ -868,10 +868,10 @@ impl Type {
     pub fn is_valid_and_exposed(&self) -> bool {
         self.is_valid() && self.kind() != CXType_Unexposed
     }
-    pub fn is_fully_instantiated_templ(&self) -> bool {
+    pub fn is_fully_inst_templ(&self) -> bool {
         self.templ_args().map_or(false, |x| x.len() > 0)
             && !matches!(
-                self.declaration().kind(),
+                self.decl().kind(),
                 CXCursor_ClassTemplatePartialSpecialization
                     | CXCursor_TypeAliasTemplateDecl
                     | CXCursor_TemplateTemplateParameter
@@ -887,7 +887,7 @@ impl Type {
         }
         self.kind() == CXType_Unexposed
             && (hacky_parse_associated_type(self.spelling())
-                || hacky_parse_associated_type(self.canonical_type().spelling()))
+                || hacky_parse_associated_type(self.canon_type().spelling()))
     }
 }
 impl PartialEq for Type {
@@ -904,14 +904,14 @@ impl fmt::Debug for Type {
             self.spelling(),
             type_to_str(self.kind()),
             self.call_conv(),
-            self.declaration(),
-            self.declaration().canonical()
+            self.decl(),
+            self.decl().canonical()
         )
     }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum LayoutError {
+pub enum LayoutErr {
     Invalid,
     Incomplete,
     Dependent,
@@ -919,9 +919,9 @@ pub enum LayoutError {
     InvalidFieldName,
     Unknown,
 }
-impl ::std::convert::From<i32> for LayoutError {
+impl ::std::convert::From<i32> for LayoutErr {
     fn from(x: i32) -> Self {
-        use self::LayoutError::*;
+        use self::LayoutErr::*;
         match x {
             CXTypeLayoutError_Invalid => Invalid,
             CXTypeLayoutError_Incomplete => Incomplete,
@@ -944,12 +944,12 @@ impl CanonTyDecl {
     }
 }
 
-pub struct TyTemplArgIter {
+pub struct TemplArgIter {
     x: CXType,
     length: u32,
     idx: u32,
 }
-impl Iterator for TyTemplArgIter {
+impl Iterator for TemplArgIter {
     type Item = Type;
     fn next(&mut self) -> Option<Type> {
         if self.idx < self.length {
@@ -963,7 +963,7 @@ impl Iterator for TyTemplArgIter {
         }
     }
 }
-impl ExactSizeIterator for TyTemplArgIter {
+impl ExactSizeIterator for TemplArgIter {
     fn len(&self) -> usize {
         assert!(self.idx <= self.length);
         (self.length - self.idx) as usize
@@ -1228,21 +1228,21 @@ pub struct EvalResult {
 impl EvalResult {
     pub fn new(cur: Cursor) -> Option<Self> {
         {
-            let mut found_cant_eval = false;
+            let mut cant_eval = false;
             cur.visit(|x| {
-                if x.kind() == CXCursor_TypeRef && x.cur_type().canonical_type().kind() == CXType_Unexposed {
-                    found_cant_eval = true;
+                if x.kind() == CXCursor_TypeRef && x.cur_type().canon_type().kind() == CXType_Unexposed {
+                    cant_eval = true;
                     return CXChildVisit_Break;
                 }
                 CXChildVisit_Recurse
             });
-            if found_cant_eval {
+            if cant_eval {
                 return None;
             }
         }
         Some(EvalResult {
             x: unsafe { clang_Cursor_Evaluate(cur.cur) },
-            ty: cur.cur_type().canonical_type(),
+            ty: cur.cur_type().canon_type(),
         })
     }
     fn kind(&self) -> CXEvalResultKind {
@@ -1298,30 +1298,30 @@ impl Drop for EvalResult {
 }
 
 #[derive(Debug)]
-pub struct TargetInfo {
+pub struct Target {
     pub triple: String,
-    pub pointer_width: usize,
+    pub ptr_size: usize,
 }
-impl TargetInfo {
+impl Target {
     pub fn new(tu: &TranslationUnit) -> Self {
         let triple;
-        let pointer_width;
+        let ptr_size;
         unsafe {
             let ti = clang_getTranslationUnitTargetInfo(tu.tu);
             triple = cxstring_into_string(clang_TargetInfo_getTriple(ti));
-            pointer_width = clang_TargetInfo_getPointerWidth(ti);
+            ptr_size = clang_TargetInfo_getPointerWidth(ti);
             clang_TargetInfo_dispose(ti);
         }
-        assert!(pointer_width > 0);
-        assert_eq!(pointer_width % 8, 0);
-        TargetInfo {
+        assert!(ptr_size > 0);
+        assert_eq!(ptr_size % 8, 0);
+        Target {
             triple,
-            pointer_width: pointer_width as usize,
+            ptr_size: ptr_size as usize,
         }
     }
 }
 
-pub fn is_valid_identifier(x: &str) -> bool {
+pub fn is_valid_ident(x: &str) -> bool {
     let mut ys = x.chars();
     let first_valid = ys.next().map(|x| x.is_alphabetic() || x == '_').unwrap_or(false);
     first_valid && ys.all(|x| x.is_alphanumeric() || x == '_')
@@ -1423,11 +1423,11 @@ pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
         if n >= 0 {
             print_indent(depth, format!(" {}number-of-template-args = {}", prefix, n));
         }
-        if let Some(num) = ty.num_elements() {
+        if let Some(num) = ty.num_elems() {
             print_indent(depth, format!(" {}number-of-elements = {}", prefix, num));
         }
         print_indent(depth, format!(" {}is-variadic? {}", prefix, ty.is_variadic()));
-        let canonical = ty.canonical_type();
+        let canonical = ty.canon_type();
         if canonical != *ty {
             println!();
             print_type(depth, String::from(prefix) + "canonical.", &canonical);
@@ -1461,7 +1461,7 @@ pub fn ast_dump(c: &Cursor, depth: isize) -> CXChildVisitResult {
     println!();
     let ty = c.cur_type();
     print_type(depth, "type.", &ty);
-    let declaration = ty.declaration();
+    let declaration = ty.decl();
     if declaration != *c && declaration.kind() != CXCursor_NoDeclFound {
         println!();
         print_cursor(depth, "type.declaration.", &declaration);

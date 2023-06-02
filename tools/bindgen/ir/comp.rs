@@ -516,7 +516,7 @@ impl Comp {
     ) -> Result<Self, parse::Error> {
         use clang_lib::*;
         assert!(ty.templ_args().is_none(), "We handle template instantiations elsewhere");
-        let mut cursor = ty.declaration();
+        let mut cursor = ty.decl();
         let mut kind = Self::kind_from_cursor(&cursor);
         if kind.is_err() {
             if let Some(x) = cur {
@@ -536,8 +536,7 @@ impl Comp {
         cursor.visit(|cur2| {
             if cur2.kind() != CXCursor_FieldDecl {
                 if let Some((ty, clang_ty, public, offset)) = maybe_anonymous_struct_field.take() {
-                    if cur2.kind() == CXCursor_TypedefDecl && cur2.typedef_type().unwrap().canonical_type() == clang_ty
-                    {
+                    if cur2.kind() == CXCursor_TypedefDecl && cur2.typedef_type().unwrap().canon_type() == clang_ty {
                     } else {
                         let field = RawField::new(None, ty, None, None, None, public, offset);
                         ci.fields.append_raw_field(field);

@@ -51,7 +51,7 @@ impl<'a> Structure<'a> {
     }
     pub fn saw_vtable(&mut self) {
         debug!("saw vtable for {}", self.name);
-        let ptr_size = self.ctx.target_pointer_size();
+        let ptr_size = self.ctx.target_ptr_size();
         self.latest_offset += ptr_size;
         self.latest_field_layout = Some(Layout::new(ptr_size, ptr_size));
         self.max_field_align = ptr_size;

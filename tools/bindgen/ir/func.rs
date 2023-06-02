@@ -251,14 +251,14 @@ impl FnSig {
             return Err(parse::Error::Continue);
         }
         let name = cur.spelling();
-        let is_oper = |x: &str| x.starts_with("operator") && !clang::is_valid_identifier(x);
+        let is_oper = |x: &str| x.starts_with("operator") && !clang::is_valid_ident(x);
         if is_oper(&name) {
             return Err(parse::Error::Continue);
         }
         if (kind == CXCursor_Constructor || kind == CXCursor_Destructor) && name.contains('<') {
             return Err(parse::Error::Continue);
         }
-        let cur = if cur.is_valid() { *cur } else { ty.declaration() };
+        let cur = if cur.is_valid() { *cur } else { ty.decl() };
         let mut arg_types = match kind {
             CXCursor_FunctionDecl | CXCursor_Constructor | CXCursor_CXXMethod => args_from_ty_and_cursor(ty, &cur, ctx),
             _ => {
@@ -323,7 +323,7 @@ impl FnSig {
             Item::from_ty_or_ref(ret_type, cur, None, ctx)
         };
         let mut cc = ty.call_conv();
-        if let Some(x) = cur.cur_type().canonical_type().pointee_type() {
+        if let Some(x) = cur.cur_type().canon_type().pointee_type() {
             let cc2 = x.call_conv();
             if cc2 != CXCallingConv_Invalid {
                 cc = cc2;

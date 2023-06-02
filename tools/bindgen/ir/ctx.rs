@@ -36,9 +36,9 @@ impl<T> ::std::cmp::PartialEq<T> for ItemId
 where
     T: Copy + Into<ItemId>,
 {
-    fn eq(&self, rhs: &T) -> bool {
-        let rhs: ItemId = (*rhs).into();
-        self.0 == rhs.0
+    fn eq(&self, x: &T) -> bool {
+        let x: ItemId = (*x).into();
+        self.0 == x.0
     }
 }
 
@@ -78,9 +78,9 @@ macro_rules! item_id_newtype {
         where
             T: Copy + Into<ItemId>
         {
-            fn eq(&self, rhs: &T) -> bool {
-                let rhs: ItemId = (*rhs).into();
-                self.0 == rhs
+            fn eq(&self, x: &T) -> bool {
+                let x: ItemId = (*x).into();
+                self.0 == x
             }
         }
         #[allow(dead_code)]
@@ -142,13 +142,13 @@ struct AllowedItemsTraversal<'ctx> {
     traversal: Traversal<'ctx, ItemSet, Vec<ItemId>>,
 }
 impl<'ctx> AllowedItemsTraversal<'ctx> {
-    pub fn new<R>(ctx: &'ctx Context, roots: R, predicate: for<'a> fn(&'a Context, Edge) -> bool) -> Self
+    pub fn new<R>(ctx: &'ctx Context, roots: R, pred: for<'a> fn(&'a Context, Edge) -> bool) -> Self
     where
         R: IntoIterator<Item = ItemId>,
     {
         AllowedItemsTraversal {
             ctx,
-            traversal: Traversal::new(ctx, roots, predicate),
+            traversal: Traversal::new(ctx, roots, pred),
         }
     }
 }
@@ -156,11 +156,11 @@ impl<'ctx> Iterator for AllowedItemsTraversal<'ctx> {
     type Item = ItemId;
     fn next(&mut self) -> Option<ItemId> {
         loop {
-            let id = self.traversal.next()?;
-            if self.ctx.resolve_item(id).is_blocklisted(self.ctx) {
+            let y = self.traversal.next()?;
+            if self.ctx.resolve_item(y).is_blocklisted(self.ctx) {
                 continue;
             }
-            return Some(id);
+            return Some(y);
         }
     }
 }
@@ -168,118 +168,110 @@ impl<'ctx> Iterator for AllowedItemsTraversal<'ctx> {
 #[derive(Eq, PartialEq, Hash, Debug)]
 enum TypeKey {
     Usr(String),
-    Declaration(Cursor),
+    Decl(Cursor),
 }
 
 #[derive(Debug)]
 pub struct Context {
     allowed: Option<ItemSet>,
     blocklisted_types_implement_traits: RefCell<HashMap<DeriveTrait, HashMap<ItemId, Resolved>>>,
-    cannot_derive_copy: Option<HashSet<ItemId>>,
-    cannot_derive_debug: Option<HashSet<ItemId>>,
-    cannot_derive_default: Option<HashSet<ItemId>>,
-    cannot_derive_hash: Option<HashSet<ItemId>>,
-    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, Resolved>>,
-    codegen_items: Option<ItemSet>,
+    cannot_copy: Option<HashSet<ItemId>>,
+    cannot_debug: Option<HashSet<ItemId>>,
+    cannot_default: Option<HashSet<ItemId>>,
+    cannot_hash: Option<HashSet<ItemId>>,
+    cannot_partialeq: Option<HashMap<ItemId, Resolved>>,
     collected_typerefs: bool,
     current_mod: ModId,
-    currently_parsed_types: Vec<PartialType>,
     deps: BTreeSet<String>,
     enum_typedef_combos: Option<HashSet<ItemId>>,
+    gen_items: Option<ItemSet>,
     generated_bindgen_complex: Cell<bool>,
+    has_destr: Option<HashSet<ItemId>>,
     has_float: Option<HashSet<ItemId>>,
     has_type_param_in_array: Option<HashSet<ItemId>>,
-    have_destructor: Option<HashSet<ItemId>>,
-    have_vtable: Option<HashMap<ItemId, has_vtable::Resolved>>,
-    in_codegen: bool,
+    has_vtable: Option<HashMap<ItemId, has_vtable::Resolved>>,
+    in_gen: bool,
     items: Vec<Option<Item>>,
-    modules: HashMap<Cursor, ModId>,
-    need_bitfield_allocation: Vec<ItemId>,
+    mods: HashMap<Cursor, ModId>,
+    need_bitfields: Vec<ItemId>,
     opts: Opts,
     parsed_macros: StdHashMap<Vec<u8>, cexpr::expr::EvalResult>,
+    parsed_types: Vec<PartialType>,
     replacements: HashMap<Vec<String>, ItemId>,
     root_mod: ModId,
     semantic_parents: HashMap<clang::Cursor, ItemId>,
     sizedness: Option<HashMap<TypeId, sizedness::Resolved>>,
-    target_info: clang::TargetInfo,
+    target: clang::Target,
     translation_unit: clang::TranslationUnit,
-    type_params: HashMap<clang::Cursor, TypeId>,
+    type_ps: HashMap<clang::Cursor, TypeId>,
     types: HashMap<TypeKey, TypeId>,
     used_templ_ps: Option<HashMap<ItemId, ItemSet>>,
 }
 impl Context {
-    pub fn new(opts: Opts, input_unsaved_files: &[clang::UnsavedFile]) -> Self {
+    pub fn new(opts: Opts, x: &[clang::UnsavedFile]) -> Self {
         let index = clang::Index::new(false, true);
-        let parse_options = clang_lib::CXTranslationUnit_DetailedPreprocessingRecord;
+        let parse_opts = clang_lib::CXTranslationUnit_DetailedPreprocessingRecord;
         let translation_unit = {
             let _t = Timer::new("translation_unit").with_output(opts.time_phases);
-            clang::TranslationUnit::parse(&index, "", &opts.clang_args, input_unsaved_files, parse_options).expect(
-                "libclang error; possible causes include:
-- Invalid flag syntax
-- Unrecognized flags
-- Invalid flag arguments
-- File I/O errors
-- Host vs. target architecture mismatch
-If you encounter an error missing from this list, please file an issue or a PR!",
-            )
+            clang::TranslationUnit::parse(&index, "", &opts.clang_args, x, parse_opts).expect("libclang error")
         };
-        let target_info = clang::TargetInfo::new(&translation_unit);
-        let root_mod = Self::build_root_mod(ItemId(0));
-        let root_mod_id = root_mod.id().as_mod_id_unchecked();
         let deps = opts.input_headers.iter().cloned().collect();
+        let root_mod = Self::build_root_mod(ItemId(0));
+        let current_mod = root_mod.id().as_mod_id_unchecked();
+        let target = clang::Target::new(&translation_unit);
         Context {
             allowed: None,
             blocklisted_types_implement_traits: Default::default(),
-            cannot_derive_copy: None,
-            cannot_derive_debug: None,
-            cannot_derive_default: None,
-            cannot_derive_hash: None,
-            cannot_derive_partialeq_or_partialord: None,
-            codegen_items: None,
+            cannot_copy: None,
+            cannot_debug: None,
+            cannot_default: None,
+            cannot_hash: None,
+            cannot_partialeq: None,
             collected_typerefs: false,
-            current_mod: root_mod_id,
-            currently_parsed_types: vec![],
+            current_mod,
             deps,
             enum_typedef_combos: None,
+            gen_items: None,
             generated_bindgen_complex: Cell::new(false),
+            has_destr: None,
             has_float: None,
             has_type_param_in_array: None,
-            have_destructor: None,
-            have_vtable: None,
-            in_codegen: false,
+            has_vtable: None,
+            in_gen: false,
             items: vec![Some(root_mod)],
-            modules: Default::default(),
-            need_bitfield_allocation: Default::default(),
+            mods: Default::default(),
+            need_bitfields: Default::default(),
             opts,
             parsed_macros: Default::default(),
+            parsed_types: vec![],
             replacements: Default::default(),
-            root_mod: root_mod_id,
+            root_mod: current_mod,
             semantic_parents: Default::default(),
             sizedness: None,
-            target_info,
+            target,
             translation_unit,
-            type_params: Default::default(),
+            type_ps: Default::default(),
             types: Default::default(),
             used_templ_ps: None,
         }
     }
     pub fn is_target_wasm32(&self) -> bool {
-        self.target_info.triple.starts_with("wasm32-")
+        self.target.triple.starts_with("wasm32-")
     }
     pub fn timer<'a>(&self, name: &'a str) -> Timer<'a> {
         Timer::new(name).with_output(self.opts.time_phases)
     }
-    pub fn target_pointer_size(&self) -> usize {
-        self.target_info.pointer_width / 8
+    pub fn target_ptr_size(&self) -> usize {
+        self.target.ptr_size / 8
     }
     pub fn currently_parsed_types(&self) -> &[PartialType] {
-        &self.currently_parsed_types[..]
+        &self.parsed_types[..]
     }
     pub fn begin_parsing(&mut self, x: PartialType) {
-        self.currently_parsed_types.push(x);
+        self.parsed_types.push(x);
     }
     pub fn finish_parsing(&mut self) -> PartialType {
-        self.currently_parsed_types
+        self.parsed_types
             .pop()
             .expect("should have been parsing a type, if we finished parsing a type")
     }
@@ -309,13 +301,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             self.add_item_to_mod(&it);
         }
         if is_type && it.expect_type().is_comp() {
-            self.need_bitfield_allocation.push(id);
+            self.need_bitfields.push(id);
         }
-        let old_item = mem::replace(&mut self.items[id.0], Some(it));
-        assert!(
-            old_item.is_none(),
-            "should not have already associated an item with the given id"
-        );
+        let old = mem::replace(&mut self.items[id.0], Some(it));
+        assert!(old.is_none());
         if !is_type || is_templ_inst {
             return;
         }
@@ -329,20 +318,15 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             }
             decl = decl.canonical();
             if !decl.is_valid() {
-                debug!(
-                    "Invalid declaration {:?} found for type {:?}",
-                    decl,
-                    self.resolve_item_fallible(id).unwrap().kind().expect_type()
-                );
                 return;
             }
             let key = if is_unnamed {
-                TypeKey::Declaration(decl)
-            } else if let Some(usr) = decl.usr() {
-                TypeKey::Usr(usr)
+                TypeKey::Decl(decl)
+            } else if let Some(x) = decl.usr() {
+                TypeKey::Usr(x)
             } else {
                 warn!("Valid declaration with no USR: {:?}, {:?}", decl, loc);
-                TypeKey::Declaration(decl)
+                TypeKey::Decl(decl)
             };
             let old = self.types.insert(key, id.as_type_id_unchecked());
             debug_assert_eq!(old, None);
@@ -351,9 +335,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn add_item_to_mod(&mut self, it: &Item) {
         assert!(it.id() != self.root_mod);
         assert!(self.resolve_item_fallible(it.id()).is_none());
-        if let Some(ref mut parent) = self.items[it.parent().0] {
-            if let Some(module) = parent.as_mod_mut() {
-                module.children_mut().insert(it.id());
+        if let Some(ref mut x) = self.items[it.parent().0] {
+            if let Some(x) = x.as_mod_mut() {
+                x.children_mut().insert(it.id());
                 return;
             }
         }
@@ -365,28 +349,19 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .children_mut()
             .insert(it.id());
     }
-    pub fn add_type_param(&mut self, it: Item, definition: clang::Cursor) {
-        assert!(
-            it.expect_type().is_type_param(),
-            "Should directly be a named type, not a resolved reference or anything"
-        );
-        assert_eq!(definition.kind(), clang_lib::CXCursor_TemplateTypeParameter);
+    pub fn add_type_param(&mut self, it: Item, cur: clang::Cursor) {
+        assert!(it.expect_type().is_type_param());
+        assert_eq!(cur.kind(), clang_lib::CXCursor_TemplateTypeParameter);
         self.add_item_to_mod(&it);
         let id = it.id();
-        let old_item = mem::replace(&mut self.items[id.0], Some(it));
-        assert!(
-            old_item.is_none(),
-            "should not have already associated an item with the given id"
-        );
-        let old_named_ty = self.type_params.insert(definition, id.as_type_id_unchecked());
-        assert!(
-            old_named_ty.is_none(),
-            "should not have already associated a named type with this id"
-        );
+        let old = mem::replace(&mut self.items[id.0], Some(it));
+        assert!(old.is_none());
+        let old = self.type_ps.insert(cur, id.as_type_id_unchecked());
+        assert!(old.is_none());
     }
-    pub fn get_type_param(&self, definition: &clang::Cursor) -> Option<TypeId> {
-        assert_eq!(definition.kind(), clang_lib::CXCursor_TemplateTypeParameter);
-        self.type_params.get(definition).cloned()
+    pub fn get_type_param(&self, cur: &clang::Cursor) -> Option<TypeId> {
+        assert_eq!(cur.kind(), clang_lib::CXCursor_TemplateTypeParameter);
+        self.type_ps.get(cur).cloned()
     }
     #[rustfmt::skip]
     pub fn rust_mangle<'a>(&self, name: &'a str) -> Cow<'a, str> {
@@ -409,12 +384,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     "u32" | "i32" | "u16" | "i16" | "u8" | "i8" | "_"
             )
         {
-            let mut s = name.to_owned();
-            s = s.replace('@', "_");
-            s = s.replace('?', "_");
-            s = s.replace('$', "_");
-            s.push('_');
-            return Cow::Owned(s);
+            let mut y = name.to_owned();
+            y = y.replace('@', "_");
+            y = y.replace('?', "_");
+            y = y.replace('$', "_");
+            y.push('_');
+            return Cow::Owned(y);
         }
         Cow::Borrowed(name)
     }
@@ -431,9 +406,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         Ident::new(name.as_ref(), Span::call_site())
     }
     pub fn items(&self) -> impl Iterator<Item = (ItemId, &Item)> {
-        self.items.iter().enumerate().filter_map(|(index, item)| {
-            let item = item.as_ref()?;
-            Some((ItemId(index), item))
+        self.items.iter().enumerate().filter_map(|(i, x)| {
+            let y = x.as_ref()?;
+            Some((ItemId(i), y))
         })
     }
     pub fn collected_typerefs(&self) -> bool {
@@ -442,34 +417,29 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn collect_typerefs(&mut self) -> Vec<(ItemId, clang::Type, clang::Cursor, Option<ItemId>)> {
         debug_assert!(!self.collected_typerefs);
         self.collected_typerefs = true;
-        let mut typerefs = vec![];
-        for (id, item) in self.items() {
-            let kind = item.kind();
+        let mut ys = vec![];
+        for (id, x) in self.items() {
+            let kind = x.kind();
             let ty = match kind.as_type() {
-                Some(ty) => ty,
+                Some(x) => x,
                 None => continue,
             };
-            if let TypeKind::UnresolvedRef(ref ty, loc, parent_id) = *ty.kind() {
-                typerefs.push((id, *ty, loc, parent_id));
+            if let TypeKind::UnresolvedRef(ref ty, loc, parent) = *ty.kind() {
+                ys.push((id, *ty, loc, parent));
             };
         }
-        typerefs
+        ys
     }
     fn resolve_typerefs(&mut self) {
         let _t = self.timer("resolve_typerefs");
-        let typerefs = self.collect_typerefs();
-        for (id, ty, loc, parent_id) in typerefs {
-            let _resolved = {
-                let resolved = Item::from_ty(&ty, loc, parent_id, self).unwrap_or_else(|_| {
-                    warn!(
-                        "Could not resolve type reference, falling back \
-                               to opaque blob"
-                    );
-                    Item::new_opaque_type(self.next_item_id(), &ty, self)
-                });
-                let item = self.items[id.0].as_mut().unwrap();
-                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedRef(resolved);
-                resolved
+        let xs = self.collect_typerefs();
+        for (id, ty, loc, parent) in xs {
+            let _y = {
+                let y = Item::from_ty(&ty, loc, parent, self)
+                    .unwrap_or_else(|_| Item::new_opaque_type(self.next_item_id(), &ty, self));
+                let x = self.items[id.0].as_mut().unwrap();
+                *x.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedRef(y);
+                y
             };
         }
     }
@@ -477,16 +447,16 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     where
         F: (FnOnce(&Context, &mut Item) -> T),
     {
-        let mut item = self.items[id.0].take().unwrap();
-        let result = f(self, &mut item);
-        let existing = mem::replace(&mut self.items[id.0], Some(item));
+        let mut x = self.items[id.0].take().unwrap();
+        let y = f(self, &mut x);
+        let existing = mem::replace(&mut self.items[id.0], Some(x));
         assert!(existing.is_none());
-        result
+        y
     }
     fn compute_bitfield_units(&mut self) {
         let _t = self.timer("compute_bitfield_units");
         assert!(self.collected_typerefs());
-        let need_bitfield_allocation = mem::take(&mut self.need_bitfield_allocation);
+        let need_bitfield_allocation = mem::take(&mut self.need_bitfields);
         for id in need_bitfield_allocation {
             self.with_loaned_item(id, |ctx, x| {
                 let ty = x.kind_mut().as_type_mut().unwrap();
@@ -497,7 +467,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     fn deanonymize_fields(&mut self) {
         let _t = self.timer("deanonymize_fields");
-        let comp_item_ids: Vec<ItemId> = self
+        let ys: Vec<ItemId> = self
             .items()
             .filter_map(|(id, x)| {
                 if x.kind().as_type()?.is_comp() {
@@ -506,8 +476,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 None
             })
             .collect();
-        for id in comp_item_ids {
-            self.with_loaned_item(id, |ctx, x| {
+        for y in ys {
+            self.with_loaned_item(y, |ctx, x| {
                 x.kind_mut()
                     .as_type_mut()
                     .unwrap()
@@ -520,7 +490,6 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     fn process_replacements(&mut self) {
         let _t = self.timer("process_replacements");
         if self.replacements.is_empty() {
-            debug!("No replacements to process");
             return;
         }
         let mut replacements = vec![];
@@ -603,7 +572,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     where
         F: FnOnce(&Self) -> Result<Out, GenError>,
     {
-        self.in_codegen = true;
+        self.in_gen = true;
         self.resolve_typerefs();
         self.compute_bitfield_units();
         self.process_replacements();
@@ -613,24 +582,24 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.assert_every_item_in_mod();
         self.compute_has_vtable();
         self.compute_sizedness();
-        self.compute_has_destructor();
+        self.compute_has_destr();
         self.find_used_templ_ps();
         self.compute_enum_typedef_combos();
-        self.compute_cannot_derive_debug();
-        self.compute_cannot_derive_default();
-        self.compute_cannot_derive_copy();
+        self.compute_cannot_debug();
+        self.compute_cannot_default();
+        self.compute_cannot_copy();
         self.compute_has_type_param_in_array();
         self.compute_has_float();
-        self.compute_cannot_derive_hash();
-        self.compute_cannot_derive_partialord_partialeq_or_eq();
+        self.compute_cannot_hash();
+        self.compute_cannot_partialeq();
         let ret = cb(&self)?;
         Ok((ret, self.opts))
     }
     fn assert_no_dangling_references(&self) {}
     fn assert_no_dangling_item_traversal(&self) -> super::AssertNoDangling {
-        assert!(self.in_codegen_phase());
+        assert!(self.in_gen_phase());
         assert!(self.current_mod == self.root_mod);
-        let roots = self.items().map(|(id, _)| id);
+        let roots = self.items().map(|(x, _)| x);
         super::AssertNoDangling::new(self, roots, super::all_edges)
     }
     fn assert_every_item_in_mod(&self) {}
@@ -640,7 +609,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.sizedness = Some(analyze::<sizedness::Analysis>(self));
     }
     pub fn lookup_sizedness(&self, id: TypeId) -> sizedness::Resolved {
-        assert!(self.in_codegen_phase());
+        assert!(self.in_gen_phase());
         self.sizedness
             .as_ref()
             .unwrap()
@@ -650,48 +619,47 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     fn compute_has_vtable(&mut self) {
         let _t = self.timer("compute_has_vtable");
-        assert!(self.have_vtable.is_none());
-        self.have_vtable = Some(analyze::<has_vtable::Analysis>(self));
+        assert!(self.has_vtable.is_none());
+        self.has_vtable = Some(analyze::<has_vtable::Analysis>(self));
     }
     pub fn lookup_has_vtable(&self, id: TypeId) -> has_vtable::Resolved {
-        assert!(self.in_codegen_phase());
-        self.have_vtable
+        assert!(self.in_gen_phase());
+        self.has_vtable
             .as_ref()
             .unwrap()
             .get(&id.into())
             .cloned()
             .unwrap_or(has_vtable::Resolved::No)
     }
-    fn compute_has_destructor(&mut self) {
-        let _t = self.timer("compute_has_destructor");
-        assert!(self.have_destructor.is_none());
-        self.have_destructor = Some(analyze::<has_destructor::Analysis>(self));
+    fn compute_has_destr(&mut self) {
+        let _t = self.timer("compute_has_destr");
+        assert!(self.has_destr.is_none());
+        self.has_destr = Some(analyze::<has_destructor::Analysis>(self));
     }
-    pub fn lookup_has_destructor(&self, id: TypeId) -> bool {
-        assert!(self.in_codegen_phase());
-        self.have_destructor.as_ref().unwrap().contains(&id.into())
+    pub fn lookup_has_destr(&self, id: TypeId) -> bool {
+        assert!(self.in_gen_phase());
+        self.has_destr.as_ref().unwrap().contains(&id.into())
     }
     fn find_used_templ_ps(&mut self) {
         let _t = self.timer("find_used_templ_ps");
         if self.opts.allowlist_recursively {
-            let used_params = analyze::<used_templ_param::Analysis>(self);
-            self.used_templ_ps = Some(used_params);
+            let ys = analyze::<used_templ_param::Analysis>(self);
+            self.used_templ_ps = Some(ys);
         } else {
-            let mut used_params = HashMap::default();
+            let mut ys = HashMap::default();
             for &id in self.allowed_items() {
-                used_params
-                    .entry(id)
+                ys.entry(id)
                     .or_insert_with(|| id.self_templ_ps(self).into_iter().map(|x| x.into()).collect());
             }
-            self.used_templ_ps = Some(used_params);
+            self.used_templ_ps = Some(ys);
         }
     }
-    pub fn uses_templ_param(&self, id: ItemId, templ_param: TypeId) -> bool {
-        assert!(self.in_codegen_phase());
+    pub fn uses_templ_param(&self, id: ItemId, param: TypeId) -> bool {
+        assert!(self.in_gen_phase());
         if self.resolve_item(id).is_blocklisted(self) {
             return true;
         }
-        let templ_param = templ_param
+        let param = param
             .into_resolver()
             .through_type_refs()
             .through_type_aliases()
@@ -701,13 +669,10 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .as_ref()
             .expect("should have found template parameter usage if we're in codegen")
             .get(&id)
-            .map_or(false, |x| x.contains(&templ_param))
+            .map_or(false, |x| x.contains(&param))
     }
     pub fn uses_any_templ_ps(&self, id: ItemId) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute template parameter usage as we enter codegen"
-        );
+        assert!(self.in_gen_phase());
         self.used_templ_ps
             .as_ref()
             .expect("should have template parameter usage info in codegen phase")
@@ -715,16 +680,15 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .map_or(false, |x| !x.is_empty())
     }
     fn add_builtin_item(&mut self, it: Item) {
-        debug!("add_builtin_item: item = {:?}", it);
         debug_assert!(it.kind().is_type());
         self.add_item_to_mod(&it);
         let id = it.id();
-        let old_item = mem::replace(&mut self.items[id.0], Some(it));
-        assert!(old_item.is_none(), "Inserted type twice?");
+        let old = mem::replace(&mut self.items[id.0], Some(it));
+        assert!(old.is_none(), "Inserted type twice?");
     }
     fn build_root_mod(id: ItemId) -> Item {
-        let module = Mod::new(Some("root".into()), ModKind::Normal);
-        Item::new(id, None, None, id, ItemKind::Mod(module), None)
+        let y = Mod::new(Some("root".into()), ModKind::Normal);
+        Item::new(id, None, None, id, ItemKind::Mod(y), None)
     }
     pub fn root_mod(&self) -> ModId {
         self.root_mod
@@ -741,11 +705,11 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     pub fn resolve_item_fallible<Id: Into<ItemId>>(&self, id: Id) -> Option<&Item> {
         self.items.get(id.into().0)?.as_ref()
     }
-    pub fn resolve_item<Id: Into<ItemId>>(&self, item_id: Id) -> &Item {
-        let item_id = item_id.into();
-        match self.resolve_item_fallible(item_id) {
-            Some(item) => item,
-            None => panic!("Not an item: {:?}", item_id),
+    pub fn resolve_item<Id: Into<ItemId>>(&self, id: Id) -> &Item {
+        let id = id.into();
+        match self.resolve_item_fallible(id) {
+            Some(x) => x,
+            None => panic!("Not an item: {:?}", id),
         }
     }
     pub fn current_mod(&self) -> ModId {
@@ -759,7 +723,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     fn get_decl_for_templ_inst(&self, cur: &Cursor) -> Option<(Cursor, ItemId, usize)> {
         cur.cur_type()
-            .canonical_declaration(Some(cur))
+            .canon_decl(Some(cur))
             .and_then(|x| {
                 self.get_resolved_type(&x).and_then(|x2| {
                     let n = x2.num_self_templ_ps(self);
@@ -908,37 +872,32 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     pub fn get_resolved_type(&self, decl: &clang::CanonTyDecl) -> Option<TypeId> {
         self.types
-            .get(&TypeKey::Declaration(*decl.cursor()))
-            .or_else(|| decl.cursor().usr().and_then(|usr| self.types.get(&TypeKey::Usr(usr))))
+            .get(&TypeKey::Decl(*decl.cursor()))
+            .or_else(|| decl.cursor().usr().and_then(|x| self.types.get(&TypeKey::Usr(x))))
             .cloned()
     }
     pub fn builtin_or_resolved_ty(
         &mut self,
         with_id: ItemId,
-        parent_id: Option<ItemId>,
+        parent: Option<ItemId>,
         ty: &clang::Type,
-        location: Option<clang::Cursor>,
+        cur: Option<clang::Cursor>,
     ) -> Option<TypeId> {
         use clang_lib::{CXCursor_TypeAliasTemplateDecl, CXCursor_TypeRef};
-        debug!(
-            "builtin_or_resolved_ty: {:?}, {:?}, {:?}, {:?}",
-            ty, location, with_id, parent_id
-        );
-        if let Some(decl) = ty.canonical_declaration(location.as_ref()) {
+        if let Some(decl) = ty.canon_decl(cur.as_ref()) {
             if let Some(id) = self.get_resolved_type(&decl) {
-                debug!("Already resolved ty {:?}, {:?}, {:?} {:?}", id, decl, ty, location);
-                if let Some(location) = location {
+                if let Some(cur) = cur {
                     if decl.cursor().is_templ_like() && *ty != decl.cursor().cur_type() {
                         if decl.cursor().kind() == CXCursor_TypeAliasTemplateDecl
-                            && !location.contains_cursor(CXCursor_TypeRef)
-                            && ty.canonical_type().is_valid_and_exposed()
+                            && !cur.contains_cursor(CXCursor_TypeRef)
+                            && ty.canon_type().is_valid_and_exposed()
                         {
                             return None;
                         }
-                        return self.instantiate_templ(with_id, id, ty, location).or(Some(id));
+                        return self.instantiate_templ(with_id, id, ty, cur).or(Some(id));
                     }
                 }
-                return Some(self.build_ty_wrapper(with_id, id, parent_id, ty));
+                return Some(self.build_ty_wrapper(with_id, id, parent, ty));
             }
         }
         debug!("Not resolved, maybe builtin?");
@@ -972,7 +931,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     ) -> TypeId {
         let spelling = ty.spelling();
         let layout = ty.fallible_layout(self).ok();
-        let location = ty.declaration().location();
+        let location = ty.decl().location();
         let type_kind = TypeKind::ResolvedRef(wrapped);
         let ty = Type::new(Some(spelling), layout, type_kind, is_const);
         let item = Item::new(
@@ -1034,7 +993,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let spelling = ty.spelling();
         let is_const = ty.is_const();
         let layout = ty.fallible_layout(self).ok();
-        let location = ty.declaration().location();
+        let location = ty.decl().location();
         let ty = Type::new(Some(spelling), layout, type_kind, is_const);
         let id = self.next_item_id();
         let item = Item::new(id, None, None, self.root_mod.into(), ItemKind::Type(ty), Some(location));
@@ -1048,14 +1007,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.parsed_macros.contains_key(macro_name)
     }
     pub fn parsed_macros(&self) -> &StdHashMap<Vec<u8>, cexpr::expr::EvalResult> {
-        debug_assert!(!self.in_codegen_phase());
+        debug_assert!(!self.in_gen_phase());
         &self.parsed_macros
     }
     pub fn note_parsed_macro(&mut self, id: Vec<u8>, value: cexpr::expr::EvalResult) {
         self.parsed_macros.insert(id, value);
     }
-    pub fn in_codegen_phase(&self) -> bool {
-        self.in_codegen
+    pub fn in_gen_phase(&self) -> bool {
+        self.in_gen
     }
     pub fn replace(&mut self, name: &[String], potential_ty: ItemId) {
         match self.replacements.entry(name.into()) {
@@ -1079,7 +1038,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         matches!(self.replacements.get(path), Some(replaced_by) if *replaced_by != id)
     }
     pub fn opaque_by_name(&self, path: &[String]) -> bool {
-        debug_assert!(self.in_codegen_phase(), "You're not supposed to call this yet");
+        debug_assert!(self.in_gen_phase(), "You're not supposed to call this yet");
         self.opts.opaque_types.matches(path[1..].join("::"))
     }
     pub fn opts(&self) -> &Opts {
@@ -1131,7 +1090,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         use clang_lib::*;
         assert_eq!(cursor.kind(), CXCursor_Namespace, "Be a nice person");
         let cursor = cursor.canonical();
-        if let Some(id) = self.modules.get(&cursor) {
+        if let Some(id) = self.mods.get(&cursor) {
             return *id;
         }
         let (module_name, kind) = self.tokenize_namespace(&cursor);
@@ -1146,7 +1105,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             Some(cursor.location()),
         );
         let module_id = module.id().as_mod_id_unchecked();
-        self.modules.insert(cursor, module_id);
+        self.mods.insert(cursor, module_id);
         self.add_item(module, None, None);
         module_id
     }
@@ -1161,12 +1120,12 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.current_mod = previous_id;
     }
     pub fn allowed_items(&self) -> &ItemSet {
-        assert!(self.in_codegen_phase());
+        assert!(self.in_gen_phase());
         assert!(self.current_mod == self.root_mod);
         self.allowed.as_ref().unwrap()
     }
     pub fn blocklisted_type_implements_trait(&self, it: &Item, derive_trait: DeriveTrait) -> Resolved {
-        assert!(self.in_codegen_phase());
+        assert!(self.in_gen_phase());
         assert!(self.current_mod == self.root_mod);
         *self
             .blocklisted_types_implement_traits
@@ -1200,13 +1159,13 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             _ => false,
         }
     }
-    pub fn codegen_items(&self) -> &ItemSet {
-        assert!(self.in_codegen_phase());
+    pub fn gen_items(&self) -> &ItemSet {
+        assert!(self.in_gen_phase());
         assert!(self.current_mod == self.root_mod);
-        self.codegen_items.as_ref().unwrap()
+        self.gen_items.as_ref().unwrap()
     }
     fn compute_allowed_and_codegen_items(&mut self) {
-        assert!(self.in_codegen_phase());
+        assert!(self.in_gen_phase());
         assert!(self.current_mod == self.root_mod);
         assert!(self.allowed.is_none());
         let _t = self.timer("compute_allowed_and_codegen_items");
@@ -1304,7 +1263,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             allowed.clone()
         };
         self.allowed = Some(allowed);
-        self.codegen_items = Some(codegen_items);
+        self.gen_items = Some(codegen_items);
     }
     pub fn trait_prefix(&self) -> Ident {
         if self.opts().use_core {
@@ -1356,17 +1315,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.enum_typedef_combos = Some(enum_typedef_combos);
     }
     pub fn is_enum_typedef_combo(&self, id: ItemId) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute enum_typedef_combos when we enter codegen",
-        );
+        assert!(self.in_gen_phase());
         self.enum_typedef_combos.as_ref().unwrap().contains(&id)
     }
-    fn compute_cannot_derive_debug(&mut self) {
-        let _t = self.timer("compute_cannot_derive_debug");
-        assert!(self.cannot_derive_debug.is_none());
+    fn compute_cannot_debug(&mut self) {
+        let _t = self.timer("compute_cannot_debug");
+        assert!(self.cannot_debug.is_none());
         if self.opts.derive_debug {
-            self.cannot_derive_debug = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
+            self.cannot_debug = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
                 self,
                 DeriveTrait::Debug,
             ))));
@@ -1374,17 +1330,14 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     pub fn lookup_can_derive_debug<Id: Into<ItemId>>(&self, id: Id) -> bool {
         let id = id.into();
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute can_derive_debug when we enter codegen"
-        );
-        !self.cannot_derive_debug.as_ref().unwrap().contains(&id)
+        assert!(self.in_gen_phase());
+        !self.cannot_debug.as_ref().unwrap().contains(&id)
     }
-    fn compute_cannot_derive_default(&mut self) {
-        let _t = self.timer("compute_cannot_derive_default");
-        assert!(self.cannot_derive_default.is_none());
+    fn compute_cannot_default(&mut self) {
+        let _t = self.timer("compute_cannot_default");
+        assert!(self.cannot_default.is_none());
         if self.opts.derive_default {
-            self.cannot_derive_default = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
+            self.cannot_default = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
                 self,
                 DeriveTrait::Default,
             ))));
@@ -1392,25 +1345,22 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     pub fn lookup_can_derive_default<Id: Into<ItemId>>(&self, id: Id) -> bool {
         let id = id.into();
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute can_derive_default when we enter codegen"
-        );
-        !self.cannot_derive_default.as_ref().unwrap().contains(&id)
+        assert!(self.in_gen_phase());
+        !self.cannot_default.as_ref().unwrap().contains(&id)
     }
-    fn compute_cannot_derive_copy(&mut self) {
-        let _t = self.timer("compute_cannot_derive_copy");
-        assert!(self.cannot_derive_copy.is_none());
-        self.cannot_derive_copy = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
+    fn compute_cannot_copy(&mut self) {
+        let _t = self.timer("compute_cannot_copy");
+        assert!(self.cannot_copy.is_none());
+        self.cannot_copy = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
             self,
             DeriveTrait::Copy,
         ))));
     }
-    fn compute_cannot_derive_hash(&mut self) {
-        let _t = self.timer("compute_cannot_derive_hash");
-        assert!(self.cannot_derive_hash.is_none());
+    fn compute_cannot_hash(&mut self) {
+        let _t = self.timer("compute_cannot_hash");
+        assert!(self.cannot_hash.is_none());
         if self.opts.derive_hash {
-            self.cannot_derive_hash = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
+            self.cannot_hash = Some(as_cannot_derive_set(analyze::<derive::Analysis>((
                 self,
                 DeriveTrait::Hash,
             ))));
@@ -1418,27 +1368,20 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
     pub fn lookup_can_derive_hash<Id: Into<ItemId>>(&self, id: Id) -> bool {
         let id = id.into();
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute can_derive_debug when we enter codegen"
-        );
-        !self.cannot_derive_hash.as_ref().unwrap().contains(&id)
+        assert!(self.in_gen_phase());
+        !self.cannot_hash.as_ref().unwrap().contains(&id)
     }
-    fn compute_cannot_derive_partialord_partialeq_or_eq(&mut self) {
-        let _t = self.timer("compute_cannot_derive_partialord_partialeq_or_eq");
-        assert!(self.cannot_derive_partialeq_or_partialord.is_none());
+    fn compute_cannot_partialeq(&mut self) {
+        let _t = self.timer("compute_cannot_partialeq");
+        assert!(self.cannot_partialeq.is_none());
         if self.opts.derive_partialord || self.opts.derive_partialeq || self.opts.derive_eq {
-            self.cannot_derive_partialeq_or_partialord =
-                Some(analyze::<derive::Analysis>((self, DeriveTrait::PartialEqOrOrd)));
+            self.cannot_partialeq = Some(analyze::<derive::Analysis>((self, DeriveTrait::PartialEqOrOrd)));
         }
     }
     pub fn lookup_can_derive_partialeq_or_partialord<Id: Into<ItemId>>(&self, id: Id) -> Resolved {
         let id = id.into();
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute can_derive_partialeq_or_partialord when we enter codegen"
-        );
-        self.cannot_derive_partialeq_or_partialord
+        assert!(self.in_gen_phase());
+        self.cannot_partialeq
             .as_ref()
             .unwrap()
             .get(&id)
@@ -1446,12 +1389,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             .unwrap_or(Resolved::Yes)
     }
     pub fn lookup_can_derive_copy<Id: Into<ItemId>>(&self, id: Id) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute can_derive_debug when we enter codegen"
-        );
+        assert!(self.in_gen_phase());
         let id = id.into();
-        !self.lookup_has_type_param_in_array(id) && !self.cannot_derive_copy.as_ref().unwrap().contains(&id)
+        !self.lookup_has_type_param_in_array(id) && !self.cannot_copy.as_ref().unwrap().contains(&id)
     }
     fn compute_has_type_param_in_array(&mut self) {
         let _t = self.timer("compute_has_type_param_in_array");
@@ -1459,10 +1399,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         self.has_type_param_in_array = Some(analyze::<has_type_param::Analysis>(self));
     }
     pub fn lookup_has_type_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute has array when we enter codegen"
-        );
+        assert!(self.in_gen_phase());
         self.has_type_param_in_array.as_ref().unwrap().contains(&id.into())
     }
     fn compute_has_float(&mut self) {
@@ -1473,10 +1410,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         }
     }
     pub fn lookup_has_float<Id: Into<ItemId>>(&self, id: Id) -> bool {
-        assert!(
-            self.in_codegen_phase(),
-            "We only compute has float when we enter codegen"
-        );
+        assert!(self.in_gen_phase());
         self.has_float.as_ref().unwrap().contains(&id.into())
     }
     pub fn no_partialeq_by_name(&self, it: &Item) -> bool {

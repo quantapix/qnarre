@@ -860,7 +860,7 @@ impl Generator for Mod {
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
         let f = |y: &mut GenResult, done: &mut bool| {
             for x in self.children() {
-                if ctx.codegen_items().contains(x) {
+                if ctx.gen_items().contains(x) {
                     *done = true;
                     ctx.resolve_item(*x).codegen(ctx, y, &());
                 }
@@ -1140,19 +1140,19 @@ impl Generator for Type {
                         let layout = inner_item.kind().expect_type().layout(ctx).expect("No layout?");
                         assert_eq!(
                             layout.size,
-                            ctx.target_pointer_size(),
+                            ctx.target_ptr_size(),
                             "Target platform requires `--no-size_t-is-usize`. The size of `{}` ({}) does not match the target pointer size ({})",
                             spelling,
                             layout.size,
-                            ctx.target_pointer_size(),
+                            ctx.target_ptr_size(),
                             );
                         assert_eq!(
                             layout.align,
-                            ctx.target_pointer_size(),
+                            ctx.target_ptr_size(),
                             "Target platform requires `--no-size_t-is-usize`. The alignment of `{}` ({}) does not match the target pointer size ({})",
                             spelling,
                             layout.align,
-                            ctx.target_pointer_size(),
+                            ctx.target_ptr_size(),
                         );
                     }
                     return;
@@ -1304,7 +1304,7 @@ impl Item {
         if self.is_blocklisted(ctx) || y.seen(self.id()) {
             return false;
         }
-        if !ctx.codegen_items().contains(&self.id()) {
+        if !ctx.gen_items().contains(&self.id()) {
             warn!("Found non-allowed item in code generation: {:?}", self);
         }
         y.set_seen(self.id());
@@ -2394,7 +2394,7 @@ pub fn codegen(ctx: Context) -> Result<(proc_macro2::TokenStream, Opts), GenErro
         let mut y = GenResult::new(&counter);
         debug!("codegen: {:?}", ctx2.opts());
         if ctx2.opts().emit_ir {
-            let codegen_items = ctx2.codegen_items();
+            let codegen_items = ctx2.gen_items();
             for (id, item) in ctx2.items() {
                 if codegen_items.contains(&id) {
                     println!("ir: {:?} = {:#?}", id, item);

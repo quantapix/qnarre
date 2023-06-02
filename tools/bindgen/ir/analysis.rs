@@ -15,8 +15,8 @@ impl Default for Resolved {
 }
 impl ops::BitOr for Resolved {
     type Output = Self;
-    fn bitor(self, rhs: Resolved) -> Self::Output {
-        if self == Resolved::Changed || rhs == Resolved::Changed {
+    fn bitor(self, x: Resolved) -> Self::Output {
+        if self == Resolved::Changed || x == Resolved::Changed {
             Resolved::Changed
         } else {
             Resolved::Same
@@ -24,8 +24,8 @@ impl ops::BitOr for Resolved {
     }
 }
 impl ops::BitOrAssign for Resolved {
-    fn bitor_assign(&mut self, rhs: Resolved) {
-        *self = *self | rhs;
+    fn bitor_assign(&mut self, x: Resolved) {
+        *self = *self | x;
     }
 }
 
@@ -277,7 +277,7 @@ pub mod derive {
                         return Resolved::No;
                     }
                     if !self.derive.can_derive_comp_with_destr()
-                        && self.ctx.lookup_has_destructor(it.id().expect_type_id(self.ctx))
+                        && self.ctx.lookup_has_destr(it.id().expect_type_id(self.ctx))
                     {
                         return Resolved::No;
                     }
@@ -815,8 +815,8 @@ pub mod has_vtable {
         BaseHasVtable,
     }
     impl Resolved {
-        pub fn join(self, rhs: Self) -> Self {
-            cmp::max(self, rhs)
+        pub fn join(self, x: Self) -> Self {
+            cmp::max(self, x)
         }
     }
     impl Default for Resolved {
@@ -826,13 +826,13 @@ pub mod has_vtable {
     }
     impl ops::BitOr for Resolved {
         type Output = Self;
-        fn bitor(self, rhs: Resolved) -> Self::Output {
-            self.join(rhs)
+        fn bitor(self, x: Resolved) -> Self::Output {
+            self.join(x)
         }
     }
     impl ops::BitOrAssign for Resolved {
-        fn bitor_assign(&mut self, rhs: Resolved) {
-            *self = self.join(rhs)
+        fn bitor_assign(&mut self, x: Resolved) {
+            *self = self.join(x)
         }
     }
 
@@ -958,8 +958,8 @@ pub mod sizedness {
         NonZeroSized,
     }
     impl Resolved {
-        pub fn join(self, rhs: Self) -> Self {
-            cmp::max(self, rhs)
+        pub fn join(self, x: Self) -> Self {
+            cmp::max(self, x)
         }
     }
     impl Default for Resolved {
@@ -969,13 +969,13 @@ pub mod sizedness {
     }
     impl ops::BitOr for Resolved {
         type Output = Self;
-        fn bitor(self, rhs: Resolved) -> Self::Output {
-            self.join(rhs)
+        fn bitor(self, x: Resolved) -> Self::Output {
+            self.join(x)
         }
     }
     impl ops::BitOrAssign for Resolved {
-        fn bitor_assign(&mut self, rhs: Resolved) {
-            *self = self.join(rhs)
+        fn bitor_assign(&mut self, x: Resolved) {
+            *self = self.join(x)
         }
     }
 

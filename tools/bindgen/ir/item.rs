@@ -299,7 +299,7 @@ impl Item {
         }
     }
     pub fn new_opaque_type(id: ItemId, ty: &clang::Type, ctx: &mut Context) -> TypeId {
-        let loc = ty.declaration().location();
+        let loc = ty.decl().location();
         let ty = Opaque::from_clang_ty(ty, ctx);
         let kind = ItemKind::Type(ty);
         let parent = ctx.root_mod().into();
@@ -857,14 +857,14 @@ impl Item {
                 return Ok(ctx.build_ty_wrapper(id, x, None, ty));
             }
         }
-        if let Some(ref x) = ty.declaration().fallible_semantic_parent() {
+        if let Some(ref x) = ty.decl().fallible_semantic_parent() {
             if FnKind::from_cursor(x).is_some() {
                 return Ok(Item::new_opaque_type(id, ty, ctx));
             }
         }
         let decl = {
-            let x = ty.canonical_type().declaration().definition();
-            x.unwrap_or_else(|| ty.declaration())
+            let x = ty.canon_type().decl().definition();
+            x.unwrap_or_else(|| ty.decl())
         };
         let comment = cur
             .raw_comment()

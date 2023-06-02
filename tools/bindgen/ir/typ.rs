@@ -235,7 +235,7 @@ impl Type {
         self.layout.or_else(|| match self.kind {
             TypeKind::Comp(ref x) => x.layout(ctx),
             TypeKind::Array(x, len) if len == 0 => Some(Layout::new(0, ctx.resolve_type(x).layout(ctx)?.align)),
-            TypeKind::Pointer(..) => Some(Layout::new(ctx.target_pointer_size(), ctx.target_pointer_size())),
+            TypeKind::Pointer(..) => Some(Layout::new(ctx.target_ptr_size(), ctx.target_ptr_size())),
             TypeKind::ResolvedRef(x) => ctx.resolve_type(x).layout(ctx),
             _ => None,
         })
@@ -244,13 +244,13 @@ impl Type {
         match self.kind {
             TypeKind::Param => {
                 let name = self.name().expect("Unnamed named type?");
-                !clang::is_valid_identifier(name)
+                !clang::is_valid_ident(name)
             },
             _ => false,
         }
     }
     fn sanitize_name(name: &str) -> Cow<str> {
-        if clang::is_valid_identifier(name) {
+        if clang::is_valid_ident(name) {
             return Cow::Borrowed(name);
         }
         let name = name.replace(|x| x == ' ' || x == ':' || x == '.', "_");
@@ -327,17 +327,17 @@ impl Type {
             }
         }
         let layout = ty.fallible_layout(ctx).ok();
-        let cur = ty.declaration();
+        let cur = ty.decl();
         let is_anon = cur.is_anonymous();
         let mut name = if is_anon {
             None
         } else {
             Some(cur.spelling()).filter(|x| !x.is_empty())
         };
-        let canon_ty = ty.canonical_type();
+        let canon_ty = ty.canon_type();
         let mut ty_kind = ty.kind();
         if ty_kind == CXType_Typedef {
-            let is_templ = ty.declaration().kind() == CXCursor_TemplateTypeParameter;
+            let is_templ = ty.decl().kind() == CXCursor_TemplateTypeParameter;
         }
         if cur.kind() == CXCursor_ClassTemplatePartialSpecialization {
             return Ok(parse::Resolved::New(Opaque::from_clang_ty(&canon_ty, ctx), None));
@@ -361,7 +361,7 @@ impl Type {
                     if ty.ret_type().is_some() {
                         let x = FnSig::from_ty(ty, &cur, ctx)?;
                         TypeKind::Func(x)
-                    } else if ty.is_fully_instantiated_templ() {
+                    } else if ty.is_fully_inst_templ() {
                         let x = Comp::from_ty(id, ty, Some(cur), ctx).expect("C'mon");
                         TypeKind::Comp(x)
                     } else {
@@ -419,7 +419,7 @@ impl Type {
                             CXCursor_TypeRef => {
                                 let x = cur.referenced().unwrap();
                                 let ty = x.cur_type();
-                                let decl = ty.declaration();
+                                let decl = ty.decl();
                                 let y = Item::from_ty_or_ref_with_id(id, ty, decl, parent, ctx);
                                 return Ok(parse::Resolved::AlreadyDone(y.into()));
                             },
@@ -485,7 +485,7 @@ impl Type {
                         if let Some(ref mut name) = name {
                             if x.kind() == CXType_Pointer && !ctx.opts().c_naming {
                                 let x = x.pointee_type().unwrap();
-                                if x.kind() == CXType_Elaborated && x.declaration().spelling() == *name {
+                                if x.kind() == CXType_Elaborated && x.decl().spelling() == *name {
                                     *name += "_ptr";
                                 }
                             }
@@ -497,7 +497,7 @@ impl Type {
                     let y = Enum::from_ty(ty, ctx).expect("Not an enum?");
                     if !is_anon {
                         let x = ty.spelling();
-                        if clang::is_valid_identifier(&x) {
+                        if clang::is_valid_ident(&x) {
                             name = Some(x);
                         }
                     }
@@ -507,7 +507,7 @@ impl Type {
                     let y = Comp::from_ty(id, ty, Some(cur), ctx).expect("Not a complex type?");
                     if !is_anon {
                         let x = ty.spelling();
-                        if clang::is_valid_identifier(&x) {
+                        if clang::is_valid_ident(&x) {
                             name = Some(x);
                         }
                     }
@@ -515,12 +515,12 @@ impl Type {
                 },
                 CXType_Vector => {
                     let y = Item::from_ty(ty.elem_type().as_ref().unwrap(), cur, None, ctx)?;
-                    TypeKind::Vector(y, ty.num_elements().unwrap())
+                    TypeKind::Vector(y, ty.num_elems().unwrap())
                 },
                 CXType_ConstantArray => {
                     let y = Item::from_ty(ty.elem_type().as_ref().unwrap(), cur, None, ctx)
                         .expect("Not able to resolve array element?");
-                    TypeKind::Array(y, ty.num_elements().unwrap())
+                    TypeKind::Array(y, ty.num_elems().unwrap())
                 },
                 CXType_Elaborated => {
                     return Self::from_clang_ty(id, &ty.named(), cur, parent, ctx);
