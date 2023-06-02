@@ -1997,12 +1997,12 @@ mod error {
     pub type Result<T> = ::std::result::Result<T, Error>;
 }
 mod debug;
-mod postproc;
+mod post;
 
 pub mod utils;
 use self::utils::{attrs, variation};
 
-mod serialize;
+mod serial;
 pub mod structure;
 
 bitflags! {
@@ -2428,7 +2428,7 @@ pub fn codegen(ctx: Context) -> Result<(proc_macro2::TokenStream, Opts), GenErro
             y.push(dynamic_items_tokens);
         }
         utils::serialize_items(&y, ctx2)?;
-        Ok(postproc::postproc(y.items, ctx2.opts()))
+        Ok(post::postproc(y.items, ctx2.opts()))
     })
 }
 

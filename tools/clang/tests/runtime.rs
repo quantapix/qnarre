@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use serial_test::serial;
+//use serial_test::serial;
 use tempfile::TempDir;
 
 #[macro_use]
@@ -172,7 +172,7 @@ impl Drop for Env {
 }
 
 #[test]
-#[serial]
+//#[serial]
 fn test_linux_directory_preference() {
     let _env = Env::new("linux", "64")
         .so("usr/lib/libclang.so.1", "64")
@@ -185,7 +185,7 @@ fn test_linux_directory_preference() {
 }
 
 #[test]
-#[serial]
+//#[serial]
 fn test_linux_version_preference() {
     let _env = Env::new("linux", "64")
         .so("usr/lib/libclang-3.so", "64")
@@ -196,7 +196,7 @@ fn test_linux_version_preference() {
 }
 
 #[test]
-#[serial]
+//#[serial]
 fn test_linux_directory_and_version_preference() {
     let _env = Env::new("linux", "64")
         .so("usr/local/llvm/lib/libclang-3.so", "64")

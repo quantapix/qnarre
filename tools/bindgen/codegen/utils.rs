@@ -1,4 +1,4 @@
-use super::serialize::CSerialize;
+use super::serial::CSerialize;
 use super::{error, GenError, GenResult, ToRustOrOpaque};
 use crate::ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use crate::ir::func::{Abi, ClangAbi, FnSig};
