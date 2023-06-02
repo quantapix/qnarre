@@ -4,16 +4,16 @@
 use crate::InlineAsmDialect;
 use libc::c_void;
 #[llvm_versions(4.0..=6.0)]
-use llvm_rs::core::LLVMConstInlineAsm;
+use llvm_lib::core::LLVMConstInlineAsm;
 #[llvm_versions(12.0..=latest)]
-use llvm_rs::core::LLVMCreateTypeAttribute;
+use llvm_lib::core::LLVMCreateTypeAttribute;
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::core::LLVMGetInlineAsm;
+use llvm_lib::core::LLVMGetInlineAsm;
 #[llvm_versions(12.0..=latest)]
-use llvm_rs::core::LLVMGetTypeByName2;
+use llvm_lib::core::LLVMGetTypeByName2;
 #[llvm_versions(6.0..=latest)]
-use llvm_rs::core::LLVMMetadataTypeInContext;
-use llvm_rs::core::{
+use llvm_lib::core::LLVMMetadataTypeInContext;
+use llvm_lib::core::{
     LLVMAppendBasicBlockInContext, LLVMConstStringInContext, LLVMConstStructInContext, LLVMContextCreate,
     LLVMContextDispose, LLVMContextSetDiagnosticHandler, LLVMCreateBuilderInContext, LLVMCreateEnumAttribute,
     LLVMCreateStringAttribute, LLVMDoubleTypeInContext, LLVMFP128TypeInContext, LLVMFloatTypeInContext,
@@ -23,9 +23,9 @@ use llvm_rs::core::{
     LLVMModuleCreateWithNameInContext, LLVMPPCFP128TypeInContext, LLVMStructCreateNamed, LLVMStructTypeInContext,
     LLVMVoidTypeInContext, LLVMX86FP80TypeInContext,
 };
-use llvm_rs::ir_reader::LLVMParseIRInContext;
-use llvm_rs::prelude::{LLVMContextRef, LLVMDiagnosticInfoRef, LLVMTypeRef, LLVMValueRef};
-use llvm_rs::target::{LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext};
+use llvm_lib::ir_reader::LLVMParseIRInContext;
+use llvm_lib::prelude::{LLVMContextRef, LLVMDiagnosticInfoRef, LLVMTypeRef, LLVMValueRef};
+use llvm_lib::target::{LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext};
 use once_cell::sync::Lazy;
 use parking_lot::{Mutex, MutexGuard};
 

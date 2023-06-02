@@ -1,12 +1,12 @@
 use std::fmt::{self, Display};
 
 use either::Either;
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMGetInstructionCallConv, LLVMGetTypeKind, LLVMIsTailCall, LLVMSetInstrParamAlignment,
     LLVMSetInstructionCallConv, LLVMSetTailCall, LLVMTypeOf,
 };
-use llvm_rs::prelude::LLVMValueRef;
-use llvm_rs::LLVMTypeKind;
+use llvm_lib::prelude::LLVMValueRef;
+use llvm_lib::LLVMTypeKind;
 
 use crate::attributes::{Attribute, AttributeLoc};
 use crate::values::{AsValueRef, BasicValueEnum, FunctionValue, InstructionValue, Value};
@@ -132,7 +132,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// call_site_value.add_attribute(AttributeLoc::Return, enum_attribute);
     /// ```
     pub fn add_attribute(self, loc: AttributeLoc, attribute: Attribute) {
-        use llvm_rs::core::LLVMAddCallSiteAttribute;
+        use llvm_lib::core::LLVMAddCallSiteAttribute;
 
         unsafe { LLVMAddCallSiteAttribute(self.as_value_ref(), loc.get_index(), attribute.attribute) }
     }
@@ -161,7 +161,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// assert_eq!(call_site_value.get_called_fn_value(), fn_value);
     /// ```
     pub fn get_called_fn_value(self) -> FunctionValue<'ctx> {
-        use llvm_rs::core::LLVMGetCalledValue;
+        use llvm_lib::core::LLVMGetCalledValue;
 
         unsafe { FunctionValue::new(LLVMGetCalledValue(self.as_value_ref())).expect("This should never be null?") }
     }
@@ -194,7 +194,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// assert_eq!(call_site_value.count_attributes(AttributeLoc::Return), 2);
     /// ```
     pub fn count_attributes(self, loc: AttributeLoc) -> u32 {
-        use llvm_rs::core::LLVMGetCallSiteAttributeCount;
+        use llvm_lib::core::LLVMGetCallSiteAttributeCount;
 
         unsafe { LLVMGetCallSiteAttributeCount(self.as_value_ref(), loc.get_index()) }
     }
@@ -227,7 +227,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// assert_eq!(call_site_value.attributes(AttributeLoc::Return), vec![ string_attribute, enum_attribute ]);
     /// ```
     pub fn attributes(self, loc: AttributeLoc) -> Vec<Attribute> {
-        use llvm_rs::core::LLVMGetCallSiteAttributes;
+        use llvm_lib::core::LLVMGetCallSiteAttributes;
         use std::mem::{ManuallyDrop, MaybeUninit};
 
         let count = self.count_attributes(loc) as usize;
@@ -286,7 +286,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// ```
     // SubTypes: -> Attribute<Enum>
     pub fn get_enum_attribute(self, loc: AttributeLoc, kind_id: u32) -> Option<Attribute> {
-        use llvm_rs::core::LLVMGetCallSiteEnumAttribute;
+        use llvm_lib::core::LLVMGetCallSiteEnumAttribute;
 
         let ptr = unsafe { LLVMGetCallSiteEnumAttribute(self.as_value_ref(), loc.get_index(), kind_id) };
 
@@ -326,7 +326,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// ```
     // SubTypes: -> Attribute<String>
     pub fn get_string_attribute(self, loc: AttributeLoc, key: &str) -> Option<Attribute> {
-        use llvm_rs::core::LLVMGetCallSiteStringAttribute;
+        use llvm_lib::core::LLVMGetCallSiteStringAttribute;
 
         let ptr = unsafe {
             LLVMGetCallSiteStringAttribute(
@@ -373,7 +373,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// assert_eq!(call_site_value.get_enum_attribute(AttributeLoc::Return, 1), None);
     /// ```
     pub fn remove_enum_attribute(self, loc: AttributeLoc, kind_id: u32) {
-        use llvm_rs::core::LLVMRemoveCallSiteEnumAttribute;
+        use llvm_lib::core::LLVMRemoveCallSiteEnumAttribute;
 
         unsafe { LLVMRemoveCallSiteEnumAttribute(self.as_value_ref(), loc.get_index(), kind_id) }
     }
@@ -407,7 +407,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// assert_eq!(call_site_value.get_string_attribute(AttributeLoc::Return, "my_key"), None);
     /// ```
     pub fn remove_string_attribute(self, loc: AttributeLoc, key: &str) {
-        use llvm_rs::core::LLVMRemoveCallSiteStringAttribute;
+        use llvm_lib::core::LLVMRemoveCallSiteStringAttribute;
 
         unsafe {
             LLVMRemoveCallSiteStringAttribute(
@@ -444,7 +444,7 @@ impl<'ctx> CallSiteValue<'ctx> {
     /// assert_eq!(call_site_value.count_arguments(), 0);
     /// ```
     pub fn count_arguments(self) -> u32 {
-        use llvm_rs::core::LLVMGetNumArgOperands;
+        use llvm_lib::core::LLVMGetNumArgOperands;
 
         unsafe { LLVMGetNumArgOperands(self.as_value_ref()) }
     }

@@ -2,18 +2,18 @@ use either::{
     Either,
     Either::{Left, Right},
 };
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMGetAlignment, LLVMGetFCmpPredicate, LLVMGetICmpPredicate, LLVMGetInstructionOpcode, LLVMGetInstructionParent,
     LLVMGetMetadata, LLVMGetNextInstruction, LLVMGetNumOperands, LLVMGetOperand, LLVMGetOperandUse,
     LLVMGetPreviousInstruction, LLVMGetVolatile, LLVMHasMetadata, LLVMInstructionClone, LLVMInstructionEraseFromParent,
     LLVMInstructionRemoveFromParent, LLVMIsAAllocaInst, LLVMIsABasicBlock, LLVMIsALoadInst, LLVMIsAStoreInst,
     LLVMIsTailCall, LLVMSetAlignment, LLVMSetMetadata, LLVMSetOperand, LLVMSetVolatile, LLVMValueAsBasicBlock,
 };
-use llvm_rs::core::{LLVMGetOrdering, LLVMSetOrdering};
+use llvm_lib::core::{LLVMGetOrdering, LLVMSetOrdering};
 #[llvm_versions(10.0..=latest)]
-use llvm_rs::core::{LLVMIsAAtomicCmpXchgInst, LLVMIsAAtomicRMWInst};
-use llvm_rs::prelude::LLVMValueRef;
-use llvm_rs::LLVMOpcode;
+use llvm_lib::core::{LLVMIsAAtomicCmpXchgInst, LLVMIsAAtomicRMWInst};
+use llvm_lib::prelude::LLVMValueRef;
+use llvm_lib::LLVMOpcode;
 
 use std::{ffi::CStr, fmt, fmt::Display};
 

@@ -1,18 +1,18 @@
-use llvm_rs::analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction, LLVMViewFunctionCFG, LLVMViewFunctionCFGOnly};
-use llvm_rs::core::{
+use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction, LLVMViewFunctionCFG, LLVMViewFunctionCFGOnly};
+use llvm_lib::core::{
     LLVMAddAttributeAtIndex, LLVMGetAttributeCountAtIndex, LLVMGetEnumAttributeAtIndex, LLVMGetStringAttributeAtIndex,
     LLVMRemoveEnumAttributeAtIndex, LLVMRemoveStringAttributeAtIndex,
 };
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMCountBasicBlocks, LLVMCountParams, LLVMDeleteFunction, LLVMGetBasicBlocks, LLVMGetFirstBasicBlock,
     LLVMGetFirstParam, LLVMGetFunctionCallConv, LLVMGetGC, LLVMGetIntrinsicID, LLVMGetLastBasicBlock, LLVMGetLastParam,
     LLVMGetLinkage, LLVMGetNextFunction, LLVMGetNextParam, LLVMGetParam, LLVMGetParams, LLVMGetPreviousFunction,
     LLVMIsAFunction, LLVMIsConstant, LLVMSetFunctionCallConv, LLVMSetGC, LLVMSetLinkage, LLVMSetParamAlignment,
 };
-use llvm_rs::core::{LLVMGetPersonalityFn, LLVMSetPersonalityFn};
+use llvm_lib::core::{LLVMGetPersonalityFn, LLVMSetPersonalityFn};
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
-use llvm_rs::prelude::{LLVMBasicBlockRef, LLVMValueRef};
+use llvm_lib::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
+use llvm_lib::prelude::{LLVMBasicBlockRef, LLVMValueRef};
 
 use std::ffi::CStr;
 use std::fmt::{self, Display};
@@ -209,12 +209,12 @@ impl<'ctx> FunctionValue<'ctx> {
 
     #[llvm_versions(8.0..=latest)]
     pub fn get_type(self) -> FunctionType<'ctx> {
-        unsafe { FunctionType::new(llvm_rs::core::LLVMGlobalGetValueType(self.as_value_ref())) }
+        unsafe { FunctionType::new(llvm_lib::core::LLVMGlobalGetValueType(self.as_value_ref())) }
     }
 
     // TODOC: How this works as an exception handler
     pub fn has_personality_function(self) -> bool {
-        use llvm_rs::core::LLVMHasPersonalityFn;
+        use llvm_lib::core::LLVMHasPersonalityFn;
 
         unsafe { LLVMHasPersonalityFn(self.as_value_ref()) == 1 }
     }
@@ -328,7 +328,7 @@ impl<'ctx> FunctionValue<'ctx> {
     /// assert_eq!(fn_value.attributes(AttributeLoc::Return), vec![string_attribute, enum_attribute]);
     /// ```
     pub fn attributes(self, loc: AttributeLoc) -> Vec<Attribute> {
-        use llvm_rs::core::LLVMGetAttributesAtIndex;
+        use llvm_lib::core::LLVMGetAttributesAtIndex;
         use std::mem::{ManuallyDrop, MaybeUninit};
 
         let count = self.count_attributes(loc) as usize;

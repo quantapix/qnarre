@@ -3,10 +3,10 @@ pub mod error_handling;
 
 use libc::c_char;
 #[llvm_versions(16.0)]
-use llvm_rs::core::LLVMGetVersion;
-use llvm_rs::core::{LLVMCreateMessage, LLVMDisposeMessage};
-use llvm_rs::error_handling::LLVMEnablePrettyStackTrace;
-use llvm_rs::support::LLVMLoadLibraryPermanently;
+use llvm_lib::core::LLVMGetVersion;
+use llvm_lib::core::{LLVMCreateMessage, LLVMDisposeMessage};
+use llvm_lib::error_handling::LLVMEnablePrettyStackTrace;
+use llvm_lib::support::LLVMLoadLibraryPermanently;
 
 use std::borrow::Cow;
 use std::error::Error;
@@ -120,7 +120,7 @@ impl PartialEq for LLVMStringOrRaw {
 /// This function is very unsafe. Any reference to LLVM data after this function is called will likey segfault.
 /// Probably only ever useful to call before your program ends. Might not even be absolutely necessary.
 pub unsafe fn shutdown_llvm() {
-    use llvm_rs::core::LLVMShutdown;
+    use llvm_lib::core::LLVMShutdown;
 
     LLVMShutdown()
 }
@@ -146,7 +146,7 @@ pub fn load_library_permanently(filename: &str) -> bool {
 /// Determines whether or not LLVM has been configured to run in multithreaded mode. (Inkwell currently does
 /// not officially support multithreaded mode)
 pub fn is_multithreaded() -> bool {
-    use llvm_rs::core::LLVMIsMultithreaded;
+    use llvm_lib::core::LLVMIsMultithreaded;
 
     unsafe { LLVMIsMultithreaded() == 1 }
 }

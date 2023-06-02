@@ -1,5 +1,5 @@
-use llvm_rs::core::{LLVMConstArray, LLVMGetArrayLength};
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::core::{LLVMConstArray, LLVMGetArrayLength};
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 
 use crate::context::ContextRef;
 use crate::support::LLVMString;

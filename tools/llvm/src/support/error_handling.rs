@@ -1,10 +1,10 @@
 //! This module contains some supplemental functions for dealing with errors.
 
 use libc::c_void;
-use llvm_rs::core::{LLVMGetDiagInfoDescription, LLVMGetDiagInfoSeverity};
-use llvm_rs::error_handling::{LLVMInstallFatalErrorHandler, LLVMResetFatalErrorHandler};
-use llvm_rs::prelude::LLVMDiagnosticInfoRef;
-use llvm_rs::LLVMDiagnosticSeverity;
+use llvm_lib::core::{LLVMGetDiagInfoDescription, LLVMGetDiagInfoSeverity};
+use llvm_lib::error_handling::{LLVMInstallFatalErrorHandler, LLVMResetFatalErrorHandler};
+use llvm_lib::prelude::LLVMDiagnosticInfoRef;
+use llvm_lib::LLVMDiagnosticSeverity;
 
 // REVIEW: Maybe it's possible to have a safe wrapper? If we can
 // wrap the provided function input ptr into a &CStr somehow

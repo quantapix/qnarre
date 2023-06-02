@@ -1,6 +1,6 @@
 //! A `Builder` enables you to build instructions.
 
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMAddCase, LLVMAddClause, LLVMAddDestination, LLVMBuildAShr, LLVMBuildAdd, LLVMBuildAddrSpaceCast,
     LLVMBuildAggregateRet, LLVMBuildAlloca, LLVMBuildAnd, LLVMBuildArrayAlloca, LLVMBuildArrayMalloc,
     LLVMBuildAtomicCmpXchg, LLVMBuildAtomicRMW, LLVMBuildBitCast, LLVMBuildBr, LLVMBuildCast, LLVMBuildCondBr,
@@ -20,19 +20,19 @@ use llvm_rs::core::{
     LLVMSetCleanup,
 };
 #[llvm_versions(4.0..=14.0)]
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMBuildCall, LLVMBuildGEP, LLVMBuildInBoundsGEP, LLVMBuildInvoke, LLVMBuildLoad, LLVMBuildPtrDiff,
     LLVMBuildStructGEP,
 };
 #[llvm_versions(15.0..=latest)]
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMBuildCall2, LLVMBuildGEP2, LLVMBuildInBoundsGEP2, LLVMBuildInvoke2, LLVMBuildLoad2, LLVMBuildPtrDiff2,
     LLVMBuildStructGEP2,
 };
 #[llvm_versions(8.0..=latest)]
-use llvm_rs::core::{LLVMBuildIntCast2, LLVMBuildMemCpy, LLVMBuildMemMove, LLVMBuildMemSet};
+use llvm_lib::core::{LLVMBuildIntCast2, LLVMBuildMemCpy, LLVMBuildMemMove, LLVMBuildMemSet};
 
-use llvm_rs::prelude::{LLVMBuilderRef, LLVMValueRef};
+use llvm_lib::prelude::{LLVMBuilderRef, LLVMValueRef};
 
 use crate::basic_block::BasicBlock;
 #[llvm_versions(7.0..=8.0)]
@@ -2871,8 +2871,8 @@ impl<'ctx> Builder<'ctx> {
     /// Set the debug info source location of the instruction currently pointed at by the builder
     #[llvm_versions(7.0..=8.0)]
     pub fn set_current_debug_location(&self, context: impl AsContextRef<'ctx>, location: DILocation<'ctx>) {
-        use llvm_rs::core::LLVMMetadataAsValue;
-        use llvm_rs::core::LLVMSetCurrentDebugLocation;
+        use llvm_lib::core::LLVMMetadataAsValue;
+        use llvm_lib::core::LLVMSetCurrentDebugLocation;
         unsafe {
             LLVMSetCurrentDebugLocation(
                 self.builder,
@@ -2884,7 +2884,7 @@ impl<'ctx> Builder<'ctx> {
     /// Set the debug info source location of the instruction currently pointed at by the builder
     #[llvm_versions(9.0..=latest)]
     pub fn set_current_debug_location(&self, location: DILocation<'ctx>) {
-        use llvm_rs::core::LLVMSetCurrentDebugLocation2;
+        use llvm_lib::core::LLVMSetCurrentDebugLocation2;
         unsafe {
             LLVMSetCurrentDebugLocation2(self.builder, location.metadata_ref);
         }
@@ -2894,8 +2894,8 @@ impl<'ctx> Builder<'ctx> {
     /// if available.
     #[llvm_versions(7.0..=latest)]
     pub fn get_current_debug_location(&self) -> Option<DILocation<'ctx>> {
-        use llvm_rs::core::LLVMGetCurrentDebugLocation;
-        use llvm_rs::core::LLVMValueAsMetadata;
+        use llvm_lib::core::LLVMGetCurrentDebugLocation;
+        use llvm_lib::core::LLVMValueAsMetadata;
         let metadata_ref = unsafe { LLVMGetCurrentDebugLocation(self.builder) };
         if metadata_ref.is_null() {
             return None;
@@ -2910,7 +2910,7 @@ impl<'ctx> Builder<'ctx> {
     /// builder. If there isn't any debug info, this is a no-op.
     #[llvm_versions(7.0..=8.0)]
     pub fn unset_current_debug_location(&self) {
-        use llvm_rs::core::LLVMSetCurrentDebugLocation;
+        use llvm_lib::core::LLVMSetCurrentDebugLocation;
         unsafe {
             LLVMSetCurrentDebugLocation(self.builder, std::ptr::null_mut());
         }
@@ -2920,7 +2920,7 @@ impl<'ctx> Builder<'ctx> {
     /// builder. If there isn't any debug info, this is a no-op.
     #[llvm_versions(9.0..=latest)]
     pub fn unset_current_debug_location(&self) {
-        use llvm_rs::core::LLVMSetCurrentDebugLocation2;
+        use llvm_lib::core::LLVMSetCurrentDebugLocation2;
         unsafe {
             LLVMSetCurrentDebugLocation2(self.builder, std::ptr::null_mut());
         }

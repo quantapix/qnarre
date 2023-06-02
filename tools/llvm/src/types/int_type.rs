@@ -1,9 +1,9 @@
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMConstAllOnes, LLVMConstArray, LLVMConstInt, LLVMConstIntOfArbitraryPrecision, LLVMConstIntOfStringAndSize,
     LLVMGetIntTypeWidth,
 };
-use llvm_rs::execution_engine::LLVMCreateGenericValueOfInt;
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::execution_engine::LLVMCreateGenericValueOfInt;
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 
 use crate::context::ContextRef;
 use crate::support::LLVMString;

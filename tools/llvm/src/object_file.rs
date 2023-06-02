@@ -1,4 +1,4 @@
-use llvm_rs::object::{
+use llvm_lib::object::{
     LLVMDisposeObjectFile, LLVMDisposeRelocationIterator, LLVMDisposeSectionIterator, LLVMDisposeSymbolIterator,
     LLVMGetRelocationOffset, LLVMGetRelocationSymbol, LLVMGetRelocationType, LLVMGetRelocationTypeName,
     LLVMGetRelocationValueString, LLVMGetRelocations, LLVMGetSectionAddress, LLVMGetSectionContents,

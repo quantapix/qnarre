@@ -107,16 +107,16 @@ use crate::module::Module;
 use crate::values::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue, PointerValue};
 use crate::AddressSpace;
 
-use llvm_rs::core::LLVMMetadataAsValue;
+use llvm_lib::core::LLVMMetadataAsValue;
 #[llvm_versions(8.0..=latest)]
-use llvm_rs::debuginfo::LLVMDIBuilderCreateTypedef;
-pub use llvm_rs::debuginfo::LLVMDWARFTypeEncoding;
-use llvm_rs::debuginfo::LLVMDebugMetadataVersion;
-use llvm_rs::debuginfo::LLVMDisposeDIBuilder;
-use llvm_rs::debuginfo::LLVMMetadataReplaceAllUsesWith;
-use llvm_rs::debuginfo::LLVMTemporaryMDNode;
-use llvm_rs::debuginfo::{LLVMCreateDIBuilder, LLVMCreateDIBuilderDisallowUnresolved};
-use llvm_rs::debuginfo::{
+use llvm_lib::debuginfo::LLVMDIBuilderCreateTypedef;
+pub use llvm_lib::debuginfo::LLVMDWARFTypeEncoding;
+use llvm_lib::debuginfo::LLVMDebugMetadataVersion;
+use llvm_lib::debuginfo::LLVMDisposeDIBuilder;
+use llvm_lib::debuginfo::LLVMMetadataReplaceAllUsesWith;
+use llvm_lib::debuginfo::LLVMTemporaryMDNode;
+use llvm_lib::debuginfo::{LLVMCreateDIBuilder, LLVMCreateDIBuilderDisallowUnresolved};
+use llvm_lib::debuginfo::{
     LLVMDIBuilderCreateArrayType, LLVMDIBuilderCreateAutoVariable, LLVMDIBuilderCreateBasicType,
     LLVMDIBuilderCreateCompileUnit, LLVMDIBuilderCreateDebugLocation, LLVMDIBuilderCreateExpression,
     LLVMDIBuilderCreateFile, LLVMDIBuilderCreateFunction, LLVMDIBuilderCreateLexicalBlock,
@@ -128,8 +128,8 @@ use llvm_rs::debuginfo::{
     LLVMDITypeGetAlignInBits, LLVMDITypeGetOffsetInBits, LLVMDITypeGetSizeInBits,
 };
 #[llvm_versions(8.0..=latest)]
-use llvm_rs::debuginfo::{LLVMDIBuilderCreateConstantValueExpression, LLVMDIBuilderCreateGlobalVariableExpression};
-use llvm_rs::prelude::{LLVMDIBuilderRef, LLVMMetadataRef};
+use llvm_lib::debuginfo::{LLVMDIBuilderCreateConstantValueExpression, LLVMDIBuilderCreateGlobalVariableExpression};
+use llvm_lib::prelude::{LLVMDIBuilderRef, LLVMMetadataRef};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::ops::Range;
@@ -1364,8 +1364,8 @@ impl<'ctx> DIExpression<'ctx> {
 
 pub use flags::*;
 mod flags {
-    pub use llvm_rs::debuginfo::LLVMDIFlags as DIFlags;
-    use llvm_rs::debuginfo::{LLVMDWARFEmissionKind, LLVMDWARFSourceLanguage};
+    pub use llvm_lib::debuginfo::LLVMDIFlags as DIFlags;
+    use llvm_lib::debuginfo::{LLVMDWARFEmissionKind, LLVMDWARFSourceLanguage};
 
     pub trait DIFlagsConstants {
         const ZERO: Self;
@@ -1415,51 +1415,51 @@ mod flags {
         const INDIRECT_VIRTUAL_BASE: Self;
     }
     impl DIFlagsConstants for DIFlags {
-        const ZERO: DIFlags = llvm_rs::debuginfo::LLVMDIFlagZero;
-        const PRIVATE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagPrivate;
-        const PROTECTED: DIFlags = llvm_rs::debuginfo::LLVMDIFlagProtected;
-        const PUBLIC: DIFlags = llvm_rs::debuginfo::LLVMDIFlagPublic;
-        const FWD_DECL: DIFlags = llvm_rs::debuginfo::LLVMDIFlagFwdDecl;
-        const APPLE_BLOCK: DIFlags = llvm_rs::debuginfo::LLVMDIFlagAppleBlock;
+        const ZERO: DIFlags = llvm_lib::debuginfo::LLVMDIFlagZero;
+        const PRIVATE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagPrivate;
+        const PROTECTED: DIFlags = llvm_lib::debuginfo::LLVMDIFlagProtected;
+        const PUBLIC: DIFlags = llvm_lib::debuginfo::LLVMDIFlagPublic;
+        const FWD_DECL: DIFlags = llvm_lib::debuginfo::LLVMDIFlagFwdDecl;
+        const APPLE_BLOCK: DIFlags = llvm_lib::debuginfo::LLVMDIFlagAppleBlock;
         //#[llvm_versions(7.0..=9.0)]
-        //const BLOCK_BYREF_STRUCT: DIFlags = llvm_rs::debuginfo::LLVMDIFlagBlockByrefStruct;
-        const VIRTUAL: DIFlags = llvm_rs::debuginfo::LLVMDIFlagVirtual;
-        const ARTIFICIAL: DIFlags = llvm_rs::debuginfo::LLVMDIFlagArtificial;
-        const EXPLICIT: DIFlags = llvm_rs::debuginfo::LLVMDIFlagExplicit;
-        const PROTOTYPED: DIFlags = llvm_rs::debuginfo::LLVMDIFlagPrototyped;
-        const OBJC_CLASS_COMPLETE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagObjcClassComplete;
-        const OBJECT_POINTER: DIFlags = llvm_rs::debuginfo::LLVMDIFlagObjectPointer;
-        const VECTOR: DIFlags = llvm_rs::debuginfo::LLVMDIFlagVector;
-        const STATIC_MEMBER: DIFlags = llvm_rs::debuginfo::LLVMDIFlagStaticMember;
-        const LVALUE_REFERENCE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagLValueReference;
-        const RVALUE_REFERENCE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagRValueReference;
-        const RESERVED: DIFlags = llvm_rs::debuginfo::LLVMDIFlagReserved;
-        const SINGLE_INHERITANCE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagSingleInheritance;
-        const MULTIPLE_INHERITANCE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagMultipleInheritance;
-        const VIRTUAL_INHERITANCE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagVirtualInheritance;
-        const INTRODUCED_VIRTUAL: DIFlags = llvm_rs::debuginfo::LLVMDIFlagIntroducedVirtual;
-        const BIT_FIELD: DIFlags = llvm_rs::debuginfo::LLVMDIFlagBitField;
-        const NO_RETURN: DIFlags = llvm_rs::debuginfo::LLVMDIFlagNoReturn;
+        //const BLOCK_BYREF_STRUCT: DIFlags = llvm_lib::debuginfo::LLVMDIFlagBlockByrefStruct;
+        const VIRTUAL: DIFlags = llvm_lib::debuginfo::LLVMDIFlagVirtual;
+        const ARTIFICIAL: DIFlags = llvm_lib::debuginfo::LLVMDIFlagArtificial;
+        const EXPLICIT: DIFlags = llvm_lib::debuginfo::LLVMDIFlagExplicit;
+        const PROTOTYPED: DIFlags = llvm_lib::debuginfo::LLVMDIFlagPrototyped;
+        const OBJC_CLASS_COMPLETE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagObjcClassComplete;
+        const OBJECT_POINTER: DIFlags = llvm_lib::debuginfo::LLVMDIFlagObjectPointer;
+        const VECTOR: DIFlags = llvm_lib::debuginfo::LLVMDIFlagVector;
+        const STATIC_MEMBER: DIFlags = llvm_lib::debuginfo::LLVMDIFlagStaticMember;
+        const LVALUE_REFERENCE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagLValueReference;
+        const RVALUE_REFERENCE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagRValueReference;
+        const RESERVED: DIFlags = llvm_lib::debuginfo::LLVMDIFlagReserved;
+        const SINGLE_INHERITANCE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagSingleInheritance;
+        const MULTIPLE_INHERITANCE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagMultipleInheritance;
+        const VIRTUAL_INHERITANCE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagVirtualInheritance;
+        const INTRODUCED_VIRTUAL: DIFlags = llvm_lib::debuginfo::LLVMDIFlagIntroducedVirtual;
+        const BIT_FIELD: DIFlags = llvm_lib::debuginfo::LLVMDIFlagBitField;
+        const NO_RETURN: DIFlags = llvm_lib::debuginfo::LLVMDIFlagNoReturn;
         //#[llvm_versions(7.0..=8.0)]
-        //const MAIN_SUBPROGRAM: DIFlags = llvm_rs::debuginfo::LLVMDIFlagMainSubprogram;
-        const TYPE_PASS_BY_VALUE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagTypePassByValue;
-        const TYPE_PASS_BY_REFERENCE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagTypePassByReference;
+        //const MAIN_SUBPROGRAM: DIFlags = llvm_lib::debuginfo::LLVMDIFlagMainSubprogram;
+        const TYPE_PASS_BY_VALUE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagTypePassByValue;
+        const TYPE_PASS_BY_REFERENCE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagTypePassByReference;
         //#[llvm_versions(7.0)]
-        //const FIXED_ENUM: DIFlags = llvm_rs::debuginfo::LLVMDIFlagFixedEnum;
+        //const FIXED_ENUM: DIFlags = llvm_lib::debuginfo::LLVMDIFlagFixedEnum;
         //#[llvm_versions(8.0..=latest)]
-        //const ENUM_CLASS: DIFlags = llvm_rs::debuginfo::LLVMDIFlagEnumClass;
-        const THUNK: DIFlags = llvm_rs::debuginfo::LLVMDIFlagThunk;
+        //const ENUM_CLASS: DIFlags = llvm_lib::debuginfo::LLVMDIFlagEnumClass;
+        const THUNK: DIFlags = llvm_lib::debuginfo::LLVMDIFlagThunk;
         //#[llvm_versions(7.0..=8.0)]
-        //const TRIVIAL: DIFlags = llvm_rs::debuginfo::LLVMDIFlagTrivial;
+        //const TRIVIAL: DIFlags = llvm_lib::debuginfo::LLVMDIFlagTrivial;
         //#[llvm_versions(9.0..=latest)]
-        //const NON_TRIVIAL: DIFlags = llvm_rs::debuginfo::LLVMDIFlagNonTrivial;
+        //const NON_TRIVIAL: DIFlags = llvm_lib::debuginfo::LLVMDIFlagNonTrivial;
         //#[llvm_versions(10.0)]
-        //const RESERVED_BIT4: DIFlags = llvm_rs::debuginfo::LLVMDIFlagReservedBit4;
+        //const RESERVED_BIT4: DIFlags = llvm_lib::debuginfo::LLVMDIFlagReservedBit4;
         //#[llvm_versions(8.0..=latest)]
-        //const BIG_ENDIAN: DIFlags = llvm_rs::debuginfo::LLVMDIFlagBigEndian;
+        //const BIG_ENDIAN: DIFlags = llvm_lib::debuginfo::LLVMDIFlagBigEndian;
         //#[llvm_versions(8.0..=latest)]
-        //const LITTLE_ENDIAN: DIFlags = llvm_rs::debuginfo::LLVMDIFlagLittleEndian;
-        const INDIRECT_VIRTUAL_BASE: DIFlags = llvm_rs::debuginfo::LLVMDIFlagIndirectVirtualBase;
+        //const LITTLE_ENDIAN: DIFlags = llvm_lib::debuginfo::LLVMDIFlagLittleEndian;
+        const INDIRECT_VIRTUAL_BASE: DIFlags = llvm_lib::debuginfo::LLVMDIFlagIndirectVirtualBase;
     }
 
     /// The amount of debug information to emit. Corresponds to `LLVMDWARFEmissionKind` enum from LLVM.

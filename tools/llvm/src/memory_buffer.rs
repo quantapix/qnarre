@@ -1,10 +1,10 @@
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMCreateMemoryBufferWithContentsOfFile, LLVMCreateMemoryBufferWithMemoryRange,
     LLVMCreateMemoryBufferWithMemoryRangeCopy, LLVMCreateMemoryBufferWithSTDIN, LLVMDisposeMemoryBuffer,
     LLVMGetBufferSize, LLVMGetBufferStart,
 };
-use llvm_rs::object::LLVMCreateObjectFile;
-use llvm_rs::prelude::LLVMMemoryBufferRef;
+use llvm_lib::object::LLVMCreateObjectFile;
+use llvm_lib::prelude::LLVMMemoryBufferRef;
 
 use crate::object_file::ObjectFile;
 use crate::support::{to_c_str, LLVMString};

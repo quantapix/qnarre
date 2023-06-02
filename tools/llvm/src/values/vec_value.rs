@@ -1,8 +1,8 @@
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMConstExtractElement, LLVMConstInsertElement, LLVMConstSelect, LLVMConstShuffleVector, LLVMGetElementAsConstant,
     LLVMIsAConstantDataVector, LLVMIsAConstantVector,
 };
-use llvm_rs::prelude::LLVMValueRef;
+use llvm_lib::prelude::LLVMValueRef;
 
 use std::ffi::CStr;
 use std::fmt::{self, Display};

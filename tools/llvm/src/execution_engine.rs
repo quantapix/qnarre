@@ -1,5 +1,5 @@
 use libc::c_int;
-use llvm_rs::execution_engine::{
+use llvm_lib::execution_engine::{
     LLVMAddGlobalMapping, LLVMAddModule, LLVMDisposeExecutionEngine, LLVMExecutionEngineRef, LLVMFindFunction,
     LLVMFreeMachineCodeForFunction, LLVMGenericValueRef, LLVMGetExecutionEngineTargetData, LLVMGetFunctionAddress,
     LLVMLinkInInterpreter, LLVMLinkInMCJIT, LLVMRemoveModule, LLVMRunFunction, LLVMRunFunctionAsMain,
@@ -553,8 +553,8 @@ impl_unsafe_fn!(A, B, C, D, E, F, G, H, I, J, K, L, M);
 
 #[cfg(feature = "experimental")]
 pub mod experimental {
-    use llvm_rs::error::{LLVMConsumeError, LLVMErrorRef, LLVMErrorTypeId, LLVMGetErrorMessage, LLVMGetErrorTypeId};
-    use llvm_rs::orc::{
+    use llvm_lib::error::{LLVMConsumeError, LLVMErrorRef, LLVMErrorTypeId, LLVMGetErrorMessage, LLVMGetErrorTypeId};
+    use llvm_lib::orc::{
         LLVMOrcAddEagerlyCompiledIR, LLVMOrcAddLazilyCompiledIR, LLVMOrcCreateInstance, LLVMOrcDisposeInstance,
         LLVMOrcDisposeMangledSymbol, LLVMOrcGetErrorMsg, LLVMOrcGetMangledSymbol, LLVMOrcJITStackRef,
     };

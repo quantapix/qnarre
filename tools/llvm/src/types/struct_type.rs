@@ -1,8 +1,8 @@
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMConstArray, LLVMConstNamedStruct, LLVMCountStructElementTypes, LLVMGetStructElementTypes, LLVMGetStructName,
     LLVMIsOpaqueStruct, LLVMIsPackedStruct, LLVMStructGetTypeAtIndex, LLVMStructSetBody,
 };
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 
 use std::ffi::CStr;
 use std::fmt::{self, Display};

@@ -34,13 +34,13 @@ pub use crate::types::traits::{AnyType, AsTypeRef, BasicType, FloatMathType, Int
 pub use crate::types::vec_type::VectorType;
 pub use crate::types::void_type::VoidType;
 
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMAlignOf, LLVMArrayType, LLVMConstNull, LLVMConstPointerNull, LLVMFunctionType, LLVMGetElementType,
     LLVMGetTypeContext, LLVMGetTypeKind, LLVMGetUndef, LLVMPointerType, LLVMPrintTypeToString, LLVMSizeOf,
     LLVMTypeIsSized, LLVMVectorType,
 };
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_rs::LLVMTypeKind;
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::LLVMTypeKind;
 #[cfg(feature = "experimental")]
 use static_alloc::Bump;
 

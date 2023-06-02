@@ -5,10 +5,10 @@
 //!
 //! This example takes bytes on stdin and emits text instructions on stdout.
 
-extern crate llvm_rs;
+extern crate llvm_lib;
 
-use llvm_rs::disassembler::{LLVMCreateDisasm, LLVMDisasmContextRef, LLVMDisasmDispose, LLVMDisasmInstruction};
-use llvm_rs::target::{LLVM_InitializeAllDisassemblers, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs};
+use llvm_lib::disassembler::{LLVMCreateDisasm, LLVMDisasmContextRef, LLVMDisasmDispose, LLVMDisasmInstruction};
+use llvm_lib::target::{LLVM_InitializeAllDisassemblers, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs};
 use std::ffi::CStr;
 use std::io::{stdin, stdout, Read, Result as IoResult, Write};
 use std::ptr;

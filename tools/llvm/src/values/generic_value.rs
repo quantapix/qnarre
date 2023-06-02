@@ -1,5 +1,5 @@
 use libc::c_void;
-use llvm_rs::execution_engine::{
+use llvm_lib::execution_engine::{
     LLVMCreateGenericValueOfPointer, LLVMDisposeGenericValue, LLVMGenericValueIntWidth, LLVMGenericValueRef,
     LLVMGenericValueToFloat, LLVMGenericValueToInt, LLVMGenericValueToPointer,
 };

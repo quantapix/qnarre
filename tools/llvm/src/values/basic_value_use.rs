@@ -2,8 +2,8 @@ use either::{
     Either,
     Either::{Left, Right},
 };
-use llvm_rs::core::{LLVMGetNextUse, LLVMGetUsedValue, LLVMGetUser, LLVMIsABasicBlock, LLVMValueAsBasicBlock};
-use llvm_rs::prelude::LLVMUseRef;
+use llvm_lib::core::{LLVMGetNextUse, LLVMGetUsedValue, LLVMGetUser, LLVMIsABasicBlock, LLVMValueAsBasicBlock};
+use llvm_lib::prelude::LLVMUseRef;
 
 use std::marker::PhantomData;
 

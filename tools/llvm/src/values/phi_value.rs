@@ -1,5 +1,5 @@
-use llvm_rs::core::{LLVMAddIncoming, LLVMCountIncoming, LLVMGetIncomingBlock, LLVMGetIncomingValue};
-use llvm_rs::prelude::{LLVMBasicBlockRef, LLVMValueRef};
+use llvm_lib::core::{LLVMAddIncoming, LLVMCountIncoming, LLVMGetIncomingBlock, LLVMGetIncomingValue};
+use llvm_lib::prelude::{LLVMBasicBlockRef, LLVMValueRef};
 use std::convert::TryFrom;
 
 use std::ffi::CStr;

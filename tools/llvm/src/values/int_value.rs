@@ -1,4 +1,4 @@
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMConstAShr, LLVMConstAdd, LLVMConstAnd, LLVMConstBitCast, LLVMConstICmp, LLVMConstIntCast,
     LLVMConstIntGetSExtValue, LLVMConstIntGetZExtValue, LLVMConstIntToPtr, LLVMConstLShr, LLVMConstMul,
     LLVMConstNSWAdd, LLVMConstNSWMul, LLVMConstNSWNeg, LLVMConstNSWSub, LLVMConstNUWAdd, LLVMConstNUWMul,
@@ -6,7 +6,7 @@ use llvm_rs::core::{
     LLVMConstSIToFP, LLVMConstSelect, LLVMConstShl, LLVMConstSub, LLVMConstTrunc, LLVMConstTruncOrBitCast,
     LLVMConstUIToFP, LLVMConstXor, LLVMConstZExt, LLVMConstZExtOrBitCast, LLVMIsAConstantInt,
 };
-use llvm_rs::prelude::LLVMValueRef;
+use llvm_lib::prelude::LLVMValueRef;
 
 use std::convert::TryFrom;
 use std::ffi::CStr;
@@ -119,42 +119,42 @@ impl<'ctx> IntValue<'ctx> {
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_unsigned_div(self, rhs: IntValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstUDiv;
+        use llvm_lib::core::LLVMConstUDiv;
 
         unsafe { IntValue::new(LLVMConstUDiv(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_signed_div(self, rhs: IntValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstSDiv;
+        use llvm_lib::core::LLVMConstSDiv;
 
         unsafe { IntValue::new(LLVMConstSDiv(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_exact_signed_div(self, rhs: IntValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstExactSDiv;
+        use llvm_lib::core::LLVMConstExactSDiv;
 
         unsafe { IntValue::new(LLVMConstExactSDiv(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_exact_unsigned_div(self, rhs: IntValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstExactUDiv;
+        use llvm_lib::core::LLVMConstExactUDiv;
 
         unsafe { IntValue::new(LLVMConstExactUDiv(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_unsigned_remainder(self, rhs: IntValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstURem;
+        use llvm_lib::core::LLVMConstURem;
 
         unsafe { IntValue::new(LLVMConstURem(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_signed_remainder(self, rhs: IntValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstSRem;
+        use llvm_lib::core::LLVMConstSRem;
 
         unsafe { IntValue::new(LLVMConstSRem(self.as_value_ref(), rhs.as_value_ref())) }
     }

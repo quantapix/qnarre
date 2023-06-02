@@ -1,4 +1,4 @@
-use llvm_rs::prelude::LLVMValueRef;
+use llvm_lib::prelude::LLVMValueRef;
 
 use std::fmt::Debug;
 
@@ -56,7 +56,7 @@ pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
     // REVIEW: Should this be AggregatePointerValue?
     #[llvm_versions(4.0..=14.0)]
     fn const_extract_value(&self, indexes: &mut [u32]) -> BasicValueEnum<'ctx> {
-        use llvm_rs::core::LLVMConstExtractValue;
+        use llvm_lib::core::LLVMConstExtractValue;
 
         unsafe {
             BasicValueEnum::new(LLVMConstExtractValue(
@@ -70,7 +70,7 @@ pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
     // SubTypes: value should really be T in self: VectorValue<T> I think
     #[llvm_versions(4.0..=14.0)]
     fn const_insert_value<BV: BasicValue<'ctx>>(&self, value: BV, indexes: &mut [u32]) -> BasicValueEnum<'ctx> {
-        use llvm_rs::core::LLVMConstInsertValue;
+        use llvm_lib::core::LLVMConstInsertValue;
 
         unsafe {
             BasicValueEnum::new(LLVMConstInsertValue(

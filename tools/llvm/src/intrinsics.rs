@@ -1,6 +1,6 @@
 #[llvm_versions(9.0..=latest)]
-use llvm_rs::core::{LLVMGetIntrinsicDeclaration, LLVMIntrinsicIsOverloaded, LLVMLookupIntrinsicID};
-use llvm_rs::prelude::LLVMTypeRef;
+use llvm_lib::core::{LLVMGetIntrinsicDeclaration, LLVMIntrinsicIsOverloaded, LLVMLookupIntrinsicID};
+use llvm_lib::prelude::LLVMTypeRef;
 
 use crate::module::Module;
 use crate::types::{AsTypeRef, BasicTypeEnum};

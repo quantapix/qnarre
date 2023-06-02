@@ -1,6 +1,6 @@
-use llvm_rs::core::{LLVMConstArray, LLVMConstReal, LLVMConstRealOfStringAndSize};
-use llvm_rs::execution_engine::LLVMCreateGenericValueOfFloat;
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::core::{LLVMConstArray, LLVMConstReal, LLVMConstRealOfStringAndSize};
+use llvm_lib::execution_engine::LLVMCreateGenericValueOfFloat;
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 
 use crate::context::ContextRef;
 use crate::support::LLVMString;

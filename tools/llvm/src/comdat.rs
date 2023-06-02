@@ -2,8 +2,8 @@
 // https://llvm.org/doxygen/IR_2Comdat_8h_source.html
 // https://stackoverflow.com/questions/1834597/what-is-the-comdat-section-used-for
 
-use llvm_rs::comdat::{LLVMComdatSelectionKind, LLVMGetComdatSelectionKind, LLVMSetComdatSelectionKind};
-use llvm_rs::prelude::LLVMComdatRef;
+use llvm_lib::comdat::{LLVMComdatSelectionKind, LLVMGetComdatSelectionKind, LLVMSetComdatSelectionKind};
+use llvm_lib::prelude::LLVMComdatRef;
 
 #[llvm_enum(LLVMComdatSelectionKind)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

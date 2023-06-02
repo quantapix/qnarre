@@ -1,7 +1,7 @@
 #[llvm_versions(8.0..=latest)]
-use llvm_rs::core::LLVMGlobalSetMetadata;
+use llvm_lib::core::LLVMGlobalSetMetadata;
 #[llvm_versions(4.0..=7.0)]
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMDeleteGlobal, LLVMGetAlignment, LLVMGetDLLStorageClass, LLVMGetInitializer, LLVMGetLinkage, LLVMGetNextGlobal,
     LLVMGetPreviousGlobal, LLVMGetSection, LLVMGetThreadLocalMode, LLVMGetVisibility, LLVMIsDeclaration,
     LLVMIsExternallyInitialized, LLVMIsGlobalConstant, LLVMIsThreadLocal, LLVMSetAlignment, LLVMSetDLLStorageClass,
@@ -9,7 +9,7 @@ use llvm_rs::core::{
     LLVMSetThreadLocal, LLVMSetThreadLocalMode, LLVMSetVisibility,
 };
 #[llvm_versions(8.0..=latest)]
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMDeleteGlobal, LLVMGetAlignment, LLVMGetDLLStorageClass, LLVMGetInitializer, LLVMGetLinkage, LLVMGetNextGlobal,
     LLVMGetPreviousGlobal, LLVMGetThreadLocalMode, LLVMGetVisibility, LLVMIsDeclaration, LLVMIsExternallyInitialized,
     LLVMIsGlobalConstant, LLVMIsThreadLocal, LLVMSetAlignment, LLVMSetDLLStorageClass, LLVMSetExternallyInitialized,
@@ -17,13 +17,13 @@ use llvm_rs::core::{
     LLVMSetVisibility,
 };
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::core::{LLVMGetUnnamedAddress, LLVMSetUnnamedAddress};
+use llvm_lib::core::{LLVMGetUnnamedAddress, LLVMSetUnnamedAddress};
 #[llvm_versions(4.0..=6.0)]
-use llvm_rs::core::{LLVMHasUnnamedAddr, LLVMSetUnnamedAddr};
-use llvm_rs::prelude::LLVMValueRef;
-use llvm_rs::LLVMThreadLocalMode;
+use llvm_lib::core::{LLVMHasUnnamedAddr, LLVMSetUnnamedAddr};
+use llvm_lib::prelude::LLVMValueRef;
+use llvm_lib::LLVMThreadLocalMode;
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::LLVMUnnamedAddr;
+use llvm_lib::LLVMUnnamedAddr;
 
 use std::ffi::CStr;
 use std::fmt::{self, Display};
@@ -248,7 +248,7 @@ impl<'ctx> GlobalValue<'ctx> {
     /// Gets a `Comdat` assigned to this `GlobalValue`, if any.
     #[llvm_versions(7.0..=latest)]
     pub fn get_comdat(self) -> Option<Comdat> {
-        use llvm_rs::comdat::LLVMGetComdat;
+        use llvm_lib::comdat::LLVMGetComdat;
 
         let comdat_ptr = unsafe { LLVMGetComdat(self.as_value_ref()) };
 
@@ -262,14 +262,14 @@ impl<'ctx> GlobalValue<'ctx> {
     /// Assigns a `Comdat` to this `GlobalValue`.
     #[llvm_versions(7.0..=latest)]
     pub fn set_comdat(self, comdat: Comdat) {
-        use llvm_rs::comdat::LLVMSetComdat;
+        use llvm_lib::comdat::LLVMSetComdat;
 
         unsafe { LLVMSetComdat(self.as_value_ref(), comdat.0) }
     }
 
     #[llvm_versions(7.0..=latest)]
     pub fn get_unnamed_address(self) -> UnnamedAddress {
-        use llvm_rs::core::LLVMGetUnnamedAddress;
+        use llvm_lib::core::LLVMGetUnnamedAddress;
 
         let unnamed_address = unsafe { LLVMGetUnnamedAddress(self.as_value_ref()) };
 
@@ -278,7 +278,7 @@ impl<'ctx> GlobalValue<'ctx> {
 
     #[llvm_versions(7.0..=latest)]
     pub fn set_unnamed_address(self, address: UnnamedAddress) {
-        use llvm_rs::core::LLVMSetUnnamedAddress;
+        use llvm_lib::core::LLVMSetUnnamedAddress;
 
         unsafe { LLVMSetUnnamedAddress(self.as_value_ref(), address.into()) }
     }

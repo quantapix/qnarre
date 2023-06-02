@@ -1,5 +1,5 @@
-use llvm_rs::core::{LLVMConstArray, LLVMGetPointerAddressSpace};
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::core::{LLVMConstArray, LLVMGetPointerAddressSpace};
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 
 use crate::context::ContextRef;
 use crate::support::LLVMString;

@@ -1,10 +1,10 @@
 #[llvm_versions(4.0..=14.0)]
-use llvm_rs::core::{LLVMConstGEP, LLVMConstInBoundsGEP};
+use llvm_lib::core::{LLVMConstGEP, LLVMConstInBoundsGEP};
 #[llvm_versions(15.0..=latest)]
-use llvm_rs::core::{LLVMConstGEP2, LLVMConstInBoundsGEP2};
+use llvm_lib::core::{LLVMConstGEP2, LLVMConstInBoundsGEP2};
 
-use llvm_rs::core::{LLVMConstAddrSpaceCast, LLVMConstPointerCast, LLVMConstPtrToInt};
-use llvm_rs::prelude::LLVMValueRef;
+use llvm_lib::core::{LLVMConstAddrSpaceCast, LLVMConstPointerCast, LLVMConstPtrToInt};
+use llvm_lib::prelude::LLVMValueRef;
 
 use std::convert::TryFrom;
 use std::ffi::CStr;

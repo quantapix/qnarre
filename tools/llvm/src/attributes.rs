@@ -1,12 +1,12 @@
 //! `Attribute`s are optional modifiers to functions, function parameters, and return types.
 
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMGetEnumAttributeKind, LLVMGetEnumAttributeKindForName, LLVMGetEnumAttributeValue, LLVMGetLastEnumAttributeKind,
     LLVMGetStringAttributeKind, LLVMGetStringAttributeValue, LLVMIsEnumAttribute, LLVMIsStringAttribute,
 };
 #[llvm_versions(12.0..=latest)]
-use llvm_rs::core::{LLVMGetTypeAttributeValue, LLVMIsTypeAttribute};
-use llvm_rs::prelude::LLVMAttributeRef;
+use llvm_lib::core::{LLVMGetTypeAttributeValue, LLVMIsTypeAttribute};
+use llvm_lib::prelude::LLVMAttributeRef;
 
 use std::ffi::CStr;
 

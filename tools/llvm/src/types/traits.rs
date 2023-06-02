@@ -1,4 +1,4 @@
-use llvm_rs::prelude::LLVMTypeRef;
+use llvm_lib::prelude::LLVMTypeRef;
 
 use std::fmt::Debug;
 

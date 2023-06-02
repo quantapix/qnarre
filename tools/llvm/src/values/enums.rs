@@ -1,6 +1,6 @@
-use llvm_rs::core::{LLVMGetTypeKind, LLVMGetValueKind, LLVMIsAInstruction, LLVMTypeOf};
-use llvm_rs::prelude::LLVMValueRef;
-use llvm_rs::{LLVMTypeKind, LLVMValueKind};
+use llvm_lib::core::{LLVMGetTypeKind, LLVMGetValueKind, LLVMIsAInstruction, LLVMTypeOf};
+use llvm_lib::prelude::LLVMValueRef;
+use llvm_lib::{LLVMTypeKind, LLVMValueKind};
 
 use crate::types::{AnyTypeEnum, BasicTypeEnum};
 use crate::values::traits::AsValueRef;

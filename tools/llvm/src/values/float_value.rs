@@ -1,10 +1,10 @@
 #[llvm_versions(4.0..=15.0)]
-use llvm_rs::core::LLVMConstFNeg;
-use llvm_rs::core::{
+use llvm_lib::core::LLVMConstFNeg;
+use llvm_lib::core::{
     LLVMConstFCmp, LLVMConstFPCast, LLVMConstFPExt, LLVMConstFPToSI, LLVMConstFPToUI, LLVMConstFPTrunc,
     LLVMConstRealGetDouble,
 };
-use llvm_rs::prelude::LLVMValueRef;
+use llvm_lib::prelude::LLVMValueRef;
 
 use std::convert::TryFrom;
 use std::ffi::CStr;
@@ -69,35 +69,35 @@ impl<'ctx> FloatValue<'ctx> {
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_add(self, rhs: FloatValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstFAdd;
+        use llvm_lib::core::LLVMConstFAdd;
 
         unsafe { FloatValue::new(LLVMConstFAdd(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_sub(self, rhs: FloatValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstFSub;
+        use llvm_lib::core::LLVMConstFSub;
 
         unsafe { FloatValue::new(LLVMConstFSub(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_mul(self, rhs: FloatValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstFMul;
+        use llvm_lib::core::LLVMConstFMul;
 
         unsafe { FloatValue::new(LLVMConstFMul(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_div(self, rhs: FloatValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstFDiv;
+        use llvm_lib::core::LLVMConstFDiv;
 
         unsafe { FloatValue::new(LLVMConstFDiv(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
     #[llvm_versions(4.0..=14.0)]
     pub fn const_remainder(self, rhs: FloatValue<'ctx>) -> Self {
-        use llvm_rs::core::LLVMConstFRem;
+        use llvm_lib::core::LLVMConstFRem;
 
         unsafe { FloatValue::new(LLVMConstFRem(self.as_value_ref(), rhs.as_value_ref())) }
     }

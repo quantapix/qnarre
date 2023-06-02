@@ -1,4 +1,4 @@
-use llvm_rs::target::{
+use llvm_lib::target::{
     LLVMABIAlignmentOfType, LLVMABISizeOfType, LLVMByteOrder, LLVMByteOrdering, LLVMCallFrameAlignmentOfType,
     LLVMCopyStringRepOfTargetData, LLVMCreateTargetData, LLVMDisposeTargetData, LLVMElementAtOffset,
     LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext, LLVMOffsetOfElement, LLVMPointerSize, LLVMPointerSizeForAS,
@@ -6,8 +6,8 @@ use llvm_rs::target::{
     LLVMTargetDataRef,
 };
 #[llvm_versions(4.0..=latest)]
-use llvm_rs::target_machine::LLVMCreateTargetDataLayout;
-use llvm_rs::target_machine::{
+use llvm_lib::target_machine::LLVMCreateTargetDataLayout;
+use llvm_lib::target_machine::{
     LLVMAddAnalysisPasses, LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
     LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetFirstTarget, LLVMGetNextTarget,
     LLVMGetTargetDescription, LLVMGetTargetFromName, LLVMGetTargetFromTriple, LLVMGetTargetMachineCPU,
@@ -161,7 +161,7 @@ impl Target {
     // REVIEW: Should this just initialize all? Is opt into each a good idea?
     #[cfg(feature = "target-x86")]
     pub fn initialize_x86(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeX86AsmParser, LLVMInitializeX86AsmPrinter, LLVMInitializeX86Disassembler,
             LLVMInitializeX86Target, LLVMInitializeX86TargetInfo, LLVMInitializeX86TargetMC,
         };
@@ -199,7 +199,7 @@ impl Target {
 
     #[cfg(feature = "target-arm")]
     pub fn initialize_arm(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeARMAsmParser, LLVMInitializeARMAsmPrinter, LLVMInitializeARMDisassembler,
             LLVMInitializeARMTarget, LLVMInitializeARMTargetInfo, LLVMInitializeARMTargetMC,
         };
@@ -237,7 +237,7 @@ impl Target {
 
     #[cfg(feature = "target-mips")]
     pub fn initialize_mips(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeMipsAsmParser, LLVMInitializeMipsAsmPrinter, LLVMInitializeMipsDisassembler,
             LLVMInitializeMipsTarget, LLVMInitializeMipsTargetInfo, LLVMInitializeMipsTargetMC,
         };
@@ -275,7 +275,7 @@ impl Target {
 
     #[cfg(feature = "target-aarch64")]
     pub fn initialize_aarch64(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeAArch64AsmParser, LLVMInitializeAArch64AsmPrinter, LLVMInitializeAArch64Disassembler,
             LLVMInitializeAArch64Target, LLVMInitializeAArch64TargetInfo, LLVMInitializeAArch64TargetMC,
         };
@@ -314,7 +314,7 @@ impl Target {
     #[cfg(feature = "target-amdgpu")]
     #[llvm_versions(4.0..=latest)]
     pub fn initialize_amd_gpu(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeAMDGPUAsmParser, LLVMInitializeAMDGPUAsmPrinter, LLVMInitializeAMDGPUTarget,
             LLVMInitializeAMDGPUTargetInfo, LLVMInitializeAMDGPUTargetMC,
         };
@@ -349,7 +349,7 @@ impl Target {
 
     #[cfg(feature = "target-systemz")]
     pub fn initialize_system_z(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeSystemZAsmParser, LLVMInitializeSystemZAsmPrinter, LLVMInitializeSystemZDisassembler,
             LLVMInitializeSystemZTarget, LLVMInitializeSystemZTargetInfo, LLVMInitializeSystemZTargetMC,
         };
@@ -387,7 +387,7 @@ impl Target {
 
     #[cfg(feature = "target-hexagon")]
     pub fn initialize_hexagon(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeHexagonAsmPrinter, LLVMInitializeHexagonDisassembler, LLVMInitializeHexagonTarget,
             LLVMInitializeHexagonTargetInfo, LLVMInitializeHexagonTargetMC,
         };
@@ -422,7 +422,7 @@ impl Target {
 
     #[cfg(feature = "target-nvptx")]
     pub fn initialize_nvptx(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeNVPTXAsmPrinter, LLVMInitializeNVPTXTarget, LLVMInitializeNVPTXTargetInfo,
             LLVMInitializeNVPTXTargetMC,
         };
@@ -454,7 +454,7 @@ impl Target {
 
     #[cfg(feature = "target-msp430")]
     pub fn initialize_msp430(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeMSP430AsmPrinter, LLVMInitializeMSP430Target, LLVMInitializeMSP430TargetInfo,
             LLVMInitializeMSP430TargetMC,
         };
@@ -486,7 +486,7 @@ impl Target {
 
     #[cfg(feature = "target-xcore")]
     pub fn initialize_x_core(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeXCoreAsmPrinter, LLVMInitializeXCoreDisassembler, LLVMInitializeXCoreTarget,
             LLVMInitializeXCoreTargetInfo, LLVMInitializeXCoreTargetMC,
         };
@@ -521,7 +521,7 @@ impl Target {
 
     #[cfg(feature = "target-powerpc")]
     pub fn initialize_power_pc(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializePowerPCAsmParser, LLVMInitializePowerPCAsmPrinter, LLVMInitializePowerPCDisassembler,
             LLVMInitializePowerPCTarget, LLVMInitializePowerPCTargetInfo, LLVMInitializePowerPCTargetMC,
         };
@@ -559,7 +559,7 @@ impl Target {
 
     #[cfg(feature = "target-sparc")]
     pub fn initialize_sparc(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeSparcAsmParser, LLVMInitializeSparcAsmPrinter, LLVMInitializeSparcDisassembler,
             LLVMInitializeSparcTarget, LLVMInitializeSparcTargetInfo, LLVMInitializeSparcTargetMC,
         };
@@ -597,7 +597,7 @@ impl Target {
 
     #[cfg(feature = "target-bpf")]
     pub fn initialize_bpf(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeBPFAsmPrinter, LLVMInitializeBPFTarget, LLVMInitializeBPFTargetInfo,
             LLVMInitializeBPFTargetMC,
         };
@@ -620,7 +620,7 @@ impl Target {
         // No asm parser
 
         if config.disassembler {
-            use llvm_rs::target::LLVMInitializeBPFDisassembler;
+            use llvm_lib::target::LLVMInitializeBPFDisassembler;
 
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeBPFDisassembler() };
@@ -635,7 +635,7 @@ impl Target {
     #[cfg(feature = "target-lanai")]
     #[llvm_versions(4.0..=latest)]
     pub fn initialize_lanai(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeLanaiAsmParser, LLVMInitializeLanaiAsmPrinter, LLVMInitializeLanaiDisassembler,
             LLVMInitializeLanaiTarget, LLVMInitializeLanaiTargetInfo, LLVMInitializeLanaiTargetMC,
         };
@@ -679,7 +679,7 @@ impl Target {
     #[cfg(feature = "target-riscv")]
     #[llvm_versions(9.0..=latest)]
     pub fn initialize_riscv(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeRISCVAsmParser, LLVMInitializeRISCVAsmPrinter, LLVMInitializeRISCVDisassembler,
             LLVMInitializeRISCVTarget, LLVMInitializeRISCVTargetInfo, LLVMInitializeRISCVTargetMC,
         };
@@ -718,7 +718,7 @@ impl Target {
     #[cfg(feature = "target-loongarch")]
     #[llvm_versions(16.0..=latest)]
     pub fn initialize_loongarch(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeLoongArchAsmParser, LLVMInitializeLoongArchAsmPrinter, LLVMInitializeLoongArchDisassembler,
             LLVMInitializeLoongArchTarget, LLVMInitializeLoongArchTargetInfo, LLVMInitializeLoongArchTargetMC,
         };
@@ -757,7 +757,7 @@ impl Target {
     #[cfg(feature = "target-webassembly")]
     #[llvm_versions(8.0..=latest)]
     pub fn initialize_webassembly(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVMInitializeWebAssemblyAsmParser, LLVMInitializeWebAssemblyAsmPrinter,
             LLVMInitializeWebAssemblyDisassembler, LLVMInitializeWebAssemblyTarget,
             LLVMInitializeWebAssemblyTargetInfo, LLVMInitializeWebAssemblyTargetMC,
@@ -795,7 +795,7 @@ impl Target {
     }
 
     pub fn initialize_native(config: &InitializationConfig) -> Result<(), String> {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVM_InitializeNativeAsmParser, LLVM_InitializeNativeAsmPrinter, LLVM_InitializeNativeDisassembler,
             LLVM_InitializeNativeTarget,
         };
@@ -841,7 +841,7 @@ impl Target {
     }
 
     pub fn initialize_all(config: &InitializationConfig) {
-        use llvm_rs::target::{
+        use llvm_lib::target::{
             LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllDisassemblers,
             LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
         };
@@ -1054,7 +1054,7 @@ impl TargetMachine {
 
     #[llvm_versions(7.0..=latest)]
     pub fn normalize_triple(triple: &TargetTriple) -> TargetTriple {
-        use llvm_rs::target_machine::LLVMNormalizeTargetTriple;
+        use llvm_lib::target_machine::LLVMNormalizeTargetTriple;
 
         let normalized = unsafe { LLVMString::new(LLVMNormalizeTargetTriple(triple.as_ptr())) };
 
@@ -1068,7 +1068,7 @@ impl TargetMachine {
     /// `x86_64-pc-linux-gnu`
     #[llvm_versions(7.0..=latest)]
     pub fn get_host_cpu_name() -> LLVMString {
-        use llvm_rs::target_machine::LLVMGetHostCPUName;
+        use llvm_lib::target_machine::LLVMGetHostCPUName;
 
         unsafe { LLVMString::new(LLVMGetHostCPUName()) }
     }
@@ -1080,7 +1080,7 @@ impl TargetMachine {
     /// `+sse2,+cx16,+sahf,-tbm`
     #[llvm_versions(7.0..=latest)]
     pub fn get_host_cpu_features() -> LLVMString {
-        use llvm_rs::target_machine::LLVMGetHostCPUFeatures;
+        use llvm_lib::target_machine::LLVMGetHostCPUFeatures;
 
         unsafe { LLVMString::new(LLVMGetHostCPUFeatures()) }
     }

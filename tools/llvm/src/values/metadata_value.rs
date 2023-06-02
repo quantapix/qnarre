@@ -1,10 +1,12 @@
-use llvm_rs::core::{LLVMGetMDNodeNumOperands, LLVMGetMDNodeOperands, LLVMGetMDString, LLVMIsAMDNode, LLVMIsAMDString};
-use llvm_rs::prelude::LLVMValueRef;
+use llvm_lib::core::{
+    LLVMGetMDNodeNumOperands, LLVMGetMDNodeOperands, LLVMGetMDString, LLVMIsAMDNode, LLVMIsAMDString,
+};
+use llvm_lib::prelude::LLVMValueRef;
 
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::core::LLVMValueAsMetadata;
+use llvm_lib::core::LLVMValueAsMetadata;
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::prelude::LLVMMetadataRef;
+use llvm_lib::prelude::LLVMMetadataRef;
 
 use crate::values::traits::AsValueRef;
 use crate::values::{BasicMetadataValueEnum, Value};

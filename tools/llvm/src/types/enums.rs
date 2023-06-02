@@ -1,6 +1,6 @@
-use llvm_rs::core::LLVMGetTypeKind;
-use llvm_rs::prelude::LLVMTypeRef;
-use llvm_rs::LLVMTypeKind;
+use llvm_lib::core::LLVMGetTypeKind;
+use llvm_lib::prelude::LLVMTypeRef;
+use llvm_lib::LLVMTypeKind;
 
 use crate::support::LLVMString;
 use crate::types::traits::AsTypeRef;

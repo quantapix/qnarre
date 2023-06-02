@@ -30,38 +30,41 @@ pub mod targets;
 pub mod types;
 pub mod values;
 
-// Boilerplate to select a desired llvm_rs version at compile & link time.
+// Boilerplate to select a desired llvm_lib version at compile & link time.
 #[cfg(feature = "llvm10-0")]
-extern crate llvm_rs_100 as llvm_rs;
+extern crate llvm_lib_100 as llvm_lib;
 #[cfg(feature = "llvm11-0")]
-extern crate llvm_rs_110 as llvm_rs;
+extern crate llvm_lib_110 as llvm_lib;
 #[cfg(feature = "llvm12-0")]
-extern crate llvm_rs_120 as llvm_rs;
+extern crate llvm_lib_120 as llvm_lib;
 #[cfg(feature = "llvm13-0")]
-extern crate llvm_rs_130 as llvm_rs;
+extern crate llvm_lib_130 as llvm_lib;
 #[cfg(feature = "llvm14-0")]
-extern crate llvm_rs_140 as llvm_rs;
+extern crate llvm_lib_140 as llvm_lib;
 #[cfg(feature = "llvm15-0")]
-extern crate llvm_rs_150 as llvm_rs;
+extern crate llvm_lib_150 as llvm_lib;
 #[cfg(feature = "llvm16-0")]
-extern crate llvm_rs_160 as llvm_rs;
+extern crate llvm_lib_160 as llvm_lib;
 #[cfg(feature = "llvm4-0")]
-extern crate llvm_rs_40 as llvm_rs;
+extern crate llvm_lib_40 as llvm_lib;
 #[cfg(feature = "llvm5-0")]
-extern crate llvm_rs_50 as llvm_rs;
+extern crate llvm_lib_50 as llvm_lib;
 #[cfg(feature = "llvm6-0")]
-extern crate llvm_rs_60 as llvm_rs;
+extern crate llvm_lib_60 as llvm_lib;
 #[cfg(feature = "llvm7-0")]
-extern crate llvm_rs_70 as llvm_rs;
+extern crate llvm_lib_70 as llvm_lib;
 #[cfg(feature = "llvm8-0")]
-extern crate llvm_rs_80 as llvm_rs;
+extern crate llvm_lib_80 as llvm_lib;
 #[cfg(feature = "llvm9-0")]
-extern crate llvm_rs_90 as llvm_rs;
+extern crate llvm_lib_90 as llvm_lib;
 
-use llvm_rs::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp, LLVMDLLStorageClass, LLVMIntPredicate, LLVMRealPredicate, LLVMThreadLocalMode, LLVMVisibility};
+use llvm_lib::{
+    LLVMAtomicOrdering, LLVMAtomicRMWBinOp, LLVMDLLStorageClass, LLVMIntPredicate, LLVMRealPredicate,
+    LLVMThreadLocalMode, LLVMVisibility,
+};
 
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::LLVMInlineAsmDialect;
+use llvm_lib::LLVMInlineAsmDialect;
 
 use std::convert::TryFrom;
 

@@ -1,13 +1,13 @@
 //! A `BasicBlock` is a container of instructions.
 
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMBasicBlockAsValue, LLVMBlockAddress, LLVMDeleteBasicBlock, LLVMGetBasicBlockName, LLVMGetBasicBlockParent,
     LLVMGetBasicBlockTerminator, LLVMGetFirstInstruction, LLVMGetFirstUse, LLVMGetLastInstruction,
     LLVMGetNextBasicBlock, LLVMGetPreviousBasicBlock, LLVMGetTypeContext, LLVMIsABasicBlock, LLVMIsConstant,
     LLVMMoveBasicBlockAfter, LLVMMoveBasicBlockBefore, LLVMPrintTypeToString, LLVMPrintValueToString,
     LLVMRemoveBasicBlockFromParent, LLVMReplaceAllUsesWith, LLVMTypeOf,
 };
-use llvm_rs::prelude::{LLVMBasicBlockRef, LLVMValueRef};
+use llvm_lib::prelude::{LLVMBasicBlockRef, LLVMValueRef};
 
 use crate::context::ContextRef;
 use crate::support::to_c_str;
@@ -465,13 +465,13 @@ impl<'ctx> BasicBlock<'ctx> {
 
         #[cfg(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0"))]
         {
-            use llvm_rs::core::LLVMSetValueName;
+            use llvm_lib::core::LLVMSetValueName;
 
             unsafe { LLVMSetValueName(LLVMBasicBlockAsValue(self.basic_block), c_string.as_ptr()) };
         }
         #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
         {
-            use llvm_rs::core::LLVMSetValueName2;
+            use llvm_lib::core::LLVMSetValueName2;
 
             unsafe { LLVMSetValueName2(LLVMBasicBlockAsValue(self.basic_block), c_string.as_ptr(), name.len()) };
         }

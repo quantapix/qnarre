@@ -1,6 +1,6 @@
 //! Construct a function that does nothing in LLVM IR.
 
-extern crate llvm_rs as llvm;
+extern crate llvm_lib as llvm;
 
 use std::ptr;
 

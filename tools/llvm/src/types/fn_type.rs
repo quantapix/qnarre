@@ -1,6 +1,8 @@
-use llvm_rs::core::{LLVMCountParamTypes, LLVMGetParamTypes, LLVMGetReturnType, LLVMGetTypeKind, LLVMIsFunctionVarArg};
-use llvm_rs::prelude::LLVMTypeRef;
-use llvm_rs::LLVMTypeKind;
+use llvm_lib::core::{
+    LLVMCountParamTypes, LLVMGetParamTypes, LLVMGetReturnType, LLVMGetTypeKind, LLVMIsFunctionVarArg,
+};
+use llvm_lib::prelude::LLVMTypeRef;
+use llvm_lib::LLVMTypeKind;
 
 use std::fmt::{self, Display};
 use std::mem::forget;

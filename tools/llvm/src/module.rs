@@ -1,13 +1,13 @@
 //! A `Module` represets a single code compilation unit.
 
-use llvm_rs::analysis::{LLVMVerifierFailureAction, LLVMVerifyModule};
+use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyModule};
 #[allow(deprecated)]
-use llvm_rs::bit_reader::LLVMParseBitcodeInContext;
-use llvm_rs::bit_writer::{LLVMWriteBitcodeToFile, LLVMWriteBitcodeToMemoryBuffer};
+use llvm_lib::bit_reader::LLVMParseBitcodeInContext;
+use llvm_lib::bit_writer::{LLVMWriteBitcodeToFile, LLVMWriteBitcodeToMemoryBuffer};
 #[llvm_versions(4.0..=14.0)]
-use llvm_rs::core::LLVMGetTypeByName;
+use llvm_lib::core::LLVMGetTypeByName;
 
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMAddFunction, LLVMAddGlobal, LLVMAddGlobalInAddressSpace, LLVMAddNamedMetadataOperand, LLVMCloneModule,
     LLVMDisposeModule, LLVMDumpModule, LLVMGetFirstFunction, LLVMGetFirstGlobal, LLVMGetLastFunction,
     LLVMGetLastGlobal, LLVMGetModuleContext, LLVMGetModuleIdentifier, LLVMGetNamedFunction, LLVMGetNamedGlobal,
@@ -15,18 +15,18 @@ use llvm_rs::core::{
     LLVMPrintModuleToString, LLVMSetDataLayout, LLVMSetModuleIdentifier, LLVMSetTarget,
 };
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::core::{LLVMAddModuleFlag, LLVMGetModuleFlag};
+use llvm_lib::core::{LLVMAddModuleFlag, LLVMGetModuleFlag};
 #[llvm_versions(13.0..=latest)]
-use llvm_rs::error::LLVMGetErrorMessage;
-use llvm_rs::execution_engine::{
+use llvm_lib::error::LLVMGetErrorMessage;
+use llvm_lib::execution_engine::{
     LLVMCreateExecutionEngineForModule, LLVMCreateInterpreterForModule, LLVMCreateJITCompilerForModule,
 };
-use llvm_rs::prelude::{LLVMModuleRef, LLVMValueRef};
+use llvm_lib::prelude::{LLVMModuleRef, LLVMValueRef};
 #[llvm_versions(13.0..=latest)]
-use llvm_rs::transforms::pass_builder::LLVMRunPasses;
-use llvm_rs::LLVMLinkage;
+use llvm_lib::transforms::pass_builder::LLVMRunPasses;
+use llvm_lib::LLVMLinkage;
 #[llvm_versions(7.0..=latest)]
-use llvm_rs::LLVMModuleFlagBehavior;
+use llvm_lib::LLVMModuleFlagBehavior;
 
 use std::cell::{Cell, Ref, RefCell};
 use std::ffi::CStr;
@@ -674,7 +674,7 @@ impl<'ctx> Module<'ctx> {
     pub fn write_bitcode_to_file(&self, file: &File, should_close: bool, unbuffered: bool) -> bool {
         #[cfg(unix)]
         {
-            use llvm_rs::bit_writer::LLVMWriteBitcodeToFD;
+            use llvm_lib::bit_writer::LLVMWriteBitcodeToFD;
             use std::os::unix::io::AsRawFd;
 
             // REVIEW: as_raw_fd docs suggest it only works in *nix
@@ -740,7 +740,7 @@ impl<'ctx> Module<'ctx> {
 
     fn get_borrowed_data_layout(module: LLVMModuleRef) -> DataLayout {
         let data_layout = unsafe {
-            use llvm_rs::core::LLVMGetDataLayoutStr;
+            use llvm_lib::core::LLVMGetDataLayoutStr;
 
             LLVMGetDataLayoutStr(module)
         };
@@ -852,7 +852,7 @@ impl<'ctx> Module<'ctx> {
     pub fn set_inline_assembly(&self, asm: &str) {
         #[cfg(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0"))]
         {
-            use llvm_rs::core::LLVMSetModuleInlineAsm;
+            use llvm_lib::core::LLVMSetModuleInlineAsm;
 
             let c_string = to_c_str(asm);
 
@@ -860,7 +860,7 @@ impl<'ctx> Module<'ctx> {
         }
         #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
         {
-            use llvm_rs::core::LLVMSetModuleInlineAsm2;
+            use llvm_lib::core::LLVMSetModuleInlineAsm2;
 
             unsafe { LLVMSetModuleInlineAsm2(self.module.get(), asm.as_ptr() as *const ::libc::c_char, asm.len()) }
         }
@@ -1235,7 +1235,7 @@ impl<'ctx> Module<'ctx> {
     /// ```
     #[llvm_versions(7.0..=latest)]
     pub fn get_source_file_name(&self) -> &CStr {
-        use llvm_rs::core::LLVMGetSourceFileName;
+        use llvm_lib::core::LLVMGetSourceFileName;
 
         let mut len = 0;
         let ptr = unsafe { LLVMGetSourceFileName(self.module.get(), &mut len) };
@@ -1262,7 +1262,7 @@ impl<'ctx> Module<'ctx> {
     /// ```
     #[llvm_versions(7.0..=latest)]
     pub fn set_source_file_name(&self, file_name: &str) {
-        use llvm_rs::core::LLVMSetSourceFileName;
+        use llvm_lib::core::LLVMSetSourceFileName;
 
         unsafe {
             LLVMSetSourceFileName(
@@ -1294,7 +1294,7 @@ impl<'ctx> Module<'ctx> {
 
         use crate::support::error_handling::get_error_str_diagnostic_handler;
         use libc::c_void;
-        use llvm_rs::linker::LLVMLinkModules2;
+        use llvm_lib::linker::LLVMLinkModules2;
 
         let context = self.get_context();
 
@@ -1322,7 +1322,7 @@ impl<'ctx> Module<'ctx> {
     /// A new `Comdat` defaults to a kind of `ComdatSelectionKind::Any`.
     #[llvm_versions(7.0..=latest)]
     pub fn get_or_insert_comdat(&self, name: &str) -> Comdat {
-        use llvm_rs::comdat::LLVMGetOrInsertComdat;
+        use llvm_lib::comdat::LLVMGetOrInsertComdat;
 
         let c_string = to_c_str(name);
         let comdat_ptr = unsafe { LLVMGetOrInsertComdat(self.module.get(), c_string.as_ptr()) };
@@ -1336,7 +1336,7 @@ impl<'ctx> Module<'ctx> {
     // SubTypes: Might need to return Option<BVE, MV<Enum>, or MV<String>>
     #[llvm_versions(7.0..=latest)]
     pub fn get_flag(&self, key: &str) -> Option<MetadataValue<'ctx>> {
-        use llvm_rs::core::LLVMMetadataAsValue;
+        use llvm_lib::core::LLVMMetadataAsValue;
 
         let flag = unsafe { LLVMGetModuleFlag(self.module.get(), key.as_ptr() as *const ::libc::c_char, key.len()) };
 
@@ -1371,7 +1371,7 @@ impl<'ctx> Module<'ctx> {
     // REVIEW: What happens if value is not const?
     #[llvm_versions(7.0..=latest)]
     pub fn add_basic_value_flag<BV: BasicValue<'ctx>>(&self, key: &str, behavior: FlagBehavior, flag: BV) {
-        use llvm_rs::core::LLVMValueAsMetadata;
+        use llvm_lib::core::LLVMValueAsMetadata;
 
         let md = unsafe { LLVMValueAsMetadata(flag.as_value_ref()) };
 
@@ -1389,7 +1389,7 @@ impl<'ctx> Module<'ctx> {
     /// Strips and debug info from the module, if it exists.
     #[llvm_versions(6.0..=latest)]
     pub fn strip_debug_info(&self) -> bool {
-        use llvm_rs::debuginfo::LLVMStripModuleDebugInfo;
+        use llvm_lib::debuginfo::LLVMStripModuleDebugInfo;
 
         unsafe { LLVMStripModuleDebugInfo(self.module.get()) == 1 }
     }
@@ -1397,7 +1397,7 @@ impl<'ctx> Module<'ctx> {
     /// Gets the version of debug metadata contained in this `Module`.
     #[llvm_versions(6.0..=latest)]
     pub fn get_debug_metadata_version(&self) -> libc::c_uint {
-        use llvm_rs::debuginfo::LLVMGetModuleDebugMetadataVersion;
+        use llvm_lib::debuginfo::LLVMGetModuleDebugMetadataVersion;
 
         unsafe { LLVMGetModuleDebugMetadataVersion(self.module.get()) }
     }

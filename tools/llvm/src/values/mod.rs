@@ -47,11 +47,11 @@ pub use crate::values::traits::AsValueRef;
 pub use crate::values::traits::{AggregateValue, AnyValue, BasicValue, FloatMathValue, IntMathValue, PointerMathValue};
 pub use crate::values::vec_value::VectorValue;
 
-use llvm_rs::core::{
+use llvm_lib::core::{
     LLVMDumpValue, LLVMGetFirstUse, LLVMGetSection, LLVMIsAInstruction, LLVMIsConstant, LLVMIsNull, LLVMIsUndef,
     LLVMPrintTypeToString, LLVMPrintValueToString, LLVMReplaceAllUsesWith, LLVMSetSection, LLVMTypeOf,
 };
-use llvm_rs::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 
 use std::ffi::CStr;
 use std::fmt;
@@ -107,7 +107,7 @@ impl<'ctx> Value<'ctx> {
 
         #[cfg(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0"))]
         {
-            use llvm_rs::core::LLVMSetValueName;
+            use llvm_lib::core::LLVMSetValueName;
 
             unsafe {
                 LLVMSetValueName(self.value, c_string.as_ptr());
@@ -115,7 +115,7 @@ impl<'ctx> Value<'ctx> {
         }
         #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
         {
-            use llvm_rs::core::LLVMSetValueName2;
+            use llvm_lib::core::LLVMSetValueName2;
 
             unsafe { LLVMSetValueName2(self.value, c_string.as_ptr(), name.len()) }
         }
@@ -126,13 +126,13 @@ impl<'ctx> Value<'ctx> {
     fn get_name(&self) -> &CStr {
         #[cfg(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0"))]
         let ptr = unsafe {
-            use llvm_rs::core::LLVMGetValueName;
+            use llvm_lib::core::LLVMGetValueName;
 
             LLVMGetValueName(self.value)
         };
         #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
         let ptr = unsafe {
-            use llvm_rs::core::LLVMGetValueName2;
+            use llvm_lib::core::LLVMGetValueName2;
             let mut len = 0;
 
             LLVMGetValueName2(self.value, &mut len)
