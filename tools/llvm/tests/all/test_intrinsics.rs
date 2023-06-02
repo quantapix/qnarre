@@ -23,7 +23,6 @@ fn test_get_decl_cos() {
     let context = Context::create();
     let module = context.create_module("my_module");
 
-    // overloaded, so we can't get it w/o specifying types
     assert!(cos.get_declaration(&module, &[]).is_none());
 
     let decl = cos.get_declaration(&module, &[context.f32_type().into()]).unwrap();
@@ -43,8 +42,6 @@ fn test_get_decl_va_copy() {
 
     assert!(va_copy.get_declaration(&module, &[]).is_some());
 
-    // even though this is nonsensial and ¿might? lead to errors later, we can still get an overloaded version for nonoverloaded intrinsic
-    // this does not assert, which is.. Ok, I guess?
     let decl = va_copy.get_declaration(&module, &[context.f32_type().into()]).unwrap();
 
     assert_eq!(decl.get_name().to_str().unwrap(), "llvm.va_copy.f32");

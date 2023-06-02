@@ -23,13 +23,10 @@ impl<'ctx> StructValue<'ctx> {
         }
     }
 
-    /// Gets the name of a `StructValue`. If the value is a constant, this will
-    /// return an empty string.
     pub fn get_name(&self) -> &CStr {
         self.struct_value.get_name()
     }
 
-    /// Get name of the `StructValue`.
     pub fn set_name(&self, name: &str) {
         self.struct_value.set_name(name)
     }

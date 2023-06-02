@@ -6,28 +6,20 @@ use crate::{
 use mlir_sys::{mlirOpResultGetOwner, mlirOpResultGetResultNumber, MlirValue};
 use std::fmt::{self, Display, Formatter};
 
-/// An operation result.
 #[derive(Clone, Copy, Debug)]
 pub struct OperationResult<'a> {
     value: Value<'a>,
 }
 
 impl<'a> OperationResult<'a> {
-    /// Gets a result number.
     pub fn result_number(&self) -> usize {
         unsafe { mlirOpResultGetResultNumber(self.value.to_raw()) as usize }
     }
 
-    /// Gets an owner operation.
     pub fn owner(&self) -> OperationRef {
         unsafe { OperationRef::from_raw(mlirOpResultGetOwner(self.value.to_raw())) }
     }
 
-    /// Creates an operation result from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(value: MlirValue) -> Self {
         Self {
             value: Value::from_raw(value),

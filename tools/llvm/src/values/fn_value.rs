@@ -67,7 +67,6 @@ impl<'ctx> FunctionValue<'ctx> {
         self.fn_value.print_to_stderr()
     }
 
-    // FIXME: Better error returns, code 1 is error
     pub fn verify(self, print: bool) -> bool {
         let action = if print {
             LLVMVerifierFailureAction::LLVMPrintMessageAction
@@ -80,7 +79,6 @@ impl<'ctx> FunctionValue<'ctx> {
         code != 1
     }
 
-    // REVIEW: If there's a demand, could easily create a module.get_functions() -> Iterator
     pub fn get_next_function(self) -> Option<Self> {
         unsafe { FunctionValue::new(LLVMGetNextFunction(self.as_value_ref())) }
     }
@@ -178,22 +176,18 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { BasicBlock::new(LLVMGetLastBasicBlock(self.fn_value.value)) }
     }
 
-    /// Gets the name of a `FunctionValue`.
     pub fn get_name(&self) -> &CStr {
         self.fn_value.get_name()
     }
 
-    /// View the control flow graph and produce a .dot file
     pub fn view_function_cfg(self) {
         unsafe { LLVMViewFunctionCFG(self.as_value_ref()) }
     }
 
-    /// Only view the control flow graph
     pub fn view_function_cfg_only(self) {
         unsafe { LLVMViewFunctionCFGOnly(self.as_value_ref()) }
     }
 
-    // TODO: Look for ways to prevent use after delete but maybe not possible
     pub unsafe fn delete(self) {
         LLVMDeleteFunction(self.as_value_ref())
     }
@@ -212,7 +206,6 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { FunctionType::new(llvm_lib::core::LLVMGlobalGetValueType(self.as_value_ref())) }
     }
 
-    // TODOC: How this works as an exception handler
     pub fn has_personality_function(self) -> bool {
         use llvm_lib::core::LLVMHasPersonalityFn;
 
@@ -220,7 +213,6 @@ impl<'ctx> FunctionValue<'ctx> {
     }
 
     pub fn get_personality_function(self) -> Option<FunctionValue<'ctx>> {
-        // This prevents a segfault when not having a pfn
         if !self.has_personality_function() {
             return None;
         }
@@ -258,85 +250,22 @@ impl<'ctx> FunctionValue<'ctx> {
         self.fn_value.replace_all_uses_with(other.as_value_ref())
     }
 
-    /// Adds an `Attribute` to a particular location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let string_attribute = context.create_string_attribute("my_key", "my_val");
-    /// let enum_attribute = context.create_enum_attribute(1, 1);
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, string_attribute);
-    /// fn_value.add_attribute(AttributeLoc::Return, enum_attribute);
-    /// ```
     pub fn add_attribute(self, loc: AttributeLoc, attribute: Attribute) {
         unsafe { LLVMAddAttributeAtIndex(self.as_value_ref(), loc.get_index(), attribute.attribute) }
     }
 
-    /// Counts the number of `Attribute`s belonging to the specified location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let string_attribute = context.create_string_attribute("my_key", "my_val");
-    /// let enum_attribute = context.create_enum_attribute(1, 1);
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, string_attribute);
-    /// fn_value.add_attribute(AttributeLoc::Return, enum_attribute);
-    ///
-    /// assert_eq!(fn_value.count_attributes(AttributeLoc::Return), 2);
-    /// ```
     pub fn count_attributes(self, loc: AttributeLoc) -> u32 {
         unsafe { LLVMGetAttributeCountAtIndex(self.as_value_ref(), loc.get_index()) }
     }
 
-    /// Get all `Attribute`s belonging to the specified location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let string_attribute = context.create_string_attribute("my_key", "my_val");
-    /// let enum_attribute = context.create_enum_attribute(1, 1);
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, string_attribute);
-    /// fn_value.add_attribute(AttributeLoc::Return, enum_attribute);
-    ///
-    /// assert_eq!(fn_value.attributes(AttributeLoc::Return), vec![string_attribute, enum_attribute]);
-    /// ```
     pub fn attributes(self, loc: AttributeLoc) -> Vec<Attribute> {
         use llvm_lib::core::LLVMGetAttributesAtIndex;
         use std::mem::{ManuallyDrop, MaybeUninit};
 
         let count = self.count_attributes(loc) as usize;
 
-        // initialize a vector, but leave each element uninitialized
         let mut attribute_refs: Vec<MaybeUninit<Attribute>> = vec![MaybeUninit::uninit(); count];
 
-        // Safety: relies on `Attribute` having the same in-memory representation as `LLVMAttributeRef`
         unsafe {
             LLVMGetAttributesAtIndex(
                 self.as_value_ref(),
@@ -345,9 +274,7 @@ impl<'ctx> FunctionValue<'ctx> {
             )
         }
 
-        // Safety: all elements are initialized
         unsafe {
-            // ensure the vector is not dropped
             let mut attribute_refs = ManuallyDrop::new(attribute_refs);
 
             Vec::from_raw_parts(
@@ -358,24 +285,6 @@ impl<'ctx> FunctionValue<'ctx> {
         }
     }
 
-    /// Removes a string `Attribute` belonging to the specified location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let string_attribute = context.create_string_attribute("my_key", "my_val");
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, string_attribute);
-    /// fn_value.remove_string_attribute(AttributeLoc::Return, "my_key");
-    /// ```
     pub fn remove_string_attribute(self, loc: AttributeLoc, key: &str) {
         unsafe {
             LLVMRemoveStringAttributeAtIndex(
@@ -387,48 +296,10 @@ impl<'ctx> FunctionValue<'ctx> {
         }
     }
 
-    /// Removes an enum `Attribute` belonging to the specified location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let enum_attribute = context.create_enum_attribute(1, 1);
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, enum_attribute);
-    /// fn_value.remove_enum_attribute(AttributeLoc::Return, 1);
-    /// ```
     pub fn remove_enum_attribute(self, loc: AttributeLoc, kind_id: u32) {
         unsafe { LLVMRemoveEnumAttributeAtIndex(self.as_value_ref(), loc.get_index(), kind_id) }
     }
 
-    /// Gets an enum `Attribute` belonging to the specified location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let enum_attribute = context.create_enum_attribute(1, 1);
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, enum_attribute);
-    ///
-    /// assert_eq!(fn_value.get_enum_attribute(AttributeLoc::Return, 1), Some(enum_attribute));
-    /// ```
-    // SubTypes: -> Option<Attribute<Enum>>
     pub fn get_enum_attribute(self, loc: AttributeLoc, kind_id: u32) -> Option<Attribute> {
         let ptr = unsafe { LLVMGetEnumAttributeAtIndex(self.as_value_ref(), loc.get_index(), kind_id) };
 
@@ -439,26 +310,6 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { Some(Attribute::new(ptr)) }
     }
 
-    /// Gets a string `Attribute` belonging to the specified location in this `FunctionValue`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::attributes::AttributeLoc;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_fn", fn_type, None);
-    /// let string_attribute = context.create_string_attribute("my_key", "my_val");
-    ///
-    /// fn_value.add_attribute(AttributeLoc::Return, string_attribute);
-    ///
-    /// assert_eq!(fn_value.get_string_attribute(AttributeLoc::Return, "my_key"), Some(string_attribute));
-    /// ```
-    // SubTypes: -> Option<Attribute<String>>
     pub fn get_string_attribute(self, loc: AttributeLoc, key: &str) -> Option<Attribute> {
         let ptr = unsafe {
             LLVMGetStringAttributeAtIndex(
@@ -482,20 +333,15 @@ impl<'ctx> FunctionValue<'ctx> {
         }
     }
 
-    /// Gets the `GlobalValue` version of this `FunctionValue`. This allows
-    /// you to further inspect its global properties or even convert it to
-    /// a `PointerValue`.
     pub fn as_global_value(self) -> GlobalValue<'ctx> {
         unsafe { GlobalValue::new(self.as_value_ref()) }
     }
 
-    /// Set the debug info descriptor
     #[llvm_versions(7.0..=latest)]
     pub fn set_subprogram(self, subprogram: DISubprogram<'ctx>) {
         unsafe { LLVMSetSubprogram(self.as_value_ref(), subprogram.metadata_ref) }
     }
 
-    /// Get the debug info descriptor
     #[llvm_versions(7.0..=latest)]
     pub fn get_subprogram(self) -> Option<DISubprogram<'ctx>> {
         let metadata_ref = unsafe { LLVMGetSubprogram(self.as_value_ref()) };
@@ -510,12 +356,10 @@ impl<'ctx> FunctionValue<'ctx> {
         }
     }
 
-    /// Get the section to which this function belongs
     pub fn get_section(&self) -> Option<&CStr> {
         self.fn_value.get_section()
     }
 
-    /// Set the section to which this function should belong
     pub fn set_section(self, section: Option<&str>) {
         self.fn_value.set_section(section)
     }

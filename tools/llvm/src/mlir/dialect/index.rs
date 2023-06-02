@@ -2,28 +2,17 @@
 
 use super::arith::CmpiPredicate;
 use crate::{
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, Attribute, Identifier, Location,
-        Operation, Value,
-    },
+    ir::{attribute::IntegerAttribute, operation::OperationBuilder, Attribute, Identifier, Location, Operation, Value},
     Context,
 };
 
-// spell-checker: disable
-
-/// Creates an `index.constant` operation.
-pub fn constant<'c>(
-    context: &'c Context,
-    value: IntegerAttribute<'c>,
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn constant<'c>(context: &'c Context, value: IntegerAttribute<'c>, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("index.constant", location)
         .add_attributes(&[(Identifier::new(context, "value"), value.into())])
         .enable_result_type_inference()
         .build()
 }
 
-/// Creates an `index.cmp` operation.
 pub fn cmp<'c>(
     context: &'c Context,
     predicate: CmpiPredicate,
@@ -59,8 +48,8 @@ pub fn cmp<'c>(
 melior_macro::binary_operations!(
     index,
     [
-        add, and, ceildivs, ceildivu, divs, divu, floordivs, maxs, maxu, mins, minu, mul, or, rems,
-        remu, shl, shrs, shru, sub, xor,
+        add, and, ceildivs, ceildivu, divs, divu, floordivs, maxs, maxu, mins, minu, mul, or, rems, remu, shl, shrs,
+        shru, sub, xor,
     ]
 );
 
@@ -242,10 +231,7 @@ mod tests {
             func::func(
                 &context,
                 StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(
-                    FunctionType::new(&context, &[integer_type, integer_type], &[integer_type])
-                        .into(),
-                ),
+                TypeAttribute::new(FunctionType::new(&context, &[integer_type, integer_type], &[integer_type]).into()),
                 region,
                 &[],
                 Location::unknown(&context),

@@ -82,7 +82,6 @@ fn test_section_iterator() {
 
     assert_eq!(func.get_section().unwrap().to_str(), Ok("D"));
 
-    // add a body to the function to make the section non-empty
     let basic_block = context.append_basic_block(func, "entry");
     let builder = context.create_builder();
     builder.position_at_end(basic_block);
@@ -120,7 +119,6 @@ fn test_section_iterator() {
                 "D" => {
                     assert!(!has_section_d);
                     has_section_d = true;
-                    // FIXME: fails on arm64-apple-darwin22.1.0
                     assert_eq!(section.size(), 1);
                 },
                 _ => {},
@@ -180,7 +178,6 @@ fn test_symbol_iterator() {
             }
         }
     }
-    // FIXME: fails on arm64-apple-darwin22.1.0
     assert!(has_symbol_a);
     assert!(has_symbol_b);
     assert!(has_symbol_c);
@@ -209,7 +206,6 @@ fn test_reloc_iterator() {
     for section in object_file.get_sections() {
         for _ in section.get_relocations() {
             found_relocation = true;
-            // We don't stop the traversal here, so as to exercise the iterators.
         }
     }
     assert!(found_relocation);

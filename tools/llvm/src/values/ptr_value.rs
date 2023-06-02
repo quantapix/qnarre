@@ -29,13 +29,10 @@ impl<'ctx> PointerValue<'ctx> {
         }
     }
 
-    /// Get name of the `PointerValue`. If the value is a constant, this
-    /// will return an empty string.
     pub fn get_name(&self) -> &CStr {
         self.ptr_value.get_name()
     }
 
-    /// Set name of the `PointerValue`.
     pub fn set_name(&self, name: &str) {
         self.ptr_value.set_name(name)
     }
@@ -52,17 +49,6 @@ impl<'ctx> PointerValue<'ctx> {
         self.ptr_value.is_undef()
     }
 
-    /// Determines whether or not a `PointerValue` is a constant.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::AddressSpace;
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let void_type = context.void_type();
-    /// ```
     pub fn is_const(self) -> bool {
         self.ptr_value.is_const()
     }
@@ -75,8 +61,6 @@ impl<'ctx> PointerValue<'ctx> {
         self.ptr_value.as_instruction()
     }
 
-    // REVIEW: Should this be on array value too?
-    /// GEP is very likely to segfault if indexes are used incorrectly, and is therefore an unsafe function. Maybe we can change this in the future.
     #[llvm_versions(4.0..=14.0)]
     pub unsafe fn const_gep(self, ordered_indexes: &[IntValue<'ctx>]) -> PointerValue<'ctx> {
         let mut index_values: Vec<LLVMValueRef> = ordered_indexes.iter().map(|val| val.as_value_ref()).collect();
@@ -92,8 +76,6 @@ impl<'ctx> PointerValue<'ctx> {
         PointerValue::new(value)
     }
 
-    // REVIEW: Should this be on array value too?
-    /// GEP is very likely to segfault if indexes are used incorrectly, and is therefore an unsafe function. Maybe we can change this in the future.
     #[llvm_versions(15.0..=latest)]
     pub unsafe fn const_gep<T: BasicType<'ctx>>(self, ty: T, ordered_indexes: &[IntValue<'ctx>]) -> PointerValue<'ctx> {
         let mut index_values: Vec<LLVMValueRef> = ordered_indexes.iter().map(|val| val.as_value_ref()).collect();
@@ -110,7 +92,6 @@ impl<'ctx> PointerValue<'ctx> {
         PointerValue::new(value)
     }
 
-    /// GEP is very likely to segfault if indexes are used incorrectly, and is therefore an unsafe function. Maybe we can change this in the future.
     #[llvm_versions(4.0..=14.0)]
     pub unsafe fn const_in_bounds_gep(self, ordered_indexes: &[IntValue<'ctx>]) -> PointerValue<'ctx> {
         let mut index_values: Vec<LLVMValueRef> = ordered_indexes.iter().map(|val| val.as_value_ref()).collect();
@@ -126,7 +107,6 @@ impl<'ctx> PointerValue<'ctx> {
         PointerValue::new(value)
     }
 
-    /// GEP is very likely to segfault if indexes are used incorrectly, and is therefore an unsafe function. Maybe we can change this in the future.
     #[llvm_versions(15.0..=latest)]
     pub unsafe fn const_in_bounds_gep<T: BasicType<'ctx>>(
         self,

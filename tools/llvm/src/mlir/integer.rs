@@ -9,8 +9,6 @@ use std::{
     marker::PhantomData,
 };
 
-/// An integer attribute.
-// Attributes are always values but their internal storage is owned by contexts.
 #[derive(Clone, Copy)]
 pub struct Integer<'c> {
     raw: MlirAttribute,
@@ -18,7 +16,6 @@ pub struct Integer<'c> {
 }
 
 impl<'c> Integer<'c> {
-    /// Creates an integer.
     pub fn new(integer: i64, r#type: Type<'c>) -> Self {
         unsafe { Self::from_raw(mlirIntegerAttrGet(r#type.to_raw(), integer)) }
     }
@@ -44,10 +41,7 @@ impl<'c> TryFrom<Attribute<'c>> for Integer<'c> {
         if attribute.is_integer() {
             Ok(unsafe { Self::from_raw(attribute.to_raw()) })
         } else {
-            Err(Error::AttributeExpected(
-                "integer",
-                format!("{}", attribute),
-            ))
+            Err(Error::AttributeExpected("integer", format!("{}", attribute)))
         }
     }
 }

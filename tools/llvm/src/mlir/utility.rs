@@ -1,12 +1,11 @@
 //! Utility functions.
 
 use crate::{
-    context::Context, dialect::DialectRegistry, logical_result::LogicalResult, pass,
-    string_ref::StringRef, Error,
+    context::Context, dialect::DialectRegistry, logical_result::LogicalResult, pass, string_ref::StringRef, Error,
 };
 use mlir_sys::{
-    mlirParsePassPipeline, mlirRegisterAllDialects, mlirRegisterAllLLVMTranslations,
-    mlirRegisterAllPasses, MlirStringRef,
+    mlirParsePassPipeline, mlirRegisterAllDialects, mlirRegisterAllLLVMTranslations, mlirRegisterAllPasses,
+    MlirStringRef,
 };
 use std::{
     ffi::c_void,
@@ -14,25 +13,20 @@ use std::{
     sync::Once,
 };
 
-/// Registers all dialects to a dialect registry.
 pub fn register_all_dialects(registry: &DialectRegistry) {
     unsafe { mlirRegisterAllDialects(registry.to_raw()) }
 }
 
-/// Register all translations from other dialects to the `llvm` dialect.
 pub fn register_all_llvm_translations(context: &Context) {
     unsafe { mlirRegisterAllLLVMTranslations(context.to_raw()) }
 }
 
-/// Register all passes.
 pub fn register_all_passes() {
     static ONCE: Once = Once::new();
 
-    // Multiple calls of `mlirRegisterAllPasses` seems to cause double free.
     ONCE.call_once(|| unsafe { mlirRegisterAllPasses() });
 }
 
-/// Parses a pass pipeline.
 pub fn parse_pass_pipeline(manager: pass::OperationPassManager, source: &str) -> Result<(), Error> {
     let mut error_message = None;
 
@@ -48,9 +42,9 @@ pub fn parse_pass_pipeline(manager: pass::OperationPassManager, source: &str) ->
     if result.is_success() {
         Ok(())
     } else {
-        Err(Error::ParsePassPipeline(error_message.unwrap_or_else(
-            || "failed to parse error message in UTF-8".into(),
-        )))
+        Err(Error::ParsePassPipeline(
+            error_message.unwrap_or_else(|| "failed to parse error message in UTF-8".into()),
+        ))
     }
 }
 
@@ -65,7 +59,6 @@ unsafe extern "C" fn handle_parse_error(raw_string: MlirStringRef, data: *mut c_
     }
 }
 
-// TODO Use into_raw_parts.
 pub(crate) unsafe fn into_raw_array<T>(xs: Vec<T>) -> *mut T {
     xs.leak().as_mut_ptr()
 }
@@ -81,9 +74,7 @@ pub(crate) unsafe extern "C" fn print_callback(string: MlirStringRef, data: *mut
         write!(
             formatter,
             "{}",
-            StringRef::from_raw(string)
-                .as_str()
-                .map_err(|_| fmt::Error)?
+            StringRef::from_raw(string).as_str().map_err(|_| fmt::Error)?
         )
     })();
 }

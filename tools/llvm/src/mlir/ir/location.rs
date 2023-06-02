@@ -5,8 +5,8 @@ use crate::{
     utility::{into_raw_array, print_callback},
 };
 use mlir_sys::{
-    mlirLocationEqual, mlirLocationFileLineColGet, mlirLocationFusedGet, mlirLocationGetContext,
-    mlirLocationNameGet, mlirLocationPrint, mlirLocationUnknownGet, MlirLocation,
+    mlirLocationEqual, mlirLocationFileLineColGet, mlirLocationFusedGet, mlirLocationGetContext, mlirLocationNameGet,
+    mlirLocationPrint, mlirLocationUnknownGet, MlirLocation,
 };
 use std::{
     ffi::c_void,
@@ -14,7 +14,6 @@ use std::{
     marker::PhantomData,
 };
 
-/// A location
 #[derive(Clone, Copy, Debug)]
 pub struct Location<'c> {
     raw: MlirLocation,
@@ -22,7 +21,6 @@ pub struct Location<'c> {
 }
 
 impl<'c> Location<'c> {
-    /// Creates a location with a filename and line and column numbers.
     pub fn new(context: &'c Context, filename: &str, line: usize, column: usize) -> Self {
         unsafe {
             Self::from_raw(mlirLocationFileLineColGet(
@@ -34,7 +32,6 @@ impl<'c> Location<'c> {
         }
     }
 
-    /// Creates a fused location.
     pub fn fused(context: &'c Context, locations: &[Self], attribute: Attribute) -> Self {
         unsafe {
             Self::from_raw(mlirLocationFusedGet(
@@ -46,7 +43,6 @@ impl<'c> Location<'c> {
         }
     }
 
-    /// Creates a name location.
     pub fn name(context: &'c Context, name: &str, child: Location) -> Self {
         unsafe {
             Self::from_raw(mlirLocationNameGet(
@@ -57,21 +53,14 @@ impl<'c> Location<'c> {
         }
     }
 
-    /// Creates an unknown location.
     pub fn unknown(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirLocationUnknownGet(context.to_raw())) }
     }
 
-    /// Gets a context.
     pub fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirLocationGetContext(self.raw)) }
     }
 
-    /// Creates a location from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirLocation) -> Self {
         Self {
             raw,
@@ -79,7 +68,6 @@ impl<'c> Location<'c> {
         }
     }
 
-    /// Converts a location into a raw object.
     pub fn to_raw(self) -> MlirLocation {
         self.raw
     }
@@ -96,11 +84,7 @@ impl<'c> Display for Location<'c> {
         let mut data = (formatter, Ok(()));
 
         unsafe {
-            mlirLocationPrint(
-                self.raw,
-                Some(print_callback),
-                &mut data as *mut _ as *mut c_void,
-            );
+            mlirLocationPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
         }
 
         data.1
@@ -163,10 +147,7 @@ mod tests {
     fn not_equal() {
         let context = Context::new();
 
-        assert_ne!(
-            Location::new(&context, "foo", 42, 42),
-            Location::unknown(&context)
-        );
+        assert_ne!(Location::new(&context, "foo", 42, 42), Location::unknown(&context));
     }
 
     #[test]
@@ -174,9 +155,6 @@ mod tests {
         let context = Context::new();
 
         assert_eq!(Location::unknown(&context).to_string(), "loc(unknown)");
-        assert_eq!(
-            Location::new(&context, "foo", 42, 42).to_string(),
-            "loc(\"foo\":42:42)"
-        );
+        assert_eq!(Location::new(&context, "foo", 42, 42).to_string(), "loc(\"foo\":42:42)");
     }
 }

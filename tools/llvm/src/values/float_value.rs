@@ -31,13 +31,10 @@ impl<'ctx> FloatValue<'ctx> {
         }
     }
 
-    /// Gets name of the `FloatValue`. If the value is a constant, this will
-    /// return an empty string.
     pub fn get_name(&self) -> &CStr {
         self.float_value.get_name()
     }
 
-    /// Set name of the `FloatValue`.
     pub fn set_name(&self, name: &str) {
         self.float_value.set_name(name)
     }
@@ -122,44 +119,15 @@ impl<'ctx> FloatValue<'ctx> {
         unsafe { FloatValue::new(LLVMConstFPExt(self.as_value_ref(), float_type.as_type_ref())) }
     }
 
-    // SubType: rhs same as lhs; return IntValue<bool>
     pub fn const_compare(self, op: FloatPredicate, rhs: FloatValue<'ctx>) -> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstFCmp(op.into(), self.as_value_ref(), rhs.as_value_ref())) }
     }
 
-    /// Determines whether or not a `FloatValue` is a constant.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let f64_type = context.f64_type();
-    /// let f64_val = f64_type.const_float(1.2);
-    ///
-    /// assert!(f64_val.is_const());
-    /// ```
     pub fn is_const(self) -> bool {
         self.float_value.is_const()
     }
 
-    /// Obtains a constant `FloatValue`'s value and whether or not it lost info.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let f64_type = context.f64_type();
-    /// let f64_1_2 = f64_type.const_float(1.2);
-    ///
-    /// assert_eq!(f64_1_2.get_constant(), Some((1.2, false)));
-    /// ```
     pub fn get_constant(self) -> Option<(f64, bool)> {
-        // Nothing bad happens as far as I can tell if we don't check if const
-        // unlike the int versions, but just doing this just in case and for consistency
         if !self.is_const() {
             return None;
         }

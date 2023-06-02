@@ -2,10 +2,7 @@
 
 use crate::{
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
-            TypeAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::MemRefType,
         Attribute, Identifier, Location, Operation, Value,
@@ -13,7 +10,6 @@ use crate::{
     Context,
 };
 
-/// Create a `memref.alloc` operation.
 pub fn alloc<'c>(
     context: &'c Context,
     r#type: MemRefType<'c>,
@@ -33,7 +29,6 @@ pub fn alloc<'c>(
     )
 }
 
-/// Create a `memref.alloca` operation.
 pub fn alloca<'c>(
     context: &'c Context,
     r#type: MemRefType<'c>,
@@ -66,20 +61,17 @@ fn allocate<'c>(
 
     builder = builder.add_attributes(&[(
         Identifier::new(context, "operand_segment_sizes"),
-        DenseI32ArrayAttribute::new(context, &[dynamic_sizes.len() as i32, symbols.len() as i32])
-            .into(),
+        DenseI32ArrayAttribute::new(context, &[dynamic_sizes.len() as i32, symbols.len() as i32]).into(),
     )]);
     builder = builder.add_operands(dynamic_sizes).add_operands(symbols);
 
     if let Some(alignment) = alignment {
-        builder =
-            builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
+        builder = builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
     }
 
     builder.add_results(&[r#type.into()]).build()
 }
 
-/// Create a `memref.cast` operation.
 pub fn cast<'c>(value: Value, r#type: MemRefType<'c>, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("memref.cast", location)
         .add_operands(&[value])
@@ -87,14 +79,12 @@ pub fn cast<'c>(value: Value, r#type: MemRefType<'c>, location: Location<'c>) ->
         .build()
 }
 
-/// Create a `memref.dealloc` operation.
 pub fn dealloc<'c>(value: Value, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("memref.dealloc", location)
         .add_operands(&[value])
         .build()
 }
 
-/// Create a `memref.dim` operation.
 pub fn dim<'c>(value: Value, index: Value, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("memref.dim", location)
         .add_operands(&[value, index])
@@ -102,7 +92,6 @@ pub fn dim<'c>(value: Value, index: Value, location: Location<'c>) -> Operation<
         .build()
 }
 
-/// Create a `memref.get_global` operation.
 pub fn get_global<'c>(
     context: &'c Context,
     name: &str,
@@ -118,7 +107,6 @@ pub fn get_global<'c>(
         .build()
 }
 
-/// Create a `memref.global` operation.
 #[allow(clippy::too_many_arguments)]
 pub fn global<'c>(
     context: &'c Context,
@@ -153,21 +141,16 @@ pub fn global<'c>(
     }
 
     if constant {
-        builder = builder.add_attributes(&[(
-            Identifier::new(context, "constant"),
-            Attribute::unit(context),
-        )]);
+        builder = builder.add_attributes(&[(Identifier::new(context, "constant"), Attribute::unit(context))]);
     }
 
     if let Some(alignment) = alignment {
-        builder =
-            builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
+        builder = builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
     }
 
     builder.build()
 }
 
-/// Create a `memref.load` operation.
 pub fn load<'c>(memref: Value, indices: &[Value], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("memref.load", location)
         .add_operands(&[memref])
@@ -176,7 +159,6 @@ pub fn load<'c>(memref: Value, indices: &[Value], location: Location<'c>) -> Ope
         .build()
 }
 
-/// Create a `memref.rank` operation.
 pub fn rank<'c>(value: Value, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("memref.rank", location)
         .add_operands(&[value])
@@ -184,20 +166,13 @@ pub fn rank<'c>(value: Value, location: Location<'c>) -> Operation<'c> {
         .build()
 }
 
-/// Create a `memref.store` operation.
-pub fn store<'c>(
-    value: Value,
-    memref: Value,
-    indices: &[Value],
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn store<'c>(value: Value, memref: Value, indices: &[Value], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("memref.store", location)
         .add_operands(&[value, memref])
         .add_operands(indices)
         .build()
 }
 
-/// Create a `memref.realloc` operation.
 pub fn realloc<'c>(
     context: &'c Context,
     value: Value,
@@ -215,8 +190,7 @@ pub fn realloc<'c>(
     }
 
     if let Some(alignment) = alignment {
-        builder =
-            builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
+        builder = builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
     }
 
     builder.build()
@@ -341,10 +315,7 @@ mod tests {
 
             block.append_operation(cast(
                 memref.result(0).unwrap().into(),
-                Type::parse(&context, "memref<?xf64>")
-                    .unwrap()
-                    .try_into()
-                    .unwrap(),
+                Type::parse(&context, "memref<?xf64>").unwrap().try_into().unwrap(),
                 location,
             ));
         })
@@ -386,16 +357,9 @@ mod tests {
         let module = Module::new(location);
         let mem_ref_type = MemRefType::new(Type::index(&context), &[], None, None);
 
-        module.body().append_operation(global(
-            &context,
-            "foo",
-            None,
-            mem_ref_type,
-            None,
-            false,
-            None,
-            location,
-        ));
+        module
+            .body()
+            .append_operation(global(&context, "foo", None, mem_ref_type, None, false, None, location));
 
         module.body().append_operation(func::func(
             &context,
@@ -461,10 +425,7 @@ mod tests {
                 .into(),
             ),
             true,
-            Some(IntegerAttribute::new(
-                8,
-                IntegerType::new(&context, 64).into(),
-            )),
+            Some(IntegerAttribute::new(8, IntegerType::new(&context, 64).into())),
             location,
         ));
 

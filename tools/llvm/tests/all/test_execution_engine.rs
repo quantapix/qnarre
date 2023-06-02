@@ -8,14 +8,10 @@ type Thunk = unsafe extern "C" fn();
 #[test]
 fn test_get_function_address() {
     let context = Context::create();
-    // let module = context.create_module("errors_abound");
     let builder = context.create_builder();
     let void_type = context.void_type();
     let fn_type = void_type.fn_type(&[], false);
 
-    // FIXME: LLVM's global state is leaking, causing this to fail in `cargo test` but not `cargo test test_get_function_address`
-    // nor (most of the time) with `cargo test -- --test-threads LARGE_NUM`
-    // assert_eq!(module.create_jit_execution_engine(OptimizationLevel::None), Err("Unable to find target for this triple (no targets are registered)".into()));
     let module = context.create_module("errors_abound");
 
     Target::initialize_native(&InitializationConfig::default()).expect("Failed to initialize native target");
@@ -63,7 +59,6 @@ fn test_jit_execution_engine() {
     let fn_type = i32_type.fn_type(&[i32_type.into(), i8_ptr_ptr_type.into()], false);
     let fn_value = module.add_function("main", fn_type, None);
     let main_argc = fn_value.get_first_param().unwrap().into_int_value();
-    // let main_argv = fn_value.get_nth_param(1).unwrap();
     let check_argc = context.append_basic_block(fn_value, "check_argc");
     let check_arg3 = context.append_basic_block(fn_value, "check_arg3");
     let error1 = context.append_basic_block(fn_value, "error1");
@@ -71,15 +66,12 @@ fn test_jit_execution_engine() {
 
     main_argc.set_name("argc");
 
-    // If anything goes wrong, jump to returning 1
     builder.position_at_end(error1);
     builder.build_return(Some(&one_i32));
 
-    // If successful, jump to returning 42
     builder.position_at_end(success);
     builder.build_return(Some(&fourtytwo_i32));
 
-    // See if argc == 3
     builder.position_at_end(check_argc);
 
     let eq = IntPredicate::EQ;
@@ -108,15 +100,6 @@ fn test_jit_execution_engine() {
 
     assert_eq!(ret, 42, "unexpected main return code: {}", ret);
 }
-
-// #[test]
-// fn test_execution_engine_empty_module() {
-//     let context = Context::create();
-//     let module = context.create_module("fooo");
-//     let builder = context.create_builder();
-
-//     let ee = module.create_jit_execution_engine(OptimizationLevel::None); // Segfault?
-// }
 
 #[test]
 fn test_execution_engine() {
@@ -151,71 +134,3 @@ fn test_add_remove_module() {
     assert!(ee.remove_module(&module).is_ok());
     assert!(ee.remove_module(&module2).is_ok());
 }
-
-// REVIEW: Global state pollution access tests cause this to pass when run individually
-// but fail when multiple tests are run
-// #[test]
-// fn test_no_longer_segfaults() {
-//     Target::initialize_amd_gpu(&InitializationConfig::default());
-
-//     let context = Context::create();
-//     let module = context.create_module("test");
-
-//     assert_eq!(*module.create_jit_execution_engine(OptimizationLevel::default()).unwrap_err(), *CString::new("No available targets are compatible with this triple.").unwrap());
-
-//     // REVIEW: Module is being cloned in err case... should test Module still works as expected...
-// }
-
-// #[test]
-// fn test_get_function_value() {
-//     let context = Context::create();
-//     let builder = context.create_builder();
-//     let module = context.create_module("errors_abound");
-//     // let mut execution_engine = ExecutionEngine::create_jit_from_module(module, 0);
-//     let mut execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-//     let void_type = context.void_type();
-//     let fn_type = void_type.fn_type(&[], false);
-//     let fn_value = module.add_function("func", fn_type, None);
-//     let basic_block = context.append_basic_block(&fn_value, "entry");
-
-//     builder.position_at_end(basic_block);
-//     builder.build_return(None);
-
-//     assert_eq!(execution_engine.get_function_value("errors"), Err(FunctionLookupError::JITNotEnabled));
-
-//     // Regain ownership of module
-//     let module = execution_engine.remove_module(&module).unwrap();
-
-//     Target::initialize_native(&InitializationConfig::default()).expect("Failed to initialize native target");
-
-//     let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-
-//     assert_eq!(execution_engine.get_function_value("errors"), Err(FunctionLookupError::FunctionNotFound));
-
-//     assert!(execution_engine.get_function_value("func").is_ok());
-// }
-
-// No longer necessary with explicit lifetimes
-// #[test]
-// fn test_previous_double_free() {
-//     Target::initialize_native(&InitializationConfig::default()).unwrap();
-
-//     let context = Context::create();
-//     let module = context.create_module("sum");
-//     let _ee = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-
-//     drop(context);
-//     drop(module);
-// }
-
-// #[test]
-// fn test_previous_double_free2() {
-//     Target::initialize_native(&InitializationConfig::default()).unwrap();
-
-//     let _execution_engine = {
-//         let context = Context::create();
-//         let module = context.create_module("sum");
-
-//         module.create_jit_execution_engine(OptimizationLevel::None).unwrap()
-//     };
-// }

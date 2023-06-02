@@ -1,20 +1,17 @@
 use mlir_sys::{mlirDialectRegistryCreate, mlirDialectRegistryDestroy, MlirDialectRegistry};
 
-/// A dialect registry.
 #[derive(Debug)]
 pub struct DialectRegistry {
     raw: MlirDialectRegistry,
 }
 
 impl DialectRegistry {
-    /// Creates a dialect registry.
     pub fn new() -> Self {
         Self {
             raw: unsafe { mlirDialectRegistryCreate() },
         }
     }
 
-    /// Converts a dialect registry into a raw object.
     pub fn to_raw(&self) -> MlirDialectRegistry {
         self.raw
     }

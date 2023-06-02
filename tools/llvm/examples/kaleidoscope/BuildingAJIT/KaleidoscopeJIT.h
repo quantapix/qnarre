@@ -24,7 +24,6 @@
 class PrototypeAST;
 class ExprAST;
 
-/// FunctionAST - This class represents a function definition itself.
 class FunctionAST {
   std::unique_ptr<PrototypeAST> Proto;
   std::unique_ptr<ExprAST> Body;
@@ -39,10 +38,6 @@ public:
   llvm::Function *codegen();
 };
 
-/// This will compile FnAST to IR, rename the function to add the given
-/// suffix (needed to prevent a name-clash with the function's stub),
-/// and then take ownership of the module that the function was compiled
-/// into.
 llvm::orc::ThreadSafeModule irgenAndTakeOwnership(FunctionAST &FnAST,
                                                   const std::string &Suffix);
 
@@ -209,18 +204,14 @@ private:
   static Expected<ThreadSafeModule>
   optimizeModule(ThreadSafeModule TSM, const MaterializationResponsibility &R) {
     TSM.withModuleDo([](Module &M) {
-      // Create a function pass manager.
       auto FPM = std::make_unique<legacy::FunctionPassManager>(&M);
 
-      // Add some optimizations.
       FPM->add(createInstructionCombiningPass());
       FPM->add(createReassociatePass());
       FPM->add(createGVNPass());
       FPM->add(createCFGSimplificationPass());
       FPM->doInitialization();
 
-      // Run the optimizations over all functions in the module being added to
-      // the JIT.
       for (auto &F : M)
         FPM->run(F);
     });

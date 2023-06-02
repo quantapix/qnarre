@@ -1,51 +1,42 @@
 use super::TypeLike;
 use crate::{ir::Type, Context, Error};
 use mlir_sys::{
-    mlirIntegerTypeGet, mlirIntegerTypeGetWidth, mlirIntegerTypeIsSigned,
-    mlirIntegerTypeIsSignless, mlirIntegerTypeIsUnsigned, mlirIntegerTypeSignedGet,
-    mlirIntegerTypeUnsignedGet, MlirType,
+    mlirIntegerTypeGet, mlirIntegerTypeGetWidth, mlirIntegerTypeIsSigned, mlirIntegerTypeIsSignless,
+    mlirIntegerTypeIsUnsigned, mlirIntegerTypeSignedGet, mlirIntegerTypeUnsignedGet, MlirType,
 };
 
-/// A integer type.
 #[derive(Clone, Copy, Debug)]
 pub struct IntegerType<'c> {
     r#type: Type<'c>,
 }
 
 impl<'c> IntegerType<'c> {
-    /// Creates an integer type.
     pub fn new(context: &'c Context, bits: u32) -> Self {
         Self {
             r#type: unsafe { Type::from_raw(mlirIntegerTypeGet(context.to_raw(), bits)) },
         }
     }
 
-    /// Creates a signed integer type.
     pub fn signed(context: &'c Context, bits: u32) -> Self {
         unsafe { Self::from_raw(mlirIntegerTypeSignedGet(context.to_raw(), bits)) }
     }
 
-    /// Creates an unsigned integer type.
     pub fn unsigned(context: &'c Context, bits: u32) -> Self {
         unsafe { Self::from_raw(mlirIntegerTypeUnsignedGet(context.to_raw(), bits)) }
     }
 
-    /// Gets a bit width.
     pub fn width(&self) -> u32 {
         unsafe { mlirIntegerTypeGetWidth(self.to_raw()) }
     }
 
-    /// Checks if an integer type is signed.
     pub fn is_signed(&self) -> bool {
         unsafe { mlirIntegerTypeIsSigned(self.to_raw()) }
     }
 
-    /// Checks if an integer type is signless.
     pub fn is_signless(&self) -> bool {
         unsafe { mlirIntegerTypeIsSignless(self.to_raw()) }
     }
 
-    /// Checks if an integer type is unsigned.
     pub fn is_unsigned(&self) -> bool {
         unsafe { mlirIntegerTypeIsUnsigned(self.to_raw()) }
     }

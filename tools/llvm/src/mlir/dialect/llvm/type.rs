@@ -6,23 +6,15 @@ use crate::{
     utility::into_raw_array,
 };
 use mlir_sys::{
-    mlirLLVMArrayTypeGet, mlirLLVMFunctionTypeGet, mlirLLVMPointerTypeGet,
-    mlirLLVMStructTypeLiteralGet, mlirLLVMVoidTypeGet,
+    mlirLLVMArrayTypeGet, mlirLLVMFunctionTypeGet, mlirLLVMPointerTypeGet, mlirLLVMStructTypeLiteralGet,
+    mlirLLVMVoidTypeGet,
 };
 
-// TODO Check if the `llvm` dialect is loaded on use of those functions.
-
-/// Creates an LLVM array type.
 pub fn array(r#type: Type, len: u32) -> Type {
     unsafe { Type::from_raw(mlirLLVMArrayTypeGet(r#type.to_raw(), len)) }
 }
 
-/// Creates an LLVM function type.
-pub fn function<'c>(
-    result: Type<'c>,
-    arguments: &[Type<'c>],
-    variadic_arguments: bool,
-) -> Type<'c> {
+pub fn function<'c>(result: Type<'c>, arguments: &[Type<'c>], variadic_arguments: bool) -> Type<'c> {
     unsafe {
         Type::from_raw(mlirLLVMFunctionTypeGet(
             result.to_raw(),
@@ -33,17 +25,14 @@ pub fn function<'c>(
     }
 }
 
-/// Creates an LLVM opaque pointer type.
 pub fn opaque_pointer(context: &Context) -> Type {
     Type::parse(context, "!llvm.ptr").unwrap()
 }
 
-/// Creates an LLVM pointer type.
 pub fn pointer(r#type: Type, address_space: u32) -> Type {
     unsafe { Type::from_raw(mlirLLVMPointerTypeGet(r#type.to_raw(), address_space)) }
 }
 
-/// Creates an LLVM struct type.
 pub fn r#struct<'c>(context: &'c Context, fields: &[Type<'c>], packed: bool) -> Type<'c> {
     unsafe {
         Type::from_raw(mlirLLVMStructTypeLiteralGet(
@@ -55,7 +44,6 @@ pub fn r#struct<'c>(context: &'c Context, fields: &[Type<'c>], packed: bool) -> 
     }
 }
 
-/// Creates an LLVM void type.
 pub fn void(context: &Context) -> Type {
     unsafe { Type::from_raw(mlirLLVMVoidTypeGet(context.to_raw())) }
 }
@@ -89,10 +77,7 @@ mod tests {
         let context = create_context();
         let i32 = IntegerType::new(&context, 32).into();
 
-        assert_eq!(
-            super::pointer(i32, 0),
-            Type::parse(&context, "!llvm.ptr<i32>").unwrap()
-        );
+        assert_eq!(super::pointer(i32, 0), Type::parse(&context, "!llvm.ptr<i32>").unwrap());
     }
 
     #[test]
@@ -110,10 +95,7 @@ mod tests {
     fn void() {
         let context = create_context();
 
-        assert_eq!(
-            super::void(&context),
-            Type::parse(&context, "!llvm.void").unwrap()
-        );
+        assert_eq!(super::void(&context), Type::parse(&context, "!llvm.void").unwrap());
     }
 
     #[test]

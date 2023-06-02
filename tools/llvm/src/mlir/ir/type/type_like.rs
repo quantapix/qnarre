@@ -2,22 +2,17 @@ use super::TypeId;
 use crate::context::ContextRef;
 use mlir_sys::{mlirTypeDump, mlirTypeGetContext, mlirTypeGetTypeID, MlirType};
 
-/// Trait for type-like types.
 pub trait TypeLike<'c> {
-    /// Converts a type into a raw object.
     fn to_raw(&self) -> MlirType;
 
-    /// Gets a context.
     fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirTypeGetContext(self.to_raw())) }
     }
 
-    /// Gets an ID.
     fn id(&self) -> TypeId {
         unsafe { TypeId::from_raw(mlirTypeGetTypeID(self.to_raw())) }
     }
 
-    /// Dumps a type.
     fn dump(&self) {
         unsafe { mlirTypeDump(self.to_raw()) }
     }

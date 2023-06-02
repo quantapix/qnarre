@@ -41,7 +41,6 @@ fn test_build_call() {
 
     assert!(module.verify().is_ok());
 
-    // Test using function `PointerValue`
     let void_type = context.void_type();
     let fn_type2 = void_type.fn_type(&[], false);
     let function3 = module.add_function("call_fn", fn_type2, None);
@@ -106,7 +105,6 @@ fn test_build_invoke_cleanup_resume() {
     let f32_type = context.f32_type();
     let fn_type = f32_type.fn_type(&[], false);
 
-    // we will pretend this function can throw an exception
     let function = module.add_function("bomb", fn_type, None);
     let basic_block = context.append_basic_block(function, "entry");
 
@@ -143,21 +141,17 @@ fn test_build_invoke_cleanup_resume() {
     {
         builder.position_at_end(catch_block);
 
-        // the personality function used by C++
         let personality_function = {
             let name = "__gxx_personality_v0";
 
             module.add_function(name, context.i64_type().fn_type(&[], false), None)
         };
 
-        // type of an exception in C++
         let i8_ptr_type = context.i32_type().ptr_type(AddressSpace::default());
         let i32_type = context.i32_type();
         let exception_type = context.struct_type(&[i8_ptr_type.into(), i32_type.into()], false);
 
         let res = builder.build_landing_pad(exception_type, personality_function, &[], true, "res");
-
-        // do cleanup ...
 
         builder.build_resume(res);
     }
@@ -210,14 +204,12 @@ fn test_build_invoke_catch_all() {
     {
         builder.position_at_end(catch_block);
 
-        // the personality function used by C++
         let personality_function = {
             let name = "__gxx_personality_v0";
 
             module.add_function(name, context.i64_type().fn_type(&[], false), None)
         };
 
-        // type of an exception in C++
         let i8_ptr_type = context.i32_type().ptr_type(AddressSpace::default());
         let i32_type = context.i32_type();
         let exception_type = context.struct_type(&[i8_ptr_type.into(), i32_type.into()], false);
@@ -281,23 +273,19 @@ fn landing_pad_filter() {
     {
         builder.position_at_end(catch_block);
 
-        // the personality function used by C++
         let personality_function = {
             let name = "__gxx_personality_v0";
 
             module.add_function(name, context.i64_type().fn_type(&[], false), None)
         };
 
-        // type of an exception in C++
         let i8_ptr_type = context.i32_type().ptr_type(AddressSpace::default());
         let i32_type = context.i32_type();
         let exception_type = context.struct_type(&[i8_ptr_type.into(), i32_type.into()], false);
 
-        // link in the C++ type info for the i32 type
         let type_info_int = module.add_global(i8_ptr_type, Some(AddressSpace::default()), "_ZTIi");
         type_info_int.set_linkage(Linkage::External);
 
-        // make the filter landing pad
         let filter_pattern = i8_ptr_type.const_array(&[type_info_int.as_any_value_enum().into_pointer_value()]);
         builder.build_landing_pad(
             exception_type,
@@ -321,15 +309,6 @@ fn test_null_checked_ptr_ops() {
     let context = Context::create();
     let module = context.create_module("unsafe");
     let builder = context.create_builder();
-
-    // Here we're going to create a function that looks roughly like:
-    // fn check_null_index1(ptr: *const i8) -> i8 {
-    //     if ptr.is_null() {
-    //         -1
-    //     } else {
-    //         ptr[1]
-    //     }
-    // }
 
     let i8_type = context.i8_type();
     let i8_ptr_type = i8_type.ptr_type(AddressSpace::default());
@@ -357,8 +336,6 @@ fn test_null_checked_ptr_ops() {
 
     builder.position_at_end(ret_idx);
 
-    // FIXME: This might not work if compiled on non 64bit devices. Ideally we'd
-    // be able to create pointer sized ints easily
     let ptr_as_int = builder.build_ptr_to_int(ptr, i64_type, "ptr_as_int");
     let new_ptr_as_int = builder.build_int_add(ptr_as_int, one, "add");
     let new_ptr = builder.build_int_to_ptr(new_ptr_as_int, i8_ptr_type, "int_as_ptr");
@@ -381,15 +358,6 @@ fn test_null_checked_ptr_ops() {
 
     builder.build_return(Some(&index1));
 
-    // Here we're going to create a function that looks roughly like:
-    // fn check_null_index2(ptr: *const i8) -> i8 {
-    //     if !ptr.is_null() {
-    //         ptr[1]
-    //     } else {
-    //         -1
-    //     }
-    // }
-
     let function = module.add_function("check_null_index2", fn_type, None);
     let entry = context.append_basic_block(function, "entry");
 
@@ -409,8 +377,6 @@ fn test_null_checked_ptr_ops() {
 
     builder.position_at_end(ret_idx);
 
-    // FIXME: This might not work if compiled on non 64bit devices. Ideally we'd
-    // be able to create pointer sized ints easily
     let ptr_as_int = builder.build_ptr_to_int(ptr, i64_type, "ptr_as_int");
     let new_ptr_as_int = builder.build_int_add(ptr_as_int, one, "add");
     let new_ptr = builder.build_int_to_ptr(new_ptr_as_int, i8_ptr_type, "int_as_ptr");
@@ -461,11 +427,6 @@ fn test_binary_ops() {
     let builder = context.create_builder();
     let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
 
-    // Here we're going to create an and function which looks roughly like:
-    // fn and(left: bool, right: bool) -> bool {
-    //     left && right
-    // }
-
     let bool_type = context.bool_type();
     let fn_type = bool_type.fn_type(&[bool_type.into(), bool_type.into()], false);
     let fn_value = module.add_function("and", fn_type, None);
@@ -480,11 +441,6 @@ fn test_binary_ops() {
 
     builder.build_return(Some(&and));
 
-    // Here we're going to create an or function which looks roughly like:
-    // fn or(left: bool, right: bool) -> bool {
-    //     left || right
-    // }
-
     let fn_value = module.add_function("or", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
 
@@ -496,11 +452,6 @@ fn test_binary_ops() {
     let or = builder.build_or(left, right, "or_op");
 
     builder.build_return(Some(&or));
-
-    // Here we're going to create a xor function which looks roughly like:
-    // fn xor(left: bool, right: bool) -> bool {
-    //     left || right
-    // }
 
     let fn_value = module.add_function("xor", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
@@ -544,17 +495,6 @@ fn test_switch() {
     let module = context.create_module("unsafe");
     let builder = context.create_builder();
     let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-
-    // Here we're going to create a function which looks roughly like:
-    // fn switch(val: u8) -> u8 {
-    //     if val == 0 {
-    //         1
-    //     } else if val == 42 {
-    //         255
-    //     } else {
-    //         val * 2
-    //     }
-    // }
 
     let i8_type = context.i8_type();
     let fn_type = i8_type.fn_type(&[i8_type.into()], false);
@@ -605,10 +545,6 @@ fn test_bit_shifts() {
     let builder = context.create_builder();
     let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
 
-    // Here we're going to create a function which looks roughly like:
-    // fn left_shift(value: u8, bits: u8) -> u8 {
-    //     value << bits
-    // }
     let i8_type = context.i8_type();
     let fn_type = i8_type.fn_type(&[i8_type.into(), i8_type.into()], false);
     let fn_value = module.add_function("left_shift", fn_type, None);
@@ -623,10 +559,6 @@ fn test_bit_shifts() {
 
     builder.build_return(Some(&shift));
 
-    // Here we're going to create a function which looks roughly like:
-    // fn right_shift(value: u8, bits: u8) -> u8 {
-    //     value >> bits
-    // }
     let fn_value = module.add_function("right_shift", fn_type, None);
     let value = fn_value.get_first_param().unwrap().into_int_value();
     let bits = fn_value.get_nth_param(1).unwrap().into_int_value();
@@ -639,10 +571,6 @@ fn test_bit_shifts() {
 
     builder.build_return(Some(&shift));
 
-    // Here we're going to create a function which looks roughly like:
-    // fn right_shift(value: u8, bits: u8) -> u8 {
-    //     value >> bits
-    // }
     let fn_value = module.add_function("right_shift_sign_extend", fn_type, None);
     let value = fn_value.get_first_param().unwrap().into_int_value();
     let bits = fn_value.get_nth_param(1).unwrap().into_int_value();
@@ -724,19 +652,13 @@ fn test_no_builder_double_free() {
     drop(context);
 }
 
-// TODO: Compile-fail test this:
-// let builder = {
-//     let context = Context::create();
 //
-//     context.create_builder()
-// };
 
 #[test]
 fn test_no_builder_double_free2() {
     let context = Context::create();
     let builder = context.create_builder();
 
-    // Builder continues to function with different context
     let context = Context::create();
     let module = context.create_module("my_mod");
     let void_type = context.void_type();
@@ -745,15 +667,6 @@ fn test_no_builder_double_free2() {
     let entry = context.append_basic_block(fn_value, "entry");
 
     builder.position_at_end(entry);
-    // FIXME: Builder segfaults when making build calls with different context
-    // as of newer rust versions(late 2018+?). Maybe this isn't actually something
-    // you're suppose to do in LLVM and LTO(?) has made it a more prominent issue?
-    // builder.build_unreachable();
-
-    // assert_eq!(*module.print_to_string(), *CString::new("; ModuleID = \'my_mod\'\nsource_filename = \"my_mod\"\n\ndefine void @my_fn() {\nentry:\n  unreachable\n}\n").unwrap());
-
-    // 2nd Context drops fine
-    // Builder drops fine
 }
 
 #[test]
@@ -765,8 +678,6 @@ fn test_vector_convert_ops() {
     let float32_vec_type = context.f32_type().vec_type(3);
     let float16_vec_type = context.f16_type().vec_type(3);
 
-    // Here we're building a function that takes in a <3 x i8> and returns it casted to and from a <3 x i32>
-    // Casting to and from means we can ensure the cast build functions return a vector when one is provided.
     let fn_type = int32_vec_type.fn_type(&[int8_vec_type.into()], false);
     let fn_value = module.add_function("test_int_vec_cast", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
@@ -779,7 +690,6 @@ fn test_vector_convert_ops() {
     builder.build_return(Some(&casted_vec));
     assert!(fn_value.verify(true));
 
-    // Here we're building a function that takes in a <3 x f32> and returns it casted to and from a <3 x f16>
     let fn_type = float16_vec_type.fn_type(&[float32_vec_type.into()], false);
     let fn_value = module.add_function("test_float_vec_cast", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
@@ -792,7 +702,6 @@ fn test_vector_convert_ops() {
     builder.build_return(Some(&casted_vec));
     assert!(fn_value.verify(true));
 
-    // Here we're building a function that takes in a <3 x f32> and returns it casted to and from a <3 x i32>
     let fn_type = int32_vec_type.fn_type(&[float32_vec_type.into()], false);
     let fn_value = module.add_function("test_float_to_int_vec_cast", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
@@ -813,7 +722,6 @@ fn test_vector_convert_ops_respect_target_signedness() {
     let module = context.create_module("test");
     let int8_vec_type = context.i8_type().vec_type(3);
 
-    // Here we're building a function that takes in a <3 x i8> (signed) and returns it casted to and from a <3 x i8> (unsigned)
     let fn_type = int8_vec_type.fn_type(&[int8_vec_type.into()], false);
     let fn_value = module.add_function("test_int_vec_cast", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
@@ -836,7 +744,6 @@ fn test_vector_binary_ops() {
     let float32_vec_type = context.f32_type().vec_type(2);
     let bool_vec_type = context.bool_type().vec_type(2);
 
-    // Here we're building a function that takes in three <2 x i32>s and returns them added together as a <2 x i32>
     let fn_type = int32_vec_type.fn_type(
         &[int32_vec_type.into(), int32_vec_type.into(), int32_vec_type.into()],
         false,
@@ -854,8 +761,6 @@ fn test_vector_binary_ops() {
     builder.build_return(Some(&added_vec));
     assert!(fn_value.verify(true));
 
-    // Here we're building a function that takes in three <2 x f32>s and returns x * y / z as an
-    // <2 x f32>
     let fn_type = float32_vec_type.fn_type(
         &[
             float32_vec_type.into(),
@@ -877,8 +782,6 @@ fn test_vector_binary_ops() {
     builder.build_return(Some(&divided_vec));
     assert!(fn_value.verify(true));
 
-    // Here we're building a function that takes two <2 x f32>s and a <2 x bool> and returns (x < y) * z
-    // as a <2 x bool>
     let fn_type = bool_vec_type.fn_type(
         &[float32_vec_type.into(), float32_vec_type.into(), bool_vec_type.into()],
         false,
@@ -905,8 +808,6 @@ fn test_vector_pointer_ops() {
     let i8_ptr_vec_type = context.i8_type().ptr_type(AddressSpace::default()).vec_type(4);
     let bool_vec_type = context.bool_type().vec_type(4);
 
-    // Here we're building a function that takes a <4 x i32>, converts it to a <4 x i8*> and returns a
-    // <4 x bool> if the pointer is null
     let fn_type = bool_vec_type.fn_type(&[int32_vec_type.into()], false);
     let fn_value = module.add_function("test_ptr_null", fn_type, None);
     let entry = context.append_basic_block(fn_value, "entry");
@@ -1032,9 +933,6 @@ fn test_insert_value() {
 }
 
 fn is_alignment_ok(align: u32) -> bool {
-    // This replicates the assertions LLVM runs.
-    //
-    // See https://github.com/TheDan64/inkwell/issues/168
     align > 0 && align.is_power_of_two() && (align as f64).log2() < 64.0
 }
 
@@ -1097,7 +995,6 @@ fn run_memcpy_on<'ctx>(
     let array_type = element_type.array_type(array_len as u32);
     let array_ptr = builder.build_array_malloc(i32_type, len_value, "array_ptr").unwrap();
 
-    // Initialize the array with the values [1, 2, 3, 4]
     for index in 0..4 {
         let index_val = i32_type.const_int(index, false);
         #[cfg(any(
@@ -1121,7 +1018,6 @@ fn run_memcpy_on<'ctx>(
         builder.build_store(elem_ptr, int_val);
     }
 
-    // Memcpy the first half of the array over the second half of the array.
     let elems_to_copy = 2;
     let bytes_to_copy = elems_to_copy * std::mem::size_of::<i32>();
     let size_val = i64_type.const_int(bytes_to_copy as u64, false);
@@ -1153,15 +1049,11 @@ fn run_memcpy_on<'ctx>(
 #[llvm_versions(8.0..=latest)]
 #[test]
 fn test_memcpy() {
-    // 1. Allocate an array with a few elements.
-    // 2. Memcpy from the first half of the array to the second half.
-    // 3. Run the code in an execution engine and verify the array's contents.
     let context = Context::create();
     let module = context.create_module("av");
 
     assert!(run_memcpy_on(&context, &module, 8).is_ok());
 
-    // Verify the module
     if let Err(errors) = module.verify() {
         panic!("Errors defining module: {:?}", errors);
     }
@@ -1199,7 +1091,6 @@ fn run_memmove_on<'ctx>(
     let array_type = element_type.array_type(array_len as u32);
     let array_ptr = builder.build_array_malloc(i32_type, len_value, "array_ptr").unwrap();
 
-    // Initialize the array with the values [1, 2, 3, 4]
     for index in 0..4 {
         let index_val = i32_type.const_int(index, false);
         #[cfg(any(
@@ -1223,7 +1114,6 @@ fn run_memmove_on<'ctx>(
         builder.build_store(elem_ptr, int_val);
     }
 
-    // Memcpy the first half of the array over the second half of the array.
     let elems_to_copy = 2;
     let bytes_to_copy = elems_to_copy * std::mem::size_of::<i32>();
     let size_val = i64_type.const_int(bytes_to_copy as u64, false);
@@ -1255,15 +1145,11 @@ fn run_memmove_on<'ctx>(
 #[llvm_versions(8.0..=latest)]
 #[test]
 fn test_memmove() {
-    // 1. Allocate an array with a few elements.
-    // 2. Memmove from the first half of the array to the second half.
-    // 3. Run the code in an execution engine and verify the array's contents.
     let context = Context::create();
     let module = context.create_module("av");
 
     assert!(run_memmove_on(&context, &module, 8).is_ok());
 
-    // Verify the module
     if let Err(errors) = module.verify() {
         panic!("Errors defining module: {:?}", errors);
     }
@@ -1305,10 +1191,8 @@ fn run_memset_on<'ctx>(
     let elems_to_copy = 2;
     let bytes_to_copy = elems_to_copy * std::mem::size_of::<i32>();
     let size_val = i64_type.const_int(bytes_to_copy as u64, false);
-    // Memset the first half of the array as 0
     let val = i8_type.const_zero();
     builder.build_memset(array_ptr, alignment, val, size_val)?;
-    // Memset the second half of the array as -1
     let val = i8_type.const_all_ones();
     let index = i32_type.const_int(2, false);
     #[cfg(any(
@@ -1336,15 +1220,11 @@ fn run_memset_on<'ctx>(
 #[llvm_versions(8.0..=latest)]
 #[test]
 fn test_memset() {
-    // 1. Allocate an array with a few elements.
-    // 2. Memmove from the first half of the array to the second half.
-    // 3. Run the code in an execution engine and verify the array's contents.
     let context = Context::create();
     let module = context.create_module("av");
 
     assert!(run_memset_on(&context, &module, 8).is_ok());
 
-    // Verify the module
     if let Err(errors) = module.verify() {
         panic!("Errors defining module: {:?}", errors);
     }

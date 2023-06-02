@@ -3,27 +3,8 @@ use inkwell::context::Context;
 
 #[test]
 fn test_enum_attribute_kinds() {
-    // Does not exist:
     assert_eq!(Attribute::get_named_enum_kind_id("foo"), 0);
     assert_eq!(Attribute::get_named_enum_kind_id("bar"), 0);
-
-    // Many of the values change and are not consistent across LLVM versions
-    // so it only seems to make sense to test some consistent subset.
-    // Otherwise it's not worth keeping track of. Users will have to
-    // play around with it and determine which ones they are interested in
-    // for their particular LLVM version
-
-    // REVIEW: The LLVM docs suggest these fn attrs exist, but don't turn up:
-    // assert_eq!(Attribute::get_named_enum_kind_id("no-jump-tables"), 19);
-    // assert_eq!(Attribute::get_named_enum_kind_id("null-pointer-is-valid"), 31);
-    // assert_eq!(Attribute::get_named_enum_kind_id("optforfuzzing"), 32);
-    // assert_eq!(Attribute::get_named_enum_kind_id("patchable-function"), 35);
-    // assert_eq!(Attribute::get_named_enum_kind_id("probe-stack"), 36);
-    // assert_eq!(Attribute::get_named_enum_kind_id("stack-probe-size"), 36);
-    // assert_eq!(Attribute::get_named_enum_kind_id("no-stack-arg-probe"), 32);
-    // assert_eq!(Attribute::get_named_enum_kind_id("thunk"), 45);
-    // assert_eq!(Attribute::get_named_enum_kind_id("nocf_check"), 45);
-    // assert_eq!(Attribute::get_named_enum_kind_id("shadowcallstack"), 45);
 }
 
 #[test]
@@ -98,7 +79,6 @@ fn test_attributes_on_function_values() {
     fn_value.remove_string_attribute(AttributeLoc::Return, "my_key"); // Noop
     fn_value.remove_enum_attribute(AttributeLoc::Return, alignstack_attribute); // Noop
 
-    // define align 1 "my_key"="my_val" void @my_fn()
     fn_value.add_attribute(AttributeLoc::Return, string_attribute);
     fn_value.add_attribute(AttributeLoc::Param(0), string_attribute); // Applied to 1st param
     fn_value.add_attribute(AttributeLoc::Return, enum_attribute);
@@ -164,7 +144,6 @@ fn test_attributes_on_call_site_values() {
     call_site_value.remove_string_attribute(AttributeLoc::Return, "my_key"); // Noop
     call_site_value.remove_enum_attribute(AttributeLoc::Return, alignstack_attribute); // Noop
 
-    // define align 1 "my_key"="my_val" void @my_fn()
     call_site_value.add_attribute(AttributeLoc::Return, string_attribute);
     call_site_value.add_attribute(AttributeLoc::Param(0), string_attribute); // Applied to 1st param
     call_site_value.add_attribute(AttributeLoc::Return, enum_attribute);

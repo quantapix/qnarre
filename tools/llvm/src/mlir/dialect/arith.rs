@@ -2,27 +2,19 @@
 
 use crate::{
     ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute,
-        Identifier, Location, Operation, Value,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute, Identifier, Location,
+        Operation, Value,
     },
     Context,
 };
 
-// spell-checker: disable
-
-/// Creates an `arith.constant` operation.
-pub fn constant<'c>(
-    context: &'c Context,
-    value: Attribute<'c>,
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn constant<'c>(context: &'c Context, value: Attribute<'c>, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("arith.constant", location)
         .add_attributes(&[(Identifier::new(context, "value"), value)])
         .enable_result_type_inference()
         .build()
 }
 
-/// `arith.cmpf` predicate
 pub enum CmpfPredicate {
     False,
     Oeq,
@@ -42,7 +34,6 @@ pub enum CmpfPredicate {
     True,
 }
 
-/// Creates an `arith.cmpf` operation.
 pub fn cmpf<'c>(
     context: &'c Context,
     predicate: CmpfPredicate,
@@ -53,7 +44,6 @@ pub fn cmpf<'c>(
     cmp(context, "arith.cmpf", predicate as i64, lhs, rhs, location)
 }
 
-/// `arith.cmpi` predicate
 pub enum CmpiPredicate {
     Eq,
     Ne,
@@ -67,7 +57,6 @@ pub enum CmpiPredicate {
     Uge,
 }
 
-/// Creates an `arith.cmpi` operation.
 pub fn cmpi<'c>(
     context: &'c Context,
     predicate: CmpiPredicate,
@@ -240,12 +229,7 @@ mod tests {
 
         compile_operation(
             &context,
-            |block| {
-                negf(
-                    block.argument(0).unwrap().into(),
-                    Location::unknown(&context),
-                )
-            },
+            |block| negf(block.argument(0).unwrap().into(), Location::unknown(&context)),
             &[Type::float64(&context)],
             FunctionType::new(&context, &[f64_type], &[f64_type]),
         );
@@ -342,11 +326,7 @@ mod tests {
                     )
                 },
                 &[Type::float32(&context)],
-                FunctionType::new(
-                    &context,
-                    &[Type::float32(&context)],
-                    &[Type::float64(&context)],
-                ),
+                FunctionType::new(&context, &[Type::float32(&context)], &[Type::float64(&context)]),
             );
         }
 
@@ -576,10 +556,7 @@ mod tests {
             func::func(
                 &context,
                 StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(
-                    FunctionType::new(&context, &[integer_type, integer_type], &[integer_type])
-                        .into(),
-                ),
+                TypeAttribute::new(FunctionType::new(&context, &[integer_type, integer_type], &[integer_type]).into()),
                 region,
                 &[],
                 Location::unknown(&context),

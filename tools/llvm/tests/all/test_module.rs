@@ -34,39 +34,6 @@ fn test_write_bitcode_to_path() {
     remove_file(&path).unwrap();
 }
 
-// REVIEW: This test infrequently fails. Seems to happen more often on travis.
-// Possibly a LLVM bug? Wrapper is really straightforward. See issue #6 on GH
-// #[test]
-// fn test_write_bitcode_to_file() {
-//     use context::Context;
-//     use std::env::temp_dir;
-//     use std::fs::{File, remove_file};
-//     use std::io::{Read, Seek, SeekFrom};
-
-//     let mut path = temp_dir();
-
-//     path.push("temp2.bc");
-
-//     let mut file = File::create(&path).unwrap();
-
-//     let context = Context::create();
-//     let module = context.create_module("my_module");
-//     let void_type = context.void_type();
-//     let fn_type = void_type.fn_type(&[], false);
-
-//     module.add_function("my_fn", fn_type, None);
-//     module.write_bitcode_to_file(&file, true, false);
-
-//     let mut contents = Vec::new();
-//     let mut file2 = File::open(&path).expect("Could not open temp file");
-
-//     file.read_to_end(&mut contents).expect("Unable to verify written file");
-
-//     assert!(contents.len() > 0);
-
-//     remove_file(&path).unwrap();
-// }
-
 #[test]
 fn test_get_function() {
     let context = Context::create();
@@ -195,29 +162,6 @@ fn test_get_struct_type_global_context() {
     }
 }
 
-// TODO: test compile fail
-// #[test]
-// fn test_module_no_double_free() {
-// let _module = {
-//     let context = Context::create();
-
-//     context.create_module("my_mod")
-// };
-// }
-
-// #[test]
-// fn test_owned_module_dropped_ee_and_context() {
-// let _module = {
-//     let context = Context::create();
-//     let module = context.create_module("my_mod");
-
-//     module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-//     module
-// };
-
-// Context and EE will live on in the module until here
-// }
-
 #[test]
 fn test_parse_from_buffer() {
     let context = Context::create();
@@ -279,7 +223,6 @@ fn test_parse_from_path() {
 
     assert!(module.verify().is_ok(), "3");
 
-    // FIXME: Wasn't able to test success case. Got "invalid bitcode signature"
     let mut temp_path = temp_dir();
 
     temp_path.push("module.bc");
@@ -381,7 +324,6 @@ fn test_linking_modules() {
 
     let module2 = context.create_module("mod2");
 
-    // Unowned module links in unowned (empty) module
     assert!(module.link_in_module(module2).is_ok());
     assert_eq!(module.get_function("f"), Some(fn_val));
     assert!(module.get_function("f2").is_none());
@@ -393,11 +335,9 @@ fn test_linking_modules() {
     builder.position_at_end(basic_block2);
     builder.build_return(None);
 
-    // Unowned module links in unowned module
     assert!(module.link_in_module(module3).is_ok());
     assert_eq!(module.get_function("f"), Some(fn_val));
 
-    // fn_val2 is no longer the same instance of f2
     assert_ne!(module.get_function("f2"), Some(fn_val2));
 
     let _execution_engine = module
@@ -405,7 +345,6 @@ fn test_linking_modules() {
         .expect("Could not create Execution Engine");
     let module4 = context.create_module("mod4");
 
-    // EE owned module links in unowned (empty) module
     assert!(module.link_in_module(module4).is_ok());
 
     let module5 = context.create_module("mod5");
@@ -415,8 +354,6 @@ fn test_linking_modules() {
     builder.position_at_end(basic_block3);
     builder.build_return(None);
 
-    // EE owned module links in unowned module which has
-    // another definition for the same funciton name, "f2"
     assert_eq!(
         module.link_in_module(module5).unwrap_err().to_str(),
         Ok("Linking globals named \'f2\': symbol multiply defined!")
@@ -433,7 +370,6 @@ fn test_linking_modules() {
         .create_jit_execution_engine(OptimizationLevel::None)
         .expect("Could not create Execution Engine");
 
-    // EE owned module cannot link another EE owned module
     assert!(module.link_in_module(module6).is_err());
     assert_eq!(execution_engine2.get_function_value("f4"), Ok(fn_val4));
 }
@@ -453,7 +389,6 @@ fn test_metadata_flags() {
 
         module.add_metadata_flag("some_key", FlagBehavior::Error, md);
 
-        // These have different addresses but same value
         assert!(module.get_flag("some_key").is_some());
 
         let f64_type = context.f64_type();

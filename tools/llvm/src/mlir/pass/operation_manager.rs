@@ -1,8 +1,8 @@
 use super::PassManager;
 use crate::{pass::Pass, string_ref::StringRef};
 use mlir_sys::{
-    mlirOpPassManagerAddOwnedPass, mlirOpPassManagerGetNestedUnder, mlirPrintPassPipeline,
-    MlirOpPassManager, MlirStringRef,
+    mlirOpPassManagerAddOwnedPass, mlirOpPassManagerGetNestedUnder, mlirPrintPassPipeline, MlirOpPassManager,
+    MlirStringRef,
 };
 use std::{
     ffi::c_void,
@@ -10,7 +10,6 @@ use std::{
     marker::PhantomData,
 };
 
-/// An operation pass manager.
 #[derive(Clone, Copy, Debug)]
 pub struct OperationPassManager<'a> {
     raw: MlirOpPassManager,
@@ -18,8 +17,6 @@ pub struct OperationPassManager<'a> {
 }
 
 impl<'a> OperationPassManager<'a> {
-    /// Gets an operation pass manager for nested operations corresponding to a
-    /// given name.
     pub fn nested_under(&self, name: &str) -> Self {
         unsafe {
             Self::from_raw(mlirOpPassManagerGetNestedUnder(
@@ -29,21 +26,14 @@ impl<'a> OperationPassManager<'a> {
         }
     }
 
-    /// Adds a pass.
     pub fn add_pass(&self, pass: Pass) {
         unsafe { mlirOpPassManagerAddOwnedPass(self.raw, pass.to_raw()) }
     }
 
-    /// Converts an operation pass manager into a raw object.
     pub fn to_raw(self) -> MlirOpPassManager {
         self.raw
     }
 
-    /// Creates an operation pass manager from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirOpPassManager) -> Self {
         Self {
             raw,
@@ -62,9 +52,7 @@ impl<'a> Display for OperationPassManager<'a> {
                 write!(
                     data.0,
                     "{}",
-                    StringRef::from_raw(string)
-                        .as_str()
-                        .map_err(|_| fmt::Error)?
+                    StringRef::from_raw(string).as_str().map_err(|_| fmt::Error)?
                 )
             })();
 

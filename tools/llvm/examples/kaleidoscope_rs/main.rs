@@ -27,11 +27,6 @@ mod implementation_typed_pointers;
 #[llvm_versions(4.0..=14.0)]
 use crate::implementation_typed_pointers::*;
 
-// ======================================================================================
-// PROGRAM ==============================================================================
-// ======================================================================================
-
-// macro used to print & flush without printing a new line
 macro_rules! print_flush {
     ( $( $x:expr ),* ) => {
         print!( $($x, )* );
@@ -52,15 +47,11 @@ pub extern "C" fn printd(x: f64) -> f64 {
     x
 }
 
-// Adding the functions above to a global array,
-// so Rust compiler won't remove them.
 #[used]
 static EXTERNAL_FNS: [extern "C" fn(f64) -> f64; 2] = [putchard, printd];
 
-/// Entry point of the program; acts as a REPL.
 #[llvm_versions(4.0..=14.0)]
 pub fn main() {
-    // use self::inkwell::support::add_symbol;
     let mut display_lexer_output = false;
     let mut display_parser_output = false;
     let mut display_compiler_output = false;
@@ -78,7 +69,6 @@ pub fn main() {
     let module = context.create_module("repl");
     let builder = context.create_builder();
 
-    // Create FPM
     let fpm = PassManager::create(&module);
 
     fpm.add_instruction_combining_pass();
@@ -98,7 +88,6 @@ pub fn main() {
         println!();
         print_flush!("?> ");
 
-        // Read input from stdin
         let mut input = String::new();
         io::stdin()
             .read_line(&mut input)
@@ -110,7 +99,6 @@ pub fn main() {
             continue;
         }
 
-        // Build precedence map
         let mut prec = HashMap::with_capacity(6);
 
         prec.insert('=', 2);
@@ -120,7 +108,6 @@ pub fn main() {
         prec.insert('*', 40);
         prec.insert('/', 40);
 
-        // Parse and (optionally) display input
         if display_lexer_output {
             println!(
                 "-> Attempting to parse lexed input: \n{:?}\n",
@@ -128,10 +115,8 @@ pub fn main() {
             );
         }
 
-        // make module
         let module = context.create_module("tmp");
 
-        // recompile every previously parsed function into the new module
         for prev in &previous_exprs {
             Compiler::compile(&context, &builder, &fpm, &module, prev)
                 .expect("Cannot re-add previously compiled function.");
@@ -152,14 +137,11 @@ pub fn main() {
                 match Compiler::compile(&context, &builder, &fpm, &module, &fun) {
                     Ok(function) => {
                         if display_compiler_output {
-                            // Not printing a new line since LLVM automatically
-                            // prefixes the generated string with one
                             print_flush!("-> Expression compiled to IR:");
                             function.print_to_stderr();
                         }
 
                         if !is_anon {
-                            // only add it now to ensure it is correct
                             previous_exprs.push(fun);
                         }
 

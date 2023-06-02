@@ -2,14 +2,12 @@ use super::TypeLike;
 use crate::{ir::Type, utility::into_raw_array, Context, Error};
 use mlir_sys::{mlirTupleTypeGet, mlirTupleTypeGetNumTypes, mlirTupleTypeGetType, MlirType};
 
-/// A tuple type.
 #[derive(Clone, Copy, Debug)]
 pub struct TupleType<'c> {
     r#type: Type<'c>,
 }
 
 impl<'c> TupleType<'c> {
-    /// Creates a tuple type.
     pub fn new(context: &'c Context, types: &[Type<'c>]) -> Self {
         unsafe {
             Self::from_raw(mlirTupleTypeGet(
@@ -20,7 +18,6 @@ impl<'c> TupleType<'c> {
         }
     }
 
-    /// Gets a field at a position.
     pub fn r#type(&self, index: usize) -> Result<Type, Error> {
         if index < self.type_count() {
             unsafe {
@@ -38,7 +35,6 @@ impl<'c> TupleType<'c> {
         }
     }
 
-    /// Gets a number of fields.
     pub fn type_count(&self) -> usize {
         unsafe { mlirTupleTypeGetNumTypes(self.r#type.to_raw()) as usize }
     }

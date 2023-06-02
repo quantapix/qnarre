@@ -4,7 +4,6 @@ use mlir_sys::{
     MlirDiagnosticSeverity_MlirDiagnosticRemark, MlirDiagnosticSeverity_MlirDiagnosticWarning,
 };
 
-/// Diagnostic severity.
 #[derive(Clone, Copy, Debug)]
 pub enum DiagnosticSeverity {
     Error,

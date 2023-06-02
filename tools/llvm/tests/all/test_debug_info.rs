@@ -131,7 +131,6 @@ fn test_struct_with_placeholders() {
         "",
     );
 
-    // Some byte aligned integer types.
     let i32ty = dibuilder
         .create_basic_type(
             "i32",
@@ -437,8 +436,6 @@ fn test_global_expressions() {
 
     gv.set_metadata(metadata, 0);
 
-    // TODO: Metadata set on the global values cannot be retrieved using the C api,
-    // therefore, it's currently not possible to test that the data was set without generating the IR
     assert!(
         gv.print_to_string().to_string().contains("!dbg"),
         "expected !dbg but generated gv was {}",
@@ -496,7 +493,6 @@ fn test_pointer_types() {
         .unwrap()
         .as_type();
 
-    //Smoke test that the pointer gets created
     dibuilder.create_pointer_type("pointer_name", di_type, 64, 64, inkwell::AddressSpace::from(1u16));
 }
 
@@ -550,7 +546,6 @@ fn test_reference_types() {
         .unwrap()
         .as_type();
 
-    //Smoke test that the pointer gets created
     dibuilder.create_reference_type(di_type, 0x1000);
 }
 
@@ -604,7 +599,6 @@ fn test_array_type() {
         .unwrap()
         .as_type();
 
-    //Smoke test that the array gets created
     dibuilder.create_array_type(di_type, 160, 64, &[(0..20)]);
 
     dibuilder.create_array_type(di_type, 160, 64, &[(0..20), (-1..30), (20..55)]);

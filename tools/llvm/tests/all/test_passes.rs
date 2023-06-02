@@ -182,8 +182,6 @@ fn test_pass_manager_builder() {
 
     assert!(!fn_pass_manager.initialize());
 
-    // TODO: Test with actual changes? Would be true in that case
-    // REVIEW: Segfaults in 4.0
     #[cfg(not(feature = "llvm4-0"))]
     assert!(!fn_pass_manager.run_on(&fn_value));
 
@@ -268,7 +266,6 @@ fn test_run_passes() {
     let machine = target
         .create_target_machine(
             &triple,
-            //TODO : Add cpu features as optionals
             "generic", //TargetMachine::get_host_cpu_name().to_string().as_str(),
             "",        //TargetMachine::get_host_cpu_features().to_string().as_str(),
             OptimizationLevel::Default,
@@ -294,7 +291,6 @@ fn test_run_passes_invalid() {
     let machine = target
         .create_target_machine(
             &triple,
-            //TODO : Add cpu features as optionals
             TargetMachine::get_host_cpu_name().to_string().as_str(),
             TargetMachine::get_host_cpu_features().to_string().as_str(),
             OptimizationLevel::Default,

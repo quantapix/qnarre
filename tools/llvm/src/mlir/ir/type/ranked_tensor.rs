@@ -3,19 +3,14 @@ use crate::{
     ir::{attribute::AttributeLike, Attribute, Location, Type},
     Error,
 };
-use mlir_sys::{
-    mlirRankedTensorTypeGet, mlirRankedTensorTypeGetChecked, mlirRankedTensorTypeGetEncoding,
-    MlirType,
-};
+use mlir_sys::{mlirRankedTensorTypeGet, mlirRankedTensorTypeGetChecked, mlirRankedTensorTypeGetEncoding, MlirType};
 
-/// A ranked tensor type.
 #[derive(Clone, Copy, Debug)]
 pub struct RankedTensorType<'c> {
     r#type: Type<'c>,
 }
 
 impl<'c> RankedTensorType<'c> {
-    /// Creates a ranked tensor type.
     pub fn new(dimensions: &[u64], r#type: Type<'c>, encoding: Option<Attribute<'c>>) -> Self {
         unsafe {
             Self::from_raw(mlirRankedTensorTypeGet(
@@ -27,7 +22,6 @@ impl<'c> RankedTensorType<'c> {
         }
     }
 
-    /// Creates a ranked type with diagnostics.
     pub fn checked(
         dimensions: &[u64],
         r#type: Type<'c>,
@@ -45,7 +39,6 @@ impl<'c> RankedTensorType<'c> {
         }
     }
 
-    /// Gets an encoding.
     pub fn encoding(&self) -> Option<Attribute<'c>> {
         unsafe { Attribute::from_option_raw(mlirRankedTensorTypeGetEncoding(self.r#type.to_raw())) }
     }

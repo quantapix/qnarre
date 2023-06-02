@@ -52,8 +52,6 @@ use crate::support::LLVMString;
 use crate::values::IntValue;
 use crate::AddressSpace;
 
-// Worth noting that types seem to be singletons. At the very least, primitives are.
-// Though this is likely only true per thread since LLVM claims to not be very thread-safe.
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct Type<'ctx> {
     ty: LLVMTypeRef,
@@ -85,7 +83,6 @@ impl<'ctx> Type<'ctx> {
 
     fn vec_type(self, size: u32) -> VectorType<'ctx> {
         assert!(size != 0, "Vectors of size zero are not allowed.");
-        // -- https://llvm.org/docs/LangRef.html#vector-type
 
         unsafe { VectorType::new(LLVMVectorType(self.ty, size)) }
     }
@@ -142,9 +139,6 @@ impl<'ctx> Type<'ctx> {
         unsafe { ContextRef::new(LLVMGetTypeContext(self.ty)) }
     }
 
-    // REVIEW: This should be known at compile time, maybe as a const fn?
-    // On an enum or trait, this would not be known at compile time (unless
-    // enum has only sized types for example)
     fn is_sized(self) -> bool {
         unsafe { LLVMTypeIsSized(self.ty) == 1 }
     }

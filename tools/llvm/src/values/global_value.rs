@@ -39,8 +39,6 @@ use crate::{DLLStorageClass, GlobalVisibility, ThreadLocalMode};
 
 use super::AnyValue;
 
-// REVIEW: GlobalValues are always PointerValues. With SubTypes, we should
-// compress this into a PointerValue<Global> type
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct GlobalValue<'ctx> {
     global_value: Value<'ctx>,
@@ -55,12 +53,10 @@ impl<'ctx> GlobalValue<'ctx> {
         }
     }
 
-    /// Get name of the `GlobalValue`.
     pub fn get_name(&self) -> &CStr {
         self.global_value.get_name()
     }
 
-    /// Set name of the `GlobalValue`.
     pub fn set_name(&self, name: &str) {
         self.global_value.set_name(name)
     }
@@ -105,7 +101,6 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { Some(BasicValueEnum::new(value)) }
     }
 
-    // SubType: This input type should be tied to the BasicType
     pub fn set_initializer(self, value: &dyn BasicValue<'ctx>) {
         unsafe { LLVMSetInitializer(self.as_value_ref(), value.as_value_ref()) }
     }
@@ -114,7 +109,6 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { LLVMIsThreadLocal(self.as_value_ref()) == 1 }
     }
 
-    // TODOC: Setting this to true is the same as setting GeneralDynamicTLSModel
     pub fn set_thread_local(self, is_thread_local: bool) {
         unsafe { LLVMSetThreadLocal(self.as_value_ref(), is_thread_local as i32) }
     }
@@ -125,8 +119,6 @@ impl<'ctx> GlobalValue<'ctx> {
         ThreadLocalMode::new(thread_local_mode)
     }
 
-    // REVIEW: Does this have any bad behavior if it isn't thread local or just a noop?
-    // or should it call self.set_thread_local(true)?
     pub fn set_thread_local_mode(self, thread_local_mode: Option<ThreadLocalMode>) {
         let thread_local_mode = match thread_local_mode {
             Some(mode) => mode.as_llvm_mode(),
@@ -136,27 +128,6 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { LLVMSetThreadLocalMode(self.as_value_ref(), thread_local_mode) }
     }
 
-    // SubType: This should be moved into the type. GlobalValue<Initialized/Uninitialized>
-    /// Determines whether or not a `GlobalValue` is a declaration or a definition.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let builder = context.create_builder();
-    /// let module = context.create_module("my_mod");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    /// let fn_value = module.add_function("my_func", fn_type, None);
-    ///
-    /// assert!(fn_value.as_global_value().is_declaration());
-    ///
-    /// context.append_basic_block(fn_value, "entry");
-    ///
-    /// assert!(!fn_value.as_global_value().is_declaration());
-    /// ```
     pub fn is_declaration(self) -> bool {
         unsafe { LLVMIsDeclaration(self.as_value_ref()) == 1 }
     }
@@ -213,12 +184,10 @@ impl<'ctx> GlobalValue<'ctx> {
         GlobalVisibility::new(visibility)
     }
 
-    /// Get section, this global value belongs to
     pub fn get_section(&self) -> Option<&CStr> {
         self.global_value.get_section()
     }
 
-    /// Set section, this global value belongs to
     pub fn set_section(self, section: Option<&str>) {
         self.global_value.set_section(section)
     }
@@ -239,13 +208,11 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { LLVMSetAlignment(self.as_value_ref(), alignment) }
     }
 
-    /// Sets a metadata of the given type on the GlobalValue
     #[llvm_versions(8.0..=latest)]
     pub fn set_metadata(self, metadata: MetadataValue<'ctx>, kind_id: u32) {
         unsafe { LLVMGlobalSetMetadata(self.as_value_ref(), kind_id, metadata.as_metadata_ref()) }
     }
 
-    /// Gets a `Comdat` assigned to this `GlobalValue`, if any.
     #[llvm_versions(7.0..=latest)]
     pub fn get_comdat(self) -> Option<Comdat> {
         use llvm_lib::comdat::LLVMGetComdat;
@@ -259,7 +226,6 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { Some(Comdat::new(comdat_ptr)) }
     }
 
-    /// Assigns a `Comdat` to this `GlobalValue`.
     #[llvm_versions(7.0..=latest)]
     pub fn set_comdat(self, comdat: Comdat) {
         use llvm_lib::comdat::LLVMSetComdat;
@@ -304,20 +270,16 @@ impl Display for GlobalValue<'_> {
     }
 }
 
-/// This enum determines the significance of a `GlobalValue`'s address.
 #[llvm_versions(7.0..=latest)]
 #[llvm_enum(LLVMUnnamedAddr)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum UnnamedAddress {
-    /// Address of the `GlobalValue` is significant.
     #[llvm_variant(LLVMNoUnnamedAddr)]
     None,
 
-    /// Address of the `GlobalValue` is locally insignificant.
     #[llvm_variant(LLVMLocalUnnamedAddr)]
     Local,
 
-    /// Address of the `GlobalValue` is globally insignificant.
     #[llvm_variant(LLVMGlobalUnnamedAddr)]
     Global,
 }

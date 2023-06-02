@@ -1,10 +1,8 @@
 use super::TypeId;
 use mlir_sys::{
-    mlirTypeIDAllocatorAllocateTypeID, mlirTypeIDAllocatorCreate, mlirTypeIDAllocatorDestroy,
-    MlirTypeIDAllocator,
+    mlirTypeIDAllocatorAllocateTypeID, mlirTypeIDAllocatorCreate, mlirTypeIDAllocatorDestroy, MlirTypeIDAllocator,
 };
 
-/// A type ID allocator.
 #[derive(Debug)]
 pub struct Allocator {
     raw: MlirTypeIDAllocator,

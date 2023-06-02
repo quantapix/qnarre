@@ -2,9 +2,7 @@
 
 use crate::{
     ir::{
-        attribute::{
-            DenseElementsAttribute, DenseI32ArrayAttribute, IntegerAttribute, StringAttribute,
-        },
+        attribute::{DenseElementsAttribute, DenseI32ArrayAttribute, IntegerAttribute, StringAttribute},
         operation::OperationBuilder,
         r#type::RankedTensorType,
         Block, Identifier, Location, Operation, Type, Value,
@@ -12,13 +10,7 @@ use crate::{
     Context, Error,
 };
 
-/// Creates a `cf.assert` operation.
-pub fn assert<'c>(
-    context: &'c Context,
-    argument: Value<'c>,
-    message: &str,
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn assert<'c>(context: &'c Context, argument: Value<'c>, message: &str, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("cf.assert", location)
         .add_attributes(&[(
             Identifier::new(context, "msg"),
@@ -28,19 +20,13 @@ pub fn assert<'c>(
         .build()
 }
 
-/// Creates a `cf.br` operation.
-pub fn br<'c>(
-    successor: &Block<'c>,
-    destination_operands: &[Value<'c>],
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn br<'c>(successor: &Block<'c>, destination_operands: &[Value<'c>], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("cf.br", location)
         .add_operands(destination_operands)
         .add_successors(&[successor])
         .build()
 }
 
-/// Creates a `cf.cond_br` operation.
 pub fn cond_br<'c>(
     context: &'c Context,
     condition: Value<'c>,
@@ -74,7 +60,6 @@ pub fn cond_br<'c>(
         .build()
 }
 
-/// Creates a `cf.switch` operation.
 pub fn switch<'c>(
     context: &'c Context,
     case_values: &[i64],
@@ -268,13 +253,7 @@ mod tests {
                     .into();
 
                 let condition = block
-                    .append_operation(index::cmp(
-                        &context,
-                        CmpiPredicate::Eq,
-                        operand,
-                        operand,
-                        location,
-                    ))
+                    .append_operation(index::cmp(&context, CmpiPredicate::Eq, operand, operand, location))
                     .result(0)
                     .unwrap()
                     .into();

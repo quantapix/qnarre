@@ -10,7 +10,6 @@ use crate::{
     Context,
 };
 
-/// Create a `func.call` operation.
 pub fn call<'c>(
     context: &'c Context,
     function: FlatSymbolRefAttribute<'c>,
@@ -23,19 +22,13 @@ pub fn call<'c>(
         .build()
 }
 
-/// Create a `func.call_indirect` operation.
-pub fn call_indirect<'c>(
-    function: Value,
-    arguments: &[Value],
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn call_indirect<'c>(function: Value, arguments: &[Value], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("func.call_indirect", location)
         .add_operands(&[function])
         .add_operands(arguments)
         .build()
 }
 
-/// Create a `func.constant` operation.
 pub fn constant<'c>(
     context: &'c Context,
     function: FlatSymbolRefAttribute<'c>,
@@ -48,7 +41,6 @@ pub fn constant<'c>(
         .build()
 }
 
-/// Create a `func.func` operation.
 pub fn func<'c>(
     context: &'c Context,
     name: StringAttribute<'c>,
@@ -67,7 +59,6 @@ pub fn func<'c>(
         .build()
 }
 
-/// Create a `func.return` operation.
 pub fn r#return<'c>(operands: &[Value], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("func.return", location)
         .add_operands(operands)
@@ -137,11 +128,7 @@ mod tests {
                 FunctionType::new(&context, &[], &[]),
                 location,
             ));
-            block.append_operation(call_indirect(
-                function.result(0).unwrap().into(),
-                &[],
-                location,
-            ));
+            block.append_operation(call_indirect(function.result(0).unwrap().into(), &[], location));
             block.append_operation(r#return(&[], location));
 
             let region = Region::new();
@@ -184,9 +171,7 @@ mod tests {
             func(
                 &context,
                 StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(
-                    FunctionType::new(&context, &[integer_type], &[integer_type]).into(),
-                ),
+                TypeAttribute::new(FunctionType::new(&context, &[integer_type], &[integer_type]).into()),
                 region,
                 &[],
                 Location::unknown(&context),

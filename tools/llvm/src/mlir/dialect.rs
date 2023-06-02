@@ -18,7 +18,6 @@ use crate::{
 use mlir_sys::{mlirDialectEqual, mlirDialectGetContext, mlirDialectGetNamespace, MlirDialect};
 use std::marker::PhantomData;
 
-/// A dialect.
 #[derive(Clone, Copy, Debug)]
 pub struct Dialect<'c> {
     raw: MlirDialect,
@@ -26,22 +25,14 @@ pub struct Dialect<'c> {
 }
 
 impl<'c> Dialect<'c> {
-    /// Gets a context.
     pub fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirDialectGetContext(self.raw)) }
     }
 
-    /// Gets a namespace.
-    // TODO Return &str.
     pub fn namespace(&self) -> StringRef {
         unsafe { StringRef::from_raw(mlirDialectGetNamespace(self.raw)) }
     }
 
-    /// Creates a dialect from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(dialect: MlirDialect) -> Self {
         Self {
             raw: dialect,

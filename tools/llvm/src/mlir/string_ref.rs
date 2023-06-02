@@ -9,15 +9,9 @@ use std::{
     sync::RwLock,
 };
 
-// We need to pass null-terminated strings to functions in the MLIR API although
-// Rust's strings are not.
 static STRING_CACHE: Lazy<RwLock<HashMap<String, CString>>> = Lazy::new(Default::default);
 
-/// A string reference.
-// https://mlir.llvm.org/docs/CAPI/#stringref
 //
-// TODO The documentation says string refs do not have to be null-terminated.
-// But it looks like some functions do not handle strings not null-terminated?
 #[derive(Clone, Copy, Debug)]
 pub struct StringRef<'a> {
     raw: MlirStringRef,
@@ -25,7 +19,6 @@ pub struct StringRef<'a> {
 }
 
 impl<'a> StringRef<'a> {
-    /// Converts a string reference into a `str`.
     pub fn as_str(&self) -> Result<&'a str, Utf8Error> {
         unsafe {
             let bytes = slice::from_raw_parts(self.raw.data as *mut u8, self.raw.length);
@@ -38,16 +31,10 @@ impl<'a> StringRef<'a> {
         }
     }
 
-    /// Converts a string reference into a raw object.
     pub fn to_raw(self) -> MlirStringRef {
         self.raw
     }
 
-    /// Creates a string reference from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(string: MlirStringRef) -> Self {
         Self {
             raw: string,

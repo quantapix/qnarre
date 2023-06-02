@@ -10,9 +10,6 @@ use llvm_lib::object::{
 
 use std::ffi::CStr;
 
-// REVIEW: Make sure SectionIterator's object_file ptr doesn't outlive ObjectFile
-// REVIEW: This module is very untested
-// TODO: More references to account for lifetimes
 #[derive(Debug)]
 pub struct ObjectFile {
     object_file: LLVMObjectFileRef,
@@ -229,10 +226,7 @@ impl Relocation {
     }
 
     pub fn get_symbols(&self) -> SymbolIterator {
-        let symbol_iterator = unsafe {
-            // REVIEW: Is this just returning a single Symbol (given the name) and not a full iterator?
-            LLVMGetRelocationSymbol(self.relocation)
-        };
+        let symbol_iterator = unsafe { LLVMGetRelocationSymbol(self.relocation) };
 
         unsafe { SymbolIterator::new(symbol_iterator, self.object_file) }
     }

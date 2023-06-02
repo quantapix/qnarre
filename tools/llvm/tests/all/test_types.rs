@@ -34,7 +34,6 @@ fn test_struct_type() {
     assert!(av_struct.is_packed());
     assert!(!av_struct.is_opaque());
     assert!(av_struct.is_sized());
-    // REVIEW: Is there a way to name a non opaque struct?
     assert!(av_struct.get_name().is_none());
     assert_eq!(av_struct.get_context(), context);
     assert_eq!(av_struct.count_fields(), 2);
@@ -91,7 +90,6 @@ fn test_struct_type() {
 
     no_longer_opaque_struct.set_body(&[float_array.into(), int_vector.into(), float_array.into()], false);
     let fields_changed_struct = no_longer_opaque_struct;
-    // assert!(!fields_changed_struct.is_packed()); FIXME: This seems to be a bug in LLVM
     assert!(!fields_changed_struct.is_opaque());
     assert!(fields_changed_struct.is_sized());
     assert_eq!(fields_changed_struct.count_fields(), 3);
@@ -152,8 +150,6 @@ fn sized_types(global_ctx: &Context) {
     let fn_type2 = i8_type.fn_type(&[], false);
     let fn_type3 = void_type.fn_type(&[i32_type.into(), struct_type.into()], false);
     let fn_type4 = i8_type.fn_type(&[struct_type.into(), i32_type.into()], false);
-
-    // REVIEW: Should these maybe just be constant functions instead of bothering to calling LLVM?
 
     assert!(!void_type.is_sized());
     assert!(bool_type.is_sized());
@@ -325,7 +321,6 @@ fn test_const_zero() {
         Ok("{ i8, fp128 } zeroinitializer")
     );
 
-    // handle opaque pointers
     let ptr_type = if cfg!(any(feature = "llvm15-0", feature = "llvm16-0")) {
         "ptr null"
     } else {
@@ -382,7 +377,6 @@ fn test_ptr_type() {
     ))]
     assert_eq!(ptr_type.get_element_type().into_int_type(), i8_type);
 
-    // Fn ptr:
     let void_type = context.void_type();
     let fn_type = void_type.fn_type(&[], false);
     let fn_ptr_type = fn_type.ptr_type(AddressSpace::default());
@@ -411,12 +405,10 @@ fn test_basic_type_enum() {
     let addr = AddressSpace::default();
     let int = context.i32_type();
     let types: &[&dyn BasicType] = &[
-        // ints and floats
         &int,
         &context.i64_type(),
         &context.f32_type(),
         &context.f64_type(),
-        // derived types
         &int.array_type(0),
         &int.ptr_type(addr),
         &context.struct_type(&[int.as_basic_type_enum()], false),

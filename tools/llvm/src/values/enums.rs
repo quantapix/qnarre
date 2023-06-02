@@ -231,7 +231,6 @@ impl<'ctx> BasicValueEnum<'ctx> {
         }
     }
 
-    /// Set name of the `BasicValueEnum`.
     pub fn set_name(&self, name: &str) {
         match self {
             BasicValueEnum::ArrayValue(v) => v.set_name(name),

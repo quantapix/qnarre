@@ -1,24 +1,18 @@
 use super::OperationPassManager;
-use crate::{
-    context::Context, ir::Module, logical_result::LogicalResult, pass::Pass, string_ref::StringRef,
-    Error,
-};
+use crate::{context::Context, ir::Module, logical_result::LogicalResult, pass::Pass, string_ref::StringRef, Error};
 use mlir_sys::{
-    mlirPassManagerAddOwnedPass, mlirPassManagerCreate, mlirPassManagerDestroy,
-    mlirPassManagerEnableIRPrinting, mlirPassManagerEnableVerifier,
-    mlirPassManagerGetAsOpPassManager, mlirPassManagerGetNestedUnder, mlirPassManagerRun,
-    MlirPassManager,
+    mlirPassManagerAddOwnedPass, mlirPassManagerCreate, mlirPassManagerDestroy, mlirPassManagerEnableIRPrinting,
+    mlirPassManagerEnableVerifier, mlirPassManagerGetAsOpPassManager, mlirPassManagerGetNestedUnder,
+    mlirPassManagerRun, MlirPassManager,
 };
 use std::marker::PhantomData;
 
-/// A pass manager.
 pub struct PassManager<'c> {
     raw: MlirPassManager,
     _context: PhantomData<&'c Context>,
 }
 
 impl<'c> PassManager<'c> {
-    /// Creates a pass manager.
     pub fn new(context: &Context) -> Self {
         Self {
             raw: unsafe { mlirPassManagerCreate(context.to_raw()) },
@@ -26,36 +20,26 @@ impl<'c> PassManager<'c> {
         }
     }
 
-    /// Gets an operation pass manager for nested operations corresponding to a
-    /// given name.
     pub fn nested_under(&self, name: &str) -> OperationPassManager {
         unsafe {
-            OperationPassManager::from_raw(mlirPassManagerGetNestedUnder(
-                self.raw,
-                StringRef::from(name).to_raw(),
-            ))
+            OperationPassManager::from_raw(mlirPassManagerGetNestedUnder(self.raw, StringRef::from(name).to_raw()))
         }
     }
 
-    /// Adds a pass.
     pub fn add_pass(&self, pass: Pass) {
         unsafe { mlirPassManagerAddOwnedPass(self.raw, pass.to_raw()) }
     }
 
-    /// Enables a verifier.
     pub fn enable_verifier(&self, enabled: bool) {
         unsafe { mlirPassManagerEnableVerifier(self.raw, enabled) }
     }
 
-    /// Enables IR printing.
     pub fn enable_ir_printing(&self) {
         unsafe { mlirPassManagerEnableIRPrinting(self.raw) }
     }
 
-    /// Runs passes added to a pass manager against a module.
     pub fn run(&self, module: &mut Module) -> Result<(), Error> {
-        let result =
-            LogicalResult::from_raw(unsafe { mlirPassManagerRun(self.raw, module.to_raw()) });
+        let result = LogicalResult::from_raw(unsafe { mlirPassManagerRun(self.raw, module.to_raw()) });
 
         if result.is_success() {
             Ok(())
@@ -64,7 +48,6 @@ impl<'c> PassManager<'c> {
         }
     }
 
-    /// Converts a pass manager to an operation pass manager.
     pub fn as_operation_pass_manager(&self) -> OperationPassManager {
         unsafe { OperationPassManager::from_raw(mlirPassManagerGetAsOpPassManager(self.raw)) }
     }
@@ -115,23 +98,13 @@ mod tests {
         PassManager::new(&context).enable_verifier(true);
     }
 
-    // TODO Enable this test.
-    // #[test]
-    // fn enable_ir_printing() {
-    //     let context = Context::new();
-
-    //     PassManager::new(&context).enable_ir_printing();
-    // }
-
     #[test]
     fn run() {
         let context = Context::new();
         let manager = PassManager::new(&context);
 
         manager.add_pass(pass::conversion::create_func_to_llvm());
-        manager
-            .run(&mut Module::new(Location::unknown(&context)))
-            .unwrap();
+        manager.run(&mut Module::new(Location::unknown(&context))).unwrap();
     }
 
     #[test]
@@ -211,10 +184,7 @@ mod tests {
             manager.as_operation_pass_manager().to_string(),
             "builtin.module(func.func(print-op-stats{json=false}))"
         );
-        assert_eq!(
-            function_manager.to_string(),
-            "func.func(print-op-stats{json=false})"
-        );
+        assert_eq!(function_manager.to_string(), "func.func(print-op-stats{json=false})");
     }
 
     #[test]

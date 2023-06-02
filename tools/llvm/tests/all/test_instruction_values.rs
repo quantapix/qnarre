@@ -31,7 +31,6 @@ fn test_operands() {
 
     assert!(arg1.as_instruction_value().is_none());
 
-    // Test operands
     assert_eq!(store_instruction.get_num_operands(), 2);
     assert_eq!(free_instruction.get_num_operands(), 2);
 
@@ -63,7 +62,6 @@ fn test_operands() {
 
     assert!(free_instruction.set_operand(0, arg1));
 
-    // Module is no longer valid because free takes an i8* not f32*
     #[cfg(any(
         feature = "llvm4-0",
         feature = "llvm5-0",
@@ -83,7 +81,6 @@ fn test_operands() {
 
     assert!(module.verify().is_ok());
 
-    // No-op, free only has two (0-1) operands
     assert!(!free_instruction.set_operand(2, free_operand0));
 
     assert!(module.verify().is_ok());
@@ -93,7 +90,6 @@ fn test_operands() {
     assert!(return_instruction.get_operand(1).is_none());
     assert!(return_instruction.get_operand(2).is_none());
 
-    // Test Uses
     let bitcast_use_value = free_operand0_instruction
         .get_first_use()
         .unwrap()
@@ -104,18 +100,13 @@ fn test_operands() {
 
     assert_eq!(bitcast_use_value, free_call_param);
 
-    // These instructions/calls don't return any ir value so they aren't used anywhere
     assert!(store_instruction.get_first_use().is_none());
     assert!(free_instruction.get_first_use().is_none());
     assert!(return_instruction.get_first_use().is_none());
 
-    // arg1 (%0) has two uses:
-    //   store float 0x400921FB60000000, float* %0
-    //   %1 = bitcast float* %0 to i8*
     let arg1_first_use = arg1.get_first_use().unwrap();
     let arg1_second_use = arg1_first_use.get_next_use().unwrap();
 
-    // However their operands are used
     let store_operand_use0 = store_instruction.get_operand_use(0).unwrap();
     let store_operand_use1 = store_instruction.get_operand_use(1).unwrap();
 
@@ -201,7 +192,6 @@ fn test_get_next_use() {
 
     builder.build_return(Some(&add_pi1));
 
-    // f32_val constant appears twice, so there are two uses (first, next)
     let first_use = f32_val.get_first_use().unwrap();
 
     assert_eq!(first_use.get_user(), add_pi1.as_instruction_value().unwrap());
@@ -267,7 +257,6 @@ fn test_instructions() {
     assert_eq!(free_instruction.get_opcode(), Call);
     assert_eq!(return_instruction.get_opcode(), Return);
 
-    // test instruction type
     assert_eq!(store_instruction.get_type(), AnyTypeEnum::from(void_type));
     assert_eq!(free_instruction.get_type(), AnyTypeEnum::from(void_type));
     assert_eq!(
@@ -275,14 +264,12 @@ fn test_instructions() {
         AnyTypeEnum::from(f32_type)
     );
 
-    // test instruction cloning
     #[allow(clippy::redundant_clone)]
     let instruction_clone = return_instruction.clone();
 
     assert_eq!(instruction_clone.get_opcode(), return_instruction.get_opcode());
     assert_ne!(instruction_clone, return_instruction);
 
-    // test copying
     let instruction_clone_copy = instruction_clone;
 
     assert_eq!(instruction_clone, instruction_clone_copy);

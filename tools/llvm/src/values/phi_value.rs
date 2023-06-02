@@ -11,9 +11,6 @@ use crate::values::{BasicValue, BasicValueEnum, InstructionOpcode, InstructionVa
 
 use super::AnyValue;
 
-// REVIEW: Metadata for phi values?
-/// A Phi Instruction returns a value based on which basic block branched into
-/// the Phi's containing basic block.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PhiValue<'ctx> {
     phi_value: Value<'ctx>,
@@ -62,13 +59,10 @@ impl<'ctx> PhiValue<'ctx> {
         Some((value, basic_block))
     }
 
-    /// Gets the name of a `ArrayValue`. If the value is a constant, this will
-    /// return an empty string.
     pub fn get_name(&self) -> &CStr {
         self.phi_value.get_name()
     }
 
-    // I believe PhiValue is never a constant, so this should always work
     pub fn set_name(self, name: &str) {
         self.phi_value.set_name(name);
     }
@@ -81,7 +75,6 @@ impl<'ctx> PhiValue<'ctx> {
         self.phi_value.is_undef()
     }
 
-    // SubType: -> InstructionValue<Phi>
     pub fn as_instruction(self) -> InstructionValue<'ctx> {
         self.phi_value
             .as_instruction()

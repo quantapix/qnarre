@@ -69,7 +69,6 @@ impl FileType {
     }
 }
 
-// TODO: Doc: Base gets you TargetMachine support, machine_code gets you asm_backend
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InitializationConfig {
     pub asm_parser: bool,
@@ -140,7 +139,6 @@ impl fmt::Display for TargetTriple {
 
 static TARGET_LOCK: Lazy<RwLock<()>> = Lazy::new(|| RwLock::new(()));
 
-// NOTE: Versions verified as target-complete: 3.6, 3.7, 3.8, 3.9, 4.0
 #[derive(Debug, Eq, PartialEq)]
 pub struct Target {
     target: LLVMTargetRef,
@@ -153,12 +151,10 @@ impl Target {
         Target { target }
     }
 
-    /// Acquires the underlying raw pointer belonging to this `Target` type.
     pub fn as_mut_ptr(&self) -> LLVMTargetRef {
         self.target
     }
 
-    // REVIEW: Should this just initialize all? Is opt into each a good idea?
     #[cfg(feature = "target-x86")]
     pub fn initialize_x86(config: &InitializationConfig) {
         use llvm_lib::target::{
@@ -343,8 +339,6 @@ impl Target {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeAMDGPUTargetMC() };
         }
-
-        // Disassembler Status Unknown
     }
 
     #[cfg(feature = "target-systemz")]
@@ -407,8 +401,6 @@ impl Target {
             unsafe { LLVMInitializeHexagonAsmPrinter() };
         }
 
-        // Asm parser status unknown
-
         if config.disassembler {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeHexagonDisassembler() };
@@ -442,14 +434,10 @@ impl Target {
             unsafe { LLVMInitializeNVPTXAsmPrinter() };
         }
 
-        // Asm parser status unknown
-
         if config.machine_code {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeNVPTXTargetMC() };
         }
-
-        // Disassembler status unknown
     }
 
     #[cfg(feature = "target-msp430")]
@@ -474,14 +462,10 @@ impl Target {
             unsafe { LLVMInitializeMSP430AsmPrinter() };
         }
 
-        // Asm parser status unknown
-
         if config.machine_code {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeMSP430TargetMC() };
         }
-
-        // Disassembler status unknown
     }
 
     #[cfg(feature = "target-xcore")]
@@ -505,8 +489,6 @@ impl Target {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeXCoreAsmPrinter() };
         }
-
-        // Asm parser status unknown
 
         if config.disassembler {
             let _guard = TARGET_LOCK.write();
@@ -617,8 +599,6 @@ impl Target {
             unsafe { LLVMInitializeBPFAsmPrinter() };
         }
 
-        // No asm parser
-
         if config.disassembler {
             use llvm_lib::target::LLVMInitializeBPFDisassembler;
 
@@ -671,11 +651,6 @@ impl Target {
         }
     }
 
-    // RISCV was accidentally built by default in 4.0 since it was meant to be marked
-    // experimental and so it was later removed from default builds in 5.0 until it was
-    // officially released in 9.0 Since llvm-sys doesn't officially support any experimental
-    // targets we're going to make this 9.0+ only. See
-    // https://lists.llvm.org/pipermail/llvm-dev/2017-August/116347.html for more info.
     #[cfg(feature = "target-riscv")]
     #[llvm_versions(9.0..=latest)]
     pub fn initialize_riscv(config: &InitializationConfig) {
@@ -823,7 +798,6 @@ impl Target {
             let code = unsafe { LLVM_InitializeNativeAsmParser() };
 
             if code == 1 {
-                // REVIEW: Does parser need to go before printer?
                 return Err("Unknown error in initializing native asm parser".into());
             }
         }
@@ -1020,7 +994,6 @@ impl TargetMachine {
         TargetMachine { target_machine }
     }
 
-    /// Acquires the underlying raw pointer belonging to this `TargetMachine` type.
     pub fn as_mut_ptr(&self) -> LLVMTargetMachineRef {
         self.target_machine
     }
@@ -1035,17 +1008,6 @@ impl TargetMachine {
         unsafe { TargetTriple::new(str) }
     }
 
-    /// Gets the default triple for the current system.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::targets::TargetMachine;
-    ///
-    /// let default_triple = TargetMachine::get_default_triple();
-    ///
-    /// assert_eq!(default_triple.as_str().to_str(), Ok("x86_64-pc-linux-gnu"));
-    /// ```
     pub fn get_default_triple() -> TargetTriple {
         let llvm_string = unsafe { LLVMString::new(LLVMGetDefaultTargetTriple()) };
 
@@ -1061,11 +1023,6 @@ impl TargetMachine {
         unsafe { TargetTriple::new(normalized) }
     }
 
-    /// Gets a string containing the host CPU's name (triple).
-    ///
-    /// # Example Output
-    ///
-    /// `x86_64-pc-linux-gnu`
     #[llvm_versions(7.0..=latest)]
     pub fn get_host_cpu_name() -> LLVMString {
         use llvm_lib::target_machine::LLVMGetHostCPUName;
@@ -1073,11 +1030,6 @@ impl TargetMachine {
         unsafe { LLVMString::new(LLVMGetHostCPUName()) }
     }
 
-    /// Gets a comma separated list of supported features by the host CPU.
-    ///
-    /// # Example Output
-    ///
-    /// `+sse2,+cx16,+sahf,-tbm`
     #[llvm_versions(7.0..=latest)]
     pub fn get_host_cpu_features() -> LLVMString {
         use llvm_lib::target_machine::LLVMGetHostCPUFeatures;
@@ -1093,7 +1045,6 @@ impl TargetMachine {
         unsafe { CStr::from_ptr(LLVMGetTargetMachineFeatureString(self.target_machine)) }
     }
 
-    /// Create TargetData from this target machine
     #[llvm_versions(4.0..=latest)]
     pub fn get_target_data(&self) -> TargetData {
         unsafe { TargetData::new(LLVMCreateTargetDataLayout(self.target_machine)) }
@@ -1103,45 +1054,10 @@ impl TargetMachine {
         unsafe { LLVMSetTargetMachineAsmVerbosity(self.target_machine, verbosity as i32) }
     }
 
-    // TODO: Move to PassManager?
     pub fn add_analysis_passes<T>(&self, pass_manager: &PassManager<T>) {
         unsafe { LLVMAddAnalysisPasses(self.target_machine, pass_manager.pass_manager) }
     }
 
-    /// Writes a `TargetMachine` to a `MemoryBuffer`.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::OptimizationLevel;
-    /// use inkwell::context::Context;
-    /// use inkwell::targets::{CodeModel, RelocMode, FileType, Target, TargetMachine, TargetTriple, InitializationConfig};
-    ///
-    /// Target::initialize_x86(&InitializationConfig::default());
-    ///
-    /// let opt = OptimizationLevel::Default;
-    /// let reloc = RelocMode::Default;
-    /// let model = CodeModel::Default;
-    /// let target = Target::from_name("x86-64").unwrap();
-    /// let target_machine = target.create_target_machine(
-    ///     &TargetTriple::create("x86_64-pc-linux-gnu"),
-    ///     "x86-64",
-    ///     "+avx2",
-    ///     opt,
-    ///     reloc,
-    ///     model
-    /// )
-    /// .unwrap();
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_module");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    ///
-    /// module.add_function("my_fn", fn_type, None);
-    ///
-    /// let buffer = target_machine.write_to_memory_buffer(&module, FileType::Assembly).unwrap();
-    /// ```
     pub fn write_to_memory_buffer(&self, module: &Module, file_type: FileType) -> Result<MemoryBuffer, LLVMString> {
         let mut memory_buffer = ptr::null_mut();
         let mut err_string = MaybeUninit::uninit();
@@ -1167,49 +1083,11 @@ impl TargetMachine {
         unsafe { Ok(MemoryBuffer::new(memory_buffer)) }
     }
 
-    /// Saves a `TargetMachine` to a file.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::OptimizationLevel;
-    /// use inkwell::context::Context;
-    /// use inkwell::targets::{CodeModel, RelocMode, FileType, Target, TargetMachine, TargetTriple, InitializationConfig};
-    ///
-    /// use std::path::Path;
-    ///
-    /// Target::initialize_x86(&InitializationConfig::default());
-    ///
-    /// let opt = OptimizationLevel::Default;
-    /// let reloc = RelocMode::Default;
-    /// let model = CodeModel::Default;
-    /// let path = Path::new("/tmp/some/path/main.asm");
-    /// let target = Target::from_name("x86-64").unwrap();
-    /// let target_machine = target.create_target_machine(
-    ///     &TargetTriple::create("x86_64-pc-linux-gnu"),
-    ///     "x86-64",
-    ///     "+avx2",
-    ///     opt,
-    ///     reloc,
-    ///     model
-    /// )
-    /// .unwrap();
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("my_module");
-    /// let void_type = context.void_type();
-    /// let fn_type = void_type.fn_type(&[], false);
-    ///
-    /// module.add_function("my_fn", fn_type, None);
-    ///
-    /// assert!(target_machine.write_to_file(&module, FileType::Object, &path).is_ok());
-    /// ```
     pub fn write_to_file(&self, module: &Module, file_type: FileType, path: &Path) -> Result<(), LLVMString> {
         let path = path.to_str().expect("Did not find a valid Unicode path string");
         let path_c_string = to_c_str(path);
         let mut err_string = MaybeUninit::uninit();
         let return_code = unsafe {
-            // REVIEW: Why does LLVM need a mutable ptr to path...?
             let module_ptr = module.module.get();
             let path_ptr = path_c_string.as_ptr() as *mut _;
             let file_type_ptr = file_type.as_llvm_file_type();
@@ -1257,28 +1135,10 @@ impl TargetData {
         TargetData { target_data }
     }
 
-    /// Acquires the underlying raw pointer belonging to this `TargetData` type.
     pub fn as_mut_ptr(&self) -> LLVMTargetDataRef {
         self.target_data
     }
 
-    /// Gets the `IntType` representing a bit width of a pointer. It will be assigned the referenced context.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::OptimizationLevel;
-    /// use inkwell::context::Context;
-    /// use inkwell::targets::{InitializationConfig, Target};
-    ///
-    /// Target::initialize_native(&InitializationConfig::default()).expect("Failed to initialize native target");
-    ///
-    /// let context = Context::create();
-    /// let module = context.create_module("sum");
-    /// let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
-    /// let target_data = execution_engine.get_target_data();
-    /// let int_type = target_data.ptr_sized_int_type_in_context(&context, None);
-    /// ```
     #[deprecated(note = "This method will be removed in the future. Please use Context::ptr_sized_int_type instead.")]
     pub fn ptr_sized_int_type_in_context<'ctx>(
         &self,
@@ -1299,12 +1159,10 @@ impl TargetData {
         unsafe { DataLayout::new_owned(LLVMCopyStringRepOfTargetData(self.target_data)) }
     }
 
-    // REVIEW: Does this only work if Sized?
     pub fn get_bit_size(&self, type_: &dyn AnyType) -> u64 {
         unsafe { LLVMSizeOfTypeInBits(self.target_data, type_.as_type_ref()) }
     }
 
-    // TODOC: This can fail on LLVM's side(exit?), but it doesn't seem like we have any way to check this in rust
     pub fn create(str_repr: &str) -> TargetData {
         let c_string = to_c_str(str_repr);
 

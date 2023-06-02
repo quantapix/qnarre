@@ -6,8 +6,8 @@ mod severity;
 pub use self::{handler_id::DiagnosticHandlerId, severity::DiagnosticSeverity};
 use crate::{ir::Location, utility::print_callback, Error};
 use mlir_sys::{
-    mlirDiagnosticGetLocation, mlirDiagnosticGetNote, mlirDiagnosticGetNumNotes,
-    mlirDiagnosticGetSeverity, mlirDiagnosticPrint, MlirDiagnostic,
+    mlirDiagnosticGetLocation, mlirDiagnosticGetNote, mlirDiagnosticGetNumNotes, mlirDiagnosticGetSeverity,
+    mlirDiagnosticPrint, MlirDiagnostic,
 };
 use std::{
     ffi::c_void,
@@ -47,11 +47,6 @@ impl<'c> Diagnostic<'c> {
         }
     }
 
-    /// Creates a diagnostic from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirDiagnostic) -> Self {
         Self {
             raw,
@@ -65,11 +60,7 @@ impl<'a> Display for Diagnostic<'a> {
         let mut data = (formatter, Ok(()));
 
         unsafe {
-            mlirDiagnosticPrint(
-                self.raw,
-                Some(print_callback),
-                &mut data as *mut _ as *mut c_void,
-            );
+            mlirDiagnosticPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
         }
 
         data.1

@@ -14,7 +14,6 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Deref;
 
-/// An owned LLVM String. Also known as a LLVM Message
 #[derive(Eq)]
 pub struct LLVMString {
     pub(crate) ptr: *const c_char,
@@ -25,21 +24,14 @@ impl LLVMString {
         LLVMString { ptr }
     }
 
-    /// This is a convenience method for creating a Rust `String`,
-    /// however; it *will* reallocate. `LLVMString` should be used
-    /// as much as possible to save memory since it is allocated by
-    /// LLVM. It's essentially a `CString` with a custom LLVM
-    /// deallocator
     pub fn to_string(&self) -> String {
         (*self).to_string_lossy().into_owned()
     }
 
-    /// This method will allocate a c string through LLVM
     pub(crate) fn create_from_c_str(string: &CStr) -> LLVMString {
         unsafe { LLVMString::new(LLVMCreateMessage(string.as_ptr() as *const _)) }
     }
 
-    /// This method will allocate a c string through LLVM
     pub(crate) fn create_from_str(string: &str) -> LLVMString {
         debug_assert_eq!(string.as_bytes()[string.as_bytes().len() - 1], 0);
 
@@ -92,10 +84,6 @@ impl Drop for LLVMString {
     }
 }
 
-// Similar to Cow; however does not provide ability to clone
-// since memory is allocated by LLVM. Could use a better name
-// too. This is meant to be an internal wrapper only. Maybe
-// belongs in a private utils module.
 #[derive(Eq)]
 pub(crate) enum LLVMStringOrRaw {
     Owned(LLVMString),
@@ -117,15 +105,12 @@ impl PartialEq for LLVMStringOrRaw {
     }
 }
 
-/// This function is very unsafe. Any reference to LLVM data after this function is called will likey segfault.
-/// Probably only ever useful to call before your program ends. Might not even be absolutely necessary.
 pub unsafe fn shutdown_llvm() {
     use llvm_lib::core::LLVMShutdown;
 
     LLVMShutdown()
 }
 
-/// Returns the major, minor, and patch version of the LLVM in use
 #[llvm_versions(16.0..=latest)]
 pub fn get_llvm_version() -> (u32, u32, u32) {
     let mut major: u32 = 0;
@@ -143,8 +128,6 @@ pub fn load_library_permanently(filename: &str) -> bool {
     unsafe { LLVMLoadLibraryPermanently(filename.as_ptr()) == 1 }
 }
 
-/// Determines whether or not LLVM has been configured to run in multithreaded mode. (Inkwell currently does
-/// not officially support multithreaded mode)
 pub fn is_multithreaded() -> bool {
     use llvm_lib::core::LLVMIsMultithreaded;
 
@@ -155,17 +138,13 @@ pub fn enable_llvm_pretty_stack_trace() {
     unsafe { LLVMEnablePrettyStackTrace() }
 }
 
-/// This function takes in a Rust string and either:
 ///
-/// A) Finds a terminating null byte in the Rust string and can reference it directly like a C string.
 ///
-/// B) Finds no null byte and allocates a new C string based on the input Rust string.
 pub(crate) fn to_c_str<'s>(mut s: &'s str) -> Cow<'s, CStr> {
     if s.is_empty() {
         s = "\0";
     }
 
-    // Start from the end of the string as it's the most likely place to find a null byte
     if !s.chars().rev().any(|ch| ch == '\0') {
         return Cow::from(CString::new(s).expect("unreachable since null bytes are checked"));
     }

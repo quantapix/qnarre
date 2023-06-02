@@ -2,37 +2,26 @@
 
 use crate::{
     ir::{
-        attribute::DenseI64ArrayAttribute, operation::OperationBuilder, Identifier, Location,
-        Operation, Region, Type, Value,
+        attribute::DenseI64ArrayAttribute, operation::OperationBuilder, Identifier, Location, Operation, Region, Type,
+        Value,
     },
     Context,
 };
 
-/// Creates a `scf.condition` operation.
-pub fn condition<'c>(
-    condition: Value<'c>,
-    values: &[Value<'c>],
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn condition<'c>(condition: Value<'c>, values: &[Value<'c>], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("scf.condition", location)
         .add_operands(&[condition])
         .add_operands(values)
         .build()
 }
 
-/// Creates a `scf.execute_region` operation.
-pub fn execute_region<'c>(
-    result_types: &[Type<'c>],
-    region: Region,
-    location: Location<'c>,
-) -> Operation<'c> {
+pub fn execute_region<'c>(result_types: &[Type<'c>], region: Region, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("scf.execute_region", location)
         .add_results(result_types)
         .add_regions(vec![region])
         .build()
 }
 
-/// Creates a `scf.for` operation.
 pub fn r#for<'c>(
     start: Value<'c>,
     end: Value<'c>,
@@ -46,7 +35,6 @@ pub fn r#for<'c>(
         .build()
 }
 
-/// Creates a `scf.if` operation.
 pub fn r#if<'c>(
     condition: Value<'c>,
     result_types: &[Type<'c>],
@@ -61,7 +49,6 @@ pub fn r#if<'c>(
         .build()
 }
 
-/// Creates a `scf.index_switch` operation.
 pub fn index_switch<'c>(
     context: &'c Context,
     condition: Value<'c>,
@@ -78,7 +65,6 @@ pub fn index_switch<'c>(
         .build()
 }
 
-/// Creates a `scf.while` operation.
 pub fn r#while<'c>(
     initial_values: &[Value<'c>],
     result_types: &[Type<'c>],
@@ -93,7 +79,6 @@ pub fn r#while<'c>(
         .build()
 }
 
-/// Creates a `scf.yield` operation.
 pub fn r#yield<'c>(values: &[Value], location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("scf.yield", location)
         .add_operands(values)
@@ -141,10 +126,7 @@ mod tests {
                             location,
                         ));
 
-                        block.append_operation(r#yield(
-                            &[value.result(0).unwrap().into()],
-                            location,
-                        ));
+                        block.append_operation(r#yield(&[value.result(0).unwrap().into()], location));
 
                         let region = Region::new();
                         region.append_block(block);
@@ -266,10 +248,7 @@ mod tests {
                                 location,
                             ));
 
-                            block.append_operation(r#yield(
-                                &[result.result(0).unwrap().into()],
-                                location,
-                            ));
+                            block.append_operation(r#yield(&[result.result(0).unwrap().into()], location));
 
                             let region = Region::new();
                             region.append_block(block);
@@ -284,10 +263,7 @@ mod tests {
                                 location,
                             ));
 
-                            block.append_operation(r#yield(
-                                &[result.result(0).unwrap().into()],
-                                location,
-                            ));
+                            block.append_operation(r#yield(&[result.result(0).unwrap().into()], location));
 
                             let region = Region::new();
                             region.append_block(block);
@@ -296,10 +272,7 @@ mod tests {
                         location,
                     ));
 
-                    block.append_operation(func::r#return(
-                        &[result.result(0).unwrap().into()],
-                        location,
-                    ));
+                    block.append_operation(func::r#return(&[result.result(0).unwrap().into()], location));
 
                     let region = Region::new();
                     region.append_block(block);
@@ -470,8 +443,7 @@ mod tests {
 
                             let condition = block.append_operation(arith::constant(
                                 &context,
-                                IntegerAttribute::new(0, IntegerType::new(&context, 1).into())
-                                    .into(),
+                                IntegerAttribute::new(0, IntegerType::new(&context, 1).into()).into(),
                                 location,
                             ));
 
@@ -500,10 +472,7 @@ mod tests {
                                 location,
                             ));
 
-                            block.append_operation(r#yield(
-                                &[result.result(0).unwrap().into()],
-                                location,
-                            ));
+                            block.append_operation(r#yield(&[result.result(0).unwrap().into()], location));
 
                             let region = Region::new();
                             region.append_block(block);
@@ -557,8 +526,7 @@ mod tests {
 
                             let condition = block.append_operation(arith::constant(
                                 &context,
-                                IntegerAttribute::new(0, IntegerType::new(&context, 1).into())
-                                    .into(),
+                                IntegerAttribute::new(0, IntegerType::new(&context, 1).into()).into(),
                                 location,
                             ));
 
@@ -587,10 +555,7 @@ mod tests {
                                 location,
                             ));
 
-                            block.append_operation(r#yield(
-                                &[result.result(0).unwrap().into()],
-                                location,
-                            ));
+                            block.append_operation(r#yield(&[result.result(0).unwrap().into()], location));
 
                             let region = Region::new();
                             region.append_block(block);
@@ -636,19 +601,14 @@ mod tests {
                     ));
 
                     block.append_operation(r#while(
-                        &[
-                            initial.result(0).unwrap().into(),
-                            initial.result(0).unwrap().into(),
-                        ],
+                        &[initial.result(0).unwrap().into(), initial.result(0).unwrap().into()],
                         &[index_type, index_type],
                         {
-                            let block =
-                                Block::new(&[(index_type, location), (index_type, location)]);
+                            let block = Block::new(&[(index_type, location), (index_type, location)]);
 
                             let condition = block.append_operation(arith::constant(
                                 &context,
-                                IntegerAttribute::new(0, IntegerType::new(&context, 1).into())
-                                    .into(),
+                                IntegerAttribute::new(0, IntegerType::new(&context, 1).into()).into(),
                                 location,
                             ));
 
@@ -660,10 +620,7 @@ mod tests {
 
                             block.append_operation(super::condition(
                                 condition.result(0).unwrap().into(),
-                                &[
-                                    result.result(0).unwrap().into(),
-                                    result.result(0).unwrap().into(),
-                                ],
+                                &[result.result(0).unwrap().into(), result.result(0).unwrap().into()],
                                 location,
                             ));
 
@@ -672,8 +629,7 @@ mod tests {
                             region
                         },
                         {
-                            let block =
-                                Block::new(&[(index_type, location), (index_type, location)]);
+                            let block = Block::new(&[(index_type, location), (index_type, location)]);
 
                             let result = block.append_operation(arith::constant(
                                 &context,
@@ -682,10 +638,7 @@ mod tests {
                             ));
 
                             block.append_operation(r#yield(
-                                &[
-                                    result.result(0).unwrap().into(),
-                                    result.result(0).unwrap().into(),
-                                ],
+                                &[result.result(0).unwrap().into(), result.result(0).unwrap().into()],
                                 location,
                             ));
 

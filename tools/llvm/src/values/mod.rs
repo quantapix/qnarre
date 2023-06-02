@@ -96,12 +96,6 @@ impl<'ctx> Value<'ctx> {
         unsafe { LLVMIsConstant(self.value) == 1 }
     }
 
-    // TODOC: According to https://stackoverflow.com/questions/21593752/llvm-how-to-pass-a-name-to-constantint
-    // you can't use set_name name on a constant(by can't, I mean it wont do anything), unless it's also a global.
-    // So, you can set names on variables (ie a function parameter)
-    // REVIEW: It'd be great if we could encode this into the type system somehow. For example,
-    // add a ParamValue wrapper type that always have it but conditional types (IntValue<Variable>)
-    // that also have it. This isn't a huge deal though, since it hasn't proven to be UB so far
     fn set_name(self, name: &str) {
         let c_string = to_c_str(name);
 
@@ -121,8 +115,6 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
-    // get_name should *not* return a LLVMString, because it is not an owned value AFAICT
-    // TODO: Should make this take ownership of self. But what is the lifetime of the string? 'ctx?
     fn get_name(&self) -> &CStr {
         #[cfg(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0"))]
         let ptr = unsafe {
@@ -157,10 +149,7 @@ impl<'ctx> Value<'ctx> {
         unsafe { LLVMDumpValue(self.value) }
     }
 
-    // REVIEW: I think this is memory safe, though it may result in an IR error
-    // if used incorrectly, which is OK.
     fn replace_all_uses_with(self, other: LLVMValueRef) {
-        // LLVM may infinite-loop when they aren't distinct, which is UB in C++.
         if self.value != other {
             unsafe { LLVMReplaceAllUsesWith(self.value, other) }
         }
@@ -176,7 +165,6 @@ impl<'ctx> Value<'ctx> {
         unsafe { Some(BasicValueUse::new(use_)) }
     }
 
-    /// Gets the section of the global value
     pub fn get_section(&self) -> Option<&CStr> {
         let ptr = unsafe { LLVMGetSection(self.value) };
 
@@ -184,7 +172,6 @@ impl<'ctx> Value<'ctx> {
             return None;
         }
 
-        // On MacOS we need to remove ',' before section name
         if cfg!(target_os = "macos") {
             let name = unsafe { CStr::from_ptr(ptr) };
             let name_string = name.to_string_lossy();
@@ -199,7 +186,6 @@ impl<'ctx> Value<'ctx> {
         }
     }
 
-    /// Sets the section of the global value
     fn set_section(self, section: Option<&str>) {
         #[cfg(target_os = "macos")]
         let section = section.map(|s| {
@@ -215,7 +201,6 @@ impl<'ctx> Value<'ctx> {
         unsafe {
             LLVMSetSection(
                 self.value,
-                // The as_ref call is important here so that we don't drop the cstr mid use
                 c_string.as_ref().map(|s| s.as_ptr()).unwrap_or(std::ptr::null()),
             )
         }

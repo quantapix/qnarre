@@ -33,13 +33,10 @@ impl<'ctx> IntValue<'ctx> {
         }
     }
 
-    /// Gets the name of an `IntValue`. If the value is a constant, this will
-    /// return an empty string.
     pub fn get_name(&self) -> &CStr {
         self.int_value.get_name()
     }
 
-    /// Set name of the `IntValue`.
     pub fn set_name(&self, name: &str) {
         self.int_value.set_name(name)
     }
@@ -68,7 +65,6 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstNot(self.as_value_ref())) }
     }
 
-    // REVIEW: What happens when not using a const value? This and other fns
     pub fn const_neg(self) -> Self {
         unsafe { IntValue::new(LLVMConstNeg(self.as_value_ref())) }
     }
@@ -171,7 +167,6 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstXor(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
-    // TODO: Could infer is_signed from type (one day)?
     pub fn const_cast(self, int_type: IntType<'ctx>, is_signed: bool) -> Self {
         unsafe {
             IntValue::new(LLVMConstIntCast(
@@ -182,7 +177,6 @@ impl<'ctx> IntValue<'ctx> {
         }
     }
 
-    // TODO: Give shift methods more descriptive names
     pub fn const_shl(self, rhs: IntValue<'ctx>) -> Self {
         unsafe { IntValue::new(LLVMConstShl(self.as_value_ref(), rhs.as_value_ref())) }
     }
@@ -195,12 +189,10 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstAShr(self.as_value_ref(), rhs.as_value_ref())) }
     }
 
-    // SubType: const_to_float impl only for unsigned types
     pub fn const_unsigned_to_float(self, float_type: FloatType<'ctx>) -> FloatValue<'ctx> {
         unsafe { FloatValue::new(LLVMConstUIToFP(self.as_value_ref(), float_type.as_type_ref())) }
     }
 
-    // SubType: const_to_float impl only for signed types
     pub fn const_signed_to_float(self, float_type: FloatType<'ctx>) -> FloatValue<'ctx> {
         unsafe { FloatValue::new(LLVMConstSIToFP(self.as_value_ref(), float_type.as_type_ref())) }
     }
@@ -213,12 +205,10 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstTrunc(self.as_value_ref(), int_type.as_type_ref())) }
     }
 
-    // TODO: More descriptive name
     pub fn const_s_extend(self, int_type: IntType<'ctx>) -> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstSExt(self.as_value_ref(), int_type.as_type_ref())) }
     }
 
-    // TODO: More descriptive name
     pub fn const_z_ext(self, int_type: IntType<'ctx>) -> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstZExt(self.as_value_ref(), int_type.as_type_ref())) }
     }
@@ -227,12 +217,10 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstTruncOrBitCast(self.as_value_ref(), int_type.as_type_ref())) }
     }
 
-    // TODO: More descriptive name
     pub fn const_s_extend_or_bit_cast(self, int_type: IntType<'ctx>) -> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstSExtOrBitCast(self.as_value_ref(), int_type.as_type_ref())) }
     }
 
-    // TODO: More descriptive name
     pub fn const_z_ext_or_bit_cast(self, int_type: IntType<'ctx>) -> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstZExtOrBitCast(self.as_value_ref(), int_type.as_type_ref())) }
     }
@@ -241,12 +229,10 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstBitCast(self.as_value_ref(), int_type.as_type_ref())) }
     }
 
-    // SubType: rhs same as lhs; return IntValue<bool>
     pub fn const_int_compare(self, op: IntPredicate, rhs: IntValue<'ctx>) -> IntValue<'ctx> {
         unsafe { IntValue::new(LLVMConstICmp(op.into(), self.as_value_ref(), rhs.as_value_ref())) }
     }
 
-    // SubTypes: self can only be IntValue<bool>
     pub fn const_select<BV: BasicValue<'ctx>>(self, then: BV, else_: BV) -> BasicValueEnum<'ctx> {
         unsafe {
             BasicValueEnum::new(LLVMConstSelect(
@@ -257,60 +243,15 @@ impl<'ctx> IntValue<'ctx> {
         }
     }
 
-    /// Determines whether or not an `IntValue` is an `llvm::Constant`.
-    ///
-    /// Constants includes values that are not known at compile time, for
-    /// example the address of a function casted to an integer.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let i64_type = context.i64_type();
-    /// let i64_val = i64_type.const_int(12, false);
-    ///
-    /// assert!(i64_val.is_const());
-    /// ```
     pub fn is_const(self) -> bool {
         self.int_value.is_const()
     }
 
-    /// Determines whether or not an `IntValue` is an `llvm::ConstantInt`.
-    ///
-    /// ConstantInt only includes values that are known at compile time.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let i64_type = context.i64_type();
-    /// let i64_val = i64_type.const_int(12, false);
-    ///
-    /// assert!(i64_val.is_constant_int());
-    /// ```
     pub fn is_constant_int(self) -> bool {
         !unsafe { LLVMIsAConstantInt(self.as_value_ref()) }.is_null()
     }
 
-    /// Obtains a constant `IntValue`'s zero extended value.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let i8_type = context.i8_type();
-    /// let i8_all_ones = i8_type.const_all_ones();
-    ///
-    /// assert_eq!(i8_all_ones.get_zero_extended_constant(), Some(255));
-    /// ```
     pub fn get_zero_extended_constant(self) -> Option<u64> {
-        // Garbage values are produced on non constant values
         if !self.is_constant_int() {
             return None;
         }
@@ -321,21 +262,7 @@ impl<'ctx> IntValue<'ctx> {
         unsafe { Some(LLVMConstIntGetZExtValue(self.as_value_ref())) }
     }
 
-    /// Obtains a constant `IntValue`'s sign extended value.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use inkwell::context::Context;
-    ///
-    /// let context = Context::create();
-    /// let i8_type = context.i8_type();
-    /// let i8_all_ones = i8_type.const_all_ones();
-    ///
-    /// assert_eq!(i8_all_ones.get_sign_extended_constant(), Some(-1));
-    /// ```
     pub fn get_sign_extended_constant(self) -> Option<i64> {
-        // Garbage values are produced on non constant values
         if !self.is_constant_int() {
             return None;
         }

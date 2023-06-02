@@ -11,18 +11,15 @@ use syn::spanned::Spanned;
 use syn::{parse_macro_input, parse_quote};
 use syn::{Attribute, Field, Ident, Item, LitFloat, Token, Variant};
 
-// This array should match the LLVM features in the top level Cargo manifest
 const FEATURE_VERSIONS: [&str; 13] = [
     "llvm4-0", "llvm5-0", "llvm6-0", "llvm7-0", "llvm8-0", "llvm9-0", "llvm10-0", "llvm11-0", "llvm12-0", "llvm13-0",
     "llvm14-0", "llvm15-0", "llvm16-0",
 ];
 
-/// Gets the index of the feature version that represents `latest`
 fn get_latest_feature_index(features: &[&str]) -> usize {
     features.len() - 1
 }
 
-/// Gets the index of the feature version that matches the input string
 fn get_feature_index(features: &[&str], feature: String, span: Span) -> Result<usize> {
     let feat = feature.as_str();
     match features.iter().position(|&s| s == feat) {
@@ -34,7 +31,6 @@ fn get_feature_index(features: &[&str], feature: String, span: Span) -> Result<u
     }
 }
 
-/// Gets a vector of feature versions represented by the given VersionType
 fn get_features(vt: VersionType) -> Result<Vec<&'static str>> {
     let features = FEATURE_VERSIONS;
     let latest = get_latest_feature_index(&features);
@@ -102,15 +98,12 @@ fn get_features(vt: VersionType) -> Result<Vec<&'static str>> {
     }
 }
 
-/// Converts a version number as a float to its feature version
-/// string form (e.g. 8.0 ..= llvm8-0)
 fn f64_to_feature_string(float: f64) -> String {
     let int = float as u64;
 
     format!("llvm{}-{}", int, (float * 10.) % 10.)
 }
 
-/// This struct defines the type of version expressions parsable by `llvm_versions`
 #[derive(Debug)]
 enum VersionType {
     Specific(f64, Span),
@@ -121,18 +114,13 @@ enum VersionType {
 }
 impl Parse for VersionType {
     fn parse(input: ParseStream) -> Result<Self> {
-        // We use lookahead to produce better syntax errors
         let lookahead = input.lookahead1();
-        // All version specifiers begin with a float
         if lookahead.peek(LitFloat) {
             let from = input.parse::<LitFloat>().unwrap();
             let from_val = from.base10_parse().unwrap();
-            // If that's the end of the input, this was a specific version string
             if input.is_empty() {
                 return Ok(VersionType::Specific(from_val, from.span()));
             }
-            // If the next token is ..= it is an inclusive range, .. is exclusive
-            // In both cases the right-hand operand must be either a float or an ident, `latest`
             let lookahead = input.lookahead1();
             if lookahead.peek(Token![..=]) {
                 let _: Token![..=] = input.parse().unwrap();
@@ -183,7 +171,6 @@ impl Parse for VersionType {
     }
 }
 
-/// Handler for parsing of TokenStreams contained in item attributes
 #[derive(Debug)]
 struct ParenthesizedFeatureSet(FeatureSet);
 impl Parse for ParenthesizedFeatureSet {
@@ -192,12 +179,10 @@ impl Parse for ParenthesizedFeatureSet {
     }
 }
 
-/// Handler for parsing of TokenStreams from macro input
 #[derive(Clone, Debug)]
 struct FeatureSet(std::vec::IntoIter<&'static str>, Option<Error>);
 impl Default for FeatureSet {
     fn default() -> Self {
-        // Default to all versions
         #[allow(clippy::unnecessary_to_owned)] // Falsely fires since array::IntoIter != vec::IntoIter
         Self(FEATURE_VERSIONS.to_vec().into_iter(), None)
     }
@@ -236,17 +221,14 @@ impl FeatureSet {
     }
 
     fn expand_llvm_versions_attr(&mut self, attr: &Attribute) -> Attribute {
-        // Make no modifications if we've generated an error
         if self.has_error() {
             return attr.clone();
         }
 
-        // If this isn't an llvm_versions attribute, skip it
         if !attr.path().is_ident("llvm_versions") {
             return attr.clone();
         }
 
-        // Expand from llvm_versions to raw cfg attribute
         match attr.parse_args() {
             Ok(ParenthesizedFeatureSet(features)) => {
                 parse_quote! {
@@ -254,10 +236,6 @@ impl FeatureSet {
                 }
             },
             Err(err) => {
-                // We've hit an error, but we can't break out yet,
-                // so we set the error in the FeatureSet state and
-                // avoid any further modifications until we can produce
-                // the error
                 self.set_error(err);
                 attr.clone()
             },
@@ -294,25 +272,11 @@ impl Fold for FeatureSet {
     }
 }
 
-/// This macro can be used to specify version constraints for an enum/struct/union or
-/// other item which can be decorated with an attribute.
 ///
-/// To use with enum variants or struct fields, you need to decorate the parent item with
-/// the `#[llvm_versioned_item]` attribute, as this is the hook we need to modify the AST
-/// of those items
 ///
-/// # Examples
 ///
-/// ```ignore
-/// // Inclusive range from 3.6 up to and including 3.9
-/// #[llvm_versions(3.6..=3.9)]
 ///
-/// // Exclusive range from 3.6 up to but not including 4.0
-/// #[llvm_versions(3.6..4.0)]
 ///
-/// // Inclusive range from 3.6 up to and including the latest release
-/// #[llvm_versions(3.6..=latest)]
-/// ```
 #[proc_macro_attribute]
 pub fn llvm_versions(attribute_args: TokenStream, attributee: TokenStream) -> TokenStream {
     let mut features = parse_macro_input!(attribute_args as FeatureSet);
@@ -324,8 +288,6 @@ pub fn llvm_versions(attribute_args: TokenStream, attributee: TokenStream) -> To
         return features.into_compile_error();
     }
 
-    // Add nightly only doc cfgs to improve documentation on nightly builds
-    // such as our own hosted docs.
     let doc = if cfg!(feature = "nightly") {
         let features2 = features.clone();
         quote! {
@@ -344,20 +306,8 @@ pub fn llvm_versions(attribute_args: TokenStream, attributee: TokenStream) -> To
     q.into()
 }
 
-/// This attribute is used to decorate enums, structs, or unions which may contain
-/// variants/fields which make use of `#[llvm_versions(..)]`
 ///
-/// # Examples
 ///
-/// ```ignore
-/// #[llvm_versioned_item]
-/// enum InstructionOpcode {
-///     Call,
-///     #[llvm_versions(3.8..=latest)]
-///     CatchPad,
-///     ...
-/// }
-/// ```
 #[proc_macro_attribute]
 pub fn llvm_versioned_item(_attribute_args: TokenStream, attributee: TokenStream) -> TokenStream {
     let attributee = parse_macro_input!(attributee as Item);
@@ -372,8 +322,6 @@ pub fn llvm_versioned_item(_attribute_args: TokenStream, attributee: TokenStream
     quote!(#folded).into()
 }
 
-/// Used to track an enum variant and its corresponding mappings (LLVM <-> Rust),
-/// as well as attributes
 struct EnumVariant {
     llvm_variant: Ident,
     rust_variant: Ident,
@@ -405,7 +353,6 @@ impl EnumVariant {
     }
 }
 
-/// Used when constructing the variants of an enum declaration.
 #[derive(Default)]
 struct EnumVariants {
     variants: Vec<EnumVariant>,
@@ -444,22 +391,16 @@ impl Fold for EnumVariants {
             return variant;
         }
 
-        // Check for llvm_variant
         if let Some(attr) = variant.attrs.iter().find(|attr| attr.path().is_ident("llvm_variant")) {
-            // Extract attribute meta
             if let Meta::List(meta) = &attr.meta {
-                // We should only have one element
-
                 if let Ok(Meta::Path(name)) = meta.parse_args() {
                     self.variants
                         .push(EnumVariant::with_name(&variant, name.get_ident().unwrap().clone()));
-                    // Strip the llvm_variant attribute from the final AST
                     variant.attrs.retain(|attr| !attr.path().is_ident("llvm_variant"));
                     return variant;
                 }
             }
 
-            // If at any point we fall through to here, it is the same basic issue, invalid format
             self.set_error("expected #[llvm_variant(VARIANT_NAME)]", attr.span());
             return variant;
         }
@@ -469,7 +410,6 @@ impl Fold for EnumVariants {
     }
 }
 
-/// Used to parse an enum declaration decorated with `#[llvm_enum(..)]`
 struct LLVMEnumType {
     name: Ident,
     decl: syn::ItemEnum,
@@ -477,10 +417,8 @@ struct LLVMEnumType {
 }
 impl Parse for LLVMEnumType {
     fn parse(input: ParseStream) -> Result<Self> {
-        // Parse enum declaration
         let decl = input.parse::<syn::ItemEnum>()?;
         let name = decl.ident.clone();
-        // Fold over variants and expand llvm_versions
         let mut features = FeatureSet::default();
         let decl = features.fold_item_enum(decl);
         if features.has_error() {
@@ -497,47 +435,21 @@ impl Parse for LLVMEnumType {
     }
 }
 
-/// This attribute macro allows you to decorate an enum declaration which represents
-/// an LLVM enum with versioning constraints and/or custom variant names. There are
-/// a few expectations around the LLVM and Rust enums:
 ///
-/// - Both enums have the same number of variants
-/// - The name of the LLVM variant can be derived by appending 'LLVM' to the Rust variant
 ///
-/// The latter can be worked around manually with `#[llvm_variant]` if desired.
 ///
-/// # Examples
 ///
-/// ```ignore
-/// #[llvm_enum(LLVMOpcode)]
-/// enum InstructionOpcode {
-///     Call,
-///     #[llvm_versions(3.8..=latest)]
-///     CatchPad,
-///     ...,
-///     #[llvm_variant(LLVMRet)]
-///     Return,
-///     ...
-/// }
-/// ```
 ///
-/// The use of `#[llvm_variant(NAME)]` allows you to override the default
-/// naming scheme by providing the variant name which the source enum maps
-/// to. In the above example, `Ret` was deemed unnecessarily concise, so the
-/// source variant is named `Return` and mapped manually to `LLVMRet`.
 #[proc_macro_attribute]
 pub fn llvm_enum(attribute_args: TokenStream, attributee: TokenStream) -> TokenStream {
     use syn::{Arm, PatPath, Path};
 
-    // Expect something like #[llvm_enum(LLVMOpcode)]
     let llvm_ty = parse_macro_input!(attribute_args as Path);
     let llvm_enum_type = parse_macro_input!(attributee as LLVMEnumType);
 
-    // Construct match arms for LLVM -> Rust enum conversion
     let mut from_arms = Vec::with_capacity(llvm_enum_type.variants.len());
     for variant in llvm_enum_type.variants.iter() {
         let src_variant = variant.llvm_variant.clone();
-        // Filter out doc comments or else rustc will warn about docs on match arms in newer versions.
         let src_attrs: Vec<_> = variant
             .attrs
             .iter()
@@ -560,11 +472,9 @@ pub fn llvm_enum(attribute_args: TokenStream, attributee: TokenStream) -> TokenS
         from_arms.push(arm);
     }
 
-    // Construct match arms for Rust -> LLVM enum conversion
     let mut to_arms = Vec::with_capacity(llvm_enum_type.variants.len());
     for variant in llvm_enum_type.variants.iter() {
         let src_variant = variant.rust_variant.clone();
-        // Filter out doc comments or else rustc will warn about docs on match arms in newer versions.
         let src_attrs: Vec<_> = variant
             .attrs
             .iter()

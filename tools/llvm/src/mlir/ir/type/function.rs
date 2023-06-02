@@ -1,18 +1,16 @@
 use super::TypeLike;
 use crate::{ir::Type, utility::into_raw_array, Context, Error};
 use mlir_sys::{
-    mlirFunctionTypeGet, mlirFunctionTypeGetInput, mlirFunctionTypeGetNumInputs,
-    mlirFunctionTypeGetNumResults, mlirFunctionTypeGetResult, MlirType,
+    mlirFunctionTypeGet, mlirFunctionTypeGetInput, mlirFunctionTypeGetNumInputs, mlirFunctionTypeGetNumResults,
+    mlirFunctionTypeGetResult, MlirType,
 };
 
-/// A function type.
 #[derive(Clone, Copy, Debug)]
 pub struct FunctionType<'c> {
     r#type: Type<'c>,
 }
 
 impl<'c> FunctionType<'c> {
-    /// Creates a function type.
     pub fn new(context: &'c Context, inputs: &[Type<'c>], results: &[Type<'c>]) -> Self {
         Self {
             r#type: unsafe {
@@ -27,7 +25,6 @@ impl<'c> FunctionType<'c> {
         }
     }
 
-    /// Gets an input at a position.
     pub fn input(&self, index: usize) -> Result<Type<'c>, Error> {
         if index < self.input_count() {
             unsafe {
@@ -45,7 +42,6 @@ impl<'c> FunctionType<'c> {
         }
     }
 
-    /// Gets a result at a position.
     pub fn result(&self, index: usize) -> Result<Type<'c>, Error> {
         if index < self.result_count() {
             unsafe {
@@ -63,12 +59,10 @@ impl<'c> FunctionType<'c> {
         }
     }
 
-    /// Gets a number of inputs.
     pub fn input_count(&self) -> usize {
         unsafe { mlirFunctionTypeGetNumInputs(self.r#type.to_raw()) as usize }
     }
 
-    /// Gets a number of results.
     pub fn result_count(&self) -> usize {
         unsafe { mlirFunctionTypeGetNumResults(self.r#type.to_raw()) as usize }
     }
@@ -108,10 +102,7 @@ mod tests {
         let context = Context::new();
         let integer = Type::index(&context);
 
-        assert_eq!(
-            FunctionType::new(&context, &[integer], &[]).input(0),
-            Ok(integer)
-        );
+        assert_eq!(FunctionType::new(&context, &[integer], &[]).input(0), Ok(integer));
     }
 
     #[test]
@@ -135,10 +126,7 @@ mod tests {
         let context = Context::new();
         let integer = Type::index(&context);
 
-        assert_eq!(
-            FunctionType::new(&context, &[], &[integer]).result(0),
-            Ok(integer)
-        );
+        assert_eq!(FunctionType::new(&context, &[], &[integer]).result(0), Ok(integer));
     }
 
     #[test]
@@ -162,10 +150,7 @@ mod tests {
         let context = Context::new();
         let integer = Type::index(&context);
 
-        assert_eq!(
-            FunctionType::new(&context, &[integer], &[]).input_count(),
-            1
-        );
+        assert_eq!(FunctionType::new(&context, &[integer], &[]).input_count(), 1);
     }
 
     #[test]
@@ -173,9 +158,6 @@ mod tests {
         let context = Context::new();
         let integer = Type::index(&context);
 
-        assert_eq!(
-            FunctionType::new(&context, &[], &[integer]).result_count(),
-            1
-        );
+        assert_eq!(FunctionType::new(&context, &[], &[integer]).result_count(), 1);
     }
 }

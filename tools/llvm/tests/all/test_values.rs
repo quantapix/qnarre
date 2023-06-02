@@ -9,8 +9,6 @@ use inkwell::{AddressSpace, DLLStorageClass, GlobalVisibility, ThreadLocalMode};
 
 use std::convert::TryFrom;
 
-// TODO: Test GlobalValues used as PointerValues
-
 #[test]
 fn test_linkage() {
     let context = Context::create();
@@ -108,7 +106,6 @@ fn test_set_get_name() {
     assert_eq!(vec_val.get_name().to_str(), Ok(""));
     assert_eq!(ppc_f128_val.get_name().to_str(), Ok(""));
 
-    // LLVM Gem: You can't set names on constant values, so this doesn't do anything:
     bool_val.set_name("my_val");
     i8_val.set_name("my_val2");
     i16_val.set_name("my_val3");
@@ -149,7 +146,6 @@ fn test_set_get_name() {
     let module = context.create_module("types");
     let builder = context.create_builder();
 
-    // You can set names on variables, though:
     let fn_type_params = [
         bool_type.into(),
         f32_type.into(),
@@ -196,8 +192,6 @@ fn test_set_get_name() {
     assert_eq!(struct_param.get_name().to_str(), Ok("my_val5"));
     assert_eq!(vec_param.get_name().to_str(), Ok("my_val6"));
     assert_eq!(phi_val.get_name().to_str(), Ok("phi"));
-
-    // TODO: Test globals, supposedly constant globals work?
 }
 
 #[test]
@@ -326,8 +320,6 @@ fn test_verify_fn() {
     builder.build_return(None);
 
     assert!(function.verify(false));
-
-    // TODO: Verify other verify modes
 }
 
 #[test]
@@ -335,16 +327,9 @@ fn test_metadata() {
     let context = Context::create();
     let module = context.create_module("my_mod");
 
-    // TODOC: From looking at the source, seem to be a bunch of predefined ones
-    // and then afterwards it assigns a new value for newly requested keys.
-    // REVIEW: So Maybe we could/should change the above to an enum input:
-    // enum {Debug, Tbaa, ..., Custom(Cow)} which evaluates to the predefined value
-    // or a new lookup
-
     assert_eq!(context.get_kind_id("foo"), FIRST_CUSTOM_METADATA_KIND_ID);
     assert_eq!(context.get_kind_id("bar"), FIRST_CUSTOM_METADATA_KIND_ID + 1);
 
-    // Predefined
     assert_eq!(context.get_kind_id("dbg"), 0);
     assert_eq!(context.get_kind_id("tbaa"), 1);
     assert_eq!(context.get_kind_id("prof"), 2);
@@ -394,35 +379,10 @@ fn test_metadata() {
         );
 
         let bool_type = context.bool_type();
-        // let i8_type = context.i8_type();
-        // let i16_type = context.i16_type();
-        // let i32_type = context.i32_type();
-        // let i64_type = context.i64_type();
-        // let i128_type = context.i128_type();
-        // let f16_type = context.f16_type();
         let f32_type = context.f32_type();
-        // let f64_type = context.f64_type();
-        // let f128_type = context.f128_type();
-        // let array_type = f64_type.array_type(42);
-        // let ppc_f128_type = context.ppc_f128_type();
-        // let fn_type = bool_type.fn_type(&[i64_type.into(), array_type.into()], false);
 
         let bool_val = bool_type.const_int(0, false);
-        // let i8_val = i8_type.const_int(0, false);
-        // let i16_val = i16_type.const_int(0, false);
-        // let i32_val = i32_type.const_int(0, false);
-        // let i64_val = i64_type.const_int(0, false);
-        // let i128_val = i128_type.const_int(0, false);
-        // let f16_val = f16_type.const_float(0.0);
         let f32_val = f32_type.const_float(0.0);
-        // let f64_val = f64_type.const_float(0.0);
-        // let f128_val = f128_type.const_float(0.0);
-        // let ppc_f128_val = ppc_f128_type.const_float(0.0);
-        // let ptr_val = bool_type.ptr_type(AddressSpace::default()).const_null();
-        // let array_val = f64_type.const_array(&[f64_val]);
-        // let struct_val = context.const_struct(&[i8_val.into(), f128_val.into()], false);
-        // let vec_val = VectorType::const_vector(&[i8_val]);
-        // let fn_val = module.add_function("my_fn", fn_type, None);
 
         let md_node_child = context.metadata_node(&[bool_val.into(), f32_val.into()]);
         let md_node = context.metadata_node(&[bool_val.into(), f32_val.into(), md_string.into(), md_node_child.into()]);
@@ -461,29 +421,6 @@ fn test_metadata() {
 
         assert_eq!(module.get_global_metadata_size("other_md"), 0);
 
-        // REVIEW: const_null_ptr/ ptr.const_null seem to cause UB. Need to test and adapt
-        // and see if they should be allowed to have metadata? Also, while we're at it we should
-        // try with undef
-
-        // REVIEW: initial has_metadata seems inconsistent. Some have it. Some don't for kind_id 0. Some sometimes have it.
-        // furthermore, when they do have it, it is a SF when printing out. Unclear what can be done here. Maybe just disallow index 0?
-        // assert!(bool_val.has_metadata());
-        // assert!(i8_val.has_metadata());
-        // assert!(i16_val.has_metadata());
-        // assert!(i32_val.has_metadata());
-        // assert!(i64_val.has_metadata());
-        // assert!(!i128_val.has_metadata());
-        // assert!(!f16_val.has_metadata());
-        // assert!(!f32_val.has_metadata());
-        // assert!(!f64_val.has_metadata());
-        // assert!(!f128_val.has_metadata());
-        // assert!(!ppc_f128_val.has_metadata());
-        // assert!(ptr_val.has_metadata());
-        // assert!(array_val.has_metadata());
-        // assert!(struct_val.has_metadata());
-        // assert!(!vec_val.has_metadata());
-        // assert!(!fn_val.has_metadata());
-
         let builder = context.create_builder();
         let module = context.create_module("my_mod");
         let void_type = context.void_type();
@@ -510,7 +447,6 @@ fn test_metadata() {
             md_string.get_string_value()
         );
 
-        // New Context Metadata
         let context_metadata_node = context.metadata_node(&[bool_val.into(), f32_val.into()]);
         let context_metadata_string = context.metadata_string("my_context_metadata");
 
@@ -546,8 +482,6 @@ fn test_floats() {
         assert_eq!(f128_pi.get_type(), f128_type);
         assert_eq!(f128_pi_cast.get_type(), f128_type);
 
-        // REIVEW: Why are these not FPTrunc, FPExt, FPToSI, FPToUI, BitCast instructions?
-        // Only thing I can think of is that they're constants and therefore precalculated
         assert!(f32_pi.as_instruction().is_none());
         assert!(f128_pi.as_instruction().is_none());
         assert!(i64_pi.as_instruction().is_none());
@@ -643,7 +577,6 @@ fn test_value_from_string() {
     assert_eq!(i8_type.const_int_from_string("2", StringRadix::Binary), None);
     assert_eq!(i8_type.const_int_from_string("2", StringRadix::Binary), None);
 
-    // Floats
     let f64_type = context.f64_type();
     let f64_val = f64_type.const_float_from_string("3.6");
 
@@ -660,11 +593,6 @@ fn test_value_from_string() {
     let f64_val = f64_type.const_float_from_string("");
 
     assert_eq!(f64_val.print_to_string().to_string(), "double 0.000000e+00");
-
-    // TODO: We should return a Result that returns Err here.
-    //let f64_val = f64_type.const_float_from_string("3.asd");
-    //
-    //assert_eq!(f64_val.print_to_string().to_string(), "double 0x7FF0000000000000");
 }
 
 #[test]
@@ -752,7 +680,6 @@ fn test_globals() {
     global.set_visibility(GlobalVisibility::Hidden);
     global.set_section(Some("not sure what goes here"));
 
-    // REVIEW: Not sure why this is Global when we set it to Local
     #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     assert_eq!(global.get_unnamed_address(), UnnamedAddress::Global);
     assert_eq!(global.get_dll_storage_class(), DLLStorageClass::Import);
@@ -772,7 +699,6 @@ fn test_globals() {
 
     assert_eq!(global.get_section(), None);
 
-    // Either linkage is non-local or visibility is default.
     global.set_visibility(GlobalVisibility::Default);
     global.set_linkage(Private);
 
@@ -834,7 +760,6 @@ fn test_globals() {
 
     global2.set_externally_initialized(true);
 
-    // REVIEW: This doesn't seem to work. LLVM bug?
     assert!(global2.is_externally_initialized());
 
     #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
@@ -924,19 +849,11 @@ fn test_allocations() {
 
     builder.position_at_end(entry_block);
 
-    // handle opaque pointers
     let ptr_type = if cfg!(any(feature = "llvm15-0", feature = "llvm16-0")) {
         "ptr"
     } else {
         "i32*"
     };
-
-    // REVIEW: Alloca (and possibly malloc) seem to be prone to segfaulting
-    // when called with a builder that isn't positioned. I wonder if other
-    // builder methods have this problem? We could make builder subtypes:
-    // Builder<HasPosition>, Builder<NoPosition> and only define most
-    // methods on positioned variant if so. But leave positioning methods
-    // on both?
 
     let stack_ptr = builder.build_alloca(i32_type, "stack_ptr");
 
@@ -1009,7 +926,6 @@ fn test_string_values() {
     let non_string_vec_i8 = i8_type.const_array(&[i8_val, i8_val2]);
     let non_string_vec_i8_const = non_string_vec_i8.get_string_constant();
 
-    // TODOC: Will still interpret vec as string even if not generated with const_string:
     assert!(non_string_vec_i8_const.is_some());
     assert_eq!(non_string_vec_i8_const.unwrap().to_str(), Ok("!+"));
 
@@ -1019,12 +935,8 @@ fn test_string_values() {
     let non_string_vec_i32 = i8_type.const_array(&[i32_val, i32_val2, i32_val2]);
     let non_string_vec_i32_const = non_string_vec_i32.get_string_constant();
 
-    // TODOC: Will still interpret vec with non i8 but in unexpected ways:
-    // We may want to restrict this to VectorValue<IntValue<i8>>...
     assert!(non_string_vec_i32_const.is_some());
     assert_eq!(non_string_vec_i32_const.unwrap().to_str(), Ok("!"));
-
-    // TODO: Test get_string_constant on non const...
 }
 
 #[test]
@@ -1096,7 +1008,6 @@ fn test_consts() {
     assert_eq!(f128_val.get_constant(), Some((7.8, false)));
     assert_eq!(ppc_f128_val.get_constant(), Some((9.0, false)));
 
-    // Non const test
     let builder = context.create_builder();
     let module = context.create_module("fns");
     let void_type = context.void_type();

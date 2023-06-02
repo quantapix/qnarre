@@ -11,60 +11,6 @@ use std::fs::{remove_file, File};
 use std::io::Read;
 use std::str::from_utf8;
 
-// REVIEW: Inconsistently failing on different tries :(
-// #[test]
-// fn test_target() {
-//     // REVIEW: Some of the machine specific stuff may vary. Should allow multiple possibilites
-//     assert!(Target::get_first().is_none());
-
-//     let mut config = InitializationConfig {
-//         asm_parser: false,
-//         asm_printer: false,
-//         base: false,
-//         disassembler: false,
-//         info: true,
-//         machine_code: false,
-//     };
-
-//     Target::initialize_x86(&config);
-
-//     let target = Target::get_first().expect("Did not find any target");
-
-//     assert_eq!(target.get_name(), &*CString::new("x86-64").unwrap());
-//     assert_eq!(target.get_description(), &*CString::new("64-bit X86: EM64T and AMD64").unwrap());
-//     assert!(target.has_jit());
-//     assert!(!target.has_asm_backend());
-//     assert!(!target.has_target_machine());
-
-//     assert!(target.create_target_machine("x86-64", "xx", "yy", OptimizationLevel::Default, RelocMode::Default, CodeModel::Default).is_none());
-
-//     config.base = true;
-
-//     Target::initialize_x86(&config);
-
-//     let target = Target::get_first().expect("Did not find any target");
-
-//     assert!(!target.has_asm_backend());
-//     assert!(target.has_target_machine());
-
-//     let target_machine = target.create_target_machine("zz", "xx", "yy", OptimizationLevel::Default, RelocMode::Default, CodeModel::Default).expect("Could not create TargetMachine");
-
-//     config.machine_code = true;
-
-//     Target::initialize_x86(&config);
-
-//     let target = Target::get_first().expect("Did not find any target");
-
-//     assert!(target.has_asm_backend());
-//     assert!(target.has_target_machine());
-
-//     // TODO: See what happens to create_target_machine when when target.has_target_machine() is false
-//     // Maybe it should return an Option<TargetMachine>
-//     // TODO: TargetMachine testing
-
-//     target.get_next().expect("Did not find any target2");
-// }
-
 #[test]
 fn test_target_and_target_machine() {
     Target::initialize_native(&InitializationConfig::default()).expect("Failed to initialize native target");
@@ -132,8 +78,6 @@ fn test_target_and_target_machine() {
         )
         .unwrap();
 
-    // TODO: Test target_machine failure
-
     target_machine.set_asm_verbosity(true);
 
     let triple = target_machine.get_triple();
@@ -145,7 +89,6 @@ fn test_target_and_target_machine() {
 
     #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     {
-        // TODO: Try and find a triple that actually gets normalized..
         assert_eq!(
             TargetMachine::normalize_triple(&triple).as_str().to_str(),
             Ok("x86_64-pc-linux-gnu"),
@@ -161,7 +104,6 @@ fn test_default_triple() {
     let default_triple = TargetMachine::get_default_triple();
     let default_triple = default_triple.as_str().to_string_lossy();
 
-    // FIXME: arm arch
     #[cfg(target_os = "linux")]
     let cond = default_triple == "x86_64-pc-linux-gnu"
         || default_triple == "x86_64-unknown-linux-gnu"
@@ -171,8 +113,6 @@ fn test_default_triple() {
     let cond = default_triple.starts_with("x86_64-apple-darwin");
 
     assert!(cond, "Unexpected target triple: {}", default_triple);
-
-    // TODO: CFG for other supported major OSes
 }
 
 #[test]
@@ -186,15 +126,11 @@ fn test_target_data() {
 
     let data_layout = target_data.get_data_layout();
 
-    // https://llvm.org/docs/LangRef.html#data-layout
     let datalayout_specification_re = Regex::new("[Ee]|S\\d+|P\\d+|A\\d+|p(\\d+)?:\\d+:\\d+(:\\d+)?|i\\d+:\\d+(:\\d+)?|v\\d+:\\d+(:\\d+)?|f\\d+:\\d+(:\\d+)?|a:\\d+(:\\d)?|F[in]\\d+|m:[emoxw]|n\\d+(:\\d)*|ni:\\d+(:\\d)*").unwrap();
     for specification in data_layout.as_str().to_str().unwrap().split('-') {
         assert!(datalayout_specification_re.is_match(specification));
     }
     assert!(data_layout.as_str().to_str().unwrap().matches('-').count() > 2);
-
-    // REVIEW: Why is llvm 3.9+ a %? 4.0 on travis doesn't have it, but does for me locally...
-    // assert_eq!(module.get_data_layout().as_str(), &*CString::new("%").unwrap());
 
     module.set_data_layout(&data_layout);
 
@@ -220,11 +156,9 @@ fn test_target_data() {
     assert_eq!(target_data.get_bit_size(&struct_type), 256);
     assert_eq!(target_data.get_bit_size(&struct_type2), 192);
 
-    // REVIEW: What if these fail on a different system?
     assert_eq!(target_data.get_byte_ordering(), ByteOrdering::LittleEndian);
     assert_eq!(target_data.get_pointer_byte_size(None), 8);
 
-    // REVIEW: Are these just byte size? Maybe rename to get_byte_size?
     assert_eq!(target_data.get_store_size(&i32_type), 4);
     assert_eq!(target_data.get_store_size(&i64_type), 8);
     assert_eq!(target_data.get_store_size(&f32_type), 4);
@@ -232,7 +166,6 @@ fn test_target_data() {
     assert_eq!(target_data.get_store_size(&struct_type), 32);
     assert_eq!(target_data.get_store_size(&struct_type2), 24);
 
-    // REVIEW: What's the difference between this an above?
     assert_eq!(target_data.get_abi_size(&i32_type), 4);
     assert_eq!(target_data.get_abi_size(&i64_type), 8);
     assert_eq!(target_data.get_abi_size(&f32_type), 4);
@@ -261,7 +194,6 @@ fn test_target_data() {
     assert_eq!(target_data.get_preferred_alignment(&struct_type), 8);
     assert_eq!(target_data.get_preferred_alignment(&struct_type2), 8);
 
-    // REVIEW: offset in bytes? Rename to byte_offset_of_element?
     assert_eq!(target_data.offset_of_element(&struct_type, 0), Some(0));
     assert_eq!(target_data.offset_of_element(&struct_type, 1), Some(8));
     assert_eq!(target_data.offset_of_element(&struct_type, 2), Some(16));

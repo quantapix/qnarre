@@ -54,40 +54,24 @@ macro_rules! enum_type_set {
 }
 
 enum_type_set! {
-    /// A wrapper for any `BasicType`, `VoidType`, or `FunctionType`.
     AnyTypeEnum: {
-        /// A contiguous homogeneous container type.
         ArrayType,
-        /// A floating point type.
         FloatType,
-        /// A function return and parameter definition.
         FunctionType,
-        /// An integer type.
         IntType,
-        /// A pointer type.
         PointerType,
-        /// A contiguous heterogeneous container type.
         StructType,
-        /// A contiguous homogeneous "SIMD" container type.
         VectorType,
-        /// A valueless type.
         VoidType,
     }
 }
 enum_type_set! {
-    /// A wrapper for any `BasicType`.
     BasicTypeEnum: {
-        /// A contiguous homogeneous container type.
         ArrayType,
-        /// A floating point type.
         FloatType,
-        /// An integer type.
         IntType,
-        /// A pointer type.
         PointerType,
-        /// A contiguous heterogeneous container type.
         StructType,
-        /// A contiguous homogeneous "SIMD" container type.
         VectorType,
     }
 }
@@ -188,7 +172,6 @@ impl<'ctx> BasicMetadataTypeEnum<'ctx> {
         matches!(self, BasicMetadataTypeEnum::VectorType(_))
     }
 
-    /// Print the definition of a `BasicMetadataTypeEnum` to `LLVMString`.
     pub fn print_to_string(self) -> LLVMString {
         match self {
             BasicMetadataTypeEnum::ArrayType(t) => t.print_to_string(),
@@ -203,10 +186,6 @@ impl<'ctx> BasicMetadataTypeEnum<'ctx> {
 }
 
 impl<'ctx> AnyTypeEnum<'ctx> {
-    /// Create `AnyTypeEnum` from [`LLVMTypeRef`]
-    ///
-    /// # Safety
-    /// Undefined behavior, if referenced type isn't part of `AnyTypeEnum`
     pub unsafe fn new(type_: LLVMTypeRef) -> Self {
         match LLVMGetTypeKind(type_) {
             LLVMTypeKind::LLVMVoidTypeKind => AnyTypeEnum::VoidType(VoidType::new(type_)),
@@ -241,7 +220,6 @@ impl<'ctx> AnyTypeEnum<'ctx> {
                 feature = "llvm16-0"
             ))]
             LLVMTypeKind::LLVMScalableVectorTypeKind => AnyTypeEnum::VectorType(VectorType::new(type_)),
-            // FIXME: should inkwell support metadata as AnyType?
             LLVMTypeKind::LLVMMetadataTypeKind => panic!("Metadata type is not supported as AnyType."),
             LLVMTypeKind::LLVMX86_MMXTypeKind => panic!("FIXME: Unsupported type: MMX"),
             #[cfg(any(
@@ -258,7 +236,6 @@ impl<'ctx> AnyTypeEnum<'ctx> {
         }
     }
 
-    /// This will panic if type is a void or function type.
     pub(crate) fn to_basic_type_enum(&self) -> BasicTypeEnum<'ctx> {
         unsafe { BasicTypeEnum::new(self.as_type_ref()) }
     }
@@ -372,7 +349,6 @@ impl<'ctx> AnyTypeEnum<'ctx> {
         }
     }
 
-    /// Print the definition of a `AnyTypeEnum` to `LLVMString`.
     pub fn print_to_string(self) -> LLVMString {
         match self {
             AnyTypeEnum::ArrayType(t) => t.print_to_string(),
@@ -388,10 +364,6 @@ impl<'ctx> AnyTypeEnum<'ctx> {
 }
 
 impl<'ctx> BasicTypeEnum<'ctx> {
-    /// Create `BasicTypeEnum` from [`LLVMTypeRef`]
-    ///
-    /// # Safety
-    /// Undefined behavior, if referenced type isn't part of basic type enum.
     pub unsafe fn new(type_: LLVMTypeRef) -> Self {
         match LLVMGetTypeKind(type_) {
             LLVMTypeKind::LLVMHalfTypeKind
@@ -424,9 +396,7 @@ impl<'ctx> BasicTypeEnum<'ctx> {
             ))]
             LLVMTypeKind::LLVMScalableVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
             LLVMTypeKind::LLVMMetadataTypeKind => panic!("Unsupported basic type: Metadata"),
-            // see https://llvm.org/docs/LangRef.html#x86-mmx-type
             LLVMTypeKind::LLVMX86_MMXTypeKind => panic!("Unsupported basic type: MMX"),
-            // see https://llvm.org/docs/LangRef.html#x86-amx-type
             #[cfg(any(
                 feature = "llvm12-0",
                 feature = "llvm13-0",
@@ -516,17 +486,6 @@ impl<'ctx> BasicTypeEnum<'ctx> {
         matches!(self, BasicTypeEnum::VectorType(_))
     }
 
-    /// Creates a constant `BasicValueZero`.
-    ///
-    /// # Example
-    /// ```
-    /// use inkwell::context::Context;
-    /// use crate::inkwell::types::BasicType;
-    ///
-    /// let context = Context::create();
-    /// let f32_type = context.f32_type().as_basic_type_enum();
-    /// let f32_zero = f32_type.const_zero();
-    /// ```
     pub fn const_zero(self) -> BasicValueEnum<'ctx> {
         match self {
             BasicTypeEnum::ArrayType(ty) => ty.const_zero().as_basic_value_enum(),
@@ -538,7 +497,6 @@ impl<'ctx> BasicTypeEnum<'ctx> {
         }
     }
 
-    /// Print the definition of a `BasicTypeEnum` to `LLVMString`.
     pub fn print_to_string(self) -> LLVMString {
         match self {
             BasicTypeEnum::ArrayType(t) => t.print_to_string(),

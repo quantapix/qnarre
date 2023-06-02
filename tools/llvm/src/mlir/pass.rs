@@ -12,24 +12,17 @@ pub mod transform;
 pub use self::{manager::PassManager, operation_manager::OperationPassManager};
 use mlir_sys::MlirPass;
 
-/// A pass.
 pub struct Pass {
     raw: MlirPass,
 }
 
 impl Pass {
-    /// Creates a pass from a raw function.
-    ///
-    /// # Safety
-    ///
-    /// A raw function must be valid.
     pub unsafe fn from_raw_fn(create_raw: unsafe extern "C" fn() -> MlirPass) -> Self {
         Self {
             raw: unsafe { create_raw() },
         }
     }
 
-    /// Converts a pass into a raw object.
     pub fn to_raw(&self) -> MlirPass {
         self.raw
     }

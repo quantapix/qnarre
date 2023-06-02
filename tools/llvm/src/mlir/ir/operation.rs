@@ -4,9 +4,7 @@ mod builder;
 mod printing_flags;
 mod result;
 
-pub use self::{
-    builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult,
-};
+pub use self::{builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult};
 use super::{BlockRef, Identifier, RegionRef, Value};
 use crate::{
     context::{Context, ContextRef},
@@ -18,10 +16,9 @@ use core::{
     mem::{forget, transmute},
 };
 use mlir_sys::{
-    mlirOperationClone, mlirOperationDestroy, mlirOperationDump, mlirOperationEqual,
-    mlirOperationGetBlock, mlirOperationGetContext, mlirOperationGetName,
-    mlirOperationGetNextInBlock, mlirOperationGetNumRegions, mlirOperationGetNumResults,
-    mlirOperationGetRegion, mlirOperationGetResult, mlirOperationPrint,
+    mlirOperationClone, mlirOperationDestroy, mlirOperationDump, mlirOperationEqual, mlirOperationGetBlock,
+    mlirOperationGetContext, mlirOperationGetName, mlirOperationGetNextInBlock, mlirOperationGetNumRegions,
+    mlirOperationGetNumResults, mlirOperationGetRegion, mlirOperationGetResult, mlirOperationPrint,
     mlirOperationPrintWithFlags, mlirOperationVerify, MlirOperation,
 };
 use std::{
@@ -31,29 +28,24 @@ use std::{
     ops::Deref,
 };
 
-/// An operation.
 pub struct Operation<'c> {
     raw: MlirOperation,
     _context: PhantomData<&'c Context>,
 }
 
 impl<'c> Operation<'c> {
-    /// Gets a context.
     pub fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirOperationGetContext(self.raw)) }
     }
 
-    /// Gets a name.
     pub fn name(&self) -> Identifier<'c> {
         unsafe { Identifier::from_raw(mlirOperationGetName(self.raw)) }
     }
 
-    /// Gets a block.
     pub fn block(&self) -> Option<BlockRef> {
         unsafe { BlockRef::from_option_raw(mlirOperationGetBlock(self.raw)) }
     }
 
-    /// Gets a result at a position.
     pub fn result(&self, index: usize) -> Result<OperationResult, Error> {
         unsafe {
             if index < self.result_count() {
@@ -71,19 +63,14 @@ impl<'c> Operation<'c> {
         }
     }
 
-    /// Gets a number of results.
     pub fn result_count(&self) -> usize {
         unsafe { mlirOperationGetNumResults(self.raw) as usize }
     }
 
-    /// Gets a region at a position.
     pub fn region(&self, index: usize) -> Result<RegionRef, Error> {
         unsafe {
             if index < self.region_count() {
-                Ok(RegionRef::from_raw(mlirOperationGetRegion(
-                    self.raw,
-                    index as isize,
-                )))
+                Ok(RegionRef::from_raw(mlirOperationGetRegion(self.raw, index as isize)))
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "region",
@@ -94,12 +81,10 @@ impl<'c> Operation<'c> {
         }
     }
 
-    /// Gets a number of regions.
     pub fn region_count(&self) -> usize {
         unsafe { mlirOperationGetNumRegions(self.raw) as usize }
     }
 
-    /// Gets the next operation in the same block.
     pub fn next_in_block(&self) -> Option<OperationRef> {
         unsafe {
             let operation = mlirOperationGetNextInBlock(self.raw);
@@ -112,17 +97,14 @@ impl<'c> Operation<'c> {
         }
     }
 
-    /// Verifies an operation.
     pub fn verify(&self) -> bool {
         unsafe { mlirOperationVerify(self.raw) }
     }
 
-    /// Dumps an operation.
     pub fn dump(&self) {
         unsafe { mlirOperationDump(self.raw) }
     }
 
-    /// Prints an operation with flags.
     pub fn to_string_with_flags(&self, flags: OperationPrintingFlags) -> Result<String, Error> {
         let mut data = (String::new(), Ok::<_, Error>(()));
 
@@ -140,11 +122,6 @@ impl<'c> Operation<'c> {
         Ok(data.0)
     }
 
-    /// Creates an operation from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirOperation) -> Self {
         Self {
             raw,
@@ -152,7 +129,6 @@ impl<'c> Operation<'c> {
         }
     }
 
-    /// Converts an operation into a raw object.
     pub fn into_raw(self) -> MlirOperation {
         let operation = self.raw;
 
@@ -187,11 +163,7 @@ impl<'a> Display for Operation<'a> {
         let mut data = (formatter, Ok(()));
 
         unsafe {
-            mlirOperationPrint(
-                self.raw,
-                Some(print_callback),
-                &mut data as *mut _ as *mut c_void,
-            );
+            mlirOperationPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
         }
 
         data.1
@@ -206,9 +178,6 @@ impl<'c> Debug for Operation<'c> {
     }
 }
 
-/// A reference to an operation.
-// TODO Should we split context lifetimes? Or, is it transitively proven that
-// 'c > 'a?
 #[derive(Clone, Copy)]
 pub struct OperationRef<'a> {
     raw: MlirOperation,
@@ -216,24 +185,14 @@ pub struct OperationRef<'a> {
 }
 
 impl<'a> OperationRef<'a> {
-    /// Gets a result at a position.
     pub fn result(self, index: usize) -> Result<OperationResult<'a>, Error> {
-        // As we can't deref OperationRef<'a> into `&'a Operation`, we forcibly cast its
-        // lifetime here to extend it from the lifetime of `ObjectRef<'a>` itself into
-        // `'a`.
         unsafe { transmute(self.deref().result(index)) }
     }
 
-    /// Converts an operation reference into a raw object.
     pub fn to_raw(self) -> MlirOperation {
         self.raw
     }
 
-    /// Creates an operation reference from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirOperation) -> Self {
         Self {
             raw,
@@ -241,11 +200,6 @@ impl<'a> OperationRef<'a> {
         }
     }
 
-    /// Creates an optional operation reference from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_option_raw(raw: MlirOperation) -> Option<Self> {
         if raw.ptr.is_null() {
             None
@@ -312,9 +266,8 @@ mod tests {
     #[test]
     fn block() {
         let block = Block::new(&[]);
-        let operation = block.append_operation(
-            OperationBuilder::new("foo", Location::unknown(&Context::new())).build(),
-        );
+        let operation =
+            block.append_operation(OperationBuilder::new("foo", Location::unknown(&Context::new())).build());
 
         assert_eq!(operation.block().as_deref(), Some(&block));
     }

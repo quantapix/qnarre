@@ -877,84 +877,61 @@ Value *IfExprAST::codegen() {
 Value *ForExprAST::codegen() {
   Function *TheFunction = Builder->GetInsertBlock()->getParent();
 
-  // Create an alloca for the variable in the entry block.
   AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
 
   KSDbgInfo.emitLocation(this);
 
-  // Emit the start code first, without 'variable' in scope.
   Value *StartVal = Start->codegen();
   if (!StartVal)
     return nullptr;
 
-  // Store the value into the alloca.
   Builder->CreateStore(StartVal, Alloca);
 
-  // Make the new basic block for the loop header, inserting after current
-  // block.
   BasicBlock *LoopBB = BasicBlock::Create(*TheContext, "loop", TheFunction);
 
-  // Insert an explicit fall through from the current block to the LoopBB.
   Builder->CreateBr(LoopBB);
 
-  // Start insertion in LoopBB.
   Builder->SetInsertPoint(LoopBB);
 
-  // Within the loop, the variable is defined equal to the PHI node.  If it
-  // shadows an existing variable, we have to restore it, so save it now.
   AllocaInst *OldVal = NamedValues[VarName];
   NamedValues[VarName] = Alloca;
 
-  // Emit the body of the loop.  This, like any other expr, can change the
-  // current BB.  Note that we ignore the value computed by the body, but don't
-  // allow an error.
   if (!Body->codegen())
     return nullptr;
 
-  // Emit the step value.
   Value *StepVal = nullptr;
   if (Step) {
     StepVal = Step->codegen();
     if (!StepVal)
       return nullptr;
   } else {
-    // If not specified, use 1.0.
     StepVal = ConstantFP::get(*TheContext, APFloat(1.0));
   }
 
-  // Compute the end condition.
   Value *EndCond = End->codegen();
   if (!EndCond)
     return nullptr;
 
-  // Reload, increment, and restore the alloca.  This handles the case where
-  // the body of the loop mutates the variable.
   Value *CurVar = Builder->CreateLoad(Type::getDoubleTy(*TheContext), Alloca,
                                       VarName.c_str());
   Value *NextVar = Builder->CreateFAdd(CurVar, StepVal, "nextvar");
   Builder->CreateStore(NextVar, Alloca);
 
-  // Convert condition to a bool by comparing non-equal to 0.0.
   EndCond = Builder->CreateFCmpONE(
       EndCond, ConstantFP::get(*TheContext, APFloat(0.0)), "loopcond");
 
-  // Create the "after loop" block and insert it.
   BasicBlock *AfterBB =
       BasicBlock::Create(*TheContext, "afterloop", TheFunction);
 
-  // Insert the conditional branch into the end of LoopEndBB.
   Builder->CreateCondBr(EndCond, LoopBB, AfterBB);
 
-  // Any new code will be inserted in AfterBB.
   Builder->SetInsertPoint(AfterBB);
 
-  // Restore the unshadowed variable.
   if (OldVal)
     NamedValues[VarName] = OldVal;
   else
     NamedValues.erase(VarName);
 
-  // for expr always returns 0.0.
   return Constant::getNullValue(Type::getDoubleTy(*TheContext));
 }
 
@@ -963,16 +940,10 @@ Value *VarExprAST::codegen() {
 
   Function *TheFunction = Builder->GetInsertBlock()->getParent();
 
-  // Register all variables and emit their initializer.
   for (unsigned i = 0, e = VarNames.size(); i != e; ++i) {
     const std::string &VarName = VarNames[i].first;
     ExprAST *Init = VarNames[i].second.get();
 
-    // Emit the initializer before adding the variable to scope, this prevents
-    // the initializer from referencing the variable itself, and permits stuff
-    // like this:
-    //  var a = 1 in
-    //    var a = a in ...   # refers to outer 'a'.
     Value *InitVal;
     if (Init) {
       InitVal = Init->codegen();
@@ -985,31 +956,24 @@ Value *VarExprAST::codegen() {
     AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
     Builder->CreateStore(InitVal, Alloca);
 
-    // Remember the old variable binding so that we can restore the binding when
-    // we unrecurse.
     OldBindings.push_back(NamedValues[VarName]);
 
-    // Remember this binding.
     NamedValues[VarName] = Alloca;
   }
 
   KSDbgInfo.emitLocation(this);
 
-  // Codegen the body, now that all vars are in scope.
   Value *BodyVal = Body->codegen();
   if (!BodyVal)
     return nullptr;
 
-  // Pop all our variables from scope.
   for (unsigned i = 0, e = VarNames.size(); i != e; ++i)
     NamedValues[VarNames[i].first] = OldBindings[i];
 
-  // Return the body computation.
   return BodyVal;
 }
 
 Function *PrototypeAST::codegen() {
-  // Make the function type:  double(double,double) etc.
   std::vector<Type *> Doubles(Args.size(), Type::getDoubleTy(*TheContext));
   FunctionType *FT =
       FunctionType::get(Type::getDoubleTy(*TheContext), Doubles, false);
@@ -1017,7 +981,6 @@ Function *PrototypeAST::codegen() {
   Function *F =
       Function::Create(FT, Function::ExternalLinkage, Name, TheModule.get());
 
-  // Set names for all arguments.
   unsigned Idx = 0;
   for (auto &Arg : F->args())
     Arg.setName(Args[Idx++]);

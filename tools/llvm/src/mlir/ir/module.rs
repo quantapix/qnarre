@@ -4,12 +4,11 @@ use crate::{
     string_ref::StringRef,
 };
 use mlir_sys::{
-    mlirModuleCreateEmpty, mlirModuleCreateParse, mlirModuleDestroy, mlirModuleFromOperation,
-    mlirModuleGetBody, mlirModuleGetContext, mlirModuleGetOperation, MlirModule,
+    mlirModuleCreateEmpty, mlirModuleCreateParse, mlirModuleDestroy, mlirModuleFromOperation, mlirModuleGetBody,
+    mlirModuleGetContext, mlirModuleGetOperation, MlirModule,
 };
 use std::marker::PhantomData;
 
-/// A module.
 #[derive(Debug)]
 pub struct Module<'c> {
     raw: MlirModule,
@@ -17,14 +16,11 @@ pub struct Module<'c> {
 }
 
 impl<'c> Module<'c> {
-    /// Creates a module.
     pub fn new(location: Location) -> Self {
         unsafe { Self::from_raw(mlirModuleCreateEmpty(location.to_raw())) }
     }
 
-    /// Parses a module.
     pub fn parse(context: &Context, source: &str) -> Option<Self> {
-        // TODO Should we allocate StringRef locally because sources can be big?
         unsafe {
             Self::from_option_raw(mlirModuleCreateParse(
                 context.to_raw(),
@@ -33,31 +29,22 @@ impl<'c> Module<'c> {
         }
     }
 
-    /// Converts a module into an operation.
     pub fn as_operation(&self) -> OperationRef {
         unsafe { OperationRef::from_raw(mlirModuleGetOperation(self.raw)) }
     }
 
-    /// Gets a context.
     pub fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirModuleGetContext(self.raw)) }
     }
 
-    /// Gets a block of a module body.
     pub fn body(&self) -> BlockRef {
         unsafe { BlockRef::from_raw(mlirModuleGetBody(self.raw)) }
     }
 
-    /// Converts an operation into a module.
     pub fn from_operation(operation: Operation) -> Option<Self> {
         unsafe { Self::from_option_raw(mlirModuleFromOperation(operation.into_raw())) }
     }
 
-    /// Creates a module from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirModule) -> Self {
         Self {
             raw,
@@ -65,11 +52,6 @@ impl<'c> Module<'c> {
         }
     }
 
-    /// Creates an optional module from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_option_raw(raw: MlirModule) -> Option<Self> {
         if raw.ptr.is_null() {
             None
@@ -78,7 +60,6 @@ impl<'c> Module<'c> {
         }
     }
 
-    /// Converts a module into a raw object.
     pub fn to_raw(&self) -> MlirModule {
         self.raw
     }
@@ -137,9 +118,8 @@ mod tests {
     fn from_operation_fail() {
         let context = Context::new();
 
-        assert!(Module::from_operation(
-            OperationBuilder::new("func.func", Location::unknown(&context),).build()
-        )
-        .is_none());
+        assert!(
+            Module::from_operation(OperationBuilder::new("func.func", Location::unknown(&context),).build()).is_none()
+        );
     }
 }

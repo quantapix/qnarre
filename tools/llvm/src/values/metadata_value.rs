@@ -16,10 +16,6 @@ use super::AnyValue;
 use std::ffi::CStr;
 use std::fmt::{self, Display};
 
-// FIXME: use #[doc(cfg(...))] for this rustdoc comment when it's stabilized:
-// https://github.com/rust-lang/rust/issues/43781
-/// Value returned by [`Context::get_kind_id()`](crate::context::Context::get_kind_id)
-/// for the first input string that isn't known. Each LLVM version has a different set of pre-defined metadata kinds.
 #[cfg(feature = "llvm4-0")]
 pub const FIRST_CUSTOM_METADATA_KIND_ID: u32 = 22;
 #[cfg(feature = "llvm5-0")]
@@ -59,17 +55,14 @@ impl<'ctx> MetadataValue<'ctx> {
         unsafe { LLVMValueAsMetadata(self.as_value_ref()) }
     }
 
-    /// Get name of the `MetadataValue`.
     pub fn get_name(&self) -> &CStr {
         self.metadata_value.get_name()
     }
 
-    // SubTypes: This can probably go away with subtypes
     pub fn is_node(self) -> bool {
         unsafe { LLVMIsAMDNode(self.as_value_ref()) == self.as_value_ref() }
     }
 
-    // SubTypes: This can probably go away with subtypes
     pub fn is_string(self) -> bool {
         unsafe { LLVMIsAMDString(self.as_value_ref()) == self.as_value_ref() }
     }
@@ -85,7 +78,6 @@ impl<'ctx> MetadataValue<'ctx> {
         Some(c_str)
     }
 
-    // SubTypes: Node only one day
     pub fn get_node_size(self) -> u32 {
         if self.is_string() {
             return 0;
@@ -94,8 +86,6 @@ impl<'ctx> MetadataValue<'ctx> {
         unsafe { LLVMGetMDNodeNumOperands(self.as_value_ref()) }
     }
 
-    // SubTypes: Node only one day
-    // REVIEW: BasicMetadataValueEnum only if you can put metadata in metadata...
     pub fn get_node_values(self) -> Vec<BasicMetadataValueEnum<'ctx>> {
         if self.is_string() {
             return Vec::new();

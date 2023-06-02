@@ -1,40 +1,31 @@
 use crate::{
     context::Context,
-    ir::{
-        Attribute, AttributeLike, Block, Identifier, Location, Region, Type, TypeLike, Value,
-        ValueLike,
-    },
+    ir::{Attribute, AttributeLike, Block, Identifier, Location, Region, Type, TypeLike, Value, ValueLike},
     string_ref::StringRef,
     utility::into_raw_array,
 };
 use mlir_sys::{
-    mlirNamedAttributeGet, mlirOperationCreate, mlirOperationStateAddAttributes,
-    mlirOperationStateAddOperands, mlirOperationStateAddOwnedRegions, mlirOperationStateAddResults,
-    mlirOperationStateAddSuccessors, mlirOperationStateEnableResultTypeInference,
-    mlirOperationStateGet, MlirOperationState,
+    mlirNamedAttributeGet, mlirOperationCreate, mlirOperationStateAddAttributes, mlirOperationStateAddOperands,
+    mlirOperationStateAddOwnedRegions, mlirOperationStateAddResults, mlirOperationStateAddSuccessors,
+    mlirOperationStateEnableResultTypeInference, mlirOperationStateGet, MlirOperationState,
 };
 use std::marker::PhantomData;
 
 use super::Operation;
 
-/// An operation builder.
 pub struct OperationBuilder<'c> {
     raw: MlirOperationState,
     _context: PhantomData<&'c Context>,
 }
 
 impl<'c> OperationBuilder<'c> {
-    /// Creates an operation builder.
     pub fn new(name: &str, location: Location<'c>) -> Self {
         Self {
-            raw: unsafe {
-                mlirOperationStateGet(StringRef::from(name).to_raw(), location.to_raw())
-            },
+            raw: unsafe { mlirOperationStateGet(StringRef::from(name).to_raw(), location.to_raw()) },
             _context: Default::default(),
         }
     }
 
-    /// Adds results.
     pub fn add_results(mut self, results: &[Type<'c>]) -> Self {
         unsafe {
             mlirOperationStateAddResults(
@@ -47,7 +38,6 @@ impl<'c> OperationBuilder<'c> {
         self
     }
 
-    /// Adds operands.
     pub fn add_operands(mut self, operands: &[Value]) -> Self {
         unsafe {
             mlirOperationStateAddOperands(
@@ -60,27 +50,18 @@ impl<'c> OperationBuilder<'c> {
         self
     }
 
-    /// Adds regions.
     pub fn add_regions(mut self, regions: Vec<Region>) -> Self {
         unsafe {
             mlirOperationStateAddOwnedRegions(
                 &mut self.raw,
                 regions.len() as isize,
-                into_raw_array(
-                    regions
-                        .into_iter()
-                        .map(|region| region.into_raw())
-                        .collect(),
-                ),
+                into_raw_array(regions.into_iter().map(|region| region.into_raw()).collect()),
             )
         }
 
         self
     }
 
-    /// Adds successor blocks.
-    // TODO Fix this to ensure blocks are alive while they are referenced by the
-    // operation.
     pub fn add_successors(mut self, successors: &[&Block<'c>]) -> Self {
         unsafe {
             mlirOperationStateAddSuccessors(
@@ -93,7 +74,6 @@ impl<'c> OperationBuilder<'c> {
         self
     }
 
-    /// Adds attributes.
     pub fn add_attributes(mut self, attributes: &[(Identifier, Attribute<'c>)]) -> Self {
         unsafe {
             mlirOperationStateAddAttributes(
@@ -102,9 +82,7 @@ impl<'c> OperationBuilder<'c> {
                 into_raw_array(
                     attributes
                         .iter()
-                        .map(|(identifier, attribute)| {
-                            mlirNamedAttributeGet(identifier.to_raw(), attribute.to_raw())
-                        })
+                        .map(|(identifier, attribute)| mlirNamedAttributeGet(identifier.to_raw(), attribute.to_raw()))
                         .collect(),
                 ),
             )
@@ -113,14 +91,12 @@ impl<'c> OperationBuilder<'c> {
         self
     }
 
-    /// Enables result type inference.
     pub fn enable_result_type_inference(mut self) -> Self {
         unsafe { mlirOperationStateEnableResultTypeInference(&mut self.raw) }
 
         self
     }
 
-    /// Builds an operation.
     pub fn build(mut self) -> Operation<'c> {
         unsafe { Operation::from_raw(mlirOperationCreate(&mut self.raw)) }
     }

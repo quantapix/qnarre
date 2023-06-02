@@ -1,8 +1,7 @@
 use super::{Block, BlockRef};
 use mlir_sys::{
-    mlirRegionAppendOwnedBlock, mlirRegionCreate, mlirRegionDestroy, mlirRegionEqual,
-    mlirRegionGetFirstBlock, mlirRegionInsertOwnedBlockAfter, mlirRegionInsertOwnedBlockBefore,
-    MlirRegion,
+    mlirRegionAppendOwnedBlock, mlirRegionCreate, mlirRegionDestroy, mlirRegionEqual, mlirRegionGetFirstBlock,
+    mlirRegionInsertOwnedBlockAfter, mlirRegionInsertOwnedBlockBefore, MlirRegion,
 };
 use std::{
     marker::PhantomData,
@@ -10,21 +9,18 @@ use std::{
     ops::Deref,
 };
 
-/// A region.
 #[derive(Debug)]
 pub struct Region {
     raw: MlirRegion,
 }
 
 impl Region {
-    /// Creates a region.
     pub fn new() -> Self {
         Self {
             raw: unsafe { mlirRegionCreate() },
         }
     }
 
-    /// Gets the first block in a region.
     pub fn first_block(&self) -> Option<BlockRef> {
         unsafe {
             let block = mlirRegionGetFirstBlock(self.raw);
@@ -37,7 +33,6 @@ impl Region {
         }
     }
 
-    /// Inserts a block after another block.
     pub fn insert_block_after(&self, one: BlockRef, other: Block) -> BlockRef {
         unsafe {
             let r#ref = BlockRef::from_raw(other.to_raw());
@@ -48,7 +43,6 @@ impl Region {
         }
     }
 
-    /// Inserts a block before another block.
     pub fn insert_block_before(&self, one: BlockRef, other: Block) -> BlockRef {
         unsafe {
             let r#ref = BlockRef::from_raw(other.to_raw());
@@ -59,7 +53,6 @@ impl Region {
         }
     }
 
-    /// Appends a block.
     pub fn append_block(&self, block: Block) -> BlockRef {
         unsafe {
             let r#ref = BlockRef::from_raw(block.to_raw());
@@ -70,7 +63,6 @@ impl Region {
         }
     }
 
-    /// Converts a region into a raw object.
     pub fn into_raw(self) -> mlir_sys::MlirRegion {
         let region = self.raw;
 
@@ -100,7 +92,6 @@ impl PartialEq for Region {
 
 impl Eq for Region {}
 
-/// A reference to a region.
 #[derive(Clone, Copy, Debug)]
 pub struct RegionRef<'a> {
     raw: MlirRegion,
@@ -108,11 +99,6 @@ pub struct RegionRef<'a> {
 }
 
 impl<'a> RegionRef<'a> {
-    /// Creates a region from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirRegion) -> Self {
         Self {
             raw,
@@ -120,11 +106,6 @@ impl<'a> RegionRef<'a> {
         }
     }
 
-    /// Creates an optional region from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_option_raw(raw: MlirRegion) -> Option<Self> {
         if raw.ptr.is_null() {
             None

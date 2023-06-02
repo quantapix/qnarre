@@ -16,11 +16,6 @@ use crate::Token::*;
 
 const ANONYMOUS_FUNCTION_NAME: &str = "anonymous";
 
-// ======================================================================================
-// LEXER ================================================================================
-// ======================================================================================
-
-/// Represents a primitive syntax token.
 #[derive(Debug, Clone)]
 pub enum Token {
     Binary,
@@ -43,7 +38,6 @@ pub enum Token {
     Var,
 }
 
-/// Defines an error encountered by the `Lexer`.
 pub struct LexError {
     pub error: &'static str,
     pub index: usize,
@@ -61,12 +55,8 @@ impl LexError {
     }
 }
 
-/// Defines the result of a lexing operation; namely a
-/// `Token` on success, or a `LexError` on failure.
 pub type LexResult = Result<Token, LexError>;
 
-/// Defines a lexer which transforms an input `String` into
-/// a `Token` stream.
 pub struct Lexer<'a> {
     input: &'a str,
     chars: Box<Peekable<Chars<'a>>>,
@@ -74,7 +64,6 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    /// Creates a new `Lexer`, given its source `input`.
     pub fn new(input: &'a str) -> Lexer<'a> {
         Lexer {
             input,
@@ -83,18 +72,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Lexes and returns the next `Token` from the source code.
     pub fn lex(&mut self) -> LexResult {
         let chars = self.chars.deref_mut();
         let src = self.input;
 
         let mut pos = self.pos;
 
-        // Skip whitespaces
         loop {
-            // Note: the following lines are in their own scope to
-            // limit how long 'chars' is borrowed, and in order to allow
-            // it to be borrowed again in the loop by 'chars.next()'.
             {
                 let ch = chars.peek();
 
@@ -122,14 +106,12 @@ impl<'a> Lexer<'a> {
 
         pos += 1;
 
-        // Actually get the next token.
         let result = match next.unwrap() {
             '(' => Ok(Token::LParen),
             ')' => Ok(Token::RParen),
             ',' => Ok(Token::Comma),
 
             '#' => {
-                // Comment
                 loop {
                     let ch = chars.next();
                     pos += 1;
@@ -143,14 +125,12 @@ impl<'a> Lexer<'a> {
             },
 
             '.' | '0'..='9' => {
-                // Parse number literal
                 loop {
                     let ch = match chars.peek() {
                         Some(ch) => *ch,
                         None => return Ok(Token::EOF),
                     };
 
-                    // Parse float.
                     if ch != '.' && !ch.is_ascii_hexdigit() {
                         break;
                     }
@@ -163,14 +143,12 @@ impl<'a> Lexer<'a> {
             },
 
             'a'..='z' | 'A'..='Z' | '_' => {
-                // Parse identifier
                 loop {
                     let ch = match chars.peek() {
                         Some(ch) => *ch,
                         None => return Ok(Token::EOF),
                     };
 
-                    // A word-like identifier only contains underscores and alphanumeric characters.
                     if ch != '_' && !ch.is_alphanumeric() {
                         break;
                     }
@@ -195,13 +173,9 @@ impl<'a> Lexer<'a> {
                 }
             },
 
-            op => {
-                // Parse operator
-                Ok(Token::Op(op))
-            },
+            op => Ok(Token::Op(op)),
         };
 
-        // Update stored position, and return
         self.pos = pos;
 
         result
@@ -211,8 +185,6 @@ impl<'a> Lexer<'a> {
 impl<'a> Iterator for Lexer<'a> {
     type Item = Token;
 
-    /// Lexes the next `Token` and returns it.
-    /// On EOF or failure, `None` will be returned.
     fn next(&mut self) -> Option<Self::Item> {
         match self.lex() {
             Ok(EOF) | Err(_) => None,
@@ -221,11 +193,6 @@ impl<'a> Iterator for Lexer<'a> {
     }
 }
 
-// ======================================================================================
-// PARSER ===============================================================================
-// ======================================================================================
-
-/// Defines a primitive expression.
 #[derive(Debug)]
 pub enum Expr {
     Binary {
@@ -263,7 +230,6 @@ pub enum Expr {
     },
 }
 
-/// Defines the prototype (name and parameters) of a function.
 #[derive(Debug)]
 pub struct Prototype {
     pub name: String,
@@ -272,7 +238,6 @@ pub struct Prototype {
     pub prec: usize,
 }
 
-/// Defines a user-defined or external function.
 #[derive(Debug)]
 pub struct Function {
     pub prototype: Prototype,
@@ -280,19 +245,14 @@ pub struct Function {
     pub is_anon: bool,
 }
 
-/// Represents the `Expr` parser.
 pub struct Parser<'a> {
     tokens: Vec<Token>,
     pos: usize,
     prec: &'a mut HashMap<char, i32>,
 }
 
-// I'm ignoring the 'must_use' lint in order to call 'self.advance' without checking
-// the result when an EOF is acceptable.
 #[allow(unused_must_use)]
 impl<'a> Parser<'a> {
-    /// Creates a new parser, given an input `str` and a `HashMap` binding
-    /// an operator and its precedence in binary expressions.
     pub fn new(input: String, op_precedence: &'a mut HashMap<char, i32>) -> Self {
         let mut lexer = Lexer::new(input.as_str());
         let tokens = lexer.by_ref().collect();
@@ -304,7 +264,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses the content of the parser.
     pub fn parse(&mut self) -> Result<Function, &'static str> {
         let result = match self.current()? {
             Def => self.parse_def(),
@@ -325,13 +284,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Returns the current `Token`, without performing safety checks beforehand.
     fn curr(&self) -> Token {
         self.tokens[self.pos].clone()
     }
 
-    /// Returns the current `Token`, or an error that
-    /// indicates that the end of the file has been unexpectedly reached if it is the case.
     fn current(&self) -> Result<Token, &'static str> {
         if self.pos >= self.tokens.len() {
             Err("Unexpected end of file.")
@@ -340,9 +296,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Advances the position, and returns an empty `Result` whose error
-    /// indicates that the end of the file has been unexpectedly reached.
-    /// This allows to use the `self.advance()?;` syntax.
     fn advance(&mut self) -> Result<(), &'static str> {
         let npos = self.pos + 1;
 
@@ -355,13 +308,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Returns a value indicating whether or not the `Parser`
-    /// has reached the end of the input.
     fn at_end(&self) -> bool {
         self.pos >= self.tokens.len()
     }
 
-    /// Returns the precedence of the current `Token`, or 0 if it is not recognized as a binary operator.
     fn get_tok_precedence(&self) -> i32 {
         if let Ok(Op(op)) = self.current() {
             *self.prec.get(&op).unwrap_or(&100)
@@ -370,7 +320,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses the prototype of a function, whether external or user-defined.
     fn parse_prototype(&mut self) -> Result<Prototype, &'static str> {
         let (id, is_operator, precedence) = match self.curr() {
             Ident(id) => {
@@ -474,18 +423,13 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a user-defined function.
     fn parse_def(&mut self) -> Result<Function, &'static str> {
-        // Eat 'def' keyword
         self.pos += 1;
 
-        // Parse signature of function
         let proto = self.parse_prototype()?;
 
-        // Parse body of function
         let body = self.parse_expr()?;
 
-        // Return new function
         Ok(Function {
             prototype: proto,
             body: Some(body),
@@ -493,12 +437,9 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses an external function declaration.
     fn parse_extern(&mut self) -> Result<Function, &'static str> {
-        // Eat 'extern' keyword
         self.pos += 1;
 
-        // Parse signature of extern function
         let proto = self.parse_prototype()?;
 
         Ok(Function {
@@ -508,7 +449,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses any expression.
     fn parse_expr(&mut self) -> Result<Expr, &'static str> {
         match self.parse_unary_expr() {
             Ok(left) => self.parse_binary_expr(0, left),
@@ -516,9 +456,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a literal number.
     fn parse_nb_expr(&mut self) -> Result<Expr, &'static str> {
-        // Simply convert Token::Number to Expr::Number
         match self.curr() {
             Number(nb) => {
                 self.advance();
@@ -528,7 +466,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses an expression enclosed in parenthesis.
     fn parse_paren_expr(&mut self) -> Result<Expr, &'static str> {
         match self.current()? {
             LParen => (),
@@ -549,7 +486,6 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    /// Parses an expression that starts with an identifier (either a variable or a function call).
     fn parse_id_expr(&mut self) -> Result<Expr, &'static str> {
         let id = match self.curr() {
             Ident(id) => id,
@@ -594,7 +530,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses an unary expression.
     fn parse_unary_expr(&mut self) -> Result<Expr, &'static str> {
         let op = match self.current()? {
             Op(ch) => {
@@ -614,7 +549,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a binary expression, given its left-hand expression.
     fn parse_binary_expr(&mut self, prec: i32, mut left: Expr) -> Result<Expr, &'static str> {
         loop {
             let curr_prec = self.get_tok_precedence();
@@ -646,14 +580,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a conditional if..then..else expression.
     fn parse_conditional_expr(&mut self) -> Result<Expr, &'static str> {
-        // eat 'if' token
         self.advance()?;
 
         let cond = self.parse_expr()?;
 
-        // eat 'then' token
         match self.current() {
             Ok(Then) => self.advance()?,
             _ => return Err("Expected 'then' keyword."),
@@ -661,7 +592,6 @@ impl<'a> Parser<'a> {
 
         let then = self.parse_expr()?;
 
-        // eat 'else' token
         match self.current() {
             Ok(Else) => self.advance()?,
             _ => return Err("Expected 'else' keyword."),
@@ -676,9 +606,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a loop for..in.. expression.
     fn parse_for_expr(&mut self) -> Result<Expr, &'static str> {
-        // eat 'for' token
         self.advance()?;
 
         let name = match self.curr() {
@@ -686,10 +614,8 @@ impl<'a> Parser<'a> {
             _ => return Err("Expected identifier in for loop."),
         };
 
-        // eat identifier
         self.advance()?;
 
-        // eat '=' token
         match self.curr() {
             Op('=') => self.advance()?,
             _ => return Err("Expected '=' character in for loop."),
@@ -697,7 +623,6 @@ impl<'a> Parser<'a> {
 
         let start = self.parse_expr()?;
 
-        // eat ',' token
         match self.current()? {
             Comma => self.advance()?,
             _ => return Err("Expected ',' character in for loop."),
@@ -705,7 +630,6 @@ impl<'a> Parser<'a> {
 
         let end = self.parse_expr()?;
 
-        // parse (optional) step expression
         let step = match self.current()? {
             Comma => {
                 self.advance()?;
@@ -716,7 +640,6 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        // eat 'in' token
         match self.current()? {
             In => self.advance()?,
             _ => return Err("Expected 'in' keyword in for loop."),
@@ -733,14 +656,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a var..in expression.
     fn parse_var_expr(&mut self) -> Result<Expr, &'static str> {
-        // eat 'var' token
         self.advance()?;
 
         let mut variables = Vec::new();
 
-        // parse variables
         loop {
             let name = match self.curr() {
                 Ident(name) => name,
@@ -749,7 +669,6 @@ impl<'a> Parser<'a> {
 
             self.advance()?;
 
-            // read (optional) initializer
             let initializer = match self.curr() {
                 Op('=') => Some({
                     self.advance()?;
@@ -773,7 +692,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // parse body
         let body = self.parse_expr()?;
 
         Ok(Expr::VarIn {
@@ -782,7 +700,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a primary expression (an identifier, a number or a parenthesized expression).
     fn parse_primary(&mut self) -> Result<Expr, &'static str> {
         match self.curr() {
             Ident(_) => self.parse_id_expr(),
@@ -795,8 +712,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a top-level expression and makes an anonymous function out of it,
-    /// for easier compilation.
     fn parse_toplevel_expr(&mut self) -> Result<Function, &'static str> {
         match self.parse_expr() {
             Ok(expr) => Ok(Function {
@@ -815,11 +730,6 @@ impl<'a> Parser<'a> {
     }
 }
 
-// ======================================================================================
-// COMPILER =============================================================================
-// ======================================================================================
-
-/// Defines the `Expr` compiler.
 pub struct Compiler<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
@@ -832,19 +742,16 @@ pub struct Compiler<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
-    /// Gets a defined function given its name.
     #[inline]
     fn get_function(&self, name: &str) -> Option<FunctionValue<'ctx>> {
         self.module.get_function(name)
     }
 
-    /// Returns the `FunctionValue` representing the function being compiled.
     #[inline]
     fn fn_value(&self) -> FunctionValue<'ctx> {
         self.fn_value_opt.unwrap()
     }
 
-    /// Creates a new stack allocation instruction in the entry block of the function.
     fn create_entry_block_alloca(&self, name: &str) -> PointerValue<'ctx> {
         let builder = self.context.create_builder();
 
@@ -858,7 +765,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         builder.build_alloca(self.context.f64_type(), name)
     }
 
-    /// Compiles the specified `Expr` into an LLVM `FloatValue`.
     fn compile_expr(&mut self, expr: &Expr) -> Result<FloatValue<'ctx>, &'static str> {
         match *expr {
             Expr::Number(nb) => Ok(self.context.f64_type().const_float(nb)),
@@ -909,7 +815,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 ref right,
             } => {
                 if op == '=' {
-                    // handle assignement
                     let var_name = match *left.borrow() {
                         Expr::Variable(ref var_name) => var_name,
                         _ => {
@@ -1006,34 +911,29 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 let parent = self.fn_value();
                 let zero_const = self.context.f64_type().const_float(0.0);
 
-                // create condition by comparing without 0.0 and returning an int
                 let cond = self.compile_expr(cond)?;
                 let cond = self
                     .builder
                     .build_float_compare(FloatPredicate::ONE, cond, zero_const, "ifcond");
 
-                // build branch
                 let then_bb = self.context.append_basic_block(parent, "then");
                 let else_bb = self.context.append_basic_block(parent, "else");
                 let cont_bb = self.context.append_basic_block(parent, "ifcont");
 
                 self.builder.build_conditional_branch(cond, then_bb, else_bb);
 
-                // build then block
                 self.builder.position_at_end(then_bb);
                 let then_val = self.compile_expr(consequence)?;
                 self.builder.build_unconditional_branch(cont_bb);
 
                 let then_bb = self.builder.get_insert_block().unwrap();
 
-                // build else block
                 self.builder.position_at_end(else_bb);
                 let else_val = self.compile_expr(alternative)?;
                 self.builder.build_unconditional_branch(cont_bb);
 
                 let else_bb = self.builder.get_insert_block().unwrap();
 
-                // emit merge block
                 self.builder.position_at_end(cont_bb);
 
                 let phi = self.builder.build_phi(self.context.f64_type(), "iftmp");
@@ -1057,7 +957,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
                 self.builder.build_store(start_alloca, start);
 
-                // go from current block to loop block
                 let loop_bb = self.context.append_basic_block(parent, "loop");
 
                 self.builder.build_unconditional_branch(loop_bb);
@@ -1067,16 +966,13 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
                 self.variables.insert(var_name.to_owned(), start_alloca);
 
-                // emit body
                 self.compile_expr(body)?;
 
-                // emit step
                 let step = match *step {
                     Some(ref step) => self.compile_expr(step)?,
                     None => self.context.f64_type().const_float(1.0),
                 };
 
-                // compile end condition
                 let end_cond = self.compile_expr(end)?;
 
                 let curr_var = self.builder.build_load(start_alloca, var_name);
@@ -1108,7 +1004,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
-    /// Compiles the specified `Prototype` into an extern LLVM `FunctionValue`.
     fn compile_prototype(&self, proto: &Prototype) -> Result<FunctionValue<'ctx>, &'static str> {
         let ret_type = self.context.f64_type();
         let args_types = std::iter::repeat(ret_type)
@@ -1120,21 +1015,17 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         let fn_type = self.context.f64_type().fn_type(args_types, false);
         let fn_val = self.module.add_function(proto.name.as_str(), fn_type, None);
 
-        // set arguments names
         for (i, arg) in fn_val.get_param_iter().enumerate() {
             arg.into_float_value().set_name(proto.args[i].as_str());
         }
 
-        // finally return built prototype
         Ok(fn_val)
     }
 
-    /// Compiles the specified `Function` into an LLVM `FunctionValue`.
     fn compile_fn(&mut self) -> Result<FunctionValue<'ctx>, &'static str> {
         let proto = &self.function.prototype;
         let function = self.compile_prototype(proto)?;
 
-        // got external function, returning only compiled prototype
         if self.function.body.is_none() {
             return Ok(function);
         }
@@ -1143,10 +1034,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
         self.builder.position_at_end(entry);
 
-        // update fn field
         self.fn_value_opt = Some(function);
 
-        // build variables map
         self.variables.reserve(proto.args.len());
 
         for (i, arg) in function.get_param_iter().enumerate() {
@@ -1158,12 +1047,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             self.variables.insert(proto.args[i].clone(), alloca);
         }
 
-        // compile body
         let body = self.compile_expr(self.function.body.as_ref().unwrap())?;
 
         self.builder.build_return(Some(&body));
 
-        // return the whole thing after verification and optimization
         if function.verify(true) {
             self.fpm.run_on(&function);
 
@@ -1177,7 +1064,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
-    /// Compiles the specified `Function` in the given `Context` and using the specified `Builder`, `PassManager`, and `Module`.
     pub fn compile(
         context: &'ctx Context,
         builder: &'a Builder<'ctx>,

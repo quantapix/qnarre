@@ -3,38 +3,27 @@ use crate::{
     ir::{BlockRef, Type, TypeLike, ValueLike},
     Error,
 };
-use mlir_sys::{
-    mlirBlockArgumentGetArgNumber, mlirBlockArgumentGetOwner, mlirBlockArgumentSetType, MlirValue,
-};
+use mlir_sys::{mlirBlockArgumentGetArgNumber, mlirBlockArgumentGetOwner, mlirBlockArgumentSetType, MlirValue};
 use std::fmt::{self, Display, Formatter};
 
-/// A block argument.
 #[derive(Clone, Copy, Debug)]
 pub struct BlockArgument<'a> {
     value: Value<'a>,
 }
 
 impl<'a> BlockArgument<'a> {
-    /// Gets an argument number.
     pub fn argument_number(&self) -> usize {
         unsafe { mlirBlockArgumentGetArgNumber(self.value.to_raw()) as usize }
     }
 
-    /// Gets an owner operation.
     pub fn owner(&self) -> BlockRef {
         unsafe { BlockRef::from_raw(mlirBlockArgumentGetOwner(self.value.to_raw())) }
     }
 
-    /// Sets a type.
     pub fn set_type(&self, r#type: Type) {
         unsafe { mlirBlockArgumentSetType(self.value.to_raw(), r#type.to_raw()) }
     }
 
-    /// Creates a block argument from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(value: MlirValue) -> Self {
         Self {
             value: Value::from_raw(value),

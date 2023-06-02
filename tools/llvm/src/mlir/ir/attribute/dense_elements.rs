@@ -4,18 +4,16 @@ use crate::{
     Error,
 };
 use mlir_sys::{
-    mlirDenseElementsAttrGet, mlirDenseElementsAttrGetInt32Value,
-    mlirDenseElementsAttrGetInt64Value, mlirElementsAttrGetNumElements, MlirAttribute,
+    mlirDenseElementsAttrGet, mlirDenseElementsAttrGetInt32Value, mlirDenseElementsAttrGetInt64Value,
+    mlirElementsAttrGetNumElements, MlirAttribute,
 };
 
-/// A dense elements attribute.
 #[derive(Clone, Copy)]
 pub struct DenseElementsAttribute<'c> {
     attribute: Attribute<'c>,
 }
 
 impl<'c> DenseElementsAttribute<'c> {
-    /// Creates a dense elements attribute.
     pub fn new(r#type: Type<'c>, values: &[Attribute<'c>]) -> Result<Self, Error> {
         if r#type.is_shaped() {
             Ok(unsafe {
@@ -30,18 +28,14 @@ impl<'c> DenseElementsAttribute<'c> {
         }
     }
 
-    /// Gets a length.
     pub fn len(&self) -> usize {
         (unsafe { mlirElementsAttrGetNumElements(self.attribute.to_raw()) }) as usize
     }
 
-    /// Checks if an array is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Gets an i32 element.
-    // TODO Prevent calling these type specific methods on other types.
     pub fn i32_element(&self, index: usize) -> Result<i32, Error> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
@@ -49,9 +43,7 @@ impl<'c> DenseElementsAttribute<'c> {
                 value: self.to_string(),
             })
         } else if index < self.len() {
-            Ok(unsafe {
-                mlirDenseElementsAttrGetInt32Value(self.attribute.to_raw(), index as isize)
-            })
+            Ok(unsafe { mlirDenseElementsAttrGetInt32Value(self.attribute.to_raw(), index as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "dense element",
@@ -61,7 +53,6 @@ impl<'c> DenseElementsAttribute<'c> {
         }
     }
 
-    /// Gets an i64 element.
     pub fn i64_element(&self, index: usize) -> Result<i64, Error> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
@@ -69,9 +60,7 @@ impl<'c> DenseElementsAttribute<'c> {
                 value: self.to_string(),
             })
         } else if index < self.len() {
-            Ok(unsafe {
-                mlirDenseElementsAttrGetInt64Value(self.attribute.to_raw(), index as isize)
-            })
+            Ok(unsafe { mlirDenseElementsAttrGetInt64Value(self.attribute.to_raw(), index as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "dense element",

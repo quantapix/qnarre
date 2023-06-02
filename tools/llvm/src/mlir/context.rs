@@ -5,92 +5,68 @@ use crate::{
     string_ref::StringRef,
 };
 use mlir_sys::{
-    mlirContextAppendDialectRegistry, mlirContextAttachDiagnosticHandler, mlirContextCreate,
-    mlirContextDestroy, mlirContextDetachDiagnosticHandler, mlirContextEnableMultithreading,
-    mlirContextEqual, mlirContextGetAllowUnregisteredDialects, mlirContextGetNumLoadedDialects,
-    mlirContextGetNumRegisteredDialects, mlirContextGetOrLoadDialect,
-    mlirContextIsRegisteredOperation, mlirContextLoadAllAvailableDialects,
+    mlirContextAppendDialectRegistry, mlirContextAttachDiagnosticHandler, mlirContextCreate, mlirContextDestroy,
+    mlirContextDetachDiagnosticHandler, mlirContextEnableMultithreading, mlirContextEqual,
+    mlirContextGetAllowUnregisteredDialects, mlirContextGetNumLoadedDialects, mlirContextGetNumRegisteredDialects,
+    mlirContextGetOrLoadDialect, mlirContextIsRegisteredOperation, mlirContextLoadAllAvailableDialects,
     mlirContextSetAllowUnregisteredDialects, MlirContext, MlirDiagnostic, MlirLogicalResult,
 };
 use std::{ffi::c_void, marker::PhantomData, mem::transmute, ops::Deref};
 
-/// A context of IR, dialects, and passes.
 ///
-/// Contexts own various objects, such as types, locations, and dialect
-/// instances.
 #[derive(Debug)]
 pub struct Context {
     raw: MlirContext,
 }
 
 impl Context {
-    /// Creates a context.
     pub fn new() -> Self {
         Self {
             raw: unsafe { mlirContextCreate() },
         }
     }
 
-    /// Gets a number of registered dialects.
     pub fn registered_dialect_count(&self) -> usize {
         unsafe { mlirContextGetNumRegisteredDialects(self.raw) as usize }
     }
 
-    /// Gets a number of loaded dialects.
     pub fn loaded_dialect_count(&self) -> usize {
         unsafe { mlirContextGetNumLoadedDialects(self.raw) as usize }
     }
 
-    /// Gets or loads a dialect.
     pub fn get_or_load_dialect(&self, name: &str) -> Dialect {
-        unsafe {
-            Dialect::from_raw(mlirContextGetOrLoadDialect(
-                self.raw,
-                StringRef::from(name).to_raw(),
-            ))
-        }
+        unsafe { Dialect::from_raw(mlirContextGetOrLoadDialect(self.raw, StringRef::from(name).to_raw())) }
     }
 
-    /// Appends a dialect registry.
     pub fn append_dialect_registry(&self, registry: &DialectRegistry) {
         unsafe { mlirContextAppendDialectRegistry(self.raw, registry.to_raw()) }
     }
 
-    /// Loads all available dialects.
     pub fn load_all_available_dialects(&self) {
         unsafe { mlirContextLoadAllAvailableDialects(self.raw) }
     }
 
-    /// Enables multi-threading.
     pub fn enable_multi_threading(&self, enabled: bool) {
         unsafe { mlirContextEnableMultithreading(self.raw, enabled) }
     }
 
-    /// Returns `true` if unregistered dialects are allowed.
     pub fn allow_unregistered_dialects(&self) -> bool {
         unsafe { mlirContextGetAllowUnregisteredDialects(self.raw) }
     }
 
-    /// Sets if unregistered dialects are allowed.
     pub fn set_allow_unregistered_dialects(&self, allowed: bool) {
         unsafe { mlirContextSetAllowUnregisteredDialects(self.raw, allowed) }
     }
 
-    /// Returns `true` if a given operation is registered in a context.
     pub fn is_registered_operation(&self, name: &str) -> bool {
         unsafe { mlirContextIsRegisteredOperation(self.raw, StringRef::from(name).to_raw()) }
     }
 
-    /// Converts a context into a raw object.
     pub fn to_raw(&self) -> MlirContext {
         self.raw
     }
 
-    /// Attaches a diagnostic handler.
-    pub fn attach_diagnostic_handler<F: FnMut(Diagnostic) -> bool>(
-        &self,
-        handler: F,
-    ) -> DiagnosticHandlerId {
+    pub fn attach_diagnostic_handler<F: FnMut(Diagnostic) -> bool>(&self, handler: F) -> DiagnosticHandlerId {
         unsafe extern "C" fn handle<F: FnMut(Diagnostic) -> bool>(
             diagnostic: MlirDiagnostic,
             user_data: *mut c_void,
@@ -112,7 +88,6 @@ impl Context {
         }
     }
 
-    /// Detaches a diagnostic handler.
     pub fn detach_diagnostic_handler(&self, id: DiagnosticHandlerId) {
         unsafe { mlirContextDetachDiagnosticHandler(self.to_raw(), id.to_raw()) }
     }
@@ -138,7 +113,6 @@ impl PartialEq for Context {
 
 impl Eq for Context {}
 
-/// A reference to a context.
 #[derive(Clone, Copy, Debug)]
 pub struct ContextRef<'a> {
     raw: MlirContext,
@@ -146,11 +120,6 @@ pub struct ContextRef<'a> {
 }
 
 impl<'a> ContextRef<'a> {
-    /// Creates a context reference from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirContext) -> Self {
         Self {
             raw,

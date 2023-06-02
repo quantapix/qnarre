@@ -118,7 +118,6 @@ fn test_get_terminator() {
 
     builder.position_at_end(basic_block);
 
-    // REVIEW: What's the difference between a terminator and last instruction?
     assert!(basic_block.get_terminator().is_none());
     assert!(basic_block.get_first_instruction().is_none());
     assert!(basic_block.get_last_instruction().is_none());

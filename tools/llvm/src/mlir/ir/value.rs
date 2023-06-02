@@ -10,9 +10,6 @@ use std::{
     marker::PhantomData,
 };
 
-/// A value.
-// Values are always non-owning references to their parents, such as operations
-// and block arguments. See the `Value` class in the MLIR C++ API.
 #[derive(Clone, Copy)]
 pub struct Value<'a> {
     raw: MlirValue,
@@ -20,11 +17,6 @@ pub struct Value<'a> {
 }
 
 impl<'a> Value<'a> {
-    /// Creates a value from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(value: MlirValue) -> Self {
         Self {
             raw: value,
@@ -52,11 +44,7 @@ impl<'a> Display for Value<'a> {
         let mut data = (formatter, Ok(()));
 
         unsafe {
-            mlirValuePrint(
-                self.raw,
-                Some(print_callback),
-                &mut data as *mut _ as *mut c_void,
-            );
+            mlirValuePrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
         }
 
         data.1

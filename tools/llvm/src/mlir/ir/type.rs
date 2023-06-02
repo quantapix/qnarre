@@ -11,15 +11,14 @@ mod tuple;
 mod type_like;
 
 pub use self::{
-    function::FunctionType, id::TypeId, integer::IntegerType, mem_ref::MemRefType,
-    ranked_tensor::RankedTensorType, tuple::TupleType, type_like::TypeLike,
+    function::FunctionType, id::TypeId, integer::IntegerType, mem_ref::MemRefType, ranked_tensor::RankedTensorType,
+    tuple::TupleType, type_like::TypeLike,
 };
 use super::Location;
 use crate::{context::Context, string_ref::StringRef, utility::print_callback};
 use mlir_sys::{
-    mlirBF16TypeGet, mlirF16TypeGet, mlirF32TypeGet, mlirF64TypeGet, mlirIndexTypeGet,
-    mlirNoneTypeGet, mlirTypeEqual, mlirTypeParseGet, mlirTypePrint, mlirVectorTypeGet,
-    mlirVectorTypeGetChecked, MlirType,
+    mlirBF16TypeGet, mlirF16TypeGet, mlirF32TypeGet, mlirF64TypeGet, mlirIndexTypeGet, mlirNoneTypeGet, mlirTypeEqual,
+    mlirTypeParseGet, mlirTypePrint, mlirVectorTypeGet, mlirVectorTypeGetChecked, MlirType,
 };
 use std::{
     ffi::c_void,
@@ -27,8 +26,6 @@ use std::{
     marker::PhantomData,
 };
 
-/// A type.
-// Types are always values but their internal storage is owned by contexts.
 #[derive(Clone, Copy)]
 pub struct Type<'c> {
     raw: MlirType,
@@ -36,47 +33,34 @@ pub struct Type<'c> {
 }
 
 impl<'c> Type<'c> {
-    /// Parses a type.
     pub fn parse(context: &'c Context, source: &str) -> Option<Self> {
-        unsafe {
-            Self::from_option_raw(mlirTypeParseGet(
-                context.to_raw(),
-                StringRef::from(source).to_raw(),
-            ))
-        }
+        unsafe { Self::from_option_raw(mlirTypeParseGet(context.to_raw(), StringRef::from(source).to_raw())) }
     }
 
-    /// Creates a bfloat16 type.
     pub fn bfloat16(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirBF16TypeGet(context.to_raw())) }
     }
 
-    /// Creates a float16 type.
     pub fn float16(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirF16TypeGet(context.to_raw())) }
     }
 
-    /// Creates a float32 type.
     pub fn float32(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirF32TypeGet(context.to_raw())) }
     }
 
-    /// Creates a float64 type.
     pub fn float64(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirF64TypeGet(context.to_raw())) }
     }
 
-    /// Creates an index type.
     pub fn index(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirIndexTypeGet(context.to_raw())) }
     }
 
-    /// Creates a none type.
     pub fn none(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirNoneTypeGet(context.to_raw())) }
     }
 
-    /// Creates a vector type.
     pub fn vector(dimensions: &[u64], r#type: Self) -> Self {
         unsafe {
             Self::from_raw(mlirVectorTypeGet(
@@ -87,12 +71,7 @@ impl<'c> Type<'c> {
         }
     }
 
-    /// Creates a vector type with diagnostics.
-    pub fn vector_checked(
-        location: Location<'c>,
-        dimensions: &[u64],
-        r#type: Self,
-    ) -> Option<Self> {
+    pub fn vector_checked(location: Location<'c>, dimensions: &[u64], r#type: Self) -> Option<Self> {
         unsafe {
             Self::from_option_raw(mlirVectorTypeGetChecked(
                 location.to_raw(),
@@ -103,11 +82,6 @@ impl<'c> Type<'c> {
         }
     }
 
-    /// Creates a type from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirType) -> Self {
         Self {
             raw,
@@ -115,11 +89,6 @@ impl<'c> Type<'c> {
         }
     }
 
-    /// Creates an optional type from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_option_raw(raw: MlirType) -> Option<Self> {
         if raw.ptr.is_null() {
             None
@@ -148,11 +117,7 @@ impl<'c> Display for Type<'c> {
         let mut data = (formatter, Ok(()));
 
         unsafe {
-            mlirTypePrint(
-                self.raw,
-                Some(print_callback),
-                &mut data as *mut _ as *mut c_void,
-            );
+            mlirTypePrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
         }
 
         data.1
@@ -167,14 +132,7 @@ impl<'c> Debug for Type<'c> {
     }
 }
 
-from_raw_subtypes!(
-    Type,
-    FunctionType,
-    IntegerType,
-    MemRefType,
-    RankedTensorType,
-    TupleType
-);
+from_raw_subtypes!(Type, FunctionType, IntegerType, MemRefType, RankedTensorType, TupleType);
 
 #[cfg(test)]
 mod tests {
@@ -199,10 +157,7 @@ mod tests {
     fn index() {
         let context = Context::new();
 
-        assert_eq!(
-            Type::index(&context),
-            Type::parse(&context, "index").unwrap()
-        );
+        assert_eq!(Type::index(&context), Type::parse(&context, "index").unwrap());
     }
 
     #[test]

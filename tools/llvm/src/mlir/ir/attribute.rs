@@ -16,13 +16,12 @@ mod r#type;
 pub use self::{
     array::ArrayAttribute, attribute_like::AttributeLike, dense_elements::DenseElementsAttribute,
     dense_i32_array::DenseI32ArrayAttribute, dense_i64_array::DenseI64ArrayAttribute,
-    flat_symbol_ref::FlatSymbolRefAttribute, float::FloatAttribute, integer::IntegerAttribute,
-    r#type::TypeAttribute, string::StringAttribute,
+    flat_symbol_ref::FlatSymbolRefAttribute, float::FloatAttribute, integer::IntegerAttribute, r#type::TypeAttribute,
+    string::StringAttribute,
 };
 use crate::{context::Context, string_ref::StringRef, utility::print_callback};
 use mlir_sys::{
-    mlirAttributeEqual, mlirAttributeGetNull, mlirAttributeParseGet, mlirAttributePrint,
-    mlirUnitAttrGet, MlirAttribute,
+    mlirAttributeEqual, mlirAttributeGetNull, mlirAttributeParseGet, mlirAttributePrint, mlirUnitAttrGet, MlirAttribute,
 };
 use std::{
     ffi::c_void,
@@ -30,8 +29,6 @@ use std::{
     marker::PhantomData,
 };
 
-/// An attribute.
-// Attributes are always values but their internal storage is owned by contexts.
 #[derive(Clone, Copy)]
 pub struct Attribute<'c> {
     raw: MlirAttribute,
@@ -39,7 +36,6 @@ pub struct Attribute<'c> {
 }
 
 impl<'c> Attribute<'c> {
-    /// Parses an attribute.
     pub fn parse(context: &'c Context, source: &str) -> Option<Self> {
         unsafe {
             Self::from_option_raw(mlirAttributeParseGet(
@@ -49,7 +45,6 @@ impl<'c> Attribute<'c> {
         }
     }
 
-    /// Creates a unit attribute.
     pub fn unit(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirUnitAttrGet(context.to_raw())) }
     }
@@ -58,11 +53,6 @@ impl<'c> Attribute<'c> {
         unsafe { Self::from_raw(mlirAttributeGetNull()) }
     }
 
-    /// Creates an attribute from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_raw(raw: MlirAttribute) -> Self {
         Self {
             raw,
@@ -70,11 +60,6 @@ impl<'c> Attribute<'c> {
         }
     }
 
-    /// Creates an optional attribute from a raw object.
-    ///
-    /// # Safety
-    ///
-    /// A raw object must be valid.
     pub unsafe fn from_option_raw(raw: MlirAttribute) -> Option<Self> {
         if raw.ptr.is_null() {
             None
@@ -103,11 +88,7 @@ impl<'c> Display for Attribute<'c> {
         let mut data = (formatter, Ok(()));
 
         unsafe {
-            mlirAttributePrint(
-                self.raw,
-                Some(print_callback),
-                &mut data as *mut _ as *mut c_void,
-            );
+            mlirAttributePrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
         }
 
         data.1
@@ -165,7 +146,6 @@ mod tests {
         );
     }
 
-    // TODO Fix this.
     #[ignore]
     #[test]
     fn type_id() {
@@ -184,95 +164,74 @@ mod tests {
 
     #[test]
     fn is_bool() {
-        assert!(Attribute::parse(&Context::new(), "false")
-            .unwrap()
-            .is_bool());
+        assert!(Attribute::parse(&Context::new(), "false").unwrap().is_bool());
     }
 
     #[test]
     fn is_dense_elements() {
-        assert!(
-            Attribute::parse(&Context::new(), "dense<10> : tensor<2xi8>")
-                .unwrap()
-                .is_dense_elements()
-        );
+        assert!(Attribute::parse(&Context::new(), "dense<10> : tensor<2xi8>")
+            .unwrap()
+            .is_dense_elements());
     }
 
     #[test]
     fn is_dense_int_elements() {
-        assert!(
-            Attribute::parse(&Context::new(), "dense<42> : tensor<42xi8>")
-                .unwrap()
-                .is_dense_int_elements()
-        );
+        assert!(Attribute::parse(&Context::new(), "dense<42> : tensor<42xi8>")
+            .unwrap()
+            .is_dense_int_elements());
     }
 
     #[test]
     fn is_dense_fp_elements() {
-        assert!(
-            Attribute::parse(&Context::new(), "dense<42.0> : tensor<42xf32>")
-                .unwrap()
-                .is_dense_fp_elements()
-        );
+        assert!(Attribute::parse(&Context::new(), "dense<42.0> : tensor<42xf32>")
+            .unwrap()
+            .is_dense_fp_elements());
     }
 
     #[test]
     fn is_elements() {
-        assert!(Attribute::parse(
-            &Context::new(),
-            "sparse<[[0, 0], [1, 2]], [1, 5]> : tensor<3x4xi32>"
-        )
-        .unwrap()
-        .is_elements());
+        assert!(
+            Attribute::parse(&Context::new(), "sparse<[[0, 0], [1, 2]], [1, 5]> : tensor<3x4xi32>")
+                .unwrap()
+                .is_elements()
+        );
     }
 
     #[test]
     fn is_integer() {
-        assert!(Attribute::parse(&Context::new(), "42")
-            .unwrap()
-            .is_integer());
+        assert!(Attribute::parse(&Context::new(), "42").unwrap().is_integer());
     }
 
     #[test]
     fn is_integer_set() {
-        assert!(
-            Attribute::parse(&Context::new(), "affine_set<(d0) : (d0 - 2 >= 0)>")
-                .unwrap()
-                .is_integer_set()
-        );
+        assert!(Attribute::parse(&Context::new(), "affine_set<(d0) : (d0 - 2 >= 0)>")
+            .unwrap()
+            .is_integer_set());
     }
 
-    // TODO Fix this.
     #[ignore]
     #[test]
     fn is_opaque() {
-        assert!(Attribute::parse(&Context::new(), "#foo<\"bar\">")
-            .unwrap()
-            .is_opaque());
+        assert!(Attribute::parse(&Context::new(), "#foo<\"bar\">").unwrap().is_opaque());
     }
 
     #[test]
     fn is_sparse_elements() {
-        assert!(Attribute::parse(
-            &Context::new(),
-            "sparse<[[0, 0], [1, 2]], [1, 5]> : tensor<3x4xi32>"
-        )
-        .unwrap()
-        .is_sparse_elements());
+        assert!(
+            Attribute::parse(&Context::new(), "sparse<[[0, 0], [1, 2]], [1, 5]> : tensor<3x4xi32>")
+                .unwrap()
+                .is_sparse_elements()
+        );
     }
 
     #[test]
     fn is_string() {
-        assert!(Attribute::parse(&Context::new(), "\"foo\"")
-            .unwrap()
-            .is_string());
+        assert!(Attribute::parse(&Context::new(), "\"foo\"").unwrap().is_string());
     }
 
     #[test]
     fn is_type() {
-        assert!(Attribute::parse(&Context::new(), "index")
-            .unwrap()
-            .is_type());
+        assert!(Attribute::parse(&Context::new(), "index").unwrap().is_type());
     }
 
     #[test]
@@ -282,9 +241,7 @@ mod tests {
 
     #[test]
     fn is_symbol() {
-        assert!(Attribute::parse(&Context::new(), "@foo")
-            .unwrap()
-            .is_symbol_ref());
+        assert!(Attribute::parse(&Context::new(), "@foo").unwrap().is_symbol_ref());
     }
 
     #[test]
@@ -307,11 +264,6 @@ mod tests {
 
     #[test]
     fn display() {
-        assert_eq!(
-            Attribute::parse(&Context::new(), "unit")
-                .unwrap()
-                .to_string(),
-            "unit"
-        );
+        assert_eq!(Attribute::parse(&Context::new(), "unit").unwrap().to_string(), "unit");
     }
 }

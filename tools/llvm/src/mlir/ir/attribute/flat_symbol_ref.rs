@@ -2,14 +2,12 @@ use super::{Attribute, AttributeLike};
 use crate::{Context, Error, StringRef};
 use mlir_sys::{mlirFlatSymbolRefAttrGet, mlirFlatSymbolRefAttrGetValue, MlirAttribute};
 
-/// A flat symbol ref attribute.
 #[derive(Clone, Copy)]
 pub struct FlatSymbolRefAttribute<'c> {
     attribute: Attribute<'c>,
 }
 
 impl<'c> FlatSymbolRefAttribute<'c> {
-    /// Creates a flat symbol ref attribute.
     pub fn new(context: &'c Context, symbol: &str) -> Self {
         unsafe {
             Self::from_raw(mlirFlatSymbolRefAttrGet(
@@ -26,11 +24,7 @@ impl<'c> FlatSymbolRefAttribute<'c> {
     }
 }
 
-attribute_traits!(
-    FlatSymbolRefAttribute,
-    is_flat_symbol_ref,
-    "flat symbol ref"
-);
+attribute_traits!(FlatSymbolRefAttribute, is_flat_symbol_ref, "flat symbol ref");
 
 #[cfg(test)]
 mod tests {
@@ -38,9 +32,6 @@ mod tests {
 
     #[test]
     fn new() {
-        assert_eq!(
-            FlatSymbolRefAttribute::new(&Context::new(), "foo").value(),
-            "foo"
-        );
+        assert_eq!(FlatSymbolRefAttribute::new(&Context::new(), "foo").value(), "foo");
     }
 }

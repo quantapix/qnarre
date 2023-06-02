@@ -6,10 +6,7 @@ use inkwell::OptimizationLevel;
 
 use std::error::Error;
 
-/// Convenience type alias for the `sum` function.
 ///
-/// Calling this is innately `unsafe` because there's no guarantee it doesn't
-/// do `unsafe` operations internally.
 type SumFunc = unsafe extern "C" fn(u64, u64, u64) -> u64;
 
 struct CodeGen<'ctx> {

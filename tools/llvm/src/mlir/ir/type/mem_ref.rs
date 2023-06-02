@@ -4,18 +4,16 @@ use crate::{
     Error,
 };
 use mlir_sys::{
-    mlirMemRefTypeGet, mlirMemRefTypeGetAffineMap, mlirMemRefTypeGetChecked,
-    mlirMemRefTypeGetLayout, mlirMemRefTypeGetMemorySpace, MlirType,
+    mlirMemRefTypeGet, mlirMemRefTypeGetAffineMap, mlirMemRefTypeGetChecked, mlirMemRefTypeGetLayout,
+    mlirMemRefTypeGetMemorySpace, MlirType,
 };
 
-/// A mem-ref type.
 #[derive(Clone, Copy, Debug)]
 pub struct MemRefType<'c> {
     r#type: Type<'c>,
 }
 
 impl<'c> MemRefType<'c> {
-    /// Creates a mem-ref type.
     pub fn new(
         r#type: Type<'c>,
         dimensions: &[u64],
@@ -33,7 +31,6 @@ impl<'c> MemRefType<'c> {
         }
     }
 
-    /// Creates a mem-ref type with diagnostics.
     pub fn checked(
         location: Location<'c>,
         r#type: Type<'c>,
@@ -53,17 +50,14 @@ impl<'c> MemRefType<'c> {
         }
     }
 
-    /// Gets a layout.
     pub fn layout(&self) -> Attribute<'c> {
         unsafe { Attribute::from_raw(mlirMemRefTypeGetLayout(self.r#type.to_raw())) }
     }
 
-    /// Gets an affine map.
     pub fn affine_map(&self) -> AffineMap<'c> {
         unsafe { AffineMap::from_raw(mlirMemRefTypeGetAffineMap(self.r#type.to_raw())) }
     }
 
-    /// Gets a memory space.
     pub fn memory_space(&self) -> Option<Attribute<'c>> {
         unsafe { Attribute::from_option_raw(mlirMemRefTypeGetMemorySpace(self.r#type.to_raw())) }
     }

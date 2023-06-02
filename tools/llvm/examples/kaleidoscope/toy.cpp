@@ -437,25 +437,6 @@ Value *IfExprAST::Codegen() {
 }
 
 Value *ForExprAST::Codegen() {
-  // Output this as:
-  //   var = alloca double
-  //   ...
-  //   start = startexpr
-  //   store start -> var
-  //   goto loop
-  // loop:
-  //   ...
-  //   bodyexpr
-  //   ...
-  // loopend:
-  //   step = stepexpr
-  //   endcond = endexpr
-  //
-  //   curvar = load var
-  //   nextvar = curvar + step
-  //   store nextvar -> var
-  //   br endcond, loop, endloop
-  // outloop:
   Function *TheFunction = Builder.GetInsertBlock()->getParent();
   AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
   Value *StartVal = Start->Codegen();
@@ -571,7 +552,6 @@ Function *FunctionAST::Codegen() {
   if (Value *RetVal = Body->Codegen()) {
     Builder.CreateRet(RetVal);
     verifyFunction(*TheFunction);
-    // TheFPM->run(*TheFunction);
     return TheFunction;
   }
   TheFunction->eraseFromParent();
@@ -640,7 +620,6 @@ Module *parseInputIR(std::string InputFile) {
   return M;
 }
 
-/// top ::= definition | external | expression | ';'
 static void MainLoop() {
   while (1) {
     if (!SuppressPrompts)
