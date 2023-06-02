@@ -642,8 +642,7 @@ pub mod variation {
                     std::io::ErrorKind::InvalidInput,
                     concat!(
                         "Got an invalid variation::Enum. Accepted values ",
-                        "are 'rust', 'rust_non_exhaustive', 'bitfield', 'consts',",
-                        "'moduleconsts', 'newtype' and 'newtype_global'."
+                        "are 'rust', 'rust_non_exhaustive', 'consts' and 'moduleconsts'."
                     ),
                 )),
             }

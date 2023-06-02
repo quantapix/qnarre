@@ -5,7 +5,9 @@ use crate::ir::typ::{Type, TypeKind};
 use crate::ir::Context;
 use proc_macro2::{self, Ident, Span};
 use std::cmp;
+
 const MAX_GUARANTEED_ALIGN: usize = 8;
+
 #[derive(Debug)]
 pub struct Structure<'a> {
     name: &'a str,
