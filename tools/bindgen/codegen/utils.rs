@@ -822,14 +822,14 @@ fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
         | TypeKind::Complex(..)
         | TypeKind::Float(..)
         | TypeKind::Enum(..)
-        | TypeKind::TypeParam
-        | TypeKind::UnresolvedTypeRef(..)
+        | TypeKind::Param
+        | TypeKind::UnresolvedRef(..)
         | TypeKind::Reference(..)
         | TypeKind::Comp(..)
         | TypeKind::Pointer(_)
         | TypeKind::Func(..)
         | TypeKind::Opaque => quote_equals(y),
-        TypeKind::TemplInstantiation(ref x) => {
+        TypeKind::TemplInst(ref x) => {
             if x.is_opaque(ctx, it) {
                 quote! {
                     &self. #y [..] == &other. #y [..]
@@ -846,7 +846,7 @@ fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
                 #(self.#self_ids == other.#other_ids &&)* true
             }
         },
-        TypeKind::ResolvedTypeRef(x) | TypeKind::TemplAlias(x, _) | TypeKind::Alias(x) | TypeKind::BlockPtr(x) => {
+        TypeKind::ResolvedRef(x) | TypeKind::TemplAlias(x, _) | TypeKind::Alias(x) | TypeKind::BlockPtr(x) => {
             let it2 = ctx.resolve_item(x);
             gen_field(ctx, it2, name)
         },

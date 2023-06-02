@@ -4,27 +4,27 @@ use std::fmt;
 use std::ops;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum YConstrain {
+enum Resolved {
     Changed,
     Same,
 }
-impl Default for YConstrain {
+impl Default for Resolved {
     fn default() -> Self {
-        YConstrain::Same
+        Resolved::Same
     }
 }
-impl ops::BitOr for YConstrain {
+impl ops::BitOr for Resolved {
     type Output = Self;
-    fn bitor(self, rhs: YConstrain) -> Self::Output {
-        if self == YConstrain::Changed || rhs == YConstrain::Changed {
-            YConstrain::Changed
+    fn bitor(self, rhs: Resolved) -> Self::Output {
+        if self == Resolved::Changed || rhs == Resolved::Changed {
+            Resolved::Changed
         } else {
-            YConstrain::Same
+            Resolved::Same
         }
     }
 }
-impl ops::BitOrAssign for YConstrain {
-    fn bitor_assign(&mut self, rhs: YConstrain) {
+impl ops::BitOrAssign for Resolved {
+    fn bitor_assign(&mut self, rhs: Resolved) {
         *self = *self | rhs;
     }
 }
@@ -35,47 +35,10 @@ trait Monotone: Sized + fmt::Debug {
     type Output: From<Self> + fmt::Debug;
     fn new(x: Self::Extra) -> Self;
     fn initial_worklist(&self) -> Vec<Self::Node>;
-    fn constrain(&mut self, n: Self::Node) -> YConstrain;
+    fn constrain(&mut self, n: Self::Node) -> Resolved;
     fn each_depending_on<F>(&self, n: Self::Node, f: F)
     where
         F: FnMut(Self::Node);
-}
-
-pub fn gen_deps<F>(ctx: &Context, f: F) -> HashMap<ItemId, Vec<ItemId>>
-where
-    F: Fn(EdgeKind) -> bool,
-{
-    let mut ys = HashMap::default();
-    for &i in ctx.allowed_items() {
-        ys.entry(i).or_insert_with(Vec::new);
-        {
-            i.trace(
-                ctx,
-                &mut |i2: ItemId, kind| {
-                    if ctx.allowed_items().contains(&i2) && f(kind) {
-                        ys.entry(i2).or_insert_with(Vec::new).push(i);
-                    }
-                },
-                &(),
-            );
-        }
-    }
-    ys
-}
-pub fn analyze<T>(x: T::Extra) -> T::Output
-where
-    T: Monotone,
-{
-    let mut y = T::new(x);
-    let mut ns = y.initial_worklist();
-    while let Some(n) = ns.pop() {
-        if let YConstrain::Changed = y.constrain(n) {
-            y.each_depending_on(n, |x| {
-                ns.push(x);
-            });
-        }
-    }
-    y.into()
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -84,7 +47,7 @@ pub enum DeriveTrait {
     Debug,
     Default,
     Hash,
-    PartialEqOrPartialOrd,
+    PartialEqOrOrd,
 }
 
 pub mod derive {
@@ -102,6 +65,102 @@ pub mod derive {
     use std::fmt;
 
     type Pred = fn(EdgeKind) -> bool;
+
+    impl DeriveTrait {
+        fn not_by_name(&self, ctx: &Context, it: &Item) -> bool {
+            match self {
+                DeriveTrait::Copy => ctx.no_copy_by_name(it),
+                DeriveTrait::Debug => ctx.no_debug_by_name(it),
+                DeriveTrait::Default => ctx.no_default_by_name(it),
+                DeriveTrait::Hash => ctx.no_hash_by_name(it),
+                DeriveTrait::PartialEqOrOrd => ctx.no_partialeq_by_name(it),
+            }
+        }
+        fn check_edge_comp(&self) -> Pred {
+            match self {
+                DeriveTrait::PartialEqOrOrd => check_edge_default,
+                _ => |x| matches!(x, EdgeKind::BaseMember | EdgeKind::Field),
+            }
+        }
+        fn check_edge_typeref(&self) -> Pred {
+            match self {
+                DeriveTrait::PartialEqOrOrd => check_edge_default,
+                _ => |x| x == EdgeKind::TypeRef,
+            }
+        }
+        fn check_edge_tmpl_inst(&self) -> Pred {
+            match self {
+                DeriveTrait::PartialEqOrOrd => check_edge_default,
+                _ => |x| matches!(x, EdgeKind::TemplArg | EdgeKind::TemplDecl),
+            }
+        }
+        fn can_derive_large_array(&self, ctx: &Context) -> bool {
+            !matches!(self, DeriveTrait::Default)
+        }
+        fn can_derive_union(&self) -> bool {
+            matches!(self, DeriveTrait::Copy)
+        }
+        fn can_derive_comp_with_destr(&self) -> bool {
+            !matches!(self, DeriveTrait::Copy)
+        }
+        fn can_derive_comp_with_vtable(&self) -> bool {
+            !matches!(self, DeriveTrait::Default)
+        }
+        fn can_derive_comp_fwd_decl(&self) -> bool {
+            matches!(self, DeriveTrait::Copy | DeriveTrait::Debug)
+        }
+        fn can_derive_incomplete_array(&self) -> bool {
+            !matches!(
+                self,
+                DeriveTrait::Copy | DeriveTrait::Hash | DeriveTrait::PartialEqOrOrd
+            )
+        }
+        fn can_derive_fnptr(&self, f: &FnSig) -> Resolved {
+            match (self, f.fn_ptrs_can_derive()) {
+                (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => Resolved::Yes,
+                (DeriveTrait::Debug, false) => Resolved::Manually,
+                (_, false) => Resolved::No,
+            }
+        }
+        fn can_derive_vec(&self) -> Resolved {
+            match self {
+                DeriveTrait::PartialEqOrOrd => Resolved::No,
+                _ => Resolved::Yes,
+            }
+        }
+        fn can_derive_ptr(&self) -> Resolved {
+            match self {
+                DeriveTrait::Default => Resolved::No,
+                _ => Resolved::Yes,
+            }
+        }
+        fn can_derive_simple(&self, k: &TypeKind) -> Resolved {
+            match (self, k) {
+                (DeriveTrait::Default, TypeKind::Void)
+                | (DeriveTrait::Default, TypeKind::NullPtr)
+                | (DeriveTrait::Default, TypeKind::Enum(..))
+                | (DeriveTrait::Default, TypeKind::Reference(..))
+                | (DeriveTrait::Default, TypeKind::Param) => Resolved::No,
+                (DeriveTrait::Default, TypeKind::UnresolvedRef(..)) => {
+                    unreachable!("Type with unresolved type ref can't reach derive default")
+                },
+                (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => Resolved::No,
+                _ => Resolved::Yes,
+            }
+        }
+    }
+    impl fmt::Display for DeriveTrait {
+        fn fmt(&self, x: &mut fmt::Formatter) -> fmt::Result {
+            let y = match self {
+                DeriveTrait::Copy => "Copy",
+                DeriveTrait::Debug => "Debug",
+                DeriveTrait::Default => "Default",
+                DeriveTrait::Hash => "Hash",
+                DeriveTrait::PartialEqOrOrd => "PartialEq/PartialOrd",
+            };
+            y.fmt(x)
+        }
+    }
 
     fn check_edge_default(k: EdgeKind) -> bool {
         match k {
@@ -123,115 +182,6 @@ pub mod derive {
         }
     }
 
-    impl DeriveTrait {
-        fn not_by_name(&self, ctx: &Context, it: &Item) -> bool {
-            match self {
-                DeriveTrait::Copy => ctx.no_copy_by_name(it),
-                DeriveTrait::Debug => ctx.no_debug_by_name(it),
-                DeriveTrait::Default => ctx.no_default_by_name(it),
-                DeriveTrait::Hash => ctx.no_hash_by_name(it),
-                DeriveTrait::PartialEqOrPartialOrd => ctx.no_partialeq_by_name(it),
-            }
-        }
-
-        fn check_edge_comp(&self) -> Pred {
-            match self {
-                DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |x| matches!(x, EdgeKind::BaseMember | EdgeKind::Field),
-            }
-        }
-
-        fn check_edge_typeref(&self) -> Pred {
-            match self {
-                DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |x| x == EdgeKind::TypeRef,
-            }
-        }
-
-        fn check_edge_tmpl_inst(&self) -> Pred {
-            match self {
-                DeriveTrait::PartialEqOrPartialOrd => check_edge_default,
-                _ => |x| matches!(x, EdgeKind::TemplArg | EdgeKind::TemplDecl),
-            }
-        }
-
-        fn can_derive_large_array(&self, ctx: &Context) -> bool {
-            !matches!(self, DeriveTrait::Default)
-        }
-
-        fn can_derive_union(&self) -> bool {
-            matches!(self, DeriveTrait::Copy)
-        }
-
-        fn can_derive_comp_with_destr(&self) -> bool {
-            !matches!(self, DeriveTrait::Copy)
-        }
-
-        fn can_derive_comp_with_vtable(&self) -> bool {
-            !matches!(self, DeriveTrait::Default)
-        }
-
-        fn can_derive_comp_fwd_decl(&self) -> bool {
-            matches!(self, DeriveTrait::Copy | DeriveTrait::Debug)
-        }
-
-        fn can_derive_incomplete_array(&self) -> bool {
-            !matches!(
-                self,
-                DeriveTrait::Copy | DeriveTrait::Hash | DeriveTrait::PartialEqOrPartialOrd
-            )
-        }
-
-        fn can_derive_fnptr(&self, f: &FnSig) -> Resolved {
-            match (self, f.fn_ptrs_can_derive()) {
-                (DeriveTrait::Copy, _) | (DeriveTrait::Default, _) | (_, true) => Resolved::Yes,
-                (DeriveTrait::Debug, false) => Resolved::Manually,
-                (_, false) => Resolved::No,
-            }
-        }
-
-        fn can_derive_vec(&self) -> Resolved {
-            match self {
-                DeriveTrait::PartialEqOrPartialOrd => Resolved::No,
-                _ => Resolved::Yes,
-            }
-        }
-
-        fn can_derive_ptr(&self) -> Resolved {
-            match self {
-                DeriveTrait::Default => Resolved::No,
-                _ => Resolved::Yes,
-            }
-        }
-
-        fn can_derive_simple(&self, k: &TypeKind) -> Resolved {
-            match (self, k) {
-                (DeriveTrait::Default, TypeKind::Void)
-                | (DeriveTrait::Default, TypeKind::NullPtr)
-                | (DeriveTrait::Default, TypeKind::Enum(..))
-                | (DeriveTrait::Default, TypeKind::Reference(..))
-                | (DeriveTrait::Default, TypeKind::TypeParam) => Resolved::No,
-                (DeriveTrait::Default, TypeKind::UnresolvedTypeRef(..)) => {
-                    unreachable!("Type with unresolved type ref can't reach derive default")
-                },
-                (DeriveTrait::Hash, TypeKind::Float(..)) | (DeriveTrait::Hash, TypeKind::Complex(..)) => Resolved::No,
-                _ => Resolved::Yes,
-            }
-        }
-    }
-    impl fmt::Display for DeriveTrait {
-        fn fmt(&self, x: &mut fmt::Formatter) -> fmt::Result {
-            let y = match self {
-                DeriveTrait::Copy => "Copy",
-                DeriveTrait::Debug => "Debug",
-                DeriveTrait::Default => "Default",
-                DeriveTrait::Hash => "Hash",
-                DeriveTrait::PartialEqOrPartialOrd => "PartialEq/PartialOrd",
-            };
-            y.fmt(x)
-        }
-    }
-
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
         ctx: &'ctx Context,
@@ -240,27 +190,26 @@ pub mod derive {
         derive: DeriveTrait,
     }
     impl<'ctx> Analysis<'ctx> {
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> super::YConstrain {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> super::Resolved {
             if let Resolved::Yes = y {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             let id = id.into();
             match self.ys.entry(id) {
                 Entry::Occupied(mut x) => {
                     if *x.get() < y {
                         x.insert(y);
-                        super::YConstrain::Changed
+                        super::Resolved::Changed
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
                 Entry::Vacant(x) => {
                     x.insert(y);
-                    super::YConstrain::Changed
+                    super::Resolved::Changed
                 },
             }
         }
-
         fn constrain_type(&mut self, it: &Item, ty: &Type) -> Resolved {
             if !self.ctx.allowed_items().contains(&it.id()) {
                 let y = self.ctx.blocklisted_type_implements_trait(it, self.derive);
@@ -285,8 +234,8 @@ pub mod derive {
                 | TypeKind::Complex(..)
                 | TypeKind::Float(..)
                 | TypeKind::Enum(..)
-                | TypeKind::TypeParam
-                | TypeKind::UnresolvedTypeRef(..)
+                | TypeKind::Param
+                | TypeKind::UnresolvedRef(..)
                 | TypeKind::Reference(..) => {
                     return self.derive.can_derive_simple(ty.kind());
                 },
@@ -361,15 +310,13 @@ pub mod derive {
                     }
                     self.constrain_join(it, self.derive.check_edge_comp())
                 },
-                TypeKind::ResolvedTypeRef(..)
-                | TypeKind::TemplAlias(..)
-                | TypeKind::Alias(..)
-                | TypeKind::BlockPtr(..) => self.constrain_join(it, self.derive.check_edge_typeref()),
-                TypeKind::TemplInstantiation(..) => self.constrain_join(it, self.derive.check_edge_tmpl_inst()),
+                TypeKind::ResolvedRef(..) | TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPtr(..) => {
+                    self.constrain_join(it, self.derive.check_edge_typeref())
+                },
+                TypeKind::TemplInst(..) => self.constrain_join(it, self.derive.check_edge_tmpl_inst()),
                 TypeKind::Opaque => unreachable!("The early ty.is_opaque check should have handled this case"),
             }
         }
-
         fn constrain_join(&mut self, it: &Item, f: Pred) -> Resolved {
             let mut y = None;
             it.trace(
@@ -396,7 +343,6 @@ pub mod derive {
             let deps = gen_deps(ctx, check_edge_default);
             Analysis { ctx, derive, ys, deps }
         }
-
         fn initial_worklist(&self) -> Vec<ItemId> {
             self.ctx
                 .allowed_items()
@@ -415,10 +361,9 @@ pub mod derive {
                 })
                 .collect()
         }
-
-        fn constrain(&mut self, id: ItemId) -> super::YConstrain {
+        fn constrain(&mut self, id: ItemId) -> super::Resolved {
             if let Some(Resolved::No) = self.ys.get(&id).cloned() {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             let i = self.ctx.resolve_item(id);
             let y = match i.as_type() {
@@ -437,7 +382,6 @@ pub mod derive {
             };
             self.insert(id, y)
         }
-
         fn each_depending_on<F>(&self, id: ItemId, mut f: F)
         where
             F: FnMut(ItemId),
@@ -484,43 +428,41 @@ pub mod has_destructor {
                 EdgeKind::TypeRef | EdgeKind::BaseMember | EdgeKind::Field | EdgeKind::TemplArg | EdgeKind::TemplDecl
             )
         }
-
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> super::YConstrain {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> super::Resolved {
             let id = id.into();
             let newly = self.ys.insert(id);
             assert!(newly);
-            super::YConstrain::Changed
+            super::Resolved::Changed
         }
     }
     impl<'ctx> Monotone for Analysis<'ctx> {
         type Node = ItemId;
         type Extra = &'ctx Context;
         type Output = HashSet<ItemId>;
+
         fn new(ctx: &'ctx Context) -> Self {
             let ys = HashSet::default();
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
         }
-
         fn initial_worklist(&self) -> Vec<ItemId> {
             self.ctx.allowed_items().iter().cloned().collect()
         }
-
-        fn constrain(&mut self, id: ItemId) -> super::YConstrain {
+        fn constrain(&mut self, id: ItemId) -> super::Resolved {
             if self.ys.contains(&id) {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             let i = self.ctx.resolve_item(id);
             let ty = match i.as_type() {
-                None => return super::YConstrain::Same,
+                None => return super::Resolved::Same,
                 Some(ty) => ty,
             };
             match *ty.kind() {
-                TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedTypeRef(t) => {
+                TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedRef(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
                 TypeKind::Comp(ref x) => {
@@ -528,7 +470,7 @@ pub mod has_destructor {
                         return self.insert(id);
                     }
                     match x.kind() {
-                        CompKind::Union => super::YConstrain::Same,
+                        CompKind::Union => super::Resolved::Same,
                         CompKind::Struct => {
                             let destr = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()))
                                 || x.fields().iter().any(|x| match *x {
@@ -537,24 +479,23 @@ pub mod has_destructor {
                             if destr {
                                 self.insert(id)
                             } else {
-                                super::YConstrain::Same
+                                super::Resolved::Same
                             }
                         },
                     }
                 },
-                TypeKind::TemplInstantiation(ref t) => {
+                TypeKind::TemplInst(ref t) => {
                     let destr = self.ys.contains(&t.templ_def().into())
                         || t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if destr {
                         self.insert(id)
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
-                _ => super::YConstrain::Same,
+                _ => super::Resolved::Same,
             }
         }
-
         fn each_depending_on<F>(&self, id: ItemId, mut f: F)
         where
             F: FnMut(ItemId),
@@ -609,12 +550,11 @@ pub mod has_float {
                 EdgeKind::Generic => false,
             }
         }
-
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> super::YConstrain {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> super::Resolved {
             let id = id.into();
             let newly = self.ys.insert(id);
             assert!(newly);
-            super::YConstrain::Changed
+            super::Resolved::Changed
         }
     }
     impl<'ctx> Monotone for Analysis<'ctx> {
@@ -627,20 +567,18 @@ pub mod has_float {
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
         }
-
         fn initial_worklist(&self) -> Vec<ItemId> {
             self.ctx.allowed_items().iter().cloned().collect()
         }
-
-        fn constrain(&mut self, id: ItemId) -> super::YConstrain {
+        fn constrain(&mut self, id: ItemId) -> super::Resolved {
             if self.ys.contains(&id) {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             let i = self.ctx.resolve_item(id);
             let ty = match i.as_type() {
                 Some(ty) => ty,
                 None => {
-                    return super::YConstrain::Same;
+                    return super::Resolved::Same;
                 },
             };
             match *ty.kind() {
@@ -650,31 +588,28 @@ pub mod has_float {
                 | TypeKind::Func(..)
                 | TypeKind::Enum(..)
                 | TypeKind::Reference(..)
-                | TypeKind::TypeParam
+                | TypeKind::Param
                 | TypeKind::Opaque
                 | TypeKind::Pointer(..)
-                | TypeKind::UnresolvedTypeRef(..) => super::YConstrain::Same,
+                | TypeKind::UnresolvedRef(..) => super::Resolved::Same,
                 TypeKind::Float(..) | TypeKind::Complex(..) => self.insert(id),
                 TypeKind::Array(t, _) => {
                     if self.ys.contains(&t.into()) {
                         return self.insert(id);
                     }
-                    super::YConstrain::Same
+                    super::Resolved::Same
                 },
                 TypeKind::Vector(t, _) => {
                     if self.ys.contains(&t.into()) {
                         return self.insert(id);
                     }
-                    super::YConstrain::Same
+                    super::Resolved::Same
                 },
-                TypeKind::ResolvedTypeRef(t)
-                | TypeKind::TemplAlias(t, _)
-                | TypeKind::Alias(t)
-                | TypeKind::BlockPtr(t) => {
+                TypeKind::ResolvedRef(t) | TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
                 TypeKind::Comp(ref x) => {
@@ -688,9 +623,9 @@ pub mod has_float {
                     if fields {
                         return self.insert(id);
                     }
-                    super::YConstrain::Same
+                    super::Resolved::Same
                 },
-                TypeKind::TemplInstantiation(ref t) => {
+                TypeKind::TemplInst(ref t) => {
                     let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
@@ -699,11 +634,10 @@ pub mod has_float {
                     if def {
                         return self.insert(id);
                     }
-                    super::YConstrain::Same
+                    super::Resolved::Same
                 },
             }
         }
-
         fn each_depending_on<F>(&self, id: ItemId, mut f: F)
         where
             F: FnMut(ItemId),
@@ -758,12 +692,11 @@ pub mod has_type_param {
                 EdgeKind::Generic => false,
             }
         }
-
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> super::YConstrain {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id) -> super::Resolved {
             let id = id.into();
             let newly = self.ys.insert(id);
             assert!(newly);
-            super::YConstrain::Changed
+            super::Resolved::Changed
         }
     }
     impl<'ctx> Monotone for Analysis<'ctx> {
@@ -776,20 +709,18 @@ pub mod has_type_param {
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
         }
-
         fn initial_worklist(&self) -> Vec<ItemId> {
             self.ctx.allowed_items().iter().cloned().collect()
         }
-
-        fn constrain(&mut self, id: ItemId) -> super::YConstrain {
+        fn constrain(&mut self, id: ItemId) -> super::Resolved {
             if self.ys.contains(&id) {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             let i = self.ctx.resolve_item(id);
             let ty = match i.as_type() {
                 Some(ty) => ty,
                 None => {
-                    return super::YConstrain::Same;
+                    return super::Resolved::Same;
                 },
             };
             match *ty.kind() {
@@ -802,25 +733,22 @@ pub mod has_type_param {
                 | TypeKind::Func(..)
                 | TypeKind::Enum(..)
                 | TypeKind::Reference(..)
-                | TypeKind::TypeParam
+                | TypeKind::Param
                 | TypeKind::Opaque
                 | TypeKind::Pointer(..)
-                | TypeKind::UnresolvedTypeRef(..) => super::YConstrain::Same,
+                | TypeKind::UnresolvedRef(..) => super::Resolved::Same,
                 TypeKind::Array(t, _) => {
                     let ty2 = self.ctx.resolve_type(t).canon_type(self.ctx);
                     match *ty2.kind() {
-                        TypeKind::TypeParam => self.insert(id),
-                        _ => super::YConstrain::Same,
+                        TypeKind::Param => self.insert(id),
+                        _ => super::Resolved::Same,
                     }
                 },
-                TypeKind::ResolvedTypeRef(t)
-                | TypeKind::TemplAlias(t, _)
-                | TypeKind::Alias(t)
-                | TypeKind::BlockPtr(t) => {
+                TypeKind::ResolvedRef(t) | TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) => {
                     if self.ys.contains(&t.into()) {
                         self.insert(id)
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
                 TypeKind::Comp(ref info) => {
@@ -834,9 +762,9 @@ pub mod has_type_param {
                     if fields {
                         return self.insert(id);
                     }
-                    super::YConstrain::Same
+                    super::Resolved::Same
                 },
-                TypeKind::TemplInstantiation(ref t) => {
+                TypeKind::TemplInst(ref t) => {
                     let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
@@ -845,11 +773,10 @@ pub mod has_type_param {
                     if def {
                         return self.insert(id);
                     }
-                    super::YConstrain::Same
+                    super::Resolved::Same
                 },
             }
         }
-
         fn each_depending_on<F>(&self, id: ItemId, mut f: F)
         where
             F: FnMut(ItemId),
@@ -920,29 +847,27 @@ pub mod has_vtable {
         fn check_edge(k: EdgeKind) -> bool {
             matches!(k, EdgeKind::TypeRef | EdgeKind::BaseMember | EdgeKind::TemplDecl)
         }
-
-        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> super::YConstrain {
+        fn insert<Id: Into<ItemId>>(&mut self, id: Id, y: Resolved) -> super::Resolved {
             if let Resolved::No = y {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             let id = id.into();
             match self.ys.entry(id) {
                 Entry::Occupied(mut x) => {
                     if *x.get() < y {
                         x.insert(y);
-                        super::YConstrain::Changed
+                        super::Resolved::Changed
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
                 Entry::Vacant(x) => {
                     x.insert(y);
-                    super::YConstrain::Changed
+                    super::Resolved::Changed
                 },
             }
         }
-
-        fn forward<Id1, Id2>(&mut self, from: Id1, to: Id2) -> super::YConstrain
+        fn forward<Id1, Id2>(&mut self, from: Id1, to: Id2) -> super::Resolved
         where
             Id1: Into<ItemId>,
             Id2: Into<ItemId>,
@@ -950,7 +875,7 @@ pub mod has_vtable {
             let from = from.into();
             let to = to.into();
             match self.ys.get(&from).cloned() {
-                None => super::YConstrain::Same,
+                None => super::Resolved::Same,
                 Some(x) => self.insert(to, x),
             }
         }
@@ -965,22 +890,19 @@ pub mod has_vtable {
             let deps = gen_deps(ctx, Self::check_edge);
             Analysis { ctx, ys, deps }
         }
-
         fn initial_worklist(&self) -> Vec<ItemId> {
             self.ctx.allowed_items().iter().cloned().collect()
         }
-
-        fn constrain(&mut self, id: ItemId) -> super::YConstrain {
+        fn constrain(&mut self, id: ItemId) -> super::Resolved {
             let i = self.ctx.resolve_item(id);
             let ty = match i.as_type() {
-                None => return super::YConstrain::Same,
+                None => return super::Resolved::Same,
                 Some(ty) => ty,
             };
             match *ty.kind() {
-                TypeKind::TemplAlias(t, _)
-                | TypeKind::Alias(t)
-                | TypeKind::ResolvedTypeRef(t)
-                | TypeKind::Reference(t) => self.forward(t, id),
+                TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::ResolvedRef(t) | TypeKind::Reference(t) => {
+                    self.forward(t, id)
+                },
                 TypeKind::Comp(ref info) => {
                     let mut y = Resolved::No;
                     if info.has_own_virt_method() {
@@ -992,11 +914,10 @@ pub mod has_vtable {
                     }
                     self.insert(id, y)
                 },
-                TypeKind::TemplInstantiation(ref x) => self.forward(x.templ_def(), id),
-                _ => super::YConstrain::Same,
+                TypeKind::TemplInst(ref x) => self.forward(x.templ_def(), id),
+                _ => super::Resolved::Same,
             }
         }
-
         fn each_depending_on<F>(&self, id: ItemId, mut f: F)
         where
             F: FnMut(ItemId),
@@ -1077,30 +998,28 @@ pub mod sizedness {
                     | EdgeKind::Field
             )
         }
-
-        fn insert(&mut self, id: TypeId, y: Resolved) -> super::YConstrain {
+        fn insert(&mut self, id: TypeId, y: Resolved) -> super::Resolved {
             if let Resolved::ZeroSized = y {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             match self.ys.entry(id) {
                 Entry::Occupied(mut x) => {
                     if *x.get() < y {
                         x.insert(y);
-                        super::YConstrain::Changed
+                        super::Resolved::Changed
                     } else {
-                        super::YConstrain::Same
+                        super::Resolved::Same
                     }
                 },
                 Entry::Vacant(x) => {
                     x.insert(y);
-                    super::YConstrain::Changed
+                    super::Resolved::Changed
                 },
             }
         }
-
-        fn forward(&mut self, from: TypeId, to: TypeId) -> super::YConstrain {
+        fn forward(&mut self, from: TypeId, to: TypeId) -> super::Resolved {
             match self.ys.get(&from).cloned() {
-                None => super::YConstrain::Same,
+                None => super::Resolved::Same,
                 Some(x) => self.insert(to, x),
             }
         }
@@ -1121,7 +1040,6 @@ pub mod sizedness {
             let ys = HashMap::default();
             Analysis { ctx, deps, ys }
         }
-
         fn initial_worklist(&self) -> Vec<TypeId> {
             self.ctx
                 .allowed_items()
@@ -1130,10 +1048,9 @@ pub mod sizedness {
                 .filter_map(|x| x.as_type_id(self.ctx))
                 .collect()
         }
-
-        fn constrain(&mut self, id: TypeId) -> super::YConstrain {
+        fn constrain(&mut self, id: TypeId) -> super::Resolved {
             if let Some(Resolved::NonZeroSized) = self.ys.get(&id).cloned() {
-                return super::YConstrain::Same;
+                return super::Resolved::Same;
             }
             if id.has_vtable_ptr(self.ctx) {
                 return self.insert(id, Resolved::NonZeroSized);
@@ -1151,7 +1068,7 @@ pub mod sizedness {
             }
             match *ty.kind() {
                 TypeKind::Void => self.insert(id, Resolved::ZeroSized),
-                TypeKind::TypeParam => self.insert(id, Resolved::DependsOnTypeParam),
+                TypeKind::Param => self.insert(id, Resolved::DependsOnTypeParam),
                 TypeKind::Int(..)
                 | TypeKind::Float(..)
                 | TypeKind::Complex(..)
@@ -1160,11 +1077,10 @@ pub mod sizedness {
                 | TypeKind::Reference(..)
                 | TypeKind::NullPtr
                 | TypeKind::Pointer(..) => self.insert(id, Resolved::NonZeroSized),
-                TypeKind::TemplAlias(t, _)
-                | TypeKind::Alias(t)
-                | TypeKind::BlockPtr(t)
-                | TypeKind::ResolvedTypeRef(t) => self.forward(t, id),
-                TypeKind::TemplInstantiation(ref x) => self.forward(x.templ_def(), id),
+                TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) | TypeKind::ResolvedRef(t) => {
+                    self.forward(t, id)
+                },
+                TypeKind::TemplInst(ref x) => self.forward(x.templ_def(), id),
                 TypeKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
                 TypeKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
                 TypeKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
@@ -1183,12 +1099,11 @@ pub mod sizedness {
                 TypeKind::Opaque => {
                     unreachable!("covered by the .is_opaque() check above")
                 },
-                TypeKind::UnresolvedTypeRef(..) => {
+                TypeKind::UnresolvedRef(..) => {
                     unreachable!("Should have been resolved after parsing!");
                 },
             }
         }
-
         fn each_depending_on<F>(&self, id: TypeId, mut f: F)
         where
             F: FnMut(TypeId),
@@ -1211,7 +1126,7 @@ pub mod sizedness {
 pub mod used_templ_param {
     use super::Monotone;
     use crate::ir::item::{Item, ItemSet};
-    use crate::ir::template::{TemplInstantiation, TemplParams};
+    use crate::ir::template::{TemplInst, TemplParams};
     use crate::ir::typ::TypeKind;
     use crate::ir::{Context, EdgeKind, ItemId, Trace};
     use crate::{HashMap, HashSet};
@@ -1257,12 +1172,7 @@ pub mod used_templ_param {
                 )
         }
 
-        fn constrain_instantiation_of_blocklisted_template(
-            &self,
-            id: ItemId,
-            y: &mut ItemSet,
-            inst: &TemplInstantiation,
-        ) {
+        fn constrain_inst_of_blocklisted_templ(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInst) {
             let args = inst
                 .templ_args()
                 .iter()
@@ -1290,7 +1200,7 @@ pub mod used_templ_param {
             y.extend(args);
         }
 
-        fn constrain_instantiation(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInstantiation) {
+        fn constrain_inst(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInst) {
             let decl = self.ctx.resolve_type(inst.templ_def());
             let args = inst.templ_args();
             let ps = decl.self_templ_params(self.ctx);
@@ -1398,7 +1308,7 @@ pub mod used_templ_param {
                     );
                 }
                 let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
-                if let Some(TypeKind::TemplInstantiation(inst)) = k {
+                if let Some(TypeKind::TemplInst(inst)) = k {
                     let decl = ctx.resolve_type(inst.templ_def());
                     let args = inst.templ_args();
                     let ps = decl.self_templ_params(ctx);
@@ -1448,20 +1358,20 @@ pub mod used_templ_param {
                 .collect()
         }
 
-        fn constrain(&mut self, id: ItemId) -> super::YConstrain {
+        fn constrain(&mut self, id: ItemId) -> super::Resolved {
             let mut y = self.take_this_id_usage_set(id);
             let len = y.len();
             let i = self.ctx.resolve_item(id);
             let ty_kind = i.as_type().map(|x| x.kind());
             match ty_kind {
-                Some(&TypeKind::TypeParam) => {
+                Some(&TypeKind::Param) => {
                     y.insert(id);
                 },
-                Some(TypeKind::TemplInstantiation(x)) => {
+                Some(TypeKind::TemplInst(x)) => {
                     if self.alloweds.contains(&x.templ_def().into()) {
-                        self.constrain_instantiation(id, &mut y, x);
+                        self.constrain_inst(id, &mut y, x);
                     } else {
-                        self.constrain_instantiation_of_blocklisted_template(id, &mut y, x);
+                        self.constrain_inst_of_blocklisted_templ(id, &mut y, x);
                     }
                 },
                 _ => self.constrain_join(&mut y, i),
@@ -1471,9 +1381,9 @@ pub mod used_templ_param {
             debug_assert!(self.ys[&id].is_none());
             self.ys.insert(id, Some(y));
             if len2 != len {
-                super::YConstrain::Changed
+                super::Resolved::Changed
             } else {
-                super::YConstrain::Same
+                super::Resolved::Same
             }
         }
 
@@ -1494,6 +1404,44 @@ pub mod used_templ_param {
             x.ys.into_iter().map(|(k, v)| (k, v.unwrap())).collect()
         }
     }
+}
+
+pub fn gen_deps<F>(ctx: &Context, f: F) -> HashMap<ItemId, Vec<ItemId>>
+where
+    F: Fn(EdgeKind) -> bool,
+{
+    let mut ys = HashMap::default();
+    for &i in ctx.allowed_items() {
+        ys.entry(i).or_insert_with(Vec::new);
+        {
+            i.trace(
+                ctx,
+                &mut |i2: ItemId, kind| {
+                    if ctx.allowed_items().contains(&i2) && f(kind) {
+                        ys.entry(i2).or_insert_with(Vec::new).push(i);
+                    }
+                },
+                &(),
+            );
+        }
+    }
+    ys
+}
+
+pub fn analyze<T>(x: T::Extra) -> T::Output
+where
+    T: Monotone,
+{
+    let mut y = T::new(x);
+    let mut ns = y.initial_worklist();
+    while let Some(n) = ns.pop() {
+        if let Resolved::Changed = y.constrain(n) {
+            y.each_depending_on(n, |x| {
+                ns.push(x);
+            });
+        }
+    }
+    y.into()
 }
 
 #[cfg(test)]
@@ -1556,7 +1504,7 @@ mod tests {
             self.graph.0.keys().cloned().collect()
         }
 
-        fn constrain(&mut self, n: Node) -> YConstrain {
+        fn constrain(&mut self, n: Node) -> Resolved {
             let s = self.reachable.entry(n).or_insert_with(HashSet::default).len();
             for n2 in self.graph.0[&n].iter() {
                 self.reachable.get_mut(&n).unwrap().insert(*n2);
@@ -1567,9 +1515,9 @@ mod tests {
             }
             let s2 = self.reachable[&n].len();
             if s != s2 {
-                YConstrain::Changed
+                Resolved::Changed
             } else {
-                YConstrain::Same
+                Resolved::Same
             }
         }
 

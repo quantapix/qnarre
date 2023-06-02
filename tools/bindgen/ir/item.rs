@@ -423,10 +423,10 @@ impl Item {
             }
             match *i.kind() {
                 ItemKind::Type(ref x) => match *x.kind() {
-                    TypeKind::ResolvedTypeRef(x) => {
+                    TypeKind::ResolvedRef(x) => {
                         i = ctx.resolve_item(x);
                     },
-                    TypeKind::TemplInstantiation(ref x) => {
+                    TypeKind::TemplInst(ref x) => {
                         i = ctx.resolve_item(x.templ_def());
                     },
                     _ => return i.id(),
@@ -443,7 +443,7 @@ impl Item {
     fn push_disambiguated_name(&self, ctx: &Context, to: &mut String, level: u8) {
         to.push_str(&self.canon_name(ctx));
         if let ItemKind::Type(ref x) = *self.kind() {
-            if let TypeKind::TemplInstantiation(ref x) = *x.kind() {
+            if let TypeKind::TemplInst(ref x) = *x.kind() {
                 to.push_str(&format!("_open{}_", level));
                 for y in x.templ_args() {
                     y.into_resolver()
@@ -584,7 +584,7 @@ impl Item {
         let y = self.kind().as_type().map(|x| x.kind());
         if let Some(x) = y {
             match *x {
-                TypeKind::Comp(..) | TypeKind::TemplInstantiation(..) | TypeKind::Enum(..) => {
+                TypeKind::Comp(..) | TypeKind::TemplInst(..) | TypeKind::Enum(..) => {
                     return self.local_id(ctx).to_string()
                 },
                 _ => {},
@@ -816,7 +816,7 @@ impl Item {
             return x;
         }
         let is_const = ty.is_const();
-        let kind = TypeKind::UnresolvedTypeRef(ty, cur, parent);
+        let kind = TypeKind::UnresolvedRef(ty, cur, parent);
         let x = ctx.current_mod();
         ctx.add_item(
             Item::new(

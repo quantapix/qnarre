@@ -1010,16 +1010,16 @@ pub mod template {
     }
 
     #[derive(Clone, Debug)]
-    pub struct TemplInstantiation {
+    pub struct TemplInst {
         def: TypeId,
         args: Vec<TypeId>,
     }
-    impl TemplInstantiation {
-        pub fn new<I>(def: TypeId, args: I) -> TemplInstantiation
+    impl TemplInst {
+        pub fn new<I>(def: TypeId, args: I) -> TemplInst
         where
             I: IntoIterator<Item = TypeId>,
         {
-            TemplInstantiation {
+            TemplInst {
                 def,
                 args: args.into_iter().collect(),
             }
@@ -1030,7 +1030,7 @@ pub mod template {
         pub fn templ_args(&self) -> &[TypeId] {
             &self.args[..]
         }
-        pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInstantiation> {
+        pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInst> {
             use clang_lib::*;
             let args = ty
                 .templ_args()
@@ -1076,10 +1076,10 @@ pub mod template {
                 },
             };
             let def = Item::from_ty_or_ref(def.cur_type(), def, None, ctx);
-            Some(TemplInstantiation::new(def, args))
+            Some(TemplInst::new(def, args))
         }
     }
-    impl IsOpaque for TemplInstantiation {
+    impl IsOpaque for TemplInst {
         type Extra = Item;
         fn is_opaque(&self, ctx: &Context, it: &Item) -> bool {
             if self.templ_def().is_opaque(ctx, &()) {
@@ -1103,7 +1103,7 @@ pub mod template {
             ctx.opaque_by_name(&path)
         }
     }
-    impl Trace for TemplInstantiation {
+    impl Trace for TemplInst {
         type Extra = ();
         fn trace<T>(&self, _ctx: &Context, tracer: &mut T, _: &())
         where

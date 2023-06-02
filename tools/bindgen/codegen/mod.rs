@@ -15,7 +15,7 @@ use crate::ir::int::IntKind;
 use crate::ir::item::{CanonName, CanonPath, IsOpaque, Item};
 use crate::ir::layout::Layout;
 use crate::ir::module::Mod;
-use crate::ir::template::{AsTemplParam, TemplInstantiation, TemplParams};
+use crate::ir::template::{AsTemplParam, TemplInst, TemplParams};
 use crate::ir::typ::{Type, TypeKind};
 use crate::ir::var::Var;
 use crate::ir::{Context, ItemId, ItemKind};
@@ -1029,7 +1029,7 @@ impl Generator for Var {
         }
     }
 }
-impl Generator for TemplInstantiation {
+impl Generator for TemplInst {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
@@ -1090,10 +1090,10 @@ impl Generator for Type {
             | TypeKind::Pointer(..)
             | TypeKind::Reference(..)
             | TypeKind::Func(..)
-            | TypeKind::ResolvedTypeRef(..)
+            | TypeKind::ResolvedRef(..)
             | TypeKind::Opaque
-            | TypeKind::TypeParam => {},
-            TypeKind::TemplInstantiation(ref x) => x.codegen(ctx, y, it),
+            | TypeKind::Param => {},
+            TypeKind::TemplInst(ref x) => x.codegen(ctx, y, it),
             TypeKind::BlockPtr(x) => {
                 if !ctx.opts().generate_block {
                     return;
@@ -1289,7 +1289,7 @@ impl Generator for Type {
                 y.push(toks);
             },
             TypeKind::Enum(ref x) => x.codegen(ctx, y, it),
-            ref u @ TypeKind::UnresolvedTypeRef(..) => {
+            ref u @ TypeKind::UnresolvedRef(..) => {
                 unreachable!("Should have been resolved after parsing {:?}!", u)
             },
         }
@@ -2045,10 +2045,10 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
     fn append_implicit_templ_params(&mut self, ctx: &Context, it: &Item) {
         let it = it.id().into_resolver().through_type_refs().resolve(ctx);
         match *it.expect_type().kind() {
-            TypeKind::UnresolvedTypeRef(..) => {
+            TypeKind::UnresolvedRef(..) => {
                 unreachable!("unresolved type refs")
             },
-            TypeKind::ResolvedTypeRef(..) => {
+            TypeKind::ResolvedRef(..) => {
                 unreachable!("resolved type refs")
             },
             TypeKind::Void
@@ -2059,11 +2059,11 @@ impl AppendImplicitTemplParams for proc_macro2::TokenStream {
             | TypeKind::Float(..)
             | TypeKind::Complex(..)
             | TypeKind::Array(..)
-            | TypeKind::TypeParam
+            | TypeKind::Param
             | TypeKind::Opaque
             | TypeKind::Func(..)
             | TypeKind::Enum(..)
-            | TypeKind::TemplInstantiation(..) => return,
+            | TypeKind::TemplInst(..) => return,
             _ => {},
         }
         let ys: Vec<_> = it
@@ -2123,7 +2123,7 @@ impl TryToRust for Item {
         self.kind().expect_type().try_to_rust(ctx, self)
     }
 }
-impl TryToRust for TemplInstantiation {
+impl TryToRust for TemplInst {
     type Extra = Item;
     fn try_to_rust(&self, ctx: &Context, it: &Item) -> error::Result<proc_macro2::TokenStream> {
         if self.is_opaque(ctx, it) {
@@ -2227,8 +2227,8 @@ impl TryToRust for Type {
                 let y = proc_macro2::TokenStream::from_str(&y.join("::")).unwrap();
                 Ok(quote!(#y))
             },
-            TypeKind::TemplInstantiation(ref x) => x.try_to_rust(ctx, it),
-            TypeKind::ResolvedTypeRef(x) => x.try_to_rust(ctx, &()),
+            TypeKind::TemplInst(ref x) => x.try_to_rust(ctx, it),
+            TypeKind::ResolvedRef(x) => x.try_to_rust(ctx, &()),
             TypeKind::TemplAlias(..) | TypeKind::Alias(..) | TypeKind::BlockPtr(..) => {
                 if self.is_block_ptr() && !ctx.opts().generate_block {
                     let y = c_void(ctx);
@@ -2266,14 +2266,14 @@ impl TryToRust for Type {
                     Ok(ty.to_ptr(is_const))
                 }
             },
-            TypeKind::TypeParam => {
+            TypeKind::Param => {
                 let y = it.canon_name(ctx);
                 let y = ctx.rust_ident(y);
                 Ok(quote! {
                     #y
                 })
             },
-            ref u @ TypeKind::UnresolvedTypeRef(..) => {
+            ref u @ TypeKind::UnresolvedRef(..) => {
                 unreachable!("Should have been resolved after parsing {:?}!", u)
             },
         }
@@ -2311,7 +2311,7 @@ impl TryToOpaque for Item {
         self.kind().expect_type().try_get_layout(ctx, self)
     }
 }
-impl TryToOpaque for TemplInstantiation {
+impl TryToOpaque for TemplInst {
     type Extra = Item;
     fn try_get_layout(&self, ctx: &Context, it: &Item) -> error::Result<Layout> {
         it.expect_type().layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)

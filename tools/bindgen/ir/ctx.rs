@@ -4,7 +4,7 @@ use super::func::Func;
 use super::int::IntKind;
 use super::item::{Ancestors, IsOpaque, Item, ItemSet};
 use super::module::{Mod, ModKind};
-use super::template::{TemplInstantiation, TemplParams};
+use super::template::{TemplInst, TemplParams};
 use super::typ::{FloatKind, Type, TypeKind};
 use super::{Edge, ItemKind, Traversal};
 use crate::clang::{self, Cursor};
@@ -304,7 +304,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let id = it.id();
         let is_type = it.kind().is_type();
         let is_unnamed = is_type && it.expect_type().name().is_none();
-        let is_template_instantiation = is_type && it.expect_type().is_templ_instantiation();
+        let is_templ_inst = is_type && it.expect_type().is_templ_inst();
         if it.id() != self.root_mod {
             self.add_item_to_mod(&it);
         }
@@ -316,7 +316,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             old_item.is_none(),
             "should not have already associated an item with the given id"
         );
-        if !is_type || is_template_instantiation {
+        if !is_type || is_templ_inst {
             return;
         }
         if let Some(mut decl) = decl {
@@ -449,7 +449,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 Some(ty) => ty,
                 None => continue,
             };
-            if let TypeKind::UnresolvedTypeRef(ref ty, loc, parent_id) = *ty.kind() {
+            if let TypeKind::UnresolvedRef(ref ty, loc, parent_id) = *ty.kind() {
                 typerefs.push((id, *ty, loc, parent_id));
             };
         }
@@ -468,7 +468,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     Item::new_opaque_type(self.next_item_id(), &ty, self)
                 });
                 let item = self.items[id.0].as_mut().unwrap();
-                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedTypeRef(resolved);
+                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedRef(resolved);
                 resolved
             };
         }
@@ -549,7 +549,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             let new_parent = {
                 let item_id: ItemId = id.into();
                 let item = self.items[item_id.0].as_mut().unwrap();
-                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedTypeRef(replacement_id);
+                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedRef(replacement_id);
                 item.parent()
             };
             let old_parent = self.resolve_item(replacement_id).parent();
@@ -757,7 +757,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     pub fn known_semantic_parent(&self, cur: clang::Cursor) -> Option<ItemId> {
         self.semantic_parents.get(&cur).cloned()
     }
-    fn get_declaration_info_for_templ_instantiation(&self, cur: &Cursor) -> Option<(Cursor, ItemId, usize)> {
+    fn get_decl_for_templ_inst(&self, cur: &Cursor) -> Option<(Cursor, ItemId, usize)> {
         cur.cur_type()
             .canonical_declaration(Some(cur))
             .and_then(|x| {
@@ -823,7 +823,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                 },
                 clang_lib::CXCursor_TemplateRef => {
                     let (template_decl_cursor, template_decl_id, num_expected_template_args) =
-                        self.get_declaration_info_for_templ_instantiation(child)?;
+                        self.get_decl_for_templ_inst(child)?;
                     if num_expected_template_args == 0 || child.has_at_least_num_children(num_expected_template_args) {
                         let ty = Item::from_ty_or_ref(child.cur_type(), *child, Some(template.into()), self);
                         args.push(ty);
@@ -839,8 +839,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                         let mut sub_args: Vec<_> = args.drain(args_len - num_expected_template_args..).collect();
                         sub_args.reverse();
                         let sub_name = Some(template_decl_cursor.spelling());
-                        let sub_inst = TemplInstantiation::new(template_decl_id.as_type_id_unchecked(), sub_args);
-                        let sub_kind = TypeKind::TemplInstantiation(sub_inst);
+                        let sub_inst = TemplInst::new(template_decl_id.as_type_id_unchecked(), sub_args);
+                        let sub_kind = TypeKind::TemplInst(sub_inst);
                         let sub_ty = Type::new(
                             sub_name,
                             template_decl_cursor.cur_type().fallible_layout(self).ok(),
@@ -888,7 +888,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
             return None;
         }
         args.reverse();
-        let type_kind = TypeKind::TemplInstantiation(TemplInstantiation::new(template, args));
+        let type_kind = TypeKind::TemplInst(TemplInst::new(template, args));
         let name = ty.spelling();
         let name = if name.is_empty() { None } else { Some(name) };
         let ty = Type::new(name, ty.fallible_layout(self).ok(), type_kind, ty.is_const());
@@ -973,7 +973,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let spelling = ty.spelling();
         let layout = ty.fallible_layout(self).ok();
         let location = ty.declaration().location();
-        let type_kind = TypeKind::ResolvedTypeRef(wrapped);
+        let type_kind = TypeKind::ResolvedRef(wrapped);
         let ty = Type::new(Some(spelling), layout, type_kind, is_const);
         let item = Item::new(
             with_id,
@@ -1257,9 +1257,9 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                                     | TypeKind::Pointer(..)
                                     | TypeKind::Reference(..)
                                     | TypeKind::Func(..)
-                                    | TypeKind::ResolvedTypeRef(..)
+                                    | TypeKind::ResolvedRef(..)
                                     | TypeKind::Opaque
-                                    | TypeKind::TypeParam => return true,
+                                    | TypeKind::Param => return true,
                                     _ => {},
                                 }
                                 if self.is_stdint_type(&name) {
@@ -1429,7 +1429,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         assert!(self.cannot_derive_partialeq_or_partialord.is_none());
         if self.opts.derive_partialord || self.opts.derive_partialeq || self.opts.derive_eq {
             self.cannot_derive_partialeq_or_partialord =
-                Some(analyze::<derive::Analysis>((self, DeriveTrait::PartialEqOrPartialOrd)));
+                Some(analyze::<derive::Analysis>((self, DeriveTrait::PartialEqOrOrd)));
         }
     }
     pub fn lookup_can_derive_partialeq_or_partialord<Id: Into<ItemId>>(&self, id: Id) -> Resolved {
@@ -1546,7 +1546,7 @@ impl ItemResolver {
             }
             let ty_kind = item.as_type().map(|t| t.kind());
             match ty_kind {
-                Some(&TypeKind::ResolvedTypeRef(next_id)) if self.through_type_refs => {
+                Some(&TypeKind::ResolvedRef(next_id)) if self.through_type_refs => {
                     id = next_id.into();
                 },
                 Some(&TypeKind::Alias(next_id)) if self.through_type_aliases => {

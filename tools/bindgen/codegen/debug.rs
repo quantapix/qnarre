@@ -83,16 +83,16 @@ impl<'a> ImplDebug<'a> for Item {
             | TypeKind::Func(..)
             | TypeKind::Enum(..)
             | TypeKind::Reference(..)
-            | TypeKind::UnresolvedTypeRef(..)
+            | TypeKind::UnresolvedRef(..)
             | TypeKind::Comp(..) => debug_print(name, quote! { #name_ident }),
-            TypeKind::TemplInstantiation(ref x) => {
+            TypeKind::TemplInst(ref x) => {
                 if x.is_opaque(ctx, self) {
                     Some((format!("{}: opaque", name), vec![]))
                 } else {
                     debug_print(name, quote! { #name_ident })
                 }
             },
-            TypeKind::TypeParam => Some((format!("{}: Non-debuggable generic", name), vec![])),
+            TypeKind::Param => Some((format!("{}: Non-debuggable generic", name), vec![])),
             TypeKind::Array(_, len) => {
                 if self.has_type_param_in_array(ctx) {
                     Some((format!("{}: Array with length {}", name, len), vec![]))
@@ -113,7 +113,7 @@ impl<'a> ImplDebug<'a> for Item {
                     ))
                 }
             },
-            TypeKind::ResolvedTypeRef(t) | TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) => {
+            TypeKind::ResolvedRef(t) | TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) => {
                 ctx.resolve_item(t).impl_debug(ctx, name)
             },
             TypeKind::Pointer(x) => {

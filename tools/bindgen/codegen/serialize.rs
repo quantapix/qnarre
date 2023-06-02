@@ -223,7 +223,7 @@ impl<'a> CSerialize<'a> for Type {
                 )?;
                 write!(writer, ")")?
             },
-            TypeKind::ResolvedTypeRef(type_id) => {
+            TypeKind::ResolvedRef(type_id) => {
                 if self.is_const() {
                     write!(writer, "const ")?;
                 }
