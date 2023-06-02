@@ -19,7 +19,7 @@ mod opts;
 
 pub use codegen::utils::variation;
 use codegen::GenError;
-pub use ir::annotations::FieldVisibilityKind;
+pub use ir::annos::FieldVisibilityKind;
 use ir::comment;
 pub use ir::func::Abi;
 use ir::item::Item;

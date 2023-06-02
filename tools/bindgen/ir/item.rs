@@ -1,6 +1,6 @@
 use super::super::codegen::{utils::variation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
 use super::analysis::{HasVtable, Sizedness, *};
-use super::annotations::Annotations;
+use super::annos::Annotations;
 use super::comp::{CompKind, MethodKind};
 use super::ctx::PartialType;
 use super::dot::DotAttrs;
@@ -266,8 +266,8 @@ impl<'a> Iterator for AncestorsIter<'a> {
 #[derive(Debug)]
 pub struct Item {
     id: ItemId,
-    local_id: LazyCell<usize>,
-    next_child_local_id: Cell<usize>,
+    local: LazyCell<usize>,
+    next_child_local: Cell<usize>,
     canon_name: LazyCell<String>,
     path_for_allowlisting: LazyCell<Vec<String>>,
     comment: Option<String>,
@@ -287,8 +287,8 @@ impl Item {
     ) -> Self {
         Item {
             id,
-            local_id: LazyCell::new(),
-            next_child_local_id: Cell::new(1),
+            local: LazyCell::new(),
+            next_child_local: Cell::new(1),
             canon_name: LazyCell::new(),
             path_for_allowlisting: LazyCell::new(),
             parent,
@@ -343,15 +343,15 @@ impl Item {
     pub fn loc(&self) -> Option<&clang::SrcLoc> {
         self.loc.as_ref()
     }
-    pub fn local_id(&self, ctx: &Context) -> usize {
-        *self.local_id.borrow_with(|| {
+    pub fn local(&self, ctx: &Context) -> usize {
+        *self.local.borrow_with(|| {
             let y = ctx.resolve_item(self.parent);
-            y.next_child_local_id()
+            y.next_child_local()
         })
     }
-    pub fn next_child_local_id(&self) -> usize {
-        let y = self.next_child_local_id.get();
-        self.next_child_local_id.set(y + 1);
+    pub fn next_child_local(&self) -> usize {
+        let y = self.next_child_local.get();
+        self.next_child_local.set(y + 1);
         y
     }
     pub fn is_toplevel(&self, ctx: &Context) -> bool {
@@ -462,7 +462,7 @@ impl Item {
             _ => None,
         }
     }
-    fn overload_index(&self, ctx: &Context) -> Option<usize> {
+    fn overload_idx(&self, ctx: &Context) -> Option<usize> {
         self.func_name().and_then(|name| {
             let parent = ctx.resolve_item(self.parent());
             if let ItemKind::Type(ref x) = *parent.kind() {
@@ -498,7 +498,7 @@ impl Item {
                 .unwrap_or_else(|| format!("_bindgen_ty_{}", self.exposed_id(ctx))),
             ItemKind::Func(ref x) => {
                 let mut name = x.name().to_owned();
-                if let Some(x) = self.overload_index(ctx) {
+                if let Some(x) = self.overload_idx(ctx) {
                     if x > 0 {
                         write!(&mut name, "{}", x).unwrap();
                     }
@@ -585,7 +585,7 @@ impl Item {
         if let Some(x) = y {
             match *x {
                 TypeKind::Comp(..) | TypeKind::TemplInst(..) | TypeKind::Enum(..) => {
-                    return self.local_id(ctx).to_string()
+                    return self.local(ctx).to_string()
                 },
                 _ => {},
             }
@@ -624,7 +624,7 @@ impl Item {
             _ => false,
         }
     }
-    pub fn is_enabled_for_codegen(&self, ctx: &Context) -> bool {
+    pub fn is_enabled_for_gen(&self, ctx: &Context) -> bool {
         let y = &ctx.opts().config;
         match *self.kind() {
             ItemKind::Mod(..) => true,
@@ -1079,7 +1079,7 @@ impl Trace for Item {
     {
         match *self.kind() {
             ItemKind::Type(ref x) => {
-                if x.should_be_traced() || !self.is_opaque(ctx, &()) {
+                if x.should_trace() || !self.is_opaque(ctx, &()) {
                     x.trace(ctx, tracer, self);
                 }
             },

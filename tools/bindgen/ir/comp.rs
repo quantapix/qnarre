@@ -1,5 +1,5 @@
 use super::analysis::Sizedness;
-use super::annotations::Annotations;
+use super::annos::Annotations;
 use super::dot::DotAttrs;
 use super::item::{IsOpaque, Item};
 use super::layout::Layout;
@@ -79,7 +79,7 @@ pub trait FieldMethods {
     fn comment(&self) -> Option<&str>;
     fn bitfield_width(&self) -> Option<u32>;
     fn is_public(&self) -> bool;
-    fn annotations(&self) -> &Annotations;
+    fn annos(&self) -> &Annotations;
     fn offset(&self) -> Option<usize>;
 }
 
@@ -248,7 +248,7 @@ pub struct FieldData {
     name: Option<String>,
     ty: TypeId,
     comment: Option<String>,
-    annotations: Annotations,
+    annos: Annotations,
     bitfield_width: Option<u32>,
     public: bool,
     offset: Option<usize>,
@@ -269,8 +269,8 @@ impl FieldMethods for FieldData {
     fn is_public(&self) -> bool {
         self.public
     }
-    fn annotations(&self) -> &Annotations {
-        &self.annotations
+    fn annos(&self) -> &Annotations {
+        &self.annos
     }
     fn offset(&self) -> Option<usize> {
         self.offset
@@ -297,7 +297,7 @@ impl RawField {
         name: Option<String>,
         ty: TypeId,
         comment: Option<String>,
-        annotations: Option<Annotations>,
+        annos: Option<Annotations>,
         bitfield_width: Option<u32>,
         public: bool,
         offset: Option<usize>,
@@ -306,7 +306,7 @@ impl RawField {
             name,
             ty,
             comment,
-            annotations: annotations.unwrap_or_default(),
+            annos: annos.unwrap_or_default(),
             bitfield_width,
             public,
             offset,
@@ -329,8 +329,8 @@ impl FieldMethods for RawField {
     fn is_public(&self) -> bool {
         self.0.is_public()
     }
-    fn annotations(&self) -> &Annotations {
-        self.0.annotations()
+    fn annos(&self) -> &Annotations {
+        self.0.annos()
     }
     fn offset(&self) -> Option<usize> {
         self.0.offset()
@@ -571,13 +571,13 @@ impl CompInfo {
                     };
                     let field_type = Item::from_ty_or_ref(cur2.cur_type(), cur2, Some(potential_id), ctx);
                     let comment = cur2.raw_comment();
-                    let annotations = Annotations::new(&cur2);
+                    let annos = Annotations::new(&cur2);
                     let name = cur2.spelling();
                     let is_public = cur2.public_accessible();
                     let offset = cur2.offset_of_field().ok();
                     assert!(!name.is_empty() || bit_width.is_some(), "Empty field name?");
                     let name = if name.is_empty() { None } else { Some(name) };
-                    let field = RawField::new(name, field_type, comment, annotations, bit_width, is_public, offset);
+                    let field = RawField::new(name, field_type, comment, annos, bit_width, is_public, offset);
                     ci.fields.append_raw_field(field);
                     cur2.visit(|x| {
                         if x.kind() == CXCursor_UnexposedAttr {

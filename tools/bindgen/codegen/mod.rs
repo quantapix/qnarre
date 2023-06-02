@@ -2,7 +2,7 @@ use self::structure::Structure;
 use super::Opts;
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
-use crate::ir::annotations::{Annotations, FieldAccessorKind, FieldVisibilityKind};
+use crate::ir::annos::{Annotations, FieldAccessorKind, FieldVisibilityKind};
 use crate::ir::comp::{CompInfo, CompKind, Field, FieldData, FieldMethods, Method, MethodKind};
 use crate::ir::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
@@ -128,7 +128,7 @@ impl Generator for CompInfo {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         if self.has_non_type_templ_params() {
             return;
         }
@@ -529,7 +529,7 @@ impl Generator for Enum {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         let name = it.canon_name(ctx);
         let ident = ctx.rust_ident(&name);
         let enum_ty = it.expect_type();
@@ -740,7 +740,7 @@ impl Generator for Func {
     type Extra = Item;
     type Return = Option<u32>;
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) -> Self::Return {
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         let is_internal = matches!(self.linkage(), Linkage::Internal);
         let sig = ctx.resolve_item(self.sig());
         let sig = sig.kind().expect_type().canon_type(ctx);
@@ -921,7 +921,7 @@ impl Generator for Var {
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
         use crate::ir::var::VarKind;
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         let name = it.canon_name(ctx);
         if y.seen_var(&name) {
             return;
@@ -1033,7 +1033,7 @@ impl Generator for TemplInst {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         if !ctx.opts().layout_tests || self.is_opaque(ctx, it) {
             return;
         }
@@ -1078,7 +1078,7 @@ impl Generator for Type {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         match *self.kind() {
             TypeKind::Void
             | TypeKind::NullPtr
@@ -1298,7 +1298,7 @@ impl Generator for Type {
 
 impl Item {
     fn before_codegen(&self, ctx: &Context, y: &mut GenResult) -> bool {
-        if !self.is_enabled_for_codegen(ctx) {
+        if !self.is_enabled_for_gen(ctx) {
             return false;
         }
         if self.is_blocklisted(ctx) || y.seen(self.id()) {
@@ -1452,7 +1452,7 @@ impl<'a> Generator for Vtable<'a> {
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
         assert_eq!(it.id(), self.id);
-        debug_assert!(it.is_enabled_for_codegen(ctx));
+        debug_assert!(it.is_enabled_for_gen(ctx));
         let name = ctx.rust_ident(self.canon_name(ctx));
         if ctx.opts().vtable_generation && self.info.base_members().is_empty() && self.info.destructor().is_none() {
             let class_ident = ctx.rust_ident(self.id.canon_name(ctx));
@@ -1612,8 +1612,8 @@ impl<'a> FieldGen<'a> for FieldData {
         if let Some(padding_field) = struct_layout.saw_field(&field_name, field_ty, self.offset()) {
             fields.extend(Some(padding_field));
         }
-        let visibility = compute_visibility(ctx, self.is_public(), Some(self.annotations()), parent_visibility_kind);
-        let accessor_kind = self.annotations().accessor_kind().unwrap_or(accessor_kind);
+        let visibility = compute_visibility(ctx, self.is_public(), Some(self.annos()), parent_visibility_kind);
+        let accessor_kind = self.annos().accessor_kind().unwrap_or(accessor_kind);
         match visibility {
             FieldVisibilityKind::Private => {
                 field.append_all(quote! {
@@ -2500,9 +2500,9 @@ fn wrap_union_field_if_needed(
         if struct_layout.can_copy_union_fields() {
             ty
         } else {
-            let prefix = ctx.trait_prefix();
+            let pre = ctx.trait_prefix();
             quote! {
-                ::#prefix::mem::ManuallyDrop<#ty>
+                ::#pre::mem::ManuallyDrop<#ty>
             }
         }
     } else {
@@ -2519,8 +2519,8 @@ fn wrap_union_field_if_needed(
     }
 }
 
-fn access_specifier(visibility: FieldVisibilityKind) -> proc_macro2::TokenStream {
-    match visibility {
+fn access_specifier(x: FieldVisibilityKind) -> proc_macro2::TokenStream {
+    match x {
         FieldVisibilityKind::Private => quote! {},
         FieldVisibilityKind::PublicCrate => quote! { pub },
         FieldVisibilityKind::Public => quote! { pub },
@@ -2529,17 +2529,17 @@ fn access_specifier(visibility: FieldVisibilityKind) -> proc_macro2::TokenStream
 
 fn compute_visibility(
     ctx: &Context,
-    is_declared_public: bool,
-    annotations: Option<&Annotations>,
+    is_public: bool,
+    annos: Option<&Annotations>,
     default_kind: FieldVisibilityKind,
 ) -> FieldVisibilityKind {
     match (
-        is_declared_public,
+        is_public,
         ctx.opts().respect_cxx_access_specs,
-        annotations.and_then(|e| e.visibility_kind()),
+        annos.and_then(|x| x.visibility_kind()),
     ) {
-        (true, true, annotated_visibility) => annotated_visibility.unwrap_or(FieldVisibilityKind::Public),
-        (false, true, annotated_visibility) => annotated_visibility.unwrap_or(FieldVisibilityKind::Private),
-        (_, false, annotated_visibility) => annotated_visibility.unwrap_or(default_kind),
+        (true, true, x) => x.unwrap_or(FieldVisibilityKind::Public),
+        (false, true, x) => x.unwrap_or(FieldVisibilityKind::Private),
+        (_, false, x) => x.unwrap_or(default_kind),
     }
 }

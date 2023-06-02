@@ -1213,7 +1213,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
         let roots = {
             let mut roots = self
                 .items()
-                .filter(|&(_, item)| item.is_enabled_for_codegen(self))
+                .filter(|&(_, item)| item.is_enabled_for_gen(self))
                 .filter(|&(_, item)| {
                     if self.opts().allowed_types.is_empty()
                         && self.opts().allowed_fns.is_empty()

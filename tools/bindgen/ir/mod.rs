@@ -123,7 +123,7 @@ impl From<Edge> for ItemId {
 }
 
 pub mod analysis;
-pub mod annotations {
+pub mod annos {
     use crate::clang;
     use std::str::FromStr;
     #[derive(Copy, PartialEq, Eq, Clone, Debug)]
@@ -576,7 +576,7 @@ pub mod enum_ty {
     use super::{Context, TypeId};
     use crate::clang;
     use crate::codegen::utils::variation;
-    use crate::ir::annotations::Annotations;
+    use crate::ir::annos::Annotations;
     use crate::parse;
     use crate::regex_set::RegexSet;
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -602,7 +602,6 @@ pub mod enum_ty {
         }
         pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Result<Self, parse::Error> {
             use clang_lib::*;
-            debug!("Enum::from_ty {:?}", ty);
             if ty.kind() != CXType_Enum {
                 return Err(parse::Error::Continue);
             }
@@ -634,15 +633,15 @@ pub mod enum_ty {
                     };
                     if let Some(val) = value {
                         let name = cur.spelling();
-                        let annotations = Annotations::new(&cur);
+                        let annos = Annotations::new(&cur);
                         let custom_behavior = ctx
                             .opts()
                             .last_callback(|x| x.enum_variant_behavior(type_name, &name, val))
                             .or_else(|| {
-                                let annotations = annotations.as_ref()?;
-                                if annotations.hide() {
+                                let annos = annos.as_ref()?;
+                                if annos.hide() {
                                     Some(EnumVariantCustomBehavior::Hide)
-                                } else if annotations.constify_enum_variant() {
+                                } else if annos.constify_enum_variant() {
                                     Some(EnumVariantCustomBehavior::Constify)
                                 } else {
                                     None
@@ -651,7 +650,7 @@ pub mod enum_ty {
                         let new_name = ctx
                             .opts()
                             .last_callback(|x| x.enum_variant_name(type_name, &name, val))
-                            .or_else(|| annotations.as_ref()?.use_instead_of()?.last().cloned())
+                            .or_else(|| annos.as_ref()?.use_instead_of()?.last().cloned())
                             .unwrap_or_else(|| name.clone());
                         let comment = cur.raw_comment();
                         variants.push(EnumVariant::new(new_name, name, comment, val, custom_behavior));
@@ -1266,7 +1265,7 @@ pub fn only_inner_types(_: &Context, x: Edge) -> bool {
 pub fn enabled_edges(ctx: &Context, x: Edge) -> bool {
     let y = &ctx.opts().config;
     match x.kind {
-        EdgeKind::Generic => ctx.resolve_item(x.to).is_enabled_for_codegen(ctx),
+        EdgeKind::Generic => ctx.resolve_item(x.to).is_enabled_for_gen(ctx),
         EdgeKind::TemplParamDef
         | EdgeKind::TemplArg
         | EdgeKind::TemplDecl

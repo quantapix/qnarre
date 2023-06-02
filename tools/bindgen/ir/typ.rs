@@ -300,7 +300,7 @@ impl Type {
             TypeKind::UnresolvedRef(..) => None,
         }
     }
-    pub fn should_be_traced(&self) -> bool {
+    pub fn should_trace(&self) -> bool {
         matches!(
             self.kind,
             TypeKind::Comp(..)
@@ -334,8 +334,6 @@ impl Type {
         } else {
             Some(cur.spelling()).filter(|x| !x.is_empty())
         };
-        debug!("from_clang_ty: {:?}, ty: {:?}, loc: {:?}", id, ty, cur);
-        debug!("currently_parsed_types: {:?}", ctx.currently_parsed_types());
         let canon_ty = ty.canonical_type();
         let mut ty_kind = ty.kind();
         if ty_kind == CXType_Typedef {
@@ -440,7 +438,6 @@ impl Type {
                 },
                 CXType_Auto => {
                     if canon_ty == *ty {
-                        debug!("Couldn't find deduced type: {:?}", ty);
                         return Err(parse::Error::Continue);
                     }
                     return Self::from_clang_ty(id, &canon_ty, cur, parent, ctx);
