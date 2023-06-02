@@ -889,11 +889,7 @@ impl Item {
             decl
         };
         if valid {
-            if let Some(x) = ctx
-                .currently_parsed_types()
-                .iter()
-                .find(|x| *x.decl() == declaration_to_look_for)
-            {
+            if let Some(x) = ctx.parsed_types().iter().find(|x| *x.decl() == declaration_to_look_for) {
                 return Ok(x.id().as_type_id_unchecked());
             }
         }

@@ -137,22 +137,22 @@ item_id_newtype! {
         unchecked = as_fn_id_unchecked;
 }
 
-struct AllowedItemsTraversal<'ctx> {
+struct AllowedsTraversal<'ctx> {
     ctx: &'ctx Context,
     traversal: Traversal<'ctx, ItemSet, Vec<ItemId>>,
 }
-impl<'ctx> AllowedItemsTraversal<'ctx> {
+impl<'ctx> AllowedsTraversal<'ctx> {
     pub fn new<R>(ctx: &'ctx Context, roots: R, pred: for<'a> fn(&'a Context, Edge) -> bool) -> Self
     where
         R: IntoIterator<Item = ItemId>,
     {
-        AllowedItemsTraversal {
+        AllowedsTraversal {
             ctx,
             traversal: Traversal::new(ctx, roots, pred),
         }
     }
 }
-impl<'ctx> Iterator for AllowedItemsTraversal<'ctx> {
+impl<'ctx> Iterator for AllowedsTraversal<'ctx> {
     type Item = ItemId;
     fn next(&mut self) -> Option<ItemId> {
         loop {
@@ -264,7 +264,7 @@ impl Context {
     pub fn target_ptr_size(&self) -> usize {
         self.target.ptr_size / 8
     }
-    pub fn currently_parsed_types(&self) -> &[PartialType] {
+    pub fn parsed_types(&self) -> &[PartialType] {
         &self.parsed_types[..]
     }
     pub fn begin_parsing(&mut self, x: PartialType) {
@@ -456,12 +456,12 @@ impl Context {
     fn compute_bitfield_units(&mut self) {
         let _t = self.timer("compute_bitfield_units");
         assert!(self.collected_typerefs());
-        let need_bitfield_allocation = mem::take(&mut self.need_bitfields);
-        for id in need_bitfield_allocation {
+        let needing = mem::take(&mut self.need_bitfields);
+        for id in needing {
             self.with_loaned_item(id, |ctx, x| {
                 let ty = x.kind_mut().as_type_mut().unwrap();
-                let layout = ty.layout(ctx);
-                ty.as_comp_mut().unwrap().compute_bitfield_units(ctx, layout.as_ref());
+                let y = ty.layout(ctx);
+                ty.as_comp_mut().unwrap().compute_bitfield_units(ctx, y.as_ref());
             });
         }
     }
@@ -492,59 +492,54 @@ impl Context {
         if self.replacements.is_empty() {
             return;
         }
-        let mut replacements = vec![];
-        for (id, item) in self.items() {
-            if item.annos().use_instead_of().is_some() {
+        let mut ys = vec![];
+        for (id, x) in self.items() {
+            if x.annos().use_instead_of().is_some() {
                 continue;
             }
-            let ty = match item.kind().as_type() {
-                Some(ty) => ty,
+            let ty = match x.kind().as_type() {
+                Some(x) => x,
                 None => continue,
             };
             match *ty.kind() {
                 TypeKind::Comp(..) | TypeKind::TemplAlias(..) | TypeKind::Enum(..) | TypeKind::Alias(..) => {},
                 _ => continue,
             }
-            let path = item.path_for_allowlisting(self);
-            let replacement = self.replacements.get(&path[1..]);
-            if let Some(replacement) = replacement {
-                if *replacement != id && self.resolve_item_fallible(*replacement).is_some() {
-                    replacements.push((id.expect_type_id(self), replacement.expect_type_id(self)));
+            let path = x.path_for_allowlisting(self);
+            let y = self.replacements.get(&path[1..]);
+            if let Some(y) = y {
+                if *y != id && self.resolve_item_fallible(*y).is_some() {
+                    ys.push((id.expect_type_id(self), y.expect_type_id(self)));
                 }
             }
         }
-        for (id, replacement_id) in replacements {
-            debug!("Replacing {:?} with {:?}", id, replacement_id);
-            let new_parent = {
-                let item_id: ItemId = id.into();
-                let item = self.items[item_id.0].as_mut().unwrap();
-                *item.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedRef(replacement_id);
-                item.parent()
+        for (id, id2) in ys {
+            let parent = self.resolve_item(id2).parent();
+            let parent2 = {
+                let x: ItemId = id.into();
+                let x = self.items[x.0].as_mut().unwrap();
+                *x.kind_mut().as_type_mut().unwrap().kind_mut() = TypeKind::ResolvedRef(id2);
+                x.parent()
             };
-            let old_parent = self.resolve_item(replacement_id).parent();
-            if new_parent == old_parent {
+            if parent2 == parent {
                 continue;
             }
-            let replacement_item_id: ItemId = replacement_id.into();
-            self.items[replacement_item_id.0]
-                .as_mut()
-                .unwrap()
-                .set_parent_for_replacement(new_parent);
+            let x: ItemId = id2.into();
+            self.items[x.0].as_mut().unwrap().set_parent_for_replacement(parent2);
             let old_mod = {
                 let immut_self = &*self;
-                old_parent
+                parent
                     .ancestors(immut_self)
                     .chain(Some(immut_self.root_mod.into()))
                     .find(|x| {
-                        let item = immut_self.resolve_item(*x);
-                        item.as_mod()
-                            .map_or(false, |x| x.children().contains(&replacement_id.into()))
+                        let x = immut_self.resolve_item(*x);
+                        x.as_mod().map_or(false, |x| x.children().contains(&id2.into()))
                     })
             };
             let old_mod = old_mod.expect("Every replacement item should be in a module");
             let new_mod = {
                 let immut_self = &*self;
-                new_parent
+                parent2
                     .ancestors(immut_self)
                     .find(|x| immut_self.resolve_item(*x).is_mod())
             };
@@ -558,14 +553,14 @@ impl Context {
                 .as_mod_mut()
                 .unwrap()
                 .children_mut()
-                .remove(&replacement_id.into());
+                .remove(&id2.into());
             self.items[new_mod.0]
                 .as_mut()
                 .unwrap()
                 .as_mod_mut()
                 .unwrap()
                 .children_mut()
-                .insert(replacement_id.into());
+                .insert(id2.into());
         }
     }
     pub fn gen<F, Out>(mut self, cb: F) -> Result<(Out, Opts), GenError>
@@ -577,7 +572,7 @@ impl Context {
         self.compute_bitfield_units();
         self.process_replacements();
         self.deanonymize_fields();
-        self.assert_no_dangling_references();
+        self.assert_no_dangling_refs();
         self.compute_allowed_and_codegen_items();
         self.assert_every_item_in_mod();
         self.compute_has_vtable();
@@ -595,12 +590,12 @@ impl Context {
         let ret = cb(&self)?;
         Ok((ret, self.opts))
     }
-    fn assert_no_dangling_references(&self) {}
-    fn assert_no_dangling_item_traversal(&self) -> super::AssertNoDangling {
+    fn assert_no_dangling_refs(&self) {}
+    fn assert_no_dangling_traversal(&self) -> super::AssertNoDangling {
         assert!(self.in_gen_phase());
         assert!(self.current_mod == self.root_mod);
-        let roots = self.items().map(|(x, _)| x);
-        super::AssertNoDangling::new(self, roots, super::all_edges)
+        let ys = self.items().map(|(x, _)| x);
+        super::AssertNoDangling::new(self, ys, super::all_edges)
     }
     fn assert_every_item_in_mod(&self) {}
     fn compute_sizedness(&mut self) {
@@ -736,7 +731,7 @@ impl Context {
             })
             .or_else(|| {
                 cur.referenced()
-                    .and_then(|x| self.currently_parsed_types().iter().find(|x2| *x2.decl() == x).cloned())
+                    .and_then(|x| self.parsed_types().iter().find(|x2| *x2.decl() == x).cloned())
                     .and_then(|x| {
                         let n = x.num_self_templ_ps(self);
                         if n == 0 {
@@ -1256,9 +1251,9 @@ impl Context {
         } else {
             super::only_inner_types
         };
-        let allowed = AllowedItemsTraversal::new(self, roots.clone(), pred).collect::<ItemSet>();
+        let allowed = AllowedsTraversal::new(self, roots.clone(), pred).collect::<ItemSet>();
         let codegen_items = if self.opts().allowlist_recursively {
-            AllowedItemsTraversal::new(self, roots, super::enabled_edges).collect::<ItemSet>()
+            AllowedsTraversal::new(self, roots, super::enabled_edges).collect::<ItemSet>()
         } else {
             allowed.clone()
         };
