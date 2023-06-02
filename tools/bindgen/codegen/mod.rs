@@ -394,7 +394,7 @@ impl Generator for CompInfo {
                         self.fields()
                             .iter()
                             .filter_map(|x| match *x {
-                                Field::DataMember(ref x) if x.name().is_some() => Some(x),
+                                Field::Data(ref x) if x.name().is_some() => Some(x),
                                 _ => None,
                             })
                             .flat_map(|x| {
@@ -445,7 +445,7 @@ impl Generator for CompInfo {
                 }
             }
             if ctx.opts().config.constrs() {
-                for x in self.constructors() {
+                for x in self.constrs() {
                     Method::new(MethodKind::Constr, *x, /* const */ false).codegen(
                         ctx,
                         &mut methods,
@@ -456,7 +456,7 @@ impl Generator for CompInfo {
                 }
             }
             if ctx.opts().config.destrs() {
-                if let Some((kind, x)) = self.destructor() {
+                if let Some((kind, x)) = self.destr() {
                     debug_assert!(kind.is_destr());
                     Method::new(kind, x, false).codegen(ctx, &mut methods, &mut method_names, y, self);
                 }
@@ -1454,7 +1454,7 @@ impl<'a> Generator for Vtable<'a> {
         assert_eq!(it.id(), self.id);
         debug_assert!(it.is_enabled_for_gen(ctx));
         let name = ctx.rust_ident(self.canon_name(ctx));
-        if ctx.opts().vtable_generation && self.info.base_members().is_empty() && self.info.destructor().is_none() {
+        if ctx.opts().vtable_generation && self.info.base_members().is_empty() && self.info.destr().is_none() {
             let class_ident = ctx.rust_ident(self.id.canon_name(ctx));
             let methods = self
                 .info
@@ -1542,7 +1542,7 @@ impl<'a> FieldGen<'a> for Field {
         M: Extend<proc_macro2::TokenStream>,
     {
         match *self {
-            Field::DataMember(ref data) => {
+            Field::Data(ref data) => {
                 data.codegen(
                     ctx,
                     visibility_kind,

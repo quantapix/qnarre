@@ -85,12 +85,12 @@ pub trait FieldMethods {
 
 #[derive(Debug)]
 pub enum Field {
-    DataMember(FieldData),
+    Data(FieldData),
 }
 impl Field {
     pub fn layout(&self, ctx: &Context) -> Option<Layout> {
         match *self {
-            Field::DataMember(ref x) => ctx.resolve_type(x.ty).layout(ctx),
+            Field::Data(ref x) => ctx.resolve_type(x.ty).layout(ctx),
         }
     }
 }
@@ -101,7 +101,7 @@ impl Trace for Field {
         T: Tracer,
     {
         match *self {
-            Field::DataMember(ref x) => {
+            Field::Data(ref x) => {
                 tracer.visit_kind(x.ty.into(), EdgeKind::Field);
             },
         }
@@ -113,7 +113,7 @@ impl DotAttrs for Field {
         W: io::Write,
     {
         match *self {
-            Field::DataMember(ref x) => x.dot_attrs(ctx, y),
+            Field::Data(ref x) => x.dot_attrs(ctx, y),
         }
     }
 }
@@ -179,7 +179,7 @@ impl CompFields {
         let mut accessor_names: HashMap<String, AccessorNamesPair> = fields
             .iter()
             .flat_map(|x| match *x {
-                Field::DataMember(_) => &[],
+                Field::Data(_) => &[],
             })
             .filter_map(|x| x.name())
             .map(|x| {
@@ -205,7 +205,7 @@ impl CompFields {
         let mut anon_field_counter = 0;
         for field in fields.iter_mut() {
             match *field {
-                Field::DataMember(FieldData { ref mut name, .. }) => {
+                Field::Data(FieldData { ref mut name, .. }) => {
                     if name.is_some() {
                         continue;
                     }
@@ -229,14 +229,14 @@ impl Trace for CompFields {
     {
         match *self {
             CompFields::Error => {},
-            CompFields::Before(ref fields) => {
-                for f in fields {
-                    tracer.visit_kind(f.ty().into(), EdgeKind::Field);
+            CompFields::Before(ref xs) => {
+                for x in xs {
+                    tracer.visit_kind(x.ty().into(), EdgeKind::Field);
                 }
             },
             CompFields::After { ref fields, .. } => {
-                for f in fields {
-                    f.trace(ctx, tracer, &());
+                for x in fields {
+                    x.trace(ctx, tracer, &());
                 }
             },
         }
@@ -374,19 +374,19 @@ pub struct CompInfo {
     fields: CompFields,
     templ_params: Vec<TypeId>,
     methods: Vec<Method>,
-    constructors: Vec<FnId>,
-    destructor: Option<(MethodKind, FnId)>,
+    constrs: Vec<FnId>,
+    destr: Option<(MethodKind, FnId)>,
     base_members: Vec<Base>,
     inner_types: Vec<TypeId>,
     inner_vars: Vec<VarId>,
     has_own_virt_method: bool,
-    has_destructor: bool,
+    has_destr: bool,
     has_nonempty_base: bool,
     has_non_type_templ_params: bool,
     has_unevaluable_bit_field_width: bool,
     packed_attr: bool,
     found_unknown_attr: bool,
-    is_forward_declaration: bool,
+    is_fwd_decl: bool,
 }
 impl CompInfo {
     pub fn new(kind: CompKind) -> Self {
@@ -395,19 +395,19 @@ impl CompInfo {
             fields: CompFields::default(),
             templ_params: vec![],
             methods: vec![],
-            constructors: vec![],
-            destructor: None,
+            constrs: vec![],
+            destr: None,
             base_members: vec![],
             inner_types: vec![],
             inner_vars: vec![],
             has_own_virt_method: false,
-            has_destructor: false,
+            has_destr: false,
             has_nonempty_base: false,
             has_non_type_templ_params: false,
             has_unevaluable_bit_field_width: false,
             packed_attr: false,
             found_unknown_attr: false,
-            is_forward_declaration: false,
+            is_fwd_decl: false,
         }
     }
     pub fn layout(&self, ctx: &Context) -> Option<Layout> {
@@ -478,7 +478,7 @@ impl CompInfo {
             return false;
         }
         self.fields().iter().any(|x| match *x {
-            Field::DataMember(..) => false,
+            Field::Data(..) => false,
         })
     }
     pub fn has_non_type_templ_params(&self) -> bool {
@@ -487,17 +487,17 @@ impl CompInfo {
     pub fn has_own_virt_method(&self) -> bool {
         self.has_own_virt_method
     }
-    pub fn has_own_destructor(&self) -> bool {
-        self.has_destructor
+    pub fn has_own_destr(&self) -> bool {
+        self.has_destr
     }
     pub fn methods(&self) -> &[Method] {
         &self.methods
     }
-    pub fn constructors(&self) -> &[FnId] {
-        &self.constructors
+    pub fn constrs(&self) -> &[FnId] {
+        &self.constrs
     }
-    pub fn destructor(&self) -> Option<(MethodKind, FnId)> {
-        self.destructor
+    pub fn destr(&self) -> Option<(MethodKind, FnId)> {
+        self.destr
     }
     pub fn kind(&self) -> CompKind {
         self.kind
@@ -527,7 +527,7 @@ impl CompInfo {
         let kind = kind?;
         debug!("CompInfo::from_ty({:?}, {:?})", kind, cursor);
         let mut ci = CompInfo::new(kind);
-        ci.is_forward_declaration = cur.map_or(true, |x| match x.kind() {
+        ci.is_fwd_decl = cur.map_or(true, |x| match x.kind() {
             CXCursor_ParmDecl => true,
             CXCursor_StructDecl | CXCursor_UnionDecl | CXCursor_ClassDecl => !x.is_definition(),
             _ => false,
@@ -643,7 +643,7 @@ impl CompInfo {
                     let is_virt = cur2.method_is_virt();
                     let is_static = cur2.method_is_static();
                     debug_assert!(!(is_static && is_virt), "How?");
-                    ci.has_destructor |= cur2.kind() == CXCursor_Destructor;
+                    ci.has_destr |= cur2.kind() == CXCursor_Destructor;
                     ci.has_own_virt_method |= is_virt;
                     if !ci.templ_params.is_empty() {
                         return CXChildVisit_Continue;
@@ -655,7 +655,7 @@ impl CompInfo {
                     let signature = signature.expect_fn_id(ctx);
                     match cur2.kind() {
                         CXCursor_Constructor => {
-                            ci.constructors.push(signature);
+                            ci.constrs.push(signature);
                         },
                         CXCursor_Destructor => {
                             let kind = if is_virt {
@@ -665,7 +665,7 @@ impl CompInfo {
                             } else {
                                 MethodKind::Destr
                             };
-                            ci.destructor = Some((kind, signature));
+                            ci.destr = Some((kind, signature));
                         },
                         CXCursor_CXXMethod => {
                             let is_const = cur2.method_is_const();
@@ -768,7 +768,7 @@ impl CompInfo {
         false
     }
     pub fn is_fwd_decl(&self) -> bool {
-        self.is_forward_declaration
+        self.is_fwd_decl
     }
     pub fn compute_bitfield_units(&mut self, ctx: &Context, layout: Option<&Layout>) {
         let packed = self.is_packed(ctx, layout);
@@ -795,7 +795,7 @@ impl CompInfo {
             ctx.opts().default_non_copy_union_style
         };
         let all_can_copy = self.fields().iter().all(|f| match *f {
-            Field::DataMember(ref field_data) => field_data.ty().can_derive_copy(ctx),
+            Field::Data(ref field_data) => field_data.ty().can_derive_copy(ctx),
         });
         if !all_can_copy && union_style == variation::NonCopyUnion::BindgenWrapper {
             return (false, false);
@@ -815,7 +815,7 @@ impl DotAttrs for CompInfo {
         if self.has_own_virt_method {
             writeln!(y, "<tr><td>has_vtable</td><td>true</td></tr>")?;
         }
-        if self.has_destructor {
+        if self.has_destr {
             writeln!(y, "<tr><td>has_destructor</td><td>true</td></tr>")?;
         }
         if self.has_nonempty_base {
@@ -827,7 +827,7 @@ impl DotAttrs for CompInfo {
         if self.packed_attr {
             writeln!(y, "<tr><td>packed_attr</td><td>true</td></tr>")?;
         }
-        if self.is_forward_declaration {
+        if self.is_fwd_decl {
             writeln!(y, "<tr><td>is_forward_declaration</td><td>true</td></tr>")?;
         }
         if !self.fields().is_empty() {
@@ -850,7 +850,7 @@ impl IsOpaque for CompInfo {
             return true;
         }
         if self.fields().iter().any(|f| match *f {
-            Field::DataMember(_) => false,
+            Field::Data(_) => false,
         }) {
             return true;
         }
@@ -880,10 +880,10 @@ impl Trace for CompInfo {
         for method in self.methods() {
             tracer.visit_kind(method.sig.into(), EdgeKind::Method);
         }
-        if let Some((_kind, signature)) = self.destructor() {
+        if let Some((_kind, signature)) = self.destr() {
             tracer.visit_kind(signature.into(), EdgeKind::Destructor);
         }
-        for ctor in self.constructors() {
+        for ctor in self.constrs() {
             tracer.visit_kind(ctor.into(), EdgeKind::Constructor);
         }
         if it.is_opaque(ctx, &()) {
@@ -912,7 +912,7 @@ where
             let non_bitfields = raw_fields
                 .by_ref()
                 .peeking_take_while(|f| f.bitfield_width().is_none())
-                .map(|f| Field::DataMember(f.0));
+                .map(|f| Field::Data(f.0));
             fields.extend(non_bitfields);
         }
         let mut bitfields = raw_fields

@@ -795,7 +795,7 @@ pub fn gen_partialeq_impl(
         }
         for f in comp.fields() {
             match *f {
-                Field::DataMember(ref x) => {
+                Field::Data(ref x) => {
                     let ty = ctx.resolve_item(x.ty());
                     let x = x.name().unwrap();
                     ys.push(gen_field(ctx, ty, x));

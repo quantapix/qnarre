@@ -467,7 +467,7 @@ impl Item {
             let parent = ctx.resolve_item(self.parent());
             if let ItemKind::Type(ref x) = *parent.kind() {
                 if let TypeKind::Comp(ref x) = *x.kind() {
-                    return x.constructors().iter().position(|x| *x == self.id()).or_else(|| {
+                    return x.constrs().iter().position(|x| *x == self.id()).or_else(|| {
                         x.methods()
                             .iter()
                             .filter(|x| {

@@ -466,7 +466,7 @@ pub mod has_destructor {
                     }
                 },
                 TypeKind::Comp(ref x) => {
-                    if x.has_own_destructor() {
+                    if x.has_own_destr() {
                         return self.insert(id);
                     }
                     match x.kind() {
@@ -474,7 +474,7 @@ pub mod has_destructor {
                         CompKind::Struct => {
                             let destr = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()))
                                 || x.fields().iter().any(|x| match *x {
-                                    Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
+                                    Field::Data(ref x) => self.ys.contains(&x.ty().into()),
                                 });
                             if destr {
                                 self.insert(id)
@@ -618,7 +618,7 @@ pub mod has_float {
                         return self.insert(id);
                     }
                     let fields = x.fields().iter().any(|x| match *x {
-                        Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
+                        Field::Data(ref x) => self.ys.contains(&x.ty().into()),
                     });
                     if fields {
                         return self.insert(id);
@@ -757,7 +757,7 @@ pub mod has_type_param {
                         return self.insert(id);
                     }
                     let fields = info.fields().iter().any(|x| match *x {
-                        Field::DataMember(ref x) => self.ys.contains(&x.ty().into()),
+                        Field::Data(ref x) => self.ys.contains(&x.ty().into()),
                     });
                     if fields {
                         return self.insert(id);

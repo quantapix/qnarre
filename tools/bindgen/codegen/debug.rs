@@ -15,7 +15,7 @@ pub fn gen_debug_impl(ctx: &Context, fields: &[Field], it: &Item, kind: CompKind
             },
             CompKind::Struct => {
                 let processed_fields = fields.iter().filter_map(|f| match f {
-                    Field::DataMember(ref fd) => fd.impl_debug(ctx, ()),
+                    Field::Data(ref fd) => fd.impl_debug(ctx, ()),
                 });
                 for (i, (fstring, toks)) in processed_fields.enumerate() {
                     if i > 0 {
