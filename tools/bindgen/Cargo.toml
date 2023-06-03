@@ -13,18 +13,18 @@ path = "lib.rs"
 bitflags = "2"
 cexpr = "0.6"
 clang_lib = { path = "../clang", package = "clang" }
-lazycell = "1"
 lazy_static = "1"
-peeking_take_while = "1"
-quote = { version = "1", default-features = false }
-syn = { version = "2", features = ["full", "extra-traits", "visit-mut"]}
-regex = { version = "1", default-features = false, features = ["std", "unicode"] }
-which = { version = "4", optional = true, default-features = false }
-prettyplease = { version = "0.2" }
-shlex = "1"
-rustc-hash = "1"
-proc-macro2 = { version = "1", default-features = false }
+lazycell = "1"
 log = "0.4"
+peeking_take_while = "1"
+prettyplease = { version = "0.2" }
+proc-macro2 = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+regex = { version = "1", default-features = false, features = ["std", "unicode"] }
+rustc-hash = "1"
+shlex = "1"
+syn = { version = "2", features = ["full", "extra-traits", "visit-mut"]}
+which = { version = "4", optional = true, default-features = false }
 
 [features]
 default = ["runtime", "which-rustfmt"]

@@ -4,64 +4,44 @@
 extern crate libc;
 
 use self::prelude::*;
-
 #[derive(Debug)]
 pub enum LLVMMemoryBuffer {}
-
 #[derive(Debug)]
 pub enum LLVMContext {}
-
 #[derive(Debug)]
 pub enum LLVMModule {}
-
 #[derive(Debug)]
 pub enum LLVMType {}
-
 #[derive(Debug)]
 pub enum LLVMValue {}
-
 #[derive(Debug)]
 pub enum LLVMBasicBlock {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueMetadata {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueNamedMDNode {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueValueMetadataEntry {}
-
 #[derive(Debug)]
 pub enum LLVMBuilder {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueDIBuilder {}
-
 #[derive(Debug)]
 pub enum LLVMModuleProvider {}
-
 #[derive(Debug)]
 pub enum LLVMPassManager {}
-
 #[derive(Debug)]
 pub enum LLVMPassRegistry {}
-
 #[derive(Debug)]
 pub enum LLVMUse {}
-
 #[derive(Debug)]
 pub enum LLVMDiagnosticInfo {}
-
 #[derive(Debug)]
 pub enum LLVMComdat {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueModuleFlagEntry {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueJITEventListener {}
-
 #[derive(Debug)]
 pub enum LLVMOpaqueAttributeRef {}
 
@@ -88,20 +68,10 @@ pub mod prelude {
     pub type LLVMJITEventListenerRef = *mut super::LLVMOpaqueJITEventListener;
     pub type LLVMAttributeRef = *mut super::LLVMOpaqueAttributeRef;
 }
-
 pub mod core;
 pub mod extra;
 pub mod orc;
-
-pub mod transforms {
-    pub mod instcombine;
-    pub mod ipo;
-    pub mod pass_builder;
-    pub mod pass_manager_builder;
-    pub mod scalar;
-    pub mod util;
-    pub mod vectorize;
-}
+pub mod trafos;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -174,7 +144,6 @@ pub enum LLVMOpcode {
     LLVMCleanupPad = 64,
     LLVMCatchSwitch = 65,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMTypeKind {
@@ -200,7 +169,6 @@ pub enum LLVMTypeKind {
     LLVMX86_AMXTypeKind = 19,
     LLVMTargetExtTypeKind = 20,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMLinkage {
@@ -222,7 +190,6 @@ pub enum LLVMLinkage {
     LLVMLinkerPrivateLinkage = 15,
     LLVMLinkerPrivateWeakLinkage = 16,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMVisibility {
@@ -230,7 +197,6 @@ pub enum LLVMVisibility {
     LLVMHiddenVisibility = 1,
     LLVMProtectedVisibility = 2,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMUnnamedAddr {
@@ -238,7 +204,6 @@ pub enum LLVMUnnamedAddr {
     LLVMLocalUnnamedAddr,
     LLVMGlobalUnnamedAddr,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMDLLStorageClass {
@@ -246,7 +211,6 @@ pub enum LLVMDLLStorageClass {
     LLVMDLLImportStorageClass = 1,
     LLVMDLLExportStorageClass = 2,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMCallConv {
@@ -293,7 +257,6 @@ pub enum LLVMCallConv {
     LLVMAMDGPULSCallConv = 95,
     LLVMAMDGPUESCallConv = 96,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMValueKind {
@@ -302,7 +265,6 @@ pub enum LLVMValueKind {
     LLVMMemoryUseValueKind,
     LLVMMemoryDefValueKind,
     LLVMMemoryPhiValueKind,
-
     LLVMFunctionValueKind,
     LLVMGlobalAliasValueKind,
     LLVMGlobalIFuncValueKind,
@@ -326,7 +288,6 @@ pub enum LLVMValueKind {
     LLVMPoisonValueKind,
     LLVMConstantTargetNoneValueKind,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMIntPredicate {
@@ -341,7 +302,6 @@ pub enum LLVMIntPredicate {
     LLVMIntSLT = 40,
     LLVMIntSLE = 41,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMRealPredicate {
@@ -362,14 +322,12 @@ pub enum LLVMRealPredicate {
     LLVMRealUNE = 14,
     LLVMRealPredicateTrue = 15,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMLandingPadClauseTy {
     LLVMLandingPadCatch = 0,
     LLVMLandingPadFilter = 1,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMThreadLocalMode {
@@ -379,7 +337,6 @@ pub enum LLVMThreadLocalMode {
     LLVMInitialExecTLSModel = 3,
     LLVMLocalExecTLSModel = 4,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMAtomicOrdering {
@@ -391,7 +348,6 @@ pub enum LLVMAtomicOrdering {
     LLVMAtomicOrderingAcquireRelease = 6,
     LLVMAtomicOrderingSequentiallyConsistent = 7,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMAtomicRMWBinOp {
@@ -411,7 +367,6 @@ pub enum LLVMAtomicRMWBinOp {
     LLVMAtomicRMWBinOpFMax = 13,
     LLVMAtomicRMWBinOpFMin = 14,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMDiagnosticSeverity {
@@ -420,14 +375,12 @@ pub enum LLVMDiagnosticSeverity {
     LLVMDSRemark = 2,
     LLVMDSNote = 3,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMInlineAsmDialect {
     LLVMInlineAsmDialectATT,
     LLVMInlineAsmDialectIntel,
 }
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LLVMModuleFlagBehavior {
@@ -443,7 +396,6 @@ pub const LLVMAttributeReturnIndex: ::libc::c_uint = 0;
 pub const LLVMAttributeFunctionIndex: ::libc::c_uint = !0; // -1
 
 pub type LLVMAttributeIndex = ::libc::c_uint;
-
 pub type LLVMDiagnosticHandler = Option<extern "C" fn(arg1: LLVMDiagnosticInfoRef, arg2: *mut ::libc::c_void)>;
 pub type LLVMYieldCallback = Option<extern "C" fn(arg1: LLVMContextRef, arg2: *mut ::libc::c_void)>;
 

@@ -1,5 +1,5 @@
 [workspace]
-members = ["tools/bindgen", "tools/clang"]
+members = ["tools/bindgen", "tools/clang", "tools/llvm"]
 # members = ["tools/llvm"]
 
 [workspace.package]

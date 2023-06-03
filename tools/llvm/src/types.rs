@@ -1,5 +1,5 @@
-use llvm_lib::core::LLVMGetTypeKind;
 #[deny(missing_docs)]
+use llvm_lib::core::LLVMGetTypeKind;
 use llvm_lib::core::{
     LLVMAlignOf, LLVMArrayType, LLVMConstNull, LLVMConstPointerNull, LLVMFunctionType, LLVMGetElementType,
     LLVMGetTypeContext, LLVMGetTypeKind, LLVMGetUndef, LLVMPointerType, LLVMPrintTypeToString, LLVMSizeOf,

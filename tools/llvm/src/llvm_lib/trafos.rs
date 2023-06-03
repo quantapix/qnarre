@@ -6,6 +6,7 @@ use target_machine::LLVMTargetMachineRef;
 
 #[derive(Debug)]
 pub enum LLVMOpaquePassBuilderOptions {}
+
 pub type LLVMPassBuilderOptionsRef = *mut LLVMOpaquePassBuilderOptions;
 
 extern "C" {
@@ -13,8 +14,14 @@ extern "C" {
     pub fn LLVMDisposePassBuilderOptions(Options: LLVMPassBuilderOptionsRef);
     pub fn LLVMPassBuilderOptionsSetCallGraphProfile(Options: LLVMPassBuilderOptionsRef, CallGraphProfile: LLVMBool);
     pub fn LLVMPassBuilderOptionsSetDebugLogging(Options: LLVMPassBuilderOptionsRef, DebugLogging: LLVMBool);
-    pub fn LLVMPassBuilderOptionsSetForgetAllSCEVInLoopUnroll(Options: LLVMPassBuilderOptionsRef, ForgetAllSCEVInLoopUnroll: LLVMBool);
-    pub fn LLVMPassBuilderOptionsSetLicmMssaNoAccForPromotionCap(Options: LLVMPassBuilderOptionsRef, LicmMssaNoAccForPromotionCap: ::libc::c_uint);
+    pub fn LLVMPassBuilderOptionsSetForgetAllSCEVInLoopUnroll(
+        Options: LLVMPassBuilderOptionsRef,
+        ForgetAllSCEVInLoopUnroll: LLVMBool,
+    );
+    pub fn LLVMPassBuilderOptionsSetLicmMssaNoAccForPromotionCap(
+        Options: LLVMPassBuilderOptionsRef,
+        LicmMssaNoAccForPromotionCap: ::libc::c_uint,
+    );
     pub fn LLVMPassBuilderOptionsSetLicmMssaOptCap(Options: LLVMPassBuilderOptionsRef, LicmMssaOptCap: ::libc::c_uint);
     pub fn LLVMPassBuilderOptionsSetLoopInterleaving(Options: LLVMPassBuilderOptionsRef, LoopInterleaving: LLVMBool);
     pub fn LLVMPassBuilderOptionsSetLoopUnrolling(Options: LLVMPassBuilderOptionsRef, LoopUnrolling: LLVMBool);
@@ -22,7 +29,12 @@ extern "C" {
     pub fn LLVMPassBuilderOptionsSetMergeFunctions(Options: LLVMPassBuilderOptionsRef, MergeFunctions: LLVMBool);
     pub fn LLVMPassBuilderOptionsSetSLPVectorization(Options: LLVMPassBuilderOptionsRef, SLPVectorization: LLVMBool);
     pub fn LLVMPassBuilderOptionsSetVerifyEach(Options: LLVMPassBuilderOptionsRef, VerifyEach: LLVMBool);
-    pub fn LLVMRunPasses(M: LLVMModuleRef, Passes: *const ::libc::c_char, TM: LLVMTargetMachineRef, Options: LLVMPassBuilderOptionsRef) -> LLVMErrorRef;
+    pub fn LLVMRunPasses(
+        M: LLVMModuleRef,
+        Passes: *const ::libc::c_char,
+        TM: LLVMTargetMachineRef,
+        Options: LLVMPassBuilderOptionsRef,
+    ) -> LLVMErrorRef;
 }
 
 #[derive(Debug)]
@@ -62,7 +74,11 @@ extern "C" {
     pub fn LLVMAddGlobalDCEPass(PM: LLVMPassManagerRef);
     pub fn LLVMAddGlobalOptimizerPass(PM: LLVMPassManagerRef);
     pub fn LLVMAddInternalizePass(arg1: LLVMPassManagerRef, AllButMain: ::libc::c_uint);
-    pub fn LLVMAddInternalizePassWithMustPreservePredicate(PM: LLVMPassManagerRef, Context: *mut ::libc::c_void, MustPreserve: Option<extern "C" fn(LLVMValueRef, *mut ::libc::c_void) -> LLVMBool>);
+    pub fn LLVMAddInternalizePassWithMustPreservePredicate(
+        PM: LLVMPassManagerRef,
+        Context: *mut ::libc::c_void,
+        MustPreserve: Option<extern "C" fn(LLVMValueRef, *mut ::libc::c_void) -> LLVMBool>,
+    );
     pub fn LLVMAddIPSCCPPass(PM: LLVMPassManagerRef);
     pub fn LLVMAddMergeFunctionsPass(PM: LLVMPassManagerRef);
     pub fn LLVMAddStripDeadPrototypesPass(PM: LLVMPassManagerRef);
