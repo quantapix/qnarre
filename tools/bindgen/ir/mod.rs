@@ -962,19 +962,21 @@ pub mod templ {
     use crate::clang;
 
     pub trait Params: Sized {
-        fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId>;
-        fn num_self_templ_ps(&self, ctx: &Context) -> usize {
-            self.self_templ_ps(ctx).len()
+        fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId>;
+        fn num_templ_params(&self, ctx: &Context) -> usize {
+            self.self_templ_params(ctx).len()
         }
-        fn all_templ_ps(&self, ctx: &Context) -> Vec<TypeId>
+        fn all_templ_params(&self, ctx: &Context) -> Vec<TypeId>
         where
             Self: Ancestors,
         {
             let mut ys: Vec<_> = self.ancestors(ctx).collect();
             ys.reverse();
-            ys.into_iter().flat_map(|x| x.self_templ_ps(ctx).into_iter()).collect()
+            ys.into_iter()
+                .flat_map(|x| x.self_templ_params(ctx).into_iter())
+                .collect()
         }
-        fn used_templ_ps(&self, ctx: &Context) -> Vec<TypeId>
+        fn used_templ_params(&self, ctx: &Context) -> Vec<TypeId>
         where
             Self: AsRef<ItemId>,
         {
@@ -984,7 +986,7 @@ pub mod templ {
             );
             let id = *self.as_ref();
             ctx.resolve_item(id)
-                .all_templ_ps(ctx)
+                .all_templ_params(ctx)
                 .into_iter()
                 .filter(|x| ctx.uses_templ_param(id, *x))
                 .collect()
@@ -994,9 +996,9 @@ pub mod templ {
     where
         T: Copy + Into<ItemId>,
     {
-        fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
+        fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
             ctx.resolve_item_fallible(*self)
-                .map_or(vec![], |x| x.self_templ_ps(ctx))
+                .map_or(vec![], |x| x.self_templ_params(ctx))
         }
     }
 

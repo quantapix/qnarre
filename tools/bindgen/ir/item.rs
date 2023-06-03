@@ -1038,8 +1038,8 @@ impl AsRef<ItemId> for Item {
     }
 }
 impl Params for Item {
-    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
-        self.kind.self_templ_ps(ctx)
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+        self.kind.self_templ_params(ctx)
     }
 }
 impl AsParam for Item {
@@ -1049,9 +1049,9 @@ impl AsParam for Item {
     }
 }
 impl Params for ItemKind {
-    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
-            ItemKind::Type(ref x) => x.self_templ_ps(ctx),
+            ItemKind::Type(ref x) => x.self_templ_params(ctx),
             ItemKind::Func(_) | ItemKind::Mod(_) | ItemKind::Var(_) => {
                 vec![]
             },

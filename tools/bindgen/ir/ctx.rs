@@ -202,10 +202,10 @@ pub struct Context {
     semantic_parents: HashMap<clang::Cursor, ItemId>,
     sizedness: Option<HashMap<TypeId, sizedness::Resolved>>,
     target: clang::Target,
+    templ_params: Option<HashMap<ItemId, ItemSet>>,
     translation_unit: clang::TranslationUnit,
     type_params: HashMap<clang::Cursor, TypeId>,
     types: HashMap<TypeKey, TypeId>,
-    used_templ_ps: Option<HashMap<ItemId, ItemSet>>,
 }
 impl Context {
     pub fn new(opts: Opts, x: &[clang::UnsavedFile]) -> Self {
@@ -249,10 +249,10 @@ impl Context {
             semantic_parents: Default::default(),
             sizedness: None,
             target,
+            templ_params: None,
             translation_unit,
             type_params: Default::default(),
             types: Default::default(),
-            used_templ_ps: None,
         }
     }
     pub fn is_target_wasm32(&self) -> bool {
@@ -578,7 +578,7 @@ impl Context {
         self.compute_has_vtable();
         self.compute_sizedness();
         self.compute_has_destr();
-        self.find_used_templ_ps();
+        self.find_templ_params();
         self.compute_enum_typedef_combos();
         self.compute_cannot_debug();
         self.compute_cannot_default();
@@ -635,18 +635,18 @@ impl Context {
         assert!(self.in_gen_phase());
         self.has_destr.as_ref().unwrap().contains(&id.into())
     }
-    fn find_used_templ_ps(&mut self) {
-        let _t = self.timer("find_used_templ_ps");
+    fn find_templ_params(&mut self) {
+        let _t = self.timer("find_templ_params");
         if self.opts.allowlist_recursively {
             let ys = analyze::<used_templ_param::Analysis>(self);
-            self.used_templ_ps = Some(ys);
+            self.templ_params = Some(ys);
         } else {
             let mut ys = HashMap::default();
             for &id in self.allowed_items() {
                 ys.entry(id)
-                    .or_insert_with(|| id.self_templ_ps(self).into_iter().map(|x| x.into()).collect());
+                    .or_insert_with(|| id.self_templ_params(self).into_iter().map(|x| x.into()).collect());
             }
-            self.used_templ_ps = Some(ys);
+            self.templ_params = Some(ys);
         }
     }
     pub fn uses_templ_param(&self, id: ItemId, param: TypeId) -> bool {
@@ -660,15 +660,15 @@ impl Context {
             .through_type_aliases()
             .resolve(self)
             .id();
-        self.used_templ_ps
+        self.templ_params
             .as_ref()
             .expect("should have found template parameter usage if we're in codegen")
             .get(&id)
             .map_or(false, |x| x.contains(&param))
     }
-    pub fn uses_any_templ_ps(&self, id: ItemId) -> bool {
+    pub fn uses_any_templ_params(&self, id: ItemId) -> bool {
         assert!(self.in_gen_phase());
-        self.used_templ_ps
+        self.templ_params
             .as_ref()
             .expect("should have template parameter usage info in codegen phase")
             .get(&id)
@@ -721,7 +721,7 @@ impl Context {
             .canon_decl(Some(cur))
             .and_then(|x| {
                 self.get_resolved_type(&x).and_then(|x2| {
-                    let n = x2.num_self_templ_ps(self);
+                    let n = x2.num_templ_params(self);
                     if n == 0 {
                         None
                     } else {
@@ -733,7 +733,7 @@ impl Context {
                 cur.referenced()
                     .and_then(|x| self.parsed_types().iter().find(|x2| *x2.decl() == x).cloned())
                     .and_then(|x| {
-                        let n = x.num_self_templ_ps(self);
+                        let n = x.num_templ_params(self);
                         if n == 0 {
                             None
                         } else {
@@ -749,7 +749,7 @@ impl Context {
         ty: &clang::Type,
         location: clang::Cursor,
     ) -> Option<TypeId> {
-        let num_expected_args = self.resolve_type(template).num_self_templ_ps(self);
+        let num_expected_args = self.resolve_type(template).num_templ_params(self);
         if num_expected_args == 0 {
             warn!(
                 "Tried to instantiate a template for which we could not \
@@ -1517,10 +1517,10 @@ impl PartialType {
     }
 }
 impl Params for PartialType {
-    fn self_templ_ps(&self, _ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_params(&self, _ctx: &Context) -> Vec<TypeId> {
         vec![]
     }
-    fn num_self_templ_ps(&self, _ctx: &Context) -> usize {
+    fn num_templ_params(&self, _ctx: &Context) -> usize {
         match self.decl().kind() {
             clang_lib::CXCursor_ClassTemplate
             | clang_lib::CXCursor_FunctionTemplate

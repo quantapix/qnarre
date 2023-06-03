@@ -129,7 +129,7 @@ impl Generator for Comp {
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
         debug_assert!(it.is_enabled_for_gen(ctx));
-        if self.has_non_type_templ_ps() {
+        if self.has_non_type_params() {
             return;
         }
         let ty = it.expect_type();
@@ -153,7 +153,7 @@ impl Generator for Comp {
                 });
                 structure.saw_vtable();
             }
-            for x in self.base_members() {
+            for x in self.bases() {
                 if !x.requires_storage(ctx) {
                     continue;
                 }
@@ -252,7 +252,7 @@ impl Generator for Comp {
             });
         }
         let mut generic_params = vec![];
-        for (idx, ty) in it.used_templ_ps(ctx).iter().enumerate() {
+        for (idx, ty) in it.used_templ_params(ctx).iter().enumerate() {
             let x = ctx.resolve_type(*ty);
             let x = x.name().unwrap();
             let ident = ctx.rust_ident(x);
@@ -311,7 +311,7 @@ impl Generator for Comp {
                 && !ctx.no_default_by_name(it)
                 && !it.annos().disallow_default();
         }
-        let all_templ_ps = it.all_templ_ps(ctx);
+        let all_templ_ps = it.all_templ_params(ctx);
         if traits.contains(DerivableTraits::COPY) && !traits.contains(DerivableTraits::CLONE) {
             needs_clone = true;
         }
@@ -758,7 +758,7 @@ impl Generator for Func {
             FnKind::Func => ctx.opts().dynamic_library_name.is_some(),
             _ => false,
         };
-        if !it.all_templ_ps(ctx).is_empty() {
+        if !it.all_templ_params(ctx).is_empty() {
             return None;
         }
         let name = self.name();
@@ -928,7 +928,7 @@ impl Generator for Var {
         }
         y.saw_var(&name);
         let ident = ctx.rust_ident(&name);
-        if !it.all_templ_ps(ctx).is_empty() {
+        if !it.all_templ_params(ctx).is_empty() {
             return;
         }
         let mut attrs = vec![];
@@ -1037,7 +1037,7 @@ impl Generator for Instance {
         if !ctx.opts().layout_tests || self.is_opaque(ctx, it) {
             return;
         }
-        if ctx.uses_any_templ_ps(it.id()) {
+        if ctx.uses_any_templ_params(it.id()) {
             return;
         }
         let layout = it.kind().expect_type().layout(ctx);
@@ -1157,7 +1157,7 @@ impl Generator for Type {
                     }
                     return;
                 }
-                let mut outer_params = it.used_templ_ps(ctx);
+                let mut outer_params = it.used_templ_params(ctx);
                 let is_opaque = it.is_opaque(ctx, &());
                 let ty = if is_opaque {
                     outer_params = vec![];
@@ -1454,7 +1454,7 @@ impl<'a> Generator for Vtable<'a> {
         assert_eq!(it.id(), self.id);
         debug_assert!(it.is_enabled_for_gen(ctx));
         let name = ctx.rust_ident(self.canon_name(ctx));
-        if ctx.opts().vtable_generation && self.info.base_members().is_empty() && self.info.destr().is_none() {
+        if ctx.opts().vtable_generation && self.info.bases().is_empty() && self.info.destr().is_none() {
             let class_ident = ctx.rust_ident(self.id.canon_name(ctx));
             let methods = self
                 .info
@@ -2067,7 +2067,7 @@ impl AppendImplicitParams for proc_macro2::TokenStream {
             _ => {},
         }
         let ys: Vec<_> = it
-            .used_templ_ps(ctx)
+            .used_templ_params(ctx)
             .iter()
             .map(|x| x.try_to_rust(ctx, &()).expect("templ params must be rust types"))
             .collect();
@@ -2133,7 +2133,7 @@ impl TryToRust for Instance {
         let mut ty = quote! {};
         let path = def.namespace_aware_canon_path(ctx);
         ty.append_separated(path.into_iter().map(|x| ctx.rust_ident(x)), quote!(::));
-        let ps = def.self_templ_ps(ctx);
+        let ps = def.self_templ_params(ctx);
         if ps.is_empty() {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
@@ -2234,7 +2234,12 @@ impl TryToRust for Type {
                     let y = c_void(ctx);
                     return Ok(y.to_ptr(/* is_const = */ false));
                 }
-                if it.is_opaque(ctx, &()) && it.used_templ_ps(ctx).into_iter().any(|x| x.is_templ_param(ctx, &())) {
+                if it.is_opaque(ctx, &())
+                    && it
+                        .used_templ_params(ctx)
+                        .into_iter()
+                        .any(|x| x.is_templ_param(ctx, &()))
+                {
                     self.try_to_opaque(ctx, it)
                 } else if let Some(ty) = self.name().and_then(|x| utils::type_from_named(ctx, x)) {
                     Ok(ty)
@@ -2243,8 +2248,8 @@ impl TryToRust for Type {
                 }
             },
             TypeKind::Comp(ref x) => {
-                let ps = it.all_templ_ps(ctx);
-                if x.has_non_type_templ_ps() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
+                let ps = it.all_templ_params(ctx);
+                if x.has_non_type_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
                     return self.try_to_opaque(ctx, it);
                 }
                 utils::build_path(it, ctx)
@@ -2454,7 +2459,7 @@ fn root_import(ctx: &Context, it: &Item) -> proc_macro2::TokenStream {
 
 fn derives_of_item(it: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
     let mut ys = DerivableTraits::empty();
-    let ps = it.all_templ_ps(ctx);
+    let ps = it.all_templ_params(ctx);
     if it.can_derive_copy(ctx) && !it.annos().disallow_copy() {
         ys |= DerivableTraits::COPY;
         ys |= DerivableTraits::CLONE;

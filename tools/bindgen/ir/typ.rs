@@ -82,10 +82,10 @@ impl DotAttrs for TypeKind {
     }
 }
 impl Params for TypeKind {
-    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
-            TypeKind::ResolvedRef(x) => ctx.resolve_type(x).self_templ_ps(ctx),
-            TypeKind::Comp(ref x) => x.self_templ_ps(ctx),
+            TypeKind::ResolvedRef(x) => ctx.resolve_type(x).self_templ_params(ctx),
+            TypeKind::Comp(ref x) => x.self_templ_params(ctx),
             TypeKind::TemplAlias(_, ref x) => x.clone(),
             TypeKind::Opaque
             | TypeKind::TemplInst(..)
@@ -576,8 +576,8 @@ impl DotAttrs for Type {
     }
 }
 impl Params for Type {
-    fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
-        self.kind.self_templ_ps(ctx)
+    fn self_templ_params(&self, ctx: &Context) -> Vec<TypeId> {
+        self.kind.self_templ_params(ctx)
     }
 }
 impl AsParam for Type {

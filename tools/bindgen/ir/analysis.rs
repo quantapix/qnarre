@@ -272,7 +272,7 @@ pub mod derive {
                     self.derive.can_derive_vec()
                 },
                 TypeKind::Comp(ref x) => {
-                    assert!(!x.has_non_type_templ_ps());
+                    assert!(!x.has_non_type_params());
                     if !self.derive.can_derive_comp_fwd_decl() && x.is_fwd_decl() {
                         return Resolved::No;
                     }
@@ -284,7 +284,8 @@ pub mod derive {
                     if x.kind() == CompKind::Union {
                         if self.derive.can_derive_union() {
                             if self.ctx.opts().untagged_union
-                                && (!x.self_templ_ps(self.ctx).is_empty() || !it.all_templ_ps(self.ctx).is_empty())
+                                && (!x.self_templ_params(self.ctx).is_empty()
+                                    || !it.all_templ_params(self.ctx).is_empty())
                             {
                                 return Resolved::No;
                             }
@@ -471,7 +472,7 @@ pub mod has_destructor {
                     match x.kind() {
                         CompKind::Union => super::Resolved::Same,
                         CompKind::Struct => {
-                            let destr = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()))
+                            let destr = x.bases().iter().any(|x| self.ys.contains(&x.ty.into()))
                                 || x.fields().iter().any(|x| match *x {
                                     Field::Data(ref x) => self.ys.contains(&x.ty().into()),
                                 });
@@ -612,7 +613,7 @@ pub mod has_float {
                     }
                 },
                 TypeKind::Comp(ref x) => {
-                    let bases = x.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
+                    let bases = x.bases().iter().any(|x| self.ys.contains(&x.ty.into()));
                     if bases {
                         return self.insert(id);
                     }
@@ -751,7 +752,7 @@ pub mod has_type_param {
                     }
                 },
                 TypeKind::Comp(ref info) => {
-                    let bases = info.base_members().iter().any(|x| self.ys.contains(&x.ty.into()));
+                    let bases = info.bases().iter().any(|x| self.ys.contains(&x.ty.into()));
                     if bases {
                         return self.insert(id);
                     }
@@ -907,7 +908,7 @@ pub mod has_vtable {
                     if info.has_own_virt_method() {
                         y |= Resolved::SelfHasVtable;
                     }
-                    let has_vtable = info.base_members().iter().any(|x| self.ys.contains_key(&x.ty.into()));
+                    let has_vtable = info.bases().iter().any(|x| self.ys.contains_key(&x.ty.into()));
                     if has_vtable {
                         y |= Resolved::BaseHasVtable;
                     }
@@ -1088,7 +1089,7 @@ pub mod sizedness {
                         return self.insert(id, Resolved::NonZeroSized);
                     }
                     let y = x
-                        .base_members()
+                        .bases()
                         .iter()
                         .filter_map(|x| self.ys.get(&x.ty))
                         .fold(Resolved::ZeroSized, |a, b| a.join(*b));
@@ -1202,7 +1203,7 @@ pub mod used_templ_param {
         fn constrain_inst(&self, id: ItemId, y: &mut ItemSet, inst: &Instance) {
             let decl = self.ctx.resolve_type(inst.def());
             let args = inst.args();
-            let ps = decl.self_templ_ps(self.ctx);
+            let ps = decl.self_templ_params(self.ctx);
             debug_assert!(id != inst.def());
             let used_by_def = self
                 .ys
@@ -1310,7 +1311,7 @@ pub mod used_templ_param {
                 if let Some(TypeKind::TemplInst(inst)) = k {
                     let decl = ctx.resolve_type(inst.def());
                     let args = inst.args();
-                    let ps = decl.self_templ_ps(ctx);
+                    let ps = decl.self_templ_params(ctx);
                     for (arg, p) in args.iter().zip(ps.iter()) {
                         let arg = arg
                             .into_resolver()

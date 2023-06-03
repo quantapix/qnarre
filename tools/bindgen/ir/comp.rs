@@ -370,44 +370,44 @@ impl Base {
 
 #[derive(Debug)]
 pub struct Comp {
-    kind: CompKind,
-    fields: CompFields,
-    templ_ps: Vec<TypeId>,
-    methods: Vec<Method>,
+    bases: Vec<Base>,
     constrs: Vec<FnId>,
     destr: Option<(MethKind, FnId)>,
-    bases: Vec<Base>,
+    fields: CompFields,
+    found_unknown_attr: bool,
+    has_destr: bool,
+    has_non_type_params: bool,
+    has_nonempty_base: bool,
+    has_own_virt_method: bool,
+    has_unevaluable_width: bool,
     inner_types: Vec<TypeId>,
     inner_vars: Vec<VarId>,
-    has_own_virt_method: bool,
-    has_destr: bool,
-    has_nonempty_base: bool,
-    has_non_type_templ_ps: bool,
-    has_unevaluable_width: bool,
-    packed_attr: bool,
-    found_unknown_attr: bool,
     is_fwd_decl: bool,
+    kind: CompKind,
+    methods: Vec<Method>,
+    packed_attr: bool,
+    templ_params: Vec<TypeId>,
 }
 impl Comp {
     pub fn new(kind: CompKind) -> Self {
         Comp {
-            kind,
-            fields: CompFields::default(),
-            templ_ps: vec![],
-            methods: vec![],
+            bases: vec![],
             constrs: vec![],
             destr: None,
-            bases: vec![],
+            fields: CompFields::default(),
+            found_unknown_attr: false,
+            has_destr: false,
+            has_non_type_params: false,
+            has_nonempty_base: false,
+            has_own_virt_method: false,
+            has_unevaluable_width: false,
             inner_types: vec![],
             inner_vars: vec![],
-            has_own_virt_method: false,
-            has_destr: false,
-            has_nonempty_base: false,
-            has_non_type_templ_ps: false,
-            has_unevaluable_width: false,
-            packed_attr: false,
-            found_unknown_attr: false,
             is_fwd_decl: false,
+            kind,
+            methods: vec![],
+            packed_attr: false,
+            templ_params: vec![],
         }
     }
     pub fn layout(&self, ctx: &Context) -> Option<Layout> {
@@ -422,7 +422,7 @@ impl Comp {
         }
         let mut max_size = 0;
         let mut max_align = 1;
-        self.each_known_field_layout(ctx, |x| {
+        self.each_known_layout(ctx, |x| {
             max_size = cmp::max(max_size, x.size);
             max_align = cmp::max(max_align, x.align);
         });
@@ -444,13 +444,13 @@ impl Comp {
             CompFields::Before(ref raw_fields) => !raw_fields.is_empty(),
         }
     }
-    fn each_known_field_layout(&self, ctx: &Context, mut callback: impl FnMut(Layout)) {
+    fn each_known_layout(&self, ctx: &Context, mut cb: impl FnMut(Layout)) {
         match self.fields {
             CompFields::Error => {},
             CompFields::After { ref fields, .. } => {
                 for field in fields.iter() {
                     if let Some(layout) = field.layout(ctx) {
-                        callback(layout);
+                        cb(layout);
                     }
                 }
             },
@@ -458,7 +458,7 @@ impl Comp {
                 for field in raw_fields.iter() {
                     let field_ty = ctx.resolve_type(field.0.ty);
                     if let Some(layout) = field_ty.layout(ctx) {
-                        callback(layout);
+                        cb(layout);
                     }
                 }
             },
@@ -481,8 +481,8 @@ impl Comp {
             Field::Data(..) => false,
         })
     }
-    pub fn has_non_type_templ_ps(&self) -> bool {
-        self.has_non_type_templ_ps
+    pub fn has_non_type_params(&self) -> bool {
+        self.has_non_type_params
     }
     pub fn has_own_virt_method(&self) -> bool {
         self.has_own_virt_method
@@ -505,7 +505,7 @@ impl Comp {
     pub fn is_union(&self) -> bool {
         self.kind() == CompKind::Union
     }
-    pub fn base_members(&self) -> &[Base] {
+    pub fn bases(&self) -> &[Base] {
         &self.bases
     }
     pub fn from_ty(
@@ -620,7 +620,7 @@ impl Comp {
                         "Item::type_param should't fail when pointing \
                          at a TemplateTypeParameter",
                     );
-                    ci.templ_ps.push(param);
+                    ci.templ_params.push(param);
                 },
                 CXCursor_CXXBaseSpecifier => {
                     let is_virt_base = cur2.is_virt_base();
@@ -644,7 +644,7 @@ impl Comp {
                     debug_assert!(!(is_static && is_virt), "How?");
                     ci.has_destr |= cur2.kind() == CXCursor_Destructor;
                     ci.has_own_virt_method |= is_virt;
-                    if !ci.templ_ps.is_empty() {
+                    if !ci.templ_params.is_empty() {
                         return CXChildVisit_Continue;
                     }
                     let signature = match Item::parse(cur2, Some(potential_id), ctx) {
@@ -684,7 +684,7 @@ impl Comp {
                     }
                 },
                 CXCursor_NonTypeTemplateParameter => {
-                    ci.has_non_type_templ_ps = true;
+                    ci.has_non_type_params = true;
                 },
                 CXCursor_VarDecl => {
                     let linkage = cur2.linkage();
@@ -753,7 +753,7 @@ impl Comp {
         }
         if let Some(parent_layout) = layout {
             let mut packed = false;
-            self.each_known_field_layout(ctx, |x| {
+            self.each_known_layout(ctx, |x| {
                 packed = packed || x.align > parent_layout.align;
             });
             if packed {
@@ -820,8 +820,8 @@ impl DotAttrs for Comp {
         if self.has_nonempty_base {
             writeln!(y, "<tr><td>has_nonempty_base</td><td>true</td></tr>")?;
         }
-        if self.has_non_type_templ_ps {
-            writeln!(y, "<tr><td>has_non_type_templ_ps</td><td>true</td></tr>")?;
+        if self.has_non_type_params {
+            writeln!(y, "<tr><td>has_non_type_params</td><td>true</td></tr>")?;
         }
         if self.packed_attr {
             writeln!(y, "<tr><td>packed_attr</td><td>true</td></tr>")?;
@@ -842,7 +842,7 @@ impl DotAttrs for Comp {
 impl IsOpaque for Comp {
     type Extra = Option<Layout>;
     fn is_opaque(&self, ctx: &Context, layout: &Option<Layout>) -> bool {
-        if self.has_non_type_templ_ps || self.has_unevaluable_width {
+        if self.has_non_type_params || self.has_unevaluable_width {
             return true;
         }
         if let CompFields::Error = self.fields {
@@ -857,8 +857,8 @@ impl IsOpaque for Comp {
     }
 }
 impl Params for Comp {
-    fn self_templ_ps(&self, _ctx: &Context) -> Vec<TypeId> {
-        self.templ_ps.clone()
+    fn self_templ_params(&self, _ctx: &Context) -> Vec<TypeId> {
+        self.templ_params.clone()
     }
 }
 impl Trace for Comp {
@@ -867,7 +867,7 @@ impl Trace for Comp {
     where
         T: Tracer,
     {
-        for p in it.all_templ_ps(ctx) {
+        for p in it.all_templ_params(ctx) {
             tracer.visit_kind(p.into(), EdgeKind::TemplParamDef);
         }
         for ty in self.inner_types() {
@@ -888,7 +888,7 @@ impl Trace for Comp {
         if it.is_opaque(ctx, &()) {
             return;
         }
-        for base in self.base_members() {
+        for base in self.bases() {
             tracer.visit_kind(base.ty.into(), EdgeKind::BaseMember);
         }
         self.fields.trace(ctx, tracer, &());

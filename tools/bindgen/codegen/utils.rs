@@ -778,7 +778,7 @@ pub fn gen_partialeq_impl(
             &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
         });
     } else {
-        for x in comp.base_members().iter() {
+        for x in comp.bases().iter() {
             if !x.requires_storage(ctx) {
                 continue;
             }
