@@ -1,41 +1,8 @@
 #[deny(missing_docs)]
-use llvm_lib::core::LLVMGetTypeKind;
-use llvm_lib::core::{
-    LLVMAlignOf, LLVMArrayType, LLVMConstNull, LLVMConstPointerNull, LLVMFunctionType, LLVMGetElementType,
-    LLVMGetTypeContext, LLVMGetTypeKind, LLVMGetUndef, LLVMPointerType, LLVMPrintTypeToString, LLVMSizeOf,
-    LLVMTypeIsSized, LLVMVectorType,
-};
-use llvm_lib::core::{
-    LLVMConstAllOnes, LLVMConstArray, LLVMConstInt, LLVMConstIntOfArbitraryPrecision, LLVMConstIntOfStringAndSize,
-    LLVMGetIntTypeWidth,
-};
-use llvm_lib::core::{
-    LLVMConstArray, LLVMConstNamedStruct, LLVMCountStructElementTypes, LLVMGetStructElementTypes, LLVMGetStructName,
-    LLVMIsOpaqueStruct, LLVMIsPackedStruct, LLVMStructGetTypeAtIndex, LLVMStructSetBody,
-};
-use llvm_lib::core::{LLVMConstArray, LLVMConstReal, LLVMConstRealOfStringAndSize};
-use llvm_lib::core::{LLVMConstArray, LLVMConstVector, LLVMGetVectorSize};
-use llvm_lib::core::{LLVMConstArray, LLVMGetArrayLength};
-use llvm_lib::core::{LLVMConstArray, LLVMGetPointerAddressSpace};
-use llvm_lib::core::{
-    LLVMCountParamTypes, LLVMGetParamTypes, LLVMGetReturnType, LLVMGetTypeKind, LLVMIsFunctionVarArg,
-};
+use llvm_lib::core::*;
 use llvm_lib::execution_engine::LLVMCreateGenericValueOfFloat;
 use llvm_lib::execution_engine::LLVMCreateGenericValueOfInt;
-use llvm_lib::prelude::LLVMTypeRef;
-use llvm_lib::prelude::LLVMTypeRef;
-use llvm_lib::prelude::LLVMTypeRef;
-use llvm_lib::prelude::LLVMTypeRef;
-use llvm_lib::prelude::LLVMTypeRef;
 use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
-use llvm_lib::LLVMTypeKind;
-use llvm_lib::LLVMTypeKind;
 use llvm_lib::LLVMTypeKind;
 
 use crate::context::ContextRef;
@@ -72,18 +39,6 @@ use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::mem::forget;
 
-pub use crate::types::array_type::ArrayType;
-pub use crate::types::enums::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum};
-pub use crate::types::float_type::FloatType;
-pub use crate::types::fn_type::FunctionType;
-pub use crate::types::int_type::{IntType, StringRadix};
-pub use crate::types::metadata_type::MetadataType;
-pub use crate::types::ptr_type::PointerType;
-pub use crate::types::struct_type::StructType;
-pub use crate::types::traits::{AnyType, AsTypeRef, BasicType, FloatMathType, IntMathType, PointerMathType};
-pub use crate::types::vec_type::VectorType;
-pub use crate::types::void_type::VoidType;
-
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct Type<'ctx> {
     ty: LLVMTypeRef,
@@ -112,32 +67,12 @@ impl<'ctx> Type<'ctx> {
         assert!(size != 0, "Vectors of size zero are not allowed.");
         unsafe { VectorType::new(LLVMVectorType(self.ty, size)) }
     }
-    #[cfg(not(feature = "experimental"))]
     fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
         let mut param_types: Vec<LLVMTypeRef> = param_types.iter().map(|val| val.as_type_ref()).collect();
         unsafe {
             FunctionType::new(LLVMFunctionType(
                 self.ty,
                 param_types.as_mut_ptr(),
-                param_types.len() as u32,
-                is_var_args as i32,
-            ))
-        }
-    }
-    #[cfg(feature = "experimental")]
-    fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        let pool: Bump<[usize; 16]> = Bump::uninit();
-        let mut pool_start = None;
-        for (i, param_type) in param_types.iter().enumerate() {
-            let addr = pool.leak(param_type.as_type_ref()).expect("Found more than 16 params");
-            if i == 0 {
-                pool_start = Some(addr as *mut _);
-            }
-        }
-        unsafe {
-            FunctionType::new(LLVMFunctionType(
-                self.ty,
-                pool_start.unwrap_or(std::ptr::null_mut()),
                 param_types.len() as u32,
                 is_var_args as i32,
             ))
