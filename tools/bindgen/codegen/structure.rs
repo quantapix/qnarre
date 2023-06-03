@@ -1,8 +1,8 @@
 use super::utils;
 use crate::ir::comp::Comp;
-use crate::ir::layout::Layout;
 use crate::ir::typ::{Type, TypeKind};
 use crate::ir::Context;
+use crate::ir::Layout;
 use proc_macro2::{self, Ident, Span};
 use std::cmp;
 

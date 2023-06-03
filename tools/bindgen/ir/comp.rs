@@ -2,8 +2,8 @@ use super::analysis::Sizedness;
 use super::annos::Annotations;
 use super::dot::DotAttrs;
 use super::item::{IsOpaque, Item};
-use super::layout::Layout;
-use super::template::TemplParams;
+use super::templ::Params;
+use super::Layout;
 use super::{Context, EdgeKind, FnId, ItemId, Trace, Tracer, TypeId, VarId};
 use crate::clang;
 use crate::codegen::structure::{align_to, bytes_from_bits_pow2};
@@ -376,14 +376,14 @@ pub struct Comp {
     methods: Vec<Method>,
     constrs: Vec<FnId>,
     destr: Option<(MethKind, FnId)>,
-    base_members: Vec<Base>,
+    bases: Vec<Base>,
     inner_types: Vec<TypeId>,
     inner_vars: Vec<VarId>,
     has_own_virt_method: bool,
     has_destr: bool,
     has_nonempty_base: bool,
     has_non_type_templ_ps: bool,
-    has_unevaluable_bit_field_width: bool,
+    has_unevaluable_width: bool,
     packed_attr: bool,
     found_unknown_attr: bool,
     is_fwd_decl: bool,
@@ -397,14 +397,14 @@ impl Comp {
             methods: vec![],
             constrs: vec![],
             destr: None,
-            base_members: vec![],
+            bases: vec![],
             inner_types: vec![],
             inner_vars: vec![],
             has_own_virt_method: false,
             has_destr: false,
             has_nonempty_base: false,
             has_non_type_templ_ps: false,
-            has_unevaluable_bit_field_width: false,
+            has_unevaluable_width: false,
             packed_attr: false,
             found_unknown_attr: false,
             is_fwd_decl: false,
@@ -422,9 +422,9 @@ impl Comp {
         }
         let mut max_size = 0;
         let mut max_align = 1;
-        self.each_known_field_layout(ctx, |layout| {
-            max_size = cmp::max(max_size, layout.size);
-            max_align = cmp::max(max_align, layout.align);
+        self.each_known_field_layout(ctx, |x| {
+            max_size = cmp::max(max_size, x.size);
+            max_align = cmp::max(max_align, x.align);
         });
         Some(Layout::new(max_size, max_align))
     }
@@ -506,7 +506,7 @@ impl Comp {
         self.kind() == CompKind::Union
     }
     pub fn base_members(&self) -> &[Base] {
-        &self.base_members
+        &self.bases
     }
     pub fn from_ty(
         potential_id: ItemId,
@@ -561,7 +561,7 @@ impl Comp {
                     let bit_width = if cur2.is_bit_field() {
                         let width = cur2.bit_width();
                         if width.is_none() {
-                            ci.has_unevaluable_bit_field_width = true;
+                            ci.has_unevaluable_width = true;
                             return CXChildVisit_Break;
                         }
                         width
@@ -626,12 +626,12 @@ impl Comp {
                     let is_virt_base = cur2.is_virt_base();
                     ci.has_own_virt_method |= is_virt_base;
                     let kind = if is_virt_base { BaseKind::Virt } else { BaseKind::Normal };
-                    let field_name = match ci.base_members.len() {
+                    let field_name = match ci.bases.len() {
                         0 => "_base".into(),
                         n => format!("_base_{}", n),
                     };
                     let type_id = Item::from_ty_or_ref(cur2.cur_type(), cur2, None, ctx);
-                    ci.base_members.push(Base {
+                    ci.bases.push(Base {
                         ty: type_id,
                         kind,
                         field_name,
@@ -842,7 +842,7 @@ impl DotAttrs for Comp {
 impl IsOpaque for Comp {
     type Extra = Option<Layout>;
     fn is_opaque(&self, ctx: &Context, layout: &Option<Layout>) -> bool {
-        if self.has_non_type_templ_ps || self.has_unevaluable_bit_field_width {
+        if self.has_non_type_templ_ps || self.has_unevaluable_width {
             return true;
         }
         if let CompFields::Error = self.fields {
@@ -856,7 +856,7 @@ impl IsOpaque for Comp {
         false
     }
 }
-impl TemplParams for Comp {
+impl Params for Comp {
     fn self_templ_ps(&self, _ctx: &Context) -> Vec<TypeId> {
         self.templ_ps.clone()
     }

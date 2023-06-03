@@ -1,10 +1,13 @@
+use crate::clang;
+use derive::Resolved;
 use dot::DotAttrs;
 use func::Func;
 use item::ItemSet;
 use module::Mod;
+use std::cmp;
 use std::collections::{BTreeMap, VecDeque};
 use std::io;
-use typ::Type;
+use typ::{Type, TypeKind};
 use var::Var;
 
 #[derive(Debug)]
@@ -127,12 +130,12 @@ pub mod annos {
     use crate::clang;
     use std::str::FromStr;
     #[derive(Copy, PartialEq, Eq, Clone, Debug)]
-    pub enum FieldVisibilityKind {
+    pub enum VisibilityKind {
         Private,
         PublicCrate,
         Public,
     }
-    impl FromStr for FieldVisibilityKind {
+    impl FromStr for VisibilityKind {
         type Err = String;
         fn from_str(x: &str) -> Result<Self, Self::Err> {
             match x {
@@ -143,36 +146,38 @@ pub mod annos {
             }
         }
     }
-    impl std::fmt::Display for FieldVisibilityKind {
+    impl std::fmt::Display for VisibilityKind {
         fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let y = match self {
-                FieldVisibilityKind::Private => "private",
-                FieldVisibilityKind::PublicCrate => "crate",
-                FieldVisibilityKind::Public => "public",
+                VisibilityKind::Private => "private",
+                VisibilityKind::PublicCrate => "crate",
+                VisibilityKind::Public => "public",
             };
             y.fmt(x)
         }
     }
-    impl Default for FieldVisibilityKind {
+    impl Default for VisibilityKind {
         fn default() -> Self {
-            FieldVisibilityKind::Public
+            VisibilityKind::Public
         }
     }
+
     #[derive(Copy, PartialEq, Eq, Clone, Debug)]
-    pub enum FieldAccessorKind {
+    pub enum AccessorKind {
         None,
         Regular,
         Unsafe,
         Immutable,
     }
-    fn parse_accessor(x: &str) -> FieldAccessorKind {
+    fn parse_accessor(x: &str) -> AccessorKind {
         match x {
-            "false" => FieldAccessorKind::None,
-            "unsafe" => FieldAccessorKind::Unsafe,
-            "immutable" => FieldAccessorKind::Immutable,
-            _ => FieldAccessorKind::Regular,
+            "false" => AccessorKind::None,
+            "unsafe" => AccessorKind::Unsafe,
+            "immutable" => AccessorKind::Immutable,
+            _ => AccessorKind::Regular,
         }
     }
+
     #[derive(Default, Clone, PartialEq, Eq, Debug)]
     pub struct Annotations {
         opaque: bool,
@@ -182,8 +187,8 @@ pub mod annos {
         disallow_debug: bool,
         disallow_default: bool,
         must_use_type: bool,
-        visibility_kind: Option<FieldVisibilityKind>,
-        accessor_kind: Option<FieldAccessorKind>,
+        visibility_kind: Option<VisibilityKind>,
+        accessor_kind: Option<AccessorKind>,
         constify_enum_variant: bool,
         derives: Vec<String>,
     }
@@ -222,10 +227,10 @@ pub mod annos {
         pub fn must_use_type(&self) -> bool {
             self.must_use_type
         }
-        pub fn visibility_kind(&self) -> Option<FieldVisibilityKind> {
+        pub fn visibility_kind(&self) -> Option<VisibilityKind> {
             self.visibility_kind
         }
-        pub fn accessor_kind(&self) -> Option<FieldAccessorKind> {
+        pub fn accessor_kind(&self) -> Option<AccessorKind> {
             self.accessor_kind
         }
         fn parse(&mut self, comment: &clang::Comment, matched: &mut bool) {
@@ -250,9 +255,9 @@ pub mod annos {
                         "derive" => self.derives.push(x.value),
                         "private" => {
                             self.visibility_kind = if x.value != "false" {
-                                Some(FieldVisibilityKind::Private)
+                                Some(VisibilityKind::Private)
                             } else {
-                                Some(FieldVisibilityKind::Public)
+                                Some(VisibilityKind::Public)
                             };
                         },
                         "accessor" => self.accessor_kind = Some(parse_accessor(&x.value)),
@@ -278,8 +283,8 @@ pub mod comment {
     }
     pub fn preproc(x: &str) -> String {
         match self::kind(x) {
-            Some(Kind::SingleLines) => preprocess_single_lines(x),
-            Some(Kind::MultiLine) => preprocess_multi_line(x),
+            Some(Kind::SingleLines) => preproc_single_lines(x),
+            Some(Kind::MultiLine) => preproc_multi_line(x),
             None => x.to_owned(),
         }
     }
@@ -292,12 +297,12 @@ pub mod comment {
             None
         }
     }
-    fn preprocess_single_lines(x: &str) -> String {
+    fn preproc_single_lines(x: &str) -> String {
         debug_assert!(x.starts_with("//"), "comment is not single line");
         let ys: Vec<_> = x.lines().map(|l| l.trim().trim_start_matches('/')).collect();
         ys.join("\n")
     }
-    fn preprocess_multi_line(x: &str) -> String {
+    fn preproc_multi_line(x: &str) -> String {
         let x = x.trim_start_matches('/').trim_end_matches('/').trim_end_matches('*');
         let mut ys: Vec<_> = x
             .lines()
@@ -313,19 +318,19 @@ pub mod comment {
     mod test {
         use super::*;
         #[test]
-        fn picks_up_single_and_multi_line_doc_comments() {
+        fn single_and_multi_lines() {
             assert_eq!(kind("/// hello"), Some(Kind::SingleLines));
             assert_eq!(kind("/** world */"), Some(Kind::MultiLine));
         }
         #[test]
-        fn processes_single_lines_correctly() {
+        fn single_lines() {
             assert_eq!(preproc("///"), "");
             assert_eq!(preproc("/// hello"), " hello");
             assert_eq!(preproc("// hello"), " hello");
             assert_eq!(preproc("//    hello"), "    hello");
         }
         #[test]
-        fn processes_multi_lines_correctly() {
+        fn multi_lines() {
             assert_eq!(preproc("/**/"), "");
             assert_eq!(preproc("/** hello \n * world \n * foo \n */"), " hello\n world\n foo");
             assert_eq!(preproc("/**\nhello\n*world\n*foo\n*/"), "hello\nworld\nfoo");
@@ -344,6 +349,7 @@ pub mod derive {
     use super::{Context, ItemId};
     use std::cmp;
     use std::ops;
+
     pub trait CanDeriveCopy {
         fn can_derive_copy(&self, ctx: &Context) -> bool;
     }
@@ -360,6 +366,7 @@ pub mod derive {
             self.id().can_derive_copy(ctx)
         }
     }
+
     pub trait CanDeriveDebug {
         fn can_derive_debug(&self, ctx: &Context) -> bool;
     }
@@ -376,6 +383,7 @@ pub mod derive {
             self.id().can_derive_debug(ctx)
         }
     }
+
     pub trait CanDeriveDefault {
         fn can_derive_default(&self, ctx: &Context) -> bool;
     }
@@ -392,6 +400,7 @@ pub mod derive {
             self.id().can_derive_default(ctx)
         }
     }
+
     pub trait CanDeriveEq {
         fn can_derive_eq(&self, ctx: &Context) -> bool;
     }
@@ -410,6 +419,7 @@ pub mod derive {
             self.id().can_derive_eq(ctx)
         }
     }
+
     pub trait CanDeriveHash {
         fn can_derive_hash(&self, ctx: &Context) -> bool;
     }
@@ -426,6 +436,7 @@ pub mod derive {
             self.id().can_derive_hash(ctx)
         }
     }
+
     pub trait CanDeriveOrd {
         fn can_derive_ord(&self, ctx: &Context) -> bool;
     }
@@ -444,6 +455,7 @@ pub mod derive {
             self.id().can_derive_ord(ctx)
         }
     }
+
     pub trait CanDerivePartialEq {
         fn can_derive_partialeq(&self, ctx: &Context) -> bool;
     }
@@ -460,6 +472,7 @@ pub mod derive {
             self.id().can_derive_partialeq(ctx)
         }
     }
+
     pub trait CanDerivePartialOrd {
         fn can_derive_partialord(&self, ctx: &Context) -> bool;
     }
@@ -510,6 +523,7 @@ pub mod dot {
     use std::fs::File;
     use std::io::{self, Write};
     use std::path::Path;
+
     pub trait DotAttrs {
         fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
         where
@@ -579,12 +593,14 @@ pub mod enum_ty {
     use crate::ir::annos::Annotations;
     use crate::parse;
     use crate::regex_set::RegexSet;
+
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-    pub enum EnumVariantCustomBehavior {
+    pub enum EnumVariantCustom {
         ModConstify,
         Constify,
         Hide,
     }
+
     #[derive(Debug)]
     pub struct Enum {
         repr: Option<TypeId>,
@@ -640,9 +656,9 @@ pub mod enum_ty {
                             .or_else(|| {
                                 let annos = annos.as_ref()?;
                                 if annos.hide() {
-                                    Some(EnumVariantCustomBehavior::Hide)
+                                    Some(EnumVariantCustom::Hide)
                                 } else if annos.constify_enum_variant() {
-                                    Some(EnumVariantCustomBehavior::Constify)
+                                    Some(EnumVariantCustom::Constify)
                                 } else {
                                     None
                                 }
@@ -685,41 +701,43 @@ pub mod enum_ty {
             }
         }
     }
-    #[derive(Debug)]
-    pub struct EnumVariant {
-        name: String,
-        name_for_allowlisting: String,
-        comment: Option<String>,
-        val: EnumVariantValue,
-        custom_behavior: Option<EnumVariantCustomBehavior>,
-    }
+
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum EnumVariantValue {
         Boolean(bool),
         Signed(i64),
         Unsigned(u64),
     }
+
+    #[derive(Debug)]
+    pub struct EnumVariant {
+        name: String,
+        name_for_listing: String,
+        comment: Option<String>,
+        val: EnumVariantValue,
+        custom: Option<EnumVariantCustom>,
+    }
     impl EnumVariant {
         pub fn new(
             name: String,
-            name_for_allowlisting: String,
+            name_for_listing: String,
             comment: Option<String>,
             val: EnumVariantValue,
-            custom_behavior: Option<EnumVariantCustomBehavior>,
+            custom: Option<EnumVariantCustom>,
         ) -> Self {
             EnumVariant {
                 name,
-                name_for_allowlisting,
+                name_for_listing,
                 comment,
                 val,
-                custom_behavior,
+                custom,
             }
         }
         pub fn name(&self) -> &str {
             &self.name
         }
-        pub fn name_for_allowlisting(&self) -> &str {
-            &self.name_for_allowlisting
+        pub fn name_for_listing(&self) -> &str {
+            &self.name_for_listing
         }
         pub fn val(&self) -> EnumVariantValue {
             self.val
@@ -728,12 +746,10 @@ pub mod enum_ty {
             self.comment.as_deref()
         }
         pub fn force_constification(&self) -> bool {
-            self.custom_behavior
-                .map_or(false, |b| b == EnumVariantCustomBehavior::Constify)
+            self.custom.map_or(false, |b| b == EnumVariantCustom::Constify)
         }
         pub fn hidden(&self) -> bool {
-            self.custom_behavior
-                .map_or(false, |b| b == EnumVariantCustomBehavior::Hide)
+            self.custom.map_or(false, |b| b == EnumVariantCustom::Hide)
         }
     }
 }
@@ -794,96 +810,88 @@ pub mod int {
 }
 pub mod item;
 pub const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
-pub mod layout {
-    use super::derive::Resolved;
-    use super::typ::{Type, TypeKind};
-    use super::RUST_DERIVE_IN_ARRAY_LIMIT;
-    use crate::clang;
-    use crate::ir::Context;
-    use std::cmp;
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct Layout {
-        pub size: usize,
-        pub align: usize,
-        pub packed: bool,
-    }
-    #[test]
-    fn test_layout_for_size() {
-        use std::mem;
-        let ptr_size = mem::size_of::<*mut ()>();
-        assert_eq!(
-            Layout::for_size_internal(ptr_size, ptr_size),
-            Layout::new(ptr_size, ptr_size)
-        );
-        assert_eq!(
-            Layout::for_size_internal(ptr_size, 3 * ptr_size),
-            Layout::new(3 * ptr_size, ptr_size)
-        );
-    }
-    impl Layout {
-        pub fn known_type_for_size(ctx: &Context, size: usize) -> Option<&'static str> {
-            Some(match size {
-                16 => "u128",
-                8 => "u64",
-                4 => "u32",
-                2 => "u16",
-                1 => "u8",
-                _ => return None,
-            })
-        }
-        pub fn new(size: usize, align: usize) -> Self {
-            Layout {
-                size,
-                align,
-                packed: false,
-            }
-        }
-        fn for_size_internal(ptr_size: usize, size: usize) -> Self {
-            let mut align = 2;
-            while size % align == 0 && align <= ptr_size {
-                align *= 2;
-            }
-            Layout {
-                size,
-                align: align / 2,
-                packed: false,
-            }
-        }
-        pub fn for_size(ctx: &Context, size: usize) -> Self {
-            Self::for_size_internal(ctx.target_ptr_size(), size)
-        }
-        pub fn opaque(&self) -> Opaque {
-            Opaque(*self)
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Layout {
+    pub size: usize,
+    pub align: usize,
+    pub packed: bool,
+}
+impl Layout {
+    pub fn new(size: usize, align: usize) -> Self {
+        Layout {
+            size,
+            align,
+            packed: false,
         }
     }
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Opaque(pub Layout);
-    impl Opaque {
-        pub fn from_clang_ty(ty: &clang::Type, ctx: &Context) -> Type {
-            let layout = Layout::new(ty.size(ctx), ty.align(ctx));
-            let ty_kind = TypeKind::Opaque;
-            let is_const = ty.is_const();
-            Type::new(None, Some(layout), ty_kind, is_const)
+    pub fn type_for_size(ctx: &Context, size: usize) -> Option<&'static str> {
+        Some(match size {
+            16 => "u128",
+            8 => "u64",
+            4 => "u32",
+            2 => "u16",
+            1 => "u8",
+            _ => return None,
+        })
+    }
+    pub fn for_size(ctx: &Context, size: usize) -> Self {
+        Self::_for_size(ctx.target_ptr_size(), size)
+    }
+    fn _for_size(ptr_size: usize, size: usize) -> Self {
+        let mut align = 2;
+        while size % align == 0 && align <= ptr_size {
+            align *= 2;
         }
-        pub fn known_rust_type_for_array(&self, ctx: &Context) -> Option<&'static str> {
-            Layout::known_type_for_size(ctx, self.0.align)
+        Layout {
+            size,
+            align: align / 2,
+            packed: false,
         }
-        pub fn array_size(&self, ctx: &Context) -> Option<usize> {
-            if self.known_rust_type_for_array(ctx).is_some() {
-                Some(self.0.size / cmp::max(self.0.align, 1))
-            } else {
-                None
-            }
+    }
+    pub fn opaque(&self) -> Opaque {
+        Opaque(*self)
+    }
+}
+#[test]
+fn test_layout_for_size() {
+    use std::mem;
+    let ptr_size = mem::size_of::<*mut ()>();
+    assert_eq!(Layout::_for_size(ptr_size, ptr_size), Layout::new(ptr_size, ptr_size));
+    assert_eq!(
+        Layout::_for_size(ptr_size, 3 * ptr_size),
+        Layout::new(3 * ptr_size, ptr_size)
+    );
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Opaque(pub Layout);
+impl Opaque {
+    pub fn from_type(ty: &clang::Type, ctx: &Context) -> Type {
+        let layout = Layout::new(ty.size(ctx), ty.align(ctx));
+        let kind = TypeKind::Opaque;
+        let is_const = ty.is_const();
+        Type::new(None, Some(layout), kind, is_const)
+    }
+    pub fn type_for_array(&self, ctx: &Context) -> Option<&'static str> {
+        Layout::type_for_size(ctx, self.0.align)
+    }
+    pub fn array_size(&self, ctx: &Context) -> Option<usize> {
+        if self.type_for_array(ctx).is_some() {
+            Some(self.0.size / cmp::max(self.0.align, 1))
+        } else {
+            None
         }
-        pub fn array_size_within_derive_limit(&self, ctx: &Context) -> Resolved {
-            if self.array_size(ctx).map_or(false, |x| x <= RUST_DERIVE_IN_ARRAY_LIMIT) {
-                Resolved::Yes
-            } else {
-                Resolved::Manually
-            }
+    }
+    pub fn array_size_within_limit(&self, ctx: &Context) -> Resolved {
+        if self.array_size(ctx).map_or(false, |x| x <= RUST_DERIVE_IN_ARRAY_LIMIT) {
+            Resolved::Yes
+        } else {
+            Resolved::Manually
         }
     }
 }
+
 pub mod module {
     use super::dot::DotAttrs;
     use super::item::ItemSet;
@@ -892,11 +900,13 @@ pub mod module {
     use crate::parse;
     use crate::parse_one;
     use std::io;
+
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub enum ModKind {
         Normal,
         Inline,
     }
+
     #[derive(Clone, Debug)]
     pub struct Mod {
         name: Option<String>,
@@ -945,12 +955,13 @@ pub mod module {
         }
     }
 }
-pub mod template {
+pub mod templ {
     use super::item::{Ancestors, IsOpaque, Item};
     use super::{Context, ItemId, TypeId};
     use super::{EdgeKind, Trace, Tracer};
     use crate::clang;
-    pub trait TemplParams: Sized {
+
+    pub trait Params: Sized {
         fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId>;
         fn num_self_templ_ps(&self, ctx: &Context) -> usize {
             self.self_templ_ps(ctx).len()
@@ -979,7 +990,7 @@ pub mod template {
                 .collect()
         }
     }
-    impl<T> TemplParams for T
+    impl<T> Params for T
     where
         T: Copy + Into<ItemId>,
     {
@@ -989,14 +1000,14 @@ pub mod template {
         }
     }
 
-    pub trait AsTemplParam {
+    pub trait AsParam {
         type Extra;
         fn as_templ_param(&self, ctx: &Context, extra: &Self::Extra) -> Option<TypeId>;
         fn is_templ_param(&self, ctx: &Context, extra: &Self::Extra) -> bool {
             self.as_templ_param(ctx, extra).is_some()
         }
     }
-    impl<T> AsTemplParam for T
+    impl<T> AsParam for T
     where
         T: Copy + Into<ItemId>,
     {
@@ -1007,27 +1018,27 @@ pub mod template {
     }
 
     #[derive(Clone, Debug)]
-    pub struct TemplInst {
+    pub struct Instance {
         def: TypeId,
         args: Vec<TypeId>,
     }
-    impl TemplInst {
-        pub fn new<I>(def: TypeId, args: I) -> TemplInst
+    impl Instance {
+        pub fn new<I>(def: TypeId, args: I) -> Instance
         where
             I: IntoIterator<Item = TypeId>,
         {
-            TemplInst {
+            Instance {
                 def,
                 args: args.into_iter().collect(),
             }
         }
-        pub fn templ_def(&self) -> TypeId {
+        pub fn def(&self) -> TypeId {
             self.def
         }
-        pub fn templ_args(&self) -> &[TypeId] {
+        pub fn args(&self) -> &[TypeId] {
             &self.args[..]
         }
-        pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<TemplInst> {
+        pub fn from_ty(ty: &clang::Type, ctx: &mut Context) -> Option<Instance> {
             use clang_lib::*;
             let args = ty.templ_args().map_or(vec![], |x| match ty.canon_type().templ_args() {
                 Some(x2) => {
@@ -1071,18 +1082,18 @@ pub mod template {
                 },
             };
             let def = Item::from_ty_or_ref(def.cur_type(), def, None, ctx);
-            Some(TemplInst::new(def, args))
+            Some(Instance::new(def, args))
         }
     }
-    impl IsOpaque for TemplInst {
+    impl IsOpaque for Instance {
         type Extra = Item;
         fn is_opaque(&self, ctx: &Context, it: &Item) -> bool {
-            if self.templ_def().is_opaque(ctx, &()) {
+            if self.def().is_opaque(ctx, &()) {
                 return true;
             }
             let mut path = it.path_for_allowlisting(ctx).clone();
             let args: Vec<_> = self
-                .templ_args()
+                .args()
                 .iter()
                 .map(|x| {
                     let y = ctx.resolve_item(*x).path_for_allowlisting(ctx);
@@ -1098,14 +1109,14 @@ pub mod template {
             ctx.opaque_by_name(&path)
         }
     }
-    impl Trace for TemplInst {
+    impl Trace for Instance {
         type Extra = ();
         fn trace<T>(&self, _ctx: &Context, tracer: &mut T, _: &())
         where
             T: Tracer,
         {
             tracer.visit_kind(self.def.into(), EdgeKind::TemplDecl);
-            for arg in self.templ_args() {
+            for arg in self.args() {
                 tracer.visit_kind(arg.into(), EdgeKind::TemplArg);
             }
         }

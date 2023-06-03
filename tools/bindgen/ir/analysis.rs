@@ -56,9 +56,9 @@ pub mod derive {
     use crate::ir::derive::Resolved;
     use crate::ir::func::FnSig;
     use crate::ir::item::{IsOpaque, Item};
-    use crate::ir::layout::Layout;
-    use crate::ir::template::TemplParams;
+    use crate::ir::templ::Params;
     use crate::ir::typ::{Type, TypeKind};
+    use crate::ir::Layout;
     use crate::ir::RUST_DERIVE_IN_ARRAY_LIMIT;
     use crate::ir::{Context, EdgeKind, ItemId, Trace};
     use crate::{Entry, HashMap, HashSet};
@@ -224,7 +224,7 @@ pub mod derive {
                 }
                 let y = ty
                     .layout(self.ctx)
-                    .map_or(Resolved::Yes, |x| x.opaque().array_size_within_derive_limit(self.ctx));
+                    .map_or(Resolved::Yes, |x| x.opaque().array_size_within_limit(self.ctx));
                 return y;
             }
             match *ty.kind() {
@@ -294,7 +294,7 @@ pub mod derive {
                             }
                             let y = ty
                                 .layout(self.ctx)
-                                .map_or(Resolved::Yes, |l| l.opaque().array_size_within_derive_limit(self.ctx));
+                                .map_or(Resolved::Yes, |l| l.opaque().array_size_within_limit(self.ctx));
                             return y;
                         }
                     }
@@ -484,8 +484,8 @@ pub mod has_destructor {
                     }
                 },
                 TypeKind::TemplInst(ref t) => {
-                    let destr = self.ys.contains(&t.templ_def().into())
-                        || t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
+                    let destr =
+                        self.ys.contains(&t.def().into()) || t.args().iter().any(|x| self.ys.contains(&x.into()));
                     if destr {
                         self.insert(id)
                     } else {
@@ -625,11 +625,11 @@ pub mod has_float {
                     super::Resolved::Same
                 },
                 TypeKind::TemplInst(ref t) => {
-                    let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
+                    let args = t.args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
                     }
-                    let def = self.ys.contains(&t.templ_def().into());
+                    let def = self.ys.contains(&t.def().into());
                     if def {
                         return self.insert(id);
                     }
@@ -764,11 +764,11 @@ pub mod has_type_param {
                     super::Resolved::Same
                 },
                 TypeKind::TemplInst(ref t) => {
-                    let args = t.templ_args().iter().any(|x| self.ys.contains(&x.into()));
+                    let args = t.args().iter().any(|x| self.ys.contains(&x.into()));
                     if args {
                         return self.insert(id);
                     }
-                    let def = self.ys.contains(&t.templ_def().into());
+                    let def = self.ys.contains(&t.def().into());
                     if def {
                         return self.insert(id);
                     }
@@ -913,7 +913,7 @@ pub mod has_vtable {
                     }
                     self.insert(id, y)
                 },
-                TypeKind::TemplInst(ref x) => self.forward(x.templ_def(), id),
+                TypeKind::TemplInst(ref x) => self.forward(x.def(), id),
                 _ => super::Resolved::Same,
             }
         }
@@ -1079,7 +1079,7 @@ pub mod sizedness {
                 TypeKind::TemplAlias(t, _) | TypeKind::Alias(t) | TypeKind::BlockPtr(t) | TypeKind::ResolvedRef(t) => {
                     self.forward(t, id)
                 },
-                TypeKind::TemplInst(ref x) => self.forward(x.templ_def(), id),
+                TypeKind::TemplInst(ref x) => self.forward(x.def(), id),
                 TypeKind::Array(_, 0) => self.insert(id, Resolved::ZeroSized),
                 TypeKind::Array(..) => self.insert(id, Resolved::NonZeroSized),
                 TypeKind::Vector(..) => self.insert(id, Resolved::NonZeroSized),
@@ -1125,7 +1125,7 @@ pub mod sizedness {
 pub mod used_templ_param {
     use super::Monotone;
     use crate::ir::item::{Item, ItemSet};
-    use crate::ir::template::{TemplInst, TemplParams};
+    use crate::ir::templ::{Instance, Params};
     use crate::ir::typ::TypeKind;
     use crate::ir::{Context, EdgeKind, ItemId, Trace};
     use crate::{HashMap, HashSet};
@@ -1171,9 +1171,9 @@ pub mod used_templ_param {
                 )
         }
 
-        fn constrain_inst_of_blocklisted_templ(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInst) {
+        fn constrain_inst_of_blocklisted_templ(&self, id: ItemId, y: &mut ItemSet, inst: &Instance) {
             let args = inst
-                .templ_args()
+                .args()
                 .iter()
                 .map(|x| {
                     x.into_resolver()
@@ -1199,14 +1199,14 @@ pub mod used_templ_param {
             y.extend(args);
         }
 
-        fn constrain_inst(&self, id: ItemId, y: &mut ItemSet, inst: &TemplInst) {
-            let decl = self.ctx.resolve_type(inst.templ_def());
-            let args = inst.templ_args();
+        fn constrain_inst(&self, id: ItemId, y: &mut ItemSet, inst: &Instance) {
+            let decl = self.ctx.resolve_type(inst.def());
+            let args = inst.args();
             let ps = decl.self_templ_ps(self.ctx);
-            debug_assert!(id != inst.templ_def());
+            debug_assert!(id != inst.def());
             let used_by_def = self
                 .ys
-                .get(&inst.templ_def().into())
+                .get(&inst.def().into())
                 .expect("Should have a used entry for instantiation's template definition")
                 .as_ref()
                 .expect(
@@ -1308,8 +1308,8 @@ pub mod used_templ_param {
                 }
                 let k = ctx.resolve_item(i).as_type().map(|ty| ty.kind());
                 if let Some(TypeKind::TemplInst(inst)) = k {
-                    let decl = ctx.resolve_type(inst.templ_def());
-                    let args = inst.templ_args();
+                    let decl = ctx.resolve_type(inst.def());
+                    let args = inst.args();
                     let ps = decl.self_templ_ps(ctx);
                     for (arg, p) in args.iter().zip(ps.iter()) {
                         let arg = arg
@@ -1367,7 +1367,7 @@ pub mod used_templ_param {
                     y.insert(id);
                 },
                 Some(TypeKind::TemplInst(x)) => {
-                    if self.alloweds.contains(&x.templ_def().into()) {
+                    if self.alloweds.contains(&x.def().into()) {
                         self.constrain_inst(id, &mut y, x);
                     } else {
                         self.constrain_inst_of_blocklisted_templ(id, &mut y, x);

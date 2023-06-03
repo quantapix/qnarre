@@ -5,10 +5,10 @@ use super::comp::{CompKind, MethKind};
 use super::ctx::PartialType;
 use super::dot::DotAttrs;
 use super::func::{FnKind, Func};
-use super::layout::Opaque;
 use super::module::Mod;
-use super::template::{AsTemplParam, TemplParams};
+use super::templ::{AsParam, Params};
 use super::typ::{Type, TypeKind};
+use super::Opaque;
 use super::{Context, EdgeKind, ItemId, ItemKind, Trace, Tracer, TypeId};
 use crate::clang;
 use crate::parse::{self, SubItem};
@@ -300,7 +300,7 @@ impl Item {
     }
     pub fn new_opaque_type(id: ItemId, ty: &clang::Type, ctx: &mut Context) -> TypeId {
         let loc = ty.decl().location();
-        let ty = Opaque::from_clang_ty(ty, ctx);
+        let ty = Opaque::from_type(ty, ctx);
         let kind = ItemKind::Type(ty);
         let parent = ctx.root_mod().into();
         ctx.add_item(Item::new(id, None, None, parent, kind, Some(loc)), None, None);
@@ -427,7 +427,7 @@ impl Item {
                         i = ctx.resolve_item(x);
                     },
                     TypeKind::TemplInst(ref x) => {
-                        i = ctx.resolve_item(x.templ_def());
+                        i = ctx.resolve_item(x.def());
                     },
                     _ => return i.id(),
                 },
@@ -445,7 +445,7 @@ impl Item {
         if let ItemKind::Type(ref x) = *self.kind() {
             if let TypeKind::TemplInst(ref x) = *x.kind() {
                 to.push_str(&format!("_open{}_", level));
-                for y in x.templ_args() {
+                for y in x.args() {
                     y.into_resolver()
                         .through_type_refs()
                         .resolve(ctx)
@@ -1037,18 +1037,18 @@ impl AsRef<ItemId> for Item {
         &self.id
     }
 }
-impl TemplParams for Item {
+impl Params for Item {
     fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
         self.kind.self_templ_ps(ctx)
     }
 }
-impl AsTemplParam for Item {
+impl AsParam for Item {
     type Extra = ();
     fn as_templ_param(&self, ctx: &Context, _: &Self::Extra) -> Option<TypeId> {
         self.kind.as_templ_param(ctx, self)
     }
 }
-impl TemplParams for ItemKind {
+impl Params for ItemKind {
     fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
             ItemKind::Type(ref x) => x.self_templ_ps(ctx),
@@ -1058,7 +1058,7 @@ impl TemplParams for ItemKind {
         }
     }
 }
-impl AsTemplParam for ItemKind {
+impl AsParam for ItemKind {
     type Extra = Item;
     fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
         match *self {

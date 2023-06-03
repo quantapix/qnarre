@@ -4,7 +4,7 @@ use super::func::Func;
 use super::int::IntKind;
 use super::item::{Ancestors, IsOpaque, Item, ItemSet};
 use super::module::{Mod, ModKind};
-use super::template::{TemplInst, TemplParams};
+use super::templ::{Instance, Params};
 use super::typ::{FloatKind, Type, TypeKind};
 use super::{Edge, ItemKind, Traversal};
 use crate::clang::{self, Cursor};
@@ -183,12 +183,12 @@ pub struct Context {
     collected_typerefs: bool,
     current_mod: ModId,
     deps: BTreeSet<String>,
-    enum_typedef_combos: Option<HashSet<ItemId>>,
+    enum_typedef: Option<HashSet<ItemId>>,
     gen_items: Option<ItemSet>,
     generated_bindgen_complex: Cell<bool>,
     has_destr: Option<HashSet<ItemId>>,
     has_float: Option<HashSet<ItemId>>,
-    has_type_param_in_array: Option<HashSet<ItemId>>,
+    has_type_param: Option<HashSet<ItemId>>,
     has_vtable: Option<HashMap<ItemId, has_vtable::Resolved>>,
     in_gen: bool,
     items: Vec<Option<Item>>,
@@ -203,7 +203,7 @@ pub struct Context {
     sizedness: Option<HashMap<TypeId, sizedness::Resolved>>,
     target: clang::Target,
     translation_unit: clang::TranslationUnit,
-    type_ps: HashMap<clang::Cursor, TypeId>,
+    type_params: HashMap<clang::Cursor, TypeId>,
     types: HashMap<TypeKey, TypeId>,
     used_templ_ps: Option<HashMap<ItemId, ItemSet>>,
 }
@@ -230,12 +230,12 @@ impl Context {
             collected_typerefs: false,
             current_mod,
             deps,
-            enum_typedef_combos: None,
+            enum_typedef: None,
             gen_items: None,
             generated_bindgen_complex: Cell::new(false),
             has_destr: None,
             has_float: None,
-            has_type_param_in_array: None,
+            has_type_param: None,
             has_vtable: None,
             in_gen: false,
             items: vec![Some(root_mod)],
@@ -250,7 +250,7 @@ impl Context {
             sizedness: None,
             target,
             translation_unit,
-            type_ps: Default::default(),
+            type_params: Default::default(),
             types: Default::default(),
             used_templ_ps: None,
         }
@@ -356,12 +356,12 @@ impl Context {
         let id = it.id();
         let old = mem::replace(&mut self.items[id.0], Some(it));
         assert!(old.is_none());
-        let old = self.type_ps.insert(cur, id.as_type_id_unchecked());
+        let old = self.type_params.insert(cur, id.as_type_id_unchecked());
         assert!(old.is_none());
     }
     pub fn get_type_param(&self, cur: &clang::Cursor) -> Option<TypeId> {
         assert_eq!(cur.kind(), clang_lib::CXCursor_TemplateTypeParameter);
-        self.type_ps.get(cur).cloned()
+        self.type_params.get(cur).cloned()
     }
     #[rustfmt::skip]
     pub fn rust_mangle<'a>(&self, name: &'a str) -> Cow<'a, str> {
@@ -456,8 +456,8 @@ impl Context {
     fn compute_bitfield_units(&mut self) {
         let _t = self.timer("compute_bitfield_units");
         assert!(self.collected_typerefs());
-        let needing = mem::take(&mut self.need_bitfields);
-        for id in needing {
+        let xs = mem::take(&mut self.need_bitfields);
+        for id in xs {
             self.with_loaned_item(id, |ctx, x| {
                 let ty = x.kind_mut().as_type_mut().unwrap();
                 let y = ty.layout(ctx);
@@ -798,7 +798,7 @@ impl Context {
                         let mut sub_args: Vec<_> = args.drain(args_len - num_expected_template_args..).collect();
                         sub_args.reverse();
                         let sub_name = Some(template_decl_cursor.spelling());
-                        let sub_inst = TemplInst::new(template_decl_id.as_type_id_unchecked(), sub_args);
+                        let sub_inst = Instance::new(template_decl_id.as_type_id_unchecked(), sub_args);
                         let sub_kind = TypeKind::TemplInst(sub_inst);
                         let sub_ty = Type::new(
                             sub_name,
@@ -847,7 +847,7 @@ impl Context {
             return None;
         }
         args.reverse();
-        let type_kind = TypeKind::TemplInst(TemplInst::new(template, args));
+        let type_kind = TypeKind::TemplInst(Instance::new(template, args));
         let name = ty.spelling();
         let name = if name.is_empty() { None } else { Some(name) };
         let ty = Type::new(name, ty.fallible_layout(self).ok(), type_kind, ty.is_const());
@@ -1233,7 +1233,7 @@ impl Context {
                             }
                             let mut prefix_path = parent.path_for_allowlisting(self).clone();
                             enum_.variants().iter().any(|variant| {
-                                prefix_path.push(variant.name_for_allowlisting().into());
+                                prefix_path.push(variant.name_for_listing().into());
                                 let name = prefix_path[1..].join("::");
                                 prefix_path.pop().unwrap();
                                 self.opts().allowed_vars.matches(name)
@@ -1275,7 +1275,7 @@ impl Context {
     }
     fn compute_enum_typedef_combos(&mut self) {
         let _t = self.timer("compute_enum_typedef_combos");
-        assert!(self.enum_typedef_combos.is_none());
+        assert!(self.enum_typedef.is_none());
         let mut enum_typedef_combos = HashSet::default();
         for item in &self.items {
             if let Some(ItemKind::Mod(module)) = item.as_ref().map(Item::kind) {
@@ -1307,11 +1307,11 @@ impl Context {
                 }
             }
         }
-        self.enum_typedef_combos = Some(enum_typedef_combos);
+        self.enum_typedef = Some(enum_typedef_combos);
     }
     pub fn is_enum_typedef_combo(&self, id: ItemId) -> bool {
         assert!(self.in_gen_phase());
-        self.enum_typedef_combos.as_ref().unwrap().contains(&id)
+        self.enum_typedef.as_ref().unwrap().contains(&id)
     }
     fn compute_cannot_debug(&mut self) {
         let _t = self.timer("compute_cannot_debug");
@@ -1390,12 +1390,12 @@ impl Context {
     }
     fn compute_has_type_param_in_array(&mut self) {
         let _t = self.timer("compute_has_type_param_in_array");
-        assert!(self.has_type_param_in_array.is_none());
-        self.has_type_param_in_array = Some(analyze::<has_type_param::Analysis>(self));
+        assert!(self.has_type_param.is_none());
+        self.has_type_param = Some(analyze::<has_type_param::Analysis>(self));
     }
     pub fn lookup_has_type_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {
         assert!(self.in_gen_phase());
-        self.has_type_param_in_array.as_ref().unwrap().contains(&id.into())
+        self.has_type_param.as_ref().unwrap().contains(&id.into())
     }
     fn compute_has_float(&mut self) {
         let _t = self.timer("compute_has_float");
@@ -1516,7 +1516,7 @@ impl PartialType {
         self.id
     }
 }
-impl TemplParams for PartialType {
+impl Params for PartialType {
     fn self_templ_ps(&self, _ctx: &Context) -> Vec<TypeId> {
         vec![]
     }

@@ -5,9 +5,9 @@ use crate::regex_set::RegexSet;
 use crate::Abi;
 use crate::Builder;
 use crate::Config;
-use crate::FieldVisibilityKind;
 use crate::Formatter;
 use crate::HashMap;
+use crate::VisibilityKind;
 use std::env;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -1162,11 +1162,11 @@ options! {
             }
         },
     },
-    default_visibility: FieldVisibilityKind {
+    default_visibility: VisibilityKind {
         methods: {
             pub fn default_visibility(
                 mut self,
-                x: FieldVisibilityKind,
+                x: VisibilityKind,
             ) -> Self {
                 self.opts.default_visibility = x;
                 self

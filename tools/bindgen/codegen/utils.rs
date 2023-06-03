@@ -3,9 +3,9 @@ use super::{error, GenError, GenResult, ToRustOrOpaque};
 use crate::ir::comp::{Comp, CompKind, Field, FieldMeths};
 use crate::ir::func::{Abi, ClangAbi, FnSig};
 use crate::ir::item::{CanonPath, IsOpaque, Item};
-use crate::ir::layout::Layout;
 use crate::ir::typ::TypeKind;
 use crate::ir::Context;
+use crate::ir::Layout;
 use crate::{args_are_cpp, file_is_cpp};
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -450,7 +450,7 @@ pub mod attrs {
 }
 pub fn blob(ctx: &Context, layout: Layout) -> TokenStream {
     let opaque = layout.opaque();
-    let ty_name = match opaque.known_rust_type_for_array(ctx) {
+    let ty_name = match opaque.type_for_array(ctx) {
         Some(ty) => ty,
         None => {
             warn!("Found unknown alignment on code generation!");
@@ -470,15 +470,15 @@ pub fn blob(ctx: &Context, layout: Layout) -> TokenStream {
     }
 }
 pub fn integer_type(ctx: &Context, layout: Layout) -> Option<TokenStream> {
-    let name = Layout::known_type_for_size(ctx, layout.size)?;
+    let name = Layout::type_for_size(ctx, layout.size)?;
     let name = Ident::new(name, Span::call_site());
     Some(quote! { #name })
 }
 pub mod ast_ty {
     use crate::ir::func::FnSig;
-    use crate::ir::layout::Layout;
     use crate::ir::typ::FloatKind;
     use crate::ir::Context;
+    use crate::ir::Layout;
     use proc_macro2::{self, TokenStream};
     use std::str::FromStr;
     pub fn c_void(ctx: &Context) -> TokenStream {

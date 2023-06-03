@@ -757,8 +757,8 @@ impl Type {
             Ok(y as usize)
         }
     }
-    pub fn fallible_layout(&self, ctx: &Context) -> Result<crate::ir::layout::Layout, LayoutErr> {
-        use crate::ir::layout::Layout;
+    pub fn fallible_layout(&self, ctx: &Context) -> Result<crate::ir::Layout, LayoutErr> {
+        use crate::ir::Layout;
         let size = self.fallible_size(ctx)?;
         let align = self.fallible_align(ctx)?;
         Ok(Layout::new(size, align))

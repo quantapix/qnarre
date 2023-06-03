@@ -2,7 +2,7 @@ use self::structure::Structure;
 use super::Opts;
 use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
 use crate::ir::analysis::{HasVtable, Sizedness};
-use crate::ir::annos::{Annotations, FieldAccessorKind, FieldVisibilityKind};
+use crate::ir::annos::{AccessorKind, Annotations, VisibilityKind};
 use crate::ir::comp::{Comp, CompKind, Data, Field, FieldMeths, MethKind, Method};
 use crate::ir::derive::{
     CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
@@ -13,11 +13,11 @@ use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
 use crate::ir::func::{Abi, ClangAbi, FnKind, FnSig, Func, Linkage};
 use crate::ir::int::IntKind;
 use crate::ir::item::{CanonName, CanonPath, IsOpaque, Item};
-use crate::ir::layout::Layout;
 use crate::ir::module::Mod;
-use crate::ir::template::{AsTemplParam, TemplInst, TemplParams};
+use crate::ir::templ::{AsParam, Instance, Params};
 use crate::ir::typ::{Type, TypeKind};
 use crate::ir::var::Var;
+use crate::ir::Layout;
 use crate::ir::{Context, ItemId, ItemKind};
 use crate::{Entry, HashMap, HashSet};
 use proc_macro2::{self, Ident, Span};
@@ -159,12 +159,12 @@ impl Generator for Comp {
                 }
                 let it = ctx.resolve_item(x.ty);
                 let mut y = it.to_rust_or_opaque(ctx, &());
-                y.append_implicit_templ_ps(ctx, it);
+                y.append_implicit_params(ctx, it);
                 let field = ctx.rust_ident(&x.field_name);
                 structure.saw_base(it.expect_type());
                 let vis = match (x.is_public(), ctx.opts().respect_cxx_access_specs) {
-                    (true, true) => FieldVisibilityKind::Public,
-                    (false, true) => FieldVisibilityKind::Private,
+                    (true, true) => VisibilityKind::Public,
+                    (false, true) => VisibilityKind::Private,
                     _ => ctx.opts().default_visibility,
                 };
                 let access = access_specifier(vis);
@@ -176,7 +176,7 @@ impl Generator for Comp {
         let mut methods = vec![];
         if !is_opaque {
             let vis = it.annos().visibility_kind().unwrap_or(ctx.opts().default_visibility);
-            let kind = it.annos().accessor_kind().unwrap_or(FieldAccessorKind::None);
+            let kind = it.annos().accessor_kind().unwrap_or(AccessorKind::None);
             for x in self.fields() {
                 x.codegen(ctx, vis, kind, self, y, &mut structure, &mut fields, &mut methods, ());
             }
@@ -1029,7 +1029,7 @@ impl Generator for Var {
         }
     }
 }
-impl Generator for TemplInst {
+impl Generator for Instance {
     type Extra = Item;
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
@@ -1166,7 +1166,7 @@ impl Generator for Type {
                     let mut ty = inner_item
                         .try_to_rust_or_opaque(ctx, &())
                         .unwrap_or_else(|_| self.to_opaque(ctx, it));
-                    ty.append_implicit_templ_ps(ctx, inner_item);
+                    ty.append_implicit_params(ctx, inner_item);
                     ty
                 };
                 {
@@ -1512,8 +1512,8 @@ trait FieldGen<'a> {
     fn codegen<F, M>(
         &self,
         ctx: &Context,
-        visibility_kind: FieldVisibilityKind,
-        accessor_kind: FieldAccessorKind,
+        visibility_kind: VisibilityKind,
+        accessor_kind: AccessorKind,
         parent: &Comp,
         y: &mut GenResult,
         struct_layout: &mut Structure,
@@ -1529,8 +1529,8 @@ impl<'a> FieldGen<'a> for Field {
     fn codegen<F, M>(
         &self,
         ctx: &Context,
-        visibility_kind: FieldVisibilityKind,
-        accessor_kind: FieldAccessorKind,
+        visibility_kind: VisibilityKind,
+        accessor_kind: AccessorKind,
         parent: &Comp,
         y: &mut GenResult,
         struct_layout: &mut Structure,
@@ -1563,8 +1563,8 @@ impl<'a> FieldGen<'a> for Data {
     fn codegen<F, M>(
         &self,
         ctx: &Context,
-        parent_visibility_kind: FieldVisibilityKind,
-        accessor_kind: FieldAccessorKind,
+        parent_visibility_kind: VisibilityKind,
+        accessor_kind: AccessorKind,
         parent: &Comp,
         y: &mut GenResult,
         struct_layout: &mut Structure,
@@ -1579,7 +1579,7 @@ impl<'a> FieldGen<'a> for Data {
         let field_item = self.ty().into_resolver().through_type_refs().resolve(ctx);
         let field_ty = field_item.expect_type();
         let mut ty = self.ty().to_rust_or_opaque(ctx, &());
-        ty.append_implicit_templ_ps(ctx, field_item);
+        ty.append_implicit_params(ctx, field_item);
         let ty = if parent.is_union() {
             wrap_union_field_if_needed(ctx, struct_layout, ty, y)
         } else if let Some(item) = field_ty.is_incomplete_array(ctx) {
@@ -1615,32 +1615,32 @@ impl<'a> FieldGen<'a> for Data {
         let visibility = compute_visibility(ctx, self.is_public(), Some(self.annos()), parent_visibility_kind);
         let accessor_kind = self.annos().accessor_kind().unwrap_or(accessor_kind);
         match visibility {
-            FieldVisibilityKind::Private => {
+            VisibilityKind::Private => {
                 field.append_all(quote! {
                     #field_ident : #ty ,
                 });
             },
-            FieldVisibilityKind::PublicCrate => {
+            VisibilityKind::PublicCrate => {
                 field.append_all(quote! {
                     pub #field_ident : #ty ,
                 });
             },
-            FieldVisibilityKind::Public => {
+            VisibilityKind::Public => {
                 field.append_all(quote! {
                     pub #field_ident : #ty ,
                 });
             },
         }
         fields.extend(Some(field));
-        if accessor_kind == FieldAccessorKind::None {
+        if accessor_kind == AccessorKind::None {
             return;
         }
         let getter_name = ctx.rust_ident_raw(format!("get_{}", field_name));
         let mutable_getter_name = ctx.rust_ident_raw(format!("get_{}_mut", field_name));
         let field_name = ctx.rust_ident_raw(field_name);
         methods.extend(Some(match accessor_kind {
-            FieldAccessorKind::None => unreachable!(),
-            FieldAccessorKind::Regular => {
+            AccessorKind::None => unreachable!(),
+            AccessorKind::Regular => {
                 quote! {
                     #[inline]
                     pub fn #getter_name(&self) -> & #ty {
@@ -1652,7 +1652,7 @@ impl<'a> FieldGen<'a> for Data {
                     }
                 }
             },
-            FieldAccessorKind::Unsafe => {
+            AccessorKind::Unsafe => {
                 quote! {
                     #[inline]
                     pub unsafe fn #getter_name(&self) -> & #ty {
@@ -1664,7 +1664,7 @@ impl<'a> FieldGen<'a> for Data {
                     }
                 }
             },
-            FieldAccessorKind::Immutable => {
+            AccessorKind::Immutable => {
                 quote! {
                     #[inline]
                     pub fn #getter_name(&self) -> & #ty {
@@ -2038,11 +2038,11 @@ impl From<DerivableTraits> for Vec<&'static str> {
     }
 }
 
-trait AppendImplicitTemplParams {
-    fn append_implicit_templ_ps(&mut self, ctx: &Context, it: &Item);
+trait AppendImplicitParams {
+    fn append_implicit_params(&mut self, ctx: &Context, it: &Item);
 }
-impl AppendImplicitTemplParams for proc_macro2::TokenStream {
-    fn append_implicit_templ_ps(&mut self, ctx: &Context, it: &Item) {
+impl AppendImplicitParams for proc_macro2::TokenStream {
+    fn append_implicit_params(&mut self, ctx: &Context, it: &Item) {
         let it = it.id().into_resolver().through_type_refs().resolve(ctx);
         match *it.expect_type().kind() {
             TypeKind::UnresolvedRef(..) => {
@@ -2123,13 +2123,13 @@ impl TryToRust for Item {
         self.kind().expect_type().try_to_rust(ctx, self)
     }
 }
-impl TryToRust for TemplInst {
+impl TryToRust for Instance {
     type Extra = Item;
     fn try_to_rust(&self, ctx: &Context, it: &Item) -> error::Result<proc_macro2::TokenStream> {
         if self.is_opaque(ctx, it) {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
-        let def = self.templ_def().into_resolver().through_type_refs().resolve(ctx);
+        let def = self.def().into_resolver().through_type_refs().resolve(ctx);
         let mut ty = quote! {};
         let path = def.namespace_aware_canon_path(ctx);
         ty.append_separated(path.into_iter().map(|x| ctx.rust_ident(x)), quote!(::));
@@ -2138,14 +2138,14 @@ impl TryToRust for TemplInst {
             return Err(error::Error::InstantiationOfOpaqueType);
         }
         let args = self
-            .templ_args()
+            .args()
             .iter()
             .zip(ps.iter())
             .filter(|&(_, x)| ctx.uses_templ_param(def.id(), *x))
             .map(|(x, _)| {
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = x.try_to_rust(ctx, &())?;
-                ty.append_implicit_templ_ps(ctx, x);
+                ty.append_implicit_params(ctx, x);
                 Ok(ty)
             })
             .collect::<error::Result<Vec<_>>>()?;
@@ -2179,7 +2179,7 @@ impl TryToRust for Type {
                 IntKind::ULongLong => Ok(raw_type(ctx, "c_ulonglong")),
                 IntKind::WChar => {
                     let x = self.layout(ctx).expect("Couldn't compute wchar_t's layout?");
-                    let ty = Layout::known_type_for_size(ctx, x.size).expect("Non-representable wchar_t?");
+                    let ty = Layout::type_for_size(ctx, x.size).expect("Non-representable wchar_t?");
                     let ty = ctx.rust_ident_raw(ty);
                     Ok(quote! { #ty })
                 },
@@ -2254,7 +2254,7 @@ impl TryToRust for Type {
                 let is_const = ctx.resolve_type(x).is_const();
                 let x = x.into_resolver().through_type_refs().resolve(ctx);
                 let mut ty = x.to_rust_or_opaque(ctx, &());
-                ty.append_implicit_templ_ps(ctx, x);
+                ty.append_implicit_params(ctx, x);
                 if x.expect_type().canon_type(ctx).is_fn() {
                     Ok(ty)
                 } else {
@@ -2306,7 +2306,7 @@ impl TryToOpaque for Item {
         self.kind().expect_type().try_get_layout(ctx, self)
     }
 }
-impl TryToOpaque for TemplInst {
+impl TryToOpaque for Instance {
     type Extra = Item;
     fn try_get_layout(&self, ctx: &Context, it: &Item) -> error::Result<Layout> {
         it.expect_type().layout(ctx).ok_or(error::Error::NoLayoutForOpaqueBlob)
@@ -2514,11 +2514,11 @@ fn wrap_union_field_if_needed(
     }
 }
 
-fn access_specifier(x: FieldVisibilityKind) -> proc_macro2::TokenStream {
+fn access_specifier(x: VisibilityKind) -> proc_macro2::TokenStream {
     match x {
-        FieldVisibilityKind::Private => quote! {},
-        FieldVisibilityKind::PublicCrate => quote! { pub },
-        FieldVisibilityKind::Public => quote! { pub },
+        VisibilityKind::Private => quote! {},
+        VisibilityKind::PublicCrate => quote! { pub },
+        VisibilityKind::Public => quote! { pub },
     }
 }
 
@@ -2526,15 +2526,15 @@ fn compute_visibility(
     ctx: &Context,
     is_public: bool,
     annos: Option<&Annotations>,
-    default_kind: FieldVisibilityKind,
-) -> FieldVisibilityKind {
+    default_kind: VisibilityKind,
+) -> VisibilityKind {
     match (
         is_public,
         ctx.opts().respect_cxx_access_specs,
         annos.and_then(|x| x.visibility_kind()),
     ) {
-        (true, true, x) => x.unwrap_or(FieldVisibilityKind::Public),
-        (false, true, x) => x.unwrap_or(FieldVisibilityKind::Private),
+        (true, true, x) => x.unwrap_or(VisibilityKind::Public),
+        (false, true, x) => x.unwrap_or(VisibilityKind::Private),
         (_, false, x) => x.unwrap_or(default_kind),
     }
 }

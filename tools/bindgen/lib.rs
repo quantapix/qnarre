@@ -19,7 +19,7 @@ mod opts;
 
 pub use codegen::utils::variation;
 use codegen::GenError;
-pub use ir::annos::FieldVisibilityKind;
+pub use ir::annos::VisibilityKind;
 use ir::comment;
 pub use ir::func::Abi;
 use ir::item::Item;
@@ -557,7 +557,7 @@ mod deps {
 pub mod callbacks {
     pub use crate::ir::analysis::DeriveTrait;
     pub use crate::ir::derive::Resolved as ImplementsTrait;
-    pub use crate::ir::enum_ty::{EnumVariantCustomBehavior, EnumVariantValue};
+    pub use crate::ir::enum_ty::{EnumVariantCustom, EnumVariantValue};
     pub use crate::ir::int::IntKind;
     use std::fmt;
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -590,7 +590,7 @@ pub mod callbacks {
             _name: Option<&str>,
             _orig_name: &str,
             _: EnumVariantValue,
-        ) -> Option<EnumVariantCustomBehavior> {
+        ) -> Option<EnumVariantCustom> {
             None
         }
         fn enum_variant_name(&self, _name: Option<&str>, _orig_name: &str, _: EnumVariantValue) -> Option<String> {

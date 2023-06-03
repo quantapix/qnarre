@@ -4,9 +4,9 @@ use super::enum_ty::Enum;
 use super::func::FnSig;
 use super::int::IntKind;
 use super::item::{IsOpaque, Item};
-use super::layout::{Layout, Opaque};
-use super::template::{AsTemplParam, TemplInst, TemplParams};
+use super::templ::{AsParam, Instance, Params};
 use super::{Context, EdgeKind, ItemId, Trace, Tracer, TypeId};
+use super::{Layout, Opaque};
 use crate::clang::{self, Cursor};
 use crate::parse;
 use std::borrow::Cow;
@@ -38,7 +38,7 @@ pub enum TypeKind {
     Reference(TypeId),
     ResolvedRef(TypeId),
     TemplAlias(TypeId, Vec<TypeId>),
-    TemplInst(TemplInst),
+    TemplInst(Instance),
     UnresolvedRef(clang::Type, clang::Cursor, /* parent_id */ Option<ItemId>),
     Vector(TypeId, usize),
     Void,
@@ -81,7 +81,7 @@ impl DotAttrs for TypeKind {
         Ok(())
     }
 }
-impl TemplParams for TypeKind {
+impl Params for TypeKind {
     fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
         match *self {
             TypeKind::ResolvedRef(x) => ctx.resolve_type(x).self_templ_ps(ctx),
@@ -107,7 +107,7 @@ impl TemplParams for TypeKind {
         }
     }
 }
-impl AsTemplParam for TypeKind {
+impl AsParam for TypeKind {
     type Extra = Item;
     fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
         match *self {
@@ -296,7 +296,7 @@ impl Type {
             TypeKind::ResolvedRef(x) | TypeKind::Alias(x) | TypeKind::TemplAlias(x, _) => {
                 ctx.resolve_type(x).safe_canon_type(ctx)
             },
-            TypeKind::TemplInst(ref x) => ctx.resolve_type(x.templ_def()).safe_canon_type(ctx),
+            TypeKind::TemplInst(ref x) => ctx.resolve_type(x.def()).safe_canon_type(ctx),
             TypeKind::UnresolvedRef(..) => None,
         }
     }
@@ -340,10 +340,10 @@ impl Type {
             let is_templ = ty.decl().kind() == CXCursor_TemplateTypeParameter;
         }
         if cur.kind() == CXCursor_ClassTemplatePartialSpecialization {
-            return Ok(parse::Resolved::New(Opaque::from_clang_ty(&canon_ty, ctx), None));
+            return Ok(parse::Resolved::New(Opaque::from_type(&canon_ty, ctx), None));
         }
         let kind = if cur.kind() == CXCursor_TemplateRef || (ty.templ_args().is_some() && ty_kind != CXType_Typedef) {
-            match TemplInst::from_ty(ty, ctx) {
+            match Instance::from_ty(ty, ctx) {
                 Some(x) => TypeKind::TemplInst(x),
                 None => TypeKind::Opaque,
             }
@@ -378,7 +378,7 @@ impl Type {
                                 match x {
                                     Ok(x) => TypeKind::Comp(x),
                                     Err(_) => {
-                                        let x = Opaque::from_clang_ty(ty, ctx);
+                                        let x = Opaque::from_type(ty, ctx);
                                         return Ok(parse::Resolved::New(x, None));
                                     },
                                 }
@@ -575,12 +575,12 @@ impl DotAttrs for Type {
         self.kind.dot_attrs(ctx, y)
     }
 }
-impl TemplParams for Type {
+impl Params for Type {
     fn self_templ_ps(&self, ctx: &Context) -> Vec<TypeId> {
         self.kind.self_templ_ps(ctx)
     }
 }
-impl AsTemplParam for Type {
+impl AsParam for Type {
     type Extra = Item;
     fn as_templ_param(&self, ctx: &Context, it: &Item) -> Option<TypeId> {
         self.kind.as_templ_param(ctx, it)
