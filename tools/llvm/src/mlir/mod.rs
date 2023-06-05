@@ -2,8 +2,8 @@
 
 #[macro_use]
 mod r#macro;
-mod context;
-pub mod diagnostic;
+mod ctx;
+pub mod diag;
 pub mod dialect;
 mod error;
 mod execution_engine;
@@ -16,7 +16,7 @@ mod test;
 pub mod utility;
 
 pub use self::{
-    context::{Context, ContextRef},
+    ctx::{Context, ContextRef},
     error::Error,
     execution_engine::ExecutionEngine,
     string_ref::StringRef,
@@ -83,10 +83,7 @@ mod tests {
             func::func(
                 &context,
                 StringAttribute::new(&context, "add"),
-                TypeAttribute::new(
-                    FunctionType::new(&context, &[integer_type, integer_type], &[integer_type])
-                        .into(),
-                ),
+                TypeAttribute::new(FunctionType::new(&context, &[integer_type, integer_type], &[integer_type]).into()),
                 region,
                 &[],
                 Location::unknown(&context),
@@ -199,9 +196,7 @@ mod tests {
             func::func(
                 &context,
                 StringAttribute::new(&context, "sum"),
-                TypeAttribute::new(
-                    FunctionType::new(&context, &[memref_type, memref_type], &[]).into(),
-                ),
+                TypeAttribute::new(FunctionType::new(&context, &[memref_type, memref_type], &[]).into()),
                 function_region,
                 &[],
                 Location::unknown(&context),
@@ -224,12 +219,7 @@ mod tests {
 
         let integer_type = IntegerType::new(&context, 64).into();
 
-        fn compile_add<'a>(
-            context: &Context,
-            block: &'a Block,
-            lhs: Value<'a>,
-            rhs: Value<'a>,
-        ) -> Value<'a> {
+        fn compile_add<'a>(context: &Context, block: &'a Block, lhs: Value<'a>, rhs: Value<'a>) -> Value<'a> {
             block
                 .append_operation(arith::addi(lhs, rhs, Location::unknown(context)))
                 .result(0)
@@ -240,9 +230,7 @@ mod tests {
         module.body().append_operation(func::func(
             &context,
             StringAttribute::new(&context, "add"),
-            TypeAttribute::new(
-                FunctionType::new(&context, &[integer_type, integer_type], &[integer_type]).into(),
-            ),
+            TypeAttribute::new(FunctionType::new(&context, &[integer_type, integer_type], &[integer_type]).into()),
             {
                 let block = Block::new(&[(integer_type, location), (integer_type, location)]);
 
