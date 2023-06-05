@@ -101,7 +101,7 @@
 //! ```
 
 use crate::basic_block::BasicBlock;
-use crate::context::{AsContextRef, Context};
+use crate::ctx::{AsContextRef, Context};
 pub use crate::debug_info::flags::{DIFlags, DIFlagsConstants};
 use crate::module::Module;
 use crate::values::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue, PointerValue};

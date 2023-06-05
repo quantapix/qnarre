@@ -3,7 +3,7 @@ pub use self::{
     tuple::TupleType, type_like::TypeLike,
 };
 use super::Location;
-use crate::{context::Context, string_ref::StringRef, utility::print_callback};
+use crate::{ctx::Context, string_ref::StringRef, utility::print_callback};
 use mlir_sys::{
     mlirBF16TypeGet, mlirF16TypeGet, mlirF32TypeGet, mlirF64TypeGet, mlirIndexTypeGet, mlirNoneTypeGet, mlirTypeEqual,
     mlirTypeParseGet, mlirTypePrint, mlirVectorTypeGet, mlirVectorTypeGetChecked, MlirType,
@@ -438,7 +438,7 @@ impl<'c> TupleType<'c> {
 }
 type_traits!(TupleType, is_tuple, "tuple");
 use super::TypeId;
-use crate::context::ContextRef;
+use crate::ctx::ContextRef;
 use mlir_sys::{mlirTypeDump, mlirTypeGetContext, mlirTypeGetTypeID, MlirType};
 pub trait TypeLike<'c> {
     fn to_raw(&self) -> MlirType;

@@ -1,5 +1,3 @@
-//! `scf` dialect.
-
 use crate::{
     ir::{
         attribute::DenseI64ArrayAttribute, operation::OperationBuilder, Identifier, Location, Operation, Region, Type,

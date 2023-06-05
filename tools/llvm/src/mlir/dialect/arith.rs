@@ -1,5 +1,3 @@
-//! `arith` dialect.
-
 use crate::{
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute, Identifier, Location,
@@ -7,7 +5,6 @@ use crate::{
     },
     Context,
 };
-
 pub fn constant<'c>(context: &'c Context, value: Attribute<'c>, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("arith.constant", location)
         .add_attributes(&[(Identifier::new(context, "value"), value)])
@@ -33,7 +30,6 @@ pub enum CmpfPredicate {
     Uno,
     True,
 }
-
 pub fn cmpf<'c>(
     context: &'c Context,
     predicate: CmpfPredicate,
@@ -43,7 +39,6 @@ pub fn cmpf<'c>(
 ) -> Operation<'c> {
     cmp(context, "arith.cmpf", predicate as i64, lhs, rhs, location)
 }
-
 pub enum CmpiPredicate {
     Eq,
     Ne,
@@ -56,7 +51,6 @@ pub enum CmpiPredicate {
     Ugt,
     Uge,
 }
-
 pub fn cmpi<'c>(
     context: &'c Context,
     predicate: CmpiPredicate,
@@ -66,7 +60,6 @@ pub fn cmpi<'c>(
 ) -> Operation<'c> {
     cmp(context, "arith.cmpi", predicate as i64, lhs, rhs, location)
 }
-
 fn cmp<'c>(
     context: &'c Context,
     name: &str,
@@ -84,7 +77,6 @@ fn cmp<'c>(
         .enable_result_type_inference()
         .build()
 }
-
 melior_macro::binary_operations!(
     arith,
     [
@@ -120,9 +112,7 @@ melior_macro::binary_operations!(
         xori,
     ]
 );
-
 melior_macro::unary_operations!(arith, [negf, truncf]);
-
 melior_macro::typed_unary_operations!(
     arith,
     [
@@ -139,7 +129,6 @@ melior_macro::typed_unary_operations!(
         uitofp
     ]
 );
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,13 +142,11 @@ mod tests {
         test::load_all_dialects,
         Context,
     };
-
     fn create_context() -> Context {
         let context = Context::new();
         load_all_dialects(&context);
         context
     }
-
     fn compile_operation<'c>(
         context: &'c Context,
         operation: impl Fn(&Block<'c>) -> Operation<'c>,
@@ -168,26 +155,21 @@ mod tests {
     ) {
         let location = Location::unknown(context);
         let module = Module::new(location);
-
         let block = Block::new(
             &block_argument_types
                 .iter()
                 .map(|&r#type| (r#type, location))
                 .collect::<Vec<_>>(),
         );
-
         let operation = operation(&block);
         let name = operation.name();
         let name = name.as_string_ref().as_str().unwrap();
-
         block.append_operation(func::r#return(
             &[block.append_operation(operation).result(0).unwrap().into()],
             location,
         ));
-
         let region = Region::new();
         region.append_block(block);
-
         let function = func::func(
             context,
             StringAttribute::new(context, "foo"),
@@ -196,18 +178,14 @@ mod tests {
             &[],
             Location::unknown(context),
         );
-
         module.body().append_operation(function);
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(name, module.as_operation());
     }
-
     #[test]
     fn compile_constant() {
         let context = create_context();
         let integer_type = IntegerType::new(&context, 64).into();
-
         compile_operation(
             &context,
             |_| {
@@ -221,12 +199,10 @@ mod tests {
             FunctionType::new(&context, &[integer_type], &[integer_type]),
         );
     }
-
     #[test]
     fn compile_negf() {
         let context = create_context();
         let f64_type = Type::float64(&context);
-
         compile_operation(
             &context,
             |block| negf(block.argument(0).unwrap().into(), Location::unknown(&context)),
@@ -234,15 +210,12 @@ mod tests {
             FunctionType::new(&context, &[f64_type], &[f64_type]),
         );
     }
-
     mod cmp {
         use super::*;
-
         #[test]
         fn compile_cmpf() {
             let context = create_context();
             let float_type = Type::float64(&context);
-
             compile_operation(
                 &context,
                 |block| {
@@ -262,12 +235,10 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_cmpi() {
             let context = create_context();
             let integer_type = IntegerType::new(&context, 64).into();
-
             compile_operation(
                 &context,
                 |block| {
@@ -288,16 +259,13 @@ mod tests {
             );
         }
     }
-
     mod typed_unary {
         use super::*;
-
         #[test]
         fn compile_bitcast() {
             let context = create_context();
             let integer_type = IntegerType::new(&context, 64).into();
             let float_type = Type::float64(&context);
-
             compile_operation(
                 &context,
                 |block| {
@@ -311,11 +279,9 @@ mod tests {
                 FunctionType::new(&context, &[integer_type], &[float_type]),
             );
         }
-
         #[test]
         fn compile_extf() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -329,11 +295,9 @@ mod tests {
                 FunctionType::new(&context, &[Type::float32(&context)], &[Type::float64(&context)]),
             );
         }
-
         #[test]
         fn compile_extsi() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -351,11 +315,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_extui() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -373,11 +335,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_fptosi() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -395,11 +355,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_fptoui() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -417,11 +375,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_index_cast() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -439,11 +395,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_index_castui() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -461,11 +415,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_sitofp() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -483,11 +435,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_trunci() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -505,11 +455,9 @@ mod tests {
                 ),
             );
         }
-
         #[test]
         fn compile_uitofp() {
             let context = create_context();
-
             compile_operation(
                 &context,
                 |block| {
@@ -528,31 +476,23 @@ mod tests {
             );
         }
     }
-
     #[test]
     fn compile_addi() {
         let context = Context::new();
         load_all_dialects(&context);
-
         let location = Location::unknown(&context);
         let module = Module::new(location);
-
         let integer_type = IntegerType::new(&context, 64).into();
-
         let function = {
             let block = Block::new(&[(integer_type, location), (integer_type, location)]);
-
             let sum = block.append_operation(addi(
                 block.argument(0).unwrap().into(),
                 block.argument(1).unwrap().into(),
                 location,
             ));
-
             block.append_operation(func::r#return(&[sum.result(0).unwrap().into()], location));
-
             let region = Region::new();
             region.append_block(block);
-
             func::func(
                 &context,
                 StringAttribute::new(&context, "foo"),
@@ -562,9 +502,7 @@ mod tests {
                 Location::unknown(&context),
             )
         };
-
         module.body().append_operation(function);
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }

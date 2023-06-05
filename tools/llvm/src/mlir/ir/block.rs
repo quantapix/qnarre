@@ -1,6 +1,6 @@
 use super::{Location, Operation, OperationRef, RegionRef, Type, TypeLike, Value};
 use crate::{
-    context::Context,
+    ctx::Context,
     utility::{into_raw_array, print_callback},
     Error,
 };
@@ -248,7 +248,7 @@ impl<'a> TryFrom<Value<'a>> for BlockArgument<'a> {
 mod tests {
     use super::*;
     use crate::{
-        context::Context,
+        ctx::Context,
         ir::{Block, Location},
     };
     #[test]

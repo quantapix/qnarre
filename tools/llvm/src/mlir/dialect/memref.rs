@@ -1,5 +1,3 @@
-//! `memref` dialect.
-
 use crate::{
     ir::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},

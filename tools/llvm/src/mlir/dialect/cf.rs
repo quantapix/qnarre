@@ -1,5 +1,3 @@
-//! `cf` dialect.
-
 use crate::{
     ir::{
         attribute::{DenseElementsAttribute, DenseI32ArrayAttribute, IntegerAttribute, StringAttribute},

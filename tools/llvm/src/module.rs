@@ -39,7 +39,7 @@ use std::rc::Rc;
 
 #[llvm_versions(7.0..=latest)]
 use crate::comdat::Comdat;
-use crate::context::{AsContextRef, Context, ContextRef};
+use crate::ctx::{AsContextRef, Context, ContextRef};
 use crate::data_layout::DataLayout;
 #[llvm_versions(7.0..=latest)]
 use crate::debug_info::{DICompileUnit, DWARFEmissionKind, DWARFSourceLanguage, DebugInfoBuilder};

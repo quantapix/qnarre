@@ -1,5 +1,3 @@
-//! `index` dialect.
-
 use super::arith::CmpiPredicate;
 use crate::{
     ir::{attribute::IntegerAttribute, operation::OperationBuilder, Attribute, Identifier, Location, Operation, Value},

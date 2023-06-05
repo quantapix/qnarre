@@ -9,7 +9,7 @@ use llvm_lib::core::{
 };
 use llvm_lib::prelude::{LLVMBasicBlockRef, LLVMValueRef};
 
-use crate::context::ContextRef;
+use crate::ctx::ContextRef;
 use crate::support::to_c_str;
 use crate::values::{AsValueRef, BasicValueUse, FunctionValue, InstructionValue, PointerValue};
 

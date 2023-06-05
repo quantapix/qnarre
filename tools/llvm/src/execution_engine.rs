@@ -6,7 +6,7 @@ use llvm_lib::execution_engine::{
     LLVMRunStaticConstructors, LLVMRunStaticDestructors,
 };
 
-use crate::context::Context;
+use crate::ctx::Context;
 use crate::module::Module;
 use crate::support::{to_c_str, LLVMString};
 use crate::targets::TargetData;

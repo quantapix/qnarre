@@ -1,6 +1,6 @@
 use super::AnyValue;
 use super::{BasicMetadataValueEnum, MetadataValue};
-use crate::attributes::{Attribute, AttributeLoc};
+use crate::attr::{Attribute, AttributeLoc};
 use crate::comdat::Comdat;
 use crate::debug_info::DISubprogram;
 use crate::module::Linkage;

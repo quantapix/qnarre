@@ -5,7 +5,7 @@ use llvm_lib::execution_engine::LLVMCreateGenericValueOfInt;
 use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
 use llvm_lib::LLVMTypeKind;
 
-use crate::context::ContextRef;
+use crate::ctx::ContextRef;
 use crate::support::LLVMString;
 use crate::types::enums::BasicMetadataTypeEnum;
 use crate::types::enums::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum};

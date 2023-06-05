@@ -1,7 +1,7 @@
 pub use self::{builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult};
 use super::{BlockRef, Identifier, RegionRef, Value};
 use crate::{
-    context::{Context, ContextRef},
+    ctx::{Context, ContextRef},
     utility::{print_callback, print_string_callback},
     Error,
 };
@@ -193,7 +193,7 @@ impl<'a> Debug for OperationRef<'a> {
 }
 use super::Operation;
 use crate::{
-    context::Context,
+    ctx::Context,
     ir::{Attribute, AttributeLike, Block, Identifier, Location, Region, Type, TypeLike, Value, ValueLike},
     string_ref::StringRef,
     utility::into_raw_array,
@@ -367,7 +367,7 @@ impl<'a> TryFrom<Value<'a>> for OperationResult<'a> {
 mod tests {
     use super::*;
     use crate::{
-        context::Context,
+        ctx::Context,
         ir::{Block, Location},
     };
     use pretty_assertions::assert_eq;
@@ -475,7 +475,7 @@ mod tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{context::Context, ir::Block, test::load_all_dialects};
+    use crate::{ctx::Context, ir::Block, test::load_all_dialects};
     #[test]
     fn new() {
         OperationBuilder::new("foo", Location::unknown(&Context::new())).build();
@@ -534,7 +534,7 @@ mod tests {
 #[cfg(test)]
 mod tests {
     use crate::{
-        context::Context,
+        ctx::Context,
         ir::{operation::OperationBuilder, Block, Location, Type},
     };
     #[test]

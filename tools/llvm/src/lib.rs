@@ -2,11 +2,11 @@
 //extern crate inkwell_internals;
 #[macro_use]
 pub mod support;
-pub mod attributes;
+pub mod attr;
 pub mod basic_block;
 pub mod builder;
 pub mod comdat;
-pub mod context;
+pub mod ctx;
 pub mod data_layout;
 pub mod debug_info;
 pub mod execution_engine;

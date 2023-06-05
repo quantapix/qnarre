@@ -4,7 +4,7 @@ pub use self::{
     flat_symbol_ref::FlatSymbolRefAttribute, float::FloatAttribute, integer::IntegerAttribute, r#type::TypeAttribute,
     string::StringAttribute,
 };
-use crate::{context::Context, string_ref::StringRef, utility::print_callback};
+use crate::{ctx::Context, string_ref::StringRef, utility::print_callback};
 use mlir_sys::{
     mlirAttributeEqual, mlirAttributeGetNull, mlirAttributeParseGet, mlirAttributePrint, mlirUnitAttrGet, MlirAttribute,
 };

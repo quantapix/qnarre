@@ -29,7 +29,7 @@ use llvm_lib::target::{LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext};
 use once_cell::sync::Lazy;
 use parking_lot::{Mutex, MutexGuard};
 
-use crate::attributes::Attribute;
+use crate::attr::Attribute;
 use crate::basic_block::BasicBlock;
 use crate::builder::Builder;
 use crate::memory_buffer::MemoryBuffer;

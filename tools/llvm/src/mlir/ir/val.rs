@@ -72,7 +72,7 @@ from_raw_subtypes!(Value, BlockArgument, OperationResult);
 mod tests {
     use super::*;
     use crate::{
-        context::Context,
+        ctx::Context,
         ir::{operation::OperationBuilder, Attribute, Block, Identifier, Location},
         test::load_all_dialects,
     };

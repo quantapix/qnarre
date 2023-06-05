@@ -36,7 +36,7 @@ use llvm_lib::prelude::{LLVMBuilderRef, LLVMValueRef};
 
 use crate::basic_block::BasicBlock;
 #[llvm_versions(7.0..=8.0)]
-use crate::context::AsContextRef;
+use crate::ctx::AsContextRef;
 #[llvm_versions(7.0..=latest)]
 use crate::debug_info::DILocation;
 use crate::support::to_c_str;
@@ -60,7 +60,7 @@ pub struct Builder<'ctx> {
 }
 
 #[allow(unused)] // only used in documentation
-use crate::context::Context;
+use crate::ctx::Context;
 
 impl<'ctx> Builder<'ctx> {
     pub unsafe fn new(builder: LLVMBuilderRef) -> Self {

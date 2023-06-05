@@ -1,5 +1,3 @@
-//! `func` dialect.
-
 use crate::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
