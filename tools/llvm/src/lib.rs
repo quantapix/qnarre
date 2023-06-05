@@ -13,6 +13,7 @@ pub mod execution_engine;
 pub mod intrinsics;
 pub mod llvm_lib;
 pub mod memory_buffer;
+pub mod mlir;
 pub mod module;
 pub mod object_file;
 pub mod passes;

@@ -1,7 +1,7 @@
 //! IR objects and builders.
 
 mod affine_map;
-pub mod attribute;
+pub mod attr;
 pub mod block;
 mod identifier;
 mod location;
@@ -13,7 +13,7 @@ mod value;
 
 pub use self::{
     affine_map::AffineMap,
-    attribute::{Attribute, AttributeLike},
+    attr::{Attribute, AttributeLike},
     block::{Block, BlockRef},
     identifier::Identifier,
     location::Location,
