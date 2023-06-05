@@ -114,6 +114,596 @@ from_raw_subtypes!(
     TypeAttribute,
 );
 
+macro_rules! attribute_traits {
+    ($name: ident, $is_type: ident, $string: expr) => {
+        impl<'c> $name<'c> {
+            unsafe fn from_raw(raw: MlirAttribute) -> Self {
+                Self {
+                    attribute: Attribute::from_raw(raw),
+                }
+            }
+        }
+
+        impl<'c> TryFrom<crate::ir::attribute::Attribute<'c>> for $name<'c> {
+            type Error = crate::Error;
+
+            fn try_from(attribute: crate::ir::attribute::Attribute<'c>) -> Result<Self, Self::Error> {
+                if attribute.$is_type() {
+                    Ok(unsafe { Self::from_raw(attribute.to_raw()) })
+                } else {
+                    Err(Error::AttributeExpected($string, attribute.to_string()))
+                }
+            }
+        }
+
+        impl<'c> crate::ir::attribute::AttributeLike<'c> for $name<'c> {
+            fn to_raw(&self) -> mlir_sys::MlirAttribute {
+                self.attribute.to_raw()
+            }
+        }
+
+        impl<'c> std::fmt::Display for $name<'c> {
+            fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.attribute, formatter)
+            }
+        }
+
+        impl<'c> std::fmt::Debug for $name<'c> {
+            fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Display::fmt(self, formatter)
+            }
+        }
+    };
+}
+
+use super::{Attribute, AttributeLike};
+use crate::{Context, Error};
+use mlir_sys::{mlirArrayAttrGet, mlirArrayAttrGetElement, mlirArrayAttrGetNumElements, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct ArrayAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> ArrayAttribute<'c> {
+    pub fn new(context: &'c Context, values: &[Attribute<'c>]) -> Self {
+        unsafe {
+            Self::from_raw(mlirArrayAttrGet(
+                context.to_raw(),
+                values.len() as isize,
+                values.as_ptr() as *const _ as *const _,
+            ))
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        (unsafe { mlirArrayAttrGetNumElements(self.attribute.to_raw()) }) as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn element(&self, index: usize) -> Result<Attribute<'c>, Error> {
+        if index < self.len() {
+            Ok(unsafe { Attribute::from_raw(mlirArrayAttrGetElement(self.attribute.to_raw(), index as isize)) })
+        } else {
+            Err(Error::PositionOutOfBounds {
+                name: "array element",
+                value: self.to_string(),
+                index,
+            })
+        }
+    }
+}
+
+attribute_traits!(ArrayAttribute, is_dense_i64_array, "dense i64 array");
+
+#[cfg(test)]
+mod tests {
+    use crate::ir::{attribute::IntegerAttribute, r#type::IntegerType, Type};
+
+    use super::*;
+
+    #[test]
+    fn element() {
+        let context = Context::new();
+        let r#type = IntegerType::new(&context, 64).into();
+        let attributes = [
+            IntegerAttribute::new(1, r#type).into(),
+            IntegerAttribute::new(2, r#type).into(),
+            IntegerAttribute::new(3, r#type).into(),
+        ];
+
+        let attribute = ArrayAttribute::new(&context, &attributes);
+
+        assert_eq!(attribute.element(0).unwrap(), attributes[0]);
+        assert_eq!(attribute.element(1).unwrap(), attributes[1]);
+        assert_eq!(attribute.element(2).unwrap(), attributes[2]);
+        assert!(matches!(attribute.element(3), Err(Error::PositionOutOfBounds { .. })));
+    }
+
+    #[test]
+    fn len() {
+        let context = Context::new();
+        let attribute = ArrayAttribute::new(&context, &[IntegerAttribute::new(1, Type::index(&context)).into()]);
+
+        assert_eq!(attribute.len(), 1);
+    }
+}
+
+use crate::{
+    ir::{r#type, Type},
+    ContextRef,
+};
+use melior_macro::attribute_check_functions;
+use mlir_sys::{
+    mlirAttributeDump, mlirAttributeGetContext, mlirAttributeGetType, mlirAttributeGetTypeID, MlirAttribute,
+};
+
+pub trait AttributeLike<'c> {
+    fn to_raw(&self) -> MlirAttribute;
+
+    fn context(&self) -> ContextRef<'c> {
+        unsafe { ContextRef::from_raw(mlirAttributeGetContext(self.to_raw())) }
+    }
+
+    fn r#type(&self) -> Type {
+        unsafe { Type::from_raw(mlirAttributeGetType(self.to_raw())) }
+    }
+
+    fn type_id(&self) -> r#type::TypeId {
+        unsafe { r#type::TypeId::from_raw(mlirAttributeGetTypeID(self.to_raw())) }
+    }
+
+    fn dump(&self) {
+        unsafe { mlirAttributeDump(self.to_raw()) }
+    }
+
+    attribute_check_functions!(
+        mlirAttributeIsAAffineMap,
+        mlirAttributeIsAArray,
+        mlirAttributeIsABool,
+        mlirAttributeIsADenseBoolArray,
+        mlirAttributeIsADenseElements,
+        mlirAttributeIsADenseF32Array,
+        mlirAttributeIsADenseF64Array,
+        mlirAttributeIsADenseFPElements,
+        mlirAttributeIsADenseI16Array,
+        mlirAttributeIsADenseI32Array,
+        mlirAttributeIsADenseI64Array,
+        mlirAttributeIsADenseI8Array,
+        mlirAttributeIsADenseIntElements,
+        mlirAttributeIsADictionary,
+        mlirAttributeIsAElements,
+        mlirAttributeIsAFlatSymbolRef,
+        mlirAttributeIsAFloat,
+        mlirAttributeIsAInteger,
+        mlirAttributeIsAIntegerSet,
+        mlirAttributeIsAOpaque,
+        mlirAttributeIsASparseElements,
+        mlirAttributeIsASparseTensorEncodingAttr,
+        mlirAttributeIsAStridedLayout,
+        mlirAttributeIsAString,
+        mlirAttributeIsASymbolRef,
+        mlirAttributeIsAType,
+        mlirAttributeIsAUnit,
+    );
+}
+
+use super::{Attribute, AttributeLike};
+use crate::{
+    ir::{Type, TypeLike},
+    Error,
+};
+use mlir_sys::{
+    mlirDenseElementsAttrGet, mlirDenseElementsAttrGetInt32Value, mlirDenseElementsAttrGetInt64Value,
+    mlirElementsAttrGetNumElements, MlirAttribute,
+};
+
+#[derive(Clone, Copy)]
+pub struct DenseElementsAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> DenseElementsAttribute<'c> {
+    pub fn new(r#type: Type<'c>, values: &[Attribute<'c>]) -> Result<Self, Error> {
+        if r#type.is_shaped() {
+            Ok(unsafe {
+                Self::from_raw(mlirDenseElementsAttrGet(
+                    r#type.to_raw(),
+                    values.len() as isize,
+                    values.as_ptr() as *const _ as *const _,
+                ))
+            })
+        } else {
+            Err(Error::TypeExpected("shaped", r#type.to_string()))
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        (unsafe { mlirElementsAttrGetNumElements(self.attribute.to_raw()) }) as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn i32_element(&self, index: usize) -> Result<i32, Error> {
+        if !self.is_dense_int_elements() {
+            Err(Error::ElementExpected {
+                r#type: "integer",
+                value: self.to_string(),
+            })
+        } else if index < self.len() {
+            Ok(unsafe { mlirDenseElementsAttrGetInt32Value(self.attribute.to_raw(), index as isize) })
+        } else {
+            Err(Error::PositionOutOfBounds {
+                name: "dense element",
+                value: self.to_string(),
+                index,
+            })
+        }
+    }
+
+    pub fn i64_element(&self, index: usize) -> Result<i64, Error> {
+        if !self.is_dense_int_elements() {
+            Err(Error::ElementExpected {
+                r#type: "integer",
+                value: self.to_string(),
+            })
+        } else if index < self.len() {
+            Ok(unsafe { mlirDenseElementsAttrGetInt64Value(self.attribute.to_raw(), index as isize) })
+        } else {
+            Err(Error::PositionOutOfBounds {
+                name: "dense element",
+                value: self.to_string(),
+                index,
+            })
+        }
+    }
+}
+
+attribute_traits!(DenseElementsAttribute, is_dense_elements, "dense elements");
+
+use super::{Attribute, AttributeLike};
+use crate::{Context, Error};
+use mlir_sys::{mlirArrayAttrGetNumElements, mlirDenseI32ArrayGet, mlirDenseI32ArrayGetElement, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct DenseI32ArrayAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> DenseI32ArrayAttribute<'c> {
+    pub fn new(context: &'c Context, values: &[i32]) -> Self {
+        unsafe {
+            Self::from_raw(mlirDenseI32ArrayGet(
+                context.to_raw(),
+                values.len() as isize,
+                values.as_ptr(),
+            ))
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        (unsafe { mlirArrayAttrGetNumElements(self.attribute.to_raw()) }) as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn element(&self, index: usize) -> Result<i32, Error> {
+        if index < self.len() {
+            Ok(unsafe { mlirDenseI32ArrayGetElement(self.attribute.to_raw(), index as isize) })
+        } else {
+            Err(Error::PositionOutOfBounds {
+                name: "array element",
+                value: self.to_string(),
+                index,
+            })
+        }
+    }
+}
+
+attribute_traits!(DenseI32ArrayAttribute, is_dense_i32_array, "dense i32 array");
+
+use super::{Attribute, AttributeLike};
+use crate::{Context, Error};
+use mlir_sys::{mlirArrayAttrGetNumElements, mlirDenseI64ArrayGet, mlirDenseI64ArrayGetElement, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct DenseI64ArrayAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> DenseI64ArrayAttribute<'c> {
+    pub fn new(context: &'c Context, values: &[i64]) -> Self {
+        unsafe {
+            Self::from_raw(mlirDenseI64ArrayGet(
+                context.to_raw(),
+                values.len() as isize,
+                values.as_ptr(),
+            ))
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        (unsafe { mlirArrayAttrGetNumElements(self.attribute.to_raw()) }) as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn element(&self, index: usize) -> Result<i64, Error> {
+        if index < self.len() {
+            Ok(unsafe { mlirDenseI64ArrayGetElement(self.attribute.to_raw(), index as isize) })
+        } else {
+            Err(Error::PositionOutOfBounds {
+                name: "array element",
+                value: self.to_string(),
+                index,
+            })
+        }
+    }
+}
+
+attribute_traits!(DenseI64ArrayAttribute, is_dense_i64_array, "dense i64 array");
+
+use super::{Attribute, AttributeLike};
+use crate::{Context, Error, StringRef};
+use mlir_sys::{mlirFlatSymbolRefAttrGet, mlirFlatSymbolRefAttrGetValue, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct FlatSymbolRefAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> FlatSymbolRefAttribute<'c> {
+    pub fn new(context: &'c Context, symbol: &str) -> Self {
+        unsafe {
+            Self::from_raw(mlirFlatSymbolRefAttrGet(
+                context.to_raw(),
+                StringRef::from(symbol).to_raw(),
+            ))
+        }
+    }
+
+    pub fn value(&self) -> &str {
+        unsafe { StringRef::from_raw(mlirFlatSymbolRefAttrGetValue(self.to_raw())) }
+            .as_str()
+            .unwrap()
+    }
+}
+
+attribute_traits!(FlatSymbolRefAttribute, is_flat_symbol_ref, "flat symbol ref");
+
+use super::{Attribute, AttributeLike};
+use crate::{
+    ir::{Type, TypeLike},
+    Context, Error,
+};
+use mlir_sys::{mlirFloatAttrDoubleGet, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct FloatAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> FloatAttribute<'c> {
+    pub fn new(context: &'c Context, number: f64, r#type: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirFloatAttrDoubleGet(context.to_raw(), r#type.to_raw(), number)) }
+    }
+}
+
+attribute_traits!(FloatAttribute, is_float, "float");
+
+use super::{Attribute, AttributeLike};
+use crate::{
+    ir::{Type, TypeLike},
+    Error,
+};
+use mlir_sys::{mlirIntegerAttrGet, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct IntegerAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> IntegerAttribute<'c> {
+    pub fn new(integer: i64, r#type: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirIntegerAttrGet(r#type.to_raw(), integer)) }
+    }
+}
+
+attribute_traits!(IntegerAttribute, is_integer, "integer");
+
+use super::{Attribute, AttributeLike};
+use crate::{Context, Error, StringRef};
+use mlir_sys::{mlirStringAttrGet, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct StringAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> StringAttribute<'c> {
+    pub fn new(context: &'c Context, string: &str) -> Self {
+        unsafe { Self::from_raw(mlirStringAttrGet(context.to_raw(), StringRef::from(string).to_raw())) }
+    }
+}
+
+attribute_traits!(StringAttribute, is_string, "string");
+
+use super::{Attribute, AttributeLike};
+use crate::{
+    ir::{Type, TypeLike},
+    Error,
+};
+use mlir_sys::{mlirTypeAttrGet, mlirTypeAttrGetValue, MlirAttribute};
+
+#[derive(Clone, Copy)]
+pub struct TypeAttribute<'c> {
+    attribute: Attribute<'c>,
+}
+
+impl<'c> TypeAttribute<'c> {
+    pub fn new(r#type: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirTypeAttrGet(r#type.to_raw())) }
+    }
+
+    pub fn value(&self) -> Type<'c> {
+        unsafe { Type::from_raw(mlirTypeAttrGetValue(self.to_raw())) }
+    }
+}
+
+attribute_traits!(TypeAttribute, is_type, "type");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Context;
+
+    #[test]
+    fn value() {
+        let context = Context::new();
+        let r#type = Type::index(&context);
+
+        assert_eq!(TypeAttribute::new(r#type).value(), r#type);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        assert_eq!(FlatSymbolRefAttribute::new(&Context::new(), "foo").value(), "foo");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn element() {
+        let context = Context::new();
+        let attribute = DenseI64ArrayAttribute::new(&context, &[1, 2, 3]);
+
+        assert_eq!(attribute.element(0).unwrap(), 1);
+        assert_eq!(attribute.element(1).unwrap(), 2);
+        assert_eq!(attribute.element(2).unwrap(), 3);
+        assert!(matches!(attribute.element(3), Err(Error::PositionOutOfBounds { .. })));
+    }
+
+    #[test]
+    fn len() {
+        let context = Context::new();
+        let attribute = DenseI64ArrayAttribute::new(&context, &[1, 2, 3]);
+
+        assert_eq!(attribute.len(), 3);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn element() {
+        let context = Context::new();
+        let attribute = DenseI32ArrayAttribute::new(&context, &[1, 2, 3]);
+
+        assert_eq!(attribute.element(0).unwrap(), 1);
+        assert_eq!(attribute.element(1).unwrap(), 2);
+        assert_eq!(attribute.element(2).unwrap(), 3);
+        assert!(matches!(attribute.element(3), Err(Error::PositionOutOfBounds { .. })));
+    }
+
+    #[test]
+    fn len() {
+        let context = Context::new();
+        let attribute = DenseI32ArrayAttribute::new(&context, &[1, 2, 3]);
+
+        assert_eq!(attribute.len(), 3);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ir::{
+            attribute::IntegerAttribute,
+            r#type::{IntegerType, MemRefType},
+        },
+        Context,
+    };
+
+    #[test]
+    fn i32_element() {
+        let context = Context::new();
+        let integer_type = IntegerType::new(&context, 32).into();
+        let attribute = DenseElementsAttribute::new(
+            MemRefType::new(integer_type, &[3], None, None).into(),
+            &[IntegerAttribute::new(42, integer_type).into()],
+        )
+        .unwrap();
+
+        assert_eq!(attribute.i32_element(0), Ok(42));
+        assert_eq!(attribute.i32_element(1), Ok(42));
+        assert_eq!(attribute.i32_element(2), Ok(42));
+        assert_eq!(
+            attribute.i32_element(3),
+            Err(Error::PositionOutOfBounds {
+                name: "dense element",
+                value: attribute.to_string(),
+                index: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn i64_element() {
+        let context = Context::new();
+        let integer_type = IntegerType::new(&context, 64).into();
+        let attribute = DenseElementsAttribute::new(
+            MemRefType::new(integer_type, &[3], None, None).into(),
+            &[IntegerAttribute::new(42, integer_type).into()],
+        )
+        .unwrap();
+
+        assert_eq!(attribute.i64_element(0), Ok(42));
+        assert_eq!(attribute.i64_element(1), Ok(42));
+        assert_eq!(attribute.i64_element(2), Ok(42));
+        assert_eq!(
+            attribute.i64_element(3),
+            Err(Error::PositionOutOfBounds {
+                name: "dense element",
+                value: attribute.to_string(),
+                index: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn len() {
+        let context = Context::new();
+        let integer_type = IntegerType::new(&context, 64).into();
+        let attribute = DenseElementsAttribute::new(
+            MemRefType::new(integer_type, &[3], None, None).into(),
+            &[IntegerAttribute::new(0, integer_type).into()],
+        )
+        .unwrap();
+
+        assert_eq!(attribute.len(), 3);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
