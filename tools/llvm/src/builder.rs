@@ -1,7 +1,8 @@
 use crate::block::BasicBlock;
+use crate::ctx::Context;
 use crate::debug::DILocation;
-use crate::support::to_c_str;
 use crate::typ::*;
+use crate::utils::to_c_str;
 use crate::val::*;
 use crate::{AtomicOrdering, AtomicRMWBinOp, FloatPredicate, IntPredicate};
 use llvm_lib::core::*;
@@ -13,8 +14,6 @@ pub struct Builder<'ctx> {
     builder: LLVMBuilderRef,
     _marker: PhantomData<&'ctx ()>,
 }
-
-use crate::ctx::Context;
 impl<'ctx> Builder<'ctx> {
     pub unsafe fn new(builder: LLVMBuilderRef) -> Self {
         debug_assert!(!builder.is_null());

@@ -1,7 +1,7 @@
 use crate::ctx::Context;
 use crate::module::Module;
-use crate::support::{to_c_str, LLVMString};
 use crate::target::TargetData;
+use crate::utils::{to_c_str, LLVMString};
 use crate::val::{AnyValue, AsValueRef, FunctionValue, GenericValue};
 use libc::c_int;
 use llvm_lib::execution_engine::*;

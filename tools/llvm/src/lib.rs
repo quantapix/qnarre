@@ -1,27 +1,21 @@
-//#[macro_use]
-//extern crate inkwell_internals;
-#[macro_use]
-pub mod support;
-pub mod attr;
 pub mod block;
 pub mod builder;
-pub mod comdat;
 pub mod ctx;
 pub mod debug;
 pub mod execution_engine;
-pub mod intrinsics;
 pub mod llvm_lib;
 pub mod mlir;
 pub mod module;
 pub mod pass;
 pub mod target;
 pub mod typ;
+pub mod utils;
 pub mod val;
 
-use crate::support::{to_c_str, LLVMString, LLVMString, LLVMStringOrRaw};
+use llvm_lib::comdata::*;
 use llvm_lib::core::*;
 use llvm_lib::object::*;
-use llvm_lib::prelude::LLVMMemoryBufferRef;
+use llvm_lib::prelude::*;
 use llvm_lib::*;
 use std::convert::TryFrom;
 use std::ffi::CStr;
@@ -30,6 +24,89 @@ use std::mem::{forget, MaybeUninit};
 use std::path::Path;
 use std::ptr;
 use std::slice;
+
+use crate::module::Module;
+use crate::typ::{AnyTypeEnum, AsTypeRef, BasicTypeEnum};
+use crate::utils::{to_c_str, LLVMString, LLVMString, LLVMStringOrRaw};
+use crate::val::FunctionValue;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Attribute {
+    pub(crate) attribute: LLVMAttributeRef,
+}
+impl Attribute {
+    pub unsafe fn new(attribute: LLVMAttributeRef) -> Self {
+        debug_assert!(!attribute.is_null());
+        Attribute { attribute }
+    }
+    pub fn as_mut_ptr(&self) -> LLVMAttributeRef {
+        self.attribute
+    }
+    pub fn is_enum(self) -> bool {
+        unsafe { LLVMIsEnumAttribute(self.attribute) == 1 }
+    }
+    pub fn is_string(self) -> bool {
+        unsafe { LLVMIsStringAttribute(self.attribute) == 1 }
+    }
+    pub fn is_type(self) -> bool {
+        unsafe { LLVMIsTypeAttribute(self.attribute) == 1 }
+    }
+    pub fn get_named_enum_kind_id(name: &str) -> u32 {
+        unsafe { LLVMGetEnumAttributeKindForName(name.as_ptr() as *const ::libc::c_char, name.len()) }
+    }
+    pub fn get_enum_kind_id(self) -> u32 {
+        assert!(self.get_enum_kind_id_is_valid()); // FIXME: SubTypes
+        unsafe { LLVMGetEnumAttributeKind(self.attribute) }
+    }
+    fn get_enum_kind_id_is_valid(self) -> bool {
+        self.is_enum() || self.is_type()
+    }
+    pub fn get_last_enum_kind_id() -> u32 {
+        unsafe { LLVMGetLastEnumAttributeKind() }
+    }
+    pub fn get_enum_value(self) -> u64 {
+        assert!(self.is_enum()); // FIXME: SubTypes
+        unsafe { LLVMGetEnumAttributeValue(self.attribute) }
+    }
+    pub fn get_string_kind_id(&self) -> &CStr {
+        assert!(self.is_string()); // FIXME: SubTypes
+        let mut length = 0;
+        let cstr_ptr = unsafe { LLVMGetStringAttributeKind(self.attribute, &mut length) };
+        unsafe { CStr::from_ptr(cstr_ptr) }
+    }
+    pub fn get_string_value(&self) -> &CStr {
+        assert!(self.is_string()); // FIXME: SubTypes
+        let mut length = 0;
+        let cstr_ptr = unsafe { LLVMGetStringAttributeValue(self.attribute, &mut length) };
+        unsafe { CStr::from_ptr(cstr_ptr) }
+    }
+    pub fn get_type_value(&self) -> AnyTypeEnum {
+        assert!(self.is_type()); // FIXME: SubTypes
+        unsafe { AnyTypeEnum::new(LLVMGetTypeAttributeValue(self.attribute)) }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum AttributeLoc {
+    Return,
+    Param(u32),
+    Function,
+}
+impl AttributeLoc {
+    pub(crate) fn get_index(self) -> u32 {
+        match self {
+            AttributeLoc::Return => 0,
+            AttributeLoc::Param(index) => {
+                assert!(
+                    index <= u32::max_value() - 2,
+                    "Param index must be <= u32::max_value() - 2"
+                );
+                index + 1
+            },
+            AttributeLoc::Function => u32::max_value(),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct AddressSpace(u32);
@@ -250,6 +327,45 @@ pub enum InlineAsmDialect {
     ATT,
     #[llvm_variant(LLVMInlineAsmDialectIntel)]
     Intel,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Intrinsic {
+    id: u32,
+}
+impl Intrinsic {
+    pub unsafe fn new(id: u32) -> Self {
+        Self { id }
+    }
+    pub fn find(name: &str) -> Option<Self> {
+        let id = unsafe { LLVMLookupIntrinsicID(name.as_ptr() as *const ::libc::c_char, name.len()) };
+        if id == 0 {
+            return None;
+        }
+        Some(unsafe { Intrinsic::new(id) })
+    }
+    pub fn is_overloaded(&self) -> bool {
+        unsafe { LLVMIntrinsicIsOverloaded(self.id) != 0 }
+    }
+    pub fn get_declaration<'ctx>(
+        &self,
+        module: &Module<'ctx>,
+        param_types: &[BasicTypeEnum],
+    ) -> Option<FunctionValue<'ctx>> {
+        let mut param_types: Vec<LLVMTypeRef> = param_types.iter().map(|val| val.as_type_ref()).collect();
+        if self.is_overloaded() && param_types.is_empty() {
+            return None;
+        }
+        let res = unsafe {
+            FunctionValue::new(LLVMGetIntrinsicDeclaration(
+                module.module.get(),
+                self.id,
+                param_types.as_mut_ptr(),
+                param_types.len(),
+            ))
+        };
+        res
+    }
 }
 
 #[derive(Debug)]
@@ -638,5 +754,39 @@ impl fmt::Debug for DataLayout {
             .field("address", &self.as_ptr())
             .field("repr", &self.as_str())
             .finish()
+    }
+}
+
+#[llvm_enum(LLVMComdatSelectionKind)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ComdatSelectionKind {
+    #[llvm_variant(LLVMAnyComdatSelectionKind)]
+    Any,
+    #[llvm_variant(LLVMExactMatchComdatSelectionKind)]
+    ExactMatch,
+    #[llvm_variant(LLVMLargestComdatSelectionKind)]
+    Largest,
+    #[llvm_variant(LLVMNoDuplicatesComdatSelectionKind)]
+    NoDuplicates,
+    #[llvm_variant(LLVMSameSizeComdatSelectionKind)]
+    SameSize,
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct Comdat(pub(crate) LLVMComdatRef);
+impl Comdat {
+    pub unsafe fn new(comdat: LLVMComdatRef) -> Self {
+        debug_assert!(!comdat.is_null());
+        Comdat(comdat)
+    }
+    pub fn as_mut_ptr(&self) -> LLVMComdatRef {
+        self.0
+    }
+    pub fn get_selection_kind(self) -> ComdatSelectionKind {
+        let kind_ptr = unsafe { LLVMGetComdatSelectionKind(self.0) };
+        ComdatSelectionKind::new(kind_ptr)
+    }
+    pub fn set_selection_kind(self, kind: ComdatSelectionKind) {
+        unsafe { LLVMSetComdatSelectionKind(self.0, kind.into()) }
     }
 }

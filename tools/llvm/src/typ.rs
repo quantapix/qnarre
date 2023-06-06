@@ -5,7 +5,7 @@ use llvm_lib::prelude::*;
 use llvm_lib::LLVMTypeKind;
 
 use crate::ctx::ContextRef;
-use crate::support::LLVMString;
+use crate::utils::LLVMString;
 use crate::val::*;
 use crate::AddressSpace;
 use static_alloc::Bump;

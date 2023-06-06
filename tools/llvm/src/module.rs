@@ -5,10 +5,10 @@ use crate::debug::{DICompileUnit, DWARFEmissionKind, DWARFSourceLanguage, DebugI
 use crate::execution_engine::ExecutionEngine;
 use crate::memory_buffer::MemoryBuffer;
 use crate::pass::PassBuilderOptions;
-use crate::support::{to_c_str, LLVMString};
 use crate::target::TargetMachine;
 use crate::target::{InitializationConfig, Target, TargetTriple};
 use crate::typ::{AsTypeRef, BasicType, FunctionType, StructType};
+use crate::utils::{to_c_str, LLVMString};
 use crate::val::BasicValue;
 use crate::val::{AsValueRef, FunctionValue, GlobalValue, MetadataValue};
 use crate::{AddressSpace, OptimizationLevel};
@@ -436,7 +436,7 @@ impl<'ctx> Module<'ctx> {
             let string = "Cannot link a module which is already owned by an ExecutionEngine.\0";
             return Err(LLVMString::create_from_str(string));
         }
-        use crate::support::error_handling::get_error_str_diagnostic_handler;
+        use crate::utils::error_handling::get_error_str_diagnostic_handler;
         use libc::c_void;
         use llvm_lib::linker::LLVMLinkModules2;
         let context = self.get_context();
