@@ -1,34 +1,12 @@
 #[deny(missing_docs)]
 use llvm_lib::core::*;
-use llvm_lib::execution_engine::LLVMCreateGenericValueOfFloat;
-use llvm_lib::execution_engine::LLVMCreateGenericValueOfInt;
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::execution_engine::*;
+use llvm_lib::prelude::*;
 use llvm_lib::LLVMTypeKind;
 
 use crate::ctx::ContextRef;
 use crate::support::LLVMString;
-use crate::types::enums::BasicMetadataTypeEnum;
-use crate::types::enums::{AnyTypeEnum, BasicMetadataTypeEnum, BasicTypeEnum};
-use crate::types::traits::AsTypeRef;
-use crate::types::AnyTypeEnum;
-use crate::types::MetadataType;
-use crate::types::{traits::AsTypeRef, ArrayType, BasicTypeEnum, FunctionType, PointerType, Type};
-use crate::types::{AnyType, BasicTypeEnum, PointerType, Type};
-use crate::types::{ArrayType, BasicTypeEnum, FunctionType, PointerType, Type};
-use crate::types::{ArrayType, FloatType, FunctionType, IntType, PointerType, StructType, Type, VectorType, VoidType};
-use crate::types::{ArrayType, FloatType, FunctionType, IntType, PointerType, StructType, VectorType, VoidType};
-use crate::types::{ArrayType, FunctionType, PointerType, Type, VectorType};
-use crate::types::{BasicTypeEnum, FunctionType, PointerType, Type};
-use crate::types::{FunctionType, Type};
-use crate::values::IntValue;
-use crate::values::{ArrayValue, AsValueRef, BasicValue, IntValue, VectorValue};
-use crate::values::{ArrayValue, AsValueRef, BasicValueEnum, IntValue, StructValue};
-use crate::values::{ArrayValue, AsValueRef, FloatValue, GenericValue, IntValue};
-use crate::values::{ArrayValue, AsValueRef, GenericValue, IntValue};
-use crate::values::{ArrayValue, AsValueRef, IntValue};
-use crate::values::{ArrayValue, AsValueRef, IntValue, PointerValue};
-use crate::values::{BasicValue, BasicValueEnum, IntValue};
-use crate::values::{FloatMathValue, FloatValue, IntMathValue, IntValue, PointerMathValue, PointerValue, VectorValue};
+use crate::val::*;
 use crate::AddressSpace;
 use static_alloc::Bump;
 use std::convert::TryFrom;
@@ -221,18 +199,6 @@ macro_rules! enum_type_set {
 }
 
 enum_type_set! {
-    AnyTypeEnum: {
-        ArrayType,
-        FloatType,
-        FunctionType,
-        IntType,
-        PointerType,
-        StructType,
-        VectorType,
-        VoidType,
-    }
-}
-enum_type_set! {
     BasicTypeEnum: {
         ArrayType,
         FloatType,
@@ -242,6 +208,149 @@ enum_type_set! {
         VectorType,
     }
 }
+impl<'ctx> BasicTypeEnum<'ctx> {
+    pub unsafe fn new(type_: LLVMTypeRef) -> Self {
+        match LLVMGetTypeKind(type_) {
+            LLVMTypeKind::LLVMHalfTypeKind
+            | LLVMTypeKind::LLVMFloatTypeKind
+            | LLVMTypeKind::LLVMDoubleTypeKind
+            | LLVMTypeKind::LLVMX86_FP80TypeKind
+            | LLVMTypeKind::LLVMFP128TypeKind
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicTypeEnum::FloatType(FloatType::new(type_)),
+            LLVMTypeKind::LLVMBFloatTypeKind => BasicTypeEnum::FloatType(FloatType::new(type_)),
+            LLVMTypeKind::LLVMIntegerTypeKind => BasicTypeEnum::IntType(IntType::new(type_)),
+            LLVMTypeKind::LLVMStructTypeKind => BasicTypeEnum::StructType(StructType::new(type_)),
+            LLVMTypeKind::LLVMPointerTypeKind => BasicTypeEnum::PointerType(PointerType::new(type_)),
+            LLVMTypeKind::LLVMArrayTypeKind => BasicTypeEnum::ArrayType(ArrayType::new(type_)),
+            LLVMTypeKind::LLVMVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
+            LLVMTypeKind::LLVMScalableVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
+            LLVMTypeKind::LLVMMetadataTypeKind => panic!("Unsupported basic type: Metadata"),
+            LLVMTypeKind::LLVMX86_MMXTypeKind => panic!("Unsupported basic type: MMX"),
+            LLVMTypeKind::LLVMX86_AMXTypeKind => unreachable!("Unsupported basic type: AMX"),
+            LLVMTypeKind::LLVMLabelTypeKind => unreachable!("Unsupported basic type: Label"),
+            LLVMTypeKind::LLVMVoidTypeKind => unreachable!("Unsupported basic type: VoidType"),
+            LLVMTypeKind::LLVMFunctionTypeKind => unreachable!("Unsupported basic type: FunctionType"),
+            LLVMTypeKind::LLVMTokenTypeKind => unreachable!("Unsupported basic type: Token"),
+            LLVMTypeKind::LLVMTargetExtTypeKind => unreachable!("Unsupported basic type: TargetExt"),
+        }
+    }
+    pub fn into_array_type(self) -> ArrayType<'ctx> {
+        if let BasicTypeEnum::ArrayType(t) = self {
+            t
+        } else {
+            panic!("Found {:?} but expected the ArrayType variant", self);
+        }
+    }
+    pub fn into_float_type(self) -> FloatType<'ctx> {
+        if let BasicTypeEnum::FloatType(t) = self {
+            t
+        } else {
+            panic!("Found {:?} but expected the FloatType variant", self);
+        }
+    }
+    pub fn into_int_type(self) -> IntType<'ctx> {
+        if let BasicTypeEnum::IntType(t) = self {
+            t
+        } else {
+            panic!("Found {:?} but expected the IntType variant", self);
+        }
+    }
+    pub fn into_pointer_type(self) -> PointerType<'ctx> {
+        if let BasicTypeEnum::PointerType(t) = self {
+            t
+        } else {
+            panic!("Found {:?} but expected the PointerType variant", self);
+        }
+    }
+    pub fn into_struct_type(self) -> StructType<'ctx> {
+        if let BasicTypeEnum::StructType(t) = self {
+            t
+        } else {
+            panic!("Found {:?} but expected the StructType variant", self);
+        }
+    }
+    pub fn into_vector_type(self) -> VectorType<'ctx> {
+        if let BasicTypeEnum::VectorType(t) = self {
+            t
+        } else {
+            panic!("Found {:?} but expected the VectorType variant", self);
+        }
+    }
+    pub fn is_array_type(self) -> bool {
+        matches!(self, BasicTypeEnum::ArrayType(_))
+    }
+    pub fn is_float_type(self) -> bool {
+        matches!(self, BasicTypeEnum::FloatType(_))
+    }
+    pub fn is_int_type(self) -> bool {
+        matches!(self, BasicTypeEnum::IntType(_))
+    }
+    pub fn is_pointer_type(self) -> bool {
+        matches!(self, BasicTypeEnum::PointerType(_))
+    }
+    pub fn is_struct_type(self) -> bool {
+        matches!(self, BasicTypeEnum::StructType(_))
+    }
+    pub fn is_vector_type(self) -> bool {
+        matches!(self, BasicTypeEnum::VectorType(_))
+    }
+    pub fn const_zero(self) -> BasicValueEnum<'ctx> {
+        match self {
+            BasicTypeEnum::ArrayType(ty) => ty.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::FloatType(ty) => ty.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::IntType(ty) => ty.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::PointerType(ty) => ty.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::StructType(ty) => ty.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::VectorType(ty) => ty.const_zero().as_basic_value_enum(),
+        }
+    }
+    pub fn print_to_string(self) -> LLVMString {
+        match self {
+            BasicTypeEnum::ArrayType(t) => t.print_to_string(),
+            BasicTypeEnum::FloatType(t) => t.print_to_string(),
+            BasicTypeEnum::IntType(t) => t.print_to_string(),
+            BasicTypeEnum::PointerType(t) => t.print_to_string(),
+            BasicTypeEnum::StructType(t) => t.print_to_string(),
+            BasicTypeEnum::VectorType(t) => t.print_to_string(),
+        }
+    }
+}
+impl<'ctx> TryFrom<AnyTypeEnum<'ctx>> for BasicTypeEnum<'ctx> {
+    type Error = ();
+    fn try_from(value: AnyTypeEnum<'ctx>) -> Result<Self, Self::Error> {
+        use AnyTypeEnum::*;
+        Ok(match value {
+            ArrayType(at) => at.into(),
+            FloatType(ft) => ft.into(),
+            IntType(it) => it.into(),
+            PointerType(pt) => pt.into(),
+            StructType(st) => st.into(),
+            VectorType(vt) => vt.into(),
+            VoidType(_) | FunctionType(_) => return Err(()),
+        })
+    }
+}
+impl<'ctx> TryFrom<BasicMetadataTypeEnum<'ctx>> for BasicTypeEnum<'ctx> {
+    type Error = ();
+    fn try_from(value: BasicMetadataTypeEnum<'ctx>) -> Result<Self, Self::Error> {
+        use BasicMetadataTypeEnum::*;
+        Ok(match value {
+            ArrayType(at) => at.into(),
+            FloatType(ft) => ft.into(),
+            IntType(it) => it.into(),
+            PointerType(pt) => pt.into(),
+            StructType(st) => st.into(),
+            VectorType(vt) => vt.into(),
+            MetadataType(_) => return Err(()),
+        })
+    }
+}
+impl Display for BasicTypeEnum<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+
 enum_type_set! {
     BasicMetadataTypeEnum: {
         ArrayType,
@@ -253,7 +362,6 @@ enum_type_set! {
         MetadataType,
     }
 }
-
 impl<'ctx> BasicMetadataTypeEnum<'ctx> {
     pub fn into_array_type(self) -> ArrayType<'ctx> {
         if let BasicMetadataTypeEnum::ArrayType(t) = self {
@@ -337,7 +445,52 @@ impl<'ctx> BasicMetadataTypeEnum<'ctx> {
         }
     }
 }
+impl<'ctx> TryFrom<AnyTypeEnum<'ctx>> for BasicMetadataTypeEnum<'ctx> {
+    type Error = ();
+    fn try_from(value: AnyTypeEnum<'ctx>) -> Result<Self, Self::Error> {
+        use AnyTypeEnum::*;
+        Ok(match value {
+            ArrayType(at) => at.into(),
+            FloatType(ft) => ft.into(),
+            IntType(it) => it.into(),
+            PointerType(pt) => pt.into(),
+            StructType(st) => st.into(),
+            VectorType(vt) => vt.into(),
+            VoidType(_) | FunctionType(_) => return Err(()),
+        })
+    }
+}
+impl<'ctx> From<BasicTypeEnum<'ctx>> for BasicMetadataTypeEnum<'ctx> {
+    fn from(value: BasicTypeEnum<'ctx>) -> Self {
+        use BasicTypeEnum::*;
+        match value {
+            ArrayType(at) => at.into(),
+            FloatType(ft) => ft.into(),
+            IntType(it) => it.into(),
+            PointerType(pt) => pt.into(),
+            StructType(st) => st.into(),
+            VectorType(vt) => vt.into(),
+        }
+    }
+}
+impl Display for BasicMetadataTypeEnum<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
 
+enum_type_set! {
+    AnyTypeEnum: {
+        ArrayType,
+        FloatType,
+        FunctionType,
+        IntType,
+        PointerType,
+        StructType,
+        VectorType,
+        VoidType,
+    }
+}
 impl<'ctx> AnyTypeEnum<'ctx> {
     pub unsafe fn new(type_: LLVMTypeRef) -> Self {
         match LLVMGetTypeKind(type_) {
@@ -472,182 +625,7 @@ impl<'ctx> AnyTypeEnum<'ctx> {
         }
     }
 }
-impl<'ctx> BasicTypeEnum<'ctx> {
-    pub unsafe fn new(type_: LLVMTypeRef) -> Self {
-        match LLVMGetTypeKind(type_) {
-            LLVMTypeKind::LLVMHalfTypeKind
-            | LLVMTypeKind::LLVMFloatTypeKind
-            | LLVMTypeKind::LLVMDoubleTypeKind
-            | LLVMTypeKind::LLVMX86_FP80TypeKind
-            | LLVMTypeKind::LLVMFP128TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicTypeEnum::FloatType(FloatType::new(type_)),
-            LLVMTypeKind::LLVMBFloatTypeKind => BasicTypeEnum::FloatType(FloatType::new(type_)),
-            LLVMTypeKind::LLVMIntegerTypeKind => BasicTypeEnum::IntType(IntType::new(type_)),
-            LLVMTypeKind::LLVMStructTypeKind => BasicTypeEnum::StructType(StructType::new(type_)),
-            LLVMTypeKind::LLVMPointerTypeKind => BasicTypeEnum::PointerType(PointerType::new(type_)),
-            LLVMTypeKind::LLVMArrayTypeKind => BasicTypeEnum::ArrayType(ArrayType::new(type_)),
-            LLVMTypeKind::LLVMVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
-            LLVMTypeKind::LLVMScalableVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
-            LLVMTypeKind::LLVMMetadataTypeKind => panic!("Unsupported basic type: Metadata"),
-            LLVMTypeKind::LLVMX86_MMXTypeKind => panic!("Unsupported basic type: MMX"),
-            LLVMTypeKind::LLVMX86_AMXTypeKind => unreachable!("Unsupported basic type: AMX"),
-            LLVMTypeKind::LLVMLabelTypeKind => unreachable!("Unsupported basic type: Label"),
-            LLVMTypeKind::LLVMVoidTypeKind => unreachable!("Unsupported basic type: VoidType"),
-            LLVMTypeKind::LLVMFunctionTypeKind => unreachable!("Unsupported basic type: FunctionType"),
-            LLVMTypeKind::LLVMTokenTypeKind => unreachable!("Unsupported basic type: Token"),
-            LLVMTypeKind::LLVMTargetExtTypeKind => unreachable!("Unsupported basic type: TargetExt"),
-        }
-    }
-    pub fn into_array_type(self) -> ArrayType<'ctx> {
-        if let BasicTypeEnum::ArrayType(t) = self {
-            t
-        } else {
-            panic!("Found {:?} but expected the ArrayType variant", self);
-        }
-    }
-    pub fn into_float_type(self) -> FloatType<'ctx> {
-        if let BasicTypeEnum::FloatType(t) = self {
-            t
-        } else {
-            panic!("Found {:?} but expected the FloatType variant", self);
-        }
-    }
-    pub fn into_int_type(self) -> IntType<'ctx> {
-        if let BasicTypeEnum::IntType(t) = self {
-            t
-        } else {
-            panic!("Found {:?} but expected the IntType variant", self);
-        }
-    }
-    pub fn into_pointer_type(self) -> PointerType<'ctx> {
-        if let BasicTypeEnum::PointerType(t) = self {
-            t
-        } else {
-            panic!("Found {:?} but expected the PointerType variant", self);
-        }
-    }
-    pub fn into_struct_type(self) -> StructType<'ctx> {
-        if let BasicTypeEnum::StructType(t) = self {
-            t
-        } else {
-            panic!("Found {:?} but expected the StructType variant", self);
-        }
-    }
-    pub fn into_vector_type(self) -> VectorType<'ctx> {
-        if let BasicTypeEnum::VectorType(t) = self {
-            t
-        } else {
-            panic!("Found {:?} but expected the VectorType variant", self);
-        }
-    }
-    pub fn is_array_type(self) -> bool {
-        matches!(self, BasicTypeEnum::ArrayType(_))
-    }
-    pub fn is_float_type(self) -> bool {
-        matches!(self, BasicTypeEnum::FloatType(_))
-    }
-    pub fn is_int_type(self) -> bool {
-        matches!(self, BasicTypeEnum::IntType(_))
-    }
-    pub fn is_pointer_type(self) -> bool {
-        matches!(self, BasicTypeEnum::PointerType(_))
-    }
-    pub fn is_struct_type(self) -> bool {
-        matches!(self, BasicTypeEnum::StructType(_))
-    }
-    pub fn is_vector_type(self) -> bool {
-        matches!(self, BasicTypeEnum::VectorType(_))
-    }
-    pub fn const_zero(self) -> BasicValueEnum<'ctx> {
-        match self {
-            BasicTypeEnum::ArrayType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::FloatType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::IntType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::PointerType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::StructType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::VectorType(ty) => ty.const_zero().as_basic_value_enum(),
-        }
-    }
-    pub fn print_to_string(self) -> LLVMString {
-        match self {
-            BasicTypeEnum::ArrayType(t) => t.print_to_string(),
-            BasicTypeEnum::FloatType(t) => t.print_to_string(),
-            BasicTypeEnum::IntType(t) => t.print_to_string(),
-            BasicTypeEnum::PointerType(t) => t.print_to_string(),
-            BasicTypeEnum::StructType(t) => t.print_to_string(),
-            BasicTypeEnum::VectorType(t) => t.print_to_string(),
-        }
-    }
-}
-impl<'ctx> TryFrom<AnyTypeEnum<'ctx>> for BasicTypeEnum<'ctx> {
-    type Error = ();
-    fn try_from(value: AnyTypeEnum<'ctx>) -> Result<Self, Self::Error> {
-        use AnyTypeEnum::*;
-        Ok(match value {
-            ArrayType(at) => at.into(),
-            FloatType(ft) => ft.into(),
-            IntType(it) => it.into(),
-            PointerType(pt) => pt.into(),
-            StructType(st) => st.into(),
-            VectorType(vt) => vt.into(),
-            VoidType(_) | FunctionType(_) => return Err(()),
-        })
-    }
-}
-impl<'ctx> TryFrom<AnyTypeEnum<'ctx>> for BasicMetadataTypeEnum<'ctx> {
-    type Error = ();
-    fn try_from(value: AnyTypeEnum<'ctx>) -> Result<Self, Self::Error> {
-        use AnyTypeEnum::*;
-        Ok(match value {
-            ArrayType(at) => at.into(),
-            FloatType(ft) => ft.into(),
-            IntType(it) => it.into(),
-            PointerType(pt) => pt.into(),
-            StructType(st) => st.into(),
-            VectorType(vt) => vt.into(),
-            VoidType(_) | FunctionType(_) => return Err(()),
-        })
-    }
-}
-impl<'ctx> TryFrom<BasicMetadataTypeEnum<'ctx>> for BasicTypeEnum<'ctx> {
-    type Error = ();
-    fn try_from(value: BasicMetadataTypeEnum<'ctx>) -> Result<Self, Self::Error> {
-        use BasicMetadataTypeEnum::*;
-        Ok(match value {
-            ArrayType(at) => at.into(),
-            FloatType(ft) => ft.into(),
-            IntType(it) => it.into(),
-            PointerType(pt) => pt.into(),
-            StructType(st) => st.into(),
-            VectorType(vt) => vt.into(),
-            MetadataType(_) => return Err(()),
-        })
-    }
-}
-impl<'ctx> From<BasicTypeEnum<'ctx>> for BasicMetadataTypeEnum<'ctx> {
-    fn from(value: BasicTypeEnum<'ctx>) -> Self {
-        use BasicTypeEnum::*;
-        match value {
-            ArrayType(at) => at.into(),
-            FloatType(ft) => ft.into(),
-            IntType(it) => it.into(),
-            PointerType(pt) => pt.into(),
-            StructType(st) => st.into(),
-            VectorType(vt) => vt.into(),
-        }
-    }
-}
 impl Display for AnyTypeEnum<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
-impl Display for BasicTypeEnum<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
-impl Display for BasicMetadataTypeEnum<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
     }
@@ -1168,6 +1146,7 @@ macro_rules! trait_type_set {
         )*
     );
 }
+
 pub unsafe trait AnyType<'ctx>: AsTypeRef + Debug {
     fn as_any_type_enum(&self) -> AnyTypeEnum<'ctx> {
         unsafe { AnyTypeEnum::new(self.as_type_ref()) }
@@ -1176,6 +1155,8 @@ pub unsafe trait AnyType<'ctx>: AsTypeRef + Debug {
         unsafe { Type::new(self.as_type_ref()).print_to_string() }
     }
 }
+trait_type_set! {AnyType: AnyTypeEnum, BasicTypeEnum, IntType, FunctionType, FloatType, PointerType, StructType, ArrayType, VoidType, VectorType}
+
 pub unsafe trait BasicType<'ctx>: AnyType<'ctx> {
     fn as_basic_type_enum(&self) -> BasicTypeEnum<'ctx> {
         unsafe { BasicTypeEnum::new(self.as_type_ref()) }
@@ -1196,6 +1177,8 @@ pub unsafe trait BasicType<'ctx>: AnyType<'ctx> {
         unsafe { Type::new(self.as_type_ref()).ptr_type(address_space) }
     }
 }
+trait_type_set! {BasicType: BasicTypeEnum, IntType, FloatType, PointerType, StructType, ArrayType, VectorType}
+
 pub unsafe trait IntMathType<'ctx>: BasicType<'ctx> {
     type ValueType: IntMathValue<'ctx>;
     type MathConvType: FloatMathType<'ctx>;
@@ -1210,8 +1193,6 @@ pub unsafe trait PointerMathType<'ctx>: BasicType<'ctx> {
     type PtrConvType: IntMathType<'ctx>;
 }
 
-trait_type_set! {AnyType: AnyTypeEnum, BasicTypeEnum, IntType, FunctionType, FloatType, PointerType, StructType, ArrayType, VoidType, VectorType}
-trait_type_set! {BasicType: BasicTypeEnum, IntType, FloatType, PointerType, StructType, ArrayType, VectorType}
 unsafe impl<'ctx> IntMathType<'ctx> for IntType<'ctx> {
     type ValueType = IntValue<'ctx>;
     type MathConvType = FloatType<'ctx>;

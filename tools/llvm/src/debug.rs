@@ -100,11 +100,11 @@
 //! dibuilder.finalize();
 //! ```
 
-use crate::basic_block::BasicBlock;
+use crate::block::BasicBlock;
 use crate::ctx::{AsContextRef, Context};
-pub use crate::debug_info::flags::{DIFlags, DIFlagsConstants};
+pub use crate::debug::flags::{DIFlags, DIFlagsConstants};
 use crate::module::Module;
-use crate::values::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue, PointerValue};
+use crate::val::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue, PointerValue};
 use crate::AddressSpace;
 
 use llvm_lib::core::LLVMMetadataAsValue;

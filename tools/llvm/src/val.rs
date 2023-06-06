@@ -2,19 +2,19 @@ use super::AnyValue;
 use super::{BasicMetadataValueEnum, MetadataValue};
 use crate::attr::{Attribute, AttributeLoc};
 use crate::comdat::Comdat;
-use crate::debug_info::DISubprogram;
+use crate::debug::DISubprogram;
 use crate::module::Linkage;
 use crate::support::{to_c_str, LLVMString};
-use crate::types::ArrayType;
-use crate::types::FunctionType;
-use crate::types::StructType;
-use crate::types::VectorType;
-use crate::types::{AnyTypeEnum, BasicTypeEnum};
-use crate::types::{AsTypeRef, BasicType, FloatType, IntType, PointerType};
-use crate::types::{FloatMathType, FloatType, IntMathType, IntType, PointerMathType, PointerType, VectorType};
+use crate::typ::ArrayType;
+use crate::typ::FunctionType;
+use crate::typ::StructType;
+use crate::typ::VectorType;
+use crate::typ::{AnyTypeEnum, BasicTypeEnum};
+use crate::typ::{AsTypeRef, BasicType, FloatType, IntType, PointerType};
+use crate::typ::{FloatMathType, FloatType, IntMathType, IntType, PointerMathType, PointerType, VectorType};
 use crate::FloatPredicate;
 use crate::IntPredicate;
-use crate::{basic_block::BasicBlock, types::AnyTypeEnum};
+use crate::{block::BasicBlock, typ::AnyTypeEnum};
 use crate::{AtomicOrdering, FloatPredicate, IntPredicate};
 use crate::{DLLStorageClass, GlobalVisibility, ThreadLocalMode};
 use either::{
@@ -25,16 +25,8 @@ use libc::c_void;
 use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction, LLVMViewFunctionCFG, LLVMViewFunctionCFGOnly};
 use llvm_lib::core::*;
 use llvm_lib::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
-use llvm_lib::execution_engine::{
-    LLVMCreateGenericValueOfPointer, LLVMDisposeGenericValue, LLVMGenericValueIntWidth, LLVMGenericValueRef,
-    LLVMGenericValueToFloat, LLVMGenericValueToInt, LLVMGenericValueToPointer,
-};
-use llvm_lib::prelude::LLVMMetadataRef;
-use llvm_lib::prelude::LLVMTypeRef;
-use llvm_lib::prelude::LLVMUseRef;
-use llvm_lib::prelude::LLVMValueRef;
-use llvm_lib::prelude::{LLVMBasicBlockRef, LLVMValueRef};
-use llvm_lib::prelude::{LLVMTypeRef, LLVMValueRef};
+use llvm_lib::execution_engine::*;
+use llvm_lib::prelude::*;
 use llvm_lib::LLVMOpcode;
 use llvm_lib::LLVMUnnamedAddr;
 use llvm_lib::{LLVMTypeKind, LLVMValueKind};
@@ -482,10 +474,289 @@ macro_rules! enum_value_set {
         )*
     );
 }
-enum_value_set! {AggregateValueEnum: ArrayValue, StructValue}
-enum_value_set! {AnyValueEnum: ArrayValue, IntValue, FloatValue, PhiValue, FunctionValue, PointerValue, StructValue, VectorValue, InstructionValue, MetadataValue}
+
 enum_value_set! {BasicValueEnum: ArrayValue, IntValue, FloatValue, PointerValue, StructValue, VectorValue}
+impl<'ctx> BasicValueEnum<'ctx> {
+    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+        match LLVMGetTypeKind(LLVMTypeOf(value)) {
+            LLVMTypeKind::LLVMFloatTypeKind
+            | LLVMTypeKind::LLVMFP128TypeKind
+            | LLVMTypeKind::LLVMDoubleTypeKind
+            | LLVMTypeKind::LLVMHalfTypeKind
+            | LLVMTypeKind::LLVMX86_FP80TypeKind
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicValueEnum::FloatValue(FloatValue::new(value)),
+            LLVMTypeKind::LLVMIntegerTypeKind => BasicValueEnum::IntValue(IntValue::new(value)),
+            LLVMTypeKind::LLVMStructTypeKind => BasicValueEnum::StructValue(StructValue::new(value)),
+            LLVMTypeKind::LLVMPointerTypeKind => BasicValueEnum::PointerValue(PointerValue::new(value)),
+            LLVMTypeKind::LLVMArrayTypeKind => BasicValueEnum::ArrayValue(ArrayValue::new(value)),
+            LLVMTypeKind::LLVMVectorTypeKind => BasicValueEnum::VectorValue(VectorValue::new(value)),
+            _ => unreachable!("The given type is not a basic type."),
+        }
+    }
+    pub fn set_name(&self, name: &str) {
+        match self {
+            BasicValueEnum::ArrayValue(v) => v.set_name(name),
+            BasicValueEnum::IntValue(v) => v.set_name(name),
+            BasicValueEnum::FloatValue(v) => v.set_name(name),
+            BasicValueEnum::PointerValue(v) => v.set_name(name),
+            BasicValueEnum::StructValue(v) => v.set_name(name),
+            BasicValueEnum::VectorValue(v) => v.set_name(name),
+        }
+    }
+    pub fn get_type(&self) -> BasicTypeEnum<'ctx> {
+        unsafe { BasicTypeEnum::new(LLVMTypeOf(self.as_value_ref())) }
+    }
+    pub fn is_array_value(self) -> bool {
+        matches!(self, BasicValueEnum::ArrayValue(_))
+    }
+    pub fn is_int_value(self) -> bool {
+        matches!(self, BasicValueEnum::IntValue(_))
+    }
+    pub fn is_float_value(self) -> bool {
+        matches!(self, BasicValueEnum::FloatValue(_))
+    }
+    pub fn is_pointer_value(self) -> bool {
+        matches!(self, BasicValueEnum::PointerValue(_))
+    }
+    pub fn is_struct_value(self) -> bool {
+        matches!(self, BasicValueEnum::StructValue(_))
+    }
+    pub fn is_vector_value(self) -> bool {
+        matches!(self, BasicValueEnum::VectorValue(_))
+    }
+    pub fn into_array_value(self) -> ArrayValue<'ctx> {
+        if let BasicValueEnum::ArrayValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the ArrayValue variant", self)
+        }
+    }
+    pub fn into_int_value(self) -> IntValue<'ctx> {
+        if let BasicValueEnum::IntValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the IntValue variant", self)
+        }
+    }
+    pub fn into_float_value(self) -> FloatValue<'ctx> {
+        if let BasicValueEnum::FloatValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the FloatValue variant", self)
+        }
+    }
+    pub fn into_pointer_value(self) -> PointerValue<'ctx> {
+        if let BasicValueEnum::PointerValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected PointerValue variant", self)
+        }
+    }
+    pub fn into_struct_value(self) -> StructValue<'ctx> {
+        if let BasicValueEnum::StructValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the StructValue variant", self)
+        }
+    }
+    pub fn into_vector_value(self) -> VectorValue<'ctx> {
+        if let BasicValueEnum::VectorValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the VectorValue variant", self)
+        }
+    }
+}
+impl<'ctx> TryFrom<AnyValueEnum<'ctx>> for BasicValueEnum<'ctx> {
+    type Error = ();
+    fn try_from(value: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
+        use AnyValueEnum::*;
+        Ok(match value {
+            ArrayValue(av) => av.into(),
+            IntValue(iv) => iv.into(),
+            FloatValue(fv) => fv.into(),
+            PointerValue(pv) => pv.into(),
+            StructValue(sv) => sv.into(),
+            VectorValue(vv) => vv.into(),
+            MetadataValue(_) | PhiValue(_) | FunctionValue(_) | InstructionValue(_) => return Err(()),
+        })
+    }
+}
+impl<'ctx> TryFrom<BasicMetadataValueEnum<'ctx>> for BasicValueEnum<'ctx> {
+    type Error = ();
+    fn try_from(value: BasicMetadataValueEnum<'ctx>) -> Result<Self, Self::Error> {
+        use BasicMetadataValueEnum::*;
+        Ok(match value {
+            ArrayValue(av) => av.into(),
+            IntValue(iv) => iv.into(),
+            FloatValue(fv) => fv.into(),
+            PointerValue(pv) => pv.into(),
+            StructValue(sv) => sv.into(),
+            VectorValue(vv) => vv.into(),
+            MetadataValue(_) => return Err(()),
+        })
+    }
+}
+impl Display for BasicValueEnum<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+
 enum_value_set! {BasicMetadataValueEnum: ArrayValue, IntValue, FloatValue, PointerValue, StructValue, VectorValue, MetadataValue}
+impl<'ctx> BasicMetadataValueEnum<'ctx> {
+    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+        match LLVMGetTypeKind(LLVMTypeOf(value)) {
+            LLVMTypeKind::LLVMFloatTypeKind
+            | LLVMTypeKind::LLVMFP128TypeKind
+            | LLVMTypeKind::LLVMDoubleTypeKind
+            | LLVMTypeKind::LLVMHalfTypeKind
+            | LLVMTypeKind::LLVMX86_FP80TypeKind
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicMetadataValueEnum::FloatValue(FloatValue::new(value)),
+            LLVMTypeKind::LLVMIntegerTypeKind => BasicMetadataValueEnum::IntValue(IntValue::new(value)),
+            LLVMTypeKind::LLVMStructTypeKind => BasicMetadataValueEnum::StructValue(StructValue::new(value)),
+            LLVMTypeKind::LLVMPointerTypeKind => BasicMetadataValueEnum::PointerValue(PointerValue::new(value)),
+            LLVMTypeKind::LLVMArrayTypeKind => BasicMetadataValueEnum::ArrayValue(ArrayValue::new(value)),
+            LLVMTypeKind::LLVMVectorTypeKind => BasicMetadataValueEnum::VectorValue(VectorValue::new(value)),
+            LLVMTypeKind::LLVMMetadataTypeKind => BasicMetadataValueEnum::MetadataValue(MetadataValue::new(value)),
+            _ => unreachable!("Unsupported type"),
+        }
+    }
+    pub fn is_array_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::ArrayValue(_))
+    }
+    pub fn is_int_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::IntValue(_))
+    }
+    pub fn is_float_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::FloatValue(_))
+    }
+    pub fn is_pointer_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::PointerValue(_))
+    }
+    pub fn is_struct_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::StructValue(_))
+    }
+    pub fn is_vector_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::VectorValue(_))
+    }
+    pub fn is_metadata_value(self) -> bool {
+        matches!(self, BasicMetadataValueEnum::MetadataValue(_))
+    }
+    pub fn into_array_value(self) -> ArrayValue<'ctx> {
+        if let BasicMetadataValueEnum::ArrayValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the ArrayValue variant", self)
+        }
+    }
+    pub fn into_int_value(self) -> IntValue<'ctx> {
+        if let BasicMetadataValueEnum::IntValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the IntValue variant", self)
+        }
+    }
+    pub fn into_float_value(self) -> FloatValue<'ctx> {
+        if let BasicMetadataValueEnum::FloatValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected FloatValue variant", self)
+        }
+    }
+    pub fn into_pointer_value(self) -> PointerValue<'ctx> {
+        if let BasicMetadataValueEnum::PointerValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the PointerValue variant", self)
+        }
+    }
+    pub fn into_struct_value(self) -> StructValue<'ctx> {
+        if let BasicMetadataValueEnum::StructValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the StructValue variant", self)
+        }
+    }
+    pub fn into_vector_value(self) -> VectorValue<'ctx> {
+        if let BasicMetadataValueEnum::VectorValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the VectorValue variant", self)
+        }
+    }
+    pub fn into_metadata_value(self) -> MetadataValue<'ctx> {
+        if let BasicMetadataValueEnum::MetadataValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected MetaData variant", self)
+        }
+    }
+}
+impl<'ctx> From<BasicValueEnum<'ctx>> for BasicMetadataValueEnum<'ctx> {
+    fn from(value: BasicValueEnum<'ctx>) -> Self {
+        unsafe { BasicMetadataValueEnum::new(value.as_value_ref()) }
+    }
+}
+impl<'ctx> TryFrom<AnyValueEnum<'ctx>> for BasicMetadataValueEnum<'ctx> {
+    type Error = ();
+    fn try_from(value: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
+        use AnyValueEnum::*;
+        Ok(match value {
+            ArrayValue(av) => av.into(),
+            IntValue(iv) => iv.into(),
+            FloatValue(fv) => fv.into(),
+            PointerValue(pv) => pv.into(),
+            StructValue(sv) => sv.into(),
+            VectorValue(vv) => vv.into(),
+            MetadataValue(mv) => mv.into(),
+            PhiValue(_) | FunctionValue(_) | InstructionValue(_) => return Err(()),
+        })
+    }
+}
+impl Display for BasicMetadataValueEnum<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+
+enum_value_set! {AggregateValueEnum: ArrayValue, StructValue}
+impl<'ctx> AggregateValueEnum<'ctx> {
+    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+        match LLVMGetTypeKind(LLVMTypeOf(value)) {
+            LLVMTypeKind::LLVMArrayTypeKind => AggregateValueEnum::ArrayValue(ArrayValue::new(value)),
+            LLVMTypeKind::LLVMStructTypeKind => AggregateValueEnum::StructValue(StructValue::new(value)),
+            _ => unreachable!("The given type is not an aggregate type."),
+        }
+    }
+    pub fn is_array_value(self) -> bool {
+        matches!(self, AggregateValueEnum::ArrayValue(_))
+    }
+    pub fn is_struct_value(self) -> bool {
+        matches!(self, AggregateValueEnum::StructValue(_))
+    }
+    pub fn into_array_value(self) -> ArrayValue<'ctx> {
+        if let AggregateValueEnum::ArrayValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the ArrayValue variant", self)
+        }
+    }
+    pub fn into_struct_value(self) -> StructValue<'ctx> {
+        if let AggregateValueEnum::StructValue(v) = self {
+            v
+        } else {
+            panic!("Found {:?} but expected the StructValue variant", self)
+        }
+    }
+}
+impl Display for AggregateValueEnum<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+
+enum_value_set! {AnyValueEnum: ArrayValue, IntValue, FloatValue, PhiValue, FunctionValue, PointerValue, StructValue, VectorValue, InstructionValue, MetadataValue}
 impl<'ctx> AnyValueEnum<'ctx> {
     pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
         match LLVMGetTypeKind(LLVMTypeOf(value)) {
@@ -608,287 +879,12 @@ impl<'ctx> AnyValueEnum<'ctx> {
         }
     }
 }
-impl<'ctx> BasicValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
-        match LLVMGetTypeKind(LLVMTypeOf(value)) {
-            LLVMTypeKind::LLVMFloatTypeKind
-            | LLVMTypeKind::LLVMFP128TypeKind
-            | LLVMTypeKind::LLVMDoubleTypeKind
-            | LLVMTypeKind::LLVMHalfTypeKind
-            | LLVMTypeKind::LLVMX86_FP80TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicValueEnum::FloatValue(FloatValue::new(value)),
-            LLVMTypeKind::LLVMIntegerTypeKind => BasicValueEnum::IntValue(IntValue::new(value)),
-            LLVMTypeKind::LLVMStructTypeKind => BasicValueEnum::StructValue(StructValue::new(value)),
-            LLVMTypeKind::LLVMPointerTypeKind => BasicValueEnum::PointerValue(PointerValue::new(value)),
-            LLVMTypeKind::LLVMArrayTypeKind => BasicValueEnum::ArrayValue(ArrayValue::new(value)),
-            LLVMTypeKind::LLVMVectorTypeKind => BasicValueEnum::VectorValue(VectorValue::new(value)),
-            _ => unreachable!("The given type is not a basic type."),
-        }
-    }
-    pub fn set_name(&self, name: &str) {
-        match self {
-            BasicValueEnum::ArrayValue(v) => v.set_name(name),
-            BasicValueEnum::IntValue(v) => v.set_name(name),
-            BasicValueEnum::FloatValue(v) => v.set_name(name),
-            BasicValueEnum::PointerValue(v) => v.set_name(name),
-            BasicValueEnum::StructValue(v) => v.set_name(name),
-            BasicValueEnum::VectorValue(v) => v.set_name(name),
-        }
-    }
-    pub fn get_type(&self) -> BasicTypeEnum<'ctx> {
-        unsafe { BasicTypeEnum::new(LLVMTypeOf(self.as_value_ref())) }
-    }
-    pub fn is_array_value(self) -> bool {
-        matches!(self, BasicValueEnum::ArrayValue(_))
-    }
-    pub fn is_int_value(self) -> bool {
-        matches!(self, BasicValueEnum::IntValue(_))
-    }
-    pub fn is_float_value(self) -> bool {
-        matches!(self, BasicValueEnum::FloatValue(_))
-    }
-    pub fn is_pointer_value(self) -> bool {
-        matches!(self, BasicValueEnum::PointerValue(_))
-    }
-    pub fn is_struct_value(self) -> bool {
-        matches!(self, BasicValueEnum::StructValue(_))
-    }
-    pub fn is_vector_value(self) -> bool {
-        matches!(self, BasicValueEnum::VectorValue(_))
-    }
-    pub fn into_array_value(self) -> ArrayValue<'ctx> {
-        if let BasicValueEnum::ArrayValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the ArrayValue variant", self)
-        }
-    }
-    pub fn into_int_value(self) -> IntValue<'ctx> {
-        if let BasicValueEnum::IntValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the IntValue variant", self)
-        }
-    }
-    pub fn into_float_value(self) -> FloatValue<'ctx> {
-        if let BasicValueEnum::FloatValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the FloatValue variant", self)
-        }
-    }
-    pub fn into_pointer_value(self) -> PointerValue<'ctx> {
-        if let BasicValueEnum::PointerValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected PointerValue variant", self)
-        }
-    }
-    pub fn into_struct_value(self) -> StructValue<'ctx> {
-        if let BasicValueEnum::StructValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the StructValue variant", self)
-        }
-    }
-    pub fn into_vector_value(self) -> VectorValue<'ctx> {
-        if let BasicValueEnum::VectorValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the VectorValue variant", self)
-        }
-    }
-}
-impl<'ctx> AggregateValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
-        match LLVMGetTypeKind(LLVMTypeOf(value)) {
-            LLVMTypeKind::LLVMArrayTypeKind => AggregateValueEnum::ArrayValue(ArrayValue::new(value)),
-            LLVMTypeKind::LLVMStructTypeKind => AggregateValueEnum::StructValue(StructValue::new(value)),
-            _ => unreachable!("The given type is not an aggregate type."),
-        }
-    }
-    pub fn is_array_value(self) -> bool {
-        matches!(self, AggregateValueEnum::ArrayValue(_))
-    }
-    pub fn is_struct_value(self) -> bool {
-        matches!(self, AggregateValueEnum::StructValue(_))
-    }
-    pub fn into_array_value(self) -> ArrayValue<'ctx> {
-        if let AggregateValueEnum::ArrayValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the ArrayValue variant", self)
-        }
-    }
-    pub fn into_struct_value(self) -> StructValue<'ctx> {
-        if let AggregateValueEnum::StructValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the StructValue variant", self)
-        }
-    }
-}
-impl<'ctx> BasicMetadataValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
-        match LLVMGetTypeKind(LLVMTypeOf(value)) {
-            LLVMTypeKind::LLVMFloatTypeKind
-            | LLVMTypeKind::LLVMFP128TypeKind
-            | LLVMTypeKind::LLVMDoubleTypeKind
-            | LLVMTypeKind::LLVMHalfTypeKind
-            | LLVMTypeKind::LLVMX86_FP80TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicMetadataValueEnum::FloatValue(FloatValue::new(value)),
-            LLVMTypeKind::LLVMIntegerTypeKind => BasicMetadataValueEnum::IntValue(IntValue::new(value)),
-            LLVMTypeKind::LLVMStructTypeKind => BasicMetadataValueEnum::StructValue(StructValue::new(value)),
-            LLVMTypeKind::LLVMPointerTypeKind => BasicMetadataValueEnum::PointerValue(PointerValue::new(value)),
-            LLVMTypeKind::LLVMArrayTypeKind => BasicMetadataValueEnum::ArrayValue(ArrayValue::new(value)),
-            LLVMTypeKind::LLVMVectorTypeKind => BasicMetadataValueEnum::VectorValue(VectorValue::new(value)),
-            LLVMTypeKind::LLVMMetadataTypeKind => BasicMetadataValueEnum::MetadataValue(MetadataValue::new(value)),
-            _ => unreachable!("Unsupported type"),
-        }
-    }
-    pub fn is_array_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::ArrayValue(_))
-    }
-    pub fn is_int_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::IntValue(_))
-    }
-    pub fn is_float_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::FloatValue(_))
-    }
-    pub fn is_pointer_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::PointerValue(_))
-    }
-    pub fn is_struct_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::StructValue(_))
-    }
-    pub fn is_vector_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::VectorValue(_))
-    }
-    pub fn is_metadata_value(self) -> bool {
-        matches!(self, BasicMetadataValueEnum::MetadataValue(_))
-    }
-    pub fn into_array_value(self) -> ArrayValue<'ctx> {
-        if let BasicMetadataValueEnum::ArrayValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the ArrayValue variant", self)
-        }
-    }
-    pub fn into_int_value(self) -> IntValue<'ctx> {
-        if let BasicMetadataValueEnum::IntValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the IntValue variant", self)
-        }
-    }
-    pub fn into_float_value(self) -> FloatValue<'ctx> {
-        if let BasicMetadataValueEnum::FloatValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected FloatValue variant", self)
-        }
-    }
-    pub fn into_pointer_value(self) -> PointerValue<'ctx> {
-        if let BasicMetadataValueEnum::PointerValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the PointerValue variant", self)
-        }
-    }
-    pub fn into_struct_value(self) -> StructValue<'ctx> {
-        if let BasicMetadataValueEnum::StructValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the StructValue variant", self)
-        }
-    }
-    pub fn into_vector_value(self) -> VectorValue<'ctx> {
-        if let BasicMetadataValueEnum::VectorValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected the VectorValue variant", self)
-        }
-    }
-    pub fn into_metadata_value(self) -> MetadataValue<'ctx> {
-        if let BasicMetadataValueEnum::MetadataValue(v) = self {
-            v
-        } else {
-            panic!("Found {:?} but expected MetaData variant", self)
-        }
-    }
-}
 impl<'ctx> From<BasicValueEnum<'ctx>> for AnyValueEnum<'ctx> {
     fn from(value: BasicValueEnum<'ctx>) -> Self {
         unsafe { AnyValueEnum::new(value.as_value_ref()) }
     }
 }
-impl<'ctx> From<BasicValueEnum<'ctx>> for BasicMetadataValueEnum<'ctx> {
-    fn from(value: BasicValueEnum<'ctx>) -> Self {
-        unsafe { BasicMetadataValueEnum::new(value.as_value_ref()) }
-    }
-}
-impl<'ctx> TryFrom<AnyValueEnum<'ctx>> for BasicValueEnum<'ctx> {
-    type Error = ();
-    fn try_from(value: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
-        use AnyValueEnum::*;
-        Ok(match value {
-            ArrayValue(av) => av.into(),
-            IntValue(iv) => iv.into(),
-            FloatValue(fv) => fv.into(),
-            PointerValue(pv) => pv.into(),
-            StructValue(sv) => sv.into(),
-            VectorValue(vv) => vv.into(),
-            MetadataValue(_) | PhiValue(_) | FunctionValue(_) | InstructionValue(_) => return Err(()),
-        })
-    }
-}
-impl<'ctx> TryFrom<AnyValueEnum<'ctx>> for BasicMetadataValueEnum<'ctx> {
-    type Error = ();
-    fn try_from(value: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
-        use AnyValueEnum::*;
-        Ok(match value {
-            ArrayValue(av) => av.into(),
-            IntValue(iv) => iv.into(),
-            FloatValue(fv) => fv.into(),
-            PointerValue(pv) => pv.into(),
-            StructValue(sv) => sv.into(),
-            VectorValue(vv) => vv.into(),
-            MetadataValue(mv) => mv.into(),
-            PhiValue(_) | FunctionValue(_) | InstructionValue(_) => return Err(()),
-        })
-    }
-}
-impl<'ctx> TryFrom<BasicMetadataValueEnum<'ctx>> for BasicValueEnum<'ctx> {
-    type Error = ();
-    fn try_from(value: BasicMetadataValueEnum<'ctx>) -> Result<Self, Self::Error> {
-        use BasicMetadataValueEnum::*;
-        Ok(match value {
-            ArrayValue(av) => av.into(),
-            IntValue(iv) => iv.into(),
-            FloatValue(fv) => fv.into(),
-            PointerValue(pv) => pv.into(),
-            StructValue(sv) => sv.into(),
-            VectorValue(vv) => vv.into(),
-            MetadataValue(_) => return Err(()),
-        })
-    }
-}
-impl Display for AggregateValueEnum<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
 impl Display for AnyValueEnum<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
-impl Display for BasicValueEnum<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
-impl Display for BasicMetadataValueEnum<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
     }
@@ -2317,20 +2313,7 @@ macro_rules! trait_value_set {
         )*
     );
 }
-macro_rules! math_trait_value_set {
-    ($trait_name:ident: $(($value_type:ident => $base_type:ident)),*) => (
-        $(
-            unsafe impl<'ctx> $trait_name<'ctx> for $value_type<'ctx> {
-                type BaseType = $base_type<'ctx>;
-                unsafe fn new(value: LLVMValueRef) -> $value_type<'ctx> {
-                    unsafe {
-                        $value_type::new(value)
-                    }
-                }
-            }
-        )*
-    )
-}
+
 pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
     fn as_aggregate_value_enum(&self) -> AggregateValueEnum<'ctx> {
         unsafe { AggregateValueEnum::new(self.as_value_ref()) }
@@ -2377,6 +2360,22 @@ pub unsafe trait AnyValue<'ctx>: AsValueRef + Debug {
 trait_value_set! {AggregateValue: ArrayValue, AggregateValueEnum, StructValue}
 trait_value_set! {AnyValue: AnyValueEnum, BasicValueEnum, BasicMetadataValueEnum, AggregateValueEnum, ArrayValue, IntValue, FloatValue, GlobalValue, PhiValue, PointerValue, FunctionValue, StructValue, VectorValue, InstructionValue, CallSiteValue, MetadataValue}
 trait_value_set! {BasicValue: ArrayValue, BasicValueEnum, AggregateValueEnum, IntValue, FloatValue, GlobalValue, StructValue, PointerValue, VectorValue}
+
+macro_rules! math_trait_value_set {
+    ($trait_name:ident: $(($value_type:ident => $base_type:ident)),*) => (
+        $(
+            unsafe impl<'ctx> $trait_name<'ctx> for $value_type<'ctx> {
+                type BaseType = $base_type<'ctx>;
+                unsafe fn new(value: LLVMValueRef) -> $value_type<'ctx> {
+                    unsafe {
+                        $value_type::new(value)
+                    }
+                }
+            }
+        )*
+    )
+}
+
 math_trait_value_set! {IntMathValue: (IntValue => IntType), (VectorValue => VectorType), (PointerValue => IntType)}
 math_trait_value_set! {FloatMathValue: (FloatValue => FloatType), (VectorValue => VectorType)}
 math_trait_value_set! {PointerMathValue: (PointerValue => PointerType), (VectorValue => VectorType)}

@@ -11,7 +11,7 @@ use llvm_lib::prelude::{LLVMBasicBlockRef, LLVMValueRef};
 
 use crate::ctx::ContextRef;
 use crate::support::to_c_str;
-use crate::values::{AsValueRef, BasicValueUse, FunctionValue, InstructionValue, PointerValue};
+use crate::val::{AsValueRef, BasicValueUse, FunctionValue, InstructionValue, PointerValue};
 
 use std::ffi::CStr;
 use std::fmt;

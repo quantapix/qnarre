@@ -9,8 +9,8 @@ use llvm_lib::execution_engine::{
 use crate::ctx::Context;
 use crate::module::Module;
 use crate::support::{to_c_str, LLVMString};
-use crate::targets::TargetData;
-use crate::values::{AnyValue, AsValueRef, FunctionValue, GenericValue};
+use crate::target::TargetData;
+use crate::val::{AnyValue, AsValueRef, FunctionValue, GenericValue};
 
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
@@ -384,7 +384,7 @@ pub mod experimental {
 
     use crate::module::Module;
     use crate::support::to_c_str;
-    use crate::targets::TargetMachine;
+    use crate::target::TargetMachine;
 
     use std::ffi::{CStr, CString};
     use std::mem::MaybeUninit;
@@ -474,7 +474,7 @@ pub mod experimental {
 
     #[test]
     fn test_mangled_str() {
-        use crate::targets::{CodeModel, InitializationConfig, RelocMode, Target};
+        use crate::target::{CodeModel, InitializationConfig, RelocMode, Target};
         use crate::OptimizationLevel;
 
         Target::initialize_native(&InitializationConfig::default()).unwrap();

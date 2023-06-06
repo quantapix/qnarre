@@ -1,8 +1,8 @@
-use crate::basic_block::BasicBlock;
-use crate::debug_info::DILocation;
+use crate::block::BasicBlock;
+use crate::debug::DILocation;
 use crate::support::to_c_str;
-use crate::types::{AsTypeRef, BasicType, FloatMathType, FunctionType, IntMathType, PointerMathType, PointerType};
-use crate::values::{
+use crate::typ::{AsTypeRef, BasicType, FloatMathType, FunctionType, IntMathType, PointerMathType, PointerType};
+use crate::val::{
     AggregateValue, AggregateValueEnum, AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, CallSiteValue,
     FloatMathValue, FunctionValue, GlobalValue, InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue,
     PointerMathValue, PointerValue, StructValue, VectorValue,

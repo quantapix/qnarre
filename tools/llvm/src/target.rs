@@ -2,27 +2,13 @@ use crate::ctx::AsContextRef;
 use crate::data_layout::DataLayout;
 use crate::memory_buffer::MemoryBuffer;
 use crate::module::Module;
-use crate::passes::PassManager;
+use crate::pass::PassManager;
 use crate::support::{to_c_str, LLVMString};
-use crate::types::{AnyType, AsTypeRef, IntType, StructType};
-use crate::values::{AsValueRef, GlobalValue};
+use crate::typ::{AnyType, AsTypeRef, IntType, StructType};
+use crate::val::{AsValueRef, GlobalValue};
 use crate::{AddressSpace, OptimizationLevel};
-use llvm_lib::target::{
-    LLVMABIAlignmentOfType, LLVMABISizeOfType, LLVMByteOrder, LLVMByteOrdering, LLVMCallFrameAlignmentOfType,
-    LLVMCopyStringRepOfTargetData, LLVMCreateTargetData, LLVMDisposeTargetData, LLVMElementAtOffset,
-    LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext, LLVMOffsetOfElement, LLVMPointerSize, LLVMPointerSizeForAS,
-    LLVMPreferredAlignmentOfGlobal, LLVMPreferredAlignmentOfType, LLVMSizeOfTypeInBits, LLVMStoreSizeOfType,
-    LLVMTargetDataRef,
-};
-use llvm_lib::target_machine::{
-    LLVMAddAnalysisPasses, LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetDataLayout,
-    LLVMCreateTargetMachine, LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetFirstTarget,
-    LLVMGetNextTarget, LLVMGetTargetDescription, LLVMGetTargetFromName, LLVMGetTargetFromTriple,
-    LLVMGetTargetMachineCPU, LLVMGetTargetMachineFeatureString, LLVMGetTargetMachineTarget, LLVMGetTargetMachineTriple,
-    LLVMGetTargetName, LLVMRelocMode, LLVMSetTargetMachineAsmVerbosity, LLVMTargetHasAsmBackend, LLVMTargetHasJIT,
-    LLVMTargetHasTargetMachine, LLVMTargetMachineEmitToFile, LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetMachineRef,
-    LLVMTargetRef,
-};
+use llvm_lib::target::*;
+use llvm_lib::target_machine::*;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use std::default::Default;
@@ -397,6 +383,7 @@ impl Target {
         unsafe { LLVMTargetHasAsmBackend(self.target) == 1 }
     }
 }
+
 #[derive(Debug)]
 pub struct TargetMachine {
     pub(crate) target_machine: LLVMTargetMachineRef,
@@ -498,11 +485,13 @@ impl Drop for TargetMachine {
         unsafe { LLVMDisposeTargetMachine(self.target_machine) }
     }
 }
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ByteOrdering {
     BigEndian,
     LittleEndian,
 }
+
 #[derive(PartialEq, Eq, Debug)]
 pub struct TargetData {
     pub(crate) target_data: LLVMTargetDataRef,

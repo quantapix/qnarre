@@ -2,8 +2,8 @@ use llvm_lib::core::{LLVMGetIntrinsicDeclaration, LLVMIntrinsicIsOverloaded, LLV
 use llvm_lib::prelude::LLVMTypeRef;
 
 use crate::module::Module;
-use crate::types::{AsTypeRef, BasicTypeEnum};
-use crate::values::FunctionValue;
+use crate::typ::{AsTypeRef, BasicTypeEnum};
+use crate::val::FunctionValue;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Intrinsic {

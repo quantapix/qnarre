@@ -1,4 +1,4 @@
-use crate::types::AnyTypeEnum;
+use crate::typ::AnyTypeEnum;
 use llvm_lib::core::{
     LLVMGetEnumAttributeKind, LLVMGetEnumAttributeKindForName, LLVMGetEnumAttributeValue, LLVMGetLastEnumAttributeKind,
     LLVMGetStringAttributeKind, LLVMGetStringAttributeValue, LLVMIsEnumAttribute, LLVMIsStringAttribute,

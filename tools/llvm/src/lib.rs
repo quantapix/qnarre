@@ -3,30 +3,33 @@
 #[macro_use]
 pub mod support;
 pub mod attr;
-pub mod basic_block;
+pub mod block;
 pub mod builder;
 pub mod comdat;
 pub mod ctx;
-pub mod data_layout;
-pub mod debug_info;
+pub mod debug;
 pub mod execution_engine;
 pub mod intrinsics;
 pub mod llvm_lib;
-pub mod memory_buffer;
 pub mod mlir;
 pub mod module;
-pub mod object_file;
-pub mod passes;
-pub mod targets;
-pub mod types;
-pub mod values;
+pub mod pass;
+pub mod target;
+pub mod typ;
+pub mod val;
 
-use llvm_lib::LLVMInlineAsmDialect;
-use llvm_lib::{
-    LLVMAtomicOrdering, LLVMAtomicRMWBinOp, LLVMDLLStorageClass, LLVMIntPredicate, LLVMRealPredicate,
-    LLVMThreadLocalMode, LLVMVisibility,
-};
+use crate::support::{to_c_str, LLVMString, LLVMString, LLVMStringOrRaw};
+use llvm_lib::core::*;
+use llvm_lib::object::*;
+use llvm_lib::prelude::LLVMMemoryBufferRef;
+use llvm_lib::*;
 use std::convert::TryFrom;
+use std::ffi::CStr;
+use std::fmt;
+use std::mem::{forget, MaybeUninit};
+use std::path::Path;
+use std::ptr;
+use std::slice;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct AddressSpace(u32);
@@ -50,6 +53,7 @@ impl TryFrom<u32> for AddressSpace {
         }
     }
 }
+
 #[llvm_enum(LLVMIntPredicate)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum IntPredicate {
@@ -74,6 +78,7 @@ pub enum IntPredicate {
     #[llvm_variant(LLVMIntSLE)]
     SLE,
 }
+
 #[llvm_enum(LLVMRealPredicate)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FloatPredicate {
@@ -110,6 +115,7 @@ pub enum FloatPredicate {
     #[llvm_variant(LLVMRealUNO)]
     UNO,
 }
+
 #[llvm_enum(LLVMAtomicOrdering)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AtomicOrdering {
@@ -128,6 +134,7 @@ pub enum AtomicOrdering {
     #[llvm_variant(LLVMAtomicOrderingSequentiallyConsistent)]
     SequentiallyConsistent,
 }
+
 #[llvm_enum(LLVMAtomicRMWBinOp)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AtomicRMWBinOp {
@@ -162,6 +169,7 @@ pub enum AtomicRMWBinOp {
     #[llvm_variant(LLVMAtomicRMWBinOpFMin)]
     FMin,
 }
+
 #[repr(u32)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OptimizationLevel {
@@ -175,6 +183,7 @@ impl Default for OptimizationLevel {
         OptimizationLevel::Default
     }
 }
+
 #[llvm_enum(LLVMVisibility)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum GlobalVisibility {
@@ -190,6 +199,7 @@ impl Default for GlobalVisibility {
         GlobalVisibility::Default
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ThreadLocalMode {
     GeneralDynamicTLSModel,
@@ -216,6 +226,7 @@ impl ThreadLocalMode {
         }
     }
 }
+
 #[llvm_enum(LLVMDLLStorageClass)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum DLLStorageClass {
@@ -231,6 +242,7 @@ impl Default for DLLStorageClass {
         DLLStorageClass::Default
     }
 }
+
 #[llvm_enum(LLVMInlineAsmDialect)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum InlineAsmDialect {
@@ -238,4 +250,393 @@ pub enum InlineAsmDialect {
     ATT,
     #[llvm_variant(LLVMInlineAsmDialectIntel)]
     Intel,
+}
+
+#[derive(Debug)]
+pub struct MemoryBuffer {
+    pub(crate) memory_buffer: LLVMMemoryBufferRef,
+}
+impl MemoryBuffer {
+    pub unsafe fn new(memory_buffer: LLVMMemoryBufferRef) -> Self {
+        assert!(!memory_buffer.is_null());
+        MemoryBuffer { memory_buffer }
+    }
+    pub fn as_mut_ptr(&self) -> LLVMMemoryBufferRef {
+        self.memory_buffer
+    }
+    pub fn create_from_file(path: &Path) -> Result<Self, LLVMString> {
+        let path = to_c_str(path.to_str().expect("Did not find a valid Unicode path string"));
+        let mut memory_buffer = ptr::null_mut();
+        let mut err_string = MaybeUninit::uninit();
+        let return_code = unsafe {
+            LLVMCreateMemoryBufferWithContentsOfFile(
+                path.as_ptr() as *const ::libc::c_char,
+                &mut memory_buffer,
+                err_string.as_mut_ptr(),
+            )
+        };
+        if return_code == 1 {
+            unsafe {
+                return Err(LLVMString::new(err_string.assume_init()));
+            }
+        }
+        unsafe { Ok(MemoryBuffer::new(memory_buffer)) }
+    }
+    pub fn create_from_stdin() -> Result<Self, LLVMString> {
+        let mut memory_buffer = ptr::null_mut();
+        let mut err_string = MaybeUninit::uninit();
+        let return_code = unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut memory_buffer, err_string.as_mut_ptr()) };
+        if return_code == 1 {
+            unsafe {
+                return Err(LLVMString::new(err_string.assume_init()));
+            }
+        }
+        unsafe { Ok(MemoryBuffer::new(memory_buffer)) }
+    }
+    pub fn create_from_memory_range(input: &[u8], name: &str) -> Self {
+        let name_c_string = to_c_str(name);
+        let memory_buffer = unsafe {
+            LLVMCreateMemoryBufferWithMemoryRange(
+                input.as_ptr() as *const ::libc::c_char,
+                input.len(),
+                name_c_string.as_ptr(),
+                false as i32,
+            )
+        };
+        unsafe { MemoryBuffer::new(memory_buffer) }
+    }
+    pub fn create_from_memory_range_copy(input: &[u8], name: &str) -> Self {
+        let name_c_string = to_c_str(name);
+        let memory_buffer = unsafe {
+            LLVMCreateMemoryBufferWithMemoryRangeCopy(
+                input.as_ptr() as *const ::libc::c_char,
+                input.len(),
+                name_c_string.as_ptr(),
+            )
+        };
+        unsafe { MemoryBuffer::new(memory_buffer) }
+    }
+    pub fn as_slice(&self) -> &[u8] {
+        unsafe {
+            let start = LLVMGetBufferStart(self.memory_buffer);
+            slice::from_raw_parts(start as *const _, self.get_size())
+        }
+    }
+    pub fn get_size(&self) -> usize {
+        unsafe { LLVMGetBufferSize(self.memory_buffer) }
+    }
+    pub fn create_object_file(self) -> Result<ObjectFile, ()> {
+        let object_file = unsafe { LLVMCreateObjectFile(self.memory_buffer) };
+        forget(self);
+        if object_file.is_null() {
+            return Err(());
+        }
+        unsafe { Ok(ObjectFile::new(object_file)) }
+    }
+}
+impl Drop for MemoryBuffer {
+    fn drop(&mut self) {
+        unsafe {
+            LLVMDisposeMemoryBuffer(self.memory_buffer);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ObjectFile {
+    object_file: LLVMObjectFileRef,
+}
+impl ObjectFile {
+    pub unsafe fn new(object_file: LLVMObjectFileRef) -> Self {
+        assert!(!object_file.is_null());
+        ObjectFile { object_file }
+    }
+    pub fn as_mut_ptr(&self) -> LLVMObjectFileRef {
+        self.object_file
+    }
+    pub fn get_sections(&self) -> SectionIterator {
+        let section_iterator = unsafe { LLVMGetSections(self.object_file) };
+        unsafe { SectionIterator::new(section_iterator, self.object_file) }
+    }
+    pub fn get_symbols(&self) -> SymbolIterator {
+        let symbol_iterator = unsafe { LLVMGetSymbols(self.object_file) };
+        unsafe { SymbolIterator::new(symbol_iterator, self.object_file) }
+    }
+}
+impl Drop for ObjectFile {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeObjectFile(self.object_file) }
+    }
+}
+
+#[derive(Debug)]
+pub struct SectionIterator {
+    section_iterator: LLVMSectionIteratorRef,
+    object_file: LLVMObjectFileRef,
+    before_first: bool,
+}
+impl SectionIterator {
+    pub unsafe fn new(section_iterator: LLVMSectionIteratorRef, object_file: LLVMObjectFileRef) -> Self {
+        assert!(!section_iterator.is_null());
+        assert!(!object_file.is_null());
+        SectionIterator {
+            section_iterator,
+            object_file,
+            before_first: true,
+        }
+    }
+    pub fn as_mut_ptr(&self) -> (LLVMSectionIteratorRef, LLVMObjectFileRef) {
+        (self.section_iterator, self.object_file)
+    }
+}
+impl Iterator for SectionIterator {
+    type Item = Section;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.before_first {
+            self.before_first = false;
+        } else {
+            unsafe {
+                LLVMMoveToNextSection(self.section_iterator);
+            }
+        }
+        let at_end = unsafe { LLVMIsSectionIteratorAtEnd(self.object_file, self.section_iterator) == 1 };
+        if at_end {
+            return None;
+        }
+        Some(unsafe { Section::new(self.section_iterator, self.object_file) })
+    }
+}
+impl Drop for SectionIterator {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeSectionIterator(self.section_iterator) }
+    }
+}
+
+#[derive(Debug)]
+pub struct Section {
+    section: LLVMSectionIteratorRef,
+    object_file: LLVMObjectFileRef,
+}
+impl Section {
+    pub unsafe fn new(section: LLVMSectionIteratorRef, object_file: LLVMObjectFileRef) -> Self {
+        assert!(!section.is_null());
+        assert!(!object_file.is_null());
+        Section { section, object_file }
+    }
+    pub unsafe fn as_mut_ptr(&self) -> (LLVMSectionIteratorRef, LLVMObjectFileRef) {
+        (self.section, self.object_file)
+    }
+    pub fn get_name(&self) -> Option<&CStr> {
+        let name = unsafe { LLVMGetSectionName(self.section) };
+        if !name.is_null() {
+            Some(unsafe { CStr::from_ptr(name) })
+        } else {
+            None
+        }
+    }
+    pub fn size(&self) -> u64 {
+        unsafe { LLVMGetSectionSize(self.section) }
+    }
+    pub fn get_contents(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(LLVMGetSectionContents(self.section) as *const u8, self.size() as usize) }
+    }
+    pub fn get_address(&self) -> u64 {
+        unsafe { LLVMGetSectionAddress(self.section) }
+    }
+    pub fn get_relocations(&self) -> RelocationIterator {
+        let relocation_iterator = unsafe { LLVMGetRelocations(self.section) };
+        unsafe { RelocationIterator::new(relocation_iterator, self.section, self.object_file) }
+    }
+}
+
+#[derive(Debug)]
+pub struct RelocationIterator {
+    relocation_iterator: LLVMRelocationIteratorRef,
+    section_iterator: LLVMSectionIteratorRef,
+    object_file: LLVMObjectFileRef,
+    before_first: bool,
+}
+impl RelocationIterator {
+    pub unsafe fn new(
+        relocation_iterator: LLVMRelocationIteratorRef,
+        section_iterator: LLVMSectionIteratorRef,
+        object_file: LLVMObjectFileRef,
+    ) -> Self {
+        assert!(!relocation_iterator.is_null());
+        assert!(!section_iterator.is_null());
+        assert!(!object_file.is_null());
+        RelocationIterator {
+            relocation_iterator,
+            section_iterator,
+            object_file,
+            before_first: true,
+        }
+    }
+    pub fn as_mut_ptr(&self) -> (LLVMRelocationIteratorRef, LLVMSectionIteratorRef, LLVMObjectFileRef) {
+        (self.relocation_iterator, self.section_iterator, self.object_file)
+    }
+}
+impl Iterator for RelocationIterator {
+    type Item = Relocation;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.before_first {
+            self.before_first = false;
+        } else {
+            unsafe { LLVMMoveToNextRelocation(self.relocation_iterator) }
+        }
+        let at_end = unsafe { LLVMIsRelocationIteratorAtEnd(self.section_iterator, self.relocation_iterator) == 1 };
+        if at_end {
+            return None;
+        }
+        Some(unsafe { Relocation::new(self.relocation_iterator, self.object_file) })
+    }
+}
+impl Drop for RelocationIterator {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeRelocationIterator(self.relocation_iterator) }
+    }
+}
+
+#[derive(Debug)]
+pub struct Relocation {
+    relocation: LLVMRelocationIteratorRef,
+    object_file: LLVMObjectFileRef,
+}
+impl Relocation {
+    pub unsafe fn new(relocation: LLVMRelocationIteratorRef, object_file: LLVMObjectFileRef) -> Self {
+        assert!(!relocation.is_null());
+        assert!(!object_file.is_null());
+        Relocation {
+            relocation,
+            object_file,
+        }
+    }
+    pub fn as_mut_ptr(&self) -> (LLVMRelocationIteratorRef, LLVMObjectFileRef) {
+        (self.relocation, self.object_file)
+    }
+    pub fn get_offset(&self) -> u64 {
+        unsafe { LLVMGetRelocationOffset(self.relocation) }
+    }
+    pub fn get_symbols(&self) -> SymbolIterator {
+        let symbol_iterator = unsafe { LLVMGetRelocationSymbol(self.relocation) };
+        unsafe { SymbolIterator::new(symbol_iterator, self.object_file) }
+    }
+    pub fn get_type(&self) -> (u64, &CStr) {
+        let type_int = unsafe { LLVMGetRelocationType(self.relocation) };
+        let type_name = unsafe { CStr::from_ptr(LLVMGetRelocationTypeName(self.relocation)) };
+        (type_int, type_name)
+    }
+    pub fn get_value(&self) -> &CStr {
+        unsafe { CStr::from_ptr(LLVMGetRelocationValueString(self.relocation)) }
+    }
+}
+
+#[derive(Debug)]
+pub struct SymbolIterator {
+    symbol_iterator: LLVMSymbolIteratorRef,
+    object_file: LLVMObjectFileRef,
+    before_first: bool,
+}
+impl SymbolIterator {
+    pub unsafe fn new(symbol_iterator: LLVMSymbolIteratorRef, object_file: LLVMObjectFileRef) -> Self {
+        assert!(!symbol_iterator.is_null());
+        assert!(!object_file.is_null());
+        SymbolIterator {
+            symbol_iterator,
+            object_file,
+            before_first: true,
+        }
+    }
+    pub fn as_mut_ptr(&self) -> (LLVMSymbolIteratorRef, LLVMObjectFileRef) {
+        (self.symbol_iterator, self.object_file)
+    }
+}
+impl Iterator for SymbolIterator {
+    type Item = Symbol;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.before_first {
+            self.before_first = false;
+        } else {
+            unsafe { LLVMMoveToNextSymbol(self.symbol_iterator) }
+        }
+        let at_end = unsafe { LLVMIsSymbolIteratorAtEnd(self.object_file, self.symbol_iterator) == 1 };
+        if at_end {
+            return None;
+        }
+        Some(unsafe { Symbol::new(self.symbol_iterator) })
+    }
+}
+impl Drop for SymbolIterator {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeSymbolIterator(self.symbol_iterator) }
+    }
+}
+
+#[derive(Debug)]
+pub struct Symbol {
+    symbol: LLVMSymbolIteratorRef,
+}
+impl Symbol {
+    pub unsafe fn new(symbol: LLVMSymbolIteratorRef) -> Self {
+        assert!(!symbol.is_null());
+        Symbol { symbol }
+    }
+    pub fn as_mut_ptr(&self) -> LLVMSymbolIteratorRef {
+        self.symbol
+    }
+    pub fn get_name(&self) -> Option<&CStr> {
+        let name = unsafe { LLVMGetSymbolName(self.symbol) };
+        if !name.is_null() {
+            Some(unsafe { CStr::from_ptr(name) })
+        } else {
+            None
+        }
+    }
+    pub fn size(&self) -> u64 {
+        unsafe { LLVMGetSymbolSize(self.symbol) }
+    }
+    pub fn get_address(&self) -> u64 {
+        unsafe { LLVMGetSymbolAddress(self.symbol) }
+    }
+}
+
+#[derive(Eq)]
+pub struct DataLayout {
+    pub(crate) data_layout: LLVMStringOrRaw,
+}
+impl DataLayout {
+    pub(crate) unsafe fn new_owned(data_layout: *const ::libc::c_char) -> DataLayout {
+        debug_assert!(!data_layout.is_null());
+        DataLayout {
+            data_layout: LLVMStringOrRaw::Owned(LLVMString::new(data_layout)),
+        }
+    }
+    pub(crate) unsafe fn new_borrowed(data_layout: *const ::libc::c_char) -> DataLayout {
+        debug_assert!(!data_layout.is_null());
+        DataLayout {
+            data_layout: LLVMStringOrRaw::Borrowed(data_layout),
+        }
+    }
+    pub fn as_str(&self) -> &CStr {
+        self.data_layout.as_str()
+    }
+    pub fn as_ptr(&self) -> *const ::libc::c_char {
+        match self.data_layout {
+            LLVMStringOrRaw::Owned(ref llvm_string) => llvm_string.ptr,
+            LLVMStringOrRaw::Borrowed(ptr) => ptr,
+        }
+    }
+}
+impl PartialEq for DataLayout {
+    fn eq(&self, other: &DataLayout) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+impl fmt::Debug for DataLayout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DataLayout")
+            .field("address", &self.as_ptr())
+            .field("repr", &self.as_str())
+            .finish()
+    }
 }

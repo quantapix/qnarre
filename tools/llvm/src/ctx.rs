@@ -8,16 +8,16 @@ use once_cell::sync::Lazy;
 use parking_lot::{Mutex, MutexGuard};
 
 use crate::attr::Attribute;
-use crate::basic_block::BasicBlock;
+use crate::block::BasicBlock;
 use crate::builder::Builder;
 use crate::memory_buffer::MemoryBuffer;
 use crate::module::Module;
 use crate::support::{to_c_str, LLVMString};
-use crate::targets::TargetData;
-use crate::types::AnyTypeEnum;
-use crate::types::MetadataType;
-use crate::types::{AsTypeRef, BasicTypeEnum, FloatType, FunctionType, IntType, StructType, VoidType};
-use crate::values::{
+use crate::target::TargetData;
+use crate::typ::AnyTypeEnum;
+use crate::typ::MetadataType;
+use crate::typ::{AsTypeRef, BasicTypeEnum, FloatType, FunctionType, IntType, StructType, VoidType};
+use crate::val::{
     ArrayValue, AsValueRef, BasicMetadataValueEnum, BasicValueEnum, FunctionValue, MetadataValue, PointerValue,
     StructValue,
 };
