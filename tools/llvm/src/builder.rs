@@ -1,22 +1,19 @@
 use crate::block::BasicBlock;
 use crate::debug::DILocation;
 use crate::support::to_c_str;
-use crate::typ::{AsTypeRef, BasicType, FloatMathType, FunctionType, IntMathType, PointerMathType, PointerType};
-use crate::val::{
-    AggregateValue, AggregateValueEnum, AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, CallSiteValue,
-    FloatMathValue, FunctionValue, GlobalValue, InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue,
-    PointerMathValue, PointerValue, StructValue, VectorValue,
-};
+use crate::typ::*;
+use crate::val::*;
 use crate::{AtomicOrdering, AtomicRMWBinOp, FloatPredicate, IntPredicate};
 use llvm_lib::core::*;
 use llvm_lib::prelude::{LLVMBuilderRef, LLVMValueRef};
 use std::marker::PhantomData;
+
 #[derive(Debug)]
 pub struct Builder<'ctx> {
     builder: LLVMBuilderRef,
     _marker: PhantomData<&'ctx ()>,
 }
-#[allow(unused)] // only used in documentation
+
 use crate::ctx::Context;
 impl<'ctx> Builder<'ctx> {
     pub unsafe fn new(builder: LLVMBuilderRef) -> Self {
@@ -1188,10 +1185,6 @@ impl<'ctx> Builder<'ctx> {
         if value.get_type().get_bit_width() < 8 || !value.get_type().get_bit_width().is_power_of_two() {
             return Err("The bitwidth of value must be a power of 2 and greater than 8.");
         }
-        #[cfg(not(any(feature = "llvm15-0", feature = "llvm16-0")))]
-        if ptr.get_type().get_element_type() != value.get_type().into() {
-            return Err("Pointer's pointee type must match the value's type.");
-        }
         let val = unsafe {
             LLVMBuildAtomicRMW(
                 self.builder,
@@ -1219,10 +1212,6 @@ impl<'ctx> Builder<'ctx> {
         }
         if !cmp.is_int_value() && !cmp.is_pointer_value() {
             return Err("The values must have pointer or integer type.");
-        }
-        #[cfg(not(any(feature = "llvm15-0", feature = "llvm16-0")))]
-        if ptr.get_type().get_element_type().to_basic_type_enum() != cmp.get_type() {
-            return Err("The pointer does not point to an element of the value type.");
         }
         if success < AtomicOrdering::Monotonic || failure < AtomicOrdering::Monotonic {
             return Err("Both success and failure orderings must be Monotonic or stronger.");
@@ -1271,13 +1260,14 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 }
-fn is_alignment_ok(align: u32) -> bool {
-    align > 0 && align.is_power_of_two() && (align as f64).log2() < 64.0
-}
 impl Drop for Builder<'_> {
     fn drop(&mut self) {
         unsafe {
             LLVMDisposeBuilder(self.builder);
         }
     }
+}
+
+fn is_alignment_ok(align: u32) -> bool {
+    align > 0 && align.is_power_of_two() && (align as f64).log2() < 64.0
 }

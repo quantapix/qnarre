@@ -323,13 +323,6 @@ impl<'ctx> Module<'ctx> {
         self.print_to_string().to_string()
     }
     pub fn set_inline_assembly(&self, asm: &str) {
-        #[cfg(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0"))]
-        {
-            use llvm_lib::core::LLVMSetModuleInlineAsm;
-            let c_string = to_c_str(asm);
-            unsafe { LLVMSetModuleInlineAsm(self.module.get(), c_string.as_ptr()) }
-        }
-        #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
         {
             use llvm_lib::core::LLVMSetModuleInlineAsm2;
             unsafe { LLVMSetModuleInlineAsm2(self.module.get(), asm.as_ptr() as *const ::libc::c_char, asm.len()) }
@@ -522,23 +515,7 @@ impl<'ctx> Module<'ctx> {
         dwo_id: libc::c_uint,
         split_debug_inlining: bool,
         debug_info_for_profiling: bool,
-        #[cfg(any(
-            feature = "llvm11-0",
-            feature = "llvm12-0",
-            feature = "llvm13-0",
-            feature = "llvm14-0",
-            feature = "llvm15-0",
-            feature = "llvm16-0"
-        ))]
         sysroot: &str,
-        #[cfg(any(
-            feature = "llvm11-0",
-            feature = "llvm12-0",
-            feature = "llvm13-0",
-            feature = "llvm14-0",
-            feature = "llvm15-0",
-            feature = "llvm16-0"
-        ))]
         sdk: &str,
     ) -> (DebugInfoBuilder<'ctx>, DICompileUnit<'ctx>) {
         DebugInfoBuilder::new(
@@ -556,23 +533,7 @@ impl<'ctx> Module<'ctx> {
             dwo_id,
             split_debug_inlining,
             debug_info_for_profiling,
-            #[cfg(any(
-                feature = "llvm11-0",
-                feature = "llvm12-0",
-                feature = "llvm13-0",
-                feature = "llvm14-0",
-                feature = "llvm15-0",
-                feature = "llvm16-0"
-            ))]
             sysroot,
-            #[cfg(any(
-                feature = "llvm11-0",
-                feature = "llvm12-0",
-                feature = "llvm13-0",
-                feature = "llvm14-0",
-                feature = "llvm15-0",
-                feature = "llvm16-0"
-            ))]
             sdk,
         )
     }

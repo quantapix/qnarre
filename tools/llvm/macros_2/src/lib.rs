@@ -1,7 +1,3 @@
-//! These macros are only intended to be used by inkwell internally
-//! and should not be expected to have public support nor stability.
-//! Here be dragons 🐉
-
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -11,10 +7,7 @@ use syn::spanned::Spanned;
 use syn::{parse_macro_input, parse_quote};
 use syn::{Attribute, Field, Ident, Item, LitFloat, Token, Variant};
 
-const FEATURE_VERSIONS: [&str; 13] = [
-    "llvm4-0", "llvm5-0", "llvm6-0", "llvm7-0", "llvm8-0", "llvm9-0", "llvm10-0", "llvm11-0", "llvm12-0", "llvm13-0",
-    "llvm14-0", "llvm15-0", "llvm16-0",
-];
+const FEATURE_VERSIONS: [&str] = ["llvm16-0"];
 
 fn get_latest_feature_index(features: &[&str]) -> usize {
     features.len() - 1

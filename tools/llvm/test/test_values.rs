@@ -352,111 +352,100 @@ fn test_metadata() {
     assert_eq!(context.get_kind_id("section_prefix"), 20);
     assert_eq!(context.get_kind_id("absolute_symbol"), 21);
 
-    #[cfg(not(feature = "llvm4-0"))]
-    {
-        assert_eq!(context.get_kind_id("associated"), 22);
-    }
+    assert_eq!(context.get_kind_id("associated"), 22);
+    assert_eq!(context.get_kind_id("callees"), 23);
+    assert_eq!(context.get_kind_id("irr_loop"), 24);
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0")))]
-    {
-        assert_eq!(context.get_kind_id("callees"), 23);
-        assert_eq!(context.get_kind_id("irr_loop"), 24);
-    }
+    assert_eq!(module.get_global_metadata_size("my_string_md"), 0);
+    assert_eq!(module.get_global_metadata("my_string_md").len(), 0);
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
-    {
-        assert_eq!(module.get_global_metadata_size("my_string_md"), 0);
-        assert_eq!(module.get_global_metadata("my_string_md").len(), 0);
+    let md_string = context.metadata_string("lots of metadata here");
 
-        let md_string = context.metadata_string("lots of metadata here");
+    assert_eq!(md_string.get_node_size(), 0);
+    assert_eq!(md_string.get_node_values().len(), 0);
+    assert_eq!(
+        md_string.get_string_value().unwrap().to_str(),
+        Ok("lots of metadata here")
+    );
 
-        assert_eq!(md_string.get_node_size(), 0);
-        assert_eq!(md_string.get_node_values().len(), 0);
-        assert_eq!(
-            md_string.get_string_value().unwrap().to_str(),
-            Ok("lots of metadata here")
-        );
+    let bool_type = context.bool_type();
+    let f32_type = context.f32_type();
 
-        let bool_type = context.bool_type();
-        let f32_type = context.f32_type();
+    let bool_val = bool_type.const_int(0, false);
+    let f32_val = f32_type.const_float(0.0);
 
-        let bool_val = bool_type.const_int(0, false);
-        let f32_val = f32_type.const_float(0.0);
+    let md_node_child = context.metadata_node(&[bool_val.into(), f32_val.into()]);
+    let md_node = context.metadata_node(&[bool_val.into(), f32_val.into(), md_string.into(), md_node_child.into()]);
 
-        let md_node_child = context.metadata_node(&[bool_val.into(), f32_val.into()]);
-        let md_node = context.metadata_node(&[bool_val.into(), f32_val.into(), md_string.into(), md_node_child.into()]);
+    let node_values = md_node.get_node_values();
 
-        let node_values = md_node.get_node_values();
+    assert_eq!(md_node.get_string_value(), None);
+    assert_eq!(node_values.len(), 4);
+    assert_eq!(node_values[0].into_int_value(), bool_val);
+    assert_eq!(node_values[1].into_float_value(), f32_val);
+    assert_eq!(
+        node_values[2].into_metadata_value().get_string_value(),
+        md_string.get_string_value()
+    );
+    assert!(node_values[3].into_metadata_value().is_node());
 
-        assert_eq!(md_node.get_string_value(), None);
-        assert_eq!(node_values.len(), 4);
-        assert_eq!(node_values[0].into_int_value(), bool_val);
-        assert_eq!(node_values[1].into_float_value(), f32_val);
-        assert_eq!(
-            node_values[2].into_metadata_value().get_string_value(),
-            md_string.get_string_value()
-        );
-        assert!(node_values[3].into_metadata_value().is_node());
+    assert!(module.add_global_metadata("my_md", &md_string).is_err());
+    module.add_global_metadata("my_md", &md_node).unwrap();
 
-        assert!(module.add_global_metadata("my_md", &md_string).is_err());
-        module.add_global_metadata("my_md", &md_node).unwrap();
+    assert_eq!(module.get_global_metadata_size("my_md"), 1);
 
-        assert_eq!(module.get_global_metadata_size("my_md"), 1);
+    let global_md = module.get_global_metadata("my_md");
 
-        let global_md = module.get_global_metadata("my_md");
+    assert_eq!(global_md.len(), 1);
 
-        assert_eq!(global_md.len(), 1);
+    let md = global_md[0].get_node_values();
 
-        let md = global_md[0].get_node_values();
+    assert_eq!(md.len(), 4);
+    assert_eq!(md[0].into_int_value(), bool_val);
+    assert_eq!(md[1].into_float_value(), f32_val);
+    assert_eq!(
+        md[2].into_metadata_value().get_string_value(),
+        md_string.get_string_value()
+    );
+    assert!(md[3].into_metadata_value().is_node());
 
-        assert_eq!(md.len(), 4);
-        assert_eq!(md[0].into_int_value(), bool_val);
-        assert_eq!(md[1].into_float_value(), f32_val);
-        assert_eq!(
-            md[2].into_metadata_value().get_string_value(),
-            md_string.get_string_value()
-        );
-        assert!(md[3].into_metadata_value().is_node());
+    assert_eq!(module.get_global_metadata_size("other_md"), 0);
 
-        assert_eq!(module.get_global_metadata_size("other_md"), 0);
+    let builder = context.create_builder();
+    let module = context.create_module("my_mod");
+    let void_type = context.void_type();
+    let bool_type = context.bool_type();
+    let fn_type = void_type.fn_type(&[bool_type.into()], false);
+    let fn_value = module.add_function("my_func", fn_type, None);
 
-        let builder = context.create_builder();
-        let module = context.create_module("my_mod");
-        let void_type = context.void_type();
-        let bool_type = context.bool_type();
-        let fn_type = void_type.fn_type(&[bool_type.into()], false);
-        let fn_value = module.add_function("my_func", fn_type, None);
+    let entry_block = context.append_basic_block(fn_value, "entry");
 
-        let entry_block = context.append_basic_block(fn_value, "entry");
+    builder.position_at_end(entry_block);
 
-        builder.position_at_end(entry_block);
+    let ret_instr = builder.build_return(None);
+    let ret_instr_md = context.metadata_node(&[md_string.into()]);
 
-        let ret_instr = builder.build_return(None);
-        let ret_instr_md = context.metadata_node(&[md_string.into()]);
+    assert!(ret_instr.set_metadata(ret_instr_md, 2).is_ok());
+    assert!(ret_instr.has_metadata());
+    assert!(ret_instr.get_metadata(1).is_none());
 
-        assert!(ret_instr.set_metadata(ret_instr_md, 2).is_ok());
-        assert!(ret_instr.has_metadata());
-        assert!(ret_instr.get_metadata(1).is_none());
+    let md_node_values = ret_instr.get_metadata(2).unwrap().get_node_values();
 
-        let md_node_values = ret_instr.get_metadata(2).unwrap().get_node_values();
+    assert_eq!(md_node_values.len(), 1);
+    assert_eq!(
+        md_node_values[0].into_metadata_value().get_string_value(),
+        md_string.get_string_value()
+    );
 
-        assert_eq!(md_node_values.len(), 1);
-        assert_eq!(
-            md_node_values[0].into_metadata_value().get_string_value(),
-            md_string.get_string_value()
-        );
+    let context_metadata_node = context.metadata_node(&[bool_val.into(), f32_val.into()]);
+    let context_metadata_string = context.metadata_string("my_context_metadata");
 
-        let context_metadata_node = context.metadata_node(&[bool_val.into(), f32_val.into()]);
-        let context_metadata_string = context.metadata_string("my_context_metadata");
-
-        assert!(context_metadata_node.is_node());
-        assert!(context_metadata_string.is_string());
-    }
+    assert!(context_metadata_node.is_node());
+    assert!(context_metadata_string.is_string());
 }
 
 #[test]
 fn test_floats() {
-    #[cfg(not(feature = "llvm15-0"))]
     {
         use inkwell::FloatPredicate;
 
@@ -489,32 +478,6 @@ fn test_floats() {
 
         let f64_one = f64_type.const_float(1.);
         let f64_two = f64_type.const_float(2.);
-        #[cfg(not(feature = "llvm16-0"))]
-        {
-            let neg_two = f64_two.const_neg();
-
-            assert_eq!(neg_two.print_to_string().to_str(), Ok("double -2.000000e+00"));
-
-            let neg_three = neg_two.const_sub(f64_one);
-
-            assert_eq!(neg_three.print_to_string().to_str(), Ok("double -3.000000e+00"));
-
-            let pos_six = neg_three.const_mul(neg_two);
-
-            assert_eq!(pos_six.print_to_string().to_str(), Ok("double 6.000000e+00"));
-
-            let pos_eight = pos_six.const_add(f64_two);
-
-            assert_eq!(pos_eight.print_to_string().to_str(), Ok("double 8.000000e+00"));
-
-            let pos_four = pos_eight.const_div(f64_two);
-
-            assert_eq!(pos_four.print_to_string().to_str(), Ok("double 4.000000e+00"));
-
-            let rem = pos_six.const_remainder(pos_four);
-
-            assert_eq!(rem.print_to_string().to_str(), Ok("double 2.000000e+00"));
-        }
 
         assert!(f64_one.const_compare(FloatPredicate::PredicateFalse, f64_two).is_null());
         assert!(!f64_one.const_compare(FloatPredicate::PredicateTrue, f64_two).is_null());
@@ -642,7 +605,6 @@ fn test_globals() {
 
     let global = module.add_global(i8_type, None, "my_global");
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     assert_eq!(global.get_unnamed_address(), UnnamedAddress::None);
     assert!(global.get_previous_global().is_none());
     assert!(global.get_next_global().is_none());
@@ -668,7 +630,6 @@ fn test_globals() {
     assert!(module.get_global("my_global").is_none());
     assert_eq!(module.get_global("glob").unwrap(), global);
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     global.set_unnamed_address(UnnamedAddress::Local);
     global.set_dll_storage_class(DLLStorageClass::Import);
     global.set_initializer(&i8_zero);
@@ -678,7 +639,6 @@ fn test_globals() {
     global.set_visibility(GlobalVisibility::Hidden);
     global.set_section(Some("not sure what goes here"));
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     assert_eq!(global.get_unnamed_address(), UnnamedAddress::Global);
     assert_eq!(global.get_dll_storage_class(), DLLStorageClass::Import);
     assert_eq!(global.get_initializer().unwrap().into_int_value(), i8_zero);
@@ -702,14 +662,12 @@ fn test_globals() {
 
     assert_eq!(global.get_linkage(), Private);
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     global.set_unnamed_address(UnnamedAddress::Global);
     global.set_dll_storage_class(DLLStorageClass::Export);
     global.set_thread_local(false);
     global.set_linkage(External);
     global.set_visibility(GlobalVisibility::Protected);
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
     assert_eq!(global.get_unnamed_address(), UnnamedAddress::Global);
     assert!(!global.is_thread_local());
     assert_eq!(global.get_visibility(), GlobalVisibility::Protected);
@@ -760,23 +718,20 @@ fn test_globals() {
 
     assert!(global2.is_externally_initialized());
 
-    #[cfg(not(any(feature = "llvm4-0", feature = "llvm5-0", feature = "llvm6-0")))]
-    {
-        assert!(global.get_comdat().is_none());
+    assert!(global.get_comdat().is_none());
 
-        let comdat = module.get_or_insert_comdat("my_comdat");
+    let comdat = module.get_or_insert_comdat("my_comdat");
 
-        assert!(global.get_comdat().is_none());
+    assert!(global.get_comdat().is_none());
 
-        global.set_comdat(comdat);
+    global.set_comdat(comdat);
 
-        assert_eq!(comdat, global.get_comdat().unwrap());
-        assert_eq!(comdat.get_selection_kind(), ComdatSelectionKind::Any);
+    assert_eq!(comdat, global.get_comdat().unwrap());
+    assert_eq!(comdat.get_selection_kind(), ComdatSelectionKind::Any);
 
-        comdat.set_selection_kind(ComdatSelectionKind::Largest);
+    comdat.set_selection_kind(ComdatSelectionKind::Largest);
 
-        assert_eq!(comdat.get_selection_kind(), ComdatSelectionKind::Largest);
-    }
+    assert_eq!(comdat.get_selection_kind(), ComdatSelectionKind::Largest);
 
     unsafe {
         global.delete();
@@ -847,11 +802,7 @@ fn test_allocations() {
 
     builder.position_at_end(entry_block);
 
-    let ptr_type = if cfg!(any(feature = "llvm15-0", feature = "llvm16-0")) {
-        "ptr"
-    } else {
-        "i32*"
-    };
+    let ptr_type = "ptr";
 
     let stack_ptr = builder.build_alloca(i32_type, "stack_ptr");
 
@@ -1071,25 +1022,6 @@ fn test_non_fn_ptr_called() {
     let i8_ptr_param = fn_value.get_first_param().unwrap().into_pointer_value();
 
     builder.position_at_end(bb);
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    {
-        use inkwell::values::CallableValue;
-        let callable_value = CallableValue::try_from(i8_ptr_param).unwrap();
-        builder.build_call(callable_value, &[], "call");
-    }
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     builder.build_indirect_call(i8_ptr_type.fn_type(&[], false), i8_ptr_param, &[], "call");
     builder.build_return(None);
 
@@ -1137,21 +1069,6 @@ fn test_aggregate_returns() {
     let ptr_param2 = fn_value.get_nth_param(1).unwrap().into_pointer_value();
 
     builder.position_at_end(bb);
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    builder.build_ptr_diff(ptr_param1, ptr_param2, "diff");
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     builder.build_ptr_diff(i32_ptr_type, ptr_param1, ptr_param2, "diff");
     builder.build_aggregate_return(&[i32_three.into(), i32_seven.into()]);
 

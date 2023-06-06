@@ -54,42 +54,8 @@ fn test_build_call() {
 
     builder.build_store(alloca, fn_ptr);
 
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let load = builder.build_load(alloca, "load").into_pointer_value();
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let load = builder.build_load(fn_ptr_type, alloca, "load").into_pointer_value();
 
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    {
-        use inkwell::values::CallableValue;
-        let callable_value = CallableValue::try_from(load).unwrap();
-        builder.build_call(callable_value, &[], "call");
-    }
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     builder.build_indirect_call(fn_type2, load, &[], "call");
     builder.build_return(None);
 
@@ -339,21 +305,6 @@ fn test_null_checked_ptr_ops() {
     let ptr_as_int = builder.build_ptr_to_int(ptr, i64_type, "ptr_as_int");
     let new_ptr_as_int = builder.build_int_add(ptr_as_int, one, "add");
     let new_ptr = builder.build_int_to_ptr(new_ptr_as_int, i8_ptr_type, "int_as_ptr");
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let index1 = builder.build_load(new_ptr, "deref");
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let index1 = builder.build_load(i8_ptr_type, new_ptr, "deref");
 
     builder.build_return(Some(&index1));
@@ -380,21 +331,6 @@ fn test_null_checked_ptr_ops() {
     let ptr_as_int = builder.build_ptr_to_int(ptr, i64_type, "ptr_as_int");
     let new_ptr_as_int = builder.build_int_add(ptr_as_int, one, "add");
     let new_ptr = builder.build_int_to_ptr(new_ptr_as_int, i8_ptr_type, "int_as_ptr");
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let index1 = builder.build_load(new_ptr, "deref");
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let index1 = builder.build_load(i8_ptr_type, new_ptr, "deref");
 
     builder.build_return(Some(&index1));
@@ -837,21 +773,6 @@ fn test_insert_value() {
     builder.position_at_end(entry);
 
     let array_alloca = builder.build_alloca(array_type, "array_alloca");
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let array = builder.build_load(array_alloca, "array_load").into_array_value();
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let array = builder
         .build_load(array_type, array_alloca, "array_load")
         .into_array_value();
@@ -881,21 +802,6 @@ fn test_insert_value() {
     assert!(builder.build_extract_value(array, 3, "extract").is_none());
 
     let struct_alloca = builder.build_alloca(struct_type, "struct_alloca");
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let struct_value = builder.build_load(struct_alloca, "struct_load").into_struct_value();
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let struct_value = builder
         .build_load(struct_type, struct_alloca, "struct_load")
         .into_struct_value();
@@ -994,21 +900,6 @@ fn run_memcpy_on<'ctx>(
 
     for index in 0..4 {
         let index_val = i32_type.const_int(index, false);
-        #[cfg(any(
-            feature = "llvm4-0",
-            feature = "llvm5-0",
-            feature = "llvm6-0",
-            feature = "llvm7-0",
-            feature = "llvm8-0",
-            feature = "llvm9-0",
-            feature = "llvm10-0",
-            feature = "llvm11-0",
-            feature = "llvm12-0",
-            feature = "llvm13-0",
-            feature = "llvm14-0"
-        ))]
-        let elem_ptr = unsafe { builder.build_in_bounds_gep(array_ptr, &[index_val], "index") };
-        #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
         let elem_ptr = unsafe { builder.build_in_bounds_gep(element_type, array_ptr, &[index_val], "index") };
         let int_val = i32_type.const_int(index + 1, false);
 
@@ -1019,21 +910,6 @@ fn run_memcpy_on<'ctx>(
     let bytes_to_copy = elems_to_copy * std::mem::size_of::<i32>();
     let size_val = i64_type.const_int(bytes_to_copy as u64, false);
     let index_val = i32_type.const_int(2, false);
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let dest_ptr = unsafe { builder.build_in_bounds_gep(array_ptr, &[index_val], "index") };
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let dest_ptr = unsafe { builder.build_in_bounds_gep(element_type, array_ptr, &[index_val], "index") };
 
     builder.build_memcpy(dest_ptr, alignment, array_ptr, alignment, size_val)?;
@@ -1088,21 +964,6 @@ fn run_memmove_on<'ctx>(
 
     for index in 0..4 {
         let index_val = i32_type.const_int(index, false);
-        #[cfg(any(
-            feature = "llvm4-0",
-            feature = "llvm5-0",
-            feature = "llvm6-0",
-            feature = "llvm7-0",
-            feature = "llvm8-0",
-            feature = "llvm9-0",
-            feature = "llvm10-0",
-            feature = "llvm11-0",
-            feature = "llvm12-0",
-            feature = "llvm13-0",
-            feature = "llvm14-0"
-        ))]
-        let elem_ptr = unsafe { builder.build_in_bounds_gep(array_ptr, &[index_val], "index") };
-        #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
         let elem_ptr = unsafe { builder.build_in_bounds_gep(element_type, array_ptr, &[index_val], "index") };
         let int_val = i32_type.const_int(index + 1, false);
 
@@ -1113,21 +974,6 @@ fn run_memmove_on<'ctx>(
     let bytes_to_copy = elems_to_copy * std::mem::size_of::<i32>();
     let size_val = i64_type.const_int(bytes_to_copy as u64, false);
     let index_val = i32_type.const_int(2, false);
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let dest_ptr = unsafe { builder.build_in_bounds_gep(array_ptr, &[index_val], "index") };
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let dest_ptr = unsafe { builder.build_in_bounds_gep(element_type, array_ptr, &[index_val], "index") };
 
     builder.build_memmove(dest_ptr, alignment, array_ptr, alignment, size_val)?;
@@ -1188,21 +1034,6 @@ fn run_memset_on<'ctx>(
     builder.build_memset(array_ptr, alignment, val, size_val)?;
     let val = i8_type.const_all_ones();
     let index = i32_type.const_int(2, false);
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    let part_2 = unsafe { builder.build_in_bounds_gep(array_ptr, &[index], "index") };
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
     let part_2 = unsafe { builder.build_in_bounds_gep(element_type, array_ptr, &[index], "index") };
     builder.build_memset(part_2, alignment, val, size_val)?;
     builder.build_return(Some(&array_ptr));
@@ -1306,26 +1137,6 @@ fn test_atomicrmw() {
     let result = builder.build_atomicrmw(AtomicRMWBinOp::Add, ptr_value, zero_value, AtomicOrdering::Unordered);
     assert!(result.is_ok());
 
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    {
-        let ptr_value = i64_type.ptr_type(AddressSpace::default()).get_undef();
-        let zero_value = i32_type.const_zero();
-        let result = builder.build_atomicrmw(AtomicRMWBinOp::Add, ptr_value, zero_value, AtomicOrdering::Unordered);
-        assert!(result.is_err());
-    }
-
     let ptr_value = i31_type.ptr_type(AddressSpace::default()).get_undef();
     let zero_value = i31_type.const_zero();
     let result = builder.build_atomicrmw(AtomicRMWBinOp::Add, ptr_value, zero_value, AtomicOrdering::Unordered);
@@ -1426,33 +1237,6 @@ fn test_cmpxchg() {
     );
     assert!(result.is_err());
 
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    {
-        let ptr_value = i32_ptr_ptr_type.get_undef();
-        let zero_value = i32_type.const_zero();
-        let neg_one_value = i32_type.const_all_ones();
-        let result = builder.build_cmpxchg(
-            ptr_value,
-            zero_value,
-            neg_one_value,
-            AtomicOrdering::Monotonic,
-            AtomicOrdering::Monotonic,
-        );
-        assert!(result.is_err());
-    }
-
     let ptr_value = i32_ptr_type.get_undef();
     let zero_value = i64_type.const_zero();
     let neg_one_value = i32_type.const_all_ones();
@@ -1488,33 +1272,6 @@ fn test_cmpxchg() {
         AtomicOrdering::Monotonic,
     );
     assert!(result.is_ok());
-
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    {
-        let ptr_value = i32_ptr_type.get_undef();
-        let zero_value = i32_ptr_type.const_zero();
-        let neg_one_value = i32_ptr_type.const_zero();
-        let result = builder.build_cmpxchg(
-            ptr_value,
-            zero_value,
-            neg_one_value,
-            AtomicOrdering::Monotonic,
-            AtomicOrdering::Monotonic,
-        );
-        assert!(result.is_err());
-    }
 }
 
 #[test]
@@ -1537,34 +1294,11 @@ fn test_safe_struct_gep() {
     let i32_ptr = fn_value.get_first_param().unwrap().into_pointer_value();
     let struct_ptr = fn_value.get_last_param().unwrap().into_pointer_value();
 
-    #[cfg(any(
-        feature = "llvm4-0",
-        feature = "llvm5-0",
-        feature = "llvm6-0",
-        feature = "llvm7-0",
-        feature = "llvm8-0",
-        feature = "llvm9-0",
-        feature = "llvm10-0",
-        feature = "llvm11-0",
-        feature = "llvm12-0",
-        feature = "llvm13-0",
-        feature = "llvm14-0"
-    ))]
-    {
-        assert!(builder.build_struct_gep(i32_ptr, 0, "struct_gep").is_err());
-        assert!(builder.build_struct_gep(i32_ptr, 10, "struct_gep").is_err());
-        assert!(builder.build_struct_gep(struct_ptr, 0, "struct_gep").is_ok());
-        assert!(builder.build_struct_gep(struct_ptr, 1, "struct_gep").is_ok());
-        assert!(builder.build_struct_gep(struct_ptr, 2, "struct_gep").is_err());
-    }
-    #[cfg(any(feature = "llvm15-0", feature = "llvm16-0"))]
-    {
-        assert!(builder.build_struct_gep(i32_ty, i32_ptr, 0, "struct_gep").is_err());
-        assert!(builder.build_struct_gep(i32_ty, i32_ptr, 10, "struct_gep").is_err());
-        assert!(builder.build_struct_gep(struct_ty, struct_ptr, 0, "struct_gep").is_ok());
-        assert!(builder.build_struct_gep(struct_ty, struct_ptr, 1, "struct_gep").is_ok());
-        assert!(builder
-            .build_struct_gep(struct_ty, struct_ptr, 2, "struct_gep")
-            .is_err());
-    }
+    assert!(builder.build_struct_gep(i32_ty, i32_ptr, 0, "struct_gep").is_err());
+    assert!(builder.build_struct_gep(i32_ty, i32_ptr, 10, "struct_gep").is_err());
+    assert!(builder.build_struct_gep(struct_ty, struct_ptr, 0, "struct_gep").is_ok());
+    assert!(builder.build_struct_gep(struct_ty, struct_ptr, 1, "struct_gep").is_ok());
+    assert!(builder
+        .build_struct_gep(struct_ty, struct_ptr, 2, "struct_gep")
+        .is_err());
 }

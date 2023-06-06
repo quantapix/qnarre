@@ -154,11 +154,6 @@ impl<T: PassManagerSubType> PassManager<T> {
     pub fn add_strip_symbol_pass(&self) {
         unsafe { LLVMAddStripSymbolsPass(self.pass_manager) }
     }
-    #[cfg(feature = "llvm4-0")]
-    pub fn add_bb_vectorize_pass(&self) {
-        use llvm_lib::transforms::vectorize::LLVMAddBBVectorizePass;
-        unsafe { LLVMAddBBVectorizePass(self.pass_manager) }
-    }
     pub fn add_loop_vectorize_pass(&self) {
         unsafe { LLVMAddLoopVectorizePass(self.pass_manager) }
     }

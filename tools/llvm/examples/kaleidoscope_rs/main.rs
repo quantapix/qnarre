@@ -1,17 +1,3 @@
-//! This is an example of the [Kaleidoscope tutorial](https://llvm.org/docs/tutorial/)
-//! made in Rust, using Inkwell.
-//! Currently, all features up to the [7th chapter](https://llvm.org/docs/tutorial/LangImpl07.html)
-//! are available.
-//! This example is supposed to be ran as a executable, which launches a REPL.
-//! The source code is in the following order:
-//! - Lexer,
-//! - Parser,
-//! - Compiler,
-//! - Program.
-//!
-//! Both the `Parser` and the `Compiler` may fail, in which case they would return
-//! an error represented by `Result<T, &'static str>`, for easier error reporting.
-
 use std::collections::HashMap;
 use std::io::{self, Write};
 
@@ -20,12 +6,6 @@ use inkwell::passes::PassManager;
 use inkwell::OptimizationLevel;
 
 use inkwell_internals::llvm_versions;
-
-#[cfg(not(any(feature = "llvm15-0", feature = "llvm16-0")))]
-mod implementation_typed_pointers;
-
-#[llvm_versions(4.0..=14.0)]
-use crate::implementation_typed_pointers::*;
 
 macro_rules! print_flush {
     ( $( $x:expr ),* ) => {
