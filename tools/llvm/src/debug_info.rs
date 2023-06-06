@@ -108,7 +108,6 @@ use crate::values::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue,
 use crate::AddressSpace;
 
 use llvm_lib::core::LLVMMetadataAsValue;
-#[llvm_versions(8.0..=latest)]
 use llvm_lib::debuginfo::LLVMDIBuilderCreateTypedef;
 pub use llvm_lib::debuginfo::LLVMDWARFTypeEncoding;
 use llvm_lib::debuginfo::LLVMDebugMetadataVersion;
@@ -127,7 +126,6 @@ use llvm_lib::debuginfo::{
     LLVMDIBuilderInsertDeclareBefore, LLVMDILocationGetColumn, LLVMDILocationGetLine, LLVMDILocationGetScope,
     LLVMDITypeGetAlignInBits, LLVMDITypeGetOffsetInBits, LLVMDITypeGetSizeInBits,
 };
-#[llvm_versions(8.0..=latest)]
 use llvm_lib::debuginfo::{LLVMDIBuilderCreateConstantValueExpression, LLVMDIBuilderCreateGlobalVariableExpression};
 use llvm_lib::prelude::{LLVMDIBuilderRef, LLVMMetadataRef};
 use std::convert::TryInto;
@@ -452,7 +450,6 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn create_basic_type(
         &self,
         name: &str,
@@ -480,7 +477,6 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         })
     }
 
-    #[llvm_versions(8.0..=latest)]
     pub fn create_typedef(
         &self,
         ditype: DIType<'ctx>,
@@ -721,7 +717,6 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         }
     }
 
-    #[llvm_versions(8.0..=latest)]
     pub fn create_global_variable_expression(
         &self,
         scope: DIScope<'ctx>,
@@ -760,7 +755,6 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         }
     }
 
-    #[llvm_versions(8.0..=latest)]
     pub fn create_constant_expression(&self, value: i64) -> DIExpression<'ctx> {
         let metadata_ref = unsafe { LLVMDIBuilderCreateConstantValueExpression(self.builder, value as _) };
 
@@ -1417,31 +1411,22 @@ mod flags {
         GOOGLERenderScript,
         #[llvm_variant(LLVMDWARFSourceLanguageBORLAND_Delphi)]
         BORLANDDelphi,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageKotlin)]
         Kotlin,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageZig)]
         Zig,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageCrystal)]
         Crystal,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageC_plus_plus_17)]
         CPlusPlus17,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageC_plus_plus_20)]
         CPlusPlus20,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageC17)]
         C17,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageFortran18)]
         Fortran18,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageAda2005)]
         Ada2005,
-        #[llvm_versions(16.0..=latest)]
         #[llvm_variant(LLVMDWARFSourceLanguageAda2012)]
         Ada2012,
     }

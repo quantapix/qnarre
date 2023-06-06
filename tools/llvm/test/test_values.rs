@@ -1,5 +1,4 @@
 use inkwell::attributes::AttributeLoc;
-#[llvm_versions(7.0..=latest)]
 use inkwell::comdat::ComdatSelectionKind;
 use inkwell::context::Context;
 use inkwell::module::Linkage::*;
@@ -630,7 +629,6 @@ fn test_global_byte_array() {
 
 #[test]
 fn test_globals() {
-    #[llvm_versions(7.0..=latest)]
     use inkwell::values::UnnamedAddress;
 
     let context = Context::create();

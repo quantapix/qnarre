@@ -2,8 +2,6 @@
 pub mod error_handling;
 
 use libc::c_char;
-#[llvm_versions(16.0)]
-use llvm_lib::core::LLVMGetVersion;
 use llvm_lib::core::{LLVMCreateMessage, LLVMDisposeMessage};
 use llvm_lib::error_handling::LLVMEnablePrettyStackTrace;
 use llvm_lib::support::LLVMLoadLibraryPermanently;
@@ -111,7 +109,6 @@ pub unsafe fn shutdown_llvm() {
     LLVMShutdown()
 }
 
-#[llvm_versions(16.0..=latest)]
 pub fn get_llvm_version() -> (u32, u32, u32) {
     let mut major: u32 = 0;
     let mut minor: u32 = 0;

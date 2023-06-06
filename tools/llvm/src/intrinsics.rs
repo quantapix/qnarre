@@ -1,4 +1,3 @@
-#[llvm_versions(9.0..=latest)]
 use llvm_lib::core::{LLVMGetIntrinsicDeclaration, LLVMIntrinsicIsOverloaded, LLVMLookupIntrinsicID};
 use llvm_lib::prelude::LLVMTypeRef;
 
@@ -12,7 +11,6 @@ pub struct Intrinsic {
 }
 
 ///
-#[llvm_versions(9.0..=latest)]
 impl Intrinsic {
     pub(crate) unsafe fn new(id: u32) -> Self {
         Self { id }

@@ -177,8 +177,3 @@ pub fn main() {
         }
     }
 }
-
-#[llvm_versions(15.0..=latest)]
-pub fn main() {
-    eprintln!("Kaleidoscope example does not work yet with this llvm version");
-}

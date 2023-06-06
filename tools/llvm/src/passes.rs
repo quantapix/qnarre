@@ -8,13 +8,8 @@ use llvm_lib::initialization::{
     LLVMInitializeInstCombine, LLVMInitializeScalarOpts, LLVMInitializeTarget, LLVMInitializeTransformUtils,
     LLVMInitializeVectorization,
 };
-#[llvm_versions(4.0..=15.0)]
-use llvm_lib::initialization::{LLVMInitializeInstrumentation, LLVMInitializeObjCARCOpts};
 use llvm_lib::prelude::{LLVMPassManagerRef, LLVMPassRegistryRef};
-#[llvm_versions(10.0..=latest)]
 use llvm_lib::transforms::ipo::LLVMAddMergeFunctionsPass;
-#[llvm_versions(4.0..=15.0)]
-use llvm_lib::transforms::ipo::LLVMAddPruneEHPass;
 use llvm_lib::transforms::ipo::{
     LLVMAddAlwaysInlinerPass, LLVMAddConstantMergePass, LLVMAddDeadArgEliminationPass, LLVMAddFunctionAttrsPass,
     LLVMAddFunctionInliningPass, LLVMAddGlobalDCEPass, LLVMAddGlobalOptimizerPass, LLVMAddIPSCCPPass,
@@ -41,12 +36,6 @@ use llvm_lib::transforms::scalar::{
 };
 use llvm_lib::transforms::vectorize::{LLVMAddLoopVectorizePass, LLVMAddSLPVectorizePass};
 
-#[llvm_versions(4.0..=11.0)]
-use llvm_lib::transforms::ipo::LLVMAddIPConstantPropagationPass;
-#[llvm_versions(4.0..=11.0)]
-use llvm_lib::transforms::scalar::LLVMAddConstantPropagationPass;
-
-#[llvm_versions(13.0..=latest)]
 use llvm_lib::transforms::pass_builder::{
     LLVMCreatePassBuilderOptions, LLVMDisposePassBuilderOptions, LLVMPassBuilderOptionsRef,
     LLVMPassBuilderOptionsSetCallGraphProfile, LLVMPassBuilderOptionsSetDebugLogging,
@@ -56,7 +45,6 @@ use llvm_lib::transforms::pass_builder::{
     LLVMPassBuilderOptionsSetMergeFunctions, LLVMPassBuilderOptionsSetSLPVectorization,
     LLVMPassBuilderOptionsSetVerifyEach,
 };
-#[llvm_versions(12.0..=latest)]
 use llvm_lib::transforms::scalar::LLVMAddInstructionSimplifyPass;
 
 use crate::module::Module;
@@ -120,20 +108,6 @@ impl PassManagerBuilder {
 
     pub fn populate_module_pass_manager(&self, pass_manager: &PassManager<Module>) {
         unsafe { LLVMPassManagerBuilderPopulateModulePassManager(self.pass_manager_builder, pass_manager.pass_manager) }
-    }
-
-    #[llvm_versions(4.0..=14.0)]
-    pub fn populate_lto_pass_manager(&self, pass_manager: &PassManager<Module>, internalize: bool, run_inliner: bool) {
-        use llvm_lib::transforms::pass_manager_builder::LLVMPassManagerBuilderPopulateLTOPassManager;
-
-        unsafe {
-            LLVMPassManagerBuilderPopulateLTOPassManager(
-                self.pass_manager_builder,
-                pass_manager.pass_manager,
-                internalize as i32,
-                run_inliner as i32,
-            )
-        }
     }
 }
 
@@ -216,18 +190,10 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { input.run_in_pass_manager(self) }
     }
 
-    #[llvm_versions(4.0..=14.0)]
-    pub fn add_argument_promotion_pass(&self) {
-        use llvm_lib::transforms::ipo::LLVMAddArgumentPromotionPass;
-
-        unsafe { LLVMAddArgumentPromotionPass(self.pass_manager) }
-    }
-
     pub fn add_constant_merge_pass(&self) {
         unsafe { LLVMAddConstantMergePass(self.pass_manager) }
     }
 
-    #[llvm_versions(10.0..=latest)]
     pub fn add_merge_functions_pass(&self) {
         unsafe { LLVMAddMergeFunctionsPass(self.pass_manager) }
     }
@@ -254,16 +220,6 @@ impl<T: PassManagerSubType> PassManager<T> {
 
     pub fn add_global_optimizer_pass(&self) {
         unsafe { LLVMAddGlobalOptimizerPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(4.0..=11.0)]
-    pub fn add_ip_constant_propagation_pass(&self) {
-        unsafe { LLVMAddIPConstantPropagationPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(4.0..=15.0)]
-    pub fn add_prune_eh_pass(&self) {
-        unsafe { LLVMAddPruneEHPass(self.pass_manager) }
     }
 
     pub fn add_ipsccp_pass(&self) {
@@ -329,7 +285,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddGVNPass(self.pass_manager) }
     }
 
-    #[llvm_versions(4.0..=latest)]
     pub fn add_new_gvn_pass(&self) {
         use llvm_lib::transforms::scalar::LLVMAddNewGVNPass;
 
@@ -372,13 +327,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddLoopUnrollPass(self.pass_manager) }
     }
 
-    #[llvm_versions(4.0..=14.0)]
-    pub fn add_loop_unswitch_pass(&self) {
-        use llvm_lib::transforms::scalar::LLVMAddLoopUnswitchPass;
-
-        unsafe { LLVMAddLoopUnswitchPass(self.pass_manager) }
-    }
-
     pub fn add_memcpy_optimize_pass(&self) {
         unsafe { LLVMAddMemCpyOptPass(self.pass_manager) }
     }
@@ -388,18 +336,12 @@ impl<T: PassManagerSubType> PassManager<T> {
     }
 
     pub fn add_lower_switch_pass(&self) {
-        #[llvm_versions(4.0..=6.0)]
-        use llvm_lib::transforms::scalar::LLVMAddLowerSwitchPass;
-        #[llvm_versions(7.0..=latest)]
         use llvm_lib::transforms::util::LLVMAddLowerSwitchPass;
 
         unsafe { LLVMAddLowerSwitchPass(self.pass_manager) }
     }
 
     pub fn add_promote_memory_to_register_pass(&self) {
-        #[llvm_versions(4.0..=6.0)]
-        use llvm_lib::transforms::scalar::LLVMAddPromoteMemoryToRegisterPass;
-        #[llvm_versions(7.0..=latest)]
         use llvm_lib::transforms::util::LLVMAddPromoteMemoryToRegisterPass;
 
         unsafe { LLVMAddPromoteMemoryToRegisterPass(self.pass_manager) }
@@ -433,12 +375,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddTailCallEliminationPass(self.pass_manager) }
     }
 
-    #[llvm_versions(4.0..=11.0)]
-    pub fn add_constant_propagation_pass(&self) {
-        unsafe { LLVMAddConstantPropagationPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(12.0..=latest)]
     pub fn add_instruction_simplify_pass(&self) {
         unsafe { LLVMAddInstructionSimplifyPass(self.pass_manager) }
     }
@@ -459,7 +395,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddEarlyCSEPass(self.pass_manager) }
     }
 
-    #[llvm_versions(4.0..=latest)]
     pub fn add_early_cse_mem_ssa_pass(&self) {
         use llvm_lib::transforms::scalar::LLVMAddEarlyCSEMemSSAPass;
 
@@ -482,49 +417,10 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddBasicAliasAnalysisPass(self.pass_manager) }
     }
 
-    #[llvm_versions(7.0..=15.0)]
-    pub fn add_aggressive_inst_combiner_pass(&self) {
-        #[cfg(not(feature = "llvm7-0"))]
-        use llvm_lib::transforms::aggressive_instcombine::LLVMAddAggressiveInstCombinerPass;
-        #[cfg(feature = "llvm7-0")]
-        use llvm_lib::transforms::scalar::LLVMAddAggressiveInstCombinerPass;
-
-        unsafe { LLVMAddAggressiveInstCombinerPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(7.0..=latest)]
     pub fn add_loop_unroll_and_jam_pass(&self) {
         use llvm_lib::transforms::scalar::LLVMAddLoopUnrollAndJamPass;
 
         unsafe { LLVMAddLoopUnrollAndJamPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(8.0..15.0)]
-    pub fn add_coroutine_early_pass(&self) {
-        use llvm_lib::transforms::coroutines::LLVMAddCoroEarlyPass;
-
-        unsafe { LLVMAddCoroEarlyPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(8.0..15.0)]
-    pub fn add_coroutine_split_pass(&self) {
-        use llvm_lib::transforms::coroutines::LLVMAddCoroSplitPass;
-
-        unsafe { LLVMAddCoroSplitPass(self.pass_manager) }
-    }
-
-    #[llvm_versions(8.0..15.0)]
-    pub fn add_coroutine_elide_pass(&self) {
-        use llvm_lib::transforms::coroutines::LLVMAddCoroElidePass;
-
-        unsafe { LLVMAddCoroElidePass(self.pass_manager) }
-    }
-
-    #[llvm_versions(8.0..15.0)]
-    pub fn add_coroutine_cleanup_pass(&self) {
-        use llvm_lib::transforms::coroutines::LLVMAddCoroCleanupPass;
-
-        unsafe { LLVMAddCoroCleanupPass(self.pass_manager) }
     }
 }
 
@@ -568,11 +464,6 @@ impl PassRegistry {
         unsafe { LLVMInitializeScalarOpts(self.pass_registry) }
     }
 
-    #[llvm_versions(4.0..=15.0)]
-    pub fn initialize_obj_carc_opts(&self) {
-        unsafe { LLVMInitializeObjCARCOpts(self.pass_registry) }
-    }
-
     pub fn initialize_vectorization(&self) {
         unsafe { LLVMInitializeVectorization(self.pass_registry) }
     }
@@ -583,11 +474,6 @@ impl PassRegistry {
 
     pub fn initialize_ipo(&self) {
         unsafe { LLVMInitializeIPO(self.pass_registry) }
-    }
-
-    #[llvm_versions(4.0..=15.0)]
-    pub fn initialize_instrumentation(&self) {
-        unsafe { LLVMInitializeInstrumentation(self.pass_registry) }
     }
 
     pub fn initialize_analysis(&self) {
@@ -605,22 +491,13 @@ impl PassRegistry {
     pub fn initialize_target(&self) {
         unsafe { LLVMInitializeTarget(self.pass_registry) }
     }
-
-    #[llvm_versions(7.0..=15.0)]
-    pub fn initialize_aggressive_inst_combiner(&self) {
-        use llvm_lib::initialization::LLVMInitializeAggressiveInstCombiner;
-
-        unsafe { LLVMInitializeAggressiveInstCombiner(self.pass_registry) }
-    }
 }
 
-#[llvm_versions(13.0..=latest)]
 #[derive(Debug)]
 pub struct PassBuilderOptions {
     pub(crate) options_ref: LLVMPassBuilderOptionsRef,
 }
 
-#[llvm_versions(13.0..=latest)]
 impl PassBuilderOptions {
     pub fn create() -> Self {
         unsafe {
@@ -701,7 +578,6 @@ impl PassBuilderOptions {
     }
 }
 
-#[llvm_versions(13.0..=latest)]
 impl Drop for PassBuilderOptions {
     fn drop(&mut self) {
         unsafe {

@@ -4,9 +4,6 @@ use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyModule};
 #[allow(deprecated)]
 use llvm_lib::bit_reader::LLVMParseBitcodeInContext;
 use llvm_lib::bit_writer::{LLVMWriteBitcodeToFile, LLVMWriteBitcodeToMemoryBuffer};
-#[llvm_versions(4.0..=14.0)]
-use llvm_lib::core::LLVMGetTypeByName;
-
 use llvm_lib::core::{
     LLVMAddFunction, LLVMAddGlobal, LLVMAddGlobalInAddressSpace, LLVMAddNamedMetadataOperand, LLVMCloneModule,
     LLVMDisposeModule, LLVMDumpModule, LLVMGetFirstFunction, LLVMGetFirstGlobal, LLVMGetLastFunction,
@@ -14,18 +11,14 @@ use llvm_lib::core::{
     LLVMGetNamedMetadataNumOperands, LLVMGetNamedMetadataOperands, LLVMGetTarget, LLVMPrintModuleToFile,
     LLVMPrintModuleToString, LLVMSetDataLayout, LLVMSetModuleIdentifier, LLVMSetTarget,
 };
-#[llvm_versions(7.0..=latest)]
 use llvm_lib::core::{LLVMAddModuleFlag, LLVMGetModuleFlag};
-#[llvm_versions(13.0..=latest)]
 use llvm_lib::error::LLVMGetErrorMessage;
 use llvm_lib::execution_engine::{
     LLVMCreateExecutionEngineForModule, LLVMCreateInterpreterForModule, LLVMCreateJITCompilerForModule,
 };
 use llvm_lib::prelude::{LLVMModuleRef, LLVMValueRef};
-#[llvm_versions(13.0..=latest)]
 use llvm_lib::transforms::pass_builder::LLVMRunPasses;
 use llvm_lib::LLVMLinkage;
-#[llvm_versions(7.0..=latest)]
 use llvm_lib::LLVMModuleFlagBehavior;
 
 use std::cell::{Cell, Ref, RefCell};
@@ -37,22 +30,17 @@ use std::path::Path;
 use std::ptr;
 use std::rc::Rc;
 
-#[llvm_versions(7.0..=latest)]
 use crate::comdat::Comdat;
 use crate::ctx::{AsContextRef, Context, ContextRef};
 use crate::data_layout::DataLayout;
-#[llvm_versions(7.0..=latest)]
 use crate::debug_info::{DICompileUnit, DWARFEmissionKind, DWARFSourceLanguage, DebugInfoBuilder};
 use crate::execution_engine::ExecutionEngine;
 use crate::memory_buffer::MemoryBuffer;
-#[llvm_versions(13.0..=latest)]
 use crate::passes::PassBuilderOptions;
 use crate::support::{to_c_str, LLVMString};
-#[llvm_versions(13.0..=latest)]
 use crate::targets::TargetMachine;
 use crate::targets::{InitializationConfig, Target, TargetTriple};
 use crate::types::{AsTypeRef, BasicType, FunctionType, StructType};
-#[llvm_versions(7.0..=latest)]
 use crate::values::BasicValue;
 use crate::values::{AsValueRef, FunctionValue, GlobalValue, MetadataValue};
 use crate::{AddressSpace, OptimizationLevel};
@@ -158,20 +146,6 @@ impl<'ctx> Module<'ctx> {
         FunctionIterator::from_module(self)
     }
 
-    #[llvm_versions(4.0..=11.0)]
-    pub fn get_struct_type(&self, name: &str) -> Option<StructType<'ctx>> {
-        let c_string = to_c_str(name);
-
-        let struct_type = unsafe { LLVMGetTypeByName(self.module.get(), c_string.as_ptr()) };
-
-        if struct_type.is_null() {
-            return None;
-        }
-
-        unsafe { Some(StructType::new(struct_type)) }
-    }
-
-    #[llvm_versions(12.0..=latest)]
     pub fn get_struct_type(&self, name: &str) -> Option<StructType<'ctx>> {
         self.get_context().get_struct_type(name)
     }
@@ -565,7 +539,6 @@ impl<'ctx> Module<'ctx> {
         unsafe { LLVMSetModuleIdentifier(self.module.get(), name.as_ptr() as *const ::libc::c_char, name.len()) }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn get_source_file_name(&self) -> &CStr {
         use llvm_lib::core::LLVMGetSourceFileName;
 
@@ -575,7 +548,6 @@ impl<'ctx> Module<'ctx> {
         unsafe { CStr::from_ptr(ptr) }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn set_source_file_name(&self, file_name: &str) {
         use llvm_lib::core::LLVMSetSourceFileName;
 
@@ -618,7 +590,6 @@ impl<'ctx> Module<'ctx> {
         }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn get_or_insert_comdat(&self, name: &str) -> Comdat {
         use llvm_lib::comdat::LLVMGetOrInsertComdat;
 
@@ -628,7 +599,6 @@ impl<'ctx> Module<'ctx> {
         unsafe { Comdat::new(comdat_ptr) }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn get_flag(&self, key: &str) -> Option<MetadataValue<'ctx>> {
         use llvm_lib::core::LLVMMetadataAsValue;
 
@@ -643,7 +613,6 @@ impl<'ctx> Module<'ctx> {
         unsafe { Some(MetadataValue::new(flag_value)) }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn add_metadata_flag(&self, key: &str, behavior: FlagBehavior, flag: MetadataValue<'ctx>) {
         let md = flag.as_metadata_ref();
 
@@ -658,7 +627,6 @@ impl<'ctx> Module<'ctx> {
         }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn add_basic_value_flag<BV: BasicValue<'ctx>>(&self, key: &str, behavior: FlagBehavior, flag: BV) {
         use llvm_lib::core::LLVMValueAsMetadata;
 
@@ -675,21 +643,18 @@ impl<'ctx> Module<'ctx> {
         }
     }
 
-    #[llvm_versions(6.0..=latest)]
     pub fn strip_debug_info(&self) -> bool {
         use llvm_lib::debuginfo::LLVMStripModuleDebugInfo;
 
         unsafe { LLVMStripModuleDebugInfo(self.module.get()) == 1 }
     }
 
-    #[llvm_versions(6.0..=latest)]
     pub fn get_debug_metadata_version(&self) -> libc::c_uint {
         use llvm_lib::debuginfo::LLVMGetModuleDebugMetadataVersion;
 
         unsafe { LLVMGetModuleDebugMetadataVersion(self.module.get()) }
     }
 
-    #[llvm_versions(7.0..=latest)]
     pub fn create_debug_info_builder(
         &self,
         allow_unresolved: bool,
@@ -760,7 +725,6 @@ impl<'ctx> Module<'ctx> {
         )
     }
 
-    #[llvm_versions(13.0..=latest)]
     pub fn run_passes(
         &self,
         passes: &str,
@@ -808,7 +772,6 @@ impl Drop for Module<'_> {
     }
 }
 
-#[llvm_versions(7.0..=latest)]
 #[llvm_enum(LLVMModuleFlagBehavior)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum FlagBehavior {

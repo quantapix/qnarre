@@ -1,28 +1,6 @@
-//! A `Context` is an opaque owner and manager of core global data.
-
-#[llvm_versions(7.0..=latest)]
 use crate::InlineAsmDialect;
 use libc::c_void;
-#[llvm_versions(4.0..=6.0)]
-use llvm_lib::core::LLVMConstInlineAsm;
-#[llvm_versions(12.0..=latest)]
-use llvm_lib::core::LLVMCreateTypeAttribute;
-#[llvm_versions(7.0..=latest)]
-use llvm_lib::core::LLVMGetInlineAsm;
-#[llvm_versions(12.0..=latest)]
-use llvm_lib::core::LLVMGetTypeByName2;
-#[llvm_versions(6.0..=latest)]
-use llvm_lib::core::LLVMMetadataTypeInContext;
-use llvm_lib::core::{
-    LLVMAppendBasicBlockInContext, LLVMConstStringInContext, LLVMConstStructInContext, LLVMContextCreate,
-    LLVMContextDispose, LLVMContextSetDiagnosticHandler, LLVMCreateBuilderInContext, LLVMCreateEnumAttribute,
-    LLVMCreateStringAttribute, LLVMDoubleTypeInContext, LLVMFP128TypeInContext, LLVMFloatTypeInContext,
-    LLVMGetGlobalContext, LLVMGetMDKindIDInContext, LLVMHalfTypeInContext, LLVMInsertBasicBlockInContext,
-    LLVMInt16TypeInContext, LLVMInt1TypeInContext, LLVMInt32TypeInContext, LLVMInt64TypeInContext,
-    LLVMInt8TypeInContext, LLVMIntTypeInContext, LLVMMDNodeInContext, LLVMMDStringInContext,
-    LLVMModuleCreateWithNameInContext, LLVMPPCFP128TypeInContext, LLVMStructCreateNamed, LLVMStructTypeInContext,
-    LLVMVoidTypeInContext, LLVMX86FP80TypeInContext,
-};
+use llvm_lib::core::*;
 use llvm_lib::ir_reader::LLVMParseIRInContext;
 use llvm_lib::prelude::{LLVMContextRef, LLVMDiagnosticInfoRef, LLVMTypeRef, LLVMValueRef};
 use llvm_lib::target::{LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext};
@@ -36,9 +14,7 @@ use crate::memory_buffer::MemoryBuffer;
 use crate::module::Module;
 use crate::support::{to_c_str, LLVMString};
 use crate::targets::TargetData;
-#[llvm_versions(12.0..=latest)]
 use crate::types::AnyTypeEnum;
-#[llvm_versions(6.0..=latest)]
 use crate::types::MetadataType;
 use crate::types::{AsTypeRef, BasicTypeEnum, FloatType, FunctionType, IntType, StructType, VoidType};
 use crate::values::{
@@ -193,7 +169,6 @@ impl ContextImpl {
         unsafe { IntType::new(LLVMIntTypeInContext(self.0, bits)) }
     }
 
-    #[llvm_versions(6.0..=latest)]
     fn metadata_type<'ctx>(&self) -> MetadataType<'ctx> {
         unsafe { MetadataType::new(LLVMMetadataTypeInContext(self.0)) }
     }
@@ -251,7 +226,6 @@ impl ContextImpl {
         unsafe { StructType::new(LLVMStructCreateNamed(self.0, c_string.as_ptr())) }
     }
 
-    #[llvm_versions(12.0..=latest)]
     fn get_struct_type<'ctx>(&self, name: &str) -> Option<StructType<'ctx>> {
         let c_string = to_c_str(name);
 
@@ -349,7 +323,6 @@ impl ContextImpl {
         }
     }
 
-    #[llvm_versions(12.0..=latest)]
     fn create_type_attribute(&self, kind_id: u32, type_ref: AnyTypeEnum) -> Attribute {
         unsafe { Attribute::new(LLVMCreateTypeAttribute(self.0, kind_id, type_ref.as_type_ref())) }
     }
@@ -515,7 +488,6 @@ impl Context {
     }
 
     #[inline]
-    #[llvm_versions(6.0..=latest)]
     pub fn metadata_type(&self) -> MetadataType {
         self.context.metadata_type()
     }
@@ -566,7 +538,6 @@ impl Context {
     }
 
     #[inline]
-    #[llvm_versions(12.0..=latest)]
     pub fn get_struct_type<'ctx>(&self, name: &str) -> Option<StructType<'ctx>> {
         self.context.get_struct_type(name)
     }
@@ -617,7 +588,6 @@ impl Context {
     }
 
     #[inline]
-    #[llvm_versions(12.0..=latest)]
     pub fn create_type_attribute(&self, kind_id: u32, type_ref: AnyTypeEnum) -> Attribute {
         self.context.create_type_attribute(kind_id, type_ref)
     }
@@ -763,7 +733,6 @@ impl<'ctx> ContextRef<'ctx> {
     }
 
     #[inline]
-    #[llvm_versions(6.0..=latest)]
     pub fn metadata_type(&self) -> MetadataType<'ctx> {
         self.context.metadata_type()
     }
@@ -814,7 +783,6 @@ impl<'ctx> ContextRef<'ctx> {
     }
 
     #[inline]
-    #[llvm_versions(12.0..=latest)]
     pub fn get_struct_type(&self, name: &str) -> Option<StructType<'ctx>> {
         self.context.get_struct_type(name)
     }
@@ -865,7 +833,6 @@ impl<'ctx> ContextRef<'ctx> {
     }
 
     #[inline]
-    #[llvm_versions(12.0..=latest)]
     pub fn create_type_attribute(&self, kind_id: u32, type_ref: AnyTypeEnum) -> Attribute {
         self.context.create_type_attribute(kind_id, type_ref)
     }

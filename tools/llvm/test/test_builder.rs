@@ -715,7 +715,6 @@ fn test_vector_convert_ops() {
     assert!(fn_value.verify(true));
 }
 
-#[llvm_versions(8.0..=latest)]
 #[test]
 fn test_vector_convert_ops_respect_target_signedness() {
     let context = Context::create();
@@ -936,7 +935,6 @@ fn is_alignment_ok(align: u32) -> bool {
     align > 0 && align.is_power_of_two() && (align as f64).log2() < 64.0
 }
 
-#[llvm_versions(8.0..=latest)]
 #[test]
 fn test_alignment_bytes() {
     let verify_alignment = |alignment: u32| {
@@ -974,7 +972,6 @@ fn test_alignment_bytes() {
     verify_alignment(u32::max_value());
 }
 
-#[llvm_versions(8.0..=latest)]
 fn run_memcpy_on<'ctx>(
     context: &'ctx Context,
     module: &inkwell::module::Module<'ctx>,
@@ -1046,7 +1043,6 @@ fn run_memcpy_on<'ctx>(
     Ok(())
 }
 
-#[llvm_versions(8.0..=latest)]
 #[test]
 fn test_memcpy() {
     let context = Context::create();
@@ -1070,7 +1066,6 @@ fn test_memcpy() {
     }
 }
 
-#[llvm_versions(8.0..=latest)]
 fn run_memmove_on<'ctx>(
     context: &'ctx Context,
     module: &inkwell::module::Module<'ctx>,
@@ -1142,7 +1137,6 @@ fn run_memmove_on<'ctx>(
     Ok(())
 }
 
-#[llvm_versions(8.0..=latest)]
 #[test]
 fn test_memmove() {
     let context = Context::create();
@@ -1166,7 +1160,6 @@ fn test_memmove() {
     }
 }
 
-#[llvm_versions(8.0..=latest)]
 fn run_memset_on<'ctx>(
     context: &'ctx Context,
     module: &inkwell::module::Module<'ctx>,
@@ -1217,7 +1210,6 @@ fn run_memset_on<'ctx>(
     Ok(())
 }
 
-#[llvm_versions(8.0..=latest)]
 #[test]
 fn test_memset() {
     let context = Context::create();

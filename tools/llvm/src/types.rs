@@ -941,18 +941,15 @@ pub struct MetadataType<'ctx> {
     metadata_type: Type<'ctx>,
 }
 impl<'ctx> MetadataType<'ctx> {
-    #[llvm_versions(6.0..=latest)]
     pub unsafe fn new(metadata_type: LLVMTypeRef) -> Self {
         assert!(!metadata_type.is_null());
         MetadataType {
             metadata_type: Type::new(metadata_type),
         }
     }
-    #[llvm_versions(6.0..=latest)]
     pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
         self.metadata_type.fn_type(param_types, is_var_args)
     }
-    #[llvm_versions(6.0..=latest)]
     pub fn get_context(self) -> ContextRef<'ctx> {
         self.metadata_type.get_context()
     }
@@ -961,13 +958,8 @@ impl<'ctx> MetadataType<'ctx> {
     }
 }
 unsafe impl AsTypeRef for MetadataType<'_> {
-    #[llvm_versions(6.0..=latest)]
     fn as_type_ref(&self) -> LLVMTypeRef {
         self.metadata_type.ty
-    }
-    #[llvm_versions(4.0..=5.0)]
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        unimplemented!("MetadataType is only available in LLVM > 6.0")
     }
 }
 impl Display for MetadataType<'_> {
@@ -1023,10 +1015,6 @@ impl<'ctx> PointerType<'ctx> {
     }
     pub fn vec_type(self, size: u32) -> VectorType<'ctx> {
         self.ptr_type.vec_type(size)
-    }
-    #[llvm_versions(4.0..=14.0)]
-    pub fn get_element_type(self) -> AnyTypeEnum<'ctx> {
-        self.ptr_type.get_element_type()
     }
     pub fn const_array(self, values: &[PointerValue<'ctx>]) -> ArrayValue<'ctx> {
         let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
