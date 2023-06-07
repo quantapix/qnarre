@@ -1,5 +1,3 @@
-use super::Type;
-use super::{block::BlockArgument, op::OperationResult, Type};
 use crate::print_callback;
 use mlir_lib::*;
 use std::{
@@ -7,6 +5,9 @@ use std::{
     fmt::{self, Debug, Display, Formatter},
     marker::PhantomData,
 };
+
+use super::Type;
+use super::{block::BlockArgument, op::OperationResult, Type};
 
 pub trait ValueLike {
     fn to_raw(&self) -> MlirValue;

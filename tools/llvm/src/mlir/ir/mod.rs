@@ -1,3 +1,19 @@
+use mlir_lib::*;
+use std::{
+    ffi::c_void,
+    fmt::{self, Debug, Display, Formatter},
+    marker::PhantomData,
+    mem::{forget, transmute},
+    ops::Deref,
+};
+
+use crate::{
+    ctx::{Context, ContextRef},
+    ir::{Attribute, AttributeLike},
+    string_ref::StringRef,
+    utils::{into_raw_array, print_callback},
+};
+
 pub mod attr;
 pub mod block;
 pub mod op;
@@ -10,20 +26,6 @@ pub use self::{
     op::{Operation, OperationRef},
     typ::{Type, TypeLike},
     val::{Value, ValueLike},
-};
-use crate::{
-    ctx::{Context, ContextRef},
-    ir::{Attribute, AttributeLike},
-    string_ref::StringRef,
-    utils::{into_raw_array, print_callback},
-};
-use mlir_lib::*;
-use std::{
-    ffi::c_void,
-    fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
-    mem::{forget, transmute},
-    ops::Deref,
 };
 
 #[derive(Clone, Copy)]
@@ -316,6 +318,9 @@ impl<'a> Eq for RegionRef<'a> {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ir::{operation::OperationBuilder, Block, Region};
+    use pretty_assertions::{assert_eq, assert_ne};
+
     #[test]
     fn new() {
         Identifier::new(&Context::new(), "foo");
@@ -334,11 +339,6 @@ mod tests {
         let context = Context::new();
         assert_ne!(Identifier::new(&context, "foo"), Identifier::new(&context, "bar"));
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::{assert_eq, assert_ne};
     #[test]
     fn new() {
         Location::new(&Context::new(), "foo", 42, 42);
@@ -388,11 +388,6 @@ mod tests {
         assert_eq!(Location::unknown(&context).to_string(), "loc(unknown)");
         assert_eq!(Location::new(&context, "foo", 42, 42).to_string(), "loc(\"foo\":42:42)");
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ir::{operation::OperationBuilder, Block, Region};
     #[test]
     fn new() {
         Module::new(Location::new(&Context::new(), "foo", 42, 42));
@@ -430,10 +425,6 @@ mod tests {
             Module::from_operation(OperationBuilder::new("func.func", Location::unknown(&context),).build()).is_none()
         );
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn new() {
         Region::new();

@@ -1,10 +1,11 @@
-use crate::{ctx::Context, dialect::DialectRegistry, pass, Error, LogicalResult, StringRef};
 use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Formatter},
     sync::Once,
 };
+
+use crate::{ctx::Context, dialect::DialectRegistry, pass, Error, LogicalResult, StringRef};
 
 pub fn register_all_dialects(registry: &DialectRegistry) {
     unsafe { mlirRegisterAllDialects(registry.to_raw()) }
@@ -34,6 +35,7 @@ pub fn parse_pass_pipeline(manager: pass::OperationPassManager, source: &str) ->
         ))
     }
 }
+
 unsafe extern "C" fn handle_parse_error(raw_string: MlirStringRef, data: *mut c_void) {
     let string = StringRef::from_raw(raw_string);
     let data = &mut *(data as *mut Option<String>);
@@ -43,10 +45,11 @@ unsafe extern "C" fn handle_parse_error(raw_string: MlirStringRef, data: *mut c_
         *data = string.as_str().map(String::from).ok();
     }
 }
-pub(crate) unsafe fn into_raw_array<T>(xs: Vec<T>) -> *mut T {
+
+pub unsafe fn into_raw_array<T>(xs: Vec<T>) -> *mut T {
     xs.leak().as_mut_ptr()
 }
-pub(crate) unsafe extern "C" fn print_callback(string: MlirStringRef, data: *mut c_void) {
+pub unsafe extern "C" fn print_callback(string: MlirStringRef, data: *mut c_void) {
     let (formatter, result) = &mut *(data as *mut (&mut Formatter, fmt::Result));
     if result.is_err() {
         return;
@@ -59,7 +62,7 @@ pub(crate) unsafe extern "C" fn print_callback(string: MlirStringRef, data: *mut
         )
     })();
 }
-pub(crate) unsafe extern "C" fn print_string_callback(string: MlirStringRef, data: *mut c_void) {
+pub unsafe extern "C" fn print_string_callback(string: MlirStringRef, data: *mut c_void) {
     let (writer, result) = &mut *(data as *mut (String, Result<(), Error>));
     if result.is_err() {
         return;

@@ -1,15 +1,9 @@
-pub use self::{builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult};
-use super::{BlockRef, Identifier, RegionRef, Operation, Value};
 use crate::{
-    ir::*;
-    string_ref::StringRef,
     ctx::{Context, ContextRef},
-    utils::{print_callback, into_raw_array, print_string_callback},
+    ir::*,
+    string_ref::StringRef,
+    utils::{into_raw_array, print_callback, print_string_callback},
     Error,
-};
-use core::{
-    fmt,
-    mem::{forget, transmute},
 };
 use mlir_lib::*;
 use std::{
@@ -17,6 +11,13 @@ use std::{
     fmt::{Debug, Display, Formatter},
     marker::PhantomData,
     ops::Deref,
+};
+
+pub use self::{builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult};
+use super::{BlockRef, Identifier, Operation, RegionRef, Value};
+use core::{
+    fmt,
+    mem::{forget, transmute},
 };
 
 pub struct Operation<'c> {
@@ -141,6 +142,7 @@ impl<'c> Debug for Operation<'c> {
         write!(formatter, ")")
     }
 }
+
 #[derive(Clone, Copy)]
 pub struct OperationRef<'a> {
     raw: MlirOperation,
@@ -339,14 +341,17 @@ impl<'a> TryFrom<Value<'a>> for OperationResult<'a> {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
         ctx::Context,
-        ir::{Block, Location},
+        ir::{operation::OperationBuilder, Block, Location, Type},
+        test::load_all_dialects,
     };
     use pretty_assertions::assert_eq;
+
     #[test]
     fn new() {
         OperationBuilder::new("foo", Location::unknown(&Context::new())).build();
@@ -447,11 +452,6 @@ mod tests {
             Ok("\"foo\"() : () -> () [unknown]".into())
         );
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{ctx::Context, ir::Block, test::load_all_dialects};
     #[test]
     fn new() {
         OperationBuilder::new("foo", Location::unknown(&Context::new())).build();
@@ -506,13 +506,6 @@ mod tests {
             r#type,
         );
     }
-}
-#[cfg(test)]
-mod tests {
-    use crate::{
-        ctx::Context,
-        ir::{operation::OperationBuilder, Block, Location, Type},
-    };
     #[test]
     fn result_number() {
         let context = Context::new();

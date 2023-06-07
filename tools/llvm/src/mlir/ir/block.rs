@@ -1,10 +1,3 @@
-use super::{Location, Operation, OperationRef, RegionRef, Type, TypeLike, Value};
-use crate::{
-    ctx::Context,
-    ir::{BlockRef, Type, TypeLike, ValueLike},
-    utils::{into_raw_array, print_callback},
-    Error,
-};
 use mlir_lib::*;
 use std::{
     ffi::c_void,
@@ -12,6 +5,14 @@ use std::{
     marker::PhantomData,
     mem::{forget, transmute},
     ops::Deref,
+};
+
+use super::{Location, Operation, OperationRef, RegionRef, Type, TypeLike, Value};
+use crate::{
+    ctx::Context,
+    ir::{BlockRef, Type, TypeLike, ValueLike},
+    utils::{into_raw_array, print_callback},
+    Error,
 };
 
 pub struct Block<'c> {
@@ -237,8 +238,12 @@ mod tests {
     use super::*;
     use crate::{
         ctx::Context,
+        ir::{operation::OperationBuilder, IntegerType, Module, Region, ValueLike},
         ir::{Block, Location},
+        test::load_all_dialects,
     };
+    use pretty_assertions::assert_eq;
+
     #[test]
     fn argument_number() {
         let context = Context::new();
@@ -263,15 +268,6 @@ mod tests {
         argument.set_type(other_type);
         assert_eq!(argument.r#type(), other_type);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        ir::{operation::OperationBuilder, r#type::IntegerType, Module, Region, ValueLike},
-        test::load_all_dialects,
-    };
-    use pretty_assertions::assert_eq;
     #[test]
     fn new() {
         Block::new(&[]);

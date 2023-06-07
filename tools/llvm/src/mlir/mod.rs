@@ -1,3 +1,5 @@
+use mlir_lib::*;
+use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
     error,
@@ -9,6 +11,11 @@ use std::{
     sync::RwLock,
 };
 
+use crate::{
+    ir::{Module, Type, TypeLike},
+    Attribute, AttributeLike, Context, Error,
+};
+
 mod ctx;
 pub mod diag;
 pub mod dialect;
@@ -18,15 +25,8 @@ pub mod pass;
 #[cfg(test)]
 mod test;
 pub mod utils;
-use crate::{
-    ir::{Module, Type, TypeLike},
-    Context, Error,
-};
-use mlir_lib::*;
-use once_cell::sync::Lazy;
 
 pub use self::ctx::{Context, ContextRef};
-use super::{Attribute, AttributeLike};
 
 macro_rules! from_raw_subtypes {
     ($type:ident,) => {};
@@ -282,6 +282,7 @@ impl From<&str> for StringRef<'static> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         ctx::Context,
         dialect::{self, arith, func, scf},
@@ -291,7 +292,8 @@ mod tests {
             r#type::{FunctionType, IntegerType},
             Block, Location, Module, Region, Type, Value,
         },
-        test::load_all_dialects,
+        pass,
+        test::{create_test_context, load_all_dialects},
     };
     #[test]
     fn build_module() {
@@ -471,11 +473,6 @@ mod tests {
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{pass, test::create_test_context};
     #[test]
     fn invoke_packed() {
         let context = create_test_context();
@@ -535,10 +532,6 @@ mod tests {
         assert_eq!(pass_manager.run(&mut module), Ok(()));
         ExecutionEngine::new(&module, 2, &[], true).dump_to_object_file("/tmp/melior/test.o");
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn success() {
         assert!(LogicalResult::success().is_success());
@@ -547,10 +540,6 @@ mod tests {
     fn failure() {
         assert!(LogicalResult::failure().is_failure());
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn equal() {
         assert_eq!(StringRef::from("foo"), StringRef::from("foo"));

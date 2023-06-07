@@ -13,7 +13,7 @@ use std::{ffi::CStr, fmt, fmt::Display};
 
 use super::AnyValue;
 use super::{BasicMetadataValueEnum, MetadataValue};
-use crate::debug::DISubprogram;
+use crate::dbg::DISubprogram;
 use crate::module::Linkage;
 use crate::typ::*;
 use crate::BasicBlock;

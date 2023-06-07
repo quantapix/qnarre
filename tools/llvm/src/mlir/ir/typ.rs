@@ -1,10 +1,3 @@
-pub use self::{
-    function::FunctionType, id::TypeId, integer::IntegerType, mem_ref::MemRefType, ranked_tensor::RankedTensorType,
-    tuple::TupleType, type_like::TypeLike,
-};
-use super::Location;
-use super::TypeId;
-use super::TypeLike;
 use crate::{ctx::Context, ctx::ContextRef, utils::print_callback, StringRef};
 use crate::{ir::Type, utils::into_raw_array, Context, Error};
 use crate::{
@@ -18,6 +11,60 @@ use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,
 };
+
+pub use self::{
+    function::FunctionType, id::TypeId, integer::IntegerType, mem_ref::MemRefType, ranked_tensor::RankedTensorType,
+    tuple::TupleType, type_like::TypeLike,
+};
+use super::*;
+
+pub trait TypeLike<'c> {
+    fn to_raw(&self) -> MlirType;
+    fn context(&self) -> ContextRef<'c> {
+        unsafe { ContextRef::from_raw(mlirTypeGetContext(self.to_raw())) }
+    }
+    fn id(&self) -> TypeId {
+        unsafe { TypeId::from_raw(mlirTypeGetTypeID(self.to_raw())) }
+    }
+    fn dump(&self) {
+        unsafe { mlirTypeDump(self.to_raw()) }
+    }
+    melior_macro::type_check_functions!(
+        mlirTypeIsAAnyQuantizedType,
+        mlirTypeIsABF16,
+        mlirTypeIsACalibratedQuantizedType,
+        mlirTypeIsAComplex,
+        mlirTypeIsAF16,
+        mlirTypeIsAF32,
+        mlirTypeIsAF64,
+        mlirTypeIsAFloat8E4M3FN,
+        mlirTypeIsAFloat8E5M2,
+        mlirTypeIsAFunction,
+        mlirTypeIsAIndex,
+        mlirTypeIsAInteger,
+        mlirTypeIsAMemRef,
+        mlirTypeIsANone,
+        mlirTypeIsAOpaque,
+        mlirTypeIsAPDLAttributeType,
+        mlirTypeIsAPDLOperationType,
+        mlirTypeIsAPDLRangeType,
+        mlirTypeIsAPDLType,
+        mlirTypeIsAPDLTypeType,
+        mlirTypeIsAPDLValueType,
+        mlirTypeIsAQuantizedType,
+        mlirTypeIsARankedTensor,
+        mlirTypeIsAShaped,
+        mlirTypeIsATensor,
+        mlirTypeIsATransformAnyOpType,
+        mlirTypeIsATransformOperationType,
+        mlirTypeIsATuple,
+        mlirTypeIsAUniformQuantizedPerAxisType,
+        mlirTypeIsAUniformQuantizedType,
+        mlirTypeIsAUnrankedMemRef,
+        mlirTypeIsAUnrankedTensor,
+        mlirTypeIsAVector,
+    );
+}
 
 #[derive(Clone, Copy)]
 pub struct Type<'c> {
@@ -414,56 +461,17 @@ impl<'c> TupleType<'c> {
 }
 type_traits!(TupleType, is_tuple, "tuple");
 
-pub trait TypeLike<'c> {
-    fn to_raw(&self) -> MlirType;
-    fn context(&self) -> ContextRef<'c> {
-        unsafe { ContextRef::from_raw(mlirTypeGetContext(self.to_raw())) }
-    }
-    fn id(&self) -> TypeId {
-        unsafe { TypeId::from_raw(mlirTypeGetTypeID(self.to_raw())) }
-    }
-    fn dump(&self) {
-        unsafe { mlirTypeDump(self.to_raw()) }
-    }
-    melior_macro::type_check_functions!(
-        mlirTypeIsAAnyQuantizedType,
-        mlirTypeIsABF16,
-        mlirTypeIsACalibratedQuantizedType,
-        mlirTypeIsAComplex,
-        mlirTypeIsAF16,
-        mlirTypeIsAF32,
-        mlirTypeIsAF64,
-        mlirTypeIsAFloat8E4M3FN,
-        mlirTypeIsAFloat8E5M2,
-        mlirTypeIsAFunction,
-        mlirTypeIsAIndex,
-        mlirTypeIsAInteger,
-        mlirTypeIsAMemRef,
-        mlirTypeIsANone,
-        mlirTypeIsAOpaque,
-        mlirTypeIsAPDLAttributeType,
-        mlirTypeIsAPDLOperationType,
-        mlirTypeIsAPDLRangeType,
-        mlirTypeIsAPDLType,
-        mlirTypeIsAPDLTypeType,
-        mlirTypeIsAPDLValueType,
-        mlirTypeIsAQuantizedType,
-        mlirTypeIsARankedTensor,
-        mlirTypeIsAShaped,
-        mlirTypeIsATensor,
-        mlirTypeIsATransformAnyOpType,
-        mlirTypeIsATransformOperationType,
-        mlirTypeIsATuple,
-        mlirTypeIsAUniformQuantizedPerAxisType,
-        mlirTypeIsAUniformQuantizedType,
-        mlirTypeIsAUnrankedMemRef,
-        mlirTypeIsAUnrankedTensor,
-        mlirTypeIsAVector,
-    );
-}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        ir::{
+            r#type::{FunctionType, IntegerType},
+            Type,
+        },
+        Context,
+    };
+
     #[test]
     fn new() {
         Type::parse(&Context::new(), "f32");
@@ -537,11 +545,6 @@ mod tests {
         let context = Context::new();
         assert_eq!(format!("{:?}", Type::index(&context)), "Type(index)");
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Context;
     #[test]
     fn new() {
         let context = Context::new();
@@ -612,10 +615,6 @@ mod tests {
         let integer = Type::index(&context);
         assert_eq!(FunctionType::new(&context, &[], &[integer]).result_count(), 1);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn new() {
         Allocator::new();
@@ -624,10 +623,6 @@ mod tests {
     fn allocate_type_id() {
         Allocator::new().allocate_type_id();
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn new() {
         assert!(IntegerType::new(&Context::new(), 64).is_integer());
@@ -677,11 +672,6 @@ mod tests {
         assert!(!signed.is_unsigned());
         assert!(unsigned.is_unsigned());
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Context;
     #[test]
     fn new() {
         let context = Context::new();
@@ -716,11 +706,6 @@ mod tests {
             None,
         );
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Context;
     #[test]
     fn new() {
         let context = Context::new();
@@ -737,11 +722,6 @@ mod tests {
             None,
         );
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Context;
     #[test]
     fn new() {
         let context = Context::new();
@@ -790,17 +770,6 @@ mod tests {
     fn type_count() {
         assert_eq!(TupleType::new(&Context::new(), &[]).type_count(), 0);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        ir::{
-            r#type::{FunctionType, IntegerType},
-            Type,
-        },
-        Context,
-    };
     #[test]
     fn context() {
         Type::parse(&Context::new(), "i8").unwrap().context();

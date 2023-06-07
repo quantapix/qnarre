@@ -1,10 +1,11 @@
-use crate::{ctx::Context, ir::Module, pass::Pass, Error, LogicalResult, StringRef};
 use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Display, Formatter},
     marker::PhantomData,
 };
+
+use crate::{ctx::Context, ir::Module, pass::Pass, Error, LogicalResult, StringRef};
 
 pub struct Pass {
     raw: MlirPass,

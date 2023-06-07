@@ -29,7 +29,7 @@ use std::slice;
 
 pub mod builder;
 pub mod ctx;
-pub mod debug;
+pub mod dbg;
 pub mod llvm_lib;
 pub mod mlir;
 pub mod pass;
@@ -38,7 +38,7 @@ pub mod typ;
 pub mod val;
 
 use crate::ctx::{AsContextRef, Context, ContextRef};
-use crate::debug::{DICompileUnit, DWARFEmissionKind, DWARFSourceLanguage, DebugInfoBuilder};
+use crate::dbg::{DICompileUnit, DWARFEmissionKind, DWARFSourceLanguage, DebugInfoBuilder};
 use crate::pass::PassBuilderOptions;
 use crate::target::TargetData;
 use crate::target::*;

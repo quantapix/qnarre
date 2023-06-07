@@ -1,12 +1,3 @@
-use crate::ctx::AsContextRef;
-use crate::module::Module;
-use crate::pass::PassManager;
-use crate::typ::*;
-use crate::val::*;
-use crate::DataLayout;
-use crate::MemoryBuffer;
-use crate::{to_c_str, LLVMString};
-use crate::{AddressSpace, OptimizationLevel};
 use llvm_lib::target::*;
 use llvm_lib::target_machine::*;
 use once_cell::sync::Lazy;
@@ -17,6 +8,12 @@ use std::fmt;
 use std::mem::MaybeUninit;
 use std::path::Path;
 use std::ptr;
+
+use crate::ctx::AsContextRef;
+use crate::pass::PassManager;
+use crate::typ::*;
+use crate::val::*;
+use crate::*;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CodeModel {
@@ -41,7 +38,6 @@ pub enum FileType {
     Assembly,
     Object,
 }
-
 impl FileType {
     fn as_llvm_file_type(&self) -> LLVMCodeGenFileType {
         match *self {

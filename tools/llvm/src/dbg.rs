@@ -1,9 +1,3 @@
-use crate::ctx::{AsContextRef, Context};
-pub use crate::debug::flags::{DIFlags, DIFlagsConstants};
-use crate::module::Module;
-use crate::val::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue, PointerValue};
-use crate::AddressSpace;
-use crate::BasicBlock;
 use llvm_lib::core::LLVMMetadataAsValue;
 use llvm_lib::debuginfo::*;
 use llvm_lib::prelude::{LLVMDIBuilderRef, LLVMMetadataRef};
@@ -11,9 +5,10 @@ use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-pub fn debug_metadata_version() -> libc::c_uint {
-    unsafe { LLVMDebugMetadataVersion() }
-}
+use crate::ctx::{AsContextRef, Context};
+use crate::val::*;
+use crate::*;
+pub use flags::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DebugInfoBuilder<'ctx> {
@@ -895,17 +890,17 @@ pub struct DILexicalBlock<'ctx> {
     pub(crate) metadata_ref: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
+impl<'ctx> DILexicalBlock<'ctx> {
+    pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
+        self.metadata_ref
+    }
+}
 impl<'ctx> AsDIScope<'ctx> for DILexicalBlock<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
             metadata_ref: self.metadata_ref,
             _marker: PhantomData,
         }
-    }
-}
-impl<'ctx> DILexicalBlock<'ctx> {
-    pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
     }
 }
 
@@ -968,7 +963,10 @@ impl<'ctx> DIExpression<'ctx> {
     }
 }
 
-pub use flags::*;
+pub fn debug_metadata_version() -> libc::c_uint {
+    unsafe { LLVMDebugMetadataVersion() }
+}
+
 mod flags {
     pub use llvm_lib::debuginfo::LLVMDIFlags as DIFlags;
     use llvm_lib::debuginfo::{LLVMDWARFEmissionKind, LLVMDWARFSourceLanguage};

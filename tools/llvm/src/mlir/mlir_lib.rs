@@ -5,7 +5,7 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(test)]
-mod mlir_lib_tests {
+mod tests {
     use super::*;
     use std::ffi::CString;
 

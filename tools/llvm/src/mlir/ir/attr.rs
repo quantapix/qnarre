@@ -1,3 +1,11 @@
+use melior_macro::attribute_check_functions;
+use mlir_lib::*;
+use std::{
+    ffi::c_void,
+    fmt::{self, Debug, Display, Formatter},
+    marker::PhantomData,
+};
+
 pub use self::{
     array::ArrayAttribute, attribute_like::AttributeLike, dense_elements::DenseElementsAttribute,
     dense_i32_array::DenseI32ArrayAttribute, dense_i64_array::DenseI64ArrayAttribute,
@@ -8,13 +16,6 @@ use super::{Attribute, AttributeLike};
 use crate::ir::Type;
 use crate::{ctx::Context, utils::print_callback, StringRef};
 use crate::{Context, ContextRef, Error, StringRef};
-use melior_macro::attribute_check_functions;
-use mlir_lib::*;
-use std::{
-    ffi::c_void,
-    fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
-};
 
 #[derive(Clone, Copy)]
 pub struct Attribute<'c> {
@@ -33,7 +34,7 @@ impl<'c> Attribute<'c> {
     pub fn unit(context: &'c Context) -> Self {
         unsafe { Self::from_raw(mlirUnitAttrGet(context.to_raw())) }
     }
-    pub(crate) unsafe fn null() -> Self {
+    pub unsafe fn null() -> Self {
         unsafe { Self::from_raw(mlirAttributeGetNull()) }
     }
     pub unsafe fn from_raw(raw: MlirAttribute) -> Self {
@@ -425,28 +426,24 @@ impl<'c> TypeAttribute<'c> {
     }
 }
 attribute_traits!(TypeAttribute, is_type, "type");
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Context;
+    use crate::{
+        ir::{attribute::IntegerAttribute, IntegerType, MemRefType, Type, TypeLike},
+        Context,
+    };
     #[test]
     fn value() {
         let context = Context::new();
         let r#type = Type::index(&context);
         assert_eq!(TypeAttribute::new(r#type).value(), r#type);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn new() {
         assert_eq!(FlatSymbolRefAttribute::new(&Context::new(), "foo").value(), "foo");
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn element() {
         let context = Context::new();
@@ -462,10 +459,6 @@ mod tests {
         let attribute = DenseI64ArrayAttribute::new(&context, &[1, 2, 3]);
         assert_eq!(attribute.len(), 3);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn element() {
         let context = Context::new();
@@ -481,17 +474,6 @@ mod tests {
         let attribute = DenseI32ArrayAttribute::new(&context, &[1, 2, 3]);
         assert_eq!(attribute.len(), 3);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        ir::{
-            attribute::IntegerAttribute,
-            r#type::{IntegerType, MemRefType},
-        },
-        Context,
-    };
     #[test]
     fn i32_element() {
         let context = Context::new();
@@ -545,11 +527,6 @@ mod tests {
         .unwrap();
         assert_eq!(attribute.len(), 3);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ir::{Type, TypeLike};
     #[test]
     fn parse() {
         for attribute in ["unit", "i32", r#""foo""#] {

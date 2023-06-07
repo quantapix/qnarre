@@ -1,17 +1,12 @@
+use mlir_lib::*;
+use std::{ffi::c_void, marker::PhantomData, mem::transmute, ops::Deref};
+
 use crate::{
     diagnostic::{Diagnostic, DiagnosticHandlerId},
     dialect::{Dialect, DialectRegistry},
     logical_result::LogicalResult,
     string_ref::StringRef,
 };
-use mlir_lib::{
-    mlirContextAppendDialectRegistry, mlirContextAttachDiagnosticHandler, mlirContextCreate, mlirContextDestroy,
-    mlirContextDetachDiagnosticHandler, mlirContextEnableMultithreading, mlirContextEqual,
-    mlirContextGetAllowUnregisteredDialects, mlirContextGetNumLoadedDialects, mlirContextGetNumRegisteredDialects,
-    mlirContextGetOrLoadDialect, mlirContextIsRegisteredOperation, mlirContextLoadAllAvailableDialects,
-    mlirContextSetAllowUnregisteredDialects, MlirContext, MlirDiagnostic, MlirLogicalResult,
-};
-use std::{ffi::c_void, marker::PhantomData, mem::transmute, ops::Deref};
 
 #[derive(Debug)]
 pub struct Context {

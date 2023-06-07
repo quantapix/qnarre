@@ -6,12 +6,12 @@ use llvm_lib::transforms::pass_builder::*;
 use llvm_lib::transforms::pass_manager_builder::*;
 use llvm_lib::transforms::scalar::*;
 use llvm_lib::transforms::vectorize::*;
-
-use crate::module::Module;
-use crate::val::{AsValueRef, FunctionValue};
-use crate::OptimizationLevel;
 use std::borrow::Borrow;
 use std::marker::PhantomData;
+
+use crate::val::{AsValueRef, FunctionValue};
+use crate::Module;
+use crate::OptimizationLevel;
 
 #[derive(Debug)]
 pub struct PassManagerBuilder {

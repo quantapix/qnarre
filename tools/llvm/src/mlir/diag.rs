@@ -1,11 +1,12 @@
-use crate::Error;
-use crate::{ir::Location, utils::print_callback, Error};
 use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Display, Formatter},
     marker::PhantomData,
 };
+
+use crate::Error;
+use crate::{ir::Location, utils::print_callback, Error};
 
 #[derive(Clone, Copy, Debug)]
 pub struct DiagnosticHandlerId {
