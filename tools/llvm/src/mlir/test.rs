@@ -1,6 +1,6 @@
 use crate::{
     dialect::DialectRegistry,
-    utility::{register_all_dialects, register_all_llvm_translations},
+    utils::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
 

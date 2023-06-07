@@ -5,7 +5,7 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(test)]
-mod mlir_tests {
+mod mlir_lib_tests {
     use super::*;
     use std::ffi::CString;
 
@@ -17,7 +17,6 @@ mod mlir_tests {
             mlirContextDestroy(ctx);
         }
     }
-
     #[test]
     fn create_string() {
         unsafe {
@@ -25,7 +24,6 @@ mod mlir_tests {
             mlirStringRefCreateFromCString(string.as_ptr());
         }
     }
-
     #[test]
     fn test_location() {
         unsafe {

@@ -4,10 +4,12 @@ pub use self::{
     flat_symbol_ref::FlatSymbolRefAttribute, float::FloatAttribute, integer::IntegerAttribute, r#type::TypeAttribute,
     string::StringAttribute,
 };
-use crate::{ctx::Context, string_ref::StringRef, utility::print_callback};
-use mlir_sys::{
-    mlirAttributeEqual, mlirAttributeGetNull, mlirAttributeParseGet, mlirAttributePrint, mlirUnitAttrGet, MlirAttribute,
-};
+use super::{Attribute, AttributeLike};
+use crate::ir::Type;
+use crate::{ctx::Context, utils::print_callback, StringRef};
+use crate::{Context, ContextRef, Error, StringRef};
+use melior_macro::attribute_check_functions;
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},
@@ -107,7 +109,7 @@ macro_rules! attribute_traits {
             }
         }
         impl<'c> crate::ir::attribute::AttributeLike<'c> for $name<'c> {
-            fn to_raw(&self) -> mlir_sys::MlirAttribute {
+            fn to_raw(&self) -> mlir_lib::MlirAttribute {
                 self.attribute.to_raw()
             }
         }
@@ -123,9 +125,6 @@ macro_rules! attribute_traits {
         }
     };
 }
-use super::{Attribute, AttributeLike};
-use crate::{Context, Error};
-use mlir_sys::{mlirArrayAttrGet, mlirArrayAttrGetElement, mlirArrayAttrGetNumElements, MlirAttribute};
 
 #[derive(Clone, Copy)]
 pub struct ArrayAttribute<'c> {
@@ -186,14 +185,6 @@ mod tests {
         assert_eq!(attribute.len(), 1);
     }
 }
-use crate::{
-    ir::{r#type, Type},
-    ContextRef,
-};
-use melior_macro::attribute_check_functions;
-use mlir_sys::{
-    mlirAttributeDump, mlirAttributeGetContext, mlirAttributeGetType, mlirAttributeGetTypeID, MlirAttribute,
-};
 
 pub trait AttributeLike<'c> {
     fn to_raw(&self) -> MlirAttribute;
@@ -239,15 +230,7 @@ pub trait AttributeLike<'c> {
         mlirAttributeIsAUnit,
     );
 }
-use super::{Attribute, AttributeLike};
-use crate::{
-    ir::{Type, TypeLike},
-    Error,
-};
-use mlir_sys::{
-    mlirDenseElementsAttrGet, mlirDenseElementsAttrGetInt32Value, mlirDenseElementsAttrGetInt64Value,
-    mlirElementsAttrGetNumElements, MlirAttribute,
-};
+
 #[derive(Clone, Copy)]
 pub struct DenseElementsAttribute<'c> {
     attribute: Attribute<'c>,
@@ -306,9 +289,7 @@ impl<'c> DenseElementsAttribute<'c> {
     }
 }
 attribute_traits!(DenseElementsAttribute, is_dense_elements, "dense elements");
-use super::{Attribute, AttributeLike};
-use crate::{Context, Error};
-use mlir_sys::{mlirArrayAttrGetNumElements, mlirDenseI32ArrayGet, mlirDenseI32ArrayGetElement, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct DenseI32ArrayAttribute<'c> {
     attribute: Attribute<'c>,
@@ -342,9 +323,7 @@ impl<'c> DenseI32ArrayAttribute<'c> {
     }
 }
 attribute_traits!(DenseI32ArrayAttribute, is_dense_i32_array, "dense i32 array");
-use super::{Attribute, AttributeLike};
-use crate::{Context, Error};
-use mlir_sys::{mlirArrayAttrGetNumElements, mlirDenseI64ArrayGet, mlirDenseI64ArrayGetElement, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct DenseI64ArrayAttribute<'c> {
     attribute: Attribute<'c>,
@@ -378,9 +357,7 @@ impl<'c> DenseI64ArrayAttribute<'c> {
     }
 }
 attribute_traits!(DenseI64ArrayAttribute, is_dense_i64_array, "dense i64 array");
-use super::{Attribute, AttributeLike};
-use crate::{Context, Error, StringRef};
-use mlir_sys::{mlirFlatSymbolRefAttrGet, mlirFlatSymbolRefAttrGetValue, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct FlatSymbolRefAttribute<'c> {
     attribute: Attribute<'c>,
@@ -401,12 +378,7 @@ impl<'c> FlatSymbolRefAttribute<'c> {
     }
 }
 attribute_traits!(FlatSymbolRefAttribute, is_flat_symbol_ref, "flat symbol ref");
-use super::{Attribute, AttributeLike};
-use crate::{
-    ir::{Type, TypeLike},
-    Context, Error,
-};
-use mlir_sys::{mlirFloatAttrDoubleGet, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct FloatAttribute<'c> {
     attribute: Attribute<'c>,
@@ -417,12 +389,7 @@ impl<'c> FloatAttribute<'c> {
     }
 }
 attribute_traits!(FloatAttribute, is_float, "float");
-use super::{Attribute, AttributeLike};
-use crate::{
-    ir::{Type, TypeLike},
-    Error,
-};
-use mlir_sys::{mlirIntegerAttrGet, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct IntegerAttribute<'c> {
     attribute: Attribute<'c>,
@@ -433,9 +400,7 @@ impl<'c> IntegerAttribute<'c> {
     }
 }
 attribute_traits!(IntegerAttribute, is_integer, "integer");
-use super::{Attribute, AttributeLike};
-use crate::{Context, Error, StringRef};
-use mlir_sys::{mlirStringAttrGet, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct StringAttribute<'c> {
     attribute: Attribute<'c>,
@@ -446,12 +411,7 @@ impl<'c> StringAttribute<'c> {
     }
 }
 attribute_traits!(StringAttribute, is_string, "string");
-use super::{Attribute, AttributeLike};
-use crate::{
-    ir::{Type, TypeLike},
-    Error,
-};
-use mlir_sys::{mlirTypeAttrGet, mlirTypeAttrGetValue, MlirAttribute};
+
 #[derive(Clone, Copy)]
 pub struct TypeAttribute<'c> {
     attribute: Attribute<'c>,

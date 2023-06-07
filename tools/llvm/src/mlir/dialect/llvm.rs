@@ -3,10 +3,7 @@ use crate::{
     ir::{Type, TypeLike},
     utility::into_raw_array,
 };
-use mlir_sys::{
-    mlirLLVMArrayTypeGet, mlirLLVMFunctionTypeGet, mlirLLVMPointerTypeGet, mlirLLVMStructTypeLiteralGet,
-    mlirLLVMVoidTypeGet,
-};
+use mlir_lib::*;
 
 pub fn array(r#type: Type, len: u32) -> Type {
     unsafe { Type::from_raw(mlirLLVMArrayTypeGet(r#type.to_raw(), len)) }

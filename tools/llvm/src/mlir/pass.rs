@@ -1,10 +1,5 @@
-use crate::{ctx::Context, ir::Module, logical_result::LogicalResult, pass::Pass, string_ref::StringRef, Error};
-use mlir_sys::{
-    mlirOpPassManagerAddOwnedPass, mlirOpPassManagerGetNestedUnder, mlirPassManagerAddOwnedPass, mlirPassManagerCreate,
-    mlirPassManagerDestroy, mlirPassManagerEnableIRPrinting, mlirPassManagerEnableVerifier,
-    mlirPassManagerGetAsOpPassManager, mlirPassManagerGetNestedUnder, mlirPassManagerRun, mlirPrintPassPipeline,
-    MlirOpPassManager, MlirPass, MlirPassManager, MlirStringRef,
-};
+use crate::{ctx::Context, ir::Module, pass::Pass, Error, LogicalResult, StringRef};
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Display, Formatter},

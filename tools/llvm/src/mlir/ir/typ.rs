@@ -3,16 +3,22 @@ pub use self::{
     tuple::TupleType, type_like::TypeLike,
 };
 use super::Location;
-use crate::{ctx::Context, string_ref::StringRef, utility::print_callback};
-use mlir_sys::{
-    mlirBF16TypeGet, mlirF16TypeGet, mlirF32TypeGet, mlirF64TypeGet, mlirIndexTypeGet, mlirNoneTypeGet, mlirTypeEqual,
-    mlirTypeParseGet, mlirTypePrint, mlirVectorTypeGet, mlirVectorTypeGetChecked, MlirType,
+use super::TypeId;
+use super::TypeLike;
+use crate::{ctx::Context, ctx::ContextRef, utils::print_callback, StringRef};
+use crate::{ir::Type, utils::into_raw_array, Context, Error};
+use crate::{
+    ir::{AffineMap, Attribute, AttributeLike, Location, Type},
+    Error,
 };
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},
+    hash::{Hash, Hasher},
     marker::PhantomData,
 };
+
 #[derive(Clone, Copy)]
 pub struct Type<'c> {
     raw: MlirType,
@@ -121,7 +127,7 @@ macro_rules! type_traits {
             }
         }
         impl<'c> crate::ir::r#type::TypeLike<'c> for $name<'c> {
-            fn to_raw(&self) -> mlir_sys::MlirType {
+            fn to_raw(&self) -> mlir_lib::MlirType {
                 self.r#type.to_raw()
             }
         }
@@ -132,12 +138,7 @@ macro_rules! type_traits {
         }
     };
 }
-use super::TypeLike;
-use crate::{ir::Type, utility::into_raw_array, Context, Error};
-use mlir_sys::{
-    mlirFunctionTypeGet, mlirFunctionTypeGetInput, mlirFunctionTypeGetNumInputs, mlirFunctionTypeGetNumResults,
-    mlirFunctionTypeGetResult, MlirType,
-};
+
 #[derive(Clone, Copy, Debug)]
 pub struct FunctionType<'c> {
     r#type: Type<'c>,
@@ -196,8 +197,7 @@ impl<'c> FunctionType<'c> {
     }
 }
 type_traits!(FunctionType, is_function, "function");
-use mlir_sys::{mlirTypeIDEqual, mlirTypeIDHashValue, MlirTypeID};
-use std::hash::{Hash, Hasher};
+
 #[derive(Clone, Copy, Debug)]
 pub struct TypeId {
     raw: MlirTypeID,
@@ -220,10 +220,7 @@ impl Hash for TypeId {
         }
     }
 }
-use super::TypeId;
-use mlir_sys::{
-    mlirTypeIDAllocatorAllocateTypeID, mlirTypeIDAllocatorCreate, mlirTypeIDAllocatorDestroy, MlirTypeIDAllocator,
-};
+
 #[derive(Debug)]
 pub struct Allocator {
     raw: MlirTypeIDAllocator,
@@ -248,12 +245,7 @@ impl Default for Allocator {
         Self::new()
     }
 }
-use super::TypeLike;
-use crate::{ir::Type, Context, Error};
-use mlir_sys::{
-    mlirIntegerTypeGet, mlirIntegerTypeGetWidth, mlirIntegerTypeIsSigned, mlirIntegerTypeIsSignless,
-    mlirIntegerTypeIsUnsigned, mlirIntegerTypeSignedGet, mlirIntegerTypeUnsignedGet, MlirType,
-};
+
 #[derive(Clone, Copy, Debug)]
 pub struct IntegerType<'c> {
     r#type: Type<'c>,
@@ -284,15 +276,6 @@ impl<'c> IntegerType<'c> {
     }
 }
 type_traits!(IntegerType, is_integer, "integer");
-use super::TypeLike;
-use crate::{
-    ir::{affine_map::AffineMap, attribute::AttributeLike, Attribute, Location, Type},
-    Error,
-};
-use mlir_sys::{
-    mlirMemRefTypeGet, mlirMemRefTypeGetAffineMap, mlirMemRefTypeGetChecked, mlirMemRefTypeGetLayout,
-    mlirMemRefTypeGetMemorySpace, MlirType,
-};
 #[derive(Clone, Copy, Debug)]
 pub struct MemRefType<'c> {
     r#type: Type<'c>,
@@ -350,12 +333,7 @@ impl<'c> MemRefType<'c> {
     }
 }
 type_traits!(MemRefType, is_mem_ref, "mem ref");
-use super::TypeLike;
-use crate::{
-    ir::{attribute::AttributeLike, Attribute, Location, Type},
-    Error,
-};
-use mlir_sys::{mlirRankedTensorTypeGet, mlirRankedTensorTypeGetChecked, mlirRankedTensorTypeGetEncoding, MlirType};
+
 #[derive(Clone, Copy, Debug)]
 pub struct RankedTensorType<'c> {
     r#type: Type<'c>,
@@ -399,9 +377,7 @@ impl<'c> RankedTensorType<'c> {
     }
 }
 type_traits!(RankedTensorType, is_ranked_tensor, "tensor");
-use super::TypeLike;
-use crate::{ir::Type, utility::into_raw_array, Context, Error};
-use mlir_sys::{mlirTupleTypeGet, mlirTupleTypeGetNumTypes, mlirTupleTypeGetType, MlirType};
+
 #[derive(Clone, Copy, Debug)]
 pub struct TupleType<'c> {
     r#type: Type<'c>,
@@ -437,9 +413,7 @@ impl<'c> TupleType<'c> {
     }
 }
 type_traits!(TupleType, is_tuple, "tuple");
-use super::TypeId;
-use crate::ctx::ContextRef;
-use mlir_sys::{mlirTypeDump, mlirTypeGetContext, mlirTypeGetTypeID, MlirType};
+
 pub trait TypeLike<'c> {
     fn to_raw(&self) -> MlirType;
     fn context(&self) -> ContextRef<'c> {

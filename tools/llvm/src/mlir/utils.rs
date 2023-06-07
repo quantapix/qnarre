@@ -1,10 +1,5 @@
-use crate::{
-    ctx::Context, dialect::DialectRegistry, logical_result::LogicalResult, pass, string_ref::StringRef, Error,
-};
-use mlir_sys::{
-    mlirParsePassPipeline, mlirRegisterAllDialects, mlirRegisterAllLLVMTranslations, mlirRegisterAllPasses,
-    MlirStringRef,
-};
+use crate::{ctx::Context, dialect::DialectRegistry, pass, Error, LogicalResult, StringRef};
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Formatter},

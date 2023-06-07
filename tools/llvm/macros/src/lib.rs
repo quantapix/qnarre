@@ -103,7 +103,7 @@ pub fn generate(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
         stream.extend(TokenStream::from(quote! {
             #[doc = #document]
             fn #function_name(&self) -> bool {
-                unsafe { mlir_sys::#identifier(self.to_raw()) }
+                unsafe { mlir_lib::#identifier(self.to_raw()) }
             }
         }));
     }
@@ -261,7 +261,7 @@ pub fn generate(names: &[Ident], extract_pass_name: impl Fn(&str) -> String) -> 
         stream.extend(TokenStream::from(quote! {
             #[doc = #document]
             pub fn #function_name() -> crate::pass::Pass {
-                unsafe { crate::pass::Pass::__private_from_raw_fn(mlir_sys::#name) }
+                unsafe { crate::pass::Pass::__private_from_raw_fn(mlir_lib::#name) }
             }
         }));
         let foreign_function_name = Ident::new(&("mlirRegister".to_owned() + foreign_name), name.span());
@@ -270,7 +270,7 @@ pub fn generate(names: &[Ident], extract_pass_name: impl Fn(&str) -> String) -> 
         stream.extend(TokenStream::from(quote! {
             #[doc = #document]
             pub fn #function_name() {
-                unsafe { mlir_sys::#foreign_function_name() }
+                unsafe { mlir_lib::#foreign_function_name() }
             }
         }));
     }
@@ -294,7 +294,7 @@ pub fn generate(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
         stream.extend(TokenStream::from(quote! {
             #[doc = #document]
             fn #function_name(&self) -> bool {
-                unsafe { mlir_sys::#identifier(self.to_raw()) }
+                unsafe { mlir_lib::#identifier(self.to_raw()) }
             }
         }));
     }

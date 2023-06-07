@@ -1,23 +1,3 @@
-mod ctx;
-pub mod diag;
-pub mod dialect;
-pub mod ir;
-pub mod pass;
-#[cfg(test)]
-mod test;
-pub mod utils;
-pub use self::ctx::{Context, ContextRef};
-use super::{Attribute, AttributeLike};
-use crate::{
-    ir::{Module, Type, TypeLike},
-    Context, Error,
-};
-use mlir_sys::{
-    mlirExecutionEngineCreate, mlirExecutionEngineDestroy, mlirExecutionEngineDumpToObjectFile,
-    mlirExecutionEngineInvokePacked, mlirIntegerAttrGet, mlirStringRefCreateFromCString, mlirStringRefEqual,
-    MlirAttribute, MlirExecutionEngine, MlirLogicalResult, MlirStringRef,
-};
-use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
     error,
@@ -28,6 +8,25 @@ use std::{
     str::{self, Utf8Error},
     sync::RwLock,
 };
+
+mod ctx;
+pub mod diag;
+pub mod dialect;
+pub mod ir;
+pub mod mlir_lib;
+pub mod pass;
+#[cfg(test)]
+mod test;
+pub mod utils;
+use crate::{
+    ir::{Module, Type, TypeLike},
+    Context, Error,
+};
+use mlir_lib::*;
+use once_cell::sync::Lazy;
+
+pub use self::ctx::{Context, ContextRef};
+use super::{Attribute, AttributeLike};
 
 macro_rules! from_raw_subtypes {
     ($type:ident,) => {};

@@ -1,8 +1,7 @@
 use super::Type;
 use super::{block::BlockArgument, op::OperationResult, Type};
-use crate::utility::print_callback;
-use mlir_sys::{mlirValueDump, mlirValueGetType, mlirValueIsABlockArgument, mlirValueIsAOpResult, MlirValue};
-use mlir_sys::{mlirValueEqual, mlirValuePrint, MlirValue};
+use crate::print_callback;
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},

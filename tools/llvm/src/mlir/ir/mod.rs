@@ -15,17 +15,9 @@ use crate::{
     ctx::{Context, ContextRef},
     ir::{Attribute, AttributeLike},
     string_ref::StringRef,
-    utility::{into_raw_array, print_callback},
+    utils::{into_raw_array, print_callback},
 };
-use mlir_sys::{
-    mlirAffineMapDump, mlirAffineMapEqual, mlirAffineMapGetContext, mlirAffineMapPrint, mlirIdentifierEqual,
-    mlirIdentifierGet, mlirIdentifierGetContext, mlirIdentifierStr, mlirLocationEqual, mlirLocationFileLineColGet,
-    mlirLocationFusedGet, mlirLocationGetContext, mlirLocationNameGet, mlirLocationPrint, mlirLocationUnknownGet,
-    mlirModuleCreateEmpty, mlirModuleCreateParse, mlirModuleDestroy, mlirModuleFromOperation, mlirModuleGetBody,
-    mlirModuleGetContext, mlirModuleGetOperation, mlirRegionAppendOwnedBlock, mlirRegionCreate, mlirRegionDestroy,
-    mlirRegionEqual, mlirRegionGetFirstBlock, mlirRegionInsertOwnedBlockAfter, mlirRegionInsertOwnedBlockBefore,
-    MlirAffineMap, MlirIdentifier, MlirLocation, MlirModule, MlirRegion,
-};
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},
@@ -265,7 +257,7 @@ impl Region {
             r#ref
         }
     }
-    pub fn into_raw(self) -> mlir_sys::MlirRegion {
+    pub fn into_raw(self) -> MlirRegion {
         let region = self.raw;
         forget(self);
         region

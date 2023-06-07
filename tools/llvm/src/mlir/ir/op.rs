@@ -1,26 +1,24 @@
 pub use self::{builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult};
-use super::{BlockRef, Identifier, RegionRef, Value};
+use super::{BlockRef, Identifier, RegionRef, Operation, Value};
 use crate::{
+    ir::*;
+    string_ref::StringRef,
     ctx::{Context, ContextRef},
-    utility::{print_callback, print_string_callback},
+    utils::{print_callback, into_raw_array, print_string_callback},
     Error,
 };
 use core::{
     fmt,
     mem::{forget, transmute},
 };
-use mlir_sys::{
-    mlirOperationClone, mlirOperationDestroy, mlirOperationDump, mlirOperationEqual, mlirOperationGetBlock,
-    mlirOperationGetContext, mlirOperationGetName, mlirOperationGetNextInBlock, mlirOperationGetNumRegions,
-    mlirOperationGetNumResults, mlirOperationGetRegion, mlirOperationGetResult, mlirOperationPrint,
-    mlirOperationPrintWithFlags, mlirOperationVerify, MlirOperation,
-};
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{Debug, Display, Formatter},
     marker::PhantomData,
     ops::Deref,
 };
+
 pub struct Operation<'c> {
     raw: MlirOperation,
     _context: PhantomData<&'c Context>,
@@ -191,19 +189,7 @@ impl<'a> Debug for OperationRef<'a> {
         Debug::fmt(self.deref(), formatter)
     }
 }
-use super::Operation;
-use crate::{
-    ctx::Context,
-    ir::{Attribute, AttributeLike, Block, Identifier, Location, Region, Type, TypeLike, Value, ValueLike},
-    string_ref::StringRef,
-    utility::into_raw_array,
-};
-use mlir_sys::{
-    mlirNamedAttributeGet, mlirOperationCreate, mlirOperationStateAddAttributes, mlirOperationStateAddOperands,
-    mlirOperationStateAddOwnedRegions, mlirOperationStateAddResults, mlirOperationStateAddSuccessors,
-    mlirOperationStateEnableResultTypeInference, mlirOperationStateGet, MlirOperationState,
-};
-use std::marker::PhantomData;
+
 pub struct OperationBuilder<'c> {
     raw: MlirOperationState,
     _context: PhantomData<&'c Context>,
@@ -278,11 +264,7 @@ impl<'c> OperationBuilder<'c> {
         unsafe { Operation::from_raw(mlirOperationCreate(&mut self.raw)) }
     }
 }
-use mlir_sys::{
-    mlirOpPrintingFlagsCreate, mlirOpPrintingFlagsDestroy, mlirOpPrintingFlagsElideLargeElementsAttrs,
-    mlirOpPrintingFlagsEnableDebugInfo, mlirOpPrintingFlagsPrintGenericOpForm, mlirOpPrintingFlagsUseLocalScope,
-    MlirOpPrintingFlags,
-};
+
 #[derive(Debug)]
 pub struct OperationPrintingFlags(MlirOpPrintingFlags);
 impl OperationPrintingFlags {
@@ -319,13 +301,7 @@ impl Default for OperationPrintingFlags {
         Self::new()
     }
 }
-use super::Value;
-use crate::{
-    ir::{OperationRef, ValueLike},
-    Error,
-};
-use mlir_sys::{mlirOpResultGetOwner, mlirOpResultGetResultNumber, MlirValue};
-use std::fmt::{self, Display, Formatter};
+
 #[derive(Clone, Copy, Debug)]
 pub struct OperationResult<'a> {
     value: Value<'a>,

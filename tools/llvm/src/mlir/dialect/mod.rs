@@ -9,15 +9,7 @@ use crate::{
     ctx::{Context, ContextRef},
     string_ref::StringRef,
 };
-use mlir_sys::{
-    mlirDialectEqual, mlirDialectGetContext, mlirDialectGetNamespace, mlirDialectHandleGetNamespace,
-    mlirDialectHandleInsertDialect, mlirDialectHandleLoadDialect, mlirDialectHandleRegisterDialect,
-    mlirDialectRegistryCreate, mlirDialectRegistryDestroy, mlirGetDialectHandle__async__, mlirGetDialectHandle__cf__,
-    mlirGetDialectHandle__func__, mlirGetDialectHandle__gpu__, mlirGetDialectHandle__linalg__,
-    mlirGetDialectHandle__llvm__, mlirGetDialectHandle__pdl__, mlirGetDialectHandle__quant__,
-    mlirGetDialectHandle__scf__, mlirGetDialectHandle__shape__, mlirGetDialectHandle__sparse_tensor__,
-    mlirGetDialectHandle__tensor__, MlirDialect, MlirDialectHandle, MlirDialectRegistry,
-};
+use mlir_lib::*;
 use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug)]

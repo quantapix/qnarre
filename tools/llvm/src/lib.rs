@@ -1,25 +1,4 @@
-pub mod builder;
-pub mod ctx;
-pub mod debug;
-pub mod llvm_lib;
-pub mod mlir;
-pub mod module;
-pub mod pass;
-pub mod target;
-pub mod typ;
-pub mod val;
-
-use crate::ctx::Context;
-use crate::ctx::ContextRef;
-use crate::module::Module;
-use crate::module::Module;
-use crate::target::TargetData;
-use crate::typ::*;
-use crate::val::*;
-use crate::val::*;
-use crate::{to_c_str, LLVMString};
-use libc::c_int;
-use libc::{c_char, c_void};
+use libc::{c_char, c_int, c_void};
 use llvm_lib::comdata::*;
 use llvm_lib::core::*;
 use llvm_lib::error_handling::*;
@@ -31,20 +10,33 @@ use llvm_lib::*;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::error::Error;
-use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Debug, Display, Formatter};
-use std::fmt::{self, Debug, Display, Formatter};
-use std::marker::PhantomData;
 use std::marker::PhantomData;
 use std::mem::{forget, size_of, transmute_copy, MaybeUninit};
-use std::mem::{forget, MaybeUninit};
-use std::ops::Deref;
 use std::ops::Deref;
 use std::path::Path;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
+
+pub mod builder;
+pub mod ctx;
+pub mod debug;
+pub mod llvm_lib;
+pub mod mlir;
+pub mod module;
+pub mod pass;
+pub mod target;
+pub mod typ;
+pub mod val;
+
+use crate::ctx::{Context, ContextRef};
+use crate::module::Module;
+use crate::target::TargetData;
+use crate::typ::*;
+use crate::val::*;
+use crate::{to_c_str, LLVMString};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Attribute {

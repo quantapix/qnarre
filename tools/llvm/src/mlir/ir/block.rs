@@ -1,16 +1,11 @@
 use super::{Location, Operation, OperationRef, RegionRef, Type, TypeLike, Value};
 use crate::{
     ctx::Context,
-    utility::{into_raw_array, print_callback},
+    ir::{BlockRef, Type, TypeLike, ValueLike},
+    utils::{into_raw_array, print_callback},
     Error,
 };
-use mlir_sys::{
-    mlirBlockAddArgument, mlirBlockAppendOwnedOperation, mlirBlockCreate, mlirBlockDestroy, mlirBlockDetach,
-    mlirBlockEqual, mlirBlockGetArgument, mlirBlockGetFirstOperation, mlirBlockGetNextInRegion,
-    mlirBlockGetNumArguments, mlirBlockGetParentOperation, mlirBlockGetParentRegion, mlirBlockGetTerminator,
-    mlirBlockInsertOwnedOperation, mlirBlockInsertOwnedOperationAfter, mlirBlockInsertOwnedOperationBefore,
-    mlirBlockPrint, MlirBlock,
-};
+use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},
@@ -195,13 +190,6 @@ impl<'a> Debug for BlockRef<'a> {
         Debug::fmt(self.deref(), formatter)
     }
 }
-use super::Value;
-use crate::{
-    ir::{BlockRef, Type, TypeLike, ValueLike},
-    Error,
-};
-use mlir_sys::{mlirBlockArgumentGetArgNumber, mlirBlockArgumentGetOwner, mlirBlockArgumentSetType, MlirValue};
-use std::fmt::{self, Display, Formatter};
 
 #[derive(Clone, Copy, Debug)]
 pub struct BlockArgument<'a> {

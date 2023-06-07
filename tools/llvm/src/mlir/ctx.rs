@@ -4,7 +4,7 @@ use crate::{
     logical_result::LogicalResult,
     string_ref::StringRef,
 };
-use mlir_sys::{
+use mlir_lib::{
     mlirContextAppendDialectRegistry, mlirContextAttachDiagnosticHandler, mlirContextCreate, mlirContextDestroy,
     mlirContextDetachDiagnosticHandler, mlirContextEnableMultithreading, mlirContextEqual,
     mlirContextGetAllowUnregisteredDialects, mlirContextGetNumLoadedDialects, mlirContextGetNumRegisteredDialects,
