@@ -3,11 +3,6 @@ use llvm_lib::core::*;
 use llvm_lib::execution_engine::*;
 use llvm_lib::prelude::*;
 use llvm_lib::LLVMTypeKind;
-
-use crate::ctx::ContextRef;
-use crate::val::*;
-use crate::AddressSpace;
-use crate::LLVMString;
 use static_alloc::Bump;
 use std::convert::TryFrom;
 use std::ffi::CStr;
@@ -16,6 +11,11 @@ use std::fmt::Debug;
 use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::mem::forget;
+
+use crate::ctx::ContextRef;
+use crate::val::*;
+use crate::AddressSpace;
+use crate::LLVMString;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct Type<'ctx> {
@@ -94,6 +94,10 @@ impl fmt::Debug for Type<'_> {
     }
 }
 
+pub unsafe trait AsTypeRef {
+    fn as_type_ref(&self) -> LLVMTypeRef;
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ArrayType<'ctx> {
     array_type: Type<'ctx>,
@@ -149,14 +153,14 @@ impl<'ctx> ArrayType<'ctx> {
         self.array_type.get_element_type().to_basic_type_enum()
     }
 }
-unsafe impl AsTypeRef for ArrayType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.array_type.ty
-    }
-}
 impl Display for ArrayType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for ArrayType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.array_type.ty
     }
 }
 
@@ -698,14 +702,14 @@ impl<'ctx> FloatType<'ctx> {
         }
     }
 }
-unsafe impl AsTypeRef for FloatType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.float_type.ty
-    }
-}
 impl Display for FloatType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for FloatType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.float_type.ty
     }
 }
 
@@ -758,6 +762,11 @@ impl<'ctx> FunctionType<'ctx> {
         unsafe { Some(BasicTypeEnum::new(ty)) }
     }
 }
+impl Display for FunctionType<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
 impl fmt::Debug for FunctionType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let llvm_type = self.print_to_string();
@@ -773,11 +782,6 @@ unsafe impl AsTypeRef for FunctionType<'_> {
         self.fn_type.ty
     }
 }
-impl Display for FunctionType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum StringRadix {
@@ -786,19 +790,6 @@ pub enum StringRadix {
     Decimal = 10,
     Hexadecimal = 16,
     Alphanumeric = 36,
-}
-impl TryFrom<u8> for StringRadix {
-    type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            2 => Ok(StringRadix::Binary),
-            8 => Ok(StringRadix::Octal),
-            10 => Ok(StringRadix::Decimal),
-            16 => Ok(StringRadix::Hexadecimal),
-            36 => Ok(StringRadix::Alphanumeric),
-            _ => Err(()),
-        }
-    }
 }
 impl StringRadix {
     pub fn matches_str(&self, slice: &str) -> bool {
@@ -813,6 +804,19 @@ impl StringRadix {
             StringRadix::Decimal => it.all(|c| matches!(c, '0'..='9')),
             StringRadix::Hexadecimal => it.all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F')),
             StringRadix::Alphanumeric => it.all(|c| matches!(c, '0'..='9' | 'a'..='z' | 'A'..='Z')),
+        }
+    }
+}
+impl TryFrom<u8> for StringRadix {
+    type Error = ();
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            2 => Ok(StringRadix::Binary),
+            8 => Ok(StringRadix::Octal),
+            10 => Ok(StringRadix::Decimal),
+            16 => Ok(StringRadix::Hexadecimal),
+            36 => Ok(StringRadix::Alphanumeric),
+            _ => Err(()),
         }
     }
 }
@@ -903,14 +907,14 @@ impl<'ctx> IntType<'ctx> {
         }
     }
 }
-unsafe impl AsTypeRef for IntType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.int_type.ty
-    }
-}
 impl Display for IntType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for IntType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.int_type.ty
     }
 }
 
@@ -935,14 +939,14 @@ impl<'ctx> MetadataType<'ctx> {
         self.metadata_type.print_to_string()
     }
 }
-unsafe impl AsTypeRef for MetadataType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.metadata_type.ty
-    }
-}
 impl Display for MetadataType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for MetadataType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.metadata_type.ty
     }
 }
 
@@ -1005,14 +1009,14 @@ impl<'ctx> PointerType<'ctx> {
         }
     }
 }
-unsafe impl AsTypeRef for PointerType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.ptr_type.ty
-    }
-}
 impl Display for PointerType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for PointerType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.ptr_type.ty
     }
 }
 
@@ -1125,26 +1129,15 @@ impl<'ctx> StructType<'ctx> {
         }
     }
 }
-unsafe impl AsTypeRef for StructType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.struct_type.ty
-    }
-}
 impl Display for StructType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
     }
 }
-
-pub unsafe trait AsTypeRef {
-    fn as_type_ref(&self) -> LLVMTypeRef;
-}
-macro_rules! trait_type_set {
-    ($trait_name:ident: $($args:ident),*) => (
-        $(
-            unsafe impl<'ctx> $trait_name<'ctx> for $args<'ctx> {}
-        )*
-    );
+unsafe impl AsTypeRef for StructType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.struct_type.ty
+    }
 }
 
 pub unsafe trait AnyType<'ctx>: AsTypeRef + Debug {
@@ -1155,8 +1148,6 @@ pub unsafe trait AnyType<'ctx>: AsTypeRef + Debug {
         unsafe { Type::new(self.as_type_ref()).print_to_string() }
     }
 }
-trait_type_set! {AnyType: AnyTypeEnum, BasicTypeEnum, IntType, FunctionType, FloatType, PointerType, StructType, ArrayType, VoidType, VectorType}
-
 pub unsafe trait BasicType<'ctx>: AnyType<'ctx> {
     fn as_basic_type_enum(&self) -> BasicTypeEnum<'ctx> {
         unsafe { BasicTypeEnum::new(self.as_type_ref()) }
@@ -1177,6 +1168,16 @@ pub unsafe trait BasicType<'ctx>: AnyType<'ctx> {
         unsafe { Type::new(self.as_type_ref()).ptr_type(address_space) }
     }
 }
+
+macro_rules! trait_type_set {
+    ($trait_name:ident: $($args:ident),*) => (
+        $(
+            unsafe impl<'ctx> $trait_name<'ctx> for $args<'ctx> {}
+        )*
+    );
+}
+
+trait_type_set! {AnyType: AnyTypeEnum, BasicTypeEnum, IntType, FunctionType, FloatType, PointerType, StructType, ArrayType, VoidType, VectorType}
 trait_type_set! {BasicType: BasicTypeEnum, IntType, FloatType, PointerType, StructType, ArrayType, VectorType}
 
 pub unsafe trait IntMathType<'ctx>: BasicType<'ctx> {
@@ -1184,15 +1185,6 @@ pub unsafe trait IntMathType<'ctx>: BasicType<'ctx> {
     type MathConvType: FloatMathType<'ctx>;
     type PtrConvType: PointerMathType<'ctx>;
 }
-pub unsafe trait FloatMathType<'ctx>: BasicType<'ctx> {
-    type ValueType: FloatMathValue<'ctx>;
-    type MathConvType: IntMathType<'ctx>;
-}
-pub unsafe trait PointerMathType<'ctx>: BasicType<'ctx> {
-    type ValueType: PointerMathValue<'ctx>;
-    type PtrConvType: IntMathType<'ctx>;
-}
-
 unsafe impl<'ctx> IntMathType<'ctx> for IntType<'ctx> {
     type ValueType = IntValue<'ctx>;
     type MathConvType = FloatType<'ctx>;
@@ -1203,6 +1195,11 @@ unsafe impl<'ctx> IntMathType<'ctx> for VectorType<'ctx> {
     type MathConvType = VectorType<'ctx>;
     type PtrConvType = VectorType<'ctx>;
 }
+
+pub unsafe trait FloatMathType<'ctx>: BasicType<'ctx> {
+    type ValueType: FloatMathValue<'ctx>;
+    type MathConvType: IntMathType<'ctx>;
+}
 unsafe impl<'ctx> FloatMathType<'ctx> for FloatType<'ctx> {
     type ValueType = FloatValue<'ctx>;
     type MathConvType = IntType<'ctx>;
@@ -1210,6 +1207,11 @@ unsafe impl<'ctx> FloatMathType<'ctx> for FloatType<'ctx> {
 unsafe impl<'ctx> FloatMathType<'ctx> for VectorType<'ctx> {
     type ValueType = VectorValue<'ctx>;
     type MathConvType = VectorType<'ctx>;
+}
+
+pub unsafe trait PointerMathType<'ctx>: BasicType<'ctx> {
+    type ValueType: PointerMathValue<'ctx>;
+    type PtrConvType: IntMathType<'ctx>;
 }
 unsafe impl<'ctx> PointerMathType<'ctx> for PointerType<'ctx> {
     type ValueType = PointerValue<'ctx>;
@@ -1279,14 +1281,14 @@ impl<'ctx> VectorType<'ctx> {
         self.vec_type.get_context()
     }
 }
-unsafe impl AsTypeRef for VectorType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.vec_type.ty
-    }
-}
 impl Display for VectorType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for VectorType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.vec_type.ty
     }
 }
 
@@ -1314,13 +1316,13 @@ impl<'ctx> VoidType<'ctx> {
         self.void_type.print_to_string()
     }
 }
-unsafe impl AsTypeRef for VoidType<'_> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        self.void_type.ty
-    }
-}
 impl Display for VoidType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsTypeRef for VoidType<'_> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        self.void_type.ty
     }
 }

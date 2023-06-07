@@ -178,38 +178,6 @@ impl Target {
             unsafe { LLVMInitializeNVPTXTargetMC() };
         }
     }
-    #[cfg(feature = "target-webassembly")]
-    pub fn initialize_webassembly(config: &InitializationConfig) {
-        use llvm_lib::target::{
-            LLVMInitializeWebAssemblyAsmParser, LLVMInitializeWebAssemblyAsmPrinter,
-            LLVMInitializeWebAssemblyDisassembler, LLVMInitializeWebAssemblyTarget,
-            LLVMInitializeWebAssemblyTargetInfo, LLVMInitializeWebAssemblyTargetMC,
-        };
-        if config.base {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeWebAssemblyTarget() };
-        }
-        if config.info {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeWebAssemblyTargetInfo() };
-        }
-        if config.asm_printer {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeWebAssemblyAsmPrinter() };
-        }
-        if config.asm_parser {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeWebAssemblyAsmParser() };
-        }
-        if config.disassembler {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeWebAssemblyDisassembler() };
-        }
-        if config.machine_code {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeWebAssemblyTargetMC() };
-        }
-    }
     pub fn initialize_native(config: &InitializationConfig) -> Result<(), String> {
         use llvm_lib::target::{
             LLVM_InitializeNativeAsmParser, LLVM_InitializeNativeAsmPrinter, LLVM_InitializeNativeDisassembler,

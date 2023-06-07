@@ -1,3 +1,16 @@
+use libc::c_void;
+use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction, LLVMViewFunctionCFG, LLVMViewFunctionCFGOnly};
+use llvm_lib::core::*;
+use llvm_lib::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
+use llvm_lib::execution_engine::*;
+use llvm_lib::prelude::*;
+use llvm_lib::{LLVMOpcode, LLVMTypeKind, LLVMUnnamedAddr, LLVMValueKind};
+use std::convert::TryFrom;
+use std::fmt::{self, Debug};
+use std::marker::PhantomData;
+use std::mem::forget;
+use std::{ffi::CStr, fmt, fmt::Display};
+
 use super::AnyValue;
 use super::{BasicMetadataValueEnum, MetadataValue};
 use crate::debug::DISubprogram;
@@ -15,20 +28,6 @@ use either::{
     Either,
     Either::{Left, Right},
 };
-use libc::c_void;
-use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction, LLVMViewFunctionCFG, LLVMViewFunctionCFGOnly};
-use llvm_lib::core::*;
-use llvm_lib::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
-use llvm_lib::execution_engine::*;
-use llvm_lib::prelude::*;
-use llvm_lib::LLVMOpcode;
-use llvm_lib::LLVMUnnamedAddr;
-use llvm_lib::{LLVMTypeKind, LLVMValueKind};
-use std::convert::TryFrom;
-use std::fmt::{self, Debug};
-use std::marker::PhantomData;
-use std::mem::forget;
-use std::{ffi::CStr, fmt, fmt::Display};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 struct Value<'ctx> {
@@ -36,7 +35,7 @@ struct Value<'ctx> {
     _marker: PhantomData<&'ctx ()>,
 }
 impl<'ctx> Value<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         debug_assert!(
             !value.is_null(),
             "This should never happen since containing struct should check null ptrs"
@@ -148,12 +147,16 @@ impl fmt::Debug for Value<'_> {
     }
 }
 
+pub unsafe trait AsValueRef {
+    fn as_value_ref(&self) -> LLVMValueRef;
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct ArrayValue<'ctx> {
     array_value: Value<'ctx>,
 }
 impl<'ctx> ArrayValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         ArrayValue {
             array_value: Value::new(value),
@@ -199,11 +202,6 @@ impl<'ctx> ArrayValue<'ctx> {
         }
     }
 }
-unsafe impl AsValueRef for ArrayValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.array_value.value
-    }
-}
 impl Display for ArrayValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
@@ -230,11 +228,16 @@ impl fmt::Debug for ArrayValue<'_> {
             .finish()
     }
 }
+unsafe impl AsValueRef for ArrayValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.array_value.value
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BasicValueUse<'ctx>(LLVMUseRef, PhantomData<&'ctx ()>);
 impl<'ctx> BasicValueUse<'ctx> {
-    pub(crate) unsafe fn new(use_: LLVMUseRef) -> Self {
+    pub unsafe fn new(use_: LLVMUseRef) -> Self {
         debug_assert!(!use_.is_null());
         BasicValueUse(use_, PhantomData)
     }
@@ -263,7 +266,7 @@ impl<'ctx> BasicValueUse<'ctx> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct CallSiteValue<'ctx>(Value<'ctx>);
 impl<'ctx> CallSiteValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         CallSiteValue(Value::new(value))
     }
     pub fn set_tail_call(self, tail_call: bool) {
@@ -366,38 +369,19 @@ impl<'ctx> CallSiteValue<'ctx> {
         unsafe { LLVMSetInstrParamAlignment(self.as_value_ref(), loc.get_index(), alignment) }
     }
 }
-unsafe impl AsValueRef for CallSiteValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.0.value
-    }
-}
 impl Display for CallSiteValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
     }
 }
+unsafe impl AsValueRef for CallSiteValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.0.value
+    }
+}
 
 #[derive(Debug)]
 pub struct CallableValue<'ctx>(Either<FunctionValue<'ctx>, PointerValue<'ctx>>);
-unsafe impl<'ctx> AsValueRef for CallableValue<'ctx> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        use either::Either::*;
-        match self.0 {
-            Left(function) => function.as_value_ref(),
-            Right(pointer) => pointer.as_value_ref(),
-        }
-    }
-}
-unsafe impl<'ctx> AnyValue<'ctx> for CallableValue<'ctx> {}
-unsafe impl<'ctx> AsTypeRef for CallableValue<'ctx> {
-    fn as_type_ref(&self) -> LLVMTypeRef {
-        use either::Either::*;
-        match self.0 {
-            Left(function) => function.get_type().as_type_ref(),
-            Right(pointer) => pointer.get_type().get_element_type().as_type_ref(),
-        }
-    }
-}
 impl<'ctx> CallableValue<'ctx> {}
 impl<'ctx> From<FunctionValue<'ctx>> for CallableValue<'ctx> {
     fn from(value: FunctionValue<'ctx>) -> Self {
@@ -420,6 +404,25 @@ impl<'ctx> TryFrom<PointerValue<'ctx>> for CallableValue<'ctx> {
 impl Display for CallableValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl<'ctx> AsValueRef for CallableValue<'ctx> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        use either::Either::*;
+        match self.0 {
+            Left(function) => function.as_value_ref(),
+            Right(pointer) => pointer.as_value_ref(),
+        }
+    }
+}
+unsafe impl<'ctx> AnyValue<'ctx> for CallableValue<'ctx> {}
+unsafe impl<'ctx> AsTypeRef for CallableValue<'ctx> {
+    fn as_type_ref(&self) -> LLVMTypeRef {
+        use either::Either::*;
+        match self.0 {
+            Left(function) => function.get_type().as_type_ref(),
+            Right(pointer) => pointer.get_type().get_element_type().as_type_ref(),
+        }
     }
 }
 
@@ -471,7 +474,7 @@ macro_rules! enum_value_set {
 
 enum_value_set! {BasicValueEnum: ArrayValue, IntValue, FloatValue, PointerValue, StructValue, VectorValue}
 impl<'ctx> BasicValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         match LLVMGetTypeKind(LLVMTypeOf(value)) {
             LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
@@ -599,7 +602,7 @@ impl Display for BasicValueEnum<'_> {
 
 enum_value_set! {BasicMetadataValueEnum: ArrayValue, IntValue, FloatValue, PointerValue, StructValue, VectorValue, MetadataValue}
 impl<'ctx> BasicMetadataValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         match LLVMGetTypeKind(LLVMTypeOf(value)) {
             LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
@@ -716,7 +719,7 @@ impl Display for BasicMetadataValueEnum<'_> {
 
 enum_value_set! {AggregateValueEnum: ArrayValue, StructValue}
 impl<'ctx> AggregateValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         match LLVMGetTypeKind(LLVMTypeOf(value)) {
             LLVMTypeKind::LLVMArrayTypeKind => AggregateValueEnum::ArrayValue(ArrayValue::new(value)),
             LLVMTypeKind::LLVMStructTypeKind => AggregateValueEnum::StructValue(StructValue::new(value)),
@@ -752,7 +755,7 @@ impl Display for AggregateValueEnum<'_> {
 
 enum_value_set! {AnyValueEnum: ArrayValue, IntValue, FloatValue, PhiValue, FunctionValue, PointerValue, StructValue, VectorValue, InstructionValue, MetadataValue}
 impl<'ctx> AnyValueEnum<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         match LLVMGetTypeKind(LLVMTypeOf(value)) {
             LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
@@ -889,7 +892,7 @@ pub struct FloatValue<'ctx> {
     float_value: Value<'ctx>,
 }
 impl<'ctx> FloatValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         FloatValue {
             float_value: Value::new(value),
@@ -949,16 +952,6 @@ impl<'ctx> FloatValue<'ctx> {
         self.float_value.replace_all_uses_with(other.as_value_ref())
     }
 }
-unsafe impl AsValueRef for FloatValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.float_value.value
-    }
-}
-impl Display for FloatValue<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for FloatValue<'ctx> {
     type Error = ();
     fn try_from(value: InstructionValue) -> Result<Self, Self::Error> {
@@ -969,13 +962,23 @@ impl<'ctx> TryFrom<InstructionValue<'ctx>> for FloatValue<'ctx> {
         }
     }
 }
+impl Display for FloatValue<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for FloatValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.float_value.value
+    }
+}
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct FunctionValue<'ctx> {
     fn_value: Value<'ctx>,
 }
 impl<'ctx> FunctionValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Option<Self> {
+    pub unsafe fn new(value: LLVMValueRef) -> Option<Self> {
         if value.is_null() {
             return None;
         }
@@ -1216,11 +1219,6 @@ impl<'ctx> FunctionValue<'ctx> {
         self.fn_value.set_section(section)
     }
 }
-unsafe impl AsValueRef for FunctionValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.fn_value.value
-    }
-}
 impl Display for FunctionValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
@@ -1241,6 +1239,11 @@ impl fmt::Debug for FunctionValue<'_> {
             .field("llvm_value", &llvm_value)
             .field("llvm_type", &llvm_type.print_to_string())
             .finish()
+    }
+}
+unsafe impl AsValueRef for FunctionValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.fn_value.value
     }
 }
 
@@ -1273,11 +1276,11 @@ impl<'ctx> Iterator for ParamValueIter<'ctx> {
 
 #[derive(Debug)]
 pub struct GenericValue<'ctx> {
-    pub(crate) generic_value: LLVMGenericValueRef,
+    pub generic_value: LLVMGenericValueRef,
     _phantom: PhantomData<&'ctx ()>,
 }
 impl<'ctx> GenericValue<'ctx> {
-    pub(crate) unsafe fn new(generic_value: LLVMGenericValueRef) -> Self {
+    pub unsafe fn new(generic_value: LLVMGenericValueRef) -> Self {
         assert!(!generic_value.is_null());
         GenericValue {
             generic_value,
@@ -1312,7 +1315,7 @@ pub struct GlobalValue<'ctx> {
     global_value: Value<'ctx>,
 }
 impl<'ctx> GlobalValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         GlobalValue {
             global_value: Value::new(value),
@@ -1455,14 +1458,14 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { LLVMSetLinkage(self.as_value_ref(), linkage.into()) }
     }
 }
-unsafe impl AsValueRef for GlobalValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.global_value.value
-    }
-}
 impl Display for GlobalValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for GlobalValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.global_value.value
     }
 }
 
@@ -1571,7 +1574,7 @@ impl<'ctx> InstructionValue<'ctx> {
     fn is_a_cmpxchg_inst(self) -> bool {
         !unsafe { LLVMIsAAtomicCmpXchgInst(self.as_value_ref()) }.is_null()
     }
-    pub(crate) unsafe fn new(instruction_value: LLVMValueRef) -> Self {
+    pub unsafe fn new(instruction_value: LLVMValueRef) -> Self {
         debug_assert!(!instruction_value.is_null());
         let value = Value::new(instruction_value);
         debug_assert!(value.is_instruction());
@@ -1781,14 +1784,14 @@ impl Clone for InstructionValue<'_> {
         unsafe { InstructionValue::new(LLVMInstructionClone(self.as_value_ref())) }
     }
 }
-unsafe impl AsValueRef for InstructionValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.instruction_value.value
-    }
-}
 impl Display for InstructionValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for InstructionValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.instruction_value.value
     }
 }
 
@@ -1797,7 +1800,7 @@ pub struct IntValue<'ctx> {
     int_value: Value<'ctx>,
 }
 impl<'ctx> IntValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         IntValue {
             int_value: Value::new(value),
@@ -1960,16 +1963,6 @@ impl<'ctx> IntValue<'ctx> {
         self.int_value.replace_all_uses_with(other.as_value_ref())
     }
 }
-unsafe impl AsValueRef for IntValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.int_value.value
-    }
-}
-impl Display for IntValue<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for IntValue<'ctx> {
     type Error = ();
     fn try_from(value: InstructionValue) -> Result<Self, Self::Error> {
@@ -1980,6 +1973,16 @@ impl<'ctx> TryFrom<InstructionValue<'ctx>> for IntValue<'ctx> {
         }
     }
 }
+impl Display for IntValue<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for IntValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.int_value.value
+    }
+}
 
 pub const FIRST_CUSTOM_METADATA_KIND_ID: u32 = 39;
 
@@ -1988,14 +1991,14 @@ pub struct MetadataValue<'ctx> {
     metadata_value: Value<'ctx>,
 }
 impl<'ctx> MetadataValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         assert!(!LLVMIsAMDNode(value).is_null() || !LLVMIsAMDString(value).is_null());
         MetadataValue {
             metadata_value: Value::new(value),
         }
     }
-    pub(crate) fn as_metadata_ref(self) -> LLVMMetadataRef {
+    pub fn as_metadata_ref(self) -> LLVMMetadataRef {
         unsafe { LLVMValueAsMetadata(self.as_value_ref()) }
     }
     pub fn get_name(&self) -> &CStr {
@@ -2043,11 +2046,6 @@ impl<'ctx> MetadataValue<'ctx> {
         self.metadata_value.replace_all_uses_with(other.as_value_ref())
     }
 }
-unsafe impl AsValueRef for MetadataValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.metadata_value.value
-    }
-}
 impl Display for MetadataValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
@@ -2066,13 +2064,18 @@ impl fmt::Debug for MetadataValue<'_> {
         d.finish()
     }
 }
+unsafe impl AsValueRef for MetadataValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.metadata_value.value
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PhiValue<'ctx> {
     phi_value: Value<'ctx>,
 }
 impl<'ctx> PhiValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         PhiValue {
             phi_value: Value::new(value),
@@ -2130,16 +2133,6 @@ impl<'ctx> PhiValue<'ctx> {
         unsafe { BasicValueEnum::new(self.as_value_ref()) }
     }
 }
-unsafe impl AsValueRef for PhiValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.phi_value.value
-    }
-}
-impl Display for PhiValue<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for PhiValue<'ctx> {
     type Error = ();
     fn try_from(value: InstructionValue) -> Result<Self, Self::Error> {
@@ -2150,13 +2143,23 @@ impl<'ctx> TryFrom<InstructionValue<'ctx>> for PhiValue<'ctx> {
         }
     }
 }
+impl Display for PhiValue<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for PhiValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.phi_value.value
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PointerValue<'ctx> {
     ptr_value: Value<'ctx>,
 }
 impl<'ctx> PointerValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         PointerValue {
             ptr_value: Value::new(value),
@@ -2229,16 +2232,6 @@ impl<'ctx> PointerValue<'ctx> {
         self.ptr_value.replace_all_uses_with(other.as_value_ref())
     }
 }
-unsafe impl AsValueRef for PointerValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.ptr_value.value
-    }
-}
-impl Display for PointerValue<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.print_to_string())
-    }
-}
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for PointerValue<'ctx> {
     type Error = ();
     fn try_from(value: InstructionValue) -> Result<Self, Self::Error> {
@@ -2249,13 +2242,23 @@ impl<'ctx> TryFrom<InstructionValue<'ctx>> for PointerValue<'ctx> {
         }
     }
 }
+impl Display for PointerValue<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for PointerValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.ptr_value.value
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct StructValue<'ctx> {
     struct_value: Value<'ctx>,
 }
 impl<'ctx> StructValue<'ctx> {
-    pub(crate) unsafe fn new(value: LLVMValueRef) -> Self {
+    pub unsafe fn new(value: LLVMValueRef) -> Self {
         assert!(!value.is_null());
         StructValue {
             struct_value: Value::new(value),
@@ -2286,31 +2289,23 @@ impl<'ctx> StructValue<'ctx> {
         self.struct_value.replace_all_uses_with(other.as_value_ref())
     }
 }
-unsafe impl AsValueRef for StructValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.struct_value.value
-    }
-}
 impl Display for StructValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
     }
 }
-
-pub unsafe trait AsValueRef {
-    fn as_value_ref(&self) -> LLVMValueRef;
-}
-macro_rules! trait_value_set {
-    ($trait_name:ident: $($args:ident),*) => (
-        $(
-            unsafe impl<'ctx> $trait_name<'ctx> for $args<'ctx> {}
-        )*
-    );
+unsafe impl AsValueRef for StructValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.struct_value.value
+    }
 }
 
-pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
-    fn as_aggregate_value_enum(&self) -> AggregateValueEnum<'ctx> {
-        unsafe { AggregateValueEnum::new(self.as_value_ref()) }
+pub unsafe trait AnyValue<'ctx>: AsValueRef + Debug {
+    fn as_any_value_enum(&self) -> AnyValueEnum<'ctx> {
+        unsafe { AnyValueEnum::new(self.as_value_ref()) }
+    }
+    fn print_to_string(&self) -> LLVMString {
+        unsafe { Value::new(self.as_value_ref()).print_to_string() }
     }
 }
 pub unsafe trait BasicValue<'ctx>: AnyValue<'ctx> {
@@ -2331,6 +2326,24 @@ pub unsafe trait BasicValue<'ctx>: AnyValue<'ctx> {
         unsafe { Value::new(self.as_value_ref()).set_name(name) }
     }
 }
+pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
+    fn as_aggregate_value_enum(&self) -> AggregateValueEnum<'ctx> {
+        unsafe { AggregateValueEnum::new(self.as_value_ref()) }
+    }
+}
+
+macro_rules! trait_value_set {
+    ($trait_name:ident: $($args:ident),*) => (
+        $(
+            unsafe impl<'ctx> $trait_name<'ctx> for $args<'ctx> {}
+        )*
+    );
+}
+
+trait_value_set! {AnyValue: AnyValueEnum, BasicValueEnum, BasicMetadataValueEnum, AggregateValueEnum, ArrayValue, IntValue, FloatValue, GlobalValue, PhiValue, PointerValue, FunctionValue, StructValue, VectorValue, InstructionValue, CallSiteValue, MetadataValue}
+trait_value_set! {BasicValue: ArrayValue, BasicValueEnum, AggregateValueEnum, IntValue, FloatValue, GlobalValue, StructValue, PointerValue, VectorValue}
+trait_value_set! {AggregateValue: ArrayValue, AggregateValueEnum, StructValue}
+
 pub unsafe trait IntMathValue<'ctx>: BasicValue<'ctx> {
     type BaseType: IntMathType<'ctx>;
     unsafe fn new(value: LLVMValueRef) -> Self;
@@ -2343,17 +2356,6 @@ pub unsafe trait PointerMathValue<'ctx>: BasicValue<'ctx> {
     type BaseType: PointerMathType<'ctx>;
     unsafe fn new(value: LLVMValueRef) -> Self;
 }
-pub unsafe trait AnyValue<'ctx>: AsValueRef + Debug {
-    fn as_any_value_enum(&self) -> AnyValueEnum<'ctx> {
-        unsafe { AnyValueEnum::new(self.as_value_ref()) }
-    }
-    fn print_to_string(&self) -> LLVMString {
-        unsafe { Value::new(self.as_value_ref()).print_to_string() }
-    }
-}
-trait_value_set! {AggregateValue: ArrayValue, AggregateValueEnum, StructValue}
-trait_value_set! {AnyValue: AnyValueEnum, BasicValueEnum, BasicMetadataValueEnum, AggregateValueEnum, ArrayValue, IntValue, FloatValue, GlobalValue, PhiValue, PointerValue, FunctionValue, StructValue, VectorValue, InstructionValue, CallSiteValue, MetadataValue}
-trait_value_set! {BasicValue: ArrayValue, BasicValueEnum, AggregateValueEnum, IntValue, FloatValue, GlobalValue, StructValue, PointerValue, VectorValue}
 
 macro_rules! math_trait_value_set {
     ($trait_name:ident: $(($value_type:ident => $base_type:ident)),*) => (
@@ -2379,7 +2381,7 @@ pub struct VectorValue<'ctx> {
     vec_value: Value<'ctx>,
 }
 impl<'ctx> VectorValue<'ctx> {
-    pub(crate) unsafe fn new(vector_value: LLVMValueRef) -> Self {
+    pub unsafe fn new(vector_value: LLVMValueRef) -> Self {
         assert!(!vector_value.is_null());
         VectorValue {
             vec_value: Value::new(vector_value),
@@ -2452,13 +2454,13 @@ impl<'ctx> VectorValue<'ctx> {
         }
     }
 }
-unsafe impl AsValueRef for VectorValue<'_> {
-    fn as_value_ref(&self) -> LLVMValueRef {
-        self.vec_value.value
-    }
-}
 impl Display for VectorValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.print_to_string())
+    }
+}
+unsafe impl AsValueRef for VectorValue<'_> {
+    fn as_value_ref(&self) -> LLVMValueRef {
+        self.vec_value.value
     }
 }
