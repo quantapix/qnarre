@@ -1,11 +1,8 @@
-extern crate llvm_lib as llvm;
-
+use llvm_lib::core::*;
+use llvm_lib::execution_engine::*;
+use llvm_lib::target::*;
 use std::ffi::CStr;
 use std::mem;
-
-use llvm::core::*;
-use llvm::execution_engine::*;
-use llvm::target::*;
 
 fn main() {
     unsafe {

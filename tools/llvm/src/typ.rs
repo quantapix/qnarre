@@ -5,9 +5,9 @@ use llvm_lib::prelude::*;
 use llvm_lib::LLVMTypeKind;
 
 use crate::ctx::ContextRef;
-use crate::utils::LLVMString;
 use crate::val::*;
 use crate::AddressSpace;
+use crate::LLVMString;
 use static_alloc::Bump;
 use std::convert::TryFrom;
 use std::ffi::CStr;

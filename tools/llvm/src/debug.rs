@@ -1,9 +1,9 @@
-use crate::block::BasicBlock;
 use crate::ctx::{AsContextRef, Context};
 pub use crate::debug::flags::{DIFlags, DIFlagsConstants};
 use crate::module::Module;
 use crate::val::{AsValueRef, BasicValueEnum, InstructionValue, MetadataValue, PointerValue};
 use crate::AddressSpace;
+use crate::BasicBlock;
 use llvm_lib::core::LLVMMetadataAsValue;
 use llvm_lib::debuginfo::*;
 use llvm_lib::prelude::{LLVMDIBuilderRef, LLVMMetadataRef};

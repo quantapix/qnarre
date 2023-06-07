@@ -1,7 +1,7 @@
-use inkwell::context::Context;
-use inkwell::execution_engine::FunctionLookupError;
-use inkwell::targets::{InitializationConfig, Target};
-use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
+use crate::ctx::Context;
+use crate::target::{InitializationConfig, Target};
+use crate::FunctionLookupError;
+use crate::{AddressSpace, IntPredicate, OptimizationLevel};
 
 type Thunk = unsafe extern "C" fn();
 

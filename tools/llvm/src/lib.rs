@@ -1,34 +1,50 @@
-pub mod block;
 pub mod builder;
 pub mod ctx;
 pub mod debug;
-pub mod execution_engine;
 pub mod llvm_lib;
 pub mod mlir;
 pub mod module;
 pub mod pass;
 pub mod target;
 pub mod typ;
-pub mod utils;
 pub mod val;
 
+use crate::ctx::Context;
+use crate::ctx::ContextRef;
+use crate::module::Module;
+use crate::module::Module;
+use crate::target::TargetData;
+use crate::typ::*;
+use crate::val::*;
+use crate::val::*;
+use crate::{to_c_str, LLVMString};
+use libc::c_int;
+use libc::{c_char, c_void};
 use llvm_lib::comdata::*;
 use llvm_lib::core::*;
+use llvm_lib::error_handling::*;
+use llvm_lib::execution_engine::*;
 use llvm_lib::object::*;
 use llvm_lib::prelude::*;
+use llvm_lib::support::LLVMLoadLibraryPermanently;
 use llvm_lib::*;
+use std::borrow::Cow;
 use std::convert::TryFrom;
-use std::ffi::CStr;
-use std::fmt;
+use std::error::Error;
+use std::error::Error;
+use std::ffi::{CStr, CString};
+use std::fmt::{self, Debug, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
+use std::marker::PhantomData;
+use std::marker::PhantomData;
+use std::mem::{forget, size_of, transmute_copy, MaybeUninit};
 use std::mem::{forget, MaybeUninit};
+use std::ops::Deref;
+use std::ops::Deref;
 use std::path::Path;
 use std::ptr;
+use std::rc::Rc;
 use std::slice;
-
-use crate::module::Module;
-use crate::typ::{AnyTypeEnum, AsTypeRef, BasicTypeEnum};
-use crate::utils::{to_c_str, LLVMString, LLVMString, LLVMStringOrRaw};
-use crate::val::FunctionValue;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Attribute {
@@ -128,6 +144,141 @@ impl TryFrom<u32> for AddressSpace {
         } else {
             Err(())
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+pub struct BasicBlock<'ctx> {
+    pub(crate) basic_block: LLVMBasicBlockRef,
+    _marker: PhantomData<&'ctx ()>,
+}
+impl<'ctx> BasicBlock<'ctx> {
+    pub(crate) unsafe fn new(basic_block: LLVMBasicBlockRef) -> Option<Self> {
+        if basic_block.is_null() {
+            return None;
+        }
+        assert!(!LLVMIsABasicBlock(basic_block as LLVMValueRef).is_null());
+        Some(BasicBlock {
+            basic_block,
+            _marker: PhantomData,
+        })
+    }
+    pub fn as_mut_ptr(&self) -> LLVMBasicBlockRef {
+        self.basic_block
+    }
+    pub fn get_parent(self) -> Option<FunctionValue<'ctx>> {
+        unsafe { FunctionValue::new(LLVMGetBasicBlockParent(self.basic_block)) }
+    }
+    pub fn get_previous_basic_block(self) -> Option<BasicBlock<'ctx>> {
+        self.get_parent()?;
+        unsafe { BasicBlock::new(LLVMGetPreviousBasicBlock(self.basic_block)) }
+    }
+    pub fn get_next_basic_block(self) -> Option<BasicBlock<'ctx>> {
+        self.get_parent()?;
+        unsafe { BasicBlock::new(LLVMGetNextBasicBlock(self.basic_block)) }
+    }
+    pub fn move_before(self, basic_block: BasicBlock<'ctx>) -> Result<(), ()> {
+        if self.get_parent().is_none() || basic_block.get_parent().is_none() {
+            return Err(());
+        }
+        unsafe { LLVMMoveBasicBlockBefore(self.basic_block, basic_block.basic_block) }
+        Ok(())
+    }
+    pub fn move_after(self, basic_block: BasicBlock<'ctx>) -> Result<(), ()> {
+        if self.get_parent().is_none() || basic_block.get_parent().is_none() {
+            return Err(());
+        }
+        unsafe { LLVMMoveBasicBlockAfter(self.basic_block, basic_block.basic_block) }
+        Ok(())
+    }
+    pub fn get_first_instruction(self) -> Option<InstructionValue<'ctx>> {
+        let value = unsafe { LLVMGetFirstInstruction(self.basic_block) };
+        if value.is_null() {
+            return None;
+        }
+        unsafe { Some(InstructionValue::new(value)) }
+    }
+    pub fn get_last_instruction(self) -> Option<InstructionValue<'ctx>> {
+        let value = unsafe { LLVMGetLastInstruction(self.basic_block) };
+        if value.is_null() {
+            return None;
+        }
+        unsafe { Some(InstructionValue::new(value)) }
+    }
+    pub fn get_instruction_with_name(self, name: &str) -> Option<InstructionValue<'ctx>> {
+        let instruction = self.get_first_instruction()?;
+        instruction.get_instruction_with_name(name)
+    }
+    pub fn get_terminator(self) -> Option<InstructionValue<'ctx>> {
+        let value = unsafe { LLVMGetBasicBlockTerminator(self.basic_block) };
+        if value.is_null() {
+            return None;
+        }
+        unsafe { Some(InstructionValue::new(value)) }
+    }
+    pub fn remove_from_function(self) -> Result<(), ()> {
+        if self.get_parent().is_none() {
+            return Err(());
+        }
+        unsafe { LLVMRemoveBasicBlockFromParent(self.basic_block) }
+        Ok(())
+    }
+    pub unsafe fn delete(self) -> Result<(), ()> {
+        if self.get_parent().is_none() {
+            return Err(());
+        }
+        LLVMDeleteBasicBlock(self.basic_block);
+        Ok(())
+    }
+    pub fn get_context(self) -> ContextRef<'ctx> {
+        unsafe { ContextRef::new(LLVMGetTypeContext(LLVMTypeOf(LLVMBasicBlockAsValue(self.basic_block)))) }
+    }
+    pub fn get_name(&self) -> &CStr {
+        let ptr = unsafe { LLVMGetBasicBlockName(self.basic_block) };
+        unsafe { CStr::from_ptr(ptr) }
+    }
+    pub fn set_name(&self, name: &str) {
+        let c_string = to_c_str(name);
+        use llvm_lib::core::LLVMSetValueName2;
+        unsafe { LLVMSetValueName2(LLVMBasicBlockAsValue(self.basic_block), c_string.as_ptr(), name.len()) };
+    }
+    pub fn replace_all_uses_with(self, other: &BasicBlock<'ctx>) {
+        let value = unsafe { LLVMBasicBlockAsValue(self.basic_block) };
+        let other = unsafe { LLVMBasicBlockAsValue(other.basic_block) };
+        if value != other {
+            unsafe {
+                LLVMReplaceAllUsesWith(value, other);
+            }
+        }
+    }
+    pub fn get_first_use(self) -> Option<BasicValueUse<'ctx>> {
+        let use_ = unsafe { LLVMGetFirstUse(LLVMBasicBlockAsValue(self.basic_block)) };
+        if use_.is_null() {
+            return None;
+        }
+        unsafe { Some(BasicValueUse::new(use_)) }
+    }
+    pub unsafe fn get_address(self) -> Option<PointerValue<'ctx>> {
+        let parent = self.get_parent()?;
+        self.get_previous_basic_block()?;
+        let value = PointerValue::new(LLVMBlockAddress(parent.as_value_ref(), self.basic_block));
+        if value.is_null() {
+            return None;
+        }
+        Some(value)
+    }
+}
+impl fmt::Debug for BasicBlock<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let llvm_value = unsafe { CStr::from_ptr(LLVMPrintValueToString(self.basic_block as LLVMValueRef)) };
+        let llvm_type = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.basic_block as LLVMValueRef))) };
+        let is_const = unsafe { LLVMIsConstant(self.basic_block as LLVMValueRef) == 1 };
+        f.debug_struct("BasicBlock")
+            .field("address", &self.basic_block)
+            .field("is_const", &is_const)
+            .field("llvm_value", &llvm_value)
+            .field("llvm_type", &llvm_type)
+            .finish()
     }
 }
 
@@ -790,3 +941,442 @@ impl Comdat {
         unsafe { LLVMSetComdatSelectionKind(self.0, kind.into()) }
     }
 }
+
+pub struct DiagnosticInfo {
+    diagnostic_info: LLVMDiagnosticInfoRef,
+}
+impl DiagnosticInfo {
+    pub unsafe fn new(diagnostic_info: LLVMDiagnosticInfoRef) -> Self {
+        DiagnosticInfo { diagnostic_info }
+    }
+    pub fn get_description(&self) -> *mut ::libc::c_char {
+        unsafe { LLVMGetDiagInfoDescription(self.diagnostic_info) }
+    }
+    pub fn severity_is_error(&self) -> bool {
+        unsafe {
+            match LLVMGetDiagInfoSeverity(self.diagnostic_info) {
+                LLVMDiagnosticSeverity::LLVMDSError => true,
+                _ => false,
+            }
+        }
+    }
+}
+
+#[derive(Eq)]
+pub struct LLVMString {
+    pub ptr: *const c_char,
+}
+impl LLVMString {
+    pub unsafe fn new(ptr: *const c_char) -> Self {
+        LLVMString { ptr }
+    }
+    pub fn to_string(&self) -> String {
+        (*self).to_string_lossy().into_owned()
+    }
+    pub fn create_from_c_str(string: &CStr) -> LLVMString {
+        unsafe { LLVMString::new(LLVMCreateMessage(string.as_ptr() as *const _)) }
+    }
+    pub fn create_from_str(string: &str) -> LLVMString {
+        debug_assert_eq!(string.as_bytes()[string.as_bytes().len() - 1], 0);
+
+        unsafe { LLVMString::new(LLVMCreateMessage(string.as_ptr() as *const _)) }
+    }
+}
+impl Deref for LLVMString {
+    type Target = CStr;
+    fn deref(&self) -> &Self::Target {
+        unsafe { CStr::from_ptr(self.ptr) }
+    }
+}
+impl Debug for LLVMString {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", self.deref())
+    }
+}
+impl Display for LLVMString {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", self.deref())
+    }
+}
+impl PartialEq for LLVMString {
+    fn eq(&self, other: &LLVMString) -> bool {
+        **self == **other
+    }
+}
+impl Error for LLVMString {
+    fn description(&self) -> &str {
+        self.to_str()
+            .expect("Could not convert LLVMString to str (likely invalid unicode)")
+    }
+    fn cause(&self) -> Option<&dyn Error> {
+        None
+    }
+}
+impl Drop for LLVMString {
+    fn drop(&mut self) {
+        unsafe {
+            LLVMDisposeMessage(self.ptr as *mut _);
+        }
+    }
+}
+
+#[derive(Eq)]
+pub enum LLVMStringOrRaw {
+    Owned(LLVMString),
+    Borrowed(*const c_char),
+}
+impl LLVMStringOrRaw {
+    pub fn as_str(&self) -> &CStr {
+        match self {
+            LLVMStringOrRaw::Owned(llvm_string) => llvm_string.deref(),
+            LLVMStringOrRaw::Borrowed(ptr) => unsafe { CStr::from_ptr(*ptr) },
+        }
+    }
+}
+impl PartialEq for LLVMStringOrRaw {
+    fn eq(&self, other: &LLVMStringOrRaw) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+pub unsafe fn shutdown_llvm() {
+    use llvm_lib::core::LLVMShutdown;
+    LLVMShutdown()
+}
+
+pub fn get_llvm_version() -> (u32, u32, u32) {
+    let mut major: u32 = 0;
+    let mut minor: u32 = 0;
+    let mut patch: u32 = 0;
+    unsafe { LLVMGetVersion(&mut major, &mut minor, &mut patch) };
+    return (major, minor, patch);
+}
+
+pub fn load_library_permanently(filename: &str) -> bool {
+    let filename = to_c_str(filename);
+    unsafe { LLVMLoadLibraryPermanently(filename.as_ptr()) == 1 }
+}
+
+pub fn is_multithreaded() -> bool {
+    use llvm_lib::core::LLVMIsMultithreaded;
+    unsafe { LLVMIsMultithreaded() == 1 }
+}
+
+pub fn enable_llvm_pretty_stack_trace() {
+    unsafe { LLVMEnablePrettyStackTrace() }
+}
+
+pub fn to_c_str<'s>(mut s: &'s str) -> Cow<'s, CStr> {
+    if s.is_empty() {
+        s = "\0";
+    }
+    if !s.chars().rev().any(|ch| ch == '\0') {
+        return Cow::from(CString::new(s).expect("unreachable since null bytes are checked"));
+    }
+    unsafe { Cow::from(CStr::from_ptr(s.as_ptr() as *const _)) }
+}
+
+pub extern "C" fn get_error_str_diagnostic_handler(x: LLVMDiagnosticInfoRef, void_ptr: *mut c_void) {
+    let y = unsafe { DiagnosticInfo::new(x) };
+    if y.severity_is_error() {
+        let ptr = void_ptr as *mut *mut c_void as *mut *mut ::libc::c_char;
+        unsafe {
+            *ptr = y.get_description();
+        }
+    }
+}
+
+pub unsafe fn install_fatal_error_handler(x: extern "C" fn(*const ::libc::c_char)) {
+    LLVMInstallFatalErrorHandler(Some(x))
+}
+pub fn reset_fatal_error_handler() {
+    unsafe { LLVMResetFatalErrorHandler() }
+}
+
+#[test]
+fn test_to_c_str() {
+    assert!(matches!(to_c_str("my string"), Cow::Owned(_)));
+    assert!(matches!(to_c_str("my string\0"), Cow::Borrowed(_)));
+}
+
+static EE_INNER_PANIC: &str = "ExecutionEngineInner should exist until Drop";
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum FunctionLookupError {
+    JITNotEnabled,
+    FunctionNotFound, // 404!
+}
+impl Error for FunctionLookupError {}
+impl FunctionLookupError {
+    fn as_str(&self) -> &str {
+        match self {
+            FunctionLookupError::JITNotEnabled => "ExecutionEngine does not have JIT functionality enabled",
+            FunctionLookupError::FunctionNotFound => "Function not found in ExecutionEngine",
+        }
+    }
+}
+impl Display for FunctionLookupError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "FunctionLookupError({})", self.as_str())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum RemoveModuleError {
+    ModuleNotOwned,
+    IncorrectModuleOwner,
+    LLVMError(LLVMString),
+}
+impl Error for RemoveModuleError {
+    fn description(&self) -> &str {
+        self.as_str()
+    }
+    fn cause(&self) -> Option<&dyn Error> {
+        None
+    }
+}
+impl RemoveModuleError {
+    fn as_str(&self) -> &str {
+        match self {
+            RemoveModuleError::ModuleNotOwned => "Module is not owned by an Execution Engine",
+            RemoveModuleError::IncorrectModuleOwner => "Module is not owned by this Execution Engine",
+            RemoveModuleError::LLVMError(string) => string.to_str().unwrap_or("LLVMError with invalid unicode"),
+        }
+    }
+}
+impl Display for RemoveModuleError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "RemoveModuleError({})", self.as_str())
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct ExecutionEngine<'ctx> {
+    execution_engine: Option<ExecEngineInner<'ctx>>,
+    target_data: Option<TargetData>,
+    jit_mode: bool,
+}
+impl<'ctx> ExecutionEngine<'ctx> {
+    pub unsafe fn new(execution_engine: Rc<LLVMExecutionEngineRef>, jit_mode: bool) -> Self {
+        assert!(!execution_engine.is_null());
+        let target_data = LLVMGetExecutionEngineTargetData(*execution_engine);
+        ExecutionEngine {
+            execution_engine: Some(ExecEngineInner(execution_engine, PhantomData)),
+            target_data: Some(TargetData::new(target_data)),
+            jit_mode,
+        }
+    }
+    pub fn as_mut_ptr(&self) -> LLVMExecutionEngineRef {
+        self.execution_engine_inner()
+    }
+    pub(crate) fn execution_engine_rc(&self) -> &Rc<LLVMExecutionEngineRef> {
+        &self.execution_engine.as_ref().expect(EE_INNER_PANIC).0
+    }
+    #[inline]
+    pub(crate) fn execution_engine_inner(&self) -> LLVMExecutionEngineRef {
+        **self.execution_engine_rc()
+    }
+    pub fn link_in_mc_jit() {
+        unsafe { LLVMLinkInMCJIT() }
+    }
+    pub fn link_in_interpreter() {
+        unsafe {
+            LLVMLinkInInterpreter();
+        }
+    }
+    pub fn add_global_mapping(&self, value: &dyn AnyValue<'ctx>, addr: usize) {
+        unsafe { LLVMAddGlobalMapping(self.execution_engine_inner(), value.as_value_ref(), addr as *mut _) }
+    }
+    pub fn add_module(&self, module: &Module<'ctx>) -> Result<(), ()> {
+        unsafe { LLVMAddModule(self.execution_engine_inner(), module.module.get()) }
+        if module.owned_by_ee.borrow().is_some() {
+            return Err(());
+        }
+        *module.owned_by_ee.borrow_mut() = Some(self.clone());
+        Ok(())
+    }
+    pub fn remove_module(&self, module: &Module<'ctx>) -> Result<(), RemoveModuleError> {
+        match *module.owned_by_ee.borrow() {
+            Some(ref ee) if ee.execution_engine_inner() != self.execution_engine_inner() => {
+                return Err(RemoveModuleError::IncorrectModuleOwner)
+            },
+            None => return Err(RemoveModuleError::ModuleNotOwned),
+            _ => (),
+        }
+        let mut new_module = MaybeUninit::uninit();
+        let mut err_string = MaybeUninit::uninit();
+        let code = unsafe {
+            LLVMRemoveModule(
+                self.execution_engine_inner(),
+                module.module.get(),
+                new_module.as_mut_ptr(),
+                err_string.as_mut_ptr(),
+            )
+        };
+        if code == 1 {
+            unsafe {
+                return Err(RemoveModuleError::LLVMError(LLVMString::new(err_string.assume_init())));
+            }
+        }
+        let new_module = unsafe { new_module.assume_init() };
+        module.module.set(new_module);
+        *module.owned_by_ee.borrow_mut() = None;
+        Ok(())
+    }
+    pub unsafe fn get_function<F>(&self, fn_name: &str) -> Result<JitFunction<'ctx, F>, FunctionLookupError>
+    where
+        F: UnsafeFunctionPointer,
+    {
+        if !self.jit_mode {
+            return Err(FunctionLookupError::JITNotEnabled);
+        }
+        let address = self.get_function_address(fn_name)?;
+        assert_eq!(
+            size_of::<F>(),
+            size_of::<usize>(),
+            "The type `F` must have the same size as a function pointer"
+        );
+        let execution_engine = self.execution_engine.as_ref().expect(EE_INNER_PANIC);
+        Ok(JitFunction {
+            _execution_engine: execution_engine.clone(),
+            inner: transmute_copy(&address),
+        })
+    }
+    pub fn get_function_address(&self, fn_name: &str) -> Result<usize, FunctionLookupError> {
+        let c_string = to_c_str(fn_name);
+        let address = unsafe { LLVMGetFunctionAddress(self.execution_engine_inner(), c_string.as_ptr()) };
+        if address == 0 {
+            return Err(FunctionLookupError::FunctionNotFound);
+        }
+        Ok(address as usize)
+    }
+    pub fn get_target_data(&self) -> &TargetData {
+        self.target_data
+            .as_ref()
+            .expect("TargetData should always exist until Drop")
+    }
+    pub fn get_function_value(&self, fn_name: &str) -> Result<FunctionValue<'ctx>, FunctionLookupError> {
+        if !self.jit_mode {
+            return Err(FunctionLookupError::JITNotEnabled);
+        }
+        let c_string = to_c_str(fn_name);
+        let mut function = MaybeUninit::uninit();
+        let code = unsafe { LLVMFindFunction(self.execution_engine_inner(), c_string.as_ptr(), function.as_mut_ptr()) };
+        if code == 0 {
+            return unsafe { FunctionValue::new(function.assume_init()).ok_or(FunctionLookupError::FunctionNotFound) };
+        };
+        Err(FunctionLookupError::FunctionNotFound)
+    }
+    pub unsafe fn run_function(
+        &self,
+        function: FunctionValue<'ctx>,
+        args: &[&GenericValue<'ctx>],
+    ) -> GenericValue<'ctx> {
+        let mut args: Vec<LLVMGenericValueRef> = args.iter().map(|val| val.generic_value).collect();
+        let value = LLVMRunFunction(
+            self.execution_engine_inner(),
+            function.as_value_ref(),
+            args.len() as u32,
+            args.as_mut_ptr(),
+        ); // REVIEW: usize to u32 ok??
+        GenericValue::new(value)
+    }
+    pub unsafe fn run_function_as_main(&self, function: FunctionValue<'ctx>, args: &[&str]) -> c_int {
+        let cstring_args: Vec<_> = args.iter().map(|&arg| to_c_str(arg)).collect();
+        let raw_args: Vec<*const _> = cstring_args.iter().map(|arg| arg.as_ptr()).collect();
+        let environment_variables = vec![]; // TODO: Support envp. Likely needs to be null terminated
+        LLVMRunFunctionAsMain(
+            self.execution_engine_inner(),
+            function.as_value_ref(),
+            raw_args.len() as u32,
+            raw_args.as_ptr(),
+            environment_variables.as_ptr(),
+        ) // REVIEW: usize to u32 cast ok??
+    }
+    pub fn free_fn_machine_code(&self, function: FunctionValue<'ctx>) {
+        unsafe { LLVMFreeMachineCodeForFunction(self.execution_engine_inner(), function.as_value_ref()) }
+    }
+    pub fn run_static_constructors(&self) {
+        unsafe { LLVMRunStaticConstructors(self.execution_engine_inner()) }
+    }
+    pub fn run_static_destructors(&self) {
+        unsafe { LLVMRunStaticDestructors(self.execution_engine_inner()) }
+    }
+}
+impl Drop for ExecutionEngine<'_> {
+    fn drop(&mut self) {
+        forget(
+            self.target_data
+                .take()
+                .expect("TargetData should always exist until Drop"),
+        );
+        drop(self.execution_engine.take().expect(EE_INNER_PANIC));
+    }
+}
+impl Clone for ExecutionEngine<'_> {
+    fn clone(&self) -> Self {
+        let execution_engine_rc = self.execution_engine_rc().clone();
+        unsafe { ExecutionEngine::new(execution_engine_rc, self.jit_mode) }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExecEngineInner<'ctx>(Rc<LLVMExecutionEngineRef>, PhantomData<&'ctx Context>);
+impl Drop for ExecEngineInner<'_> {
+    fn drop(&mut self) {
+        if Rc::strong_count(&self.0) == 1 {
+            unsafe {
+                LLVMDisposeExecutionEngine(*self.0);
+            }
+        }
+    }
+}
+impl Deref for ExecEngineInner<'_> {
+    type Target = LLVMExecutionEngineRef;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct JitFunction<'ctx, F> {
+    _execution_engine: ExecEngineInner<'ctx>,
+    inner: F,
+}
+impl<'ctx, F: Copy> JitFunction<'ctx, F> {
+    pub unsafe fn into_raw(self) -> F {
+        self.inner
+    }
+    pub unsafe fn as_raw(&self) -> F {
+        self.inner
+    }
+}
+impl<F> Debug for JitFunction<'_, F> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_tuple("JitFunction").field(&"<unnamed>").finish()
+    }
+}
+
+pub trait UnsafeFunctionPointer: private::SealedUnsafeFunctionPointer {}
+mod private {
+    pub trait SealedUnsafeFunctionPointer: Copy {}
+}
+impl<F: private::SealedUnsafeFunctionPointer> UnsafeFunctionPointer for F {}
+macro_rules! impl_unsafe_fn {
+    (@recurse $first:ident $( , $rest:ident )*) => {
+        impl_unsafe_fn!($( $rest ),*);
+    };
+    (@recurse) => {};
+    ($( $param:ident ),*) => {
+        impl<Output, $( $param ),*> private::SealedUnsafeFunctionPointer for unsafe extern "C" fn($( $param ),*) -> Output {}
+        impl<Output, $( $param ),*> JitFunction<'_, unsafe extern "C" fn($( $param ),*) -> Output> {
+            #[allow(non_snake_case)]
+            #[inline(always)]
+            pub unsafe fn call(&self, $( $param: $param ),*) -> Output {
+                (self.inner)($( $param ),*)
+            }
+        }
+        impl_unsafe_fn!(@recurse $( $param ),*);
+    };
+}
+impl_unsafe_fn!(A, B, C, D, E, F, G, H, I, J, K, L, M);

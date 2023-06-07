@@ -1,9 +1,9 @@
-use crate::block::BasicBlock;
 use crate::ctx::Context;
 use crate::debug::DILocation;
+use crate::to_c_str;
 use crate::typ::*;
-use crate::utils::to_c_str;
 use crate::val::*;
+use crate::BasicBlock;
 use crate::{AtomicOrdering, AtomicRMWBinOp, FloatPredicate, IntPredicate};
 use llvm_lib::core::*;
 use llvm_lib::prelude::{LLVMBuilderRef, LLVMValueRef};

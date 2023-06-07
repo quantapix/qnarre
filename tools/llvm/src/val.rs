@@ -1,21 +1,15 @@
 use super::AnyValue;
 use super::{BasicMetadataValueEnum, MetadataValue};
-use crate::attr::{Attribute, AttributeLoc};
-use crate::comdat::Comdat;
 use crate::debug::DISubprogram;
 use crate::module::Linkage;
-use crate::typ::ArrayType;
-use crate::typ::FunctionType;
-use crate::typ::StructType;
-use crate::typ::VectorType;
-use crate::typ::{AnyTypeEnum, BasicTypeEnum};
-use crate::typ::{AsTypeRef, BasicType, FloatType, IntType, PointerType};
-use crate::typ::{FloatMathType, FloatType, IntMathType, IntType, PointerMathType, PointerType, VectorType};
-use crate::utils::{to_c_str, LLVMString};
+use crate::typ::*;
+use crate::BasicBlock;
+use crate::Comdat;
 use crate::FloatPredicate;
 use crate::IntPredicate;
-use crate::{block::BasicBlock, typ::AnyTypeEnum};
+use crate::{to_c_str, LLVMString};
 use crate::{AtomicOrdering, FloatPredicate, IntPredicate};
+use crate::{Attribute, AttributeLoc};
 use crate::{DLLStorageClass, GlobalVisibility, ThreadLocalMode};
 use either::{
     Either,

@@ -1,19 +1,16 @@
-use crate::comdat::Comdat;
 use crate::ctx::{AsContextRef, Context, ContextRef};
-use crate::data_layout::DataLayout;
 use crate::debug::{DICompileUnit, DWARFEmissionKind, DWARFSourceLanguage, DebugInfoBuilder};
-use crate::execution_engine::ExecutionEngine;
-use crate::memory_buffer::MemoryBuffer;
 use crate::pass::PassBuilderOptions;
-use crate::target::TargetMachine;
-use crate::target::{InitializationConfig, Target, TargetTriple};
-use crate::typ::{AsTypeRef, BasicType, FunctionType, StructType};
-use crate::utils::{to_c_str, LLVMString};
-use crate::val::BasicValue;
-use crate::val::{AsValueRef, FunctionValue, GlobalValue, MetadataValue};
+use crate::target::*;
+use crate::typ::*;
+use crate::val::*;
+use crate::Comdat;
+use crate::DataLayout;
+use crate::ExecutionEngine;
+use crate::MemoryBuffer;
+use crate::{to_c_str, LLVMString};
 use crate::{AddressSpace, OptimizationLevel};
 use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyModule};
-#[allow(deprecated)]
 use llvm_lib::bit_reader::LLVMParseBitcodeInContext;
 use llvm_lib::bit_writer::{LLVMWriteBitcodeToFile, LLVMWriteBitcodeToMemoryBuffer};
 use llvm_lib::core::*;
@@ -436,7 +433,6 @@ impl<'ctx> Module<'ctx> {
             let string = "Cannot link a module which is already owned by an ExecutionEngine.\0";
             return Err(LLVMString::create_from_str(string));
         }
-        use crate::utils::error_handling::get_error_str_diagnostic_handler;
         use libc::c_void;
         use llvm_lib::linker::LLVMLinkModules2;
         let context = self.get_context();

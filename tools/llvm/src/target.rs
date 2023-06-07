@@ -1,11 +1,11 @@
 use crate::ctx::AsContextRef;
-use crate::data_layout::DataLayout;
-use crate::memory_buffer::MemoryBuffer;
 use crate::module::Module;
 use crate::pass::PassManager;
-use crate::typ::{AnyType, AsTypeRef, IntType, StructType};
-use crate::utils::{to_c_str, LLVMString};
-use crate::val::{AsValueRef, GlobalValue};
+use crate::typ::*;
+use crate::val::*;
+use crate::DataLayout;
+use crate::MemoryBuffer;
+use crate::{to_c_str, LLVMString};
 use crate::{AddressSpace, OptimizationLevel};
 use llvm_lib::target::*;
 use llvm_lib::target_machine::*;

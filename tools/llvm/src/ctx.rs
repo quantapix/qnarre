@@ -1,14 +1,14 @@
-use crate::attr::Attribute;
-use crate::block::BasicBlock;
 use crate::builder::Builder;
 use crate::module::Module;
 use crate::target::TargetData;
 use crate::typ::*;
-use crate::utils::{to_c_str, LLVMString};
 use crate::val::*;
 use crate::AddressSpace;
+use crate::Attribute;
+use crate::BasicBlock;
 use crate::InlineAsmDialect;
 use crate::MemoryBuffer;
+use crate::{to_c_str, LLVMString};
 use libc::c_void;
 use llvm_lib::core::*;
 use llvm_lib::ir_reader::LLVMParseIRInContext;
