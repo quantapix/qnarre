@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 impl B {
     /// Document field with three slashes
@@ -59,6 +54,5 @@ impl ::std::ops::BitAndAssign for B {
     }
 }
 #[repr(transparent)]
-/// Document enum
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct B(pub ::std::os::raw::c_uint);

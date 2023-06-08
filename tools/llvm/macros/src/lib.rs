@@ -12,7 +12,7 @@ use syn::{
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
     spanned::Spanned,
-    Attribute, Field, Item, LitFloat, Token, Variant,
+    Attribute, Field, LitFloat, Token, Variant,
 };
 
 struct IdentList {

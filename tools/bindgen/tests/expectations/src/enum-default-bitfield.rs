@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -43,8 +38,7 @@ impl ::std::ops::BitAndAssign for foo__bindgen_ty_1 {
 pub struct foo__bindgen_ty_1(pub ::std::os::raw::c_uint);
 #[test]
 fn bindgen_test_layout_foo() {
-    const UNINIT: ::std::mem::MaybeUninit<foo> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<foo> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<foo>(),
@@ -59,12 +53,7 @@ fn bindgen_test_layout_foo() {
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).member) as usize - ptr as usize },
         0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(foo),
-            "::",
-            stringify!(member)
-        )
+        concat!("Offset of field: ", stringify!(foo), "::", stringify!(member))
     );
 }
 impl Default for foo {
@@ -149,7 +138,6 @@ impl ::std::ops::BitAndAssign for NoDebug {
     }
 }
 #[repr(transparent)]
-/// <div rustbindgen nodebug></div>
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct NoDebug(pub ::std::os::raw::c_uint);
 impl Debug {
@@ -185,6 +173,5 @@ impl ::std::ops::BitAndAssign for Debug {
     }
 }
 #[repr(transparent)]
-/// <div rustbindgen derive="Debug"></div>
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Debug(pub ::std::os::raw::c_uint);

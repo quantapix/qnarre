@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone, Hash, PartialEq)]
@@ -12,8 +7,7 @@ pub struct Doggo {
 }
 #[test]
 fn bindgen_test_layout_Doggo() {
-    const UNINIT: ::std::mem::MaybeUninit<Doggo> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<Doggo> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<Doggo>(),
@@ -49,12 +43,6 @@ fn bindgen_test_layout_Null() {
         concat!("Alignment of ", stringify!(Null))
     );
 }
-/// This type is an opaque union. Unions can't derive anything interesting like
-/// Debug or Default, even if their layout can, because it would require knowing
-/// which variant is in use. Opaque unions still end up as a `union` in the Rust
-/// bindings, but they just have one variant. Even so, can't derive. We should
-/// probably emit an opaque struct for opaque unions... but until then, we have
-/// this test to make sure that opaque unions don't derive and still compile.
 #[repr(C)]
 #[repr(align(4))]
 #[derive(Copy, Clone)]

@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -20,8 +15,7 @@ pub enum foo__bindgen_ty_1 {
 }
 #[test]
 fn bindgen_test_layout_foo() {
-    const UNINIT: ::std::mem::MaybeUninit<foo> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<foo> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<foo>(),
@@ -36,12 +30,7 @@ fn bindgen_test_layout_foo() {
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).member) as usize - ptr as usize },
         0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(foo),
-            "::",
-            stringify!(member)
-        )
+        concat!("Offset of field: ", stringify!(foo), "::", stringify!(member))
     );
 }
 impl Default for foo {
@@ -65,14 +54,12 @@ pub mod Neg {
     pub const One: Type = 1;
 }
 #[repr(u32)]
-/// <div rustbindgen nodebug></div>
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub enum NoDebug {
     NoDebug1 = 0,
     NoDebug2 = 1,
 }
 #[repr(u32)]
-/// <div rustbindgen derive="Debug"></div>
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum Debug {
     Debug1 = 0,

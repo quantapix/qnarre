@@ -10,76 +10,66 @@
 // well.
 
 namespace whatever {
-    template <typename, typename>
-    class Wrapper {
-        // Declaration of Wrapper::sentry
-        class sentry;
-    };
-
-    // Definition of Wrapper::sentry
-    template <typename f, typename h>
-    class Wrapper<f, h>::sentry {
-        int i_am_wrapper_sentry;
-    };
-
-    class sentry {
-        bool i_am_plain_sentry;
-    };
-
-    // Ok, that was the original bug report. While we're here, let's just try
-    // lots of different things that could go wrong and make sure we handle them
-    // right.
-
-    class NotTemplateWrapper {
-        class sentry;
-    };
-
-    class NotTemplateWrapper::sentry {
-        char i_am_not_template_wrapper_sentry;
-    };
-
-    class InlineNotTemplateWrapper {
-        class sentry {
-            bool i_am_inline_not_template_wrapper_sentry;
-        };
-    };
-
-    template <typename, typename>
-    class InlineTemplateWrapper {
-        class sentry {
-            int i_am_inline_template_wrapper_sentry;
-        };
-    };
-
-    class OuterDoubleWrapper {
-        class InnerDoubleWrapper {
-            class sentry;
-        };
-    };
-
-    class OuterDoubleWrapper::InnerDoubleWrapper::sentry {
-        int i_am_double_wrapper_sentry;
-    };
-
-    class OuterDoubleInlineWrapper {
-        class InnerDoubleInlineWrapper {
-            class sentry {
-                int i_am_double_wrapper_inline_sentry;
-            };
-        };
-    };
-}
-
-template <typename, typename>
-class OutsideNamespaceWrapper {
-    class sentry;
+template <typename, typename> class Wrapper {
+  // Declaration of Wrapper::sentry
+  class sentry;
 };
 
-template <typename f, typename h>
-class OutsideNamespaceWrapper<f, h>::sentry {
-    int i_am_outside_namespace_wrapper_sentry;
+template <typename f, typename h> class Wrapper<f, h>::sentry {
+  int i_am_wrapper_sentry;
 };
 
 class sentry {
-    int i_am_outside_namespace_sentry;
+  bool i_am_plain_sentry;
+};
+
+class NotTemplateWrapper {
+  class sentry;
+};
+
+class NotTemplateWrapper::sentry {
+  char i_am_not_template_wrapper_sentry;
+};
+
+class InlineNotTemplateWrapper {
+  class sentry {
+    bool i_am_inline_not_template_wrapper_sentry;
+  };
+};
+
+template <typename, typename> class InlineTemplateWrapper {
+  class sentry {
+    int i_am_inline_template_wrapper_sentry;
+  };
+};
+
+class OuterDoubleWrapper {
+  class InnerDoubleWrapper {
+    class sentry;
+  };
+};
+
+class OuterDoubleWrapper::InnerDoubleWrapper::sentry {
+  int i_am_double_wrapper_sentry;
+};
+
+class OuterDoubleInlineWrapper {
+  class InnerDoubleInlineWrapper {
+    class sentry {
+      int i_am_double_wrapper_inline_sentry;
+    };
+  };
+};
+} // namespace whatever
+
+template <typename, typename> class OutsideNamespaceWrapper {
+  class sentry;
+};
+
+template <typename f, typename h> class OutsideNamespaceWrapper<f, h>::sentry {
+  int i_am_outside_namespace_wrapper_sentry;
+};
+
+class sentry {
+  int i_am_outside_namespace_sentry;
 };

@@ -5,5 +5,4 @@ class Rooted {
   MaybeWrapped<int> ptr;
 };
 
-/// <div rustbindgen replaces="MaybeWrapped"></div>
 template <typename a> using replaces_MaybeWrapped = a;

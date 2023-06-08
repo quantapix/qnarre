@@ -117,7 +117,7 @@ struct PostProcPass {
 }
 macro_rules! pass {
     ($pass:ident) => {
-        PostProcessingPass {
+        PostProcPass {
             should_run: |x| x.$pass,
             run: |x| $pass(x),
         }

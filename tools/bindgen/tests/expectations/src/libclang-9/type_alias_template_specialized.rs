@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -12,8 +7,7 @@ pub struct Rooted {
 }
 #[test]
 fn bindgen_test_layout_Rooted() {
-    const UNINIT: ::std::mem::MaybeUninit<Rooted> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<Rooted> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<Rooted>(),
@@ -28,12 +22,7 @@ fn bindgen_test_layout_Rooted() {
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).ptr) as usize - ptr as usize },
         0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(Rooted),
-            "::",
-            stringify!(ptr)
-        )
+        concat!("Offset of field: ", stringify!(Rooted), "::", stringify!(ptr))
     );
 }
 impl Default for Rooted {
@@ -45,7 +34,6 @@ impl Default for Rooted {
         }
     }
 }
-/// <div rustbindgen replaces="MaybeWrapped"></div>
 pub type MaybeWrapped<a> = a;
 #[test]
 fn __bindgen_test_layout_MaybeWrapped_open0_int_close0_instantiation() {

@@ -1,16 +1,15 @@
 // bindgen-flags: --enable-cxx-namespaces
 
 namespace foo {
-  struct Bar {
-    int baz;
-  };
-}
+struct Bar {
+  int baz;
+};
+} // namespace foo
 
 namespace bar {
-  /// <div rustbindgen replaces="foo::Bar"></div>
-  struct Bar_Replacement {
-    int bazz;
-  };
+struct Bar_Replacement {
+  int bazz;
 };
+}; // namespace bar
 
 typedef foo::Bar ReferencesBar;

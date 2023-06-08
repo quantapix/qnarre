@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 pub type MustUseInt = ::std::os::raw::c_int;
 extern "C" {
@@ -20,7 +15,6 @@ extern "C" {
     #[must_use]
     pub fn return_struct() -> MustUseStruct;
 }
-/// <div rustbindgen mustusetype></div>
 pub type AnnotatedInt = ::std::os::raw::c_int;
 extern "C" {
     #[must_use]
@@ -29,7 +23,6 @@ extern "C" {
 extern "C" {
     pub fn return_plain_int() -> ::std::os::raw::c_int;
 }
-/// <div rustbindgen mustusetype></div>
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone)]
 #[must_use]
@@ -67,7 +60,6 @@ fn bindgen_test_layout_PlainStruct() {
         concat!("Alignment of ", stringify!(PlainStruct))
     );
 }
-/// <div rustbindgen mustusetype></div>
 pub type TypedefPlainStruct = PlainStruct;
 extern "C" {
     pub fn return_plain_struct() -> PlainStruct;

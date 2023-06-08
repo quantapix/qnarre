@@ -1,18 +1,10 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
-/// This is like `opaque-template-inst-member.hpp` except exercising the cases
-/// where we are OK to derive Debug/Hash/PartialEq.
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct OpaqueTemplate {
     pub _address: u8,
 }
-/// Should derive Debug/Hash/PartialEq.
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ContainsOpaqueTemplate {
@@ -21,8 +13,7 @@ pub struct ContainsOpaqueTemplate {
 }
 #[test]
 fn bindgen_test_layout_ContainsOpaqueTemplate() {
-    const UNINIT: ::std::mem::MaybeUninit<ContainsOpaqueTemplate> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<ContainsOpaqueTemplate> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<ContainsOpaqueTemplate>(),
@@ -55,7 +46,6 @@ fn bindgen_test_layout_ContainsOpaqueTemplate() {
         )
     );
 }
-/// Should also derive Debug/Hash/PartialEq.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct InheritsOpaqueTemplate {
@@ -64,8 +54,7 @@ pub struct InheritsOpaqueTemplate {
 }
 #[test]
 fn bindgen_test_layout_InheritsOpaqueTemplate() {
-    const UNINIT: ::std::mem::MaybeUninit<InheritsOpaqueTemplate> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<InheritsOpaqueTemplate> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<InheritsOpaqueTemplate>(),

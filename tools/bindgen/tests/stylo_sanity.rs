@@ -2,26 +2,12 @@
 #[allow(unused_extern_crates)]
 extern crate bindgen;
 
-/// A sanity test that we can generate bindings for Stylo.
 ///
-/// We don't assert on expected output because its just too big. The output will
-/// change too often, and it won't be clear what is going on at a glance, unlike
-/// the other tests with smaller input headers.
 ///
-/// This test is relatively slow, so we also only run it in release mode.
 ///
-/// Finally, uncomment the `panic!` at the bottom of the test to get logs timing
-/// how long bindings generation takes for Stylo. Stylo bindings generation
-/// takes too long to be a proper `#[bench]`.
 #[test]
-#[cfg(not(any(
-    debug_assertions,
-    feature = "__testing_only_extra_assertions",
-)))]
-#[cfg(any(
-    feature = "__testing_only_libclang_5",
-    feature = "__testing_only_libclang_9"
-))]
+#[cfg(not(any(debug_assertions, feature = "__testing_only_extra_assertions",)))]
+#[cfg(any(feature = "__testing_only_libclang_5", feature = "__testing_only_libclang_9"))]
 fn sanity_check_can_generate_stylo_bindings() {
     use std::time::Instant;
 
@@ -548,12 +534,7 @@ fn sanity_check_can_generate_stylo_bindings() {
 
     println!();
     println!();
-    println!(
-        "Generated Stylo bindings in: {:?}",
-        now.duration_since(then)
-    );
+    println!("Generated Stylo bindings in: {:?}", now.duration_since(then));
     println!();
     println!();
-
-    // panic!("Uncomment this line to get timing logs");
 }

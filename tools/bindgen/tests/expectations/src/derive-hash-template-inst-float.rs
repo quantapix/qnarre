@@ -1,11 +1,5 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
-/// Template definition that doesn't contain float can derive Hash/PartialOrd/Ord/PartialEq/Eq
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct foo<T> {
@@ -21,7 +15,6 @@ impl<T> Default for foo<T> {
         }
     }
 }
-/// Can derive Hash/PartialOrd/Ord/PartialEq/Eq when instantiated with int
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct IntStr {
@@ -29,8 +22,7 @@ pub struct IntStr {
 }
 #[test]
 fn bindgen_test_layout_IntStr() {
-    const UNINIT: ::std::mem::MaybeUninit<IntStr> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<IntStr> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<IntStr>(),
@@ -57,7 +49,6 @@ impl Default for IntStr {
         }
     }
 }
-/// Cannot derive Hash/Eq/Ord when instantiated with float but can derive PartialEq/PartialOrd
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct FloatStr {
@@ -65,8 +56,7 @@ pub struct FloatStr {
 }
 #[test]
 fn bindgen_test_layout_FloatStr() {
-    const UNINIT: ::std::mem::MaybeUninit<FloatStr> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<FloatStr> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<FloatStr>(),
@@ -81,12 +71,7 @@ fn bindgen_test_layout_FloatStr() {
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).a) as usize - ptr as usize },
         0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(FloatStr),
-            "::",
-            stringify!(a)
-        )
+        concat!("Offset of field: ", stringify!(FloatStr), "::", stringify!(a))
     );
 }
 impl Default for FloatStr {
@@ -127,9 +112,6 @@ fn __bindgen_test_layout_foo_open0_float_close0_instantiation() {
     assert_eq!(
         ::std::mem::align_of::<foo<f32>>(),
         4usize,
-        concat!(
-            "Alignment of template specialization: ",
-            stringify!(foo<f32>)
-        )
+        concat!("Alignment of template specialization: ", stringify!(foo<f32>))
     );
 }

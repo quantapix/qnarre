@@ -5,6 +5,7 @@ use crate::{
     },
     Context,
 };
+
 pub fn constant<'c>(context: &'c Context, value: Attribute<'c>, location: Location<'c>) -> Operation<'c> {
     OperationBuilder::new("arith.constant", location)
         .add_attributes(&[(Identifier::new(context, "value"), value)])
@@ -39,6 +40,7 @@ pub fn cmpf<'c>(
 ) -> Operation<'c> {
     cmp(context, "arith.cmpf", predicate as i64, lhs, rhs, location)
 }
+
 pub enum CmpiPredicate {
     Eq,
     Ne,
@@ -60,6 +62,7 @@ pub fn cmpi<'c>(
 ) -> Operation<'c> {
     cmp(context, "arith.cmpi", predicate as i64, lhs, rhs, location)
 }
+
 fn cmp<'c>(
     context: &'c Context,
     name: &str,
@@ -77,6 +80,7 @@ fn cmp<'c>(
         .enable_result_type_inference()
         .build()
 }
+
 macros::binary_operations!(
     arith,
     [
@@ -129,6 +133,7 @@ macros::typed_unary_operations!(
         uitofp
     ]
 );
+
 #[cfg(test)]
 mod tests {
     use super::*;

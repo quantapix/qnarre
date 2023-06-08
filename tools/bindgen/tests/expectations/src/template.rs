@@ -1,9 +1,4 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 #[repr(C)]
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -68,8 +63,7 @@ pub struct C {
 }
 #[test]
 fn bindgen_test_layout_C() {
-    const UNINIT: ::std::mem::MaybeUninit<C> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<C> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<C>(),
@@ -87,35 +81,17 @@ fn bindgen_test_layout_C() {
         concat!("Offset of field: ", stringify!(C), "::", stringify!(mB))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstPtr) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstPtr) as usize - ptr as usize },
         8usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConstPtr)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConstPtr))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstStructPtr) as usize -
-                ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstStructPtr) as usize - ptr as usize },
         16usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConstStructPtr)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConstStructPtr))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstStructPtrArray) as usize -
-                ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstStructPtrArray) as usize - ptr as usize },
         24usize,
         concat!(
             "Offset of field: ",
@@ -127,82 +103,37 @@ fn bindgen_test_layout_C() {
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mBConst) as usize - ptr as usize },
         32usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConst)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConst))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBVolatile) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBVolatile) as usize - ptr as usize },
         36usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBVolatile)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBVolatile))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstBool) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstBool) as usize - ptr as usize },
         40usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConstBool)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConstBool))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstChar) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstChar) as usize - ptr as usize },
         42usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConstChar)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConstChar))
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mBArray) as usize - ptr as usize },
         44usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBArray)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBArray))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBPtrArray) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBPtrArray) as usize - ptr as usize },
         48usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBPtrArray)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBPtrArray))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBArrayPtr) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBArrayPtr) as usize - ptr as usize },
         56usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBArrayPtr)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBArrayPtr))
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mBRef) as usize - ptr as usize },
@@ -210,50 +141,24 @@ fn bindgen_test_layout_C() {
         concat!("Offset of field: ", stringify!(C), "::", stringify!(mBRef))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstRef) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstRef) as usize - ptr as usize },
         72usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConstRef)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConstRef))
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mPtrRef) as usize - ptr as usize },
         80usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mPtrRef)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mPtrRef))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mArrayRef) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mArrayRef) as usize - ptr as usize },
         88usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mArrayRef)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mArrayRef))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).mBConstArray) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).mBConstArray) as usize - ptr as usize },
         96usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(C),
-            "::",
-            stringify!(mBConstArray)
-        )
+        concat!("Offset of field: ", stringify!(C), "::", stringify!(mBConstArray))
     );
 }
 impl Default for C {
@@ -320,8 +225,7 @@ pub struct RootedContainer {
 }
 #[test]
 fn bindgen_test_layout_RootedContainer() {
-    const UNINIT: ::std::mem::MaybeUninit<RootedContainer> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<RootedContainer> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<RootedContainer>(),
@@ -336,12 +240,7 @@ fn bindgen_test_layout_RootedContainer() {
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).root) as usize - ptr as usize },
         0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(RootedContainer),
-            "::",
-            stringify!(root)
-        )
+        concat!("Offset of field: ", stringify!(RootedContainer), "::", stringify!(root))
     );
 }
 impl Default for RootedContainer {
@@ -376,8 +275,7 @@ pub struct PODButContainsDtor {
 }
 #[test]
 fn bindgen_test_layout_PODButContainsDtor() {
-    const UNINIT: ::std::mem::MaybeUninit<PODButContainsDtor> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<PODButContainsDtor> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<PODButContainsDtor>(),
@@ -409,7 +307,6 @@ impl Default for PODButContainsDtor {
         }
     }
 }
-/// <div rustbindgen opaque>
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Opaque {
@@ -422,8 +319,7 @@ pub struct POD {
 }
 #[test]
 fn bindgen_test_layout_POD() {
-    const UNINIT: ::std::mem::MaybeUninit<POD> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<POD> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<POD>(),
@@ -436,19 +332,11 @@ fn bindgen_test_layout_POD() {
         concat!("Alignment of ", stringify!(POD))
     );
     assert_eq!(
-        unsafe {
-            ::std::ptr::addr_of!((*ptr).opaque_member) as usize - ptr as usize
-        },
+        unsafe { ::std::ptr::addr_of!((*ptr).opaque_member) as usize - ptr as usize },
         0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(POD),
-            "::",
-            stringify!(opaque_member)
-        )
+        concat!("Offset of field: ", stringify!(POD), "::", stringify!(opaque_member))
     );
 }
-/// <div rustbindgen replaces="NestedReplaced"></div>
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct NestedReplaced<T> {
@@ -534,10 +422,7 @@ fn bindgen_test_layout_Untemplated() {
 pub struct Templated {
     pub m_untemplated: Untemplated,
 }
-/// If the replacement doesn't happen at the parse level the container would be
-/// copy and the replacement wouldn't, so this wouldn't compile.
 ///
-/// <div rustbindgen replaces="ReplacedWithoutDestructor"></div>
 #[repr(C)]
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub struct ReplacedWithoutDestructor<T> {
@@ -583,10 +468,7 @@ impl<U> Default for ShouldNotBeCopiableAsWell<U> {
         }
     }
 }
-/// If the replacement doesn't happen at the parse level the container would be
-/// copy and the replacement wouldn't, so this wouldn't compile.
 ///
-/// <div rustbindgen replaces="ReplacedWithoutDestructorFwd"></div>
 #[repr(C)]
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub struct ReplacedWithoutDestructorFwd<T> {
@@ -664,10 +546,7 @@ fn __bindgen_test_layout_B_open0_ptr_const_mozilla__Foo_close0_instantiation() {
     assert_eq!(
         ::std::mem::size_of::<B<*const mozilla_Foo>>(),
         8usize,
-        concat!(
-            "Size of template specialization: ",
-            stringify!(B<*const mozilla_Foo>)
-        )
+        concat!("Size of template specialization: ", stringify!(B<*const mozilla_Foo>))
     );
     assert_eq!(
         ::std::mem::align_of::<B<*const mozilla_Foo>>(),
@@ -679,8 +558,7 @@ fn __bindgen_test_layout_B_open0_ptr_const_mozilla__Foo_close0_instantiation() {
     );
 }
 #[test]
-fn __bindgen_test_layout_B_open0_array1_ptr_const_mozilla__Foo_close0_instantiation(
-) {
+fn __bindgen_test_layout_B_open0_array1_ptr_const_mozilla__Foo_close0_instantiation() {
     assert_eq!(
         ::std::mem::size_of::<B<[*const mozilla_Foo; 1usize]>>(),
         8usize,
@@ -746,10 +624,7 @@ fn __bindgen_test_layout_B_open0_const_bool_close0_instantiation() {
     assert_eq!(
         ::std::mem::align_of::<B<bool>>(),
         1usize,
-        concat!(
-            "Alignment of template specialization: ",
-            stringify!(B<bool>)
-        )
+        concat!("Alignment of template specialization: ", stringify!(B<bool>))
     );
 }
 #[test]

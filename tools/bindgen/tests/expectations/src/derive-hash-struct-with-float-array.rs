@@ -1,11 +1,5 @@
-#![allow(
-    dead_code,
-    non_snake_case,
-    non_camel_case_types,
-    non_upper_case_globals
-)]
+#![allow(dead_code, non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
-/// A struct containing an array of floats that cannot derive Hash/Eq/Ord but can derive PartialEq/PartialOrd
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone, PartialOrd, PartialEq)]
 pub struct foo {
@@ -13,8 +7,7 @@ pub struct foo {
 }
 #[test]
 fn bindgen_test_layout_foo() {
-    const UNINIT: ::std::mem::MaybeUninit<foo> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::std::mem::MaybeUninit<foo> = ::std::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<foo>(),
