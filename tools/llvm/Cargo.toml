@@ -10,15 +10,13 @@ name = "llvm"
 path = "src/lib.rs"
 
 [features]
-default = ["target-all"]
-no-llvm-linking = ["llvm-rs/no-llvm-linking"]
-no-libffi-linking = []
-target-x86 = []
-target-nvptx = []
-target-all = [
-    "target-x86",
-    "target-nvptx",
-]
+#default = ["target-all"]
+#target-x86 = []
+#target-nvptx = []
+#target-all = [
+#    "target-x86",
+#    "target-nvptx",
+#]
 
 [dependencies]
 criterion = "0.4"

@@ -16,72 +16,66 @@ use syn::{
 };
 
 #[proc_macro]
-pub fn binary_operations(stream: TokenStream) -> TokenStream {
-    let set = parse_macro_input!(stream as DialectOperationSet);
-    convert_result(generate_binary(set.dialect(), set.identifiers()))
+pub fn binary_operations(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as DialectOperationSet);
+    convert_result(gen_binary(y.dialect(), y.identifiers()))
 }
 #[proc_macro]
-pub fn unary_operations(stream: TokenStream) -> TokenStream {
-    let set = parse_macro_input!(stream as DialectOperationSet);
-    convert_result(generate_unary(set.dialect(), set.identifiers()))
+pub fn unary_operations(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as DialectOperationSet);
+    convert_result(gen_unary(y.dialect(), y.identifiers()))
 }
 #[proc_macro]
-pub fn typed_unary_operations(stream: TokenStream) -> TokenStream {
-    let set = parse_macro_input!(stream as DialectOperationSet);
-    convert_result(generate_typed_unary(set.dialect(), set.identifiers()))
+pub fn typed_unary_operations(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as DialectOperationSet);
+    convert_result(gen_typed_unary(y.dialect(), y.identifiers()))
 }
 #[proc_macro]
-pub fn type_check_functions(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(r#type::generate(identifiers.identifiers()))
+pub fn type_check_functions(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_type(y.identifiers()))
 }
 #[proc_macro]
-pub fn attribute_check_functions(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(attribute::generate(identifiers.identifiers()))
+pub fn attribute_check_functions(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_attr(y.identifiers()))
 }
 #[proc_macro]
-pub fn async_passes(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(pass::generate(identifiers.identifiers(), |name| {
-        name.strip_prefix("Async").unwrap().into()
+pub fn async_passes(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_pass(y.identifiers(), |x| x.strip_prefix("Async").unwrap().into()))
+}
+#[proc_macro]
+pub fn conversion_passes(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_pass(y.identifiers(), |mut x| {
+        x = x.strip_prefix("Conversion").unwrap();
+        x = x.strip_prefix("Convert").unwrap_or(x);
+        x.strip_suffix("ConversionPass").unwrap_or(x).into()
     }))
 }
 #[proc_macro]
-pub fn conversion_passes(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(pass::generate(identifiers.identifiers(), |mut name| {
-        name = name.strip_prefix("Conversion").unwrap();
-        name = name.strip_prefix("Convert").unwrap_or(name);
-        name.strip_suffix("ConversionPass").unwrap_or(name).into()
+pub fn gpu_passes(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_pass(y.identifiers(), |x| x.strip_prefix("GPU").unwrap().into()))
+}
+#[proc_macro]
+pub fn transform_passes(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_pass(y.identifiers(), |x| {
+        x.strip_prefix("Transforms").unwrap().into()
     }))
 }
 #[proc_macro]
-pub fn gpu_passes(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(pass::generate(identifiers.identifiers(), |name| {
-        name.strip_prefix("GPU").unwrap().into()
-    }))
+pub fn linalg_passes(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_pass(y.identifiers(), |x| x.strip_prefix("Linalg").unwrap().into()))
 }
 #[proc_macro]
-pub fn transform_passes(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(pass::generate(identifiers.identifiers(), |name| {
-        name.strip_prefix("Transforms").unwrap().into()
-    }))
-}
-#[proc_macro]
-pub fn linalg_passes(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(pass::generate(identifiers.identifiers(), |name| {
-        name.strip_prefix("Linalg").unwrap().into()
-    }))
-}
-#[proc_macro]
-pub fn sparse_tensor_passes(stream: TokenStream) -> TokenStream {
-    let identifiers = parse_macro_input!(stream as IdentifierList);
-    convert_result(pass::generate(identifiers.identifiers(), |name| {
-        name.strip_prefix("SparseTensor").unwrap().into()
+pub fn sparse_tensor_passes(x: TokenStream) -> TokenStream {
+    let y = parse_macro_input!(x as IdentifierList);
+    convert_result(gen_pass(y.identifiers(), |x| {
+        x.strip_prefix("SparseTensor").unwrap().into()
     }))
 }
 fn convert_result(result: Result<TokenStream, Box<dyn Error>>) -> TokenStream {
@@ -90,7 +84,7 @@ fn convert_result(result: Result<TokenStream, Box<dyn Error>>) -> TokenStream {
         quote! { compile_error!(#message) }.into()
     })
 }
-pub fn generate(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
+fn gen_attr(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     let mut stream = TokenStream::new();
     for identifier in identifiers {
         let name = map_name(
@@ -111,7 +105,7 @@ pub fn generate(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     }
     Ok(stream)
 }
-pub fn generate_binary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
+fn gen_binary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     let mut stream = TokenStream::new();
     for name in names {
         let document = create_document(dialect, name);
@@ -142,7 +136,7 @@ pub fn generate_binary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, 
     }));
     Ok(stream)
 }
-pub fn generate_unary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
+fn gen_unary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     let mut stream = TokenStream::new();
     for name in names {
         let document = create_document(dialect, name);
@@ -171,7 +165,7 @@ pub fn generate_unary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, B
     }));
     Ok(stream)
 }
-pub fn generate_typed_unary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
+fn gen_typed_unary(dialect: &Ident, names: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     let mut stream = TokenStream::new();
     for name in names {
         let document = create_document(dialect, name);
@@ -209,7 +203,7 @@ fn create_operation_name(dialect: &Ident, name: &Ident) -> String {
     format!("{}.{}", dialect, name)
 }
 
-pub struct IdentifierList {
+struct IdentifierList {
     identifiers: Vec<Ident>,
 }
 impl IdentifierList {
@@ -218,16 +212,16 @@ impl IdentifierList {
     }
 }
 impl Parse for IdentifierList {
-    fn parse(input: ParseStream) -> Result<Self> {
+    fn parse(x: ParseStream) -> Result<Self> {
         Ok(Self {
-            identifiers: Punctuated::<Ident, Token![,]>::parse_terminated(input)?
+            identifiers: Punctuated::<Ident, Token![,]>::parse_terminated(x)?
                 .into_iter()
                 .collect(),
         })
     }
 }
 
-pub struct DialectOperationSet {
+struct DialectOperationSet {
     dialect: Ident,
     identifiers: IdentifierList,
 }
@@ -256,7 +250,7 @@ impl Parse for DialectOperationSet {
 
 const CREATE_FUNCTION_PREFIX: &str = "mlirCreate";
 
-pub fn generate(names: &[Ident], extract_pass_name: impl Fn(&str) -> String) -> Result<TokenStream, Box<dyn Error>> {
+fn gen_pass(names: &[Ident], extract_pass_name: impl Fn(&str) -> String) -> Result<TokenStream, Box<dyn Error>> {
     let mut stream = TokenStream::new();
     for name in names {
         let foreign_name = name.to_string();
@@ -285,7 +279,7 @@ pub fn generate(names: &[Ident], extract_pass_name: impl Fn(&str) -> String) -> 
 fn create_function_name(prefix: &str, pass_name: &str, span: Span) -> Ident {
     Ident::new(&format!("{}_{}", prefix, &pass_name.to_case(Case::Snake)), span)
 }
-pub fn generate(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
+fn gen_type(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     let mut stream = TokenStream::new();
     for identifier in identifiers {
         let name = map_name(
@@ -306,34 +300,13 @@ pub fn generate(identifiers: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     }
     Ok(stream)
 }
+
 static PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"(bf_16|f_16|f_32|f_64|i_8|i_16|i_32|i_64|float_8_e_[0-9]_m_[0-9](_fn)?)"#).unwrap());
-pub fn map_name(name: &str) -> String {
+fn map_name(name: &str) -> String {
     PATTERN
-        .replace_all(name, |captures: &Captures| {
-            captures.get(0).unwrap().as_str().replace('_', "")
-        })
+        .replace_all(name, |x: &Captures| x.get(0).unwrap().as_str().replace('_', ""))
         .to_string()
-}
-#[cfg(test)]
-
-mod tests {
-    use super::*;
-    #[test]
-    fn map_normal_type_name() {
-        assert_eq!(map_name("index"), "index");
-        assert_eq!(map_name("integer"), "integer");
-    }
-    #[test]
-    fn map_integer_type_name() {
-        assert_eq!(map_name("i_64"), "i64");
-    }
-    #[test]
-    fn map_float_type_name() {
-        assert_eq!(map_name("f_64"), "f64");
-        assert_eq!(map_name("float_8_e_5_m_2"), "float8e5m2");
-        assert_eq!(map_name("float_8_e_4_m_3_fn"), "float8e4m3fn");
-    }
 }
 
 const FEATURE_VERSIONS: [&str] = ["llvm16-0"];
@@ -422,7 +395,6 @@ fn get_features(vt: VersionType) -> Result<Vec<&'static str>> {
 
 fn f64_to_feature_string(float: f64) -> String {
     let int = float as u64;
-
     format!("llvm{}-{}", int, (float * 10.) % 10.)
 }
 
@@ -834,4 +806,24 @@ pub fn llvm_enum(attribute_args: TokenStream, attributee: TokenStream) -> TokenS
         }
     };
     q.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn map_normal_type_name() {
+        assert_eq!(map_name("index"), "index");
+        assert_eq!(map_name("integer"), "integer");
+    }
+    #[test]
+    fn map_integer_type_name() {
+        assert_eq!(map_name("i_64"), "i64");
+    }
+    #[test]
+    fn map_float_type_name() {
+        assert_eq!(map_name("f_64"), "f64");
+        assert_eq!(map_name("float_8_e_5_m_2"), "float8e5m2");
+        assert_eq!(map_name("float_8_e_4_m_3_fn"), "float8e4m3fn");
+    }
 }
