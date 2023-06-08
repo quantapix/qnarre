@@ -1,3 +1,8 @@
+use mlir_lib::*;
+use std::marker::PhantomData;
+
+use crate::mlir::{Context, ContextRef, StringRef};
+
 pub mod arith;
 pub mod cf;
 pub mod func;
@@ -5,17 +10,11 @@ pub mod index;
 pub mod llvm;
 pub mod memref;
 pub mod scf;
-use crate::{
-    ctx::{Context, ContextRef},
-    string_ref::StringRef,
-};
-use mlir_lib::*;
-use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Dialect<'c> {
     raw: MlirDialect,
-    _context: PhantomData<&'c Context>,
+    ctx: PhantomData<&'c Context>,
 }
 impl<'c> Dialect<'c> {
     pub fn context(&self) -> ContextRef<'c> {
@@ -24,16 +23,16 @@ impl<'c> Dialect<'c> {
     pub fn namespace(&self) -> StringRef {
         unsafe { StringRef::from_raw(mlirDialectGetNamespace(self.raw)) }
     }
-    pub unsafe fn from_raw(dialect: MlirDialect) -> Self {
+    pub unsafe fn from_raw(raw: MlirDialect) -> Self {
         Self {
-            raw: dialect,
-            _context: Default::default(),
+            raw,
+            ctx: Default::default(),
         }
     }
 }
 impl<'c> PartialEq for Dialect<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirDialectEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirDialectEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for Dialect<'c> {}
@@ -82,17 +81,17 @@ impl DialectHandle {
     pub fn namespace(&self) -> StringRef {
         unsafe { StringRef::from_raw(mlirDialectHandleGetNamespace(self.raw)) }
     }
-    pub fn insert_dialect(&self, registry: &DialectRegistry) {
-        unsafe { mlirDialectHandleInsertDialect(self.raw, registry.to_raw()) }
+    pub fn insert_dialect(&self, x: &DialectRegistry) {
+        unsafe { mlirDialectHandleInsertDialect(self.raw, x.to_raw()) }
     }
-    pub fn load_dialect<'c>(&self, context: &'c Context) -> Dialect<'c> {
-        unsafe { Dialect::from_raw(mlirDialectHandleLoadDialect(self.raw, context.to_raw())) }
+    pub fn load_dialect<'c>(&self, x: &'c Context) -> Dialect<'c> {
+        unsafe { Dialect::from_raw(mlirDialectHandleLoadDialect(self.raw, x.to_raw())) }
     }
-    pub fn register_dialect(&self, context: &Context) {
-        unsafe { mlirDialectHandleRegisterDialect(self.raw, context.to_raw()) }
+    pub fn register_dialect(&self, x: &Context) {
+        unsafe { mlirDialectHandleRegisterDialect(self.raw, x.to_raw()) }
     }
-    pub unsafe fn from_raw(handle: MlirDialectHandle) -> Self {
-        Self { raw: handle }
+    pub unsafe fn from_raw(raw: MlirDialectHandle) -> Self {
+        Self { raw }
     }
 }
 
@@ -126,24 +125,20 @@ mod tests {
     use super::*;
     #[test]
     fn equal() {
-        let context = Context::new();
+        let y = Context::new();
         assert_eq!(
-            DialectHandle::func().load_dialect(&context),
-            DialectHandle::func().load_dialect(&context)
+            DialectHandle::func().load_dialect(&y),
+            DialectHandle::func().load_dialect(&y)
         );
     }
     #[test]
     fn not_equal() {
-        let context = Context::new();
+        let y = Context::new();
         assert_ne!(
-            DialectHandle::func().load_dialect(&context),
-            DialectHandle::llvm().load_dialect(&context)
+            DialectHandle::func().load_dialect(&y),
+            DialectHandle::llvm().load_dialect(&y)
         );
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
     #[test]
     fn func() {
         DialectHandle::func();
@@ -158,24 +153,19 @@ mod tests {
     }
     #[test]
     fn insert_dialect() {
-        let registry = DialectRegistry::new();
-        DialectHandle::func().insert_dialect(&registry);
+        let y = DialectRegistry::new();
+        DialectHandle::func().insert_dialect(&y);
     }
     #[test]
     fn load_dialect() {
-        let context = Context::new();
-        DialectHandle::func().load_dialect(&context);
+        let y = Context::new();
+        DialectHandle::func().load_dialect(&y);
     }
     #[test]
     fn register_dialect() {
-        let context = Context::new();
-        DialectHandle::func().register_dialect(&context);
+        let y = Context::new();
+        DialectHandle::func().register_dialect(&y);
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{ctx::Context, dialect::DialectHandle};
     #[test]
     fn new() {
         DialectRegistry::new();
@@ -186,11 +176,11 @@ mod tests {
     }
     #[test]
     fn register_dialect() {
-        let registry = DialectRegistry::new();
-        DialectHandle::func().insert_dialect(&registry);
-        let context = Context::new();
-        let count = context.registered_dialect_count();
-        context.append_dialect_registry(&registry);
-        assert_eq!(context.registered_dialect_count() - count, 1);
+        let r = DialectRegistry::new();
+        DialectHandle::func().insert_dialect(&r);
+        let c = Context::new();
+        let n = c.registered_dialect_count();
+        c.append_dialect_registry(&r);
+        assert_eq!(c.registered_dialect_count() - n, 1);
     }
 }

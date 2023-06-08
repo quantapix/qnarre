@@ -1,44 +1,38 @@
-use crate::{
+use crate::mlir::{
     ir::{
-        attribute::{DenseElementsAttribute, DenseI32ArrayAttribute, IntegerAttribute, StringAttribute},
-        operation::OperationBuilder,
-        r#type::RankedTensorType,
+        attr::{DenseElementsAttribute, DenseI32ArrayAttribute, IntegerAttribute, StringAttribute},
+        op::OperationBuilder,
+        typ::RankedTensorType,
         Block, Identifier, Location, Operation, Type, Value,
     },
     Context, Error,
 };
-
-pub fn assert<'c>(context: &'c Context, argument: Value<'c>, message: &str, location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("cf.assert", location)
-        .add_attributes(&[(
-            Identifier::new(context, "msg"),
-            StringAttribute::new(context, message).into(),
-        )])
+pub fn assert<'c>(ctx: &'c Context, argument: Value<'c>, message: &str, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("cf.assert", loc)
+        .add_attributes(&[(Identifier::new(ctx, "msg"), StringAttribute::new(ctx, message).into())])
         .add_operands(&[argument])
         .build()
 }
-
-pub fn br<'c>(successor: &Block<'c>, destination_operands: &[Value<'c>], location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("cf.br", location)
+pub fn br<'c>(successor: &Block<'c>, destination_operands: &[Value<'c>], loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("cf.br", loc)
         .add_operands(destination_operands)
         .add_successors(&[successor])
         .build()
 }
-
 pub fn cond_br<'c>(
-    context: &'c Context,
-    condition: Value<'c>,
+    ctx: &'c Context,
+    cond: Value<'c>,
     true_successor: &Block<'c>,
     false_successor: &Block<'c>,
     true_successor_operands: &[Value],
     false_successor_operands: &[Value],
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    OperationBuilder::new("cf.cond_br", location)
+    OperationBuilder::new("cf.cond_br", loc)
         .add_attributes(&[(
-            Identifier::new(context, "operand_segment_sizes"),
+            Identifier::new(ctx, "operand_segment_sizes"),
             DenseI32ArrayAttribute::new(
-                context,
+                ctx,
                 &[
                     1,
                     true_successor.argument_count() as i32,
@@ -48,7 +42,7 @@ pub fn cond_br<'c>(
             .into(),
         )])
         .add_operands(
-            &[condition]
+            &[cond]
                 .into_iter()
                 .chain(true_successor_operands.iter().copied())
                 .chain(false_successor_operands.iter().copied())
@@ -57,25 +51,23 @@ pub fn cond_br<'c>(
         .add_successors(&[true_successor, false_successor])
         .build()
 }
-
 pub fn switch<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     case_values: &[i64],
     flag: Value<'c>,
     flag_type: Type<'c>,
     default_destination: (&Block<'c>, &[Value]),
     case_destinations: &[(&Block<'c>, &[Value])],
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Result<Operation<'c>, Error> {
     let (destinations, operands): (Vec<_>, Vec<_>) = [default_destination]
         .into_iter()
         .chain(case_destinations.iter().copied())
         .unzip();
-
-    Ok(OperationBuilder::new("cf.switch", location)
+    Ok(OperationBuilder::new("cf.switch", loc)
         .add_attributes(&[
             (
-                Identifier::new(context, "case_values"),
+                Identifier::new(ctx, "case_values"),
                 DenseElementsAttribute::new(
                     RankedTensorType::new(&[case_values.len() as u64], flag_type, None).into(),
                     &case_values
@@ -86,9 +78,9 @@ pub fn switch<'c>(
                 .into(),
             ),
             (
-                Identifier::new(context, "case_operand_segments"),
+                Identifier::new(ctx, "case_operand_segments"),
                 DenseI32ArrayAttribute::new(
-                    context,
+                    ctx,
                     &case_destinations
                         .iter()
                         .map(|(_, operands)| operands.len() as i32)
@@ -97,9 +89,9 @@ pub fn switch<'c>(
                 .into(),
             ),
             (
-                Identifier::new(context, "operand_segment_sizes"),
+                Identifier::new(ctx, "operand_segment_sizes"),
                 DenseI32ArrayAttribute::new(
-                    context,
+                    ctx,
                     &[
                         1,
                         default_destination.1.len() as i32,
@@ -125,150 +117,116 @@ pub fn switch<'c>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use crate::mlir::{
         dialect::{
             arith::{self, CmpiPredicate},
             func, index,
         },
         ir::{
-            attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+            attr::{IntegerAttribute, StringAttribute, TypeAttribute},
             r#type::{FunctionType, IntegerType, Type},
             Block, Module, Region,
         },
         test::load_all_dialects,
         Context,
     };
-
     #[test]
     fn compile_assert() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let bool_type: Type = IntegerType::new(&context, 1).into();
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let bool_type: Type = IntegerType::new(&ctx, 1).into();
         module.body().append_operation(func::func(
-            &context,
-            StringAttribute::new(&context, "foo"),
-            TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+            &ctx,
+            StringAttribute::new(&ctx, "foo"),
+            TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
             {
                 let block = Block::new(&[]);
                 let operand = block
-                    .append_operation(arith::constant(
-                        &context,
-                        IntegerAttribute::new(1, bool_type).into(),
-                        location,
-                    ))
+                    .append_operation(arith::constant(&ctx, IntegerAttribute::new(1, bool_type).into(), loc))
                     .result(0)
                     .unwrap()
                     .into();
-
-                block.append_operation(assert(&context, operand, "assert message", location));
-
-                block.append_operation(func::r#return(&[], location));
-
+                block.append_operation(assert(&ctx, operand, "assert message", loc));
+                block.append_operation(func::r#return(&[], loc));
                 let region = Region::new();
                 region.append_block(block);
                 region
             },
             &[],
-            location,
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_br() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let index_type = Type::index(&context);
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let index_type = Type::index(&ctx);
         module.body().append_operation(func::func(
-            &context,
-            StringAttribute::new(&context, "foo"),
-            TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+            &ctx,
+            StringAttribute::new(&ctx, "foo"),
+            TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
             {
                 let block = Block::new(&[]);
-                let dest_block = Block::new(&[(index_type, location)]);
+                let dest_block = Block::new(&[(index_type, loc)]);
                 let operand = block
-                    .append_operation(index::constant(
-                        &context,
-                        IntegerAttribute::new(1, index_type),
-                        location,
-                    ))
+                    .append_operation(index::constant(&ctx, IntegerAttribute::new(1, index_type), loc))
                     .result(0)
                     .unwrap();
-
-                block.append_operation(br(&dest_block, &[operand.into()], location));
-
-                dest_block.append_operation(func::r#return(&[], location));
-
+                block.append_operation(br(&dest_block, &[operand.into()], loc));
+                dest_block.append_operation(func::r#return(&[], loc));
                 let region = Region::new();
                 region.append_block(block);
                 region.append_block(dest_block);
                 region
             },
             &[],
-            location,
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_cond_br() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let index_type = Type::index(&context);
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let index_type = Type::index(&ctx);
         module.body().append_operation(func::func(
-            &context,
-            StringAttribute::new(&context, "foo"),
-            TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+            &ctx,
+            StringAttribute::new(&ctx, "foo"),
+            TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
             {
                 let block = Block::new(&[]);
-                let true_block = Block::new(&[(index_type, location)]);
-                let false_block = Block::new(&[(index_type, location)]);
-
+                let true_block = Block::new(&[(index_type, loc)]);
+                let false_block = Block::new(&[(index_type, loc)]);
                 let operand = block
-                    .append_operation(index::constant(
-                        &context,
-                        IntegerAttribute::new(1, index_type),
-                        location,
-                    ))
+                    .append_operation(index::constant(&ctx, IntegerAttribute::new(1, index_type), loc))
                     .result(0)
                     .unwrap()
                     .into();
-
-                let condition = block
-                    .append_operation(index::cmp(&context, CmpiPredicate::Eq, operand, operand, location))
+                let cond = block
+                    .append_operation(index::cmp(&ctx, CmpiPredicate::Eq, operand, operand, loc))
                     .result(0)
                     .unwrap()
                     .into();
-
                 block.append_operation(cond_br(
-                    &context,
-                    condition,
+                    &ctx,
+                    cond,
                     &true_block,
                     &false_block,
                     &[operand],
                     &[operand],
-                    location,
+                    loc,
                 ));
-
-                true_block.append_operation(func::r#return(&[], location));
-                false_block.append_operation(func::r#return(&[], location));
-
+                true_block.append_operation(func::r#return(&[], loc));
+                false_block.append_operation(func::r#return(&[], loc));
                 let region = Region::new();
                 region.append_block(block);
                 region.append_block(true_block);
@@ -276,59 +234,47 @@ mod tests {
                 region
             },
             &[],
-            location,
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_switch() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let i32_type: Type = IntegerType::new(&context, 32).into();
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let i32_type: Type = IntegerType::new(&ctx, 32).into();
         module.body().append_operation(func::func(
-            &context,
-            StringAttribute::new(&context, "foo"),
-            TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+            &ctx,
+            StringAttribute::new(&ctx, "foo"),
+            TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
             {
                 let block = Block::new(&[]);
-                let default_block = Block::new(&[(i32_type, location)]);
-                let first_block = Block::new(&[(i32_type, location)]);
-                let second_block = Block::new(&[(i32_type, location)]);
-
+                let default_block = Block::new(&[(i32_type, loc)]);
+                let first_block = Block::new(&[(i32_type, loc)]);
+                let second_block = Block::new(&[(i32_type, loc)]);
                 let operand = block
-                    .append_operation(arith::constant(
-                        &context,
-                        IntegerAttribute::new(1, i32_type).into(),
-                        location,
-                    ))
+                    .append_operation(arith::constant(&ctx, IntegerAttribute::new(1, i32_type).into(), loc))
                     .result(0)
                     .unwrap()
                     .into();
-
                 block.append_operation(
                     switch(
-                        &context,
+                        &ctx,
                         &[0, 1],
                         operand,
                         i32_type,
                         (&default_block, &[operand]),
                         &[(&first_block, &[operand]), (&second_block, &[operand])],
-                        location,
+                        loc,
                     )
                     .unwrap(),
                 );
-
-                default_block.append_operation(func::r#return(&[], location));
-                first_block.append_operation(func::r#return(&[], location));
-                second_block.append_operation(func::r#return(&[], location));
-
+                default_block.append_operation(func::r#return(&[], loc));
+                first_block.append_operation(func::r#return(&[], loc));
+                second_block.append_operation(func::r#return(&[], loc));
                 let region = Region::new();
                 region.append_block(block);
                 region.append_block(default_block);
@@ -337,9 +283,8 @@ mod tests {
                 region
             },
             &[],
-            location,
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }

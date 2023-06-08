@@ -5,7 +5,7 @@ use std::{
     sync::Once,
 };
 
-use crate::{ctx::Context, dialect::DialectRegistry, pass, Error, LogicalResult, StringRef};
+use crate::mlir::{dialect::DialectRegistry, pass, Context, Error, LogicalResult, StringRef};
 
 pub fn register_all_dialects(registry: &DialectRegistry) {
     unsafe { mlirRegisterAllDialects(registry.to_raw()) }

@@ -1,11 +1,11 @@
 use mlir_lib::*;
 use std::{ffi::c_void, marker::PhantomData, mem::transmute, ops::Deref};
 
-use crate::{
+use super::{
     diagnostic::{Diagnostic, DiagnosticHandlerId},
     dialect::{Dialect, DialectRegistry},
     logical_result::LogicalResult,
-    string_ref::StringRef,
+    StringRef,
 };
 
 #[derive(Debug)]

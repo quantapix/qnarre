@@ -163,9 +163,9 @@ macro_rules! type_traits {
                 }
             }
         }
-        impl<'c> TryFrom<crate::ir::r#type::Type<'c>> for $name<'c> {
+        impl<'c> TryFrom<crate::mlir::ir::r#type::Type<'c>> for $name<'c> {
             type Error = crate::Error;
-            fn try_from(r#type: crate::ir::r#type::Type<'c>) -> Result<Self, Self::Error> {
+            fn try_from(r#type: crate::mlir::ir::r#type::Type<'c>) -> Result<Self, Self::Error> {
                 if r#type.$is_type() {
                     Ok(unsafe { Self::from_raw(r#type.to_raw()) })
                 } else {
@@ -173,7 +173,7 @@ macro_rules! type_traits {
                 }
             }
         }
-        impl<'c> crate::ir::r#type::TypeLike<'c> for $name<'c> {
+        impl<'c> crate::mlir::ir::r#type::TypeLike<'c> for $name<'c> {
             fn to_raw(&self) -> mlir_lib::MlirType {
                 self.r#type.to_raw()
             }

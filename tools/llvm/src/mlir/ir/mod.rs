@@ -7,11 +7,11 @@ use std::{
     ops::Deref,
 };
 
-use crate::{
+use super::{
     ctx::{Context, ContextRef},
     ir::{Attribute, AttributeLike},
-    string_ref::StringRef,
     utils::{into_raw_array, print_callback},
+    StringRef,
 };
 
 pub mod attr;
@@ -318,7 +318,7 @@ impl<'a> Eq for RegionRef<'a> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{operation::OperationBuilder, Block, Region};
+    use crate::mlir::ir::{operation::OperationBuilder, Block, Region};
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]

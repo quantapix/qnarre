@@ -1,196 +1,140 @@
-use crate::{
-    ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
-        r#type::MemRefType,
-        Attribute, Identifier, Location, Operation, Value,
-    },
+use crate::mlir::{
+    ir::{attr::*, op::OperationBuilder, typ::MemRefType, Attribute, Identifier, Location, Operation, Value},
     Context,
 };
-
 pub fn alloc<'c>(
-    context: &'c Context,
-    r#type: MemRefType<'c>,
+    ctx: &'c Context,
+    ty: MemRefType<'c>,
     dynamic_sizes: &[Value],
     symbols: &[Value],
     alignment: Option<IntegerAttribute<'c>>,
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    allocate(
-        context,
-        "memref.alloc",
-        r#type,
-        dynamic_sizes,
-        symbols,
-        alignment,
-        location,
-    )
+    allocate(ctx, "memref.alloc", ty, dynamic_sizes, symbols, alignment, loc)
 }
-
 pub fn alloca<'c>(
-    context: &'c Context,
-    r#type: MemRefType<'c>,
+    ctx: &'c Context,
+    ty: MemRefType<'c>,
     dynamic_sizes: &[Value],
     symbols: &[Value],
     alignment: Option<IntegerAttribute<'c>>,
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    allocate(
-        context,
-        "memref.alloca",
-        r#type,
-        dynamic_sizes,
-        symbols,
-        alignment,
-        location,
-    )
+    allocate(ctx, "memref.alloca", ty, dynamic_sizes, symbols, alignment, loc)
 }
-
 fn allocate<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     name: &str,
-    r#type: MemRefType<'c>,
+    ty: MemRefType<'c>,
     dynamic_sizes: &[Value],
     symbols: &[Value],
     alignment: Option<IntegerAttribute<'c>>,
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    let mut builder = OperationBuilder::new(name, location);
-
-    builder = builder.add_attributes(&[(
-        Identifier::new(context, "operand_segment_sizes"),
-        DenseI32ArrayAttribute::new(context, &[dynamic_sizes.len() as i32, symbols.len() as i32]).into(),
+    let mut y = OperationBuilder::new(name, loc);
+    y = y.add_attributes(&[(
+        Identifier::new(ctx, "operand_segment_sizes"),
+        DenseI32ArrayAttribute::new(ctx, &[dynamic_sizes.len() as i32, symbols.len() as i32]).into(),
     )]);
-    builder = builder.add_operands(dynamic_sizes).add_operands(symbols);
-
+    y = y.add_operands(dynamic_sizes).add_operands(symbols);
     if let Some(alignment) = alignment {
-        builder = builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
+        y = y.add_attributes(&[(Identifier::new(ctx, "alignment"), alignment.into())]);
     }
-
-    builder.add_results(&[r#type.into()]).build()
+    y.add_results(&[ty.into()]).build()
 }
-
-pub fn cast<'c>(value: Value, r#type: MemRefType<'c>, location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("memref.cast", location)
-        .add_operands(&[value])
-        .add_results(&[r#type.into()])
+pub fn cast<'c>(x: Value, ty: MemRefType<'c>, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.cast", loc)
+        .add_operands(&[x])
+        .add_results(&[ty.into()])
         .build()
 }
-
-pub fn dealloc<'c>(value: Value, location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("memref.dealloc", location)
-        .add_operands(&[value])
-        .build()
+pub fn dealloc<'c>(x: Value, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.dealloc", loc).add_operands(&[x]).build()
 }
-
-pub fn dim<'c>(value: Value, index: Value, location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("memref.dim", location)
-        .add_operands(&[value, index])
+pub fn dim<'c>(x: Value, i: Value, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.dim", loc)
+        .add_operands(&[x, i])
         .enable_result_type_inference()
         .build()
 }
-
-pub fn get_global<'c>(
-    context: &'c Context,
-    name: &str,
-    r#type: MemRefType<'c>,
-    location: Location<'c>,
-) -> Operation<'c> {
-    OperationBuilder::new("memref.get_global", location)
+pub fn get_global<'c>(ctx: &'c Context, name: &str, ty: MemRefType<'c>, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.get_global", loc)
         .add_attributes(&[(
-            Identifier::new(context, "name"),
-            FlatSymbolRefAttribute::new(context, name).into(),
+            Identifier::new(ctx, "name"),
+            FlatSymbolRefAttribute::new(ctx, name).into(),
         )])
-        .add_results(&[r#type.into()])
+        .add_results(&[ty.into()])
         .build()
 }
-
 #[allow(clippy::too_many_arguments)]
 pub fn global<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     name: &str,
     visibility: Option<&str>,
-    r#type: MemRefType<'c>,
+    ty: MemRefType<'c>,
     value: Option<Attribute<'c>>,
     constant: bool,
     alignment: Option<IntegerAttribute<'c>>,
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    let mut builder = OperationBuilder::new("memref.global", location).add_attributes(&[
+    let mut builder = OperationBuilder::new("memref.global", loc).add_attributes(&[
+        (Identifier::new(ctx, "sym_name"), StringAttribute::new(ctx, name).into()),
+        (Identifier::new(ctx, "type"), TypeAttribute::new(ty.into()).into()),
         (
-            Identifier::new(context, "sym_name"),
-            StringAttribute::new(context, name).into(),
-        ),
-        (
-            Identifier::new(context, "type"),
-            TypeAttribute::new(r#type.into()).into(),
-        ),
-        (
-            Identifier::new(context, "initial_value"),
-            value.unwrap_or_else(|| Attribute::unit(context)),
+            Identifier::new(ctx, "initial_value"),
+            value.unwrap_or_else(|| Attribute::unit(ctx)),
         ),
     ]);
-
     if let Some(visibility) = visibility {
         builder = builder.add_attributes(&[(
-            Identifier::new(context, "sym_visibility"),
-            StringAttribute::new(context, visibility).into(),
+            Identifier::new(ctx, "sym_visibility"),
+            StringAttribute::new(ctx, visibility).into(),
         )]);
     }
-
     if constant {
-        builder = builder.add_attributes(&[(Identifier::new(context, "constant"), Attribute::unit(context))]);
+        builder = builder.add_attributes(&[(Identifier::new(ctx, "constant"), Attribute::unit(ctx))]);
     }
-
     if let Some(alignment) = alignment {
-        builder = builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
+        builder = builder.add_attributes(&[(Identifier::new(ctx, "alignment"), alignment.into())]);
     }
-
     builder.build()
 }
-
-pub fn load<'c>(memref: Value, indices: &[Value], location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("memref.load", location)
-        .add_operands(&[memref])
+pub fn load<'c>(x: Value, indices: &[Value], loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.load", loc)
+        .add_operands(&[x])
         .add_operands(indices)
         .enable_result_type_inference()
         .build()
 }
-
-pub fn rank<'c>(value: Value, location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("memref.rank", location)
-        .add_operands(&[value])
+pub fn rank<'c>(x: Value, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.rank", loc)
+        .add_operands(&[x])
         .enable_result_type_inference()
         .build()
 }
-
-pub fn store<'c>(value: Value, memref: Value, indices: &[Value], location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("memref.store", location)
-        .add_operands(&[value, memref])
+pub fn store<'c>(x: Value, memref: Value, indices: &[Value], loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("memref.store", loc)
+        .add_operands(&[x, memref])
         .add_operands(indices)
         .build()
 }
-
 pub fn realloc<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     value: Value,
     size: Option<Value>,
-    r#type: MemRefType<'c>,
+    ty: MemRefType<'c>,
     alignment: Option<IntegerAttribute<'c>>,
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    let mut builder = OperationBuilder::new("memref.realloc", location)
+    let mut builder = OperationBuilder::new("memref.realloc", loc)
         .add_operands(&[value])
-        .add_results(&[r#type.into()]);
-
+        .add_results(&[ty.into()]);
     if let Some(size) = size {
         builder = builder.add_operands(&[size]);
     }
-
     if let Some(alignment) = alignment {
-        builder = builder.add_attributes(&[(Identifier::new(context, "alignment"), alignment.into())]);
+        builder = builder.add_attributes(&[(Identifier::new(ctx, "alignment"), alignment.into())]);
     }
-
     builder.build()
 }
 
@@ -200,364 +144,297 @@ mod tests {
     use crate::{
         dialect::{func, index},
         ir::{
-            attribute::{DenseElementsAttribute, StringAttribute, TypeAttribute},
-            r#type::{FunctionType, IntegerType, RankedTensorType},
+            attr::{DenseElementsAttribute, StringAttribute, TypeAttribute},
+            ty::{FunctionType, IntegerType, RankedTensorType},
             Block, Module, Region, Type,
         },
-        test::create_test_context,
+        test::create_test_ctx,
     };
-
-    fn compile_operation(name: &str, context: &Context, build_block: impl Fn(&Block)) {
-        let location = Location::unknown(context);
-        let module = Module::new(location);
-
+    fn compile_operation(name: &str, ctx: &Context, build_block: impl Fn(&Block)) {
+        let loc = Location::unknown(ctx);
+        let module = Module::new(loc);
         let function = {
             let block = Block::new(&[]);
-
             build_block(&block);
-            block.append_operation(func::r#return(&[], location));
-
+            block.append_operation(func::r#return(&[], loc));
             let region = Region::new();
             region.append_block(block);
-
             func::func(
-                context,
-                StringAttribute::new(context, "foo"),
-                TypeAttribute::new(FunctionType::new(context, &[], &[]).into()),
+                ctx,
+                StringAttribute::new(ctx, "foo"),
+                TypeAttribute::new(FunctionType::new(ctx, &[], &[]).into()),
                 region,
                 &[],
-                Location::unknown(context),
+                Location::unknown(ctx),
             )
         };
-
         module.body().append_operation(function);
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(name, module.as_operation());
     }
-
     #[test]
     fn compile_alloc_and_dealloc() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("alloc", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("alloc", &ctx, |block| {
             let memref = block.append_operation(alloc(
-                &context,
-                MemRefType::new(Type::index(&context), &[], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-            block.append_operation(dealloc(memref.result(0).unwrap().into(), location));
+            block.append_operation(dealloc(memref.result(0).unwrap().into(), loc));
         })
     }
-
     #[test]
     fn compile_alloc_and_realloc() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("realloc", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("realloc", &ctx, |block| {
             let memref = block.append_operation(alloc(
-                &context,
-                MemRefType::new(Type::index(&context), &[8], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[8], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
             block.append_operation(realloc(
-                &context,
+                &ctx,
                 memref.result(0).unwrap().into(),
                 None,
-                MemRefType::new(Type::index(&context), &[42], None, None),
+                MemRefType::new(Type::index(&ctx), &[42], None, None),
                 None,
-                location,
+                loc,
             ));
         })
     }
-
     #[test]
     fn compile_alloca() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("alloca", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("alloca", &ctx, |block| {
             block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
         })
     }
-
     #[test]
     fn compile_cast() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("cast", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("cast", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::float64(&context), &[42], None, None),
+                &ctx,
+                MemRefType::new(Type::float64(&ctx), &[42], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-
             block.append_operation(cast(
                 memref.result(0).unwrap().into(),
-                Type::parse(&context, "memref<?xf64>").unwrap().try_into().unwrap(),
-                location,
+                Type::parse(&ctx, "memref<?xf64>").unwrap().try_into().unwrap(),
+                loc,
             ));
         })
     }
-
     #[test]
     fn compile_dim() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("dim", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("dim", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[1], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[1], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-
-            let index = block.append_operation(index::constant(
-                &context,
-                IntegerAttribute::new(0, Type::index(&context)),
-                location,
-            ));
-
+            let index = block.append_operation(index::constant(&ctx, IntegerAttribute::new(0, Type::index(&ctx)), loc));
             block.append_operation(dim(
                 memref.result(0).unwrap().into(),
                 index.result(0).unwrap().into(),
-                location,
+                loc,
             ));
         })
     }
-
     #[test]
     fn compile_get_global() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let mem_ref_type = MemRefType::new(Type::index(&context), &[], None, None);
-
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let mem_ref_type = MemRefType::new(Type::index(&ctx), &[], None, None);
         module
             .body()
-            .append_operation(global(&context, "foo", None, mem_ref_type, None, false, None, location));
-
+            .append_operation(global(&ctx, "foo", None, mem_ref_type, None, false, None, loc));
         module.body().append_operation(func::func(
-            &context,
-            StringAttribute::new(&context, "bar"),
-            TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+            &ctx,
+            StringAttribute::new(&ctx, "bar"),
+            TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
             {
                 let block = Block::new(&[]);
-
-                block.append_operation(get_global(&context, "foo", mem_ref_type, location));
-                block.append_operation(func::r#return(&[], location));
-
+                block.append_operation(get_global(&ctx, "foo", mem_ref_type, loc));
+                block.append_operation(func::r#return(&[], loc));
                 let region = Region::new();
                 region.append_block(block);
                 region
             },
             &[],
-            location,
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_global() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
         module.body().append_operation(global(
-            &context,
+            &ctx,
             "foo",
             None,
-            MemRefType::new(Type::index(&context), &[], None, None),
+            MemRefType::new(Type::index(&ctx), &[], None, None),
             None,
             false,
             None,
-            location,
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_global_with_options() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let r#type = IntegerType::new(&context, 64).into();
-
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let ty = IntegerType::new(&ctx, 64).into();
         module.body().append_operation(global(
-            &context,
+            &ctx,
             "foo",
             Some("private"),
-            MemRefType::new(r#type, &[], None, None),
+            MemRefType::new(ty, &[], None, None),
             Some(
                 DenseElementsAttribute::new(
-                    RankedTensorType::new(&[], r#type, None).into(),
-                    &[IntegerAttribute::new(42, r#type).into()],
+                    RankedTensorType::new(&[], ty, None).into(),
+                    &[IntegerAttribute::new(42, ty).into()],
                 )
                 .unwrap()
                 .into(),
             ),
             true,
-            Some(IntegerAttribute::new(8, IntegerType::new(&context, 64).into())),
-            location,
+            Some(IntegerAttribute::new(8, IntegerType::new(&ctx, 64).into())),
+            loc,
         ));
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_load() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("load", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("load", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-            block.append_operation(load(memref.result(0).unwrap().into(), &[], location));
+            block.append_operation(load(memref.result(0).unwrap().into(), &[], loc));
         })
     }
-
     #[test]
     fn compile_load_with_index() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("load_with_index", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("load_with_index", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[1], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[1], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-
-            let index = block.append_operation(index::constant(
-                &context,
-                IntegerAttribute::new(0, Type::index(&context)),
-                location,
-            ));
-
+            let index = block.append_operation(index::constant(&ctx, IntegerAttribute::new(0, Type::index(&ctx)), loc));
             block.append_operation(load(
                 memref.result(0).unwrap().into(),
                 &[index.result(0).unwrap().into()],
-                location,
+                loc,
             ));
         })
     }
-
     #[test]
     fn compile_rank() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("rank", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("rank", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[1], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[1], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-            block.append_operation(rank(memref.result(0).unwrap().into(), location));
+            block.append_operation(rank(memref.result(0).unwrap().into(), loc));
         })
     }
-
     #[test]
     fn compile_store() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("store", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("store", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-
-            let value = block.append_operation(index::constant(
-                &context,
-                IntegerAttribute::new(42, Type::index(&context)),
-                location,
-            ));
-
+            let value =
+                block.append_operation(index::constant(&ctx, IntegerAttribute::new(42, Type::index(&ctx)), loc));
             block.append_operation(store(
                 value.result(0).unwrap().into(),
                 memref.result(0).unwrap().into(),
                 &[],
-                location,
+                loc,
             ));
         })
     }
-
     #[test]
     fn compile_store_with_index() {
-        let context = create_test_context();
-        let location = Location::unknown(&context);
-
-        compile_operation("store_with_index", &context, |block| {
+        let ctx = create_test_ctx();
+        let loc = Location::unknown(&ctx);
+        compile_operation("store_with_index", &ctx, |block| {
             let memref = block.append_operation(alloca(
-                &context,
-                MemRefType::new(Type::index(&context), &[1], None, None),
+                &ctx,
+                MemRefType::new(Type::index(&ctx), &[1], None, None),
                 &[],
                 &[],
                 None,
-                location,
+                loc,
             ));
-
-            let value = block.append_operation(index::constant(
-                &context,
-                IntegerAttribute::new(42, Type::index(&context)),
-                location,
-            ));
-
-            let index = block.append_operation(index::constant(
-                &context,
-                IntegerAttribute::new(0, Type::index(&context)),
-                location,
-            ));
-
+            let value =
+                block.append_operation(index::constant(&ctx, IntegerAttribute::new(42, Type::index(&ctx)), loc));
+            let index = block.append_operation(index::constant(&ctx, IntegerAttribute::new(0, Type::index(&ctx)), loc));
             block.append_operation(store(
                 value.result(0).unwrap().into(),
                 memref.result(0).unwrap().into(),
                 &[index.result(0).unwrap().into()],
-                location,
+                loc,
             ));
         })
     }

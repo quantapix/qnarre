@@ -1,183 +1,146 @@
-use crate::{
+use crate::mlir::{
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
-        r#type::FunctionType,
+        attr::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        op::OperationBuilder,
+        typ::FunctionType,
         Attribute, Identifier, Location, Operation, Region, Value,
     },
     Context,
 };
-
 pub fn call<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     function: FlatSymbolRefAttribute<'c>,
     arguments: &[Value],
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    OperationBuilder::new("func.call", location)
-        .add_attributes(&[(Identifier::new(context, "callee"), function.into())])
+    OperationBuilder::new("func.call", loc)
+        .add_attributes(&[(Identifier::new(ctx, "callee"), function.into())])
         .add_operands(arguments)
         .build()
 }
-
-pub fn call_indirect<'c>(function: Value, arguments: &[Value], location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("func.call_indirect", location)
+pub fn call_indirect<'c>(function: Value, arguments: &[Value], loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("func.call_indirect", loc)
         .add_operands(&[function])
         .add_operands(arguments)
         .build()
 }
-
 pub fn constant<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     function: FlatSymbolRefAttribute<'c>,
     r#type: FunctionType<'c>,
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    OperationBuilder::new("func.constant", location)
-        .add_attributes(&[(Identifier::new(context, "value"), function.into())])
+    OperationBuilder::new("func.constant", loc)
+        .add_attributes(&[(Identifier::new(ctx, "value"), function.into())])
         .add_results(&[r#type.into()])
         .build()
 }
-
 pub fn func<'c>(
-    context: &'c Context,
+    ctx: &'c Context,
     name: StringAttribute<'c>,
     r#type: TypeAttribute<'c>,
     region: Region,
     attributes: &[(Identifier<'c>, Attribute<'c>)],
-    location: Location<'c>,
+    loc: Location<'c>,
 ) -> Operation<'c> {
-    OperationBuilder::new("func.func", location)
+    OperationBuilder::new("func.func", loc)
         .add_attributes(&[
-            (Identifier::new(context, "sym_name"), name.into()),
-            (Identifier::new(context, "function_type"), r#type.into()),
+            (Identifier::new(ctx, "sym_name"), name.into()),
+            (Identifier::new(ctx, "function_type"), r#type.into()),
         ])
         .add_attributes(attributes)
         .add_regions(vec![region])
         .build()
 }
-
-pub fn r#return<'c>(operands: &[Value], location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("func.return", location)
-        .add_operands(operands)
-        .build()
+pub fn r#return<'c>(operands: &[Value], loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("func.return", loc).add_operands(operands).build()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use crate::mlir::{
         ir::{Block, Module, Type},
         test::load_all_dialects,
     };
-
     #[test]
     fn compile_call() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
         let function = {
             let block = Block::new(&[]);
-
-            block.append_operation(call(
-                &context,
-                FlatSymbolRefAttribute::new(&context, "foo"),
-                &[],
-                location,
-            ));
-            block.append_operation(r#return(&[], location));
-
+            block.append_operation(call(&ctx, FlatSymbolRefAttribute::new(&ctx, "foo"), &[], loc));
+            block.append_operation(r#return(&[], loc));
             let region = Region::new();
             region.append_block(block);
-
             func(
-                &context,
-                StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+                &ctx,
+                StringAttribute::new(&ctx, "foo"),
+                TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
                 region,
                 &[],
-                Location::unknown(&context),
+                Location::unknown(&ctx),
             )
         };
-
         module.body().append_operation(function);
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_call_indirect() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
         let function = {
             let block = Block::new(&[]);
-
             let function = block.append_operation(constant(
-                &context,
-                FlatSymbolRefAttribute::new(&context, "foo"),
-                FunctionType::new(&context, &[], &[]),
-                location,
+                &ctx,
+                FlatSymbolRefAttribute::new(&ctx, "foo"),
+                FunctionType::new(&ctx, &[], &[]),
+                loc,
             ));
-            block.append_operation(call_indirect(function.result(0).unwrap().into(), &[], location));
-            block.append_operation(r#return(&[], location));
-
+            block.append_operation(call_indirect(function.result(0).unwrap().into(), &[], loc));
+            block.append_operation(r#return(&[], loc));
             let region = Region::new();
             region.append_block(block);
-
             func(
-                &context,
-                StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(FunctionType::new(&context, &[], &[]).into()),
+                &ctx,
+                StringAttribute::new(&ctx, "foo"),
+                TypeAttribute::new(FunctionType::new(&ctx, &[], &[]).into()),
                 region,
                 &[],
-                Location::unknown(&context),
+                Location::unknown(&ctx),
             )
         };
-
         module.body().append_operation(function);
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }
-
     #[test]
     fn compile_function() {
-        let context = Context::new();
-        load_all_dialects(&context);
-
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-
-        let integer_type = Type::index(&context);
-
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let integer_type = Type::index(&ctx);
         let function = {
-            let block = Block::new(&[(integer_type, location)]);
-
-            block.append_operation(r#return(&[block.argument(0).unwrap().into()], location));
-
+            let block = Block::new(&[(integer_type, loc)]);
+            block.append_operation(r#return(&[block.argument(0).unwrap().into()], loc));
             let region = Region::new();
             region.append_block(block);
-
             func(
-                &context,
-                StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(FunctionType::new(&context, &[integer_type], &[integer_type]).into()),
+                &ctx,
+                StringAttribute::new(&ctx, "foo"),
+                TypeAttribute::new(FunctionType::new(&ctx, &[integer_type], &[integer_type]).into()),
                 region,
                 &[],
-                Location::unknown(&context),
+                Location::unknown(&ctx),
             )
         };
-
         module.body().append_operation(function);
-
         assert!(module.as_operation().verify());
         insta::assert_display_snapshot!(module.as_operation());
     }

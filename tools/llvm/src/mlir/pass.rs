@@ -5,7 +5,7 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::{ctx::Context, ir::Module, pass::Pass, Error, LogicalResult, StringRef};
+use super::{ctx::Context, ir::Module, pass::Pass, Error, LogicalResult, StringRef};
 
 pub struct Pass {
     raw: MlirPass,

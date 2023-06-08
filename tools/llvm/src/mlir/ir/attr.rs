@@ -6,33 +6,20 @@ use std::{
     marker::PhantomData,
 };
 
-pub use self::{
-    array::ArrayAttribute, attribute_like::AttributeLike, dense_elements::DenseElementsAttribute,
-    dense_i32_array::DenseI32ArrayAttribute, dense_i64_array::DenseI64ArrayAttribute,
-    flat_symbol_ref::FlatSymbolRefAttribute, float::FloatAttribute, integer::IntegerAttribute, r#type::TypeAttribute,
-    string::StringAttribute,
-};
 use super::{Attribute, AttributeLike};
-use crate::ir::Type;
-use crate::{ctx::Context, utils::print_callback, StringRef};
-use crate::{Context, ContextRef, Error, StringRef};
+use crate::mlir::{ir::Type, utils::print_callback, Context, ContextRef, Error, StringRef};
 
 #[derive(Clone, Copy)]
 pub struct Attribute<'c> {
     raw: MlirAttribute,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Attribute<'c> {
-    pub fn parse(context: &'c Context, source: &str) -> Option<Self> {
-        unsafe {
-            Self::from_option_raw(mlirAttributeParseGet(
-                context.to_raw(),
-                StringRef::from(source).to_raw(),
-            ))
-        }
+    pub fn parse(x: &'c Context, src: &str) -> Option<Self> {
+        unsafe { Self::from_option_raw(mlirAttributeParseGet(x.to_raw(), StringRef::from(src).to_raw())) }
     }
-    pub fn unit(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirUnitAttrGet(context.to_raw())) }
+    pub fn unit(x: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirUnitAttrGet(x.to_raw())) }
     }
     pub unsafe fn null() -> Self {
         unsafe { Self::from_raw(mlirAttributeGetNull()) }
@@ -40,14 +27,14 @@ impl<'c> Attribute<'c> {
     pub unsafe fn from_raw(raw: MlirAttribute) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
-    pub unsafe fn from_option_raw(raw: MlirAttribute) -> Option<Self> {
-        if raw.ptr.is_null() {
+    pub unsafe fn from_option_raw(x: MlirAttribute) -> Option<Self> {
+        if x.ptr.is_null() {
             None
         } else {
-            Some(Self::from_raw(raw))
+            Some(Self::from_raw(x))
         }
     }
 }
@@ -57,23 +44,23 @@ impl<'c> AttributeLike<'c> for Attribute<'c> {
     }
 }
 impl<'c> PartialEq for Attribute<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirAttributeEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirAttributeEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for Attribute<'c> {}
 impl<'c> Display for Attribute<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirAttributePrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirAttributePrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 impl<'c> Debug for Attribute<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
     }
 }
 
@@ -99,9 +86,9 @@ macro_rules! attribute_traits {
                 }
             }
         }
-        impl<'c> TryFrom<crate::ir::attribute::Attribute<'c>> for $name<'c> {
+        impl<'c> TryFrom<crate::mlir::ir::attr::Attribute<'c>> for $name<'c> {
             type Error = crate::Error;
-            fn try_from(attribute: crate::ir::attribute::Attribute<'c>) -> Result<Self, Self::Error> {
+            fn try_from(attribute: crate::mlir::ir::attr::Attribute<'c>) -> Result<Self, Self::Error> {
                 if attribute.$is_type() {
                     Ok(unsafe { Self::from_raw(attribute.to_raw()) })
                 } else {
@@ -109,7 +96,7 @@ macro_rules! attribute_traits {
                 }
             }
         }
-        impl<'c> crate::ir::attribute::AttributeLike<'c> for $name<'c> {
+        impl<'c> crate::mlir::ir::attr::AttributeLike<'c> for $name<'c> {
             fn to_raw(&self) -> mlir_lib::MlirAttribute {
                 self.attribute.to_raw()
             }
@@ -129,32 +116,32 @@ macro_rules! attribute_traits {
 
 #[derive(Clone, Copy)]
 pub struct ArrayAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> ArrayAttribute<'c> {
-    pub fn new(context: &'c Context, values: &[Attribute<'c>]) -> Self {
+    pub fn new(ctx: &'c Context, xs: &[Attribute<'c>]) -> Self {
         unsafe {
             Self::from_raw(mlirArrayAttrGet(
-                context.to_raw(),
-                values.len() as isize,
-                values.as_ptr() as *const _ as *const _,
+                ctx.to_raw(),
+                xs.len() as isize,
+                xs.as_ptr() as *const _ as *const _,
             ))
         }
     }
     pub fn len(&self) -> usize {
-        (unsafe { mlirArrayAttrGetNumElements(self.attribute.to_raw()) }) as usize
+        (unsafe { mlirArrayAttrGetNumElements(self.attr.to_raw()) }) as usize
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    pub fn element(&self, index: usize) -> Result<Attribute<'c>, Error> {
-        if index < self.len() {
-            Ok(unsafe { Attribute::from_raw(mlirArrayAttrGetElement(self.attribute.to_raw(), index as isize)) })
+    pub fn element(&self, idx: usize) -> Result<Attribute<'c>, Error> {
+        if idx < self.len() {
+            Ok(unsafe { Attribute::from_raw(mlirArrayAttrGetElement(self.attr.to_raw(), idx as isize)) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "array element",
-                value: self.to_string(),
-                index,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -163,7 +150,7 @@ attribute_traits!(ArrayAttribute, is_dense_i64_array, "dense i64 array");
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{attribute::IntegerAttribute, r#type::IntegerType, Type};
+    use crate::mlir::ir::{attr::IntegerAttribute, r#type::IntegerType, Type};
     #[test]
     fn element() {
         let context = Context::new();
@@ -431,7 +418,7 @@ attribute_traits!(TypeAttribute, is_type, "type");
 mod tests {
     use super::*;
     use crate::{
-        ir::{attribute::IntegerAttribute, IntegerType, MemRefType, Type, TypeLike},
+        ir::{attr::IntegerAttribute, IntegerType, MemRefType, Type, TypeLike},
         Context,
     };
     #[test]

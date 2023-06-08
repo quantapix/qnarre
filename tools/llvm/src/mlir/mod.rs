@@ -52,8 +52,8 @@ pub enum Error {
     OperationResultExpected(String),
     PositionOutOfBounds {
         name: &'static str,
-        value: String,
-        index: usize,
+        val: String,
+        idx: usize,
     },
     ParsePassPipeline(String),
     RunPass,
@@ -287,7 +287,7 @@ mod tests {
         ctx::Context,
         dialect::{self, arith, func, scf},
         ir::{
-            attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+            attr::{IntegerAttribute, StringAttribute, TypeAttribute},
             operation::OperationBuilder,
             r#type::{FunctionType, IntegerType},
             Block, Location, Module, Region, Type, Value,

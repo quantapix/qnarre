@@ -1,14 +1,14 @@
-use crate::{
+use crate::mlir::{
     ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute, Identifier, Location,
-        Operation, Value,
+        attr::IntegerAttribute, op::OperationBuilder, typ::IntegerType, Attribute, Identifier, Location, Operation,
+        Value,
     },
     Context,
 };
 
-pub fn constant<'c>(context: &'c Context, value: Attribute<'c>, location: Location<'c>) -> Operation<'c> {
-    OperationBuilder::new("arith.constant", location)
-        .add_attributes(&[(Identifier::new(context, "value"), value)])
+pub fn constant<'c>(ctx: &'c Context, value: Attribute<'c>, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new("arith.constant", loc)
+        .add_attributes(&[(Identifier::new(ctx, "value"), value)])
         .enable_result_type_inference()
         .build()
 }
@@ -31,14 +31,8 @@ pub enum CmpfPredicate {
     Uno,
     True,
 }
-pub fn cmpf<'c>(
-    context: &'c Context,
-    predicate: CmpfPredicate,
-    lhs: Value,
-    rhs: Value,
-    location: Location<'c>,
-) -> Operation<'c> {
-    cmp(context, "arith.cmpf", predicate as i64, lhs, rhs, location)
+pub fn cmpf<'c>(ctx: &'c Context, pred: CmpfPredicate, lhs: Value, rhs: Value, loc: Location<'c>) -> Operation<'c> {
+    cmp(ctx, "arith.cmpf", pred as i64, lhs, rhs, loc)
 }
 
 pub enum CmpiPredicate {
@@ -53,28 +47,15 @@ pub enum CmpiPredicate {
     Ugt,
     Uge,
 }
-pub fn cmpi<'c>(
-    context: &'c Context,
-    predicate: CmpiPredicate,
-    lhs: Value,
-    rhs: Value,
-    location: Location<'c>,
-) -> Operation<'c> {
-    cmp(context, "arith.cmpi", predicate as i64, lhs, rhs, location)
+pub fn cmpi<'c>(ctx: &'c Context, pred: CmpiPredicate, lhs: Value, rhs: Value, loc: Location<'c>) -> Operation<'c> {
+    cmp(ctx, "arith.cmpi", pred as i64, lhs, rhs, loc)
 }
 
-fn cmp<'c>(
-    context: &'c Context,
-    name: &str,
-    predicate: i64,
-    lhs: Value,
-    rhs: Value,
-    location: Location<'c>,
-) -> Operation<'c> {
-    OperationBuilder::new(name, location)
+fn cmp<'c>(ctx: &'c Context, name: &str, pred: i64, lhs: Value, rhs: Value, loc: Location<'c>) -> Operation<'c> {
+    OperationBuilder::new(name, loc)
         .add_attributes(&[(
-            Identifier::new(context, "predicate"),
-            IntegerAttribute::new(predicate, IntegerType::new(context, 64).into()).into(),
+            Identifier::new(ctx, "pred"),
+            IntegerAttribute::new(pred, IntegerType::new(ctx, 64).into()).into(),
         )])
         .add_operands(&[lhs, rhs])
         .enable_result_type_inference()
@@ -137,33 +118,33 @@ macros::typed_unary_operations!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use crate::mlir::{
         dialect::func,
         ir::{
-            attribute::{StringAttribute, TypeAttribute},
-            r#type::FunctionType,
+            attr::{StringAttribute, TypeAttribute},
+            typ::FunctionType,
             Attribute, Block, Location, Module, Region, Type,
         },
         test::load_all_dialects,
         Context,
     };
-    fn create_context() -> Context {
-        let context = Context::new();
-        load_all_dialects(&context);
-        context
+    fn create_ctx() -> Context {
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        ctx
     }
     fn compile_operation<'c>(
-        context: &'c Context,
+        ctx: &'c Context,
         operation: impl Fn(&Block<'c>) -> Operation<'c>,
         block_argument_types: &[Type<'c>],
         function_type: FunctionType<'c>,
     ) {
-        let location = Location::unknown(context);
-        let module = Module::new(location);
+        let loc = Location::unknown(ctx);
+        let module = Module::new(loc);
         let block = Block::new(
             &block_argument_types
                 .iter()
-                .map(|&r#type| (r#type, location))
+                .map(|&r#type| (r#type, loc))
                 .collect::<Vec<_>>(),
         );
         let operation = operation(&block);
@@ -171,17 +152,17 @@ mod tests {
         let name = name.as_string_ref().as_str().unwrap();
         block.append_operation(func::r#return(
             &[block.append_operation(operation).result(0).unwrap().into()],
-            location,
+            loc,
         ));
         let region = Region::new();
         region.append_block(block);
         let function = func::func(
-            context,
-            StringAttribute::new(context, "foo"),
+            ctx,
+            StringAttribute::new(ctx, "foo"),
             TypeAttribute::new(function_type.into()),
             region,
             &[],
-            Location::unknown(context),
+            Location::unknown(ctx),
         );
         module.body().append_operation(function);
         assert!(module.as_operation().verify());
@@ -189,78 +170,70 @@ mod tests {
     }
     #[test]
     fn compile_constant() {
-        let context = create_context();
-        let integer_type = IntegerType::new(&context, 64).into();
+        let ctx = create_ctx();
+        let integer_type = IntegerType::new(&ctx, 64).into();
         compile_operation(
-            &context,
+            &ctx,
             |_| {
                 constant(
-                    &context,
-                    Attribute::parse(&context, "42 : i64").unwrap(),
-                    Location::unknown(&context),
+                    &ctx,
+                    Attribute::parse(&ctx, "42 : i64").unwrap(),
+                    Location::unknown(&ctx),
                 )
             },
             &[integer_type],
-            FunctionType::new(&context, &[integer_type], &[integer_type]),
+            FunctionType::new(&ctx, &[integer_type], &[integer_type]),
         );
     }
     #[test]
     fn compile_negf() {
-        let context = create_context();
-        let f64_type = Type::float64(&context);
+        let ctx = create_ctx();
+        let f64_type = Type::float64(&ctx);
         compile_operation(
-            &context,
-            |block| negf(block.argument(0).unwrap().into(), Location::unknown(&context)),
-            &[Type::float64(&context)],
-            FunctionType::new(&context, &[f64_type], &[f64_type]),
+            &ctx,
+            |block| negf(block.argument(0).unwrap().into(), Location::unknown(&ctx)),
+            &[Type::float64(&ctx)],
+            FunctionType::new(&ctx, &[f64_type], &[f64_type]),
         );
     }
     mod cmp {
         use super::*;
         #[test]
         fn compile_cmpf() {
-            let context = create_context();
-            let float_type = Type::float64(&context);
+            let ctx = create_ctx();
+            let float_type = Type::float64(&ctx);
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     cmpf(
-                        &context,
+                        &ctx,
                         CmpfPredicate::Oeq,
                         block.argument(0).unwrap().into(),
                         block.argument(1).unwrap().into(),
-                        Location::unknown(&context),
+                        Location::unknown(&ctx),
                     )
                 },
                 &[float_type, float_type],
-                FunctionType::new(
-                    &context,
-                    &[float_type, float_type],
-                    &[IntegerType::new(&context, 1).into()],
-                ),
+                FunctionType::new(&ctx, &[float_type, float_type], &[IntegerType::new(&ctx, 1).into()]),
             );
         }
         #[test]
         fn compile_cmpi() {
-            let context = create_context();
-            let integer_type = IntegerType::new(&context, 64).into();
+            let ctx = create_ctx();
+            let integer_type = IntegerType::new(&ctx, 64).into();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     cmpi(
-                        &context,
+                        &ctx,
                         CmpiPredicate::Eq,
                         block.argument(0).unwrap().into(),
                         block.argument(1).unwrap().into(),
-                        Location::unknown(&context),
+                        Location::unknown(&ctx),
                     )
                 },
                 &[integer_type, integer_type],
-                FunctionType::new(
-                    &context,
-                    &[integer_type, integer_type],
-                    &[IntegerType::new(&context, 1).into()],
-                ),
+                FunctionType::new(&ctx, &[integer_type, integer_type], &[IntegerType::new(&ctx, 1).into()]),
             );
         }
     }
@@ -268,243 +241,213 @@ mod tests {
         use super::*;
         #[test]
         fn compile_bitcast() {
-            let context = create_context();
-            let integer_type = IntegerType::new(&context, 64).into();
-            let float_type = Type::float64(&context);
+            let ctx = create_ctx();
+            let integer_type = IntegerType::new(&ctx, 64).into();
+            let float_type = Type::float64(&ctx);
             compile_operation(
-                &context,
-                |block| {
-                    bitcast(
-                        block.argument(0).unwrap().into(),
-                        float_type,
-                        Location::unknown(&context),
-                    )
-                },
+                &ctx,
+                |block| bitcast(block.argument(0).unwrap().into(), float_type, Location::unknown(&ctx)),
                 &[integer_type],
-                FunctionType::new(&context, &[integer_type], &[float_type]),
+                FunctionType::new(&ctx, &[integer_type], &[float_type]),
             );
         }
         #[test]
         fn compile_extf() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     extf(
                         block.argument(0).unwrap().into(),
-                        Type::float64(&context),
-                        Location::unknown(&context),
+                        Type::float64(&ctx),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[Type::float32(&context)],
-                FunctionType::new(&context, &[Type::float32(&context)], &[Type::float64(&context)]),
+                &[Type::float32(&ctx)],
+                FunctionType::new(&ctx, &[Type::float32(&ctx)], &[Type::float64(&ctx)]),
             );
         }
         #[test]
         fn compile_extsi() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     extsi(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 64).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 64).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[IntegerType::new(&context, 32).into()],
+                &[IntegerType::new(&ctx, 32).into()],
                 FunctionType::new(
-                    &context,
-                    &[IntegerType::new(&context, 32).into()],
-                    &[IntegerType::new(&context, 64).into()],
+                    &ctx,
+                    &[IntegerType::new(&ctx, 32).into()],
+                    &[IntegerType::new(&ctx, 64).into()],
                 ),
             );
         }
         #[test]
         fn compile_extui() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     extui(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 64).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 64).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[IntegerType::new(&context, 32).into()],
+                &[IntegerType::new(&ctx, 32).into()],
                 FunctionType::new(
-                    &context,
-                    &[IntegerType::new(&context, 32).into()],
-                    &[IntegerType::new(&context, 64).into()],
+                    &ctx,
+                    &[IntegerType::new(&ctx, 32).into()],
+                    &[IntegerType::new(&ctx, 64).into()],
                 ),
             );
         }
         #[test]
         fn compile_fptosi() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     fptosi(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 64).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 64).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[Type::float32(&context)],
-                FunctionType::new(
-                    &context,
-                    &[Type::float32(&context)],
-                    &[IntegerType::new(&context, 64).into()],
-                ),
+                &[Type::float32(&ctx)],
+                FunctionType::new(&ctx, &[Type::float32(&ctx)], &[IntegerType::new(&ctx, 64).into()]),
             );
         }
         #[test]
         fn compile_fptoui() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     fptoui(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 64).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 64).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[Type::float32(&context)],
-                FunctionType::new(
-                    &context,
-                    &[Type::float32(&context)],
-                    &[IntegerType::new(&context, 64).into()],
-                ),
+                &[Type::float32(&ctx)],
+                FunctionType::new(&ctx, &[Type::float32(&ctx)], &[IntegerType::new(&ctx, 64).into()]),
             );
         }
         #[test]
         fn compile_index_cast() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     index_cast(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 64).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 64).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[Type::index(&context)],
-                FunctionType::new(
-                    &context,
-                    &[Type::index(&context)],
-                    &[IntegerType::new(&context, 64).into()],
-                ),
+                &[Type::index(&ctx)],
+                FunctionType::new(&ctx, &[Type::index(&ctx)], &[IntegerType::new(&ctx, 64).into()]),
             );
         }
         #[test]
         fn compile_index_castui() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     index_castui(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 64).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 64).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[Type::index(&context)],
-                FunctionType::new(
-                    &context,
-                    &[Type::index(&context)],
-                    &[IntegerType::new(&context, 64).into()],
-                ),
+                &[Type::index(&ctx)],
+                FunctionType::new(&ctx, &[Type::index(&ctx)], &[IntegerType::new(&ctx, 64).into()]),
             );
         }
         #[test]
         fn compile_sitofp() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     sitofp(
                         block.argument(0).unwrap().into(),
-                        Type::float64(&context),
-                        Location::unknown(&context),
+                        Type::float64(&ctx),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[IntegerType::new(&context, 32).into()],
-                FunctionType::new(
-                    &context,
-                    &[IntegerType::new(&context, 32).into()],
-                    &[Type::float64(&context)],
-                ),
+                &[IntegerType::new(&ctx, 32).into()],
+                FunctionType::new(&ctx, &[IntegerType::new(&ctx, 32).into()], &[Type::float64(&ctx)]),
             );
         }
         #[test]
         fn compile_trunci() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     trunci(
                         block.argument(0).unwrap().into(),
-                        IntegerType::new(&context, 32).into(),
-                        Location::unknown(&context),
+                        IntegerType::new(&ctx, 32).into(),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[IntegerType::new(&context, 64).into()],
+                &[IntegerType::new(&ctx, 64).into()],
                 FunctionType::new(
-                    &context,
-                    &[IntegerType::new(&context, 64).into()],
-                    &[IntegerType::new(&context, 32).into()],
+                    &ctx,
+                    &[IntegerType::new(&ctx, 64).into()],
+                    &[IntegerType::new(&ctx, 32).into()],
                 ),
             );
         }
         #[test]
         fn compile_uitofp() {
-            let context = create_context();
+            let ctx = create_ctx();
             compile_operation(
-                &context,
+                &ctx,
                 |block| {
                     uitofp(
                         block.argument(0).unwrap().into(),
-                        Type::float64(&context),
-                        Location::unknown(&context),
+                        Type::float64(&ctx),
+                        Location::unknown(&ctx),
                     )
                 },
-                &[IntegerType::new(&context, 32).into()],
-                FunctionType::new(
-                    &context,
-                    &[IntegerType::new(&context, 32).into()],
-                    &[Type::float64(&context)],
-                ),
+                &[IntegerType::new(&ctx, 32).into()],
+                FunctionType::new(&ctx, &[IntegerType::new(&ctx, 32).into()], &[Type::float64(&ctx)]),
             );
         }
     }
     #[test]
     fn compile_addi() {
-        let context = Context::new();
-        load_all_dialects(&context);
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-        let integer_type = IntegerType::new(&context, 64).into();
+        let ctx = Context::new();
+        load_all_dialects(&ctx);
+        let loc = Location::unknown(&ctx);
+        let module = Module::new(loc);
+        let integer_type = IntegerType::new(&ctx, 64).into();
         let function = {
-            let block = Block::new(&[(integer_type, location), (integer_type, location)]);
+            let block = Block::new(&[(integer_type, loc), (integer_type, loc)]);
             let sum = block.append_operation(addi(
                 block.argument(0).unwrap().into(),
                 block.argument(1).unwrap().into(),
-                location,
+                loc,
             ));
-            block.append_operation(func::r#return(&[sum.result(0).unwrap().into()], location));
+            block.append_operation(func::r#return(&[sum.result(0).unwrap().into()], loc));
             let region = Region::new();
             region.append_block(block);
             func::func(
-                &context,
-                StringAttribute::new(&context, "foo"),
-                TypeAttribute::new(FunctionType::new(&context, &[integer_type, integer_type], &[integer_type]).into()),
+                &ctx,
+                StringAttribute::new(&ctx, "foo"),
+                TypeAttribute::new(FunctionType::new(&ctx, &[integer_type, integer_type], &[integer_type]).into()),
                 region,
                 &[],
-                Location::unknown(&context),
+                Location::unknown(&ctx),
             )
         };
         module.body().append_operation(function);
