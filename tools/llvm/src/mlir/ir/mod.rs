@@ -1,96 +1,23 @@
-use super::{
-    ctx::{Context, ContextRef},
-    ir::{Attribute, AttributeLike},
-    utils::{into_raw_array, print_callback},
-    StringRef,
-};
-use mlir_lib::*;
-use mlir_lib::*;
-use std::{
-    ffi::c_void,
-    fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
-    mem::{forget, transmute},
-    ops::Deref,
-};
-use std::{
-    ffi::c_void,
-    fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
-    mem::{forget, transmute},
-    ops::Deref,
-};
-
-use super::{Location, Operation, OperationRef, RegionRef, Type, TypeLike, Value};
-use crate::{
-    ctx::Context,
-    ir::{BlockRef, Type, TypeLike, ValueLike},
-    utils::{into_raw_array, print_callback},
-    Error,
-};
-use crate::{
-    ctx::{Context, ContextRef},
-    ir::*,
-    string_ref::StringRef,
-    utils::{into_raw_array, print_callback, print_string_callback},
-    Error,
-};
-use mlir_lib::*;
-use std::{
-    ffi::c_void,
-    fmt::{Debug, Display, Formatter},
-    marker::PhantomData,
-    ops::Deref,
-};
-
-pub use self::{builder::OperationBuilder, printing_flags::OperationPrintingFlags, result::OperationResult};
-use super::{BlockRef, Identifier, Operation, RegionRef, Value};
-use crate::print_callback;
-use core::{
-    fmt,
-    mem::{forget, transmute},
-};
-use mlir_lib::*;
-use std::{
-    ffi::c_void,
-    fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
-};
-
-use super::Type;
-use super::{block::BlockArgument, op::OperationResult, Type};
-
-pub use self::{
-    attr::{Attribute, AttributeLike},
-    block::{Block, BlockRef},
-    op::{Operation, OperationRef},
-    typ::{Type, TypeLike},
-    val::{Value, ValueLike},
-};
-use crate::{ctx::Context, ctx::ContextRef, utils::print_callback, StringRef};
-use crate::{ir::Type, utils::into_raw_array, Context, Error};
-use crate::{
-    ir::{AffineMap, Attribute, AttributeLike, Location, Type},
-    Error,
-};
+use macros::attribute_check_functions;
 use mlir_lib::*;
 use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},
     hash::{Hash, Hasher},
     marker::PhantomData,
+    mem::{forget, transmute},
+    ops::Deref,
 };
 
-pub use self::{
-    function::FunctionType, id::TypeId, integer::IntegerType, mem_ref::MemRefType, ranked_tensor::RankedTensorType,
-    tuple::TupleType, type_like::TypeLike,
+use crate::mlir::{
+    utils::{into_raw_array, print_callback, print_string_callback},
+    Context, ContextRef, Error, StringRef,
 };
-use super::*;
 
 #[derive(Clone, Copy)]
 pub struct AffineMap<'c> {
     raw: MlirAffineMap,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> AffineMap<'c> {
     pub fn context(&self) -> ContextRef<'c> {
@@ -102,39 +29,39 @@ impl<'c> AffineMap<'c> {
     pub unsafe fn from_raw(raw: MlirAffineMap) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
 }
 impl<'c> PartialEq for AffineMap<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirAffineMapEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirAffineMapEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for AffineMap<'c> {}
 impl<'c> Display for AffineMap<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirAffineMapPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirAffineMapPrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 impl<'c> Debug for AffineMap<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Identifier<'c> {
     raw: MlirIdentifier,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Identifier<'c> {
-    pub fn new(context: &Context, name: &str) -> Self {
-        unsafe { Self::from_raw(mlirIdentifierGet(context.to_raw(), StringRef::from(name).to_raw())) }
+    pub fn new(c: &Context, name: &str) -> Self {
+        unsafe { Self::from_raw(mlirIdentifierGet(c.to_raw(), StringRef::from(name).to_raw())) }
     }
     pub fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirIdentifierGetContext(self.raw)) }
@@ -145,7 +72,7 @@ impl<'c> Identifier<'c> {
     pub unsafe fn from_raw(raw: MlirIdentifier) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
     pub fn to_raw(self) -> MlirIdentifier {
@@ -153,8 +80,8 @@ impl<'c> Identifier<'c> {
     }
 }
 impl<'c> PartialEq for Identifier<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirIdentifierEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirIdentifierEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for Identifier<'c> {}
@@ -162,40 +89,40 @@ impl<'c> Eq for Identifier<'c> {}
 #[derive(Clone, Copy, Debug)]
 pub struct Location<'c> {
     raw: MlirLocation,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Location<'c> {
-    pub fn new(context: &'c Context, filename: &str, line: usize, column: usize) -> Self {
+    pub fn new(c: &'c Context, file: &str, line: usize, col: usize) -> Self {
         unsafe {
             Self::from_raw(mlirLocationFileLineColGet(
-                context.to_raw(),
-                StringRef::from(filename).to_raw(),
+                c.to_raw(),
+                StringRef::from(file).to_raw(),
                 line as u32,
-                column as u32,
+                col as u32,
             ))
         }
     }
-    pub fn fused(context: &'c Context, locations: &[Self], attribute: Attribute) -> Self {
+    pub fn fused(c: &'c Context, locs: &[Self], a: Attribute) -> Self {
         unsafe {
             Self::from_raw(mlirLocationFusedGet(
-                context.to_raw(),
-                locations.len() as isize,
-                into_raw_array(locations.iter().map(|location| location.to_raw()).collect()),
-                attribute.to_raw(),
+                c.to_raw(),
+                locs.len() as isize,
+                into_raw_array(locs.iter().map(|x| x.to_raw()).collect()),
+                a.to_raw(),
             ))
         }
     }
-    pub fn name(context: &'c Context, name: &str, child: Location) -> Self {
+    pub fn name(c: &'c Context, name: &str, child: Location) -> Self {
         unsafe {
             Self::from_raw(mlirLocationNameGet(
-                context.to_raw(),
+                c.to_raw(),
                 StringRef::from(name).to_raw(),
                 child.to_raw(),
             ))
         }
     }
-    pub fn unknown(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirLocationUnknownGet(context.to_raw())) }
+    pub fn unknown(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirLocationUnknownGet(c.to_raw())) }
     }
     pub fn context(&self) -> ContextRef<'c> {
         unsafe { ContextRef::from_raw(mlirLocationGetContext(self.raw)) }
@@ -203,7 +130,7 @@ impl<'c> Location<'c> {
     pub unsafe fn from_raw(raw: MlirLocation) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
     pub fn to_raw(self) -> MlirLocation {
@@ -211,36 +138,31 @@ impl<'c> Location<'c> {
     }
 }
 impl<'c> PartialEq for Location<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirLocationEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirLocationEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Display for Location<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirLocationPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirLocationPrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 
 #[derive(Debug)]
 pub struct Module<'c> {
     raw: MlirModule,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Module<'c> {
-    pub fn new(location: Location) -> Self {
-        unsafe { Self::from_raw(mlirModuleCreateEmpty(location.to_raw())) }
+    pub fn new(loc: Location) -> Self {
+        unsafe { Self::from_raw(mlirModuleCreateEmpty(loc.to_raw())) }
     }
-    pub fn parse(context: &Context, source: &str) -> Option<Self> {
-        unsafe {
-            Self::from_option_raw(mlirModuleCreateParse(
-                context.to_raw(),
-                StringRef::from(source).to_raw(),
-            ))
-        }
+    pub fn parse(c: &Context, source: &str) -> Option<Self> {
+        unsafe { Self::from_option_raw(mlirModuleCreateParse(c.to_raw(), StringRef::from(source).to_raw())) }
     }
     pub fn as_operation(&self) -> OperationRef {
         unsafe { OperationRef::from_raw(mlirModuleGetOperation(self.raw)) }
@@ -251,13 +173,13 @@ impl<'c> Module<'c> {
     pub fn body(&self) -> BlockRef {
         unsafe { BlockRef::from_raw(mlirModuleGetBody(self.raw)) }
     }
-    pub fn from_operation(operation: Operation) -> Option<Self> {
-        unsafe { Self::from_option_raw(mlirModuleFromOperation(operation.into_raw())) }
+    pub fn from_operation(o: Operation) -> Option<Self> {
+        unsafe { Self::from_option_raw(mlirModuleFromOperation(o.into_raw())) }
     }
     pub unsafe fn from_raw(raw: MlirModule) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
     pub unsafe fn from_option_raw(raw: MlirModule) -> Option<Self> {
@@ -289,39 +211,39 @@ impl Region {
     }
     pub fn first_block(&self) -> Option<BlockRef> {
         unsafe {
-            let block = mlirRegionGetFirstBlock(self.raw);
-            if block.ptr.is_null() {
+            let y = mlirRegionGetFirstBlock(self.raw);
+            if y.ptr.is_null() {
                 None
             } else {
-                Some(BlockRef::from_raw(block))
+                Some(BlockRef::from_raw(y))
             }
         }
     }
     pub fn insert_block_after(&self, one: BlockRef, other: Block) -> BlockRef {
         unsafe {
-            let r#ref = BlockRef::from_raw(other.to_raw());
+            let y = BlockRef::from_raw(other.to_raw());
             mlirRegionInsertOwnedBlockAfter(self.raw, one.to_raw(), other.into_raw());
-            r#ref
+            y
         }
     }
     pub fn insert_block_before(&self, one: BlockRef, other: Block) -> BlockRef {
         unsafe {
-            let r#ref = BlockRef::from_raw(other.to_raw());
+            let y = BlockRef::from_raw(other.to_raw());
             mlirRegionInsertOwnedBlockBefore(self.raw, one.to_raw(), other.into_raw());
-            r#ref
+            y
         }
     }
     pub fn append_block(&self, block: Block) -> BlockRef {
         unsafe {
-            let r#ref = BlockRef::from_raw(block.to_raw());
+            let y = BlockRef::from_raw(block.to_raw());
             mlirRegionAppendOwnedBlock(self.raw, block.into_raw());
-            r#ref
+            y
         }
     }
     pub fn into_raw(self) -> MlirRegion {
-        let region = self.raw;
+        let y = self.raw;
         forget(self);
-        region
+        y
     }
 }
 impl Default for Region {
@@ -335,8 +257,8 @@ impl Drop for Region {
     }
 }
 impl PartialEq for Region {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirRegionEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirRegionEqual(self.raw, x.raw) }
     }
 }
 impl Eq for Region {}
@@ -344,13 +266,13 @@ impl Eq for Region {}
 #[derive(Clone, Copy, Debug)]
 pub struct RegionRef<'a> {
     raw: MlirRegion,
-    _region: PhantomData<&'a Region>,
+    _reg: PhantomData<&'a Region>,
 }
 impl<'a> RegionRef<'a> {
     pub unsafe fn from_raw(raw: MlirRegion) -> Self {
         Self {
             raw,
-            _region: Default::default(),
+            _reg: Default::default(),
         }
     }
     pub unsafe fn from_option_raw(raw: MlirRegion) -> Option<Self> {
@@ -368,22 +290,56 @@ impl<'a> Deref for RegionRef<'a> {
     }
 }
 impl<'a> PartialEq for RegionRef<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirRegionEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirRegionEqual(self.raw, x.raw) }
     }
 }
 impl<'a> Eq for RegionRef<'a> {}
 
-use macros::attribute_check_functions;
-use mlir_lib::*;
-use std::{
-    ffi::c_void,
-    fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
-};
-
-use super::{Attribute, AttributeLike};
-use crate::mlir::{ir::Type, utils::print_callback, Context, ContextRef, Error, StringRef};
+pub trait AttributeLike<'c> {
+    fn to_raw(&self) -> MlirAttribute;
+    fn context(&self) -> ContextRef<'c> {
+        unsafe { ContextRef::from_raw(mlirAttributeGetContext(self.to_raw())) }
+    }
+    fn ty(&self) -> Type {
+        unsafe { Type::from_raw(mlirAttributeGetType(self.to_raw())) }
+    }
+    fn type_id(&self) -> TypeId {
+        unsafe { TypeId::from_raw(mlirAttributeGetTypeID(self.to_raw())) }
+    }
+    fn dump(&self) {
+        unsafe { mlirAttributeDump(self.to_raw()) }
+    }
+    attribute_check_functions!(
+        mlirAttributeIsAAffineMap,
+        mlirAttributeIsAArray,
+        mlirAttributeIsABool,
+        mlirAttributeIsADenseBoolArray,
+        mlirAttributeIsADenseElements,
+        mlirAttributeIsADenseF32Array,
+        mlirAttributeIsADenseF64Array,
+        mlirAttributeIsADenseFPElements,
+        mlirAttributeIsADenseI16Array,
+        mlirAttributeIsADenseI32Array,
+        mlirAttributeIsADenseI64Array,
+        mlirAttributeIsADenseI8Array,
+        mlirAttributeIsADenseIntElements,
+        mlirAttributeIsADictionary,
+        mlirAttributeIsAElements,
+        mlirAttributeIsAFlatSymbolRef,
+        mlirAttributeIsAFloat,
+        mlirAttributeIsAInteger,
+        mlirAttributeIsAIntegerSet,
+        mlirAttributeIsAOpaque,
+        mlirAttributeIsASparseElements,
+        mlirAttributeIsASparseTensorEncodingAttr,
+        mlirAttributeIsAStridedLayout,
+        mlirAttributeIsAString,
+        mlirAttributeIsASymbolRef,
+        mlirAttributeIsAType,
+        mlirAttributeIsAUnit,
+    );
+}
 
 #[derive(Clone, Copy)]
 pub struct Attribute<'c> {
@@ -453,38 +409,38 @@ from_raw_subtypes!(
     TypeAttribute,
 );
 
-macro_rules! attribute_traits {
+macro_rules! attr_traits {
     ($name: ident, $is_type: ident, $string: expr) => {
         impl<'c> $name<'c> {
             unsafe fn from_raw(raw: MlirAttribute) -> Self {
                 Self {
-                    attribute: Attribute::from_raw(raw),
+                    attr: Attribute::from_raw(raw),
                 }
             }
         }
-        impl<'c> TryFrom<crate::mlir::ir::attr::Attribute<'c>> for $name<'c> {
-            type Error = crate::Error;
-            fn try_from(attribute: crate::mlir::ir::attr::Attribute<'c>) -> Result<Self, Self::Error> {
-                if attribute.$is_type() {
-                    Ok(unsafe { Self::from_raw(attribute.to_raw()) })
+        impl<'c> TryFrom<crate::mlir::ir::Attribute<'c>> for $name<'c> {
+            type Error = crate::mlir::Error;
+            fn try_from(a: crate::mlir::ir::Attribute<'c>) -> Result<Self, Self::Error> {
+                if a.$is_type() {
+                    Ok(unsafe { Self::from_raw(a.to_raw()) })
                 } else {
-                    Err(Error::AttributeExpected($string, attribute.to_string()))
+                    Err(Error::AttributeExpected($string, a.to_string()))
                 }
             }
         }
-        impl<'c> crate::mlir::ir::attr::AttributeLike<'c> for $name<'c> {
+        impl<'c> crate::mlir::ir::AttributeLike<'c> for $name<'c> {
             fn to_raw(&self) -> mlir_lib::MlirAttribute {
                 self.attribute.to_raw()
             }
         }
         impl<'c> std::fmt::Display for $name<'c> {
-            fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.attribute, formatter)
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.attribute, f)
             }
         }
         impl<'c> std::fmt::Debug for $name<'c> {
-            fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                std::fmt::Display::fmt(self, formatter)
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Display::fmt(self, f)
             }
         }
     };
@@ -495,10 +451,10 @@ pub struct ArrayAttribute<'c> {
     attr: Attribute<'c>,
 }
 impl<'c> ArrayAttribute<'c> {
-    pub fn new(ctx: &'c Context, xs: &[Attribute<'c>]) -> Self {
+    pub fn new(c: &'c Context, xs: &[Attribute<'c>]) -> Self {
         unsafe {
             Self::from_raw(mlirArrayAttrGet(
-                ctx.to_raw(),
+                c.to_raw(),
                 xs.len() as isize,
                 xs.as_ptr() as *const _ as *const _,
             ))
@@ -522,218 +478,130 @@ impl<'c> ArrayAttribute<'c> {
         }
     }
 }
-attribute_traits!(ArrayAttribute, is_dense_i64_array, "dense i64 array");
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mlir::ir::{attr::IntegerAttribute, r#type::IntegerType, Type};
-    #[test]
-    fn element() {
-        let context = Context::new();
-        let r#type = IntegerType::new(&context, 64).into();
-        let attributes = [
-            IntegerAttribute::new(1, r#type).into(),
-            IntegerAttribute::new(2, r#type).into(),
-            IntegerAttribute::new(3, r#type).into(),
-        ];
-        let attribute = ArrayAttribute::new(&context, &attributes);
-        assert_eq!(attribute.element(0).unwrap(), attributes[0]);
-        assert_eq!(attribute.element(1).unwrap(), attributes[1]);
-        assert_eq!(attribute.element(2).unwrap(), attributes[2]);
-        assert!(matches!(attribute.element(3), Err(Error::PositionOutOfBounds { .. })));
-    }
-    #[test]
-    fn len() {
-        let context = Context::new();
-        let attribute = ArrayAttribute::new(&context, &[IntegerAttribute::new(1, Type::index(&context)).into()]);
-        assert_eq!(attribute.len(), 1);
-    }
-}
-
-pub trait AttributeLike<'c> {
-    fn to_raw(&self) -> MlirAttribute;
-    fn context(&self) -> ContextRef<'c> {
-        unsafe { ContextRef::from_raw(mlirAttributeGetContext(self.to_raw())) }
-    }
-    fn r#type(&self) -> Type {
-        unsafe { Type::from_raw(mlirAttributeGetType(self.to_raw())) }
-    }
-    fn type_id(&self) -> r#type::TypeId {
-        unsafe { r#type::TypeId::from_raw(mlirAttributeGetTypeID(self.to_raw())) }
-    }
-    fn dump(&self) {
-        unsafe { mlirAttributeDump(self.to_raw()) }
-    }
-    attribute_check_functions!(
-        mlirAttributeIsAAffineMap,
-        mlirAttributeIsAArray,
-        mlirAttributeIsABool,
-        mlirAttributeIsADenseBoolArray,
-        mlirAttributeIsADenseElements,
-        mlirAttributeIsADenseF32Array,
-        mlirAttributeIsADenseF64Array,
-        mlirAttributeIsADenseFPElements,
-        mlirAttributeIsADenseI16Array,
-        mlirAttributeIsADenseI32Array,
-        mlirAttributeIsADenseI64Array,
-        mlirAttributeIsADenseI8Array,
-        mlirAttributeIsADenseIntElements,
-        mlirAttributeIsADictionary,
-        mlirAttributeIsAElements,
-        mlirAttributeIsAFlatSymbolRef,
-        mlirAttributeIsAFloat,
-        mlirAttributeIsAInteger,
-        mlirAttributeIsAIntegerSet,
-        mlirAttributeIsAOpaque,
-        mlirAttributeIsASparseElements,
-        mlirAttributeIsASparseTensorEncodingAttr,
-        mlirAttributeIsAStridedLayout,
-        mlirAttributeIsAString,
-        mlirAttributeIsASymbolRef,
-        mlirAttributeIsAType,
-        mlirAttributeIsAUnit,
-    );
-}
+attr_traits!(ArrayAttribute, is_dense_i64_array, "dense i64 array");
 
 #[derive(Clone, Copy)]
 pub struct DenseElementsAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> DenseElementsAttribute<'c> {
-    pub fn new(r#type: Type<'c>, values: &[Attribute<'c>]) -> Result<Self, Error> {
-        if r#type.is_shaped() {
+    pub fn new(t: Type<'c>, xs: &[Attribute<'c>]) -> Result<Self, Error> {
+        if t.is_shaped() {
             Ok(unsafe {
                 Self::from_raw(mlirDenseElementsAttrGet(
-                    r#type.to_raw(),
-                    values.len() as isize,
-                    values.as_ptr() as *const _ as *const _,
+                    t.to_raw(),
+                    xs.len() as isize,
+                    xs.as_ptr() as *const _ as *const _,
                 ))
             })
         } else {
-            Err(Error::TypeExpected("shaped", r#type.to_string()))
+            Err(Error::TypeExpected("shaped", t.to_string()))
         }
     }
     pub fn len(&self) -> usize {
-        (unsafe { mlirElementsAttrGetNumElements(self.attribute.to_raw()) }) as usize
+        (unsafe { mlirElementsAttrGetNumElements(self.attr.to_raw()) }) as usize
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    pub fn i32_element(&self, index: usize) -> Result<i32, Error> {
+    pub fn i32_element(&self, idx: usize) -> Result<i32, Error> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
-                r#type: "integer",
+                ty: "integer",
                 value: self.to_string(),
             })
-        } else if index < self.len() {
-            Ok(unsafe { mlirDenseElementsAttrGetInt32Value(self.attribute.to_raw(), index as isize) })
+        } else if idx < self.len() {
+            Ok(unsafe { mlirDenseElementsAttrGetInt32Value(self.attr.to_raw(), idx as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "dense element",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
-    pub fn i64_element(&self, index: usize) -> Result<i64, Error> {
+    pub fn i64_element(&self, idx: usize) -> Result<i64, Error> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
-                r#type: "integer",
+                ty: "integer",
                 value: self.to_string(),
             })
-        } else if index < self.len() {
-            Ok(unsafe { mlirDenseElementsAttrGetInt64Value(self.attribute.to_raw(), index as isize) })
+        } else if idx < self.len() {
+            Ok(unsafe { mlirDenseElementsAttrGetInt64Value(self.attr.to_raw(), idx as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "dense element",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
 }
-attribute_traits!(DenseElementsAttribute, is_dense_elements, "dense elements");
+attr_traits!(DenseElementsAttribute, is_dense_elements, "dense elements");
 
 #[derive(Clone, Copy)]
 pub struct DenseI32ArrayAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> DenseI32ArrayAttribute<'c> {
-    pub fn new(context: &'c Context, values: &[i32]) -> Self {
-        unsafe {
-            Self::from_raw(mlirDenseI32ArrayGet(
-                context.to_raw(),
-                values.len() as isize,
-                values.as_ptr(),
-            ))
-        }
+    pub fn new(c: &'c Context, values: &[i32]) -> Self {
+        unsafe { Self::from_raw(mlirDenseI32ArrayGet(c.to_raw(), values.len() as isize, values.as_ptr())) }
     }
     pub fn len(&self) -> usize {
-        (unsafe { mlirArrayAttrGetNumElements(self.attribute.to_raw()) }) as usize
+        (unsafe { mlirArrayAttrGetNumElements(self.attr.to_raw()) }) as usize
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    pub fn element(&self, index: usize) -> Result<i32, Error> {
-        if index < self.len() {
-            Ok(unsafe { mlirDenseI32ArrayGetElement(self.attribute.to_raw(), index as isize) })
+    pub fn element(&self, idx: usize) -> Result<i32, Error> {
+        if idx < self.len() {
+            Ok(unsafe { mlirDenseI32ArrayGetElement(self.attr.to_raw(), idx as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "array element",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
 }
-attribute_traits!(DenseI32ArrayAttribute, is_dense_i32_array, "dense i32 array");
+attr_traits!(DenseI32ArrayAttribute, is_dense_i32_array, "dense i32 array");
 
 #[derive(Clone, Copy)]
 pub struct DenseI64ArrayAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> DenseI64ArrayAttribute<'c> {
-    pub fn new(context: &'c Context, values: &[i64]) -> Self {
-        unsafe {
-            Self::from_raw(mlirDenseI64ArrayGet(
-                context.to_raw(),
-                values.len() as isize,
-                values.as_ptr(),
-            ))
-        }
+    pub fn new(c: &'c Context, xs: &[i64]) -> Self {
+        unsafe { Self::from_raw(mlirDenseI64ArrayGet(c.to_raw(), xs.len() as isize, xs.as_ptr())) }
     }
     pub fn len(&self) -> usize {
-        (unsafe { mlirArrayAttrGetNumElements(self.attribute.to_raw()) }) as usize
+        (unsafe { mlirArrayAttrGetNumElements(self.attr.to_raw()) }) as usize
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    pub fn element(&self, index: usize) -> Result<i64, Error> {
-        if index < self.len() {
-            Ok(unsafe { mlirDenseI64ArrayGetElement(self.attribute.to_raw(), index as isize) })
+    pub fn element(&self, idx: usize) -> Result<i64, Error> {
+        if idx < self.len() {
+            Ok(unsafe { mlirDenseI64ArrayGetElement(self.attr.to_raw(), idx as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "array element",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
 }
-attribute_traits!(DenseI64ArrayAttribute, is_dense_i64_array, "dense i64 array");
+attr_traits!(DenseI64ArrayAttribute, is_dense_i64_array, "dense i64 array");
 
 #[derive(Clone, Copy)]
 pub struct FlatSymbolRefAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> FlatSymbolRefAttribute<'c> {
-    pub fn new(context: &'c Context, symbol: &str) -> Self {
-        unsafe {
-            Self::from_raw(mlirFlatSymbolRefAttrGet(
-                context.to_raw(),
-                StringRef::from(symbol).to_raw(),
-            ))
-        }
+    pub fn new(c: &'c Context, symbol: &str) -> Self {
+        unsafe { Self::from_raw(mlirFlatSymbolRefAttrGet(c.to_raw(), StringRef::from(symbol).to_raw())) }
     }
     pub fn value(&self) -> &str {
         unsafe { StringRef::from_raw(mlirFlatSymbolRefAttrGetValue(self.to_raw())) }
@@ -741,78 +609,78 @@ impl<'c> FlatSymbolRefAttribute<'c> {
             .unwrap()
     }
 }
-attribute_traits!(FlatSymbolRefAttribute, is_flat_symbol_ref, "flat symbol ref");
+attr_traits!(FlatSymbolRefAttribute, is_flat_symbol_ref, "flat symbol ref");
 
 #[derive(Clone, Copy)]
 pub struct FloatAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> FloatAttribute<'c> {
-    pub fn new(context: &'c Context, number: f64, r#type: Type<'c>) -> Self {
-        unsafe { Self::from_raw(mlirFloatAttrDoubleGet(context.to_raw(), r#type.to_raw(), number)) }
+    pub fn new(c: &'c Context, x: f64, t: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirFloatAttrDoubleGet(c.to_raw(), t.to_raw(), x)) }
     }
 }
-attribute_traits!(FloatAttribute, is_float, "float");
+attr_traits!(FloatAttribute, is_float, "float");
 
 #[derive(Clone, Copy)]
 pub struct IntegerAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> IntegerAttribute<'c> {
-    pub fn new(integer: i64, r#type: Type<'c>) -> Self {
-        unsafe { Self::from_raw(mlirIntegerAttrGet(r#type.to_raw(), integer)) }
+    pub fn new(x: i64, t: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirIntegerAttrGet(t.to_raw(), x)) }
     }
 }
-attribute_traits!(IntegerAttribute, is_integer, "integer");
+attr_traits!(IntegerAttribute, is_integer, "integer");
 
 #[derive(Clone, Copy)]
 pub struct StringAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> StringAttribute<'c> {
-    pub fn new(context: &'c Context, string: &str) -> Self {
-        unsafe { Self::from_raw(mlirStringAttrGet(context.to_raw(), StringRef::from(string).to_raw())) }
+    pub fn new(c: &'c Context, x: &str) -> Self {
+        unsafe { Self::from_raw(mlirStringAttrGet(c.to_raw(), StringRef::from(x).to_raw())) }
     }
 }
-attribute_traits!(StringAttribute, is_string, "string");
+attr_traits!(StringAttribute, is_string, "string");
 
 #[derive(Clone, Copy)]
 pub struct TypeAttribute<'c> {
-    attribute: Attribute<'c>,
+    attr: Attribute<'c>,
 }
 impl<'c> TypeAttribute<'c> {
-    pub fn new(r#type: Type<'c>) -> Self {
-        unsafe { Self::from_raw(mlirTypeAttrGet(r#type.to_raw())) }
+    pub fn new(t: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirTypeAttrGet(t.to_raw())) }
     }
     pub fn value(&self) -> Type<'c> {
         unsafe { Type::from_raw(mlirTypeAttrGetValue(self.to_raw())) }
     }
 }
-attribute_traits!(TypeAttribute, is_type, "type");
+attr_traits!(TypeAttribute, is_type, "type");
 
 pub struct Block<'c> {
     raw: MlirBlock,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Block<'c> {
-    pub fn new(arguments: &[(Type<'c>, Location<'c>)]) -> Self {
+    pub fn new(xs: &[(Type<'c>, Location<'c>)]) -> Self {
         unsafe {
             Self::from_raw(mlirBlockCreate(
-                arguments.len() as isize,
-                into_raw_array(arguments.iter().map(|(argument, _)| argument.to_raw()).collect()),
-                into_raw_array(arguments.iter().map(|(_, location)| location.to_raw()).collect()),
+                xs.len() as isize,
+                into_raw_array(xs.iter().map(|(x, _)| x.to_raw()).collect()),
+                into_raw_array(xs.iter().map(|(_, x)| x.to_raw()).collect()),
             ))
         }
     }
-    pub fn argument(&self, index: usize) -> Result<BlockArgument, Error> {
+    pub fn argument(&self, idx: usize) -> Result<BlockArgument, Error> {
         unsafe {
-            if index < self.argument_count() {
-                Ok(BlockArgument::from_raw(mlirBlockGetArgument(self.raw, index as isize)))
+            if idx < self.argument_count() {
+                Ok(BlockArgument::from_raw(mlirBlockGetArgument(self.raw, idx as isize)))
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "block argument",
                     value: self.to_string(),
-                    index,
+                    index: idx,
                 })
             }
         }
@@ -839,35 +707,35 @@ impl<'c> Block<'c> {
     pub fn parent_operation(&self) -> Option<OperationRef> {
         unsafe { OperationRef::from_option_raw(mlirBlockGetParentOperation(self.raw)) }
     }
-    pub fn add_argument(&self, r#type: Type<'c>, location: Location<'c>) -> Value {
-        unsafe { Value::from_raw(mlirBlockAddArgument(self.raw, r#type.to_raw(), location.to_raw())) }
+    pub fn add_argument(&self, t: Type<'c>, loc: Location<'c>) -> Value {
+        unsafe { Value::from_raw(mlirBlockAddArgument(self.raw, t.to_raw(), loc.to_raw())) }
     }
-    pub fn append_operation(&self, operation: Operation) -> OperationRef {
+    pub fn append_operation(&self, o: Operation) -> OperationRef {
         unsafe {
-            let operation = operation.into_raw();
-            mlirBlockAppendOwnedOperation(self.raw, operation);
-            OperationRef::from_raw(operation)
+            let y = o.into_raw();
+            mlirBlockAppendOwnedOperation(self.raw, y);
+            OperationRef::from_raw(y)
         }
     }
-    pub fn insert_operation(&self, position: usize, operation: Operation) -> OperationRef {
+    pub fn insert_operation(&self, pos: usize, o: Operation) -> OperationRef {
         unsafe {
-            let operation = operation.into_raw();
-            mlirBlockInsertOwnedOperation(self.raw, position as isize, operation);
-            OperationRef::from_raw(operation)
+            let y = o.into_raw();
+            mlirBlockInsertOwnedOperation(self.raw, pos as isize, y);
+            OperationRef::from_raw(y)
         }
     }
     pub fn insert_operation_after(&self, one: OperationRef, other: Operation) -> OperationRef {
         unsafe {
-            let other = other.into_raw();
-            mlirBlockInsertOwnedOperationAfter(self.raw, one.to_raw(), other);
-            OperationRef::from_raw(other)
+            let y = other.into_raw();
+            mlirBlockInsertOwnedOperationAfter(self.raw, one.to_raw(), y);
+            OperationRef::from_raw(y)
         }
     }
     pub fn insert_operation_before(&self, one: OperationRef, other: Operation) -> OperationRef {
         unsafe {
-            let other = other.into_raw();
-            mlirBlockInsertOwnedOperationBefore(self.raw, one.to_raw(), other);
-            OperationRef::from_raw(other)
+            let y = other.into_raw();
+            mlirBlockInsertOwnedOperationBefore(self.raw, one.to_raw(), y);
+            OperationRef::from_raw(y)
         }
     }
     pub unsafe fn detach(&self) -> Option<Block> {
@@ -884,13 +752,13 @@ impl<'c> Block<'c> {
     pub unsafe fn from_raw(raw: MlirBlock) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
     pub fn into_raw(self) -> MlirBlock {
-        let block = self.raw;
+        let y = self.raw;
         forget(self);
-        block
+        y
     }
     pub fn to_raw(&self) -> MlirBlock {
         self.raw
@@ -902,38 +770,38 @@ impl<'c> Drop for Block<'c> {
     }
 }
 impl<'c> PartialEq for Block<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirBlockEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirBlockEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for Block<'c> {}
 impl<'c> Display for Block<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirBlockPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirBlockPrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 impl<'c> Debug for Block<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        writeln!(formatter, "Block(")?;
-        Display::fmt(self, formatter)?;
-        write!(formatter, ")")
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        writeln!(f, "Block(")?;
+        Display::fmt(self, f)?;
+        write!(f, ")")
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct BlockRef<'a> {
     raw: MlirBlock,
-    _reference: PhantomData<&'a Block<'a>>,
+    _ref: PhantomData<&'a Block<'a>>,
 }
 impl<'c> BlockRef<'c> {
     pub unsafe fn from_raw(raw: MlirBlock) -> Self {
         Self {
             raw,
-            _reference: Default::default(),
+            _ref: Default::default(),
         }
     }
     pub unsafe fn from_option_raw(raw: MlirBlock) -> Option<Self> {
@@ -951,66 +819,66 @@ impl<'a> Deref for BlockRef<'a> {
     }
 }
 impl<'a> PartialEq for BlockRef<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirBlockEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirBlockEqual(self.raw, x.raw) }
     }
 }
 impl<'a> Eq for BlockRef<'a> {}
 impl<'a> Display for BlockRef<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Display::fmt(self.deref(), formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self.deref(), f)
     }
 }
 impl<'a> Debug for BlockRef<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Debug::fmt(self.deref(), formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Debug::fmt(self.deref(), f)
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct BlockArgument<'a> {
-    value: Value<'a>,
+    val: Value<'a>,
 }
 impl<'a> BlockArgument<'a> {
     pub fn argument_number(&self) -> usize {
-        unsafe { mlirBlockArgumentGetArgNumber(self.value.to_raw()) as usize }
+        unsafe { mlirBlockArgumentGetArgNumber(self.val.to_raw()) as usize }
     }
     pub fn owner(&self) -> BlockRef {
-        unsafe { BlockRef::from_raw(mlirBlockArgumentGetOwner(self.value.to_raw())) }
+        unsafe { BlockRef::from_raw(mlirBlockArgumentGetOwner(self.val.to_raw())) }
     }
-    pub fn set_type(&self, r#type: Type) {
-        unsafe { mlirBlockArgumentSetType(self.value.to_raw(), r#type.to_raw()) }
+    pub fn set_type(&self, t: Type) {
+        unsafe { mlirBlockArgumentSetType(self.val.to_raw(), t.to_raw()) }
     }
-    pub unsafe fn from_raw(value: MlirValue) -> Self {
+    pub unsafe fn from_raw(raw: MlirValue) -> Self {
         Self {
-            value: Value::from_raw(value),
+            val: Value::from_raw(raw),
         }
     }
 }
 impl<'a> ValueLike for BlockArgument<'a> {
     fn to_raw(&self) -> MlirValue {
-        self.value.to_raw()
+        self.val.to_raw()
     }
 }
 impl<'a> Display for BlockArgument<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Value::from(*self).fmt(formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Value::from(*self).fmt(f)
     }
 }
 impl<'a> TryFrom<Value<'a>> for BlockArgument<'a> {
     type Error = Error;
-    fn try_from(value: Value<'a>) -> Result<Self, Self::Error> {
-        if value.is_block_argument() {
-            Ok(Self { value })
+    fn try_from(val: Value<'a>) -> Result<Self, Self::Error> {
+        if val.is_block_argument() {
+            Ok(Self { val })
         } else {
-            Err(Error::BlockArgumentExpected(value.to_string()))
+            Err(Error::BlockArgumentExpected(val.to_string()))
         }
     }
 }
 
 pub struct Operation<'c> {
     raw: MlirOperation,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Operation<'c> {
     pub fn context(&self) -> ContextRef<'c> {
@@ -1022,18 +890,18 @@ impl<'c> Operation<'c> {
     pub fn block(&self) -> Option<BlockRef> {
         unsafe { BlockRef::from_option_raw(mlirOperationGetBlock(self.raw)) }
     }
-    pub fn result(&self, index: usize) -> Result<OperationResult, Error> {
+    pub fn result(&self, idx: usize) -> Result<OperationResult, Error> {
         unsafe {
-            if index < self.result_count() {
+            if idx < self.result_count() {
                 Ok(OperationResult::from_raw(mlirOperationGetResult(
                     self.raw,
-                    index as isize,
+                    idx as isize,
                 )))
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "operation result",
                     value: self.to_string(),
-                    index,
+                    index: idx,
                 })
             }
         }
@@ -1041,15 +909,15 @@ impl<'c> Operation<'c> {
     pub fn result_count(&self) -> usize {
         unsafe { mlirOperationGetNumResults(self.raw) as usize }
     }
-    pub fn region(&self, index: usize) -> Result<RegionRef, Error> {
+    pub fn region(&self, idx: usize) -> Result<RegionRef, Error> {
         unsafe {
-            if index < self.region_count() {
-                Ok(RegionRef::from_raw(mlirOperationGetRegion(self.raw, index as isize)))
+            if idx < self.region_count() {
+                Ok(RegionRef::from_raw(mlirOperationGetRegion(self.raw, idx as isize)))
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "region",
                     value: self.to_string(),
-                    index,
+                    index: idx,
                 })
             }
         }
@@ -1059,11 +927,11 @@ impl<'c> Operation<'c> {
     }
     pub fn next_in_block(&self) -> Option<OperationRef> {
         unsafe {
-            let operation = mlirOperationGetNextInBlock(self.raw);
-            if operation.ptr.is_null() {
+            let y = mlirOperationGetNextInBlock(self.raw);
+            if y.ptr.is_null() {
                 None
             } else {
-                Some(OperationRef::from_raw(operation))
+                Some(OperationRef::from_raw(y))
             }
         }
     }
@@ -1074,22 +942,22 @@ impl<'c> Operation<'c> {
         unsafe { mlirOperationDump(self.raw) }
     }
     pub fn to_string_with_flags(&self, flags: OperationPrintingFlags) -> Result<String, Error> {
-        let mut data = (String::new(), Ok::<_, Error>(()));
+        let mut y = (String::new(), Ok::<_, Error>(()));
         unsafe {
             mlirOperationPrintWithFlags(
                 self.raw,
                 flags.to_raw(),
                 Some(print_string_callback),
-                &mut data as *mut _ as *mut _,
+                &mut y as *mut _ as *mut _,
             );
         }
-        data.1?;
-        Ok(data.0)
+        y.1?;
+        Ok(y.0)
     }
     pub unsafe fn from_raw(raw: MlirOperation) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
     pub fn into_raw(self) -> MlirOperation {
@@ -1109,36 +977,36 @@ impl<'c> Drop for Operation<'c> {
     }
 }
 impl<'c> PartialEq for Operation<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirOperationEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirOperationEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for Operation<'c> {}
 impl<'a> Display for Operation<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirOperationPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirOperationPrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 impl<'c> Debug for Operation<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        writeln!(formatter, "Operation(")?;
-        Display::fmt(self, formatter)?;
-        write!(formatter, ")")
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        writeln!(f, "Operation(")?;
+        Display::fmt(self, f)?;
+        write!(f, ")")
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct OperationRef<'a> {
     raw: MlirOperation,
-    _reference: PhantomData<&'a Operation<'a>>,
+    _ref: PhantomData<&'a Operation<'a>>,
 }
 impl<'a> OperationRef<'a> {
-    pub fn result(self, index: usize) -> Result<OperationResult<'a>, Error> {
-        unsafe { transmute(self.deref().result(index)) }
+    pub fn result(self, idx: usize) -> Result<OperationResult<'a>, Error> {
+        unsafe { transmute(self.deref().result(idx)) }
     }
     pub fn to_raw(self) -> MlirOperation {
         self.raw
@@ -1146,7 +1014,7 @@ impl<'a> OperationRef<'a> {
     pub unsafe fn from_raw(raw: MlirOperation) -> Self {
         Self {
             raw,
-            _reference: Default::default(),
+            _ref: Default::default(),
         }
     }
     pub unsafe fn from_option_raw(raw: MlirOperation) -> Option<Self> {
@@ -1164,31 +1032,31 @@ impl<'a> Deref for OperationRef<'a> {
     }
 }
 impl<'a> PartialEq for OperationRef<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirOperationEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirOperationEqual(self.raw, x.raw) }
     }
 }
 impl<'a> Eq for OperationRef<'a> {}
 impl<'a> Display for OperationRef<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Display::fmt(self.deref(), formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self.deref(), f)
     }
 }
 impl<'a> Debug for OperationRef<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Debug::fmt(self.deref(), formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Debug::fmt(self.deref(), f)
     }
 }
 
 pub struct OperationBuilder<'c> {
     raw: MlirOperationState,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> OperationBuilder<'c> {
-    pub fn new(name: &str, location: Location<'c>) -> Self {
+    pub fn new(name: &str, loc: Location<'c>) -> Self {
         Self {
-            raw: unsafe { mlirOperationStateGet(StringRef::from(name).to_raw(), location.to_raw()) },
-            _context: Default::default(),
+            raw: unsafe { mlirOperationStateGet(StringRef::from(name).to_raw(), loc.to_raw()) },
+            _ctx: Default::default(),
         }
     }
     pub fn add_results(mut self, results: &[Type<'c>]) -> Self {
@@ -1196,7 +1064,7 @@ impl<'c> OperationBuilder<'c> {
             mlirOperationStateAddResults(
                 &mut self.raw,
                 results.len() as isize,
-                into_raw_array(results.iter().map(|r#type| r#type.to_raw()).collect()),
+                into_raw_array(results.iter().map(|ty| ty.to_raw()).collect()),
             )
         }
         self
@@ -1315,8 +1183,8 @@ impl<'a> ValueLike for OperationResult<'a> {
     }
 }
 impl<'a> Display for OperationResult<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        Value::from(*self).fmt(formatter)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Value::from(*self).fmt(f)
     }
 }
 impl<'a> TryFrom<Value<'a>> for OperationResult<'a> {
@@ -1381,53 +1249,53 @@ pub trait TypeLike<'c> {
 #[derive(Clone, Copy)]
 pub struct Type<'c> {
     raw: MlirType,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> Type<'c> {
-    pub fn parse(context: &'c Context, source: &str) -> Option<Self> {
-        unsafe { Self::from_option_raw(mlirTypeParseGet(context.to_raw(), StringRef::from(source).to_raw())) }
+    pub fn parse(c: &'c Context, source: &str) -> Option<Self> {
+        unsafe { Self::from_option_raw(mlirTypeParseGet(c.to_raw(), StringRef::from(source).to_raw())) }
     }
-    pub fn bfloat16(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirBF16TypeGet(context.to_raw())) }
+    pub fn bfloat16(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirBF16TypeGet(c.to_raw())) }
     }
-    pub fn float16(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirF16TypeGet(context.to_raw())) }
+    pub fn float16(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirF16TypeGet(c.to_raw())) }
     }
-    pub fn float32(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirF32TypeGet(context.to_raw())) }
+    pub fn float32(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirF32TypeGet(c.to_raw())) }
     }
-    pub fn float64(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirF64TypeGet(context.to_raw())) }
+    pub fn float64(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirF64TypeGet(c.to_raw())) }
     }
-    pub fn index(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirIndexTypeGet(context.to_raw())) }
+    pub fn index(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirIndexTypeGet(c.to_raw())) }
     }
-    pub fn none(context: &'c Context) -> Self {
-        unsafe { Self::from_raw(mlirNoneTypeGet(context.to_raw())) }
+    pub fn none(c: &'c Context) -> Self {
+        unsafe { Self::from_raw(mlirNoneTypeGet(c.to_raw())) }
     }
-    pub fn vector(dimensions: &[u64], r#type: Self) -> Self {
+    pub fn vector(dims: &[u64], ty: Self) -> Self {
         unsafe {
             Self::from_raw(mlirVectorTypeGet(
-                dimensions.len() as isize,
-                dimensions.as_ptr() as *const i64,
-                r#type.raw,
+                dims.len() as isize,
+                dims.as_ptr() as *const i64,
+                ty.raw,
             ))
         }
     }
-    pub fn vector_checked(location: Location<'c>, dimensions: &[u64], r#type: Self) -> Option<Self> {
+    pub fn vector_checked(loc: Location<'c>, dims: &[u64], ty: Self) -> Option<Self> {
         unsafe {
             Self::from_option_raw(mlirVectorTypeGetChecked(
-                location.to_raw(),
-                dimensions.len() as isize,
-                dimensions.as_ptr() as *const i64,
-                r#type.raw,
+                loc.to_raw(),
+                dims.len() as isize,
+                dims.as_ptr() as *const i64,
+                ty.raw,
             ))
         }
     }
     pub unsafe fn from_raw(raw: MlirType) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _ctx: Default::default(),
         }
     }
     pub unsafe fn from_option_raw(raw: MlirType) -> Option<Self> {
@@ -1444,55 +1312,57 @@ impl<'c> TypeLike<'c> for Type<'c> {
     }
 }
 impl<'c> PartialEq for Type<'c> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirTypeEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirTypeEqual(self.raw, x.raw) }
     }
 }
 impl<'c> Eq for Type<'c> {}
 impl<'c> Display for Type<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirTypePrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirTypePrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 impl<'c> Debug for Type<'c> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        write!(formatter, "Type(")?;
-        Display::fmt(self, formatter)?;
-        write!(formatter, ")")
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Type(")?;
+        Display::fmt(self, f)?;
+        write!(f, ")")
     }
 }
+
 from_raw_subtypes!(Type, FunctionType, IntegerType, MemRefType, RankedTensorType, TupleType);
+
 macro_rules! type_traits {
     ($name: ident, $is_type: ident, $string: expr) => {
         impl<'c> $name<'c> {
             unsafe fn from_raw(raw: MlirType) -> Self {
                 Self {
-                    r#type: Type::from_raw(raw),
+                    ty: Type::from_raw(raw),
                 }
             }
         }
-        impl<'c> TryFrom<crate::mlir::ir::r#type::Type<'c>> for $name<'c> {
-            type Error = crate::Error;
-            fn try_from(r#type: crate::mlir::ir::r#type::Type<'c>) -> Result<Self, Self::Error> {
-                if r#type.$is_type() {
-                    Ok(unsafe { Self::from_raw(r#type.to_raw()) })
+        impl<'c> TryFrom<crate::mlir::ir::Type<'c>> for $name<'c> {
+            type Error = crate::mlir::Error;
+            fn try_from(t: crate::mlir::ir::Type<'c>) -> Result<Self, Self::Error> {
+                if t.$is_type() {
+                    Ok(unsafe { Self::from_raw(t.to_raw()) })
                 } else {
-                    Err(Error::TypeExpected($string, r#type.to_string()))
+                    Err(Error::TypeExpected($string, t.to_string()))
                 }
             }
         }
-        impl<'c> crate::mlir::ir::r#type::TypeLike<'c> for $name<'c> {
+        impl<'c> crate::mlir::ir::TypeLike<'c> for $name<'c> {
             fn to_raw(&self) -> mlir_lib::MlirType {
-                self.r#type.to_raw()
+                self.ty.to_raw()
             }
         }
         impl<'c> std::fmt::Display for $name<'c> {
-            fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.r#type, formatter)
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.ty, f)
             }
         }
     };
@@ -1500,59 +1370,54 @@ macro_rules! type_traits {
 
 #[derive(Clone, Copy, Debug)]
 pub struct FunctionType<'c> {
-    r#type: Type<'c>,
+    ty: Type<'c>,
 }
 impl<'c> FunctionType<'c> {
-    pub fn new(context: &'c Context, inputs: &[Type<'c>], results: &[Type<'c>]) -> Self {
+    pub fn new(c: &'c Context, inputs: &[Type<'c>], results: &[Type<'c>]) -> Self {
         Self {
-            r#type: unsafe {
+            ty: unsafe {
                 Type::from_raw(mlirFunctionTypeGet(
-                    context.to_raw(),
+                    c.to_raw(),
                     inputs.len() as isize,
-                    into_raw_array(inputs.iter().map(|r#type| r#type.to_raw()).collect()),
+                    into_raw_array(inputs.iter().map(|ty| ty.to_raw()).collect()),
                     results.len() as isize,
-                    into_raw_array(results.iter().map(|r#type| r#type.to_raw()).collect()),
+                    into_raw_array(results.iter().map(|ty| ty.to_raw()).collect()),
                 ))
             },
         }
     }
-    pub fn input(&self, index: usize) -> Result<Type<'c>, Error> {
-        if index < self.input_count() {
-            unsafe {
-                Ok(Type::from_raw(mlirFunctionTypeGetInput(
-                    self.r#type.to_raw(),
-                    index as isize,
-                )))
-            }
+    pub fn input(&self, idx: usize) -> Result<Type<'c>, Error> {
+        if idx < self.input_count() {
+            unsafe { Ok(Type::from_raw(mlirFunctionTypeGetInput(self.ty.to_raw(), idx as isize))) }
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "function input",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
-    pub fn result(&self, index: usize) -> Result<Type<'c>, Error> {
-        if index < self.result_count() {
+    pub fn result(&self, idx: usize) -> Result<Type<'c>, Error> {
+        if idx < self.result_count() {
             unsafe {
                 Ok(Type::from_raw(mlirFunctionTypeGetResult(
-                    self.r#type.to_raw(),
-                    index as isize,
+                    self.ty.to_raw(),
+                    idx as isize,
                 )))
             }
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "function result",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
     pub fn input_count(&self) -> usize {
-        unsafe { mlirFunctionTypeGetNumInputs(self.r#type.to_raw()) as usize }
+        unsafe { mlirFunctionTypeGetNumInputs(self.ty.to_raw()) as usize }
     }
     pub fn result_count(&self) -> usize {
-        unsafe { mlirFunctionTypeGetNumResults(self.r#type.to_raw()) as usize }
+        unsafe { mlirFunctionTypeGetNumResults(self.ty.to_raw()) as usize }
     }
 }
 type_traits!(FunctionType, is_function, "function");
@@ -1567,8 +1432,8 @@ impl TypeId {
     }
 }
 impl PartialEq for TypeId {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirTypeIDEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirTypeIDEqual(self.raw, x.raw) }
     }
 }
 impl Eq for TypeId {}
@@ -1607,19 +1472,19 @@ impl Default for Allocator {
 
 #[derive(Clone, Copy, Debug)]
 pub struct IntegerType<'c> {
-    r#type: Type<'c>,
+    ty: Type<'c>,
 }
 impl<'c> IntegerType<'c> {
-    pub fn new(context: &'c Context, bits: u32) -> Self {
+    pub fn new(c: &'c Context, bits: u32) -> Self {
         Self {
-            r#type: unsafe { Type::from_raw(mlirIntegerTypeGet(context.to_raw(), bits)) },
+            ty: unsafe { Type::from_raw(mlirIntegerTypeGet(c.to_raw(), bits)) },
         }
     }
-    pub fn signed(context: &'c Context, bits: u32) -> Self {
-        unsafe { Self::from_raw(mlirIntegerTypeSignedGet(context.to_raw(), bits)) }
+    pub fn signed(c: &'c Context, bits: u32) -> Self {
+        unsafe { Self::from_raw(mlirIntegerTypeSignedGet(c.to_raw(), bits)) }
     }
-    pub fn unsigned(context: &'c Context, bits: u32) -> Self {
-        unsafe { Self::from_raw(mlirIntegerTypeUnsignedGet(context.to_raw(), bits)) }
+    pub fn unsigned(c: &'c Context, bits: u32) -> Self {
+        unsafe { Self::from_raw(mlirIntegerTypeUnsignedGet(c.to_raw(), bits)) }
     }
     pub fn width(&self) -> u32 {
         unsafe { mlirIntegerTypeGetWidth(self.to_raw()) }
@@ -1635,53 +1500,49 @@ impl<'c> IntegerType<'c> {
     }
 }
 type_traits!(IntegerType, is_integer, "integer");
+
 #[derive(Clone, Copy, Debug)]
 pub struct MemRefType<'c> {
-    r#type: Type<'c>,
+    ty: Type<'c>,
 }
 impl<'c> MemRefType<'c> {
-    pub fn new(
-        r#type: Type<'c>,
-        dimensions: &[u64],
-        layout: Option<Attribute<'c>>,
-        memory_space: Option<Attribute<'c>>,
-    ) -> Self {
+    pub fn new(t: Type<'c>, dims: &[u64], layout: Option<Attribute<'c>>, memory_space: Option<Attribute<'c>>) -> Self {
         unsafe {
             Self::from_raw(mlirMemRefTypeGet(
-                r#type.to_raw(),
-                dimensions.len() as _,
-                dimensions.as_ptr() as *const _,
+                t.to_raw(),
+                dims.len() as _,
+                dims.as_ptr() as *const _,
                 layout.unwrap_or_else(|| Attribute::null()).to_raw(),
                 memory_space.unwrap_or_else(|| Attribute::null()).to_raw(),
             ))
         }
     }
     pub fn checked(
-        location: Location<'c>,
-        r#type: Type<'c>,
-        dimensions: &[u64],
+        loc: Location<'c>,
+        t: Type<'c>,
+        dims: &[u64],
         layout: Attribute<'c>,
         memory_space: Attribute<'c>,
     ) -> Option<Self> {
         unsafe {
             Self::from_option_raw(mlirMemRefTypeGetChecked(
-                location.to_raw(),
-                r#type.to_raw(),
-                dimensions.len() as isize,
-                dimensions.as_ptr() as *const i64,
+                loc.to_raw(),
+                t.to_raw(),
+                dims.len() as isize,
+                dims.as_ptr() as *const i64,
                 layout.to_raw(),
                 memory_space.to_raw(),
             ))
         }
     }
     pub fn layout(&self) -> Attribute<'c> {
-        unsafe { Attribute::from_raw(mlirMemRefTypeGetLayout(self.r#type.to_raw())) }
+        unsafe { Attribute::from_raw(mlirMemRefTypeGetLayout(self.ty.to_raw())) }
     }
     pub fn affine_map(&self) -> AffineMap<'c> {
-        unsafe { AffineMap::from_raw(mlirMemRefTypeGetAffineMap(self.r#type.to_raw())) }
+        unsafe { AffineMap::from_raw(mlirMemRefTypeGetAffineMap(self.ty.to_raw())) }
     }
     pub fn memory_space(&self) -> Option<Attribute<'c>> {
-        unsafe { Attribute::from_option_raw(mlirMemRefTypeGetMemorySpace(self.r#type.to_raw())) }
+        unsafe { Attribute::from_option_raw(mlirMemRefTypeGetMemorySpace(self.ty.to_raw())) }
     }
     unsafe fn from_option_raw(raw: MlirType) -> Option<Self> {
         if raw.ptr.is_null() {
@@ -1695,37 +1556,32 @@ type_traits!(MemRefType, is_mem_ref, "mem ref");
 
 #[derive(Clone, Copy, Debug)]
 pub struct RankedTensorType<'c> {
-    r#type: Type<'c>,
+    ty: Type<'c>,
 }
 impl<'c> RankedTensorType<'c> {
-    pub fn new(dimensions: &[u64], r#type: Type<'c>, encoding: Option<Attribute<'c>>) -> Self {
+    pub fn new(dims: &[u64], t: Type<'c>, encoding: Option<Attribute<'c>>) -> Self {
         unsafe {
             Self::from_raw(mlirRankedTensorTypeGet(
-                dimensions.len() as _,
-                dimensions.as_ptr() as *const _,
-                r#type.to_raw(),
+                dims.len() as _,
+                dims.as_ptr() as *const _,
+                t.to_raw(),
                 encoding.unwrap_or_else(|| Attribute::null()).to_raw(),
             ))
         }
     }
-    pub fn checked(
-        dimensions: &[u64],
-        r#type: Type<'c>,
-        encoding: Attribute<'c>,
-        location: Location<'c>,
-    ) -> Option<Self> {
+    pub fn checked(dims: &[u64], t: Type<'c>, encoding: Attribute<'c>, loc: Location<'c>) -> Option<Self> {
         unsafe {
             Self::from_option_raw(mlirRankedTensorTypeGetChecked(
-                location.to_raw(),
-                dimensions.len() as _,
-                dimensions.as_ptr() as *const _,
-                r#type.to_raw(),
+                loc.to_raw(),
+                dims.len() as _,
+                dims.as_ptr() as *const _,
+                t.to_raw(),
                 encoding.to_raw(),
             ))
         }
     }
     pub fn encoding(&self) -> Option<Attribute<'c>> {
-        unsafe { Attribute::from_option_raw(mlirRankedTensorTypeGetEncoding(self.r#type.to_raw())) }
+        unsafe { Attribute::from_option_raw(mlirRankedTensorTypeGetEncoding(self.ty.to_raw())) }
     }
     unsafe fn from_option_raw(raw: MlirType) -> Option<Self> {
         if raw.ptr.is_null() {
@@ -1739,43 +1595,38 @@ type_traits!(RankedTensorType, is_ranked_tensor, "tensor");
 
 #[derive(Clone, Copy, Debug)]
 pub struct TupleType<'c> {
-    r#type: Type<'c>,
+    ty: Type<'c>,
 }
 impl<'c> TupleType<'c> {
-    pub fn new(context: &'c Context, types: &[Type<'c>]) -> Self {
+    pub fn new(c: &'c Context, types: &[Type<'c>]) -> Self {
         unsafe {
             Self::from_raw(mlirTupleTypeGet(
-                context.to_raw(),
+                c.to_raw(),
                 types.len() as isize,
-                into_raw_array(types.iter().map(|r#type| r#type.to_raw()).collect()),
+                into_raw_array(types.iter().map(|ty| ty.to_raw()).collect()),
             ))
         }
     }
-    pub fn r#type(&self, index: usize) -> Result<Type, Error> {
-        if index < self.type_count() {
-            unsafe {
-                Ok(Type::from_raw(mlirTupleTypeGetType(
-                    self.r#type.to_raw(),
-                    index as isize,
-                )))
-            }
+    pub fn ty(&self, idx: usize) -> Result<Type, Error> {
+        if idx < self.type_count() {
+            unsafe { Ok(Type::from_raw(mlirTupleTypeGetType(self.ty.to_raw(), idx as isize))) }
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "tuple field",
                 value: self.to_string(),
-                index,
+                index: idx,
             })
         }
     }
     pub fn type_count(&self) -> usize {
-        unsafe { mlirTupleTypeGetNumTypes(self.r#type.to_raw()) as usize }
+        unsafe { mlirTupleTypeGetNumTypes(self.ty.to_raw()) as usize }
     }
 }
 type_traits!(TupleType, is_tuple, "tuple");
 
 pub trait ValueLike {
     fn to_raw(&self) -> MlirValue;
-    fn r#type(&self) -> Type {
+    fn ty(&self) -> Type {
         unsafe { Type::from_raw(mlirValueGetType(self.to_raw())) }
     }
     fn is_block_argument(&self) -> bool {
@@ -1795,9 +1646,9 @@ pub struct Value<'a> {
     _parent: PhantomData<&'a ()>,
 }
 impl<'a> Value<'a> {
-    pub unsafe fn from_raw(value: MlirValue) -> Self {
+    pub unsafe fn from_raw(raw: MlirValue) -> Self {
         Self {
-            raw: value,
+            raw,
             _parent: Default::default(),
         }
     }
@@ -1808,25 +1659,25 @@ impl<'a> ValueLike for Value<'a> {
     }
 }
 impl<'a> PartialEq for Value<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirValueEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirValueEqual(self.raw, x.raw) }
     }
 }
 impl<'a> Eq for Value<'a> {}
 impl<'a> Display for Value<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirValuePrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirValuePrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 impl<'a> Debug for Value<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        writeln!(formatter, "Value(")?;
-        Display::fmt(self, formatter)?;
-        write!(formatter, ")")
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        writeln!(f, "Value(")?;
+        Display::fmt(self, f)?;
+        write!(f, ")")
     }
 }
 

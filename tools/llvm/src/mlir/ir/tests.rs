@@ -150,6 +150,27 @@ mod ir {
 mod attr {
     use crate::mlir::{ir::*, Context, *};
     #[test]
+    fn element() {
+        let context = Context::new();
+        let r#type = IntegerType::new(&context, 64).into();
+        let attributes = [
+            IntegerAttribute::new(1, r#type).into(),
+            IntegerAttribute::new(2, r#type).into(),
+            IntegerAttribute::new(3, r#type).into(),
+        ];
+        let attribute = ArrayAttribute::new(&context, &attributes);
+        assert_eq!(attribute.element(0).unwrap(), attributes[0]);
+        assert_eq!(attribute.element(1).unwrap(), attributes[1]);
+        assert_eq!(attribute.element(2).unwrap(), attributes[2]);
+        assert!(matches!(attribute.element(3), Err(Error::PositionOutOfBounds { .. })));
+    }
+    #[test]
+    fn len() {
+        let context = Context::new();
+        let attribute = ArrayAttribute::new(&context, &[IntegerAttribute::new(1, Type::index(&context)).into()]);
+        assert_eq!(attribute.len(), 1);
+    }
+    #[test]
     fn value() {
         let context = Context::new();
         let r#type = Type::index(&context);
