@@ -1,4 +1,4 @@
-use melior_macro::attribute_check_functions;
+use macros::attribute_check_functions;
 use mlir_lib::*;
 use std::{
     ffi::c_void,

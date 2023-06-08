@@ -118,7 +118,7 @@ impl<'a> Display for OperationPassManager<'a> {
     }
 }
 
-melior_macro::async_passes!(
+macros::async_passes!(
     mlirCreateAsyncAsyncFuncToAsyncRuntime,
     mlirCreateAsyncAsyncParallelFor,
     mlirCreateAsyncAsyncRuntimePolicyBasedRefCounting,
@@ -127,7 +127,7 @@ melior_macro::async_passes!(
     mlirCreateAsyncAsyncToAsyncRuntime,
 );
 
-melior_macro::conversion_passes!(
+macros::conversion_passes!(
     mlirCreateConversionArithToLLVMConversionPass,
     mlirCreateConversionConvertAffineForToGPU,
     mlirCreateConversionConvertAffineToStandard,
@@ -186,7 +186,7 @@ melior_macro::conversion_passes!(
     mlirCreateConversionTosaToTensor,
 );
 
-melior_macro::gpu_passes!(
+macros::gpu_passes!(
     mlirCreateGPUGPULowerMemorySpaceAttributesPass,
     mlirCreateGPUGpuAsyncRegionPass,
     mlirCreateGPUGpuKernelOutlining,
@@ -194,7 +194,7 @@ melior_macro::gpu_passes!(
     mlirCreateGPUGpuMapParallelLoopsPass,
 );
 
-melior_macro::linalg_passes!(
+macros::linalg_passes!(
     mlirCreateLinalgConvertElementwiseToLinalg,
     mlirCreateLinalgLinalgBufferize,
     mlirCreateLinalgLinalgDetensorize,
@@ -208,7 +208,7 @@ melior_macro::linalg_passes!(
     mlirCreateLinalgLinalgNamedOpConversion,
 );
 
-melior_macro::sparse_tensor_passes!(
+macros::sparse_tensor_passes!(
     mlirCreateSparseTensorPostSparsificationRewrite,
     mlirCreateSparseTensorPreSparsificationRewrite,
     mlirCreateSparseTensorSparseBufferRewrite,
@@ -219,7 +219,7 @@ melior_macro::sparse_tensor_passes!(
     mlirCreateSparseTensorStorageSpecifierToLLVM,
 );
 
-melior_macro::transform_passes!(
+macros::transform_passes!(
     mlirCreateTransformsCSE,
     mlirCreateTransformsCanonicalizer,
     mlirCreateTransformsControlFlowSink,

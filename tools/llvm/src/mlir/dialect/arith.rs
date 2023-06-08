@@ -77,7 +77,7 @@ fn cmp<'c>(
         .enable_result_type_inference()
         .build()
 }
-melior_macro::binary_operations!(
+macros::binary_operations!(
     arith,
     [
         addf,
@@ -112,8 +112,8 @@ melior_macro::binary_operations!(
         xori,
     ]
 );
-melior_macro::unary_operations!(arith, [negf, truncf]);
-melior_macro::typed_unary_operations!(
+macros::unary_operations!(arith, [negf, truncf]);
+macros::typed_unary_operations!(
     arith,
     [
         bitcast,

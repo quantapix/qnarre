@@ -525,41 +525,6 @@ fn get_idx(xs: &[&str], feat: String, span: Span) -> syn::Result<usize> {
     }
 }
 
-#[proc_macro_attribute]
-pub fn llvm_versions(args: TokenStream, attributee: TokenStream) -> TokenStream {
-    let mut ys = parse_macro_input!(args as FeatureSet);
-    let attributee = parse_macro_input!(attributee as Item);
-    let folded = ys.fold_item(attributee);
-    if ys.has_error() {
-        return ys.into_compile_error();
-    }
-    let doc = if cfg!(feature = "nightly") {
-        let ys2 = ys.clone();
-        quote! {
-            #[doc(cfg(any(#(feature = #ys2),*)))]
-        }
-    } else {
-        quote! {}
-    };
-    let q = quote! {
-        #[cfg(any(#(feature = #ys),*))]
-        #doc
-        #folded
-    };
-    q.into()
-}
-
-#[proc_macro_attribute]
-pub fn llvm_versioned_item(_args: TokenStream, attributee: TokenStream) -> TokenStream {
-    let attributee = parse_macro_input!(attributee as Item);
-    let mut ys = FeatureSet::default();
-    let folded = ys.fold_item(attributee);
-    if ys.has_error() {
-        return ys.into_compile_error();
-    }
-    quote!(#folded).into()
-}
-
 struct EnumVariant {
     llvm_variant: Ident,
     rust_variant: Ident,

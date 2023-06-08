@@ -29,7 +29,7 @@ pub trait TypeLike<'c> {
     fn dump(&self) {
         unsafe { mlirTypeDump(self.to_raw()) }
     }
-    melior_macro::type_check_functions!(
+    macros::type_check_functions!(
         mlirTypeIsAAnyQuantizedType,
         mlirTypeIsABF16,
         mlirTypeIsACalibratedQuantizedType,

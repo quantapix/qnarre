@@ -5,8 +5,6 @@ use inkwell::context::Context;
 use inkwell::passes::PassManager;
 use inkwell::OptimizationLevel;
 
-use inkwell_internals::llvm_versions;
-
 macro_rules! print_flush {
     ( $( $x:expr ),* ) => {
         print!( $($x, )* );
@@ -30,7 +28,6 @@ pub extern "C" fn printd(x: f64) -> f64 {
 #[used]
 static EXTERNAL_FNS: [extern "C" fn(f64) -> f64; 2] = [putchard, printd];
 
-#[llvm_versions(4.0..=14.0)]
 pub fn main() {
     let mut display_lexer_output = false;
     let mut display_parser_output = false;

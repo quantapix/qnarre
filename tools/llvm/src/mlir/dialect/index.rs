@@ -43,7 +43,7 @@ pub fn cmp<'c>(
         .build()
 }
 
-melior_macro::binary_operations!(
+macros::binary_operations!(
     index,
     [
         add, and, ceildivs, ceildivu, divs, divu, floordivs, maxs, maxu, mins, minu, mul, or, rems, remu, shl, shrs,
@@ -51,7 +51,7 @@ melior_macro::binary_operations!(
     ]
 );
 
-melior_macro::typed_unary_operations!(index, [casts, castu]);
+macros::typed_unary_operations!(index, [casts, castu]);
 
 #[cfg(test)]
 mod tests {
