@@ -1,6 +1,6 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod dialect {
+    use crate::mlir::*;
     #[test]
     fn equal() {
         let y = Context::new();
@@ -64,8 +64,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod arith {
     use crate::mlir::{
         dialect::func,
         ir::{
@@ -74,7 +73,7 @@ mod tests {
             Attribute, Block, Location, Module, Region, Type,
         },
         test::load_all_dialects,
-        Context,
+        Context, *,
     };
     fn create_ctx() -> Context {
         let ctx = Context::new();
@@ -405,8 +404,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cf {
     use crate::mlir::{
         dialect::{
             arith::{self, CmpiPredicate},
@@ -418,7 +416,7 @@ mod tests {
             Block, Module, Region,
         },
         test::load_all_dialects,
-        Context,
+        Context, *,
     };
     #[test]
     fn compile_assert() {
@@ -581,11 +579,11 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod func {
     use crate::mlir::{
         ir::{Block, Module, Type},
         test::load_all_dialects,
+        *,
     };
     #[test]
     fn compile_call() {
@@ -671,8 +669,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod index {
     use crate::mlir::{
         dialect::func,
         ir::{
@@ -681,7 +678,7 @@ mod tests {
             Block, Location, Module, Region, Type,
         },
         test::load_all_dialects,
-        Context,
+        Context, *,
     };
     fn create_ctx() -> Context {
         let ctx = Context::new();
@@ -815,9 +812,8 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mlir::{dialect, ir::ty::IntegerType};
+mod llvm {
+    use crate::mlir::{dialect, ir::ty::IntegerType, *};
     fn create_ctx() -> Context {
         let ctx = Context::new();
         dialect::DialectHandle::llvm().register_dialect(&ctx);
@@ -886,9 +882,8 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
+mod memref {
+    use crate::mlir::{
         dialect::{func, index},
         ir::{
             attr::{DenseElementsAttribute, StringAttribute, TypeAttribute},
@@ -896,6 +891,7 @@ mod tests {
             Block, Module, Region, Type,
         },
         test::create_test_ctx,
+        *,
     };
     fn compile_operation(name: &str, ctx: &Context, build_block: impl Fn(&Block)) {
         let loc = Location::unknown(ctx);
@@ -1188,8 +1184,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod scf {
     use crate::mlir::{
         dialect::{arith, func},
         ir::{
@@ -1198,7 +1193,7 @@ mod tests {
             Attribute, Block, Module,
         },
         test::load_all_dialects,
-        Context,
+        Context, *,
     };
     #[test]
     fn compile_execute_region() {
