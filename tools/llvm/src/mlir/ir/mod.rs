@@ -1684,4 +1684,4 @@ impl<'a> Debug for Value<'a> {
 from_raw_subtypes!(Value, BlockArgument, OperationResult);
 
 #[cfg(test)]
-mod tests;
+mod test;

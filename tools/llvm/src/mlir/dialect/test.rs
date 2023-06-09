@@ -823,30 +823,30 @@ mod llvm {
     #[test]
     fn opaque_pointer() {
         let ctx = create_ctx();
-        assert_eq!(super::opaque_pointer(&ctx), Type::parse(&ctx, "!llvm.ptr").unwrap());
+        assert_eq!(test::opaque_pointer(&ctx), Type::parse(&ctx, "!llvm.ptr").unwrap());
     }
     #[test]
     fn pointer() {
         let ctx = create_ctx();
         let i32 = IntegerType::new(&ctx, 32).into();
-        assert_eq!(super::pointer(i32, 0), Type::parse(&ctx, "!llvm.ptr<i32>").unwrap());
+        assert_eq!(test::pointer(i32, 0), Type::parse(&ctx, "!llvm.ptr<i32>").unwrap());
     }
     #[test]
     fn pointer_with_address_space() {
         let ctx = create_ctx();
         let i32 = IntegerType::new(&ctx, 32).into();
-        assert_eq!(super::pointer(i32, 4), Type::parse(&ctx, "!llvm.ptr<i32, 4>").unwrap());
+        assert_eq!(test::pointer(i32, 4), Type::parse(&ctx, "!llvm.ptr<i32, 4>").unwrap());
     }
     #[test]
     fn void() {
         let ctx = create_ctx();
-        assert_eq!(super::void(&ctx), Type::parse(&ctx, "!llvm.void").unwrap());
+        assert_eq!(test::void(&ctx), Type::parse(&ctx, "!llvm.void").unwrap());
     }
     #[test]
     fn array() {
         let ctx = create_ctx();
         let i32 = IntegerType::new(&ctx, 32).into();
-        assert_eq!(super::array(i32, 4), Type::parse(&ctx, "!llvm.array<4 x i32>").unwrap());
+        assert_eq!(test::array(i32, 4), Type::parse(&ctx, "!llvm.array<4 x i32>").unwrap());
     }
     #[test]
     fn function() {
@@ -855,7 +855,7 @@ mod llvm {
         let i32 = IntegerType::new(&ctx, 32).into();
         let i64 = IntegerType::new(&ctx, 64).into();
         assert_eq!(
-            super::function(i8, &[i32, i64], false),
+            test::function(i8, &[i32, i64], false),
             Type::parse(&ctx, "!llvm.func<i8 (i32, i64)>").unwrap()
         );
     }
@@ -865,7 +865,7 @@ mod llvm {
         let i32 = IntegerType::new(&ctx, 32).into();
         let i64 = IntegerType::new(&ctx, 64).into();
         assert_eq!(
-            super::r#struct(&ctx, &[i32, i64], false),
+            test::r#struct(&ctx, &[i32, i64], false),
             Type::parse(&ctx, "!llvm.struct<(i32, i64)>").unwrap()
         );
     }
@@ -875,7 +875,7 @@ mod llvm {
         let i32 = IntegerType::new(&ctx, 32).into();
         let i64 = IntegerType::new(&ctx, 64).into();
         assert_eq!(
-            super::r#struct(&ctx, &[i32, i64], true),
+            test::r#struct(&ctx, &[i32, i64], true),
             Type::parse(&ctx, "!llvm.struct<packed (i32, i64)>").unwrap()
         );
     }

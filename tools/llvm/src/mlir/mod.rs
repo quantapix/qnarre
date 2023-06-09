@@ -279,4 +279,4 @@ impl From<&str> for StringRef<'static> {
 }
 
 #[cfg(test)]
-mod tests;
+mod test;

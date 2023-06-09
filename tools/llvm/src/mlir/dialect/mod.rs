@@ -663,4 +663,4 @@ pub fn r#yield<'c>(values: &[Value], loc: Location<'c>) -> Operation<'c> {
 }
 
 #[cfg(test)]
-mod tests;
+mod test;
