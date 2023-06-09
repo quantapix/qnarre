@@ -12,18 +12,18 @@ pub use flags::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DebugInfoBuilder<'ctx> {
-    pub(crate) builder: LLVMDIBuilderRef,
+    pub raw: LLVMDIBuilderRef,
     _marker: PhantomData<&'ctx Context>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DIScope<'ctx> {
-    metadata_ref: LLVMMetadataRef,
+    raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DIScope<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 
@@ -31,7 +31,7 @@ pub trait AsDIScope<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx>;
 }
 impl<'ctx> DebugInfoBuilder<'ctx> {
-    pub(crate) fn new(
+    pub fn new(
         module: &Module,
         allow_unresolved: bool,
         language: DWARFSourceLanguage,
@@ -57,7 +57,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             }
         };
         let builder = DebugInfoBuilder {
-            builder,
+            raw: builder,
             _marker: PhantomData,
         };
         let file = builder.create_file(filename, directory);
@@ -79,7 +79,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         (builder, cu)
     }
     pub fn as_mut_ptr(&self) -> LLVMDIBuilderRef {
-        self.builder
+        self.raw
     }
     fn create_compile_unit(
         &self,
@@ -100,9 +100,9 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         let metadata_ref = unsafe {
             {
                 LLVMDIBuilderCreateCompileUnit(
-                    self.builder,
+                    self.raw,
                     language.into(),
-                    file.metadata_ref,
+                    file.raw,
                     producer.as_ptr() as _,
                     producer.len(),
                     is_optimized as _,
@@ -124,7 +124,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         };
         DICompileUnit {
             file,
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -145,15 +145,15 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         let linkage_name = linkage_name.unwrap_or(name);
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateFunction(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
                 linkage_name.as_ptr() as _,
                 linkage_name.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
-                ditype.metadata_ref,
+                ditype.raw,
                 is_local_to_unit as _,
                 is_definition as _,
                 scope_line as libc::c_uint,
@@ -162,7 +162,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             )
         };
         DISubprogram {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -175,22 +175,22 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> DILexicalBlock<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateLexicalBlock(
-                self.builder,
-                parent_scope.metadata_ref,
-                file.metadata_ref,
+                self.raw,
+                parent_scope.raw,
+                file.raw,
                 line as libc::c_uint,
                 column as libc::c_uint,
             )
         };
         DILexicalBlock {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
     pub fn create_file(&self, filename: &str, directory: &str) -> DIFile<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateFile(
-                self.builder,
+                self.raw,
                 filename.as_ptr() as _,
                 filename.len(),
                 directory.as_ptr() as _,
@@ -198,7 +198,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             )
         };
         DIFile {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -215,12 +215,12 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
                 context.as_ctx_ref(),
                 line,
                 column,
-                scope.metadata_ref,
-                inlined_at.map(|l| l.metadata_ref).unwrap_or(std::ptr::null_mut()),
+                scope.raw,
+                inlined_at.map(|l| l.raw).unwrap_or(std::ptr::null_mut()),
             )
         };
         DILocation {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -235,17 +235,10 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             return Err("basic types must have names");
         }
         let metadata_ref = unsafe {
-            LLVMDIBuilderCreateBasicType(
-                self.builder,
-                name.as_ptr() as _,
-                name.len(),
-                size_in_bits,
-                encoding,
-                flags,
-            )
+            LLVMDIBuilderCreateBasicType(self.raw, name.as_ptr() as _, name.len(), size_in_bits, encoding, flags)
         };
         Ok(DIBasicType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         })
     }
@@ -260,18 +253,18 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> DIDerivedType<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateTypedef(
-                self.builder,
-                ditype.metadata_ref,
+                self.raw,
+                ditype.raw,
                 name.as_ptr() as _,
                 name.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
-                scope.metadata_ref,
+                scope.raw,
                 align_in_bits,
             )
         };
         DIDerivedType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -288,14 +281,14 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         runtime_language: u32,
         unique_id: &str,
     ) -> DICompositeType<'ctx> {
-        let mut elements: Vec<LLVMMetadataRef> = elements.iter().map(|dt| dt.metadata_ref).collect();
+        let mut elements: Vec<LLVMMetadataRef> = elements.iter().map(|dt| dt.raw).collect();
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateUnionType(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
                 size_in_bits,
                 align_in_bits,
@@ -308,7 +301,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             )
         };
         DICompositeType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -326,21 +319,21 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> DIDerivedType<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateMemberType(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
                 size_in_bits,
                 align_in_bits,
                 offset_in_bits,
                 flags,
-                ty.metadata_ref,
+                ty.raw,
             )
         };
         DIDerivedType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -359,16 +352,16 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         vtable_holder: Option<DIType<'ctx>>,
         unique_id: &str,
     ) -> DICompositeType<'ctx> {
-        let mut elements: Vec<LLVMMetadataRef> = elements.iter().map(|dt| dt.metadata_ref).collect();
-        let derived_from = derived_from.map_or(std::ptr::null_mut(), |dt| dt.metadata_ref);
-        let vtable_holder = vtable_holder.map_or(std::ptr::null_mut(), |dt| dt.metadata_ref);
+        let mut elements: Vec<LLVMMetadataRef> = elements.iter().map(|dt| dt.raw).collect();
+        let derived_from = derived_from.map_or(std::ptr::null_mut(), |dt| dt.raw);
+        let vtable_holder = vtable_holder.map_or(std::ptr::null_mut(), |dt| dt.raw);
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateStructType(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
                 size_in_bits,
                 align_in_bits,
@@ -383,7 +376,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             )
         };
         DICompositeType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -394,24 +387,13 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         parameter_types: &[DIType<'ctx>],
         flags: DIFlags,
     ) -> DISubroutineType<'ctx> {
-        let mut p = vec![return_type.map_or(std::ptr::null_mut(), |t| t.metadata_ref)];
-        p.append(
-            &mut parameter_types
-                .iter()
-                .map(|t| t.metadata_ref)
-                .collect::<Vec<LLVMMetadataRef>>(),
-        );
+        let mut p = vec![return_type.map_or(std::ptr::null_mut(), |t| t.raw)];
+        p.append(&mut parameter_types.iter().map(|t| t.raw).collect::<Vec<LLVMMetadataRef>>());
         let metadata_ref = unsafe {
-            LLVMDIBuilderCreateSubroutineType(
-                self.builder,
-                file.metadata_ref,
-                p.as_mut_ptr(),
-                p.len().try_into().unwrap(),
-                flags,
-            )
+            LLVMDIBuilderCreateSubroutineType(self.raw, file.raw, p.as_mut_ptr(), p.len().try_into().unwrap(), flags)
         };
         DISubroutineType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -425,8 +407,8 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> DIDerivedType<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreatePointerType(
-                self.builder,
-                pointee.metadata_ref,
+                self.raw,
+                pointee.raw,
                 size_in_bits,
                 align_in_bits,
                 address_space.0,
@@ -435,14 +417,14 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             )
         };
         DIDerivedType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
     pub fn create_reference_type(&self, pointee: DIType<'ctx>, tag: u32) -> DIDerivedType<'ctx> {
-        let metadata_ref = unsafe { LLVMDIBuilderCreateReferenceType(self.builder, tag, pointee.metadata_ref) };
+        let metadata_ref = unsafe { LLVMDIBuilderCreateReferenceType(self.raw, tag, pointee.raw) };
         DIDerivedType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -459,21 +441,21 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
                 let lower = range.start;
                 let upper = range.end;
                 let subscript_size = upper - lower;
-                unsafe { LLVMDIBuilderGetOrCreateSubrange(self.builder, lower, subscript_size) }
+                unsafe { LLVMDIBuilderGetOrCreateSubrange(self.raw, lower, subscript_size) }
             })
             .collect::<Vec<_>>();
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateArrayType(
-                self.builder,
+                self.raw,
                 size_in_bits,
                 align_in_bits,
-                inner_type.metadata_ref,
+                inner_type.raw,
                 subscripts.as_mut_ptr(),
                 subscripts.len().try_into().unwrap(),
             )
         };
         DICompositeType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -490,19 +472,19 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         declaration: Option<DIScope>,
         align_in_bits: u32,
     ) -> DIGlobalVariableExpression<'ctx> {
-        let expression_ptr = expression.map_or(std::ptr::null_mut(), |dt| dt.metadata_ref);
-        let decl_ptr = declaration.map_or(std::ptr::null_mut(), |dt| dt.metadata_ref);
+        let expression_ptr = expression.map_or(std::ptr::null_mut(), |dt| dt.raw);
+        let decl_ptr = declaration.map_or(std::ptr::null_mut(), |dt| dt.raw);
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateGlobalVariableExpression(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
                 linkage.as_ptr() as _,
                 linkage.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
-                ty.metadata_ref,
+                ty.raw,
                 local_to_unit as _,
                 expression_ptr,
                 decl_ptr,
@@ -510,14 +492,14 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
             )
         };
         DIGlobalVariableExpression {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
     pub fn create_constant_expression(&self, value: i64) -> DIExpression<'ctx> {
-        let metadata_ref = unsafe { LLVMDIBuilderCreateConstantValueExpression(self.builder, value as _) };
+        let metadata_ref = unsafe { LLVMDIBuilderCreateConstantValueExpression(self.raw, value as _) };
         DIExpression {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -534,20 +516,20 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> DILocalVariable<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateParameterVariable(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
                 arg_no,
-                file.metadata_ref,
+                file.raw,
                 line_no,
-                ty.metadata_ref,
+                ty.raw,
                 always_preserve as _,
                 flags,
             )
         };
         DILocalVariable {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -564,35 +546,29 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> DILocalVariable<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateAutoVariable(
-                self.builder,
-                scope.metadata_ref,
+                self.raw,
+                scope.raw,
                 name.as_ptr() as _,
                 name.len(),
-                file.metadata_ref,
+                file.raw,
                 line_no,
-                ty.metadata_ref,
+                ty.raw,
                 always_preserve as _,
                 flags,
                 align_in_bits,
             )
         };
         DILocalVariable {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
     pub fn create_namespace(&self, scope: DIScope<'ctx>, name: &str, export_symbols: bool) -> DINamespace<'ctx> {
         let metadata_ref = unsafe {
-            LLVMDIBuilderCreateNameSpace(
-                self.builder,
-                scope.metadata_ref,
-                name.as_ptr() as _,
-                name.len(),
-                export_symbols as _,
-            )
+            LLVMDIBuilderCreateNameSpace(self.raw, scope.raw, name.as_ptr() as _, name.len(), export_symbols as _)
         };
         DINamespace {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -606,11 +582,11 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> InstructionValue<'ctx> {
         let value_ref = unsafe {
             LLVMDIBuilderInsertDeclareBefore(
-                self.builder,
+                self.raw,
                 storage.as_value_ref(),
-                var_info.map(|v| v.metadata_ref).unwrap_or(std::ptr::null_mut()),
-                expr.unwrap_or_else(|| self.create_expression(vec![])).metadata_ref,
-                debug_loc.metadata_ref,
+                var_info.map(|v| v.raw).unwrap_or(std::ptr::null_mut()),
+                expr.unwrap_or_else(|| self.create_expression(vec![])).raw,
+                debug_loc.raw,
                 instruction.as_value_ref(),
             )
         };
@@ -626,11 +602,11 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> InstructionValue<'ctx> {
         let value_ref = unsafe {
             LLVMDIBuilderInsertDeclareAtEnd(
-                self.builder,
+                self.raw,
                 storage.as_value_ref(),
-                var_info.map(|v| v.metadata_ref).unwrap_or(std::ptr::null_mut()),
-                expr.unwrap_or_else(|| self.create_expression(vec![])).metadata_ref,
-                debug_loc.metadata_ref,
+                var_info.map(|v| v.raw).unwrap_or(std::ptr::null_mut()),
+                expr.unwrap_or_else(|| self.create_expression(vec![])).raw,
+                debug_loc.raw,
                 block.raw,
             )
         };
@@ -639,13 +615,13 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     pub fn create_expression(&self, mut address_operations: Vec<i64>) -> DIExpression<'ctx> {
         let metadata_ref = unsafe {
             LLVMDIBuilderCreateExpression(
-                self.builder,
+                self.raw,
                 address_operations.as_mut_ptr() as *mut _,
                 address_operations.len(),
             )
         };
         DIExpression {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -659,11 +635,11 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     ) -> InstructionValue<'ctx> {
         let value_ref = unsafe {
             LLVMDIBuilderInsertDbgValueBefore(
-                self.builder,
+                self.raw,
                 value.as_value_ref(),
-                var_info.metadata_ref,
-                expr.unwrap_or_else(|| self.create_expression(vec![])).metadata_ref,
-                debug_loc.metadata_ref,
+                var_info.raw,
+                expr.unwrap_or_else(|| self.create_expression(vec![])).raw,
+                debug_loc.raw,
                 instruction.as_value_ref(),
             )
         };
@@ -672,7 +648,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
     pub unsafe fn create_placeholder_derived_type(&self, context: impl AsContextRef<'ctx>) -> DIDerivedType<'ctx> {
         let metadata_ref = LLVMTemporaryMDNode(context.as_ctx_ref(), std::ptr::null_mut(), 0);
         DIDerivedType {
-            metadata_ref,
+            raw: metadata_ref,
             _marker: PhantomData,
         }
     }
@@ -681,42 +657,42 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
         placeholder: DIDerivedType<'ctx>,
         other: DIDerivedType<'ctx>,
     ) {
-        LLVMMetadataReplaceAllUsesWith(placeholder.metadata_ref, other.metadata_ref);
+        LLVMMetadataReplaceAllUsesWith(placeholder.raw, other.raw);
     }
     pub fn finalize(&self) {
-        unsafe { LLVMDIBuilderFinalize(self.builder) };
+        unsafe { LLVMDIBuilderFinalize(self.raw) };
     }
 }
 impl<'ctx> Drop for DebugInfoBuilder<'ctx> {
     fn drop(&mut self) {
         self.finalize();
-        unsafe { LLVMDisposeDIBuilder(self.builder) }
+        unsafe { LLVMDisposeDIBuilder(self.raw) }
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DIFile<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> AsDIScope<'ctx> for DIFile<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
 }
 impl<'ctx> DIFile<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DICompileUnit<'ctx> {
     file: DIFile<'ctx>,
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DICompileUnit<'ctx> {
@@ -724,13 +700,13 @@ impl<'ctx> DICompileUnit<'ctx> {
         self.file
     }
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DICompileUnit<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -738,18 +714,18 @@ impl<'ctx> AsDIScope<'ctx> for DICompileUnit<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DINamespace<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DINamespace<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DINamespace<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -757,46 +733,46 @@ impl<'ctx> AsDIScope<'ctx> for DINamespace<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DISubprogram<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
-    pub(crate) _marker: PhantomData<&'ctx Context>,
+    pub raw: LLVMMetadataRef,
+    pub _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> AsDIScope<'ctx> for DISubprogram<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
 }
 impl<'ctx> DISubprogram<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DIType<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DIType<'ctx> {
     pub fn get_size_in_bits(&self) -> u64 {
-        unsafe { LLVMDITypeGetSizeInBits(self.metadata_ref) }
+        unsafe { LLVMDITypeGetSizeInBits(self.raw) }
     }
     pub fn get_align_in_bits(&self) -> u32 {
-        unsafe { LLVMDITypeGetAlignInBits(self.metadata_ref) }
+        unsafe { LLVMDITypeGetAlignInBits(self.raw) }
     }
     pub fn get_offset_in_bits(&self) -> u64 {
-        unsafe { LLVMDITypeGetOffsetInBits(self.metadata_ref) }
+        unsafe { LLVMDITypeGetOffsetInBits(self.raw) }
     }
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DIType<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -804,26 +780,26 @@ impl<'ctx> AsDIScope<'ctx> for DIType<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DIDerivedType<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DIDerivedType<'ctx> {
     pub fn as_type(&self) -> DIType<'ctx> {
         DIType {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
 }
 impl<'ctx> DIDerivedType<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DIDerivedType<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -831,24 +807,24 @@ impl<'ctx> AsDIScope<'ctx> for DIDerivedType<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DIBasicType<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DIBasicType<'ctx> {
     pub fn as_type(&self) -> DIType<'ctx> {
         DIType {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DIBasicType<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -856,24 +832,24 @@ impl<'ctx> AsDIScope<'ctx> for DIBasicType<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DICompositeType<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DICompositeType<'ctx> {
     pub fn as_type(&self) -> DIType<'ctx> {
         DIType {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DICompositeType<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -881,24 +857,24 @@ impl<'ctx> AsDIScope<'ctx> for DICompositeType<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DISubroutineType<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DILexicalBlock<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DILexicalBlock<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 impl<'ctx> AsDIScope<'ctx> for DILexicalBlock<'ctx> {
     fn as_debug_info_scope(self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: self.metadata_ref,
+            raw: self.raw,
             _marker: PhantomData,
         }
     }
@@ -906,60 +882,60 @@ impl<'ctx> AsDIScope<'ctx> for DILexicalBlock<'ctx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DILocation<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
-    pub(crate) _marker: PhantomData<&'ctx Context>,
+    pub raw: LLVMMetadataRef,
+    pub _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DILocation<'ctx> {
     pub fn get_line(&self) -> u32 {
-        unsafe { LLVMDILocationGetLine(self.metadata_ref) }
+        unsafe { LLVMDILocationGetLine(self.raw) }
     }
     pub fn get_column(&self) -> u32 {
-        unsafe { LLVMDILocationGetColumn(self.metadata_ref) }
+        unsafe { LLVMDILocationGetColumn(self.raw) }
     }
     pub fn get_scope(&self) -> DIScope<'ctx> {
         DIScope {
-            metadata_ref: unsafe { LLVMDILocationGetScope(self.metadata_ref) },
+            raw: unsafe { LLVMDILocationGetScope(self.raw) },
             _marker: PhantomData,
         }
     }
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DILocalVariable<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DILocalVariable<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DIGlobalVariableExpression<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DIGlobalVariableExpression<'ctx> {
     pub fn as_metadata_value(&self, context: impl AsContextRef<'ctx>) -> MetadataValue<'ctx> {
-        unsafe { MetadataValue::new(LLVMMetadataAsValue(context.as_ctx_ref(), self.metadata_ref)) }
+        unsafe { MetadataValue::new(LLVMMetadataAsValue(context.as_ctx_ref(), self.raw)) }
     }
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DIExpression<'ctx> {
-    pub(crate) metadata_ref: LLVMMetadataRef,
+    pub raw: LLVMMetadataRef,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> DIExpression<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMMetadataRef {
-        self.metadata_ref
+        self.raw
     }
 }
 

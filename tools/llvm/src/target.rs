@@ -122,9 +122,6 @@ impl Target {
     }
     #[cfg(feature = "target-x86")]
     pub fn initialize_x86(config: &InitializationConfig) {
-            LLVMInitializeX86AsmParser, LLVMInitializeX86AsmPrinter, LLVMInitializeX86Disassembler,
-            LLVMInitializeX86Target, LLVMInitializeX86TargetInfo, LLVMInitializeX86TargetMC,
-        };
         if config.base {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeX86Target() };
@@ -152,9 +149,6 @@ impl Target {
     }
     #[cfg(feature = "target-nvptx")]
     pub fn initialize_nvptx(config: &InitializationConfig) {
-            LLVMInitializeNVPTXAsmPrinter, LLVMInitializeNVPTXTarget, LLVMInitializeNVPTXTargetInfo,
-            LLVMInitializeNVPTXTargetMC,
-        };
         if config.base {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVMInitializeNVPTXTarget() };
@@ -173,9 +167,6 @@ impl Target {
         }
     }
     pub fn initialize_native(config: &InitializationConfig) -> Result<(), String> {
-            LLVM_InitializeNativeAsmParser, LLVM_InitializeNativeAsmPrinter, LLVM_InitializeNativeDisassembler,
-            LLVM_InitializeNativeTarget,
-        };
         if config.base {
             let _guard = TARGET_LOCK.write();
             let code = unsafe { LLVM_InitializeNativeTarget() };
@@ -207,9 +198,6 @@ impl Target {
         Ok(())
     }
     pub fn initialize_all(config: &InitializationConfig) {
-            LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllDisassemblers,
-            LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
-        };
         if config.base {
             let _guard = TARGET_LOCK.write();
             unsafe { LLVM_InitializeAllTargets() };
@@ -398,13 +386,7 @@ impl TargetMachine {
         let code = unsafe {
             let module_ptr = m.module.get();
             let file_type_ptr = t.as_llvm_file_type();
-            LLVMTargetMachineEmitToMemoryBuffer(
-                self.raw,
-                module_ptr,
-                file_type_ptr,
-                e.as_mut_ptr(),
-                &mut y,
-            )
+            LLVMTargetMachineEmitToMemoryBuffer(self.raw, module_ptr, file_type_ptr, e.as_mut_ptr(), &mut y)
         };
         if code == 1 {
             unsafe {
@@ -445,89 +427,81 @@ pub enum ByteOrdering {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct TargetData {
-    pub target_data: LLVMTargetDataRef,
+    pub raw: LLVMTargetDataRef,
 }
 impl TargetData {
-    pub unsafe fn new(target_data: LLVMTargetDataRef) -> TargetData {
-        assert!(!target_data.is_null());
-        TargetData { target_data }
+    pub unsafe fn new(raw: LLVMTargetDataRef) -> TargetData {
+        assert!(!raw.is_null());
+        TargetData { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMTargetDataRef {
-        self.target_data
+        self.raw
     }
     #[deprecated(note = "This method will be removed in the future. Please use Context::ptr_sized_int_type instead.")]
     pub fn ptr_sized_int_type_in_context<'ctx>(
         &self,
-        context: impl AsContextRef<'ctx>,
-        address_space: Option<AddressSpace>,
+        c: impl AsContextRef<'ctx>,
+        a: Option<AddressSpace>,
     ) -> IntType<'ctx> {
-        let int_type_ptr = match address_space {
-            Some(address_space) => unsafe {
-                LLVMIntPtrTypeForASInContext(context.as_ctx_ref(), self.target_data, address_space.0)
-            },
-            None => unsafe { LLVMIntPtrTypeInContext(context.as_ctx_ref(), self.target_data) },
+        let y = match a {
+            Some(address_space) => unsafe { LLVMIntPtrTypeForASInContext(c.as_ctx_ref(), self.raw, address_space.0) },
+            None => unsafe { LLVMIntPtrTypeInContext(c.as_ctx_ref(), self.raw) },
         };
-        unsafe { IntType::new(int_type_ptr) }
+        unsafe { IntType::new(y) }
     }
     pub fn get_data_layout(&self) -> DataLayout {
-        unsafe { DataLayout::new_owned(LLVMCopyStringRepOfTargetData(self.target_data)) }
+        unsafe { DataLayout::new_owned(LLVMCopyStringRepOfTargetData(self.raw)) }
     }
     pub fn get_bit_size(&self, type_: &dyn AnyType) -> u64 {
-        unsafe { LLVMSizeOfTypeInBits(self.target_data, type_.as_type_ref()) }
+        unsafe { LLVMSizeOfTypeInBits(self.raw, type_.as_type_ref()) }
     }
-    pub fn create(str_repr: &str) -> TargetData {
-        let c_string = to_c_str(str_repr);
-        unsafe { TargetData::new(LLVMCreateTargetData(c_string.as_ptr())) }
+    pub fn create(x: &str) -> TargetData {
+        let y = to_c_str(x);
+        unsafe { TargetData::new(LLVMCreateTargetData(y.as_ptr())) }
     }
     pub fn get_byte_ordering(&self) -> ByteOrdering {
-        let byte_ordering = unsafe { LLVMByteOrder(self.target_data) };
-        match byte_ordering {
+        let y = unsafe { LLVMByteOrder(self.raw) };
+        match y {
             LLVMByteOrdering::LLVMBigEndian => ByteOrdering::BigEndian,
             LLVMByteOrdering::LLVMLittleEndian => ByteOrdering::LittleEndian,
         }
     }
-    pub fn get_pointer_byte_size(&self, address_space: Option<AddressSpace>) -> u32 {
-        match address_space {
-            Some(address_space) => unsafe { LLVMPointerSizeForAS(self.target_data, address_space.0) },
-            None => unsafe { LLVMPointerSize(self.target_data) },
+    pub fn get_pointer_byte_size(&self, a: Option<AddressSpace>) -> u32 {
+        match a {
+            Some(x) => unsafe { LLVMPointerSizeForAS(self.raw, x.0) },
+            None => unsafe { LLVMPointerSize(self.raw) },
         }
     }
-    pub fn get_store_size(&self, type_: &dyn AnyType) -> u64 {
-        unsafe { LLVMStoreSizeOfType(self.target_data, type_.as_type_ref()) }
+    pub fn get_store_size(&self, x: &dyn AnyType) -> u64 {
+        unsafe { LLVMStoreSizeOfType(self.raw, x.as_type_ref()) }
     }
-    pub fn get_abi_size(&self, type_: &dyn AnyType) -> u64 {
-        unsafe { LLVMABISizeOfType(self.target_data, type_.as_type_ref()) }
+    pub fn get_abi_size(&self, x: &dyn AnyType) -> u64 {
+        unsafe { LLVMABISizeOfType(self.raw, x.as_type_ref()) }
     }
-    pub fn get_abi_alignment(&self, type_: &dyn AnyType) -> u32 {
-        unsafe { LLVMABIAlignmentOfType(self.target_data, type_.as_type_ref()) }
+    pub fn get_abi_alignment(&self, x: &dyn AnyType) -> u32 {
+        unsafe { LLVMABIAlignmentOfType(self.raw, x.as_type_ref()) }
     }
-    pub fn get_call_frame_alignment(&self, type_: &dyn AnyType) -> u32 {
-        unsafe { LLVMCallFrameAlignmentOfType(self.target_data, type_.as_type_ref()) }
+    pub fn get_call_frame_alignment(&self, x: &dyn AnyType) -> u32 {
+        unsafe { LLVMCallFrameAlignmentOfType(self.raw, x.as_type_ref()) }
     }
-    pub fn get_preferred_alignment(&self, type_: &dyn AnyType) -> u32 {
-        unsafe { LLVMPreferredAlignmentOfType(self.target_data, type_.as_type_ref()) }
+    pub fn get_preferred_alignment(&self, x: &dyn AnyType) -> u32 {
+        unsafe { LLVMPreferredAlignmentOfType(self.raw, x.as_type_ref()) }
     }
-    pub fn get_preferred_alignment_of_global(&self, value: &GlobalValue) -> u32 {
-        unsafe { LLVMPreferredAlignmentOfGlobal(self.target_data, value.as_value_ref()) }
+    pub fn get_preferred_alignment_of_global(&self, x: &GlobalValue) -> u32 {
+        unsafe { LLVMPreferredAlignmentOfGlobal(self.raw, x.as_value_ref()) }
     }
-    pub fn element_at_offset(&self, struct_type: &StructType, offset: u64) -> u32 {
-        unsafe { LLVMElementAtOffset(self.target_data, struct_type.as_type_ref(), offset) }
+    pub fn element_at_offset(&self, x: &StructType, offset: u64) -> u32 {
+        unsafe { LLVMElementAtOffset(self.raw, x.as_type_ref(), offset) }
     }
-    pub fn offset_of_element(&self, struct_type: &StructType, element: u32) -> Option<u64> {
-        if element > struct_type.count_fields() - 1 {
+    pub fn offset_of_element(&self, x: &StructType, elem: u32) -> Option<u64> {
+        if elem > x.count_fields() - 1 {
             return None;
         }
-        unsafe {
-            Some(LLVMOffsetOfElement(
-                self.target_data,
-                struct_type.as_type_ref(),
-                element,
-            ))
-        }
+        unsafe { Some(LLVMOffsetOfElement(self.raw, x.as_type_ref(), elem)) }
     }
 }
 impl Drop for TargetData {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeTargetData(self.target_data) }
+        unsafe { LLVMDisposeTargetData(self.raw) }
     }
 }

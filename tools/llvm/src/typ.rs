@@ -19,77 +19,77 @@ use crate::LLVMString;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct Type<'ctx> {
-    ty: LLVMTypeRef,
+    raw: LLVMTypeRef,
     _marker: PhantomData<&'ctx ()>,
 }
 impl<'ctx> Type<'ctx> {
-    unsafe fn new(ty: LLVMTypeRef) -> Self {
-        assert!(!ty.is_null());
+    unsafe fn new(raw: LLVMTypeRef) -> Self {
+        assert!(!raw.is_null());
         Type {
-            ty,
+            raw,
             _marker: PhantomData,
         }
     }
     fn const_zero(self) -> LLVMValueRef {
         unsafe {
-            match LLVMGetTypeKind(self.ty) {
-                LLVMTypeKind::LLVMMetadataTypeKind => LLVMConstPointerNull(self.ty),
-                _ => LLVMConstNull(self.ty),
+            match LLVMGetTypeKind(self.raw) {
+                LLVMTypeKind::LLVMMetadataTypeKind => LLVMConstPointerNull(self.raw),
+                _ => LLVMConstNull(self.raw),
             }
         }
     }
-    fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        unsafe { PointerType::new(LLVMPointerType(self.ty, address_space.0)) }
+    fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        unsafe { PointerType::new(LLVMPointerType(self.raw, x.0)) }
     }
     fn vec_type(self, size: u32) -> VectorType<'ctx> {
         assert!(size != 0, "Vectors of size zero are not allowed.");
-        unsafe { VectorType::new(LLVMVectorType(self.ty, size)) }
+        unsafe { VectorType::new(LLVMVectorType(self.raw, size)) }
     }
-    fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        let mut param_types: Vec<LLVMTypeRef> = param_types.iter().map(|val| val.as_type_ref()).collect();
+    fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        let mut ys: Vec<LLVMTypeRef> = xs.iter().map(|x| x.as_type_ref()).collect();
         unsafe {
             FunctionType::new(LLVMFunctionType(
-                self.ty,
-                param_types.as_mut_ptr(),
-                param_types.len() as u32,
+                self.raw,
+                ys.as_mut_ptr(),
+                ys.len() as u32,
                 is_var_args as i32,
             ))
         }
     }
     fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        unsafe { ArrayType::new(LLVMArrayType(self.ty, size)) }
+        unsafe { ArrayType::new(LLVMArrayType(self.raw, size)) }
     }
     fn get_undef(self) -> LLVMValueRef {
-        unsafe { LLVMGetUndef(self.ty) }
+        unsafe { LLVMGetUndef(self.raw) }
     }
     fn get_alignment(self) -> IntValue<'ctx> {
-        unsafe { IntValue::new(LLVMAlignOf(self.ty)) }
+        unsafe { IntValue::new(LLVMAlignOf(self.raw)) }
     }
     fn get_context(self) -> ContextRef<'ctx> {
-        unsafe { ContextRef::new(LLVMGetTypeContext(self.ty)) }
+        unsafe { ContextRef::new(LLVMGetTypeContext(self.raw)) }
     }
     fn is_sized(self) -> bool {
-        unsafe { LLVMTypeIsSized(self.ty) == 1 }
+        unsafe { LLVMTypeIsSized(self.raw) == 1 }
     }
     fn size_of(self) -> Option<IntValue<'ctx>> {
         if !self.is_sized() {
             return None;
         }
-        unsafe { Some(IntValue::new(LLVMSizeOf(self.ty))) }
+        unsafe { Some(IntValue::new(LLVMSizeOf(self.raw))) }
     }
     fn print_to_string(self) -> LLVMString {
-        unsafe { LLVMString::new(LLVMPrintTypeToString(self.ty)) }
+        unsafe { LLVMString::new(LLVMPrintTypeToString(self.raw)) }
     }
     pub fn get_element_type(self) -> AnyTypeEnum<'ctx> {
-        unsafe { AnyTypeEnum::new(LLVMGetElementType(self.ty)) }
+        unsafe { AnyTypeEnum::new(LLVMGetElementType(self.raw)) }
     }
 }
 impl fmt::Debug for Type<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_type = self.print_to_string();
+        let ty = self.print_to_string();
         f.debug_struct("Type")
-            .field("address", &self.ty)
-            .field("llvm_type", &llvm_type)
+            .field("address", &self.raw)
+            .field("llvm_type", &ty)
             .finish()
     }
 }
@@ -100,57 +100,49 @@ pub unsafe trait AsTypeRef {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ArrayType<'ctx> {
-    array_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> ArrayType<'ctx> {
-    pub unsafe fn new(array_type: LLVMTypeRef) -> Self {
-        assert!(!array_type.is_null());
-        ArrayType {
-            array_type: Type::new(array_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        ArrayType { typ: Type::new(typ) }
     }
     pub fn size_of(self) -> Option<IntValue<'ctx>> {
-        self.array_type.size_of()
+        self.typ.size_of()
     }
     pub fn get_alignment(self) -> IntValue<'ctx> {
-        self.array_type.get_alignment()
+        self.typ.get_alignment()
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.array_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.array_type.get_context()
+        self.typ.get_context()
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.array_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        self.array_type.array_type(size)
+        self.typ.array_type(size)
     }
-    pub fn const_array(self, values: &[ArrayValue<'ctx>]) -> ArrayValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            ArrayValue::new(LLVMConstArray(
-                self.as_type_ref(),
-                values.as_mut_ptr(),
-                values.len() as u32,
-            ))
-        }
+    pub fn const_array(self, xs: &[ArrayValue<'ctx>]) -> ArrayValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { ArrayValue::new(LLVMConstArray(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32)) }
     }
     pub fn const_zero(self) -> ArrayValue<'ctx> {
-        unsafe { ArrayValue::new(self.array_type.const_zero()) }
+        unsafe { ArrayValue::new(self.typ.const_zero()) }
     }
     pub fn len(self) -> u32 {
         unsafe { LLVMGetArrayLength(self.as_type_ref()) }
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.array_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn get_undef(self) -> ArrayValue<'ctx> {
-        unsafe { ArrayValue::new(self.array_type.get_undef()) }
+        unsafe { ArrayValue::new(self.typ.get_undef()) }
     }
     pub fn get_element_type(self) -> BasicTypeEnum<'ctx> {
-        self.array_type.get_element_type().to_basic_type_enum()
+        self.typ.get_element_type().to_basic_type_enum()
     }
 }
 impl Display for ArrayType<'_> {
@@ -160,7 +152,7 @@ impl Display for ArrayType<'_> {
 }
 unsafe impl AsTypeRef for ArrayType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.array_type.ty
+        self.typ.raw
     }
 }
 
@@ -178,22 +170,22 @@ macro_rules! enum_type_set {
             fn as_type_ref(&self) -> LLVMTypeRef {
                 match *self {
                     $(
-                        $enum_name::$args(ref t) => t.as_type_ref(),
+                        $enum_name::$args(ref x) => x.as_type_ref(),
                     )*
                 }
             }
         }
         $(
             impl<'ctx> From<$args<'ctx>> for $enum_name<'ctx> {
-                fn from(value: $args) -> $enum_name {
-                    $enum_name::$args(value)
+                fn from(x: $args) -> $enum_name {
+                    $enum_name::$args(x)
                 }
             }
             impl<'ctx> TryFrom<$enum_name<'ctx>> for $args<'ctx> {
                 type Error = ();
-                fn try_from(value: $enum_name<'ctx>) -> Result<Self, Self::Error> {
-                    match value {
-                        $enum_name::$args(ty) => Ok(ty),
+                fn try_from(x: $enum_name<'ctx>) -> Result<Self, Self::Error> {
+                    match x {
+                        $enum_name::$args(x) => Ok(x),
                         _ => Err(()),
                     }
                 }
@@ -213,21 +205,21 @@ enum_type_set! {
     }
 }
 impl<'ctx> BasicTypeEnum<'ctx> {
-    pub unsafe fn new(type_: LLVMTypeRef) -> Self {
-        match LLVMGetTypeKind(type_) {
+    pub unsafe fn new(x: LLVMTypeRef) -> Self {
+        match LLVMGetTypeKind(x) {
             LLVMTypeKind::LLVMHalfTypeKind
             | LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMDoubleTypeKind
             | LLVMTypeKind::LLVMX86_FP80TypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicTypeEnum::FloatType(FloatType::new(type_)),
-            LLVMTypeKind::LLVMBFloatTypeKind => BasicTypeEnum::FloatType(FloatType::new(type_)),
-            LLVMTypeKind::LLVMIntegerTypeKind => BasicTypeEnum::IntType(IntType::new(type_)),
-            LLVMTypeKind::LLVMStructTypeKind => BasicTypeEnum::StructType(StructType::new(type_)),
-            LLVMTypeKind::LLVMPointerTypeKind => BasicTypeEnum::PointerType(PointerType::new(type_)),
-            LLVMTypeKind::LLVMArrayTypeKind => BasicTypeEnum::ArrayType(ArrayType::new(type_)),
-            LLVMTypeKind::LLVMVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
-            LLVMTypeKind::LLVMScalableVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(type_)),
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicTypeEnum::FloatType(FloatType::new(x)),
+            LLVMTypeKind::LLVMBFloatTypeKind => BasicTypeEnum::FloatType(FloatType::new(x)),
+            LLVMTypeKind::LLVMIntegerTypeKind => BasicTypeEnum::IntType(IntType::new(x)),
+            LLVMTypeKind::LLVMStructTypeKind => BasicTypeEnum::StructType(StructType::new(x)),
+            LLVMTypeKind::LLVMPointerTypeKind => BasicTypeEnum::PointerType(PointerType::new(x)),
+            LLVMTypeKind::LLVMArrayTypeKind => BasicTypeEnum::ArrayType(ArrayType::new(x)),
+            LLVMTypeKind::LLVMVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(x)),
+            LLVMTypeKind::LLVMScalableVectorTypeKind => BasicTypeEnum::VectorType(VectorType::new(x)),
             LLVMTypeKind::LLVMMetadataTypeKind => panic!("Unsupported basic type: Metadata"),
             LLVMTypeKind::LLVMX86_MMXTypeKind => panic!("Unsupported basic type: MMX"),
             LLVMTypeKind::LLVMX86_AMXTypeKind => unreachable!("Unsupported basic type: AMX"),
@@ -239,43 +231,43 @@ impl<'ctx> BasicTypeEnum<'ctx> {
         }
     }
     pub fn into_array_type(self) -> ArrayType<'ctx> {
-        if let BasicTypeEnum::ArrayType(t) = self {
-            t
+        if let BasicTypeEnum::ArrayType(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the ArrayType variant", self);
         }
     }
     pub fn into_float_type(self) -> FloatType<'ctx> {
-        if let BasicTypeEnum::FloatType(t) = self {
-            t
+        if let BasicTypeEnum::FloatType(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the FloatType variant", self);
         }
     }
     pub fn into_int_type(self) -> IntType<'ctx> {
-        if let BasicTypeEnum::IntType(t) = self {
-            t
+        if let BasicTypeEnum::IntType(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the IntType variant", self);
         }
     }
     pub fn into_pointer_type(self) -> PointerType<'ctx> {
-        if let BasicTypeEnum::PointerType(t) = self {
-            t
+        if let BasicTypeEnum::PointerType(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the PointerType variant", self);
         }
     }
     pub fn into_struct_type(self) -> StructType<'ctx> {
-        if let BasicTypeEnum::StructType(t) = self {
-            t
+        if let BasicTypeEnum::StructType(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the StructType variant", self);
         }
     }
     pub fn into_vector_type(self) -> VectorType<'ctx> {
-        if let BasicTypeEnum::VectorType(t) = self {
-            t
+        if let BasicTypeEnum::VectorType(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the VectorType variant", self);
         }
@@ -300,51 +292,51 @@ impl<'ctx> BasicTypeEnum<'ctx> {
     }
     pub fn const_zero(self) -> BasicValueEnum<'ctx> {
         match self {
-            BasicTypeEnum::ArrayType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::FloatType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::IntType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::PointerType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::StructType(ty) => ty.const_zero().as_basic_value_enum(),
-            BasicTypeEnum::VectorType(ty) => ty.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::ArrayType(x) => x.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::FloatType(x) => x.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::IntType(x) => x.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::PointerType(x) => x.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::StructType(x) => x.const_zero().as_basic_value_enum(),
+            BasicTypeEnum::VectorType(x) => x.const_zero().as_basic_value_enum(),
         }
     }
     pub fn print_to_string(self) -> LLVMString {
         match self {
-            BasicTypeEnum::ArrayType(t) => t.print_to_string(),
-            BasicTypeEnum::FloatType(t) => t.print_to_string(),
-            BasicTypeEnum::IntType(t) => t.print_to_string(),
-            BasicTypeEnum::PointerType(t) => t.print_to_string(),
-            BasicTypeEnum::StructType(t) => t.print_to_string(),
-            BasicTypeEnum::VectorType(t) => t.print_to_string(),
+            BasicTypeEnum::ArrayType(x) => x.print_to_string(),
+            BasicTypeEnum::FloatType(x) => x.print_to_string(),
+            BasicTypeEnum::IntType(x) => x.print_to_string(),
+            BasicTypeEnum::PointerType(x) => x.print_to_string(),
+            BasicTypeEnum::StructType(x) => x.print_to_string(),
+            BasicTypeEnum::VectorType(x) => x.print_to_string(),
         }
     }
 }
 impl<'ctx> TryFrom<AnyTypeEnum<'ctx>> for BasicTypeEnum<'ctx> {
     type Error = ();
-    fn try_from(value: AnyTypeEnum<'ctx>) -> Result<Self, Self::Error> {
+    fn try_from(x: AnyTypeEnum<'ctx>) -> Result<Self, Self::Error> {
         use AnyTypeEnum::*;
-        Ok(match value {
-            ArrayType(at) => at.into(),
-            FloatType(ft) => ft.into(),
-            IntType(it) => it.into(),
-            PointerType(pt) => pt.into(),
-            StructType(st) => st.into(),
-            VectorType(vt) => vt.into(),
+        Ok(match x {
+            ArrayType(x) => x.into(),
+            FloatType(x) => x.into(),
+            IntType(x) => x.into(),
+            PointerType(x) => x.into(),
+            StructType(x) => x.into(),
+            VectorType(x) => x.into(),
             VoidType(_) | FunctionType(_) => return Err(()),
         })
     }
 }
 impl<'ctx> TryFrom<BasicMetadataTypeEnum<'ctx>> for BasicTypeEnum<'ctx> {
     type Error = ();
-    fn try_from(value: BasicMetadataTypeEnum<'ctx>) -> Result<Self, Self::Error> {
+    fn try_from(x: BasicMetadataTypeEnum<'ctx>) -> Result<Self, Self::Error> {
         use BasicMetadataTypeEnum::*;
-        Ok(match value {
-            ArrayType(at) => at.into(),
-            FloatType(ft) => ft.into(),
-            IntType(it) => it.into(),
-            PointerType(pt) => pt.into(),
-            StructType(st) => st.into(),
-            VectorType(vt) => vt.into(),
+        Ok(match x {
+            ArrayType(x) => x.into(),
+            FloatType(x) => x.into(),
+            IntType(x) => x.into(),
+            PointerType(x) => x.into(),
+            StructType(x) => x.into(),
+            VectorType(x) => x.into(),
             MetadataType(_) => return Err(()),
         })
     }
@@ -496,24 +488,24 @@ enum_type_set! {
     }
 }
 impl<'ctx> AnyTypeEnum<'ctx> {
-    pub unsafe fn new(type_: LLVMTypeRef) -> Self {
-        match LLVMGetTypeKind(type_) {
-            LLVMTypeKind::LLVMVoidTypeKind => AnyTypeEnum::VoidType(VoidType::new(type_)),
+    pub unsafe fn new(x: LLVMTypeRef) -> Self {
+        match LLVMGetTypeKind(x) {
+            LLVMTypeKind::LLVMVoidTypeKind => AnyTypeEnum::VoidType(VoidType::new(x)),
             LLVMTypeKind::LLVMHalfTypeKind
             | LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMDoubleTypeKind
             | LLVMTypeKind::LLVMX86_FP80TypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => AnyTypeEnum::FloatType(FloatType::new(type_)),
-            LLVMTypeKind::LLVMBFloatTypeKind => AnyTypeEnum::FloatType(FloatType::new(type_)),
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => AnyTypeEnum::FloatType(FloatType::new(x)),
+            LLVMTypeKind::LLVMBFloatTypeKind => AnyTypeEnum::FloatType(FloatType::new(x)),
             LLVMTypeKind::LLVMLabelTypeKind => panic!("FIXME: Unsupported type: Label"),
-            LLVMTypeKind::LLVMIntegerTypeKind => AnyTypeEnum::IntType(IntType::new(type_)),
-            LLVMTypeKind::LLVMFunctionTypeKind => AnyTypeEnum::FunctionType(FunctionType::new(type_)),
-            LLVMTypeKind::LLVMStructTypeKind => AnyTypeEnum::StructType(StructType::new(type_)),
-            LLVMTypeKind::LLVMArrayTypeKind => AnyTypeEnum::ArrayType(ArrayType::new(type_)),
-            LLVMTypeKind::LLVMPointerTypeKind => AnyTypeEnum::PointerType(PointerType::new(type_)),
-            LLVMTypeKind::LLVMVectorTypeKind => AnyTypeEnum::VectorType(VectorType::new(type_)),
-            LLVMTypeKind::LLVMScalableVectorTypeKind => AnyTypeEnum::VectorType(VectorType::new(type_)),
+            LLVMTypeKind::LLVMIntegerTypeKind => AnyTypeEnum::IntType(IntType::new(x)),
+            LLVMTypeKind::LLVMFunctionTypeKind => AnyTypeEnum::FunctionType(FunctionType::new(x)),
+            LLVMTypeKind::LLVMStructTypeKind => AnyTypeEnum::StructType(StructType::new(x)),
+            LLVMTypeKind::LLVMArrayTypeKind => AnyTypeEnum::ArrayType(ArrayType::new(x)),
+            LLVMTypeKind::LLVMPointerTypeKind => AnyTypeEnum::PointerType(PointerType::new(x)),
+            LLVMTypeKind::LLVMVectorTypeKind => AnyTypeEnum::VectorType(VectorType::new(x)),
+            LLVMTypeKind::LLVMScalableVectorTypeKind => AnyTypeEnum::VectorType(VectorType::new(x)),
             LLVMTypeKind::LLVMMetadataTypeKind => panic!("Metadata type is not supported as AnyType."),
             LLVMTypeKind::LLVMX86_MMXTypeKind => panic!("FIXME: Unsupported type: MMX"),
             LLVMTypeKind::LLVMX86_AMXTypeKind => panic!("FIXME: Unsupported type: AMX"),
@@ -637,26 +629,24 @@ impl Display for AnyTypeEnum<'_> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct FloatType<'ctx> {
-    float_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> FloatType<'ctx> {
-    pub unsafe fn new(float_type: LLVMTypeRef) -> Self {
-        assert!(!float_type.is_null());
-        FloatType {
-            float_type: Type::new(float_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        FloatType { typ: Type::new(typ) }
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.float_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        self.float_type.array_type(size)
+        self.typ.array_type(size)
     }
     pub fn vec_type(self, size: u32) -> VectorType<'ctx> {
-        self.float_type.vec_type(size)
+        self.typ.vec_type(size)
     }
-    pub fn const_float(self, value: f64) -> FloatValue<'ctx> {
-        unsafe { FloatValue::new(LLVMConstReal(self.float_type.ty, value)) }
+    pub fn const_float(self, x: f64) -> FloatValue<'ctx> {
+        unsafe { FloatValue::new(LLVMConstReal(self.typ.raw, x)) }
     }
     pub fn const_float_from_string(self, slice: &str) -> FloatValue<'ctx> {
         unsafe {
@@ -668,38 +658,32 @@ impl<'ctx> FloatType<'ctx> {
         }
     }
     pub fn const_zero(self) -> FloatValue<'ctx> {
-        unsafe { FloatValue::new(self.float_type.const_zero()) }
+        unsafe { FloatValue::new(self.typ.const_zero()) }
     }
     pub fn size_of(self) -> IntValue<'ctx> {
-        self.float_type.size_of().unwrap()
+        self.typ.size_of().unwrap()
     }
     pub fn get_alignment(self) -> IntValue<'ctx> {
-        self.float_type.get_alignment()
+        self.typ.get_alignment()
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.float_type.get_context()
+        self.typ.get_context()
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.float_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.float_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn get_undef(&self) -> FloatValue<'ctx> {
-        unsafe { FloatValue::new(self.float_type.get_undef()) }
+        unsafe { FloatValue::new(self.typ.get_undef()) }
     }
     pub fn create_generic_value(self, value: f64) -> GenericValue<'ctx> {
         unsafe { GenericValue::new(LLVMCreateGenericValueOfFloat(self.as_type_ref(), value)) }
     }
-    pub fn const_array(self, values: &[FloatValue<'ctx>]) -> ArrayValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            ArrayValue::new(LLVMConstArray(
-                self.as_type_ref(),
-                values.as_mut_ptr(),
-                values.len() as u32,
-            ))
-        }
+    pub fn const_array(self, xs: &[FloatValue<'ctx>]) -> ArrayValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { ArrayValue::new(LLVMConstArray(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32)) }
     }
 }
 impl Display for FloatType<'_> {
@@ -709,57 +693,55 @@ impl Display for FloatType<'_> {
 }
 unsafe impl AsTypeRef for FloatType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.float_type.ty
+        self.typ.raw
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct FunctionType<'ctx> {
-    fn_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> FunctionType<'ctx> {
-    pub unsafe fn new(fn_type: LLVMTypeRef) -> Self {
-        assert!(!fn_type.is_null());
-        FunctionType {
-            fn_type: Type::new(fn_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        FunctionType { typ: Type::new(typ) }
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.fn_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
     pub fn is_var_arg(self) -> bool {
         unsafe { LLVMIsFunctionVarArg(self.as_type_ref()) != 0 }
     }
     pub fn get_param_types(self) -> Vec<BasicTypeEnum<'ctx>> {
-        let count = self.count_param_types();
-        let mut raw_vec: Vec<LLVMTypeRef> = Vec::with_capacity(count as usize);
-        let ptr = raw_vec.as_mut_ptr();
-        forget(raw_vec);
-        let raw_vec = unsafe {
+        let n = self.count_param_types();
+        let mut y: Vec<LLVMTypeRef> = Vec::with_capacity(n as usize);
+        let ptr = y.as_mut_ptr();
+        forget(y);
+        let y = unsafe {
             LLVMGetParamTypes(self.as_type_ref(), ptr);
-            Vec::from_raw_parts(ptr, count as usize, count as usize)
+            Vec::from_raw_parts(ptr, n as usize, n as usize)
         };
-        raw_vec.iter().map(|val| unsafe { BasicTypeEnum::new(*val) }).collect()
+        y.iter().map(|x| unsafe { BasicTypeEnum::new(*x) }).collect()
     }
     pub fn count_param_types(self) -> u32 {
         unsafe { LLVMCountParamTypes(self.as_type_ref()) }
     }
     pub fn is_sized(self) -> bool {
-        self.fn_type.is_sized()
+        self.typ.is_sized()
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.fn_type.get_context()
+        self.typ.get_context()
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.fn_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn get_return_type(self) -> Option<BasicTypeEnum<'ctx>> {
-        let ty = unsafe { LLVMGetReturnType(self.as_type_ref()) };
-        let kind = unsafe { LLVMGetTypeKind(ty) };
+        let y = unsafe { LLVMGetReturnType(self.as_type_ref()) };
+        let kind = unsafe { LLVMGetTypeKind(y) };
         if let LLVMTypeKind::LLVMVoidTypeKind = kind {
             return None;
         }
-        unsafe { Some(BasicTypeEnum::new(ty)) }
+        unsafe { Some(BasicTypeEnum::new(y)) }
     }
 }
 impl Display for FunctionType<'_> {
@@ -769,17 +751,17 @@ impl Display for FunctionType<'_> {
 }
 impl fmt::Debug for FunctionType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_type = self.print_to_string();
+        let ty = self.print_to_string();
         f.debug_struct("FunctionType")
             .field("address", &self.as_type_ref())
             .field("is_var_args", &self.is_var_arg())
-            .field("llvm_type", &llvm_type)
+            .field("llvm_type", &ty)
             .finish()
     }
 }
 unsafe impl AsTypeRef for FunctionType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.fn_type.ty
+        self.typ.raw
     }
 }
 
@@ -809,8 +791,8 @@ impl StringRadix {
 }
 impl TryFrom<u8> for StringRadix {
     type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(x: u8) -> Result<Self, Self::Error> {
+        match x {
             2 => Ok(StringRadix::Binary),
             8 => Ok(StringRadix::Octal),
             10 => Ok(StringRadix::Decimal),
@@ -823,17 +805,15 @@ impl TryFrom<u8> for StringRadix {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct IntType<'ctx> {
-    int_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> IntType<'ctx> {
-    pub unsafe fn new(int_type: LLVMTypeRef) -> Self {
-        assert!(!int_type.is_null());
-        IntType {
-            int_type: Type::new(int_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        IntType { typ: Type::new(typ) }
     }
-    pub fn const_int(self, value: u64, sign_extend: bool) -> IntValue<'ctx> {
-        unsafe { IntValue::new(LLVMConstInt(self.as_type_ref(), value, sign_extend as i32)) }
+    pub fn const_int(self, x: u64, sign_extend: bool) -> IntValue<'ctx> {
+        unsafe { IntValue::new(LLVMConstInt(self.as_type_ref(), x, sign_extend as i32)) }
     }
     pub fn const_int_from_string(self, slice: &str, radix: StringRadix) -> Option<IntValue<'ctx>> {
         if !radix.matches_str(slice) {
@@ -848,12 +828,12 @@ impl<'ctx> IntType<'ctx> {
             )))
         }
     }
-    pub fn const_int_arbitrary_precision(self, words: &[u64]) -> IntValue<'ctx> {
+    pub fn const_int_arbitrary_precision(self, xs: &[u64]) -> IntValue<'ctx> {
         unsafe {
             IntValue::new(LLVMConstIntOfArbitraryPrecision(
                 self.as_type_ref(),
-                words.len() as u32,
-                words.as_ptr(),
+                xs.len() as u32,
+                xs.as_ptr(),
             ))
         }
     }
@@ -861,50 +841,44 @@ impl<'ctx> IntType<'ctx> {
         unsafe { IntValue::new(LLVMConstAllOnes(self.as_type_ref())) }
     }
     pub fn const_zero(self) -> IntValue<'ctx> {
-        unsafe { IntValue::new(self.int_type.const_zero()) }
+        unsafe { IntValue::new(self.typ.const_zero()) }
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.int_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        self.int_type.array_type(size)
+        self.typ.array_type(size)
     }
     pub fn vec_type(self, size: u32) -> VectorType<'ctx> {
-        self.int_type.vec_type(size)
+        self.typ.vec_type(size)
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.int_type.get_context()
+        self.typ.get_context()
     }
     pub fn size_of(self) -> IntValue<'ctx> {
-        self.int_type.size_of().unwrap()
+        self.typ.size_of().unwrap()
     }
     pub fn get_alignment(self) -> IntValue<'ctx> {
-        self.int_type.get_alignment()
+        self.typ.get_alignment()
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.int_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
     pub fn get_bit_width(self) -> u32 {
         unsafe { LLVMGetIntTypeWidth(self.as_type_ref()) }
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.int_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn get_undef(self) -> IntValue<'ctx> {
-        unsafe { IntValue::new(self.int_type.get_undef()) }
+        unsafe { IntValue::new(self.typ.get_undef()) }
     }
     pub fn create_generic_value(self, value: u64, is_signed: bool) -> GenericValue<'ctx> {
         unsafe { GenericValue::new(LLVMCreateGenericValueOfInt(self.as_type_ref(), value, is_signed as i32)) }
     }
-    pub fn const_array(self, values: &[IntValue<'ctx>]) -> ArrayValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            ArrayValue::new(LLVMConstArray(
-                self.as_type_ref(),
-                values.as_mut_ptr(),
-                values.len() as u32,
-            ))
-        }
+    pub fn const_array(self, xs: &[IntValue<'ctx>]) -> ArrayValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { ArrayValue::new(LLVMConstArray(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32)) }
     }
 }
 impl Display for IntType<'_> {
@@ -914,29 +888,27 @@ impl Display for IntType<'_> {
 }
 unsafe impl AsTypeRef for IntType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.int_type.ty
+        self.typ.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct MetadataType<'ctx> {
-    metadata_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> MetadataType<'ctx> {
-    pub unsafe fn new(metadata_type: LLVMTypeRef) -> Self {
-        assert!(!metadata_type.is_null());
-        MetadataType {
-            metadata_type: Type::new(metadata_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        MetadataType { typ: Type::new(typ) }
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.metadata_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.metadata_type.get_context()
+        self.typ.get_context()
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.metadata_type.print_to_string()
+        self.typ.print_to_string()
     }
 }
 impl Display for MetadataType<'_> {
@@ -946,67 +918,59 @@ impl Display for MetadataType<'_> {
 }
 unsafe impl AsTypeRef for MetadataType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.metadata_type.ty
+        self.typ.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct PointerType<'ctx> {
-    ptr_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> PointerType<'ctx> {
-    pub unsafe fn new(ptr_type: LLVMTypeRef) -> Self {
-        assert!(!ptr_type.is_null());
-        PointerType {
-            ptr_type: Type::new(ptr_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        PointerType { typ: Type::new(typ) }
     }
     pub fn size_of(self) -> IntValue<'ctx> {
-        self.ptr_type.size_of().unwrap()
+        self.typ.size_of().unwrap()
     }
     pub fn get_alignment(self) -> IntValue<'ctx> {
-        self.ptr_type.get_alignment()
+        self.typ.get_alignment()
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.ptr_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.ptr_type.get_context()
+        self.typ.get_context()
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.ptr_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        self.ptr_type.array_type(size)
+        self.typ.array_type(size)
     }
     pub fn get_address_space(self) -> AddressSpace {
-        let addr_space = unsafe { LLVMGetPointerAddressSpace(self.as_type_ref()) };
-        AddressSpace(addr_space)
+        let y = unsafe { LLVMGetPointerAddressSpace(self.as_type_ref()) };
+        AddressSpace(y)
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.ptr_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn const_null(self) -> PointerValue<'ctx> {
-        unsafe { PointerValue::new(self.ptr_type.const_zero()) }
+        unsafe { PointerValue::new(self.typ.const_zero()) }
     }
     pub fn const_zero(self) -> PointerValue<'ctx> {
-        unsafe { PointerValue::new(self.ptr_type.const_zero()) }
+        unsafe { PointerValue::new(self.typ.const_zero()) }
     }
     pub fn get_undef(self) -> PointerValue<'ctx> {
-        unsafe { PointerValue::new(self.ptr_type.get_undef()) }
+        unsafe { PointerValue::new(self.typ.get_undef()) }
     }
     pub fn vec_type(self, size: u32) -> VectorType<'ctx> {
-        self.ptr_type.vec_type(size)
+        self.typ.vec_type(size)
     }
-    pub fn const_array(self, values: &[PointerValue<'ctx>]) -> ArrayValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            ArrayValue::new(LLVMConstArray(
-                self.as_type_ref(),
-                values.as_mut_ptr(),
-                values.len() as u32,
-            ))
-        }
+    pub fn const_array(self, xs: &[PointerValue<'ctx>]) -> ArrayValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { ArrayValue::new(LLVMConstArray(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32)) }
     }
 }
 impl Display for PointerType<'_> {
@@ -1016,68 +980,66 @@ impl Display for PointerType<'_> {
 }
 unsafe impl AsTypeRef for PointerType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.ptr_type.ty
+        self.typ.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct StructType<'ctx> {
-    struct_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> StructType<'ctx> {
-    pub unsafe fn new(struct_type: LLVMTypeRef) -> Self {
-        assert!(!struct_type.is_null());
-        StructType {
-            struct_type: Type::new(struct_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        StructType { typ: Type::new(typ) }
     }
-    pub fn get_field_type_at_index(self, index: u32) -> Option<BasicTypeEnum<'ctx>> {
+    pub fn get_field_type_at_index(self, idx: u32) -> Option<BasicTypeEnum<'ctx>> {
         if self.is_opaque() {
             return None;
         }
-        if index >= self.count_fields() {
+        if idx >= self.count_fields() {
             return None;
         }
-        unsafe { Some(BasicTypeEnum::new(LLVMStructGetTypeAtIndex(self.as_type_ref(), index))) }
+        unsafe { Some(BasicTypeEnum::new(LLVMStructGetTypeAtIndex(self.as_type_ref(), idx))) }
     }
-    pub fn const_named_struct(self, values: &[BasicValueEnum<'ctx>]) -> StructValue<'ctx> {
-        let mut args: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
+    pub fn const_named_struct(self, xs: &[BasicValueEnum<'ctx>]) -> StructValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
         unsafe {
             StructValue::new(LLVMConstNamedStruct(
                 self.as_type_ref(),
-                args.as_mut_ptr(),
-                args.len() as u32,
+                ys.as_mut_ptr(),
+                ys.len() as u32,
             ))
         }
     }
     pub fn const_zero(self) -> StructValue<'ctx> {
-        unsafe { StructValue::new(self.struct_type.const_zero()) }
+        unsafe { StructValue::new(self.typ.const_zero()) }
     }
     pub fn size_of(self) -> Option<IntValue<'ctx>> {
-        self.struct_type.size_of()
+        self.typ.size_of()
     }
     pub fn get_alignment(self) -> IntValue<'ctx> {
-        self.struct_type.get_alignment()
+        self.typ.get_alignment()
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.struct_type.get_context()
+        self.typ.get_context()
     }
     pub fn get_name(&self) -> Option<&CStr> {
         let name = unsafe { LLVMGetStructName(self.as_type_ref()) };
         if name.is_null() {
             return None;
         }
-        let c_str = unsafe { CStr::from_ptr(name) };
-        Some(c_str)
+        let y = unsafe { CStr::from_ptr(name) };
+        Some(y)
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.struct_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.struct_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        self.struct_type.array_type(size)
+        self.typ.array_type(size)
     }
     pub fn is_packed(self) -> bool {
         unsafe { LLVMIsPackedStruct(self.as_type_ref()) == 1 }
@@ -1089,44 +1051,33 @@ impl<'ctx> StructType<'ctx> {
         unsafe { LLVMCountStructElementTypes(self.as_type_ref()) }
     }
     pub fn get_field_types(self) -> Vec<BasicTypeEnum<'ctx>> {
-        let count = self.count_fields();
-        let mut raw_vec: Vec<LLVMTypeRef> = Vec::with_capacity(count as usize);
-        let ptr = raw_vec.as_mut_ptr();
-        forget(raw_vec);
-        let raw_vec = unsafe {
+        let n = self.count_fields();
+        let mut y: Vec<LLVMTypeRef> = Vec::with_capacity(n as usize);
+        let ptr = y.as_mut_ptr();
+        forget(y);
+        let y = unsafe {
             LLVMGetStructElementTypes(self.as_type_ref(), ptr);
-            Vec::from_raw_parts(ptr, count as usize, count as usize)
+            Vec::from_raw_parts(ptr, n as usize, n as usize)
         };
-        raw_vec.iter().map(|val| unsafe { BasicTypeEnum::new(*val) }).collect()
+        y.iter().map(|val| unsafe { BasicTypeEnum::new(*val) }).collect()
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.struct_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn get_undef(self) -> StructValue<'ctx> {
-        unsafe { StructValue::new(self.struct_type.get_undef()) }
+        unsafe { StructValue::new(self.typ.get_undef()) }
     }
-    pub fn set_body(self, field_types: &[BasicTypeEnum<'ctx>], packed: bool) -> bool {
+    pub fn set_body(self, xs: &[BasicTypeEnum<'ctx>], packed: bool) -> bool {
         let is_opaque = self.is_opaque();
-        let mut field_types: Vec<LLVMTypeRef> = field_types.iter().map(|val| val.as_type_ref()).collect();
+        let mut ys: Vec<LLVMTypeRef> = xs.iter().map(|val| val.as_type_ref()).collect();
         unsafe {
-            LLVMStructSetBody(
-                self.as_type_ref(),
-                field_types.as_mut_ptr(),
-                field_types.len() as u32,
-                packed as i32,
-            );
+            LLVMStructSetBody(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32, packed as i32);
         }
         is_opaque
     }
-    pub fn const_array(self, values: &[StructValue<'ctx>]) -> ArrayValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            ArrayValue::new(LLVMConstArray(
-                self.as_type_ref(),
-                values.as_mut_ptr(),
-                values.len() as u32,
-            ))
-        }
+    pub fn const_array(self, xs: &[StructValue<'ctx>]) -> ArrayValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { ArrayValue::new(LLVMConstArray(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32)) }
     }
 }
 impl Display for StructType<'_> {
@@ -1136,7 +1087,7 @@ impl Display for StructType<'_> {
 }
 unsafe impl AsTypeRef for StructType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.struct_type.ty
+        self.typ.raw
     }
 }
 
@@ -1152,8 +1103,8 @@ pub unsafe trait BasicType<'ctx>: AnyType<'ctx> {
     fn as_basic_type_enum(&self) -> BasicTypeEnum<'ctx> {
         unsafe { BasicTypeEnum::new(self.as_type_ref()) }
     }
-    fn fn_type(&self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        unsafe { Type::new(self.as_type_ref()).fn_type(param_types, is_var_args) }
+    fn fn_type(&self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        unsafe { Type::new(self.as_type_ref()).fn_type(xs, is_var_args) }
     }
     fn is_sized(&self) -> bool {
         unsafe { Type::new(self.as_type_ref()).is_sized() }
@@ -1170,9 +1121,9 @@ pub unsafe trait BasicType<'ctx>: AnyType<'ctx> {
 }
 
 macro_rules! trait_type_set {
-    ($trait_name:ident: $($args:ident),*) => (
+    ($name:ident: $($args:ident),*) => (
         $(
-            unsafe impl<'ctx> $trait_name<'ctx> for $args<'ctx> {}
+            unsafe impl<'ctx> $name<'ctx> for $args<'ctx> {}
         )*
     );
 }
@@ -1224,61 +1175,53 @@ unsafe impl<'ctx> PointerMathType<'ctx> for VectorType<'ctx> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct VectorType<'ctx> {
-    vec_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> VectorType<'ctx> {
-    pub unsafe fn new(vector_type: LLVMTypeRef) -> Self {
-        assert!(!vector_type.is_null());
-        VectorType {
-            vec_type: Type::new(vector_type),
-        }
+    pub unsafe fn new(typ: LLVMTypeRef) -> Self {
+        assert!(!typ.is_null());
+        VectorType { typ: Type::new(typ) }
     }
     pub fn size_of(self) -> Option<IntValue<'ctx>> {
-        self.vec_type.size_of()
+        self.typ.size_of()
     }
     pub fn get_alignment(self) -> IntValue<'ctx> {
-        self.vec_type.get_alignment()
+        self.typ.get_alignment()
     }
     pub fn get_size(self) -> u32 {
         unsafe { LLVMGetVectorSize(self.as_type_ref()) }
     }
-    pub fn const_vector<V: BasicValue<'ctx>>(values: &[V]) -> VectorValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe { VectorValue::new(LLVMConstVector(values.as_mut_ptr(), values.len() as u32)) }
+    pub fn const_vector<V: BasicValue<'ctx>>(xs: &[V]) -> VectorValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { VectorValue::new(LLVMConstVector(ys.as_mut_ptr(), ys.len() as u32)) }
     }
     pub fn const_zero(self) -> VectorValue<'ctx> {
-        unsafe { VectorValue::new(self.vec_type.const_zero()) }
+        unsafe { VectorValue::new(self.typ.const_zero()) }
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.vec_type.print_to_string()
+        self.typ.print_to_string()
     }
     pub fn get_undef(self) -> VectorValue<'ctx> {
-        unsafe { VectorValue::new(self.vec_type.get_undef()) }
+        unsafe { VectorValue::new(self.typ.get_undef()) }
     }
     pub fn get_element_type(self) -> BasicTypeEnum<'ctx> {
-        self.vec_type.get_element_type().to_basic_type_enum()
+        self.typ.get_element_type().to_basic_type_enum()
     }
-    pub fn ptr_type(self, address_space: AddressSpace) -> PointerType<'ctx> {
-        self.vec_type.ptr_type(address_space)
+    pub fn ptr_type(self, x: AddressSpace) -> PointerType<'ctx> {
+        self.typ.ptr_type(x)
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.vec_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn array_type(self, size: u32) -> ArrayType<'ctx> {
-        self.vec_type.array_type(size)
+        self.typ.array_type(size)
     }
-    pub fn const_array(self, values: &[VectorValue<'ctx>]) -> ArrayValue<'ctx> {
-        let mut values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            ArrayValue::new(LLVMConstArray(
-                self.as_type_ref(),
-                values.as_mut_ptr(),
-                values.len() as u32,
-            ))
-        }
+    pub fn const_array(self, xs: &[VectorValue<'ctx>]) -> ArrayValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { ArrayValue::new(LLVMConstArray(self.as_type_ref(), ys.as_mut_ptr(), ys.len() as u32)) }
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.vec_type.get_context()
+        self.typ.get_context()
     }
 }
 impl Display for VectorType<'_> {
@@ -1288,32 +1231,30 @@ impl Display for VectorType<'_> {
 }
 unsafe impl AsTypeRef for VectorType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.vec_type.ty
+        self.typ.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct VoidType<'ctx> {
-    void_type: Type<'ctx>,
+    typ: Type<'ctx>,
 }
 impl<'ctx> VoidType<'ctx> {
-    pub unsafe fn new(void_type: LLVMTypeRef) -> Self {
-        assert!(!void_type.is_null());
-        VoidType {
-            void_type: Type::new(void_type),
-        }
+    pub unsafe fn new(x: LLVMTypeRef) -> Self {
+        assert!(!x.is_null());
+        VoidType { typ: Type::new(x) }
     }
     pub fn is_sized(self) -> bool {
-        self.void_type.is_sized()
+        self.typ.is_sized()
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        self.void_type.get_context()
+        self.typ.get_context()
     }
-    pub fn fn_type(self, param_types: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
-        self.void_type.fn_type(param_types, is_var_args)
+    pub fn fn_type(self, xs: &[BasicMetadataTypeEnum<'ctx>], is_var_args: bool) -> FunctionType<'ctx> {
+        self.typ.fn_type(xs, is_var_args)
     }
     pub fn print_to_string(self) -> LLVMString {
-        self.void_type.print_to_string()
+        self.typ.print_to_string()
     }
 }
 impl Display for VoidType<'_> {
@@ -1323,6 +1264,6 @@ impl Display for VoidType<'_> {
 }
 unsafe impl AsTypeRef for VoidType<'_> {
     fn as_type_ref(&self) -> LLVMTypeRef {
-        self.void_type.ty
+        self.typ.raw
     }
 }

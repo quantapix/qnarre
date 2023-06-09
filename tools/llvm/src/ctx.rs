@@ -478,14 +478,12 @@ impl ContextImpl {
     fn metadata_type<'ctx>(&self) -> MetadataType<'ctx> {
         unsafe { MetadataType::new(LLVMMetadataTypeInContext(self.0)) }
     }
-    fn ptr_sized_int_type<'ctx>(&self, target_data: &TargetData, address_space: Option<AddressSpace>) -> IntType<'ctx> {
-        let int_type_ptr = match address_space {
-            Some(address_space) => unsafe {
-                LLVMIntPtrTypeForASInContext(self.0, target_data.target_data, address_space.0)
-            },
-            None => unsafe { LLVMIntPtrTypeInContext(self.0, target_data.target_data) },
+    fn ptr_sized_int_type<'ctx>(&self, data: &TargetData, x: Option<AddressSpace>) -> IntType<'ctx> {
+        let y = match x {
+            Some(x) => unsafe { LLVMIntPtrTypeForASInContext(self.0, data.raw, x.0) },
+            None => unsafe { LLVMIntPtrTypeInContext(self.0, data.raw) },
         };
-        unsafe { IntType::new(int_type_ptr) }
+        unsafe { IntType::new(y) }
     }
     fn f16_type<'ctx>(&self) -> FloatType<'ctx> {
         unsafe { FloatType::new(LLVMHalfTypeInContext(self.0)) }
@@ -505,84 +503,74 @@ impl ContextImpl {
     fn ppc_f128_type<'ctx>(&self) -> FloatType<'ctx> {
         unsafe { FloatType::new(LLVMPPCFP128TypeInContext(self.0)) }
     }
-    fn struct_type<'ctx>(&self, field_types: &[BasicTypeEnum], packed: bool) -> StructType<'ctx> {
-        let mut field_types: Vec<LLVMTypeRef> = field_types.iter().map(|val| val.as_type_ref()).collect();
+    fn struct_type<'ctx>(&self, xs: &[BasicTypeEnum], packed: bool) -> StructType<'ctx> {
+        let mut ys: Vec<LLVMTypeRef> = xs.iter().map(|val| val.as_type_ref()).collect();
         unsafe {
             StructType::new(LLVMStructTypeInContext(
                 self.0,
-                field_types.as_mut_ptr(),
-                field_types.len() as u32,
+                ys.as_mut_ptr(),
+                ys.len() as u32,
                 packed as i32,
             ))
         }
     }
     fn opaque_struct_type<'ctx>(&self, name: &str) -> StructType<'ctx> {
-        let c_string = to_c_str(name);
-        unsafe { StructType::new(LLVMStructCreateNamed(self.0, c_string.as_ptr())) }
+        let y = to_c_str(name);
+        unsafe { StructType::new(LLVMStructCreateNamed(self.0, y.as_ptr())) }
     }
     fn get_struct_type<'ctx>(&self, name: &str) -> Option<StructType<'ctx>> {
-        let c_string = to_c_str(name);
-        let ty = unsafe { LLVMGetTypeByName2(self.0, c_string.as_ptr()) };
-        if ty.is_null() {
+        let name = to_c_str(name);
+        let y = unsafe { LLVMGetTypeByName2(self.0, name.as_ptr()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(StructType::new(ty)) }
+        unsafe { Some(StructType::new(y)) }
     }
-    fn const_struct<'ctx>(&self, values: &[BasicValueEnum], packed: bool) -> StructValue<'ctx> {
-        let mut args: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
+    fn const_struct<'ctx>(&self, xs: &[BasicValueEnum], packed: bool) -> StructValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|x| x.as_value_ref()).collect();
         unsafe {
             StructValue::new(LLVMConstStructInContext(
                 self.0,
-                args.as_mut_ptr(),
-                args.len() as u32,
+                ys.as_mut_ptr(),
+                ys.len() as u32,
                 packed as i32,
             ))
         }
     }
     fn append_basic_block<'ctx>(&self, function: FunctionValue<'ctx>, name: &str) -> BasicBlock<'ctx> {
-        let c_string = to_c_str(name);
+        let y = to_c_str(name);
         unsafe {
             BasicBlock::new(LLVMAppendBasicBlockInContext(
                 self.0,
                 function.as_value_ref(),
-                c_string.as_ptr(),
+                y.as_ptr(),
             ))
             .expect("Appending basic block should never fail")
         }
     }
-    fn insert_basic_block_after<'ctx>(&self, basic_block: BasicBlock<'ctx>, name: &str) -> BasicBlock<'ctx> {
-        match basic_block.get_next_basic_block() {
-            Some(next_basic_block) => self.prepend_basic_block(next_basic_block, name),
+    fn insert_basic_block_after<'ctx>(&self, x: BasicBlock<'ctx>, name: &str) -> BasicBlock<'ctx> {
+        match x.get_next_basic_block() {
+            Some(x) => self.prepend_basic_block(x, name),
             None => {
-                let parent_fn = basic_block.get_parent().unwrap();
+                let parent_fn = x.get_parent().unwrap();
                 self.append_basic_block(parent_fn, name)
             },
         }
     }
-    fn prepend_basic_block<'ctx>(&self, basic_block: BasicBlock<'ctx>, name: &str) -> BasicBlock<'ctx> {
+    fn prepend_basic_block<'ctx>(&self, x: BasicBlock<'ctx>, name: &str) -> BasicBlock<'ctx> {
         let c_string = to_c_str(name);
         unsafe {
-            BasicBlock::new(LLVMInsertBasicBlockInContext(
-                self.0,
-                basic_block.raw,
-                c_string.as_ptr(),
-            ))
-            .expect("Prepending basic block should never fail")
+            BasicBlock::new(LLVMInsertBasicBlockInContext(self.0, x.raw, c_string.as_ptr()))
+                .expect("Prepending basic block should never fail")
         }
     }
-    fn metadata_node<'ctx>(&self, values: &[BasicMetadataValueEnum<'ctx>]) -> MetadataValue<'ctx> {
-        let mut tuple_values: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        unsafe {
-            MetadataValue::new(LLVMMDNodeInContext(
-                self.0,
-                tuple_values.as_mut_ptr(),
-                tuple_values.len() as u32,
-            ))
-        }
+    fn metadata_node<'ctx>(&self, xs: &[BasicMetadataValueEnum<'ctx>]) -> MetadataValue<'ctx> {
+        let mut ys: Vec<LLVMValueRef> = xs.iter().map(|val| val.as_value_ref()).collect();
+        unsafe { MetadataValue::new(LLVMMDNodeInContext(self.0, ys.as_mut_ptr(), ys.len() as u32)) }
     }
-    fn metadata_string<'ctx>(&self, string: &str) -> MetadataValue<'ctx> {
-        let c_string = to_c_str(string);
-        unsafe { MetadataValue::new(LLVMMDStringInContext(self.0, c_string.as_ptr(), string.len() as u32)) }
+    fn metadata_string<'ctx>(&self, x: &str) -> MetadataValue<'ctx> {
+        let y = to_c_str(x);
+        unsafe { MetadataValue::new(LLVMMDStringInContext(self.0, y.as_ptr(), x.len() as u32)) }
     }
     fn get_kind_id(&self, key: &str) -> u32 {
         unsafe { LLVMGetMDKindIDInContext(self.0, key.as_ptr() as *const ::libc::c_char, key.len() as u32) }

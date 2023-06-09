@@ -1189,7 +1189,7 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn set_current_debug_location(&self, location: DILocation<'ctx>) {
         unsafe {
-            LLVMSetCurrentDebugLocation2(self.raw, location.metadata_ref);
+            LLVMSetCurrentDebugLocation2(self.raw, location.raw);
         }
     }
     pub fn get_current_debug_location(&self) -> Option<DILocation<'ctx>> {
@@ -1198,7 +1198,7 @@ impl<'ctx> Builder<'ctx> {
             return None;
         }
         Some(DILocation {
-            metadata_ref: unsafe { LLVMValueAsMetadata(metadata_ref) },
+            raw: unsafe { LLVMValueAsMetadata(metadata_ref) },
             _marker: PhantomData,
         })
     }

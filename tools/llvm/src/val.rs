@@ -1142,7 +1142,7 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { GlobalValue::new(self.as_value_ref()) }
     }
     pub fn set_subprogram(self, subprogram: DISubprogram<'ctx>) {
-        unsafe { LLVMSetSubprogram(self.as_value_ref(), subprogram.metadata_ref) }
+        unsafe { LLVMSetSubprogram(self.as_value_ref(), subprogram.raw) }
     }
     pub fn get_subprogram(self) -> Option<DISubprogram<'ctx>> {
         let metadata_ref = unsafe { LLVMGetSubprogram(self.as_value_ref()) };
@@ -1150,7 +1150,7 @@ impl<'ctx> FunctionValue<'ctx> {
             None
         } else {
             Some(DISubprogram {
-                metadata_ref,
+                raw: metadata_ref,
                 _marker: PhantomData,
             })
         }
