@@ -77,18 +77,18 @@ impl<'c> Diagnostic<'c> {
     }
 }
 impl<'a> Display for Diagnostic<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe {
-            mlirDiagnosticPrint(self.raw, Some(print_callback), &mut data as *mut _ as *mut c_void);
+            mlirDiagnosticPrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{ir::Module, Context};
+    use crate::mlir::{ir::Module, Context};
     #[test]
     fn handle_diagnostic() {
         let mut message = None;

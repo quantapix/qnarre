@@ -96,25 +96,21 @@ impl<'a> OperationPassManager<'a> {
     }
 }
 impl<'a> Display for OperationPassManager<'a> {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        let mut data = (formatter, Ok(()));
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
         unsafe extern "C" fn callback(string: MlirStringRef, data: *mut c_void) {
-            let data = &mut *(data as *mut (&mut Formatter, fmt::Result));
+            let y = &mut *(data as *mut (&mut Formatter, fmt::Result));
             let result = (|| -> fmt::Result {
-                write!(
-                    data.0,
-                    "{}",
-                    StringRef::from_raw(string).as_str().map_err(|_| fmt::Error)?
-                )
+                write!(y.0, "{}", StringRef::from_raw(string).as_str().map_err(|_| fmt::Error)?)
             })();
-            if data.1.is_ok() {
-                data.1 = result;
+            if y.1.is_ok() {
+                y.1 = result;
             }
         }
         unsafe {
-            mlirPrintPassPipeline(self.raw, Some(callback), &mut data as *mut _ as *mut c_void);
+            mlirPrintPassPipeline(self.raw, Some(callback), &mut y as *mut _ as *mut c_void);
         }
-        data.1
+        y.1
     }
 }
 

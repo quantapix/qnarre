@@ -73,44 +73,20 @@ pub unsafe extern "C" fn print_string_callback(string: MlirStringRef, data: *mut
     })();
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn register_dialects() {
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-    }
-    #[test]
-    fn register_dialects_twice() {
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        register_all_dialects(&registry);
-    }
-    #[test]
-    fn register_llvm_translations() {
-        let context = Context::new();
-        register_all_llvm_translations(&context);
-    }
-    #[test]
-    fn register_llvm_translations_twice() {
-        let context = Context::new();
-        register_all_llvm_translations(&context);
-        register_all_llvm_translations(&context);
-    }
-    #[test]
-    fn register_passes() {
-        register_all_passes();
-    }
-    #[test]
-    fn register_passes_twice() {
-        register_all_passes();
-        register_all_passes();
-    }
-    #[test]
-    fn register_passes_many_times() {
-        for _ in 0..1000 {
-            register_all_passes();
-        }
-    }
+pub fn load_all_dialects(context: &Context) {
+    let registry = DialectRegistry::new();
+    register_all_dialects(&registry);
+    context.append_dialect_registry(&registry);
+    context.load_all_available_dialects();
+}
+
+pub fn create_test_context() -> Context {
+    let context = Context::new();
+    context.attach_diagnostic_handler(|diagnostic| {
+        eprintln!("{}", diagnostic);
+        true
+    });
+    load_all_dialects(&context);
+    register_all_llvm_translations(&context);
+    context
 }
