@@ -71,38 +71,38 @@ impl Default for InitializationConfig {
 
 #[derive(Eq)]
 pub struct TargetTriple {
-    pub(crate) triple: LLVMString,
+    pub val: LLVMString,
 }
 impl TargetTriple {
-    pub unsafe fn new(triple: LLVMString) -> TargetTriple {
-        TargetTriple { triple }
+    pub unsafe fn new(val: LLVMString) -> TargetTriple {
+        TargetTriple { val }
     }
-    pub fn create(triple: &str) -> TargetTriple {
-        let c_string = to_c_str(triple);
+    pub fn create(x: &str) -> TargetTriple {
+        let y = to_c_str(x);
         TargetTriple {
-            triple: LLVMString::create_from_c_str(&c_string),
+            val: LLVMString::create_from_c_str(&y),
         }
     }
     pub fn as_str(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.as_ptr()) }
     }
     pub fn as_ptr(&self) -> *const ::libc::c_char {
-        self.triple.as_ptr()
+        self.val.as_ptr()
     }
 }
 impl PartialEq for TargetTriple {
-    fn eq(&self, other: &TargetTriple) -> bool {
-        self.triple == other.triple
+    fn eq(&self, x: &TargetTriple) -> bool {
+        self.val == x.val
     }
 }
 impl fmt::Debug for TargetTriple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TargetTriple({:?})", self.triple)
+        write!(f, "TargetTriple({:?})", self.val)
     }
 }
 impl fmt::Display for TargetTriple {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "TargetTriple({:?})", self.triple)
+        write!(f, "TargetTriple({:?})", self.val)
     }
 }
 
@@ -110,19 +110,18 @@ static TARGET_LOCK: Lazy<RwLock<()>> = Lazy::new(|| RwLock::new(()));
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Target {
-    target: LLVMTargetRef,
+    raw: LLVMTargetRef,
 }
 impl Target {
-    pub unsafe fn new(target: LLVMTargetRef) -> Self {
-        assert!(!target.is_null());
-        Target { target }
+    pub unsafe fn new(raw: LLVMTargetRef) -> Self {
+        assert!(!raw.is_null());
+        Target { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMTargetRef {
-        self.target
+        self.raw
     }
     #[cfg(feature = "target-x86")]
     pub fn initialize_x86(config: &InitializationConfig) {
-        use llvm_lib::target::{
             LLVMInitializeX86AsmParser, LLVMInitializeX86AsmPrinter, LLVMInitializeX86Disassembler,
             LLVMInitializeX86Target, LLVMInitializeX86TargetInfo, LLVMInitializeX86TargetMC,
         };
@@ -153,7 +152,6 @@ impl Target {
     }
     #[cfg(feature = "target-nvptx")]
     pub fn initialize_nvptx(config: &InitializationConfig) {
-        use llvm_lib::target::{
             LLVMInitializeNVPTXAsmPrinter, LLVMInitializeNVPTXTarget, LLVMInitializeNVPTXTargetInfo,
             LLVMInitializeNVPTXTargetMC,
         };
@@ -175,7 +173,6 @@ impl Target {
         }
     }
     pub fn initialize_native(config: &InitializationConfig) -> Result<(), String> {
-        use llvm_lib::target::{
             LLVM_InitializeNativeAsmParser, LLVM_InitializeNativeAsmPrinter, LLVM_InitializeNativeDisassembler,
             LLVM_InitializeNativeTarget,
         };
@@ -210,7 +207,6 @@ impl Target {
         Ok(())
     }
     pub fn initialize_all(config: &InitializationConfig) {
-        use llvm_lib::target::{
             LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllDisassemblers,
             LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
         };
@@ -272,7 +268,7 @@ impl Target {
         };
         let target_machine = unsafe {
             LLVMCreateTargetMachine(
-                self.target,
+                self.raw,
                 triple.as_ptr(),
                 cpu.as_ptr(),
                 features.as_ptr(),
@@ -287,158 +283,149 @@ impl Target {
         unsafe { Some(TargetMachine::new(target_machine)) }
     }
     pub fn get_first() -> Option<Self> {
-        let target = {
+        let y = {
             let _guard = TARGET_LOCK.read();
             unsafe { LLVMGetFirstTarget() }
         };
-        if target.is_null() {
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Target::new(target)) }
+        unsafe { Some(Target::new(y)) }
     }
     pub fn get_next(&self) -> Option<Self> {
-        let target = unsafe { LLVMGetNextTarget(self.target) };
-        if target.is_null() {
+        let y = unsafe { LLVMGetNextTarget(self.raw) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Target::new(target)) }
+        unsafe { Some(Target::new(y)) }
     }
     pub fn get_name(&self) -> &CStr {
-        unsafe { CStr::from_ptr(LLVMGetTargetName(self.target)) }
+        unsafe { CStr::from_ptr(LLVMGetTargetName(self.raw)) }
     }
     pub fn get_description(&self) -> &CStr {
-        unsafe { CStr::from_ptr(LLVMGetTargetDescription(self.target)) }
+        unsafe { CStr::from_ptr(LLVMGetTargetDescription(self.raw)) }
     }
     pub fn from_name(name: &str) -> Option<Self> {
-        let c_string = to_c_str(name);
-        Self::from_name_raw(c_string.as_ptr())
+        let y = to_c_str(name);
+        Self::from_name_raw(y.as_ptr())
     }
-    pub(crate) fn from_name_raw(c_string: *const ::libc::c_char) -> Option<Self> {
-        let target = {
+    pub fn from_name_raw(c_string: *const ::libc::c_char) -> Option<Self> {
+        let y = {
             let _guard = TARGET_LOCK.read();
             unsafe { LLVMGetTargetFromName(c_string) }
         };
-        if target.is_null() {
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Target::new(target)) }
+        unsafe { Some(Target::new(y)) }
     }
     pub fn from_triple(triple: &TargetTriple) -> Result<Self, LLVMString> {
-        let mut target = ptr::null_mut();
-        let mut err_string = MaybeUninit::uninit();
+        let mut y = ptr::null_mut();
+        let mut e = MaybeUninit::uninit();
         let code = {
             let _guard = TARGET_LOCK.read();
-            unsafe { LLVMGetTargetFromTriple(triple.as_ptr(), &mut target, err_string.as_mut_ptr()) }
+            unsafe { LLVMGetTargetFromTriple(triple.as_ptr(), &mut y, e.as_mut_ptr()) }
         };
         if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        unsafe { Ok(Target::new(target)) }
+        unsafe { Ok(Target::new(y)) }
     }
     pub fn has_jit(&self) -> bool {
-        unsafe { LLVMTargetHasJIT(self.target) == 1 }
+        unsafe { LLVMTargetHasJIT(self.raw) == 1 }
     }
     pub fn has_target_machine(&self) -> bool {
-        unsafe { LLVMTargetHasTargetMachine(self.target) == 1 }
+        unsafe { LLVMTargetHasTargetMachine(self.raw) == 1 }
     }
     pub fn has_asm_backend(&self) -> bool {
-        unsafe { LLVMTargetHasAsmBackend(self.target) == 1 }
+        unsafe { LLVMTargetHasAsmBackend(self.raw) == 1 }
     }
 }
 
 #[derive(Debug)]
 pub struct TargetMachine {
-    pub(crate) target_machine: LLVMTargetMachineRef,
+    pub raw: LLVMTargetMachineRef,
 }
 impl TargetMachine {
-    pub unsafe fn new(target_machine: LLVMTargetMachineRef) -> Self {
-        assert!(!target_machine.is_null());
-        TargetMachine { target_machine }
+    pub unsafe fn new(raw: LLVMTargetMachineRef) -> Self {
+        assert!(!raw.is_null());
+        TargetMachine { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMTargetMachineRef {
-        self.target_machine
+        self.raw
     }
     pub fn get_target(&self) -> Target {
-        unsafe { Target::new(LLVMGetTargetMachineTarget(self.target_machine)) }
+        unsafe { Target::new(LLVMGetTargetMachineTarget(self.raw)) }
     }
     pub fn get_triple(&self) -> TargetTriple {
-        let str = unsafe { LLVMString::new(LLVMGetTargetMachineTriple(self.target_machine)) };
-        unsafe { TargetTriple::new(str) }
+        let y = unsafe { LLVMString::new(LLVMGetTargetMachineTriple(self.raw)) };
+        unsafe { TargetTriple::new(y) }
     }
     pub fn get_default_triple() -> TargetTriple {
-        let llvm_string = unsafe { LLVMString::new(LLVMGetDefaultTargetTriple()) };
-        unsafe { TargetTriple::new(llvm_string) }
+        let y = unsafe { LLVMString::new(LLVMGetDefaultTargetTriple()) };
+        unsafe { TargetTriple::new(y) }
     }
     pub fn normalize_triple(triple: &TargetTriple) -> TargetTriple {
-        use llvm_lib::target_machine::LLVMNormalizeTargetTriple;
-        let normalized = unsafe { LLVMString::new(LLVMNormalizeTargetTriple(triple.as_ptr())) };
-        unsafe { TargetTriple::new(normalized) }
+        let y = unsafe { LLVMString::new(LLVMNormalizeTargetTriple(triple.as_ptr())) };
+        unsafe { TargetTriple::new(y) }
     }
     pub fn get_host_cpu_name() -> LLVMString {
-        use llvm_lib::target_machine::LLVMGetHostCPUName;
         unsafe { LLVMString::new(LLVMGetHostCPUName()) }
     }
     pub fn get_host_cpu_features() -> LLVMString {
-        use llvm_lib::target_machine::LLVMGetHostCPUFeatures;
         unsafe { LLVMString::new(LLVMGetHostCPUFeatures()) }
     }
     pub fn get_cpu(&self) -> LLVMString {
-        unsafe { LLVMString::new(LLVMGetTargetMachineCPU(self.target_machine)) }
+        unsafe { LLVMString::new(LLVMGetTargetMachineCPU(self.raw)) }
     }
     pub fn get_feature_string(&self) -> &CStr {
-        unsafe { CStr::from_ptr(LLVMGetTargetMachineFeatureString(self.target_machine)) }
+        unsafe { CStr::from_ptr(LLVMGetTargetMachineFeatureString(self.raw)) }
     }
     pub fn get_target_data(&self) -> TargetData {
-        unsafe { TargetData::new(LLVMCreateTargetDataLayout(self.target_machine)) }
+        unsafe { TargetData::new(LLVMCreateTargetDataLayout(self.raw)) }
     }
     pub fn set_asm_verbosity(&self, verbosity: bool) {
-        unsafe { LLVMSetTargetMachineAsmVerbosity(self.target_machine, verbosity as i32) }
+        unsafe { LLVMSetTargetMachineAsmVerbosity(self.raw, verbosity as i32) }
     }
-    pub fn add_analysis_passes<T>(&self, pass_manager: &PassManager<T>) {
-        unsafe { LLVMAddAnalysisPasses(self.target_machine, pass_manager.raw) }
+    pub fn add_analysis_passes<T>(&self, x: &PassManager<T>) {
+        unsafe { LLVMAddAnalysisPasses(self.raw, x.raw) }
     }
-    pub fn write_to_memory_buffer(&self, module: &Module, file_type: FileType) -> Result<MemoryBuffer, LLVMString> {
-        let mut memory_buffer = ptr::null_mut();
-        let mut err_string = MaybeUninit::uninit();
-        let return_code = unsafe {
-            let module_ptr = module.module.get();
-            let file_type_ptr = file_type.as_llvm_file_type();
+    pub fn write_to_memory_buffer(&self, m: &Module, t: FileType) -> Result<MemoryBuffer, LLVMString> {
+        let mut y = ptr::null_mut();
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe {
+            let module_ptr = m.module.get();
+            let file_type_ptr = t.as_llvm_file_type();
             LLVMTargetMachineEmitToMemoryBuffer(
-                self.target_machine,
+                self.raw,
                 module_ptr,
                 file_type_ptr,
-                err_string.as_mut_ptr(),
-                &mut memory_buffer,
+                e.as_mut_ptr(),
+                &mut y,
             )
         };
-        if return_code == 1 {
+        if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        unsafe { Ok(MemoryBuffer::new(memory_buffer)) }
+        unsafe { Ok(MemoryBuffer::new(y)) }
     }
-    pub fn write_to_file(&self, module: &Module, file_type: FileType, path: &Path) -> Result<(), LLVMString> {
+    pub fn write_to_file(&self, m: &Module, t: FileType, path: &Path) -> Result<(), LLVMString> {
         let path = path.to_str().expect("Did not find a valid Unicode path string");
         let path_c_string = to_c_str(path);
-        let mut err_string = MaybeUninit::uninit();
-        let return_code = unsafe {
-            let module_ptr = module.module.get();
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe {
+            let module_ptr = m.module.get();
             let path_ptr = path_c_string.as_ptr() as *mut _;
-            let file_type_ptr = file_type.as_llvm_file_type();
-            LLVMTargetMachineEmitToFile(
-                self.target_machine,
-                module_ptr,
-                path_ptr,
-                file_type_ptr,
-                err_string.as_mut_ptr(),
-            )
+            let file_type_ptr = t.as_llvm_file_type();
+            LLVMTargetMachineEmitToFile(self.raw, module_ptr, path_ptr, file_type_ptr, e.as_mut_ptr())
         };
-        if return_code == 1 {
+        if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
         Ok(())
@@ -446,7 +433,7 @@ impl TargetMachine {
 }
 impl Drop for TargetMachine {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeTargetMachine(self.target_machine) }
+        unsafe { LLVMDisposeTargetMachine(self.raw) }
     }
 }
 
@@ -458,7 +445,7 @@ pub enum ByteOrdering {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct TargetData {
-    pub(crate) target_data: LLVMTargetDataRef,
+    pub target_data: LLVMTargetDataRef,
 }
 impl TargetData {
     pub unsafe fn new(target_data: LLVMTargetDataRef) -> TargetData {

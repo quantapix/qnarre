@@ -183,7 +183,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddGVNPass(self.raw) }
     }
     pub fn add_new_gvn_pass(&self) {
-        use llvm_lib::transforms::scalar::LLVMAddNewGVNPass;
         unsafe { LLVMAddNewGVNPass(self.raw) }
     }
     pub fn add_ind_var_simplify_pass(&self) {
@@ -220,11 +219,9 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddPartiallyInlineLibCallsPass(self.raw) }
     }
     pub fn add_lower_switch_pass(&self) {
-        use llvm_lib::transforms::util::LLVMAddLowerSwitchPass;
         unsafe { LLVMAddLowerSwitchPass(self.raw) }
     }
     pub fn add_promote_memory_to_register_pass(&self) {
-        use llvm_lib::transforms::util::LLVMAddPromoteMemoryToRegisterPass;
         unsafe { LLVMAddPromoteMemoryToRegisterPass(self.raw) }
     }
     pub fn add_reassociate_pass(&self) {
@@ -264,7 +261,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddEarlyCSEPass(self.raw) }
     }
     pub fn add_early_cse_mem_ssa_pass(&self) {
-        use llvm_lib::transforms::scalar::LLVMAddEarlyCSEMemSSAPass;
         unsafe { LLVMAddEarlyCSEMemSSAPass(self.raw) }
     }
     pub fn add_lower_expect_intrinsic_pass(&self) {
@@ -280,7 +276,6 @@ impl<T: PassManagerSubType> PassManager<T> {
         unsafe { LLVMAddBasicAliasAnalysisPass(self.raw) }
     }
     pub fn add_loop_unroll_and_jam_pass(&self) {
-        use llvm_lib::transforms::scalar::LLVMAddLoopUnrollAndJamPass;
         unsafe { LLVMAddLoopUnrollAndJamPass(self.raw) }
     }
 }

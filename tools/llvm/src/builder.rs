@@ -11,33 +11,33 @@ use crate::{AtomicOrdering, AtomicRMWBinOp, BasicBlock, FloatPredicate, IntPredi
 
 #[derive(Debug)]
 pub struct Builder<'ctx> {
-    builder: LLVMBuilderRef,
+    raw: LLVMBuilderRef,
     _marker: PhantomData<&'ctx ()>,
 }
 impl<'ctx> Builder<'ctx> {
-    pub unsafe fn new(builder: LLVMBuilderRef) -> Self {
-        debug_assert!(!builder.is_null());
+    pub unsafe fn new(raw: LLVMBuilderRef) -> Self {
+        debug_assert!(!raw.is_null());
         Builder {
-            builder,
+            raw,
             _marker: PhantomData,
         }
     }
     pub fn as_mut_ptr(&self) -> LLVMBuilderRef {
-        self.builder
+        self.raw
     }
-    pub fn build_return(&self, value: Option<&dyn BasicValue<'ctx>>) -> InstructionValue<'ctx> {
-        let value = unsafe {
-            value.map_or_else(
-                || LLVMBuildRetVoid(self.builder),
-                |value| LLVMBuildRet(self.builder, value.as_value_ref()),
+    pub fn build_return(&self, x: Option<&dyn BasicValue<'ctx>>) -> InstructionValue<'ctx> {
+        let y = unsafe {
+            x.map_or_else(
+                || LLVMBuildRetVoid(self.raw),
+                |x| LLVMBuildRet(self.raw, x.as_value_ref()),
             )
         };
-        unsafe { InstructionValue::new(value) }
+        unsafe { InstructionValue::new(y) }
     }
     pub fn build_aggregate_return(&self, values: &[BasicValueEnum<'ctx>]) -> InstructionValue<'ctx> {
         let mut args: Vec<LLVMValueRef> = values.iter().map(|val| val.as_value_ref()).collect();
-        let value = unsafe { LLVMBuildAggregateRet(self.builder, args.as_mut_ptr(), args.len() as u32) };
-        unsafe { InstructionValue::new(value) }
+        let y = unsafe { LLVMBuildAggregateRet(self.raw, args.as_mut_ptr(), args.len() as u32) };
+        unsafe { InstructionValue::new(y) }
     }
     pub fn build_call(
         &self,
@@ -80,7 +80,7 @@ impl<'ctx> Builder<'ctx> {
         let mut args: Vec<LLVMValueRef> = args.iter().map(|val| val.as_value_ref()).collect();
         let value = unsafe {
             LLVMBuildCall2(
-                self.builder,
+                self.raw,
                 fn_ty_ref,
                 fn_val_ref,
                 args.as_mut_ptr(),
@@ -150,7 +150,7 @@ impl<'ctx> Builder<'ctx> {
         let mut args: Vec<LLVMValueRef> = args.iter().map(|val| val.as_value_ref()).collect();
         let value = unsafe {
             LLVMBuildInvoke2(
-                self.builder,
+                self.raw,
                 fn_ty_ref,
                 fn_val_ref,
                 args.as_mut_ptr(),
@@ -177,7 +177,7 @@ impl<'ctx> Builder<'ctx> {
         let num_clauses = clauses.len() as u32;
         let value = unsafe {
             LLVMBuildLandingPad(
-                self.builder,
+                self.raw,
                 exception_type.as_type_ref(),
                 personality_function.as_value_ref(),
                 num_clauses,
@@ -195,7 +195,7 @@ impl<'ctx> Builder<'ctx> {
         unsafe { BasicValueEnum::new(value) }
     }
     pub fn build_resume<V: BasicValue<'ctx>>(&self, value: V) -> InstructionValue<'ctx> {
-        let val = unsafe { LLVMBuildResume(self.builder, value.as_value_ref()) };
+        let val = unsafe { LLVMBuildResume(self.raw, value.as_value_ref()) };
         unsafe { InstructionValue::new(val) }
     }
     pub unsafe fn build_gep<T: BasicType<'ctx>>(
@@ -208,7 +208,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let mut index_values: Vec<LLVMValueRef> = ordered_indexes.iter().map(|val| val.as_value_ref()).collect();
         let value = LLVMBuildGEP2(
-            self.builder,
+            self.raw,
             pointee_ty.as_type_ref(),
             ptr.as_value_ref(),
             index_values.as_mut_ptr(),
@@ -227,7 +227,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let mut index_values: Vec<LLVMValueRef> = ordered_indexes.iter().map(|val| val.as_value_ref()).collect();
         let value = LLVMBuildInBoundsGEP2(
-            self.builder,
+            self.raw,
             pointee_ty.as_type_ref(),
             ptr.as_value_ref(),
             index_values.as_mut_ptr(),
@@ -254,7 +254,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildStructGEP2(
-                self.builder,
+                self.raw,
                 pointee_ty.as_type_ref(),
                 ptr.as_value_ref(),
                 index,
@@ -273,7 +273,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildPtrDiff2(
-                self.builder,
+                self.raw,
                 pointee_ty.as_type_ref(),
                 lhs_ptr.as_value_ref(),
                 rhs_ptr.as_value_ref(),
@@ -284,11 +284,11 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_phi<T: BasicType<'ctx>>(&self, type_: T, name: &str) -> PhiValue<'ctx> {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildPhi(self.builder, type_.as_type_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildPhi(self.raw, type_.as_type_ref(), c_string.as_ptr()) };
         unsafe { PhiValue::new(value) }
     }
     pub fn build_store<V: BasicValue<'ctx>>(&self, ptr: PointerValue<'ctx>, value: V) -> InstructionValue<'ctx> {
-        let value = unsafe { LLVMBuildStore(self.builder, value.as_value_ref(), ptr.as_value_ref()) };
+        let value = unsafe { LLVMBuildStore(self.raw, value.as_value_ref(), ptr.as_value_ref()) };
         unsafe { InstructionValue::new(value) }
     }
     pub fn build_load<T: BasicType<'ctx>>(
@@ -300,7 +300,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildLoad2(
-                self.builder,
+                self.raw,
                 pointee_ty.as_type_ref(),
                 ptr.as_value_ref(),
                 c_string.as_ptr(),
@@ -310,7 +310,7 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_alloca<T: BasicType<'ctx>>(&self, ty: T, name: &str) -> PointerValue<'ctx> {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildAlloca(self.builder, ty.as_type_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildAlloca(self.raw, ty.as_type_ref(), c_string.as_ptr()) };
         unsafe { PointerValue::new(value) }
     }
     pub fn build_array_alloca<T: BasicType<'ctx>>(
@@ -320,8 +320,7 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
     ) -> PointerValue<'ctx> {
         let c_string = to_c_str(name);
-        let value =
-            unsafe { LLVMBuildArrayAlloca(self.builder, ty.as_type_ref(), size.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildArrayAlloca(self.raw, ty.as_type_ref(), size.as_value_ref(), c_string.as_ptr()) };
         unsafe { PointerValue::new(value) }
     }
     pub fn build_memcpy(
@@ -340,7 +339,7 @@ impl<'ctx> Builder<'ctx> {
         }
         let value = unsafe {
             LLVMBuildMemCpy(
-                self.builder,
+                self.raw,
                 dest.as_value_ref(),
                 dest_align_bytes,
                 src.as_value_ref(),
@@ -366,7 +365,7 @@ impl<'ctx> Builder<'ctx> {
         }
         let value = unsafe {
             LLVMBuildMemMove(
-                self.builder,
+                self.raw,
                 dest.as_value_ref(),
                 dest_align_bytes,
                 src.as_value_ref(),
@@ -388,7 +387,7 @@ impl<'ctx> Builder<'ctx> {
         }
         let value = unsafe {
             LLVMBuildMemSet(
-                self.builder,
+                self.raw,
                 dest.as_value_ref(),
                 val.as_value_ref(),
                 size.as_value_ref(),
@@ -402,7 +401,7 @@ impl<'ctx> Builder<'ctx> {
             return Err("Cannot build malloc call for an unsized type");
         }
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildMalloc(self.builder, ty.as_type_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildMalloc(self.raw, ty.as_type_ref(), c_string.as_ptr()) };
         unsafe { Ok(PointerValue::new(value)) }
     }
     pub fn build_array_malloc<T: BasicType<'ctx>>(
@@ -415,58 +414,56 @@ impl<'ctx> Builder<'ctx> {
             return Err("Cannot build array malloc call for an unsized type");
         }
         let c_string = to_c_str(name);
-        let value =
-            unsafe { LLVMBuildArrayMalloc(self.builder, ty.as_type_ref(), size.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildArrayMalloc(self.raw, ty.as_type_ref(), size.as_value_ref(), c_string.as_ptr()) };
         unsafe { Ok(PointerValue::new(value)) }
     }
     pub fn build_free(&self, ptr: PointerValue<'ctx>) -> InstructionValue<'ctx> {
-        unsafe { InstructionValue::new(LLVMBuildFree(self.builder, ptr.as_value_ref())) }
+        unsafe { InstructionValue::new(LLVMBuildFree(self.raw, ptr.as_value_ref())) }
     }
     pub fn insert_instruction(&self, instruction: &InstructionValue<'ctx>, name: Option<&str>) {
         match name {
             Some(name) => {
                 let c_string = to_c_str(name);
-                unsafe { LLVMInsertIntoBuilderWithName(self.builder, instruction.as_value_ref(), c_string.as_ptr()) }
+                unsafe { LLVMInsertIntoBuilderWithName(self.raw, instruction.as_value_ref(), c_string.as_ptr()) }
             },
             None => unsafe {
-                LLVMInsertIntoBuilder(self.builder, instruction.as_value_ref());
+                LLVMInsertIntoBuilder(self.raw, instruction.as_value_ref());
             },
         }
     }
     pub fn get_insert_block(&self) -> Option<BasicBlock<'ctx>> {
-        unsafe { BasicBlock::new(LLVMGetInsertBlock(self.builder)) }
+        unsafe { BasicBlock::new(LLVMGetInsertBlock(self.raw)) }
     }
     pub fn build_int_unsigned_div<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildUDiv(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildUDiv(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_signed_div<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildSDiv(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildSDiv(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_exact_signed_div<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value =
-            unsafe { LLVMBuildExactSDiv(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildExactSDiv(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_unsigned_rem<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildURem(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildURem(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_signed_rem<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildSRem(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildSRem(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_s_extend<T: IntMathValue<'ctx>>(&self, int_value: T, int_type: T::BaseType, name: &str) -> T {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildSExt(
-                self.builder,
+                self.raw,
                 int_value.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -483,7 +480,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildAddrSpaceCast(
-                self.builder,
+                self.raw,
                 ptr_val.as_value_ref(),
                 ptr_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -497,7 +494,7 @@ impl<'ctx> Builder<'ctx> {
         V: BasicValue<'ctx>,
     {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildBitCast(self.builder, val.as_value_ref(), ty.as_type_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildBitCast(self.raw, val.as_value_ref(), ty.as_type_ref(), c_string.as_ptr()) };
         unsafe { BasicValueEnum::new(value) }
     }
     pub fn build_int_s_extend_or_bit_cast<T: IntMathValue<'ctx>>(
@@ -509,7 +506,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildSExtOrBitCast(
-                self.builder,
+                self.raw,
                 int_value.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -521,7 +518,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildZExt(
-                self.builder,
+                self.raw,
                 int_value.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -538,7 +535,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildZExtOrBitCast(
-                self.builder,
+                self.raw,
                 int_value.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -550,7 +547,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildTrunc(
-                self.builder,
+                self.raw,
                 int_value.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -567,7 +564,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildTruncOrBitCast(
-                self.builder,
+                self.raw,
                 int_value.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -577,7 +574,7 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_float_rem<T: FloatMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildFRem(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildFRem(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_float_to_unsigned_int<T: FloatMathValue<'ctx>>(
@@ -589,7 +586,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildFPToUI(
-                self.builder,
+                self.raw,
                 float.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -606,7 +603,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildFPToSI(
-                self.builder,
+                self.raw,
                 float.as_value_ref(),
                 int_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -623,7 +620,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildUIToFP(
-                self.builder,
+                self.raw,
                 int.as_value_ref(),
                 float_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -640,7 +637,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildSIToFP(
-                self.builder,
+                self.raw,
                 int.as_value_ref(),
                 float_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -652,7 +649,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildFPTrunc(
-                self.builder,
+                self.raw,
                 float.as_value_ref(),
                 float_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -664,7 +661,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildFPExt(
-                self.builder,
+                self.raw,
                 float.as_value_ref(),
                 float_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -676,7 +673,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildFPCast(
-                self.builder,
+                self.raw,
                 float.as_value_ref(),
                 float_type.as_type_ref(),
                 c_string.as_ptr(),
@@ -686,14 +683,8 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_int_cast<T: IntMathValue<'ctx>>(&self, int: T, int_type: T::BaseType, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe {
-            LLVMBuildIntCast(
-                self.builder,
-                int.as_value_ref(),
-                int_type.as_type_ref(),
-                c_string.as_ptr(),
-            )
-        };
+        let value =
+            unsafe { LLVMBuildIntCast(self.raw, int.as_value_ref(), int_type.as_type_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_cast_sign_flag<T: IntMathValue<'ctx>>(
@@ -706,7 +697,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildIntCast2(
-                self.builder,
+                self.raw,
                 int.as_value_ref(),
                 int_type.as_type_ref(),
                 is_signed.into(),
@@ -717,98 +708,98 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_float_div<T: FloatMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildFDiv(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildFDiv(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_add<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildAdd(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildAdd(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nsw_add<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNSWAdd(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNSWAdd(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nuw_add<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNUWAdd(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNUWAdd(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_float_add<T: FloatMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildFAdd(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildFAdd(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_xor<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildXor(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildXor(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_and<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildAnd(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildAnd(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_or<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildOr(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildOr(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_left_shift<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildShl(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildShl(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_right_shift<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, sign_extend: bool, name: &str) -> T {
         let c_string = to_c_str(name);
         let value = unsafe {
             if sign_extend {
-                LLVMBuildAShr(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr())
+                LLVMBuildAShr(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr())
             } else {
-                LLVMBuildLShr(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr())
+                LLVMBuildLShr(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr())
             }
         };
         unsafe { T::new(value) }
     }
     pub fn build_int_sub<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildSub(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildSub(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nsw_sub<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNSWSub(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNSWSub(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nuw_sub<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNUWSub(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNUWSub(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_float_sub<T: FloatMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildFSub(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildFSub(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_mul<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildMul(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildMul(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nsw_mul<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNSWMul(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNSWMul(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nuw_mul<T: IntMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNUWMul(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNUWMul(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_float_mul<T: FloatMathValue<'ctx>>(&self, lhs: T, rhs: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildFMul(self.builder, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildFMul(self.raw, lhs.as_value_ref(), rhs.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_cast<T: BasicType<'ctx>, V: BasicValue<'ctx>>(
@@ -821,7 +812,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildCast(
-                self.builder,
+                self.raw,
                 op.into(),
                 from_value.as_value_ref(),
                 to_type.as_type_ref(),
@@ -832,8 +823,7 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_pointer_cast<T: PointerMathValue<'ctx>>(&self, from: T, to: T::BaseType, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value =
-            unsafe { LLVMBuildPointerCast(self.builder, from.as_value_ref(), to.as_type_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildPointerCast(self.raw, from.as_value_ref(), to.as_type_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_compare<T: IntMathValue<'ctx>>(
@@ -846,7 +836,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildICmp(
-                self.builder,
+                self.raw,
                 op.into(),
                 lhs.as_value_ref(),
                 rhs.as_value_ref(),
@@ -865,7 +855,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildFCmp(
-                self.builder,
+                self.raw,
                 op.into(),
                 lhs.as_value_ref(),
                 rhs.as_value_ref(),
@@ -875,7 +865,7 @@ impl<'ctx> Builder<'ctx> {
         unsafe { <<T::BaseType as FloatMathType>::MathConvType as IntMathType>::ValueType::new(value) }
     }
     pub fn build_unconditional_branch(&self, destination_block: BasicBlock<'ctx>) -> InstructionValue<'ctx> {
-        let value = unsafe { LLVMBuildBr(self.builder, destination_block.raw) };
+        let value = unsafe { LLVMBuildBr(self.raw, destination_block.raw) };
         unsafe { InstructionValue::new(value) }
     }
     pub fn build_conditional_branch(
@@ -884,7 +874,7 @@ impl<'ctx> Builder<'ctx> {
         then_block: BasicBlock<'ctx>,
         else_block: BasicBlock<'ctx>,
     ) -> InstructionValue<'ctx> {
-        let value = unsafe { LLVMBuildCondBr(self.builder, comparison.as_value_ref(), then_block.raw, else_block.raw) };
+        let value = unsafe { LLVMBuildCondBr(self.raw, comparison.as_value_ref(), then_block.raw, else_block.raw) };
         unsafe { InstructionValue::new(value) }
     }
     pub fn build_indirect_branch<BV: BasicValue<'ctx>>(
@@ -892,7 +882,7 @@ impl<'ctx> Builder<'ctx> {
         address: BV,
         destinations: &[BasicBlock<'ctx>],
     ) -> InstructionValue<'ctx> {
-        let value = unsafe { LLVMBuildIndirectBr(self.builder, address.as_value_ref(), destinations.len() as u32) };
+        let value = unsafe { LLVMBuildIndirectBr(self.raw, address.as_value_ref(), destinations.len() as u32) };
         for destination in destinations {
             unsafe { LLVMAddDestination(value, destination.raw) }
         }
@@ -900,38 +890,38 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn build_int_neg<T: IntMathValue<'ctx>>(&self, value: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNeg(self.builder, value.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNeg(self.raw, value.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nsw_neg<T: IntMathValue<'ctx>>(&self, value: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNSWNeg(self.builder, value.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNSWNeg(self.raw, value.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_int_nuw_neg<T: IntMathValue<'ctx>>(&self, value: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNUWNeg(self.builder, value.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNUWNeg(self.raw, value.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_float_neg<T: FloatMathValue<'ctx>>(&self, value: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildFNeg(self.builder, value.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildFNeg(self.raw, value.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn build_not<T: IntMathValue<'ctx>>(&self, value: T, name: &str) -> T {
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildNot(self.builder, value.as_value_ref(), c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildNot(self.raw, value.as_value_ref(), c_string.as_ptr()) };
         unsafe { T::new(value) }
     }
     pub fn position_at(&self, basic_block: BasicBlock<'ctx>, instruction: &InstructionValue<'ctx>) {
-        unsafe { LLVMPositionBuilder(self.builder, basic_block.raw, instruction.as_value_ref()) }
+        unsafe { LLVMPositionBuilder(self.raw, basic_block.raw, instruction.as_value_ref()) }
     }
     pub fn position_before(&self, instruction: &InstructionValue<'ctx>) {
-        unsafe { LLVMPositionBuilderBefore(self.builder, instruction.as_value_ref()) }
+        unsafe { LLVMPositionBuilderBefore(self.raw, instruction.as_value_ref()) }
     }
     pub fn position_at_end(&self, basic_block: BasicBlock<'ctx>) {
         unsafe {
-            LLVMPositionBuilderAtEnd(self.builder, basic_block.raw);
+            LLVMPositionBuilderAtEnd(self.raw, basic_block.raw);
         }
     }
     pub fn build_extract_value<AV: AggregateValue<'ctx>>(
@@ -948,7 +938,7 @@ impl<'ctx> Builder<'ctx> {
             return None;
         }
         let c_string = to_c_str(name);
-        let value = unsafe { LLVMBuildExtractValue(self.builder, agg.as_value_ref(), index, c_string.as_ptr()) };
+        let value = unsafe { LLVMBuildExtractValue(self.raw, agg.as_value_ref(), index, c_string.as_ptr()) };
         unsafe { Some(BasicValueEnum::new(value)) }
     }
     pub fn build_insert_value<AV, BV>(
@@ -972,7 +962,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildInsertValue(
-                self.builder,
+                self.raw,
                 agg.as_value_ref(),
                 value.as_value_ref(),
                 index,
@@ -989,12 +979,7 @@ impl<'ctx> Builder<'ctx> {
     ) -> BasicValueEnum<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
-            LLVMBuildExtractElement(
-                self.builder,
-                vector.as_value_ref(),
-                index.as_value_ref(),
-                c_string.as_ptr(),
-            )
+            LLVMBuildExtractElement(self.raw, vector.as_value_ref(), index.as_value_ref(), c_string.as_ptr())
         };
         unsafe { BasicValueEnum::new(value) }
     }
@@ -1008,7 +993,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildInsertElement(
-                self.builder,
+                self.raw,
                 vector.as_value_ref(),
                 element.as_value_ref(),
                 index.as_value_ref(),
@@ -1018,12 +1003,12 @@ impl<'ctx> Builder<'ctx> {
         unsafe { VectorValue::new(value) }
     }
     pub fn build_unreachable(&self) -> InstructionValue<'ctx> {
-        let val = unsafe { LLVMBuildUnreachable(self.builder) };
+        let val = unsafe { LLVMBuildUnreachable(self.raw) };
         unsafe { InstructionValue::new(val) }
     }
     pub fn build_fence(&self, atomic_ordering: AtomicOrdering, num: i32, name: &str) -> InstructionValue<'ctx> {
         let c_string = to_c_str(name);
-        let val = unsafe { LLVMBuildFence(self.builder, atomic_ordering.into(), num, c_string.as_ptr()) };
+        let val = unsafe { LLVMBuildFence(self.raw, atomic_ordering.into(), num, c_string.as_ptr()) };
         unsafe { InstructionValue::new(val) }
     }
     pub fn build_is_null<T: PointerMathValue<'ctx>>(
@@ -1032,7 +1017,7 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
     ) -> <<T::BaseType as PointerMathType<'ctx>>::PtrConvType as IntMathType<'ctx>>::ValueType {
         let c_string = to_c_str(name);
-        let val = unsafe { LLVMBuildIsNull(self.builder, ptr.as_value_ref(), c_string.as_ptr()) };
+        let val = unsafe { LLVMBuildIsNull(self.raw, ptr.as_value_ref(), c_string.as_ptr()) };
         unsafe { <<T::BaseType as PointerMathType>::PtrConvType as IntMathType>::ValueType::new(val) }
     }
     pub fn build_is_not_null<T: PointerMathValue<'ctx>>(
@@ -1041,7 +1026,7 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
     ) -> <<T::BaseType as PointerMathType<'ctx>>::PtrConvType as IntMathType<'ctx>>::ValueType {
         let c_string = to_c_str(name);
-        let val = unsafe { LLVMBuildIsNotNull(self.builder, ptr.as_value_ref(), c_string.as_ptr()) };
+        let val = unsafe { LLVMBuildIsNotNull(self.raw, ptr.as_value_ref(), c_string.as_ptr()) };
         unsafe { <<T::BaseType as PointerMathType>::PtrConvType as IntMathType>::ValueType::new(val) }
     }
     pub fn build_int_to_ptr<T: IntMathValue<'ctx>>(
@@ -1051,14 +1036,8 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
     ) -> <<T::BaseType as IntMathType<'ctx>>::PtrConvType as PointerMathType<'ctx>>::ValueType {
         let c_string = to_c_str(name);
-        let value = unsafe {
-            LLVMBuildIntToPtr(
-                self.builder,
-                int.as_value_ref(),
-                ptr_type.as_type_ref(),
-                c_string.as_ptr(),
-            )
-        };
+        let value =
+            unsafe { LLVMBuildIntToPtr(self.raw, int.as_value_ref(), ptr_type.as_type_ref(), c_string.as_ptr()) };
         unsafe { <<T::BaseType as IntMathType>::PtrConvType as PointerMathType>::ValueType::new(value) }
     }
     pub fn build_ptr_to_int<T: PointerMathValue<'ctx>>(
@@ -1068,18 +1047,12 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
     ) -> <<T::BaseType as PointerMathType<'ctx>>::PtrConvType as IntMathType<'ctx>>::ValueType {
         let c_string = to_c_str(name);
-        let value = unsafe {
-            LLVMBuildPtrToInt(
-                self.builder,
-                ptr.as_value_ref(),
-                int_type.as_type_ref(),
-                c_string.as_ptr(),
-            )
-        };
+        let value =
+            unsafe { LLVMBuildPtrToInt(self.raw, ptr.as_value_ref(), int_type.as_type_ref(), c_string.as_ptr()) };
         unsafe { <<T::BaseType as PointerMathType>::PtrConvType as IntMathType>::ValueType::new(value) }
     }
     pub fn clear_insertion_position(&self) {
-        unsafe { LLVMClearInsertionPosition(self.builder) }
+        unsafe { LLVMClearInsertionPosition(self.raw) }
     }
     pub fn build_switch(
         &self,
@@ -1088,7 +1061,7 @@ impl<'ctx> Builder<'ctx> {
         cases: &[(IntValue<'ctx>, BasicBlock<'ctx>)],
     ) -> InstructionValue<'ctx> {
         let switch_value =
-            unsafe { LLVMBuildSwitch(self.builder, value.as_value_ref(), else_block.raw, cases.len() as u32) };
+            unsafe { LLVMBuildSwitch(self.raw, value.as_value_ref(), else_block.raw, cases.len() as u32) };
         for &(value, basic_block) in cases {
             unsafe { LLVMAddCase(switch_value, value.as_value_ref(), basic_block.raw) }
         }
@@ -1104,7 +1077,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildSelect(
-                self.builder,
+                self.raw,
                 condition.as_value_ref(),
                 then.as_value_ref(),
                 else_.as_value_ref(),
@@ -1116,13 +1089,13 @@ impl<'ctx> Builder<'ctx> {
     pub unsafe fn build_global_string(&self, value: &str, name: &str) -> GlobalValue<'ctx> {
         let c_string_value = to_c_str(value);
         let c_string_name = to_c_str(name);
-        let value = LLVMBuildGlobalString(self.builder, c_string_value.as_ptr(), c_string_name.as_ptr());
+        let value = LLVMBuildGlobalString(self.raw, c_string_value.as_ptr(), c_string_name.as_ptr());
         GlobalValue::new(value)
     }
     pub fn build_global_string_ptr(&self, value: &str, name: &str) -> GlobalValue<'ctx> {
         let c_string_value = to_c_str(value);
         let c_string_name = to_c_str(name);
-        let value = unsafe { LLVMBuildGlobalStringPtr(self.builder, c_string_value.as_ptr(), c_string_name.as_ptr()) };
+        let value = unsafe { LLVMBuildGlobalStringPtr(self.raw, c_string_value.as_ptr(), c_string_name.as_ptr()) };
         unsafe { GlobalValue::new(value) }
     }
     pub fn build_shuffle_vector(
@@ -1135,7 +1108,7 @@ impl<'ctx> Builder<'ctx> {
         let c_string = to_c_str(name);
         let value = unsafe {
             LLVMBuildShuffleVector(
-                self.builder,
+                self.raw,
                 left.as_value_ref(),
                 right.as_value_ref(),
                 mask.as_value_ref(),
@@ -1151,14 +1124,7 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
     ) -> BasicValueEnum<'ctx> {
         let c_string = to_c_str(name);
-        let value = unsafe {
-            LLVMBuildVAArg(
-                self.builder,
-                list.as_value_ref(),
-                type_.as_type_ref(),
-                c_string.as_ptr(),
-            )
-        };
+        let value = unsafe { LLVMBuildVAArg(self.raw, list.as_value_ref(), type_.as_type_ref(), c_string.as_ptr()) };
         unsafe { BasicValueEnum::new(value) }
     }
     pub fn build_atomicrmw(
@@ -1173,7 +1139,7 @@ impl<'ctx> Builder<'ctx> {
         }
         let val = unsafe {
             LLVMBuildAtomicRMW(
-                self.builder,
+                self.raw,
                 op.into(),
                 ptr.as_value_ref(),
                 value.as_value_ref(),
@@ -1210,7 +1176,7 @@ impl<'ctx> Builder<'ctx> {
         }
         let val = unsafe {
             LLVMBuildAtomicCmpXchg(
-                self.builder,
+                self.raw,
                 ptr.as_value_ref(),
                 cmp.as_value_ref(),
                 new.as_value_ref(),
@@ -1222,15 +1188,12 @@ impl<'ctx> Builder<'ctx> {
         unsafe { Ok(StructValue::new(val)) }
     }
     pub fn set_current_debug_location(&self, location: DILocation<'ctx>) {
-        use llvm_lib::core::LLVMSetCurrentDebugLocation2;
         unsafe {
-            LLVMSetCurrentDebugLocation2(self.builder, location.metadata_ref);
+            LLVMSetCurrentDebugLocation2(self.raw, location.metadata_ref);
         }
     }
     pub fn get_current_debug_location(&self) -> Option<DILocation<'ctx>> {
-        use llvm_lib::core::LLVMGetCurrentDebugLocation;
-        use llvm_lib::core::LLVMValueAsMetadata;
-        let metadata_ref = unsafe { LLVMGetCurrentDebugLocation(self.builder) };
+        let metadata_ref = unsafe { LLVMGetCurrentDebugLocation(self.raw) };
         if metadata_ref.is_null() {
             return None;
         }
@@ -1240,16 +1203,15 @@ impl<'ctx> Builder<'ctx> {
         })
     }
     pub fn unset_current_debug_location(&self) {
-        use llvm_lib::core::LLVMSetCurrentDebugLocation2;
         unsafe {
-            LLVMSetCurrentDebugLocation2(self.builder, std::ptr::null_mut());
+            LLVMSetCurrentDebugLocation2(self.raw, std::ptr::null_mut());
         }
     }
 }
 impl Drop for Builder<'_> {
     fn drop(&mut self) {
         unsafe {
-            LLVMDisposeBuilder(self.builder);
+            LLVMDisposeBuilder(self.raw);
         }
     }
 }

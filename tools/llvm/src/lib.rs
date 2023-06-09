@@ -71,7 +71,7 @@ impl Attribute {
         unsafe { LLVMGetEnumAttributeKindForName(name.as_ptr() as *const ::libc::c_char, name.len()) }
     }
     pub fn get_enum_kind_id(self) -> u32 {
-        assert!(self.get_enum_kind_id_is_valid()); // FIXME: SubTypes
+        assert!(self.get_enum_kind_id_is_valid());
         unsafe { LLVMGetEnumAttributeKind(self.raw) }
     }
     fn get_enum_kind_id_is_valid(self) -> bool {
@@ -81,23 +81,23 @@ impl Attribute {
         unsafe { LLVMGetLastEnumAttributeKind() }
     }
     pub fn get_enum_value(self) -> u64 {
-        assert!(self.is_enum()); // FIXME: SubTypes
+        assert!(self.is_enum());
         unsafe { LLVMGetEnumAttributeValue(self.raw) }
     }
     pub fn get_string_kind_id(&self) -> &CStr {
-        assert!(self.is_string()); // FIXME: SubTypes
-        let mut length = 0;
-        let cstr_ptr = unsafe { LLVMGetStringAttributeKind(self.raw, &mut length) };
-        unsafe { CStr::from_ptr(cstr_ptr) }
+        assert!(self.is_string());
+        let mut len = 0;
+        let y = unsafe { LLVMGetStringAttributeKind(self.raw, &mut len) };
+        unsafe { CStr::from_ptr(y) }
     }
     pub fn get_string_value(&self) -> &CStr {
-        assert!(self.is_string()); // FIXME: SubTypes
-        let mut length = 0;
-        let cstr_ptr = unsafe { LLVMGetStringAttributeValue(self.raw, &mut length) };
-        unsafe { CStr::from_ptr(cstr_ptr) }
+        assert!(self.is_string());
+        let mut len = 0;
+        let y = unsafe { LLVMGetStringAttributeValue(self.raw, &mut len) };
+        unsafe { CStr::from_ptr(y) }
     }
     pub fn get_type_value(&self) -> AnyTypeEnum {
-        assert!(self.is_type()); // FIXME: SubTypes
+        assert!(self.is_type());
         unsafe { AnyTypeEnum::new(LLVMGetTypeAttributeValue(self.raw)) }
     }
 }
@@ -112,12 +112,9 @@ impl AttributeLoc {
     pub fn get_index(self) -> u32 {
         match self {
             AttributeLoc::Return => 0,
-            AttributeLoc::Param(index) => {
-                assert!(
-                    index <= u32::max_value() - 2,
-                    "Param index must be <= u32::max_value() - 2"
-                );
-                index + 1
+            AttributeLoc::Param(x) => {
+                assert!(x <= u32::max_value() - 2);
+                x + 1
             },
             AttributeLoc::Function => u32::max_value(),
         }
@@ -132,15 +129,15 @@ impl Default for AddressSpace {
     }
 }
 impl From<u16> for AddressSpace {
-    fn from(val: u16) -> Self {
-        AddressSpace(val as u32)
+    fn from(x: u16) -> Self {
+        AddressSpace(x as u32)
     }
 }
 impl TryFrom<u32> for AddressSpace {
     type Error = ();
-    fn try_from(val: u32) -> Result<Self, Self::Error> {
-        if val < 1 << 24 {
-            Ok(AddressSpace(val))
+    fn try_from(x: u32) -> Result<Self, Self::Error> {
+        if x < 1 << 24 {
+            Ok(AddressSpace(x))
         } else {
             Err(())
         }
@@ -239,45 +236,44 @@ impl<'ctx> BasicBlock<'ctx> {
     }
     pub fn set_name(&self, name: &str) {
         let y = to_c_str(name);
-        use llvm_lib::core::LLVMSetValueName2;
         unsafe { LLVMSetValueName2(LLVMBasicBlockAsValue(self.raw), y.as_ptr(), name.len()) };
     }
-    pub fn replace_all_uses_with(self, other: &BasicBlock<'ctx>) {
-        let value = unsafe { LLVMBasicBlockAsValue(self.raw) };
-        let other = unsafe { LLVMBasicBlockAsValue(other.raw) };
-        if value != other {
+    pub fn replace_all_uses_with(self, x: &BasicBlock<'ctx>) {
+        let y = unsafe { LLVMBasicBlockAsValue(self.raw) };
+        let x = unsafe { LLVMBasicBlockAsValue(x.raw) };
+        if y != x {
             unsafe {
-                LLVMReplaceAllUsesWith(value, other);
+                LLVMReplaceAllUsesWith(y, x);
             }
         }
     }
     pub fn get_first_use(self) -> Option<BasicValueUse<'ctx>> {
-        let use_ = unsafe { LLVMGetFirstUse(LLVMBasicBlockAsValue(self.raw)) };
-        if use_.is_null() {
+        let y = unsafe { LLVMGetFirstUse(LLVMBasicBlockAsValue(self.raw)) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(BasicValueUse::new(use_)) }
+        unsafe { Some(BasicValueUse::new(y)) }
     }
     pub unsafe fn get_address(self) -> Option<PointerValue<'ctx>> {
         let parent = self.get_parent()?;
         self.get_previous_basic_block()?;
-        let value = PointerValue::new(LLVMBlockAddress(parent.as_value_ref(), self.raw));
-        if value.is_null() {
+        let y = PointerValue::new(LLVMBlockAddress(parent.as_value_ref(), self.raw));
+        if y.is_null() {
             return None;
         }
-        Some(value)
+        Some(y)
     }
 }
 impl fmt::Debug for BasicBlock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_value = unsafe { CStr::from_ptr(LLVMPrintValueToString(self.raw as LLVMValueRef)) };
-        let llvm_type = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.raw as LLVMValueRef))) };
+        let val = unsafe { CStr::from_ptr(LLVMPrintValueToString(self.raw as LLVMValueRef)) };
+        let ty = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.raw as LLVMValueRef))) };
         let is_const = unsafe { LLVMIsConstant(self.raw as LLVMValueRef) == 1 };
         f.debug_struct("BasicBlock")
             .field("address", &self.raw)
             .field("is_const", &is_const)
-            .field("llvm_value", &llvm_value)
-            .field("llvm_type", &llvm_type)
+            .field("llvm_value", &val)
+            .field("llvm_type", &ty)
             .finish()
     }
 }
@@ -489,33 +485,29 @@ impl Intrinsic {
         Self { id }
     }
     pub fn find(name: &str) -> Option<Self> {
-        let id = unsafe { LLVMLookupIntrinsicID(name.as_ptr() as *const ::libc::c_char, name.len()) };
-        if id == 0 {
+        let y = unsafe { LLVMLookupIntrinsicID(name.as_ptr() as *const ::libc::c_char, name.len()) };
+        if y == 0 {
             return None;
         }
-        Some(unsafe { Intrinsic::new(id) })
+        Some(unsafe { Intrinsic::new(y) })
     }
     pub fn is_overloaded(&self) -> bool {
         unsafe { LLVMIntrinsicIsOverloaded(self.id) != 0 }
     }
-    pub fn get_declaration<'ctx>(
-        &self,
-        module: &Module<'ctx>,
-        param_types: &[BasicTypeEnum],
-    ) -> Option<FunctionValue<'ctx>> {
-        let mut param_types: Vec<LLVMTypeRef> = param_types.iter().map(|val| val.as_type_ref()).collect();
-        if self.is_overloaded() && param_types.is_empty() {
+    pub fn get_declaration<'ctx>(&self, m: &Module<'ctx>, xs: &[BasicTypeEnum]) -> Option<FunctionValue<'ctx>> {
+        let mut xs: Vec<LLVMTypeRef> = xs.iter().map(|x| x.as_type_ref()).collect();
+        if self.is_overloaded() && xs.is_empty() {
             return None;
         }
-        let res = unsafe {
+        let y = unsafe {
             FunctionValue::new(LLVMGetIntrinsicDeclaration(
-                module.module.get(),
+                m.module.get(),
                 self.id,
-                param_types.as_mut_ptr(),
-                param_types.len(),
+                xs.as_mut_ptr(),
+                xs.len(),
             ))
         };
-        res
+        y
     }
 }
 
@@ -533,60 +525,52 @@ impl MemoryBuffer {
     }
     pub fn create_from_file(path: &Path) -> Result<Self, LLVMString> {
         let path = to_c_str(path.to_str().expect("Did not find a valid Unicode path string"));
-        let mut memory_buffer = ptr::null_mut();
-        let mut err_string = MaybeUninit::uninit();
-        let return_code = unsafe {
-            LLVMCreateMemoryBufferWithContentsOfFile(
-                path.as_ptr() as *const ::libc::c_char,
-                &mut memory_buffer,
-                err_string.as_mut_ptr(),
-            )
+        let mut y = ptr::null_mut();
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe {
+            LLVMCreateMemoryBufferWithContentsOfFile(path.as_ptr() as *const ::libc::c_char, &mut y, e.as_mut_ptr())
         };
-        if return_code == 1 {
+        if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        unsafe { Ok(MemoryBuffer::new(memory_buffer)) }
+        unsafe { Ok(MemoryBuffer::new(y)) }
     }
     pub fn create_from_stdin() -> Result<Self, LLVMString> {
-        let mut memory_buffer = ptr::null_mut();
-        let mut err_string = MaybeUninit::uninit();
-        let return_code = unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut memory_buffer, err_string.as_mut_ptr()) };
-        if return_code == 1 {
+        let mut y = ptr::null_mut();
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut y, e.as_mut_ptr()) };
+        if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        unsafe { Ok(MemoryBuffer::new(memory_buffer)) }
+        unsafe { Ok(MemoryBuffer::new(y)) }
     }
-    pub fn create_from_memory_range(input: &[u8], name: &str) -> Self {
-        let name_c_string = to_c_str(name);
+    pub fn create_from_memory_range(xs: &[u8], name: &str) -> Self {
+        let name = to_c_str(name);
         let y = unsafe {
             LLVMCreateMemoryBufferWithMemoryRange(
-                input.as_ptr() as *const ::libc::c_char,
-                input.len(),
-                name_c_string.as_ptr(),
+                xs.as_ptr() as *const ::libc::c_char,
+                xs.len(),
+                name.as_ptr(),
                 false as i32,
             )
         };
         unsafe { MemoryBuffer::new(y) }
     }
-    pub fn create_from_memory_range_copy(input: &[u8], name: &str) -> Self {
-        let name_c_string = to_c_str(name);
+    pub fn create_from_memory_range_copy(xs: &[u8], name: &str) -> Self {
+        let name = to_c_str(name);
         let y = unsafe {
-            LLVMCreateMemoryBufferWithMemoryRangeCopy(
-                input.as_ptr() as *const ::libc::c_char,
-                input.len(),
-                name_c_string.as_ptr(),
-            )
+            LLVMCreateMemoryBufferWithMemoryRangeCopy(xs.as_ptr() as *const ::libc::c_char, xs.len(), name.as_ptr())
         };
         unsafe { MemoryBuffer::new(y) }
     }
     pub fn as_slice(&self) -> &[u8] {
         unsafe {
-            let start = LLVMGetBufferStart(self.raw);
-            slice::from_raw_parts(start as *const _, self.get_size())
+            let y = LLVMGetBufferStart(self.raw);
+            slice::from_raw_parts(y as *const _, self.get_size())
         }
     }
     pub fn get_size(&self) -> usize {
@@ -834,62 +818,62 @@ impl Drop for SymbolIterator {
 
 #[derive(Debug)]
 pub struct Symbol {
-    symbol: LLVMSymbolIteratorRef,
+    raw: LLVMSymbolIteratorRef,
 }
 impl Symbol {
-    pub unsafe fn new(symbol: LLVMSymbolIteratorRef) -> Self {
-        assert!(!symbol.is_null());
-        Symbol { symbol }
+    pub unsafe fn new(raw: LLVMSymbolIteratorRef) -> Self {
+        assert!(!raw.is_null());
+        Symbol { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMSymbolIteratorRef {
-        self.symbol
+        self.raw
     }
     pub fn get_name(&self) -> Option<&CStr> {
-        let name = unsafe { LLVMGetSymbolName(self.symbol) };
-        if !name.is_null() {
-            Some(unsafe { CStr::from_ptr(name) })
+        let y = unsafe { LLVMGetSymbolName(self.raw) };
+        if !y.is_null() {
+            Some(unsafe { CStr::from_ptr(y) })
         } else {
             None
         }
     }
     pub fn size(&self) -> u64 {
-        unsafe { LLVMGetSymbolSize(self.symbol) }
+        unsafe { LLVMGetSymbolSize(self.raw) }
     }
     pub fn get_address(&self) -> u64 {
-        unsafe { LLVMGetSymbolAddress(self.symbol) }
+        unsafe { LLVMGetSymbolAddress(self.raw) }
     }
 }
 
 #[derive(Eq)]
 pub struct DataLayout {
-    pub data_layout: LLVMStringOrRaw,
+    pub raw: LLVMStringOrRaw,
 }
 impl DataLayout {
-    pub unsafe fn new_owned(data_layout: *const ::libc::c_char) -> DataLayout {
-        debug_assert!(!data_layout.is_null());
+    pub unsafe fn new_owned(x: *const ::libc::c_char) -> DataLayout {
+        debug_assert!(!x.is_null());
         DataLayout {
-            data_layout: LLVMStringOrRaw::Owned(LLVMString::new(data_layout)),
+            raw: LLVMStringOrRaw::Owned(LLVMString::new(x)),
         }
     }
-    pub unsafe fn new_borrowed(data_layout: *const ::libc::c_char) -> DataLayout {
-        debug_assert!(!data_layout.is_null());
+    pub unsafe fn new_borrowed(x: *const ::libc::c_char) -> DataLayout {
+        debug_assert!(!x.is_null());
         DataLayout {
-            data_layout: LLVMStringOrRaw::Borrowed(data_layout),
+            raw: LLVMStringOrRaw::Borrowed(x),
         }
     }
     pub fn as_str(&self) -> &CStr {
-        self.data_layout.as_str()
+        self.raw.as_str()
     }
     pub fn as_ptr(&self) -> *const ::libc::c_char {
-        match self.data_layout {
-            LLVMStringOrRaw::Owned(ref llvm_string) => llvm_string.raw,
-            LLVMStringOrRaw::Borrowed(ptr) => ptr,
+        match self.raw {
+            LLVMStringOrRaw::Owned(ref x) => x.raw,
+            LLVMStringOrRaw::Borrowed(x) => x,
         }
     }
 }
 impl PartialEq for DataLayout {
-    fn eq(&self, other: &DataLayout) -> bool {
-        self.as_str() == other.as_str()
+    fn eq(&self, x: &DataLayout) -> bool {
+        self.as_str() == x.as_str()
     }
 }
 impl fmt::Debug for DataLayout {
@@ -1026,8 +1010,8 @@ impl LLVMStringOrRaw {
     }
 }
 impl PartialEq for LLVMStringOrRaw {
-    fn eq(&self, other: &LLVMStringOrRaw) -> bool {
-        self.as_str() == other.as_str()
+    fn eq(&self, x: &LLVMStringOrRaw) -> bool {
+        self.as_str() == x.as_str()
     }
 }
 
@@ -1187,32 +1171,32 @@ impl<'ctx> ExecutionEngine<'ctx> {
         *module.owned_by_ee.borrow_mut() = Some(self.clone());
         Ok(())
     }
-    pub fn remove_module(&self, module: &Module<'ctx>) -> Result<(), RemoveModuleError> {
-        match *module.owned_by_ee.borrow() {
-            Some(ref ee) if ee.execution_engine_inner() != self.execution_engine_inner() => {
+    pub fn remove_module(&self, m: &Module<'ctx>) -> Result<(), RemoveModuleError> {
+        match *m.owned_by_ee.borrow() {
+            Some(ref x) if x.execution_engine_inner() != self.execution_engine_inner() => {
                 return Err(RemoveModuleError::IncorrectModuleOwner)
             },
             None => return Err(RemoveModuleError::ModuleNotOwned),
             _ => (),
         }
-        let mut new_module = MaybeUninit::uninit();
-        let mut err_string = MaybeUninit::uninit();
+        let mut y = MaybeUninit::uninit();
+        let mut e = MaybeUninit::uninit();
         let code = unsafe {
             LLVMRemoveModule(
                 self.execution_engine_inner(),
-                module.module.get(),
-                new_module.as_mut_ptr(),
-                err_string.as_mut_ptr(),
+                m.module.get(),
+                y.as_mut_ptr(),
+                e.as_mut_ptr(),
             )
         };
         if code == 1 {
             unsafe {
-                return Err(RemoveModuleError::LLVMError(LLVMString::new(err_string.assume_init())));
+                return Err(RemoveModuleError::LLVMError(LLVMString::new(e.assume_init())));
             }
         }
-        let new_module = unsafe { new_module.assume_init() };
-        module.module.set(new_module);
-        *module.owned_by_ee.borrow_mut() = None;
+        let y = unsafe { y.assume_init() };
+        m.module.set(y);
+        *m.owned_by_ee.borrow_mut() = None;
         Ok(())
     }
     pub unsafe fn get_function<F>(&self, fn_name: &str) -> Result<JitFunction<'ctx, F>, FunctionLookupError>
@@ -1471,92 +1455,75 @@ impl<'ctx> Module<'ctx> {
         unsafe { TargetTriple::new(LLVMString::create_from_c_str(CStr::from_ptr(target_str))) }
     }
     pub fn create_execution_engine(&self) -> Result<ExecutionEngine<'ctx>, LLVMString> {
-        Target::initialize_native(&InitializationConfig::default()).map_err(|mut err_string| {
-            err_string.push('\0');
-            LLVMString::create_from_str(&err_string)
+        Target::initialize_native(&InitializationConfig::default()).map_err(|mut x| {
+            x.push('\0');
+            LLVMString::create_from_str(&x)
         })?;
         if self.owned_by_ee.borrow().is_some() {
             let string = "This module is already owned by an ExecutionEngine.\0";
             return Err(LLVMString::create_from_str(string));
         }
-        let mut execution_engine = MaybeUninit::uninit();
-        let mut err_string = MaybeUninit::uninit();
-        let code = unsafe {
-            LLVMCreateExecutionEngineForModule(
-                execution_engine.as_mut_ptr(),
-                self.module.get(),
-                err_string.as_mut_ptr(),
-            )
-        };
+        let mut y = MaybeUninit::uninit();
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe { LLVMCreateExecutionEngineForModule(y.as_mut_ptr(), self.module.get(), e.as_mut_ptr()) };
         if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        let execution_engine = unsafe { execution_engine.assume_init() };
-        let execution_engine = unsafe { ExecutionEngine::new(Rc::new(execution_engine), false) };
-        *self.owned_by_ee.borrow_mut() = Some(execution_engine.clone());
-        Ok(execution_engine)
+        let y = unsafe { y.assume_init() };
+        let y = unsafe { ExecutionEngine::new(Rc::new(y), false) };
+        *self.owned_by_ee.borrow_mut() = Some(y.clone());
+        Ok(y)
     }
     pub fn create_interpreter_execution_engine(&self) -> Result<ExecutionEngine<'ctx>, LLVMString> {
-        Target::initialize_native(&InitializationConfig::default()).map_err(|mut err_string| {
-            err_string.push('\0');
-            LLVMString::create_from_str(&err_string)
+        Target::initialize_native(&InitializationConfig::default()).map_err(|mut x| {
+            x.push('\0');
+            LLVMString::create_from_str(&x)
         })?;
         if self.owned_by_ee.borrow().is_some() {
             let string = "This module is already owned by an ExecutionEngine.\0";
             return Err(LLVMString::create_from_str(string));
         }
-        let mut execution_engine = MaybeUninit::uninit();
-        let mut err_string = MaybeUninit::uninit();
-        let code = unsafe {
-            LLVMCreateInterpreterForModule(
-                execution_engine.as_mut_ptr(),
-                self.module.get(),
-                err_string.as_mut_ptr(),
-            )
-        };
+        let mut y = MaybeUninit::uninit();
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe { LLVMCreateInterpreterForModule(y.as_mut_ptr(), self.module.get(), e.as_mut_ptr()) };
         if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        let execution_engine = unsafe { execution_engine.assume_init() };
-        let execution_engine = unsafe { ExecutionEngine::new(Rc::new(execution_engine), false) };
-        *self.owned_by_ee.borrow_mut() = Some(execution_engine.clone());
-        Ok(execution_engine)
+        let y = unsafe { y.assume_init() };
+        let y = unsafe { ExecutionEngine::new(Rc::new(y), false) };
+        *self.owned_by_ee.borrow_mut() = Some(y.clone());
+        Ok(y)
     }
     pub fn create_jit_execution_engine(
         &self,
         opt_level: OptimizationLevel,
     ) -> Result<ExecutionEngine<'ctx>, LLVMString> {
-        Target::initialize_native(&InitializationConfig::default()).map_err(|mut err_string| {
-            err_string.push('\0');
-            LLVMString::create_from_str(&err_string)
+        Target::initialize_native(&InitializationConfig::default()).map_err(|mut x| {
+            x.push('\0');
+            LLVMString::create_from_str(&x)
         })?;
         if self.owned_by_ee.borrow().is_some() {
             let string = "This module is already owned by an ExecutionEngine.\0";
             return Err(LLVMString::create_from_str(string));
         }
-        let mut execution_engine = MaybeUninit::uninit();
-        let mut err_string = MaybeUninit::uninit();
+        let mut y = MaybeUninit::uninit();
+        let mut e = MaybeUninit::uninit();
         let code = unsafe {
-            LLVMCreateJITCompilerForModule(
-                execution_engine.as_mut_ptr(),
-                self.module.get(),
-                opt_level as u32,
-                err_string.as_mut_ptr(),
-            )
+            LLVMCreateJITCompilerForModule(y.as_mut_ptr(), self.module.get(), opt_level as u32, e.as_mut_ptr())
         };
         if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        let execution_engine = unsafe { execution_engine.assume_init() };
-        let execution_engine = unsafe { ExecutionEngine::new(Rc::new(execution_engine), true) };
-        *self.owned_by_ee.borrow_mut() = Some(execution_engine.clone());
-        Ok(execution_engine)
+        let y = unsafe { y.assume_init() };
+        let y = unsafe { ExecutionEngine::new(Rc::new(y), true) };
+        *self.owned_by_ee.borrow_mut() = Some(y.clone());
+        Ok(y)
     }
     pub fn add_global<T: BasicType<'ctx>>(
         &self,
@@ -1586,7 +1553,6 @@ impl<'ctx> Module<'ctx> {
     pub fn write_bitcode_to_file(&self, file: &File, should_close: bool, unbuffered: bool) -> bool {
         #[cfg(unix)]
         {
-            use llvm_lib::bit_writer::LLVMWriteBitcodeToFD;
             use std::os::unix::io::AsRawFd;
             unsafe {
                 LLVMWriteBitcodeToFD(
@@ -1615,10 +1581,7 @@ impl<'ctx> Module<'ctx> {
         Ok(())
     }
     fn get_borrowed_data_layout(module: LLVMModuleRef) -> DataLayout {
-        let data_layout = unsafe {
-            use llvm_lib::core::LLVMGetDataLayoutStr;
-            LLVMGetDataLayoutStr(module)
-        };
+        let data_layout = unsafe { LLVMGetDataLayoutStr(module) };
         unsafe { DataLayout::new_borrowed(data_layout) }
     }
     pub fn get_data_layout(&self) -> Ref<DataLayout> {
@@ -1641,22 +1604,22 @@ impl<'ctx> Module<'ctx> {
         unsafe { LLVMString::new(LLVMPrintModuleToString(self.module.get())) }
     }
     pub fn print_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), LLVMString> {
-        let path_str = path
+        let path = path
             .as_ref()
             .to_str()
             .expect("Did not find a valid Unicode path string");
-        let path = to_c_str(path_str);
-        let mut err_string = MaybeUninit::uninit();
-        let return_code = unsafe {
+        let path = to_c_str(path);
+        let mut e = MaybeUninit::uninit();
+        let code = unsafe {
             LLVMPrintModuleToFile(
                 self.module.get(),
                 path.as_ptr() as *const ::libc::c_char,
-                err_string.as_mut_ptr(),
+                e.as_mut_ptr(),
             )
         };
-        if return_code == 1 {
+        if code == 1 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
         Ok(())
@@ -1666,7 +1629,6 @@ impl<'ctx> Module<'ctx> {
     }
     pub fn set_inline_assembly(&self, asm: &str) {
         {
-            use llvm_lib::core::LLVMSetModuleInlineAsm2;
             unsafe { LLVMSetModuleInlineAsm2(self.module.get(), asm.as_ptr() as *const ::libc::c_char, asm.len()) }
         }
     }
@@ -1720,72 +1682,50 @@ impl<'ctx> Module<'ctx> {
     pub fn get_globals(&self) -> GlobalIterator<'ctx> {
         GlobalIterator::from_module(self)
     }
-    pub fn parse_bitcode_from_buffer(
-        buffer: &MemoryBuffer,
-        context: impl AsContextRef<'ctx>,
-    ) -> Result<Self, LLVMString> {
-        let mut module = MaybeUninit::uninit();
-        let mut err_string = MaybeUninit::uninit();
+    pub fn parse_bitcode_from_buffer(buffer: &MemoryBuffer, c: impl AsContextRef<'ctx>) -> Result<Self, LLVMString> {
+        let mut y = MaybeUninit::uninit();
+        let mut e = MaybeUninit::uninit();
         #[allow(deprecated)]
-        let success = unsafe {
-            LLVMParseBitcodeInContext(
-                context.as_ctx_ref(),
-                buffer.raw,
-                module.as_mut_ptr(),
-                err_string.as_mut_ptr(),
-            )
-        };
-        if success != 0 {
+        let code = unsafe { LLVMParseBitcodeInContext(c.as_ctx_ref(), buffer.raw, y.as_mut_ptr(), e.as_mut_ptr()) };
+        if code != 0 {
             unsafe {
-                return Err(LLVMString::new(err_string.assume_init()));
+                return Err(LLVMString::new(e.assume_init()));
             }
         }
-        unsafe { Ok(Module::new(module.assume_init())) }
+        unsafe { Ok(Module::new(y.assume_init())) }
     }
-    pub fn parse_bitcode_from_path<P: AsRef<Path>>(
-        path: P,
-        context: impl AsContextRef<'ctx>,
-    ) -> Result<Self, LLVMString> {
-        let buffer = MemoryBuffer::create_from_file(path.as_ref())?;
-        Self::parse_bitcode_from_buffer(&buffer, context)
+    pub fn parse_bitcode_from_path<P: AsRef<Path>>(path: P, c: impl AsContextRef<'ctx>) -> Result<Self, LLVMString> {
+        let y = MemoryBuffer::create_from_file(path.as_ref())?;
+        Self::parse_bitcode_from_buffer(&y, c)
     }
     pub fn get_name(&self) -> &CStr {
-        let mut length = 0;
-        let cstr_ptr = unsafe { LLVMGetModuleIdentifier(self.module.get(), &mut length) };
-        unsafe { CStr::from_ptr(cstr_ptr) }
+        let mut len = 0;
+        let y = unsafe { LLVMGetModuleIdentifier(self.module.get(), &mut len) };
+        unsafe { CStr::from_ptr(y) }
     }
     pub fn set_name(&self, name: &str) {
         unsafe { LLVMSetModuleIdentifier(self.module.get(), name.as_ptr() as *const ::libc::c_char, name.len()) }
     }
     pub fn get_source_file_name(&self) -> &CStr {
-        use llvm_lib::core::LLVMGetSourceFileName;
         let mut len = 0;
-        let ptr = unsafe { LLVMGetSourceFileName(self.module.get(), &mut len) };
-        unsafe { CStr::from_ptr(ptr) }
+        let y = unsafe { LLVMGetSourceFileName(self.module.get(), &mut len) };
+        unsafe { CStr::from_ptr(y) }
     }
-    pub fn set_source_file_name(&self, file_name: &str) {
-        use llvm_lib::core::LLVMSetSourceFileName;
-        unsafe {
-            LLVMSetSourceFileName(
-                self.module.get(),
-                file_name.as_ptr() as *const ::libc::c_char,
-                file_name.len(),
-            )
-        }
+    pub fn set_source_file_name(&self, file: &str) {
+        unsafe { LLVMSetSourceFileName(self.module.get(), file.as_ptr() as *const ::libc::c_char, file.len()) }
     }
-    pub fn link_in_module(&self, other: Self) -> Result<(), LLVMString> {
-        if other.owned_by_ee.borrow().is_some() {
+    pub fn link_in_module(&self, x: Self) -> Result<(), LLVMString> {
+        if x.owned_by_ee.borrow().is_some() {
             let string = "Cannot link a module which is already owned by an ExecutionEngine.\0";
             return Err(LLVMString::create_from_str(string));
         }
         use libc::c_void;
-        use llvm_lib::linker::LLVMLinkModules2;
         let context = self.get_context();
         let mut char_ptr: *mut ::libc::c_char = ptr::null_mut();
         let char_ptr_ptr = &mut char_ptr as *mut *mut ::libc::c_char as *mut *mut c_void as *mut c_void;
         context.set_diagnostic_handler(get_error_str_diagnostic_handler, char_ptr_ptr);
-        let code = unsafe { LLVMLinkModules2(self.module.get(), other.module.get()) };
-        forget(other);
+        let code = unsafe { LLVMLinkModules2(self.module.get(), x.module.get()) };
+        forget(x);
         if code == 1 {
             debug_assert!(!char_ptr.is_null());
             unsafe { Err(LLVMString::new(char_ptr)) }
@@ -1794,13 +1734,11 @@ impl<'ctx> Module<'ctx> {
         }
     }
     pub fn get_or_insert_comdat(&self, name: &str) -> Comdat {
-        use llvm_lib::comdat::LLVMGetOrInsertComdat;
         let c_string = to_c_str(name);
         let comdat_ptr = unsafe { LLVMGetOrInsertComdat(self.module.get(), c_string.as_ptr()) };
         unsafe { Comdat::new(comdat_ptr) }
     }
     pub fn get_flag(&self, key: &str) -> Option<MetadataValue<'ctx>> {
-        use llvm_lib::core::LLVMMetadataAsValue;
         let flag = unsafe { LLVMGetModuleFlag(self.module.get(), key.as_ptr() as *const ::libc::c_char, key.len()) };
         if flag.is_null() {
             return None;
@@ -1821,7 +1759,6 @@ impl<'ctx> Module<'ctx> {
         }
     }
     pub fn add_basic_value_flag<BV: BasicValue<'ctx>>(&self, key: &str, behavior: FlagBehavior, flag: BV) {
-        use llvm_lib::core::LLVMValueAsMetadata;
         let md = unsafe { LLVMValueAsMetadata(flag.as_value_ref()) };
         unsafe {
             LLVMAddModuleFlag(
@@ -1834,11 +1771,9 @@ impl<'ctx> Module<'ctx> {
         }
     }
     pub fn strip_debug_info(&self) -> bool {
-        use llvm_lib::debuginfo::LLVMStripModuleDebugInfo;
         unsafe { LLVMStripModuleDebugInfo(self.module.get()) == 1 }
     }
     pub fn get_debug_metadata_version(&self) -> libc::c_uint {
-        use llvm_lib::debuginfo::LLVMGetModuleDebugMetadataVersion;
         unsafe { LLVMGetModuleDebugMetadataVersion(self.module.get()) }
     }
     pub fn create_debug_info_builder(
@@ -1885,12 +1820,7 @@ impl<'ctx> Module<'ctx> {
         options: PassBuilderOptions,
     ) -> Result<(), LLVMString> {
         unsafe {
-            let error = LLVMRunPasses(
-                self.module.get(),
-                to_c_str(passes).as_ptr(),
-                machine.target_machine,
-                options.raw,
-            );
+            let error = LLVMRunPasses(self.module.get(), to_c_str(passes).as_ptr(), machine.raw, options.raw);
             if error == std::ptr::null_mut() {
                 Ok(())
             } else {
