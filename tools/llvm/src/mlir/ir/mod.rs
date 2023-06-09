@@ -4,7 +4,7 @@ use std::{
     ffi::c_void,
     fmt::{self, Debug, Display, Formatter},
     hash::{Hash, Hasher},
-    marker::PhantomData,
+    marker,
     mem::{forget, transmute},
     ops::Deref,
 };
@@ -17,7 +17,7 @@ use crate::mlir::{
 #[derive(Clone, Copy)]
 pub struct AffineMap<'c> {
     raw: MlirAffineMap,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> AffineMap<'c> {
     pub fn context(&self) -> ContextRef<'c> {
@@ -29,7 +29,7 @@ impl<'c> AffineMap<'c> {
     pub unsafe fn from_raw(raw: MlirAffineMap) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -57,7 +57,7 @@ impl<'c> Debug for AffineMap<'c> {
 #[derive(Clone, Copy, Debug)]
 pub struct Identifier<'c> {
     raw: MlirIdentifier,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Identifier<'c> {
     pub fn new(c: &Context, name: &str) -> Self {
@@ -72,7 +72,7 @@ impl<'c> Identifier<'c> {
     pub unsafe fn from_raw(raw: MlirIdentifier) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub fn to_raw(self) -> MlirIdentifier {
@@ -89,7 +89,7 @@ impl<'c> Eq for Identifier<'c> {}
 #[derive(Clone, Copy, Debug)]
 pub struct Location<'c> {
     raw: MlirLocation,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Location<'c> {
     pub fn new(c: &'c Context, file: &str, line: usize, col: usize) -> Self {
@@ -130,7 +130,7 @@ impl<'c> Location<'c> {
     pub unsafe fn from_raw(raw: MlirLocation) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub fn to_raw(self) -> MlirLocation {
@@ -155,7 +155,7 @@ impl<'c> Display for Location<'c> {
 #[derive(Debug)]
 pub struct Module<'c> {
     raw: MlirModule,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Module<'c> {
     pub fn new(loc: Location) -> Self {
@@ -179,7 +179,7 @@ impl<'c> Module<'c> {
     pub unsafe fn from_raw(raw: MlirModule) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub unsafe fn from_option_raw(raw: MlirModule) -> Option<Self> {
@@ -266,13 +266,13 @@ impl Eq for Region {}
 #[derive(Clone, Copy, Debug)]
 pub struct RegionRef<'a> {
     raw: MlirRegion,
-    _reg: PhantomData<&'a Region>,
+    _marker: marker::PhantomData<&'a Region>,
 }
 impl<'a> RegionRef<'a> {
     pub unsafe fn from_raw(raw: MlirRegion) -> Self {
         Self {
             raw,
-            _reg: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub unsafe fn from_option_raw(raw: MlirRegion) -> Option<Self> {
@@ -344,7 +344,7 @@ pub trait AttributeLike<'c> {
 #[derive(Clone, Copy)]
 pub struct Attribute<'c> {
     raw: MlirAttribute,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Attribute<'c> {
     pub fn parse(x: &'c Context, src: &str) -> Option<Self> {
@@ -359,7 +359,7 @@ impl<'c> Attribute<'c> {
     pub unsafe fn from_raw(raw: MlirAttribute) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub unsafe fn from_option_raw(x: MlirAttribute) -> Option<Self> {
@@ -672,7 +672,7 @@ attr_traits!(TypeAttribute, is_type, "type");
 
 pub struct Block<'c> {
     raw: MlirBlock,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Block<'c> {
     pub fn new(xs: &[(Type<'c>, Location<'c>)]) -> Self {
@@ -764,7 +764,7 @@ impl<'c> Block<'c> {
     pub unsafe fn from_raw(raw: MlirBlock) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub fn into_raw(self) -> MlirBlock {
@@ -807,13 +807,13 @@ impl<'c> Debug for Block<'c> {
 #[derive(Clone, Copy)]
 pub struct BlockRef<'a> {
     raw: MlirBlock,
-    _ref: PhantomData<&'a Block<'a>>,
+    _marker: marker::PhantomData<&'a Block<'a>>,
 }
 impl<'c> BlockRef<'c> {
     pub unsafe fn from_raw(raw: MlirBlock) -> Self {
         Self {
             raw,
-            _ref: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub unsafe fn from_option_raw(raw: MlirBlock) -> Option<Self> {
@@ -890,7 +890,7 @@ impl<'a> TryFrom<Value<'a>> for BlockArgument<'a> {
 
 pub struct Operation<'c> {
     raw: MlirOperation,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Operation<'c> {
     pub fn context(&self) -> ContextRef<'c> {
@@ -969,7 +969,7 @@ impl<'c> Operation<'c> {
     pub unsafe fn from_raw(raw: MlirOperation) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub fn into_raw(self) -> MlirOperation {
@@ -1014,7 +1014,7 @@ impl<'c> Debug for Operation<'c> {
 #[derive(Clone, Copy)]
 pub struct OperationRef<'a> {
     raw: MlirOperation,
-    _ref: PhantomData<&'a Operation<'a>>,
+    _marker: marker::PhantomData<&'a Operation<'a>>,
 }
 impl<'a> OperationRef<'a> {
     pub fn result(self, idx: usize) -> Result<OperationResult<'a>, Error> {
@@ -1026,7 +1026,7 @@ impl<'a> OperationRef<'a> {
     pub unsafe fn from_raw(raw: MlirOperation) -> Self {
         Self {
             raw,
-            _ref: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub unsafe fn from_option_raw(raw: MlirOperation) -> Option<Self> {
@@ -1062,13 +1062,13 @@ impl<'a> Debug for OperationRef<'a> {
 
 pub struct OperationBuilder<'c> {
     raw: MlirOperationState,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> OperationBuilder<'c> {
     pub fn new(name: &str, loc: Location<'c>) -> Self {
         Self {
             raw: unsafe { mlirOperationStateGet(StringRef::from(name).to_raw(), loc.to_raw()) },
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub fn add_results(mut self, results: &[Type<'c>]) -> Self {
@@ -1261,7 +1261,7 @@ pub trait TypeLike<'c> {
 #[derive(Clone, Copy)]
 pub struct Type<'c> {
     raw: MlirType,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Type<'c> {
     pub fn parse(c: &'c Context, source: &str) -> Option<Self> {
@@ -1307,7 +1307,7 @@ impl<'c> Type<'c> {
     pub unsafe fn from_raw(raw: MlirType) -> Self {
         Self {
             raw,
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub unsafe fn from_option_raw(raw: MlirType) -> Option<Self> {
@@ -1655,13 +1655,13 @@ pub trait ValueLike {
 #[derive(Clone, Copy)]
 pub struct Value<'a> {
     raw: MlirValue,
-    _parent: PhantomData<&'a ()>,
+    _marker: marker::PhantomData<&'a ()>,
 }
 impl<'a> Value<'a> {
     pub unsafe fn from_raw(raw: MlirValue) -> Self {
         Self {
             raw,
-            _parent: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }

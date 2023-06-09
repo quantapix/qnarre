@@ -1,5 +1,5 @@
 use mlir_lib::*;
-use std::marker::PhantomData;
+use std::marker;
 
 use crate::mlir::{
     ir::{attr::*, op::*, typ::*, *},
@@ -10,7 +10,7 @@ use crate::mlir::{
 #[derive(Clone, Copy, Debug)]
 pub struct Dialect<'c> {
     raw: MlirDialect,
-    ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Dialect<'c> {
     pub fn context(&self) -> ContextRef<'c> {
@@ -22,7 +22,7 @@ impl<'c> Dialect<'c> {
     pub unsafe fn from_raw(raw: MlirDialect) -> Self {
         Self {
             raw,
-            ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }

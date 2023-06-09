@@ -5,7 +5,7 @@ use std::{
     error,
     ffi::{c_void, CString},
     fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
+    marker,
     mem::transmute,
     ops::Deref,
     slice,
@@ -104,13 +104,13 @@ impl Eq for Context {}
 #[derive(Clone, Copy, Debug)]
 pub struct ContextRef<'a> {
     raw: MlirContext,
-    _ref: PhantomData<&'a Context>,
+    _marker: marker::PhantomData<&'a Context>,
 }
 impl<'a> ContextRef<'a> {
     pub unsafe fn from_raw(raw: MlirContext) -> Self {
         Self {
             raw,
-            _ref: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -164,7 +164,7 @@ impl TryFrom<u32> for DiagnosticSeverity {
 #[derive(Debug)]
 pub struct Diagnostic<'c> {
     raw: MlirDiagnostic,
-    phantom: PhantomData<&'c ()>,
+    _marker: marker::PhantomData<&'c ()>,
 }
 impl<'c> Diagnostic<'c> {
     pub fn location(&self) -> Location {
@@ -191,7 +191,7 @@ impl<'c> Diagnostic<'c> {
     pub unsafe fn from_raw(raw: MlirDiagnostic) -> Self {
         Self {
             raw,
-            phantom: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -314,7 +314,7 @@ impl Drop for ExecutionEngine {
 #[derive(Clone, Copy)]
 pub struct Integer<'c> {
     raw: MlirAttribute,
-    _context: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> Integer<'c> {
     pub fn new(x: i64, ty: Type<'c>) -> Self {
@@ -323,7 +323,7 @@ impl<'c> Integer<'c> {
     unsafe fn from_raw(raw: MlirAttribute) -> Self {
         Self {
             raw,
-            _context: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -397,7 +397,7 @@ static STRING_CACHE: Lazy<RwLock<HashMap<String, CString>>> = Lazy::new(Default:
 #[derive(Clone, Copy, Debug)]
 pub struct StringRef<'a> {
     raw: MlirStringRef,
-    _parent: PhantomData<&'a ()>,
+    _marker: marker::PhantomData<&'a ()>,
 }
 impl<'a> StringRef<'a> {
     pub fn as_str(&self) -> Result<&'a str, Utf8Error> {
@@ -409,10 +409,10 @@ impl<'a> StringRef<'a> {
     pub fn to_raw(self) -> MlirStringRef {
         self.raw
     }
-    pub unsafe fn from_raw(string: MlirStringRef) -> Self {
+    pub unsafe fn from_raw(raw: MlirStringRef) -> Self {
         Self {
-            raw: string,
-            _parent: Default::default(),
+            raw,
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -456,13 +456,13 @@ impl Pass {
 
 pub struct PassManager<'c> {
     raw: MlirPassManager,
-    _ctx: PhantomData<&'c Context>,
+    _marker: marker::PhantomData<&'c Context>,
 }
 impl<'c> PassManager<'c> {
     pub fn new(c: &Context) -> Self {
         Self {
             raw: unsafe { mlirPassManagerCreate(c.to_raw()) },
-            _ctx: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
     pub fn nested_under(&self, name: &str) -> OperationPassManager {
@@ -500,7 +500,7 @@ impl<'c> Drop for PassManager<'c> {
 #[derive(Clone, Copy, Debug)]
 pub struct OperationPassManager<'a> {
     raw: MlirOpPassManager,
-    _parent: PhantomData<&'a PassManager<'a>>,
+    _marker: marker::PhantomData<&'a PassManager<'a>>,
 }
 impl<'a> OperationPassManager<'a> {
     pub fn nested_under(&self, name: &str) -> Self {
@@ -520,7 +520,7 @@ impl<'a> OperationPassManager<'a> {
     pub unsafe fn from_raw(raw: MlirOpPassManager) -> Self {
         Self {
             raw,
-            _parent: Default::default(),
+            _marker: marker::PhantomData,
         }
     }
 }

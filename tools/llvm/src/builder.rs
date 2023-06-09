@@ -1,25 +1,25 @@
 use llvm_lib::core::*;
 use llvm_lib::prelude::{LLVMBuilderRef, LLVMValueRef};
-use std::marker::PhantomData;
+use std::marker;
 
-use crate::ctx::Context;
 use crate::dbg::DILocation;
 use crate::to_c_str;
 use crate::typ::*;
 use crate::val::*;
+use crate::Context;
 use crate::{AtomicOrdering, AtomicRMWBinOp, BasicBlock, FloatPredicate, IntPredicate};
 
 #[derive(Debug)]
 pub struct Builder<'ctx> {
     raw: LLVMBuilderRef,
-    _marker: PhantomData<&'ctx ()>,
+    _marker: marker::PhantomData<&'ctx ()>,
 }
 impl<'ctx> Builder<'ctx> {
     pub unsafe fn new(raw: LLVMBuilderRef) -> Self {
         debug_assert!(!raw.is_null());
         Builder {
             raw,
-            _marker: PhantomData,
+            _marker: marker::PhantomData,
         }
     }
     pub fn as_mut_ptr(&self) -> LLVMBuilderRef {
@@ -1199,7 +1199,7 @@ impl<'ctx> Builder<'ctx> {
         }
         Some(DILocation {
             raw: unsafe { LLVMValueAsMetadata(metadata_ref) },
-            _marker: PhantomData,
+            _marker: marker::PhantomData,
         })
     }
     pub fn unset_current_debug_location(&self) {

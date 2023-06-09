@@ -1,46 +1,30 @@
-use libc::c_void;
-use llvm_lib::analysis::*;
-use llvm_lib::comdat::*;
-use llvm_lib::core::*;
-use llvm_lib::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
-use llvm_lib::execution_engine::*;
-use llvm_lib::prelude::*;
-use llvm_lib::*;
-use std::convert::TryFrom;
-use std::fmt::{self, Debug};
-use std::marker::PhantomData;
-use std::mem::forget;
-use std::{ffi::CStr, fmt, fmt::Display};
-
-use super::AnyValue;
-use super::{BasicMetadataValueEnum, MetadataValue};
-use crate::dbg::DISubprogram;
-use crate::module::Linkage;
-use crate::typ::*;
-use crate::BasicBlock;
-use crate::Comdat;
-use crate::FloatPredicate;
-use crate::IntPredicate;
-use crate::{to_c_str, LLVMString};
-use crate::{AtomicOrdering, FloatPredicate, IntPredicate};
-use crate::{Attribute, AttributeLoc};
-use crate::{DLLStorageClass, GlobalVisibility, ThreadLocalMode};
 use either::{
     Either,
     Either::{Left, Right},
 };
+use libc::c_void;
+use llvm_lib::{analysis::*, comdat::*, core::*, debuginfo::*, execution_engine::*, prelude::*, *};
+use std::{
+    convert::TryFrom,
+    fmt::{self, Debug},
+    marker,
+    mem::forget,
+    {ffi::CStr, fmt, fmt::Display},
+};
+
+use crate::{dbg::DISubprogram, typ::*, *};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 struct Value<'ctx> {
     raw: LLVMValueRef,
-    _marker: PhantomData<&'ctx ()>,
+    _marker: marker::PhantomData<&'ctx ()>,
 }
 impl<'ctx> Value<'ctx> {
     pub unsafe fn new(raw: LLVMValueRef) -> Self {
         debug_assert!(!raw.is_null());
         Value {
             raw,
-            _marker: PhantomData,
+            _marker: marker::PhantomData,
         }
     }
     fn is_instruction(self) -> bool {
@@ -213,11 +197,11 @@ unsafe impl AsValueRef for ArrayValue<'_> {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct BasicValueUse<'ctx>(LLVMUseRef, PhantomData<&'ctx ()>);
+pub struct BasicValueUse<'ctx>(LLVMUseRef, marker::PhantomData<&'ctx ()>);
 impl<'ctx> BasicValueUse<'ctx> {
     pub unsafe fn new(x: LLVMUseRef) -> Self {
         debug_assert!(!x.is_null());
-        BasicValueUse(x, PhantomData)
+        BasicValueUse(x, marker::PhantomData)
     }
     pub fn get_next_use(self) -> Option<Self> {
         let y = unsafe { LLVMGetNextUse(self.0) };
@@ -1003,36 +987,33 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { LLVMCountBasicBlocks(self.as_value_ref()) }
     }
     pub fn get_basic_blocks(self) -> Vec<BasicBlock<'ctx>> {
-        let count = self.count_basic_blocks();
-        let mut raw_vec: Vec<LLVMBasicBlockRef> = Vec::with_capacity(count as usize);
-        let ptr = raw_vec.as_mut_ptr();
-        forget(raw_vec);
-        let raw_vec = unsafe {
+        let n = self.count_basic_blocks();
+        let mut ys: Vec<LLVMBasicBlockRef> = Vec::with_capacity(n as usize);
+        let ptr = ys.as_mut_ptr();
+        forget(ys);
+        let ys = unsafe {
             LLVMGetBasicBlocks(self.as_value_ref(), ptr);
-            Vec::from_raw_parts(ptr, count as usize, count as usize)
+            Vec::from_raw_parts(ptr, n as usize, n as usize)
         };
-        raw_vec
-            .iter()
-            .map(|val| unsafe { BasicBlock::new(*val).unwrap() })
-            .collect()
+        ys.iter().map(|x| unsafe { BasicBlock::new(*x).unwrap() }).collect()
     }
     pub fn get_param_iter(self) -> ParamValueIter<'ctx> {
         ParamValueIter {
             raw: self.val.raw,
             start: true,
-            _marker: PhantomData,
+            _marker: marker::PhantomData,
         }
     }
     pub fn get_params(self) -> Vec<BasicValueEnum<'ctx>> {
-        let count = self.count_params();
-        let mut raw_vec: Vec<LLVMValueRef> = Vec::with_capacity(count as usize);
-        let ptr = raw_vec.as_mut_ptr();
-        forget(raw_vec);
-        let raw_vec = unsafe {
+        let n = self.count_params();
+        let mut ys: Vec<LLVMValueRef> = Vec::with_capacity(n as usize);
+        let ptr = ys.as_mut_ptr();
+        forget(ys);
+        let y = unsafe {
             LLVMGetParams(self.as_value_ref(), ptr);
-            Vec::from_raw_parts(ptr, count as usize, count as usize)
+            Vec::from_raw_parts(ptr, n as usize, n as usize)
         };
-        raw_vec.iter().map(|val| unsafe { BasicValueEnum::new(*val) }).collect()
+        y.iter().map(|x| unsafe { BasicValueEnum::new(*x) }).collect()
     }
     pub fn get_last_basic_block(self) -> Option<BasicBlock<'ctx>> {
         unsafe { BasicBlock::new(LLVMGetLastBasicBlock(self.val.raw)) }
@@ -1133,25 +1114,25 @@ impl<'ctx> FunctionValue<'ctx> {
         }
         unsafe { Some(Attribute::new(y)) }
     }
-    pub fn set_param_alignment(self, param_index: u32, align: u32) {
-        if let Some(param) = self.get_nth_param(param_index) {
-            unsafe { LLVMSetParamAlignment(param.as_value_ref(), align) }
+    pub fn set_param_alignment(self, idx: u32, align: u32) {
+        if let Some(x) = self.get_nth_param(idx) {
+            unsafe { LLVMSetParamAlignment(x.as_value_ref(), align) }
         }
     }
     pub fn as_global_value(self) -> GlobalValue<'ctx> {
         unsafe { GlobalValue::new(self.as_value_ref()) }
     }
-    pub fn set_subprogram(self, subprogram: DISubprogram<'ctx>) {
-        unsafe { LLVMSetSubprogram(self.as_value_ref(), subprogram.raw) }
+    pub fn set_subprogram(self, x: DISubprogram<'ctx>) {
+        unsafe { LLVMSetSubprogram(self.as_value_ref(), x.raw) }
     }
     pub fn get_subprogram(self) -> Option<DISubprogram<'ctx>> {
-        let metadata_ref = unsafe { LLVMGetSubprogram(self.as_value_ref()) };
-        if metadata_ref.is_null() {
+        let raw = unsafe { LLVMGetSubprogram(self.as_value_ref()) };
+        if raw.is_null() {
             None
         } else {
             Some(DISubprogram {
-                raw: metadata_ref,
-                _marker: PhantomData,
+                raw,
+                _marker: marker::PhantomData,
             })
         }
     }
@@ -1194,7 +1175,7 @@ unsafe impl AsValueRef for FunctionValue<'_> {
 pub struct ParamValueIter<'ctx> {
     raw: LLVMValueRef,
     start: bool,
-    _marker: PhantomData<&'ctx ()>,
+    _marker: marker::PhantomData<&'ctx ()>,
 }
 impl<'ctx> Iterator for ParamValueIter<'ctx> {
     type Item = BasicValueEnum<'ctx>;
@@ -1220,14 +1201,14 @@ impl<'ctx> Iterator for ParamValueIter<'ctx> {
 #[derive(Debug)]
 pub struct GenericValue<'ctx> {
     pub raw: LLVMGenericValueRef,
-    _phantom: PhantomData<&'ctx ()>,
+    _marker: marker::PhantomData<&'ctx ()>,
 }
 impl<'ctx> GenericValue<'ctx> {
     pub unsafe fn new(x: LLVMGenericValueRef) -> Self {
         assert!(!x.is_null());
         GenericValue {
             raw: x,
-            _phantom: PhantomData,
+            _marker: marker::PhantomData,
         }
     }
     pub fn int_width(self) -> u32 {

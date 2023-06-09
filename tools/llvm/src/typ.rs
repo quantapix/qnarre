@@ -1,33 +1,30 @@
 #[deny(missing_docs)]
-use llvm_lib::core::*;
-use llvm_lib::execution_engine::*;
-use llvm_lib::prelude::*;
-use llvm_lib::LLVMTypeKind;
+use llvm_lib::{core::*, execution_engine::*, prelude::*, LLVMTypeKind};
 use static_alloc::Bump;
-use std::convert::TryFrom;
-use std::ffi::CStr;
-use std::fmt;
-use std::fmt::Debug;
-use std::fmt::{self, Display};
-use std::marker::PhantomData;
-use std::mem::forget;
+use std::{
+    convert::TryFrom,
+    ffi::CStr,
+    fmt::{self, Debug, Display},
+    marker,
+    mem::forget,
+};
 
-use crate::ctx::ContextRef;
 use crate::val::*;
 use crate::AddressSpace;
+use crate::ContextRef;
 use crate::LLVMString;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct Type<'ctx> {
     raw: LLVMTypeRef,
-    _marker: PhantomData<&'ctx ()>,
+    _marker: marker::PhantomData<&'ctx ()>,
 }
 impl<'ctx> Type<'ctx> {
     unsafe fn new(raw: LLVMTypeRef) -> Self {
         assert!(!raw.is_null());
         Type {
             raw,
-            _marker: PhantomData,
+            _marker: marker::PhantomData,
         }
     }
     fn const_zero(self) -> LLVMValueRef {

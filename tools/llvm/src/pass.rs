@@ -6,10 +6,9 @@ use llvm_lib::transforms::pass_builder::*;
 use llvm_lib::transforms::pass_manager_builder::*;
 use llvm_lib::transforms::scalar::*;
 use llvm_lib::transforms::vectorize::*;
-use std::borrow::Borrow;
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker};
 
-use crate::val::{AsValueRef, FunctionValue};
+use crate::val::*;
 use crate::Module;
 use crate::OptimizationLevel;
 
@@ -88,7 +87,7 @@ impl<'ctx> PassManagerSubType for FunctionValue<'ctx> {
 #[derive(Debug)]
 pub struct PassManager<T> {
     pub raw: LLVMPassManagerRef,
-    sub_type: PhantomData<T>,
+    _marker: marker::PhantomData<T>,
 }
 impl PassManager<FunctionValue<'_>> {
     pub fn as_mut_ptr(&self) -> LLVMPassManagerRef {
@@ -106,7 +105,7 @@ impl<T: PassManagerSubType> PassManager<T> {
         assert!(!raw.is_null());
         PassManager {
             raw,
-            sub_type: PhantomData,
+            _marker: marker::PhantomData,
         }
     }
     pub fn create<I: Borrow<T::Input>>(x: I) -> PassManager<T> {
