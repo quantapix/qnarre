@@ -396,6 +396,18 @@ impl<'c> Debug for Attribute<'c> {
     }
 }
 
+macro_rules! from_raw_subtypes {
+    ($type:ident,) => {};
+    ($type:ident, $name:ident $(, $names:ident)* $(,)?) => {
+        impl<'c> From<$name<'c>> for $type<'c> {
+            fn from(x: $name<'c>) -> Self {
+                unsafe { Self::from_raw(x.to_raw()) }
+            }
+        }
+        from_raw_subtypes!($type, $($names,)*);
+    };
+}
+
 from_raw_subtypes!(
     Attribute,
     ArrayAttribute,

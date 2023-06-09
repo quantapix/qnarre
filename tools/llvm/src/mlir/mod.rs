@@ -6,36 +6,203 @@ use std::{
     ffi::{c_void, CString},
     fmt::{self, Debug, Display, Formatter},
     marker::PhantomData,
+    mem::transmute,
+    ops::Deref,
     slice,
     str::{self, Utf8Error},
-    sync::RwLock,
+    sync::{Once, RwLock},
 };
 
-use crate::{
-    ir::{Module, Type, TypeLike},
-    Attribute, AttributeLike, Context, Error,
-};
+use crate::{ir::*, Attribute, AttributeLike};
 
-mod ctx;
-pub mod diag;
 pub mod dialect;
 pub mod ir;
 pub mod mlir_lib;
-pub mod pass;
-pub mod utils;
 
-pub use self::ctx::{Context, ContextRef};
+use dialect::{Dialect, DialectRegistry};
 
-macro_rules! from_raw_subtypes {
-    ($type:ident,) => {};
-    ($type:ident, $name:ident $(, $names:ident)* $(,)?) => {
-        impl<'c> From<$name<'c>> for $type<'c> {
-            fn from(value: $name<'c>) -> Self {
-                unsafe { Self::from_raw(value.to_raw()) }
-            }
+#[derive(Debug)]
+pub struct Context {
+    raw: MlirContext,
+}
+impl Context {
+    pub fn new() -> Self {
+        Self {
+            raw: unsafe { mlirContextCreate() },
         }
-        from_raw_subtypes!($type, $($names,)*);
-    };
+    }
+    pub fn registered_dialect_count(&self) -> usize {
+        unsafe { mlirContextGetNumRegisteredDialects(self.raw) as usize }
+    }
+    pub fn loaded_dialect_count(&self) -> usize {
+        unsafe { mlirContextGetNumLoadedDialects(self.raw) as usize }
+    }
+    pub fn get_or_load_dialect(&self, name: &str) -> Dialect {
+        unsafe { Dialect::from_raw(mlirContextGetOrLoadDialect(self.raw, StringRef::from(name).to_raw())) }
+    }
+    pub fn append_dialect_registry(&self, r: &DialectRegistry) {
+        unsafe { mlirContextAppendDialectRegistry(self.raw, r.to_raw()) }
+    }
+    pub fn load_all_available_dialects(&self) {
+        unsafe { mlirContextLoadAllAvailableDialects(self.raw) }
+    }
+    pub fn enable_multi_threading(&self, enabled: bool) {
+        unsafe { mlirContextEnableMultithreading(self.raw, enabled) }
+    }
+    pub fn allow_unregistered_dialects(&self) -> bool {
+        unsafe { mlirContextGetAllowUnregisteredDialects(self.raw) }
+    }
+    pub fn set_allow_unregistered_dialects(&self, allowed: bool) {
+        unsafe { mlirContextSetAllowUnregisteredDialects(self.raw, allowed) }
+    }
+    pub fn is_registered_operation(&self, name: &str) -> bool {
+        unsafe { mlirContextIsRegisteredOperation(self.raw, StringRef::from(name).to_raw()) }
+    }
+    pub fn to_raw(&self) -> MlirContext {
+        self.raw
+    }
+    pub fn attach_diagnostic_handler<F: FnMut(Diagnostic) -> bool>(&self, handler: F) -> DiagnosticHandlerId {
+        unsafe extern "C" fn handle<F: FnMut(Diagnostic) -> bool>(
+            diag: MlirDiagnostic,
+            data: *mut c_void,
+        ) -> MlirLogicalResult {
+            LogicalResult::from((*(data as *mut F))(Diagnostic::from_raw(diag))).to_raw()
+        }
+        unsafe extern "C" fn destroy<F: FnMut(Diagnostic) -> bool>(data: *mut c_void) {
+            drop(Box::from_raw(data as *mut F));
+        }
+        unsafe {
+            DiagnosticHandlerId::from_raw(mlirContextAttachDiagnosticHandler(
+                self.to_raw(),
+                Some(handle::<F>),
+                Box::into_raw(Box::new(handler)) as *mut _,
+                Some(destroy::<F>),
+            ))
+        }
+    }
+    pub fn detach_diagnostic_handler(&self, id: DiagnosticHandlerId) {
+        unsafe { mlirContextDetachDiagnosticHandler(self.to_raw(), id.to_raw()) }
+    }
+}
+impl Drop for Context {
+    fn drop(&mut self) {
+        unsafe { mlirContextDestroy(self.raw) };
+    }
+}
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl PartialEq for Context {
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirContextEqual(self.raw, x.raw) }
+    }
+}
+impl Eq for Context {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ContextRef<'a> {
+    raw: MlirContext,
+    _ref: PhantomData<&'a Context>,
+}
+impl<'a> ContextRef<'a> {
+    pub unsafe fn from_raw(raw: MlirContext) -> Self {
+        Self {
+            raw,
+            _ref: Default::default(),
+        }
+    }
+}
+impl<'a> Deref for ContextRef<'a> {
+    type Target = Context;
+    fn deref(&self) -> &Self::Target {
+        unsafe { transmute(self) }
+    }
+}
+impl<'a> PartialEq for ContextRef<'a> {
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirContextEqual(self.raw, x.raw) }
+    }
+}
+impl<'a> Eq for ContextRef<'a> {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct DiagnosticHandlerId {
+    raw: MlirDiagnosticHandlerID,
+}
+impl DiagnosticHandlerId {
+    pub unsafe fn from_raw(raw: MlirDiagnosticHandlerID) -> Self {
+        Self { raw }
+    }
+    pub fn to_raw(self) -> MlirDiagnosticHandlerID {
+        self.raw
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum DiagnosticSeverity {
+    Error,
+    Note,
+    Remark,
+    Warning,
+}
+impl TryFrom<u32> for DiagnosticSeverity {
+    type Error = Error;
+    fn try_from(severity: u32) -> Result<Self, Error> {
+        #[allow(non_upper_case_globals)]
+        Ok(match severity {
+            MlirDiagnosticSeverity_MlirDiagnosticError => Self::Error,
+            MlirDiagnosticSeverity_MlirDiagnosticNote => Self::Note,
+            MlirDiagnosticSeverity_MlirDiagnosticRemark => Self::Remark,
+            MlirDiagnosticSeverity_MlirDiagnosticWarning => Self::Warning,
+            _ => return Err(Error::UnknownDiagnosticSeverity(severity)),
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct Diagnostic<'c> {
+    raw: MlirDiagnostic,
+    phantom: PhantomData<&'c ()>,
+}
+impl<'c> Diagnostic<'c> {
+    pub fn location(&self) -> Location {
+        unsafe { Location::from_raw(mlirDiagnosticGetLocation(self.raw)) }
+    }
+    pub fn severity(&self) -> DiagnosticSeverity {
+        DiagnosticSeverity::try_from(unsafe { mlirDiagnosticGetSeverity(self.raw) })
+            .unwrap_or_else(|error| unreachable!("{}", error))
+    }
+    pub fn note_count(&self) -> usize {
+        (unsafe { mlirDiagnosticGetNumNotes(self.raw) }) as usize
+    }
+    pub fn note(&self, idx: usize) -> Result<Self, Error> {
+        if idx < self.note_count() {
+            Ok(unsafe { Self::from_raw(mlirDiagnosticGetNote(self.raw, idx as isize)) })
+        } else {
+            Err(Error::PositionOutOfBounds {
+                name: "diagnostic note",
+                value: self.to_string(),
+                index: idx,
+            })
+        }
+    }
+    pub unsafe fn from_raw(raw: MlirDiagnostic) -> Self {
+        Self {
+            raw,
+            phantom: Default::default(),
+        }
+    }
+}
+impl<'a> Display for Diagnostic<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
+        unsafe {
+            mlirDiagnosticPrint(self.raw, Some(print_callback), &mut y as *mut _ as *mut c_void);
+        }
+        y.1
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -276,6 +443,315 @@ impl From<&str> for StringRef<'static> {
         let string = lock.get(string).unwrap();
         unsafe { Self::from_raw(mlirStringRefCreateFromCString(string.as_ptr())) }
     }
+}
+
+pub struct Pass {
+    raw: MlirPass,
+}
+impl Pass {
+    pub unsafe fn from_raw_fn(create_raw: unsafe extern "C" fn() -> MlirPass) -> Self {
+        Self {
+            raw: unsafe { create_raw() },
+        }
+    }
+    pub fn to_raw(&self) -> MlirPass {
+        self.raw
+    }
+    #[doc(hidden)]
+    pub unsafe fn __private_from_raw_fn(create_raw: unsafe extern "C" fn() -> MlirPass) -> Self {
+        Self::from_raw_fn(create_raw)
+    }
+}
+
+pub struct PassManager<'c> {
+    raw: MlirPassManager,
+    _context: PhantomData<&'c Context>,
+}
+impl<'c> PassManager<'c> {
+    pub fn new(context: &Context) -> Self {
+        Self {
+            raw: unsafe { mlirPassManagerCreate(context.to_raw()) },
+            _context: Default::default(),
+        }
+    }
+    pub fn nested_under(&self, name: &str) -> OperationPassManager {
+        unsafe {
+            OperationPassManager::from_raw(mlirPassManagerGetNestedUnder(self.raw, StringRef::from(name).to_raw()))
+        }
+    }
+    pub fn add_pass(&self, pass: Pass) {
+        unsafe { mlirPassManagerAddOwnedPass(self.raw, pass.to_raw()) }
+    }
+    pub fn enable_verifier(&self, enabled: bool) {
+        unsafe { mlirPassManagerEnableVerifier(self.raw, enabled) }
+    }
+    pub fn enable_ir_printing(&self) {
+        unsafe { mlirPassManagerEnableIRPrinting(self.raw) }
+    }
+    pub fn run(&self, module: &mut Module) -> Result<(), Error> {
+        let result = LogicalResult::from_raw(unsafe { mlirPassManagerRun(self.raw, module.to_raw()) });
+        if result.is_success() {
+            Ok(())
+        } else {
+            Err(Error::RunPass)
+        }
+    }
+    pub fn as_operation_pass_manager(&self) -> OperationPassManager {
+        unsafe { OperationPassManager::from_raw(mlirPassManagerGetAsOpPassManager(self.raw)) }
+    }
+}
+impl<'c> Drop for PassManager<'c> {
+    fn drop(&mut self) {
+        unsafe { mlirPassManagerDestroy(self.raw) }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct OperationPassManager<'a> {
+    raw: MlirOpPassManager,
+    _parent: PhantomData<&'a PassManager<'a>>,
+}
+impl<'a> OperationPassManager<'a> {
+    pub fn nested_under(&self, name: &str) -> Self {
+        unsafe {
+            Self::from_raw(mlirOpPassManagerGetNestedUnder(
+                self.raw,
+                StringRef::from(name).to_raw(),
+            ))
+        }
+    }
+    pub fn add_pass(&self, pass: Pass) {
+        unsafe { mlirOpPassManagerAddOwnedPass(self.raw, pass.to_raw()) }
+    }
+    pub fn to_raw(self) -> MlirOpPassManager {
+        self.raw
+    }
+    pub unsafe fn from_raw(raw: MlirOpPassManager) -> Self {
+        Self {
+            raw,
+            _parent: Default::default(),
+        }
+    }
+}
+impl<'a> Display for OperationPassManager<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut y = (f, Ok(()));
+        unsafe extern "C" fn callback(string: MlirStringRef, data: *mut c_void) {
+            let y = &mut *(data as *mut (&mut Formatter, fmt::Result));
+            let result = (|| -> fmt::Result {
+                write!(y.0, "{}", StringRef::from_raw(string).as_str().map_err(|_| fmt::Error)?)
+            })();
+            if y.1.is_ok() {
+                y.1 = result;
+            }
+        }
+        unsafe {
+            mlirPrintPassPipeline(self.raw, Some(callback), &mut y as *mut _ as *mut c_void);
+        }
+        y.1
+    }
+}
+
+macros::async_passes!(
+    mlirCreateAsyncAsyncFuncToAsyncRuntime,
+    mlirCreateAsyncAsyncParallelFor,
+    mlirCreateAsyncAsyncRuntimePolicyBasedRefCounting,
+    mlirCreateAsyncAsyncRuntimeRefCounting,
+    mlirCreateAsyncAsyncRuntimeRefCountingOpt,
+    mlirCreateAsyncAsyncToAsyncRuntime,
+);
+
+macros::conversion_passes!(
+    mlirCreateConversionArithToLLVMConversionPass,
+    mlirCreateConversionConvertAffineForToGPU,
+    mlirCreateConversionConvertAffineToStandard,
+    mlirCreateConversionConvertAMDGPUToROCDL,
+    mlirCreateConversionConvertArithToSPIRV,
+    mlirCreateConversionConvertArmNeon2dToIntr,
+    mlirCreateConversionConvertAsyncToLLVM,
+    mlirCreateConversionConvertBufferizationToMemRef,
+    mlirCreateConversionConvertComplexToLibm,
+    mlirCreateConversionConvertComplexToLLVM,
+    mlirCreateConversionConvertComplexToStandard,
+    mlirCreateConversionConvertControlFlowToLLVM,
+    mlirCreateConversionConvertControlFlowToSPIRV,
+    mlirCreateConversionConvertFuncToLLVM,
+    mlirCreateConversionConvertFuncToSPIRV,
+    mlirCreateConversionConvertGpuLaunchFuncToVulkanLaunchFunc,
+    mlirCreateConversionConvertGpuOpsToNVVMOps,
+    mlirCreateConversionConvertGpuOpsToROCDLOps,
+    mlirCreateConversionConvertGPUToSPIRV,
+    mlirCreateConversionConvertIndexToLLVMPass,
+    mlirCreateConversionConvertLinalgToLLVM,
+    mlirCreateConversionConvertLinalgToStandard,
+    mlirCreateConversionConvertMathToFuncs,
+    mlirCreateConversionConvertMathToLibm,
+    mlirCreateConversionConvertMathToLLVM,
+    mlirCreateConversionConvertMathToSPIRV,
+    mlirCreateConversionConvertMemRefToSPIRV,
+    mlirCreateConversionConvertNVGPUToNVVM,
+    mlirCreateConversionConvertOpenACCToLLVM,
+    mlirCreateConversionConvertOpenACCToSCF,
+    mlirCreateConversionConvertOpenMPToLLVM,
+    mlirCreateConversionConvertParallelLoopToGpu,
+    mlirCreateConversionConvertPDLToPDLInterp,
+    mlirCreateConversionConvertSCFToOpenMP,
+    mlirCreateConversionConvertShapeConstraints,
+    mlirCreateConversionConvertShapeToStandard,
+    mlirCreateConversionConvertSPIRVToLLVM,
+    mlirCreateConversionConvertTensorToLinalg,
+    mlirCreateConversionConvertTensorToSPIRV,
+    mlirCreateConversionConvertVectorToGPU,
+    mlirCreateConversionConvertVectorToLLVM,
+    mlirCreateConversionConvertVectorToSCF,
+    mlirCreateConversionConvertVectorToSPIRV,
+    mlirCreateConversionConvertVulkanLaunchFuncToVulkanCalls,
+    mlirCreateConversionGpuToLLVMConversionPass,
+    mlirCreateConversionLowerHostCodeToLLVM,
+    mlirCreateConversionMapMemRefStorageClass,
+    mlirCreateConversionMemRefToLLVMConversionPass,
+    mlirCreateConversionReconcileUnrealizedCasts,
+    mlirCreateConversionSCFToControlFlow,
+    mlirCreateConversionSCFToSPIRV,
+    mlirCreateConversionTosaToArith,
+    mlirCreateConversionTosaToLinalg,
+    mlirCreateConversionTosaToLinalgNamed,
+    mlirCreateConversionTosaToSCF,
+    mlirCreateConversionTosaToTensor,
+);
+
+macros::gpu_passes!(
+    mlirCreateGPUGPULowerMemorySpaceAttributesPass,
+    mlirCreateGPUGpuAsyncRegionPass,
+    mlirCreateGPUGpuKernelOutlining,
+    mlirCreateGPUGpuLaunchSinkIndexComputations,
+    mlirCreateGPUGpuMapParallelLoopsPass,
+);
+
+macros::linalg_passes!(
+    mlirCreateLinalgConvertElementwiseToLinalg,
+    mlirCreateLinalgLinalgBufferize,
+    mlirCreateLinalgLinalgDetensorize,
+    mlirCreateLinalgLinalgElementwiseOpFusion,
+    mlirCreateLinalgLinalgFoldUnitExtentDims,
+    mlirCreateLinalgLinalgGeneralization,
+    mlirCreateLinalgLinalgInlineScalarOperands,
+    mlirCreateLinalgLinalgLowerToAffineLoops,
+    mlirCreateLinalgLinalgLowerToLoops,
+    mlirCreateLinalgLinalgLowerToParallelLoops,
+    mlirCreateLinalgLinalgNamedOpConversion,
+);
+
+macros::sparse_tensor_passes!(
+    mlirCreateSparseTensorPostSparsificationRewrite,
+    mlirCreateSparseTensorPreSparsificationRewrite,
+    mlirCreateSparseTensorSparseBufferRewrite,
+    mlirCreateSparseTensorSparseTensorCodegen,
+    mlirCreateSparseTensorSparseTensorConversionPass,
+    mlirCreateSparseTensorSparseVectorization,
+    mlirCreateSparseTensorSparsificationPass,
+    mlirCreateSparseTensorStorageSpecifierToLLVM,
+);
+
+macros::transform_passes!(
+    mlirCreateTransformsCSE,
+    mlirCreateTransformsCanonicalizer,
+    mlirCreateTransformsControlFlowSink,
+    mlirCreateTransformsGenerateRuntimeVerification,
+    mlirCreateTransformsInliner,
+    mlirCreateTransformsLocationSnapshot,
+    mlirCreateTransformsLoopInvariantCodeMotion,
+    mlirCreateTransformsPrintOpStats,
+    mlirCreateTransformsSCCP,
+    mlirCreateTransformsStripDebugInfo,
+    mlirCreateTransformsSymbolDCE,
+    mlirCreateTransformsSymbolPrivatize,
+    mlirCreateTransformsTopologicalSort,
+    mlirCreateTransformsViewOpGraph,
+);
+
+pub fn register_all_dialects(registry: &DialectRegistry) {
+    unsafe { mlirRegisterAllDialects(registry.to_raw()) }
+}
+pub fn register_all_llvm_translations(context: &Context) {
+    unsafe { mlirRegisterAllLLVMTranslations(context.to_raw()) }
+}
+pub fn register_all_passes() {
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| unsafe { mlirRegisterAllPasses() });
+}
+pub fn parse_pass_pipeline(manager: pass::OperationPassManager, source: &str) -> Result<(), Error> {
+    let mut error_message = None;
+    let result = LogicalResult::from_raw(unsafe {
+        mlirParsePassPipeline(
+            manager.to_raw(),
+            StringRef::from(source).to_raw(),
+            Some(handle_parse_error),
+            &mut error_message as *mut _ as *mut _,
+        )
+    });
+    if result.is_success() {
+        Ok(())
+    } else {
+        Err(Error::ParsePassPipeline(
+            error_message.unwrap_or_else(|| "failed to parse error message in UTF-8".into()),
+        ))
+    }
+}
+
+unsafe extern "C" fn handle_parse_error(raw_string: MlirStringRef, data: *mut c_void) {
+    let string = StringRef::from_raw(raw_string);
+    let data = &mut *(data as *mut Option<String>);
+    if let Some(message) = data {
+        message.extend(string.as_str())
+    } else {
+        *data = string.as_str().map(String::from).ok();
+    }
+}
+
+pub unsafe fn into_raw_array<T>(xs: Vec<T>) -> *mut T {
+    xs.leak().as_mut_ptr()
+}
+pub unsafe extern "C" fn print_callback(string: MlirStringRef, data: *mut c_void) {
+    let (formatter, result) = &mut *(data as *mut (&mut Formatter, fmt::Result));
+    if result.is_err() {
+        return;
+    }
+    *result = (|| {
+        write!(
+            formatter,
+            "{}",
+            StringRef::from_raw(string).as_str().map_err(|_| fmt::Error)?
+        )
+    })();
+}
+pub unsafe extern "C" fn print_string_callback(string: MlirStringRef, data: *mut c_void) {
+    let (writer, result) = &mut *(data as *mut (String, Result<(), Error>));
+    if result.is_err() {
+        return;
+    }
+    *result = (|| {
+        writer.push_str(StringRef::from_raw(string).as_str()?);
+        Ok(())
+    })();
+}
+
+pub fn load_all_dialects(context: &Context) {
+    let registry = DialectRegistry::new();
+    register_all_dialects(&registry);
+    context.append_dialect_registry(&registry);
+    context.load_all_available_dialects();
+}
+
+pub fn create_test_context() -> Context {
+    let context = Context::new();
+    context.attach_diagnostic_handler(|diagnostic| {
+        eprintln!("{}", diagnostic);
+        true
+    });
+    load_all_dialects(&context);
+    register_all_llvm_translations(&context);
+    context
 }
 
 #[cfg(test)]
