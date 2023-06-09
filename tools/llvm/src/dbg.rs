@@ -1,14 +1,8 @@
-use llvm_lib::core::LLVMMetadataAsValue;
-use llvm_lib::debuginfo::*;
-use llvm_lib::prelude::{LLVMDIBuilderRef, LLVMMetadataRef};
-use std::convert::TryInto;
-use std::marker;
-use std::ops::Range;
+use llvm_lib::{core::*, debuginfo::*, prelude::*};
+use std::{convert::TryInto, marker, ops::Range};
 
 use crate::val::*;
 use crate::*;
-use crate::{AsContextRef, Context};
-pub use flags::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DebugInfoBuilder<'ctx> {
@@ -1117,3 +1111,5 @@ mod flags {
         Ada2012,
     }
 }
+
+pub use flags::*;

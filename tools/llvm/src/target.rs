@@ -1,18 +1,10 @@
-use llvm_lib::target::*;
-use llvm_lib::target_machine::*;
+use llvm_lib::{target::*, target_machine::*};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
-use std::default::Default;
-use std::ffi::CStr;
-use std::fmt;
-use std::mem::MaybeUninit;
-use std::path::Path;
-use std::ptr;
+use std::{default::Default, ffi::CStr, fmt, mem::MaybeUninit, path::Path, ptr};
 
-use crate::pass::PassManager;
 use crate::typ::*;
 use crate::val::*;
-use crate::AsContextRef;
 use crate::*;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

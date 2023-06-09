@@ -200,8 +200,8 @@ mod mlir {
             "#,
         )
         .unwrap();
-        let pass_manager = pass::PassManager::new(&context);
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+        let pass_manager = PassManager::new(&context);
+        pass_manager.add_pass(conversion::create_func_to_llvm());
         pass_manager
             .nested_under("func.func")
             .add_pass(pass::conversion::create_arith_to_llvm());
@@ -236,7 +236,7 @@ mod mlir {
             "#,
         )
         .unwrap();
-        let pass_manager = pass::PassManager::new(&context);
+        let pass_manager = PassManager::new(&context);
         pass_manager.add_pass(pass::conversion::create_func_to_llvm());
         pass_manager
             .nested_under("func.func")

@@ -1,13 +1,10 @@
-use llvm_lib::core::*;
-use llvm_lib::prelude::{LLVMBuilderRef, LLVMValueRef};
+use llvm_lib::{core::*, prelude::*};
 use std::marker;
 
 use crate::dbg::DILocation;
-use crate::to_c_str;
 use crate::typ::*;
 use crate::val::*;
-use crate::Context;
-use crate::{AtomicOrdering, AtomicRMWBinOp, BasicBlock, FloatPredicate, IntPredicate};
+use crate::*;
 
 #[derive(Debug)]
 pub struct Builder<'ctx> {
