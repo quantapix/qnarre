@@ -417,7 +417,7 @@ impl ContextImpl {
     fn create_module_from_ir<'ctx>(&self, memory_buffer: MemoryBuffer) -> Result<Module<'ctx>, LLVMString> {
         let mut module = ptr::null_mut();
         let mut err_str = ptr::null_mut();
-        let code = unsafe { LLVMParseIRInContext(self.0, memory_buffer.memory_buffer, &mut module, &mut err_str) };
+        let code = unsafe { LLVMParseIRInContext(self.0, memory_buffer.raw, &mut module, &mut err_str) };
         forget(memory_buffer);
         if code == 0 {
             unsafe {
@@ -564,7 +564,7 @@ impl ContextImpl {
         unsafe {
             BasicBlock::new(LLVMInsertBasicBlockInContext(
                 self.0,
-                basic_block.basic_block,
+                basic_block.raw,
                 c_string.as_ptr(),
             ))
             .expect("Prepending basic block should never fail")

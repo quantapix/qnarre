@@ -155,8 +155,8 @@ impl<'ctx> Builder<'ctx> {
                 fn_val_ref,
                 args.as_mut_ptr(),
                 args.len() as u32,
-                then_block.basic_block,
-                catch_block.basic_block,
+                then_block.raw,
+                catch_block.raw,
                 c_string.as_ptr(),
             )
         };
@@ -875,7 +875,7 @@ impl<'ctx> Builder<'ctx> {
         unsafe { <<T::BaseType as FloatMathType>::MathConvType as IntMathType>::ValueType::new(value) }
     }
     pub fn build_unconditional_branch(&self, destination_block: BasicBlock<'ctx>) -> InstructionValue<'ctx> {
-        let value = unsafe { LLVMBuildBr(self.builder, destination_block.basic_block) };
+        let value = unsafe { LLVMBuildBr(self.builder, destination_block.raw) };
         unsafe { InstructionValue::new(value) }
     }
     pub fn build_conditional_branch(
@@ -884,14 +884,7 @@ impl<'ctx> Builder<'ctx> {
         then_block: BasicBlock<'ctx>,
         else_block: BasicBlock<'ctx>,
     ) -> InstructionValue<'ctx> {
-        let value = unsafe {
-            LLVMBuildCondBr(
-                self.builder,
-                comparison.as_value_ref(),
-                then_block.basic_block,
-                else_block.basic_block,
-            )
-        };
+        let value = unsafe { LLVMBuildCondBr(self.builder, comparison.as_value_ref(), then_block.raw, else_block.raw) };
         unsafe { InstructionValue::new(value) }
     }
     pub fn build_indirect_branch<BV: BasicValue<'ctx>>(
@@ -901,7 +894,7 @@ impl<'ctx> Builder<'ctx> {
     ) -> InstructionValue<'ctx> {
         let value = unsafe { LLVMBuildIndirectBr(self.builder, address.as_value_ref(), destinations.len() as u32) };
         for destination in destinations {
-            unsafe { LLVMAddDestination(value, destination.basic_block) }
+            unsafe { LLVMAddDestination(value, destination.raw) }
         }
         unsafe { InstructionValue::new(value) }
     }
@@ -931,14 +924,14 @@ impl<'ctx> Builder<'ctx> {
         unsafe { T::new(value) }
     }
     pub fn position_at(&self, basic_block: BasicBlock<'ctx>, instruction: &InstructionValue<'ctx>) {
-        unsafe { LLVMPositionBuilder(self.builder, basic_block.basic_block, instruction.as_value_ref()) }
+        unsafe { LLVMPositionBuilder(self.builder, basic_block.raw, instruction.as_value_ref()) }
     }
     pub fn position_before(&self, instruction: &InstructionValue<'ctx>) {
         unsafe { LLVMPositionBuilderBefore(self.builder, instruction.as_value_ref()) }
     }
     pub fn position_at_end(&self, basic_block: BasicBlock<'ctx>) {
         unsafe {
-            LLVMPositionBuilderAtEnd(self.builder, basic_block.basic_block);
+            LLVMPositionBuilderAtEnd(self.builder, basic_block.raw);
         }
     }
     pub fn build_extract_value<AV: AggregateValue<'ctx>>(
@@ -1094,16 +1087,10 @@ impl<'ctx> Builder<'ctx> {
         else_block: BasicBlock<'ctx>,
         cases: &[(IntValue<'ctx>, BasicBlock<'ctx>)],
     ) -> InstructionValue<'ctx> {
-        let switch_value = unsafe {
-            LLVMBuildSwitch(
-                self.builder,
-                value.as_value_ref(),
-                else_block.basic_block,
-                cases.len() as u32,
-            )
-        };
+        let switch_value =
+            unsafe { LLVMBuildSwitch(self.builder, value.as_value_ref(), else_block.raw, cases.len() as u32) };
         for &(value, basic_block) in cases {
-            unsafe { LLVMAddCase(switch_value, value.as_value_ref(), basic_block.basic_block) }
+            unsafe { LLVMAddCase(switch_value, value.as_value_ref(), basic_block.raw) }
         }
         unsafe { InstructionValue::new(switch_value) }
     }

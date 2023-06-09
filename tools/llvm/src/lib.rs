@@ -48,31 +48,31 @@ use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Attribute {
-    pub(crate) attribute: LLVMAttributeRef,
+    pub raw: LLVMAttributeRef,
 }
 impl Attribute {
-    pub unsafe fn new(attribute: LLVMAttributeRef) -> Self {
-        debug_assert!(!attribute.is_null());
-        Attribute { attribute }
+    pub unsafe fn new(raw: LLVMAttributeRef) -> Self {
+        debug_assert!(!raw.is_null());
+        Attribute { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMAttributeRef {
-        self.attribute
+        self.raw
     }
     pub fn is_enum(self) -> bool {
-        unsafe { LLVMIsEnumAttribute(self.attribute) == 1 }
+        unsafe { LLVMIsEnumAttribute(self.raw) == 1 }
     }
     pub fn is_string(self) -> bool {
-        unsafe { LLVMIsStringAttribute(self.attribute) == 1 }
+        unsafe { LLVMIsStringAttribute(self.raw) == 1 }
     }
     pub fn is_type(self) -> bool {
-        unsafe { LLVMIsTypeAttribute(self.attribute) == 1 }
+        unsafe { LLVMIsTypeAttribute(self.raw) == 1 }
     }
     pub fn get_named_enum_kind_id(name: &str) -> u32 {
         unsafe { LLVMGetEnumAttributeKindForName(name.as_ptr() as *const ::libc::c_char, name.len()) }
     }
     pub fn get_enum_kind_id(self) -> u32 {
         assert!(self.get_enum_kind_id_is_valid()); // FIXME: SubTypes
-        unsafe { LLVMGetEnumAttributeKind(self.attribute) }
+        unsafe { LLVMGetEnumAttributeKind(self.raw) }
     }
     fn get_enum_kind_id_is_valid(self) -> bool {
         self.is_enum() || self.is_type()
@@ -82,23 +82,23 @@ impl Attribute {
     }
     pub fn get_enum_value(self) -> u64 {
         assert!(self.is_enum()); // FIXME: SubTypes
-        unsafe { LLVMGetEnumAttributeValue(self.attribute) }
+        unsafe { LLVMGetEnumAttributeValue(self.raw) }
     }
     pub fn get_string_kind_id(&self) -> &CStr {
         assert!(self.is_string()); // FIXME: SubTypes
         let mut length = 0;
-        let cstr_ptr = unsafe { LLVMGetStringAttributeKind(self.attribute, &mut length) };
+        let cstr_ptr = unsafe { LLVMGetStringAttributeKind(self.raw, &mut length) };
         unsafe { CStr::from_ptr(cstr_ptr) }
     }
     pub fn get_string_value(&self) -> &CStr {
         assert!(self.is_string()); // FIXME: SubTypes
         let mut length = 0;
-        let cstr_ptr = unsafe { LLVMGetStringAttributeValue(self.attribute, &mut length) };
+        let cstr_ptr = unsafe { LLVMGetStringAttributeValue(self.raw, &mut length) };
         unsafe { CStr::from_ptr(cstr_ptr) }
     }
     pub fn get_type_value(&self) -> AnyTypeEnum {
         assert!(self.is_type()); // FIXME: SubTypes
-        unsafe { AnyTypeEnum::new(LLVMGetTypeAttributeValue(self.attribute)) }
+        unsafe { AnyTypeEnum::new(LLVMGetTypeAttributeValue(self.raw)) }
     }
 }
 
@@ -109,7 +109,7 @@ pub enum AttributeLoc {
     Function,
 }
 impl AttributeLoc {
-    pub(crate) fn get_index(self) -> u32 {
+    pub fn get_index(self) -> u32 {
         match self {
             AttributeLoc::Return => 0,
             AttributeLoc::Param(index) => {
@@ -149,102 +149,102 @@ impl TryFrom<u32> for AddressSpace {
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct BasicBlock<'ctx> {
-    pub(crate) basic_block: LLVMBasicBlockRef,
+    pub raw: LLVMBasicBlockRef,
     _marker: PhantomData<&'ctx ()>,
 }
 impl<'ctx> BasicBlock<'ctx> {
-    pub(crate) unsafe fn new(basic_block: LLVMBasicBlockRef) -> Option<Self> {
-        if basic_block.is_null() {
+    pub unsafe fn new(raw: LLVMBasicBlockRef) -> Option<Self> {
+        if raw.is_null() {
             return None;
         }
-        assert!(!LLVMIsABasicBlock(basic_block as LLVMValueRef).is_null());
+        assert!(!LLVMIsABasicBlock(raw as LLVMValueRef).is_null());
         Some(BasicBlock {
-            basic_block,
+            raw,
             _marker: PhantomData,
         })
     }
     pub fn as_mut_ptr(&self) -> LLVMBasicBlockRef {
-        self.basic_block
+        self.raw
     }
     pub fn get_parent(self) -> Option<FunctionValue<'ctx>> {
-        unsafe { FunctionValue::new(LLVMGetBasicBlockParent(self.basic_block)) }
+        unsafe { FunctionValue::new(LLVMGetBasicBlockParent(self.raw)) }
     }
     pub fn get_previous_basic_block(self) -> Option<BasicBlock<'ctx>> {
         self.get_parent()?;
-        unsafe { BasicBlock::new(LLVMGetPreviousBasicBlock(self.basic_block)) }
+        unsafe { BasicBlock::new(LLVMGetPreviousBasicBlock(self.raw)) }
     }
     pub fn get_next_basic_block(self) -> Option<BasicBlock<'ctx>> {
         self.get_parent()?;
-        unsafe { BasicBlock::new(LLVMGetNextBasicBlock(self.basic_block)) }
+        unsafe { BasicBlock::new(LLVMGetNextBasicBlock(self.raw)) }
     }
-    pub fn move_before(self, basic_block: BasicBlock<'ctx>) -> Result<(), ()> {
-        if self.get_parent().is_none() || basic_block.get_parent().is_none() {
+    pub fn move_before(self, x: BasicBlock<'ctx>) -> Result<(), ()> {
+        if self.get_parent().is_none() || x.get_parent().is_none() {
             return Err(());
         }
-        unsafe { LLVMMoveBasicBlockBefore(self.basic_block, basic_block.basic_block) }
+        unsafe { LLVMMoveBasicBlockBefore(self.raw, x.raw) }
         Ok(())
     }
-    pub fn move_after(self, basic_block: BasicBlock<'ctx>) -> Result<(), ()> {
-        if self.get_parent().is_none() || basic_block.get_parent().is_none() {
+    pub fn move_after(self, x: BasicBlock<'ctx>) -> Result<(), ()> {
+        if self.get_parent().is_none() || x.get_parent().is_none() {
             return Err(());
         }
-        unsafe { LLVMMoveBasicBlockAfter(self.basic_block, basic_block.basic_block) }
+        unsafe { LLVMMoveBasicBlockAfter(self.raw, x.raw) }
         Ok(())
     }
     pub fn get_first_instruction(self) -> Option<InstructionValue<'ctx>> {
-        let value = unsafe { LLVMGetFirstInstruction(self.basic_block) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetFirstInstruction(self.raw) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(InstructionValue::new(value)) }
+        unsafe { Some(InstructionValue::new(y)) }
     }
     pub fn get_last_instruction(self) -> Option<InstructionValue<'ctx>> {
-        let value = unsafe { LLVMGetLastInstruction(self.basic_block) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetLastInstruction(self.raw) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(InstructionValue::new(value)) }
+        unsafe { Some(InstructionValue::new(y)) }
     }
     pub fn get_instruction_with_name(self, name: &str) -> Option<InstructionValue<'ctx>> {
-        let instruction = self.get_first_instruction()?;
-        instruction.get_instruction_with_name(name)
+        let y = self.get_first_instruction()?;
+        y.get_instruction_with_name(name)
     }
     pub fn get_terminator(self) -> Option<InstructionValue<'ctx>> {
-        let value = unsafe { LLVMGetBasicBlockTerminator(self.basic_block) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetBasicBlockTerminator(self.raw) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(InstructionValue::new(value)) }
+        unsafe { Some(InstructionValue::new(y)) }
     }
     pub fn remove_from_function(self) -> Result<(), ()> {
         if self.get_parent().is_none() {
             return Err(());
         }
-        unsafe { LLVMRemoveBasicBlockFromParent(self.basic_block) }
+        unsafe { LLVMRemoveBasicBlockFromParent(self.raw) }
         Ok(())
     }
     pub unsafe fn delete(self) -> Result<(), ()> {
         if self.get_parent().is_none() {
             return Err(());
         }
-        LLVMDeleteBasicBlock(self.basic_block);
+        LLVMDeleteBasicBlock(self.raw);
         Ok(())
     }
     pub fn get_context(self) -> ContextRef<'ctx> {
-        unsafe { ContextRef::new(LLVMGetTypeContext(LLVMTypeOf(LLVMBasicBlockAsValue(self.basic_block)))) }
+        unsafe { ContextRef::new(LLVMGetTypeContext(LLVMTypeOf(LLVMBasicBlockAsValue(self.raw)))) }
     }
     pub fn get_name(&self) -> &CStr {
-        let ptr = unsafe { LLVMGetBasicBlockName(self.basic_block) };
-        unsafe { CStr::from_ptr(ptr) }
+        let y = unsafe { LLVMGetBasicBlockName(self.raw) };
+        unsafe { CStr::from_ptr(y) }
     }
     pub fn set_name(&self, name: &str) {
-        let c_string = to_c_str(name);
+        let y = to_c_str(name);
         use llvm_lib::core::LLVMSetValueName2;
-        unsafe { LLVMSetValueName2(LLVMBasicBlockAsValue(self.basic_block), c_string.as_ptr(), name.len()) };
+        unsafe { LLVMSetValueName2(LLVMBasicBlockAsValue(self.raw), y.as_ptr(), name.len()) };
     }
     pub fn replace_all_uses_with(self, other: &BasicBlock<'ctx>) {
-        let value = unsafe { LLVMBasicBlockAsValue(self.basic_block) };
-        let other = unsafe { LLVMBasicBlockAsValue(other.basic_block) };
+        let value = unsafe { LLVMBasicBlockAsValue(self.raw) };
+        let other = unsafe { LLVMBasicBlockAsValue(other.raw) };
         if value != other {
             unsafe {
                 LLVMReplaceAllUsesWith(value, other);
@@ -252,7 +252,7 @@ impl<'ctx> BasicBlock<'ctx> {
         }
     }
     pub fn get_first_use(self) -> Option<BasicValueUse<'ctx>> {
-        let use_ = unsafe { LLVMGetFirstUse(LLVMBasicBlockAsValue(self.basic_block)) };
+        let use_ = unsafe { LLVMGetFirstUse(LLVMBasicBlockAsValue(self.raw)) };
         if use_.is_null() {
             return None;
         }
@@ -261,7 +261,7 @@ impl<'ctx> BasicBlock<'ctx> {
     pub unsafe fn get_address(self) -> Option<PointerValue<'ctx>> {
         let parent = self.get_parent()?;
         self.get_previous_basic_block()?;
-        let value = PointerValue::new(LLVMBlockAddress(parent.as_value_ref(), self.basic_block));
+        let value = PointerValue::new(LLVMBlockAddress(parent.as_value_ref(), self.raw));
         if value.is_null() {
             return None;
         }
@@ -270,11 +270,11 @@ impl<'ctx> BasicBlock<'ctx> {
 }
 impl fmt::Debug for BasicBlock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_value = unsafe { CStr::from_ptr(LLVMPrintValueToString(self.basic_block as LLVMValueRef)) };
-        let llvm_type = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.basic_block as LLVMValueRef))) };
-        let is_const = unsafe { LLVMIsConstant(self.basic_block as LLVMValueRef) == 1 };
+        let llvm_value = unsafe { CStr::from_ptr(LLVMPrintValueToString(self.raw as LLVMValueRef)) };
+        let llvm_type = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.raw as LLVMValueRef))) };
+        let is_const = unsafe { LLVMIsConstant(self.raw as LLVMValueRef) == 1 };
         f.debug_struct("BasicBlock")
-            .field("address", &self.basic_block)
+            .field("address", &self.raw)
             .field("is_const", &is_const)
             .field("llvm_value", &llvm_value)
             .field("llvm_type", &llvm_type)
@@ -436,8 +436,8 @@ pub enum ThreadLocalMode {
     LocalExecTLSModel,
 }
 impl ThreadLocalMode {
-    pub(crate) fn new(thread_local_mode: LLVMThreadLocalMode) -> Option<Self> {
-        match thread_local_mode {
+    pub fn new(x: LLVMThreadLocalMode) -> Option<Self> {
+        match x {
             LLVMThreadLocalMode::LLVMGeneralDynamicTLSModel => Some(ThreadLocalMode::GeneralDynamicTLSModel),
             LLVMThreadLocalMode::LLVMLocalDynamicTLSModel => Some(ThreadLocalMode::LocalDynamicTLSModel),
             LLVMThreadLocalMode::LLVMInitialExecTLSModel => Some(ThreadLocalMode::InitialExecTLSModel),
@@ -445,7 +445,7 @@ impl ThreadLocalMode {
             LLVMThreadLocalMode::LLVMNotThreadLocal => None,
         }
     }
-    pub(crate) fn as_llvm_mode(self) -> LLVMThreadLocalMode {
+    pub fn as_llvm_mode(self) -> LLVMThreadLocalMode {
         match self {
             ThreadLocalMode::GeneralDynamicTLSModel => LLVMThreadLocalMode::LLVMGeneralDynamicTLSModel,
             ThreadLocalMode::LocalDynamicTLSModel => LLVMThreadLocalMode::LLVMLocalDynamicTLSModel,
@@ -521,15 +521,15 @@ impl Intrinsic {
 
 #[derive(Debug)]
 pub struct MemoryBuffer {
-    pub(crate) memory_buffer: LLVMMemoryBufferRef,
+    pub raw: LLVMMemoryBufferRef,
 }
 impl MemoryBuffer {
-    pub unsafe fn new(memory_buffer: LLVMMemoryBufferRef) -> Self {
-        assert!(!memory_buffer.is_null());
-        MemoryBuffer { memory_buffer }
+    pub unsafe fn new(raw: LLVMMemoryBufferRef) -> Self {
+        assert!(!raw.is_null());
+        MemoryBuffer { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMMemoryBufferRef {
-        self.memory_buffer
+        self.raw
     }
     pub fn create_from_file(path: &Path) -> Result<Self, LLVMString> {
         let path = to_c_str(path.to_str().expect("Did not find a valid Unicode path string"));
@@ -562,7 +562,7 @@ impl MemoryBuffer {
     }
     pub fn create_from_memory_range(input: &[u8], name: &str) -> Self {
         let name_c_string = to_c_str(name);
-        let memory_buffer = unsafe {
+        let y = unsafe {
             LLVMCreateMemoryBufferWithMemoryRange(
                 input.as_ptr() as *const ::libc::c_char,
                 input.len(),
@@ -570,90 +570,90 @@ impl MemoryBuffer {
                 false as i32,
             )
         };
-        unsafe { MemoryBuffer::new(memory_buffer) }
+        unsafe { MemoryBuffer::new(y) }
     }
     pub fn create_from_memory_range_copy(input: &[u8], name: &str) -> Self {
         let name_c_string = to_c_str(name);
-        let memory_buffer = unsafe {
+        let y = unsafe {
             LLVMCreateMemoryBufferWithMemoryRangeCopy(
                 input.as_ptr() as *const ::libc::c_char,
                 input.len(),
                 name_c_string.as_ptr(),
             )
         };
-        unsafe { MemoryBuffer::new(memory_buffer) }
+        unsafe { MemoryBuffer::new(y) }
     }
     pub fn as_slice(&self) -> &[u8] {
         unsafe {
-            let start = LLVMGetBufferStart(self.memory_buffer);
+            let start = LLVMGetBufferStart(self.raw);
             slice::from_raw_parts(start as *const _, self.get_size())
         }
     }
     pub fn get_size(&self) -> usize {
-        unsafe { LLVMGetBufferSize(self.memory_buffer) }
+        unsafe { LLVMGetBufferSize(self.raw) }
     }
     pub fn create_object_file(self) -> Result<ObjectFile, ()> {
-        let object_file = unsafe { LLVMCreateObjectFile(self.memory_buffer) };
+        let y = unsafe { LLVMCreateObjectFile(self.raw) };
         forget(self);
-        if object_file.is_null() {
+        if y.is_null() {
             return Err(());
         }
-        unsafe { Ok(ObjectFile::new(object_file)) }
+        unsafe { Ok(ObjectFile::new(y)) }
     }
 }
 impl Drop for MemoryBuffer {
     fn drop(&mut self) {
         unsafe {
-            LLVMDisposeMemoryBuffer(self.memory_buffer);
+            LLVMDisposeMemoryBuffer(self.raw);
         }
     }
 }
 
 #[derive(Debug)]
 pub struct ObjectFile {
-    object_file: LLVMObjectFileRef,
+    raw: LLVMObjectFileRef,
 }
 impl ObjectFile {
-    pub unsafe fn new(object_file: LLVMObjectFileRef) -> Self {
-        assert!(!object_file.is_null());
-        ObjectFile { object_file }
+    pub unsafe fn new(raw: LLVMObjectFileRef) -> Self {
+        assert!(!raw.is_null());
+        ObjectFile { raw }
     }
     pub fn as_mut_ptr(&self) -> LLVMObjectFileRef {
-        self.object_file
+        self.raw
     }
     pub fn get_sections(&self) -> SectionIterator {
-        let section_iterator = unsafe { LLVMGetSections(self.object_file) };
-        unsafe { SectionIterator::new(section_iterator, self.object_file) }
+        let y = unsafe { LLVMGetSections(self.raw) };
+        unsafe { SectionIterator::new(y, self.raw) }
     }
     pub fn get_symbols(&self) -> SymbolIterator {
-        let symbol_iterator = unsafe { LLVMGetSymbols(self.object_file) };
-        unsafe { SymbolIterator::new(symbol_iterator, self.object_file) }
+        let y = unsafe { LLVMGetSymbols(self.raw) };
+        unsafe { SymbolIterator::new(y, self.raw) }
     }
 }
 impl Drop for ObjectFile {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeObjectFile(self.object_file) }
+        unsafe { LLVMDisposeObjectFile(self.raw) }
     }
 }
 
 #[derive(Debug)]
 pub struct SectionIterator {
-    section_iterator: LLVMSectionIteratorRef,
-    object_file: LLVMObjectFileRef,
+    raw: LLVMSectionIteratorRef,
+    obj: LLVMObjectFileRef,
     before_first: bool,
 }
 impl SectionIterator {
-    pub unsafe fn new(section_iterator: LLVMSectionIteratorRef, object_file: LLVMObjectFileRef) -> Self {
-        assert!(!section_iterator.is_null());
-        assert!(!object_file.is_null());
+    pub unsafe fn new(raw: LLVMSectionIteratorRef, obj: LLVMObjectFileRef) -> Self {
+        assert!(!raw.is_null());
+        assert!(!obj.is_null());
         SectionIterator {
-            section_iterator,
-            object_file,
+            raw,
+            obj,
             before_first: true,
         }
     }
     pub fn as_mut_ptr(&self) -> (LLVMSectionIteratorRef, LLVMObjectFileRef) {
-        (self.section_iterator, self.object_file)
+        (self.raw, self.obj)
     }
 }
 impl Iterator for SectionIterator {
@@ -663,84 +663,80 @@ impl Iterator for SectionIterator {
             self.before_first = false;
         } else {
             unsafe {
-                LLVMMoveToNextSection(self.section_iterator);
+                LLVMMoveToNextSection(self.raw);
             }
         }
-        let at_end = unsafe { LLVMIsSectionIteratorAtEnd(self.object_file, self.section_iterator) == 1 };
+        let at_end = unsafe { LLVMIsSectionIteratorAtEnd(self.obj, self.raw) == 1 };
         if at_end {
             return None;
         }
-        Some(unsafe { Section::new(self.section_iterator, self.object_file) })
+        Some(unsafe { Section::new(self.raw, self.obj) })
     }
 }
 impl Drop for SectionIterator {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeSectionIterator(self.section_iterator) }
+        unsafe { LLVMDisposeSectionIterator(self.raw) }
     }
 }
 
 #[derive(Debug)]
 pub struct Section {
-    section: LLVMSectionIteratorRef,
-    object_file: LLVMObjectFileRef,
+    raw: LLVMSectionIteratorRef,
+    obj: LLVMObjectFileRef,
 }
 impl Section {
-    pub unsafe fn new(section: LLVMSectionIteratorRef, object_file: LLVMObjectFileRef) -> Self {
-        assert!(!section.is_null());
-        assert!(!object_file.is_null());
-        Section { section, object_file }
+    pub unsafe fn new(raw: LLVMSectionIteratorRef, obj: LLVMObjectFileRef) -> Self {
+        assert!(!raw.is_null());
+        assert!(!obj.is_null());
+        Section { raw, obj }
     }
     pub unsafe fn as_mut_ptr(&self) -> (LLVMSectionIteratorRef, LLVMObjectFileRef) {
-        (self.section, self.object_file)
+        (self.raw, self.obj)
     }
     pub fn get_name(&self) -> Option<&CStr> {
-        let name = unsafe { LLVMGetSectionName(self.section) };
-        if !name.is_null() {
-            Some(unsafe { CStr::from_ptr(name) })
+        let y = unsafe { LLVMGetSectionName(self.raw) };
+        if !y.is_null() {
+            Some(unsafe { CStr::from_ptr(y) })
         } else {
             None
         }
     }
     pub fn size(&self) -> u64 {
-        unsafe { LLVMGetSectionSize(self.section) }
+        unsafe { LLVMGetSectionSize(self.raw) }
     }
     pub fn get_contents(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(LLVMGetSectionContents(self.section) as *const u8, self.size() as usize) }
+        unsafe { std::slice::from_raw_parts(LLVMGetSectionContents(self.raw) as *const u8, self.size() as usize) }
     }
     pub fn get_address(&self) -> u64 {
-        unsafe { LLVMGetSectionAddress(self.section) }
+        unsafe { LLVMGetSectionAddress(self.raw) }
     }
     pub fn get_relocations(&self) -> RelocationIterator {
-        let relocation_iterator = unsafe { LLVMGetRelocations(self.section) };
-        unsafe { RelocationIterator::new(relocation_iterator, self.section, self.object_file) }
+        let y = unsafe { LLVMGetRelocations(self.raw) };
+        unsafe { RelocationIterator::new(y, self.raw, self.obj) }
     }
 }
 
 #[derive(Debug)]
 pub struct RelocationIterator {
-    relocation_iterator: LLVMRelocationIteratorRef,
-    section_iterator: LLVMSectionIteratorRef,
-    object_file: LLVMObjectFileRef,
+    raw: LLVMRelocationIteratorRef,
+    sec: LLVMSectionIteratorRef,
+    obj: LLVMObjectFileRef,
     before_first: bool,
 }
 impl RelocationIterator {
-    pub unsafe fn new(
-        relocation_iterator: LLVMRelocationIteratorRef,
-        section_iterator: LLVMSectionIteratorRef,
-        object_file: LLVMObjectFileRef,
-    ) -> Self {
-        assert!(!relocation_iterator.is_null());
-        assert!(!section_iterator.is_null());
-        assert!(!object_file.is_null());
+    pub unsafe fn new(raw: LLVMRelocationIteratorRef, sec: LLVMSectionIteratorRef, obj: LLVMObjectFileRef) -> Self {
+        assert!(!raw.is_null());
+        assert!(!sec.is_null());
+        assert!(!obj.is_null());
         RelocationIterator {
-            relocation_iterator,
-            section_iterator,
-            object_file,
+            raw,
+            sec,
+            obj,
             before_first: true,
         }
     }
     pub fn as_mut_ptr(&self) -> (LLVMRelocationIteratorRef, LLVMSectionIteratorRef, LLVMObjectFileRef) {
-        (self.relocation_iterator, self.section_iterator, self.object_file)
+        (self.raw, self.sec, self.obj)
     }
 }
 impl Iterator for RelocationIterator {
@@ -749,73 +745,70 @@ impl Iterator for RelocationIterator {
         if self.before_first {
             self.before_first = false;
         } else {
-            unsafe { LLVMMoveToNextRelocation(self.relocation_iterator) }
+            unsafe { LLVMMoveToNextRelocation(self.raw) }
         }
-        let at_end = unsafe { LLVMIsRelocationIteratorAtEnd(self.section_iterator, self.relocation_iterator) == 1 };
+        let at_end = unsafe { LLVMIsRelocationIteratorAtEnd(self.sec, self.raw) == 1 };
         if at_end {
             return None;
         }
-        Some(unsafe { Relocation::new(self.relocation_iterator, self.object_file) })
+        Some(unsafe { Relocation::new(self.raw, self.obj) })
     }
 }
 impl Drop for RelocationIterator {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeRelocationIterator(self.relocation_iterator) }
+        unsafe { LLVMDisposeRelocationIterator(self.raw) }
     }
 }
 
 #[derive(Debug)]
 pub struct Relocation {
-    relocation: LLVMRelocationIteratorRef,
-    object_file: LLVMObjectFileRef,
+    raw: LLVMRelocationIteratorRef,
+    obj: LLVMObjectFileRef,
 }
 impl Relocation {
-    pub unsafe fn new(relocation: LLVMRelocationIteratorRef, object_file: LLVMObjectFileRef) -> Self {
-        assert!(!relocation.is_null());
-        assert!(!object_file.is_null());
-        Relocation {
-            relocation,
-            object_file,
-        }
+    pub unsafe fn new(raw: LLVMRelocationIteratorRef, obj: LLVMObjectFileRef) -> Self {
+        assert!(!raw.is_null());
+        assert!(!obj.is_null());
+        Relocation { raw, obj }
     }
     pub fn as_mut_ptr(&self) -> (LLVMRelocationIteratorRef, LLVMObjectFileRef) {
-        (self.relocation, self.object_file)
+        (self.raw, self.obj)
     }
     pub fn get_offset(&self) -> u64 {
-        unsafe { LLVMGetRelocationOffset(self.relocation) }
+        unsafe { LLVMGetRelocationOffset(self.raw) }
     }
     pub fn get_symbols(&self) -> SymbolIterator {
-        let symbol_iterator = unsafe { LLVMGetRelocationSymbol(self.relocation) };
-        unsafe { SymbolIterator::new(symbol_iterator, self.object_file) }
+        let y = unsafe { LLVMGetRelocationSymbol(self.raw) };
+        unsafe { SymbolIterator::new(y, self.obj) }
     }
     pub fn get_type(&self) -> (u64, &CStr) {
-        let type_int = unsafe { LLVMGetRelocationType(self.relocation) };
-        let type_name = unsafe { CStr::from_ptr(LLVMGetRelocationTypeName(self.relocation)) };
+        let type_int = unsafe { LLVMGetRelocationType(self.raw) };
+        let type_name = unsafe { CStr::from_ptr(LLVMGetRelocationTypeName(self.raw)) };
         (type_int, type_name)
     }
     pub fn get_value(&self) -> &CStr {
-        unsafe { CStr::from_ptr(LLVMGetRelocationValueString(self.relocation)) }
+        unsafe { CStr::from_ptr(LLVMGetRelocationValueString(self.raw)) }
     }
 }
 
 #[derive(Debug)]
 pub struct SymbolIterator {
-    symbol_iterator: LLVMSymbolIteratorRef,
-    object_file: LLVMObjectFileRef,
+    raw: LLVMSymbolIteratorRef,
+    obj: LLVMObjectFileRef,
     before_first: bool,
 }
 impl SymbolIterator {
-    pub unsafe fn new(symbol_iterator: LLVMSymbolIteratorRef, object_file: LLVMObjectFileRef) -> Self {
-        assert!(!symbol_iterator.is_null());
-        assert!(!object_file.is_null());
+    pub unsafe fn new(raw: LLVMSymbolIteratorRef, obj: LLVMObjectFileRef) -> Self {
+        assert!(!raw.is_null());
+        assert!(!obj.is_null());
         SymbolIterator {
-            symbol_iterator,
-            object_file,
+            raw,
+            obj,
             before_first: true,
         }
     }
     pub fn as_mut_ptr(&self) -> (LLVMSymbolIteratorRef, LLVMObjectFileRef) {
-        (self.symbol_iterator, self.object_file)
+        (self.raw, self.obj)
     }
 }
 impl Iterator for SymbolIterator {
@@ -824,18 +817,18 @@ impl Iterator for SymbolIterator {
         if self.before_first {
             self.before_first = false;
         } else {
-            unsafe { LLVMMoveToNextSymbol(self.symbol_iterator) }
+            unsafe { LLVMMoveToNextSymbol(self.raw) }
         }
-        let at_end = unsafe { LLVMIsSymbolIteratorAtEnd(self.object_file, self.symbol_iterator) == 1 };
+        let at_end = unsafe { LLVMIsSymbolIteratorAtEnd(self.obj, self.raw) == 1 };
         if at_end {
             return None;
         }
-        Some(unsafe { Symbol::new(self.symbol_iterator) })
+        Some(unsafe { Symbol::new(self.raw) })
     }
 }
 impl Drop for SymbolIterator {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeSymbolIterator(self.symbol_iterator) }
+        unsafe { LLVMDisposeSymbolIterator(self.raw) }
     }
 }
 
@@ -869,16 +862,16 @@ impl Symbol {
 
 #[derive(Eq)]
 pub struct DataLayout {
-    pub(crate) data_layout: LLVMStringOrRaw,
+    pub data_layout: LLVMStringOrRaw,
 }
 impl DataLayout {
-    pub(crate) unsafe fn new_owned(data_layout: *const ::libc::c_char) -> DataLayout {
+    pub unsafe fn new_owned(data_layout: *const ::libc::c_char) -> DataLayout {
         debug_assert!(!data_layout.is_null());
         DataLayout {
             data_layout: LLVMStringOrRaw::Owned(LLVMString::new(data_layout)),
         }
     }
-    pub(crate) unsafe fn new_borrowed(data_layout: *const ::libc::c_char) -> DataLayout {
+    pub unsafe fn new_borrowed(data_layout: *const ::libc::c_char) -> DataLayout {
         debug_assert!(!data_layout.is_null());
         DataLayout {
             data_layout: LLVMStringOrRaw::Borrowed(data_layout),
@@ -889,7 +882,7 @@ impl DataLayout {
     }
     pub fn as_ptr(&self) -> *const ::libc::c_char {
         match self.data_layout {
-            LLVMStringOrRaw::Owned(ref llvm_string) => llvm_string.ptr,
+            LLVMStringOrRaw::Owned(ref llvm_string) => llvm_string.raw,
             LLVMStringOrRaw::Borrowed(ptr) => ptr,
         }
     }
@@ -924,7 +917,7 @@ pub enum ComdatSelectionKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct Comdat(pub(crate) LLVMComdatRef);
+pub struct Comdat(pub LLVMComdatRef);
 impl Comdat {
     pub unsafe fn new(comdat: LLVMComdatRef) -> Self {
         debug_assert!(!comdat.is_null());
@@ -943,18 +936,18 @@ impl Comdat {
 }
 
 pub struct DiagnosticInfo {
-    diagnostic_info: LLVMDiagnosticInfoRef,
+    raw: LLVMDiagnosticInfoRef,
 }
 impl DiagnosticInfo {
-    pub unsafe fn new(diagnostic_info: LLVMDiagnosticInfoRef) -> Self {
-        DiagnosticInfo { diagnostic_info }
+    pub unsafe fn new(raw: LLVMDiagnosticInfoRef) -> Self {
+        DiagnosticInfo { raw }
     }
     pub fn get_description(&self) -> *mut ::libc::c_char {
-        unsafe { LLVMGetDiagInfoDescription(self.diagnostic_info) }
+        unsafe { LLVMGetDiagInfoDescription(self.raw) }
     }
     pub fn severity_is_error(&self) -> bool {
         unsafe {
-            match LLVMGetDiagInfoSeverity(self.diagnostic_info) {
+            match LLVMGetDiagInfoSeverity(self.raw) {
                 LLVMDiagnosticSeverity::LLVMDSError => true,
                 _ => false,
             }
@@ -964,28 +957,27 @@ impl DiagnosticInfo {
 
 #[derive(Eq)]
 pub struct LLVMString {
-    pub ptr: *const c_char,
+    pub raw: *const c_char,
 }
 impl LLVMString {
-    pub unsafe fn new(ptr: *const c_char) -> Self {
-        LLVMString { ptr }
+    pub unsafe fn new(raw: *const c_char) -> Self {
+        LLVMString { raw }
     }
     pub fn to_string(&self) -> String {
         (*self).to_string_lossy().into_owned()
     }
-    pub fn create_from_c_str(string: &CStr) -> LLVMString {
-        unsafe { LLVMString::new(LLVMCreateMessage(string.as_ptr() as *const _)) }
+    pub fn create_from_c_str(x: &CStr) -> LLVMString {
+        unsafe { LLVMString::new(LLVMCreateMessage(x.as_ptr() as *const _)) }
     }
-    pub fn create_from_str(string: &str) -> LLVMString {
-        debug_assert_eq!(string.as_bytes()[string.as_bytes().len() - 1], 0);
-
-        unsafe { LLVMString::new(LLVMCreateMessage(string.as_ptr() as *const _)) }
+    pub fn create_from_str(x: &str) -> LLVMString {
+        debug_assert_eq!(x.as_bytes()[x.as_bytes().len() - 1], 0);
+        unsafe { LLVMString::new(LLVMCreateMessage(x.as_ptr() as *const _)) }
     }
 }
 impl Deref for LLVMString {
     type Target = CStr;
     fn deref(&self) -> &Self::Target {
-        unsafe { CStr::from_ptr(self.ptr) }
+        unsafe { CStr::from_ptr(self.raw) }
     }
 }
 impl Debug for LLVMString {
@@ -999,8 +991,8 @@ impl Display for LLVMString {
     }
 }
 impl PartialEq for LLVMString {
-    fn eq(&self, other: &LLVMString) -> bool {
-        **self == **other
+    fn eq(&self, x: &LLVMString) -> bool {
+        **self == **x
     }
 }
 impl Error for LLVMString {
@@ -1015,7 +1007,7 @@ impl Error for LLVMString {
 impl Drop for LLVMString {
     fn drop(&mut self) {
         unsafe {
-            LLVMDisposeMessage(self.ptr as *mut _);
+            LLVMDisposeMessage(self.raw as *mut _);
         }
     }
 }
@@ -1169,11 +1161,11 @@ impl<'ctx> ExecutionEngine<'ctx> {
     pub fn as_mut_ptr(&self) -> LLVMExecutionEngineRef {
         self.execution_engine_inner()
     }
-    pub(crate) fn execution_engine_rc(&self) -> &Rc<LLVMExecutionEngineRef> {
+    pub fn execution_engine_rc(&self) -> &Rc<LLVMExecutionEngineRef> {
         &self.execution_engine.as_ref().expect(EE_INNER_PANIC).0
     }
     #[inline]
-    pub(crate) fn execution_engine_inner(&self) -> LLVMExecutionEngineRef {
+    pub fn execution_engine_inner(&self) -> LLVMExecutionEngineRef {
         **self.execution_engine_rc()
     }
     pub fn link_in_mc_jit() {
@@ -1424,12 +1416,12 @@ pub enum Linkage {
 
 pub struct Module<'ctx> {
     data_layout: RefCell<Option<DataLayout>>,
-    pub(crate) module: Cell<LLVMModuleRef>,
-    pub(crate) owned_by_ee: RefCell<Option<ExecutionEngine<'ctx>>>,
+    pub module: Cell<LLVMModuleRef>,
+    pub owned_by_ee: RefCell<Option<ExecutionEngine<'ctx>>>,
     _marker: PhantomData<&'ctx Context>,
 }
 impl<'ctx> Module<'ctx> {
-    pub(crate) unsafe fn new(module: LLVMModuleRef) -> Self {
+    pub unsafe fn new(module: LLVMModuleRef) -> Self {
         debug_assert!(!module.is_null());
         Module {
             module: Cell::new(module),
@@ -1738,7 +1730,7 @@ impl<'ctx> Module<'ctx> {
         let success = unsafe {
             LLVMParseBitcodeInContext(
                 context.as_ctx_ref(),
-                buffer.memory_buffer,
+                buffer.raw,
                 module.as_mut_ptr(),
                 err_string.as_mut_ptr(),
             )
@@ -1897,7 +1889,7 @@ impl<'ctx> Module<'ctx> {
                 self.module.get(),
                 to_c_str(passes).as_ptr(),
                 machine.target_machine,
-                options.options_ref,
+                options.raw,
             );
             if error == std::ptr::null_mut() {
                 Ok(())

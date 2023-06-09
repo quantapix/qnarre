@@ -397,7 +397,7 @@ impl TargetMachine {
         unsafe { LLVMSetTargetMachineAsmVerbosity(self.target_machine, verbosity as i32) }
     }
     pub fn add_analysis_passes<T>(&self, pass_manager: &PassManager<T>) {
-        unsafe { LLVMAddAnalysisPasses(self.target_machine, pass_manager.pass_manager) }
+        unsafe { LLVMAddAnalysisPasses(self.target_machine, pass_manager.raw) }
     }
     pub fn write_to_memory_buffer(&self, module: &Module, file_type: FileType) -> Result<MemoryBuffer, LLVMString> {
         let mut memory_buffer = ptr::null_mut();

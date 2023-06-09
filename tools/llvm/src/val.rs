@@ -262,7 +262,7 @@ impl<'ctx> CallSiteValue<'ctx> {
         }
     }
     pub fn add_attribute(self, loc: AttributeLoc, a: Attribute) {
-        unsafe { LLVMAddCallSiteAttribute(self.as_value_ref(), loc.get_index(), a.attribute) }
+        unsafe { LLVMAddCallSiteAttribute(self.as_value_ref(), loc.get_index(), a.raw) }
     }
     pub fn get_called_fn_value(self) -> FunctionValue<'ctx> {
         unsafe { FunctionValue::new(LLVMGetCalledValue(self.as_value_ref())).expect("This should never be null?") }
@@ -1084,7 +1084,7 @@ impl<'ctx> FunctionValue<'ctx> {
         self.val.replace_all_uses_with(x.as_value_ref())
     }
     pub fn add_attribute(self, loc: AttributeLoc, a: Attribute) {
-        unsafe { LLVMAddAttributeAtIndex(self.as_value_ref(), loc.get_index(), a.attribute) }
+        unsafe { LLVMAddAttributeAtIndex(self.as_value_ref(), loc.get_index(), a.raw) }
     }
     pub fn count_attributes(self, loc: AttributeLoc) -> u32 {
         unsafe { LLVMGetAttributeCountAtIndex(self.as_value_ref(), loc.get_index()) }
@@ -2011,12 +2011,8 @@ impl<'ctx> PhiValue<'ctx> {
         PhiValue { val: Value::new(x) }
     }
     pub fn add_incoming(self, incoming: &[(&dyn BasicValue<'ctx>, BasicBlock<'ctx>)]) {
-        let (mut values, mut basic_blocks): (Vec<LLVMValueRef>, Vec<LLVMBasicBlockRef>) = {
-            incoming
-                .iter()
-                .map(|&(v, bb)| (v.as_value_ref(), bb.basic_block))
-                .unzip()
-        };
+        let (mut values, mut basic_blocks): (Vec<LLVMValueRef>, Vec<LLVMBasicBlockRef>) =
+            { incoming.iter().map(|&(v, bb)| (v.as_value_ref(), bb.raw)).unzip() };
         unsafe {
             LLVMAddIncoming(
                 self.as_value_ref(),

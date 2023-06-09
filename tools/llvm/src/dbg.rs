@@ -631,7 +631,7 @@ impl<'ctx> DebugInfoBuilder<'ctx> {
                 var_info.map(|v| v.metadata_ref).unwrap_or(std::ptr::null_mut()),
                 expr.unwrap_or_else(|| self.create_expression(vec![])).metadata_ref,
                 debug_loc.metadata_ref,
-                block.basic_block,
+                block.raw,
             )
         };
         unsafe { InstructionValue::new(value_ref) }
