@@ -1272,7 +1272,7 @@ impl<'ctx> ExecutionEngine<'ctx> {
         function: FunctionValue<'ctx>,
         args: &[&GenericValue<'ctx>],
     ) -> GenericValue<'ctx> {
-        let mut args: Vec<LLVMGenericValueRef> = args.iter().map(|val| val.generic_value).collect();
+        let mut args: Vec<LLVMGenericValueRef> = args.iter().map(|val| val.raw).collect();
         let value = LLVMRunFunction(
             self.execution_engine_inner(),
             function.as_value_ref(),

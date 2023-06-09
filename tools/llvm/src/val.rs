@@ -1,10 +1,11 @@
 use libc::c_void;
-use llvm_lib::analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction, LLVMViewFunctionCFG, LLVMViewFunctionCFGOnly};
+use llvm_lib::analysis::*;
+use llvm_lib::comdat::*;
 use llvm_lib::core::*;
 use llvm_lib::debuginfo::{LLVMGetSubprogram, LLVMSetSubprogram};
 use llvm_lib::execution_engine::*;
 use llvm_lib::prelude::*;
-use llvm_lib::{LLVMOpcode, LLVMTypeKind, LLVMUnnamedAddr, LLVMValueKind};
+use llvm_lib::*;
 use std::convert::TryFrom;
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
@@ -31,118 +32,97 @@ use either::{
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 struct Value<'ctx> {
-    value: LLVMValueRef,
+    raw: LLVMValueRef,
     _marker: PhantomData<&'ctx ()>,
 }
 impl<'ctx> Value<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        debug_assert!(
-            !value.is_null(),
-            "This should never happen since containing struct should check null ptrs"
-        );
+    pub unsafe fn new(raw: LLVMValueRef) -> Self {
+        debug_assert!(!raw.is_null());
         Value {
-            value,
+            raw,
             _marker: PhantomData,
         }
     }
     fn is_instruction(self) -> bool {
-        unsafe { !LLVMIsAInstruction(self.value).is_null() }
+        unsafe { !LLVMIsAInstruction(self.raw).is_null() }
     }
     fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
         if !self.is_instruction() {
             return None;
         }
-        unsafe { Some(InstructionValue::new(self.value)) }
+        unsafe { Some(InstructionValue::new(self.raw)) }
     }
     fn is_null(self) -> bool {
-        unsafe { LLVMIsNull(self.value) == 1 }
+        unsafe { LLVMIsNull(self.raw) == 1 }
     }
     fn is_const(self) -> bool {
-        unsafe { LLVMIsConstant(self.value) == 1 }
+        unsafe { LLVMIsConstant(self.raw) == 1 }
     }
     fn set_name(self, name: &str) {
-        let c_string = to_c_str(name);
+        let y = to_c_str(name);
         {
-            use llvm_lib::core::LLVMSetValueName2;
-            unsafe { LLVMSetValueName2(self.value, c_string.as_ptr(), name.len()) }
+            unsafe { LLVMSetValueName2(self.raw, y.as_ptr(), name.len()) }
         }
     }
     fn get_name(&self) -> &CStr {
-        let ptr = unsafe {
-            use llvm_lib::core::LLVMGetValueName2;
+        let y = unsafe {
             let mut len = 0;
-            LLVMGetValueName2(self.value, &mut len)
+            LLVMGetValueName2(self.raw, &mut len)
         };
-        unsafe { CStr::from_ptr(ptr) }
+        unsafe { CStr::from_ptr(y) }
     }
     fn is_undef(self) -> bool {
-        unsafe { LLVMIsUndef(self.value) == 1 }
+        unsafe { LLVMIsUndef(self.raw) == 1 }
     }
     fn get_type(self) -> LLVMTypeRef {
-        unsafe { LLVMTypeOf(self.value) }
+        unsafe { LLVMTypeOf(self.raw) }
     }
     fn print_to_string(self) -> LLVMString {
-        unsafe { LLVMString::new(LLVMPrintValueToString(self.value)) }
+        unsafe { LLVMString::new(LLVMPrintValueToString(self.raw)) }
     }
     fn print_to_stderr(self) {
-        unsafe { LLVMDumpValue(self.value) }
+        unsafe { LLVMDumpValue(self.raw) }
     }
-    fn replace_all_uses_with(self, other: LLVMValueRef) {
-        if self.value != other {
-            unsafe { LLVMReplaceAllUsesWith(self.value, other) }
+    fn replace_all_uses_with(self, x: LLVMValueRef) {
+        if self.raw != x {
+            unsafe { LLVMReplaceAllUsesWith(self.raw, x) }
         }
     }
     pub fn get_first_use(self) -> Option<BasicValueUse<'ctx>> {
-        let use_ = unsafe { LLVMGetFirstUse(self.value) };
-        if use_.is_null() {
+        let y = unsafe { LLVMGetFirstUse(self.raw) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(BasicValueUse::new(use_)) }
+        unsafe { Some(BasicValueUse::new(y)) }
     }
     pub fn get_section(&self) -> Option<&CStr> {
-        let ptr = unsafe { LLVMGetSection(self.value) };
-        if ptr.is_null() {
+        let y = unsafe { LLVMGetSection(self.raw) };
+        if y.is_null() {
             return None;
         }
-        if cfg!(target_os = "macos") {
-            let name = unsafe { CStr::from_ptr(ptr) };
-            let name_string = name.to_string_lossy();
-            let mut chars = name_string.chars();
-            if Some(',') == chars.next() {
-                Some(unsafe { CStr::from_ptr(ptr.add(1)) })
-            } else {
-                Some(name)
-            }
-        } else {
-            Some(unsafe { CStr::from_ptr(ptr) })
-        }
+        Some(unsafe { CStr::from_ptr(y) })
     }
     fn set_section(self, section: Option<&str>) {
-        let c_string = section.as_deref().map(to_c_str);
-        unsafe {
-            LLVMSetSection(
-                self.value,
-                c_string.as_ref().map(|s| s.as_ptr()).unwrap_or(std::ptr::null()),
-            )
-        }
+        let y = section.as_deref().map(to_c_str);
+        unsafe { LLVMSetSection(self.raw, y.as_ref().map(|s| s.as_ptr()).unwrap_or(std::ptr::null())) }
     }
 }
 impl fmt::Debug for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_value = self.print_to_string();
-        let llvm_type = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.value))) };
+        let val = self.print_to_string();
+        let ty = unsafe { CStr::from_ptr(LLVMPrintTypeToString(LLVMTypeOf(self.raw))) };
         let name = self.get_name();
         let is_const = self.is_const();
         let is_null = self.is_null();
         let is_undef = self.is_undef();
         f.debug_struct("Value")
             .field("name", &name)
-            .field("address", &self.value)
+            .field("address", &self.raw)
             .field("is_const", &is_const)
             .field("is_null", &is_null)
             .field("is_undef", &is_undef)
-            .field("llvm_value", &llvm_value)
-            .field("llvm_type", &llvm_type)
+            .field("llvm_value", &val)
+            .field("llvm_type", &ty)
             .finish()
     }
 }
@@ -153,52 +133,50 @@ pub unsafe trait AsValueRef {
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct ArrayValue<'ctx> {
-    array_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> ArrayValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        ArrayValue {
-            array_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        ArrayValue { val: Value::new(x) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.array_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.array_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_type(self) -> ArrayType<'ctx> {
-        unsafe { ArrayType::new(self.array_value.get_type()) }
+        unsafe { ArrayType::new(self.val.get_type()) }
     }
     pub fn is_null(self) -> bool {
-        self.array_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.array_value.is_undef()
+        self.val.is_undef()
     }
     pub fn print_to_stderr(self) {
-        self.array_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
-        self.array_value.as_instruction()
+        self.val.as_instruction()
     }
-    pub fn replace_all_uses_with(self, other: ArrayValue<'ctx>) {
-        self.array_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: ArrayValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
     pub fn is_const(self) -> bool {
-        self.array_value.is_const()
+        self.val.is_const()
     }
     pub fn is_const_string(self) -> bool {
         unsafe { LLVMIsConstantString(self.as_value_ref()) == 1 }
     }
     pub fn get_string_constant(&self) -> Option<&CStr> {
         let mut len = 0;
-        let ptr = unsafe { LLVMGetAsString(self.as_value_ref(), &mut len) };
-        if ptr.is_null() {
+        let y = unsafe { LLVMGetAsString(self.as_value_ref(), &mut len) };
+        if y.is_null() {
             None
         } else {
-            unsafe { Some(CStr::from_ptr(ptr)) }
+            unsafe { Some(CStr::from_ptr(y)) }
         }
     }
 }
@@ -209,8 +187,8 @@ impl Display for ArrayValue<'_> {
 }
 impl fmt::Debug for ArrayValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_value = self.print_to_string();
-        let llvm_type = self.get_type();
+        let val = self.print_to_string();
+        let ty = self.get_type();
         let name = self.get_name();
         let is_const = self.is_const();
         let is_null = self.is_null();
@@ -223,42 +201,42 @@ impl fmt::Debug for ArrayValue<'_> {
             .field("is_const_array", &is_const_array)
             .field("is_const_data_array", &is_const_data_array)
             .field("is_null", &is_null)
-            .field("llvm_value", &llvm_value)
-            .field("llvm_type", &llvm_type)
+            .field("llvm_value", &val)
+            .field("llvm_type", &ty)
             .finish()
     }
 }
 unsafe impl AsValueRef for ArrayValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.array_value.value
+        self.val.raw
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BasicValueUse<'ctx>(LLVMUseRef, PhantomData<&'ctx ()>);
 impl<'ctx> BasicValueUse<'ctx> {
-    pub unsafe fn new(use_: LLVMUseRef) -> Self {
-        debug_assert!(!use_.is_null());
-        BasicValueUse(use_, PhantomData)
+    pub unsafe fn new(x: LLVMUseRef) -> Self {
+        debug_assert!(!x.is_null());
+        BasicValueUse(x, PhantomData)
     }
     pub fn get_next_use(self) -> Option<Self> {
-        let use_ = unsafe { LLVMGetNextUse(self.0) };
-        if use_.is_null() {
+        let y = unsafe { LLVMGetNextUse(self.0) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Self::new(use_)) }
+        unsafe { Some(Self::new(y)) }
     }
     pub fn get_user(self) -> AnyValueEnum<'ctx> {
         unsafe { AnyValueEnum::new(LLVMGetUser(self.0)) }
     }
     pub fn get_used_value(self) -> Either<BasicValueEnum<'ctx>, BasicBlock<'ctx>> {
-        let used_value = unsafe { LLVMGetUsedValue(self.0) };
-        let is_basic_block = unsafe { !LLVMIsABasicBlock(used_value).is_null() };
+        let y = unsafe { LLVMGetUsedValue(self.0) };
+        let is_basic_block = unsafe { !LLVMIsABasicBlock(y).is_null() };
         if is_basic_block {
-            let bb = unsafe { BasicBlock::new(LLVMValueAsBasicBlock(used_value)) };
-            Right(bb.expect("BasicBlock should always be valid"))
+            let y = unsafe { BasicBlock::new(LLVMValueAsBasicBlock(y)) };
+            Right(y.expect("BasicBlock should always be valid"))
         } else {
-            unsafe { Left(BasicValueEnum::new(used_value)) }
+            unsafe { Left(BasicValueEnum::new(y)) }
         }
     }
 }
@@ -266,8 +244,8 @@ impl<'ctx> BasicValueUse<'ctx> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct CallSiteValue<'ctx>(Value<'ctx>);
 impl<'ctx> CallSiteValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        CallSiteValue(Value::new(value))
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        CallSiteValue(Value::new(x))
     }
     pub fn set_tail_call(self, tail_call: bool) {
         unsafe { LLVMSetTailCall(self.as_value_ref(), tail_call as i32) }
@@ -283,50 +261,34 @@ impl<'ctx> CallSiteValue<'ctx> {
             }
         }
     }
-    pub fn add_attribute(self, loc: AttributeLoc, attribute: Attribute) {
-        use llvm_lib::core::LLVMAddCallSiteAttribute;
-        unsafe { LLVMAddCallSiteAttribute(self.as_value_ref(), loc.get_index(), attribute.attribute) }
+    pub fn add_attribute(self, loc: AttributeLoc, a: Attribute) {
+        unsafe { LLVMAddCallSiteAttribute(self.as_value_ref(), loc.get_index(), a.attribute) }
     }
     pub fn get_called_fn_value(self) -> FunctionValue<'ctx> {
-        use llvm_lib::core::LLVMGetCalledValue;
         unsafe { FunctionValue::new(LLVMGetCalledValue(self.as_value_ref())).expect("This should never be null?") }
     }
     pub fn count_attributes(self, loc: AttributeLoc) -> u32 {
-        use llvm_lib::core::LLVMGetCallSiteAttributeCount;
         unsafe { LLVMGetCallSiteAttributeCount(self.as_value_ref(), loc.get_index()) }
     }
     pub fn attributes(self, loc: AttributeLoc) -> Vec<Attribute> {
-        use llvm_lib::core::LLVMGetCallSiteAttributes;
         use std::mem::{ManuallyDrop, MaybeUninit};
         let count = self.count_attributes(loc) as usize;
-        let mut attribute_refs: Vec<MaybeUninit<Attribute>> = vec![MaybeUninit::uninit(); count];
+        let mut y: Vec<MaybeUninit<Attribute>> = vec![MaybeUninit::uninit(); count];
+        unsafe { LLVMGetCallSiteAttributes(self.as_value_ref(), loc.get_index(), y.as_mut_ptr() as *mut _) }
         unsafe {
-            LLVMGetCallSiteAttributes(
-                self.as_value_ref(),
-                loc.get_index(),
-                attribute_refs.as_mut_ptr() as *mut _,
-            )
-        }
-        unsafe {
-            let mut attribute_refs = ManuallyDrop::new(attribute_refs);
-            Vec::from_raw_parts(
-                attribute_refs.as_mut_ptr() as *mut Attribute,
-                attribute_refs.len(),
-                attribute_refs.capacity(),
-            )
+            let mut y = ManuallyDrop::new(y);
+            Vec::from_raw_parts(y.as_mut_ptr() as *mut Attribute, y.len(), y.capacity())
         }
     }
     pub fn get_enum_attribute(self, loc: AttributeLoc, kind_id: u32) -> Option<Attribute> {
-        use llvm_lib::core::LLVMGetCallSiteEnumAttribute;
-        let ptr = unsafe { LLVMGetCallSiteEnumAttribute(self.as_value_ref(), loc.get_index(), kind_id) };
-        if ptr.is_null() {
+        let y = unsafe { LLVMGetCallSiteEnumAttribute(self.as_value_ref(), loc.get_index(), kind_id) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Attribute::new(ptr)) }
+        unsafe { Some(Attribute::new(y)) }
     }
     pub fn get_string_attribute(self, loc: AttributeLoc, key: &str) -> Option<Attribute> {
-        use llvm_lib::core::LLVMGetCallSiteStringAttribute;
-        let ptr = unsafe {
+        let y = unsafe {
             LLVMGetCallSiteStringAttribute(
                 self.as_value_ref(),
                 loc.get_index(),
@@ -334,17 +296,15 @@ impl<'ctx> CallSiteValue<'ctx> {
                 key.len() as u32,
             )
         };
-        if ptr.is_null() {
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Attribute::new(ptr)) }
+        unsafe { Some(Attribute::new(y)) }
     }
     pub fn remove_enum_attribute(self, loc: AttributeLoc, kind_id: u32) {
-        use llvm_lib::core::LLVMRemoveCallSiteEnumAttribute;
         unsafe { LLVMRemoveCallSiteEnumAttribute(self.as_value_ref(), loc.get_index(), kind_id) }
     }
     pub fn remove_string_attribute(self, loc: AttributeLoc, key: &str) {
-        use llvm_lib::core::LLVMRemoveCallSiteStringAttribute;
         unsafe {
             LLVMRemoveCallSiteStringAttribute(
                 self.as_value_ref(),
@@ -355,7 +315,6 @@ impl<'ctx> CallSiteValue<'ctx> {
         }
     }
     pub fn count_arguments(self) -> u32 {
-        use llvm_lib::core::LLVMGetNumArgOperands;
         unsafe { LLVMGetNumArgOperands(self.as_value_ref()) }
     }
     pub fn get_call_convention(self) -> u32 {
@@ -364,9 +323,9 @@ impl<'ctx> CallSiteValue<'ctx> {
     pub fn set_call_convention(self, conv: u32) {
         unsafe { LLVMSetInstructionCallConv(self.as_value_ref(), conv) }
     }
-    pub fn set_alignment_attribute(self, loc: AttributeLoc, alignment: u32) {
-        assert_eq!(alignment.count_ones(), 1, "Alignment must be a power of two.");
-        unsafe { LLVMSetInstrParamAlignment(self.as_value_ref(), loc.get_index(), alignment) }
+    pub fn set_alignment_attribute(self, loc: AttributeLoc, align: u32) {
+        assert_eq!(align.count_ones(), 1, "Alignment must be a power of two.");
+        unsafe { LLVMSetInstrParamAlignment(self.as_value_ref(), loc.get_index(), align) }
     }
 }
 impl Display for CallSiteValue<'_> {
@@ -376,7 +335,7 @@ impl Display for CallSiteValue<'_> {
 }
 unsafe impl AsValueRef for CallSiteValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.0.value
+        self.0.raw
     }
 }
 
@@ -384,18 +343,18 @@ unsafe impl AsValueRef for CallSiteValue<'_> {
 pub struct CallableValue<'ctx>(Either<FunctionValue<'ctx>, PointerValue<'ctx>>);
 impl<'ctx> CallableValue<'ctx> {}
 impl<'ctx> From<FunctionValue<'ctx>> for CallableValue<'ctx> {
-    fn from(value: FunctionValue<'ctx>) -> Self {
-        Self(Either::Left(value))
+    fn from(x: FunctionValue<'ctx>) -> Self {
+        Self(Either::Left(x))
     }
 }
 impl<'ctx> TryFrom<PointerValue<'ctx>> for CallableValue<'ctx> {
     type Error = ();
-    fn try_from(value: PointerValue<'ctx>) -> Result<Self, Self::Error> {
-        let value_ref = value.as_value_ref();
+    fn try_from(x: PointerValue<'ctx>) -> Result<Self, Self::Error> {
+        let value_ref = x.as_value_ref();
         let ty_kind = unsafe { LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(value_ref))) };
         let is_a_fn_ptr = matches!(ty_kind, LLVMTypeKind::LLVMFunctionTypeKind);
         if is_a_fn_ptr {
-            Ok(Self(Either::Right(value)))
+            Ok(Self(Either::Right(x)))
         } else {
             Err(())
         }
@@ -410,8 +369,8 @@ unsafe impl<'ctx> AsValueRef for CallableValue<'ctx> {
     fn as_value_ref(&self) -> LLVMValueRef {
         use either::Either::*;
         match self.0 {
-            Left(function) => function.as_value_ref(),
-            Right(pointer) => pointer.as_value_ref(),
+            Left(x) => x.as_value_ref(),
+            Right(x) => x.as_value_ref(),
         }
     }
 }
@@ -420,8 +379,8 @@ unsafe impl<'ctx> AsTypeRef for CallableValue<'ctx> {
     fn as_type_ref(&self) -> LLVMTypeRef {
         use either::Either::*;
         match self.0 {
-            Left(function) => function.get_type().as_type_ref(),
-            Right(pointer) => pointer.get_type().get_element_type().as_type_ref(),
+            Left(x) => x.get_type().as_type_ref(),
+            Right(x) => x.get_type().get_element_type().as_type_ref(),
         }
     }
 }
@@ -438,32 +397,32 @@ macro_rules! enum_value_set {
             fn as_value_ref(&self) -> LLVMValueRef {
                 match *self {
                     $(
-                        $enum_name::$args(ref t) => t.as_value_ref(),
+                        $enum_name::$args(ref x) => x.as_value_ref(),
                     )*
                 }
             }
         }
         $(
             impl<'ctx> From<$args<'ctx>> for $enum_name<'ctx> {
-                fn from(value: $args) -> $enum_name {
-                    $enum_name::$args(value)
+                fn from(x: $args) -> $enum_name {
+                    $enum_name::$args(x)
                 }
             }
             impl<'ctx> PartialEq<$args<'ctx>> for $enum_name<'ctx> {
-                fn eq(&self, other: &$args<'ctx>) -> bool {
-                    self.as_value_ref() == other.as_value_ref()
+                fn eq(&self, x: &$args<'ctx>) -> bool {
+                    self.as_value_ref() == x.as_value_ref()
                 }
             }
             impl<'ctx> PartialEq<$enum_name<'ctx>> for $args<'ctx> {
-                fn eq(&self, other: &$enum_name<'ctx>) -> bool {
-                    self.as_value_ref() == other.as_value_ref()
+                fn eq(&self, x: &$enum_name<'ctx>) -> bool {
+                    self.as_value_ref() == x.as_value_ref()
                 }
             }
             impl<'ctx> TryFrom<$enum_name<'ctx>> for $args<'ctx> {
                 type Error = ();
-                fn try_from(value: $enum_name<'ctx>) -> Result<Self, Self::Error> {
-                    match value {
-                        $enum_name::$args(ty) => Ok(ty),
+                fn try_from(x: $enum_name<'ctx>) -> Result<Self, Self::Error> {
+                    match x {
+                        $enum_name::$args(x) => Ok(x),
                         _ => Err(()),
                     }
                 }
@@ -492,12 +451,12 @@ impl<'ctx> BasicValueEnum<'ctx> {
     }
     pub fn set_name(&self, name: &str) {
         match self {
-            BasicValueEnum::ArrayValue(v) => v.set_name(name),
-            BasicValueEnum::IntValue(v) => v.set_name(name),
-            BasicValueEnum::FloatValue(v) => v.set_name(name),
-            BasicValueEnum::PointerValue(v) => v.set_name(name),
-            BasicValueEnum::StructValue(v) => v.set_name(name),
-            BasicValueEnum::VectorValue(v) => v.set_name(name),
+            BasicValueEnum::ArrayValue(x) => x.set_name(name),
+            BasicValueEnum::IntValue(x) => x.set_name(name),
+            BasicValueEnum::FloatValue(x) => x.set_name(name),
+            BasicValueEnum::PointerValue(x) => x.set_name(name),
+            BasicValueEnum::StructValue(x) => x.set_name(name),
+            BasicValueEnum::VectorValue(x) => x.set_name(name),
         }
     }
     pub fn get_type(&self) -> BasicTypeEnum<'ctx> {
@@ -522,43 +481,43 @@ impl<'ctx> BasicValueEnum<'ctx> {
         matches!(self, BasicValueEnum::VectorValue(_))
     }
     pub fn into_array_value(self) -> ArrayValue<'ctx> {
-        if let BasicValueEnum::ArrayValue(v) = self {
-            v
+        if let BasicValueEnum::ArrayValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the ArrayValue variant", self)
         }
     }
     pub fn into_int_value(self) -> IntValue<'ctx> {
-        if let BasicValueEnum::IntValue(v) = self {
-            v
+        if let BasicValueEnum::IntValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the IntValue variant", self)
         }
     }
     pub fn into_float_value(self) -> FloatValue<'ctx> {
-        if let BasicValueEnum::FloatValue(v) = self {
-            v
+        if let BasicValueEnum::FloatValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the FloatValue variant", self)
         }
     }
     pub fn into_pointer_value(self) -> PointerValue<'ctx> {
-        if let BasicValueEnum::PointerValue(v) = self {
-            v
+        if let BasicValueEnum::PointerValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected PointerValue variant", self)
         }
     }
     pub fn into_struct_value(self) -> StructValue<'ctx> {
-        if let BasicValueEnum::StructValue(v) = self {
-            v
+        if let BasicValueEnum::StructValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the StructValue variant", self)
         }
     }
     pub fn into_vector_value(self) -> VectorValue<'ctx> {
-        if let BasicValueEnum::VectorValue(v) = self {
-            v
+        if let BasicValueEnum::VectorValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the VectorValue variant", self)
         }
@@ -566,30 +525,30 @@ impl<'ctx> BasicValueEnum<'ctx> {
 }
 impl<'ctx> TryFrom<AnyValueEnum<'ctx>> for BasicValueEnum<'ctx> {
     type Error = ();
-    fn try_from(value: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
+    fn try_from(x: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
         use AnyValueEnum::*;
-        Ok(match value {
-            ArrayValue(av) => av.into(),
-            IntValue(iv) => iv.into(),
-            FloatValue(fv) => fv.into(),
-            PointerValue(pv) => pv.into(),
-            StructValue(sv) => sv.into(),
-            VectorValue(vv) => vv.into(),
+        Ok(match x {
+            ArrayValue(x) => x.into(),
+            IntValue(x) => x.into(),
+            FloatValue(x) => x.into(),
+            PointerValue(x) => x.into(),
+            StructValue(x) => x.into(),
+            VectorValue(x) => x.into(),
             MetadataValue(_) | PhiValue(_) | FunctionValue(_) | InstructionValue(_) => return Err(()),
         })
     }
 }
 impl<'ctx> TryFrom<BasicMetadataValueEnum<'ctx>> for BasicValueEnum<'ctx> {
     type Error = ();
-    fn try_from(value: BasicMetadataValueEnum<'ctx>) -> Result<Self, Self::Error> {
+    fn try_from(x: BasicMetadataValueEnum<'ctx>) -> Result<Self, Self::Error> {
         use BasicMetadataValueEnum::*;
-        Ok(match value {
-            ArrayValue(av) => av.into(),
-            IntValue(iv) => iv.into(),
-            FloatValue(fv) => fv.into(),
-            PointerValue(pv) => pv.into(),
-            StructValue(sv) => sv.into(),
-            VectorValue(vv) => vv.into(),
+        Ok(match x {
+            ArrayValue(x) => x.into(),
+            IntValue(x) => x.into(),
+            FloatValue(x) => x.into(),
+            PointerValue(x) => x.into(),
+            StructValue(x) => x.into(),
+            VectorValue(x) => x.into(),
             MetadataValue(_) => return Err(()),
         })
     }
@@ -602,20 +561,20 @@ impl Display for BasicValueEnum<'_> {
 
 enum_value_set! {BasicMetadataValueEnum: ArrayValue, IntValue, FloatValue, PointerValue, StructValue, VectorValue, MetadataValue}
 impl<'ctx> BasicMetadataValueEnum<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        match LLVMGetTypeKind(LLVMTypeOf(value)) {
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        match LLVMGetTypeKind(LLVMTypeOf(x)) {
             LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
             | LLVMTypeKind::LLVMDoubleTypeKind
             | LLVMTypeKind::LLVMHalfTypeKind
             | LLVMTypeKind::LLVMX86_FP80TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicMetadataValueEnum::FloatValue(FloatValue::new(value)),
-            LLVMTypeKind::LLVMIntegerTypeKind => BasicMetadataValueEnum::IntValue(IntValue::new(value)),
-            LLVMTypeKind::LLVMStructTypeKind => BasicMetadataValueEnum::StructValue(StructValue::new(value)),
-            LLVMTypeKind::LLVMPointerTypeKind => BasicMetadataValueEnum::PointerValue(PointerValue::new(value)),
-            LLVMTypeKind::LLVMArrayTypeKind => BasicMetadataValueEnum::ArrayValue(ArrayValue::new(value)),
-            LLVMTypeKind::LLVMVectorTypeKind => BasicMetadataValueEnum::VectorValue(VectorValue::new(value)),
-            LLVMTypeKind::LLVMMetadataTypeKind => BasicMetadataValueEnum::MetadataValue(MetadataValue::new(value)),
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => BasicMetadataValueEnum::FloatValue(FloatValue::new(x)),
+            LLVMTypeKind::LLVMIntegerTypeKind => BasicMetadataValueEnum::IntValue(IntValue::new(x)),
+            LLVMTypeKind::LLVMStructTypeKind => BasicMetadataValueEnum::StructValue(StructValue::new(x)),
+            LLVMTypeKind::LLVMPointerTypeKind => BasicMetadataValueEnum::PointerValue(PointerValue::new(x)),
+            LLVMTypeKind::LLVMArrayTypeKind => BasicMetadataValueEnum::ArrayValue(ArrayValue::new(x)),
+            LLVMTypeKind::LLVMVectorTypeKind => BasicMetadataValueEnum::VectorValue(VectorValue::new(x)),
+            LLVMTypeKind::LLVMMetadataTypeKind => BasicMetadataValueEnum::MetadataValue(MetadataValue::new(x)),
             _ => unreachable!("Unsupported type"),
         }
     }
@@ -641,72 +600,72 @@ impl<'ctx> BasicMetadataValueEnum<'ctx> {
         matches!(self, BasicMetadataValueEnum::MetadataValue(_))
     }
     pub fn into_array_value(self) -> ArrayValue<'ctx> {
-        if let BasicMetadataValueEnum::ArrayValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::ArrayValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the ArrayValue variant", self)
         }
     }
     pub fn into_int_value(self) -> IntValue<'ctx> {
-        if let BasicMetadataValueEnum::IntValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::IntValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the IntValue variant", self)
         }
     }
     pub fn into_float_value(self) -> FloatValue<'ctx> {
-        if let BasicMetadataValueEnum::FloatValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::FloatValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected FloatValue variant", self)
         }
     }
     pub fn into_pointer_value(self) -> PointerValue<'ctx> {
-        if let BasicMetadataValueEnum::PointerValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::PointerValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the PointerValue variant", self)
         }
     }
     pub fn into_struct_value(self) -> StructValue<'ctx> {
-        if let BasicMetadataValueEnum::StructValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::StructValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the StructValue variant", self)
         }
     }
     pub fn into_vector_value(self) -> VectorValue<'ctx> {
-        if let BasicMetadataValueEnum::VectorValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::VectorValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the VectorValue variant", self)
         }
     }
     pub fn into_metadata_value(self) -> MetadataValue<'ctx> {
-        if let BasicMetadataValueEnum::MetadataValue(v) = self {
-            v
+        if let BasicMetadataValueEnum::MetadataValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected MetaData variant", self)
         }
     }
 }
 impl<'ctx> From<BasicValueEnum<'ctx>> for BasicMetadataValueEnum<'ctx> {
-    fn from(value: BasicValueEnum<'ctx>) -> Self {
-        unsafe { BasicMetadataValueEnum::new(value.as_value_ref()) }
+    fn from(x: BasicValueEnum<'ctx>) -> Self {
+        unsafe { BasicMetadataValueEnum::new(x.as_value_ref()) }
     }
 }
 impl<'ctx> TryFrom<AnyValueEnum<'ctx>> for BasicMetadataValueEnum<'ctx> {
     type Error = ();
-    fn try_from(value: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
+    fn try_from(x: AnyValueEnum<'ctx>) -> Result<Self, Self::Error> {
         use AnyValueEnum::*;
-        Ok(match value {
-            ArrayValue(av) => av.into(),
-            IntValue(iv) => iv.into(),
-            FloatValue(fv) => fv.into(),
-            PointerValue(pv) => pv.into(),
-            StructValue(sv) => sv.into(),
-            VectorValue(vv) => vv.into(),
-            MetadataValue(mv) => mv.into(),
+        Ok(match x {
+            ArrayValue(x) => x.into(),
+            IntValue(x) => x.into(),
+            FloatValue(x) => x.into(),
+            PointerValue(x) => x.into(),
+            StructValue(x) => x.into(),
+            VectorValue(x) => x.into(),
+            MetadataValue(x) => x.into(),
             PhiValue(_) | FunctionValue(_) | InstructionValue(_) => return Err(()),
         })
     }
@@ -719,10 +678,10 @@ impl Display for BasicMetadataValueEnum<'_> {
 
 enum_value_set! {AggregateValueEnum: ArrayValue, StructValue}
 impl<'ctx> AggregateValueEnum<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        match LLVMGetTypeKind(LLVMTypeOf(value)) {
-            LLVMTypeKind::LLVMArrayTypeKind => AggregateValueEnum::ArrayValue(ArrayValue::new(value)),
-            LLVMTypeKind::LLVMStructTypeKind => AggregateValueEnum::StructValue(StructValue::new(value)),
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        match LLVMGetTypeKind(LLVMTypeOf(x)) {
+            LLVMTypeKind::LLVMArrayTypeKind => AggregateValueEnum::ArrayValue(ArrayValue::new(x)),
+            LLVMTypeKind::LLVMStructTypeKind => AggregateValueEnum::StructValue(StructValue::new(x)),
             _ => unreachable!("The given type is not an aggregate type."),
         }
     }
@@ -733,15 +692,15 @@ impl<'ctx> AggregateValueEnum<'ctx> {
         matches!(self, AggregateValueEnum::StructValue(_))
     }
     pub fn into_array_value(self) -> ArrayValue<'ctx> {
-        if let AggregateValueEnum::ArrayValue(v) = self {
-            v
+        if let AggregateValueEnum::ArrayValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the ArrayValue variant", self)
         }
     }
     pub fn into_struct_value(self) -> StructValue<'ctx> {
-        if let AggregateValueEnum::StructValue(v) = self {
-            v
+        if let AggregateValueEnum::StructValue(x) = self {
+            x
         } else {
             panic!("Found {:?} but expected the StructValue variant", self)
         }
@@ -755,28 +714,28 @@ impl Display for AggregateValueEnum<'_> {
 
 enum_value_set! {AnyValueEnum: ArrayValue, IntValue, FloatValue, PhiValue, FunctionValue, PointerValue, StructValue, VectorValue, InstructionValue, MetadataValue}
 impl<'ctx> AnyValueEnum<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        match LLVMGetTypeKind(LLVMTypeOf(value)) {
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        match LLVMGetTypeKind(LLVMTypeOf(x)) {
             LLVMTypeKind::LLVMFloatTypeKind
             | LLVMTypeKind::LLVMFP128TypeKind
             | LLVMTypeKind::LLVMDoubleTypeKind
             | LLVMTypeKind::LLVMHalfTypeKind
             | LLVMTypeKind::LLVMX86_FP80TypeKind
-            | LLVMTypeKind::LLVMPPC_FP128TypeKind => AnyValueEnum::FloatValue(FloatValue::new(value)),
-            LLVMTypeKind::LLVMIntegerTypeKind => AnyValueEnum::IntValue(IntValue::new(value)),
-            LLVMTypeKind::LLVMStructTypeKind => AnyValueEnum::StructValue(StructValue::new(value)),
-            LLVMTypeKind::LLVMPointerTypeKind => match LLVMGetValueKind(value) {
-                LLVMValueKind::LLVMFunctionValueKind => AnyValueEnum::FunctionValue(FunctionValue::new(value).unwrap()),
-                _ => AnyValueEnum::PointerValue(PointerValue::new(value)),
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => AnyValueEnum::FloatValue(FloatValue::new(x)),
+            LLVMTypeKind::LLVMIntegerTypeKind => AnyValueEnum::IntValue(IntValue::new(x)),
+            LLVMTypeKind::LLVMStructTypeKind => AnyValueEnum::StructValue(StructValue::new(x)),
+            LLVMTypeKind::LLVMPointerTypeKind => match LLVMGetValueKind(x) {
+                LLVMValueKind::LLVMFunctionValueKind => AnyValueEnum::FunctionValue(FunctionValue::new(x).unwrap()),
+                _ => AnyValueEnum::PointerValue(PointerValue::new(x)),
             },
-            LLVMTypeKind::LLVMArrayTypeKind => AnyValueEnum::ArrayValue(ArrayValue::new(value)),
-            LLVMTypeKind::LLVMVectorTypeKind => AnyValueEnum::VectorValue(VectorValue::new(value)),
-            LLVMTypeKind::LLVMFunctionTypeKind => AnyValueEnum::FunctionValue(FunctionValue::new(value).unwrap()),
+            LLVMTypeKind::LLVMArrayTypeKind => AnyValueEnum::ArrayValue(ArrayValue::new(x)),
+            LLVMTypeKind::LLVMVectorTypeKind => AnyValueEnum::VectorValue(VectorValue::new(x)),
+            LLVMTypeKind::LLVMFunctionTypeKind => AnyValueEnum::FunctionValue(FunctionValue::new(x).unwrap()),
             LLVMTypeKind::LLVMVoidTypeKind => {
-                if LLVMIsAInstruction(value).is_null() {
+                if LLVMIsAInstruction(x).is_null() {
                     panic!("Void value isn't an instruction.");
                 }
-                AnyValueEnum::InstructionValue(InstructionValue::new(value))
+                AnyValueEnum::InstructionValue(InstructionValue::new(x))
             },
             LLVMTypeKind::LLVMMetadataTypeKind => panic!("Metadata values are not supported as AnyValue's."),
             _ => panic!("The given type is not supported."),
@@ -877,8 +836,8 @@ impl<'ctx> AnyValueEnum<'ctx> {
     }
 }
 impl<'ctx> From<BasicValueEnum<'ctx>> for AnyValueEnum<'ctx> {
-    fn from(value: BasicValueEnum<'ctx>) -> Self {
-        unsafe { AnyValueEnum::new(value.as_value_ref()) }
+    fn from(x: BasicValueEnum<'ctx>) -> Self {
+        unsafe { AnyValueEnum::new(x.as_value_ref()) }
     }
 }
 impl Display for AnyValueEnum<'_> {
@@ -889,35 +848,33 @@ impl Display for AnyValueEnum<'_> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct FloatValue<'ctx> {
-    float_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> FloatValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        FloatValue {
-            float_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        FloatValue { val: Value::new(x) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.float_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.float_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_type(self) -> FloatType<'ctx> {
-        unsafe { FloatType::new(self.float_value.get_type()) }
+        unsafe { FloatType::new(self.val.get_type()) }
     }
     pub fn is_null(self) -> bool {
-        self.float_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.float_value.is_undef()
+        self.val.is_undef()
     }
     pub fn print_to_stderr(self) {
-        self.float_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
-        self.float_value.as_instruction()
+        self.val.as_instruction()
     }
     pub fn const_cast(self, float_type: FloatType<'ctx>) -> Self {
         unsafe { FloatValue::new(LLVMConstFPCast(self.as_value_ref(), float_type.as_type_ref())) }
@@ -938,7 +895,7 @@ impl<'ctx> FloatValue<'ctx> {
         unsafe { IntValue::new(LLVMConstFCmp(op.into(), self.as_value_ref(), rhs.as_value_ref())) }
     }
     pub fn is_const(self) -> bool {
-        self.float_value.is_const()
+        self.val.is_const()
     }
     pub fn get_constant(self) -> Option<(f64, bool)> {
         if !self.is_const() {
@@ -948,15 +905,15 @@ impl<'ctx> FloatValue<'ctx> {
         let constant = unsafe { LLVMConstRealGetDouble(self.as_value_ref(), &mut lossy) };
         Some((constant, lossy == 1))
     }
-    pub fn replace_all_uses_with(self, other: FloatValue<'ctx>) {
-        self.float_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: FloatValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
 }
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for FloatValue<'ctx> {
     type Error = ();
-    fn try_from(value: InstructionValue) -> Result<Self, Self::Error> {
-        if value.get_type().is_float_type() {
-            unsafe { Ok(FloatValue::new(value.as_value_ref())) }
+    fn try_from(x: InstructionValue) -> Result<Self, Self::Error> {
+        if x.get_type().is_float_type() {
+            unsafe { Ok(FloatValue::new(x.as_value_ref())) }
         } else {
             Err(())
         }
@@ -969,23 +926,21 @@ impl Display for FloatValue<'_> {
 }
 unsafe impl AsValueRef for FloatValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.float_value.value
+        self.val.raw
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct FunctionValue<'ctx> {
-    fn_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> FunctionValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Option<Self> {
-        if value.is_null() {
+    pub unsafe fn new(x: LLVMValueRef) -> Option<Self> {
+        if x.is_null() {
             return None;
         }
-        assert!(!LLVMIsAFunction(value).is_null());
-        Some(FunctionValue {
-            fn_value: Value::new(value),
-        })
+        assert!(!LLVMIsAFunction(x).is_null());
+        Some(FunctionValue { val: Value::new(x) })
     }
     pub fn get_linkage(self) -> Linkage {
         unsafe { LLVMGetLinkage(self.as_value_ref()).into() }
@@ -994,13 +949,13 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { LLVMSetLinkage(self.as_value_ref(), linkage.into()) }
     }
     pub fn is_null(self) -> bool {
-        self.fn_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.fn_value.is_undef()
+        self.val.is_undef()
     }
     pub fn print_to_stderr(self) {
-        self.fn_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn verify(self, print: bool) -> bool {
         let action = if print {
@@ -1008,7 +963,7 @@ impl<'ctx> FunctionValue<'ctx> {
         } else {
             LLVMVerifierFailureAction::LLVMReturnStatusAction
         };
-        let code = unsafe { LLVMVerifyFunction(self.fn_value.value, action) };
+        let code = unsafe { LLVMVerifyFunction(self.val.raw, action) };
         code != 1
     }
     pub fn get_next_function(self) -> Option<Self> {
@@ -1018,18 +973,18 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { FunctionValue::new(LLVMGetPreviousFunction(self.as_value_ref())) }
     }
     pub fn get_first_param(self) -> Option<BasicValueEnum<'ctx>> {
-        let param = unsafe { LLVMGetFirstParam(self.as_value_ref()) };
-        if param.is_null() {
+        let y = unsafe { LLVMGetFirstParam(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(BasicValueEnum::new(param)) }
+        unsafe { Some(BasicValueEnum::new(y)) }
     }
     pub fn get_last_param(self) -> Option<BasicValueEnum<'ctx>> {
-        let param = unsafe { LLVMGetLastParam(self.as_value_ref()) };
-        if param.is_null() {
+        let y = unsafe { LLVMGetLastParam(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(BasicValueEnum::new(param)) }
+        unsafe { Some(BasicValueEnum::new(y)) }
     }
     pub fn get_first_basic_block(self) -> Option<BasicBlock<'ctx>> {
         unsafe { BasicBlock::new(LLVMGetFirstBasicBlock(self.as_value_ref())) }
@@ -1042,7 +997,7 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { Some(BasicValueEnum::new(LLVMGetParam(self.as_value_ref(), nth))) }
     }
     pub fn count_params(self) -> u32 {
-        unsafe { LLVMCountParams(self.fn_value.value) }
+        unsafe { LLVMCountParams(self.val.raw) }
     }
     pub fn count_basic_blocks(self) -> u32 {
         unsafe { LLVMCountBasicBlocks(self.as_value_ref()) }
@@ -1063,7 +1018,7 @@ impl<'ctx> FunctionValue<'ctx> {
     }
     pub fn get_param_iter(self) -> ParamValueIter<'ctx> {
         ParamValueIter {
-            param_iter_value: self.fn_value.value,
+            raw: self.val.raw,
             start: true,
             _marker: PhantomData,
         }
@@ -1080,10 +1035,10 @@ impl<'ctx> FunctionValue<'ctx> {
         raw_vec.iter().map(|val| unsafe { BasicValueEnum::new(*val) }).collect()
     }
     pub fn get_last_basic_block(self) -> Option<BasicBlock<'ctx>> {
-        unsafe { BasicBlock::new(LLVMGetLastBasicBlock(self.fn_value.value)) }
+        unsafe { BasicBlock::new(LLVMGetLastBasicBlock(self.val.raw)) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.fn_value.get_name()
+        self.val.get_name()
     }
     pub fn view_function_cfg(self) {
         unsafe { LLVMViewFunctionCFG(self.as_value_ref()) }
@@ -1098,7 +1053,6 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { FunctionType::new(llvm_lib::core::LLVMGlobalGetValueType(self.as_value_ref())) }
     }
     pub fn has_personality_function(self) -> bool {
-        use llvm_lib::core::LLVMHasPersonalityFn;
         unsafe { LLVMHasPersonalityFn(self.as_value_ref()) == 1 }
     }
     pub fn get_personality_function(self) -> Option<FunctionValue<'ctx>> {
@@ -1123,37 +1077,26 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { CStr::from_ptr(LLVMGetGC(self.as_value_ref())) }
     }
     pub fn set_gc(self, gc: &str) {
-        let c_string = to_c_str(gc);
-        unsafe { LLVMSetGC(self.as_value_ref(), c_string.as_ptr()) }
+        let y = to_c_str(gc);
+        unsafe { LLVMSetGC(self.as_value_ref(), y.as_ptr()) }
     }
-    pub fn replace_all_uses_with(self, other: FunctionValue<'ctx>) {
-        self.fn_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: FunctionValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
-    pub fn add_attribute(self, loc: AttributeLoc, attribute: Attribute) {
-        unsafe { LLVMAddAttributeAtIndex(self.as_value_ref(), loc.get_index(), attribute.attribute) }
+    pub fn add_attribute(self, loc: AttributeLoc, a: Attribute) {
+        unsafe { LLVMAddAttributeAtIndex(self.as_value_ref(), loc.get_index(), a.attribute) }
     }
     pub fn count_attributes(self, loc: AttributeLoc) -> u32 {
         unsafe { LLVMGetAttributeCountAtIndex(self.as_value_ref(), loc.get_index()) }
     }
     pub fn attributes(self, loc: AttributeLoc) -> Vec<Attribute> {
-        use llvm_lib::core::LLVMGetAttributesAtIndex;
         use std::mem::{ManuallyDrop, MaybeUninit};
         let count = self.count_attributes(loc) as usize;
-        let mut attribute_refs: Vec<MaybeUninit<Attribute>> = vec![MaybeUninit::uninit(); count];
+        let mut y: Vec<MaybeUninit<Attribute>> = vec![MaybeUninit::uninit(); count];
+        unsafe { LLVMGetAttributesAtIndex(self.as_value_ref(), loc.get_index(), y.as_mut_ptr() as *mut _) }
         unsafe {
-            LLVMGetAttributesAtIndex(
-                self.as_value_ref(),
-                loc.get_index(),
-                attribute_refs.as_mut_ptr() as *mut _,
-            )
-        }
-        unsafe {
-            let mut attribute_refs = ManuallyDrop::new(attribute_refs);
-            Vec::from_raw_parts(
-                attribute_refs.as_mut_ptr() as *mut Attribute,
-                attribute_refs.len(),
-                attribute_refs.capacity(),
-            )
+            let mut y = ManuallyDrop::new(y);
+            Vec::from_raw_parts(y.as_mut_ptr() as *mut Attribute, y.len(), y.capacity())
         }
     }
     pub fn remove_string_attribute(self, loc: AttributeLoc, key: &str) {
@@ -1170,14 +1113,14 @@ impl<'ctx> FunctionValue<'ctx> {
         unsafe { LLVMRemoveEnumAttributeAtIndex(self.as_value_ref(), loc.get_index(), kind_id) }
     }
     pub fn get_enum_attribute(self, loc: AttributeLoc, kind_id: u32) -> Option<Attribute> {
-        let ptr = unsafe { LLVMGetEnumAttributeAtIndex(self.as_value_ref(), loc.get_index(), kind_id) };
-        if ptr.is_null() {
+        let y = unsafe { LLVMGetEnumAttributeAtIndex(self.as_value_ref(), loc.get_index(), kind_id) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Attribute::new(ptr)) }
+        unsafe { Some(Attribute::new(y)) }
     }
     pub fn get_string_attribute(self, loc: AttributeLoc, key: &str) -> Option<Attribute> {
-        let ptr = unsafe {
+        let y = unsafe {
             LLVMGetStringAttributeAtIndex(
                 self.as_value_ref(),
                 loc.get_index(),
@@ -1185,14 +1128,14 @@ impl<'ctx> FunctionValue<'ctx> {
                 key.len() as u32,
             )
         };
-        if ptr.is_null() {
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Attribute::new(ptr)) }
+        unsafe { Some(Attribute::new(y)) }
     }
-    pub fn set_param_alignment(self, param_index: u32, alignment: u32) {
+    pub fn set_param_alignment(self, param_index: u32, align: u32) {
         if let Some(param) = self.get_nth_param(param_index) {
-            unsafe { LLVMSetParamAlignment(param.as_value_ref(), alignment) }
+            unsafe { LLVMSetParamAlignment(param.as_value_ref(), align) }
         }
     }
     pub fn as_global_value(self) -> GlobalValue<'ctx> {
@@ -1213,10 +1156,10 @@ impl<'ctx> FunctionValue<'ctx> {
         }
     }
     pub fn get_section(&self) -> Option<&CStr> {
-        self.fn_value.get_section()
+        self.val.get_section()
     }
     pub fn set_section(self, section: Option<&str>) {
-        self.fn_value.set_section(section)
+        self.val.set_section(section)
     }
 }
 impl Display for FunctionValue<'_> {
@@ -1226,30 +1169,30 @@ impl Display for FunctionValue<'_> {
 }
 impl fmt::Debug for FunctionValue<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let llvm_value = self.print_to_string();
-        let llvm_type = self.get_type();
+        let val = self.print_to_string();
+        let ty = self.get_type();
         let name = self.get_name();
-        let is_const = unsafe { LLVMIsConstant(self.fn_value.value) == 1 };
+        let is_const = unsafe { LLVMIsConstant(self.val.raw) == 1 };
         let is_null = self.is_null();
         f.debug_struct("FunctionValue")
             .field("name", &name)
             .field("address", &self.as_value_ref())
             .field("is_const", &is_const)
             .field("is_null", &is_null)
-            .field("llvm_value", &llvm_value)
-            .field("llvm_type", &llvm_type.print_to_string())
+            .field("llvm_value", &val)
+            .field("llvm_type", &ty.print_to_string())
             .finish()
     }
 }
 unsafe impl AsValueRef for FunctionValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.fn_value.value
+        self.val.raw
     }
 }
 
 #[derive(Debug)]
 pub struct ParamValueIter<'ctx> {
-    param_iter_value: LLVMValueRef,
+    raw: LLVMValueRef,
     start: bool,
     _marker: PhantomData<&'ctx ()>,
 }
@@ -1257,106 +1200,104 @@ impl<'ctx> Iterator for ParamValueIter<'ctx> {
     type Item = BasicValueEnum<'ctx>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.start {
-            let first_value = unsafe { LLVMGetFirstParam(self.param_iter_value) };
+            let first_value = unsafe { LLVMGetFirstParam(self.raw) };
             if first_value.is_null() {
                 return None;
             }
             self.start = false;
-            self.param_iter_value = first_value;
+            self.raw = first_value;
             return unsafe { Some(Self::Item::new(first_value)) };
         }
-        let next_value = unsafe { LLVMGetNextParam(self.param_iter_value) };
+        let next_value = unsafe { LLVMGetNextParam(self.raw) };
         if next_value.is_null() {
             return None;
         }
-        self.param_iter_value = next_value;
+        self.raw = next_value;
         unsafe { Some(Self::Item::new(next_value)) }
     }
 }
 
 #[derive(Debug)]
 pub struct GenericValue<'ctx> {
-    pub generic_value: LLVMGenericValueRef,
+    pub raw: LLVMGenericValueRef,
     _phantom: PhantomData<&'ctx ()>,
 }
 impl<'ctx> GenericValue<'ctx> {
-    pub unsafe fn new(generic_value: LLVMGenericValueRef) -> Self {
-        assert!(!generic_value.is_null());
+    pub unsafe fn new(x: LLVMGenericValueRef) -> Self {
+        assert!(!x.is_null());
         GenericValue {
-            generic_value,
+            raw: x,
             _phantom: PhantomData,
         }
     }
     pub fn int_width(self) -> u32 {
-        unsafe { LLVMGenericValueIntWidth(self.generic_value) }
+        unsafe { LLVMGenericValueIntWidth(self.raw) }
     }
-    pub unsafe fn create_generic_value_of_pointer<T>(value: &mut T) -> Self {
-        let value = LLVMCreateGenericValueOfPointer(value as *mut _ as *mut c_void);
-        GenericValue::new(value)
+    pub unsafe fn create_generic_value_of_pointer<T>(x: &mut T) -> Self {
+        let x = LLVMCreateGenericValueOfPointer(x as *mut _ as *mut c_void);
+        GenericValue::new(x)
     }
     pub fn as_int(self, is_signed: bool) -> u64 {
-        unsafe { LLVMGenericValueToInt(self.generic_value, is_signed as i32) }
+        unsafe { LLVMGenericValueToInt(self.raw, is_signed as i32) }
     }
     pub fn as_float(self, float_type: &FloatType<'ctx>) -> f64 {
-        unsafe { LLVMGenericValueToFloat(float_type.as_type_ref(), self.generic_value) }
+        unsafe { LLVMGenericValueToFloat(float_type.as_type_ref(), self.raw) }
     }
     pub unsafe fn into_pointer<T>(self) -> *mut T {
-        LLVMGenericValueToPointer(self.generic_value) as *mut T
+        LLVMGenericValueToPointer(self.raw) as *mut T
     }
 }
 impl Drop for GenericValue<'_> {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeGenericValue(self.generic_value) }
+        unsafe { LLVMDisposeGenericValue(self.raw) }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct GlobalValue<'ctx> {
-    global_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> GlobalValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        GlobalValue {
-            global_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        GlobalValue { val: Value::new(x) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.global_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.global_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_previous_global(self) -> Option<GlobalValue<'ctx>> {
-        let value = unsafe { LLVMGetPreviousGlobal(self.as_value_ref()) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetPreviousGlobal(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(GlobalValue::new(value)) }
+        unsafe { Some(GlobalValue::new(y)) }
     }
     pub fn get_next_global(self) -> Option<GlobalValue<'ctx>> {
-        let value = unsafe { LLVMGetNextGlobal(self.as_value_ref()) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetNextGlobal(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(GlobalValue::new(value)) }
+        unsafe { Some(GlobalValue::new(y)) }
     }
     pub fn get_dll_storage_class(self) -> DLLStorageClass {
-        let dll_storage_class = unsafe { LLVMGetDLLStorageClass(self.as_value_ref()) };
-        DLLStorageClass::new(dll_storage_class)
+        let y = unsafe { LLVMGetDLLStorageClass(self.as_value_ref()) };
+        DLLStorageClass::new(y)
     }
-    pub fn set_dll_storage_class(self, dll_storage_class: DLLStorageClass) {
-        unsafe { LLVMSetDLLStorageClass(self.as_value_ref(), dll_storage_class.into()) }
+    pub fn set_dll_storage_class(self, x: DLLStorageClass) {
+        unsafe { LLVMSetDLLStorageClass(self.as_value_ref(), x.into()) }
     }
     pub fn get_initializer(self) -> Option<BasicValueEnum<'ctx>> {
-        let value = unsafe { LLVMGetInitializer(self.as_value_ref()) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetInitializer(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(BasicValueEnum::new(value)) }
+        unsafe { Some(BasicValueEnum::new(y)) }
     }
-    pub fn set_initializer(self, value: &dyn BasicValue<'ctx>) {
-        unsafe { LLVMSetInitializer(self.as_value_ref(), value.as_value_ref()) }
+    pub fn set_initializer(self, x: &dyn BasicValue<'ctx>) {
+        unsafe { LLVMSetInitializer(self.as_value_ref(), x.as_value_ref()) }
     }
     pub fn is_thread_local(self) -> bool {
         unsafe { LLVMIsThreadLocal(self.as_value_ref()) == 1 }
@@ -1365,15 +1306,15 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { LLVMSetThreadLocal(self.as_value_ref(), is_thread_local as i32) }
     }
     pub fn get_thread_local_mode(self) -> Option<ThreadLocalMode> {
-        let thread_local_mode = unsafe { LLVMGetThreadLocalMode(self.as_value_ref()) };
-        ThreadLocalMode::new(thread_local_mode)
+        let y = unsafe { LLVMGetThreadLocalMode(self.as_value_ref()) };
+        ThreadLocalMode::new(y)
     }
-    pub fn set_thread_local_mode(self, thread_local_mode: Option<ThreadLocalMode>) {
-        let thread_local_mode = match thread_local_mode {
-            Some(mode) => mode.as_llvm_mode(),
+    pub fn set_thread_local_mode(self, x: Option<ThreadLocalMode>) {
+        let x = match x {
+            Some(x) => x.as_llvm_mode(),
             None => LLVMThreadLocalMode::LLVMNotThreadLocal,
         };
-        unsafe { LLVMSetThreadLocalMode(self.as_value_ref(), thread_local_mode) }
+        unsafe { LLVMSetThreadLocalMode(self.as_value_ref(), x) }
     }
     pub fn is_declaration(self) -> bool {
         unsafe { LLVMIsDeclaration(self.as_value_ref()) == 1 }
@@ -1402,18 +1343,18 @@ impl<'ctx> GlobalValue<'ctx> {
     pub fn set_externally_initialized(self, externally_initialized: bool) {
         unsafe { LLVMSetExternallyInitialized(self.as_value_ref(), externally_initialized as i32) }
     }
-    pub fn set_visibility(self, visibility: GlobalVisibility) {
-        unsafe { LLVMSetVisibility(self.as_value_ref(), visibility.into()) }
+    pub fn set_visibility(self, x: GlobalVisibility) {
+        unsafe { LLVMSetVisibility(self.as_value_ref(), x.into()) }
     }
     pub fn get_visibility(self) -> GlobalVisibility {
-        let visibility = unsafe { LLVMGetVisibility(self.as_value_ref()) };
-        GlobalVisibility::new(visibility)
+        let y = unsafe { LLVMGetVisibility(self.as_value_ref()) };
+        GlobalVisibility::new(y)
     }
     pub fn get_section(&self) -> Option<&CStr> {
-        self.global_value.get_section()
+        self.val.get_section()
     }
     pub fn set_section(self, section: Option<&str>) {
-        self.global_value.set_section(section)
+        self.val.set_section(section)
     }
     pub unsafe fn delete(self) {
         LLVMDeleteGlobal(self.as_value_ref())
@@ -1431,31 +1372,27 @@ impl<'ctx> GlobalValue<'ctx> {
         unsafe { LLVMGlobalSetMetadata(self.as_value_ref(), kind_id, metadata.as_metadata_ref()) }
     }
     pub fn get_comdat(self) -> Option<Comdat> {
-        use llvm_lib::comdat::LLVMGetComdat;
-        let comdat_ptr = unsafe { LLVMGetComdat(self.as_value_ref()) };
-        if comdat_ptr.is_null() {
+        let y = unsafe { LLVMGetComdat(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(Comdat::new(comdat_ptr)) }
+        unsafe { Some(Comdat::new(y)) }
     }
-    pub fn set_comdat(self, comdat: Comdat) {
-        use llvm_lib::comdat::LLVMSetComdat;
-        unsafe { LLVMSetComdat(self.as_value_ref(), comdat.0) }
+    pub fn set_comdat(self, x: Comdat) {
+        unsafe { LLVMSetComdat(self.as_value_ref(), x.0) }
     }
     pub fn get_unnamed_address(self) -> UnnamedAddress {
-        use llvm_lib::core::LLVMGetUnnamedAddress;
-        let unnamed_address = unsafe { LLVMGetUnnamedAddress(self.as_value_ref()) };
-        UnnamedAddress::new(unnamed_address)
+        let y = unsafe { LLVMGetUnnamedAddress(self.as_value_ref()) };
+        UnnamedAddress::new(y)
     }
-    pub fn set_unnamed_address(self, address: UnnamedAddress) {
-        use llvm_lib::core::LLVMSetUnnamedAddress;
-        unsafe { LLVMSetUnnamedAddress(self.as_value_ref(), address.into()) }
+    pub fn set_unnamed_address(self, x: UnnamedAddress) {
+        unsafe { LLVMSetUnnamedAddress(self.as_value_ref(), x.into()) }
     }
     pub fn get_linkage(self) -> Linkage {
         unsafe { LLVMGetLinkage(self.as_value_ref()).into() }
     }
-    pub fn set_linkage(self, linkage: Linkage) {
-        unsafe { LLVMSetLinkage(self.as_value_ref(), linkage.into()) }
+    pub fn set_linkage(self, x: Linkage) {
+        unsafe { LLVMSetLinkage(self.as_value_ref(), x.into()) }
     }
 }
 impl Display for GlobalValue<'_> {
@@ -1465,7 +1402,7 @@ impl Display for GlobalValue<'_> {
 }
 unsafe impl AsValueRef for GlobalValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.global_value.value
+        self.val.raw
     }
 }
 
@@ -1556,7 +1493,7 @@ pub enum InstructionOpcode {
 
 #[derive(Debug, PartialEq, Eq, Copy, Hash)]
 pub struct InstructionValue<'ctx> {
-    instruction_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> InstructionValue<'ctx> {
     fn is_a_load_inst(self) -> bool {
@@ -1574,24 +1511,22 @@ impl<'ctx> InstructionValue<'ctx> {
     fn is_a_cmpxchg_inst(self) -> bool {
         !unsafe { LLVMIsAAtomicCmpXchgInst(self.as_value_ref()) }.is_null()
     }
-    pub unsafe fn new(instruction_value: LLVMValueRef) -> Self {
-        debug_assert!(!instruction_value.is_null());
-        let value = Value::new(instruction_value);
-        debug_assert!(value.is_instruction());
-        InstructionValue {
-            instruction_value: value,
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        debug_assert!(!x.is_null());
+        let val = Value::new(x);
+        debug_assert!(val.is_instruction());
+        InstructionValue { val }
     }
     pub fn get_name(&self) -> Option<&CStr> {
         if self.get_type().is_void_type() {
             None
         } else {
-            Some(self.instruction_value.get_name())
+            Some(self.val.get_name())
         }
     }
     pub fn get_instruction_with_name(&self, name: &str) -> Option<InstructionValue<'ctx>> {
-        if let Some(ins_name) = self.get_name() {
-            if ins_name.to_str() == Ok(name) {
+        if let Some(x) = self.get_name() {
+            if x.to_str() == Ok(name) {
                 return Some(*self);
             }
         }
@@ -1601,30 +1536,30 @@ impl<'ctx> InstructionValue<'ctx> {
         if self.get_type().is_void_type() {
             Err("Cannot set name of a void-type instruction!")
         } else {
-            self.instruction_value.set_name(name);
+            self.val.set_name(name);
             Ok(())
         }
     }
     pub fn get_type(self) -> AnyTypeEnum<'ctx> {
-        unsafe { AnyTypeEnum::new(self.instruction_value.get_type()) }
+        unsafe { AnyTypeEnum::new(self.val.get_type()) }
     }
     pub fn get_opcode(self) -> InstructionOpcode {
-        let opcode = unsafe { LLVMGetInstructionOpcode(self.as_value_ref()) };
-        InstructionOpcode::new(opcode)
+        let y = unsafe { LLVMGetInstructionOpcode(self.as_value_ref()) };
+        InstructionOpcode::new(y)
     }
     pub fn get_previous_instruction(self) -> Option<Self> {
-        let value = unsafe { LLVMGetPreviousInstruction(self.as_value_ref()) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetPreviousInstruction(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(InstructionValue::new(value)) }
+        unsafe { Some(InstructionValue::new(y)) }
     }
     pub fn get_next_instruction(self) -> Option<Self> {
-        let value = unsafe { LLVMGetNextInstruction(self.as_value_ref()) };
-        if value.is_null() {
+        let y = unsafe { LLVMGetNextInstruction(self.as_value_ref()) };
+        if y.is_null() {
             return None;
         }
-        unsafe { Some(InstructionValue::new(value)) }
+        unsafe { Some(InstructionValue::new(y)) }
     }
     pub fn erase_from_basic_block(self) {
         unsafe { LLVMInstructionEraseFromParent(self.as_value_ref()) }
@@ -1642,8 +1577,8 @@ impl<'ctx> InstructionValue<'ctx> {
             false
         }
     }
-    pub fn replace_all_uses_with(self, other: &InstructionValue<'ctx>) {
-        self.instruction_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: &InstructionValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
     pub fn get_volatile(self) -> Result<bool, &'static str> {
         if !self.is_a_load_inst() && !self.is_a_store_inst() && !self.is_a_atomicrmw_inst() && !self.is_a_cmpxchg_inst()
@@ -1741,7 +1676,7 @@ impl<'ctx> InstructionValue<'ctx> {
         unsafe { Some(BasicValueUse::new(use_)) }
     }
     pub fn get_first_use(self) -> Option<BasicValueUse<'ctx>> {
-        self.instruction_value.get_first_use()
+        self.val.get_first_use()
     }
     pub fn get_icmp_predicate(self) -> Option<IntPredicate> {
         if self.get_opcode() == InstructionOpcode::ICmp {
@@ -1760,10 +1695,10 @@ impl<'ctx> InstructionValue<'ctx> {
         }
     }
     pub fn has_metadata(self) -> bool {
-        unsafe { LLVMHasMetadata(self.instruction_value.value) == 1 }
+        unsafe { LLVMHasMetadata(self.val.raw) == 1 }
     }
     pub fn get_metadata(self, kind_id: u32) -> Option<MetadataValue<'ctx>> {
-        let metadata_value = unsafe { LLVMGetMetadata(self.instruction_value.value, kind_id) };
+        let metadata_value = unsafe { LLVMGetMetadata(self.val.raw, kind_id) };
         if metadata_value.is_null() {
             return None;
         }
@@ -1774,7 +1709,7 @@ impl<'ctx> InstructionValue<'ctx> {
             return Err("metadata is expected to be a node.");
         }
         unsafe {
-            LLVMSetMetadata(self.instruction_value.value, kind_id, metadata.as_value_ref());
+            LLVMSetMetadata(self.val.raw, kind_id, metadata.as_value_ref());
         }
         Ok(())
     }
@@ -1791,41 +1726,39 @@ impl Display for InstructionValue<'_> {
 }
 unsafe impl AsValueRef for InstructionValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.instruction_value.value
+        self.val.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct IntValue<'ctx> {
-    int_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> IntValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        IntValue {
-            int_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        IntValue { val: Value::new(x) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.int_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.int_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_type(self) -> IntType<'ctx> {
-        unsafe { IntType::new(self.int_value.get_type()) }
+        unsafe { IntType::new(self.val.get_type()) }
     }
     pub fn is_null(self) -> bool {
-        self.int_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.int_value.is_undef()
+        self.val.is_undef()
     }
     pub fn print_to_stderr(self) {
-        self.int_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
-        self.int_value.as_instruction()
+        self.val.as_instruction()
     }
     pub fn const_not(self) -> Self {
         unsafe { IntValue::new(LLVMConstNot(self.as_value_ref())) }
@@ -1936,7 +1869,7 @@ impl<'ctx> IntValue<'ctx> {
         }
     }
     pub fn is_const(self) -> bool {
-        self.int_value.is_const()
+        self.val.is_const()
     }
     pub fn is_constant_int(self) -> bool {
         !unsafe { LLVMIsAConstantInt(self.as_value_ref()) }.is_null()
@@ -1959,15 +1892,15 @@ impl<'ctx> IntValue<'ctx> {
         }
         unsafe { Some(LLVMConstIntGetSExtValue(self.as_value_ref())) }
     }
-    pub fn replace_all_uses_with(self, other: IntValue<'ctx>) {
-        self.int_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: IntValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
 }
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for IntValue<'ctx> {
     type Error = ();
-    fn try_from(value: InstructionValue) -> Result<Self, Self::Error> {
-        if value.get_type().is_int_type() {
-            unsafe { Ok(IntValue::new(value.as_value_ref())) }
+    fn try_from(x: InstructionValue) -> Result<Self, Self::Error> {
+        if x.get_type().is_int_type() {
+            unsafe { Ok(IntValue::new(x.as_value_ref())) }
         } else {
             Err(())
         }
@@ -1980,7 +1913,7 @@ impl Display for IntValue<'_> {
 }
 unsafe impl AsValueRef for IntValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.int_value.value
+        self.val.raw
     }
 }
 
@@ -1988,21 +1921,19 @@ pub const FIRST_CUSTOM_METADATA_KIND_ID: u32 = 39;
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct MetadataValue<'ctx> {
-    metadata_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> MetadataValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        assert!(!LLVMIsAMDNode(value).is_null() || !LLVMIsAMDString(value).is_null());
-        MetadataValue {
-            metadata_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        assert!(!LLVMIsAMDNode(x).is_null() || !LLVMIsAMDString(x).is_null());
+        MetadataValue { val: Value::new(x) }
     }
     pub fn as_metadata_ref(self) -> LLVMMetadataRef {
         unsafe { LLVMValueAsMetadata(self.as_value_ref()) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.metadata_value.get_name()
+        self.val.get_name()
     }
     pub fn is_node(self) -> bool {
         unsafe { LLVMIsAMDNode(self.as_value_ref()) == self.as_value_ref() }
@@ -2040,10 +1971,10 @@ impl<'ctx> MetadataValue<'ctx> {
             .collect()
     }
     pub fn print_to_stderr(self) {
-        self.metadata_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
-    pub fn replace_all_uses_with(self, other: &MetadataValue<'ctx>) {
-        self.metadata_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: &MetadataValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
 }
 impl Display for MetadataValue<'_> {
@@ -2066,20 +1997,18 @@ impl fmt::Debug for MetadataValue<'_> {
 }
 unsafe impl AsValueRef for MetadataValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.metadata_value.value
+        self.val.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PhiValue<'ctx> {
-    phi_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> PhiValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        PhiValue {
-            phi_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        PhiValue { val: Value::new(x) }
     }
     pub fn add_incoming(self, incoming: &[(&dyn BasicValue<'ctx>, BasicBlock<'ctx>)]) {
         let (mut values, mut basic_blocks): (Vec<LLVMValueRef>, Vec<LLVMBasicBlockRef>) = {
@@ -2100,34 +2029,34 @@ impl<'ctx> PhiValue<'ctx> {
     pub fn count_incoming(self) -> u32 {
         unsafe { LLVMCountIncoming(self.as_value_ref()) }
     }
-    pub fn get_incoming(self, index: u32) -> Option<(BasicValueEnum<'ctx>, BasicBlock<'ctx>)> {
-        if index >= self.count_incoming() {
+    pub fn get_incoming(self, idx: u32) -> Option<(BasicValueEnum<'ctx>, BasicBlock<'ctx>)> {
+        if idx >= self.count_incoming() {
             return None;
         }
         let basic_block =
-            unsafe { BasicBlock::new(LLVMGetIncomingBlock(self.as_value_ref(), index)).expect("Invalid BasicBlock") };
-        let value = unsafe { BasicValueEnum::new(LLVMGetIncomingValue(self.as_value_ref(), index)) };
+            unsafe { BasicBlock::new(LLVMGetIncomingBlock(self.as_value_ref(), idx)).expect("Invalid BasicBlock") };
+        let value = unsafe { BasicValueEnum::new(LLVMGetIncomingValue(self.as_value_ref(), idx)) };
         Some((value, basic_block))
     }
     pub fn get_name(&self) -> &CStr {
-        self.phi_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(self, name: &str) {
-        self.phi_value.set_name(name);
+        self.val.set_name(name);
     }
     pub fn is_null(self) -> bool {
-        self.phi_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.phi_value.is_undef()
+        self.val.is_undef()
     }
     pub fn as_instruction(self) -> InstructionValue<'ctx> {
-        self.phi_value
+        self.val
             .as_instruction()
             .expect("PhiValue should always be a Phi InstructionValue")
     }
-    pub fn replace_all_uses_with(self, other: &PhiValue<'ctx>) {
-        self.phi_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: &PhiValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
     pub fn as_basic_value(self) -> BasicValueEnum<'ctx> {
         unsafe { BasicValueEnum::new(self.as_value_ref()) }
@@ -2150,44 +2079,42 @@ impl Display for PhiValue<'_> {
 }
 unsafe impl AsValueRef for PhiValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.phi_value.value
+        self.val.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PointerValue<'ctx> {
-    ptr_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> PointerValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        PointerValue {
-            ptr_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        PointerValue { val: Value::new(x) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.ptr_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.ptr_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_type(self) -> PointerType<'ctx> {
-        unsafe { PointerType::new(self.ptr_value.get_type()) }
+        unsafe { PointerType::new(self.val.get_type()) }
     }
     pub fn is_null(self) -> bool {
-        self.ptr_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.ptr_value.is_undef()
+        self.val.is_undef()
     }
     pub fn is_const(self) -> bool {
-        self.ptr_value.is_const()
+        self.val.is_const()
     }
     pub fn print_to_stderr(self) {
-        self.ptr_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
-        self.ptr_value.as_instruction()
+        self.val.as_instruction()
     }
     pub unsafe fn const_gep<T: BasicType<'ctx>>(self, ty: T, ordered_indexes: &[IntValue<'ctx>]) -> PointerValue<'ctx> {
         let mut index_values: Vec<LLVMValueRef> = ordered_indexes.iter().map(|val| val.as_value_ref()).collect();
@@ -2228,8 +2155,8 @@ impl<'ctx> PointerValue<'ctx> {
     pub fn const_address_space_cast(self, ptr_type: PointerType<'ctx>) -> PointerValue<'ctx> {
         unsafe { PointerValue::new(LLVMConstAddrSpaceCast(self.as_value_ref(), ptr_type.as_type_ref())) }
     }
-    pub fn replace_all_uses_with(self, other: PointerValue<'ctx>) {
-        self.ptr_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: PointerValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
 }
 impl<'ctx> TryFrom<InstructionValue<'ctx>> for PointerValue<'ctx> {
@@ -2249,44 +2176,42 @@ impl Display for PointerValue<'_> {
 }
 unsafe impl AsValueRef for PointerValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.ptr_value.value
+        self.val.raw
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct StructValue<'ctx> {
-    struct_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> StructValue<'ctx> {
-    pub unsafe fn new(value: LLVMValueRef) -> Self {
-        assert!(!value.is_null());
-        StructValue {
-            struct_value: Value::new(value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        StructValue { val: Value::new(x) }
     }
     pub fn get_name(&self) -> &CStr {
-        self.struct_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.struct_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_type(self) -> StructType<'ctx> {
-        unsafe { StructType::new(self.struct_value.get_type()) }
+        unsafe { StructType::new(self.val.get_type()) }
     }
     pub fn is_null(self) -> bool {
-        self.struct_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.struct_value.is_undef()
+        self.val.is_undef()
     }
     pub fn print_to_stderr(self) {
-        self.struct_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
-        self.struct_value.as_instruction()
+        self.val.as_instruction()
     }
-    pub fn replace_all_uses_with(self, other: StructValue<'ctx>) {
-        self.struct_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: StructValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
 }
 impl Display for StructValue<'_> {
@@ -2296,7 +2221,7 @@ impl Display for StructValue<'_> {
 }
 unsafe impl AsValueRef for StructValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.struct_value.value
+        self.val.raw
     }
 }
 
@@ -2313,8 +2238,8 @@ pub unsafe trait BasicValue<'ctx>: AnyValue<'ctx> {
         unsafe { BasicValueEnum::new(self.as_value_ref()) }
     }
     fn as_instruction_value(&self) -> Option<InstructionValue<'ctx>> {
-        let value = unsafe { Value::new(self.as_value_ref()) };
-        if !value.is_instruction() {
+        let y = unsafe { Value::new(self.as_value_ref()) };
+        if !y.is_instruction() {
             return None;
         }
         unsafe { Some(InstructionValue::new(self.as_value_ref())) }
@@ -2322,8 +2247,8 @@ pub unsafe trait BasicValue<'ctx>: AnyValue<'ctx> {
     fn get_first_use(&self) -> Option<BasicValueUse> {
         unsafe { Value::new(self.as_value_ref()).get_first_use() }
     }
-    fn set_name(&self, name: &str) {
-        unsafe { Value::new(self.as_value_ref()).set_name(name) }
+    fn set_name(&self, x: &str) {
+        unsafe { Value::new(self.as_value_ref()).set_name(x) }
     }
 }
 pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
@@ -2333,9 +2258,9 @@ pub unsafe trait AggregateValue<'ctx>: BasicValue<'ctx> {
 }
 
 macro_rules! trait_value_set {
-    ($trait_name:ident: $($args:ident),*) => (
+    ($name:ident: $($args:ident),*) => (
         $(
-            unsafe impl<'ctx> $trait_name<'ctx> for $args<'ctx> {}
+            unsafe impl<'ctx> $name<'ctx> for $args<'ctx> {}
         )*
     );
 }
@@ -2346,25 +2271,25 @@ trait_value_set! {AggregateValue: ArrayValue, AggregateValueEnum, StructValue}
 
 pub unsafe trait IntMathValue<'ctx>: BasicValue<'ctx> {
     type BaseType: IntMathType<'ctx>;
-    unsafe fn new(value: LLVMValueRef) -> Self;
+    unsafe fn new(x: LLVMValueRef) -> Self;
 }
 pub unsafe trait FloatMathValue<'ctx>: BasicValue<'ctx> {
     type BaseType: FloatMathType<'ctx>;
-    unsafe fn new(value: LLVMValueRef) -> Self;
+    unsafe fn new(x: LLVMValueRef) -> Self;
 }
 pub unsafe trait PointerMathValue<'ctx>: BasicValue<'ctx> {
     type BaseType: PointerMathType<'ctx>;
-    unsafe fn new(value: LLVMValueRef) -> Self;
+    unsafe fn new(x: LLVMValueRef) -> Self;
 }
 
 macro_rules! math_trait_value_set {
-    ($trait_name:ident: $(($value_type:ident => $base_type:ident)),*) => (
+    ($name:ident: $(($ty:ident => $base:ident)),*) => (
         $(
-            unsafe impl<'ctx> $trait_name<'ctx> for $value_type<'ctx> {
-                type BaseType = $base_type<'ctx>;
-                unsafe fn new(value: LLVMValueRef) -> $value_type<'ctx> {
+            unsafe impl<'ctx> $name<'ctx> for $ty<'ctx> {
+                type BaseType = $base<'ctx>;
+                unsafe fn new(x: LLVMValueRef) -> $ty<'ctx> {
                     unsafe {
-                        $value_type::new(value)
+                        $ty::new(x)
                     }
                 }
             }
@@ -2378,17 +2303,15 @@ math_trait_value_set! {PointerMathValue: (PointerValue => PointerType), (VectorV
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct VectorValue<'ctx> {
-    vec_value: Value<'ctx>,
+    val: Value<'ctx>,
 }
 impl<'ctx> VectorValue<'ctx> {
-    pub unsafe fn new(vector_value: LLVMValueRef) -> Self {
-        assert!(!vector_value.is_null());
-        VectorValue {
-            vec_value: Value::new(vector_value),
-        }
+    pub unsafe fn new(x: LLVMValueRef) -> Self {
+        assert!(!x.is_null());
+        VectorValue { val: Value::new(x) }
     }
     pub fn is_const(self) -> bool {
-        self.vec_value.is_const()
+        self.val.is_const()
     }
     pub fn is_constant_vector(self) -> bool {
         unsafe { !LLVMIsAConstantVector(self.as_value_ref()).is_null() }
@@ -2397,25 +2320,25 @@ impl<'ctx> VectorValue<'ctx> {
         unsafe { !LLVMIsAConstantDataVector(self.as_value_ref()).is_null() }
     }
     pub fn print_to_stderr(self) {
-        self.vec_value.print_to_stderr()
+        self.val.print_to_stderr()
     }
     pub fn get_name(&self) -> &CStr {
-        self.vec_value.get_name()
+        self.val.get_name()
     }
     pub fn set_name(&self, name: &str) {
-        self.vec_value.set_name(name)
+        self.val.set_name(name)
     }
     pub fn get_type(self) -> VectorType<'ctx> {
-        unsafe { VectorType::new(self.vec_value.get_type()) }
+        unsafe { VectorType::new(self.val.get_type()) }
     }
     pub fn is_null(self) -> bool {
-        self.vec_value.is_null()
+        self.val.is_null()
     }
     pub fn is_undef(self) -> bool {
-        self.vec_value.is_undef()
+        self.val.is_undef()
     }
     pub fn as_instruction(self) -> Option<InstructionValue<'ctx>> {
-        self.vec_value.as_instruction()
+        self.val.as_instruction()
     }
     pub fn const_extract_element(self, index: IntValue<'ctx>) -> BasicValueEnum<'ctx> {
         unsafe { BasicValueEnum::new(LLVMConstExtractElement(self.as_value_ref(), index.as_value_ref())) }
@@ -2429,8 +2352,8 @@ impl<'ctx> VectorValue<'ctx> {
             ))
         }
     }
-    pub fn replace_all_uses_with(self, other: VectorValue<'ctx>) {
-        self.vec_value.replace_all_uses_with(other.as_value_ref())
+    pub fn replace_all_uses_with(self, x: VectorValue<'ctx>) {
+        self.val.replace_all_uses_with(x.as_value_ref())
     }
     pub fn get_element_as_constant(self, index: u32) -> BasicValueEnum<'ctx> {
         unsafe { BasicValueEnum::new(LLVMGetElementAsConstant(self.as_value_ref(), index)) }
@@ -2461,6 +2384,6 @@ impl Display for VectorValue<'_> {
 }
 unsafe impl AsValueRef for VectorValue<'_> {
     fn as_value_ref(&self) -> LLVMValueRef {
-        self.vec_value.value
+        self.val.raw
     }
 }
