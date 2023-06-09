@@ -520,31 +520,31 @@ impl<'c> DenseElementsAttribute<'c> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
                 ty: "integer",
-                value: self.to_string(),
+                val: self.to_string(),
             })
         } else if idx < self.len() {
             Ok(unsafe { mlirDenseElementsAttrGetInt32Value(self.attr.to_raw(), idx as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "dense element",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
     pub fn i64_element(&self, idx: usize) -> Result<i64, Error> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
-                ty: "integer",
-                value: self.to_string(),
+                typ: "integer",
+                val: self.to_string(),
             })
         } else if idx < self.len() {
             Ok(unsafe { mlirDenseElementsAttrGetInt64Value(self.attr.to_raw(), idx as isize) })
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "dense element",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -571,8 +571,8 @@ impl<'c> DenseI32ArrayAttribute<'c> {
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "array element",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -599,8 +599,8 @@ impl<'c> DenseI64ArrayAttribute<'c> {
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "array element",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -691,8 +691,8 @@ impl<'c> Block<'c> {
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "block argument",
-                    value: self.to_string(),
-                    index: idx,
+                    val: self.to_string(),
+                    idx,
                 })
             }
         }
@@ -702,11 +702,11 @@ impl<'c> Block<'c> {
     }
     pub fn first_operation(&self) -> Option<OperationRef> {
         unsafe {
-            let operation = mlirBlockGetFirstOperation(self.raw);
-            if operation.ptr.is_null() {
+            let y = mlirBlockGetFirstOperation(self.raw);
+            if y.ptr.is_null() {
                 None
             } else {
-                Some(OperationRef::from_raw(operation))
+                Some(OperationRef::from_raw(y))
             }
         }
     }
@@ -912,8 +912,8 @@ impl<'c> Operation<'c> {
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "operation result",
-                    value: self.to_string(),
-                    index: idx,
+                    val: self.to_string(),
+                    idx,
                 })
             }
         }
@@ -928,8 +928,8 @@ impl<'c> Operation<'c> {
             } else {
                 Err(Error::PositionOutOfBounds {
                     name: "region",
-                    value: self.to_string(),
-                    index: idx,
+                    val: self.to_string(),
+                    idx,
                 })
             }
         }
@@ -1404,8 +1404,8 @@ impl<'c> FunctionType<'c> {
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "function input",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -1420,8 +1420,8 @@ impl<'c> FunctionType<'c> {
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "function result",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -1625,8 +1625,8 @@ impl<'c> TupleType<'c> {
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "tuple field",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }

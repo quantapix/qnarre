@@ -149,14 +149,14 @@ pub enum DiagnosticSeverity {
 }
 impl TryFrom<u32> for DiagnosticSeverity {
     type Error = Error;
-    fn try_from(severity: u32) -> Result<Self, Error> {
+    fn try_from(x: u32) -> Result<Self, Error> {
         #[allow(non_upper_case_globals)]
-        Ok(match severity {
+        Ok(match x {
             MlirDiagnosticSeverity_MlirDiagnosticError => Self::Error,
             MlirDiagnosticSeverity_MlirDiagnosticNote => Self::Note,
             MlirDiagnosticSeverity_MlirDiagnosticRemark => Self::Remark,
             MlirDiagnosticSeverity_MlirDiagnosticWarning => Self::Warning,
-            _ => return Err(Error::UnknownDiagnosticSeverity(severity)),
+            _ => return Err(Error::UnknownDiagnosticSeverity(x)),
         })
     }
 }
@@ -172,7 +172,7 @@ impl<'c> Diagnostic<'c> {
     }
     pub fn severity(&self) -> DiagnosticSeverity {
         DiagnosticSeverity::try_from(unsafe { mlirDiagnosticGetSeverity(self.raw) })
-            .unwrap_or_else(|error| unreachable!("{}", error))
+            .unwrap_or_else(|x| unreachable!("{}", x))
     }
     pub fn note_count(&self) -> usize {
         (unsafe { mlirDiagnosticGetNumNotes(self.raw) }) as usize
@@ -183,8 +183,8 @@ impl<'c> Diagnostic<'c> {
         } else {
             Err(Error::PositionOutOfBounds {
                 name: "diagnostic note",
-                value: self.to_string(),
-                index: idx,
+                val: self.to_string(),
+                idx,
             })
         }
     }
@@ -210,8 +210,8 @@ pub enum Error {
     AttributeExpected(&'static str, String),
     BlockArgumentExpected(String),
     ElementExpected {
-        r#type: &'static str,
-        value: String,
+        typ: &'static str,
+        val: String,
     },
     InvokeFunction,
     OperationResultExpected(String),
@@ -229,42 +229,42 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::AttributeExpected(r#type, attribute) => {
-                write!(f, "{type} attribute expected: {attribute}")
+            Self::AttributeExpected(typ, x) => {
+                write!(f, "{type} attribute expected: {x}")
             },
-            Self::BlockArgumentExpected(value) => {
-                write!(f, "block argument expected: {value}")
+            Self::BlockArgumentExpected(x) => {
+                write!(f, "block argument expected: {x}")
             },
-            Self::ElementExpected { r#type, value } => {
-                write!(f, "element of {type} type expected: {value}")
+            Self::ElementExpected { typ, val } => {
+                write!(f, "element of {typ} type expected: {val}")
             },
             Self::InvokeFunction => write!(f, "failed to invoke JIT-compiled function"),
-            Self::OperationResultExpected(value) => {
-                write!(f, "operation result expected: {value}")
+            Self::OperationResultExpected(x) => {
+                write!(f, "operation result expected: {x}")
             },
-            Self::ParsePassPipeline(message) => {
-                write!(f, "failed to parse pass pipeline:\n{}", message)
+            Self::ParsePassPipeline(x) => {
+                write!(f, "failed to parse pass pipeline:\n{}", x)
             },
-            Self::PositionOutOfBounds { name, value, index } => {
-                write!(f, "{name} position {index} out of bounds: {value}")
+            Self::PositionOutOfBounds { name, val, idx } => {
+                write!(f, "{name} position {idx} out of bounds: {val}")
             },
             Self::RunPass => write!(f, "failed to run pass"),
-            Self::TypeExpected(r#type, actual) => {
-                write!(f, "{type} type expected: {actual}")
+            Self::TypeExpected(typ, x) => {
+                write!(f, "{typ} type expected: {x}")
             },
-            Self::UnknownDiagnosticSeverity(severity) => {
-                write!(f, "unknown diagnostic severity: {severity}")
+            Self::UnknownDiagnosticSeverity(x) => {
+                write!(f, "unknown diagnostic severity: {x}")
             },
-            Self::Utf8(error) => {
-                write!(f, "{}", error)
+            Self::Utf8(x) => {
+                write!(f, "{}", x)
             },
         }
     }
 }
 impl error::Error for Error {}
 impl From<Utf8Error> for Error {
-    fn from(error: Utf8Error) -> Self {
-        Self::Utf8(error)
+    fn from(x: Utf8Error) -> Self {
+        Self::Utf8(x)
     }
 }
 
@@ -272,21 +272,16 @@ pub struct ExecutionEngine {
     raw: MlirExecutionEngine,
 }
 impl ExecutionEngine {
-    pub fn new(
-        module: &Module,
-        optimization_level: usize,
-        shared_library_paths: &[&str],
-        enable_object_dump: bool,
-    ) -> Self {
+    pub fn new(m: &Module, optim: usize, shared_library_paths: &[&str], enable_object_dump: bool) -> Self {
         Self {
             raw: unsafe {
                 mlirExecutionEngineCreate(
-                    module.to_raw(),
-                    optimization_level as i32,
+                    m.to_raw(),
+                    optim as i32,
                     shared_library_paths.len() as i32,
                     shared_library_paths
                         .iter()
-                        .map(|&string| StringRef::from(string).to_raw())
+                        .map(|&x| StringRef::from(x).to_raw())
                         .collect::<Vec<_>>()
                         .as_ptr(),
                     enable_object_dump,
@@ -294,13 +289,13 @@ impl ExecutionEngine {
             },
         }
     }
-    pub unsafe fn invoke_packed(&self, name: &str, arguments: &mut [*mut ()]) -> Result<(), Error> {
-        let result = LogicalResult::from_raw(mlirExecutionEngineInvokePacked(
+    pub unsafe fn invoke_packed(&self, name: &str, args: &mut [*mut ()]) -> Result<(), Error> {
+        let y = LogicalResult::from_raw(mlirExecutionEngineInvokePacked(
             self.raw,
             StringRef::from(name).to_raw(),
-            arguments.as_mut_ptr() as *mut *mut c_void,
+            args.as_mut_ptr() as *mut *mut c_void,
         ));
-        if result.is_success() {
+        if y.is_success() {
             Ok(())
         } else {
             Err(Error::InvokeFunction)
@@ -322,8 +317,8 @@ pub struct Integer<'c> {
     _context: PhantomData<&'c Context>,
 }
 impl<'c> Integer<'c> {
-    pub fn new(integer: i64, r#type: Type<'c>) -> Self {
-        unsafe { Self::from_raw(mlirIntegerAttrGet(r#type.to_raw(), integer)) }
+    pub fn new(x: i64, ty: Type<'c>) -> Self {
+        unsafe { Self::from_raw(mlirIntegerAttrGet(ty.to_raw(), x)) }
     }
     unsafe fn from_raw(raw: MlirAttribute) -> Self {
         Self {
@@ -339,11 +334,11 @@ impl<'c> AttributeLike<'c> for Integer<'c> {
 }
 impl<'c> TryFrom<Attribute<'c>> for Integer<'c> {
     type Error = Error;
-    fn try_from(attribute: Attribute<'c>) -> Result<Self, Self::Error> {
-        if attribute.is_integer() {
-            Ok(unsafe { Self::from_raw(attribute.to_raw()) })
+    fn try_from(a: Attribute<'c>) -> Result<Self, Self::Error> {
+        if a.is_integer() {
+            Ok(unsafe { Self::from_raw(a.to_raw()) })
         } else {
-            Err(Error::AttributeExpected("integer", format!("{}", attribute)))
+            Err(Error::AttributeExpected("integer", format!("{}", a)))
         }
     }
 }
@@ -380,16 +375,16 @@ impl LogicalResult {
     pub fn is_failure(&self) -> bool {
         self.raw.value == 0
     }
-    pub fn from_raw(result: MlirLogicalResult) -> Self {
-        Self { raw: result }
+    pub fn from_raw(raw: MlirLogicalResult) -> Self {
+        Self { raw }
     }
     pub fn to_raw(self) -> MlirLogicalResult {
         self.raw
     }
 }
 impl From<bool> for LogicalResult {
-    fn from(ok: bool) -> Self {
-        if ok {
+    fn from(x: bool) -> Self {
+        if x {
             Self::success()
         } else {
             Self::failure()
@@ -407,12 +402,8 @@ pub struct StringRef<'a> {
 impl<'a> StringRef<'a> {
     pub fn as_str(&self) -> Result<&'a str, Utf8Error> {
         unsafe {
-            let bytes = slice::from_raw_parts(self.raw.data as *mut u8, self.raw.length);
-            str::from_utf8(if bytes[bytes.len() - 1] == 0 {
-                &bytes[..bytes.len() - 1]
-            } else {
-                bytes
-            })
+            let ys = slice::from_raw_parts(self.raw.data as *mut u8, self.raw.length);
+            str::from_utf8(if ys[ys.len() - 1] == 0 { &ys[..ys.len() - 1] } else { ys })
         }
     }
     pub fn to_raw(self) -> MlirStringRef {
@@ -426,22 +417,22 @@ impl<'a> StringRef<'a> {
     }
 }
 impl<'a> PartialEq for StringRef<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { mlirStringRefEqual(self.raw, other.raw) }
+    fn eq(&self, x: &Self) -> bool {
+        unsafe { mlirStringRefEqual(self.raw, x.raw) }
     }
 }
 impl<'a> Eq for StringRef<'a> {}
 impl From<&str> for StringRef<'static> {
-    fn from(string: &str) -> Self {
-        if !STRING_CACHE.read().unwrap().contains_key(string) {
+    fn from(x: &str) -> Self {
+        if !STRING_CACHE.read().unwrap().contains_key(x) {
             STRING_CACHE
                 .write()
                 .unwrap()
-                .insert(string.to_owned(), CString::new(string).unwrap());
+                .insert(x.to_owned(), CString::new(x).unwrap());
         }
         let lock = STRING_CACHE.read().unwrap();
-        let string = lock.get(string).unwrap();
-        unsafe { Self::from_raw(mlirStringRefCreateFromCString(string.as_ptr())) }
+        let y = lock.get(x).unwrap();
+        unsafe { Self::from_raw(mlirStringRefCreateFromCString(y.as_ptr())) }
     }
 }
 
@@ -465,13 +456,13 @@ impl Pass {
 
 pub struct PassManager<'c> {
     raw: MlirPassManager,
-    _context: PhantomData<&'c Context>,
+    _ctx: PhantomData<&'c Context>,
 }
 impl<'c> PassManager<'c> {
-    pub fn new(context: &Context) -> Self {
+    pub fn new(c: &Context) -> Self {
         Self {
-            raw: unsafe { mlirPassManagerCreate(context.to_raw()) },
-            _context: Default::default(),
+            raw: unsafe { mlirPassManagerCreate(c.to_raw()) },
+            _ctx: Default::default(),
         }
     }
     pub fn nested_under(&self, name: &str) -> OperationPassManager {
@@ -479,8 +470,8 @@ impl<'c> PassManager<'c> {
             OperationPassManager::from_raw(mlirPassManagerGetNestedUnder(self.raw, StringRef::from(name).to_raw()))
         }
     }
-    pub fn add_pass(&self, pass: Pass) {
-        unsafe { mlirPassManagerAddOwnedPass(self.raw, pass.to_raw()) }
+    pub fn add_pass(&self, p: Pass) {
+        unsafe { mlirPassManagerAddOwnedPass(self.raw, p.to_raw()) }
     }
     pub fn enable_verifier(&self, enabled: bool) {
         unsafe { mlirPassManagerEnableVerifier(self.raw, enabled) }
@@ -488,9 +479,9 @@ impl<'c> PassManager<'c> {
     pub fn enable_ir_printing(&self) {
         unsafe { mlirPassManagerEnableIRPrinting(self.raw) }
     }
-    pub fn run(&self, module: &mut Module) -> Result<(), Error> {
-        let result = LogicalResult::from_raw(unsafe { mlirPassManagerRun(self.raw, module.to_raw()) });
-        if result.is_success() {
+    pub fn run(&self, m: &mut Module) -> Result<(), Error> {
+        let y = LogicalResult::from_raw(unsafe { mlirPassManagerRun(self.raw, m.to_raw()) });
+        if y.is_success() {
             Ok(())
         } else {
             Err(Error::RunPass)
@@ -520,8 +511,8 @@ impl<'a> OperationPassManager<'a> {
             ))
         }
     }
-    pub fn add_pass(&self, pass: Pass) {
-        unsafe { mlirOpPassManagerAddOwnedPass(self.raw, pass.to_raw()) }
+    pub fn add_pass(&self, p: Pass) {
+        unsafe { mlirOpPassManagerAddOwnedPass(self.raw, p.to_raw()) }
     }
     pub fn to_raw(self) -> MlirOpPassManager {
         self.raw
@@ -670,37 +661,37 @@ macros::transform_passes!(
     mlirCreateTransformsViewOpGraph,
 );
 
-pub fn register_all_dialects(registry: &DialectRegistry) {
-    unsafe { mlirRegisterAllDialects(registry.to_raw()) }
+pub fn register_all_dialects(r: &DialectRegistry) {
+    unsafe { mlirRegisterAllDialects(r.to_raw()) }
 }
-pub fn register_all_llvm_translations(context: &Context) {
-    unsafe { mlirRegisterAllLLVMTranslations(context.to_raw()) }
+pub fn register_all_llvm_translations(c: &Context) {
+    unsafe { mlirRegisterAllLLVMTranslations(c.to_raw()) }
 }
 pub fn register_all_passes() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| unsafe { mlirRegisterAllPasses() });
 }
-pub fn parse_pass_pipeline(manager: pass::OperationPassManager, source: &str) -> Result<(), Error> {
-    let mut error_message = None;
-    let result = LogicalResult::from_raw(unsafe {
+pub fn parse_pass_pipeline(m: OperationPassManager, src: &str) -> Result<(), Error> {
+    let mut e = None;
+    let y = LogicalResult::from_raw(unsafe {
         mlirParsePassPipeline(
-            manager.to_raw(),
-            StringRef::from(source).to_raw(),
+            m.to_raw(),
+            StringRef::from(src).to_raw(),
             Some(handle_parse_error),
-            &mut error_message as *mut _ as *mut _,
+            &mut e as *mut _ as *mut _,
         )
     });
-    if result.is_success() {
+    if y.is_success() {
         Ok(())
     } else {
         Err(Error::ParsePassPipeline(
-            error_message.unwrap_or_else(|| "failed to parse error message in UTF-8".into()),
+            e.unwrap_or_else(|| "failed to parse error message in UTF-8".into()),
         ))
     }
 }
 
-unsafe extern "C" fn handle_parse_error(raw_string: MlirStringRef, data: *mut c_void) {
-    let string = StringRef::from_raw(raw_string);
+unsafe extern "C" fn handle_parse_error(raw: MlirStringRef, data: *mut c_void) {
+    let string = StringRef::from_raw(raw);
     let data = &mut *(data as *mut Option<String>);
     if let Some(message) = data {
         message.extend(string.as_str())
@@ -736,22 +727,22 @@ pub unsafe extern "C" fn print_string_callback(string: MlirStringRef, data: *mut
     })();
 }
 
-pub fn load_all_dialects(context: &Context) {
-    let registry = DialectRegistry::new();
-    register_all_dialects(&registry);
-    context.append_dialect_registry(&registry);
-    context.load_all_available_dialects();
+pub fn load_all_dialects(c: &Context) {
+    let r = DialectRegistry::new();
+    register_all_dialects(&r);
+    c.append_dialect_registry(&r);
+    c.load_all_available_dialects();
 }
 
 pub fn create_test_context() -> Context {
-    let context = Context::new();
-    context.attach_diagnostic_handler(|diagnostic| {
-        eprintln!("{}", diagnostic);
+    let y = Context::new();
+    y.attach_diagnostic_handler(|x| {
+        eprintln!("{}", x);
         true
     });
-    load_all_dialects(&context);
-    register_all_llvm_translations(&context);
-    context
+    load_all_dialects(&y);
+    register_all_llvm_translations(&y);
+    y
 }
 
 #[cfg(test)]
