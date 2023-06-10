@@ -3,15 +3,11 @@ use crate::HashMap;
 use std::fmt;
 use std::ops;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum Resolved {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum Resolved {
     Changed,
+    #[default]
     Same,
-}
-impl Default for Resolved {
-    fn default() -> Self {
-        Resolved::Same
-    }
 }
 impl ops::BitOr for Resolved {
     type Output = Self;
@@ -29,7 +25,7 @@ impl ops::BitOrAssign for Resolved {
     }
 }
 
-trait Monotone: Sized + fmt::Debug {
+pub trait Monotone: Sized + fmt::Debug {
     type Node: Copy;
     type Extra: Sized;
     type Output: From<Self> + fmt::Debug;
@@ -94,7 +90,7 @@ pub mod derive {
                 _ => |x| matches!(x, EdgeKind::TemplArg | EdgeKind::TemplDecl),
             }
         }
-        fn can_derive_large_array(&self, ctx: &Context) -> bool {
+        fn can_derive_large_array(&self, _: &Context) -> bool {
             !matches!(self, DeriveTrait::Default)
         }
         fn can_derive_union(&self) -> bool {
@@ -264,7 +260,7 @@ pub mod derive {
                     }
                     Resolved::Yes
                 },
-                TypeKind::Vector(t, len) => {
+                TypeKind::Vector(t, _len) => {
                     let ty2 = self.ys.get(&t.into()).cloned().unwrap_or_default();
                     if ty2 != Resolved::Yes {
                         return Resolved::No;
@@ -809,8 +805,9 @@ pub mod has_vtable {
     use std::cmp;
     use std::ops;
 
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
     pub enum Resolved {
+        #[default]
         No,
         SelfHasVtable,
         BaseHasVtable,
@@ -818,11 +815,6 @@ pub mod has_vtable {
     impl Resolved {
         pub fn join(self, x: Self) -> Self {
             cmp::max(self, x)
-        }
-    }
-    impl Default for Resolved {
-        fn default() -> Self {
-            Resolved::No
         }
     }
     impl ops::BitOr for Resolved {
@@ -952,8 +944,9 @@ pub mod sizedness {
     use crate::{Entry, HashMap};
     use std::{cmp, ops};
 
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
     pub enum Resolved {
+        #[default]
         ZeroSized,
         DependsOnTypeParam,
         NonZeroSized,
@@ -961,11 +954,6 @@ pub mod sizedness {
     impl Resolved {
         pub fn join(self, x: Self) -> Self {
             cmp::max(self, x)
-        }
-    }
-    impl Default for Resolved {
-        fn default() -> Self {
-            Resolved::ZeroSized
         }
     }
     impl ops::BitOr for Resolved {

@@ -6,11 +6,10 @@ use super::templ::Params;
 use super::Layout;
 use super::{Context, EdgeKind, FnId, ItemId, Trace, Tracer, TypeId, VarId};
 use crate::clang;
-use crate::codegen::structure::{align_to, bytes_from_bits_pow2};
+use crate::codegen::structure::align_to; //, bytes_from_bits_pow2};
 use crate::codegen::utils::variation;
 use crate::ir::derive::CanDeriveCopy;
 use crate::parse;
-use crate::HashMap;
 use peeking_take_while::PeekableExt;
 use std::cmp;
 use std::io;
@@ -158,7 +157,7 @@ impl CompFields {
             },
         }
     }
-    fn deanonymize_fields(&mut self, ctx: &Context, methods: &[Method]) {
+    fn deanonymize_fields(&mut self, ctx: &Context, _: &[Method]) {
         let fields = match *self {
             CompFields::After { ref mut fields, .. } => fields,
             CompFields::Error => return,
@@ -172,36 +171,6 @@ impl CompFields {
                 x == name || ctx.rust_mangle(x) == name
             })
         }
-        struct AccessorNamesPair {
-            getter: String,
-            setter: String,
-        }
-        let mut accessor_names: HashMap<String, AccessorNamesPair> = fields
-            .iter()
-            .flat_map(|x| match *x {
-                Field::Data(_) => &[],
-            })
-            .filter_map(|x| x.name())
-            .map(|x| {
-                let x = x.to_string();
-                let getter = {
-                    let mut getter = ctx.rust_mangle(&x).to_string();
-                    if has_method(methods, ctx, &getter) {
-                        getter.push_str("_bindgen_bitfield");
-                    }
-                    getter
-                };
-                let setter = {
-                    let setter = format!("set_{}", x);
-                    let mut setter = ctx.rust_mangle(&setter).to_string();
-                    if has_method(methods, ctx, &setter) {
-                        setter.push_str("_bindgen_bitfield");
-                    }
-                    setter
-                };
-                (x, AccessorNamesPair { getter, setter })
-            })
-            .collect();
         let mut anon_field_counter = 0;
         for field in fields.iter_mut() {
             match *field {
@@ -841,7 +810,7 @@ impl DotAttrs for Comp {
 }
 impl IsOpaque for Comp {
     type Extra = Option<Layout>;
-    fn is_opaque(&self, ctx: &Context, layout: &Option<Layout>) -> bool {
+    fn is_opaque(&self, _: &Context, _: &Option<Layout>) -> bool {
         if self.has_non_type_params || self.has_unevaluable_width {
             return true;
         }
@@ -929,8 +898,8 @@ where
 
 fn bitfields_to_allocation_units<E, I>(
     ctx: &Context,
-    bitfield_unit_count: &mut usize,
-    fields: &mut E,
+    _bitfield_unit_count: &mut usize,
+    _fields: &mut E,
     raw_bfs: I,
     packed: bool,
 ) -> Result<(), ()>
@@ -939,6 +908,7 @@ where
     I: IntoIterator<Item = RawField>,
 {
     assert!(ctx.collected_typerefs());
+    /*
     fn flush_allocation_unit<E>(
         fields: &mut E,
         bitfield_unit_count: &mut usize,
@@ -963,11 +933,12 @@ where
             bitfields,
         })));
     }
+    */
     let mut max_align = 0;
     let mut unfilled_bits_in_unit = 0;
     let mut unit_size_in_bits = 0;
     let mut unit_align = 0;
-    let mut bitfields_in_unit = vec![];
+    //let mut bitfields_in_unit = vec![];
     const is_ms_struct: bool = false;
     for bitfield in raw_bfs {
         let bitfield_width = bitfield.bitfield_width().unwrap() as usize;
@@ -978,6 +949,7 @@ where
         if !packed {
             if is_ms_struct {
                 if unit_size_in_bits != 0 && (bitfield_width == 0 || bitfield_width > unfilled_bits_in_unit) {
+                    /*
                     unit_size_in_bits = align_to(unit_size_in_bits, unit_align * 8);
                     flush_allocation_unit(
                         fields,
@@ -987,6 +959,7 @@ where
                         mem::take(&mut bitfields_in_unit),
                         packed,
                     );
+                    */
                     offset = 0;
                     unit_align = 0;
                 }
@@ -1000,12 +973,13 @@ where
             max_align = cmp::max(max_align, bitfield_align);
             unit_align = cmp::max(unit_align, bitfield_width);
         }
-        bitfields_in_unit.push(Bitfield::new(offset, bitfield));
+        //bitfields_in_unit.push(Bitfield::new(offset, bitfield));
         unit_size_in_bits = offset + bitfield_width;
         let data_size = align_to(unit_size_in_bits, bitfield_align * 8);
         unfilled_bits_in_unit = data_size - unit_size_in_bits;
     }
     if unit_size_in_bits != 0 {
+        /*
         flush_allocation_unit(
             fields,
             bitfield_unit_count,
@@ -1014,6 +988,7 @@ where
             bitfields_in_unit,
             packed,
         );
+        */
     }
     Ok(())
 }

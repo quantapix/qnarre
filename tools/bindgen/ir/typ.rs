@@ -335,10 +335,7 @@ impl Type {
             Some(cur.spelling()).filter(|x| !x.is_empty())
         };
         let canon_ty = ty.canon_type();
-        let mut ty_kind = ty.kind();
-        if ty_kind == CXType_Typedef {
-            let is_templ = ty.decl().kind() == CXCursor_TemplateTypeParameter;
-        }
+        let ty_kind = ty.kind();
         if cur.kind() == CXCursor_ClassTemplatePartialSpecialization {
             return Ok(parse::Resolved::New(Opaque::from_type(&canon_ty, ctx), None));
         }

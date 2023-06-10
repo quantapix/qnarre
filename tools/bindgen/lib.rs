@@ -12,7 +12,7 @@ extern crate log;
 #[macro_use]
 extern crate quote;
 
-pub(crate) mod clang;
+pub mod clang;
 mod codegen;
 mod ir;
 mod opts;
@@ -266,7 +266,7 @@ impl std::fmt::Display for BindgenError {
 }
 impl std::error::Error for BindgenError {}
 
-pub(crate) const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
+pub const HOST_TARGET: &str = include_str!(concat!(env!("OUT_DIR"), "/host-target.txt"));
 
 #[derive(Debug)]
 pub struct Bindings {
@@ -274,10 +274,7 @@ pub struct Bindings {
     module: proc_macro2::TokenStream,
 }
 impl Bindings {
-    pub(crate) fn generate(
-        mut opts: Opts,
-        input_unsaved_files: Vec<clang::UnsavedFile>,
-    ) -> Result<Bindings, BindgenError> {
+    pub fn generate(mut opts: Opts, input_unsaved_files: Vec<clang::UnsavedFile>) -> Result<Bindings, BindgenError> {
         load_libclang();
         opts.build();
         let (effective_target, explicit_target) = find_effective_target(&opts.clang_args);
@@ -503,13 +500,13 @@ impl callbacks::Parse for CargoCallbacks {
 mod deps {
     use std::{collections::BTreeSet, path::PathBuf};
     #[derive(Clone, Debug)]
-    pub(crate) struct DepfileSpec {
+    pub struct DepfileSpec {
         pub out_mod: String,
         pub dep_path: PathBuf,
     }
     impl DepfileSpec {
         pub fn write(&self, deps: &BTreeSet<String>) -> std::io::Result<()> {
-            std::fs::write(&self.dep_path, &self.to_string(deps))
+            std::fs::write(&self.dep_path, self.to_string(deps))
         }
         fn to_string(&self, deps: &BTreeSet<String>) -> String {
             let escape = |x: &str| x.replace('\\', "\\\\").replace(' ', "\\ ");
@@ -560,15 +557,11 @@ pub mod callbacks {
     pub use crate::ir::enum_ty::{EnumVariantCustom, EnumVariantValue};
     pub use crate::ir::int::IntKind;
     use std::fmt;
-    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
     pub enum MacroParsing {
         Ignore,
+        #[default]
         Default,
-    }
-    impl Default for MacroParsing {
-        fn default() -> Self {
-            MacroParsing::Default
-        }
     }
     pub trait Parse: fmt::Debug {
         fn will_parse_macro(&self, _name: &str) -> MacroParsing {
@@ -634,7 +627,7 @@ pub mod callbacks {
         Var,
     }
 }
-pub(crate) mod parse {
+pub mod parse {
     use crate::clang;
     use crate::ir::{Context, ItemId};
     #[derive(Debug)]

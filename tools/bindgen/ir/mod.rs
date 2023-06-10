@@ -129,10 +129,11 @@ pub mod analysis;
 pub mod annos {
     use crate::clang;
     use std::str::FromStr;
-    #[derive(Copy, PartialEq, Eq, Clone, Debug)]
+    #[derive(Copy, PartialEq, Eq, Clone, Debug, Default)]
     pub enum VisibilityKind {
         Private,
         PublicCrate,
+        #[default]
         Public,
     }
     impl FromStr for VisibilityKind {
@@ -154,11 +155,6 @@ pub mod annos {
                 VisibilityKind::Public => "public",
             };
             y.fmt(x)
-        }
-    }
-    impl Default for VisibilityKind {
-        fn default() -> Self {
-            VisibilityKind::Public
         }
     }
 
@@ -490,16 +486,12 @@ pub mod derive {
         }
     }
 
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
     pub enum Resolved {
+        #[default]
         Yes,
         Manually,
         No,
-    }
-    impl Default for Resolved {
-        fn default() -> Resolved {
-            Resolved::Yes
-        }
     }
     impl Resolved {
         pub fn join(self, x: Self) -> Self {
@@ -825,7 +817,7 @@ impl Layout {
             packed: false,
         }
     }
-    pub fn type_for_size(ctx: &Context, size: usize) -> Option<&'static str> {
+    pub fn type_for_size(_: &Context, size: usize) -> Option<&'static str> {
         Some(match size {
             16 => "u128",
             8 => "u64",

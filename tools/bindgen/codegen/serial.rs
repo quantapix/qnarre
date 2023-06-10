@@ -77,7 +77,7 @@ impl<'a> CSerialize<'a> for Func {
                 })
                 .collect::<Vec<_>>()
         };
-        let wrap_name = format!("{}{}", name, ctx.wrap_static_fns_suffix());
+        let wrap_name = format!("{}{}", name, ""); //ctx.wrap_static_fns_suffix());
         let ret_ty = {
             let type_id = signature.ret_type();
             let item = ctx.resolve_item(type_id);

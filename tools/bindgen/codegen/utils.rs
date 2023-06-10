@@ -297,7 +297,7 @@ pub fn fnsig_arguments(ctx: &Context, sig: &FnSig) -> Vec<proc_macro2::TokenStre
                 },
                 TypeKind::Pointer(inner) => {
                     let inner = ctx.resolve_item(inner);
-                    let inner_ty = inner.expect_type();
+                    let _inner_ty = inner.expect_type();
                     arg_item.to_rust_or_opaque(ctx, &())
                 },
                 _ => arg_item.to_rust_or_opaque(ctx, &()),
@@ -600,9 +600,12 @@ pub mod ast_ty {
 pub mod variation {
     use std::fmt;
 
-    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
     pub enum Enum {
-        Rust { non_exhaustive: bool },
+        Rust {
+            non_exhaustive: bool,
+        },
+        #[default]
         Consts,
         ModConsts,
     }
@@ -612,11 +615,6 @@ pub mod variation {
         }
         pub fn is_const(&self) -> bool {
             matches!(*self, Enum::Consts | Enum::ModConsts)
-        }
-    }
-    impl Default for Enum {
-        fn default() -> Enum {
-            Enum::Consts
         }
     }
     impl fmt::Display for Enum {
@@ -649,9 +647,10 @@ pub mod variation {
         }
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
     pub enum MacroType {
         Signed,
+        #[default]
         Unsigned,
     }
     impl fmt::Display for MacroType {
@@ -661,11 +660,6 @@ pub mod variation {
                 Self::Unsigned => "unsigned",
             };
             y.fmt(x)
-        }
-    }
-    impl Default for MacroType {
-        fn default() -> MacroType {
-            MacroType::Unsigned
         }
     }
     impl std::str::FromStr for MacroType {
@@ -685,8 +679,9 @@ pub mod variation {
         }
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
     pub enum Alias {
+        #[default]
         TypeAlias,
         NewType,
         NewTypeDeref,
@@ -699,11 +694,6 @@ pub mod variation {
                 Self::NewTypeDeref => "new_type_deref",
             };
             y.fmt(x)
-        }
-    }
-    impl Default for Alias {
-        fn default() -> Alias {
-            Alias::TypeAlias
         }
     }
     impl std::str::FromStr for Alias {
@@ -838,7 +828,7 @@ fn gen_field(ctx: &Context, it: &Item, name: &str) -> proc_macro2::TokenStream {
                 quote_equals(y)
             }
         },
-        TypeKind::Array(_, len) => quote_equals(y),
+        TypeKind::Array(_, _) => quote_equals(y),
         TypeKind::Vector(_, len) => {
             let self_ids = 0..len;
             let other_ids = 0..len;

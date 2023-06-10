@@ -1,9 +1,7 @@
 [workspace]
-members = ["tools/clang", "tools/llvm"]
-# members = ["tools/bindgen", "tools/clang", "tools/llvm"]
+members = ["tools/bindgen", "tools/clang", "tools/llvm"]
 
 [workspace.package]
-name = "qnarre"
 license = "https://github.com/quantapix/qnarre"
 version = "0.1.0"
 edition = "2021"

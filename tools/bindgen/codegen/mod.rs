@@ -570,14 +570,11 @@ impl Generator for Enum {
             },
         };
         let mut attrs = vec![];
-        match variation {
-            variation::Enum::Rust { non_exhaustive } => {
-                if non_exhaustive {
-                    attrs.push(attrs::non_exhaustive());
-                }
-            },
-            _ => {},
-        };
+        if let variation::Enum::Rust { non_exhaustive } = variation {
+            if non_exhaustive {
+                attrs.push(attrs::non_exhaustive());
+            }
+        }
         if let Some(x) = it.comment(ctx) {
             attrs.push(attrs::doc(x));
         }
@@ -784,9 +781,7 @@ impl Generator for Func {
         if let Some(x) = it.comment(ctx) {
             attrs.push(attrs::doc(x));
         }
-        let abi = match sig.abi(ctx, Some(name)) {
-            abi => abi,
-        };
+        let abi = sig.abi(ctx, Some(name));
         let times_seen = y.overload_num(&canon_name);
         if times_seen > 0 {
             write!(&mut canon_name, "{}", times_seen).unwrap();
@@ -982,11 +977,12 @@ impl Generator for Var {
                             };
                         });
                     } else {
-                        let lifetime = None.into_iter();
+                        //let lifetime = None.into_iter();
                         let ty = quote! { [u8; #len] };
                         y.push(quote! {
                             #(#attrs)*
-                            pub const #ident: &#(#lifetime )*#ty = #x ;
+                            // pub const #ident: &#(#lifetime )*#ty = #x ;
+                            pub const #ident: &#*#ty = #x ;
                         });
                     }
                 },
@@ -1745,7 +1741,7 @@ impl<'a> EnumBuilder<'a> {
         mangling_prefix: Option<&str>,
         rust_ty: proc_macro2::TokenStream,
         y: &mut GenResult<'_>,
-        is_ty_named: bool,
+        _is_ty_named: bool,
     ) -> Self {
         let variant_name = ctx.rust_mangle(variant.name());
         let is_rust_enum = self.is_rust_enum();
@@ -1813,8 +1809,8 @@ impl<'a> EnumBuilder<'a> {
     fn build(
         self,
         ctx: &Context,
-        rust_ty: proc_macro2::TokenStream,
-        y: &mut GenResult<'_>,
+        _rust_ty: proc_macro2::TokenStream,
+        _y: &mut GenResult<'_>,
     ) -> proc_macro2::TokenStream {
         match self {
             EnumBuilder::Rust {
@@ -2110,11 +2106,10 @@ impl TryToRust for FnSig {
     fn try_to_rust(&self, ctx: &Context, _: &()) -> error::Result<proc_macro2::TokenStream> {
         let ty = utils::fnsig_return_ty(ctx, self);
         let args = utils::fnsig_arguments(ctx, self);
-        match self.abi(ctx, None) {
-            abi => Ok(quote! {
-                unsafe extern #abi fn ( #( #args ),* ) #ty
-            }),
-        }
+        let abi = self.abi(ctx, None);
+        Ok(quote! {
+            unsafe extern #abi fn ( #( #args ),* ) #ty
+        })
     }
 }
 impl TryToRust for Item {
@@ -2459,7 +2454,7 @@ fn root_import(ctx: &Context, it: &Item) -> proc_macro2::TokenStream {
 
 fn derives_of_item(it: &Item, ctx: &Context, packed: bool) -> DerivableTraits {
     let mut ys = DerivableTraits::empty();
-    let ps = it.all_templ_params(ctx);
+    //let ps = it.all_templ_params(ctx);
     if it.can_derive_copy(ctx) && !it.annos().disallow_copy() {
         ys |= DerivableTraits::COPY;
         ys |= DerivableTraits::CLONE;

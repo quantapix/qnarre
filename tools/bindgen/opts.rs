@@ -79,8 +79,8 @@ macro_rules! options {
         }$(,)?
     )*) => {
         #[derive(Debug, Clone)]
-        pub(crate) struct Opts {
-            $(pub(crate) $field: $ty,)*
+        pub struct Opts {
+            $(pub $field: $ty,)*
         }
         impl Default for Opts {
             fn default() -> Self {
@@ -1139,6 +1139,11 @@ options! {
             }
         },
         as_args: "--wrap-unsafe-ops",
+    },
+    wrap_static_fns_path: Option<PathBuf> {
+        methods: {
+        },
+        as_args: "--wrap-static-fns-path",
     },
     abi_overrides: HashMap<Abi, RegexSet> {
         methods: {

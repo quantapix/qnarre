@@ -30,6 +30,15 @@ impl Attribute {
     };
 }
 
+#[derive(Debug)]
+pub struct MiscErr;
+impl fmt::Display for MiscErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Misc error")
+    }
+}
+impl std::error::Error for MiscErr {}
+
 #[derive(Copy, Clone)]
 pub struct Cursor {
     cur: CXCursor,
@@ -58,11 +67,11 @@ impl Cursor {
     pub fn mangling(&self) -> String {
         unsafe { cxstring_into_string(clang_Cursor_getMangling(self.cur)) }
     }
-    pub fn cxx_manglings(&self) -> Result<Vec<String>, ()> {
+    pub fn cxx_manglings(&self) -> Result<Vec<String>, MiscErr> {
         unsafe {
             let xs = clang_Cursor_getCXXManglings(self.cur);
             if xs.is_null() {
-                return Err(());
+                return Err(MiscErr);
             }
             let count = (*xs).Count as usize;
             let mut ys = Vec::with_capacity(count);
@@ -471,11 +480,11 @@ impl Cursor {
                 .collect()
         })
     }
-    pub fn num_args(&self) -> Result<u32, ()> {
+    pub fn num_args(&self) -> Result<u32, MiscErr> {
         unsafe {
             let y = clang_Cursor_getNumArguments(self.cur);
             if y == -1 {
-                Err(())
+                Err(MiscErr)
             } else {
                 Ok(y as u32)
             }
@@ -788,11 +797,11 @@ impl Type {
                 .collect()
         })
     }
-    pub fn num_args(&self) -> Result<u32, ()> {
+    pub fn num_args(&self) -> Result<u32, MiscErr> {
         unsafe {
             let y = clang_getNumArgTypes(self.ty);
             if y == -1 {
-                Err(())
+                Err(MiscErr)
             } else {
                 Ok(y as u32)
             }
@@ -1272,7 +1281,7 @@ impl EvalResult {
         if value < i64::min_value() as c_longlong {
             return None;
         }
-        Some(value as i64)
+        Some(value)
     }
     pub fn as_literal_string(&self) -> Option<Vec<u8>> {
         if self.kind() != CXEval_StrLiteral {
