@@ -17,3 +17,6 @@
 	path = lib/llvm-project
 	url = https://github.com/llvm/llvm-project.git
 	branch = main
+[submodule "lib/rust"]
+	path = lib/rust
+	url = https://github.com/rust-lang/rust.git

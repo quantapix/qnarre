@@ -519,7 +519,7 @@ impl<'c> DenseElementsAttribute<'c> {
     pub fn i32_element(&self, idx: usize) -> Result<i32, Error> {
         if !self.is_dense_int_elements() {
             Err(Error::ElementExpected {
-                ty: "integer",
+                typ: "integer",
                 val: self.to_string(),
             })
         } else if idx < self.len() {
