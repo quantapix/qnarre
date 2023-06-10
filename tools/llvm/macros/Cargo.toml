@@ -1,5 +1,6 @@
 [package]
 name = "macros"
+license = "https://github.com/raviqqe/melior"
 version.workspace = true
 edition.workspace = true
 
@@ -15,5 +16,4 @@ regex = "1"
 syn = { version = "2", features = ["full", "fold"] }
 
 [dev-dependencies]
-# mlir = { path = "../mlir" }
-# mlir-sys = "0.2"
+llvm = { path = "../../llvm" }

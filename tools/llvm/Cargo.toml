@@ -1,5 +1,6 @@
 [package]
 name = "llvm"
+license = "https://github.com/tari/llvm-sys.rs, https://github.com/TheDan64/inkwell, https://github.com/femtomc/mlir-sys, https://github.com/raviqqe/melior"
 version.workspace = true
 edition.workspace = true
 build = "build.rs"

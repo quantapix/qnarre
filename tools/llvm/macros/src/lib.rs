@@ -60,13 +60,17 @@ impl Parse for DialectOpSet {
     }
 }
 
+fn convert_result(x: Result<TokenStream, Box<dyn Error>>) -> TokenStream {
+    x.unwrap_or_else(|x| {
+        let y = x.to_string();
+        quote! { compile_error!(#y) }.into()
+    })
+}
+
 #[proc_macro]
 pub fn unary_operations(x: TokenStream) -> TokenStream {
     let y = parse_macro_input!(x as DialectOpSet);
     convert_result(gen_unary(y.dialect(), y.identifiers()))
-}
-fn convert_result(x: Result<TokenStream, Box<dyn Error>>) -> TokenStream {
-    x.unwrap_or_else(|y| quote! { compile_error!(#y.to_string()) }.into())
 }
 fn gen_unary(dialect: &Ident, xs: &[Ident]) -> Result<TokenStream, Box<dyn Error>> {
     let mut ys = TokenStream::new();
@@ -403,9 +407,6 @@ impl FeatureSet {
     }
     fn into_error(self) -> parse::Error {
         self.1.unwrap()
-    }
-    fn into_compile_error(self) -> TokenStream {
-        TokenStream::from(self.1.unwrap().to_compile_error())
     }
     fn expand_llvm_versions_attr(&mut self, x: &Attribute) -> Attribute {
         if self.has_error() {
