@@ -25,13 +25,11 @@ fn add_cmd_error(name: &str, path: &str, args: &str, msg: String) {
 pub struct CmdErrorPrinter {
     discard: bool,
 }
-
 impl CmdErrorPrinter {
     pub fn discard(mut self) {
         self.discard = true;
     }
 }
-
 impl Drop for CmdErrorPrinter {
     fn drop(&mut self) {
         if self.discard {
@@ -51,20 +49,16 @@ impl Drop for CmdErrorPrinter {
 }
 
 #[cfg(test)]
-pub static RUN_CMD_MOCK: std::sync::Mutex<
-    Option<Box<dyn Fn(&str, &str, &[&str]) -> Option<String> + Send + Sync + 'static>>,
-> = std::sync::Mutex::new(None);
-
-fn run_command(name: &str, path: &str, args: &[&str]) -> Option<String> {
-    #[cfg(test)]
-    if let Some(command) = &*RUN_CMD_MOCK.lock().unwrap() {
-        return command(name, path, args);
-    }
-}
+pub static RUN_CMD_MOCK: std::sync::Mutex<Option<Box<dyn Fn(&str) -> Option<String> + Send + Sync + 'static>>> =
+    std::sync::Mutex::new(None);
 
 const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
 
 pub fn llvm_config(args: &str) -> Option<String> {
+    #[cfg(test)]
+    if let Some(x) = &*RUN_CMD_MOCK.lock().unwrap() {
+        return x(args);
+    }
     let p = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
     let p = format!("{} --link-static {}", p, args);
     let n = "llvm-config";

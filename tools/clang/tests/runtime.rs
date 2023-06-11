@@ -19,7 +19,7 @@ mod r#static;
 
 #[derive(Debug, Default)]
 struct RunCmdMock {
-    invocations: Vec<(String, String, Vec<String>)>,
+    invocations: Vec<String>,
     responses: HashMap<Vec<String>, String>,
 }
 
@@ -76,14 +76,6 @@ impl Env {
         fs::write(self.tmp.path().join(path), contents).unwrap();
         self
     }
-    fn dll(self, path: &str, pointer_width: &str) -> Self {
-        let mut contents = [0; 64];
-        contents[0x3C..0x3C + 4].copy_from_slice(&i32::to_le_bytes(10));
-        contents[10..14].copy_from_slice(&[b'P', b'E', 0, 0]);
-        let magic = if pointer_width == "64" { 523 } else { 267 };
-        contents[34..36].copy_from_slice(&u16::to_le_bytes(magic));
-        self.file(path, &contents)
-    }
     fn so(self, path: &str, pointer_width: &str) -> Self {
         let class = if pointer_width == "64" { 2 } else { 1 };
         let contents = [127, 69, 76, 70, class];
@@ -97,7 +89,6 @@ impl Env {
         self.commands.lock().unwrap().responses.insert(key, response.into());
         self
     }
-
     fn enable(self) -> Self {
         env::set_var("_CLANG_TEST", "yep");
         env::set_var("_CLANG_TEST_OS", &self.os);
@@ -115,15 +106,12 @@ impl Env {
         env::set_current_dir(&self.tmp).unwrap();
         let commands = self.commands.clone();
         let mock = &mut *common::RUN_CMD_MOCK.lock().unwrap();
-        *mock = Some(Box::new(move |command, path, args| {
-            let command = command.to_string();
-            let path = path.to_string();
-            let args = args.iter().map(|a| a.to_string()).collect::<Vec<_>>();
-            let mut commands = commands.lock().unwrap();
-            commands.invocations.push((command.clone(), path, args.clone()));
-            let mut key = vec![command];
-            key.extend(args);
-            commands.responses.get(&key).cloned()
+        *mock = Some(Box::new(move |args| {
+            let mut ys = commands.lock().unwrap();
+            ys.invocations.push(args.to_string());
+            let mut key = vec![String::from("llvm-config")];
+            key.push(args.to_string());
+            ys.responses.get(&key).cloned()
         }));
         self
     }
