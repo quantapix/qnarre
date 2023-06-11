@@ -8,8 +8,8 @@ use std::{
 };
 
 fn main() {
-    if let Err(error) = run() {
-        eprintln!("{}", error);
+    if let Err(x) = run() {
+        eprintln!("{}", x);
         exit(1);
     }
 }
@@ -72,6 +72,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     if let Some(x) = get_libcpp() {
         println!("cargo:rustc-link-lib={}", x);
     }
+    println!("cargo:rustc-link-lib=dylib=ffi");
     bindgen::builder()
         .header("wrapper.h")
         .clang_arg(format!("-I{}", llvm_config("--includedir")?))
@@ -107,11 +108,5 @@ fn trim_lib_name(n: &str) -> Option<&str> {
         x.strip_suffix(".a")
     } else {
         None
-    }
-}
-
-fn main() {
-    if cfg!(all(not(target_os = "windows"), not(feature = "no-libffi-linking"))) {
-        println!("cargo:rustc-link-lib=dylib=ffi");
     }
 }

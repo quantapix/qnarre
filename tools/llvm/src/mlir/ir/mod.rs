@@ -1,4 +1,4 @@
-use macros::attribute_check_functions;
+use macros;
 use mlir_lib::*;
 use std::{
     ffi::c_void,
@@ -1221,7 +1221,7 @@ pub trait TypeLike<'c> {
     fn dump(&self) {
         unsafe { mlirTypeDump(self.to_raw()) }
     }
-    macros::type_check_functions!(
+    type_check_functions!(
         mlirTypeIsAAnyQuantizedType,
         mlirTypeIsABF16,
         mlirTypeIsACalibratedQuantizedType,
