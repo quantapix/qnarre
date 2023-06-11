@@ -25,9 +25,6 @@ struct RunCmdMock {
 
 #[derive(Debug)]
 struct Env {
-    os: String,
-    ptr_width: String,
-    env: Option<String>,
     vars: HashMap<String, (Option<String>, Option<String>)>,
     cwd: PathBuf,
     tmp: TempDir,
@@ -36,11 +33,8 @@ struct Env {
 }
 
 impl Env {
-    fn new(os: &str, ptr_width: &str) -> Self {
+    fn new() -> Self {
         Env {
-            os: os.into(),
-            ptr_width: ptr_width.into(),
-            env: None,
             vars: HashMap::new(),
             cwd: env::current_dir().unwrap(),
             tmp: tempfile::Builder::new().prefix("clang_test").tempdir().unwrap(),
@@ -54,13 +48,9 @@ impl Env {
         .var("LLVM_CONFIG_PATH", None)
         .var("PATH", None)
     }
-    fn env(mut self, env: &str) -> Self {
-        self.env = Some(env.into());
-        self
-    }
-    fn var(mut self, name: &str, value: Option<&str>) -> Self {
-        let previous = env::var(name).ok();
-        self.vars.insert(name.into(), (value.map(|x| x.into()), previous));
+    fn var(mut self, name: &str, x: Option<&str>) -> Self {
+        let old = env::var(name).ok();
+        self.vars.insert(name.into(), (x.map(|x| x.into()), old));
         self
     }
     fn dir(mut self, path: &str) -> Self {
@@ -90,12 +80,6 @@ impl Env {
         self
     }
     fn enable(self) -> Self {
-        env::set_var("_CLANG_TEST", "yep");
-        env::set_var("_CLANG_TEST_OS", &self.os);
-        env::set_var("_CLANG_TEST_POINTER_WIDTH", &self.ptr_width);
-        if let Some(env) = &self.env {
-            env::set_var("_CLANG_TEST_ENV", env);
-        }
         for (name, (value, _)) in &self.vars {
             if let Some(value) = value {
                 env::set_var(name, value);
@@ -119,10 +103,6 @@ impl Env {
 
 impl Drop for Env {
     fn drop(&mut self) {
-        env::remove_var("_CLANG_TEST");
-        env::remove_var("_CLANG_TEST_OS");
-        env::remove_var("_CLANG_TEST_POINTER_WIDTH");
-        env::remove_var("_CLANG_TEST_ENV");
         for (name, (_, previous)) in &self.vars {
             if let Some(previous) = previous {
                 env::set_var(name, previous);
@@ -139,7 +119,7 @@ impl Drop for Env {
 #[test]
 #[serial]
 fn test_linux_directory_preference() {
-    let _env = Env::new("linux", "64")
+    let _env = Env::new()
         .so("usr/lib/libclang.so.1", "64")
         .so("usr/local/lib/libclang.so.1", "64")
         .enable();
@@ -152,7 +132,7 @@ fn test_linux_directory_preference() {
 #[test]
 #[serial]
 fn test_linux_version_preference() {
-    let _env = Env::new("linux", "64")
+    let _env = Env::new()
         .so("usr/lib/libclang-3.so", "64")
         .so("usr/lib/libclang-3.5.so", "64")
         .so("usr/lib/libclang-3.5.0.so", "64")
@@ -163,7 +143,7 @@ fn test_linux_version_preference() {
 #[test]
 #[serial]
 fn test_linux_directory_and_version_preference() {
-    let _env = Env::new("linux", "64")
+    let _env = Env::new()
         .so("usr/local/llvm/lib/libclang-3.so", "64")
         .so("usr/local/lib/libclang-3.5.so", "64")
         .so("usr/lib/libclang-3.5.0.so", "64")

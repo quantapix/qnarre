@@ -64,10 +64,7 @@ fn search_clang_dirs(runtime: bool) -> Result<Vec<(PathBuf, String, Vec<u32>)>, 
 fn validate_lib(path: &Path) -> Result<(), String> {
     if target_os!("linux") {
         let class = parse_elf_header(path).map_err(|x| x.to_string())?;
-        if target_ptr_width!("32") && class != 1 {
-            return Err("invalid ELF class (64-bit)".into());
-        }
-        if target_ptr_width!("64") && class != 2 {
+        if class != 2 {
             return Err("invalid ELF class (32-bit)".into());
         }
         Ok(())

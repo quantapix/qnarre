@@ -102,9 +102,7 @@ pub fn search_clang_dirs(files: &[String], variable: &str) -> Vec<(PathBuf, Stri
     }
     let ds: Vec<&str> = if target_os!("linux") { DIRS.into() } else { vec![] };
     let ds = if test!() {
-        ds.iter()
-            .map(|d| d.strip_prefix('/').or_else(|| d.strip_prefix("C:\\")).unwrap_or(d))
-            .collect::<Vec<_>>()
+        ds.iter().map(|x| x.strip_prefix('/').unwrap_or(x)).collect::<Vec<_>>()
     } else {
         ds
     };
