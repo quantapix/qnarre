@@ -1,17 +1,9 @@
-#![allow(dead_code)]
-
 extern crate glob;
 extern crate serial_test;
 extern crate tempfile;
 
-use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::Mutex;
-
-//use serial_test::serial;
+use serial_test::serial;
+use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc, sync::Mutex};
 use tempfile::TempDir;
 
 #[macro_use]
@@ -26,7 +18,7 @@ mod dynamic;
 mod r#static;
 
 #[derive(Debug, Default)]
-struct RunCommandMock {
+struct RunCmdMock {
     invocations: Vec<(String, String, Vec<String>)>,
     responses: HashMap<Vec<String>, String>,
 }
@@ -34,20 +26,20 @@ struct RunCommandMock {
 #[derive(Debug)]
 struct Env {
     os: String,
-    pointer_width: String,
+    ptr_width: String,
     env: Option<String>,
     vars: HashMap<String, (Option<String>, Option<String>)>,
     cwd: PathBuf,
     tmp: TempDir,
     files: Vec<String>,
-    commands: Arc<Mutex<RunCommandMock>>,
+    commands: Arc<Mutex<RunCmdMock>>,
 }
 
 impl Env {
-    fn new(os: &str, pointer_width: &str) -> Self {
+    fn new(os: &str, ptr_width: &str) -> Self {
         Env {
             os: os.into(),
-            pointer_width: pointer_width.into(),
+            ptr_width: ptr_width.into(),
             env: None,
             vars: HashMap::new(),
             cwd: env::current_dir().unwrap(),
@@ -62,25 +54,21 @@ impl Env {
         .var("LLVM_CONFIG_PATH", None)
         .var("PATH", None)
     }
-
     fn env(mut self, env: &str) -> Self {
         self.env = Some(env.into());
         self
     }
-
     fn var(mut self, name: &str, value: Option<&str>) -> Self {
         let previous = env::var(name).ok();
         self.vars.insert(name.into(), (value.map(|x| x.into()), previous));
         self
     }
-
     fn dir(mut self, path: &str) -> Self {
         self.files.push(path.into());
         let path = self.tmp.path().join(path);
         fs::create_dir_all(path).unwrap();
         self
     }
-
     fn file(mut self, path: &str, contents: &[u8]) -> Self {
         self.files.push(path.into());
         let path = self.tmp.path().join(path);
@@ -88,7 +76,6 @@ impl Env {
         fs::write(self.tmp.path().join(path), contents).unwrap();
         self
     }
-
     fn dll(self, path: &str, pointer_width: &str) -> Self {
         let mut contents = [0; 64];
         contents[0x3C..0x3C + 4].copy_from_slice(&i32::to_le_bytes(10));
@@ -97,32 +84,27 @@ impl Env {
         contents[34..36].copy_from_slice(&u16::to_le_bytes(magic));
         self.file(path, &contents)
     }
-
     fn so(self, path: &str, pointer_width: &str) -> Self {
         let class = if pointer_width == "64" { 2 } else { 1 };
         let contents = [127, 69, 76, 70, class];
         self.file(path, &contents)
     }
-
     fn command(self, command: &str, args: &[&str], response: &str) -> Self {
         let command = command.to_string();
         let args = args.iter().map(|a| a.to_string()).collect::<Vec<_>>();
-
         let mut key = vec![command];
         key.extend(args);
         self.commands.lock().unwrap().responses.insert(key, response.into());
-
         self
     }
 
     fn enable(self) -> Self {
         env::set_var("_CLANG_TEST", "yep");
         env::set_var("_CLANG_TEST_OS", &self.os);
-        env::set_var("_CLANG_TEST_POINTER_WIDTH", &self.pointer_width);
+        env::set_var("_CLANG_TEST_POINTER_WIDTH", &self.ptr_width);
         if let Some(env) = &self.env {
             env::set_var("_CLANG_TEST_ENV", env);
         }
-
         for (name, (value, _)) in &self.vars {
             if let Some(value) = value {
                 env::set_var(name, value);
@@ -130,24 +112,19 @@ impl Env {
                 env::remove_var(name);
             }
         }
-
         env::set_current_dir(&self.tmp).unwrap();
-
         let commands = self.commands.clone();
-        let mock = &mut *common::RUN_COMMAND_MOCK.lock().unwrap();
+        let mock = &mut *common::RUN_CMD_MOCK.lock().unwrap();
         *mock = Some(Box::new(move |command, path, args| {
             let command = command.to_string();
             let path = path.to_string();
             let args = args.iter().map(|a| a.to_string()).collect::<Vec<_>>();
-
             let mut commands = commands.lock().unwrap();
             commands.invocations.push((command.clone(), path, args.clone()));
-
             let mut key = vec![command];
             key.extend(args);
             commands.responses.get(&key).cloned()
         }));
-
         self
     }
 }
@@ -172,7 +149,7 @@ impl Drop for Env {
 }
 
 #[test]
-//#[serial]
+#[serial]
 fn test_linux_directory_preference() {
     let _env = Env::new("linux", "64")
         .so("usr/lib/libclang.so.1", "64")
@@ -185,7 +162,7 @@ fn test_linux_directory_preference() {
 }
 
 #[test]
-//#[serial]
+#[serial]
 fn test_linux_version_preference() {
     let _env = Env::new("linux", "64")
         .so("usr/lib/libclang-3.so", "64")
@@ -196,7 +173,7 @@ fn test_linux_version_preference() {
 }
 
 #[test]
-//#[serial]
+#[serial]
 fn test_linux_directory_and_version_preference() {
     let _env = Env::new("linux", "64")
         .so("usr/local/llvm/lib/libclang-3.so", "64")

@@ -15,7 +15,7 @@ macro_rules! target_os {
     };
 }
 
-macro_rules! target_pointer_width {
+macro_rules! target_ptr_width {
     ($pointer_width:expr) => {
         if cfg!(test) && ::std::env::var("_CLANG_TEST").is_ok() {
             let y = ::std::env::var("_CLANG_TEST_POINTER_WIDTH");

@@ -50,6 +50,18 @@ impl Drop for CmdErrorPrinter {
     }
 }
 
+#[cfg(test)]
+pub static RUN_CMD_MOCK: std::sync::Mutex<
+    Option<Box<dyn Fn(&str, &str, &[&str]) -> Option<String> + Send + Sync + 'static>>,
+> = std::sync::Mutex::new(None);
+
+fn run_command(name: &str, path: &str, args: &[&str]) -> Option<String> {
+    #[cfg(test)]
+    if let Some(command) = &*RUN_CMD_MOCK.lock().unwrap() {
+        return command(name, path, args);
+    }
+}
+
 const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
 
 pub fn llvm_config(args: &str) -> Option<String> {
@@ -148,17 +160,3 @@ const DIRS: &[&str] = &[
     "/usr/lib*/*",
     "/usr/lib*",
 ];
-
-/*
-#[cfg(test)]
-pub static RUN_COMMAND_MOCK: std::sync::Mutex<
-    Option<Box<dyn Fn(&str, &str, &[&str]) -> Option<String> + Send + Sync + 'static>>,
-> = std::sync::Mutex::new(None);
-
-fn run_command(name: &str, path: &str, args: &[&str]) -> Option<String> {
-    #[cfg(test)]
-    if let Some(command) = &*RUN_COMMAND_MOCK.lock().unwrap() {
-        return command(name, path, args);
-    }
-}
-*/
