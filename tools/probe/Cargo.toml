@@ -1,0 +1,8 @@
+[package]
+name = "probe"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+lhash = { version = "1.0.1", features = ["sha512"] }
+probe_lib = { version = "0.1.0", path = "../probe_lib" }

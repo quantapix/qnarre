@@ -20,3 +20,6 @@
 [submodule "lib/rust"]
 	path = lib/rust
 	url = https://github.com/rust-lang/rust.git
+[submodule "lib/rust-analyzer"]
+	path = lib/rust-analyzer
+	url = https://github.com/rust-lang/rust-analyzer.git
