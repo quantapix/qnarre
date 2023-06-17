@@ -4,33 +4,30 @@
 #[cfg(feature = "runtime")]
 extern crate libloading;
 
-use std::mem;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::{env, io};
-
 use glob::{self, Pattern};
-
 use libc::*;
+use std::{
+    env, io, mem,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 #[derive(Clone, Debug)]
 pub struct Clang {
     pub path: PathBuf,
     pub version: Option<CXVersion>,
-    pub c_search_paths: Option<Vec<PathBuf>>,
-    pub cpp_search_paths: Option<Vec<PathBuf>>,
+    pub c_paths: Option<Vec<PathBuf>>,
+    pub cpp_paths: Option<Vec<PathBuf>>,
 }
-
 impl Clang {
-    fn new(path: impl AsRef<Path>, args: &[String]) -> Self {
+    fn new(path: impl AsRef<Path>, xs: &[String]) -> Self {
         Self {
             path: path.as_ref().into(),
             version: parse_version(path.as_ref()),
-            c_search_paths: parse_paths(path.as_ref(), "c", args),
-            cpp_search_paths: parse_paths(path.as_ref(), "c++", args),
+            c_paths: parse_paths(path.as_ref(), "c", xs),
+            cpp_paths: parse_paths(path.as_ref(), "c++", xs),
         }
     }
-
     pub fn find(path: Option<&Path>, args: &[String]) -> Option<Clang> {
         if let Ok(path) = env::var("CLANG_PATH") {
             let path = Path::new(&path);
@@ -156,7 +153,6 @@ fn find(path: &Path, patterns: &[&str]) -> Option<PathBuf> {
     None
 }
 
-#[cfg(unix)]
 fn is_exec(path: &Path) -> io::Result<bool> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -1760,7 +1756,6 @@ macro_rules! link {
             pub fn load_manually() -> Result<SharedLib, String> {
                 #[allow(dead_code)]
                 mod runtime {
-                    include!(concat!(env!("OUT_DIR"), "/macros.rs"));
                     pub mod common { include!(concat!(env!("OUT_DIR"), "/common.rs")); }
                     pub mod dynamic { include!(concat!(env!("OUT_DIR"), "/dynamic.rs")); }
                 }

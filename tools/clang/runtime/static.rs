@@ -2,17 +2,17 @@ extern crate glob;
 use glob::Pattern;
 use std::path::{Path, PathBuf};
 
-use super::common;
+use super::main;
 
 #[cfg(not(feature = "runtime"))]
 pub fn link() {
-    let cep = common::CmdError::default();
+    let cep = main::CmdError::default();
     let dir = find();
     println!("cargo:rustc-link-search=native={}", dir.display());
     for x in clang_libs(dir) {
         println!("cargo:rustc-link-lib=static={}", x);
     }
-    let mode = common::llvm_config("--shared-mode").map(|x| x.trim().to_owned());
+    let mode = main::llvm_config("--shared-mode").map(|x| x.trim().to_owned());
     let pre = if mode.map_or(false, |x| x == "static") {
         "static="
     } else {
@@ -20,20 +20,18 @@ pub fn link() {
     };
     println!(
         "cargo:rustc-link-search=native={}",
-        common::llvm_config("--libdir").unwrap().trim_end()
+        main::llvm_config("--libdir").unwrap().trim_end()
     );
     for x in llvm_libs() {
         println!("cargo:rustc-link-lib={}{}", pre, x);
     }
-    if cfg!(target_os = "linux") {
-        println!("cargo:rustc-flags=-l ffi -l ncursesw -l stdc++ -l z");
-    }
+    println!("cargo:rustc-flags=-l ffi -l ncursesw -l stdc++ -l z");
     cep.discard();
 }
 
 fn find() -> PathBuf {
     let x = "libclang.a";
-    let ys = common::search_clang_dirs(&[x.into()], "LIBCLANG_STATIC_PATH");
+    let ys = main::search_clang_dirs(&[x.into()], "LIBCLANG_STATIC_PATH");
     if let Some((y, _)) = ys.into_iter().next() {
         y
     } else {
@@ -80,7 +78,7 @@ const LIBS: &[&str] = &[
 ];
 
 fn llvm_libs() -> Vec<String> {
-    common::llvm_config("--libs")
+    main::llvm_config("--libs")
         .unwrap()
         .split_whitespace()
         .filter_map(|x| {

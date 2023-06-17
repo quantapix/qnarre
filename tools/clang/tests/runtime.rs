@@ -6,14 +6,10 @@ use serial_test::serial;
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc, sync::Mutex};
 use tempfile::TempDir;
 
-#[macro_use]
-#[path = "../runtime/macros.rs"]
-mod macros;
-
-#[path = "../runtime/common.rs"]
-mod common;
 #[path = "../runtime/dynamic.rs"]
 mod dynamic;
+#[path = "../runtime/main.rs"]
+mod main;
 #[path = "../runtime/static.rs"]
 mod r#static;
 
@@ -89,7 +85,7 @@ impl Env {
         }
         env::set_current_dir(&self.tmp).unwrap();
         let commands = self.commands.clone();
-        let mock = &mut *common::RUN_CMD_MOCK.lock().unwrap();
+        let mock = &mut *main::MOCK.lock().unwrap();
         *mock = Some(Box::new(move |args| {
             let mut ys = commands.lock().unwrap();
             ys.invocations.push(args.to_string());

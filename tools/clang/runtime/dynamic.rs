@@ -3,11 +3,11 @@ use std::fs::File;
 use std::io::{self, Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
-use super::common;
+use super::main;
 
 #[cfg(not(feature = "runtime"))]
 pub fn link() {
-    let cep = common::CmdError::default();
+    let cep = main::CmdError::default();
     let (dir, file) = find(false).unwrap();
     println!("cargo:rustc-link-search={}", dir.display());
     let y = file.trim_start_matches("lib");
@@ -30,17 +30,15 @@ pub fn find(runtime: bool) -> Result<(PathBuf, String), String> {
 }
 
 fn search_dirs(runtime: bool) -> Result<Vec<(PathBuf, String, Vec<u32>)>, String> {
-    let mut ys = vec![format!("{}clang{}", env::consts::DLL_PREFIX, env::consts::DLL_SUFFIX)];
-    if target_os!("linux") {
-        ys.push("libclang-*.so".into());
-        if runtime {
-            ys.push("libclang.so.*".into());
-            ys.push("libclang-*.so.*".into());
-        }
+    let mut ys = vec![];
+    ys.push("libclang-*.so".into());
+    if runtime {
+        ys.push("libclang.so.*".into());
+        ys.push("libclang-*.so.*".into());
     }
     let mut valid = vec![];
     let mut invalid = vec![];
-    for (dir, file) in common::search_clang_dirs(&ys, "LIBCLANG_PATH") {
+    for (dir, file) in main::search_clang_dirs(&ys, "LIBCLANG_PATH") {
         let p = dir.join(&file);
         match validate_lib(&p) {
             Ok(()) => {
@@ -61,16 +59,12 @@ fn search_dirs(runtime: bool) -> Result<Vec<(PathBuf, String, Vec<u32>)>, String
     Err(msg)
 }
 
-fn validate_lib(path: &Path) -> Result<(), String> {
-    if target_os!("linux") {
-        let class = parse_elf_header(path).map_err(|x| x.to_string())?;
-        if class != 2 {
-            return Err("invalid ELF class (32-bit)".into());
-        }
-        Ok(())
-    } else {
-        Ok(())
+fn validate_lib(x: &Path) -> Result<(), String> {
+    let y = parse_elf_header(x).map_err(|x| x.to_string())?;
+    if y != 2 {
+        return Err("invalid ELF class (32-bit)".into());
     }
+    Ok(())
 }
 
 fn parse_version(file: &str) -> Vec<u32> {
