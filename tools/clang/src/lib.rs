@@ -12,6 +12,8 @@ use std::{
     process::Command,
 };
 
+mod utils;
+
 #[derive(Clone, Debug)]
 pub struct Clang {
     pub path: PathBuf,
@@ -1757,7 +1759,6 @@ macro_rules! link {
                 #[allow(dead_code)]
                 mod runtime {
                     pub mod common { include!(concat!(env!("OUT_DIR"), "/common.rs")); }
-                    pub mod dynamic { include!(concat!(env!("OUT_DIR"), "/dynamic.rs")); }
                 }
 
                 let (dir, file) = runtime::dynamic::find(true)?;
