@@ -1,11 +1,11 @@
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    env,
+    path::{Path, PathBuf},
+    process::Command,
+};
 extern crate glob;
-
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::env;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
 use glob::{MatchOptions, Pattern};
 
 thread_local! {
@@ -22,15 +22,16 @@ fn add_cmd_error(name: &str, path: &str, args: &str, msg: String) {
 }
 
 #[derive(Default)]
-pub struct CmdErrorPrinter {
+pub struct CmdError {
     discard: bool,
 }
-impl CmdErrorPrinter {
+impl CmdError {
+    #[cfg(not(feature = "runtime"))]
     pub fn discard(mut self) {
         self.discard = true;
     }
 }
-impl Drop for CmdErrorPrinter {
+impl Drop for CmdError {
     fn drop(&mut self) {
         if self.discard {
             return;

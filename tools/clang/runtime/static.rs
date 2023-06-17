@@ -1,12 +1,12 @@
 extern crate glob;
-
 use glob::Pattern;
 use std::path::{Path, PathBuf};
 
 use super::common;
 
+#[cfg(not(feature = "runtime"))]
 pub fn link() {
-    let cep = common::CmdErrorPrinter::default();
+    let cep = common::CmdError::default();
     let dir = find();
     println!("cargo:rustc-link-search=native={}", dir.display());
     for x in clang_libs(dir) {

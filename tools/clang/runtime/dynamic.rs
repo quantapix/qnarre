@@ -5,19 +5,9 @@ use std::path::{Path, PathBuf};
 
 use super::common;
 
-pub fn find(runtime: bool) -> Result<(PathBuf, String), String> {
-    search_clang_dirs(runtime)?
-        .iter()
-        .rev()
-        .max_by_key(|x| &x.2)
-        .cloned()
-        .map(|(dir, file, _)| (dir, file))
-        .ok_or_else(|| "unreachable".into())
-}
-
 #[cfg(not(feature = "runtime"))]
 pub fn link() {
-    let cep = common::CmdErrorPrinter::default();
+    let cep = common::CmdError::default();
     let (dir, file) = find(false).unwrap();
     println!("cargo:rustc-link-search={}", dir.display());
     let y = file.trim_start_matches("lib");
@@ -29,7 +19,17 @@ pub fn link() {
     cep.discard();
 }
 
-fn search_clang_dirs(runtime: bool) -> Result<Vec<(PathBuf, String, Vec<u32>)>, String> {
+pub fn find(runtime: bool) -> Result<(PathBuf, String), String> {
+    search_dirs(runtime)?
+        .iter()
+        .rev()
+        .max_by_key(|x| &x.2)
+        .cloned()
+        .map(|(dir, file, _)| (dir, file))
+        .ok_or_else(|| "unreachable".into())
+}
+
+fn search_dirs(runtime: bool) -> Result<Vec<(PathBuf, String, Vec<u32>)>, String> {
     let mut ys = vec![format!("{}clang{}", env::consts::DLL_PREFIX, env::consts::DLL_SUFFIX)];
     if target_os!("linux") {
         ys.push("libclang-*.so".into());
