@@ -77,7 +77,7 @@ impl Clang {
 }
 
 fn parse_version(x: &Path) -> Option<CXVersion> {
-    let y = utils::run(&x.to_string_lossy(), "--version").unwrap();
+    let y = utils::sh_cmd(&x.to_string_lossy(), "--version").unwrap();
     let s = y.find("version ")? + 8;
     let mut ys = y[s..].split_whitespace().next()?.split('.');
     fn parse_num(x: &str) -> Option<c_int> {
@@ -96,7 +96,7 @@ fn parse_version(x: &Path) -> Option<CXVersion> {
 fn parse_paths(x: &Path, lang: &str, args: &[String]) -> Option<Vec<PathBuf>> {
     let mut xs = vec!["-E", "-x", lang, "-", "-v"];
     xs.extend(args.iter().map(|x| &**x));
-    let y = utils::run(&x.to_string_lossy(), &xs.join(" ")).unwrap();
+    let y = utils::sh_cmd(&x.to_string_lossy(), &xs.join(" ")).unwrap();
     let s = y.find("#include <...> search starts here:")? + 34;
     let e = y.find("End of search list.")?;
     let ys = y[s..e].replace("(framework directory)", "");

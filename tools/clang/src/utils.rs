@@ -8,20 +8,7 @@ use std::{
 extern crate glob;
 use glob::{MatchOptions, Pattern};
 
-const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
-
-pub fn llvm_config(args: &str) -> Option<String> {
-    #[cfg(test)]
-    if let Some(x) = &*MOCK.lock().unwrap() {
-        return x(args);
-    }
-    let y = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
-    #[cfg(feature = "static")]
-    let y = format!("{} --link-static", y);
-    run(&y, args)
-}
-
-pub fn run(x: &str, args: &str) -> Option<String> {
+pub fn sh_cmd(x: &str, args: &str) -> Option<String> {
     let x = format!("{} {}", x, args);
     let y = match Command::new("sh").arg("-c").arg(&x).output() {
         Ok(x) => x,
@@ -38,27 +25,63 @@ pub fn run(x: &str, args: &str) -> Option<String> {
     }
 }
 
-pub fn search_clang_dirs(files: &[String], x: &str) -> Vec<(PathBuf, String)> {
+const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
+
+pub fn llvm_config(args: &str) -> Option<String> {
+    #[cfg(test)]
+    if let Some(x) = &*MOCK.lock().unwrap() {
+        return x(args);
+    }
+    let y = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
+    #[cfg(feature = "static")]
+    let y = format!("{} --link-static", y);
+    sh_cmd(&y, args)
+}
+
+#[cfg(not(feature = "runtime"))]
+fn search_dirs(files: &[String], x: &str) -> Vec<(PathBuf, String)> {
+    fn search_one(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
+        let p = Pattern::escape(dir.to_str().unwrap());
+        let p = Path::new(&p);
+        let ys = files.iter().map(|x| p.join(x).to_str().unwrap().to_owned());
+        let mut opts = MatchOptions::new();
+        opts.require_literal_separator = true;
+        ys.map(|x| glob::glob_with(&x, opts))
+            .filter_map(Result::ok)
+            .flatten()
+            .filter_map(|x| {
+                let p = x.ok()?;
+                let n = p.file_name()?.to_str().unwrap();
+                if n.contains("-cpp.") {
+                    return None;
+                }
+                Some((p.to_owned(), n.into()))
+            })
+            .collect::<Vec<_>>()
+    }
+    fn search_all(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
+        search_one(dir, files)
+    }
     if let Ok(p) = env::var(x).map(|x| Path::new(&x).to_path_buf()) {
         if let Some(y) = p.parent() {
-            let ys = search_dirs(y, files);
+            let ys = search_all(y, files);
             let file = p.file_name().unwrap().to_str().unwrap();
             if ys.iter().any(|(_, x)| x == file) {
                 return vec![(y.into(), file.into())];
             }
         }
-        return search_dirs(&p, files);
+        return search_all(&p, files);
     }
     let mut ys = vec![];
     if let Some(x) = llvm_config("--prefix") {
         let y = Path::new(x.lines().next().unwrap()).to_path_buf();
-        ys.extend(search_dirs(&y.join("bin"), files));
-        ys.extend(search_dirs(&y.join("lib"), files));
-        ys.extend(search_dirs(&y.join("lib64"), files));
+        ys.extend(search_all(&y.join("bin"), files));
+        ys.extend(search_all(&y.join("lib"), files));
+        ys.extend(search_all(&y.join("lib64"), files));
     }
     if let Ok(x) = env::var("LD_LIBRARY_PATH") {
         for y in env::split_paths(&x) {
-            ys.extend(search_dirs(&y, files));
+            ys.extend(search_all(&y, files));
         }
     }
     let ds: Vec<&str> = DIRS.into();
@@ -68,35 +91,11 @@ pub fn search_clang_dirs(files: &[String], x: &str) -> Vec<(PathBuf, String)> {
     for d in ds.iter() {
         if let Ok(xs) = glob::glob_with(d, opts) {
             for y in xs.filter_map(Result::ok).filter(|x| x.is_dir()) {
-                ys.extend(search_dirs(&y, files));
+                ys.extend(search_all(&y, files));
             }
         }
     }
     ys
-}
-
-fn search_dirs(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-    search_dir(dir, files)
-}
-
-fn search_dir(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-    let p = Pattern::escape(dir.to_str().unwrap());
-    let p = Path::new(&p);
-    let ys = files.iter().map(|x| p.join(x).to_str().unwrap().to_owned());
-    let mut opts = MatchOptions::new();
-    opts.require_literal_separator = true;
-    ys.map(|x| glob::glob_with(&x, opts))
-        .filter_map(Result::ok)
-        .flatten()
-        .filter_map(|x| {
-            let p = x.ok()?;
-            let n = p.file_name()?.to_str().unwrap();
-            if n.contains("-cpp.") {
-                return None;
-            }
-            Some((p.to_owned(), n.into()))
-        })
-        .collect::<Vec<_>>()
 }
 
 const DIRS: &[&str] = &[
@@ -108,19 +107,6 @@ const DIRS: &[&str] = &[
     "/usr/lib*/*",
     "/usr/lib*",
 ];
-
-thread_local! {
-    static CMD_ERRORS: RefCell<HashMap<String, Vec<String>>> = RefCell::default();
-}
-
-fn add_err(cmd: &str, msg: String) {
-    CMD_ERRORS.with(|x| {
-        x.borrow_mut()
-            .entry(cmd.into())
-            .or_insert_with(Vec::new)
-            .push(format!("couldn't execute `{}` ({})", cmd, msg,))
-    });
-}
 
 #[derive(Default)]
 pub struct CmdError {
@@ -150,6 +136,20 @@ impl Drop for CmdError {
     }
 }
 
+thread_local! {
+    static CMD_ERRORS: RefCell<HashMap<String, Vec<String>>> = RefCell::default();
+}
+
+fn add_err(cmd: &str, msg: String) {
+    CMD_ERRORS.with(|x| {
+        x.borrow_mut()
+            .entry(cmd.into())
+            .or_insert_with(Vec::new)
+            .push(format!("couldn't execute `{}` ({})", cmd, msg,))
+    });
+}
+
+#[cfg(all(not(feature = "runtime"), not(feature = "static")))]
 pub mod dynamic {
     use super::*;
     use std::{
@@ -158,7 +158,6 @@ pub mod dynamic {
         path::{Path, PathBuf},
     };
 
-    #[cfg(not(feature = "runtime"))]
     pub fn link() {
         let e = CmdError::default();
         let (dir, x) = find(false).unwrap();
@@ -190,7 +189,7 @@ pub mod dynamic {
         }
         let mut ys = vec![];
         let mut invalid = vec![];
-        for (dir, x) in search_clang_dirs(&xs, "LIBCLANG_PATH") {
+        for (dir, x) in super::search_dirs(&xs, "LIBCLANG_PATH") {
             let p = dir.join(&x);
             match validate_lib(&p) {
                 Ok(()) => {
@@ -241,11 +240,11 @@ pub mod dynamic {
     }
 }
 
-mod r#static {
+#[cfg(feature = "static")]
+pub mod r#static {
     extern crate glob;
     use glob::Pattern;
     use std::path::{Path, PathBuf};
-    #[cfg(not(feature = "runtime"))]
     pub fn link() {
         let cep = super::CmdError::default();
         let dir = find();
@@ -272,7 +271,7 @@ mod r#static {
 
     fn find() -> PathBuf {
         let x = "libclang.a";
-        let ys = super::search_clang_dirs(&[x.into()], "LIBCLANG_STATIC_PATH");
+        let ys = super::search_dirs(&[x.into()], "LIBCLANG_STATIC_PATH");
         if let Some((y, _)) = ys.into_iter().next() {
             y
         } else {
