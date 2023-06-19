@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
+//#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 //#![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))]
 
 #[cfg(feature = "runtime")]
@@ -17,51 +17,51 @@ mod utils;
 #[derive(Clone, Debug)]
 pub struct Clang {
     pub path: PathBuf,
-    pub version: Option<CXVersion>,
-    pub c_paths: Option<Vec<PathBuf>>,
-    pub cpp_paths: Option<Vec<PathBuf>>,
+    pub ver: Option<CXVersion>,
+    pub c_ps: Option<Vec<PathBuf>>,
+    pub cpp_ps: Option<Vec<PathBuf>>,
 }
 impl Clang {
     fn new(path: impl AsRef<Path>, xs: &[String]) -> Self {
         Self {
             path: path.as_ref().into(),
-            version: parse_version(path.as_ref()),
-            c_paths: parse_paths(path.as_ref(), "c", xs),
-            cpp_paths: parse_paths(path.as_ref(), "c++", xs),
+            ver: parse_version(path.as_ref()),
+            c_ps: parse_paths(path.as_ref(), "c", xs),
+            cpp_ps: parse_paths(path.as_ref(), "c++", xs),
         }
     }
-    pub fn find(path: Option<&Path>, args: &[String]) -> Option<Clang> {
-        if let Ok(path) = env::var("CLANG_PATH") {
-            let path = Path::new(&path);
-            if path.is_file() && is_exec(path).unwrap_or(false) {
-                return Some(Clang::new(path, args));
+    pub fn find(x: Option<&Path>, xs: &[String]) -> Option<Clang> {
+        if let Ok(x) = env::var("CLANG_PATH") {
+            let x = Path::new(&x);
+            if x.is_file() && is_exec(x).unwrap_or(false) {
+                return Some(Clang::new(x, xs));
             }
         }
-        let mut target = None;
-        for i in 0..args.len() {
-            if args[i] == "-target" && i + 1 < args.len() {
-                target = Some(&args[i + 1]);
+        let mut tgt = None;
+        for i in 0..xs.len() {
+            if xs[i] == "-target" && i + 1 < xs.len() {
+                tgt = Some(&xs[i + 1]);
             }
         }
         let mut ys = vec![];
-        if let Some(path) = path {
-            ys.push(path.into());
+        if let Some(x) = x {
+            ys.push(x.into());
         }
-        if let Ok(path) = llvm_config(&["--bindir"]) {
-            if let Some(y) = path.lines().next() {
-                ys.push(y.into());
+        if let Ok(x) = llvm_config(&["--bindir"]) {
+            if let Some(x) = x.lines().next() {
+                ys.push(x.into());
             }
         }
-        if let Ok(path) = env::var("PATH") {
-            ys.extend(env::split_paths(&path));
+        if let Ok(x) = env::var("PATH") {
+            ys.extend(env::split_paths(&x));
         }
-        if let Some(target) = target {
-            let default = format!("{}-clang{}", target, env::consts::EXE_SUFFIX);
-            let versioned = format!("{}-clang-[0-9]*{}", target, env::consts::EXE_SUFFIX);
+        if let Some(x) = tgt {
+            let default = format!("{}-clang{}", x, env::consts::EXE_SUFFIX);
+            let versioned = format!("{}-clang-[0-9]*{}", x, env::consts::EXE_SUFFIX);
             let patterns = &[&default[..], &versioned[..]];
             for y in &ys {
-                if let Some(path) = find(y, patterns) {
-                    return Some(Clang::new(path, args));
+                if let Some(x) = find(y, patterns) {
+                    return Some(Clang::new(x, xs));
                 }
             }
         }
@@ -69,8 +69,8 @@ impl Clang {
         let versioned = format!("clang-[0-9]*{}", env::consts::EXE_SUFFIX);
         let patterns = &[&default[..], &versioned[..]];
         for y in ys {
-            if let Some(path) = find(&y, patterns) {
-                return Some(Clang::new(path, args));
+            if let Some(x) = find(&y, patterns) {
+                return Some(Clang::new(x, xs));
             }
         }
         None

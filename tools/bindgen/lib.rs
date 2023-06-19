@@ -313,7 +313,7 @@ impl Bindings {
                 Some(x) => x,
             };
             let is_cpp = args_are_cpp(&opts.clang_args) || opts.input_headers.iter().any(|x| file_is_cpp(x));
-            let paths = if is_cpp { clang.cpp_paths } else { clang.c_paths };
+            let paths = if is_cpp { clang.cpp_ps } else { clang.c_ps };
             if let Some(paths) = paths {
                 for p in paths.into_iter() {
                     if let Ok(p) = p.into_os_string().into_string() {
