@@ -9,7 +9,6 @@ use libc::*;
 use std::{
     env, io, mem,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 mod utils;
@@ -77,45 +76,36 @@ impl Clang {
     }
 }
 
-fn parse_version(path: &Path) -> Option<CXVersion> {
-    let y = clang(path, &["--version"]).0;
-    let start = y.find("version ")? + 8;
-    let mut ys = y[start..].split_whitespace().next()?.split('.');
-    let major = ys.next().and_then(version_number)?;
-    let minor = ys.next().and_then(version_number)?;
-    let subminor = ys.next().and_then(version_number).unwrap_or(0);
-    Some(CXVersion {
-        Major: major,
-        Minor: minor,
-        Subminor: subminor,
-    })
+fn parse_version(x: &Path) -> Option<CXVersion> {
+    let y = utils::run(&x.to_string_lossy(), "--version").unwrap();
+    let s = y.find("version ")? + 8;
+    let mut ys = y[s..].split_whitespace().next()?.split('.');
+    fn parse_num(x: &str) -> Option<c_int> {
+        x.chars()
+            .take_while(|x| x.is_ascii_digit())
+            .collect::<String>()
+            .parse()
+            .ok()
+    }
+    let Major = ys.next().and_then(parse_num)?;
+    let Minor = ys.next().and_then(parse_num)?;
+    let Subminor = ys.next().and_then(parse_num).unwrap_or(0);
+    Some(CXVersion { Major, Minor, Subminor })
 }
 
-fn version_number(x: &str) -> Option<c_int> {
-    x.chars()
-        .take_while(|x| x.is_ascii_digit())
-        .collect::<String>()
-        .parse()
-        .ok()
-}
-
-fn parse_paths(path: &Path, lang: &str, args: &[String]) -> Option<Vec<PathBuf>> {
+fn parse_paths(x: &Path, lang: &str, args: &[String]) -> Option<Vec<PathBuf>> {
     let mut xs = vec!["-E", "-x", lang, "-", "-v"];
     xs.extend(args.iter().map(|x| &**x));
-    let y = clang(path, &xs).1;
-    let start = y.find("#include <...> search starts here:")? + 34;
-    let end = y.find("End of search list.")?;
-    let ys = y[start..end].replace("(framework directory)", "");
+    let y = utils::run(&x.to_string_lossy(), &xs.join(" ")).unwrap();
+    let s = y.find("#include <...> search starts here:")? + 34;
+    let e = y.find("End of search list.")?;
+    let ys = y[s..e].replace("(framework directory)", "");
     Some(
         ys.lines()
             .filter(|x| !x.is_empty())
             .map(|x| Path::new(x.trim()).into())
             .collect(),
     )
-}
-
-fn clang(path: &Path, args: &[&str]) -> (String, String) {
-    utils::sh(&path.to_string_lossy(), args).unwrap()
 }
 
 fn find(path: &Path, patterns: &[&str]) -> Option<PathBuf> {

@@ -10,39 +10,32 @@ use glob::{MatchOptions, Pattern};
 
 const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
 
-pub fn llvm_config(xs: &str) -> Option<String> {
+pub fn llvm_config(args: &str) -> Option<String> {
     #[cfg(test)]
     if let Some(x) = &*MOCK.lock().unwrap() {
-        return x(xs);
+        return x(args);
     }
-    let x = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
-    let x = format!("{} --link-static {}", x, xs);
-    let n = "llvm-config";
+    let y = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
+    #[cfg(feature = "static")]
+    let y = format!("{} --link-static", y);
+    run(&y, args)
+}
+
+pub fn run(x: &str, args: &str) -> Option<String> {
+    let x = format!("{} {}", x, args);
     let y = match Command::new("sh").arg("-c").arg(&x).output() {
         Ok(x) => x,
         Err(e) => {
-            add_err(n, &x, xs, format!("error: {}", e));
+            add_err(&x, format!("error: {}", e));
             return None;
         },
     };
     if y.status.success() {
         Some(String::from_utf8_lossy(&y.stdout).into_owned())
     } else {
-        add_err(n, &x, xs, format!("exit code: {}", y.status));
+        add_err(&x, format!("status: {}", y.status));
         None
     }
-}
-
-fn sh(exec: &str, args: &[&str]) -> Result<(String, String), String> {
-    Command::new(exec)
-        .args(args)
-        .output()
-        .map(|x| {
-            let o = String::from_utf8_lossy(&x.stdout).into_owned();
-            let e = String::from_utf8_lossy(&x.stderr).into_owned();
-            (o, e)
-        })
-        .map_err(|x| format!("could not run executable `{}`: {}", exec, x))
 }
 
 pub fn search_clang_dirs(files: &[String], x: &str) -> Vec<(PathBuf, String)> {
@@ -120,12 +113,12 @@ thread_local! {
     static CMD_ERRORS: RefCell<HashMap<String, Vec<String>>> = RefCell::default();
 }
 
-fn add_err(name: &str, path: &str, args: &str, msg: String) {
+fn add_err(cmd: &str, msg: String) {
     CMD_ERRORS.with(|x| {
-        x.borrow_mut().entry(name.into()).or_insert_with(Vec::new).push(format!(
-            "couldn't execute `{} {}` (path={}) ({})",
-            name, args, path, msg,
-        ))
+        x.borrow_mut()
+            .entry(cmd.into())
+            .or_insert_with(Vec::new)
+            .push(format!("couldn't execute `{}` ({})", cmd, msg,))
     });
 }
 
