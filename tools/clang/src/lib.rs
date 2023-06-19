@@ -1,4 +1,4 @@
-//#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 //#![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))]
 
 #[cfg(feature = "runtime")]
@@ -32,9 +32,9 @@ impl Clang {
     }
     pub fn find(x: Option<&Path>, xs: &[String]) -> Option<Clang> {
         if let Ok(x) = env::var("CLANG_PATH") {
-            let x = Path::new(&x);
-            if x.is_file() && is_exec(x).unwrap_or(false) {
-                return Some(Clang::new(x, xs));
+            let y = Path::new(&x);
+            if y.is_file() && is_exec(y).unwrap_or(false) {
+                return Some(Clang::new(y, xs));
             }
         }
         let mut tgt = None;
@@ -44,12 +44,12 @@ impl Clang {
             }
         }
         let mut ys = vec![];
-        if let Some(x) = x {
-            ys.push(x.into());
+        if let Some(y) = x {
+            ys.push(y.into());
         }
-        if let Ok(x) = llvm_config(&["--bindir"]) {
-            if let Some(x) = x.lines().next() {
-                ys.push(x.into());
+        if let Some(x) = utils::llvm_config("--bindir") {
+            if let Some(y) = x.lines().next() {
+                ys.push(y.into());
             }
         }
         if let Ok(x) = env::var("PATH") {
@@ -60,8 +60,8 @@ impl Clang {
             let versioned = format!("{}-clang-[0-9]*{}", x, env::consts::EXE_SUFFIX);
             let patterns = &[&default[..], &versioned[..]];
             for y in &ys {
-                if let Some(x) = find(y, patterns) {
-                    return Some(Clang::new(x, xs));
+                if let Some(y) = find(y, patterns) {
+                    return Some(Clang::new(y, xs));
                 }
             }
         }
@@ -69,8 +69,8 @@ impl Clang {
         let versioned = format!("clang-[0-9]*{}", env::consts::EXE_SUFFIX);
         let patterns = &[&default[..], &versioned[..]];
         for y in ys {
-            if let Some(x) = find(&y, patterns) {
-                return Some(Clang::new(x, xs));
+            if let Some(y) = find(&y, patterns) {
+                return Some(Clang::new(y, xs));
             }
         }
         None
@@ -115,26 +115,7 @@ fn parse_paths(path: &Path, lang: &str, args: &[String]) -> Option<Vec<PathBuf>>
 }
 
 fn clang(path: &Path, args: &[&str]) -> (String, String) {
-    run(&path.to_string_lossy(), args).unwrap()
-}
-
-const LLVM_CONFIG: &str = "/usr/bin/llvm-config-17";
-
-fn llvm_config(args: &[&str]) -> Result<String, String> {
-    let p = env::var("LLVM_CONFIG_PATH").unwrap_or(LLVM_CONFIG.into());
-    run(&p, args).map(|(x, _)| x)
-}
-
-fn run(exec: &str, args: &[&str]) -> Result<(String, String), String> {
-    Command::new(exec)
-        .args(args)
-        .output()
-        .map(|x| {
-            let o = String::from_utf8_lossy(&x.stdout).into_owned();
-            let e = String::from_utf8_lossy(&x.stderr).into_owned();
-            (o, e)
-        })
-        .map_err(|x| format!("could not run executable `{}`: {}", exec, x))
+    utils::sh(&path.to_string_lossy(), args).unwrap()
 }
 
 fn find(path: &Path, patterns: &[&str]) -> Option<PathBuf> {
@@ -164,22 +145,20 @@ fn is_exec(path: &Path) -> io::Result<bool> {
 
 pub mod enums {
     use libc::c_int;
-
     macro_rules! cenum {
         (enum $name:ident {
-            $(const $variant:ident = $value:expr), +,
+            $(const $var:ident = $val:expr), +,
         }) => (
             pub type $name = c_int;
-            $(pub const $variant: $name = $value;)+
+            $(pub const $var: $name = $val;)+
         );
         (enum $name:ident {
-            $(const $variant:ident = $value:expr); +;
+            $(const $var:ident = $val:expr); +;
         }) => (
             pub type $name = c_int;
-            $(pub const $variant: $name = $value;)+
+            $(pub const $var: $name = $val;)+
         );
     }
-
     cenum! {
         enum CXAvailabilityKind {
             const CXAvailability_Available = 0,
@@ -188,7 +167,6 @@ pub mod enums {
             const CXAvailability_NotAccessible = 3,
         }
     }
-
     cenum! {
         enum CXCallingConv {
             const CXCallingConv_Default = 0,
@@ -215,7 +193,6 @@ pub mod enums {
             const CXCallingConv_AArch64SVEPCS = 18,
         }
     }
-
     cenum! {
         enum CXChildVisitResult {
             const CXChildVisit_Break = 0,
@@ -223,7 +200,6 @@ pub mod enums {
             const CXChildVisit_Recurse = 2,
         }
     }
-
     cenum! {
         enum CXCommentInlineCommandRenderKind {
             const CXCommentInlineCommandRenderKind_Normal = 0,
@@ -232,7 +208,6 @@ pub mod enums {
             const CXCommentInlineCommandRenderKind_Emphasized = 3,
         }
     }
-
     cenum! {
         enum CXCommentKind {
             const CXComment_Null = 0,
@@ -250,7 +225,6 @@ pub mod enums {
             const CXComment_FullComment = 12,
         }
     }
-
     cenum! {
         enum CXCommentParamPassDirection {
             const CXCommentParamPassDirection_In = 0,
@@ -258,14 +232,12 @@ pub mod enums {
             const CXCommentParamPassDirection_InOut = 2,
         }
     }
-
     cenum! {
         enum CXCompilationDatabase_Error {
             const CXCompilationDatabase_NoError = 0,
             const CXCompilationDatabase_CanNotLoadDatabase = 1,
         }
     }
-
     cenum! {
         enum CXCompletionChunkKind {
             const CXCompletionChunk_Optional = 0,
@@ -291,7 +263,6 @@ pub mod enums {
             const CXCompletionChunk_VerticalSpace = 20,
         }
     }
-
     cenum! {
         enum CXCursorKind {
             const CXCursor_UnexposedDecl = 1,
@@ -565,7 +536,6 @@ pub mod enums {
             const CXCursor_OverloadCandidate = 700,
         }
     }
-
     cenum! {
         enum CXCursor_ExceptionSpecificationKind {
             const CXCursor_ExceptionSpecificationKind_None = 0,
@@ -580,7 +550,6 @@ pub mod enums {
             const CXCursor_ExceptionSpecificationKind_NoThrow = 9,
         }
     }
-
     cenum! {
         enum CXDiagnosticSeverity {
             const CXDiagnostic_Ignored = 0,
@@ -590,7 +559,6 @@ pub mod enums {
             const CXDiagnostic_Fatal = 4,
         }
     }
-
     cenum! {
         enum CXErrorCode {
             const CXError_Success = 0,
@@ -600,7 +568,6 @@ pub mod enums {
             const CXError_ASTReadError = 4,
         }
     }
-
     cenum! {
         enum CXEvalResultKind {
             const CXEval_UnExposed = 0,
@@ -612,7 +579,6 @@ pub mod enums {
             const CXEval_Other = 6,
         }
     }
-
     cenum! {
         enum CXIdxAttrKind {
             const CXIdxAttr_Unexposed = 0,
@@ -621,7 +587,6 @@ pub mod enums {
             const CXIdxAttr_IBOutletCollection = 3,
         }
     }
-
     cenum! {
         enum CXIdxEntityCXXTemplateKind {
             const CXIdxEntity_NonTemplate = 0,
@@ -630,7 +595,6 @@ pub mod enums {
             const CXIdxEntity_TemplateSpecialization = 3,
         }
     }
-
     cenum! {
         enum CXIdxEntityKind {
             const CXIdxEntity_Unexposed = 0,
@@ -663,7 +627,6 @@ pub mod enums {
             const CXIdxEntity_CXXConcept = 27,
         }
     }
-
     cenum! {
         enum CXIdxEntityLanguage {
             const CXIdxEntityLang_None = 0,
@@ -673,14 +636,12 @@ pub mod enums {
             const CXIdxEntityLang_Swift = 4,
         }
     }
-
     cenum! {
         enum CXIdxEntityRefKind {
             const CXIdxEntityRef_Direct = 1,
             const CXIdxEntityRef_Implicit = 2,
         }
     }
-
     cenum! {
         enum CXIdxObjCContainerKind {
             const CXIdxObjCContainer_ForwardRef = 0,
@@ -688,7 +649,6 @@ pub mod enums {
             const CXIdxObjCContainer_Implementation = 2,
         }
     }
-
     cenum! {
         enum CXLanguageKind {
             const CXLanguage_Invalid = 0,
@@ -697,7 +657,6 @@ pub mod enums {
             const CXLanguage_CPlusPlus = 3,
         }
     }
-
     cenum! {
         enum CXLinkageKind {
             const CXLinkage_Invalid = 0,
@@ -707,7 +666,6 @@ pub mod enums {
             const CXLinkage_External = 4,
         }
     }
-
     cenum! {
         enum CXLoadDiag_Error {
             const CXLoadDiag_None = 0,
@@ -716,7 +674,6 @@ pub mod enums {
             const CXLoadDiag_InvalidFile = 3,
         }
     }
-
     cenum! {
         enum CXPrintingPolicyProperty {
             const CXPrintingPolicy_Indentation = 0,
@@ -747,7 +704,6 @@ pub mod enums {
             const CXPrintingPolicy_FullyQualifiedName = 25,
         }
     }
-
     cenum! {
         enum CXRefQualifierKind {
             const CXRefQualifier_None = 0,
@@ -755,7 +711,6 @@ pub mod enums {
             const CXRefQualifier_RValue = 2,
         }
     }
-
     cenum! {
         enum CXResult {
             const CXResult_Success = 0,
@@ -763,7 +718,6 @@ pub mod enums {
             const CXResult_VisitBreak = 2,
         }
     }
-
     cenum! {
         enum CXSaveError {
             const CXSaveError_None = 0,
@@ -772,7 +726,6 @@ pub mod enums {
             const CXSaveError_InvalidTU = 3,
         }
     }
-
     cenum! {
         enum CXTLSKind {
             const CXTLS_None = 0,
@@ -780,7 +733,6 @@ pub mod enums {
             const CXTLS_Static = 2,
         }
     }
-
     cenum! {
         enum CXTUResourceUsageKind {
             const CXTUResourceUsage_AST = 1,
@@ -799,7 +751,6 @@ pub mod enums {
             const CXTUResourceUsage_Preprocessor_HeaderSearch = 14,
         }
     }
-
     cenum! {
         enum CXTemplateArgumentKind {
             const CXTemplateArgumentKind_Null = 0,
@@ -814,7 +765,6 @@ pub mod enums {
             const CXTemplateArgumentKind_Invalid = 9,
         }
     }
-
     cenum! {
         enum CXTokenKind {
             const CXToken_Punctuation = 0,
@@ -824,7 +774,6 @@ pub mod enums {
             const CXToken_Comment = 4,
         }
     }
-
     cenum! {
         enum CXTypeKind {
             const CXType_Invalid = 0,
@@ -949,7 +898,6 @@ pub mod enums {
             const CXType_BTFTagAttributed = 178,
         }
     }
-
     cenum! {
         enum CXTypeLayoutError {
             const CXTypeLayoutError_Invalid = -1,
@@ -960,7 +908,6 @@ pub mod enums {
             const CXTypeLayoutError_Undeduced = -6,
         }
     }
-
     cenum! {
         enum CXVisibilityKind {
             const CXVisibility_Invalid = 0,
@@ -969,7 +916,6 @@ pub mod enums {
             const CXVisibility_Default = 3,
         }
     }
-
     cenum! {
         enum CXTypeNullabilityKind {
             const CXTypeNullability_NonNull = 0,
@@ -979,14 +925,12 @@ pub mod enums {
             const CXTypeNullability_NullableResult = 4,
         }
     }
-
     cenum! {
         enum CXVisitorResult {
             const CXVisit_Break = 0,
             const CXVisit_Continue = 1,
         }
     }
-
     cenum! {
         enum CX_CXXAccessSpecifier {
             const CX_CXXInvalidAccessSpecifier = 0,
@@ -995,7 +939,6 @@ pub mod enums {
             const CX_CXXPrivate = 3,
         }
     }
-
     cenum! {
         enum CX_StorageClass {
             const CX_SC_Invalid = 0,
@@ -1008,7 +951,6 @@ pub mod enums {
             const CX_SC_Register = 7,
         }
     }
-
     cenum! {
         enum CXCodeComplete_Flags {
             const CXCodeComplete_IncludeMacros = 1;
@@ -1018,7 +960,6 @@ pub mod enums {
             const CXCodeComplete_IncludeCompletionsWithFixIts = 16;
         }
     }
-
     cenum! {
         enum CXCompletionContext {
             const CXCompletionContext_Unexposed = 0;
@@ -1048,7 +989,6 @@ pub mod enums {
             const CXCompletionContext_Unknown = 8388607;
         }
     }
-
     cenum! {
         enum CXDiagnosticDisplayOptions {
             const CXDiagnostic_DisplaySourceLocation = 1;
@@ -1059,7 +999,6 @@ pub mod enums {
             const CXDiagnostic_DisplayCategoryName = 32;
         }
     }
-
     cenum! {
         enum CXGlobalOptFlags {
             const CXGlobalOpt_None = 0;
@@ -1068,13 +1007,11 @@ pub mod enums {
             const CXGlobalOpt_ThreadBackgroundPriorityForAll = 3;
         }
     }
-
     cenum! {
         enum CXIdxDeclInfoFlags {
             const CXIdxDeclFlag_Skipped = 1;
         }
     }
-
     cenum! {
         enum CXIndexOptFlags {
             const CXIndexOptNone = 0;
@@ -1085,7 +1022,6 @@ pub mod enums {
             const CXIndexOptSkipParsedBodiesInSession = 16;
         }
     }
-
     cenum! {
         enum CXNameRefFlags {
             const CXNameRange_WantQualifier = 1;
@@ -1093,7 +1029,6 @@ pub mod enums {
             const CXNameRange_WantSinglePiece = 4;
         }
     }
-
     cenum! {
         enum CXObjCDeclQualifierKind {
             const CXObjCDeclQualifier_None = 0;
@@ -1105,7 +1040,6 @@ pub mod enums {
             const CXObjCDeclQualifier_Oneway = 32;
         }
     }
-
     cenum! {
         enum CXObjCPropertyAttrKind {
             const CXObjCPropertyAttr_noattr = 0;
@@ -1124,19 +1058,16 @@ pub mod enums {
             const CXObjCPropertyAttr_class = 4096;
         }
     }
-
     cenum! {
         enum CXReparse_Flags {
             const CXReparse_None = 0;
         }
     }
-
     cenum! {
         enum CXSaveTranslationUnit_Flags {
             const CXSaveTranslationUnit_None = 0;
         }
     }
-
     cenum! {
         enum CXSymbolRole {
             const CXSymbolRole_None = 0;
@@ -1151,7 +1082,6 @@ pub mod enums {
             const CXSymbolRole_Implicit = 256;
         }
     }
-
     cenum! {
         enum CXTranslationUnit_Flags {
             const CXTranslationUnit_None = 0;
@@ -1174,18 +1104,15 @@ pub mod enums {
         }
     }
 }
-
 pub use enums::*;
 
 pub mod types {
     use libc::c_void;
-
     macro_rules! opaque {
         ($name:ident) => {
             pub type $name = *mut c_void;
         };
     }
-
     opaque!(CXCompilationDatabase);
     opaque!(CXCompileCommand);
     opaque!(CXCompileCommands);
@@ -1207,7 +1134,6 @@ pub mod types {
     opaque!(CXTargetInfo);
     opaque!(CXTranslationUnit);
 }
-
 pub use types::*;
 
 pub type CXClientData = *mut c_void;
@@ -1217,11 +1143,10 @@ pub type CXInclusionVisitor = extern "C" fn(CXFile, *mut CXSourceLocation, c_uin
 
 pub mod structs {
     use super::*;
-
     macro_rules! default {
-        ($ty:ty) => {
-            impl Default for $ty {
-                fn default() -> $ty {
+        ($t:ty) => {
+            impl Default for $t {
+                fn default() -> $t {
                     unsafe { mem::zeroed() }
                 }
             }
@@ -1234,7 +1159,6 @@ pub mod structs {
         pub Results: *mut CXCompletionResult,
         pub NumResults: c_uint,
     }
-
     default!(CXCodeCompleteResults);
 
     #[derive(Copy, Clone, Debug)]
@@ -1243,7 +1167,6 @@ pub mod structs {
         pub ASTNode: *const c_void,
         pub TranslationUnit: CXTranslationUnit,
     }
-
     default!(CXComment);
 
     #[derive(Copy, Clone, Debug)]
@@ -1252,7 +1175,6 @@ pub mod structs {
         pub CursorKind: CXCursorKind,
         pub CompletionString: CXCompletionString,
     }
-
     default!(CXCompletionResult);
 
     #[derive(Copy, Clone, Debug)]
@@ -1262,7 +1184,6 @@ pub mod structs {
         pub xdata: c_int,
         pub data: [*const c_void; 3],
     }
-
     default!(CXCursor);
 
     #[derive(Copy, Clone, Debug)]
@@ -1271,7 +1192,6 @@ pub mod structs {
         pub context: *mut c_void,
         pub visit: Option<extern "C" fn(*mut c_void, CXCursor, CXSourceRange) -> CXVisitorResult>,
     }
-
     default!(CXCursorAndRangeVisitor);
 
     #[derive(Copy, Clone, Debug)]
@@ -1279,7 +1199,6 @@ pub mod structs {
     pub struct CXFileUniqueID {
         pub data: [c_ulonglong; 3],
     }
-
     default!(CXFileUniqueID);
 
     #[derive(Copy, Clone, Debug)]
@@ -1289,7 +1208,6 @@ pub mod structs {
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
     }
-
     default!(CXIdxAttrInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1299,7 +1217,6 @@ pub mod structs {
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
     }
-
     default!(CXIdxBaseClassInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1309,7 +1226,6 @@ pub mod structs {
         pub bases: *const *const CXIdxBaseClassInfo,
         pub numBases: c_uint,
     }
-
     default!(CXIdxCXXClassDeclInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1317,7 +1233,6 @@ pub mod structs {
     pub struct CXIdxContainerInfo {
         pub cursor: CXCursor,
     }
-
     default!(CXIdxContainerInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1337,7 +1252,6 @@ pub mod structs {
         pub numAttributes: c_uint,
         pub flags: c_uint,
     }
-
     default!(CXIdxDeclInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1352,7 +1266,6 @@ pub mod structs {
         pub attributes: *const *const CXIdxAttrInfo,
         pub numAttributes: c_uint,
     }
-
     default!(CXIdxEntityInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1366,7 +1279,6 @@ pub mod structs {
         pub container: *const CXIdxContainerInfo,
         pub role: CXSymbolRole,
     }
-
     default!(CXIdxEntityRefInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1377,7 +1289,6 @@ pub mod structs {
         pub classCursor: CXCursor,
         pub classLoc: CXIdxLoc,
     }
-
     default!(CXIdxIBOutletCollectionAttrInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1388,7 +1299,6 @@ pub mod structs {
         pub loc: CXIdxLoc,
         pub isImplicit: c_int,
     }
-
     default!(CXIdxImportedASTFileInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1401,7 +1311,6 @@ pub mod structs {
         pub isAngled: c_int,
         pub isModuleImport: c_int,
     }
-
     default!(CXIdxIncludedFileInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1410,7 +1319,6 @@ pub mod structs {
         pub ptr_data: [*mut c_void; 2],
         pub int_data: c_uint,
     }
-
     default!(CXIdxLoc);
 
     #[derive(Copy, Clone, Debug)]
@@ -1422,7 +1330,6 @@ pub mod structs {
         pub classLoc: CXIdxLoc,
         pub protocols: *const CXIdxObjCProtocolRefListInfo,
     }
-
     default!(CXIdxObjCCategoryDeclInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1431,7 +1338,6 @@ pub mod structs {
         pub declInfo: *const CXIdxDeclInfo,
         pub kind: CXIdxObjCContainerKind,
     }
-
     default!(CXIdxObjCContainerDeclInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1441,7 +1347,6 @@ pub mod structs {
         pub superInfo: *const CXIdxBaseClassInfo,
         pub protocols: *const CXIdxObjCProtocolRefListInfo,
     }
-
     default!(CXIdxObjCInterfaceDeclInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1451,7 +1356,6 @@ pub mod structs {
         pub getter: *const CXIdxEntityInfo,
         pub setter: *const CXIdxEntityInfo,
     }
-
     default!(CXIdxObjCPropertyDeclInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1461,7 +1365,6 @@ pub mod structs {
         pub cursor: CXCursor,
         pub loc: CXIdxLoc,
     }
-
     default!(CXIdxObjCProtocolRefInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1470,7 +1373,6 @@ pub mod structs {
         pub protocols: *const *const CXIdxObjCProtocolRefInfo,
         pub numProtocols: c_uint,
     }
-
     default!(CXIdxObjCProtocolRefListInfo);
 
     #[derive(Copy, Clone, Debug)]
@@ -1483,7 +1385,6 @@ pub mod structs {
         pub Unavailable: c_int,
         pub Message: CXString,
     }
-
     default!(CXPlatformAvailability);
 
     #[derive(Copy, Clone, Debug)]
@@ -1492,7 +1393,6 @@ pub mod structs {
         pub ptr_data: [*const c_void; 2],
         pub int_data: c_uint,
     }
-
     default!(CXSourceLocation);
 
     #[derive(Copy, Clone, Debug)]
@@ -1502,7 +1402,6 @@ pub mod structs {
         pub begin_int_data: c_uint,
         pub end_int_data: c_uint,
     }
-
     default!(CXSourceRange);
 
     #[derive(Copy, Clone, Debug)]
@@ -1511,7 +1410,6 @@ pub mod structs {
         pub count: c_uint,
         pub ranges: *mut CXSourceRange,
     }
-
     default!(CXSourceRangeList);
 
     #[derive(Copy, Clone, Debug)]
@@ -1520,7 +1418,6 @@ pub mod structs {
         pub data: *const c_void,
         pub private_flags: c_uint,
     }
-
     default!(CXString);
 
     #[derive(Copy, Clone, Debug)]
@@ -1529,7 +1426,6 @@ pub mod structs {
         pub Strings: *mut CXString,
         pub Count: c_uint,
     }
-
     default!(CXStringSet);
 
     #[derive(Copy, Clone, Debug)]
@@ -1539,7 +1435,6 @@ pub mod structs {
         pub numEntries: c_uint,
         pub entries: *mut CXTUResourceUsageEntry,
     }
-
     default!(CXTUResourceUsage);
 
     #[derive(Copy, Clone, Debug)]
@@ -1548,7 +1443,6 @@ pub mod structs {
         pub kind: CXTUResourceUsageKind,
         pub amount: c_ulong,
     }
-
     default!(CXTUResourceUsageEntry);
 
     #[derive(Copy, Clone, Debug)]
@@ -1557,7 +1451,6 @@ pub mod structs {
         pub int_data: [c_uint; 4],
         pub ptr_data: *mut c_void,
     }
-
     default!(CXToken);
 
     #[derive(Copy, Clone, Debug)]
@@ -1566,7 +1459,6 @@ pub mod structs {
         pub kind: CXTypeKind,
         pub data: [*mut c_void; 2],
     }
-
     default!(CXType);
 
     #[derive(Copy, Clone, Debug)]
@@ -1576,7 +1468,6 @@ pub mod structs {
         pub Contents: *const c_char,
         pub Length: c_ulong,
     }
-
     default!(CXUnsavedFile);
 
     #[derive(Copy, Clone, Debug)]
@@ -1586,7 +1477,6 @@ pub mod structs {
         pub Minor: c_int,
         pub Subminor: c_int,
     }
-
     default!(CXVersion);
 
     #[derive(Copy, Clone, Debug)]
@@ -1602,55 +1492,42 @@ pub mod structs {
         pub indexDeclaration: Option<extern "C" fn(CXClientData, *const CXIdxDeclInfo)>,
         pub indexEntityReference: Option<extern "C" fn(CXClientData, *const CXIdxEntityRefInfo)>,
     }
-
     default!(IndexerCallbacks);
 }
-
 pub use structs::*;
 
 #[cfg(feature = "runtime")]
 macro_rules! link {
         (
             @LOAD:
-            #[cfg($cfg:meta)]
-            fn $name:ident($($pname:ident: $pty:ty), *) $(-> $ret:ty)*
+            fn $name:ident($($p:ident: $t:ty), *) $(-> $ret:ty)*
         ) => (
-            #[cfg($cfg)]
             pub fn $name(x: &mut super::SharedLib) {
-                let symbol = unsafe { x.lib.get(stringify!($name).as_bytes()) }.ok();
-                x.fns.$name = match symbol {
-                    Some(s) => *s,
+                let y = unsafe { x.lib.get(stringify!($name).as_bytes()) }.ok();
+                x.fns.$name = match y {
+                    Some(x) => *x,
                     None => None,
                 };
             }
-
-            #[cfg(not($cfg))]
-            pub fn $name(_: &mut super::SharedLib) {}
         );
-
         (
             @LOAD:
-            fn $name:ident($($pname:ident: $pty:ty), *) $(-> $ret:ty)*
+            fn $name:ident($($p:ident: $t:ty), *) $(-> $ret:ty)*
         ) => (
-            link!(@LOAD: #[cfg(feature = "runtime")] fn $name($($pname: $pty), *) $(-> $ret)*);
+            link!(@LOAD: fn $name($($p: $t), *) $(-> $ret)*);
         );
-
         (
             $(
-                $(#[cfg($cfg:meta)])*
-                pub fn $name:ident($($pname:ident: $pty:ty), *) $(-> $ret:ty)*;
+                pub fn $name:ident($($p:ident: $t:ty), *) $(-> $ret:ty)*;
             )+
         ) => (
             use std::cell::{RefCell};
             use std::fmt;
             use std::sync::{Arc};
-
-            #[allow(missing_docs)]
             #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub enum Version {
                 V17_0 = 170,
             }
-
             impl fmt::Display for Version {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     use Version::*;
@@ -1659,108 +1536,73 @@ macro_rules! link {
                     }
                 }
             }
-
             #[derive(Debug, Default)]
             pub struct Fns {
                 $(
-                    $(#[cfg($cfg)])*
-                    pub $name: Option<unsafe extern fn($($pname: $pty), *) $(-> $ret)*>,
+                    pub $name: Option<unsafe extern fn($($p: $t), *) $(-> $ret)*>,
                 )+
             }
-
             #[derive(Debug)]
             pub struct SharedLib {
                 lib: libloading::Library,
                 path: PathBuf,
                 pub fns: Fns,
             }
-
             impl SharedLib {
                 fn new(lib: libloading::Library, path: PathBuf) -> Self {
                     Self { lib, path, fns: Fns::default() }
                 }
-
                 pub fn path(&self) -> &Path {
                     &self.path
                 }
-
                 pub fn version(&self) -> Option<Version> {
                     macro_rules! check {
-                        ($fn:expr, $version:ident) => {
+                        ($fn:expr, $v:ident) => {
                             if self.lib.get::<unsafe extern fn()>($fn).is_ok() {
-                                return Some(Version::$version);
+                                return Some(Version::$v);
                             }
                         };
                     }
-
                     unsafe {
                         check!(b"clang_CXXMethod_isCopyAssignmentOperator", V17_0);
                     }
-
                     None
                 }
             }
-
             thread_local!(static LIBRARY: RefCell<Option<Arc<SharedLib>>> = RefCell::new(None));
-
             pub fn is_loaded() -> bool {
                 LIBRARY.with(|x| x.borrow().is_some())
             }
-
             fn with_lib<T, F>(f: F) -> Option<T> where F: FnOnce(&SharedLib) -> T {
                 LIBRARY.with(|x| {
                     match x.borrow().as_ref() {
-                        Some(lib) => Some(f(&lib)),
+                        Some(x) => Some(f(&x)),
                         _ => None,
                     }
                 })
             }
-
             $(
-                #[cfg_attr(feature="cargo-clippy", allow(clippy::missing_safety_doc))]
-                #[cfg_attr(feature="cargo-clippy", allow(clippy::too_many_arguments))]
-                $(#[cfg($cfg)])*
-                pub unsafe fn $name($($pname: $pty), *) $(-> $ret)* {
+                pub unsafe fn $name($($p: $t), *) $(-> $ret)* {
                     let f = with_lib(|lib| {
                         if let Some(f) = lib.fns.$name {
                             f
                         } else {
-                            panic!(
-                                r#"
-    A `libclang` function was called that is not supported by the loaded `libclang` instance.
-    
-        called function = `{0}`
-        loaded `libclang` instance = {1}
-    "#,
-                                stringify!($name),
-                                lib
-                                    .version()
-                                    .map(|x| format!("{}", x))
-                                    .unwrap_or_else(|| "unsupported version".into()),
-                            );
+                            panic!("function `{0}` not supported", stringify!($name));
                         }
                     }).expect("a `libclang` shared lib is not loaded on this thread");
-                    f($($pname), *)
+                    f($($p), *)
                 }
-
-                $(#[cfg($cfg)])*
                 pub mod $name {
                     pub fn is_loaded() -> bool {
                         super::with_lib(|x| x.fns.$name.is_some()).unwrap_or(false)
                     }
                 }
             )+
-
             mod load {
-                $(link!(@LOAD: $(#[cfg($cfg)])* fn $name($($pname: $pty), *) $(-> $ret)*);)+
+                $(link!(@LOAD: fn $name($($p: $t), *) $(-> $ret)*);)+
             }
-
             pub fn load_manually() -> Result<SharedLib, String> {
-                #[allow(dead_code)]
-                mod runtime {
-                    pub mod common { include!(concat!(env!("OUT_DIR"), "/common.rs")); }
-                }
-
+                mod runtime { include!(concat!(env!("OUT_DIR"), "/runtime.rs")); }
                 let (dir, file) = runtime::dynamic::find(true)?;
                 let path = dir.join(file);
                 unsafe {
@@ -1776,14 +1618,11 @@ macro_rules! link {
                     Ok(y)
                 }
             }
-
-            #[allow(dead_code)]
             pub fn load() -> Result<(), String> {
                 let y = Arc::new(load_manually()?);
                 LIBRARY.with(|x| *x.borrow_mut() = Some(y));
                 Ok(())
             }
-
             pub fn unload() -> Result<(), String> {
                 let y = set_lib(None);
                 if y.is_some() {
@@ -1792,11 +1631,9 @@ macro_rules! link {
                     Err("a `libclang` shared lib is not in use in the current thread".into())
                 }
             }
-
             pub fn get_lib() -> Option<Arc<SharedLib>> {
                 LIBRARY.with(|x| x.borrow_mut().clone())
             }
-
             pub fn set_lib(lib: Option<Arc<SharedLib>>) -> Option<Arc<SharedLib>> {
                 LIBRARY.with(|x| mem::replace(&mut *x.borrow_mut(), lib))
             }
@@ -1807,12 +1644,12 @@ macro_rules! link {
 macro_rules! link {
         (
             $(
-                pub fn $name:ident($($pn:ident: $pty:ty), *) $(-> $ret:ty)*;
+                pub fn $name:ident($($p:ident: $t:ty), *) $(-> $ret:ty)*;
             )+
         ) => (
             extern {
                 $(
-                    pub fn $name($($pn: $pty), *) $(-> $ret)*;
+                    pub fn $name($($p: $t), *) $(-> $ret)*;
                 )+
             }
             $(
