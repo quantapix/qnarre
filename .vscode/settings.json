@@ -1,11 +1,29 @@
 {
-  "python.formatting.provider": "none",
-  "cmake.configureOnOpen": false,
-  "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true
   },
   "C_Cpp.default.compilerPath": "/usr/bin/clang",
+  "cmake.configureOnOpen": false,
   "cmake.sourceDirectory": "/home/qpix/clone/qnarre/tools",
+  "editor.formatOnSave": true,
+  "git.autoRepositoryDetection": false,
   "git.ignoreLimitWarning": true,
-  "rust-analyzer.showUnlinkedFileNotification": false
+  "git.ignoredRepositories": [
+    "dev/*",
+  ],
+  "rust-analyzer.showUnlinkedFileNotification": false,
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.features": [],
+  "rust-analyzer.cargo.features": [],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+  },
+  "[rust]": {
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.formatOnSave": true
+  },
 }

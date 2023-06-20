@@ -151,7 +151,6 @@ fn add_err(cmd: &str, msg: String) {
 
 #[cfg(all(not(feature = "runtime"), not(feature = "static")))]
 pub mod dynamic {
-    use super::*;
     use std::{
         fs::File,
         io::{self, Error, ErrorKind, Read},
@@ -252,7 +251,7 @@ pub mod r#static {
         for x in clang_libs(dir) {
             println!("cargo:rustc-link-lib=static={}", x);
         }
-        let mode = main::llvm_config("--shared-mode").map(|x| x.trim().to_owned());
+        let mode = super::llvm_config("--shared-mode").map(|x| x.trim().to_owned());
         let pre = if mode.map_or(false, |x| x == "static") {
             "static="
         } else {
@@ -260,7 +259,7 @@ pub mod r#static {
         };
         println!(
             "cargo:rustc-link-search=native={}",
-            main::llvm_config("--libdir").unwrap().trim_end()
+            super::llvm_config("--libdir").unwrap().trim_end()
         );
         for x in llvm_libs() {
             println!("cargo:rustc-link-lib={}{}", pre, x);
