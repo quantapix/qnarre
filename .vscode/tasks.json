@@ -3,19 +3,38 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Watch Clang",
-      "group": "build",
+      "options": {
+        "cwd": "${workspaceFolder}/tools",
+        "shell": {
+          "executable": "bash"
+        }
+      },
+      "label": "Build LLVM",
       "type": "shell",
-      "command": "cargo watch --package clang",
-      "problemMatcher": "$rustc-watch",
-      "isBackground": true
+      "command": "./build_llvm.sh",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
     },
     {
       "label": "Build Clang",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "type": "shell",
+      "command": "cargo build -p clang",
+      "problemMatcher": "$rustc"
+    },
+    {
+      "label": "Watch Clang",
       "group": "build",
       "type": "shell",
-      "command": "cargo build --package clang",
-      "problemMatcher": "$rustc"
+      "command": "cargo watch -p clang -w tools/clang",
+      "problemMatcher": "$rustc-watch",
+      "isBackground": true
     },
     {
       "label": "Build Qnarre",
