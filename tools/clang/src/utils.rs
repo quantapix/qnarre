@@ -169,9 +169,7 @@ pub mod dynamic {
 
     fn validate(x: &Path) -> Result<(), String> {
         fn parse_header(x: &Path) -> io::Result<u8> {
-            print!("parse_header {}\n", x.display());
             let mut x = File::open(x)?;
-            print!("parse_header opened\n");
             let mut ys = [0; 5];
             x.read_exact(&mut ys)?;
             if ys[..4] == [127, 69, 76, 70] {

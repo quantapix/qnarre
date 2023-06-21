@@ -6,6 +6,10 @@ edition.workspace = true
 build = "build.rs"
 # links = "clang"
 
+[lib]
+name = "clang"
+path = "lib.rs"
+
 [features]
 default = ["runtime"]
 runtime = ["dep:libloading"]

@@ -29,12 +29,20 @@
       "problemMatcher": "$rustc"
     },
     {
-      "label": "Watch Clang",
-      "group": "build",
-      "type": "shell",
       "command": "cargo watch -p clang -w tools/clang",
+      "group": "build",
+      "isBackground": true,
+      "label": "Watch Clang",
       "problemMatcher": "$rustc-watch",
-      "isBackground": true
+      "type": "shell",
+    },
+    {
+      "command": "cargo watch -p bindgen -w tools/bindgen",
+      "group": "build",
+      "isBackground": true,
+      "label": "Watch Bindgen",
+      "problemMatcher": "$rustc-watch",
+      "type": "shell",
     },
     {
       "label": "Build Qnarre",
@@ -42,21 +50,6 @@
         "Build Clang",
       ],
       "problemMatcher": "$rustc"
-    },
-    {
-      "label": "Build Extension in Background",
-      "group": "build",
-      "type": "npm",
-      "script": "watch",
-      "path": "editors/code/",
-      "problemMatcher": {
-        "base": "$tsc-watch",
-        "fileLocation": [
-          "relative",
-          "${workspaceFolder}/editors/code/"
-        ]
-      },
-      "isBackground": true,
     },
     {
       "label": "Pretest",
