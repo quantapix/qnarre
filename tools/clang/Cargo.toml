@@ -8,7 +8,7 @@ build = "build.rs"
 
 [lib]
 name = "clang"
-path = "lib.rs"
+path = "src/lib.rs"
 
 [features]
 default = ["runtime"]

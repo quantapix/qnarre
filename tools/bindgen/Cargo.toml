@@ -7,7 +7,7 @@ build = "build.rs"
 
 [lib]
 name = "bindgen"
-path = "lib.rs"
+path = "src/lib.rs"
 
 [features]
 default = ["runtime", "which-rustfmt"]
