@@ -1,11 +1,15 @@
-use crate::ir::Context;
 use clang_lib::*;
-use std::ffi::{CStr, CString};
-use std::fmt;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::os::raw::{c_char, c_int, c_longlong, c_uint, c_ulong, c_ulonglong};
-use std::{mem, ptr, slice};
+use std::{
+    ffi::{CStr, CString},
+    fmt,
+    hash::Hash,
+    hash::Hasher,
+    mem,
+    os::raw::{c_char, c_int, c_longlong, c_uint, c_ulong, c_ulonglong},
+    ptr, slice,
+};
+
+use crate::ir::Context;
 
 pub struct Attribute {
     name: &'static [u8],
@@ -1027,14 +1031,15 @@ impl Comment {
     pub fn get_tag_name(&self) -> String {
         unsafe { cxstring_into_string(clang_HTMLTagComment_getTagName(self.comm)) }
     }
-    pub fn get_tag_attrs(&self) -> ComAttrsIter {
-        ComAttrsIter {
+    pub fn get_tag_attrs(&self) -> CommAttrsIter {
+        CommAttrsIter {
             x: self.comm,
             length: unsafe { clang_HTMLStartTag_getNumAttrs(self.comm) },
             idx: 0,
         }
     }
 }
+
 pub struct CommChildrenIter {
     parent: CXComment,
     length: c_uint,
@@ -1054,16 +1059,17 @@ impl Iterator for CommChildrenIter {
         }
     }
 }
+
 pub struct CommAttr {
     pub name: String,
     pub value: String,
 }
-pub struct ComAttrsIter {
+pub struct CommAttrsIter {
     x: CXComment,
     length: c_uint,
     idx: c_uint,
 }
-impl Iterator for ComAttrsIter {
+impl Iterator for CommAttrsIter {
     type Item = CommAttr;
     fn next(&mut self) -> Option<CommAttr> {
         if self.idx < self.length {

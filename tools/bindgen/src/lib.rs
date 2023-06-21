@@ -1,8 +1,7 @@
-#![allow(missing_docs)]
-#![allow(non_upper_case_globals, dead_code)]
-#![deny(clippy::disallowed_methods)]
-#![deny(unused_extern_crates)]
+#![allow(missing_docs, non_upper_case_globals, dead_code)]
+#![deny(clippy::disallowed_methods, unused_extern_crates)]
 #![recursion_limit = "128"]
+
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
@@ -12,6 +11,19 @@ extern crate log;
 #[macro_use]
 extern crate quote;
 
+use std::{
+    borrow::Cow,
+    collections::hash_map::Entry,
+    env,
+    ffi::OsStr,
+    fs::{File, OpenOptions},
+    io::{self, Write},
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+    rc::Rc,
+    str::FromStr,
+};
+
 pub mod clang;
 mod codegen;
 mod ir;
@@ -19,24 +31,11 @@ mod opts;
 
 pub use codegen::utils::variation;
 use codegen::GenError;
-pub use ir::annos::VisibilityKind;
-use ir::comment;
-pub use ir::func::Abi;
-use ir::item::Item;
-use ir::{Context, ItemId};
+pub use ir::{annos::VisibilityKind, func::Abi};
+use ir::{comment, item::Item, Context, ItemId};
 use opts::Opts;
 use parse::Error;
 pub use regex_set::RegexSet;
-use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::env;
-use std::ffi::OsStr;
-use std::fs::{File, OpenOptions};
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::rc::Rc;
-use std::str::FromStr;
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 type HashSet<K> = rustc_hash::FxHashSet<K>;
@@ -513,437 +512,437 @@ mod deps {
             buf
         }
     }
+}
+pub mod callbacks {
+    pub use crate::ir::analysis::DeriveTrait;
+    pub use crate::ir::derive::Resolved as ImplementsTrait;
+    pub use crate::ir::enum_ty::{EnumVariantCustom, EnumVariantValue};
+    pub use crate::ir::int::IntKind;
+    use std::fmt;
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+    pub enum MacroParsing {
+        Ignore,
+        #[default]
+        Default,
+    }
+    pub trait Parse: fmt::Debug {
+        fn will_parse_macro(&self, _name: &str) -> MacroParsing {
+            MacroParsing::Default
+        }
+        fn gen_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
+            None
+        }
+        fn gen_link_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
+            None
+        }
+        fn int_macro(&self, _name: &str, _value: i64) -> Option<IntKind> {
+            None
+        }
+        fn str_macro(&self, _name: &str, _value: &[u8]) {}
+        fn fn_macro(&self, _name: &str, _value: &[&[u8]]) {}
+        fn enum_variant_behavior(
+            &self,
+            _name: Option<&str>,
+            _orig_name: &str,
+            _: EnumVariantValue,
+        ) -> Option<EnumVariantCustom> {
+            None
+        }
+        fn enum_variant_name(&self, _name: Option<&str>, _orig_name: &str, _: EnumVariantValue) -> Option<String> {
+            None
+        }
+        fn item_name(&self, _orig_name: &str) -> Option<String> {
+            None
+        }
+        fn include_file(&self, _name: &str) {}
+        fn read_env_var(&self, _key: &str) {}
+        fn blocklisted_type_implements_trait(&self, _name: &str, _: DeriveTrait) -> Option<ImplementsTrait> {
+            None
+        }
+        fn add_derives(&self, _: &DeriveInfo<'_>) -> Vec<String> {
+            vec![]
+        }
+        fn process_comment(&self, _comment: &str) -> Option<String> {
+            None
+        }
+    }
+    #[derive(Debug)]
+    #[non_exhaustive]
+    pub struct DeriveInfo<'a> {
+        pub name: &'a str,
+        pub kind: TypeKind,
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum TypeKind {
+        Struct,
+        Enum,
+        Union,
+    }
+    #[non_exhaustive]
+    pub struct ItemInfo<'a> {
+        pub name: &'a str,
+        pub kind: ItemKind,
+    }
+    #[non_exhaustive]
+    pub enum ItemKind {
+        Func,
+        Var,
+    }
+}
+pub mod parse {
+    use crate::clang;
+    use crate::ir::{Context, ItemId};
+    #[derive(Debug)]
+    pub enum Error {
+        Recurse,
+        Continue,
+    }
+    #[derive(Debug)]
+    pub enum Resolved<T> {
+        AlreadyDone(ItemId),
+        New(T, Option<clang::Cursor>),
+    }
+    pub trait SubItem: Sized {
+        fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<Resolved<Self>, Error>;
+    }
+}
+mod regex_set {
+    use std::cell::Cell;
+    #[derive(Clone, Debug, Default)]
+    pub struct RegexSet {
+        items: Vec<String>,
+        matched: Vec<Cell<bool>>,
+        set: Option<regex::RegexSet>,
+        record_matches: bool,
+    }
+    impl RegexSet {
+        pub fn new() -> RegexSet {
+            RegexSet::default()
+        }
+        pub fn is_empty(&self) -> bool {
+            self.items.is_empty()
+        }
+        pub fn insert<S>(&mut self, x: S)
+        where
+            S: AsRef<str>,
+        {
+            self.items.push(x.as_ref().to_owned());
+            self.matched.push(Cell::new(false));
+            self.set = None;
+        }
+        pub fn get_items(&self) -> &[String] {
+            &self.items[..]
+        }
+        pub fn unmatched_items(&self) -> impl Iterator<Item = &String> {
+            self.items.iter().enumerate().filter_map(move |(i, x)| {
+                if !self.record_matches || self.matched[i].get() {
+                    return None;
+                }
+                Some(x)
+            })
+        }
+        #[inline]
+        pub fn build(&mut self, record_matches: bool) {
+            self.build_inner(record_matches, None)
+        }
+        fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
+            let items = self.items.iter().map(|x| format!("^({})$", x));
+            self.record_matches = record_matches;
+            self.set = match regex::RegexSet::new(items) {
+                Ok(x) => Some(x),
+                Err(e) => {
+                    warn!("Invalid regex in {:?}: {:?}", self.items, e);
+                    None
+                },
+            }
+        }
+        pub fn matches<S>(&self, x: S) -> bool
+        where
+            S: AsRef<str>,
+        {
+            let s = x.as_ref();
+            let set = match self.set {
+                Some(ref set) => set,
+                None => return false,
+            };
+            if !self.record_matches {
+                return set.is_match(s);
+            }
+            let ys = set.matches(s);
+            if !ys.matched_any() {
+                return false;
+            }
+            for i in ys.iter() {
+                self.matched[i].set(true);
+            }
+            true
+        }
+    }
+}
+mod timer {
+    use std::io::{self, Write};
+    use std::time::{Duration, Instant};
+    #[derive(Debug)]
+    pub struct Timer<'a> {
+        output: bool,
+        name: &'a str,
+        start: Instant,
+    }
+    impl<'a> Timer<'a> {
+        pub fn new(name: &'a str) -> Self {
+            Timer {
+                output: true,
+                name,
+                start: Instant::now(),
+            }
+        }
+        pub fn with_output(mut self, x: bool) -> Self {
+            self.output = x;
+            self
+        }
+        pub fn elapsed(&self) -> Duration {
+            Instant::now() - self.start
+        }
+        fn print_elapsed(&mut self) {
+            if self.output {
+                let d = self.elapsed();
+                let ms = (d.as_secs() as f64) * 1e3 + (d.subsec_nanos() as f64) / 1e6;
+                let e = io::stderr();
+                writeln!(e.lock(), "  time: {:>9.3} ms.\t{}", ms, self.name).expect("should not fail");
+            }
+        }
+    }
+    impl<'a> Drop for Timer<'a> {
+        fn drop(&mut self) {
+            self.print_elapsed();
+        }
+    }
+}
 
-    pub mod callbacks {
-        pub use crate::ir::analysis::DeriveTrait;
-        pub use crate::ir::derive::Resolved as ImplementsTrait;
-        pub use crate::ir::enum_ty::{EnumVariantCustom, EnumVariantValue};
-        pub use crate::ir::int::IntKind;
-        use std::fmt;
-        #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-        pub enum MacroParsing {
-            Ignore,
-            #[default]
-            Default,
-        }
-        pub trait Parse: fmt::Debug {
-            fn will_parse_macro(&self, _name: &str) -> MacroParsing {
-                MacroParsing::Default
-            }
-            fn gen_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
-                None
-            }
-            fn gen_link_name_override(&self, _: ItemInfo<'_>) -> Option<String> {
-                None
-            }
-            fn int_macro(&self, _name: &str, _value: i64) -> Option<IntKind> {
-                None
-            }
-            fn str_macro(&self, _name: &str, _value: &[u8]) {}
-            fn fn_macro(&self, _name: &str, _value: &[&[u8]]) {}
-            fn enum_variant_behavior(
-                &self,
-                _name: Option<&str>,
-                _orig_name: &str,
-                _: EnumVariantValue,
-            ) -> Option<EnumVariantCustom> {
-                None
-            }
-            fn enum_variant_name(&self, _name: Option<&str>, _orig_name: &str, _: EnumVariantValue) -> Option<String> {
-                None
-            }
-            fn item_name(&self, _orig_name: &str) -> Option<String> {
-                None
-            }
-            fn include_file(&self, _name: &str) {}
-            fn read_env_var(&self, _key: &str) {}
-            fn blocklisted_type_implements_trait(&self, _name: &str, _: DeriveTrait) -> Option<ImplementsTrait> {
-                None
-            }
-            fn add_derives(&self, _: &DeriveInfo<'_>) -> Vec<String> {
-                vec![]
-            }
-            fn process_comment(&self, _comment: &str) -> Option<String> {
-                None
-            }
-        }
-        #[derive(Debug)]
-        #[non_exhaustive]
-        pub struct DeriveInfo<'a> {
-            pub name: &'a str,
-            pub kind: TypeKind,
-        }
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        pub enum TypeKind {
-            Struct,
-            Enum,
-            Union,
-        }
-        #[non_exhaustive]
-        pub struct ItemInfo<'a> {
-            pub name: &'a str,
-            pub kind: ItemKind,
-        }
-        #[non_exhaustive]
-        pub enum ItemKind {
-            Func,
-            Var,
-        }
+#[cfg(feature = "runtime")]
+fn load_libclang() {
+    if clang_lib::is_loaded() {
+        return;
     }
-    pub mod parse {
-        use crate::clang;
-        use crate::ir::{Context, ItemId};
-        #[derive(Debug)]
-        pub enum Error {
-            Recurse,
-            Continue,
-        }
-        #[derive(Debug)]
-        pub enum Resolved<T> {
-            AlreadyDone(ItemId),
-            New(T, Option<clang::Cursor>),
-        }
-        pub trait SubItem: Sized {
-            fn parse(cur: clang::Cursor, ctx: &mut Context) -> Result<Resolved<Self>, Error>;
-        }
-    }
-    mod regex_set {
-        use std::cell::Cell;
-        #[derive(Clone, Debug, Default)]
-        pub struct RegexSet {
-            items: Vec<String>,
-            matched: Vec<Cell<bool>>,
-            set: Option<regex::RegexSet>,
-            record_matches: bool,
-        }
-        impl RegexSet {
-            pub fn new() -> RegexSet {
-                RegexSet::default()
-            }
-            pub fn is_empty(&self) -> bool {
-                self.items.is_empty()
-            }
-            pub fn insert<S>(&mut self, x: S)
-            where
-                S: AsRef<str>,
-            {
-                self.items.push(x.as_ref().to_owned());
-                self.matched.push(Cell::new(false));
-                self.set = None;
-            }
-            pub fn get_items(&self) -> &[String] {
-                &self.items[..]
-            }
-            pub fn unmatched_items(&self) -> impl Iterator<Item = &String> {
-                self.items.iter().enumerate().filter_map(move |(i, x)| {
-                    if !self.record_matches || self.matched[i].get() {
-                        return None;
-                    }
-                    Some(x)
-                })
-            }
-            #[inline]
-            pub fn build(&mut self, record_matches: bool) {
-                self.build_inner(record_matches, None)
-            }
-            fn build_inner(&mut self, record_matches: bool, _name: Option<&'static str>) {
-                let items = self.items.iter().map(|x| format!("^({})$", x));
-                self.record_matches = record_matches;
-                self.set = match regex::RegexSet::new(items) {
-                    Ok(x) => Some(x),
-                    Err(e) => {
-                        warn!("Invalid regex in {:?}: {:?}", self.items, e);
-                        None
-                    },
-                }
-            }
-            pub fn matches<S>(&self, x: S) -> bool
-            where
-                S: AsRef<str>,
-            {
-                let s = x.as_ref();
-                let set = match self.set {
-                    Some(ref set) => set,
-                    None => return false,
-                };
-                if !self.record_matches {
-                    return set.is_match(s);
-                }
-                let ys = set.matches(s);
-                if !ys.matched_any() {
-                    return false;
-                }
-                for i in ys.iter() {
-                    self.matched[i].set(true);
-                }
-                true
-            }
-        }
-    }
-    mod timer {
-        use std::io::{self, Write};
-        use std::time::{Duration, Instant};
-        #[derive(Debug)]
-        pub struct Timer<'a> {
-            output: bool,
-            name: &'a str,
-            start: Instant,
-        }
-        impl<'a> Timer<'a> {
-            pub fn new(name: &'a str) -> Self {
-                Timer {
-                    output: true,
-                    name,
-                    start: Instant::now(),
-                }
-            }
-            pub fn with_output(mut self, x: bool) -> Self {
-                self.output = x;
-                self
-            }
-            pub fn elapsed(&self) -> Duration {
-                Instant::now() - self.start
-            }
-            fn print_elapsed(&mut self) {
-                if self.output {
-                    let d = self.elapsed();
-                    let ms = (d.as_secs() as f64) * 1e3 + (d.subsec_nanos() as f64) / 1e6;
-                    let e = io::stderr();
-                    writeln!(e.lock(), "  time: {:>9.3} ms.\t{}", ms, self.name).expect("should not fail");
-                }
-            }
-        }
-        impl<'a> Drop for Timer<'a> {
-            fn drop(&mut self) {
-                self.print_elapsed();
-            }
-        }
-    }
-
-    #[cfg(feature = "runtime")]
-    fn load_libclang() {
-        if clang_lib::is_loaded() {
-            return;
-        }
-        lazy_static! {
-            static ref LIBCLANG: std::sync::Arc<clang_lib::SharedLib> = {
-                clang_lib::load().expect("Unable to find libclang");
-                clang_lib::get_lib().expect(
-                    "We just loaded libclang and it had better still be \
+    lazy_static! {
+        static ref LIBCLANG: std::sync::Arc<clang_lib::SharedLib> = {
+            clang_lib::load().expect("Unable to find libclang");
+            clang_lib::get_lib().expect(
+                "We just loaded libclang and it had better still be \
                  here!",
-                )
-            };
-        }
-        clang_lib::set_lib(Some(LIBCLANG.clone()));
-    }
-    #[cfg(not(feature = "runtime"))]
-    fn load_libclang() {}
-
-    fn file_is_cpp(x: &str) -> bool {
-        x.ends_with(".hpp") || x.ends_with(".hxx") || x.ends_with(".hh") || x.ends_with(".h++")
-    }
-    fn args_are_cpp(xs: &[String]) -> bool {
-        for x in xs.windows(2) {
-            if x[0] == "-xc++" || x[1] == "-xc++" {
-                return true;
-            }
-            if x[0] == "-x" && x[1] == "c++" {
-                return true;
-            }
-            if x[0] == "-include" && file_is_cpp(&x[1]) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn get_extra_args(xs: &[Rc<dyn callbacks::Parse>]) -> Vec<String> {
-        let ys = match get_target_dependent_env_var(xs, "BINDGEN_EXTRA_CLANG_ARGS") {
-            None => return vec![],
-            Some(x) => x,
+            )
         };
-        if let Some(ys) = shlex::split(&ys) {
-            return ys;
-        }
-        vec![ys]
     }
+    clang_lib::set_lib(Some(LIBCLANG.clone()));
+}
+#[cfg(not(feature = "runtime"))]
+fn load_libclang() {}
 
-    pub fn clang_version() -> Version {
-        load_libclang();
-        let raw_v: String = clang::extract_clang_version();
-        let split_v: Option<Vec<&str>> = raw_v
-            .split_whitespace()
-            .find(|x| x.chars().next().map_or(false, |x| x.is_ascii_digit()))
-            .map(|x| x.split('.').collect());
-        if let Some(v) = split_v {
-            if v.len() >= 2 {
-                let maybe_major = v[0].parse::<u32>();
-                let maybe_minor = v[1].parse::<u32>();
-                if let (Ok(major), Ok(minor)) = (maybe_major, maybe_minor) {
-                    return Version {
-                        parsed: Some((major, minor)),
-                        full: raw_v.clone(),
-                    };
-                }
-            }
-        };
-        Version {
-            parsed: None,
-            full: raw_v.clone(),
+fn file_is_cpp(x: &str) -> bool {
+    x.ends_with(".hpp") || x.ends_with(".hxx") || x.ends_with(".hh") || x.ends_with(".h++")
+}
+fn args_are_cpp(xs: &[String]) -> bool {
+    for x in xs.windows(2) {
+        if x[0] == "-xc++" || x[1] == "-xc++" {
+            return true;
+        }
+        if x[0] == "-x" && x[1] == "c++" {
+            return true;
+        }
+        if x[0] == "-include" && file_is_cpp(&x[1]) {
+            return true;
         }
     }
-    fn env_var<K: AsRef<str> + AsRef<OsStr>>(
-        parse_callbacks: &[Rc<dyn callbacks::Parse>],
-        key: K,
-    ) -> Result<String, std::env::VarError> {
-        for x in parse_callbacks {
-            x.read_env_var(key.as_ref());
-        }
-        std::env::var(key)
-    }
-    fn get_target_dependent_env_var(xs: &[Rc<dyn callbacks::Parse>], var: &str) -> Option<String> {
-        if let Ok(x) = env_var(xs, "TARGET") {
-            if let Ok(x) = env_var(xs, format!("{}_{}", var, x)) {
-                return Some(x);
-            }
-            if let Ok(x) = env_var(xs, format!("{}_{}", var, x.replace('-', "_"))) {
-                return Some(x);
-            }
-        }
-        env_var(xs, var).ok()
-    }
+    false
+}
 
-    fn rust_to_clang_target(x: &str) -> String {
-        x.to_owned()
+fn get_extra_args(xs: &[Rc<dyn callbacks::Parse>]) -> Vec<String> {
+    let ys = match get_target_dependent_env_var(xs, "BINDGEN_EXTRA_CLANG_ARGS") {
+        None => return vec![],
+        Some(x) => x,
+    };
+    if let Some(ys) = shlex::split(&ys) {
+        return ys;
     }
-    fn find_effective_target(xs: &[String]) -> (String, bool) {
-        let mut args = xs.iter();
-        while let Some(opt) = args.next() {
-            if opt.starts_with("--target=") {
-                let mut split = opt.split('=');
-                split.next();
-                return (split.next().unwrap().to_owned(), true);
+    vec![ys]
+}
+
+pub fn clang_version() -> Version {
+    load_libclang();
+    let raw_v: String = clang::extract_clang_version();
+    let split_v: Option<Vec<&str>> = raw_v
+        .split_whitespace()
+        .find(|x| x.chars().next().map_or(false, |x| x.is_ascii_digit()))
+        .map(|x| x.split('.').collect());
+    if let Some(v) = split_v {
+        if v.len() >= 2 {
+            let maybe_major = v[0].parse::<u32>();
+            let maybe_minor = v[1].parse::<u32>();
+            if let (Ok(major), Ok(minor)) = (maybe_major, maybe_minor) {
+                return Version {
+                    parsed: Some((major, minor)),
+                    full: raw_v.clone(),
+                };
             }
-            if opt == "-target" {
-                if let Some(x) = args.next() {
-                    return (x.clone(), true);
-                }
+        }
+    };
+    Version {
+        parsed: None,
+        full: raw_v.clone(),
+    }
+}
+fn env_var<K: AsRef<str> + AsRef<OsStr>>(
+    parse_callbacks: &[Rc<dyn callbacks::Parse>],
+    key: K,
+) -> Result<String, std::env::VarError> {
+    for x in parse_callbacks {
+        x.read_env_var(key.as_ref());
+    }
+    std::env::var(key)
+}
+fn get_target_dependent_env_var(xs: &[Rc<dyn callbacks::Parse>], var: &str) -> Option<String> {
+    if let Ok(x) = env_var(xs, "TARGET") {
+        if let Ok(x) = env_var(xs, format!("{}_{}", var, x)) {
+            return Some(x);
+        }
+        if let Ok(x) = env_var(xs, format!("{}_{}", var, x.replace('-', "_"))) {
+            return Some(x);
+        }
+    }
+    env_var(xs, var).ok()
+}
+
+fn rust_to_clang_target(x: &str) -> String {
+    x.to_owned()
+}
+fn find_effective_target(xs: &[String]) -> (String, bool) {
+    let mut args = xs.iter();
+    while let Some(opt) = args.next() {
+        if opt.starts_with("--target=") {
+            let mut split = opt.split('=');
+            split.next();
+            return (split.next().unwrap().to_owned(), true);
+        }
+        if opt == "-target" {
+            if let Some(x) = args.next() {
+                return (x.clone(), true);
             }
         }
-        if let Ok(t) = env::var("TARGET") {
-            return (rust_to_clang_target(&t), false);
-        }
-        (rust_to_clang_target(HOST_TARGET), false)
     }
-    fn filter_builtins(ctx: &Context, cur: &clang::Cursor) -> bool {
-        ctx.opts().builtins || !cur.is_builtin()
+    if let Ok(t) = env::var("TARGET") {
+        return (rust_to_clang_target(&t), false);
     }
-    fn parse_one(ctx: &mut Context, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
-        if !filter_builtins(ctx, &cur) {
-            return clang_lib::CXChildVisit_Continue;
-        }
-        match Item::parse(cur, parent, ctx) {
-            Ok(..) => {},
-            Err(Error::Continue) => {},
-            Err(Error::Recurse) => {
-                cur.visit(|x| parse_one(ctx, x, parent));
-            },
-        }
-        clang_lib::CXChildVisit_Continue
+    (rust_to_clang_target(HOST_TARGET), false)
+}
+fn filter_builtins(ctx: &Context, cur: &clang::Cursor) -> bool {
+    ctx.opts().builtins || !cur.is_builtin()
+}
+fn parse_one(ctx: &mut Context, cur: clang::Cursor, parent: Option<ItemId>) -> clang_lib::CXChildVisitResult {
+    if !filter_builtins(ctx, &cur) {
+        return clang_lib::CXChildVisit_Continue;
     }
-    fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
-        let mut error = None;
-        for d in ctx.translation_unit().diags().iter() {
-            let msg = d.format();
-            let is_err = d.severity() >= clang_lib::CXDiagnostic_Error;
-            if is_err {
-                let y = error.get_or_insert_with(String::new);
-                y.push_str(&msg);
-                y.push('\n');
+    match Item::parse(cur, parent, ctx) {
+        Ok(..) => {},
+        Err(Error::Continue) => {},
+        Err(Error::Recurse) => {
+            cur.visit(|x| parse_one(ctx, x, parent));
+        },
+    }
+    clang_lib::CXChildVisit_Continue
+}
+fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
+    let mut error = None;
+    for d in ctx.translation_unit().diags().iter() {
+        let msg = d.format();
+        let is_err = d.severity() >= clang_lib::CXDiagnostic_Error;
+        if is_err {
+            let y = error.get_or_insert_with(String::new);
+            y.push_str(&msg);
+            y.push('\n');
+        } else {
+            eprintln!("clang diag: {}", msg);
+        }
+    }
+    if let Some(x) = error {
+        return Err(BindgenError::Diagnostic(x));
+    }
+    let cur = ctx.translation_unit().cursor();
+    if ctx.opts().emit_ast {
+        fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
+            if !cur.is_builtin() {
+                clang::ast_dump(cur, 0)
             } else {
-                eprintln!("clang diag: {}", msg);
+                clang_lib::CXChildVisit_Continue
             }
         }
-        if let Some(x) = error {
-            return Err(BindgenError::Diagnostic(x));
-        }
-        let cur = ctx.translation_unit().cursor();
-        if ctx.opts().emit_ast {
-            fn dump_if_not_builtin(cur: &clang::Cursor) -> clang_lib::CXChildVisitResult {
-                if !cur.is_builtin() {
-                    clang::ast_dump(cur, 0)
-                } else {
-                    clang_lib::CXChildVisit_Continue
-                }
-            }
-            cur.visit(|x| dump_if_not_builtin(&x));
-        }
-        let root = ctx.root_mod();
-        ctx.with_mod(root, |x| cur.visit(|x2| parse_one(x, x2, None)));
-        assert!(ctx.current_mod() == ctx.root_mod(), "How did this happen?");
-        Ok(())
+        cur.visit(|x| dump_if_not_builtin(&x));
     }
+    let root = ctx.root_mod();
+    ctx.with_mod(root, |x| cur.visit(|x2| parse_one(x, x2, None)));
+    assert!(ctx.current_mod() == ctx.root_mod(), "How did this happen?");
+    Ok(())
+}
 
+#[test]
+fn commandline_flag_unit_test() {
+    let bindings = crate::builder();
+    let command_line_flags = bindings.command_line_flags();
+    let test_cases = vec![
+        "--rust-target",
+        "--no-derive-default",
+        "--generate",
+        "functions,types,vars,methods,constructors,destructors",
+    ]
+    .iter()
+    .map(|&x| x.into())
+    .collect::<Vec<String>>();
+    assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
+    let bindings = crate::builder()
+        .header("input_header")
+        .allowlist_type("Distinct_Type")
+        .allowlist_fn("safe_function");
+    let command_line_flags = bindings.command_line_flags();
+    let test_cases = vec![
+        "--rust-target",
+        "input_header",
+        "--no-derive-default",
+        "--generate",
+        "functions,types,vars,methods,constructors,destructors",
+        "--allowlist-type",
+        "Distinct_Type",
+        "--allowlist-function",
+        "safe_function",
+    ]
+    .iter()
+    .map(|&x| x.into())
+    .collect::<Vec<String>>();
+    println!("{:?}", command_line_flags);
+    assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
     #[test]
-    fn commandline_flag_unit_test() {
-        let bindings = crate::builder();
-        let command_line_flags = bindings.command_line_flags();
-        let test_cases = vec![
-            "--rust-target",
-            "--no-derive-default",
-            "--generate",
-            "functions,types,vars,methods,constructors,destructors",
+    fn escaping_depfile() {
+        let spec = DepfileSpec {
+            out_mod: "Mod Name".to_owned(),
+            dep_path: PathBuf::new(),
+        };
+        let deps: BTreeSet<String> = vec![
+            r"/absolute/path".to_owned(),
+            r"C:\win\absolute\path".to_owned(),
+            r"../relative/path".to_owned(),
+            r"..\win\relative\path".to_owned(),
+            r"../path/with spaces/in/it".to_owned(),
+            r"..\win\path\with spaces\in\it".to_owned(),
+            r"path\with/mixed\separators".to_owned(),
         ]
-        .iter()
-        .map(|&x| x.into())
-        .collect::<Vec<String>>();
-        assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
-        let bindings = crate::builder()
-            .header("input_header")
-            .allowlist_type("Distinct_Type")
-            .allowlist_fn("safe_function");
-        let command_line_flags = bindings.command_line_flags();
-        let test_cases = vec![
-            "--rust-target",
-            "input_header",
-            "--no-derive-default",
-            "--generate",
-            "functions,types,vars,methods,constructors,destructors",
-            "--allowlist-type",
-            "Distinct_Type",
-            "--allowlist-function",
-            "safe_function",
-        ]
-        .iter()
-        .map(|&x| x.into())
-        .collect::<Vec<String>>();
-        println!("{:?}", command_line_flags);
-        assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        #[test]
-        fn escaping_depfile() {
-            let spec = DepfileSpec {
-                out_mod: "Mod Name".to_owned(),
-                dep_path: PathBuf::new(),
-            };
-            let deps: BTreeSet<String> = vec![
-                r"/absolute/path".to_owned(),
-                r"C:\win\absolute\path".to_owned(),
-                r"../relative/path".to_owned(),
-                r"..\win\relative\path".to_owned(),
-                r"../path/with spaces/in/it".to_owned(),
-                r"..\win\path\with spaces\in\it".to_owned(),
-                r"path\with/mixed\separators".to_owned(),
-            ]
-            .into_iter()
-            .collect();
-            assert_eq!(
-                spec.to_string(&deps),
-                "Mod\\ Name: \
+        .into_iter()
+        .collect();
+        assert_eq!(
+            spec.to_string(&deps),
+            "Mod\\ Name: \
         ../path/with\\ spaces/in/it \
         ../relative/path \
         ..\\\\win\\\\path\\\\with\\ spaces\\\\in\\\\it \
@@ -951,7 +950,6 @@ mod deps {
         /absolute/path \
         C:\\\\win\\\\absolute\\\\path \
         path\\\\with/mixed\\\\separators"
-            );
-        }
+        );
     }
 }
