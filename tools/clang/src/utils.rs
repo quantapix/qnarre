@@ -39,11 +39,11 @@ pub fn llvm_config(args: &str) -> Option<String> {
 }
 
 #[cfg(not(feature = "runtime"))]
-fn search_dirs(files: &[String], x: &str) -> Vec<(PathBuf, String)> {
-    fn search_one(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-        let p = Pattern::escape(dir.to_str().unwrap());
+fn search_for(xs: &[String]) -> Vec<(PathBuf, String)> {
+    fn search_path(p: &Path, xs: &[String]) -> Vec<(PathBuf, String)> {
+        let p = Pattern::escape(p.to_str().unwrap());
         let p = Path::new(&p);
-        let ys = files.iter().map(|x| p.join(x).to_str().unwrap().to_owned());
+        let ys = xs.iter().map(|x| p.join(x).to_str().unwrap().to_owned());
         let mut opts = MatchOptions::new();
         opts.require_literal_separator = true;
         ys.map(|x| glob::glob_with(&x, opts))
@@ -59,54 +59,15 @@ fn search_dirs(files: &[String], x: &str) -> Vec<(PathBuf, String)> {
             })
             .collect::<Vec<_>>()
     }
-    fn search_all(dir: &Path, files: &[String]) -> Vec<(PathBuf, String)> {
-        search_one(dir, files)
-    }
-    if let Ok(p) = env::var(x).map(|x| Path::new(&x).to_path_buf()) {
-        if let Some(y) = p.parent() {
-            let ys = search_all(y, files);
-            let file = p.file_name().unwrap().to_str().unwrap();
-            if ys.iter().any(|(_, x)| x == file) {
-                return vec![(y.into(), file.into())];
-            }
-        }
-        return search_all(&p, files);
-    }
     let mut ys = vec![];
     if let Some(x) = llvm_config("--prefix") {
-        let y = Path::new(x.lines().next().unwrap()).to_path_buf();
-        ys.extend(search_all(&y.join("bin"), files));
-        ys.extend(search_all(&y.join("lib"), files));
-        ys.extend(search_all(&y.join("lib64"), files));
-    }
-    if let Ok(x) = env::var("LD_LIBRARY_PATH") {
-        for y in env::split_paths(&x) {
-            ys.extend(search_all(&y, files));
-        }
-    }
-    let ds: Vec<&str> = DIRS.into();
-    let mut opts = MatchOptions::new();
-    opts.case_sensitive = false;
-    opts.require_literal_separator = true;
-    for d in ds.iter() {
-        if let Ok(xs) = glob::glob_with(d, opts) {
-            for y in xs.filter_map(Result::ok).filter(|x| x.is_dir()) {
-                ys.extend(search_all(&y, files));
-            }
-        }
+        let p = Path::new(x.lines().next().unwrap()).to_path_buf();
+        ys.extend(search_path(&p.join("bin"), xs));
+        ys.extend(search_path(&p.join("lib"), xs));
+        ys.extend(search_path(&p.join("lib64"), xs));
     }
     ys
 }
-
-const DIRS: &[&str] = &[
-    "/usr/local/llvm*/lib*",
-    "/usr/local/lib*/*/*",
-    "/usr/local/lib*/*",
-    "/usr/local/lib*",
-    "/usr/lib*/*/*",
-    "/usr/lib*/*",
-    "/usr/lib*",
-];
 
 #[derive(Default)]
 pub struct CmdError {
@@ -158,7 +119,7 @@ pub mod dynamic {
     };
 
     pub fn link() {
-        let e = CmdError::default();
+        let e = super::CmdError::default();
         let (dir, x) = find(false).unwrap();
         println!("cargo:rustc-link-search={}", dir.display());
         let x = x.trim_start_matches("lib");
@@ -188,12 +149,11 @@ pub mod dynamic {
         }
         let mut ys = vec![];
         let mut invalid = vec![];
-        for (dir, x) in super::search_dirs(&xs, "LIBCLANG_PATH") {
-            let p = dir.join(&x);
-            match validate_lib(&p) {
+        for (p, n) in super::search_for(&xs) {
+            match validate(&p) {
                 Ok(()) => {
-                    let v = parse_version(&x);
-                    ys.push((dir, x, v))
+                    let v = version(&n);
+                    ys.push((p, n, v))
                 },
                 Err(x) => invalid.push(format!("({}: {})", p.display(), x)),
             }
@@ -209,9 +169,11 @@ pub mod dynamic {
         Err(y)
     }
 
-    fn validate_lib(x: &Path) -> Result<(), String> {
+    fn validate(x: &Path) -> Result<(), String> {
         fn parse_header(x: &Path) -> io::Result<u8> {
+            print!("parse_header {}\n", x.display());
             let mut x = File::open(x)?;
+            print!("parse_header opened\n");
             let mut ys = [0; 5];
             x.read_exact(&mut ys)?;
             if ys[..4] == [127, 69, 76, 70] {
@@ -227,7 +189,7 @@ pub mod dynamic {
         Ok(())
     }
 
-    fn parse_version(file: &str) -> Vec<u32> {
+    fn version(file: &str) -> Vec<u32> {
         let y = if let Some(x) = file.strip_prefix("libclang.so.") {
             x
         } else if file.starts_with("libclang-") {
@@ -269,8 +231,7 @@ pub mod r#static {
     }
 
     fn find() -> PathBuf {
-        let x = "libclang.a";
-        let ys = super::search_dirs(&[x.into()], "LIBCLANG_STATIC_PATH");
+        let ys = super::search_dirs(&["libclang.a".into()]);
         if let Some((y, _)) = ys.into_iter().next() {
             y
         } else {

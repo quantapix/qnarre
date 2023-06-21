@@ -24,11 +24,10 @@ pub mod utils;
 
 #[cfg(not(feature = "runtime"))]
 fn main() {
-    if cfg!(feature = "static") {
-        utils::r#static::link();
-    } else {
-        utils::dynamic::link();
-    }
+    #[cfg(feature = "static")]
+    utils::r#static::link();
+    #[cfg(not(feature = "static"))]
+    utils::dynamic::link();
     if let Some(x) = utils::llvm_config("--includedir") {
         let y = Path::new(x.trim_end());
         println!("cargo:include={}", y.display());
