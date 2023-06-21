@@ -2034,3 +2034,6 @@ link! {
     pub fn clang_VerbatimBlockLineComment_getText(comment: CXComment) -> CXString;
     pub fn clang_VerbatimLineComment_getText(comment: CXComment) -> CXString;
 }
+
+#[cfg(test)]
+mod tests;

@@ -1,7 +1,5 @@
-extern crate clang;
-extern crate libc;
-
-use clang::*;
+use super::*;
+use crate::Clang;
 use libc::c_char;
 use std::ptr;
 
@@ -40,13 +38,13 @@ fn test() {
 
 #[test]
 fn test_support() {
-    let clang = clang::Clang::find(None, &[]).unwrap();
+    let clang = Clang::find(None, &[]).unwrap();
     println!("{:?}", clang);
 }
 
 #[test]
 fn test_support_target() {
     let args = &["-target".into(), "x86_64-unknown-linux-gnu".into()];
-    let clang = clang::Clang::find(None, args).unwrap();
+    let clang = Clang::find(None, args).unwrap();
     println!("{:?}", clang);
 }
