@@ -164,7 +164,7 @@ impl Type {
             _ => false,
         }
     }
-    pub fn is_type_param(&self) -> bool {
+    pub fn is_ty_param(&self) -> bool {
         matches!(self.kind, TypeKind::Param)
     }
     pub fn is_templ_inst(&self) -> bool {
@@ -179,7 +179,7 @@ impl Type {
     pub fn is_void(&self) -> bool {
         matches!(self.kind, TypeKind::Void)
     }
-    pub fn is_builtin_or_type_param(&self) -> bool {
+    pub fn is_builtin_or_ty_param(&self) -> bool {
         matches!(
             self.kind,
             TypeKind::Void
@@ -240,7 +240,7 @@ impl Type {
             _ => None,
         })
     }
-    pub fn is_invalid_type_param(&self) -> bool {
+    pub fn is_invalid_ty_param(&self) -> bool {
         match self.kind {
             TypeKind::Param => {
                 let name = self.name().expect("Unnamed named type?");
@@ -392,7 +392,7 @@ impl Type {
                                             y = Ok(Item::from_ty_or_ref(x2, x, Some(id), ctx));
                                         },
                                         CXCursor_TemplateTypeParameter => {
-                                            let x = Item::type_param(None, x, ctx).expect("A TemplateTypeParameter");
+                                            let x = Item::ty_param(None, x, ctx).expect("A TemplateTypeParameter");
                                             args.push(x);
                                         },
                                         _ => {},
@@ -634,38 +634,38 @@ impl Trace for Type {
 }
 
 #[test]
-fn is_invalid_type_param_valid() {
+fn is_invalid_ty_param_valid() {
     let y = Type::new(Some("foo".into()), None, TypeKind::Param, false);
-    assert!(!y.is_invalid_type_param())
+    assert!(!y.is_invalid_ty_param())
 }
 #[test]
-fn is_invalid_type_param_valid_underscore() {
+fn is_invalid_ty_param_valid_underscore() {
     let y = Type::new(Some("_foo123456789_".into()), None, TypeKind::Param, false);
-    assert!(!y.is_invalid_type_param())
+    assert!(!y.is_invalid_ty_param())
 }
 #[test]
-fn is_invalid_type_param_valid_unnamed() {
+fn is_invalid_ty_param_valid_unnamed() {
     let y = Type::new(Some("foo".into()), None, TypeKind::Void, false);
-    assert!(!y.is_invalid_type_param())
+    assert!(!y.is_invalid_ty_param())
 }
 #[test]
-fn is_invalid_type_param_invalid_start() {
+fn is_invalid_ty_param_invalid_start() {
     let y = Type::new(Some("1foo".into()), None, TypeKind::Param, false);
-    assert!(y.is_invalid_type_param())
+    assert!(y.is_invalid_ty_param())
 }
 #[test]
-fn is_invalid_type_param_invalid_remaing() {
+fn is_invalid_ty_param_invalid_remaing() {
     let y = Type::new(Some("foo-".into()), None, TypeKind::Param, false);
-    assert!(y.is_invalid_type_param())
+    assert!(y.is_invalid_ty_param())
 }
 #[test]
 #[should_panic]
-fn is_invalid_type_param_unnamed() {
+fn is_invalid_ty_param_unnamed() {
     let y = Type::new(None, None, TypeKind::Param, false);
-    assert!(y.is_invalid_type_param())
+    assert!(y.is_invalid_ty_param())
 }
 #[test]
-fn is_invalid_type_param_empty_name() {
+fn is_invalid_ty_param_empty_name() {
     let y = Type::new(Some("".into()), None, TypeKind::Param, false);
-    assert!(y.is_invalid_type_param())
+    assert!(y.is_invalid_ty_param())
 }

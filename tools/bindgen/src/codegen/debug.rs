@@ -94,7 +94,7 @@ impl<'a> ImplDebug<'a> for Item {
             },
             TypeKind::Param => Some((format!("{}: Non-debuggable generic", name), vec![])),
             TypeKind::Array(_, len) => {
-                if self.has_type_param_in_array(ctx) {
+                if self.has_ty_param_in_array(ctx) {
                     Some((format!("{}: Array with length {}", name, len), vec![]))
                 } else {
                     debug_print(name, quote! { #name_ident })

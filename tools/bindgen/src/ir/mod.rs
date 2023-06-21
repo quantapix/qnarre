@@ -1,134 +1,15 @@
 use crate::clang;
-use derive::Resolved;
-use dot::DotAttrs;
-use func::Func;
-use item::ItemSet;
-use module::Mod;
-use std::cmp;
-use std::collections::{BTreeMap, VecDeque};
-use std::io;
-use typ::{Type, TypeKind};
-use var::Var;
-
-#[derive(Debug)]
-pub enum ItemKind {
-    Mod(Mod),
-    Type(Type),
-    Func(Func),
-    Var(Var),
-}
-impl ItemKind {
-    pub fn as_mod(&self) -> Option<&Mod> {
-        match *self {
-            ItemKind::Mod(ref x) => Some(x),
-            _ => None,
-        }
-    }
-    pub fn kind_name(&self) -> &'static str {
-        match *self {
-            ItemKind::Mod(..) => "Mod",
-            ItemKind::Type(..) => "Type",
-            ItemKind::Func(..) => "Func",
-            ItemKind::Var(..) => "Var",
-        }
-    }
-    pub fn is_mod(&self) -> bool {
-        self.as_mod().is_some()
-    }
-    pub fn as_fn(&self) -> Option<&Func> {
-        match *self {
-            ItemKind::Func(ref x) => Some(x),
-            _ => None,
-        }
-    }
-    pub fn is_fn(&self) -> bool {
-        self.as_fn().is_some()
-    }
-    pub fn expect_fn(&self) -> &Func {
-        self.as_fn().expect("Not a function")
-    }
-    pub fn as_type(&self) -> Option<&Type> {
-        match *self {
-            ItemKind::Type(ref x) => Some(x),
-            _ => None,
-        }
-    }
-    pub fn as_type_mut(&mut self) -> Option<&mut Type> {
-        match *self {
-            ItemKind::Type(ref mut x) => Some(x),
-            _ => None,
-        }
-    }
-    pub fn is_type(&self) -> bool {
-        self.as_type().is_some()
-    }
-    pub fn expect_type(&self) -> &Type {
-        self.as_type().expect("Not a type")
-    }
-    pub fn as_var(&self) -> Option<&Var> {
-        match *self {
-            ItemKind::Var(ref v) => Some(v),
-            _ => None,
-        }
-    }
-    pub fn is_var(&self) -> bool {
-        self.as_var().is_some()
-    }
-}
-impl DotAttrs for ItemKind {
-    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        writeln!(y, "<tr><td>kind</td><td>{}</td></tr>", self.kind_name())?;
-        match *self {
-            ItemKind::Mod(ref x) => x.dot_attrs(ctx, y),
-            ItemKind::Type(ref x) => x.dot_attrs(ctx, y),
-            ItemKind::Func(ref x) => x.dot_attrs(ctx, y),
-            ItemKind::Var(ref x) => x.dot_attrs(ctx, y),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum EdgeKind {
-    Generic,
-    TemplParamDef,
-    TemplDecl,
-    TemplArg,
-    BaseMember,
-    Field,
-    InnerType,
-    InnerVar,
-    Method,
-    Constructor,
-    Destructor,
-    FnReturn,
-    FnParameter,
-    VarType,
-    TypeRef,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Edge {
-    to: ItemId,
-    kind: EdgeKind,
-}
-impl Edge {
-    pub fn new(to: ItemId, kind: EdgeKind) -> Edge {
-        Edge { to, kind }
-    }
-}
-impl From<Edge> for ItemId {
-    fn from(x: Edge) -> Self {
-        x.to
-    }
-}
+use std::{
+    cmp,
+    collections::{BTreeMap, VecDeque},
+    io,
+};
 
 pub mod analysis;
 pub mod annos {
     use crate::clang;
     use std::str::FromStr;
+
     #[derive(Copy, PartialEq, Eq, Clone, Debug, Default)]
     pub enum VisibilityKind {
         Private,
@@ -274,13 +155,30 @@ pub mod annos {
 pub mod comment {
     #[derive(Debug, PartialEq, Eq)]
     enum Kind {
-        SingleLines,
+        SingleLine,
         MultiLine,
     }
     pub fn preproc(x: &str) -> String {
+        fn single(x: &str) -> String {
+            debug_assert!(x.starts_with("//"), "comment is not single line");
+            let ys: Vec<_> = x.lines().map(|x| x.trim().trim_start_matches('/')).collect();
+            ys.join("\n")
+        }
+        fn multi(x: &str) -> String {
+            let x = x.trim_start_matches('/').trim_end_matches('/').trim_end_matches('*');
+            let mut ys: Vec<_> = x
+                .lines()
+                .map(|x| x.trim().trim_start_matches('*').trim_start_matches('!'))
+                .skip_while(|x| x.trim().is_empty())
+                .collect();
+            if ys.last().map_or(false, |x| x.trim().is_empty()) {
+                ys.pop();
+            }
+            ys.join("\n")
+        }
         match self::kind(x) {
-            Some(Kind::SingleLines) => preproc_single_lines(x),
-            Some(Kind::MultiLine) => preproc_multi_line(x),
+            Some(Kind::SingleLine) => single(x),
+            Some(Kind::MultiLine) => multi(x),
             None => x.to_owned(),
         }
     }
@@ -288,45 +186,28 @@ pub mod comment {
         if x.starts_with("/*") {
             Some(Kind::MultiLine)
         } else if x.starts_with("//") {
-            Some(Kind::SingleLines)
+            Some(Kind::SingleLine)
         } else {
             None
         }
-    }
-    fn preproc_single_lines(x: &str) -> String {
-        debug_assert!(x.starts_with("//"), "comment is not single line");
-        let ys: Vec<_> = x.lines().map(|l| l.trim().trim_start_matches('/')).collect();
-        ys.join("\n")
-    }
-    fn preproc_multi_line(x: &str) -> String {
-        let x = x.trim_start_matches('/').trim_end_matches('/').trim_end_matches('*');
-        let mut ys: Vec<_> = x
-            .lines()
-            .map(|x| x.trim().trim_start_matches('*').trim_start_matches('!'))
-            .skip_while(|x| x.trim().is_empty())
-            .collect();
-        if ys.last().map_or(false, |x| x.trim().is_empty()) {
-            ys.pop();
-        }
-        ys.join("\n")
     }
     #[cfg(test)]
     mod test {
         use super::*;
         #[test]
-        fn single_and_multi_lines() {
-            assert_eq!(kind("/// hello"), Some(Kind::SingleLines));
+        fn single_and_multi() {
+            assert_eq!(kind("/// hello"), Some(Kind::SingleLine));
             assert_eq!(kind("/** world */"), Some(Kind::MultiLine));
         }
         #[test]
-        fn single_lines() {
+        fn single_line() {
             assert_eq!(preproc("///"), "");
             assert_eq!(preproc("/// hello"), " hello");
             assert_eq!(preproc("// hello"), " hello");
             assert_eq!(preproc("//    hello"), "    hello");
         }
         #[test]
-        fn multi_lines() {
+        fn multi_line() {
             assert_eq!(preproc("/**/"), "");
             assert_eq!(preproc("/** hello \n * world \n * foo \n */"), " hello\n world\n foo");
             assert_eq!(preproc("/**\nhello\n*world\n*foo\n*/"), "hello\nworld\nfoo");
@@ -335,11 +216,7 @@ pub mod comment {
 }
 pub mod comp;
 pub mod ctx;
-pub use ctx::Context;
-pub use ctx::FnId;
-pub use ctx::ItemId;
-pub use ctx::TypeId;
-pub use ctx::VarId;
+pub use ctx::{Context, FnId, ItemId, TypeId, VarId};
 pub mod derive {
     use super::item::Item;
     use super::{Context, ItemId};
@@ -510,6 +387,7 @@ pub mod derive {
         }
     }
 }
+use derive::Resolved;
 pub mod dot {
     use super::{Context, ItemId, Trace};
     use std::fs::File;
@@ -576,6 +454,7 @@ pub mod dot {
         Ok(())
     }
 }
+use dot::DotAttrs;
 pub mod enum_ty {
     use super::item::Item;
     use super::typ::{Type, TypeKind};
@@ -746,6 +625,7 @@ pub mod enum_ty {
     }
 }
 pub mod func;
+use func::Func;
 pub mod int {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub enum IntKind {
@@ -801,7 +681,122 @@ pub mod int {
     }
 }
 pub mod item;
-pub const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
+use item::ItemSet;
+
+#[derive(Debug)]
+pub enum ItemKind {
+    Mod(Mod),
+    Type(Type),
+    Func(Func),
+    Var(Var),
+}
+impl ItemKind {
+    pub fn as_mod(&self) -> Option<&Mod> {
+        match *self {
+            ItemKind::Mod(ref x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn kind_name(&self) -> &'static str {
+        match *self {
+            ItemKind::Mod(..) => "Mod",
+            ItemKind::Type(..) => "Type",
+            ItemKind::Func(..) => "Func",
+            ItemKind::Var(..) => "Var",
+        }
+    }
+    pub fn is_mod(&self) -> bool {
+        self.as_mod().is_some()
+    }
+    pub fn as_fn(&self) -> Option<&Func> {
+        match *self {
+            ItemKind::Func(ref x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn is_fn(&self) -> bool {
+        self.as_fn().is_some()
+    }
+    pub fn expect_fn(&self) -> &Func {
+        self.as_fn().expect("Not a function")
+    }
+    pub fn as_type(&self) -> Option<&Type> {
+        match *self {
+            ItemKind::Type(ref x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn as_type_mut(&mut self) -> Option<&mut Type> {
+        match *self {
+            ItemKind::Type(ref mut x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn is_type(&self) -> bool {
+        self.as_type().is_some()
+    }
+    pub fn expect_type(&self) -> &Type {
+        self.as_type().expect("Not a type")
+    }
+    pub fn as_var(&self) -> Option<&Var> {
+        match *self {
+            ItemKind::Var(ref v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn is_var(&self) -> bool {
+        self.as_var().is_some()
+    }
+}
+impl DotAttrs for ItemKind {
+    fn dot_attrs<W>(&self, ctx: &Context, y: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        writeln!(y, "<tr><td>kind</td><td>{}</td></tr>", self.kind_name())?;
+        match *self {
+            ItemKind::Mod(ref x) => x.dot_attrs(ctx, y),
+            ItemKind::Type(ref x) => x.dot_attrs(ctx, y),
+            ItemKind::Func(ref x) => x.dot_attrs(ctx, y),
+            ItemKind::Var(ref x) => x.dot_attrs(ctx, y),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EdgeKind {
+    Generic,
+    TemplParamDef,
+    TemplDecl,
+    TemplArg,
+    BaseMember,
+    Field,
+    InnerType,
+    InnerVar,
+    Method,
+    Constructor,
+    Destructor,
+    FnReturn,
+    FnParameter,
+    VarType,
+    TypeRef,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Edge {
+    to: ItemId,
+    kind: EdgeKind,
+}
+impl Edge {
+    pub fn new(to: ItemId, kind: EdgeKind) -> Edge {
+        Edge { to, kind }
+    }
+}
+impl From<Edge> for ItemId {
+    fn from(x: Edge) -> Self {
+        x.to
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Layout {
@@ -845,16 +840,8 @@ impl Layout {
         Opaque(*self)
     }
 }
-#[test]
-fn test_layout_for_size() {
-    use std::mem;
-    let ptr_size = mem::size_of::<*mut ()>();
-    assert_eq!(Layout::_for_size(ptr_size, ptr_size), Layout::new(ptr_size, ptr_size));
-    assert_eq!(
-        Layout::_for_size(ptr_size, 3 * ptr_size),
-        Layout::new(3 * ptr_size, ptr_size)
-    );
-}
+
+pub const RUST_DERIVE_IN_ARRAY_LIMIT: usize = 32;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Opaque(pub Layout);
@@ -885,12 +872,8 @@ impl Opaque {
 }
 
 pub mod module {
-    use super::dot::DotAttrs;
-    use super::item::ItemSet;
-    use super::Context;
-    use crate::clang;
-    use crate::parse;
-    use crate::parse_one;
+    use super::{Context, DotAttrs, ItemSet};
+    use crate::{clang, parse, parse_one};
     use std::io;
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -947,10 +930,12 @@ pub mod module {
         }
     }
 }
+use module::Mod;
 pub mod templ {
-    use super::item::{Ancestors, IsOpaque, Item};
-    use super::{Context, ItemId, TypeId};
-    use super::{EdgeKind, Trace, Tracer};
+    use super::{
+        item::{Ancestors, IsOpaque, Item},
+        Context, EdgeKind, ItemId, Trace, Tracer, TypeId,
+    };
     use crate::clang;
 
     pub trait Params: Sized {
@@ -1117,9 +1102,9 @@ pub mod templ {
     }
 }
 pub mod typ;
+use typ::{Type, TypeKind};
 pub mod var;
-
-pub type Predicate = for<'a> fn(&'a Context, Edge) -> bool;
+use var::Var;
 
 pub trait Storage<'ctx> {
     fn new(ctx: &'ctx Context) -> Self;
@@ -1131,32 +1116,6 @@ impl<'ctx> Storage<'ctx> for ItemSet {
     }
     fn add(&mut self, _: Option<ItemId>, id: ItemId) -> bool {
         self.insert(id)
-    }
-}
-
-#[derive(Debug)]
-pub struct Paths<'ctx>(BTreeMap<ItemId, ItemId>, &'ctx Context);
-impl<'ctx> Storage<'ctx> for Paths<'ctx> {
-    fn new(ctx: &'ctx Context) -> Self {
-        Paths(BTreeMap::new(), ctx)
-    }
-    fn add(&mut self, from: Option<ItemId>, id: ItemId) -> bool {
-        let y = self.0.insert(id, from.unwrap_or(id)).is_none();
-        if self.1.resolve_item_fallible(id).is_none() {
-            let mut path = vec![];
-            let mut i = id;
-            loop {
-                let x = *self.0.get(&i).expect("Must have a predecessor");
-                if x == i {
-                    break;
-                }
-                path.push(x);
-                i = x;
-            }
-            path.reverse();
-            panic!("Reference to dangling id = {:?} via path = {:?}", id, path);
-        }
-        y
     }
 }
 
@@ -1180,6 +1139,8 @@ impl Queue for VecDeque<ItemId> {
         self.pop_front()
     }
 }
+
+pub type Predicate = for<'a> fn(&'a Context, Edge) -> bool;
 
 pub struct Traversal<'ctx, S, Q>
 where
@@ -1253,6 +1214,32 @@ where
     }
 }
 
+#[derive(Debug)]
+pub struct Paths<'ctx>(BTreeMap<ItemId, ItemId>, &'ctx Context);
+impl<'ctx> Storage<'ctx> for Paths<'ctx> {
+    fn new(ctx: &'ctx Context) -> Self {
+        Paths(BTreeMap::new(), ctx)
+    }
+    fn add(&mut self, from: Option<ItemId>, id: ItemId) -> bool {
+        let y = self.0.insert(id, from.unwrap_or(id)).is_none();
+        if self.1.resolve_item_fallible(id).is_none() {
+            let mut path = vec![];
+            let mut i = id;
+            loop {
+                let x = *self.0.get(&i).expect("Must have a predecessor");
+                if x == i {
+                    break;
+                }
+                path.push(x);
+                i = x;
+            }
+            path.reverse();
+            panic!("Reference to dangling id = {:?} via path = {:?}", id, path);
+        }
+        y
+    }
+}
+
 pub type AssertNoDangling<'ctx> = Traversal<'ctx, Paths<'ctx>, VecDeque<ItemId>>;
 
 pub fn all_edges(_: &Context, _: Edge) -> bool {
@@ -1316,4 +1303,15 @@ where
     {
         ctx.resolve_item(*self).trace(ctx, tracer, x);
     }
+}
+
+#[test]
+fn test_layout_for_size() {
+    use std::mem;
+    let ptr_size = mem::size_of::<*mut ()>();
+    assert_eq!(Layout::_for_size(ptr_size, ptr_size), Layout::new(ptr_size, ptr_size));
+    assert_eq!(
+        Layout::_for_size(ptr_size, 3 * ptr_size),
+        Layout::new(3 * ptr_size, ptr_size)
+    );
 }

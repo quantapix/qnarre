@@ -148,19 +148,19 @@ impl HasFloat for Item {
 }
 
 pub trait HasTypeParam {
-    fn has_type_param_in_array(&self, ctx: &Context) -> bool;
+    fn has_ty_param_in_array(&self, ctx: &Context) -> bool;
 }
 impl<T> HasTypeParam for T
 where
     T: Copy + Into<ItemId>,
 {
-    fn has_type_param_in_array(&self, ctx: &Context) -> bool {
-        ctx.lookup_has_type_param_in_array(*self)
+    fn has_ty_param_in_array(&self, ctx: &Context) -> bool {
+        ctx.lookup_has_ty_param_in_array(*self)
     }
 }
 impl HasTypeParam for Item {
-    fn has_type_param_in_array(&self, ctx: &Context) -> bool {
-        ctx.lookup_has_type_param_in_array(self.id())
+    fn has_ty_param_in_array(&self, ctx: &Context) -> bool {
+        ctx.lookup_has_ty_param_in_array(self.id())
     }
 }
 
@@ -853,7 +853,7 @@ impl Item {
             if ty.is_associated_type() || cur.cur_type().is_associated_type() {
                 return Ok(Item::new_opaque_type(id, ty, ctx));
             }
-            if let Some(x) = Item::type_param(None, cur, ctx) {
+            if let Some(x) = Item::ty_param(None, cur, ctx) {
                 return Ok(ctx.build_ty_wrapper(id, x, None, ty));
             }
         }
@@ -936,7 +936,7 @@ impl Item {
                         id,
                         ty.spelling()
                     );
-                    Item::type_param(Some(id), cur, ctx)
+                    Item::ty_param(Some(id), cur, ctx)
                         .map(Ok)
                         .unwrap_or(Err(parse::Error::Recurse))
                 } else {
@@ -950,7 +950,7 @@ impl Item {
         }
         y
     }
-    pub fn type_param(id: Option<ItemId>, cur: clang::Cursor, ctx: &mut Context) -> Option<TypeId> {
+    pub fn ty_param(id: Option<ItemId>, cur: clang::Cursor, ctx: &mut Context) -> Option<TypeId> {
         let ty = cur.cur_type();
         if ty.kind() != clang_lib::CXType_Unexposed {
             return None;
@@ -993,7 +993,7 @@ impl Item {
         };
         assert!(is_templ_with_spelling(&definition, &ty_spelling));
         let parent = ctx.root_mod().into();
-        if let Some(x) = ctx.get_type_param(&definition) {
+        if let Some(x) = ctx.get_ty_param(&definition) {
             if let Some(x2) = id {
                 return Some(ctx.build_ty_wrapper(x2, x, Some(parent), &ty));
             } else {
@@ -1010,7 +1010,7 @@ impl Item {
             ItemKind::Type(Type::named(name)),
             Some(cur.location()),
         );
-        ctx.add_type_param(item, definition);
+        ctx.add_ty_param(item, definition);
         Some(id.as_type_id_unchecked())
     }
 }

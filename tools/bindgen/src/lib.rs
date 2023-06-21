@@ -13,7 +13,7 @@ extern crate quote;
 
 use std::{
     borrow::Cow,
-    collections::hash_map::Entry,
+    collections::{hash_map::Entry, BTreeSet},
     env,
     ffi::OsStr,
     fs::{File, OpenOptions},
@@ -492,27 +492,25 @@ impl callbacks::Parse for CargoCallbacks {
     }
 }
 
-mod deps {
-    use std::{collections::BTreeSet, path::PathBuf};
-    #[derive(Clone, Debug)]
-    pub struct DepfileSpec {
-        pub out_mod: String,
-        pub dep_path: PathBuf,
+#[derive(Clone, Debug)]
+pub struct DepfileSpec {
+    pub out_mod: String,
+    pub dep_path: PathBuf,
+}
+impl DepfileSpec {
+    pub fn write(&self, deps: &BTreeSet<String>) -> std::io::Result<()> {
+        std::fs::write(&self.dep_path, self.to_string(deps))
     }
-    impl DepfileSpec {
-        pub fn write(&self, deps: &BTreeSet<String>) -> std::io::Result<()> {
-            std::fs::write(&self.dep_path, self.to_string(deps))
+    fn to_string(&self, deps: &BTreeSet<String>) -> String {
+        let escape = |x: &str| x.replace('\\', "\\\\").replace(' ', "\\ ");
+        let mut buf = format!("{}:", escape(&self.out_mod));
+        for file in deps {
+            buf = format!("{} {}", buf, escape(file));
         }
-        fn to_string(&self, deps: &BTreeSet<String>) -> String {
-            let escape = |x: &str| x.replace('\\', "\\\\").replace(' ', "\\ ");
-            let mut buf = format!("{}:", escape(&self.out_mod));
-            for file in deps {
-                buf = format!("{} {}", buf, escape(file));
-            }
-            buf
-        }
+        buf
     }
 }
+
 pub mod callbacks {
     pub use crate::ir::analysis::DeriveTrait;
     pub use crate::ir::derive::Resolved as ImplementsTrait;
@@ -883,46 +881,47 @@ fn parse(ctx: &mut Context) -> Result<(), BindgenError> {
     Ok(())
 }
 
-#[test]
-fn commandline_flag_unit_test() {
-    let bindings = crate::builder();
-    let command_line_flags = bindings.command_line_flags();
-    let test_cases = vec![
-        "--rust-target",
-        "--no-derive-default",
-        "--generate",
-        "functions,types,vars,methods,constructors,destructors",
-    ]
-    .iter()
-    .map(|&x| x.into())
-    .collect::<Vec<String>>();
-    assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
-    let bindings = crate::builder()
-        .header("input_header")
-        .allowlist_type("Distinct_Type")
-        .allowlist_fn("safe_function");
-    let command_line_flags = bindings.command_line_flags();
-    let test_cases = vec![
-        "--rust-target",
-        "input_header",
-        "--no-derive-default",
-        "--generate",
-        "functions,types,vars,methods,constructors,destructors",
-        "--allowlist-type",
-        "Distinct_Type",
-        "--allowlist-function",
-        "safe_function",
-    ]
-    .iter()
-    .map(|&x| x.into())
-    .collect::<Vec<String>>();
-    println!("{:?}", command_line_flags);
-    assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
-}
-
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
+
+    #[test]
+    fn commandline_flag_unit_test() {
+        let bindings = crate::builder();
+        let command_line_flags = bindings.command_line_flags();
+        let test_cases = vec![
+            "--rust-target",
+            "--no-derive-default",
+            "--generate",
+            "functions,types,vars,methods,constructors,destructors",
+        ]
+        .iter()
+        .map(|&x| x.into())
+        .collect::<Vec<String>>();
+        assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
+        let bindings = crate::builder()
+            .header("input_header")
+            .allowlist_type("Distinct_Type")
+            .allowlist_fn("safe_function");
+        let command_line_flags = bindings.command_line_flags();
+        let test_cases = vec![
+            "--rust-target",
+            "input_header",
+            "--no-derive-default",
+            "--generate",
+            "functions,types,vars,methods,constructors,destructors",
+            "--allowlist-type",
+            "Distinct_Type",
+            "--allowlist-function",
+            "safe_function",
+        ]
+        .iter()
+        .map(|&x| x.into())
+        .collect::<Vec<String>>();
+        println!("{:?}", command_line_flags);
+        assert!(test_cases.iter().all(|x| command_line_flags.contains(x)));
+    }
+
     #[test]
     fn escaping_depfile() {
         let spec = DepfileSpec {

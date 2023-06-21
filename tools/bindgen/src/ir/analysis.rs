@@ -1,7 +1,8 @@
-use crate::ir::{Context, EdgeKind, ItemId, Trace};
-use crate::HashMap;
-use std::fmt;
-use std::ops;
+use crate::{
+    ir::{Context, EdgeKind, ItemId, Trace},
+    HashMap,
+};
+use std::{fmt, ops};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum Resolved {
@@ -268,7 +269,7 @@ pub mod derive {
                     self.derive.can_derive_vec()
                 },
                 TypeKind::Comp(ref x) => {
-                    assert!(!x.has_non_type_params());
+                    assert!(!x.has_non_ty_params());
                     if !self.derive.can_derive_comp_fwd_decl() && x.is_fwd_decl() {
                         return Resolved::No;
                     }
@@ -402,14 +403,18 @@ pub mod derive {
             .collect()
     }
 }
-pub use self::derive::as_cannot_derive_set;
+pub use derive::as_cannot_derive_set;
 
-pub mod has_destructor {
+pub mod has_destr {
     use super::{gen_deps, Monotone};
-    use crate::ir::comp::{CompKind, Field, FieldMeths};
-    use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, EdgeKind, ItemId};
-    use crate::{HashMap, HashSet};
+    use crate::{
+        ir::{
+            comp::{CompKind, Field, FieldMeths},
+            typ::TypeKind,
+            Context, EdgeKind, ItemId,
+        },
+        HashMap, HashSet,
+    };
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
@@ -513,11 +518,14 @@ pub mod has_destructor {
 
 pub mod has_float {
     use super::{gen_deps, Monotone};
-    use crate::ir::comp::Field;
-    use crate::ir::comp::FieldMeths;
-    use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, EdgeKind, ItemId};
-    use crate::{HashMap, HashSet};
+    use crate::{
+        ir::{
+            comp::{Field, FieldMeths},
+            typ::TypeKind,
+            Context, EdgeKind, ItemId,
+        },
+        HashMap, HashSet,
+    };
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
@@ -653,13 +661,16 @@ pub mod has_float {
     }
 }
 
-pub mod has_type_param {
+pub mod has_ty_param {
     use super::{gen_deps, Monotone};
-    use crate::ir::comp::Field;
-    use crate::ir::comp::FieldMeths;
-    use crate::ir::typ::TypeKind;
-    use crate::ir::{Context, EdgeKind, ItemId};
-    use crate::{HashMap, HashSet};
+    use crate::{
+        ir::{
+            comp::{Field, FieldMeths},
+            typ::TypeKind,
+            Context, EdgeKind, ItemId,
+        },
+        HashMap, HashSet,
+    };
 
     #[derive(Debug, Clone)]
     pub struct Analysis<'ctx> {
@@ -1433,7 +1444,7 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use crate::{HashMap, HashSet};
 

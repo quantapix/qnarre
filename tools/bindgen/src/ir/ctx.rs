@@ -188,7 +188,7 @@ pub struct Context {
     generated_bindgen_complex: Cell<bool>,
     has_destr: Option<HashSet<ItemId>>,
     has_float: Option<HashSet<ItemId>>,
-    has_type_param: Option<HashSet<ItemId>>,
+    has_ty_param: Option<HashSet<ItemId>>,
     has_vtable: Option<HashMap<ItemId, has_vtable::Resolved>>,
     in_gen: bool,
     items: Vec<Option<Item>>,
@@ -204,7 +204,7 @@ pub struct Context {
     target: clang::Target,
     templ_params: Option<HashMap<ItemId, ItemSet>>,
     translation_unit: clang::TranslationUnit,
-    type_params: HashMap<clang::Cursor, TypeId>,
+    ty_params: HashMap<clang::Cursor, TypeId>,
     types: HashMap<TypeKey, TypeId>,
 }
 impl Context {
@@ -235,7 +235,7 @@ impl Context {
             generated_bindgen_complex: Cell::new(false),
             has_destr: None,
             has_float: None,
-            has_type_param: None,
+            has_ty_param: None,
             has_vtable: None,
             in_gen: false,
             items: vec![Some(root_mod)],
@@ -251,7 +251,7 @@ impl Context {
             target,
             templ_params: None,
             translation_unit,
-            type_params: Default::default(),
+            ty_params: Default::default(),
             types: Default::default(),
         }
     }
@@ -288,7 +288,7 @@ impl Context {
         debug_assert!(
             decl.is_some()
                 || !it.kind().is_type()
-                || it.kind().expect_type().is_builtin_or_type_param()
+                || it.kind().expect_type().is_builtin_or_ty_param()
                 || it.kind().expect_type().is_opaque(self, &it)
                 || it.kind().expect_type().is_unresolved_ref(),
             "Adding a type without declaration?"
@@ -349,19 +349,19 @@ impl Context {
             .children_mut()
             .insert(it.id());
     }
-    pub fn add_type_param(&mut self, it: Item, cur: clang::Cursor) {
-        assert!(it.expect_type().is_type_param());
+    pub fn add_ty_param(&mut self, it: Item, cur: clang::Cursor) {
+        assert!(it.expect_type().is_ty_param());
         assert_eq!(cur.kind(), clang_lib::CXCursor_TemplateTypeParameter);
         self.add_item_to_mod(&it);
         let id = it.id();
         let old = mem::replace(&mut self.items[id.0], Some(it));
         assert!(old.is_none());
-        let old = self.type_params.insert(cur, id.as_type_id_unchecked());
+        let old = self.ty_params.insert(cur, id.as_type_id_unchecked());
         assert!(old.is_none());
     }
-    pub fn get_type_param(&self, cur: &clang::Cursor) -> Option<TypeId> {
+    pub fn get_ty_param(&self, cur: &clang::Cursor) -> Option<TypeId> {
         assert_eq!(cur.kind(), clang_lib::CXCursor_TemplateTypeParameter);
-        self.type_params.get(cur).cloned()
+        self.ty_params.get(cur).cloned()
     }
     #[rustfmt::skip]
     pub fn rust_mangle<'a>(&self, name: &'a str) -> Cow<'a, str> {
@@ -583,7 +583,7 @@ impl Context {
         self.compute_cannot_debug();
         self.compute_cannot_default();
         self.compute_cannot_copy();
-        self.compute_has_type_param_in_array();
+        self.compute_has_ty_param_in_array();
         self.compute_has_float();
         self.compute_cannot_hash();
         self.compute_cannot_partialeq();
@@ -629,7 +629,7 @@ impl Context {
     fn compute_has_destr(&mut self) {
         let _t = self.timer("compute_has_destr");
         assert!(self.has_destr.is_none());
-        self.has_destr = Some(analyze::<has_destructor::Analysis>(self));
+        self.has_destr = Some(analyze::<has_destr::Analysis>(self));
     }
     pub fn lookup_has_destr(&self, id: TypeId) -> bool {
         assert!(self.in_gen_phase());
@@ -1386,16 +1386,16 @@ impl Context {
     pub fn lookup_can_derive_copy<Id: Into<ItemId>>(&self, id: Id) -> bool {
         assert!(self.in_gen_phase());
         let id = id.into();
-        !self.lookup_has_type_param_in_array(id) && !self.cannot_copy.as_ref().unwrap().contains(&id)
+        !self.lookup_has_ty_param_in_array(id) && !self.cannot_copy.as_ref().unwrap().contains(&id)
     }
-    fn compute_has_type_param_in_array(&mut self) {
-        let _t = self.timer("compute_has_type_param_in_array");
-        assert!(self.has_type_param.is_none());
-        self.has_type_param = Some(analyze::<has_type_param::Analysis>(self));
+    fn compute_has_ty_param_in_array(&mut self) {
+        let _t = self.timer("compute_has_ty_param_in_array");
+        assert!(self.has_ty_param.is_none());
+        self.has_ty_param = Some(analyze::<has_ty_param::Analysis>(self));
     }
-    pub fn lookup_has_type_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {
+    pub fn lookup_has_ty_param_in_array<Id: Into<ItemId>>(&self, id: Id) -> bool {
         assert!(self.in_gen_phase());
-        self.has_type_param.as_ref().unwrap().contains(&id.into())
+        self.has_ty_param.as_ref().unwrap().contains(&id.into())
     }
     fn compute_has_float(&mut self) {
         let _t = self.timer("compute_has_float");

@@ -6,7 +6,7 @@ use serial_test::serial;
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc, sync::Mutex};
 use tempfile::TempDir;
 
-#[path = "../runtime/main.rs"]
+#[path = "../runtime.rs"]
 mod runtime;
 
 #[derive(Debug, Default)]

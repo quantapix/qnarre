@@ -1,16 +1,8 @@
-use crate::callbacks::Parse;
-use crate::codegen::utils::variation;
-use crate::deps::DepfileSpec;
-use crate::regex_set::RegexSet;
-use crate::Abi;
-use crate::Builder;
-use crate::Config;
-use crate::Formatter;
-use crate::HashMap;
-use crate::VisibilityKind;
-use std::env;
-use std::path::PathBuf;
-use std::rc::Rc;
+use crate::{
+    callbacks::Parse, codegen::utils::variation, regex_set::RegexSet, Abi, Builder, Config, DepfileSpec, Formatter,
+    HashMap, VisibilityKind,
+};
+use std::{env, path::PathBuf, rc::Rc};
 
 macro_rules! regex_opt {
     ($(#[$attrs:meta])* pub fn $($tokens:tt)*) => {

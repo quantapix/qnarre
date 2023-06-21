@@ -345,7 +345,7 @@ pub struct Comp {
     fields: CompFields,
     found_unknown_attr: bool,
     has_destr: bool,
-    has_non_type_params: bool,
+    has_non_ty_params: bool,
     has_nonempty_base: bool,
     has_own_virt_method: bool,
     has_unevaluable_width: bool,
@@ -366,7 +366,7 @@ impl Comp {
             fields: CompFields::default(),
             found_unknown_attr: false,
             has_destr: false,
-            has_non_type_params: false,
+            has_non_ty_params: false,
             has_nonempty_base: false,
             has_own_virt_method: false,
             has_unevaluable_width: false,
@@ -450,8 +450,8 @@ impl Comp {
             Field::Data(..) => false,
         })
     }
-    pub fn has_non_type_params(&self) -> bool {
-        self.has_non_type_params
+    pub fn has_non_ty_params(&self) -> bool {
+        self.has_non_ty_params
     }
     pub fn has_own_virt_method(&self) -> bool {
         self.has_own_virt_method
@@ -585,8 +585,8 @@ impl Comp {
                     ci.packed_attr = true;
                 },
                 CXCursor_TemplateTypeParameter => {
-                    let param = Item::type_param(None, cur2, ctx).expect(
-                        "Item::type_param should't fail when pointing \
+                    let param = Item::ty_param(None, cur2, ctx).expect(
+                        "Item::ty_param should't fail when pointing \
                          at a TemplateTypeParameter",
                     );
                     ci.templ_params.push(param);
@@ -653,7 +653,7 @@ impl Comp {
                     }
                 },
                 CXCursor_NonTypeTemplateParameter => {
-                    ci.has_non_type_params = true;
+                    ci.has_non_ty_params = true;
                 },
                 CXCursor_VarDecl => {
                     let linkage = cur2.linkage();
@@ -789,8 +789,8 @@ impl DotAttrs for Comp {
         if self.has_nonempty_base {
             writeln!(y, "<tr><td>has_nonempty_base</td><td>true</td></tr>")?;
         }
-        if self.has_non_type_params {
-            writeln!(y, "<tr><td>has_non_type_params</td><td>true</td></tr>")?;
+        if self.has_non_ty_params {
+            writeln!(y, "<tr><td>has_non_ty_params</td><td>true</td></tr>")?;
         }
         if self.packed_attr {
             writeln!(y, "<tr><td>packed_attr</td><td>true</td></tr>")?;
@@ -811,7 +811,7 @@ impl DotAttrs for Comp {
 impl IsOpaque for Comp {
     type Extra = Option<Layout>;
     fn is_opaque(&self, _: &Context, _: &Option<Layout>) -> bool {
-        if self.has_non_type_params || self.has_unevaluable_width {
+        if self.has_non_ty_params || self.has_unevaluable_width {
             return true;
         }
         if let CompFields::Error = self.fields {

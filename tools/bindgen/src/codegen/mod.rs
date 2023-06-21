@@ -129,7 +129,7 @@ impl Generator for Comp {
     type Return = ();
     fn codegen(&self, ctx: &Context, y: &mut GenResult<'_>, it: &Item) {
         debug_assert!(it.is_enabled_for_gen(ctx));
-        if self.has_non_type_params() {
+        if self.has_non_ty_params() {
             return;
         }
         let ty = it.expect_type();
@@ -1167,7 +1167,7 @@ impl Generator for Type {
                 };
                 {
                     let inner_canon_type = inner_item.expect_type().canon_type(ctx);
-                    if inner_canon_type.is_invalid_type_param() {
+                    if inner_canon_type.is_invalid_ty_param() {
                         warn!(
                             "Item contained invalid named type, skipping: \
                              {:?}, {:?}",
@@ -1233,7 +1233,7 @@ impl Generator for Type {
                     .into_iter()
                     .filter_map(|p| p.as_templ_param(ctx, &()))
                     .collect();
-                if params.iter().any(|p| ctx.resolve_type(*p).is_invalid_type_param()) {
+                if params.iter().any(|p| ctx.resolve_type(*p).is_invalid_ty_param()) {
                     warn!(
                         "Item contained invalid template \
                          parameter: {:?}",
@@ -2244,7 +2244,7 @@ impl TryToRust for Type {
             },
             TypeKind::Comp(ref x) => {
                 let ps = it.all_templ_params(ctx);
-                if x.has_non_type_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
+                if x.has_non_ty_params() || (it.is_opaque(ctx, &()) && !ps.is_empty()) {
                     return self.try_to_opaque(ctx, it);
                 }
                 utils::build_path(it, ctx)
