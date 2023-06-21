@@ -38,7 +38,6 @@ pub fn llvm_config(args: &str) -> Option<String> {
     sh_cmd(&y, args)
 }
 
-#[cfg(not(feature = "runtime"))]
 fn search_for(xs: &[String]) -> Vec<(PathBuf, String)> {
     fn search_path(p: &Path, xs: &[String]) -> Vec<(PathBuf, String)> {
         let p = Pattern::escape(p.to_str().unwrap());
@@ -74,7 +73,6 @@ pub struct CmdError {
     discard: bool,
 }
 impl CmdError {
-    #[cfg(not(feature = "runtime"))]
     pub fn discard(mut self) {
         self.discard = true;
     }
@@ -110,7 +108,7 @@ fn add_err(cmd: &str, msg: String) {
     });
 }
 
-#[cfg(all(not(feature = "runtime"), not(feature = "static")))]
+#[cfg(not(feature = "static"))]
 pub mod dynamic {
     use std::{
         fs::File,
@@ -142,7 +140,7 @@ pub mod dynamic {
     }
 
     fn search(runtime: bool) -> Result<Vec<(PathBuf, String, Vec<u32>)>, String> {
-        let mut xs = vec!["libclang-*.so".into()];
+        let mut xs = vec!["libclang-*.so.*".into()];
         if runtime {
             xs.push("libclang-*.so.*".into());
             xs.push("libclang.so.*".into());
