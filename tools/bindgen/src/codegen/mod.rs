@@ -1,34 +1,39 @@
 use self::structure::Structure;
 use super::Opts;
-use crate::callbacks::{DeriveInfo, TypeKind as DeriveTypeKind};
-use crate::ir::analysis::{HasVtable, Sizedness};
-use crate::ir::annos::{AccessorKind, Annotations, VisibilityKind};
-use crate::ir::comp::{Comp, CompKind, Data, Field, FieldMeths, MethKind, Method};
-use crate::ir::derive::{
-    CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd, CanDerivePartialEq,
-    CanDerivePartialOrd, Resolved,
+use crate::{
+    callbacks::{DeriveInfo, TypeKind as DeriveTypeKind},
+    ir::{
+        analysis::{HasVtable, Sizedness},
+        annos::{AccessorKind, Annotations, VisibilityKind},
+        comp::{Comp, CompKind, Data, Field, FieldMeths, MethKind, Method},
+        derive::{
+            CanDeriveCopy, CanDeriveDebug, CanDeriveDefault, CanDeriveEq, CanDeriveHash, CanDeriveOrd,
+            CanDerivePartialEq, CanDerivePartialOrd, Resolved,
+        },
+        dot,
+        enum_ty::{Enum, EnumVariant, EnumVariantValue},
+        func::{Abi, ClangAbi, FnKind, FnSig, Func, Linkage},
+        int::IntKind,
+        item::{CanonName, CanonPath, IsOpaque, Item},
+        module::Mod,
+        templ::{AsParam, Instance, Params},
+        typ::{Type, TypeKind},
+        var::Var,
+        Context, ItemId, ItemKind, Layout,
+    },
+    Entry, HashMap, HashSet,
 };
-use crate::ir::dot;
-use crate::ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
-use crate::ir::func::{Abi, ClangAbi, FnKind, FnSig, Func, Linkage};
-use crate::ir::int::IntKind;
-use crate::ir::item::{CanonName, CanonPath, IsOpaque, Item};
-use crate::ir::module::Mod;
-use crate::ir::templ::{AsParam, Instance, Params};
-use crate::ir::typ::{Type, TypeKind};
-use crate::ir::var::Var;
-use crate::ir::Layout;
-use crate::ir::{Context, ItemId, ItemKind};
-use crate::{Entry, HashMap, HashSet};
 use proc_macro2::{self, Ident, Span};
 use quote::TokenStreamExt;
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::collections::VecDeque;
-use std::ffi::CStr;
-use std::fmt::{self, Write};
-use std::ops;
-use std::str::{self, FromStr};
+use std::{
+    borrow::Cow,
+    cell::Cell,
+    collections::VecDeque,
+    ffi::CStr,
+    fmt::{self, Write},
+    ops,
+    str::{self, FromStr},
+};
 
 struct GenResult<'a> {
     items: Vec<proc_macro2::TokenStream>,

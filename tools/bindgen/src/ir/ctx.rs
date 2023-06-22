@@ -1,24 +1,29 @@
-use super::analysis::{analyze, as_cannot_derive_set, DeriveTrait, *};
-use super::derive::Resolved;
-use super::func::Func;
-use super::int::IntKind;
-use super::item::{Ancestors, IsOpaque, Item, ItemSet};
-use super::module::{Mod, ModKind};
-use super::templ::{Instance, Params};
-use super::typ::{FloatKind, Type, TypeKind};
-use super::{Edge, ItemKind, Traversal};
-use crate::clang::{self, Cursor};
-use crate::codegen::GenError;
-use crate::timer::Timer;
-use crate::Opts;
-use crate::{Entry, HashMap, HashSet};
+use super::{
+    analysis::{analyze, as_cannot_derive_set, DeriveTrait, *},
+    derive::Resolved,
+    func::Func,
+    int::IntKind,
+    item::{Ancestors, IsOpaque, Item, ItemSet},
+    module::{Mod, ModKind},
+    templ::{Instance, Params},
+    typ::{FloatKind, Type, TypeKind},
+    Edge, ItemKind, Traversal,
+};
+use crate::{
+    clang::{self, Cursor},
+    codegen::GenError,
+    timer::Timer,
+    Entry, HashMap, HashSet, Opts,
+};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
-use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
-use std::collections::{BTreeSet, HashMap as StdHashMap};
-use std::iter::IntoIterator;
-use std::mem;
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    collections::{BTreeSet, HashMap as StdHashMap},
+    iter::IntoIterator,
+    mem,
+};
 
 #[derive(Debug, Copy, Clone, Eq, PartialOrd, Ord, Hash)]
 pub struct ItemId(usize);

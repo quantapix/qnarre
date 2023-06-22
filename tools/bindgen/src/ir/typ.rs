@@ -1,16 +1,18 @@
-use super::comp::Comp;
-use super::dot::DotAttrs;
-use super::enum_ty::Enum;
-use super::func::FnSig;
-use super::int::IntKind;
-use super::item::{IsOpaque, Item};
-use super::templ::{AsParam, Instance, Params};
-use super::{Context, EdgeKind, ItemId, Trace, Tracer, TypeId};
-use super::{Layout, Opaque};
-use crate::clang::{self, Cursor};
-use crate::parse;
-use std::borrow::Cow;
-use std::io;
+use super::{
+    comp::Comp,
+    dot::DotAttrs,
+    enum_ty::Enum,
+    func::FnSig,
+    int::IntKind,
+    item::{IsOpaque, Item},
+    templ::{AsParam, Instance, Params},
+    Context, EdgeKind, ItemId, Layout, Opaque, Trace, Tracer, TypeId,
+};
+use crate::{
+    clang::{self, Cursor},
+    parse,
+};
+use std::{borrow::Cow, io};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FloatKind {

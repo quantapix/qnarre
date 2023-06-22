@@ -1,8 +1,9 @@
 use super::utils;
-use crate::ir::comp::Comp;
-use crate::ir::typ::{Type, TypeKind};
-use crate::ir::Context;
-use crate::ir::Layout;
+use crate::ir::{
+    comp::Comp,
+    typ::{Type, TypeKind},
+    Context, Layout,
+};
 use proc_macro2::{self, Ident, Span};
 use std::cmp;
 
@@ -290,6 +291,7 @@ fn test_align_to() {
     assert_eq!(align_to(5, 1), 5);
     assert_eq!(align_to(17, 4), 20);
 }
+
 #[test]
 fn test_bytes_from_bits_pow2() {
     assert_eq!(bytes_from_bits_pow2(0), 0);

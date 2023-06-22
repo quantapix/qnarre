@@ -63,6 +63,8 @@ mod merge {
         }
     }
 }
+use merge::extern_blocks as merge_extern_blocks;
+
 mod sort {
     use syn::{
         visit_mut::{visit_file_mut, visit_item_mod_mut, VisitMut},
@@ -108,13 +110,13 @@ mod sort {
         });
     }
 }
-use merge::extern_blocks as merge_extern_blocks;
 use sort::semantically as sort_semantically;
 
 struct PostProcPass {
     should_run: fn(&Opts) -> bool,
     run: fn(&mut File),
 }
+
 macro_rules! pass {
     ($pass:ident) => {
         PostProcPass {

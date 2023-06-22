@@ -1,7 +1,10 @@
-use crate::ir::comp::{CompKind, Data, Field, FieldMeths};
-use crate::ir::item::{CanonName, HasTypeParam, IsOpaque, Item};
-use crate::ir::typ::TypeKind;
-use crate::ir::Context;
+use crate::ir::{
+    comp::{CompKind, Data, Field, FieldMeths},
+    item::{CanonName, HasTypeParam, IsOpaque, Item},
+    typ::TypeKind,
+    Context,
+};
+
 pub fn gen_debug_impl(ctx: &Context, fields: &[Field], it: &Item, kind: CompKind) -> proc_macro2::TokenStream {
     let struct_name = it.canon_name(ctx);
     let mut format_string = format!("{} {{{{ ", struct_name);
@@ -36,6 +39,7 @@ pub fn gen_debug_impl(ctx: &Context, fields: &[Field], it: &Item, kind: CompKind
         }
     }
 }
+
 pub trait ImplDebug<'a> {
     type Extra;
     fn impl_debug(&self, ctx: &Context, extra: Self::Extra) -> Option<(String, Vec<proc_macro2::TokenStream>)>;

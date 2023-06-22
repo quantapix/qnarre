@@ -1,16 +1,18 @@
-use super::dot::DotAttrs;
-use super::func::cursor_mangling;
-use super::int::IntKind;
-use super::item::Item;
-use super::typ::{FloatKind, TypeKind};
-use super::{Context, TypeId};
-use crate::callbacks::{ItemInfo, ItemKind, MacroParsing};
-use crate::clang;
-use crate::clang::Token;
-use crate::codegen::utils::variation;
-use crate::parse;
-use std::io;
-use std::num::Wrapping;
+use super::{
+    dot::DotAttrs,
+    func::cursor_mangling,
+    int::IntKind,
+    item::Item,
+    typ::{FloatKind, TypeKind},
+    Context, TypeId,
+};
+use crate::{
+    callbacks::{ItemInfo, ItemKind, MacroParsing},
+    clang::{self, Token},
+    codegen::utils::variation,
+    parse,
+};
+use std::{io, num::Wrapping};
 
 #[derive(Debug)]
 pub enum VarKind {

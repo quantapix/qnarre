@@ -1,15 +1,21 @@
 use super::GenError;
-use crate::callbacks::IntKind;
-use crate::ir::comp::CompKind;
-use crate::ir::func::{FnKind, Func};
-use crate::ir::item::CanonName;
-use crate::ir::item::Item;
-use crate::ir::typ::{FloatKind, Type, TypeKind};
-use crate::ir::{Context, ItemKind, TypeId};
+use crate::{
+    callbacks::IntKind,
+    ir::{
+        comp::CompKind,
+        func::{FnKind, Func},
+        item::CanonName,
+        item::Item,
+        typ::{FloatKind, Type, TypeKind},
+        Context, ItemKind, TypeId,
+    },
+};
 use std::io::Write;
+
 fn get_loc(it: &Item) -> String {
     it.loc().map(|x| x.to_string()).unwrap_or_else(|| "unknown".to_owned())
 }
+
 pub trait CSerialize<'a> {
     type Extra;
     fn serialize<W: Write>(
@@ -270,6 +276,7 @@ impl<'a> CSerialize<'a> for Type {
         Ok(())
     }
 }
+
 fn serialize_args<W: Write>(args: &[(String, TypeId)], ctx: &Context, writer: &mut W) -> Result<(), GenError> {
     if args.is_empty() {
         write!(writer, "void")?;

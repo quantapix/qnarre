@@ -1,18 +1,16 @@
-use super::serial::CSerialize;
-use super::{error, GenError, GenResult, ToRustOrOpaque};
-use crate::ir::comp::{Comp, CompKind, Field, FieldMeths};
-use crate::ir::func::{Abi, ClangAbi, FnSig};
-use crate::ir::item::{CanonPath, IsOpaque, Item};
-use crate::ir::typ::TypeKind;
-use crate::ir::Context;
-use crate::ir::Layout;
-use crate::{args_are_cpp, file_is_cpp};
-
+use super::{error, serial::CSerialize, GenError, GenResult, ToRustOrOpaque};
+use crate::{
+    args_are_cpp, file_is_cpp,
+    ir::{
+        comp::{Comp, CompKind, Field, FieldMeths},
+        func::{Abi, ClangAbi, FnSig},
+        item::{CanonPath, IsOpaque, Item},
+        typ::TypeKind,
+        Context, Layout,
+    },
+};
 use proc_macro2::{Ident, Span, TokenStream};
-use std::io::Write;
-use std::mem;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{io::Write, mem, path::PathBuf, str::FromStr};
 
 pub(super) fn serialize_items(result: &GenResult, ctx: &Context) -> Result<(), GenError> {
     if result.to_serialize.is_empty() {
@@ -448,6 +446,7 @@ pub mod attrs {
         }
     }
 }
+
 pub fn blob(ctx: &Context, layout: Layout) -> TokenStream {
     let opaque = layout.opaque();
     let ty_name = match opaque.type_for_array(ctx) {
@@ -474,6 +473,7 @@ pub fn integer_type(ctx: &Context, layout: Layout) -> Option<TokenStream> {
     let name = Ident::new(name, Span::call_site());
     Some(quote! { #name })
 }
+
 pub mod ast_ty {
     use crate::ir::func::FnSig;
     use crate::ir::typ::FloatKind;
@@ -597,6 +597,7 @@ pub mod ast_ty {
             .collect()
     }
 }
+
 pub mod variation {
     use std::fmt;
 

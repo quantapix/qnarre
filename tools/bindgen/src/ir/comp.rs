@@ -1,19 +1,19 @@
-use super::analysis::Sizedness;
-use super::annos::Annotations;
-use super::dot::DotAttrs;
-use super::item::{IsOpaque, Item};
-use super::templ::Params;
-use super::Layout;
-use super::{Context, EdgeKind, FnId, ItemId, Trace, Tracer, TypeId, VarId};
-use crate::clang;
-use crate::codegen::structure::align_to; //, bytes_from_bits_pow2};
-use crate::codegen::utils::variation;
-use crate::ir::derive::CanDeriveCopy;
-use crate::parse;
+use super::{
+    analysis::Sizedness,
+    annos::Annotations,
+    dot::DotAttrs,
+    item::{IsOpaque, Item},
+    templ::Params,
+    Context, EdgeKind, FnId, ItemId, Layout, Trace, Tracer, TypeId, VarId,
+};
+use crate::{
+    clang,
+    codegen::{structure::align_to, utils::variation},
+    ir::derive::CanDeriveCopy,
+    parse,
+};
 use peeking_take_while::PeekableExt;
-use std::cmp;
-use std::io;
-use std::mem;
+use std::{cmp, io, mem};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CompKind {

@@ -1,15 +1,12 @@
-use super::comp::MethKind;
-use super::dot::DotAttrs;
-use super::item::Item;
-use super::typ::TypeKind;
-use super::{Context, EdgeKind, Trace, Tracer, TypeId};
-use crate::callbacks::{ItemInfo, ItemKind};
-use crate::clang::{self, Attribute};
-use crate::parse;
+use super::{comp::MethKind, dot::DotAttrs, item::Item, typ::TypeKind, Context, EdgeKind, Trace, Tracer, TypeId};
+use crate::{
+    callbacks::{ItemInfo, ItemKind},
+    clang::{self, Attribute},
+    parse,
+};
 use clang_lib::{self, CXCallingConv};
 use quote::TokenStreamExt;
-use std::io;
-use std::str::FromStr;
+use std::{io, str::FromStr};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FnKind {

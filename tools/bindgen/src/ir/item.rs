@@ -1,23 +1,20 @@
-use super::super::codegen::{utils::variation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
-use super::analysis::{HasVtable, Sizedness, *};
-use super::annos::Annotations;
-use super::comp::{CompKind, MethKind};
-use super::ctx::PartialType;
-use super::dot::DotAttrs;
-use super::func::{FnKind, Func};
-use super::module::Mod;
-use super::templ::{AsParam, Params};
-use super::typ::{Type, TypeKind};
-use super::Opaque;
-use super::{Context, EdgeKind, ItemId, ItemKind, Trace, Tracer, TypeId};
+use super::{
+    analysis::{HasVtable, Sizedness, *},
+    annos::Annotations,
+    comp::{CompKind, MethKind},
+    ctx::PartialType,
+    dot::DotAttrs,
+    func::{FnKind, Func},
+    module::Mod,
+    templ::{AsParam, Params},
+    typ::{Type, TypeKind},
+    Context, EdgeKind, ItemId, ItemKind, Opaque, Trace, Tracer, TypeId,
+};
 use crate::clang;
+use crate::codegen::{utils::variation, CONSTIFIED_ENUM_MODULE_REPR_NAME};
 use crate::parse::{self, SubItem};
 use lazycell::LazyCell;
-use std::cell::Cell;
-use std::collections::BTreeSet;
-use std::fmt::Write;
-use std::io;
-use std::iter;
+use std::{cell::Cell, collections::BTreeSet, fmt::Write, io, iter};
 
 #[derive(Debug)]
 pub struct NameOpts<'a> {
