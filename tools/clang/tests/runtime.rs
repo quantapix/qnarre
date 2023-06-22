@@ -2,12 +2,10 @@ extern crate glob;
 extern crate serial_test;
 extern crate tempfile;
 
+use clang::*;
 use serial_test::serial;
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc, sync::Mutex};
 use tempfile::TempDir;
-
-#[path = "../runtime.rs"]
-mod runtime;
 
 #[derive(Debug, Default)]
 struct RunCmdMock {
@@ -23,7 +21,6 @@ struct Env {
     files: Vec<String>,
     commands: Arc<Mutex<RunCmdMock>>,
 }
-
 impl Env {
     fn new() -> Self {
         Env {
@@ -81,7 +78,7 @@ impl Env {
         }
         env::set_current_dir(&self.tmp).unwrap();
         let commands = self.commands.clone();
-        let mock = &mut *runtime::MOCK.lock().unwrap();
+        let mock = &mut *utils::MOCK.lock().unwrap();
         *mock = Some(Box::new(move |args| {
             let mut ys = commands.lock().unwrap();
             ys.invocations.push(args.to_string());
@@ -116,7 +113,7 @@ fn test_linux_directory_preference() {
         .so("usr/local/lib/libclang.so.1", "64")
         .enable();
     assert_eq!(
-        dynamic::find(true),
+        utils::dynamic::find(true),
         Ok(("usr/local/lib".into(), "libclang.so.1".into())),
     );
 }
@@ -129,7 +126,10 @@ fn test_linux_version_preference() {
         .so("usr/lib/libclang-3.5.so", "64")
         .so("usr/lib/libclang-3.5.0.so", "64")
         .enable();
-    assert_eq!(dynamic::find(true), Ok(("usr/lib".into(), "libclang-3.5.0.so".into())),);
+    assert_eq!(
+        utils::dynamic::find(true),
+        Ok(("usr/lib".into(), "libclang-3.5.0.so".into())),
+    );
 }
 
 #[test]
@@ -140,5 +140,8 @@ fn test_linux_directory_and_version_preference() {
         .so("usr/local/lib/libclang-3.5.so", "64")
         .so("usr/lib/libclang-3.5.0.so", "64")
         .enable();
-    assert_eq!(dynamic::find(true), Ok(("usr/lib".into(), "libclang-3.5.0.so".into())),);
+    assert_eq!(
+        utils::dynamic::find(true),
+        Ok(("usr/lib".into(), "libclang-3.5.0.so".into())),
+    );
 }

@@ -512,10 +512,12 @@ impl DepfileSpec {
 }
 
 pub mod callbacks {
-    pub use crate::ir::analysis::DeriveTrait;
-    pub use crate::ir::derive::Resolved as ImplementsTrait;
-    pub use crate::ir::enum_ty::{EnumVariantCustom, EnumVariantValue};
-    pub use crate::ir::int::IntKind;
+    pub use crate::ir::{
+        analysis::DeriveTrait,
+        derive::Resolved as ImplementsTrait,
+        enum_ty::{EnumVariantCustom, EnumVariantValue},
+        int::IntKind,
+    };
     use std::fmt;
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
     pub enum MacroParsing {

@@ -288,8 +288,5 @@ pub mod r#static {
     }
 }
 
-#[cfg(test)]
 pub type Boxed = Box<dyn Fn(&str) -> Option<String> + Send + Sync + 'static>;
-
-#[cfg(test)]
 pub static MOCK: std::sync::Mutex<Option<Boxed>> = std::sync::Mutex::new(None);

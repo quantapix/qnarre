@@ -13,11 +13,11 @@ impl RemovePrefixParseCallback {
     }
 }
 
-impl ParseCallbacks for RemovePrefixParseCallback {
-    fn generated_name_override(&self, item_info: ItemInfo) -> Option<String> {
+impl Parse for RemovePrefixParseCallback {
+    fn gen_name_override(&self, item_info: ItemInfo) -> Option<String> {
         if let Some(prefix) = &self.remove_prefix {
             let (expected_prefix, expected_suffix) = match item_info.kind {
-                ItemKind::Function => ("function_", "_name"),
+                ItemKind::Func => ("function_", "_name"),
                 ItemKind::Var => ("var_", "_name"),
                 _ => todo!(),
             };
@@ -44,11 +44,8 @@ impl PrefixLinkNameParseCallback {
     }
 }
 
-impl ParseCallbacks for PrefixLinkNameParseCallback {
-    fn generated_link_name_override(
-        &self,
-        item_info: ItemInfo,
-    ) -> Option<String> {
+impl Parse for PrefixLinkNameParseCallback {
+    fn gen_link_name_override(&self, item_info: ItemInfo) -> Option<String> {
         self.prefix
             .as_deref()
             .map(|prefix| format!("{}{}", prefix, item_info.name))
@@ -58,7 +55,7 @@ impl ParseCallbacks for PrefixLinkNameParseCallback {
 #[derive(Debug)]
 struct EnumVariantRename;
 
-impl ParseCallbacks for EnumVariantRename {
+impl Parse for EnumVariantRename {
     fn enum_variant_name(
         &self,
         _enum_name: Option<&str>,
@@ -72,12 +69,8 @@ impl ParseCallbacks for EnumVariantRename {
 #[derive(Debug)]
 struct BlocklistedTypeImplementsTrait;
 
-impl ParseCallbacks for BlocklistedTypeImplementsTrait {
-    fn blocklisted_type_implements_trait(
-        &self,
-        _name: &str,
-        derive_trait: DeriveTrait,
-    ) -> Option<ImplementsTrait> {
+impl Parse for BlocklistedTypeImplementsTrait {
+    fn blocklisted_type_implements_trait(&self, _name: &str, derive_trait: DeriveTrait) -> Option<ImplementsTrait> {
         if derive_trait == DeriveTrait::Hash {
             Some(ImplementsTrait::No)
         } else {
@@ -86,28 +79,22 @@ impl ParseCallbacks for BlocklistedTypeImplementsTrait {
     }
 }
 
-pub fn lookup(cb: &str) -> Box<dyn ParseCallbacks> {
+pub fn lookup(cb: &str) -> Box<dyn Parse> {
     match cb {
         "enum-variant-rename" => Box::new(EnumVariantRename),
-        "blocklisted-type-implements-trait" => {
-            Box::new(BlocklistedTypeImplementsTrait)
-        }
+        "blocklisted-type-implements-trait" => Box::new(BlocklistedTypeImplementsTrait),
         call_back => {
             if call_back.starts_with("remove-function-prefix-") {
-                let prefix = call_back
-                    .split("remove-function-prefix-")
-                    .last()
-                    .to_owned();
+                let prefix = call_back.split("remove-function-prefix-").last().to_owned();
                 let lnopc = RemovePrefixParseCallback::new(prefix.unwrap());
                 Box::new(lnopc)
             } else if call_back.starts_with("prefix-link-name-") {
-                let prefix =
-                    call_back.split("prefix-link-name-").last().to_owned();
+                let prefix = call_back.split("prefix-link-name-").last().to_owned();
                 let plnpc = PrefixLinkNameParseCallback::new(prefix.unwrap());
                 Box::new(plnpc)
             } else {
                 panic!("Couldn't find name ParseCallbacks: {}", cb)
             }
-        }
+        },
     }
 }
