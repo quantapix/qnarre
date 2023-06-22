@@ -22,7 +22,6 @@ fn test_raw_no_start() {
 
 #[test]
 fn test_too_many_terminators() {
-    // this error is handled in the parser later
     check_raw_str(r###"#"abc"##"###, Ok(1));
 }
 
@@ -30,7 +29,11 @@ fn test_too_many_terminators() {
 fn test_unterminated() {
     check_raw_str(
         r#"#"abc"#,
-        Err(RawStrError::NoTerminator { expected: 1, found: 0, possible_terminator_offset: None }),
+        Err(RawStrError::NoTerminator {
+            expected: 1,
+            found: 0,
+            possible_terminator_offset: None,
+        }),
     );
     check_raw_str(
         r###"##"abc"#"###,
@@ -40,10 +43,13 @@ fn test_unterminated() {
             possible_terminator_offset: Some(7),
         }),
     );
-    // We're looking for "# not just any #
     check_raw_str(
         r###"##"abc#"###,
-        Err(RawStrError::NoTerminator { expected: 2, found: 0, possible_terminator_offset: None }),
+        Err(RawStrError::NoTerminator {
+            expected: 2,
+            found: 0,
+            possible_terminator_offset: None,
+        }),
     )
 }
 
@@ -54,10 +60,13 @@ fn test_invalid_start() {
 
 #[test]
 fn test_unterminated_no_pound() {
-    // https://github.com/rust-lang/rust/issues/70677
     check_raw_str(
         r#"""#,
-        Err(RawStrError::NoTerminator { expected: 0, found: 0, possible_terminator_offset: None }),
+        Err(RawStrError::NoTerminator {
+            expected: 0,
+            found: 0,
+            possible_terminator_offset: None,
+        }),
     );
 }
 
@@ -70,30 +79,30 @@ fn test_too_many_hashes() {
     let s1 = [&hashes1, middle, &hashes1].join("");
     let s2 = [&hashes2, middle, &hashes2].join("");
 
-    // Valid number of hashes (255 = 2^8 - 1 = u8::MAX).
     check_raw_str(&s1, Ok(255));
 
-    // One more hash sign (256 = 2^8) becomes too many.
-    check_raw_str(&s2, Err(RawStrError::TooManyDelimiters { found: u32::from(max_count) + 1 }));
+    check_raw_str(
+        &s2,
+        Err(RawStrError::TooManyDelimiters {
+            found: u32::from(max_count) + 1,
+        }),
+    );
 }
 
 #[test]
 fn test_valid_shebang() {
-    // https://github.com/rust-lang/rust/issues/70528
     let input = "#!/usr/bin/rustrun\nlet x = 5;";
     assert_eq!(strip_shebang(input), Some(18));
 }
 
 #[test]
 fn test_invalid_shebang_valid_rust_syntax() {
-    // https://github.com/rust-lang/rust/issues/70528
     let input = "#!    [bad_attribute]";
     assert_eq!(strip_shebang(input), None);
 }
 
 #[test]
 fn test_shebang_second_line() {
-    // Because shebangs are interpreted by the kernel, they must be on the first line
     let input = "\n#!/bin/bash";
     assert_eq!(strip_shebang(input), None);
 }

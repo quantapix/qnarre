@@ -104,7 +104,6 @@ fn test_unescape_str_warn() {
         assert_eq!(unescaped, expected);
     }
 
-    // Check we can handle escaped newlines at the end of a file.
     check("\\\n", &[]);
     check("\\\n ", &[]);
 
@@ -117,7 +116,10 @@ fn test_unescape_str_warn() {
             (6..7, Ok('x')),
         ],
     );
-    check("\\\n  \n  x", &[(0..7, Err(EscapeError::MultipleSkippedLinesWarning)), (7..8, Ok('x'))]);
+    check(
+        "\\\n  \n  x",
+        &[(0..7, Err(EscapeError::MultipleSkippedLinesWarning)), (7..8, Ok('x'))],
+    );
 }
 
 #[test]
@@ -269,14 +271,19 @@ fn test_unescape_raw_str() {
     }
 
     check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
-    check("\rx", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString)), (1..2, Ok('x'))]);
+    check(
+        "\rx",
+        &[(0..1, Err(EscapeError::BareCarriageReturnInRawString)), (1..2, Ok('x'))],
+    );
 }
 
 #[test]
 fn test_unescape_raw_byte_str() {
     fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
         let mut unescaped = Vec::with_capacity(literal.len());
-        unescape_literal(literal, Mode::RawByteStr, &mut |range, res| unescaped.push((range, res)));
+        unescape_literal(literal, Mode::RawByteStr, &mut |range, res| {
+            unescaped.push((range, res))
+        });
         assert_eq!(unescaped, expected);
     }
 
