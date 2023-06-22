@@ -1,5 +1,5 @@
-use inkwell::context::Context;
-use inkwell::values::InstructionOpcode;
+use llvm::context::Context;
+use llvm::values::InstructionOpcode;
 
 #[test]
 fn test_basic_block_ordering() {

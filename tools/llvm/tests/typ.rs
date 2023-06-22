@@ -1,7 +1,7 @@
-use inkwell::context::Context;
-use inkwell::types::BasicType;
-use inkwell::values::AnyValue;
-use inkwell::AddressSpace;
+use llvm::context::Context;
+use llvm::types::BasicType;
+use llvm::values::AnyValue;
+use llvm::AddressSpace;
 
 #[test]
 fn test_struct_type() {

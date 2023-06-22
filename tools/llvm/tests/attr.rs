@@ -1,5 +1,5 @@
-use inkwell::attributes::{Attribute, AttributeLoc};
-use inkwell::context::Context;
+use llvm::attributes::{Attribute, AttributeLoc};
+use llvm::context::Context;
 
 #[test]
 fn test_enum_attribute_kinds() {
@@ -21,8 +21,8 @@ fn test_string_attributes() {
 
 #[test]
 fn test_type_attribute() {
-    use inkwell::types::{AnyType, BasicType};
-    use inkwell::AddressSpace;
+    use llvm::types::{AnyType, BasicType};
+    use llvm::AddressSpace;
 
     let context = Context::create();
     let kind_id = Attribute::get_named_enum_kind_id("sret");

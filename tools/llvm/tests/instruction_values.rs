@@ -1,7 +1,7 @@
-use inkwell::context::Context;
-use inkwell::types::AnyTypeEnum;
-use inkwell::values::{BasicValue, InstructionOpcode::*};
-use inkwell::{AddressSpace, AtomicOrdering, AtomicRMWBinOp, FloatPredicate, IntPredicate};
+use llvm::context::Context;
+use llvm::types::AnyTypeEnum;
+use llvm::values::{BasicValue, InstructionOpcode::*};
+use llvm::{AddressSpace, AtomicOrdering, AtomicRMWBinOp, FloatPredicate, IntPredicate};
 
 #[test]
 #[ignore]
@@ -468,8 +468,8 @@ fn test_metadata_kinds() {
 
 #[test]
 fn test_find_instruction_with_name() {
-    use inkwell::context::Context;
-    use inkwell::AddressSpace;
+    use llvm::context::Context;
+    use llvm::AddressSpace;
 
     let context = Context::create();
     let module = context.create_module("ret");

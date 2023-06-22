@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::io::{self, Write};
 
-use inkwell::context::Context;
-use inkwell::passes::PassManager;
-use inkwell::OptimizationLevel;
+use llvm::context::Context;
+use llvm::passes::PassManager;
+use llvm::OptimizationLevel;
 
 macro_rules! print_flush {
     ( $( $x:expr ),* ) => {

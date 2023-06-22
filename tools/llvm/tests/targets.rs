@@ -1,8 +1,8 @@
-use inkwell::context::Context;
-use inkwell::targets::{
+use llvm::context::Context;
+use llvm::targets::{
     ByteOrdering, CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetData, TargetMachine, TargetTriple,
 };
-use inkwell::{AddressSpace, OptimizationLevel};
+use llvm::{AddressSpace, OptimizationLevel};
 
 use regex::Regex;
 

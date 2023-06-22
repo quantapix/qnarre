@@ -1,9 +1,9 @@
-use inkwell::context::Context;
-use inkwell::passes::{PassManager, PassManagerBuilder, PassRegistry};
+use llvm::context::Context;
+use llvm::passes::{PassManager, PassManagerBuilder, PassRegistry};
 
-use inkwell::passes::PassBuilderOptions;
-use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine};
-use inkwell::OptimizationLevel;
+use llvm::passes::PassBuilderOptions;
+use llvm::targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine};
+use llvm::OptimizationLevel;
 
 #[test]
 fn test_init_all_passes_for_module() {

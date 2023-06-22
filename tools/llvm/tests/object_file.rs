@@ -1,9 +1,9 @@
-use inkwell::context::Context;
-use inkwell::module::Module;
-use inkwell::targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine};
-use inkwell::types::IntType;
-use inkwell::values::BasicValue;
-use inkwell::OptimizationLevel;
+use llvm::context::Context;
+use llvm::module::Module;
+use llvm::targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine};
+use llvm::types::IntType;
+use llvm::values::BasicValue;
+use llvm::OptimizationLevel;
 
 fn get_host_cpu_name() -> String {
     TargetMachine::get_host_cpu_name().to_string()

@@ -1,9 +1,9 @@
-use inkwell::context::Context;
-use inkwell::memory_buffer::MemoryBuffer;
-use inkwell::module::Module;
-use inkwell::targets::{Target, TargetTriple};
-use inkwell::values::AnyValue;
-use inkwell::OptimizationLevel;
+use llvm::context::Context;
+use llvm::memory_buffer::MemoryBuffer;
+use llvm::module::Module;
+use llvm::targets::{Target, TargetTriple};
+use llvm::values::AnyValue;
+use llvm::OptimizationLevel;
 
 use std::env::temp_dir;
 use std::fs::{remove_file, File};
@@ -375,7 +375,7 @@ fn test_metadata_flags() {
     let context = Context::create();
     let module = context.create_module("my_module");
 
-    use inkwell::module::FlagBehavior;
+    use llvm::module::FlagBehavior;
 
     assert!(module.get_flag("some_key").is_none());
 

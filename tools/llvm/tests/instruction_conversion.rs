@@ -1,8 +1,8 @@
 use std::convert::TryInto;
 
-use inkwell::context::Context;
-use inkwell::values::{FloatValue, IntValue, PhiValue, PointerValue};
-use inkwell::AddressSpace;
+use llvm::context::Context;
+use llvm::values::{FloatValue, IntValue, PhiValue, PointerValue};
+use llvm::AddressSpace;
 
 #[test]
 fn test_phi_conversion() {

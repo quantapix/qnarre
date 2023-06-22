@@ -1,10 +1,10 @@
-use inkwell::attributes::AttributeLoc;
-use inkwell::comdat::ComdatSelectionKind;
-use inkwell::context::Context;
-use inkwell::module::Linkage::*;
-use inkwell::types::{StringRadix, VectorType};
-use inkwell::values::{AnyValue, InstructionOpcode::*, FIRST_CUSTOM_METADATA_KIND_ID};
-use inkwell::{AddressSpace, DLLStorageClass, GlobalVisibility, ThreadLocalMode};
+use llvm::attributes::AttributeLoc;
+use llvm::comdat::ComdatSelectionKind;
+use llvm::context::Context;
+use llvm::module::Linkage::*;
+use llvm::types::{StringRadix, VectorType};
+use llvm::values::{AnyValue, InstructionOpcode::*, FIRST_CUSTOM_METADATA_KIND_ID};
+use llvm::{AddressSpace, DLLStorageClass, GlobalVisibility, ThreadLocalMode};
 
 use std::convert::TryFrom;
 
@@ -447,7 +447,7 @@ fn test_metadata() {
 #[test]
 fn test_floats() {
     {
-        use inkwell::FloatPredicate;
+        use llvm::FloatPredicate;
 
         let context = Context::create();
 
@@ -592,7 +592,7 @@ fn test_global_byte_array() {
 
 #[test]
 fn test_globals() {
-    use inkwell::values::UnnamedAddress;
+    use llvm::values::UnnamedAddress;
 
     let context = Context::create();
     let module = context.create_module("my_mod");

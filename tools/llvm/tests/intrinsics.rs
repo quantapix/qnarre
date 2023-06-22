@@ -1,5 +1,5 @@
-use inkwell::context::Context;
-use inkwell::intrinsics::Intrinsic;
+use llvm::context::Context;
+use llvm::intrinsics::Intrinsic;
 
 #[test]
 fn test_get_cos() {

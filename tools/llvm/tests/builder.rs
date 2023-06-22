@@ -1,5 +1,5 @@
-use inkwell::context::Context;
-use inkwell::{AddressSpace, AtomicOrdering, AtomicRMWBinOp, OptimizationLevel};
+use llvm::context::Context;
+use llvm::{AddressSpace, AtomicOrdering, AtomicRMWBinOp, OptimizationLevel};
 
 use std::convert::TryFrom;
 use std::ptr::null;
@@ -193,8 +193,8 @@ fn test_build_invoke_catch_all() {
 
 #[test]
 fn landing_pad_filter() {
-    use inkwell::module::Linkage;
-    use inkwell::values::AnyValue;
+    use llvm::module::Linkage;
+    use llvm::values::AnyValue;
 
     let context = Context::create();
     let module = context.create_module("sum");
@@ -729,7 +729,7 @@ fn test_vector_binary_ops() {
     let p1_vec = fn_value.get_first_param().unwrap().into_vector_value();
     let p2_vec = fn_value.get_nth_param(1).unwrap().into_vector_value();
     let p3_vec = fn_value.get_nth_param(2).unwrap().into_vector_value();
-    let compared_vec = builder.build_float_compare(inkwell::FloatPredicate::OLT, p1_vec, p2_vec, "compared_vec");
+    let compared_vec = builder.build_float_compare(llvm::FloatPredicate::OLT, p1_vec, p2_vec, "compared_vec");
     let multiplied_vec = builder.build_int_mul(compared_vec, p3_vec, "multiplied_vec");
     builder.build_return(Some(&multiplied_vec));
     assert!(fn_value.verify(true));
@@ -880,7 +880,7 @@ fn test_alignment_bytes() {
 
 fn run_memcpy_on<'ctx>(
     context: &'ctx Context,
-    module: &inkwell::module::Module<'ctx>,
+    module: &llvm::module::Module<'ctx>,
     alignment: u32,
 ) -> Result<(), &'static str> {
     let i32_type = context.i32_type();
@@ -944,7 +944,7 @@ fn test_memcpy() {
 
 fn run_memmove_on<'ctx>(
     context: &'ctx Context,
-    module: &inkwell::module::Module<'ctx>,
+    module: &llvm::module::Module<'ctx>,
     alignment: u32,
 ) -> Result<(), &'static str> {
     let i32_type = context.i32_type();
@@ -1008,7 +1008,7 @@ fn test_memmove() {
 
 fn run_memset_on<'ctx>(
     context: &'ctx Context,
-    module: &inkwell::module::Module<'ctx>,
+    module: &llvm::module::Module<'ctx>,
     alignment: u32,
 ) -> Result<(), &'static str> {
     let i8_type = context.i8_type();
@@ -1066,7 +1066,7 @@ fn test_memset() {
 
 #[test]
 fn test_bitcast() {
-    use inkwell::values::BasicValue;
+    use llvm::values::BasicValue;
 
     let context = Context::create();
     let module = context.create_module("bc");
