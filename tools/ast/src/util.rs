@@ -48,8 +48,7 @@ pub mod classify {
 }
 pub mod comments {
     use crate::token::CommentKind;
-    use rustc_span::source_map::SourceMap;
-    use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
+    use rustc_span::{source_map::SourceMap, BytePos, CharPos, FileName, Pos, Symbol};
 
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum CommentStyle {

@@ -21,8 +21,11 @@ extern crate rustc_macros;
 extern crate tracing;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Nonterminal};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use crate::token::{
+    self,
+    stream::{DelimSpan, LazyAttrTokenStream, TokenStream},
+    CommentKind, Delimiter, Nonterminal,
+};
 pub use crate::util::parser::ExprPrecedence;
 use rustc_data_structures::{
     fx::FxHashMap,
@@ -198,7 +201,6 @@ pub mod ptr {
     }
 }
 pub mod token;
-pub mod tokenstream;
 pub mod visit;
 
 #[derive(Debug)]

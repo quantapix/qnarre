@@ -1,7 +1,6 @@
 use crate::{
     ptr::P,
-    token::{self, Token},
-    tokenstream::*,
+    token::{self, stream::*, Token},
     *,
 };
 use rustc_data_structures::{flat_map_in_place::FlatMapInPlace, sync::Lrc};

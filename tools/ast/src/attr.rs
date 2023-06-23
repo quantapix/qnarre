@@ -2,8 +2,11 @@ use super::*;
 use crate::{
     literal::escape_string_symbol,
     ptr::P,
-    token::{self, CommentKind, Delimiter, Token},
-    tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenTree},
+    token::{
+        self,
+        stream::{DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenTree},
+        CommentKind, Delimiter, Token,
+    },
     util::comments,
 };
 use rustc_index::bit_set::GrowableBitSet;
@@ -145,7 +148,7 @@ impl Attribute {
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
-                .to_tokenstream(),
+                .to_stream(),
             &AttrKind::DocComment(comment_kind, data) => TokenStream::new(vec![TokenTree::Token(
                 Token::new(token::DocComment(comment_kind, self.style, data), self.span),
                 Spacing::Alone,

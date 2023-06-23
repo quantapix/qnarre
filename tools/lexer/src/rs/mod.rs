@@ -4,16 +4,25 @@ use super::{
 };
 use crate::errors;
 use crate::make_unclosed_delims_error;
-use rustc_ast::ast::{self, AttrStyle};
-use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::util::unicode::contains_text_flow_control_chars;
+use ast::{
+    self,
+    token::{self, stream::TokenStream, CommentKind, Delimiter, Token, TokenKind},
+    util::unicode::contains_text_flow_control_chars,
+    AttrStyle,
+};
 use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
-use rustc_session::lint::builtin::{RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT};
-use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{edition::Edition, BytePos, Pos, Span};
+use rustc_session::{
+    lint::{
+        builtin::{RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT},
+        BuiltinLintDiagnostics,
+    },
+    parse::ParseSess,
+};
+use rustc_span::{
+    edition::Edition,
+    symbol::{sym, Symbol},
+    BytePos, Pos, Span,
+};
 use std::ops::Range;
 
 mod chars;
