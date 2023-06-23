@@ -1,19 +1,20 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
-use self::LiteralKind::*;
-use self::TokenKind::*;
-
-#[derive(Debug)]
-pub struct Token {
-    pub kind: TokenKind,
-    pub len: u32,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LiteralKind {
+    Int { base: Base, empty_int: bool },
+    Float { base: Base, empty_exponent: bool },
+    Char { terminated: bool },
+    Byte { terminated: bool },
+    Str { terminated: bool },
+    ByteStr { terminated: bool },
+    CStr { terminated: bool },
+    RawStr { n_hashes: Option<u8> },
+    RawByteStr { n_hashes: Option<u8> },
+    RawCStr { n_hashes: Option<u8> },
 }
-impl Token {
-    fn new(kind: TokenKind, len: u32) -> Token {
-        Token { kind, len }
-    }
-}
+use LiteralKind::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenKind {
@@ -66,25 +67,23 @@ pub enum TokenKind {
     Unknown,
     Eof,
 }
+use TokenKind::*;
+
+#[derive(Debug)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub len: u32,
+}
+impl Token {
+    fn new(kind: TokenKind, len: u32) -> Token {
+        Token { kind, len }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocStyle {
     Outer,
     Inner,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LiteralKind {
-    Int { base: Base, empty_int: bool },
-    Float { base: Base, empty_exponent: bool },
-    Char { terminated: bool },
-    Byte { terminated: bool },
-    Str { terminated: bool },
-    ByteStr { terminated: bool },
-    CStr { terminated: bool },
-    RawStr { n_hashes: Option<u8> },
-    RawByteStr { n_hashes: Option<u8> },
-    RawCStr { n_hashes: Option<u8> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -676,6 +675,66 @@ pub mod unescape {
     use std::ops::Range;
     use std::str::Chars;
 
+    pub enum CStrUnit {
+        Byte(u8),
+        Char(char),
+    }
+    impl From<u8> for CStrUnit {
+        fn from(value: u8) -> Self {
+            CStrUnit::Byte(value)
+        }
+    }
+    impl From<char> for CStrUnit {
+        fn from(value: char) -> Self {
+            CStrUnit::Char(value)
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum Mode {
+        Char,
+        Str,
+        Byte,
+        ByteStr,
+        RawStr,
+        RawByteStr,
+        CStr,
+        RawCStr,
+    }
+    impl Mode {
+        pub fn in_double_quotes(self) -> bool {
+            match self {
+                Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => true,
+                Mode::Char | Mode::Byte => false,
+            }
+        }
+        pub fn ascii_escapes_should_be_ascii(self) -> bool {
+            match self {
+                Mode::Char | Mode::Str | Mode::RawStr => true,
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
+            }
+        }
+        pub fn characters_should_be_ascii(self) -> bool {
+            match self {
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
+                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            }
+        }
+        pub fn is_unicode_escape_disallowed(self) -> bool {
+            match self {
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
+                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            }
+        }
+        pub fn prefix_noraw(self) -> &'static str {
+            match self {
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => "b",
+                Mode::CStr | Mode::RawCStr => "c",
+                Mode::Char | Mode::Str | Mode::RawStr => "",
+            }
+        }
+    }
+
     #[derive(Debug, PartialEq, Eq)]
     pub enum EscapeError {
         ZeroChars,
@@ -727,22 +786,6 @@ pub mod unescape {
             Mode::CStr | Mode::RawCStr => unreachable!(),
         }
     }
-
-    pub enum CStrUnit {
-        Byte(u8),
-        Char(char),
-    }
-    impl From<u8> for CStrUnit {
-        fn from(value: u8) -> Self {
-            CStrUnit::Byte(value)
-        }
-    }
-    impl From<char> for CStrUnit {
-        fn from(value: char) -> Self {
-            CStrUnit::Char(value)
-        }
-    }
-
     pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
     where
         F: FnMut(Range<usize>, Result<CStrUnit, EscapeError>),
@@ -762,49 +805,11 @@ pub mod unescape {
         unescape_char_or_byte(&mut src.chars(), true).map(byte_from_char)
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub enum Mode {
-        Char,
-        Str,
-        Byte,
-        ByteStr,
-        RawStr,
-        RawByteStr,
-        CStr,
-        RawCStr,
-    }
-    impl Mode {
-        pub fn in_double_quotes(self) -> bool {
-            match self {
-                Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => true,
-                Mode::Char | Mode::Byte => false,
-            }
-        }
-        pub fn ascii_escapes_should_be_ascii(self) -> bool {
-            match self {
-                Mode::Char | Mode::Str | Mode::RawStr => true,
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
-            }
-        }
-        pub fn characters_should_be_ascii(self) -> bool {
-            match self {
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
-            }
-        }
-        pub fn is_unicode_escape_disallowed(self) -> bool {
-            match self {
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
-            }
-        }
-        pub fn prefix_noraw(self) -> &'static str {
-            match self {
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => "b",
-                Mode::CStr | Mode::RawCStr => "c",
-                Mode::Char | Mode::Str | Mode::RawStr => "",
-            }
-        }
+    #[inline]
+    pub fn byte_from_char(c: char) -> u8 {
+        let res = c as u32;
+        debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
+        res as u8
     }
 
     fn scan_escape<T: From<u8> + From<char>>(chars: &mut Chars<'_>, mode: Mode) -> Result<T, EscapeError> {
@@ -954,12 +959,6 @@ pub mod unescape {
             let end = src.len() - chars.as_str().len();
             callback(start..end, res);
         }
-    }
-    #[inline]
-    pub fn byte_from_char(c: char) -> u8 {
-        let res = c as u32;
-        debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
-        res as u8
     }
     fn is_ascii(x: u32) -> bool {
         x <= 0x7F
