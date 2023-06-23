@@ -5,8 +5,6 @@ version.workspace = true
 edition.workspace = true
 
 [lib]
-name = "lexer"
-path = "src/lib.rs"
 
 [dependencies]
 unicode-xid = "0.2.0"

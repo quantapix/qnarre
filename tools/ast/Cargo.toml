@@ -1,0 +1,20 @@
+[package]
+name = "ast"
+license = "https://github.com/rust-lang/rust/ (04075b32021) & https://github.com/rust-lang/rust-analyzer (6c73f6799)"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+
+[dependencies]
+bitflags = "1.2.1"
+memchr = "2.5.0"
+#rustc_data_structures = { path = "../rustc_data_structures" }
+#rustc_index = { path = "../rustc_index" }
+lexer = { path = "../lexer" }
+#rustc_macros = { path = "../rustc_macros" }
+#rustc_serialize = { path = "../rustc_serialize" }
+#rustc_span = { path = "../rustc_span" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.12"
+tracing = "0.1"
