@@ -40,17 +40,10 @@ use rustc_span::{
 use std::{fmt, marker::PhantomData, mem};
 use thin_vec::{thin_vec, ThinVec};
 
-pub mod util {
-    pub mod case;
-    pub mod classify;
-    pub mod comments;
-    pub mod literal;
-    pub mod parser;
-    pub mod unicode;
-}
 pub mod attr;
 pub mod expand;
 pub mod mut_visit;
+pub mod util;
 pub mod ptr {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
