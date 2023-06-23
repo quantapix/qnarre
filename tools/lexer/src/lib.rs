@@ -965,5 +965,7 @@ pub mod unescape {
     }
 }
 
+pub mod rs;
+
 #[cfg(test)]
 mod tests;
