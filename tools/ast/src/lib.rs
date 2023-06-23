@@ -24,7 +24,6 @@ use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Nonterminal};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
 pub use crate::util::parser::ExprPrecedence;
-use crate::Expr;
 use rustc_data_structures::{
     fx::FxHashMap,
     stable_hasher::{HashStable, StableHasher},
@@ -36,7 +35,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{
     source_map::{respan, Spanned},
     symbol::{kw, sym, Ident, Symbol},
-    Span, DUMMY_SP,
+    LocalExpnId, Span, DUMMY_SP,
 };
 use std::{fmt, marker::PhantomData, mem};
 use thin_vec::{thin_vec, ThinVec};
@@ -50,44 +49,8 @@ pub mod util {
     pub mod unicode;
 }
 pub mod attr;
-pub mod entry {
-    #[derive(Debug)]
-    pub enum EntryPointType {
-        None,
-        MainNamed,
-        RustcMainAttr,
-        Start,
-        OtherMain,
-    }
-}
 pub mod expand;
 pub mod mut_visit;
-pub mod node_id {
-    use rustc_span::LocalExpnId;
-    use std::fmt;
-    rustc_index::newtype_index! {
-        #[debug_format = "NodeId({})"]
-        pub struct NodeId {
-            const CRATE_NODE_ID = 0;
-        }
-    }
-    rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeMapEntry, NodeId);
-    pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
-    impl NodeId {
-        pub fn placeholder_from_expn_id(expn_id: LocalExpnId) -> Self {
-            NodeId::from_u32(expn_id.as_u32())
-        }
-        pub fn placeholder_to_expn_id(self) -> LocalExpnId {
-            LocalExpnId::from_u32(self.as_u32())
-        }
-    }
-    impl fmt::Display for NodeId {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Display::fmt(&self.as_u32(), f)
-        }
-    }
-}
-pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 pub mod ptr {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -245,16 +208,37 @@ pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-
-pub trait HashStableContext: rustc_span::HashStableContext {
-    fn hash_attr(&mut self, _: &Attribute, hasher: &mut StableHasher);
+#[derive(Debug)]
+pub enum EntryPointType {
+    None,
+    MainNamed,
+    RustcMainAttr,
+    Start,
+    OtherMain,
 }
-impl<AstCtx: crate::HashStableContext> HashStable<AstCtx> for Attribute {
-    fn hash_stable(&self, hcx: &mut AstCtx, hasher: &mut StableHasher) {
-        hcx.hash_attr(self, hasher)
+
+rustc_index::newtype_index! {
+    #[debug_format = "NodeId({})"]
+    pub struct NodeId {
+        const CRATE_NODE_ID = 0;
     }
 }
+rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeMapEntry, NodeId);
+impl NodeId {
+    pub fn placeholder_from_expn_id(expn_id: LocalExpnId) -> Self {
+        NodeId::from_u32(expn_id.as_u32())
+    }
+    pub fn placeholder_to_expn_id(self) -> LocalExpnId {
+        LocalExpnId::from_u32(self.as_u32())
+    }
+}
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.as_u32(), f)
+    }
+}
+
+pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
 #[derive(Clone, Encodable, Decodable, Copy, HashStable_Generic, Eq, PartialEq)]
 pub struct Label {
@@ -1299,6 +1283,15 @@ pub enum AttrArgs {
     Empty,
     Delimited(DelimArgs),
     Eq(Span, AttrArgsEq),
+}
+
+pub trait HashStableContext: rustc_span::HashStableContext {
+    fn hash_attr(&mut self, _: &Attribute, hasher: &mut StableHasher);
+}
+impl<AstCtx: crate::HashStableContext> HashStable<AstCtx> for Attribute {
+    fn hash_stable(&self, hcx: &mut AstCtx, hasher: &mut StableHasher) {
+        hcx.hash_attr(self, hasher)
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
