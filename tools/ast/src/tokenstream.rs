@@ -1,7 +1,7 @@
 use crate::ast::StmtKind;
-use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
 use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
+use crate::{HasAttrs, HasSpan, HasTokens};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
