@@ -91,7 +91,7 @@ pub mod comments {
             let lines = match kind {
                 CommentKind::Block => {
                     let mut i = lines
-                        .get(0)
+                        .first()
                         .map(|l| if l.trim_start().starts_with('*') { 0 } else { 1 })
                         .unwrap_or(0);
                     let mut j = lines.len();

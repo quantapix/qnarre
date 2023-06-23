@@ -5,6 +5,8 @@ version.workspace = true
 edition.workspace = true
 
 [lib]
+name = "ast"
+path = "src/lib.rs"
 
 [dependencies]
 bitflags = "1.2.1"

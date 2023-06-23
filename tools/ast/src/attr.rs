@@ -31,6 +31,11 @@ impl MarkedAttrs {
         self.0.contains(attr.id)
     }
 }
+impl Default for MarkedAttrs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 pub struct AttrIdGenerator(AtomicU32);
 impl AttrIdGenerator {
@@ -41,6 +46,11 @@ impl AttrIdGenerator {
         let id = self.0.fetch_add(1, Ordering::Relaxed);
         assert!(id != u32::MAX);
         AttrId::from_u32(id)
+    }
+}
+impl Default for AttrIdGenerator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -372,7 +382,7 @@ impl MetaItemKind {
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
                 ExprKind::Lit(token_lit) => MetaItemLit::from_token_lit(token_lit, expr.span)
                     .ok()
-                    .map(|lit| MetaItemKind::NameValue(lit)),
+                    .map(MetaItemKind::NameValue),
                 _ => None,
             },
             AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),

@@ -1,4 +1,4 @@
-use crate::{
+use super::{
     ptr::P,
     token::{self, stream::*, Token},
     *,

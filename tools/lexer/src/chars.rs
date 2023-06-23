@@ -1,7 +1,7 @@
-use super::StringReader;
-use crate::{
+use super::{
     errors::TokenSubstitution,
     token::{self, Delimiter},
+    StringReader,
 };
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 

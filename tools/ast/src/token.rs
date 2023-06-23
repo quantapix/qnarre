@@ -1,4 +1,4 @@
-use crate::{ptr::P, util::case::Case, *};
+use super::{ptr::P, util::case::Case, *};
 use rustc_data_structures::{
     stable_hasher::{HashStable, StableHasher},
     sync::Lrc,
@@ -7,13 +7,10 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::{
     self,
     edition::Edition,
-    symbol::{kw, sym},
+    symbol::{kw, sym, Ident, Symbol},
     Span, DUMMY_SP,
 };
 use std::{borrow::Cow, fmt};
-
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
-use rustc_span::symbol::{Ident, Symbol};
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
@@ -45,21 +42,21 @@ pub enum Delimiter {
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum LitKind {
-    Bool, // AST only, must never appear in a `Token`
+pub enum LiteralKind {
+    Bool,
     Byte,
     Char,
-    Integer, // e.g. `1`, `1u8`, `1f32`
-    Float,   // e.g. `1.`, `1.0`, `1e3f32`
+    Integer,
+    Float,
     Str,
-    StrRaw(u8), // raw string delimited by `n` hash symbols
+    StrRaw(u8),
     ByteStr,
-    ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
+    ByteStrRaw(u8),
     CStr,
     CStrRaw(u8),
     Err,
 }
-impl LitKind {
+impl LiteralKind {
     pub fn article(self) -> &'static str {
         match self {
             Integer | Err => "an",
@@ -83,22 +80,22 @@ impl LitKind {
         matches!(self, Integer | Float | Err)
     }
 }
-pub use LitKind::*;
+pub use LiteralKind::*;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
-    pub kind: LitKind,
+    pub kind: LiteralKind,
     pub symbol: Symbol,
     pub suffix: Option<Symbol>,
 }
 impl Lit {
-    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
+    pub fn new(kind: LiteralKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
         Lit { kind, symbol, suffix }
     }
     pub fn is_semantic_float(&self) -> bool {
         match self.kind {
-            LitKind::Float => true,
-            LitKind::Integer => match self.suffix {
+            LiteralKind::Float => true,
+            LiteralKind::Integer => match self.suffix {
                 Some(sym) => sym == sym::f32 || sym == sym::f64,
                 None => false,
             },
@@ -199,7 +196,6 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
-    /* Expression-operator symbols. */
     Eq,
     Lt,
     Le,
@@ -213,7 +209,6 @@ pub enum TokenKind {
     Tilde,
     BinOp(BinOpToken),
     BinOpEq(BinOpToken),
-    /* Structural symbols */
     At,
     Dot,
     DotDot,
@@ -232,7 +227,6 @@ pub enum TokenKind {
     SingleQuote,
     OpenDelim(Delimiter),
     CloseDelim(Delimiter),
-    /* Literals */
     Literal(Lit),
     Ident(Symbol, /* is_raw */ bool),
     Lifetime(Symbol),
@@ -241,7 +235,7 @@ pub enum TokenKind {
     Eof,
 }
 impl TokenKind {
-    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
+    pub fn lit(kind: LiteralKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
     pub fn break_two_token_op(&self) -> Option<(TokenKind, TokenKind)> {
@@ -325,61 +319,45 @@ impl Token {
     }
     pub fn can_begin_expr(&self) -> bool {
         match self.uninterpolate().kind {
-            Ident(name, is_raw)              =>
-                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            OpenDelim(..)                     | // tuple, array or block
-            Literal(..)                       | // literal
-            Not                               | // operator not
-            BinOp(Minus)                      | // unary minus
-            BinOp(Star)                       | // dereference
-            BinOp(Or) | OrOr                  | // closure
-            BinOp(And)                        | // reference
-            AndAnd                            | // double reference
-            DotDot | DotDotDot | DotDotEq     | // range notation
-            Lt | BinOp(Shl)                   | // associated path
-            ModSep                            | // global path
-            Lifetime(..)                      | // labeled loop
-            Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
-                NtExpr(..)    |
-                NtBlock(..)   |
-                NtPath(..)),
+            Ident(name, is_raw) => ident_can_begin_expr(name, self.span, is_raw),
+            OpenDelim(..) | Literal(..) | Not | BinOp(Minus) | BinOp(Star) | BinOp(Or) | OrOr | BinOp(And) | AndAnd
+            | DotDot | DotDotDot | DotDotEq | Lt | BinOp(Shl) | ModSep | Lifetime(..) | Pound => true,
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) | NtExpr(..) | NtBlock(..) | NtPath(..)),
             _ => false,
         }
     }
     pub fn can_begin_pattern(&self) -> bool {
         match self.uninterpolate().kind {
-            Ident(name, is_raw)              =>
-                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            | OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)  // tuple or array
-            | Literal(..)                        // literal
-            | BinOp(Minus)                       // unary minus
-            | BinOp(And)                         // reference
-            | AndAnd                             // double reference
-            | DotDot | DotDotDot | DotDotEq      // ranges
-            | Lt | BinOp(Shl)                    // associated path
-            | ModSep                    => true, // global path
-            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
-                NtPat(..)     |
-                NtBlock(..)   |
-                NtPath(..)),
+            Ident(name, is_raw) => ident_can_begin_expr(name, self.span, is_raw),
+            OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)
+            | Literal(..)
+            | BinOp(Minus)
+            | BinOp(And)
+            | AndAnd
+            | DotDot
+            | DotDotDot
+            | DotDotEq
+            | Lt
+            | BinOp(Shl)
+            | ModSep => true,
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) | NtPat(..) | NtBlock(..) | NtPath(..)),
             _ => false,
         }
     }
     pub fn can_begin_type(&self) -> bool {
         match self.uninterpolate().kind {
-            Ident(name, is_raw)        =>
-                ident_can_begin_type(name, self.span, is_raw), // type name or keyword
-            OpenDelim(Delimiter::Parenthesis) | // tuple
-            OpenDelim(Delimiter::Bracket)     | // array
-            Not                         | // never
-            BinOp(Star)                 | // raw pointer
-            BinOp(And)                  | // reference
-            AndAnd                      | // double reference
-            Question                    | // maybe bound in trait object
-            Lifetime(..)                | // lifetime bound in trait object
-            Lt | BinOp(Shl)             | // associated path
-            ModSep                      => true, // global path
+            Ident(name, is_raw) => ident_can_begin_type(name, self.span, is_raw),
+            OpenDelim(Delimiter::Parenthesis)
+            | OpenDelim(Delimiter::Bracket)
+            | Not
+            | BinOp(Star)
+            | BinOp(And)
+            | AndAnd
+            | Question
+            | Lifetime(..)
+            | Lt
+            | BinOp(Shl)
+            | ModSep => true,
             Interpolated(ref nt) => matches!(**nt, NtTy(..) | NtPath(..)),
             _ => false,
         }
@@ -546,10 +524,10 @@ impl Token {
         matches!(
             self.kind,
             Literal(Lit {
-                kind: LitKind::Integer,
+                kind: LiteralKind::Integer,
                 ..
             }) | Literal(Lit {
-                kind: LitKind::Float,
+                kind: LiteralKind::Float,
                 ..
             })
         )
@@ -1240,7 +1218,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     static_assert_size!(Lit, 12);
-    static_assert_size!(LitKind, 2);
+    static_assert_size!(LiteralKind, 2);
     static_assert_size!(Nonterminal, 16);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);

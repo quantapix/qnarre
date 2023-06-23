@@ -1,4 +1,4 @@
-use crate::*;
+use super::*;
 use rustc_span::{symbol::Ident, Span};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
