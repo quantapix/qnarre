@@ -1,13 +1,12 @@
 use super::*;
 use crate::{
-    literal::escape_string_symbol,
     ptr::P,
     token::{
         self,
         stream::{DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenTree},
         CommentKind, Delimiter, Token,
     },
-    util::comments,
+    util::{comments, literal::escape_string_symbol},
 };
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::{

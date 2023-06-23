@@ -20,13 +20,6 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate tracing;
 
-use crate::ptr::P;
-use crate::token::{
-    self,
-    stream::{DelimSpan, LazyAttrTokenStream, TokenStream},
-    CommentKind, Delimiter, Nonterminal,
-};
-pub use crate::util::parser::ExprPrecedence;
 use rustc_data_structures::{
     fx::FxHashMap,
     stable_hasher::{HashStable, StableHasher},
@@ -45,8 +38,8 @@ use thin_vec::{thin_vec, ThinVec};
 
 pub mod attr;
 pub mod expand;
+pub mod lexer;
 pub mod mut_visit;
-pub mod util;
 pub mod ptr {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -200,7 +193,14 @@ pub mod ptr {
         }
     }
 }
+use ptr::P;
 pub mod token;
+use token::{
+    stream::{DelimSpan, LazyAttrTokenStream, TokenStream},
+    CommentKind, Delimiter, Nonterminal,
+};
+pub mod util;
+pub use util::parser::ExprPrecedence;
 pub mod visit;
 
 #[derive(Debug)]

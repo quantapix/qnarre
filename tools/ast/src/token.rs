@@ -113,7 +113,7 @@ impl Lit {
             Literal(token_lit) => Some(token_lit),
             Interpolated(ref nt)
                 if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+                && let ExprKind::Lit(token_lit) = expr.kind =>
             {
                 Some(token_lit)
             }
@@ -237,7 +237,7 @@ pub enum TokenKind {
     Ident(Symbol, /* is_raw */ bool),
     Lifetime(Symbol),
     Interpolated(Lrc<Nonterminal>),
-    DocComment(CommentKind, ast::AttrStyle, Symbol),
+    DocComment(CommentKind, AttrStyle, Symbol),
     Eof,
 }
 impl TokenKind {
@@ -431,9 +431,9 @@ impl Token {
             Interpolated(ref nt) => match &**nt {
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
-                        matches!(&e.kind, ast::ExprKind::Lit(_))
+                    ExprKind::Lit(_) => true,
+                    ExprKind::Unary(UnOp::Neg, e) => {
+                        matches!(&e.kind, ExprKind::Lit(_))
                     },
                     _ => false,
                 },
@@ -690,18 +690,18 @@ impl fmt::Display for NonterminalKind {
 
 #[derive(Clone, Encodable, Decodable)]
 pub enum Nonterminal {
-    NtItem(P<ast::Item>),
-    NtBlock(P<ast::Block>),
-    NtStmt(P<ast::Stmt>),
-    NtPat(P<ast::Pat>),
-    NtExpr(P<ast::Expr>),
-    NtTy(P<ast::Ty>),
+    NtItem(P<Item>),
+    NtBlock(P<Block>),
+    NtStmt(P<Stmt>),
+    NtPat(P<Pat>),
+    NtExpr(P<Expr>),
+    NtTy(P<Ty>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
-    NtLiteral(P<ast::Expr>),
-    NtMeta(P<ast::AttrItem>),
-    NtPath(P<ast::Path>),
-    NtVis(P<ast::Visibility>),
+    NtLiteral(P<Expr>),
+    NtMeta(P<AttrItem>),
+    NtPath(P<Path>),
+    NtVis(P<Visibility>),
 }
 impl Nonterminal {
     pub fn span(&self) -> Span {

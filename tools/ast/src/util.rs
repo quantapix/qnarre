@@ -7,21 +7,21 @@ pub mod case {
 }
 pub mod classify {
     use crate::*;
-    pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
+    pub fn expr_requires_semi_to_be_stmt(e: &Expr) -> bool {
         !matches!(
             e.kind,
-            ast::ExprKind::If(..)
-                | ast::ExprKind::Match(..)
-                | ast::ExprKind::Block(..)
-                | ast::ExprKind::While(..)
-                | ast::ExprKind::Loop(..)
-                | ast::ExprKind::ForLoop(..)
-                | ast::ExprKind::TryBlock(..)
-                | ast::ExprKind::ConstBlock(..)
+            ExprKind::If(..)
+                | ExprKind::Match(..)
+                | ExprKind::Block(..)
+                | ExprKind::While(..)
+                | ExprKind::Loop(..)
+                | ExprKind::ForLoop(..)
+                | ExprKind::TryBlock(..)
+                | ExprKind::ConstBlock(..)
         )
     }
-    pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
-        use ast::ExprKind::*;
+    pub fn expr_trailing_brace(mut expr: &Expr) -> Option<&Expr> {
+        use ExprKind::*;
         loop {
             match &expr.kind {
                 AddrOf(_, _, e)
@@ -47,7 +47,7 @@ pub mod classify {
     }
 }
 pub mod comments {
-    use crate::token::CommentKind;
+    use crate::{lexer, token::CommentKind};
     use rustc_span::{source_map::SourceMap, BytePos, CharPos, FileName, Pos, Symbol};
 
     #[derive(Clone, Copy, PartialEq, Debug)]
@@ -330,10 +330,12 @@ pub mod comments {
     }
 }
 pub mod literal {
-    use super::*;
-    use crate::token::{self, Token};
-    use lexer::unescape::{
-        byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit, Mode,
+    use crate::{
+        lexer::unescape::{
+            byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit, Mode,
+        },
+        token::{self, Token},
+        *,
     };
     use rustc_span::{
         symbol::{kw, sym, Symbol},
@@ -415,7 +417,7 @@ pub mod literal {
                     } else {
                         symbol
                     };
-                    LitKind::Str(symbol, ast::StrStyle::Cooked)
+                    LitKind::Str(symbol, StrStyle::Cooked)
                 },
                 token::StrRaw(n) => {
                     let s = symbol.as_str();
@@ -435,7 +437,7 @@ pub mod literal {
                     } else {
                         symbol
                     };
-                    LitKind::Str(symbol, ast::StrStyle::Raw(n))
+                    LitKind::Str(symbol, StrStyle::Raw(n))
                 },
                 token::ByteStr => {
                     let s = symbol.as_str();
@@ -551,16 +553,16 @@ pub mod literal {
                 LitKind::Int(n, ty) => {
                     write!(f, "{n}")?;
                     match ty {
-                        ast::LitIntType::Unsigned(ty) => write!(f, "{}", ty.name())?,
-                        ast::LitIntType::Signed(ty) => write!(f, "{}", ty.name())?,
-                        ast::LitIntType::Unsuffixed => {},
+                        LitIntType::Unsigned(ty) => write!(f, "{}", ty.name())?,
+                        LitIntType::Signed(ty) => write!(f, "{}", ty.name())?,
+                        LitIntType::Unsuffixed => {},
                     }
                 },
                 LitKind::Float(symbol, ty) => {
                     write!(f, "{symbol}")?;
                     match ty {
-                        ast::LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name())?,
-                        ast::LitFloatType::Unsuffixed => {},
+                        LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name())?,
+                        LitFloatType::Unsuffixed => {},
                     }
                 },
                 LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
@@ -584,12 +586,12 @@ pub mod literal {
         pub fn as_token_lit(&self) -> token::Lit {
             let kind = match self.kind {
                 LitKind::Bool(_) => token::Bool,
-                LitKind::Str(_, ast::StrStyle::Cooked) => token::Str,
-                LitKind::Str(_, ast::StrStyle::Raw(n)) => token::StrRaw(n),
-                LitKind::ByteStr(_, ast::StrStyle::Cooked) => token::ByteStr,
-                LitKind::ByteStr(_, ast::StrStyle::Raw(n)) => token::ByteStrRaw(n),
-                LitKind::CStr(_, ast::StrStyle::Cooked) => token::CStr,
-                LitKind::CStr(_, ast::StrStyle::Raw(n)) => token::CStrRaw(n),
+                LitKind::Str(_, StrStyle::Cooked) => token::Str,
+                LitKind::Str(_, StrStyle::Raw(n)) => token::StrRaw(n),
+                LitKind::ByteStr(_, StrStyle::Cooked) => token::ByteStr,
+                LitKind::ByteStr(_, StrStyle::Raw(n)) => token::ByteStrRaw(n),
+                LitKind::CStr(_, StrStyle::Cooked) => token::CStr,
+                LitKind::CStr(_, StrStyle::Raw(n)) => token::CStrRaw(n),
                 LitKind::Byte(_) => token::Byte,
                 LitKind::Char(_) => token::Char,
                 LitKind::Int(..) => token::Integer,
@@ -619,13 +621,13 @@ pub mod literal {
         Ok(match suffix {
             Some(suf) => LitKind::Float(
                 symbol,
-                ast::LitFloatType::Suffixed(match suf {
-                    sym::f32 => ast::FloatTy::F32,
-                    sym::f64 => ast::FloatTy::F64,
+                LitFloatType::Suffixed(match suf {
+                    sym::f32 => FloatTy::F32,
+                    sym::f64 => FloatTy::F64,
                     _ => return Err(LitError::InvalidFloatSuffix),
                 }),
             ),
-            None => LitKind::Float(symbol, ast::LitFloatType::Unsuffixed),
+            None => LitKind::Float(symbol, LitFloatType::Unsuffixed),
         })
     }
     fn float_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
@@ -644,22 +646,22 @@ pub mod literal {
         };
         let ty = match suffix {
             Some(suf) => match suf {
-                sym::isize => ast::LitIntType::Signed(ast::IntTy::Isize),
-                sym::i8 => ast::LitIntType::Signed(ast::IntTy::I8),
-                sym::i16 => ast::LitIntType::Signed(ast::IntTy::I16),
-                sym::i32 => ast::LitIntType::Signed(ast::IntTy::I32),
-                sym::i64 => ast::LitIntType::Signed(ast::IntTy::I64),
-                sym::i128 => ast::LitIntType::Signed(ast::IntTy::I128),
-                sym::usize => ast::LitIntType::Unsigned(ast::UintTy::Usize),
-                sym::u8 => ast::LitIntType::Unsigned(ast::UintTy::U8),
-                sym::u16 => ast::LitIntType::Unsigned(ast::UintTy::U16),
-                sym::u32 => ast::LitIntType::Unsigned(ast::UintTy::U32),
-                sym::u64 => ast::LitIntType::Unsigned(ast::UintTy::U64),
-                sym::u128 => ast::LitIntType::Unsigned(ast::UintTy::U128),
+                sym::isize => LitIntType::Signed(IntTy::Isize),
+                sym::i8 => LitIntType::Signed(IntTy::I8),
+                sym::i16 => LitIntType::Signed(IntTy::I16),
+                sym::i32 => LitIntType::Signed(IntTy::I32),
+                sym::i64 => LitIntType::Signed(IntTy::I64),
+                sym::i128 => LitIntType::Signed(IntTy::I128),
+                sym::usize => LitIntType::Unsigned(UintTy::Usize),
+                sym::u8 => LitIntType::Unsigned(UintTy::U8),
+                sym::u16 => LitIntType::Unsigned(UintTy::U16),
+                sym::u32 => LitIntType::Unsigned(UintTy::U32),
+                sym::u64 => LitIntType::Unsigned(UintTy::U64),
+                sym::u128 => LitIntType::Unsigned(UintTy::U128),
                 _ if suf.as_str().starts_with('f') => return filtered_float_lit(symbol, suffix, base),
                 _ => return Err(LitError::InvalidIntSuffix),
             },
-            _ => ast::LitIntType::Unsuffixed,
+            _ => LitIntType::Unsuffixed,
         };
         let s = &s[if base != 10 { 2 } else { 0 }..];
         u128::from_str_radix(s, base).map(|i| LitKind::Int(i, ty)).map_err(|_| {
@@ -673,8 +675,10 @@ pub mod literal {
     }
 }
 pub mod parser {
-    use super::*;
-    use crate::token::{self, BinOpToken, Token};
+    use crate::{
+        token::{self, BinOpToken, Token},
+        *,
+    };
     use rustc_span::symbol::kw;
 
     #[derive(Copy, Clone, PartialEq, Debug)]
@@ -955,21 +959,19 @@ pub mod parser {
     pub fn needs_par_as_let_scrutinee(order: i8) -> bool {
         order <= prec_let_scrutinee_needs_par() as i8
     }
-    pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
+    pub fn contains_exterior_struct_lit(value: &Expr) -> bool {
         match &value.kind {
-            ast::ExprKind::Struct(..) => true,
-            ast::ExprKind::Assign(lhs, rhs, _)
-            | ast::ExprKind::AssignOp(_, lhs, rhs)
-            | ast::ExprKind::Binary(_, lhs, rhs) => {
+            ExprKind::Struct(..) => true,
+            ExprKind::Assign(lhs, rhs, _) | ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Binary(_, lhs, rhs) => {
                 contains_exterior_struct_lit(lhs) || contains_exterior_struct_lit(rhs)
             },
-            ast::ExprKind::Await(x, _)
-            | ast::ExprKind::Unary(_, x)
-            | ast::ExprKind::Cast(x, _)
-            | ast::ExprKind::Type(x, _)
-            | ast::ExprKind::Field(x, _)
-            | ast::ExprKind::Index(x, _) => contains_exterior_struct_lit(x),
-            ast::ExprKind::MethodCall(box ast::MethodCall { receiver, .. }) => contains_exterior_struct_lit(receiver),
+            ExprKind::Await(x, _)
+            | ExprKind::Unary(_, x)
+            | ExprKind::Cast(x, _)
+            | ExprKind::Type(x, _)
+            | ExprKind::Field(x, _)
+            | ExprKind::Index(x, _) => contains_exterior_struct_lit(x),
+            ExprKind::MethodCall(box MethodCall { receiver, .. }) => contains_exterior_struct_lit(receiver),
             _ => false,
         }
     }
