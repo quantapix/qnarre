@@ -1,14 +1,8 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
-mod cursor;
-pub mod unescape;
-
-pub use crate::cursor::Cursor;
-
 use self::LiteralKind::*;
 use self::TokenKind::*;
-use crate::cursor::EOF_CHAR;
 
 #[derive(Debug)]
 pub struct Token {
@@ -132,7 +126,6 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     }
     None
 }
-
 #[inline]
 pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError> {
     debug_assert!(!input.is_empty());
@@ -142,7 +135,6 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
     }
     cursor.raw_double_quoted_string(prefix_len).map(|_| ())
 }
-
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut cursor = Cursor::new(input);
     std::iter::from_fn(move || {
@@ -154,10 +146,7 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
         }
     })
 }
-
 pub fn is_whitespace(c: char) -> bool {
-    //
-
     matches!(
         c,
         // Usual ASCII suspects
@@ -167,28 +156,22 @@ pub fn is_whitespace(c: char) -> bool {
         | '\u{000C}' // form feed
         | '\u{000D}' // \r
         | '\u{0020}' // space
-
         // NEXT LINE from latin1
         | '\u{0085}'
-
         // Bidi markers
         | '\u{200E}' // LEFT-TO-RIGHT MARK
         | '\u{200F}' // RIGHT-TO-LEFT MARK
-
         // Dedicated whitespace characters from Unicode
         | '\u{2028}' // LINE SEPARATOR
         | '\u{2029}' // PARAGRAPH SEPARATOR
     )
 }
-
 pub fn is_id_start(c: char) -> bool {
     c == '_' || unicode_xid::UnicodeXID::is_xid_start(c)
 }
-
 pub fn is_id_continue(c: char) -> bool {
     unicode_xid::UnicodeXID::is_xid_continue(c)
 }
-
 pub fn is_ident(string: &str) -> bool {
     let mut chars = string.chars();
     if let Some(start) = chars.next() {
@@ -197,6 +180,70 @@ pub fn is_ident(string: &str) -> bool {
         false
     }
 }
+
+mod cursor {
+    use std::str::Chars;
+
+    pub const EOF_CHAR: char = '\0';
+
+    pub struct Cursor<'a> {
+        len_remaining: usize,
+        chars: Chars<'a>,
+        #[cfg(debug_assertions)]
+        prev: char,
+    }
+    impl<'a> Cursor<'a> {
+        pub fn new(input: &'a str) -> Cursor<'a> {
+            Cursor {
+                len_remaining: input.len(),
+                chars: input.chars(),
+                #[cfg(debug_assertions)]
+                prev: EOF_CHAR,
+            }
+        }
+        pub fn prev(&self) -> char {
+            #[cfg(debug_assertions)]
+            {
+                self.prev
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                EOF_CHAR
+            }
+        }
+        pub fn first(&self) -> char {
+            self.chars.clone().next().unwrap_or(EOF_CHAR)
+        }
+        pub fn second(&self) -> char {
+            let mut iter = self.chars.clone();
+            iter.next();
+            iter.next().unwrap_or(EOF_CHAR)
+        }
+        pub fn is_eof(&self) -> bool {
+            self.chars.as_str().is_empty()
+        }
+        pub fn pos_within_token(&self) -> u32 {
+            (self.len_remaining - self.chars.as_str().len()) as u32
+        }
+        pub fn reset_pos_within_token(&mut self) {
+            self.len_remaining = self.chars.as_str().len();
+        }
+        pub fn bump(&mut self) -> Option<char> {
+            let c = self.chars.next()?;
+            #[cfg(debug_assertions)]
+            {
+                self.prev = c;
+            }
+            Some(c)
+        }
+        pub fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
+            while predicate(self.first()) && !self.is_eof() {
+                self.bump();
+            }
+        }
+    }
+}
+pub use cursor::{Cursor, EOF_CHAR};
 
 impl Cursor<'_> {
     pub fn advance_token(&mut self) -> Token {
@@ -210,9 +257,7 @@ impl Cursor<'_> {
                 '*' => self.block_comment(),
                 _ => Slash,
             },
-
             c if is_whitespace(c) => self.whitespace(),
-
             'r' => match (self.first(), self.second()) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
@@ -226,17 +271,13 @@ impl Cursor<'_> {
                 },
                 _ => self.ident_or_unknown_prefix(),
             },
-
             'b' => self.c_or_byte_string(
                 |terminated| ByteStr { terminated },
                 |n_hashes| RawByteStr { n_hashes },
                 Some(|terminated| Byte { terminated }),
             ),
-
             'c' => self.c_or_byte_string(|terminated| CStr { terminated }, |n_hashes| RawCStr { n_hashes }, None),
-
             c if is_id_start(c) => self.ident_or_unknown_prefix(),
-
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
                 let suffix_start = self.pos_within_token();
@@ -246,7 +287,6 @@ impl Cursor<'_> {
                     suffix_start,
                 }
             },
-
             ';' => Semi,
             ',' => Comma,
             '.' => Dot,
@@ -273,9 +313,7 @@ impl Cursor<'_> {
             '*' => Star,
             '^' => Caret,
             '%' => Percent,
-
             '\'' => self.lifetime_or_char(),
-
             '"' => {
                 let terminated = self.double_quoted_string();
                 let suffix_start = self.pos_within_token();
@@ -292,31 +330,25 @@ impl Cursor<'_> {
         self.reset_pos_within_token();
         res
     }
-
     fn line_comment(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '/' && self.first() == '/');
         self.bump();
-
         let doc_style = match self.first() {
             '!' => Some(DocStyle::Inner),
             '/' if self.second() != '/' => Some(DocStyle::Outer),
             _ => None,
         };
-
         self.eat_while(|c| c != '\n');
         LineComment { doc_style }
     }
-
     fn block_comment(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '/' && self.first() == '*');
         self.bump();
-
         let doc_style = match self.first() {
             '!' => Some(DocStyle::Inner),
             '*' if !matches!(self.second(), '*' | '/') => Some(DocStyle::Outer),
             _ => None,
         };
-
         let mut depth = 1usize;
         while let Some(c) = self.bump() {
             match c {
@@ -334,26 +366,22 @@ impl Cursor<'_> {
                 _ => (),
             }
         }
-
         BlockComment {
             doc_style,
             terminated: depth == 0,
         }
     }
-
     fn whitespace(&mut self) -> TokenKind {
         debug_assert!(is_whitespace(self.prev()));
         self.eat_while(is_whitespace);
         Whitespace
     }
-
     fn raw_ident(&mut self) -> TokenKind {
         debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
         self.bump();
         self.eat_identifier();
         RawIdent
     }
-
     fn ident_or_unknown_prefix(&mut self) -> TokenKind {
         debug_assert!(is_id_start(self.prev()));
         self.eat_while(is_id_continue);
@@ -363,7 +391,6 @@ impl Cursor<'_> {
             _ => Ident,
         }
     }
-
     fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
         self.eat_while(|c| {
             unicode_xid::UnicodeXID::is_xid_continue(c)
@@ -375,7 +402,6 @@ impl Cursor<'_> {
             _ => InvalidIdent,
         }
     }
-
     fn c_or_byte_string(
         &mut self,
         mk_kind: impl FnOnce(bool) -> LiteralKind,
@@ -416,7 +442,6 @@ impl Cursor<'_> {
             _ => self.ident_or_unknown_prefix(),
         }
     }
-
     fn number(&mut self, first_digit: char) -> LiteralKind {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         let mut base = Base::Decimal;
@@ -446,20 +471,17 @@ impl Cursor<'_> {
                 '0'..='9' | '_' => {
                     self.eat_decimal_digits();
                 },
-
                 '.' | 'e' | 'E' => {},
-
                 _ => return Int { base, empty_int: false },
             }
         } else {
             self.eat_decimal_digits();
         };
-
         match self.first() {
             '.' if self.second() != '.' && !is_id_start(self.second()) => {
                 self.bump();
                 let mut empty_exponent = false;
-                if self.first().is_digit(10) {
+                if self.first().is_ascii_digit() {
                     self.eat_decimal_digits();
                     match self.first() {
                         'e' | 'E' => {
@@ -479,16 +501,13 @@ impl Cursor<'_> {
             _ => Int { base, empty_int: false },
         }
     }
-
     fn lifetime_or_char(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '\'');
-
         let can_be_a_lifetime = if self.second() == '\'' {
             false
         } else {
-            is_id_start(self.first()) || self.first().is_digit(10)
+            is_id_start(self.first()) || self.first().is_ascii_digit()
         };
-
         if !can_be_a_lifetime {
             let terminated = self.single_quoted_string();
             let suffix_start = self.pos_within_token();
@@ -498,12 +517,9 @@ impl Cursor<'_> {
             let kind = Char { terminated };
             return Literal { kind, suffix_start };
         }
-
-        let starts_with_number = self.first().is_digit(10);
-
+        let starts_with_number = self.first().is_ascii_digit();
         self.bump();
         self.eat_while(is_id_continue);
-
         if self.first() == '\'' {
             self.bump();
             let kind = Char { terminated: true };
@@ -515,7 +531,6 @@ impl Cursor<'_> {
             Lifetime { starts_with_number }
         }
     }
-
     fn single_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '\'');
         if self.second() == '\'' && self.first() != '\\' {
@@ -523,7 +538,6 @@ impl Cursor<'_> {
             self.bump();
             return true;
         }
-
         loop {
             match self.first() {
                 '\'' => {
@@ -544,7 +558,6 @@ impl Cursor<'_> {
         }
         false
     }
-
     fn double_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
         while let Some(c) = self.bump() {
@@ -560,7 +573,6 @@ impl Cursor<'_> {
         }
         false
     }
-
     fn raw_double_quoted_string(&mut self, prefix_len: u32) -> Result<u8, RawStrError> {
         let n_hashes = self.raw_string_unvalidated(prefix_len)?;
         match u8::try_from(n_hashes) {
@@ -568,20 +580,17 @@ impl Cursor<'_> {
             Err(_) => Err(RawStrError::TooManyDelimiters { found: n_hashes }),
         }
     }
-
     fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrError> {
         debug_assert!(self.prev() == 'r');
         let start_pos = self.pos_within_token();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
-
         let mut eaten = 0;
         while self.first() == '#' {
             eaten += 1;
             self.bump();
         }
         let n_start_hashes = eaten;
-
         match self.bump() {
             Some('"') => (),
             c => {
@@ -589,10 +598,8 @@ impl Cursor<'_> {
                 return Err(RawStrError::InvalidStarter { bad_char: c });
             },
         }
-
         loop {
             self.eat_while(|c| c != '"');
-
             if self.is_eof() {
                 return Err(RawStrError::NoTerminator {
                     expected: n_start_hashes,
@@ -600,15 +607,12 @@ impl Cursor<'_> {
                     possible_terminator_offset,
                 });
             }
-
             self.bump();
-
             let mut n_end_hashes = 0;
             while self.first() == '#' && n_end_hashes < n_start_hashes {
                 n_end_hashes += 1;
                 self.bump();
             }
-
             if n_end_hashes == n_start_hashes {
                 return Ok(n_start_hashes);
             } else if n_end_hashes > max_hashes {
@@ -617,7 +621,6 @@ impl Cursor<'_> {
             }
         }
     }
-
     fn eat_decimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
@@ -634,7 +637,6 @@ impl Cursor<'_> {
         }
         has_digits
     }
-
     fn eat_hexadecimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
@@ -651,7 +653,6 @@ impl Cursor<'_> {
         }
         has_digits
     }
-
     fn eat_float_exponent(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
         if self.first() == '-' || self.first() == '+' {
@@ -659,18 +660,309 @@ impl Cursor<'_> {
         }
         self.eat_decimal_digits()
     }
-
     fn eat_literal_suffix(&mut self) {
         self.eat_identifier();
     }
-
     fn eat_identifier(&mut self) {
         if !is_id_start(self.first()) {
             return;
         }
         self.bump();
-
         self.eat_while(is_id_continue);
+    }
+}
+
+pub mod unescape {
+    use std::ops::Range;
+    use std::str::Chars;
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EscapeError {
+        ZeroChars,
+        MoreThanOneChar,
+        LoneSlash,
+        InvalidEscape,
+        BareCarriageReturn,
+        BareCarriageReturnInRawString,
+        EscapeOnlyChar,
+        TooShortHexEscape,
+        InvalidCharInHexEscape,
+        OutOfRangeHexEscape,
+        NoBraceInUnicodeEscape,
+        InvalidCharInUnicodeEscape,
+        EmptyUnicodeEscape,
+        UnclosedUnicodeEscape,
+        LeadingUnderscoreUnicodeEscape,
+        OverlongUnicodeEscape,
+        LoneSurrogateUnicodeEscape,
+        OutOfRangeUnicodeEscape,
+        UnicodeEscapeInByte,
+        NonAsciiCharInByte,
+        UnskippedWhitespaceWarning,
+        MultipleSkippedLinesWarning,
+    }
+    impl EscapeError {
+        pub fn is_fatal(&self) -> bool {
+            !matches!(
+                self,
+                EscapeError::UnskippedWhitespaceWarning | EscapeError::MultipleSkippedLinesWarning
+            )
+        }
+    }
+
+    pub fn unescape_literal<F>(src: &str, mode: Mode, callback: &mut F)
+    where
+        F: FnMut(Range<usize>, Result<char, EscapeError>),
+    {
+        match mode {
+            Mode::Char | Mode::Byte => {
+                let mut chars = src.chars();
+                let res = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
+                callback(0..(src.len() - chars.as_str().len()), res);
+            },
+            Mode::Str | Mode::ByteStr => unescape_str_common(src, mode, callback),
+            Mode::RawStr | Mode::RawByteStr => {
+                unescape_raw_str_or_raw_byte_str(src, mode == Mode::RawByteStr, callback)
+            },
+            Mode::CStr | Mode::RawCStr => unreachable!(),
+        }
+    }
+
+    pub enum CStrUnit {
+        Byte(u8),
+        Char(char),
+    }
+    impl From<u8> for CStrUnit {
+        fn from(value: u8) -> Self {
+            CStrUnit::Byte(value)
+        }
+    }
+    impl From<char> for CStrUnit {
+        fn from(value: char) -> Self {
+            CStrUnit::Char(value)
+        }
+    }
+
+    pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
+    where
+        F: FnMut(Range<usize>, Result<CStrUnit, EscapeError>),
+    {
+        if mode == Mode::RawCStr {
+            unescape_raw_str_or_raw_byte_str(src, mode.characters_should_be_ascii(), &mut |r, result| {
+                callback(r, result.map(CStrUnit::Char))
+            });
+        } else {
+            unescape_str_common(src, mode, callback);
+        }
+    }
+    pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
+        unescape_char_or_byte(&mut src.chars(), false)
+    }
+    pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
+        unescape_char_or_byte(&mut src.chars(), true).map(byte_from_char)
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum Mode {
+        Char,
+        Str,
+        Byte,
+        ByteStr,
+        RawStr,
+        RawByteStr,
+        CStr,
+        RawCStr,
+    }
+    impl Mode {
+        pub fn in_double_quotes(self) -> bool {
+            match self {
+                Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => true,
+                Mode::Char | Mode::Byte => false,
+            }
+        }
+        pub fn ascii_escapes_should_be_ascii(self) -> bool {
+            match self {
+                Mode::Char | Mode::Str | Mode::RawStr => true,
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
+            }
+        }
+        pub fn characters_should_be_ascii(self) -> bool {
+            match self {
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
+                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            }
+        }
+        pub fn is_unicode_escape_disallowed(self) -> bool {
+            match self {
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
+                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            }
+        }
+        pub fn prefix_noraw(self) -> &'static str {
+            match self {
+                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => "b",
+                Mode::CStr | Mode::RawCStr => "c",
+                Mode::Char | Mode::Str | Mode::RawStr => "",
+            }
+        }
+    }
+
+    fn scan_escape<T: From<u8> + From<char>>(chars: &mut Chars<'_>, mode: Mode) -> Result<T, EscapeError> {
+        let res = match chars.next().ok_or(EscapeError::LoneSlash)? {
+            '"' => b'"',
+            'n' => b'\n',
+            'r' => b'\r',
+            't' => b'\t',
+            '\\' => b'\\',
+            '\'' => b'\'',
+            '0' => b'\0',
+            'x' => {
+                let hi = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
+                let hi = hi.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
+                let lo = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
+                let lo = lo.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
+                let value = hi * 16 + lo;
+                if mode.ascii_escapes_should_be_ascii() && !is_ascii(value) {
+                    return Err(EscapeError::OutOfRangeHexEscape);
+                }
+                value as u8
+            },
+            'u' => return scan_unicode(chars, mode.is_unicode_escape_disallowed()).map(Into::into),
+            _ => return Err(EscapeError::InvalidEscape),
+        };
+        Ok(res.into())
+    }
+    fn scan_unicode(chars: &mut Chars<'_>, is_unicode_escape_disallowed: bool) -> Result<char, EscapeError> {
+        if chars.next() != Some('{') {
+            return Err(EscapeError::NoBraceInUnicodeEscape);
+        }
+        let mut n_digits = 1;
+        let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
+            '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
+            '}' => return Err(EscapeError::EmptyUnicodeEscape),
+            c => c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?,
+        };
+        loop {
+            match chars.next() {
+                None => return Err(EscapeError::UnclosedUnicodeEscape),
+                Some('_') => continue,
+                Some('}') => {
+                    if n_digits > 6 {
+                        return Err(EscapeError::OverlongUnicodeEscape);
+                    }
+                    if is_unicode_escape_disallowed {
+                        return Err(EscapeError::UnicodeEscapeInByte);
+                    }
+                    break std::char::from_u32(value).ok_or({
+                        if value > 0x10FFFF {
+                            EscapeError::OutOfRangeUnicodeEscape
+                        } else {
+                            EscapeError::LoneSurrogateUnicodeEscape
+                        }
+                    });
+                },
+                Some(c) => {
+                    let digit: u32 = c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
+                    n_digits += 1;
+                    if n_digits > 6 {
+                        continue;
+                    }
+                    value = value * 16 + digit;
+                },
+            };
+        }
+    }
+    #[inline]
+    fn ascii_check(c: char, characters_should_be_ascii: bool) -> Result<char, EscapeError> {
+        if characters_should_be_ascii && !c.is_ascii() {
+            Err(EscapeError::NonAsciiCharInByte)
+        } else {
+            Ok(c)
+        }
+    }
+    fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError> {
+        let c = chars.next().ok_or(EscapeError::ZeroChars)?;
+        let res = match c {
+            '\\' => scan_escape(chars, if is_byte { Mode::Byte } else { Mode::Char }),
+            '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
+            '\r' => Err(EscapeError::BareCarriageReturn),
+            _ => ascii_check(c, is_byte),
+        }?;
+        if chars.next().is_some() {
+            return Err(EscapeError::MoreThanOneChar);
+        }
+        Ok(res)
+    }
+    fn unescape_str_common<F, T: From<u8> + From<char>>(src: &str, mode: Mode, callback: &mut F)
+    where
+        F: FnMut(Range<usize>, Result<T, EscapeError>),
+    {
+        let mut chars = src.chars();
+        while let Some(c) = chars.next() {
+            let start = src.len() - chars.as_str().len() - c.len_utf8();
+            let res = match c {
+                '\\' => match chars.clone().next() {
+                    Some('\n') => {
+                        skip_ascii_whitespace(&mut chars, start, &mut |range, err| callback(range, Err(err)));
+                        continue;
+                    },
+                    _ => scan_escape::<T>(&mut chars, mode),
+                },
+                '\n' => Ok(b'\n'.into()),
+                '\t' => Ok(b'\t'.into()),
+                '"' => Err(EscapeError::EscapeOnlyChar),
+                '\r' => Err(EscapeError::BareCarriageReturn),
+                _ => ascii_check(c, mode.characters_should_be_ascii()).map(Into::into),
+            };
+            let end = src.len() - chars.as_str().len();
+            callback(start..end, res.map(Into::into));
+        }
+    }
+    fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
+    where
+        F: FnMut(Range<usize>, EscapeError),
+    {
+        let tail = chars.as_str();
+        let first_non_space = tail
+            .bytes()
+            .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
+            .unwrap_or(tail.len());
+        if tail[1..first_non_space].contains('\n') {
+            let end = start + first_non_space + 1;
+            callback(start..end, EscapeError::MultipleSkippedLinesWarning);
+        }
+        let tail = &tail[first_non_space..];
+        if let Some(c) = tail.chars().next() {
+            if c.is_whitespace() {
+                let end = start + first_non_space + c.len_utf8() + 1;
+                callback(start..end, EscapeError::UnskippedWhitespaceWarning);
+            }
+        }
+        *chars = tail.chars();
+    }
+    fn unescape_raw_str_or_raw_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
+    where
+        F: FnMut(Range<usize>, Result<char, EscapeError>),
+    {
+        let mut chars = src.chars();
+        while let Some(c) = chars.next() {
+            let start = src.len() - chars.as_str().len() - c.len_utf8();
+            let res = match c {
+                '\r' => Err(EscapeError::BareCarriageReturnInRawString),
+                _ => ascii_check(c, is_byte),
+            };
+            let end = src.len() - chars.as_str().len();
+            callback(start..end, res);
+        }
+    }
+    #[inline]
+    pub fn byte_from_char(c: char) -> u8 {
+        let res = c as u32;
+        debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
+        res as u8
+    }
+    fn is_ascii(x: u32) -> bool {
+        x <= 0x7F
     }
 }
 

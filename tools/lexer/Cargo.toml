@@ -1,6 +1,6 @@
 [package]
 name = "lexer"
-license = "https://github.com/rust-lang/rust/"
+license = "https://github.com/rust-lang/rust/ (04075b32021) & https://github.com/rust-lang/rust-analyzer (6c73f6799)"
 version.workspace = true
 edition.workspace = true
 
