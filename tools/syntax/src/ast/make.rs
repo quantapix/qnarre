@@ -836,13 +836,13 @@ pub fn lifetime_arg(lifetime: ast::Lifetime) -> ast::LifetimeArg {
     ast_from_text(&format!("const S: T<{lifetime}> = ();"))
 }
 
-pub(crate) fn generic_arg_list(args: impl IntoIterator<Item = ast::GenericArg>) -> ast::GenericArgList {
+pub fn generic_arg_list(args: impl IntoIterator<Item = ast::GenericArg>) -> ast::GenericArgList {
     let args = args.into_iter().join(", ");
     ast_from_text(&format!("const S: T<{args}> = ();"))
 }
 
 pub fn visibility_pub_crate() -> ast::Visibility {
-    ast_from_text("pub(crate) struct S")
+    ast_from_text("pub struct S")
 }
 
 pub fn visibility_pub() -> ast::Visibility {

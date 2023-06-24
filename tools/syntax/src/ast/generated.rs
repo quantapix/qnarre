@@ -1,7 +1,7 @@
 #[rustfmt::skip]
-pub(crate) mod nodes;
+pub mod nodes;
 #[rustfmt::skip]
-pub(crate) mod tokens;
+pub mod tokens;
 
 use crate::{
     AstNode,
@@ -9,7 +9,7 @@ use crate::{
     SyntaxNode,
 };
 
-pub(crate) use nodes::*;
+pub use nodes::*;
 
 impl AstNode for Stmt {
     fn can_cast(kind: SyntaxKind) -> bool {

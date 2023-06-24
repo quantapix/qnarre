@@ -13,8 +13,6 @@ pub fn ancestors_at_offset(node: &SyntaxNode, offset: TextSize) -> impl Iterator
         .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
 }
 
-///
-///
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) -> Option<N> {
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
@@ -91,7 +89,6 @@ enum TreeDiffInsertPos {
 pub struct TreeDiff {
     replacements: FxHashMap<SyntaxElement, SyntaxElement>,
     deletions: Vec<SyntaxElement>,
-    // the vec as well as the indexmap are both here to preserve order
     insertions: FxIndexMap<TreeDiffInsertPos, Vec<SyntaxElement>>,
 }
 
@@ -119,8 +116,6 @@ impl TreeDiff {
     }
 }
 
-///
-///
 pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     let _p = profile::span("diff");
 
@@ -146,7 +141,6 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
             }
     }
 
-    // FIXME: this is horribly inefficient. I bet there's a cool algorithm to diff trees properly.
     fn go(diff: &mut TreeDiff, lhs: SyntaxElement, rhs: SyntaxElement) {
         let (lhs, rhs) = match lhs.as_node().zip(rhs.as_node()) {
             Some((lhs, rhs)) => (lhs, rhs),
@@ -172,7 +166,6 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                             cov_mark::hit!(diff_insert);
                             TreeDiffInsertPos::After(prev)
                         },
-                        // first iteration, insert into out parent as the first child
                         None => {
                             cov_mark::hit!(diff_insert_as_first_child);
                             TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
@@ -186,10 +179,6 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                 },
                 (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {},
                 (Some(lhs_ele), Some(rhs_ele)) => {
-                    // nodes differ, look for lhs_ele in rhs, if its found we can mark everything up
-                    // until that element as insertions. This is important to keep the diff minimal
-                    // in regards to insertions that have been actually done, this is important for
-                    // use insertions as we do not want to replace the entire module node.
                     look_ahead_scratch.push(rhs_ele.clone());
                     let mut rhs_children_clone = rhs_children.clone();
                     let mut insert = false;

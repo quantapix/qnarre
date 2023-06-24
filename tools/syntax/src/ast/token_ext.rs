@@ -147,7 +147,7 @@ impl CommentKind {
         ),
     ];
 
-    pub(crate) fn from_text(text: &str) -> CommentKind {
+    pub fn from_text(text: &str) -> CommentKind {
         let &(_prefix, kind) = CommentKind::BY_PREFIX
             .iter()
             .find(|&(prefix, _kind)| text.starts_with(prefix))

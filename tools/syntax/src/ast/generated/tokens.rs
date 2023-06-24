@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Whitespace {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for Whitespace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,7 +31,7 @@ impl AstToken for Whitespace {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Comment {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for Comment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -56,7 +56,7 @@ impl AstToken for Comment {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct String {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for String {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -81,7 +81,7 @@ impl AstToken for String {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ByteString {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for ByteString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -106,7 +106,7 @@ impl AstToken for ByteString {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CString {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for CString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -131,7 +131,7 @@ impl AstToken for CString {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntNumber {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for IntNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -156,7 +156,7 @@ impl AstToken for IntNumber {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FloatNumber {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for FloatNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -181,7 +181,7 @@ impl AstToken for FloatNumber {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Char {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for Char {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -206,7 +206,7 @@ impl AstToken for Char {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Byte {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for Byte {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -231,7 +231,7 @@ impl AstToken for Byte {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
-    pub(crate) syntax: SyntaxToken,
+    pub syntax: SyntaxToken,
 }
 impl std::fmt::Display for Ident {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

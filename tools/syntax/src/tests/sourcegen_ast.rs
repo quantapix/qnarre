@@ -39,7 +39,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct #name {
-                pub(crate) syntax: SyntaxToken,
+                pub syntax: SyntaxToken,
             }
             impl std::fmt::Display for #name {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -117,7 +117,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     #[pretty_doc_comment_placeholder_workaround]
                     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
-                        pub(crate) syntax: SyntaxNode,
+                        pub syntax: SyntaxNode,
                     }
 
                     #(#traits)*
@@ -228,7 +228,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     #[pretty_doc_comment_placeholder_workaround]
                     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
-                        pub(crate) syntax: SyntaxNode,
+                        pub syntax: SyntaxNode,
                     }
                     impl ast::#trait_name for #name {}
                 },

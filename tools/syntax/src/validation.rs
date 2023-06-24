@@ -1,7 +1,3 @@
-//!
-
-mod block;
-
 use rowan::Direction;
 use rustc_lexer::unescape::{self, unescape_literal, Mode};
 
@@ -13,11 +9,32 @@ use crate::{
     SyntaxNode, SyntaxToken, TextSize, T,
 };
 
-pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
-    // FIXME:
-    // * Add unescape validation of raw string literals and raw byte string literals
-    // * Add validation of doc comments are being attached to nodes
+mod block {
+    use crate::{
+        ast::{self, AstNode, HasAttrs},
+        SyntaxError,
+        SyntaxKind::*,
+    };
 
+    pub fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxError>) {
+        if let Some(parent) = block.syntax().parent() {
+            match parent.kind() {
+                FN | EXPR_STMT | STMT_LIST => return,
+                _ => {},
+            }
+        }
+        if let Some(stmt_list) = block.stmt_list() {
+            errors.extend(stmt_list.attrs().filter(|attr| attr.kind().is_inner()).map(|attr| {
+                SyntaxError::new(
+                    "A block in this position cannot accept inner attributes",
+                    attr.syntax().text_range(),
+                )
+            }));
+        }
+    }
+}
+
+pub fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
     for node in root.descendants() {
         match_ast! {
@@ -113,7 +130,6 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
 }
 
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
-    // FIXME: move this function to outer scope (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366196658)
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
@@ -121,11 +137,9 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     let token = literal.token();
     let text = token.text();
 
-    // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366199205)
     let mut push_err = |prefix_len, off, err: unescape::EscapeError| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         let (message, is_err) = rustc_unescape_error_to_string(err);
-        // FIXME: Emit lexer warnings
         if is_err {
             acc.push(SyntaxError::new_at_offset(message, off));
         }
@@ -187,7 +201,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     }
 }
 
-pub(crate) fn validate_block_structure(root: &SyntaxNode) {
+pub fn validate_block_structure(root: &SyntaxNode) {
     let mut stack = Vec::new();
     for node in root.descendants_with_tokens() {
         match node.kind() {
@@ -261,8 +275,6 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         Some(it) => it,
         None => return,
     };
-    // FIXME: disable validation if there's an attribute, since some proc macros use this syntax.
-    // ideally the validation would run only on the fully expanded code, then this wouldn't be necessary.
     if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
         errors.push(SyntaxError::new(
             "Unnecessary visibility qualifier",
@@ -305,8 +317,6 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
             match_ast! {
                 match node {
                     ast::UseTree(it) => if let Some(tree_path) = it.path() {
-                        // Even a top-level path exists within a `UseTree` so we must explicitly
-                        // allow our path but disallow anything else
                         if tree_path != path {
                             return Some(tree_path);
                         }
@@ -400,7 +410,6 @@ fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxError>) {
             || ast::WhileExpr::can_cast(token.kind())
             || ast::MatchGuard::can_cast(token.kind())
         {
-            // It must be part of the condition since the expressions are inside a block.
             return;
         }
 

@@ -1,13 +1,13 @@
-pub(crate) struct KindsSrc<'a> {
-    pub(crate) punct: &'a [(&'a str, &'a str)],
-    pub(crate) keywords: &'a [&'a str],
-    pub(crate) contextual_keywords: &'a [&'a str],
-    pub(crate) literals: &'a [&'a str],
-    pub(crate) tokens: &'a [&'a str],
-    pub(crate) nodes: &'a [&'a str],
+pub struct KindsSrc<'a> {
+    pub punct: &'a [(&'a str, &'a str)],
+    pub keywords: &'a [&'a str],
+    pub contextual_keywords: &'a [&'a str],
+    pub literals: &'a [&'a str],
+    pub tokens: &'a [&'a str],
+    pub nodes: &'a [&'a str],
 }
 
-pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
+pub const KINDS_SRC: KindsSrc<'_> = KindsSrc {
     punct: &[
         (";", "SEMICOLON"),
         (",", "COMMA"),
@@ -226,22 +226,22 @@ pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
 };
 
 #[derive(Default, Debug)]
-pub(crate) struct AstSrc {
-    pub(crate) tokens: Vec<String>,
-    pub(crate) nodes: Vec<AstNodeSrc>,
-    pub(crate) enums: Vec<AstEnumSrc>,
+pub struct AstSrc {
+    pub tokens: Vec<String>,
+    pub nodes: Vec<AstNodeSrc>,
+    pub enums: Vec<AstEnumSrc>,
 }
 
 #[derive(Debug)]
-pub(crate) struct AstNodeSrc {
-    pub(crate) doc: Vec<String>,
-    pub(crate) name: String,
-    pub(crate) traits: Vec<String>,
-    pub(crate) fields: Vec<Field>,
+pub struct AstNodeSrc {
+    pub doc: Vec<String>,
+    pub name: String,
+    pub traits: Vec<String>,
+    pub fields: Vec<Field>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) enum Field {
+pub enum Field {
     Token(String),
     Node {
         name: String,
@@ -251,15 +251,15 @@ pub(crate) enum Field {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) enum Cardinality {
+pub enum Cardinality {
     Optional,
     Many,
 }
 
 #[derive(Debug)]
-pub(crate) struct AstEnumSrc {
-    pub(crate) doc: Vec<String>,
-    pub(crate) name: String,
-    pub(crate) traits: Vec<String>,
-    pub(crate) variants: Vec<String>,
+pub struct AstEnumSrc {
+    pub doc: Vec<String>,
+    pub name: String,
+    pub traits: Vec<String>,
+    pub variants: Vec<String>,
 }

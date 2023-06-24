@@ -24,7 +24,6 @@ fn main() {
     "##;
 
     let parse = SourceFile::parse(code);
-    // eprintln!("{:#?}", parse.syntax_node());
     assert!(parse.ok().is_ok());
 }
 
@@ -85,10 +84,7 @@ fn self_hosting_parsing() {
     let crates_dir = project_root().join("crates");
 
     let mut files = ::sourcegen::list_rust_files(&crates_dir);
-    files.retain(|path| {
-        // Get all files which are not in the crates/syntax/test_data folder
-        !path.components().any(|component| component.as_os_str() == "test_data")
-    });
+    files.retain(|path| !path.components().any(|component| component.as_os_str() == "test_data"));
 
     assert!(
         files.len() > 100,
@@ -127,8 +123,6 @@ fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {
     );
 }
 
-///
-///
 fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], outfile_extension: &str, f: F)
 where
     F: Fn(&str, &Path) -> String,
@@ -167,9 +161,6 @@ fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
     acc
 }
 
-///
-///
-///
 fn read_text(path: &Path) -> String {
     fs::read_to_string(path)
         .unwrap_or_else(|_| panic!("File at {path:?} should be valid"))
