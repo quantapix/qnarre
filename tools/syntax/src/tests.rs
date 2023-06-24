@@ -45,8 +45,12 @@ fn benchmark_parser() {
 
     {
         let _b = bench("tree traversal");
-        let fn_names =
-            tree.syntax().descendants().filter_map(ast::Fn::cast).filter_map(|f| f.name()).count();
+        let fn_names = tree
+            .syntax()
+            .descendants()
+            .filter_map(ast::Fn::cast)
+            .filter_map(|f| f.name())
+            .count();
         assert_eq!(fn_names, 268);
     }
 }
@@ -76,7 +80,6 @@ fn reparse_fuzz_tests() {
     }
 }
 
-/// Test that Rust-analyzer can parse and validate the rust-analyzer
 #[test]
 fn self_hosting_parsing() {
     let crates_dir = project_root().join("crates");
@@ -117,17 +120,15 @@ fn test_data_dir() -> PathBuf {
 }
 
 fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {
-    assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
+    assert!(
+        !errors.is_empty(),
+        "There should be errors in the file {:?}",
+        path.display()
+    );
 }
 
-/// Calls callback `f` with input code and file paths for each `.rs` file in `test_data_dir`
-/// subdirectories defined by `paths`.
 ///
-/// If the content of the matching output file differs from the output of `f()`
-/// the test will fail.
 ///
-/// If there is no matching output file it will be created and filled with the
-/// output of `f()`, but the test will fail.
 fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], outfile_extension: &str, f: F)
 where
     F: Fn(&str, &Path) -> String,
@@ -139,7 +140,6 @@ where
     }
 }
 
-/// Collects all `.rs` files from `dir` subdirectories defined by `paths`.
 fn collect_rust_files(root_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)> {
     paths
         .iter()
@@ -154,7 +154,6 @@ fn collect_rust_files(root_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)>
         .collect()
 }
 
-/// Collects paths to all `.rs` files from `dir` in a sorted `Vec<PathBuf>`.
 fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
     let mut acc = Vec::new();
     for file in fs::read_dir(dir).unwrap() {
@@ -168,17 +167,9 @@ fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
     acc
 }
 
-/// Read file and normalize newlines.
 ///
-/// `rustc` seems to always normalize `\r\n` newlines to `\n`:
 ///
-/// ```
-/// let s = "
-/// ";
-/// assert_eq!(s.as_bytes(), &[10]);
-/// ```
 ///
-/// so this should always be correct.
 fn read_text(path: &Path) -> String {
     fs::read_to_string(path)
         .unwrap_or_else(|_| panic!("File at {path:?} should be valid"))

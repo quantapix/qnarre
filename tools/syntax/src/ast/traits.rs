@@ -1,6 +1,4 @@
-//! Various traits that are implemented by ast nodes.
 //!
-//! The implementations are usually trivial, and live in generated.rs
 use either::Either;
 
 use crate::{
@@ -74,16 +72,22 @@ pub trait HasAttrs: AstNode {
 
 pub trait HasDocComments: HasAttrs {
     fn doc_comments(&self) -> DocCommentIter {
-        DocCommentIter { iter: self.syntax().children_with_tokens() }
+        DocCommentIter {
+            iter: self.syntax().children_with_tokens(),
+        }
     }
     fn doc_comments_and_attrs(&self) -> AttrDocCommentIter {
-        AttrDocCommentIter { iter: self.syntax().children_with_tokens() }
+        AttrDocCommentIter {
+            iter: self.syntax().children_with_tokens(),
+        }
     }
 }
 
 impl DocCommentIter {
     pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> DocCommentIter {
-        DocCommentIter { iter: syntax_node.children_with_tokens() }
+        DocCommentIter {
+            iter: syntax_node.children_with_tokens(),
+        }
     }
 
     #[cfg(test)]
@@ -108,7 +112,9 @@ impl Iterator for DocCommentIter {
     type Item = ast::Comment;
     fn next(&mut self) -> Option<ast::Comment> {
         self.iter.by_ref().find_map(|el| {
-            el.into_token().and_then(ast::Comment::cast).filter(ast::Comment::is_doc)
+            el.into_token()
+                .and_then(ast::Comment::cast)
+                .filter(ast::Comment::is_doc)
         })
     }
 }
@@ -119,7 +125,9 @@ pub struct AttrDocCommentIter {
 
 impl AttrDocCommentIter {
     pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> AttrDocCommentIter {
-        AttrDocCommentIter { iter: syntax_node.children_with_tokens() }
+        AttrDocCommentIter {
+            iter: syntax_node.children_with_tokens(),
+        }
     }
 }
 
@@ -128,9 +136,7 @@ impl Iterator for AttrDocCommentIter {
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.by_ref().find_map(|el| match el {
             SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Left),
-            SyntaxElement::Token(tok) => {
-                ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right)
-            }
+            SyntaxElement::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
         })
     }
 }

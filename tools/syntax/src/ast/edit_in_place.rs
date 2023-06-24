@@ -1,5 +1,3 @@
-//! Structural editing for ast.
-
 use std::iter::{empty, successors};
 
 use parser::{SyntaxKind, T};
@@ -36,7 +34,7 @@ impl GenericParamsOwnerEdit for ast::Fn {
                     Position::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
-            }
+            },
         }
     }
 
@@ -65,7 +63,7 @@ impl GenericParamsOwnerEdit for ast::Impl {
                     None => Position::last_child_of(self.syntax()),
                 };
                 create_generic_param_list(position)
-            }
+            },
         }
     }
 
@@ -94,7 +92,7 @@ impl GenericParamsOwnerEdit for ast::Trait {
                     Position::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
-            }
+            },
         }
     }
 
@@ -123,7 +121,7 @@ impl GenericParamsOwnerEdit for ast::Struct {
                     Position::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
-            }
+            },
         }
     }
 
@@ -161,7 +159,7 @@ impl GenericParamsOwnerEdit for ast::Enum {
                     Position::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
-            }
+            },
         }
     }
 
@@ -203,10 +201,10 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
                         remove_next_ws = true;
                         child.detach();
                         continue;
-                    }
+                    },
                     WHITESPACE if remove_next_ws => {
                         child.detach();
-                    }
+                    },
                     _ => (),
                 }
                 remove_next_ws = false;
@@ -228,11 +226,11 @@ impl ast::GenericParamList {
                     generic_param.syntax().clone().into(),
                 ];
                 ted::insert_all(position, elements);
-            }
+            },
             None => {
                 let after_l_angle = Position::after(self.l_angle_token().unwrap());
                 ted::insert(after_l_angle, generic_param.syntax());
-            }
+            },
         }
     }
 
@@ -256,14 +254,14 @@ impl ast::GenericParamList {
         let args = self.generic_params().filter_map(|param| match param {
             ast::GenericParam::LifetimeParam(it) => {
                 Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(it.lifetime()?)))
-            }
+            },
             ast::GenericParam::TypeParam(it) => {
                 Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
-            }
+            },
             ast::GenericParam::ConstParam(it) => {
                 // Name-only const params get parsed as `TypeArg`s
                 Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
-            }
+            },
         });
 
         make::generic_arg_list(args)
@@ -273,7 +271,11 @@ impl ast::GenericParamList {
 impl ast::WhereClause {
     pub fn add_predicate(&self, predicate: ast::WherePred) {
         if let Some(pred) = self.predicates().last() {
-            if !pred.syntax().siblings_with_tokens(Direction::Next).any(|it| it.kind() == T![,]) {
+            if !pred
+                .syntax()
+                .siblings_with_tokens(Direction::Next)
+                .any(|it| it.kind() == T![,])
+            {
                 ted::append_child_raw(self.syntax(), make::token(T![,]));
             }
         }
@@ -323,7 +325,11 @@ pub trait Removable: AstNode {
 
 impl Removable for ast::TypeBoundList {
     fn remove(&self) {
-        match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
+        match self
+            .syntax()
+            .siblings_with_tokens(Direction::Prev)
+            .find(|it| it.kind() == T![:])
+        {
             Some(colon) => ted::remove_all(colon..=self.syntax().clone().into()),
             None => ted::remove(self.syntax()),
         }
@@ -371,7 +377,7 @@ impl ast::UseTree {
                 elements.push(use_tree_list.syntax().clone().into());
                 ted::insert_all_raw(position, elements);
                 use_tree_list
-            }
+            },
         }
     }
 
@@ -395,8 +401,7 @@ impl ast::UseTree {
                 ted::remove(prefix.syntax());
             } else {
                 // path$0 -> self
-                let self_suffix =
-                    make::path_unqualified(make::path_segment_self()).clone_for_update();
+                let self_suffix = make::path_unqualified(make::path_segment_self()).clone_for_update();
                 ted::replace(path.syntax(), self_suffix.syntax());
             }
         } else if split_path_prefix(prefix).is_none() {
@@ -442,7 +447,7 @@ impl ast::UseTreeList {
                     None => Position::last_child_of(self.syntax()),
                 };
                 (position, vec![use_tree.syntax.into()])
-            }
+            },
         };
         ted::insert_all_raw(position, elements);
     }
@@ -493,7 +498,7 @@ impl ast::AssocItemList {
                 Some(l_curly) => {
                     normalize_ws_between_braces(self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
-                }
+                },
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
             },
         };
@@ -513,7 +518,7 @@ impl ast::Fn {
                 Some(semi) => {
                     ted::replace(semi, body.syntax());
                     ted::insert(Position::before(body.syntax), make::tokens::single_space());
-                }
+                },
                 None => ted::append_child(self.syntax(), body.syntax()),
             }
         }
@@ -547,7 +552,7 @@ impl ast::MatchArmList {
                     ted::append_child(last_arm.syntax(), make::token(SyntaxKind::COMMA));
                 }
                 Position::after(last_arm.syntax().clone())
-            }
+            },
             None => match self.l_curly_token() {
                 Some(it) => Position::after(it),
                 None => Position::last_child_of(self.syntax()),
@@ -585,7 +590,7 @@ impl ast::RecordExprFieldList {
             Some(last_field) => {
                 let comma = get_or_insert_comma_after(last_field.syntax());
                 Position::after(comma)
-            }
+            },
             None => match self.l_curly_token() {
                 Some(it) => Position::after(it),
                 None => Position::last_child_of(self.syntax()),
@@ -647,7 +652,7 @@ impl ast::RecordPatFieldList {
                 let syntax = last_field.syntax();
                 let comma = get_or_insert_comma_after(syntax);
                 Position::after(comma)
-            }
+            },
             None => match self.l_curly_token() {
                 Some(it) => Position::after(it),
                 None => Position::last_child_of(self.syntax()),
@@ -672,7 +677,7 @@ fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
             let comma = ast::make::token(T![,]);
             ted::insert(Position::after(syntax), &comma);
             comma
-        }
+        },
     }
 }
 
@@ -687,7 +692,7 @@ impl ast::VariantList {
                 Some(l_curly) => {
                     normalize_ws_between_braces(self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly))
-                }
+                },
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax())),
             },
         };
@@ -717,10 +722,10 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
             if ws.next_sibling_or_token()?.into_token()? == r {
                 ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
             }
-        }
+        },
         Some(ws) if ws.kind() == T!['}'] => {
             ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{indent}")));
-        }
+        },
         _ => (),
     }
     Some(())
@@ -758,7 +763,13 @@ mod tests {
 
     fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
         let parse = SourceFile::parse(text);
-        parse.tree().syntax().descendants().find_map(N::cast).unwrap().clone_for_update()
+        parse
+            .tree()
+            .syntax()
+            .descendants()
+            .find_map(N::cast)
+            .unwrap()
+            .clone_for_update()
     }
 
     #[test]
@@ -873,9 +884,9 @@ enum Foo {
     fn add_variant_with_record_field_list() {
         let variant = make::variant(
             make::name("Baz"),
-            Some(ast::FieldList::RecordFieldList(make::record_field_list(std::iter::once(
-                make::record_field(None, make::name("x"), make::ty("bool")),
-            )))),
+            Some(ast::FieldList::RecordFieldList(make::record_field_list(
+                std::iter::once(make::record_field(None, make::name("x"), make::ty("bool"))),
+            ))),
         )
         .clone_for_update();
 

@@ -1,5 +1,3 @@
-//! Collection of assorted algorithms for syntax trees.
-
 use std::hash::BuildHasherDefault;
 
 use indexmap::IndexMap;
@@ -7,34 +5,16 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use text_edit::TextEditBuilder;
 
-use crate::{
-    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
-    TextSize,
-};
+use crate::{AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
-/// Returns ancestors of the node at the offset, sorted by length. This should
-/// do the right thing at an edge, e.g. when searching for expressions at `{
-/// $0foo }` we will get the name reference instead of the whole block, which
-/// we would get if we just did `find_token_at_offset(...).flat_map(|t|
-/// t.parent().ancestors())`.
-pub fn ancestors_at_offset(
-    node: &SyntaxNode,
-    offset: TextSize,
-) -> impl Iterator<Item = SyntaxNode> {
+pub fn ancestors_at_offset(node: &SyntaxNode, offset: TextSize) -> impl Iterator<Item = SyntaxNode> {
     node.token_at_offset(offset)
         .map(|token| token.parent_ancestors())
         .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
 }
 
-/// Finds a node of specific Ast type at offset. Note that this is slightly
-/// imprecise: if the cursor is strictly between two nodes of the desired type,
-/// as in
 ///
-/// ```no_run
-/// struct Foo {}|struct Bar;
-/// ```
 ///
-/// then the shorter node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) -> Option<N> {
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
@@ -43,7 +23,6 @@ pub fn find_node_at_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> 
     syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
-/// Skip to next non `trivia` token
 pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
     while token.kind().is_trivia() {
         token = match direction {
@@ -53,7 +32,6 @@ pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option
     }
     Some(token)
 }
-/// Skip to next non `whitespace` token
 pub fn skip_whitespace_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
     while token.kind() == SyntaxKind::WHITESPACE {
         token = match direction {
@@ -64,7 +42,6 @@ pub fn skip_whitespace_token(mut token: SyntaxToken, direction: Direction) -> Op
     Some(token)
 }
 
-/// Finds the first sibling in the given direction which is not `trivia`
 pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Option<SyntaxElement> {
     return match element {
         NodeOrToken::Node(node) => node.siblings_with_tokens(direction).skip(1).find(not_trivia),
@@ -142,12 +119,8 @@ impl TreeDiff {
     }
 }
 
-/// Finds a (potentially minimal) diff, which, applied to `from`, will result in `to`.
 ///
-/// Specifically, returns a structure that consists of a replacements, insertions and deletions
-/// such that applying this map on `from` will result in `to`.
 ///
-/// This function tries to find a fine-grained diff.
 pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     let _p = profile::span("diff");
 
@@ -167,9 +140,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
         lhs.kind() == rhs.kind()
             && lhs.text_range().len() == rhs.text_range().len()
             && match (&lhs, &rhs) {
-                (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => {
-                    lhs == rhs || lhs.text() == rhs.text()
-                }
+                (NodeOrToken::Node(lhs), NodeOrToken::Node(rhs)) => lhs == rhs || lhs.text() == rhs.text(),
                 (NodeOrToken::Token(lhs), NodeOrToken::Token(rhs)) => lhs.text() == rhs.text(),
                 _ => false,
             }
@@ -183,7 +154,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                 cov_mark::hit!(diff_node_token_replace);
                 diff.replacements.insert(lhs, rhs);
                 return;
-            }
+            },
         };
 
         let mut look_ahead_scratch = Vec::default();
@@ -200,20 +171,20 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                         Some(prev) => {
                             cov_mark::hit!(diff_insert);
                             TreeDiffInsertPos::After(prev)
-                        }
+                        },
                         // first iteration, insert into out parent as the first child
                         None => {
                             cov_mark::hit!(diff_insert_as_first_child);
                             TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
-                        }
+                        },
                     };
                     diff.insertions.entry(insert_pos).or_insert_with(Vec::new).push(element);
-                }
+                },
                 (Some(element), None) => {
                     cov_mark::hit!(diff_delete);
                     diff.deletions.push(element);
-                }
-                (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {}
+                },
+                (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {},
                 (Some(lhs_ele), Some(rhs_ele)) => {
                     // nodes differ, look for lhs_ele in rhs, if its found we can mark everything up
                     // until that element as insertions. This is important to keep the diff minimal
@@ -244,7 +215,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                     } else {
                         go(diff, lhs_ele, rhs_ele);
                     }
-                }
+                },
             }
             last_lhs = lhs_child.or(last_lhs);
         }
@@ -611,16 +582,17 @@ fn main() {
         let to_node = crate::SourceFile::parse(to).tree().syntax().clone();
         let diff = super::diff(&from_node, &to_node);
 
-        let line_number =
-            |syn: &SyntaxElement| from[..syn.text_range().start().into()].lines().count();
+        let line_number = |syn: &SyntaxElement| from[..syn.text_range().start().into()].lines().count();
 
         let fmt_syntax = |syn: &SyntaxElement| match syn.kind() {
             SyntaxKind::WHITESPACE => format!("{:?}", syn.to_string()),
             _ => format!("{syn}"),
         };
 
-        let insertions =
-            diff.insertions.iter().format_with("\n", |(k, v), f| -> Result<(), std::fmt::Error> {
+        let insertions = diff
+            .insertions
+            .iter()
+            .format_with("\n", |(k, v), f| -> Result<(), std::fmt::Error> {
                 f(&format!(
                     "Line {}: {:?}\n-> {}",
                     line_number(match k {
@@ -645,9 +617,8 @@ fn main() {
             .iter()
             .format_with("\n", |v, f| f(&format!("Line {}: {}", line_number(v), &fmt_syntax(v))));
 
-        let actual = format!(
-            "insertions:\n\n{insertions}\n\nreplacements:\n\n{replacements}\n\ndeletions:\n\n{deletions}\n"
-        );
+        let actual =
+            format!("insertions:\n\n{insertions}\n\nreplacements:\n\n{replacements}\n\ndeletions:\n\n{deletions}\n");
         expected_diff.assert_eq(&actual);
 
         let mut from = from.to_owned();

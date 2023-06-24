@@ -1,6 +1,4 @@
-//! Some infrastructure for fuzzy testing.
 //!
-//! We don't normally run fuzzying, so this is hopelessly bitrotten :(
 
 use std::str::{self, FromStr};
 
@@ -38,12 +36,19 @@ impl CheckReparse {
         let text = lines.collect::<Vec<_>>().join("\n");
         let text = format!("{PREFIX}{text}{SUFFIX}");
         text.get(delete_start..delete_start.checked_add(delete_len)?)?; // make sure delete is a valid range
-        let delete =
-            TextRange::at(delete_start.try_into().unwrap(), delete_len.try_into().unwrap());
-        let edited_text =
-            format!("{}{}{}", &text[..delete_start], &insert, &text[delete_start + delete_len..]);
+        let delete = TextRange::at(delete_start.try_into().unwrap(), delete_len.try_into().unwrap());
+        let edited_text = format!(
+            "{}{}{}",
+            &text[..delete_start],
+            &insert,
+            &text[delete_start + delete_len..]
+        );
         let edit = Indel { insert, delete };
-        Some(CheckReparse { text, edit, edited_text })
+        Some(CheckReparse {
+            text,
+            edit,
+            edited_text,
+        })
     }
 
     pub fn run(&self) {
@@ -52,8 +57,11 @@ impl CheckReparse {
         check_file_invariants(&new_parse.tree());
         assert_eq!(&new_parse.tree().syntax().text().to_string(), &self.edited_text);
         let full_reparse = SourceFile::parse(&self.edited_text);
-        for (a, b) in
-            new_parse.tree().syntax().descendants().zip(full_reparse.tree().syntax().descendants())
+        for (a, b) in new_parse
+            .tree()
+            .syntax()
+            .descendants()
+            .zip(full_reparse.tree().syntax().descendants())
         {
             if (a.kind(), a.text_range()) != (b.kind(), b.text_range()) {
                 eprint!("original:\n{:#?}", parse.tree().syntax());

@@ -1,6 +1,4 @@
-//! This module implements syntax validation that the parser doesn't handle.
 //!
-//! A failed validation emits a diagnostic.
 
 mod block;
 
@@ -144,7 +142,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     });
                 }
             }
-        }
+        },
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
@@ -155,7 +153,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     });
                 }
             }
-        }
+        },
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
@@ -166,7 +164,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     });
                 }
             }
-        }
+        },
         ast::LiteralKind::Char(_) => {
             if let Some(without_quotes) = unquote(text, 1, '\'') {
                 unescape_literal(without_quotes, Mode::Char, &mut |range, char| {
@@ -175,7 +173,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     }
                 });
             }
-        }
+        },
         ast::LiteralKind::Byte(_) => {
             if let Some(without_quotes) = unquote(text, 2, '\'') {
                 unescape_literal(without_quotes, Mode::Byte, &mut |range, char| {
@@ -184,10 +182,8 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                     }
                 });
             }
-        }
-        ast::LiteralKind::IntNumber(_)
-        | ast::LiteralKind::FloatNumber(_)
-        | ast::LiteralKind::Bool(_) => {}
+        },
+        ast::LiteralKind::IntNumber(_) | ast::LiteralKind::FloatNumber(_) | ast::LiteralKind::Bool(_) => {},
     }
 }
 
@@ -206,15 +202,14 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
                         root,
                     );
                     assert!(
-                        node.next_sibling_or_token().is_none()
-                            && pair.prev_sibling_or_token().is_none(),
+                        node.next_sibling_or_token().is_none() && pair.prev_sibling_or_token().is_none(),
                         "\nfloating curlies at {:?}\nfile:\n{}\nerror:\n{}\n",
                         node,
                         root.text(),
                         node,
                     );
                 }
-            }
+            },
             _ => (),
         }
     }
@@ -232,15 +227,26 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
     }
 
     fn int_token(name_ref: Option<ast::NameRef>) -> Option<SyntaxToken> {
-        name_ref?.syntax().first_child_or_token()?.into_token().filter(|it| it.kind() == INT_NUMBER)
+        name_ref?
+            .syntax()
+            .first_child_or_token()?
+            .into_token()
+            .filter(|it| it.kind() == INT_NUMBER)
     }
 }
 
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
     let path_without_in_token = vis.in_token().is_none()
-        && vis.path().and_then(|p| p.as_single_name_ref()).and_then(|n| n.ident_token()).is_some();
+        && vis
+            .path()
+            .and_then(|p| p.as_single_name_ref())
+            .and_then(|n| n.ident_token())
+            .is_some();
     if path_without_in_token {
-        errors.push(SyntaxError::new("incorrect visibility restriction", vis.syntax.text_range()));
+        errors.push(SyntaxError::new(
+            "incorrect visibility restriction",
+            vis.syntax.text_range(),
+        ));
     }
     let parent = match vis.syntax().parent() {
         Some(it) => it,
@@ -258,7 +264,10 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
     // FIXME: disable validation if there's an attribute, since some proc macros use this syntax.
     // ideally the validation would run only on the fully expanded code, then this wouldn't be necessary.
     if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
-        errors.push(SyntaxError::new("Unnecessary visibility qualifier", vis.syntax.text_range()));
+        errors.push(SyntaxError::new(
+            "Unnecessary visibility qualifier",
+            vis.syntax.text_range(),
+        ));
     }
 }
 
@@ -341,8 +350,7 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
 
     if tbl.bounds().count() > 1 {
         let dyn_token = ty.dyn_token()?;
-        let potential_parenthesis =
-            algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
+        let potential_parenthesis = algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
         let kind = potential_parenthesis.kind();
         if !matches!(kind, T!['('] | T![<] | T![=]) {
             return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
@@ -367,7 +375,10 @@ fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxError>) {
         .and_then(|t| algo::skip_trivia_token(t, Direction::Next))
         .filter(|t| t.kind() == T![mut])
     {
-        errors.push(SyntaxError::new("const globals cannot be mutable", mut_token.text_range()));
+        errors.push(SyntaxError::new(
+            "const globals cannot be mutable",
+            mut_token.text_range(),
+        ));
     }
 }
 

@@ -1,5 +1,3 @@
-//! A set of utils methods to reuse on other abstraction levels
-
 use itertools::Itertools;
 
 use crate::{ast, match_ast, AstNode, SyntaxKind};
@@ -35,7 +33,10 @@ mod tests {
 
     #[test]
     fn turbofishes_are_stripped() {
-        assert_eq!("Vec", path_to_string_stripping_turbo_fish(&make::path_from_text("Vec::<i32>")),);
+        assert_eq!(
+            "Vec",
+            path_to_string_stripping_turbo_fish(&make::path_from_text("Vec::<i32>")),
+        );
         assert_eq!(
             "Vec::new",
             path_to_string_stripping_turbo_fish(&make::path_from_text("Vec::<i32>::new")),

@@ -1,10 +1,4 @@
-//! Implementation of incremental re-parsing.
 //!
-//! We use two simple strategies for this:
-//!   - if the edit modifies only a single token (like changing an identifier's
-//!     letter), we replace only this token.
-//!   - otherwise, we search for the nearest `{}` block which contains the edit
-//!     and try to parse only this block.
 
 use parser::Reparser;
 use text_edit::Indel;
@@ -32,10 +26,7 @@ pub(crate) fn incremental_reparse(
     None
 }
 
-fn reparse_token(
-    root: &SyntaxNode,
-    edit: &Indel,
-) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+fn reparse_token(root: &SyntaxNode, edit: &Indel) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let prev_token = root.covering_element(edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
     match prev_token_kind {
@@ -51,9 +42,7 @@ fn reparse_token(
             let mut new_text = get_text_after_edit(prev_token.clone().into(), edit);
             let (new_token_kind, new_err) = parser::LexedStr::single_token(&new_text)?;
 
-            if new_token_kind != prev_token_kind
-                || (new_token_kind == IDENT && is_contextual_kw(&new_text))
-            {
+            if new_token_kind != prev_token_kind || (new_token_kind == IDENT && is_contextual_kw(&new_text)) {
                 return None;
             }
 
@@ -76,15 +65,12 @@ fn reparse_token(
                 new_err.into_iter().map(|msg| SyntaxError::new(msg, range)).collect(),
                 prev_token.text_range(),
             ))
-        }
+        },
         _ => None,
     }
 }
 
-fn reparse_block(
-    root: &SyntaxNode,
-    edit: &Indel,
-) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+fn reparse_block(root: &SyntaxNode, edit: &Indel) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), edit);
 
@@ -139,7 +125,7 @@ fn is_balanced(lexed: &parser::LexedStr<'_>) -> bool {
                     Some(b) => b,
                     None => return false,
                 }
-            }
+            },
             _ => (),
         }
     }

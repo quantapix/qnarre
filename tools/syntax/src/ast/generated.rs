@@ -1,4 +1,3 @@
-//! This file is actually hand-written, but the submodules are indeed generated.
 #[rustfmt::skip]
 pub(crate) mod nodes;
 #[rustfmt::skip]
@@ -12,7 +11,6 @@ use crate::{
 
 pub(crate) use nodes::*;
 
-// Stmt is the only nested enum, so it's easier to just hand-write it
 impl AstNode for Stmt {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -27,7 +25,7 @@ impl AstNode for Stmt {
             _ => {
                 let item = Item::cast(syntax)?;
                 Stmt::Item(item)
-            }
+            },
         };
         Some(res)
     }

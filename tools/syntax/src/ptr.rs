@@ -1,13 +1,5 @@
-//! In rust-analyzer, syntax trees are transient objects.
 //!
-//! That means that we create trees when we need them, and tear them down to
-//! save memory. In this architecture, hanging on to a particular syntax node
-//! for a long time is ill-advisable, as that keeps the whole tree resident.
 //!
-//! Instead, we provide a [`SyntaxNodePtr`] type, which stores information about
-//! *location* of a particular syntax node in a tree. Its a small type which can
-//! be cheaply stored, and which can be resolved to a real [`SyntaxNode`] when
-//! necessary.
 
 use std::{
     hash::{Hash, Hasher},
@@ -18,10 +10,8 @@ use rowan::TextRange;
 
 use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
 
-/// A "pointer" to a [`SyntaxNode`], via location in the source code.
 pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<RustLanguage>;
 
-/// Like `SyntaxNodePtr`, but remembers the type of node.
 #[derive(Debug)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
@@ -30,7 +20,10 @@ pub struct AstPtr<N: AstNode> {
 
 impl<N: AstNode> Clone for AstPtr<N> {
     fn clone(&self) -> AstPtr<N> {
-        AstPtr { raw: self.raw.clone(), _ty: PhantomData }
+        AstPtr {
+            raw: self.raw.clone(),
+            _ty: PhantomData,
+        }
     }
 }
 
@@ -50,7 +43,10 @@ impl<N: AstNode> Hash for AstPtr<N> {
 
 impl<N: AstNode> AstPtr<N> {
     pub fn new(node: &N) -> AstPtr<N> {
-        AstPtr { raw: SyntaxNodePtr::new(node.syntax()), _ty: PhantomData }
+        AstPtr {
+            raw: SyntaxNodePtr::new(node.syntax()),
+            _ty: PhantomData,
+        }
     }
 
     pub fn to_node(&self, root: &SyntaxNode) -> N {
@@ -70,14 +66,20 @@ impl<N: AstNode> AstPtr<N> {
         if !U::can_cast(self.raw.kind()) {
             return None;
         }
-        Some(AstPtr { raw: self.raw, _ty: PhantomData })
+        Some(AstPtr {
+            raw: self.raw,
+            _ty: PhantomData,
+        })
     }
 
     pub fn upcast<M: AstNode>(self) -> AstPtr<M>
     where
         N: Into<M>,
     {
-        AstPtr { raw: self.raw, _ty: PhantomData }
+        AstPtr {
+            raw: self.raw,
+            _ty: PhantomData,
+        }
     }
 
     /// Like `SyntaxNodePtr::cast` but the trait bounds work out.

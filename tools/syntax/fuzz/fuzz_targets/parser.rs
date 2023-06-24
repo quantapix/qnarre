@@ -1,5 +1,3 @@
-//! Fuzzing for from-scratch parsing.
-
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use syntax::fuzz::check_parser;

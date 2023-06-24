@@ -1,6 +1,3 @@
-//! Lexing, bridging to parser (which does the actual parsing) and
-//! incremental reparsing.
-
 mod reparsing;
 
 use rowan::TextRange;
@@ -27,18 +24,13 @@ pub(crate) fn build_tree(
         parser::StrStep::Token { kind, text } => builder.token(kind, text),
         parser::StrStep::Enter { kind } => builder.start_node(kind),
         parser::StrStep::Exit => builder.finish_node(),
-        parser::StrStep::Error { msg, pos } => {
-            builder.error(msg.to_string(), pos.try_into().unwrap())
-        }
+        parser::StrStep::Error { msg, pos } => builder.error(msg.to_string(), pos.try_into().unwrap()),
     });
 
     let (node, mut errors) = builder.finish_raw();
     for (i, err) in lexed.errors() {
         let text_range = lexed.text_range(i);
-        let text_range = TextRange::new(
-            text_range.start.try_into().unwrap(),
-            text_range.end.try_into().unwrap(),
-        );
+        let text_range = TextRange::new(text_range.start.try_into().unwrap(), text_range.end.try_into().unwrap());
         errors.push(SyntaxError::new(err, text_range))
     }
 

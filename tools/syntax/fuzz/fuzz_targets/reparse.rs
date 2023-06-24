@@ -1,5 +1,3 @@
-//! Fuzzing for incremental parsing.
-
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use syntax::fuzz::CheckReparse;

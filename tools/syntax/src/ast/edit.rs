@@ -1,6 +1,3 @@
-//! This module contains functions for editing syntax trees. As the trees are
-//! immutable, all function here return a fresh copy of the tree, instead of
-//! doing an in-place modification.
 use std::{fmt, iter, ops};
 
 use crate::{
@@ -102,9 +99,7 @@ impl IndentLevel {
         for token in tokens {
             if let Some(ws) = ast::Whitespace::cast(token) {
                 if ws.text().contains('\n') {
-                    let new_ws = make::tokens::whitespace(
-                        &ws.syntax().text().replace(&format!("\n{self}"), "\n"),
-                    );
+                    let new_ws = make::tokens::whitespace(&ws.syntax().text().replace(&format!("\n{self}"), "\n"));
                     ted::replace(ws.syntax(), &new_ws);
                 }
             }
@@ -116,7 +111,6 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     iter::successors(Some(token), |token| token.prev_token())
 }
 
-/// Soft-deprecated in favor of mutable tree editing API `edit_in_place::Ident`.
 pub trait AstNodeEdit: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())

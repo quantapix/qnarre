@@ -1,7 +1,4 @@
-//! Primitive tree editor, ed for trees.
 //!
-//! The `_raw`-suffixed functions insert elements as is, unsuffixed versions fix
-//! up elements around the edges.
 use std::{mem, ops::RangeInclusive};
 
 use parser::T;
@@ -11,8 +8,6 @@ use crate::{
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
-/// Utility trait to allow calling `ted` functions with references or owned
-/// nodes. Do not use outside of this module.
 pub trait Element {
     fn syntax_element(self) -> SyntaxElement;
 }
@@ -118,7 +113,7 @@ pub fn remove_all_iter(range: impl IntoIterator<Item = SyntaxElement>) {
                     mem::swap(&mut first, &mut last);
                 }
                 remove_all(first..=last);
-            }
+            },
             None => remove(first),
         }
     }

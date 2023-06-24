@@ -1,7 +1,4 @@
-//! Various extension methods to ast Nodes, which are hard to code-generate.
-//! Extensions for various expressions live in a sibling `expr_extensions` module.
 //!
-//! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
 use std::{borrow::Cow, fmt, iter::successors};
 
@@ -186,7 +183,10 @@ impl ast::Attr {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathSegmentKind {
     Name(ast::NameRef),
-    Type { type_ref: Option<ast::Type>, trait_ref: Option<ast::PathType> },
+    Type {
+        type_ref: Option<ast::Type>,
+        trait_ref: Option<ast::PathType>,
+    },
     SelfTypeKw,
     SelfKw,
     SuperKw,
@@ -231,12 +231,11 @@ impl ast::PathSegment {
                 T![<] => {
                     // <T> or <T as Trait>
                     // T is any TypeRef, Trait has to be a PathType
-                    let mut type_refs =
-                        self.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
+                    let mut type_refs = self.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
                     let type_ref = type_refs.next().and_then(ast::Type::cast);
                     let trait_ref = type_refs.next().and_then(ast::PathType::cast);
                     PathSegmentKind::Type { type_ref, trait_ref }
-                }
+                },
                 _ => return None,
             }
         };
@@ -502,8 +501,11 @@ impl ast::RecordPatField {
     }
 
     pub fn for_field_name(field_name: &ast::Name) -> Option<ast::RecordPatField> {
-        let candidate =
-            field_name.syntax().ancestors().nth(2).and_then(ast::RecordPatField::cast)?;
+        let candidate = field_name
+            .syntax()
+            .ancestors()
+            .nth(2)
+            .and_then(ast::RecordPatField::cast)?;
         match candidate.field_name()? {
             NameOrNameRef::Name(name) if name == *field_name => Some(candidate),
             _ => None,
@@ -523,12 +525,12 @@ impl ast::RecordPatField {
             Some(ast::Pat::IdentPat(pat)) => {
                 let name = pat.name()?;
                 Some(NameOrNameRef::Name(name))
-            }
+            },
             Some(ast::Pat::BoxPat(pat)) => match pat.pat() {
                 Some(ast::Pat::IdentPat(pat)) => {
                     let name = pat.name()?;
                     Some(NameOrNameRef::Name(name))
-                }
+                },
                 _ => None,
             },
             _ => None,
@@ -610,10 +612,7 @@ impl ast::SlicePat {
 
 impl ast::IdentPat {
     pub fn is_simple_ident(&self) -> bool {
-        self.at_token().is_none()
-            && self.mut_token().is_none()
-            && self.ref_token().is_none()
-            && self.pat().is_none()
+        self.at_token().is_none() && self.mut_token().is_none() && self.ref_token().is_none() && self.pat().is_none()
     }
 }
 
@@ -767,9 +766,7 @@ impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
         match self.path() {
             Some(path) => {
-                if let Some(segment) =
-                    path.as_single_segment().filter(|it| it.coloncolon_token().is_none())
-                {
+                if let Some(segment) = path.as_single_segment().filter(|it| it.coloncolon_token().is_none()) {
                     if segment.crate_token().is_some() {
                         return VisibilityKind::PubCrate;
                     } else if segment.super_token().is_some() {
@@ -779,7 +776,7 @@ impl ast::Visibility {
                     }
                 }
                 VisibilityKind::In(path)
-            }
+            },
             None => VisibilityKind::Pub,
         }
     }
@@ -822,9 +819,7 @@ impl ast::RangePat {
 }
 
 impl ast::TokenTree {
-    pub fn token_trees_and_tokens(
-        &self,
-    ) -> impl Iterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>> {
+    pub fn token_trees_and_tokens(&self) -> impl Iterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>> {
         self.syntax().children_with_tokens().filter_map(|not| match not {
             NodeOrToken::Node(node) => ast::TokenTree::cast(node).map(NodeOrToken::Node),
             NodeOrToken::Token(t) => Some(NodeOrToken::Token(t)),

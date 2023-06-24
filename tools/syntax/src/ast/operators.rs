@@ -1,7 +1,4 @@
-//! Defines a bunch of data-less enums for unary and binary operators.
 //!
-//! Types here don't know about AST, this allows re-using them for both AST and
-//! HIR.
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -95,10 +92,22 @@ impl fmt::Display for CmpOp {
         let res = match self {
             CmpOp::Eq { negated: false } => "==",
             CmpOp::Eq { negated: true } => "!=",
-            CmpOp::Ord { ordering: Ordering::Less, strict: false } => "<=",
-            CmpOp::Ord { ordering: Ordering::Less, strict: true } => "<",
-            CmpOp::Ord { ordering: Ordering::Greater, strict: false } => ">=",
-            CmpOp::Ord { ordering: Ordering::Greater, strict: true } => ">",
+            CmpOp::Ord {
+                ordering: Ordering::Less,
+                strict: false,
+            } => "<=",
+            CmpOp::Ord {
+                ordering: Ordering::Less,
+                strict: true,
+            } => "<",
+            CmpOp::Ord {
+                ordering: Ordering::Greater,
+                strict: false,
+            } => ">=",
+            CmpOp::Ord {
+                ordering: Ordering::Greater,
+                strict: true,
+            } => ">",
         };
         f.write_str(res)
     }
@@ -116,7 +125,7 @@ impl fmt::Display for BinaryOp {
                 }
                 f.write_str("=")?;
                 Ok(())
-            }
+            },
         }
     }
 }

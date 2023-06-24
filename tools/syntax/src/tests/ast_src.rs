@@ -1,5 +1,3 @@
-//! Defines input for code generation process.
-
 pub(crate) struct KindsSrc<'a> {
     pub(crate) punct: &'a [(&'a str, &'a str)],
     pub(crate) keywords: &'a [&'a str],
@@ -65,13 +63,21 @@ pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
         (">>=", "SHREQ"),
     ],
     keywords: &[
-        "as", "async", "await", "box", "break", "const", "continue", "crate", "do", "dyn", "else",
-        "enum", "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "macro",
-        "match", "mod", "move", "mut", "pub", "ref", "return", "self", "Self", "static", "struct",
-        "super", "trait", "true", "try", "type", "unsafe", "use", "where", "while", "yield",
+        "as", "async", "await", "box", "break", "const", "continue", "crate", "do", "dyn", "else", "enum", "extern",
+        "false", "fn", "for", "if", "impl", "in", "let", "loop", "macro", "match", "mod", "move", "mut", "pub", "ref",
+        "return", "self", "Self", "static", "struct", "super", "trait", "true", "try", "type", "unsafe", "use",
+        "where", "while", "yield",
     ],
     contextual_keywords: &["auto", "default", "existential", "union", "raw", "macro_rules", "yeet"],
-    literals: &["INT_NUMBER", "FLOAT_NUMBER", "CHAR", "BYTE", "STRING", "BYTE_STRING", "C_STRING"],
+    literals: &[
+        "INT_NUMBER",
+        "FLOAT_NUMBER",
+        "CHAR",
+        "BYTE",
+        "STRING",
+        "BYTE_STRING",
+        "C_STRING",
+    ],
     tokens: &["ERROR", "IDENT", "WHITESPACE", "LIFETIME_IDENT", "COMMENT", "SHEBANG"],
     nodes: &[
         "SOURCE_FILE",
@@ -237,7 +243,11 @@ pub(crate) struct AstNodeSrc {
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Field {
     Token(String),
-    Node { name: String, ty: String, cardinality: Cardinality },
+    Node {
+        name: String,
+        ty: String,
+        cardinality: Cardinality,
+    },
 }
 
 #[derive(Debug, Eq, PartialEq)]

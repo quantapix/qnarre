@@ -1,6 +1,4 @@
-//! Various extension methods to ast Expr Nodes, which are hard to code-generate.
 //!
-//! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
 use crate::{
     ast::{
@@ -149,8 +147,11 @@ impl ast::PrefixExpr {
 
 impl ast::BinExpr {
     pub fn op_details(&self) -> Option<(SyntaxToken, BinaryOp)> {
-        self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| {
-            #[rustfmt::skip]
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find_map(|c| {
+                #[rustfmt::skip]
             let bin_op = match c.kind() {
                 T![||] => BinaryOp::LogicOp(LogicOp::Or),
                 T![&&] => BinaryOp::LogicOp(LogicOp::And),
@@ -187,8 +188,8 @@ impl ast::BinExpr {
 
                 _ => return None,
             };
-            Some((c, bin_op))
-        })
+                Some((c, bin_op))
+            })
     }
 
     pub fn op_kind(&self) -> Option<BinaryOp> {
@@ -217,15 +218,18 @@ impl ast::BinExpr {
 
 impl ast::RangeExpr {
     fn op_details(&self) -> Option<(usize, SyntaxToken, RangeOp)> {
-        self.syntax().children_with_tokens().enumerate().find_map(|(ix, child)| {
-            let token = child.into_token()?;
-            let bin_op = match token.kind() {
-                T![..] => RangeOp::Exclusive,
-                T![..=] => RangeOp::Inclusive,
-                _ => return None,
-            };
-            Some((ix, token, bin_op))
-        })
+        self.syntax()
+            .children_with_tokens()
+            .enumerate()
+            .find_map(|(ix, child)| {
+                let token = child.into_token()?;
+                let bin_op = match token.kind() {
+                    T![..] => RangeOp::Exclusive,
+                    T![..=] => RangeOp::Inclusive,
+                    _ => return None,
+                };
+                Some((ix, token, bin_op))
+            })
     }
 
     pub fn op_kind(&self) -> Option<RangeOp> {
@@ -263,7 +267,10 @@ impl ast::IndexExpr {
 }
 
 pub enum ArrayExprKind {
-    Repeat { initializer: Option<ast::Expr>, repeat: Option<ast::Expr> },
+    Repeat {
+        initializer: Option<ast::Expr>,
+        repeat: Option<ast::Expr>,
+    },
     ElementList(AstChildren<ast::Expr>),
 }
 
@@ -381,7 +388,12 @@ impl ast::BlockExpr {
 #[test]
 fn test_literal_with_attr() {
     let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
-    let lit = parse.tree().syntax().descendants().find_map(ast::Literal::cast).unwrap();
+    let lit = parse
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Literal::cast)
+        .unwrap();
     assert_eq!(lit.token().text(), r#""Hello""#);
 }
 

@@ -1,5 +1,3 @@
-//! Logic for validating block expressions i.e. `ast::BlockExpr`.
-
 use crate::{
     ast::{self, AstNode, HasAttrs},
     SyntaxError,
@@ -10,7 +8,7 @@ pub(crate) fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<Syntax
     if let Some(parent) = block.syntax().parent() {
         match parent.kind() {
             FN | EXPR_STMT | STMT_LIST => return,
-            _ => {}
+            _ => {},
         }
     }
     if let Some(stmt_list) = block.stmt_list() {

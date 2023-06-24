@@ -1,5 +1,3 @@
-//! There are many AstNodes, but only a few tokens, so we hand-write them here.
-
 use std::borrow::Cow;
 
 use rustc_lexer::unescape::{unescape_byte, unescape_char, unescape_literal, Mode};
@@ -48,7 +46,7 @@ impl ast::Comment {
                     text
                 };
                 Some(text)
-            }
+            },
             _ => None,
         }
     }
@@ -84,15 +82,69 @@ pub enum CommentPlacement {
 
 impl CommentKind {
     const BY_PREFIX: [(&'static str, CommentKind); 9] = [
-        ("/**/", CommentKind { shape: CommentShape::Block, doc: None }),
-        ("/***", CommentKind { shape: CommentShape::Block, doc: None }),
-        ("////", CommentKind { shape: CommentShape::Line, doc: None }),
-        ("///", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Outer) }),
-        ("//!", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Inner) }),
-        ("/**", CommentKind { shape: CommentShape::Block, doc: Some(CommentPlacement::Outer) }),
-        ("/*!", CommentKind { shape: CommentShape::Block, doc: Some(CommentPlacement::Inner) }),
-        ("//", CommentKind { shape: CommentShape::Line, doc: None }),
-        ("/*", CommentKind { shape: CommentShape::Block, doc: None }),
+        (
+            "/**/",
+            CommentKind {
+                shape: CommentShape::Block,
+                doc: None,
+            },
+        ),
+        (
+            "/***",
+            CommentKind {
+                shape: CommentShape::Block,
+                doc: None,
+            },
+        ),
+        (
+            "////",
+            CommentKind {
+                shape: CommentShape::Line,
+                doc: None,
+            },
+        ),
+        (
+            "///",
+            CommentKind {
+                shape: CommentShape::Line,
+                doc: Some(CommentPlacement::Outer),
+            },
+        ),
+        (
+            "//!",
+            CommentKind {
+                shape: CommentShape::Line,
+                doc: Some(CommentPlacement::Inner),
+            },
+        ),
+        (
+            "/**",
+            CommentKind {
+                shape: CommentShape::Block,
+                doc: Some(CommentPlacement::Outer),
+            },
+        ),
+        (
+            "/*!",
+            CommentKind {
+                shape: CommentShape::Block,
+                doc: Some(CommentPlacement::Inner),
+            },
+        ),
+        (
+            "//",
+            CommentKind {
+                shape: CommentShape::Line,
+                doc: None,
+            },
+        ),
+        (
+            "/*",
+            CommentKind {
+                shape: CommentShape::Block,
+                doc: None,
+            },
+        ),
     ];
 
     pub(crate) fn from_text(text: &str) -> CommentKind {
@@ -104,8 +156,11 @@ impl CommentKind {
     }
 
     pub fn prefix(&self) -> &'static str {
-        let &(prefix, _) =
-            CommentKind::BY_PREFIX.iter().rev().find(|(_, kind)| kind == self).unwrap();
+        let &(prefix, _) = CommentKind::BY_PREFIX
+            .iter()
+            .rev()
+            .find(|(_, kind)| kind == self)
+            .unwrap();
         prefix
     }
 }
@@ -168,10 +223,7 @@ pub trait IsString: AstToken {
     fn close_quote_text_range(&self) -> Option<TextRange> {
         self.quote_offsets().map(|it| it.quotes.1)
     }
-    fn escaped_char_ranges(
-        &self,
-        cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>),
-    ) {
+    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)) {
         let text_range_no_quotes = match self.text_range_between_quotes() {
             Some(it) => it,
             None => return,
@@ -182,8 +234,7 @@ pub trait IsString: AstToken {
         let offset = text_range_no_quotes.start() - start;
 
         unescape_literal(text, Mode::Str, &mut |range, unescaped_char| {
-            let text_range =
-                TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
+            let text_range = TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
         });
     }
@@ -202,8 +253,7 @@ impl ast::String {
     pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
             let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+            let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text));
         }
 
@@ -213,21 +263,20 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
-            unescaped_char,
-            buf.capacity() == 0,
-        ) {
-            (Ok(c), false) => buf.push(c),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
-            }
-            (Ok(c), true) => {
-                buf.reserve_exact(text.len());
-                buf.push_str(&text[..prev_end]);
-                buf.push(c);
-            }
-            (Err(_), _) => has_error = true,
-        });
+        unescape_literal(
+            text,
+            Mode::Str,
+            &mut |char_range, unescaped_char| match (unescaped_char, buf.capacity() == 0) {
+                (Ok(c), false) => buf.push(c),
+                (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
+                (Ok(c), true) => {
+                    buf.reserve_exact(text.len());
+                    buf.push_str(&text[..prev_end]);
+                    buf.push(c);
+                },
+                (Err(_), _) => has_error = true,
+            },
+        );
 
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
@@ -245,8 +294,7 @@ impl ast::ByteString {
     pub fn value(&self) -> Option<Cow<'_, [u8]>> {
         if self.is_raw() {
             let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+            let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text.as_bytes()));
         }
 
@@ -261,14 +309,12 @@ impl ast::ByteString {
             buf.capacity() == 0,
         ) {
             (Ok(c), false) => buf.push(c as u8),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
-            }
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
                 buf.extend_from_slice(text[..prev_end].as_bytes());
                 buf.push(c as u8);
-            }
+            },
             (Err(_), _) => has_error = true,
         });
 
@@ -288,8 +334,7 @@ impl ast::CString {
     pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
             let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+            let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text));
         }
 
@@ -299,21 +344,20 @@ impl ast::CString {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
-            unescaped_char,
-            buf.capacity() == 0,
-        ) {
-            (Ok(c), false) => buf.push(c),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
-            }
-            (Ok(c), true) => {
-                buf.reserve_exact(text.len());
-                buf.push_str(&text[..prev_end]);
-                buf.push(c);
-            }
-            (Err(_), _) => has_error = true,
-        });
+        unescape_literal(
+            text,
+            Mode::Str,
+            &mut |char_range, unescaped_char| match (unescaped_char, buf.capacity() == 0) {
+                (Ok(c), false) => buf.push(c),
+                (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
+                (Ok(c), true) => {
+                    buf.reserve_exact(text.len());
+                    buf.push_str(&text[..prev_end]);
+                    buf.push(c);
+                },
+                (Err(_), _) => has_error = true,
+            },
+        );
 
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
@@ -379,8 +423,7 @@ impl ast::FloatNumber {
         let mut float_text = self.text();
         let mut suffix = "";
         let mut indices = text.char_indices();
-        if let Some((mut suffix_start, c)) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic())
-        {
+        if let Some((mut suffix_start, c)) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic()) {
             if c == 'e' || c == 'E' {
                 if let Some(suffix_start_tuple) = indices.find(|(_, c)| c.is_ascii_alphabetic()) {
                     suffix_start = suffix_start_tuple.0;
@@ -421,8 +464,7 @@ pub enum Radix {
 }
 
 impl Radix {
-    pub const ALL: &'static [Radix] =
-        &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
+    pub const ALL: &'static [Radix] = &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
 
     const fn prefix_len(self) -> usize {
         match self {
@@ -437,20 +479,50 @@ mod tests {
     use crate::ast::{self, make, FloatNumber, IntNumber};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
-        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+        assert_eq!(
+            FloatNumber {
+                syntax: make::tokens::literal(lit)
+            }
+            .suffix(),
+            expected.into()
+        );
     }
 
     fn check_int_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
-        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+        assert_eq!(
+            IntNumber {
+                syntax: make::tokens::literal(lit)
+            }
+            .suffix(),
+            expected.into()
+        );
     }
 
     fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
-        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.value(), expected.into());
-        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.float_value(), expected.into());
+        assert_eq!(
+            FloatNumber {
+                syntax: make::tokens::literal(lit)
+            }
+            .value(),
+            expected.into()
+        );
+        assert_eq!(
+            IntNumber {
+                syntax: make::tokens::literal(lit)
+            }
+            .float_value(),
+            expected.into()
+        );
     }
 
     fn check_int_value(lit: &str, expected: impl Into<Option<u128>>) {
-        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.value(), expected.into());
+        assert_eq!(
+            IntNumber {
+                syntax: make::tokens::literal(lit)
+            }
+            .value(),
+            expected.into()
+        );
     }
 
     #[test]
@@ -479,7 +551,11 @@ mod tests {
 
     fn check_string_value<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(
-            ast::String { syntax: make::tokens::literal(&format!("\"{lit}\"")) }.value().as_deref(),
+            ast::String {
+                syntax: make::tokens::literal(&format!("\"{lit}\""))
+            }
+            .value()
+            .as_deref(),
             expected.into()
         );
     }
@@ -497,14 +573,13 @@ bcde", "abcde",
         );
     }
 
-    fn check_byte_string_value<'a, const N: usize>(
-        lit: &str,
-        expected: impl Into<Option<&'a [u8; N]>>,
-    ) {
+    fn check_byte_string_value<'a, const N: usize>(lit: &str, expected: impl Into<Option<&'a [u8; N]>>) {
         assert_eq!(
-            ast::ByteString { syntax: make::tokens::literal(&format!("b\"{lit}\"")) }
-                .value()
-                .as_deref(),
+            ast::ByteString {
+                syntax: make::tokens::literal(&format!("b\"{lit}\""))
+            }
+            .value()
+            .as_deref(),
             expected.into().map(|value| &value[..])
         );
     }
