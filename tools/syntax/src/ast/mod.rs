@@ -1,5 +1,5 @@
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
+    syntax_node::{api::Node, api::NodeChildren, api::Token},
     SyntaxKind,
 };
 use either::Either;
@@ -7,8 +7,11 @@ use std::marker::PhantomData;
 
 pub mod edit {
     use crate::{
+        api::Elem,
+        api::Node,
+        api::Token,
         ast::{self, make, AstNode},
-        ted, AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+        ted, AstToken, NodeOrToken,
     };
     use std::{fmt, iter, ops};
     #[derive(Debug, Clone, Copy)]
@@ -45,19 +48,19 @@ pub mod edit {
         pub fn is_zero(&self) -> bool {
             self.0 == 0
         }
-        pub fn from_element(element: &SyntaxElement) -> IndentLevel {
+        pub fn from_element(element: &api::Elem) -> IndentLevel {
             match element {
                 core::NodeOrToken::Node(it) => IndentLevel::from_node(it),
                 core::NodeOrToken::Token(it) => IndentLevel::from_token(it),
             }
         }
-        pub fn from_node(node: &SyntaxNode) -> IndentLevel {
+        pub fn from_node(node: &api::Node) -> IndentLevel {
             match node.first_token() {
                 Some(it) => Self::from_token(&it),
                 None => IndentLevel(0),
             }
         }
-        pub fn from_token(token: &SyntaxToken) -> IndentLevel {
+        pub fn from_token(token: &api::Token) -> IndentLevel {
             for ws in prev_tokens(token.clone()).filter_map(ast::Whitespace::cast) {
                 let text = ws.syntax().text();
                 if let Some(pos) = text.rfind('\n') {
@@ -67,7 +70,7 @@ pub mod edit {
             }
             IndentLevel(0)
         }
-        pub(super) fn increase_indent(self, node: &SyntaxNode) {
+        pub(super) fn increase_indent(self, node: &api::Node) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
                 core::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
@@ -81,7 +84,7 @@ pub mod edit {
                 }
             }
         }
-        pub(super) fn decrease_indent(self, node: &SyntaxNode) {
+        pub(super) fn decrease_indent(self, node: &api::Node) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
                 core::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
@@ -96,7 +99,7 @@ pub mod edit {
             }
         }
     }
-    fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+    fn prev_tokens(token: api::Token) -> impl Iterator<Item = api::Token> {
         iter::successors(Some(token), |token| token.prev_token())
     }
     pub trait AstNodeEdit: AstNode + Clone + Sized {
@@ -105,7 +108,7 @@ pub mod edit {
         }
         #[must_use]
         fn indent(&self, level: IndentLevel) -> Self {
-            fn indent_inner(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
+            fn indent_inner(node: &api::Node, level: IndentLevel) -> api::Node {
                 let res = node.clone_subtree().clone_for_update();
                 level.increase_indent(&res);
                 res.clone_subtree()
@@ -114,7 +117,7 @@ pub mod edit {
         }
         #[must_use]
         fn dedent(&self, level: IndentLevel) -> Self {
-            fn dedent_inner(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
+            fn dedent_inner(node: &api::Node, level: IndentLevel) -> api::Node {
                 let res = node.clone_subtree().clone_for_update();
                 level.decrease_indent(&res);
                 res.clone_subtree()
@@ -159,9 +162,9 @@ pub mod nodes;
 #[rustfmt::skip]
 pub mod tokens;
     use crate::{
+        api::Node,
         AstNode,
         SyntaxKind::{self, *},
-        SyntaxNode,
     };
     pub use nodes::*;
     impl AstNode for Stmt {
@@ -171,7 +174,7 @@ pub mod tokens;
                 _ => Item::can_cast(kind),
             }
         }
-        fn cast(syntax: SyntaxNode) -> Option<Self> {
+        fn cast(syntax: api::Node) -> Option<Self> {
             let res = match syntax.kind() {
                 LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
                 EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
@@ -182,7 +185,7 @@ pub mod tokens;
             };
             Some(res)
         }
-        fn syntax(&self) -> &SyntaxNode {
+        fn syntax(&self) -> &api::Node {
             match self {
                 Stmt::LetStmt(it) => &it.syntax,
                 Stmt::ExprStmt(it) => &it.syntax,
@@ -316,11 +319,12 @@ mod operators {
 }
 pub mod prec {
     use crate::{
+        api::Node,
         ast::{self, BinaryOp, Expr, HasArgList},
-        match_ast, AstNode, SyntaxNode,
+        match_ast, AstNode,
     };
     impl Expr {
-        pub fn needs_parens_in(&self, parent: SyntaxNode) -> bool {
+        pub fn needs_parens_in(&self, parent: api::Node) -> bool {
             match_ast! {
                 match parent {
                     ast::Expr(e) => self.needs_parens_in_expr(&e),
@@ -557,9 +561,11 @@ pub mod prec {
 mod token_ext;
 mod traits {
     use crate::{
+        api::Elem,
+        api::Token,
         ast::{self, support, AstChildren, AstNode, AstToken},
-        syntax_node::SyntaxElementChildren,
-        SyntaxElement, SyntaxToken, T,
+        syntax_node::api::ElemChildren,
+        T,
     };
     use either::Either;
     pub trait HasName: AstNode {
@@ -602,7 +608,7 @@ mod traits {
         fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
             support::child(self.syntax())
         }
-        fn colon_token(&self) -> Option<SyntaxToken> {
+        fn colon_token(&self) -> Option<api::Token> {
             support::token(self.syntax(), T![:])
         }
     }
@@ -627,7 +633,7 @@ mod traits {
         }
     }
     impl DocCommentIter {
-        pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> DocCommentIter {
+        pub fn from_syntax_node(syntax_node: &ast::api::Node) -> DocCommentIter {
             DocCommentIter {
                 iter: syntax_node.children_with_tokens(),
             }
@@ -646,7 +652,7 @@ mod traits {
         }
     }
     pub struct DocCommentIter {
-        iter: SyntaxElementChildren,
+        iter: api::ElemChildren,
     }
     impl Iterator for DocCommentIter {
         type Item = ast::Comment;
@@ -659,10 +665,10 @@ mod traits {
         }
     }
     pub struct AttrDocCommentIter {
-        iter: SyntaxElementChildren,
+        iter: api::ElemChildren,
     }
     impl AttrDocCommentIter {
-        pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> AttrDocCommentIter {
+        pub fn from_syntax_node(syntax_node: &ast::api::Node) -> AttrDocCommentIter {
             AttrDocCommentIter {
                 iter: syntax_node.children_with_tokens(),
             }
@@ -672,8 +678,8 @@ mod traits {
         type Item = Either<ast::Attr, ast::Comment>;
         fn next(&mut self) -> Option<Self::Item> {
             self.iter.by_ref().find_map(|el| match el {
-                SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Left),
-                SyntaxElement::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
+                api::Elem::Node(node) => ast::Attr::cast(node).map(Either::Left),
+                api::Elem::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
             })
         }
     }
@@ -697,10 +703,10 @@ pub trait AstNode {
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;
-    fn cast(syntax: SyntaxNode) -> Option<Self>
+    fn cast(syntax: api::Node) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &SyntaxNode;
+    fn syntax(&self) -> &api::Node;
     fn clone_for_update(&self) -> Self
     where
         Self: Sized,
@@ -718,21 +724,21 @@ pub trait AstToken {
     fn can_cast(token: SyntaxKind) -> bool
     where
         Self: Sized;
-    fn cast(syntax: SyntaxToken) -> Option<Self>
+    fn cast(syntax: api::Token) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &SyntaxToken;
+    fn syntax(&self) -> &api::Token;
     fn text(&self) -> &str {
         self.syntax().text()
     }
 }
 #[derive(Debug, Clone)]
 pub struct AstChildren<N> {
-    inner: SyntaxNodeChildren,
+    inner: api::NodeChildren,
     ph: PhantomData<N>,
 }
 impl<N> AstChildren<N> {
-    fn new(parent: &SyntaxNode) -> Self {
+    fn new(parent: &api::Node) -> Self {
         AstChildren {
             inner: parent.children(),
             ph: PhantomData,
@@ -756,7 +762,7 @@ where
     {
         L::can_cast(kind) || R::can_cast(kind)
     }
-    fn cast(syntax: SyntaxNode) -> Option<Self>
+    fn cast(syntax: api::Node) -> Option<Self>
     where
         Self: Sized,
     {
@@ -766,7 +772,7 @@ where
             R::cast(syntax).map(Either::Right)
         }
     }
-    fn syntax(&self) -> &SyntaxNode {
+    fn syntax(&self) -> &api::Node {
         self.as_ref().either(L::syntax, R::syntax)
     }
 }
@@ -777,14 +783,14 @@ where
 {
 }
 mod support {
-    use super::{AstChildren, AstNode, SyntaxKind, SyntaxNode, SyntaxToken};
-    pub(super) fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
+    use super::{api::Node, api::Token, AstChildren, AstNode, SyntaxKind};
+    pub(super) fn child<N: AstNode>(parent: &api::Node) -> Option<N> {
         parent.children().find_map(N::cast)
     }
-    pub(super) fn children<N: AstNode>(parent: &SyntaxNode) -> AstChildren<N> {
+    pub(super) fn children<N: AstNode>(parent: &api::Node) -> AstChildren<N> {
         AstChildren::new(parent)
     }
-    pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    pub(super) fn token(parent: &api::Node, kind: SyntaxKind) -> Option<api::Token> {
         parent
             .children_with_tokens()
             .filter_map(|it| it.into_token())

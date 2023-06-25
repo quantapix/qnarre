@@ -1,27 +1,25 @@
-use std::hash::BuildHasherDefault;
-
+use crate::{core::api, AstNode, Direction, NodeOrToken, SyntaxKind, TextRange, TextSize};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use std::hash::BuildHasherDefault;
 use text_edit::TextEditBuilder;
 
-use crate::{AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
-
-pub fn ancestors_at_offset(node: &SyntaxNode, offset: TextSize) -> impl Iterator<Item = SyntaxNode> {
+pub fn ancestors_at_offset(node: &api::Node, offset: TextSize) -> impl Iterator<Item = api::Node> {
     node.token_at_offset(offset)
         .map(|token| token.parent_ancestors())
         .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
 }
 
-pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) -> Option<N> {
+pub fn find_node_at_offset<N: AstNode>(syntax: &api::Node, offset: TextSize) -> Option<N> {
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
 
-pub fn find_node_at_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
+pub fn find_node_at_range<N: AstNode>(syntax: &api::Node, range: TextRange) -> Option<N> {
     syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
-pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
+pub fn skip_trivia_token(mut token: api::Token, direction: Direction) -> Option<api::Token> {
     while token.kind().is_trivia() {
         token = match direction {
             Direction::Next => token.next_token()?,
@@ -30,7 +28,7 @@ pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option
     }
     Some(token)
 }
-pub fn skip_whitespace_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
+pub fn skip_whitespace_token(mut token: api::Token, direction: Direction) -> Option<api::Token> {
     while token.kind() == SyntaxKind::WHITESPACE {
         token = match direction {
             Direction::Next => token.next_token()?,
@@ -40,13 +38,13 @@ pub fn skip_whitespace_token(mut token: SyntaxToken, direction: Direction) -> Op
     Some(token)
 }
 
-pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Option<SyntaxElement> {
+pub fn non_trivia_sibling(element: api::Elem, direction: Direction) -> Option<api::Elem> {
     return match element {
         NodeOrToken::Node(node) => node.siblings_with_tokens(direction).skip(1).find(not_trivia),
         NodeOrToken::Token(token) => token.siblings_with_tokens(direction).skip(1).find(not_trivia),
     };
 
-    fn not_trivia(element: &SyntaxElement) -> bool {
+    fn not_trivia(element: &api::Elem) -> bool {
         match element {
             NodeOrToken::Node(_) => true,
             NodeOrToken::Token(token) => !token.kind().is_trivia(),
@@ -54,7 +52,7 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
     }
 }
 
-pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNode> {
+pub fn least_common_ancestor(u: &api::Node, v: &api::Node) -> Option<api::Node> {
     if u == v {
         return Some(u.clone());
     }
@@ -73,7 +71,7 @@ pub fn neighbor<T: AstNode>(me: &T, direction: Direction) -> Option<T> {
     me.syntax().siblings(direction).skip(1).find_map(T::cast)
 }
 
-pub fn has_errors(node: &SyntaxNode) -> bool {
+pub fn has_errors(node: &api::Node) -> bool {
     node.children().any(|it| it.kind() == SyntaxKind::ERROR)
 }
 
@@ -81,15 +79,15 @@ type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 enum TreeDiffInsertPos {
-    After(SyntaxElement),
-    AsFirstChild(SyntaxElement),
+    After(api::Elem),
+    AsFirstChild(api::Elem),
 }
 
 #[derive(Debug)]
 pub struct TreeDiff {
-    replacements: FxHashMap<SyntaxElement, SyntaxElement>,
-    deletions: Vec<SyntaxElement>,
-    insertions: FxIndexMap<TreeDiffInsertPos, Vec<SyntaxElement>>,
+    replacements: FxHashMap<api::Elem, api::Elem>,
+    deletions: Vec<api::Elem>,
+    insertions: FxIndexMap<TreeDiffInsertPos, Vec<api::Elem>>,
 }
 
 impl TreeDiff {
@@ -106,7 +104,7 @@ impl TreeDiff {
         for (from, to) in &self.replacements {
             builder.replace(from.text_range(), to.to_string());
         }
-        for text_range in self.deletions.iter().map(SyntaxElement::text_range) {
+        for text_range in self.deletions.iter().map(api::Elem::text_range) {
             builder.delete(text_range);
         }
     }
@@ -116,7 +114,7 @@ impl TreeDiff {
     }
 }
 
-pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
+pub fn diff(from: &api::Node, to: &api::Node) -> TreeDiff {
     let _p = profile::span("diff");
 
     let mut diff = TreeDiff {
@@ -131,7 +129,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     }
     return diff;
 
-    fn syntax_element_eq(lhs: &SyntaxElement, rhs: &SyntaxElement) -> bool {
+    fn syntax_element_eq(lhs: &api::Elem, rhs: &api::Elem) -> bool {
         lhs.kind() == rhs.kind()
             && lhs.text_range().len() == rhs.text_range().len()
             && match (&lhs, &rhs) {
@@ -141,7 +139,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
             }
     }
 
-    fn go(diff: &mut TreeDiff, lhs: SyntaxElement, rhs: SyntaxElement) {
+    fn go(diff: &mut TreeDiff, lhs: api::Elem, rhs: api::Elem) {
         let (lhs, rhs) = match lhs.as_node().zip(rhs.as_node()) {
             Some((lhs, rhs)) => (lhs, rhs),
             _ => {
@@ -218,7 +216,7 @@ mod tests {
     use parser::SyntaxKind;
     use text_edit::TextEdit;
 
-    use crate::{AstNode, SyntaxElement};
+    use crate::{api::Elem, AstNode};
 
     #[test]
     fn replace_node_token() {
@@ -571,9 +569,9 @@ fn main() {
         let to_node = crate::SourceFile::parse(to).tree().syntax().clone();
         let diff = super::diff(&from_node, &to_node);
 
-        let line_number = |syn: &SyntaxElement| from[..syn.text_range().start().into()].lines().count();
+        let line_number = |syn: &api::Elem| from[..syn.text_range().start().into()].lines().count();
 
-        let fmt_syntax = |syn: &SyntaxElement| match syn.kind() {
+        let fmt_syntax = |syn: &api::Elem| match syn.kind() {
             SyntaxKind::WHITESPACE => format!("{:?}", syn.to_string()),
             _ => format!("{syn}"),
         };

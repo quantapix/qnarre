@@ -19,21 +19,21 @@ use std::{
 pub use text_size::{TextLen, TextRange, TextSize};
 
 pub mod api;
-pub use api::{Language, SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren, SyntaxToken};
+pub use api::{api::Elem, api::ElemChildren, api::Node, api::NodeChildren, api::Token, Lang};
 #[allow(unsafe_code)]
 pub mod cursor;
 #[allow(unsafe_code)]
 pub mod green;
 
 pub trait AstNode {
-    type Language: Language;
-    fn can_cast(kind: <Self::Language as Language>::Kind) -> bool
+    type Language: Lang;
+    fn can_cast(kind: <Self::Language as Lang>::Kind) -> bool
     where
         Self: Sized;
-    fn cast(node: SyntaxNode<Self::Language>) -> Option<Self>
+    fn cast(node: api::Node<Self::Language>) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &SyntaxNode<Self::Language>;
+    fn syntax(&self) -> &api::Node<Self::Language>;
     fn clone_for_update(&self) -> Self
     where
         Self: Sized,
@@ -49,24 +49,24 @@ pub trait AstNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SyntaxNodePtr<L: Language> {
+pub struct SyntaxNodePtr<L: Lang> {
     kind: L::Kind,
     range: TextRange,
 }
-impl<L: Language> SyntaxNodePtr<L> {
-    pub fn new(node: &SyntaxNode<L>) -> Self {
+impl<L: Lang> SyntaxNodePtr<L> {
+    pub fn new(node: &api::Node<L>) -> Self {
         Self {
             kind: node.kind(),
             range: node.text_range(),
         }
     }
-    pub fn to_node(&self, root: &SyntaxNode<L>) -> SyntaxNode<L> {
+    pub fn to_node(&self, root: &api::Node<L>) -> api::Node<L> {
         assert!(root.parent().is_none());
         successors(Some(root.clone()), |node| {
             node.child_or_token_at_range(self.range).and_then(|it| it.into_node())
         })
         .find(|it| it.text_range() == self.range && it.kind() == self.kind)
-        .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
+        .unwrap_or_else(|| panic!("can't resolve local ptr to api::Node: {:?}", self))
     }
     pub fn cast<N: AstNode<Language = L>>(self) -> Option<AstPtr<N>> {
         if !N::can_cast(self.kind) {
@@ -96,7 +96,7 @@ impl<N: AstNode> AstPtr<N> {
             raw: SyntaxNodePtr::new(node.syntax()),
         }
     }
-    pub fn to_node(&self, root: &SyntaxNode<N::Language>) -> N {
+    pub fn to_node(&self, root: &api::Node<N::Language>) -> N {
         N::cast(self.raw.to_node(root)).unwrap()
     }
     pub fn syntax_node_ptr(&self) -> SyntaxNodePtr<N::Language> {
@@ -133,11 +133,11 @@ impl<N: AstNode> fmt::Debug for AstPtr<N> {
 
 #[derive(Debug, Clone)]
 pub struct AstChildren<N: AstNode> {
-    inner: SyntaxNodeChildren<N::Language>,
+    inner: api::NodeChildren<N::Language>,
     ph: PhantomData<N>,
 }
 impl<N: AstNode> AstChildren<N> {
-    fn new(parent: &SyntaxNode<N::Language>) -> Self {
+    fn new(parent: &api::Node<N::Language>) -> Self {
         AstChildren {
             inner: parent.children(),
             ph: PhantomData,
@@ -152,15 +152,15 @@ impl<N: AstNode> Iterator for AstChildren<N> {
 }
 
 pub mod support {
-    use super::super::{Language, SyntaxNode, SyntaxToken};
+    use super::super::{api::Node, api::Token, Language};
     use super::{AstChildren, AstNode};
-    pub fn child<N: AstNode>(parent: &SyntaxNode<N::Language>) -> Option<N> {
+    pub fn child<N: AstNode>(parent: &api::Node<N::Language>) -> Option<N> {
         parent.children().find_map(N::cast)
     }
-    pub fn children<N: AstNode>(parent: &SyntaxNode<N::Language>) -> AstChildren<N> {
+    pub fn children<N: AstNode>(parent: &api::Node<N::Language>) -> AstChildren<N> {
         AstChildren::new(parent)
     }
-    pub fn token<L: Language>(parent: &SyntaxNode<L>, kind: L::Kind) -> Option<SyntaxToken<L>> {
+    pub fn token<L: Language>(parent: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
         parent
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -170,11 +170,11 @@ pub mod support {
 
 #[derive(Clone)]
 pub struct SyntaxText {
-    node: SyntaxNode,
+    node: api::Node,
     range: TextRange,
 }
 impl SyntaxText {
-    pub fn new(node: SyntaxNode) -> SyntaxText {
+    pub fn new(node: api::Node) -> SyntaxText {
         let range = node.text_range();
         SyntaxText { node, range }
     }
@@ -256,7 +256,7 @@ impl SyntaxText {
             Err(void) => match void {},
         }
     }
-    fn tokens_with_ranges(&self) -> impl Iterator<Item = (SyntaxToken, TextRange)> {
+    fn tokens_with_ranges(&self) -> impl Iterator<Item = (api::Token, TextRange)> {
         let text_range = self.range;
         self.node
             .descendants_with_tokens()
@@ -314,7 +314,7 @@ fn found<T>(res: Result<(), T>) -> Option<T> {
         Err(it) => Some(it),
     }
 }
-fn zip_texts<I: Iterator<Item = (SyntaxToken, TextRange)>>(xs: &mut I, ys: &mut I) -> Option<()> {
+fn zip_texts<I: Iterator<Item = (api::Token, TextRange)>>(xs: &mut I, ys: &mut I) -> Option<()> {
     let mut x = xs.next()?;
     let mut y = ys.next()?;
     loop {
@@ -862,7 +862,7 @@ fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcI
 #[cfg(feature = "serde1")]
 mod serde_impls {
     use super::{
-        api::{Language, SyntaxNode, SyntaxToken},
+        api::{api::Node, api::Token, Language},
         NodeOrToken,
     };
     use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
@@ -884,7 +884,7 @@ mod serde_impls {
             fmt::Debug::fmt(&self.0, f)
         }
     }
-    impl<L: Language> Serialize for SyntaxNode<L> {
+    impl<L: Lang> Serialize for api::Node<L> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -896,7 +896,7 @@ mod serde_impls {
             state.end()
         }
     }
-    impl<L: Language> Serialize for SyntaxToken<L> {
+    impl<L: Lang> Serialize for api::Token<L> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -910,7 +910,7 @@ mod serde_impls {
     }
 
     struct Children<T>(T);
-    impl<L: Language> Serialize for Children<&'_ SyntaxNode<L>> {
+    impl<L: Lang> Serialize for Children<&'_ api::Node<L>> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -1035,14 +1035,14 @@ mod sll {
 mod tests {
     use super::super::{green::NodeBuilder, green::SyntaxKind};
     use super::*;
-    fn build_tree(chunks: &[&str]) -> SyntaxNode {
+    fn build_tree(chunks: &[&str]) -> api::Node {
         let mut builder = green::NodeBuilder::new();
         builder.start_node(SyntaxKind(62));
         for &chunk in chunks.iter() {
             builder.token(SyntaxKind(92), chunk.into())
         }
         builder.finish_node();
-        SyntaxNode::new_root(builder.finish())
+        api::Node::new_root(builder.finish())
     }
     #[test]
     fn test_text_equality() {

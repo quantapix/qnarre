@@ -13,20 +13,18 @@
 //!     - "+" Token(Add)
 //!     - "4" Token(Number)
 
-use core::{green::NodeBuilder, NodeOrToken};
 use std::iter::Peekable;
+use syntax::core::{api, green, NodeOrToken};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 enum SyntaxKind {
     WHITESPACE = 0,
-
     ADD,
     SUB,
     MUL,
     DIV,
-
     NUMBER,
     ERROR,
     OPERATION,
@@ -53,11 +51,11 @@ impl core::Language for Lang {
     }
 }
 
-type SyntaxNode = core::SyntaxNode<Lang>;
+type Node = core::api::Node<Lang>;
 #[allow(unused)]
-type SyntaxToken = core::SyntaxToken<Lang>;
+type Token = core::api::Token<Lang>;
 #[allow(unused)]
-type SyntaxElement = core::NodeOrToken<SyntaxNode, SyntaxToken>;
+type Elem = core::NodeOrToken<api::Node, api::Token>;
 
 struct Parser<I: Iterator<Item = (SyntaxKind, String)>> {
     builder: green::NodeBuilder<'static>,
@@ -101,16 +99,16 @@ impl<I: Iterator<Item = (SyntaxKind, String)>> Parser<I> {
     fn parse_add(&mut self) {
         self.handle_operation(&[ADD, SUB], Self::parse_mul)
     }
-    fn parse(mut self) -> SyntaxNode {
+    fn parse(mut self) -> api::Node {
         self.builder.start_node(ROOT.into());
         self.parse_add();
         self.builder.finish_node();
 
-        SyntaxNode::new_root(self.builder.finish())
+        api::Node::new_root(self.builder.finish())
     }
 }
 
-fn print(indent: usize, element: SyntaxElement) {
+fn print(indent: usize, element: api::Elem) {
     let kind: SyntaxKind = element.kind().into();
     print!("{:indent$}", "", indent = indent);
     match element {

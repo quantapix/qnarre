@@ -1,4 +1,4 @@
-use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use crate::{api::Token, ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind};
 use always_assert::never;
 use itertools::Itertools;
 
@@ -438,7 +438,7 @@ pub fn tail_only_block_expr(tail_expr: ast::Expr) -> ast::BlockExpr {
 
 ///
 pub fn hacky_block_expr(
-    elements: impl IntoIterator<Item = crate::SyntaxElement>,
+    elements: impl IntoIterator<Item = crate::api::Elem>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
     let mut buf = "{\n".to_string();
@@ -948,7 +948,7 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
     node
 }
 
-pub fn token(kind: SyntaxKind) -> SyntaxToken {
+pub fn token(kind: SyntaxKind) -> api::Token {
     tokens::SOURCE_FILE
         .tree()
         .syntax()
@@ -962,7 +962,7 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
 pub mod tokens {
     use once_cell::sync::Lazy;
 
-    use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
+    use crate::{api::Token, ast, AstNode, Parse, SourceFile, SyntaxKind::*};
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
@@ -970,7 +970,7 @@ pub mod tokens {
         )
     });
 
-    pub fn single_space() -> SyntaxToken {
+    pub fn single_space() -> api::Token {
         SOURCE_FILE
             .tree()
             .syntax()
@@ -981,7 +981,7 @@ pub mod tokens {
             .unwrap()
     }
 
-    pub fn whitespace(text: &str) -> SyntaxToken {
+    pub fn whitespace(text: &str) -> api::Token {
         assert!(text.trim().is_empty());
         let sf = SourceFile::parse(text).ok().unwrap();
         sf.syntax()
@@ -992,19 +992,19 @@ pub mod tokens {
             .unwrap()
     }
 
-    pub fn doc_comment(text: &str) -> SyntaxToken {
+    pub fn doc_comment(text: &str) -> api::Token {
         assert!(!text.trim().is_empty());
         let sf = SourceFile::parse(text).ok().unwrap();
         sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
-    pub fn literal(text: &str) -> SyntaxToken {
+    pub fn literal(text: &str) -> api::Token {
         assert_eq!(text.trim(), text);
         let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {text}; }}"));
         lit.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
-    pub fn single_newline() -> SyntaxToken {
+    pub fn single_newline() -> api::Token {
         let res = SOURCE_FILE
             .tree()
             .syntax()
@@ -1017,7 +1017,7 @@ pub mod tokens {
         res
     }
 
-    pub fn blank_line() -> SyntaxToken {
+    pub fn blank_line() -> api::Token {
         SOURCE_FILE
             .tree()
             .syntax()
@@ -1034,7 +1034,7 @@ pub mod tokens {
         pub fn new(text: &str) -> WsBuilder {
             WsBuilder(SourceFile::parse(text).ok().unwrap())
         }
-        pub fn ws(&self) -> SyntaxToken {
+        pub fn ws(&self) -> api::Token {
             self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()
         }
     }

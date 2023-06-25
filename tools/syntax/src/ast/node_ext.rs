@@ -7,8 +7,10 @@ use itertools::Itertools;
 use parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, SyntaxNode},
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
+    api::Elem,
+    api::Token,
+    ast::{self, api::Node, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName},
+    NodeOrToken, SmolStr, TokenText, T,
 };
 
 impl ast::Lifetime {
@@ -37,7 +39,7 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
+fn text_of_first_token(node: &api::Node) -> TokenText<'_> {
     fn first_token(green_ref: &green::NodeData) -> &green::TokData {
         green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
     }
@@ -82,7 +84,7 @@ impl AstNode for Macro {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, SyntaxKind::MACRO_RULES | SyntaxKind::MACRO_DEF)
     }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
+    fn cast(syntax: api::Node) -> Option<Self> {
         let res = match syntax.kind() {
             SyntaxKind::MACRO_RULES => Macro::MacroRules(ast::MacroRules { syntax }),
             SyntaxKind::MACRO_DEF => Macro::MacroDef(ast::MacroDef { syntax }),
@@ -90,7 +92,7 @@ impl AstNode for Macro {
         };
         Some(res)
     }
-    fn syntax(&self) -> &SyntaxNode {
+    fn syntax(&self) -> &api::Node {
         match self {
             Macro::MacroRules(it) => it.syntax(),
             Macro::MacroDef(it) => it.syntax(),
@@ -201,19 +203,19 @@ impl ast::PathSegment {
             .expect("segments are always nested in paths")
     }
 
-    pub fn crate_token(&self) -> Option<SyntaxToken> {
+    pub fn crate_token(&self) -> Option<api::Token> {
         self.name_ref().and_then(|it| it.crate_token())
     }
 
-    pub fn self_token(&self) -> Option<SyntaxToken> {
+    pub fn self_token(&self) -> Option<api::Token> {
         self.name_ref().and_then(|it| it.self_token())
     }
 
-    pub fn self_type_token(&self) -> Option<SyntaxToken> {
+    pub fn self_type_token(&self) -> Option<api::Token> {
         self.name_ref().and_then(|it| it.Self_token())
     }
 
-    pub fn super_token(&self) -> Option<SyntaxToken> {
+    pub fn super_token(&self) -> Option<api::Token> {
         self.name_ref().and_then(|it| it.super_token())
     }
 
@@ -444,7 +446,7 @@ impl ast::AstNode for NameLike {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, SyntaxKind::NAME | SyntaxKind::NAME_REF | SyntaxKind::LIFETIME)
     }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
+    fn cast(syntax: api::Node) -> Option<Self> {
         let res = match syntax.kind() {
             SyntaxKind::NAME => NameLike::Name(ast::Name { syntax }),
             SyntaxKind::NAME_REF => NameLike::NameRef(ast::NameRef { syntax }),
@@ -453,7 +455,7 @@ impl ast::AstNode for NameLike {
         };
         Some(res)
     }
-    fn syntax(&self) -> &SyntaxNode {
+    fn syntax(&self) -> &api::Node {
         match self {
             NameLike::NameRef(it) => it.syntax(),
             NameLike::Name(it) => it.syntax(),
@@ -560,17 +562,17 @@ impl ast::Item {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldKind {
     Name(ast::NameRef),
-    Index(SyntaxToken),
+    Index(api::Token),
 }
 
 impl ast::FieldExpr {
-    pub fn index_token(&self) -> Option<SyntaxToken> {
+    pub fn index_token(&self) -> Option<api::Token> {
         self.syntax
             .children_with_tokens()
             // FIXME: Accepting floats here to reject them in validation later
             .find(|c| c.kind() == SyntaxKind::INT_NUMBER || c.kind() == SyntaxKind::FLOAT_NUMBER)
             .as_ref()
-            .and_then(SyntaxElement::as_token)
+            .and_then(api::Elem::as_token)
             .cloned()
     }
 
@@ -687,7 +689,7 @@ impl AstNode for TypeOrConstParam {
         matches!(kind, SyntaxKind::TYPE_PARAM | SyntaxKind::CONST_PARAM)
     }
 
-    fn cast(syntax: SyntaxNode) -> Option<Self>
+    fn cast(syntax: api::Node) -> Option<Self>
     where
         Self: Sized,
     {
@@ -699,7 +701,7 @@ impl AstNode for TypeOrConstParam {
         Some(res)
     }
 
-    fn syntax(&self) -> &SyntaxNode {
+    fn syntax(&self) -> &api::Node {
         match self {
             TypeOrConstParam::Type(it) => it.syntax(),
             TypeOrConstParam::Const(it) => it.syntax(),
@@ -732,7 +734,7 @@ impl AstNode for TraitOrAlias {
         matches!(kind, SyntaxKind::TRAIT | SyntaxKind::TRAIT_ALIAS)
     }
 
-    fn cast(syntax: SyntaxNode) -> Option<Self>
+    fn cast(syntax: api::Node) -> Option<Self>
     where
         Self: Sized,
     {
@@ -744,7 +746,7 @@ impl AstNode for TraitOrAlias {
         Some(res)
     }
 
-    fn syntax(&self) -> &SyntaxNode {
+    fn syntax(&self) -> &api::Node {
         match self {
             TraitOrAlias::Trait(it) => it.syntax(),
             TraitOrAlias::TraitAlias(it) => it.syntax(),
@@ -783,7 +785,7 @@ impl ast::Visibility {
 }
 
 impl ast::LifetimeParam {
-    pub fn lifetime_bounds(&self) -> impl Iterator<Item = SyntaxToken> {
+    pub fn lifetime_bounds(&self) -> impl Iterator<Item = api::Token> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -819,21 +821,21 @@ impl ast::RangePat {
 }
 
 impl ast::TokenTree {
-    pub fn token_trees_and_tokens(&self) -> impl Iterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>> {
+    pub fn token_trees_and_tokens(&self) -> impl Iterator<Item = NodeOrToken<ast::TokenTree, api::Token>> {
         self.syntax().children_with_tokens().filter_map(|not| match not {
             NodeOrToken::Node(node) => ast::TokenTree::cast(node).map(NodeOrToken::Node),
             NodeOrToken::Token(t) => Some(NodeOrToken::Token(t)),
         })
     }
 
-    pub fn left_delimiter_token(&self) -> Option<SyntaxToken> {
+    pub fn left_delimiter_token(&self) -> Option<api::Token> {
         self.syntax()
             .first_child_or_token()?
             .into_token()
             .filter(|it| matches!(it.kind(), T!['{'] | T!['('] | T!['[']))
     }
 
-    pub fn right_delimiter_token(&self) -> Option<SyntaxToken> {
+    pub fn right_delimiter_token(&self) -> Option<api::Token> {
         self.syntax()
             .last_child_or_token()?
             .into_token()

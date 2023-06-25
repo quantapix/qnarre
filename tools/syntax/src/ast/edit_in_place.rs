@@ -1,15 +1,16 @@
 use std::iter::{empty, successors};
 
-use core::SyntaxElement;
+use core::api::Elem;
 use parser::{SyntaxKind, T};
 
 use crate::{
     algo::{self, neighbor},
+    api::Node,
+    api::Token,
     ast::{self, edit::IndentLevel, make, HasGenericParams},
     ted::{self, Position},
     AstNode, AstToken, Direction,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode, SyntaxToken,
 };
 
 use super::HasName;
@@ -193,7 +194,7 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
         remove_attrs_and_docs(self.syntax());
 
-        fn remove_attrs_and_docs(node: &SyntaxNode) {
+        fn remove_attrs_and_docs(node: &api::Node) {
             let mut remove_next_ws = false;
             for child in node.children_with_tokens() {
                 match child.kind() {
@@ -502,7 +503,7 @@ impl ast::AssocItemList {
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
             },
         };
-        let elements: Vec<SyntaxElement<_>> = vec![
+        let elements: Vec<api::Elem<_>> = vec![
             make::tokens::whitespace(&format!("{whitespace}{indent}")).into(),
             item.syntax().clone().into(),
         ];
@@ -666,7 +667,7 @@ impl ast::RecordPatFieldList {
     }
 }
 
-fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
+fn get_or_insert_comma_after(syntax: &api::Node) -> api::Token {
     match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
@@ -696,7 +697,7 @@ impl ast::VariantList {
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax())),
             },
         };
-        let elements: Vec<SyntaxElement<_>> = vec![
+        let elements: Vec<api::Elem<_>> = vec![
             make::tokens::whitespace(&format!("{}{indent}", "\n")).into(),
             variant.syntax().clone().into(),
             ast::make::token(T![,]).into(),
@@ -705,7 +706,7 @@ impl ast::VariantList {
     }
 }
 
-fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
+fn normalize_ws_between_braces(node: &api::Node) -> Option<()> {
     let l = node
         .children_with_tokens()
         .filter_map(|it| it.into_token())

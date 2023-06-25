@@ -1,6 +1,8 @@
 //!
 
 use crate::{
+    api::Node,
+    api::Token,
     ast::{
         self,
         operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
@@ -8,7 +10,7 @@ use crate::{
     },
     AstToken,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, T,
+    T,
 };
 
 impl ast::HasAttrs for ast::Expr {}
@@ -140,13 +142,13 @@ impl ast::PrefixExpr {
         Some(res)
     }
 
-    pub fn op_token(&self) -> Option<SyntaxToken> {
+    pub fn op_token(&self) -> Option<api::Token> {
         self.syntax().first_child_or_token()?.into_token()
     }
 }
 
 impl ast::BinExpr {
-    pub fn op_details(&self) -> Option<(SyntaxToken, BinaryOp)> {
+    pub fn op_details(&self) -> Option<(api::Token, BinaryOp)> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -196,7 +198,7 @@ impl ast::BinExpr {
         self.op_details().map(|t| t.1)
     }
 
-    pub fn op_token(&self) -> Option<SyntaxToken> {
+    pub fn op_token(&self) -> Option<api::Token> {
         self.op_details().map(|t| t.0)
     }
 
@@ -217,7 +219,7 @@ impl ast::BinExpr {
 }
 
 impl ast::RangeExpr {
-    fn op_details(&self) -> Option<(usize, SyntaxToken, RangeOp)> {
+    fn op_details(&self) -> Option<(usize, api::Token, RangeOp)> {
         self.syntax()
             .children_with_tokens()
             .enumerate()
@@ -236,7 +238,7 @@ impl ast::RangeExpr {
         self.op_details().map(|t| t.2)
     }
 
-    pub fn op_token(&self) -> Option<SyntaxToken> {
+    pub fn op_token(&self) -> Option<api::Token> {
         self.op_details().map(|t| t.1)
     }
 
@@ -304,7 +306,7 @@ pub enum LiteralKind {
 }
 
 impl ast::Literal {
-    pub fn token(&self) -> SyntaxToken {
+    pub fn token(&self) -> api::Token {
         self.syntax()
             .children_with_tokens()
             .find(|e| e.kind() != ATTR && !e.kind().is_trivia())
@@ -346,10 +348,10 @@ impl ast::Literal {
 }
 
 pub enum BlockModifier {
-    Async(SyntaxToken),
-    Unsafe(SyntaxToken),
-    Try(SyntaxToken),
-    Const(SyntaxToken),
+    Async(api::Token),
+    Unsafe(api::Token),
+    Try(api::Token),
+    Const(api::Token),
     Label(ast::Label),
 }
 
@@ -420,7 +422,7 @@ impl AstNode for CallableExpr {
         ast::CallExpr::can_cast(kind) || ast::MethodCallExpr::can_cast(kind)
     }
 
-    fn cast(syntax: SyntaxNode) -> Option<Self>
+    fn cast(syntax: api::Node) -> Option<Self>
     where
         Self: Sized,
     {
@@ -431,7 +433,7 @@ impl AstNode for CallableExpr {
         }
     }
 
-    fn syntax(&self) -> &SyntaxNode {
+    fn syntax(&self) -> &api::Node {
         match self {
             Self::Call(it) => it.syntax(),
             Self::MethodCall(it) => it.syntax(),

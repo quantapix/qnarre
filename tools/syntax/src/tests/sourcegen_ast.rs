@@ -39,7 +39,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct #name {
-                pub syntax: SyntaxToken,
+                pub syntax: api::Token,
             }
             impl std::fmt::Display for #name {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,10 +48,10 @@ fn generate_tokens(grammar: &AstSrc) -> String {
             }
             impl AstToken for #name {
                 fn can_cast(kind: SyntaxKind) -> bool { kind == #kind }
-                fn cast(syntax: SyntaxToken) -> Option<Self> {
+                fn cast(syntax: api::Token) -> Option<Self> {
                     if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                 }
-                fn syntax(&self) -> &SyntaxToken { &self.syntax }
+                fn syntax(&self) -> &api::Token { &self.syntax }
             }
         }
     });
@@ -60,7 +60,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
         "sourcegen_ast",
         sourcegen::reformat(
             quote! {
-                use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
+                use crate::{SyntaxKind::{self, *}, api::Token, ast::AstToken};
                 #(#tokens)*
             }
             .to_string(),
@@ -117,7 +117,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     #[pretty_doc_comment_placeholder_workaround]
                     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
-                        pub syntax: SyntaxNode,
+                        pub syntax: api::Node,
                     }
 
                     #(#traits)*
@@ -131,10 +131,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
-                        fn cast(syntax: SyntaxNode) -> Option<Self> {
+                        fn cast(syntax: api::Node) -> Option<Self> {
                             if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                         }
-                        fn syntax(&self) -> &SyntaxNode { &self.syntax }
+                        fn syntax(&self) -> &api::Node { &self.syntax }
                     }
                 },
             )
@@ -164,7 +164,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
-                        fn cast(syntax: SyntaxNode) -> Option<Self> {
+                        fn cast(syntax: api::Node) -> Option<Self> {
                             let res = match syntax.kind() {
                                 #(
                                 #kinds => #name::#variants(#variants { syntax }),
@@ -173,7 +173,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             };
                             Some(res)
                         }
-                        fn syntax(&self) -> &SyntaxNode {
+                        fn syntax(&self) -> &api::Node {
                             match self {
                                 #(
                                 #name::#variants(it) => &it.syntax,
@@ -228,7 +228,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     #[pretty_doc_comment_placeholder_workaround]
                     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
-                        pub syntax: SyntaxNode,
+                        pub syntax: api::Node,
                     }
                     impl ast::#trait_name for #name {}
                 },
@@ -245,10 +245,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
-                        fn cast(syntax: SyntaxNode) -> Option<Self> {
+                        fn cast(syntax: api::Node) -> Option<Self> {
                             Self::can_cast(syntax.kind()).then_some(#name { syntax })
                         }
-                        fn syntax(&self) -> &SyntaxNode {
+                        fn syntax(&self) -> &api::Node {
                             &self.syntax
                         }
                     }
@@ -289,7 +289,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let ast = quote! {
         #![allow(non_snake_case)]
         use crate::{
-            SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
+            api::Node, api::Token, SyntaxKind::{self, *},
             ast::{self, AstNode, AstChildren, support},
             T,
         };
@@ -583,7 +583,7 @@ impl Field {
     }
     fn ty(&self) -> proc_macro2::Ident {
         match self {
-            Field::Token(_) => format_ident!("SyntaxToken"),
+            Field::Token(_) => format_ident!("api::Token"),
             Field::Node { ty, .. } => format_ident!("{}", ty),
         }
     }

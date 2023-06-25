@@ -8,9 +8,10 @@
 //! It's suggested to read the conceptual overview of the design
 //! alongside this tutorial:
 //! https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/syntax.md
-
 /// Let's start with defining all kinds of tokens and
 /// composite nodes.
+use syntax::core::{api, green, NodeOrToken};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
@@ -20,7 +21,6 @@ enum SyntaxKind {
     WORD,        // '+', '15'
     WHITESPACE,  // whitespaces is explicit
     ERROR,       // as well as errors
-
     // composite nodes
     LIST, // `(+ 2 3)`
     ATOM, // `+`, `15`, wraps a WORD token
@@ -47,15 +47,11 @@ impl core::Language for Lang {
     }
 }
 
-use core::green::Node;
-use core::green::NodeBuilder;
-
 struct Parse {
     green_node: green::Node,
     #[allow(unused)]
     errors: Vec<String>,
 }
-
 fn parse(text: &str) -> Parse {
     struct Parser {
         tokens: Vec<(SyntaxKind, String)>,
@@ -67,7 +63,6 @@ fn parse(text: &str) -> Parse {
         Eof,
         RParen,
     }
-
     impl Parser {
         fn parse(mut self) -> Parse {
             self.builder.start_node(ROOT.into());
@@ -141,7 +136,6 @@ fn parse(text: &str) -> Parse {
             }
         }
     }
-
     let mut tokens = lex(text);
     tokens.reverse();
     Parser {
@@ -152,15 +146,15 @@ fn parse(text: &str) -> Parse {
     .parse()
 }
 
-type SyntaxNode = core::SyntaxNode<Lang>;
+type Node = core::api::Node<Lang>;
 #[allow(unused)]
-type SyntaxToken = core::SyntaxToken<Lang>;
+type Token = core::api::Token<Lang>;
 #[allow(unused)]
-type SyntaxElement = core::NodeOrToken<SyntaxNode, SyntaxToken>;
+type Elem = core::NodeOrToken<api::Node, api::Token>;
 
 impl Parse {
-    fn syntax(&self) -> SyntaxNode {
-        SyntaxNode::new_root(self.green_node.clone())
+    fn syntax(&self) -> api::Node {
+        api::Node::new_root(self.green_node.clone())
     }
 }
 
@@ -175,7 +169,6 @@ fn test_parser() {
         .children_with_tokens()
         .map(|child| format!("{:?}@{:?}", child.kind(), child.text_range()))
         .collect::<Vec<_>>();
-
     assert_eq!(
         children,
         vec![
@@ -189,15 +182,14 @@ fn test_parser() {
         ]
     );
 }
-
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
         #[derive(PartialEq, Eq, Hash)]
         #[repr(transparent)]
-        struct $ast(SyntaxNode);
+        struct $ast(api::Node);
         impl $ast {
             #[allow(unused)]
-            fn cast(node: SyntaxNode) -> Option<Self> {
+            fn cast(node: api::Node) -> Option<Self> {
                 if node.kind() == $kind {
                     Some(Self(node))
                 } else {
@@ -207,29 +199,24 @@ macro_rules! ast_node {
         }
     };
 }
-
 ast_node!(Root, ROOT);
 ast_node!(Atom, ATOM);
 ast_node!(List, LIST);
-
 #[derive(PartialEq, Eq, Hash)]
 #[repr(transparent)]
-struct Sexp(SyntaxNode);
-
+struct Sexp(api::Node);
 enum SexpKind {
     Atom(Atom),
     List(List),
 }
-
 impl Sexp {
-    fn cast(node: SyntaxNode) -> Option<Self> {
+    fn cast(node: api::Node) -> Option<Self> {
         if Atom::cast(node.clone()).is_some() || List::cast(node.clone()).is_some() {
             Some(Sexp(node))
         } else {
             None
         }
     }
-
     fn kind(&self) -> SexpKind {
         Atom::cast(self.0.clone())
             .map(SexpKind::Atom)
@@ -237,20 +224,17 @@ impl Sexp {
             .unwrap()
     }
 }
-
 impl Root {
     fn sexps(&self) -> impl Iterator<Item = Sexp> + '_ {
         self.0.children().filter_map(Sexp::cast)
     }
 }
-
 enum Op {
     Add,
     Sub,
     Div,
     Mul,
 }
-
 impl Atom {
     fn eval(&self) -> Option<i64> {
         self.text().parse().ok()
@@ -272,7 +256,6 @@ impl Atom {
         }
     }
 }
-
 impl List {
     fn sexps(&self) -> impl Iterator<Item = Sexp> + '_ {
         self.0.children().filter_map(Sexp::cast)
@@ -294,7 +277,6 @@ impl List {
         Some(res)
     }
 }
-
 impl Sexp {
     fn eval(&self) -> Option<i64> {
         match self.kind() {
@@ -303,13 +285,11 @@ impl Sexp {
         }
     }
 }
-
 impl Parse {
     fn root(&self) -> Root {
         Root::cast(self.syntax()).unwrap()
     }
 }
-
 fn main() {
     let sexps = "
 92
@@ -323,7 +303,6 @@ nan
     eprintln!("{:?}", res);
     assert_eq!(res, vec![Some(92), Some(92), None, None, Some(92),])
 }
-
 fn lex(text: &str) -> Vec<(SyntaxKind, String)> {
     fn tok(t: SyntaxKind) -> m_lexer::TokenKind {
         m_lexer::TokenKind(core::SyntaxKind::from(t).0)
@@ -338,7 +317,6 @@ fn lex(text: &str) -> Vec<(SyntaxKind, String)> {
             _ => unreachable!(),
         }
     }
-
     let lexer = m_lexer::LexerBuilder::new()
         .error_token(tok(ERROR))
         .tokens(&[
@@ -348,7 +326,6 @@ fn lex(text: &str) -> Vec<(SyntaxKind, String)> {
             (tok(WHITESPACE), r"\s+"),
         ])
         .build();
-
     lexer
         .tokenize(text)
         .into_iter()

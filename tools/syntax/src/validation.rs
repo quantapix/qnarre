@@ -4,9 +4,10 @@ use rustc_lexer::unescape::{self, unescape_literal, Mode};
 use crate::{
     algo,
     ast::{self, HasAttrs, HasVisibility, IsString},
+    core::api,
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
-    SyntaxNode, SyntaxToken, TextSize, T,
+    TextSize, T,
 };
 
 mod block {
@@ -34,7 +35,7 @@ mod block {
     }
 }
 
-pub fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
+pub fn validate(root: &api::Node) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
     for node in root.descendants() {
         match_ast! {
@@ -201,7 +202,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     }
 }
 
-pub fn validate_block_structure(root: &SyntaxNode) {
+pub fn validate_block_structure(root: &api::Node) {
     let mut stack = Vec::new();
     for node in root.descendants_with_tokens() {
         match node.kind() {
@@ -240,7 +241,7 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
         }
     }
 
-    fn int_token(name_ref: Option<ast::NameRef>) -> Option<SyntaxToken> {
+    fn int_token(name_ref: Option<ast::NameRef>) -> Option<api::Token> {
         name_ref?
             .syntax()
             .first_child_or_token()?
