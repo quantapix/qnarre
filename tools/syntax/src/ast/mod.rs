@@ -47,8 +47,8 @@ pub mod edit {
         }
         pub fn from_element(element: &SyntaxElement) -> IndentLevel {
             match element {
-                rowan::NodeOrToken::Node(it) => IndentLevel::from_node(it),
-                rowan::NodeOrToken::Token(it) => IndentLevel::from_token(it),
+                core::NodeOrToken::Node(it) => IndentLevel::from_node(it),
+                core::NodeOrToken::Token(it) => IndentLevel::from_token(it),
             }
         }
         pub fn from_node(node: &SyntaxNode) -> IndentLevel {
@@ -69,7 +69,7 @@ pub mod edit {
         }
         pub(super) fn increase_indent(self, node: &SyntaxNode) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-                rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+                core::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
             });
             for token in tokens {
@@ -83,7 +83,7 @@ pub mod edit {
         }
         pub(super) fn decrease_indent(self, node: &SyntaxNode) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-                rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+                core::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
             });
             for token in tokens {
@@ -505,7 +505,7 @@ pub mod prec {
         fn is_ordered_before(&self, other: &Expr) -> bool {
             use Expr::*;
             return order(self) < order(other);
-            fn order(this: &Expr) -> rowan::TextSize {
+            fn order(this: &Expr) -> core::TextSize {
                 let token = match this {
                     RangeExpr(e) => e.op_token(),
                     BinExpr(e) => e.op_token(),

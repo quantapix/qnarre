@@ -1,5 +1,5 @@
 use super::{
-    green::{GreenChild, GreenElementRef, GreenNode, GreenNodeData, GreenToken, GreenTokenData, SyntaxKind},
+    green::{self, Kind},
     sll, Delta, Direction, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
 };
 use countme::Count;
@@ -15,8 +15,8 @@ use std::{
 };
 
 enum Green {
-    Node { ptr: Cell<ptr::NonNull<GreenNodeData>> },
-    Token { ptr: ptr::NonNull<GreenTokenData> },
+    Node { ptr: Cell<ptr::NonNull<green::NodeData>> },
+    Token { ptr: ptr::NonNull<green::TokData> },
 }
 
 struct _SyntaxElement;
@@ -125,14 +125,14 @@ impl NodeData {
         self.parent.get().map(|it| unsafe { &*it.as_ptr() })
     }
     #[inline]
-    fn green(&self) -> GreenElementRef<'_> {
+    fn green(&self) -> green::ElemRef<'_> {
         match &self.green {
-            Green::Node { ptr } => GreenElementRef::Node(unsafe { &*ptr.get().as_ptr() }),
-            Green::Token { ptr } => GreenElementRef::Token(unsafe { &*ptr.as_ref() }),
+            Green::Node { ptr } => green::ElemRef::Node(unsafe { &*ptr.get().as_ptr() }),
+            Green::Token { ptr } => green::ElemRef::Token(unsafe { &*ptr.as_ref() }),
         }
     }
     #[inline]
-    fn green_siblings(&self) -> slice::Iter<GreenChild> {
+    fn green_siblings(&self) -> slice::Iter<green::Child> {
         match &self.parent().map(|it| &it.green) {
             Some(Green::Node { ptr }) => unsafe { &*ptr.get().as_ptr() }.children().raw,
             Some(Green::Token { .. }) => {
@@ -172,7 +172,7 @@ impl NodeData {
         TextRange::at(offset, len)
     }
     #[inline]
-    fn kind(&self) -> SyntaxKind {
+    fn kind(&self) -> Kind {
         self.green().kind()
     }
     fn next_sibling(&self) -> Option<SyntaxNode> {
@@ -230,10 +230,10 @@ impl NodeData {
             sll::unlink(&parent.first, self);
             match self.green().to_owned() {
                 NodeOrToken::Node(it) => {
-                    GreenNode::into_raw(it);
+                    green::Node::into_raw(it);
                 },
                 NodeOrToken::Token(it) => {
-                    GreenToken::into_raw(it);
+                    green::Token::into_raw(it);
                 },
             }
             match parent.green() {
@@ -267,8 +267,8 @@ impl NodeData {
             match self.green() {
                 NodeOrToken::Node(green) => {
                     let child_green = match &child.green {
-                        Green::Node { ptr } => GreenNode::from_raw(ptr.get()).into(),
-                        Green::Token { ptr } => GreenToken::from_raw(*ptr).into(),
+                        Green::Node { ptr } => green::Node::from_raw(ptr.get()).into(),
+                        Green::Token { ptr } => green::Token::from_raw(*ptr).into(),
                     };
                     let green = green.insert_child(index, child_green);
                     self.respine(green);
@@ -277,7 +277,7 @@ impl NodeData {
             }
         }
     }
-    unsafe fn respine(&self, mut new_green: GreenNode) {
+    unsafe fn respine(&self, mut new_green: green::Node) {
         let mut node = self;
         loop {
             let old_green = match &node.green {
@@ -294,7 +294,7 @@ impl NodeData {
                 },
                 None => {
                     mem::forget(new_green);
-                    let _ = GreenNode::from_raw(old_green);
+                    let _ = green::Node::from_raw(old_green);
                     break;
                 },
             }
@@ -317,21 +317,21 @@ pub struct SyntaxNode {
     ptr: ptr::NonNull<NodeData>,
 }
 impl SyntaxNode {
-    pub fn new_root(green: GreenNode) -> SyntaxNode {
-        let green = GreenNode::into_raw(green);
+    pub fn new_root(green: green::Node) -> SyntaxNode {
+        let green = green::Node::into_raw(green);
         let green = Green::Node { ptr: Cell::new(green) };
         SyntaxNode {
             ptr: NodeData::new(None, 0, 0.into(), green, false),
         }
     }
-    pub fn new_root_mut(green: GreenNode) -> SyntaxNode {
-        let green = GreenNode::into_raw(green);
+    pub fn new_root_mut(green: green::Node) -> SyntaxNode {
+        let green = green::Node::into_raw(green);
         let green = Green::Node { ptr: Cell::new(green) };
         SyntaxNode {
             ptr: NodeData::new(None, 0, 0.into(), green, true),
         }
     }
-    fn new_child(green: &GreenNodeData, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxNode {
+    fn new_child(green: &green::NodeData, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxNode {
         let mutable = parent.data().mutable;
         let green = Green::Node {
             ptr: Cell::new(green.into()),
@@ -357,7 +357,7 @@ impl SyntaxNode {
     fn data(&self) -> &NodeData {
         unsafe { self.ptr.as_ref() }
     }
-    pub fn replace_with(&self, replacement: GreenNode) -> GreenNode {
+    pub fn replace_with(&self, replacement: green::Node) -> green::Node {
         assert_eq!(self.kind(), replacement.kind());
         match &self.parent() {
             None => replacement,
@@ -370,7 +370,7 @@ impl SyntaxNode {
         }
     }
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         self.data().kind()
     }
     #[inline]
@@ -390,7 +390,7 @@ impl SyntaxNode {
         SyntaxText::new(self.clone())
     }
     #[inline]
-    pub fn green(&self) -> Cow<'_, GreenNodeData> {
+    pub fn green(&self) -> Cow<'_, green::NodeData> {
         let green_ref = self.green_ref();
         match self.data().mutable {
             false => Cow::Borrowed(green_ref),
@@ -398,7 +398,7 @@ impl SyntaxNode {
         }
     }
     #[inline]
-    fn green_ref(&self) -> &GreenNodeData {
+    fn green_ref(&self) -> &green::NodeData {
         self.data().green().into_node().unwrap()
     }
     #[inline]
@@ -645,7 +645,7 @@ pub struct SyntaxToken {
     ptr: ptr::NonNull<NodeData>,
 }
 impl SyntaxToken {
-    fn new(green: &GreenTokenData, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxToken {
+    fn new(green: &green::TokData, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxToken {
         let mutable = parent.data().mutable;
         let green = Green::Token { ptr: green.into() };
         SyntaxToken {
@@ -656,7 +656,7 @@ impl SyntaxToken {
     fn data(&self) -> &NodeData {
         unsafe { self.ptr.as_ref() }
     }
-    pub fn replace_with(&self, replacement: GreenToken) -> GreenNode {
+    pub fn replace_with(&self, replacement: green::Token) -> green::Node {
         assert_eq!(self.kind(), replacement.kind());
         let parent = self.parent().unwrap();
         let me: u32 = self.data().index();
@@ -664,7 +664,7 @@ impl SyntaxToken {
         parent.replace_with(new_parent)
     }
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         self.data().kind()
     }
     #[inline]
@@ -690,7 +690,7 @@ impl SyntaxToken {
         }
     }
     #[inline]
-    pub fn green(&self) -> &GreenTokenData {
+    pub fn green(&self) -> &green::TokData {
         self.data().green().into_token().unwrap()
     }
     #[inline]
@@ -774,7 +774,7 @@ impl fmt::Display for SyntaxToken {
 
 pub type SyntaxElement = NodeOrToken<SyntaxNode, SyntaxToken>;
 impl SyntaxElement {
-    fn new(element: GreenElementRef<'_>, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxElement {
+    fn new(element: green::ElemRef<'_>, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxElement {
         match element {
             NodeOrToken::Node(node) => SyntaxNode::new_child(node, parent, index as u32, offset).into(),
             NodeOrToken::Token(token) => SyntaxToken::new(token, parent, index as u32, offset).into(),
@@ -795,7 +795,7 @@ impl SyntaxElement {
         }
     }
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         match self {
             NodeOrToken::Node(it) => it.kind(),
             NodeOrToken::Token(it) => it.kind(),
@@ -1037,10 +1037,10 @@ unsafe fn free(mut data: ptr::NonNull<NodeData>) {
             None => {
                 match &node.green {
                     Green::Node { ptr } => {
-                        let _ = GreenNode::from_raw(ptr.get());
+                        let _ = green::Node::from_raw(ptr.get());
                     },
                     Green::Token { ptr } => {
-                        let _ = GreenToken::from_raw(*ptr);
+                        let _ = green::Token::from_raw(*ptr);
                     },
                 }
                 break;

@@ -1,4 +1,4 @@
-use super::{green::*, *};
+use super::*;
 use std::{borrow::Cow, fmt, iter, marker::PhantomData, ops::Range};
 
 pub trait Language: Sized + Copy + fmt::Debug + Eq + Ord + std::hash::Hash {
@@ -45,11 +45,11 @@ pub struct SyntaxNode<L: Language> {
     _p: PhantomData<L>,
 }
 impl<L: Language> SyntaxNode<L> {
-    pub fn new_root(green: GreenNode) -> SyntaxNode<L> {
-        SyntaxNode::from(cursor::SyntaxNode::new_root(green))
+    pub fn new_root(x: green::Node) -> SyntaxNode<L> {
+        SyntaxNode::from(cursor::SyntaxNode::new_root(x))
     }
-    pub fn replace_with(&self, replacement: GreenNode) -> GreenNode {
-        self.raw.replace_with(replacement)
+    pub fn replace_with(&self, x: green::Node) -> green::Node {
+        self.raw.replace_with(x)
     }
     pub fn kind(&self) -> L::Kind {
         L::kind_from_raw(self.raw.kind())
@@ -63,7 +63,7 @@ impl<L: Language> SyntaxNode<L> {
     pub fn text(&self) -> SyntaxText {
         self.raw.text()
     }
-    pub fn green(&self) -> Cow<'_, GreenNodeData> {
+    pub fn green(&self) -> Cow<'_, green::NodeData> {
         self.raw.green()
     }
     pub fn parent(&self) -> Option<SyntaxNode<L>> {
@@ -212,7 +212,7 @@ pub struct SyntaxToken<L: Language> {
     _p: PhantomData<L>,
 }
 impl<L: Language> SyntaxToken<L> {
-    pub fn replace_with(&self, new_token: GreenToken) -> GreenNode {
+    pub fn replace_with(&self, new_token: green::Token) -> green::Node {
         self.raw.replace_with(new_token)
     }
     pub fn kind(&self) -> L::Kind {
@@ -227,7 +227,7 @@ impl<L: Language> SyntaxToken<L> {
     pub fn text(&self) -> &str {
         self.raw.text()
     }
-    pub fn green(&self) -> &GreenTokenData {
+    pub fn green(&self) -> &green::TokData {
         self.raw.green()
     }
     pub fn parent(&self) -> Option<SyntaxNode<L>> {

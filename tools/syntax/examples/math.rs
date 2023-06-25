@@ -13,7 +13,7 @@
 //!     - "+" Token(Add)
 //!     - "4" Token(Number)
 
-use rowan::{GreenNodeBuilder, NodeOrToken};
+use core::{green::NodeBuilder, NodeOrToken};
 use std::iter::Peekable;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -34,7 +34,7 @@ enum SyntaxKind {
 }
 use SyntaxKind::*;
 
-impl From<SyntaxKind> for rowan::SyntaxKind {
+impl From<SyntaxKind> for core::SyntaxKind {
     fn from(kind: SyntaxKind) -> Self {
         Self(kind as u16)
     }
@@ -42,25 +42,25 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Lang {}
-impl rowan::Language for Lang {
+impl core::Language for Lang {
     type Kind = SyntaxKind;
-    fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
+    fn kind_from_raw(raw: core::SyntaxKind) -> Self::Kind {
         assert!(raw.0 <= ROOT as u16);
         unsafe { std::mem::transmute::<u16, SyntaxKind>(raw.0) }
     }
-    fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
+    fn kind_to_raw(kind: Self::Kind) -> core::SyntaxKind {
         kind.into()
     }
 }
 
-type SyntaxNode = rowan::SyntaxNode<Lang>;
+type SyntaxNode = core::SyntaxNode<Lang>;
 #[allow(unused)]
-type SyntaxToken = rowan::SyntaxToken<Lang>;
+type SyntaxToken = core::SyntaxToken<Lang>;
 #[allow(unused)]
-type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
+type SyntaxElement = core::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 struct Parser<I: Iterator<Item = (SyntaxKind, String)>> {
-    builder: GreenNodeBuilder<'static>,
+    builder: green::NodeBuilder<'static>,
     iter: Peekable<I>,
 }
 impl<I: Iterator<Item = (SyntaxKind, String)>> Parser<I> {
@@ -82,7 +82,7 @@ impl<I: Iterator<Item = (SyntaxKind, String)>> Parser<I> {
                 self.builder.start_node(ERROR.into());
                 self.bump();
                 self.builder.finish_node();
-            }
+            },
         }
     }
     fn handle_operation(&mut self, tokens: &[SyntaxKind], next: fn(&mut Self)) {
@@ -119,7 +119,7 @@ fn print(indent: usize, element: SyntaxElement) {
             for child in node.children_with_tokens() {
                 print(indent + 2, child);
             }
-        }
+        },
 
         NodeOrToken::Token(token) => println!("- {:?} {:?}", token.text(), kind),
     }
@@ -127,7 +127,7 @@ fn print(indent: usize, element: SyntaxElement) {
 
 fn main() {
     let ast = Parser {
-        builder: GreenNodeBuilder::new(),
+        builder: green::NodeBuilder::new(),
         iter: vec![
             // 1 + 2 * 3 + 4
             (NUMBER, "1".into()),

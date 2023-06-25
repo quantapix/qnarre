@@ -23,7 +23,7 @@ pub use api::{Language, SyntaxElement, SyntaxElementChildren, SyntaxNode, Syntax
 #[allow(unsafe_code)]
 pub mod cursor;
 #[allow(unsafe_code)]
-mod green;
+pub mod green;
 
 pub trait AstNode {
     type Language: Language;
@@ -1033,10 +1033,10 @@ mod sll {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{green::SyntaxKind, GreenNodeBuilder};
+    use super::super::{green::NodeBuilder, green::SyntaxKind};
     use super::*;
     fn build_tree(chunks: &[&str]) -> SyntaxNode {
-        let mut builder = GreenNodeBuilder::new();
+        let mut builder = green::NodeBuilder::new();
         builder.start_node(SyntaxKind(62));
         for &chunk in chunks.iter() {
             builder.token(SyntaxKind(92), chunk.into())

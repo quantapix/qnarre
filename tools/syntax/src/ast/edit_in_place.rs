@@ -1,7 +1,7 @@
 use std::iter::{empty, successors};
 
+use core::SyntaxElement;
 use parser::{SyntaxKind, T};
-use rowan::SyntaxElement;
 
 use crate::{
     algo::{self, neighbor},

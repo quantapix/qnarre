@@ -58,7 +58,6 @@ macro_rules! impl_from {
     }
 }
 
-
 use std::marker::PhantomData;
 use text_edit::Indel;
 use triomphe::Arc;
@@ -74,14 +73,11 @@ pub use crate::{
     token_text::TokenText,
 };
 pub use parser::{SyntaxKind, T};
-pub use rowan::{
-    api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
-};
 pub use smol_str::SmolStr;
 
 pub mod algo;
 pub mod ast;
-pub mod rowan;
+pub mod core;
 #[doc(hidden)]
 pub mod fuzz {
     use crate::{validation, AstNode, SourceFile, TextRange};
@@ -173,7 +169,7 @@ mod parsing {
 
         use crate::{
             parsing::build_tree,
-            syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
+            syntax_node::{green::Node, green::Token, NodeOrToken, SyntaxElement, SyntaxNode},
             SyntaxError,
             SyntaxKind::*,
             TextRange, TextSize, T,
@@ -183,7 +179,7 @@ mod parsing {
             node: &SyntaxNode,
             edit: &Indel,
             errors: Vec<SyntaxError>,
-        ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+        ) -> Option<(green::Node, Vec<SyntaxError>, TextRange)> {
             if let Some((green, new_errors, old_range)) = reparse_token(node, edit) {
                 return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
             }
@@ -192,7 +188,7 @@ mod parsing {
             }
             None
         }
-        fn reparse_token(root: &SyntaxNode, edit: &Indel) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+        fn reparse_token(root: &SyntaxNode, edit: &Indel) -> Option<(green::Node, Vec<SyntaxError>, TextRange)> {
             let prev_token = root.covering_element(edit.delete).as_token()?.clone();
             let prev_token_kind = prev_token.kind();
             match prev_token_kind {
@@ -216,7 +212,7 @@ mod parsing {
                         }
                         new_text.pop();
                     }
-                    let new_token = GreenToken::new(rowan::SyntaxKind(prev_token_kind.into()), &new_text);
+                    let new_token = green::Token::new(core::SyntaxKind(prev_token_kind.into()), &new_text);
                     let range = TextRange::up_to(TextSize::of(&new_text));
                     Some((
                         prev_token.replace_with(new_token),
@@ -227,7 +223,7 @@ mod parsing {
                 _ => None,
             }
         }
-        fn reparse_block(root: &SyntaxNode, edit: &Indel) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+        fn reparse_block(root: &SyntaxNode, edit: &Indel) -> Option<(green::Node, Vec<SyntaxError>, TextRange)> {
             let (node, reparser) = find_reparsable_node(root, edit.delete)?;
             let text = get_text_after_edit(node.clone().into(), edit);
             let lexed = parser::LexedStr::new(text.as_str());
@@ -557,9 +553,9 @@ enum Foo {
         }
     }
     pub use crate::parsing::reparsing::incremental_reparse;
-    use crate::{syntax_node::GreenNode, SyntaxError, SyntaxTreeBuilder};
-    use rowan::TextRange;
-    pub fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
+    use crate::{syntax_node::green::Node, SyntaxError, SyntaxTreeBuilder};
+    use core::TextRange;
+    pub fn parse_text(text: &str) -> (green::Node, Vec<SyntaxError>) {
         let lexed = parser::LexedStr::new(text);
         let parser_input = lexed.to_input();
         let parser_output = parser::TopEntryPoint::SourceFile.parse(&parser_input);
@@ -569,7 +565,7 @@ enum Foo {
     pub fn build_tree(
         lexed: parser::LexedStr<'_>,
         parser_output: parser::Output,
-    ) -> (GreenNode, Vec<SyntaxError>, bool) {
+    ) -> (green::Node, Vec<SyntaxError>, bool) {
         let mut builder = SyntaxTreeBuilder::default();
         let is_eof = lexed.intersperse_trivia(&parser_output, &mut |step| match step {
             parser::StrStep::Token { kind, text } => builder.token(kind, text),
@@ -588,12 +584,12 @@ enum Foo {
 }
 mod ptr {
     use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
-    use rowan::TextRange;
+    use core::TextRange;
     use std::{
         hash::{Hash, Hasher},
         marker::PhantomData,
     };
-    pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<RustLanguage>;
+    pub type SyntaxNodePtr = core::ast::SyntaxNodePtr<RustLanguage>;
     #[derive(Debug)]
     pub struct AstPtr<N: AstNode> {
         raw: SyntaxNodePtr,
@@ -699,33 +695,33 @@ mod syntax_error {
     }
 }
 mod syntax_node {
+    pub use crate::core::*;
     use crate::{Parse, SyntaxError, SyntaxKind, TextSize};
-    pub use rowan::{GreenNode, GreenToken, NodeOrToken};
-    use rowan::{GreenNodeBuilder, Language};
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum RustLanguage {}
     impl Language for RustLanguage {
         type Kind = SyntaxKind;
-        fn kind_from_raw(raw: rowan::SyntaxKind) -> SyntaxKind {
+        fn kind_from_raw(raw: core::SyntaxKind) -> SyntaxKind {
             SyntaxKind::from(raw.0)
         }
-        fn kind_to_raw(kind: SyntaxKind) -> rowan::SyntaxKind {
-            rowan::SyntaxKind(kind.into())
+        fn kind_to_raw(kind: SyntaxKind) -> core::SyntaxKind {
+            core::SyntaxKind(kind.into())
         }
     }
-    pub type SyntaxNode = rowan::SyntaxNode<RustLanguage>;
-    pub type SyntaxToken = rowan::SyntaxToken<RustLanguage>;
-    pub type SyntaxElement = rowan::SyntaxElement<RustLanguage>;
-    pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<RustLanguage>;
-    pub type SyntaxElementChildren = rowan::SyntaxElementChildren<RustLanguage>;
-    pub type PreorderWithTokens = rowan::api::PreorderWithTokens<RustLanguage>;
+    pub type SyntaxNode = core::SyntaxNode<RustLanguage>;
+    pub type SyntaxToken = core::SyntaxToken<RustLanguage>;
+    pub type SyntaxElement = core::SyntaxElement<RustLanguage>;
+    pub type SyntaxNodeChildren = core::SyntaxNodeChildren<RustLanguage>;
+    pub type SyntaxElementChildren = core::SyntaxElementChildren<RustLanguage>;
+    pub type PreorderWithTokens = core::api::PreorderWithTokens<RustLanguage>;
     #[derive(Default)]
     pub struct SyntaxTreeBuilder {
         errors: Vec<SyntaxError>,
-        inner: GreenNodeBuilder<'static>,
+        inner: green::NodeBuilder<'static>,
     }
     impl SyntaxTreeBuilder {
-        pub fn finish_raw(self) -> (GreenNode, Vec<SyntaxError>) {
+        pub fn finish_raw(self) -> (green::Node, Vec<SyntaxError>) {
             let green = self.inner.finish();
             (green, self.errors)
         }
@@ -941,19 +937,19 @@ pub mod ted {
     }
 }
 mod token_text {
-    use rowan::GreenToken;
+    use core::green::Token;
     use smol_str::SmolStr;
     use std::{cmp::Ordering, fmt, ops};
     pub struct TokenText<'a>(pub Repr<'a>);
     pub enum Repr<'a> {
         Borrowed(&'a str),
-        Owned(GreenToken),
+        Owned(green::Token),
     }
     impl<'a> TokenText<'a> {
         pub fn borrowed(text: &'a str) -> Self {
             TokenText(Repr::Borrowed(text))
         }
-        pub fn owned(green: GreenToken) -> Self {
+        pub fn owned(green: green::Token) -> Self {
             TokenText(Repr::Owned(green))
         }
         pub fn as_str(&self) -> &str {
@@ -1081,12 +1077,12 @@ mod validation;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
-    green: GreenNode,
+    green: green::Node,
     errors: Arc<Vec<SyntaxError>>,
     _ty: PhantomData<fn() -> T>,
 }
 impl<T> Parse<T> {
-    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> Parse<T> {
+    fn new(green: green::Node, errors: Vec<SyntaxError>) -> Parse<T> {
         Parse {
             green,
             errors: Arc::new(errors),

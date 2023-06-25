@@ -2,9 +2,9 @@
 
 use std::{borrow::Cow, fmt, iter::successors};
 
+use core::{green::NodeData, green::TokData};
 use itertools::Itertools;
 use parser::SyntaxKind;
-use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, SyntaxNode},
@@ -38,7 +38,7 @@ impl ast::NameRef {
 }
 
 fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
-    fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
+    fn first_token(green_ref: &green::NodeData) -> &green::TokData {
         green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
     }
 

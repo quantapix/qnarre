@@ -444,8 +444,8 @@ pub fn hacky_block_expr(
     let mut buf = "{\n".to_string();
     for node_or_token in elements.into_iter() {
         match node_or_token {
-            rowan::NodeOrToken::Node(n) => format_to!(buf, "    {n}\n"),
-            rowan::NodeOrToken::Token(t) => {
+            core::NodeOrToken::Node(n) => format_to!(buf, "    {n}\n"),
+            core::NodeOrToken::Token(t) => {
                 let kind = t.kind();
                 if kind == SyntaxKind::COMMENT {
                     format_to!(buf, "    {t}\n")

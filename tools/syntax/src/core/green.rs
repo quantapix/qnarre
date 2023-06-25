@@ -12,35 +12,35 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SyntaxKind(pub u16);
+pub struct Kind(pub u16);
 
 #[derive(Clone, Copy, Debug)]
 pub struct Checkpoint(usize);
 
 #[derive(Default, Debug)]
-pub struct GreenNodeBuilder<'cache> {
+pub struct NodeBuilder<'cache> {
     cache: CowMut<'cache, NodeCache>,
-    parents: Vec<(SyntaxKind, usize)>,
-    children: Vec<(u64, GreenElement)>,
+    parents: Vec<(Kind, usize)>,
+    children: Vec<(u64, Elem)>,
 }
-impl GreenNodeBuilder<'_> {
-    pub fn new() -> GreenNodeBuilder<'static> {
-        GreenNodeBuilder::default()
+impl NodeBuilder<'_> {
+    pub fn new() -> NodeBuilder<'static> {
+        NodeBuilder::default()
     }
-    pub fn with_cache(cache: &mut NodeCache) -> GreenNodeBuilder<'_> {
-        GreenNodeBuilder {
+    pub fn with_cache(cache: &mut NodeCache) -> NodeBuilder<'_> {
+        NodeBuilder {
             cache: CowMut::Borrowed(cache),
             parents: Vec::new(),
             children: Vec::new(),
         }
     }
     #[inline]
-    pub fn token(&mut self, kind: SyntaxKind, text: &str) {
+    pub fn token(&mut self, kind: Kind, text: &str) {
         let (hash, token) = self.cache.token(kind, text);
         self.children.push((hash, token.into()));
     }
     #[inline]
-    pub fn start_node(&mut self, kind: SyntaxKind) {
+    pub fn start_node(&mut self, kind: Kind) {
         let len = self.children.len();
         self.parents.push((kind, len));
     }
@@ -55,7 +55,7 @@ impl GreenNodeBuilder<'_> {
         Checkpoint(self.children.len())
     }
     #[inline]
-    pub fn start_node_at(&mut self, checkpoint: Checkpoint, kind: SyntaxKind) {
+    pub fn start_node_at(&mut self, checkpoint: Checkpoint, kind: Kind) {
         let Checkpoint(checkpoint) = checkpoint;
         assert!(
             checkpoint <= self.children.len(),
@@ -70,7 +70,7 @@ impl GreenNodeBuilder<'_> {
         self.parents.push((kind, checkpoint));
     }
     #[inline]
-    pub fn finish(mut self) -> GreenNode {
+    pub fn finish(mut self) -> Node {
         assert_eq!(self.children.len(), 1);
         match self.children.pop().unwrap().1 {
             NodeOrToken::Node(node) => node,
@@ -80,29 +80,29 @@ impl GreenNodeBuilder<'_> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GreenNodeHead {
-    kind: SyntaxKind,
+struct NodeHead {
+    kind: Kind,
     text_len: TextSize,
-    _c: Count<GreenNode>,
+    _c: Count<Node>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GreenChild {
-    Node { rel_offset: TextSize, node: GreenNode },
-    Token { rel_offset: TextSize, token: GreenToken },
+pub enum Child {
+    Node { rel_offset: TextSize, node: Node },
+    Token { rel_offset: TextSize, token: Token },
 }
-impl GreenChild {
+impl Child {
     #[inline]
-    pub fn as_ref(&self) -> GreenElementRef {
+    pub fn as_ref(&self) -> ElemRef {
         match self {
-            GreenChild::Node { node, .. } => NodeOrToken::Node(node),
-            GreenChild::Token { token, .. } => NodeOrToken::Token(token),
+            Child::Node { node, .. } => NodeOrToken::Node(node),
+            Child::Token { token, .. } => NodeOrToken::Token(token),
         }
     }
     #[inline]
     pub fn rel_offset(&self) -> TextSize {
         match self {
-            GreenChild::Node { rel_offset, .. } | GreenChild::Token { rel_offset, .. } => *rel_offset,
+            Child::Node { rel_offset, .. } | Child::Token { rel_offset, .. } => *rel_offset,
         }
     }
     #[inline]
@@ -113,26 +113,26 @@ impl GreenChild {
 }
 
 #[cfg(target_pointer_width = "64")]
-static_assert!(mem::size_of::<GreenChild>() == mem::size_of::<usize>() * 2);
+static_assert!(mem::size_of::<Child>() == mem::size_of::<usize>() * 2);
 
-type NodeRepr = HeaderSlice<GreenNodeHead, [GreenChild]>;
-type NodeReprThin = HeaderSlice<GreenNodeHead, [GreenChild; 0]>;
+type NodeRepr = HeaderSlice<NodeHead, [Child]>;
+type NodeReprThin = HeaderSlice<NodeHead, [Child; 0]>;
 
 #[repr(transparent)]
-pub struct GreenNodeData {
+pub struct NodeData {
     data: NodeReprThin,
 }
-impl GreenNodeData {
+impl NodeData {
     #[inline]
-    fn header(&self) -> &GreenNodeHead {
+    fn header(&self) -> &NodeHead {
         &self.data.header
     }
     #[inline]
-    fn slice(&self) -> &[GreenChild] {
+    fn slice(&self) -> &[Child] {
         self.data.slice()
     }
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         self.header().kind
     }
     #[inline]
@@ -145,7 +145,7 @@ impl GreenNodeData {
             raw: self.slice().iter(),
         }
     }
-    pub fn child_at_range(&self, rel_range: TextRange) -> Option<(usize, TextSize, GreenElementRef<'_>)> {
+    pub fn child_at_range(&self, rel_range: TextRange) -> Option<(usize, TextSize, ElemRef<'_>)> {
         let idx = self
             .slice()
             .binary_search_by(|it| {
@@ -160,7 +160,7 @@ impl GreenNodeData {
         Some((idx, child.rel_offset(), child.as_ref()))
     }
     #[must_use]
-    pub fn replace_child(&self, index: usize, new_child: GreenElement) -> GreenNode {
+    pub fn replace_child(&self, index: usize, new_child: Elem) -> Node {
         let mut replacement = Some(new_child);
         let children = self.children().enumerate().map(|(i, child)| {
             if i == index {
@@ -169,53 +169,53 @@ impl GreenNodeData {
                 child.to_owned()
             }
         });
-        GreenNode::new(self.kind(), children)
+        Node::new(self.kind(), children)
     }
     #[must_use]
-    pub fn insert_child(&self, index: usize, new_child: GreenElement) -> GreenNode {
+    pub fn insert_child(&self, index: usize, new_child: Elem) -> Node {
         self.splice_children(index..index, iter::once(new_child))
     }
     #[must_use]
-    pub fn remove_child(&self, index: usize) -> GreenNode {
+    pub fn remove_child(&self, index: usize) -> Node {
         self.splice_children(index..=index, iter::empty())
     }
     #[must_use]
-    pub fn splice_children<R, I>(&self, range: R, replace_with: I) -> GreenNode
+    pub fn splice_children<R, I>(&self, range: R, replace_with: I) -> Node
     where
         R: ops::RangeBounds<usize>,
-        I: IntoIterator<Item = GreenElement>,
+        I: IntoIterator<Item = Elem>,
     {
         let mut children: Vec<_> = self.children().map(|it| it.to_owned()).collect();
         children.splice(range, replace_with);
-        GreenNode::new(self.kind(), children)
+        Node::new(self.kind(), children)
     }
 }
-impl PartialEq for GreenNodeData {
+impl PartialEq for NodeData {
     fn eq(&self, other: &Self) -> bool {
         self.header() == other.header() && self.slice() == other.slice()
     }
 }
-impl ToOwned for GreenNodeData {
-    type Owned = GreenNode;
+impl ToOwned for NodeData {
+    type Owned = Node;
     #[inline]
-    fn to_owned(&self) -> GreenNode {
+    fn to_owned(&self) -> Node {
         unsafe {
-            let green = GreenNode::from_raw(ptr::NonNull::from(self));
+            let green = Node::from_raw(ptr::NonNull::from(self));
             let green = ManuallyDrop::new(green);
-            GreenNode::clone(&green)
+            Node::clone(&green)
         }
     }
 }
-impl fmt::Debug for GreenNodeData {
+impl fmt::Debug for NodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenNode")
+        f.debug_struct("Node")
             .field("kind", &self.kind())
             .field("text_len", &self.text_len())
             .field("n_children", &self.children().len())
             .finish()
     }
 }
-impl fmt::Display for GreenNodeData {
+impl fmt::Display for NodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for child in self.children() {
             write!(f, "{}", child)?;
@@ -226,14 +226,14 @@ impl fmt::Display for GreenNodeData {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct GreenNode {
-    ptr: ThinArc<GreenNodeHead, GreenChild>,
+pub struct Node {
+    ptr: ThinArc<NodeHead, Child>,
 }
-impl GreenNode {
+impl Node {
     #[inline]
-    pub fn new<I>(kind: SyntaxKind, children: I) -> GreenNode
+    pub fn new<I>(kind: Kind, children: I) -> Node
     where
-        I: IntoIterator<Item = GreenElement>,
+        I: IntoIterator<Item = Elem>,
         I::IntoIter: ExactSizeIterator,
     {
         let mut text_len: TextSize = 0.into();
@@ -241,12 +241,12 @@ impl GreenNode {
             let rel_offset = text_len;
             text_len += el.text_len();
             match el {
-                NodeOrToken::Node(node) => GreenChild::Node { rel_offset, node },
-                NodeOrToken::Token(token) => GreenChild::Token { rel_offset, token },
+                NodeOrToken::Node(node) => Child::Node { rel_offset, node },
+                NodeOrToken::Token(token) => Child::Token { rel_offset, token },
             }
         });
         let data = ThinArc::from_header_and_iter(
-            GreenNodeHead {
+            NodeHead {
                 kind,
                 text_len: 0.into(),
                 _c: Count::new(),
@@ -258,66 +258,66 @@ impl GreenNode {
             Arc::get_mut(&mut data).unwrap().header.text_len = text_len;
             Arc::into_thin(data)
         };
-        GreenNode { ptr: data }
+        Node { ptr: data }
     }
     #[inline]
-    pub fn into_raw(this: GreenNode) -> ptr::NonNull<GreenNodeData> {
+    pub fn into_raw(this: Node) -> ptr::NonNull<NodeData> {
         let green = ManuallyDrop::new(this);
-        let green: &GreenNodeData = &*green;
+        let green: &NodeData = &*green;
         ptr::NonNull::from(&*green)
     }
     #[inline]
-    pub unsafe fn from_raw(ptr: ptr::NonNull<GreenNodeData>) -> GreenNode {
+    pub unsafe fn from_raw(ptr: ptr::NonNull<NodeData>) -> Node {
         let arc = Arc::from_raw(&ptr.as_ref().data as *const NodeReprThin);
-        let arc = mem::transmute::<Arc<NodeReprThin>, ThinArc<GreenNodeHead, GreenChild>>(arc);
-        GreenNode { ptr: arc }
+        let arc = mem::transmute::<Arc<NodeReprThin>, ThinArc<NodeHead, Child>>(arc);
+        Node { ptr: arc }
     }
 }
-impl Borrow<GreenNodeData> for GreenNode {
+impl Borrow<NodeData> for Node {
     #[inline]
-    fn borrow(&self) -> &GreenNodeData {
+    fn borrow(&self) -> &NodeData {
         &*self
     }
 }
-impl From<Cow<'_, GreenNodeData>> for GreenNode {
+impl From<Cow<'_, NodeData>> for Node {
     #[inline]
-    fn from(cow: Cow<'_, GreenNodeData>) -> Self {
+    fn from(cow: Cow<'_, NodeData>) -> Self {
         cow.into_owned()
     }
 }
-impl fmt::Debug for GreenNode {
+impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenNodeData = &*self;
+        let data: &NodeData = &*self;
         fmt::Debug::fmt(data, f)
     }
 }
-impl fmt::Display for GreenNode {
+impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenNodeData = &*self;
+        let data: &NodeData = &*self;
         fmt::Display::fmt(data, f)
     }
 }
-impl ops::Deref for GreenNode {
-    type Target = GreenNodeData;
+impl ops::Deref for Node {
+    type Target = NodeData;
     #[inline]
-    fn deref(&self) -> &GreenNodeData {
+    fn deref(&self) -> &NodeData {
         unsafe {
             let repr: &NodeRepr = &self.ptr;
             let repr: &NodeReprThin = &*(repr as *const NodeRepr as *const NodeReprThin);
-            mem::transmute::<&NodeReprThin, &GreenNodeData>(repr)
+            mem::transmute::<&NodeReprThin, &NodeData>(repr)
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Children<'a> {
-    pub raw: slice::Iter<'a, GreenChild>,
+    pub raw: slice::Iter<'a, Child>,
 }
 impl<'a> Iterator for Children<'a> {
-    type Item = GreenElementRef<'a>;
+    type Item = ElemRef<'a>;
     #[inline]
-    fn next(&mut self) -> Option<GreenElementRef<'a>> {
-        self.raw.next().map(GreenChild::as_ref)
+    fn next(&mut self) -> Option<ElemRef<'a>> {
+        self.raw.next().map(Child::as_ref)
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -332,7 +332,7 @@ impl<'a> Iterator for Children<'a> {
     }
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.raw.nth(n).map(GreenChild::as_ref)
+        self.raw.nth(n).map(Child::as_ref)
     }
     #[inline]
     fn last(mut self) -> Option<Self::Item>
@@ -356,11 +356,11 @@ impl<'a> Iterator for Children<'a> {
 impl<'a> DoubleEndedIterator for Children<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.raw.next_back().map(GreenChild::as_ref)
+        self.raw.next_back().map(Child::as_ref)
     }
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.raw.nth_back(n).map(GreenChild::as_ref)
+        self.raw.nth_back(n).map(Child::as_ref)
     }
     #[inline]
     fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
@@ -383,21 +383,21 @@ impl ExactSizeIterator for Children<'_> {
 impl FusedIterator for Children<'_> {}
 
 #[derive(PartialEq, Eq, Hash)]
-struct GreenTokenHead {
-    kind: SyntaxKind,
-    _c: Count<GreenToken>,
+struct TokHead {
+    kind: Kind,
+    _c: Count<Token>,
 }
 
-type TokRepr = HeaderSlice<GreenTokenHead, [u8]>;
-type TokReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
+type TokRepr = HeaderSlice<TokHead, [u8]>;
+type TokReprThin = HeaderSlice<TokHead, [u8; 0]>;
 
 #[repr(transparent)]
-pub struct GreenTokenData {
+pub struct TokData {
     data: TokReprThin,
 }
-impl GreenTokenData {
+impl TokData {
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         self.data.header.kind
     }
     #[inline]
@@ -409,31 +409,31 @@ impl GreenTokenData {
         TextSize::of(self.text())
     }
 }
-impl PartialEq for GreenTokenData {
+impl PartialEq for TokData {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.text() == other.text()
     }
 }
-impl ToOwned for GreenTokenData {
-    type Owned = GreenToken;
+impl ToOwned for TokData {
+    type Owned = Token;
     #[inline]
-    fn to_owned(&self) -> GreenToken {
+    fn to_owned(&self) -> Token {
         unsafe {
-            let green = GreenToken::from_raw(ptr::NonNull::from(self));
+            let green = Token::from_raw(ptr::NonNull::from(self));
             let green = ManuallyDrop::new(green);
-            GreenToken::clone(&green)
+            Token::clone(&green)
         }
     }
 }
-impl fmt::Debug for GreenTokenData {
+impl fmt::Debug for TokData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenToken")
+        f.debug_struct("Token")
             .field("kind", &self.kind())
             .field("text", &self.text())
             .finish()
     }
 }
-impl fmt::Display for GreenTokenData {
+impl fmt::Display for TokData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.text())
     }
@@ -441,63 +441,63 @@ impl fmt::Display for GreenTokenData {
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
-pub struct GreenToken {
-    ptr: ThinArc<GreenTokenHead, u8>,
+pub struct Token {
+    ptr: ThinArc<TokHead, u8>,
 }
-impl GreenToken {
+impl Token {
     #[inline]
-    pub fn new(kind: SyntaxKind, text: &str) -> GreenToken {
-        let head = GreenTokenHead { kind, _c: Count::new() };
+    pub fn new(kind: Kind, text: &str) -> Token {
+        let head = TokHead { kind, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, text.bytes());
-        GreenToken { ptr }
+        Token { ptr }
     }
     #[inline]
-    pub fn into_raw(this: GreenToken) -> ptr::NonNull<GreenTokenData> {
+    pub fn into_raw(this: Token) -> ptr::NonNull<TokData> {
         let green = ManuallyDrop::new(this);
-        let green: &GreenTokenData = &*green;
+        let green: &TokData = &*green;
         ptr::NonNull::from(&*green)
     }
     #[inline]
-    pub unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenData>) -> GreenToken {
+    pub unsafe fn from_raw(ptr: ptr::NonNull<TokData>) -> Token {
         let arc = Arc::from_raw(&ptr.as_ref().data as *const TokReprThin);
-        let arc = mem::transmute::<Arc<TokReprThin>, ThinArc<GreenTokenHead, u8>>(arc);
-        GreenToken { ptr: arc }
+        let arc = mem::transmute::<Arc<TokReprThin>, ThinArc<TokHead, u8>>(arc);
+        Token { ptr: arc }
     }
 }
-impl Borrow<GreenTokenData> for GreenToken {
+impl Borrow<TokData> for Token {
     #[inline]
-    fn borrow(&self) -> &GreenTokenData {
+    fn borrow(&self) -> &TokData {
         &*self
     }
 }
-impl fmt::Debug for GreenToken {
+impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenData = &*self;
+        let data: &TokData = &*self;
         fmt::Debug::fmt(data, f)
     }
 }
-impl fmt::Display for GreenToken {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenData = &*self;
+        let data: &TokData = &*self;
         fmt::Display::fmt(data, f)
     }
 }
-impl ops::Deref for GreenToken {
-    type Target = GreenTokenData;
+impl ops::Deref for Token {
+    type Target = TokData;
     #[inline]
-    fn deref(&self) -> &GreenTokenData {
+    fn deref(&self) -> &TokData {
         unsafe {
             let repr: &TokRepr = &self.ptr;
             let repr: &TokReprThin = &*(repr as *const TokRepr as *const TokReprThin);
-            mem::transmute::<&TokReprThin, &GreenTokenData>(repr)
+            mem::transmute::<&TokReprThin, &TokData>(repr)
         }
     }
 }
 
-pub type GreenElement = NodeOrToken<GreenNode, GreenToken>;
-impl GreenElement {
+type Elem = NodeOrToken<Node, Token>;
+impl Elem {
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         self.as_deref().kind()
     }
     #[inline]
@@ -505,35 +505,35 @@ impl GreenElement {
         self.as_deref().text_len()
     }
 }
-impl From<GreenNode> for GreenElement {
+impl From<Node> for Elem {
     #[inline]
-    fn from(node: GreenNode) -> GreenElement {
+    fn from(node: Node) -> Elem {
         NodeOrToken::Node(node)
     }
 }
-impl From<GreenToken> for GreenElement {
+impl From<Token> for Elem {
     #[inline]
-    fn from(token: GreenToken) -> GreenElement {
+    fn from(token: Token) -> Elem {
         NodeOrToken::Token(token)
     }
 }
-impl From<Cow<'_, GreenNodeData>> for GreenElement {
+impl From<Cow<'_, NodeData>> for Elem {
     #[inline]
-    fn from(cow: Cow<'_, GreenNodeData>) -> Self {
+    fn from(cow: Cow<'_, NodeData>) -> Self {
         NodeOrToken::Node(cow.into_owned())
     }
 }
 
-pub type GreenElementRef<'a> = NodeOrToken<&'a GreenNodeData, &'a GreenTokenData>;
-impl GreenElementRef<'_> {
-    pub fn to_owned(self) -> GreenElement {
+pub type ElemRef<'a> = NodeOrToken<&'a NodeData, &'a TokData>;
+impl ElemRef<'_> {
+    pub fn to_owned(self) -> Elem {
         match self {
             NodeOrToken::Node(it) => NodeOrToken::Node(it.to_owned()),
             NodeOrToken::Token(it) => NodeOrToken::Token(it.to_owned()),
         }
     }
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> Kind {
         match self {
             NodeOrToken::Node(it) => it.kind(),
             NodeOrToken::Token(it) => it.kind(),
@@ -547,15 +547,15 @@ impl GreenElementRef<'_> {
         }
     }
 }
-impl<'a> From<&'a GreenNode> for GreenElementRef<'a> {
+impl<'a> From<&'a Node> for ElemRef<'a> {
     #[inline]
-    fn from(node: &'a GreenNode) -> GreenElementRef<'a> {
+    fn from(node: &'a Node) -> ElemRef<'a> {
         NodeOrToken::Node(node)
     }
 }
-impl<'a> From<&'a GreenToken> for GreenElementRef<'a> {
+impl<'a> From<&'a Token> for ElemRef<'a> {
     #[inline]
-    fn from(token: &'a GreenToken) -> GreenElementRef<'a> {
+    fn from(token: &'a Token) -> ElemRef<'a> {
         NodeOrToken::Token(token)
     }
 }
@@ -567,19 +567,13 @@ struct NoHash<T>(T);
 
 #[derive(Default, Debug)]
 pub struct NodeCache {
-    nodes: HashMap<NoHash<GreenNode>, ()>,
-    tokens: HashMap<NoHash<GreenToken>, ()>,
+    nodes: HashMap<NoHash<Node>, ()>,
+    tokens: HashMap<NoHash<Token>, ()>,
 }
 impl NodeCache {
-    pub fn node(
-        &mut self,
-        kind: SyntaxKind,
-        children: &mut Vec<(u64, GreenElement)>,
-        first_child: usize,
-    ) -> (u64, GreenNode) {
-        let build_node = move |children: &mut Vec<(u64, GreenElement)>| {
-            GreenNode::new(kind, children.drain(first_child..).map(|(_, it)| it))
-        };
+    pub fn node(&mut self, kind: Kind, children: &mut Vec<(u64, Elem)>, first_child: usize) -> (u64, Node) {
+        let build_node =
+            move |children: &mut Vec<(u64, Elem)>| Node::new(kind, children.drain(first_child..).map(|(_, it)| it));
         let children_ref = &children[first_child..];
         if children_ref.len() > 3 {
             let node = build_node(children);
@@ -619,7 +613,7 @@ impl NodeCache {
         };
         (hash, node)
     }
-    pub fn token(&mut self, kind: SyntaxKind, text: &str) -> (u64, GreenToken) {
+    pub fn token(&mut self, kind: Kind, text: &str) -> (u64, Token) {
         let hash = {
             let mut h = FxHasher::default();
             kind.hash(&mut h);
@@ -633,7 +627,7 @@ impl NodeCache {
         let token = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0.clone(),
             RawEntryMut::Vacant(entry) => {
-                let token = GreenToken::new(kind, text);
+                let token = Token::new(kind, text);
                 entry.insert_with_hasher(hash, NoHash(token.clone()), (), |t| token_hash(&t.0));
                 token
             },
@@ -642,13 +636,13 @@ impl NodeCache {
     }
 }
 
-fn token_hash(token: &GreenTokenData) -> u64 {
+fn token_hash(token: &TokData) -> u64 {
     let mut h = FxHasher::default();
     token.kind().hash(&mut h);
     token.text().hash(&mut h);
     h.finish()
 }
-fn node_hash(node: &GreenNodeData) -> u64 {
+fn node_hash(node: &NodeData) -> u64 {
     let mut h = FxHasher::default();
     node.kind().hash(&mut h);
     for child in node.children() {
@@ -660,10 +654,10 @@ fn node_hash(node: &GreenNodeData) -> u64 {
     }
     h.finish()
 }
-fn element_id(elem: GreenElementRef<'_>) -> *const () {
+fn element_id(elem: ElemRef<'_>) -> *const () {
     match elem {
-        NodeOrToken::Node(it) => it as *const GreenNodeData as *const (),
-        NodeOrToken::Token(it) => it as *const GreenTokenData as *const (),
+        NodeOrToken::Node(it) => it as *const NodeData as *const (),
+        NodeOrToken::Token(it) => it as *const TokData as *const (),
     }
 }
 
@@ -673,15 +667,15 @@ mod tests {
     #[test]
     fn assert_send_sync() {
         fn f<T: Send + Sync>() {}
-        f::<GreenNode>();
-        f::<GreenToken>();
-        f::<GreenElement>();
+        f::<Node>();
+        f::<Token>();
+        f::<Elem>();
     }
     #[test]
     fn test_size_of() {
         use std::mem::size_of;
-        eprintln!("GreenNode          {}", size_of::<GreenNode>());
-        eprintln!("GreenToken         {}", size_of::<GreenToken>());
-        eprintln!("GreenElement       {}", size_of::<GreenElement>());
+        eprintln!("Node          {}", size_of::<Node>());
+        eprintln!("Token         {}", size_of::<Token>());
+        eprintln!("Elem       {}", size_of::<Elem>());
     }
 }

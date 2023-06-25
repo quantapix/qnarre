@@ -28,81 +28,49 @@ enum SyntaxKind {
 }
 use SyntaxKind::*;
 
-/// Some boilerplate is needed, as rowan settled on using its own
-/// `struct SyntaxKind(u16)` internally, instead of accepting the
-/// user's `enum SyntaxKind` as a type parameter.
-///
-/// First, to easily pass the enum variants into rowan via `.into()`:
-impl From<SyntaxKind> for rowan::SyntaxKind {
+impl From<SyntaxKind> for core::SyntaxKind {
     fn from(kind: SyntaxKind) -> Self {
         Self(kind as u16)
     }
 }
 
-/// Second, implementing the `Language` trait teaches rowan to convert between
-/// these two SyntaxKind types, allowing for a nicer SyntaxNode API where
-/// "kinds" are values from our `enum SyntaxKind`, instead of plain u16 values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Lang {}
-impl rowan::Language for Lang {
+impl core::Language for Lang {
     type Kind = SyntaxKind;
-    fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
+    fn kind_from_raw(raw: core::SyntaxKind) -> Self::Kind {
         assert!(raw.0 <= ROOT as u16);
         unsafe { std::mem::transmute::<u16, SyntaxKind>(raw.0) }
     }
-    fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
+    fn kind_to_raw(kind: Self::Kind) -> core::SyntaxKind {
         kind.into()
     }
 }
 
-/// GreenNode is an immutable tree, which is cheap to change,
-/// but doesn't contain offsets and parent pointers.
-use rowan::GreenNode;
+use core::green::Node;
+use core::green::NodeBuilder;
 
-/// You can construct GreenNodes by hand, but a builder
-/// is helpful for top-down parsers: it maintains a stack
-/// of currently in-progress nodes
-use rowan::GreenNodeBuilder;
-
-/// The parse results are stored as a "green tree".
-/// We'll discuss working with the results later
 struct Parse {
-    green_node: GreenNode,
+    green_node: green::Node,
     #[allow(unused)]
     errors: Vec<String>,
 }
 
-/// Now, let's write a parser.
-/// Note that `parse` does not return a `Result`:
-/// by design, syntax tree can be built even for
-/// completely invalid source code.
 fn parse(text: &str) -> Parse {
     struct Parser {
-        /// input tokens, including whitespace,
-        /// in *reverse* order.
         tokens: Vec<(SyntaxKind, String)>,
-        /// the in-progress tree.
-        builder: GreenNodeBuilder<'static>,
-        /// the list of syntax errors we've accumulated
-        /// so far.
+        builder: green::NodeBuilder<'static>,
         errors: Vec<String>,
     }
-
-    /// The outcome of parsing a single S-expression
     enum SexpRes {
-        /// An S-expression (i.e. an atom, or a list) was successfully parsed
         Ok,
-        /// Nothing was parsed, as no significant tokens remained
         Eof,
-        /// An unexpected ')' was found
         RParen,
     }
 
     impl Parser {
         fn parse(mut self) -> Parse {
-            // Make sure that the root node covers all source
             self.builder.start_node(ROOT.into());
-            // Parse zero or more S-expressions
             loop {
                 match self.sexp() {
                     SexpRes::Eof => break,
@@ -111,21 +79,19 @@ fn parse(text: &str) -> Parse {
                         self.errors.push("unmatched `)`".to_string());
                         self.bump(); // be sure to chug along in case of error
                         self.builder.finish_node();
-                    }
+                    },
                     SexpRes::Ok => (),
                 }
             }
-            // Don't forget to eat *trailing* whitespace
             self.skip_ws();
-            // Close the root node.
             self.builder.finish_node();
-
-            // Turn the builder into a GreenNode
-            Parse { green_node: self.builder.finish(), errors: self.errors }
+            Parse {
+                green_node: self.builder.finish(),
+                errors: self.errors,
+            }
         }
         fn list(&mut self) {
             assert_eq!(self.current(), Some(L_PAREN));
-            // Start the list node
             self.builder.start_node(LIST.into());
             self.bump(); // '('
             loop {
@@ -133,22 +99,18 @@ fn parse(text: &str) -> Parse {
                     SexpRes::Eof => {
                         self.errors.push("expected `)`".to_string());
                         break;
-                    }
+                    },
                     SexpRes::RParen => {
                         self.bump();
                         break;
-                    }
+                    },
                     SexpRes::Ok => (),
                 }
             }
-            // close the list node
             self.builder.finish_node();
         }
         fn sexp(&mut self) -> SexpRes {
-            // Eat leading whitespace
             self.skip_ws();
-            // Either a list, an atom, a closing paren,
-            // or an eof.
             let t = match self.current() {
                 None => return SexpRes::Eof,
                 Some(R_PAREN) => return SexpRes::RParen,
@@ -160,18 +122,16 @@ fn parse(text: &str) -> Parse {
                     self.builder.start_node(ATOM.into());
                     self.bump();
                     self.builder.finish_node();
-                }
+                },
                 ERROR => self.bump(),
                 _ => unreachable!(),
             }
             SexpRes::Ok
         }
-        /// Advance one token, adding it to the current branch of the tree builder.
         fn bump(&mut self) {
             let (kind, text) = self.tokens.pop().unwrap();
             self.builder.token(kind.into(), text.as_str());
         }
-        /// Peek at the first unprocessed token
         fn current(&self) -> Option<SyntaxKind> {
             self.tokens.last().map(|(kind, _)| *kind)
         }
@@ -184,20 +144,19 @@ fn parse(text: &str) -> Parse {
 
     let mut tokens = lex(text);
     tokens.reverse();
-    Parser { tokens, builder: GreenNodeBuilder::new(), errors: Vec::new() }.parse()
+    Parser {
+        tokens,
+        builder: green::NodeBuilder::new(),
+        errors: Vec::new(),
+    }
+    .parse()
 }
 
-/// To work with the parse results we need a view into the
-/// green tree - the Syntax tree.
-/// It is also immutable, like a GreenNode,
-/// but it contains parent pointers, offsets, and
-/// has identity semantics.
-
-type SyntaxNode = rowan::SyntaxNode<Lang>;
+type SyntaxNode = core::SyntaxNode<Lang>;
 #[allow(unused)]
-type SyntaxToken = rowan::SyntaxToken<Lang>;
+type SyntaxToken = core::SyntaxToken<Lang>;
 #[allow(unused)]
-type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
+type SyntaxElement = core::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 impl Parse {
     fn syntax(&self) -> SyntaxNode {
@@ -205,15 +164,11 @@ impl Parse {
     }
 }
 
-/// Let's check that the parser works as expected
 #[test]
 fn test_parser() {
     let text = "(+ (* 15 2) 62)";
     let node = parse(text).syntax();
-    assert_eq!(
-        format!("{:?}", node),
-        "ROOT@0..15", // root node, spanning 15 bytes
-    );
+    assert_eq!(format!("{:?}", node), "ROOT@0..15",);
     assert_eq!(node.children().count(), 1);
     let list = node.children().next().unwrap();
     let children = list
@@ -226,7 +181,7 @@ fn test_parser() {
         vec![
             "L_PAREN@0..1".to_string(),
             "ATOM@1..2".to_string(),
-            "WHITESPACE@2..3".to_string(), // note, explicit whitespace!
+            "WHITESPACE@2..3".to_string(),
             "LIST@3..11".to_string(),
             "WHITESPACE@11..12".to_string(),
             "ATOM@12..14".to_string(),
@@ -235,18 +190,6 @@ fn test_parser() {
     );
 }
 
-/// So far, we've been working with a homogeneous untyped tree.
-/// It's nice to provide generic tree operations, like traversals,
-/// but it's a bad fit for semantic analysis.
-/// This crate itself does not provide AST facilities directly,
-/// but it is possible to layer AST on top of `SyntaxNode` API.
-/// Let's write a function to evaluate S-expression.
-///
-/// For that, let's define AST nodes.
-/// It'll be quite a bunch of repetitive code, so we'll use a macro.
-///
-/// For a real language, you'd want to generate an AST. I find a
-/// combination of `serde`, `ron` and `tera` crates invaluable for that!
 macro_rules! ast_node {
     ($ast:ident, $kind:ident) => {
         #[derive(PartialEq, Eq, Hash)]
@@ -269,7 +212,6 @@ ast_node!(Root, ROOT);
 ast_node!(Atom, ATOM);
 ast_node!(List, LIST);
 
-// Sexp is slightly different, so let's do it by hand.
 #[derive(PartialEq, Eq, Hash)]
 #[repr(transparent)]
 struct Sexp(SyntaxNode);
@@ -296,8 +238,6 @@ impl Sexp {
     }
 }
 
-// Let's enhance AST nodes with ancillary functions and
-// eval.
 impl Root {
     fn sexps(&self) -> impl Iterator<Item = Sexp> + '_ {
         self.0.children().filter_map(Sexp::cast)
@@ -327,7 +267,7 @@ impl Atom {
     }
     fn text(&self) -> String {
         match self.0.green().children().next() {
-            Some(rowan::NodeOrToken::Token(token)) => token.text().to_string(),
+            Some(core::NodeOrToken::Token(token)) => token.text().to_string(),
             _ => unreachable!(),
         }
     }
@@ -370,7 +310,6 @@ impl Parse {
     }
 }
 
-/// Let's test the eval!
 fn main() {
     let sexps = "
 92
@@ -385,11 +324,9 @@ nan
     assert_eq!(res, vec![Some(92), Some(92), None, None, Some(92),])
 }
 
-/// Split the input string into a flat list of tokens
-/// (such as L_PAREN, WORD, and WHITESPACE)
 fn lex(text: &str) -> Vec<(SyntaxKind, String)> {
     fn tok(t: SyntaxKind) -> m_lexer::TokenKind {
-        m_lexer::TokenKind(rowan::SyntaxKind::from(t).0)
+        m_lexer::TokenKind(core::SyntaxKind::from(t).0)
     }
     fn kind(t: m_lexer::TokenKind) -> SyntaxKind {
         match t.0 {

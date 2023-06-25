@@ -1,4 +1,4 @@
-use rowan::Direction;
+use super::core::Direction;
 use rustc_lexer::unescape::{self, unescape_literal, Mode};
 
 use crate::{
