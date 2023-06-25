@@ -7,12 +7,59 @@
 #![warn(unused_lifetimes)]
 #[allow(unused)]
 
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
+macro_rules! _eprintln {
+    ($($tt:tt)*) => {{
+        if $crate::is_ci() {
+            panic!("Forgot to remove debug-print?")
+        }
+        std::eprintln!($($tt)*)
+    }}
 }
 
+#[macro_export]
+macro_rules! eprintln {
+    ($($tt:tt)*) => { _eprintln!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! format_to {
+    ($buf:expr) => ();
+    ($buf:expr, $lit:literal $($arg:tt)*) => {
+        { use ::std::fmt::Write as _; let _ = ::std::write!($buf, $lit $($arg)*); }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_from {
+    ($($variant:ident $(($($sub_variant:ident),*))?),* for $enum:ident) => {
+        $(
+            impl From<$variant> for $enum {
+                fn from(it: $variant) -> $enum {
+                    $enum::$variant(it)
+                }
+            }
+            $($(
+                impl From<$sub_variant> for $enum {
+                    fn from(it: $sub_variant) -> $enum {
+                        $enum::$variant($variant::$sub_variant(it))
+                    }
+                }
+            )*)?
+        )*
+    };
+    ($($variant:ident$(<$V:ident>)?),* for $enum:ident) => {
+        $(
+            impl$(<$V>)? From<$variant$(<$V>)?> for $enum$(<$V>)? {
+                fn from(it: $variant$(<$V>)?) -> $enum$(<$V>)? {
+                    $enum::$variant(it)
+                }
+            }
+        )*
+    }
+}
+
+
 use std::marker::PhantomData;
-use stdx::format_to;
 use text_edit::Indel;
 use triomphe::Arc;
 

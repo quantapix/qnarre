@@ -1,11 +1,7 @@
-//!
-//!
-use itertools::Itertools;
-use stdx::{format_to, never};
-
 use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use always_assert::never;
+use itertools::Itertools;
 
-///
 pub mod ext {
     use super::*;
 

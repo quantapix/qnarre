@@ -752,14 +752,31 @@ impl<N: AstNode + Clone> Indent for N {}
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::SourceFile;
     use std::fmt;
-
-    use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::SourceFile;
-
-    use super::*;
+    fn trim_indent(mut text: &str) -> String {
+        if text.starts_with('\n') {
+            text = &text[1..];
+        }
+        let indent = text
+            .lines()
+            .filter(|it| !it.trim().is_empty())
+            .map(|it| it.len() - it.trim_start().len())
+            .min()
+            .unwrap_or(0);
+        text.split_inclusive('\n')
+            .map(|line| {
+                if line.len() <= indent {
+                    line.trim_start_matches(' ')
+                } else {
+                    &line[indent..]
+                }
+            })
+            .collect()
+    }
 
     fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
         let parse = SourceFile::parse(text);

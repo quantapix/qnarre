@@ -1,8 +1,6 @@
-use crate::{
-    green::{GreenChild, GreenElementRef, GreenNodeData, GreenTokenData, SyntaxKind},
-    sll,
-    utility_types::Delta,
-    Direction, GreenNode, GreenToken, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
+use super::{
+    green::{GreenChild, GreenElementRef, GreenNode, GreenNodeData, GreenToken, GreenTokenData, SyntaxKind},
+    sll, Delta, Direction, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
 };
 use countme::Count;
 use std::{
@@ -15,11 +13,14 @@ use std::{
     ops::Range,
     ptr, slice,
 };
+
 enum Green {
     Node { ptr: Cell<ptr::NonNull<GreenNodeData>> },
     Token { ptr: ptr::NonNull<GreenTokenData> },
 }
+
 struct _SyntaxElement;
+
 struct NodeData {
     _c: Count<_SyntaxElement>,
     rc: Cell<u32>,
@@ -31,87 +32,6 @@ struct NodeData {
     first: Cell<*const NodeData>,
     next: Cell<*const NodeData>,
     prev: Cell<*const NodeData>,
-}
-unsafe impl sll::Elem for NodeData {
-    fn prev(&self) -> &Cell<*const Self> {
-        &self.prev
-    }
-    fn next(&self) -> &Cell<*const Self> {
-        &self.next
-    }
-    fn key(&self) -> &Cell<u32> {
-        &self.index
-    }
-}
-pub type SyntaxElement = NodeOrToken<SyntaxNode, SyntaxToken>;
-pub struct SyntaxNode {
-    ptr: ptr::NonNull<NodeData>,
-}
-impl Clone for SyntaxNode {
-    #[inline]
-    fn clone(&self) -> Self {
-        self.data().inc_rc();
-        SyntaxNode { ptr: self.ptr }
-    }
-}
-impl Drop for SyntaxNode {
-    #[inline]
-    fn drop(&mut self) {
-        if self.data().dec_rc() {
-            unsafe { free(self.ptr) }
-        }
-    }
-}
-#[derive(Debug)]
-pub struct SyntaxToken {
-    ptr: ptr::NonNull<NodeData>,
-}
-impl Clone for SyntaxToken {
-    #[inline]
-    fn clone(&self) -> Self {
-        self.data().inc_rc();
-        SyntaxToken { ptr: self.ptr }
-    }
-}
-impl Drop for SyntaxToken {
-    #[inline]
-    fn drop(&mut self) {
-        if self.data().dec_rc() {
-            unsafe { free(self.ptr) }
-        }
-    }
-}
-#[inline(never)]
-unsafe fn free(mut data: ptr::NonNull<NodeData>) {
-    loop {
-        debug_assert_eq!(data.as_ref().rc.get(), 0);
-        debug_assert!(data.as_ref().first.get().is_null());
-        let node = Box::from_raw(data.as_ptr());
-        match node.parent.take() {
-            Some(parent) => {
-                debug_assert!(parent.as_ref().rc.get() > 0);
-                if node.mutable {
-                    sll::unlink(&parent.as_ref().first, &*node)
-                }
-                if parent.as_ref().dec_rc() {
-                    data = parent;
-                } else {
-                    break;
-                }
-            },
-            None => {
-                match &node.green {
-                    Green::Node { ptr } => {
-                        let _ = GreenNode::from_raw(ptr.get());
-                    },
-                    Green::Token { ptr } => {
-                        let _ = GreenToken::from_raw(*ptr);
-                    },
-                }
-                break;
-            },
-        }
-    }
 }
 impl NodeData {
     #[inline]
@@ -380,6 +300,21 @@ impl NodeData {
             }
         }
     }
+}
+unsafe impl sll::Elem for NodeData {
+    fn prev(&self) -> &Cell<*const Self> {
+        &self.prev
+    }
+    fn next(&self) -> &Cell<*const Self> {
+        &self.next
+    }
+    fn key(&self) -> &Cell<u32> {
+        &self.index
+    }
+}
+
+pub struct SyntaxNode {
+    ptr: ptr::NonNull<NodeData>,
 }
 impl SyntaxNode {
     pub fn new_root(green: GreenNode) -> SyntaxNode {
@@ -658,6 +593,57 @@ impl SyntaxNode {
         self.data().attach_child(index, data)
     }
 }
+impl Clone for SyntaxNode {
+    #[inline]
+    fn clone(&self) -> Self {
+        self.data().inc_rc();
+        SyntaxNode { ptr: self.ptr }
+    }
+}
+impl Drop for SyntaxNode {
+    #[inline]
+    fn drop(&mut self) {
+        if self.data().dec_rc() {
+            unsafe { free(self.ptr) }
+        }
+    }
+}
+impl Eq for SyntaxNode {}
+impl PartialEq for SyntaxNode {
+    #[inline]
+    fn eq(&self, other: &SyntaxNode) -> bool {
+        self.data().key() == other.data().key()
+    }
+}
+impl Hash for SyntaxNode {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.data().key().hash(state);
+    }
+}
+impl fmt::Debug for SyntaxNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SyntaxNode")
+            .field("kind", &self.kind())
+            .field("text_range", &self.text_range())
+            .finish()
+    }
+}
+impl fmt::Display for SyntaxNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.preorder_with_tokens()
+            .filter_map(|event| match event {
+                WalkEvent::Enter(NodeOrToken::Token(token)) => Some(token),
+                _ => None,
+            })
+            .try_for_each(|it| fmt::Display::fmt(&it, f))
+    }
+}
+
+#[derive(Debug)]
+pub struct SyntaxToken {
+    ptr: ptr::NonNull<NodeData>,
+}
 impl SyntaxToken {
     fn new(green: &GreenTokenData, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxToken {
         let mutable = parent.data().mutable;
@@ -752,6 +738,41 @@ impl SyntaxToken {
         self.data().detach()
     }
 }
+impl Clone for SyntaxToken {
+    #[inline]
+    fn clone(&self) -> Self {
+        self.data().inc_rc();
+        SyntaxToken { ptr: self.ptr }
+    }
+}
+impl Drop for SyntaxToken {
+    #[inline]
+    fn drop(&mut self) {
+        if self.data().dec_rc() {
+            unsafe { free(self.ptr) }
+        }
+    }
+}
+impl Eq for SyntaxToken {}
+impl PartialEq for SyntaxToken {
+    #[inline]
+    fn eq(&self, other: &SyntaxToken) -> bool {
+        self.data().key() == other.data().key()
+    }
+}
+impl Hash for SyntaxToken {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.data().key().hash(state);
+    }
+}
+impl fmt::Display for SyntaxToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.text(), f)
+    }
+}
+
+pub type SyntaxElement = NodeOrToken<SyntaxNode, SyntaxToken>;
 impl SyntaxElement {
     fn new(element: GreenElementRef<'_>, parent: SyntaxNode, index: u32, offset: TextSize) -> SyntaxElement {
         match element {
@@ -833,55 +854,6 @@ impl SyntaxElement {
         }
     }
 }
-impl PartialEq for SyntaxNode {
-    #[inline]
-    fn eq(&self, other: &SyntaxNode) -> bool {
-        self.data().key() == other.data().key()
-    }
-}
-impl Eq for SyntaxNode {}
-impl Hash for SyntaxNode {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.data().key().hash(state);
-    }
-}
-impl fmt::Debug for SyntaxNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SyntaxNode")
-            .field("kind", &self.kind())
-            .field("text_range", &self.text_range())
-            .finish()
-    }
-}
-impl fmt::Display for SyntaxNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.preorder_with_tokens()
-            .filter_map(|event| match event {
-                WalkEvent::Enter(NodeOrToken::Token(token)) => Some(token),
-                _ => None,
-            })
-            .try_for_each(|it| fmt::Display::fmt(&it, f))
-    }
-}
-impl PartialEq for SyntaxToken {
-    #[inline]
-    fn eq(&self, other: &SyntaxToken) -> bool {
-        self.data().key() == other.data().key()
-    }
-}
-impl Eq for SyntaxToken {}
-impl Hash for SyntaxToken {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.data().key().hash(state);
-    }
-}
-impl fmt::Display for SyntaxToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.text(), f)
-    }
-}
 impl From<SyntaxNode> for SyntaxElement {
     #[inline]
     fn from(node: SyntaxNode) -> SyntaxElement {
@@ -894,6 +866,7 @@ impl From<SyntaxToken> for SyntaxElement {
         NodeOrToken::Token(token)
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct SyntaxNodeChildren {
     next: Option<SyntaxNode>,
@@ -914,6 +887,7 @@ impl Iterator for SyntaxNodeChildren {
         })
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct SyntaxElementChildren {
     next: Option<SyntaxElement>,
@@ -934,6 +908,7 @@ impl Iterator for SyntaxElementChildren {
         })
     }
 }
+
 pub struct Preorder {
     start: SyntaxNode,
     next: Option<WalkEvent<SyntaxNode>>,
@@ -987,6 +962,7 @@ impl Iterator for Preorder {
         next
     }
 }
+
 pub struct PreorderWithTokens {
     start: SyntaxElement,
     next: Option<WalkEvent<SyntaxElement>>,
@@ -1037,5 +1013,38 @@ impl Iterator for PreorderWithTokens {
             })
         });
         next
+    }
+}
+
+#[inline(never)]
+unsafe fn free(mut data: ptr::NonNull<NodeData>) {
+    loop {
+        debug_assert_eq!(data.as_ref().rc.get(), 0);
+        debug_assert!(data.as_ref().first.get().is_null());
+        let node = Box::from_raw(data.as_ptr());
+        match node.parent.take() {
+            Some(parent) => {
+                debug_assert!(parent.as_ref().rc.get() > 0);
+                if node.mutable {
+                    sll::unlink(&parent.as_ref().first, &*node)
+                }
+                if parent.as_ref().dec_rc() {
+                    data = parent;
+                } else {
+                    break;
+                }
+            },
+            None => {
+                match &node.green {
+                    Green::Node { ptr } => {
+                        let _ = GreenNode::from_raw(ptr.get());
+                    },
+                    Green::Token { ptr } => {
+                        let _ = GreenToken::from_raw(*ptr);
+                    },
+                }
+                break;
+            },
+        }
     }
 }

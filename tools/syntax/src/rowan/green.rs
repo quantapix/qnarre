@@ -1,9 +1,4 @@
-use super::{
-    arc::{Arc, HeaderSlice, ThinArc},
-    cow_mut::CowMut,
-    utility_types::{static_assert, NodeOrToken},
-    TextRange, TextSize,
-};
+use super::{static_assert, Arc, CowMut, HeaderSlice, NodeOrToken, TextRange, TextSize, ThinArc};
 use countme::Count;
 use hashbrown::hash_map::RawEntryMut;
 use rustc_hash::FxHasher;

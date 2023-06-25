@@ -464,7 +464,7 @@ impl ast::AstNode for NameLike {
 
 const _: () = {
     use ast::{Lifetime, Name, NameRef};
-    stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
+    crate::impl_from!(NameRef, Name, Lifetime for NameLike);
 };
 
 #[derive(Debug, Clone, PartialEq)]

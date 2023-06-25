@@ -22,7 +22,7 @@ text-size = "1.1"
 rustc-hash = "1.1"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 smol_str = "0.2"
-stdx = { path = "../../lib/rust-analyzer/crates/stdx" }
+always-assert = { version = "0.1.2", features = ["log"] }
 
 # parser.workspace = true
 # profile.workspace = true
