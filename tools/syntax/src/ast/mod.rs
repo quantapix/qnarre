@@ -1,17 +1,26 @@
-use crate::{
-    syntax_node::{api::Node, api::NodeChildren, api::Token},
-    SyntaxKind,
+pub use self::{
+    expr_ext::{ArrayExprKind, BlockModifier, CallableExpr, ElseBranch, LiteralKind},
+    generated::{nodes::*, tokens::*},
+    node_ext::{
+        AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
+        StructKind, TraitOrAlias, TypeBoundKind, TypeOrConstParam, VisibilityKind,
+    },
+    operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
+    token_ext::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
+    traits::{
+        AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
+        HasModuleItem, HasName, HasTypeBounds, HasVisibility,
+    },
 };
+use crate::{Node, NodeChildren, SyntaxKind, Token};
 use either::Either;
 use std::marker::PhantomData;
 
 pub mod edit {
     use crate::{
-        api::Elem,
-        api::Node,
-        api::Token,
         ast::{self, make, AstNode},
-        ted, AstToken, NodeOrToken,
+        core::{NodeOrToken, WalkEvent},
+        ted, AstToken, Elem, Node, Token,
     };
     use std::{fmt, iter, ops};
     #[derive(Debug, Clone, Copy)]
@@ -48,19 +57,19 @@ pub mod edit {
         pub fn is_zero(&self) -> bool {
             self.0 == 0
         }
-        pub fn from_element(element: &api::Elem) -> IndentLevel {
+        pub fn from_element(element: &Elem) -> IndentLevel {
             match element {
-                core::NodeOrToken::Node(it) => IndentLevel::from_node(it),
-                core::NodeOrToken::Token(it) => IndentLevel::from_token(it),
+                NodeOrToken::Node(it) => IndentLevel::from_node(it),
+                NodeOrToken::Token(it) => IndentLevel::from_token(it),
             }
         }
-        pub fn from_node(node: &api::Node) -> IndentLevel {
+        pub fn from_node(node: &Node) -> IndentLevel {
             match node.first_token() {
                 Some(it) => Self::from_token(&it),
                 None => IndentLevel(0),
             }
         }
-        pub fn from_token(token: &api::Token) -> IndentLevel {
+        pub fn from_token(token: &Token) -> IndentLevel {
             for ws in prev_tokens(token.clone()).filter_map(ast::Whitespace::cast) {
                 let text = ws.syntax().text();
                 if let Some(pos) = text.rfind('\n') {
@@ -70,9 +79,9 @@ pub mod edit {
             }
             IndentLevel(0)
         }
-        pub(super) fn increase_indent(self, node: &api::Node) {
+        pub fn increase_indent(self, node: &Node) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-                core::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+                WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
             });
             for token in tokens {
@@ -84,9 +93,9 @@ pub mod edit {
                 }
             }
         }
-        pub(super) fn decrease_indent(self, node: &api::Node) {
+        pub fn decrease_indent(self, node: &Node) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-                core::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+                WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
             });
             for token in tokens {
@@ -99,7 +108,7 @@ pub mod edit {
             }
         }
     }
-    fn prev_tokens(token: api::Token) -> impl Iterator<Item = api::Token> {
+    fn prev_tokens(token: Token) -> impl Iterator<Item = Token> {
         iter::successors(Some(token), |token| token.prev_token())
     }
     pub trait AstNodeEdit: AstNode + Clone + Sized {
@@ -108,7 +117,7 @@ pub mod edit {
         }
         #[must_use]
         fn indent(&self, level: IndentLevel) -> Self {
-            fn indent_inner(node: &api::Node, level: IndentLevel) -> api::Node {
+            fn indent_inner(node: &Node, level: IndentLevel) -> Node {
                 let res = node.clone_subtree().clone_for_update();
                 level.increase_indent(&res);
                 res.clone_subtree()
@@ -117,7 +126,7 @@ pub mod edit {
         }
         #[must_use]
         fn dedent(&self, level: IndentLevel) -> Self {
-            fn dedent_inner(node: &api::Node, level: IndentLevel) -> api::Node {
+            fn dedent_inner(node: &Node, level: IndentLevel) -> Node {
                 let res = node.clone_subtree().clone_for_update();
                 level.decrease_indent(&res);
                 res.clone_subtree()
@@ -162,8 +171,7 @@ pub mod nodes;
 #[rustfmt::skip]
 pub mod tokens;
     use crate::{
-        api::Node,
-        AstNode,
+        AstNode, Node,
         SyntaxKind::{self, *},
     };
     pub use nodes::*;
@@ -174,7 +182,7 @@ pub mod tokens;
                 _ => Item::can_cast(kind),
             }
         }
-        fn cast(syntax: api::Node) -> Option<Self> {
+        fn cast(syntax: Node) -> Option<Self> {
             let res = match syntax.kind() {
                 LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
                 EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
@@ -185,7 +193,7 @@ pub mod tokens;
             };
             Some(res)
         }
-        fn syntax(&self) -> &api::Node {
+        fn syntax(&self) -> &Node {
             match self {
                 Stmt::LetStmt(it) => &it.syntax,
                 Stmt::ExprStmt(it) => &it.syntax,
@@ -319,12 +327,11 @@ mod operators {
 }
 pub mod prec {
     use crate::{
-        api::Node,
         ast::{self, BinaryOp, Expr, HasArgList},
-        match_ast, AstNode,
+        match_ast, AstNode, Node,
     };
     impl Expr {
-        pub fn needs_parens_in(&self, parent: api::Node) -> bool {
+        pub fn needs_parens_in(&self, parent: Node) -> bool {
             match_ast! {
                 match parent {
                     ast::Expr(e) => self.needs_parens_in_expr(&e),
@@ -561,11 +568,8 @@ pub mod prec {
 mod token_ext;
 mod traits {
     use crate::{
-        api::Elem,
-        api::Token,
         ast::{self, support, AstChildren, AstNode, AstToken},
-        syntax_node::api::ElemChildren,
-        T,
+        Elem, ElemChildren, Token, T,
     };
     use either::Either;
     pub trait HasName: AstNode {
@@ -608,7 +612,7 @@ mod traits {
         fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
             support::child(self.syntax())
         }
-        fn colon_token(&self) -> Option<api::Token> {
+        fn colon_token(&self) -> Option<Token> {
             support::token(self.syntax(), T![:])
         }
     }
@@ -652,7 +656,7 @@ mod traits {
         }
     }
     pub struct DocCommentIter {
-        iter: api::ElemChildren,
+        iter: ElemChildren,
     }
     impl Iterator for DocCommentIter {
         type Item = ast::Comment;
@@ -665,7 +669,7 @@ mod traits {
         }
     }
     pub struct AttrDocCommentIter {
-        iter: api::ElemChildren,
+        iter: ElemChildren,
     }
     impl AttrDocCommentIter {
         pub fn from_syntax_node(syntax_node: &ast::api::Node) -> AttrDocCommentIter {
@@ -678,35 +682,22 @@ mod traits {
         type Item = Either<ast::Attr, ast::Comment>;
         fn next(&mut self) -> Option<Self::Item> {
             self.iter.by_ref().find_map(|el| match el {
-                api::Elem::Node(node) => ast::Attr::cast(node).map(Either::Left),
-                api::Elem::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
+                Elem::Node(node) => ast::Attr::cast(node).map(Either::Left),
+                Elem::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
             })
         }
     }
     impl<A: HasName, B: HasName> HasName for Either<A, B> {}
 }
-pub use self::{
-    expr_ext::{ArrayExprKind, BlockModifier, CallableExpr, ElseBranch, LiteralKind},
-    generated::{nodes::*, tokens::*},
-    node_ext::{
-        AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
-        StructKind, TraitOrAlias, TypeBoundKind, TypeOrConstParam, VisibilityKind,
-    },
-    operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-    token_ext::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
-    traits::{
-        AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
-        HasModuleItem, HasName, HasTypeBounds, HasVisibility,
-    },
-};
+
 pub trait AstNode {
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;
-    fn cast(syntax: api::Node) -> Option<Self>
+    fn cast(syntax: Node) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &api::Node;
+    fn syntax(&self) -> &Node;
     fn clone_for_update(&self) -> Self
     where
         Self: Sized,
@@ -724,21 +715,21 @@ pub trait AstToken {
     fn can_cast(token: SyntaxKind) -> bool
     where
         Self: Sized;
-    fn cast(syntax: api::Token) -> Option<Self>
+    fn cast(syntax: Token) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &api::Token;
+    fn syntax(&self) -> &Token;
     fn text(&self) -> &str {
         self.syntax().text()
     }
 }
 #[derive(Debug, Clone)]
 pub struct AstChildren<N> {
-    inner: api::NodeChildren,
+    inner: NodeChildren,
     ph: PhantomData<N>,
 }
 impl<N> AstChildren<N> {
-    fn new(parent: &api::Node) -> Self {
+    fn new(parent: &Node) -> Self {
         AstChildren {
             inner: parent.children(),
             ph: PhantomData,
@@ -762,7 +753,7 @@ where
     {
         L::can_cast(kind) || R::can_cast(kind)
     }
-    fn cast(syntax: api::Node) -> Option<Self>
+    fn cast(syntax: Node) -> Option<Self>
     where
         Self: Sized,
     {
@@ -772,7 +763,7 @@ where
             R::cast(syntax).map(Either::Right)
         }
     }
-    fn syntax(&self) -> &api::Node {
+    fn syntax(&self) -> &Node {
         self.as_ref().either(L::syntax, R::syntax)
     }
 }
@@ -783,14 +774,15 @@ where
 {
 }
 mod support {
-    use super::{api::Node, api::Token, AstChildren, AstNode, SyntaxKind};
-    pub(super) fn child<N: AstNode>(parent: &api::Node) -> Option<N> {
+    use super::{AstChildren, AstNode};
+    use crate::{Node, SyntaxKind, Token};
+    pub fn child<N: AstNode>(parent: &Node) -> Option<N> {
         parent.children().find_map(N::cast)
     }
-    pub(super) fn children<N: AstNode>(parent: &api::Node) -> AstChildren<N> {
+    pub fn children<N: AstNode>(parent: &Node) -> AstChildren<N> {
         AstChildren::new(parent)
     }
-    pub(super) fn token(parent: &api::Node, kind: SyntaxKind) -> Option<api::Token> {
+    pub fn token(parent: &Node, kind: SyntaxKind) -> Option<Token> {
         parent
             .children_with_tokens()
             .filter_map(|it| it.into_token())

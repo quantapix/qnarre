@@ -7,18 +7,14 @@
 #![warn(unused_lifetimes)]
 pub use crate::{
     ast::{AstNode, AstToken},
-    core::api,
-    core::green,
+    core::{api, green, TextRange, TextSize},
     ptr::{AstPtr, SyntaxNodePtr},
-    syntax_error::SyntaxError,
-    syntax_node::{
-        api::Elem, api::ElemChildren, api::Node, api::NodeChildren, api::Token, PreorderWithTokens, RustLanguage,
-        SyntaxTreeBuilder,
-    },
     token_text::TokenText,
 };
 pub use parser::{SyntaxKind, T};
 pub use smol_str::SmolStr;
+use std::fmt;
+
 #[allow(unused)]
 use std::marker::PhantomData;
 use text_edit::Indel;
@@ -164,22 +160,21 @@ pub mod hacks {
 }
 mod parsing {
     mod reparsing {
+        use crate::{
+            core::{api, green, TextRange, TextSize},
+            parsing::build_tree,
+            SyntaxErr,
+            SyntaxKind::*,
+            T,
+        };
         use parser::Reparser;
         use text_edit::Indel;
-
-        use crate::{
-            parsing::build_tree,
-            syntax_node::{api::Elem, api::Node, green::Node, green::Token, NodeOrToken},
-            SyntaxError,
-            SyntaxKind::*,
-            TextRange, TextSize, T,
-        };
 
         pub fn incremental_reparse(
             node: &api::Node,
             edit: &Indel,
-            errors: Vec<SyntaxError>,
-        ) -> Option<(green::Node, Vec<SyntaxError>, TextRange)> {
+            errors: Vec<SyntaxErr>,
+        ) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
             if let Some((green, new_errors, old_range)) = reparse_token(node, edit) {
                 return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
             }
@@ -188,7 +183,7 @@ mod parsing {
             }
             None
         }
-        fn reparse_token(root: &api::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxError>, TextRange)> {
+        fn reparse_token(root: &api::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
             let prev_token = root.covering_element(edit.delete).as_token()?.clone();
             let prev_token_kind = prev_token.kind();
             match prev_token_kind {
@@ -216,14 +211,14 @@ mod parsing {
                     let range = TextRange::up_to(TextSize::of(&new_text));
                     Some((
                         prev_token.replace_with(new_token),
-                        new_err.into_iter().map(|msg| SyntaxError::new(msg, range)).collect(),
+                        new_err.into_iter().map(|msg| SyntaxErr::new(msg, range)).collect(),
                         prev_token.text_range(),
                     ))
                 },
                 _ => None,
             }
         }
-        fn reparse_block(root: &api::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxError>, TextRange)> {
+        fn reparse_block(root: &api::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
             let (node, reparser) = find_reparsable_node(root, edit.delete)?;
             let text = get_text_after_edit(node.clone().into(), edit);
             let lexed = parser::LexedStr::new(text.as_str());
@@ -275,11 +270,11 @@ mod parsing {
             balance == 0
         }
         fn merge_errors(
-            old_errors: Vec<SyntaxError>,
-            new_errors: Vec<SyntaxError>,
+            old_errors: Vec<SyntaxErr>,
+            new_errors: Vec<SyntaxErr>,
             range_before_reparse: TextRange,
             edit: &Indel,
-        ) -> Vec<SyntaxError> {
+        ) -> Vec<SyntaxErr> {
             let mut res = Vec::new();
             for old_err in old_errors {
                 let old_err_range = old_err.range();
@@ -553,9 +548,11 @@ enum Foo {
         }
     }
     pub use crate::parsing::reparsing::incremental_reparse;
-    use crate::{syntax_node::green::Node, SyntaxError, SyntaxTreeBuilder};
-    use core::TextRange;
-    pub fn parse_text(text: &str) -> (green::Node, Vec<SyntaxError>) {
+    use crate::{
+        core::{green, TextRange},
+        SyntaxErr, SyntaxTreeBuilder,
+    };
+    pub fn parse_text(text: &str) -> (green::Node, Vec<SyntaxErr>) {
         let lexed = parser::LexedStr::new(text);
         let parser_input = lexed.to_input();
         let parser_output = parser::TopEntryPoint::SourceFile.parse(&parser_input);
@@ -565,7 +562,7 @@ enum Foo {
     pub fn build_tree(
         lexed: parser::LexedStr<'_>,
         parser_output: parser::Output,
-    ) -> (green::Node, Vec<SyntaxError>, bool) {
+    ) -> (green::Node, Vec<SyntaxErr>, bool) {
         let mut builder = SyntaxTreeBuilder::default();
         let is_eof = lexed.intersperse_trivia(&parser_output, &mut |step| match step {
             parser::StrStep::Token { kind, text } => builder.token(kind, text),
@@ -577,19 +574,18 @@ enum Foo {
         for (i, err) in lexed.errors() {
             let text_range = lexed.text_range(i);
             let text_range = TextRange::new(text_range.start.try_into().unwrap(), text_range.end.try_into().unwrap());
-            errors.push(SyntaxError::new(err, text_range))
+            errors.push(SyntaxErr::new(err, text_range))
         }
         (node, errors, is_eof)
     }
 }
 mod ptr {
-    use crate::{api::Node, syntax_node::RustLanguage, AstNode};
-    use core::TextRange;
+    use crate::{api, core::TextRange, AstNode, Lang};
     use std::{
         hash::{Hash, Hasher},
         marker::PhantomData,
     };
-    pub type SyntaxNodePtr = core::ast::SyntaxNodePtr<RustLanguage>;
+    pub type SyntaxNodePtr = core::ast::SyntaxNodePtr<Lang>;
     #[derive(Debug)]
     pub struct AstPtr<N: AstNode> {
         raw: SyntaxNodePtr,
@@ -668,161 +664,155 @@ mod ptr {
         assert_eq!(field.syntax(), &field_syntax);
     }
 }
-mod syntax_error {
-    use crate::{TextRange, TextSize};
-    use std::fmt;
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-    pub struct SyntaxError(String, TextRange);
-    impl SyntaxError {
-        pub fn new(message: impl Into<String>, range: TextRange) -> Self {
-            Self(message.into(), range)
-        }
-        pub fn new_at_offset(message: impl Into<String>, offset: TextSize) -> Self {
-            Self(message.into(), TextRange::empty(offset))
-        }
-        pub fn range(&self) -> TextRange {
-            self.1
-        }
-        pub fn with_range(mut self, range: TextRange) -> Self {
-            self.1 = range;
-            self
-        }
-    }
-    impl fmt::Display for SyntaxError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-}
-mod syntax_node {
-    pub use crate::core::*;
-    use crate::{Parse, SyntaxError, SyntaxKind, TextSize};
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub enum RustLanguage {}
-    impl Lang for RustLanguage {
-        type Kind = SyntaxKind;
-        fn kind_from_raw(raw: core::SyntaxKind) -> SyntaxKind {
-            SyntaxKind::from(raw.0)
-        }
-        fn kind_to_raw(kind: SyntaxKind) -> core::SyntaxKind {
-            core::SyntaxKind(kind.into())
-        }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SyntaxErr(String, TextRange);
+impl SyntaxErr {
+    pub fn new(message: impl Into<String>, range: TextRange) -> Self {
+        Self(message.into(), range)
     }
-    pub type Node = api::Node<RustLanguage>;
-    pub type Token = api::Token<RustLanguage>;
-    pub type Elem = api::Elem<RustLanguage>;
-    pub type NodeChildren = api::NodeChildren<RustLanguage>;
-    pub type ElemChildren = api::ElemChildren<RustLanguage>;
-    pub type PreorderWithTokens = api::PreorderWithToks<RustLanguage>;
-    #[derive(Default)]
-    pub struct SyntaxTreeBuilder {
-        errors: Vec<SyntaxError>,
-        inner: green::NodeBuilder<'static>,
+    pub fn new_at_offset(message: impl Into<String>, offset: TextSize) -> Self {
+        Self(message.into(), TextRange::empty(offset))
     }
-    impl SyntaxTreeBuilder {
-        pub fn finish_raw(self) -> (green::Node, Vec<SyntaxError>) {
-            let green = self.inner.finish();
-            (green, self.errors)
-        }
-        pub fn finish(self) -> Parse<api::Node> {
-            let (green, errors) = self.finish_raw();
-            #[allow(clippy::overly_complex_bool_expr)]
-            if cfg!(debug_assertions) && false {
-                let node = api::Node::new_root(green.clone());
-                crate::validation::validate_block_structure(&node);
-            }
-            Parse::new(green, errors)
-        }
-        pub fn token(&mut self, kind: SyntaxKind, text: &str) {
-            let kind = RustLanguage::kind_to_raw(kind);
-            self.inner.token(kind, text);
-        }
-        pub fn start_node(&mut self, kind: SyntaxKind) {
-            let kind = RustLanguage::kind_to_raw(kind);
-            self.inner.start_node(kind);
-        }
-        pub fn finish_node(&mut self) {
-            self.inner.finish_node();
-        }
-        pub fn error(&mut self, error: String, text_pos: TextSize) {
-            self.errors.push(SyntaxError::new_at_offset(error, text_pos));
-        }
+    pub fn range(&self) -> TextRange {
+        self.1
+    }
+    pub fn with_range(mut self, range: TextRange) -> Self {
+        self.1 = range;
+        self
     }
 }
+impl fmt::Display for SyntaxErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Lang {}
+impl api::Lang for Lang {
+    type Kind = SyntaxKind;
+    fn kind_from_raw(raw: core::SyntaxKind) -> SyntaxKind {
+        SyntaxKind::from(raw.0)
+    }
+    fn kind_to_raw(kind: SyntaxKind) -> core::SyntaxKind {
+        core::SyntaxKind(kind.into())
+    }
+}
+pub type Node = api::Node<Lang>;
+pub type Token = api::Token<Lang>;
+pub type Elem = api::Elem<Lang>;
+pub type NodeChildren = api::NodeChildren<Lang>;
+pub type ElemChildren = api::ElemChildren<Lang>;
+pub type PreorderWithToks = api::PreorderWithToks<Lang>;
+
+#[derive(Default)]
+pub struct SyntaxTreeBuilder {
+    errors: Vec<SyntaxErr>,
+    inner: green::NodeBuilder<'static>,
+}
+impl SyntaxTreeBuilder {
+    pub fn finish_raw(self) -> (green::Node, Vec<SyntaxErr>) {
+        let green = self.inner.finish();
+        (green, self.errors)
+    }
+    pub fn finish(self) -> Parse<Node> {
+        let (green, errors) = self.finish_raw();
+        #[allow(clippy::overly_complex_bool_expr)]
+        if cfg!(debug_assertions) && false {
+            let node = api::Node::new_root(green.clone());
+            crate::validation::validate_block_structure(&node);
+        }
+        Parse::new(green, errors)
+    }
+    pub fn token(&mut self, kind: SyntaxKind, text: &str) {
+        let kind = Lang::kind_to_raw(kind);
+        self.inner.token(kind, text);
+    }
+    pub fn start_node(&mut self, kind: SyntaxKind) {
+        let kind = Lang::kind_to_raw(kind);
+        self.inner.start_node(kind);
+    }
+    pub fn finish_node(&mut self) {
+        self.inner.finish_node();
+    }
+    pub fn error(&mut self, error: String, text_pos: TextSize) {
+        self.errors.push(SyntaxErr::new_at_offset(error, text_pos));
+    }
+}
+
 pub mod ted {
     use crate::{
         ast::{self, edit::IndentLevel, make, AstNode},
-        core::*,
-        SyntaxKind,
+        SyntaxKind, *,
     };
     use parser::T;
     use std::{mem, ops::RangeInclusive};
-    pub trait Element {
+    pub trait Elem {
         fn syntax_element(self) -> api::Elem;
     }
-    impl<E: Element + Clone> Element for &'_ E {
+    impl<E: Elem + Clone> Elem for &'_ E {
         fn syntax_element(self) -> api::Elem {
             self.clone().syntax_element()
         }
     }
-    impl Element for api::Elem {
+    impl Elem for api::Elem {
         fn syntax_element(self) -> api::Elem {
             self
         }
     }
-    impl Element for api::Node {
+    impl Elem for api::Node {
         fn syntax_element(self) -> api::Elem {
             self.into()
         }
     }
-    impl Element for api::Token {
+    impl Elem for api::Token {
         fn syntax_element(self) -> api::Elem {
             self.into()
         }
     }
     #[derive(Debug)]
-    pub struct Position {
-        repr: PositionRepr,
+    pub struct Pos {
+        repr: PosRepr,
     }
     #[derive(Debug)]
-    enum PositionRepr {
-        FirstChild(api::Node),
-        After(api::Elem),
+    enum PosRepr {
+        FirstChild(Node),
+        After(Elem),
     }
-    impl Position {
-        pub fn after(elem: impl Element) -> Position {
-            let repr = PositionRepr::After(elem.syntax_element());
-            Position { repr }
+    impl Pos {
+        pub fn after(elem: impl Elem) -> Pos {
+            let repr = PosRepr::After(elem.syntax_element());
+            Pos { repr }
         }
-        pub fn before(elem: impl Element) -> Position {
+        pub fn before(elem: impl Elem) -> Pos {
             let elem = elem.syntax_element();
             let repr = match elem.prev_sibling_or_token() {
-                Some(it) => PositionRepr::After(it),
-                None => PositionRepr::FirstChild(elem.parent().unwrap()),
+                Some(it) => PosRepr::After(it),
+                None => PosRepr::FirstChild(elem.parent().unwrap()),
             };
-            Position { repr }
+            Pos { repr }
         }
-        pub fn first_child_of(node: &(impl Into<api::Node> + Clone)) -> Position {
-            let repr = PositionRepr::FirstChild(node.clone().into());
-            Position { repr }
+        pub fn first_child_of(node: &(impl Into<api::Node> + Clone)) -> Pos {
+            let repr = PosRepr::FirstChild(node.clone().into());
+            Pos { repr }
         }
-        pub fn last_child_of(node: &(impl Into<api::Node> + Clone)) -> Position {
+        pub fn last_child_of(node: &(impl Into<api::Node> + Clone)) -> Pos {
             let node = node.clone().into();
             let repr = match node.last_child_or_token() {
-                Some(it) => PositionRepr::After(it),
-                None => PositionRepr::FirstChild(node),
+                Some(it) => PosRepr::After(it),
+                None => PosRepr::FirstChild(node),
             };
-            Position { repr }
+            Pos { repr }
         }
     }
-    pub fn insert(position: Position, elem: impl Element) {
+    pub fn insert(position: Pos, elem: impl Elem) {
         insert_all(position, vec![elem.syntax_element()]);
     }
-    pub fn insert_raw(position: Position, elem: impl Element) {
+    pub fn insert_raw(position: Pos, elem: impl Elem) {
         insert_all_raw(position, vec![elem.syntax_element()]);
     }
-    pub fn insert_all(position: Position, mut elements: Vec<api::Elem>) {
+    pub fn insert_all(position: Pos, mut elements: Vec<api::Elem>) {
         if let Some(first) = elements.first() {
             if let Some(ws) = ws_before(&position, first) {
                 elements.insert(0, ws.into());
@@ -835,14 +825,14 @@ pub mod ted {
         }
         insert_all_raw(position, elements);
     }
-    pub fn insert_all_raw(position: Position, elements: Vec<api::Elem>) {
+    pub fn insert_all_raw(position: Pos, elements: Vec<api::Elem>) {
         let (parent, index) = match position.repr {
-            PositionRepr::FirstChild(parent) => (parent, 0),
-            PositionRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
+            PosRepr::FirstChild(parent) => (parent, 0),
+            PosRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
         };
         parent.splice_children(index..index, elements);
     }
-    pub fn remove(elem: impl Element) {
+    pub fn remove(elem: impl Elem) {
         elem.syntax_element().detach();
     }
     pub fn remove_all(range: RangeInclusive<api::Elem>) {
@@ -862,10 +852,10 @@ pub mod ted {
             }
         }
     }
-    pub fn replace(old: impl Element, new: impl Element) {
+    pub fn replace(old: impl Elem, new: impl Elem) {
         replace_with_many(old, vec![new.syntax_element()]);
     }
-    pub fn replace_with_many(old: impl Element, new: Vec<api::Elem>) {
+    pub fn replace_with_many(old: impl Elem, new: Vec<api::Elem>) {
         let old = old.syntax_element();
         replace_all(old.clone()..=old, new);
     }
@@ -875,18 +865,18 @@ pub mod ted {
         let parent = range.start().parent().unwrap();
         parent.splice_children(start..end + 1, new);
     }
-    pub fn append_child(node: &(impl Into<api::Node> + Clone), child: impl Element) {
-        let position = Position::last_child_of(node);
+    pub fn append_child(node: &(impl Into<api::Node> + Clone), child: impl Elem) {
+        let position = Pos::last_child_of(node);
         insert(position, child);
     }
-    pub fn append_child_raw(node: &(impl Into<api::Node> + Clone), child: impl Element) {
-        let position = Position::last_child_of(node);
+    pub fn append_child_raw(node: &(impl Into<api::Node> + Clone), child: impl Elem) {
+        let position = Pos::last_child_of(node);
         insert_raw(position, child);
     }
-    fn ws_before(position: &Position, new: &api::Elem) -> Option<api::Token> {
+    fn ws_before(position: &Pos, new: &api::Elem) -> Option<api::Token> {
         let prev = match &position.repr {
-            PositionRepr::FirstChild(_) => return None,
-            PositionRepr::After(it) => it,
+            PosRepr::FirstChild(_) => return None,
+            PosRepr::After(it) => it,
         };
         if prev.kind() == T!['{'] && new.kind() == SyntaxKind::USE {
             if let Some(item_list) = prev.parent().and_then(ast::ItemList::cast) {
@@ -904,10 +894,10 @@ pub mod ted {
         }
         ws_between(prev, new)
     }
-    fn ws_after(position: &Position, new: &api::Elem) -> Option<api::Token> {
+    fn ws_after(position: &Pos, new: &api::Elem) -> Option<api::Token> {
         let next = match &position.repr {
-            PositionRepr::FirstChild(parent) => parent.first_child_or_token()?,
-            PositionRepr::After(sibling) => sibling.next_sibling_or_token()?,
+            PosRepr::FirstChild(parent) => parent.first_child_or_token()?,
+            PosRepr::After(sibling) => sibling.next_sibling_or_token()?,
         };
         ws_between(new, &next)
     }
@@ -938,7 +928,7 @@ pub mod ted {
     }
 }
 mod token_text {
-    use core::green::Token;
+    use crate::core::green;
     use smol_str::SmolStr;
     use std::{cmp::Ordering, fmt, ops};
     pub struct TokenText<'a>(pub Repr<'a>);
@@ -1079,26 +1069,26 @@ mod validation;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
     green: green::Node,
-    errors: Arc<Vec<SyntaxError>>,
+    errors: Arc<Vec<SyntaxErr>>,
     _ty: PhantomData<fn() -> T>,
 }
 impl<T> Parse<T> {
-    fn new(green: green::Node, errors: Vec<SyntaxError>) -> Parse<T> {
+    fn new(green: green::Node, errors: Vec<SyntaxErr>) -> Parse<T> {
         Parse {
             green,
             errors: Arc::new(errors),
             _ty: PhantomData,
         }
     }
-    pub fn syntax_node(&self) -> api::Node {
+    pub fn syntax_node(&self) -> Node {
         api::Node::new_root(self.green.clone())
     }
-    pub fn errors(&self) -> &[SyntaxError] {
+    pub fn errors(&self) -> &[SyntaxErr] {
         &self.errors
     }
 }
 impl<T: AstNode> Parse<T> {
-    pub fn to_syntax(self) -> Parse<api::Node> {
+    pub fn to_syntax(self) -> Parse<Node> {
         Parse {
             green: self.green,
             errors: self.errors,
@@ -1108,7 +1098,7 @@ impl<T: AstNode> Parse<T> {
     pub fn tree(&self) -> T {
         T::cast(self.syntax_node()).unwrap()
     }
-    pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
+    pub fn ok(self) -> Result<T, Arc<Vec<SyntaxErr>>> {
         if self.errors.is_empty() {
             Ok(self.tree())
         } else {
@@ -1116,7 +1106,7 @@ impl<T: AstNode> Parse<T> {
         }
     }
 }
-impl Parse<api::Node> {
+impl Parse<Node> {
     pub fn cast<N: AstNode>(self) -> Option<Parse<N>> {
         if N::cast(self.syntax_node()).is_some() {
             Some(Parse {
@@ -1190,8 +1180,10 @@ macro_rules! match_ast {
         { $catch_all }
     }};
 }
+
 #[test]
 fn api_walkthrough() {
+    use crate::core::{NodeOrToken, WalkEvent};
     use ast::{HasModuleItem, HasName};
     let source_code = "
         fn foo() {
@@ -1294,5 +1286,6 @@ fn api_walkthrough() {
     }
     assert_eq!(exprs_cast, exprs_visit);
 }
+
 #[cfg(test)]
 mod tests;

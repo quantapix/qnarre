@@ -1,4 +1,4 @@
-#![deny(unsafe_code)]
+#![allow(unsafe_code)]
 
 use memoffset::offset_of;
 use std::{
@@ -19,21 +19,20 @@ use std::{
 pub use text_size::{TextLen, TextRange, TextSize};
 
 pub mod api;
-pub use api::{api::Elem, api::ElemChildren, api::Node, api::NodeChildren, api::Token, Lang};
 #[allow(unsafe_code)]
 pub mod cursor;
 #[allow(unsafe_code)]
 pub mod green;
 
 pub trait AstNode {
-    type Language: Lang;
-    fn can_cast(kind: <Self::Language as Lang>::Kind) -> bool
+    type Lang: api::Lang;
+    fn can_cast(kind: <Self::Lang as api::Lang>::Kind) -> bool
     where
         Self: Sized;
-    fn cast(node: api::Node<Self::Language>) -> Option<Self>
+    fn cast(node: api::Node<Self::Lang>) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &api::Node<Self::Language>;
+    fn syntax(&self) -> &api::Node<Self::Lang>;
     fn clone_for_update(&self) -> Self
     where
         Self: Sized,
@@ -49,11 +48,11 @@ pub trait AstNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SyntaxNodePtr<L: Lang> {
+pub struct SyntaxNodePtr<L: api::Lang> {
     kind: L::Kind,
     range: TextRange,
 }
-impl<L: Lang> SyntaxNodePtr<L> {
+impl<L: api::Lang> SyntaxNodePtr<L> {
     pub fn new(node: &api::Node<L>) -> Self {
         Self {
             kind: node.kind(),
@@ -68,7 +67,7 @@ impl<L: Lang> SyntaxNodePtr<L> {
         .find(|it| it.text_range() == self.range && it.kind() == self.kind)
         .unwrap_or_else(|| panic!("can't resolve local ptr to api::Node: {:?}", self))
     }
-    pub fn cast<N: AstNode<Language = L>>(self) -> Option<AstPtr<N>> {
+    pub fn cast<N: AstNode<Lang = L>>(self) -> Option<AstPtr<N>> {
         if !N::can_cast(self.kind) {
             return None;
         }
@@ -81,14 +80,14 @@ impl<L: Lang> SyntaxNodePtr<L> {
         self.range
     }
 }
-impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr<N::Language> {
-    fn from(ptr: AstPtr<N>) -> SyntaxNodePtr<N::Language> {
+impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr<N::Lang> {
+    fn from(ptr: AstPtr<N>) -> SyntaxNodePtr<N::Lang> {
         ptr.raw
     }
 }
 
 pub struct AstPtr<N: AstNode> {
-    raw: SyntaxNodePtr<N::Language>,
+    raw: SyntaxNodePtr<N::Lang>,
 }
 impl<N: AstNode> AstPtr<N> {
     pub fn new(node: &N) -> Self {
@@ -96,13 +95,13 @@ impl<N: AstNode> AstPtr<N> {
             raw: SyntaxNodePtr::new(node.syntax()),
         }
     }
-    pub fn to_node(&self, root: &api::Node<N::Language>) -> N {
+    pub fn to_node(&self, root: &api::Node<N::Lang>) -> N {
         N::cast(self.raw.to_node(root)).unwrap()
     }
-    pub fn syntax_node_ptr(&self) -> SyntaxNodePtr<N::Language> {
+    pub fn syntax_node_ptr(&self) -> SyntaxNodePtr<N::Lang> {
         self.raw.clone()
     }
-    pub fn cast<U: AstNode<Language = N::Language>>(self) -> Option<AstPtr<U>> {
+    pub fn cast<U: AstNode<Lang = N::Lang>>(self) -> Option<AstPtr<U>> {
         if !U::can_cast(self.raw.kind) {
             return None;
         }
@@ -133,11 +132,11 @@ impl<N: AstNode> fmt::Debug for AstPtr<N> {
 
 #[derive(Debug, Clone)]
 pub struct AstChildren<N: AstNode> {
-    inner: api::NodeChildren<N::Language>,
+    inner: api::NodeChildren<N::Lang>,
     ph: PhantomData<N>,
 }
 impl<N: AstNode> AstChildren<N> {
-    fn new(parent: &api::Node<N::Language>) -> Self {
+    fn new(parent: &api::Node<N::Lang>) -> Self {
         AstChildren {
             inner: parent.children(),
             ph: PhantomData,
@@ -152,15 +151,15 @@ impl<N: AstNode> Iterator for AstChildren<N> {
 }
 
 pub mod support {
-    use super::super::{api::Node, api::Token, Language};
     use super::{AstChildren, AstNode};
-    pub fn child<N: AstNode>(parent: &api::Node<N::Language>) -> Option<N> {
+    use crate::core::api;
+    pub fn child<N: AstNode>(parent: &api::Node<N::Lang>) -> Option<N> {
         parent.children().find_map(N::cast)
     }
-    pub fn children<N: AstNode>(parent: &api::Node<N::Language>) -> AstChildren<N> {
+    pub fn children<N: AstNode>(parent: &api::Node<N::Lang>) -> AstChildren<N> {
         AstChildren::new(parent)
     }
-    pub fn token<L: Language>(parent: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
+    pub fn token<L: api::Lang>(parent: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
         parent
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -859,12 +858,9 @@ fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcI
     fake_slice as *mut ArcInner<HeaderSlice<H, [T]>>
 }
 
-#[cfg(feature = "serde1")]
+//#[cfg(feature = "serde1")]
 mod serde_impls {
-    use super::{
-        api::{api::Node, api::Token, Language},
-        NodeOrToken,
-    };
+    use crate::{core::api, core::NodeOrToken};
     use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
     use std::fmt;
 
@@ -884,7 +880,7 @@ mod serde_impls {
             fmt::Debug::fmt(&self.0, f)
         }
     }
-    impl<L: Lang> Serialize for api::Node<L> {
+    impl<L: api::Lang> Serialize for api::Node<L> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -896,7 +892,7 @@ mod serde_impls {
             state.end()
         }
     }
-    impl<L: Lang> Serialize for api::Token<L> {
+    impl<L: api::Lang> Serialize for api::Token<L> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -910,7 +906,7 @@ mod serde_impls {
     }
 
     struct Children<T>(T);
-    impl<L: Lang> Serialize for Children<&'_ api::Node<L>> {
+    impl<L: api::Lang> Serialize for Children<&'_ api::Node<L>> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -1033,13 +1029,13 @@ mod sll {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{green::NodeBuilder, green::SyntaxKind};
     use super::*;
+    use crate::core::green;
     fn build_tree(chunks: &[&str]) -> api::Node {
         let mut builder = green::NodeBuilder::new();
-        builder.start_node(SyntaxKind(62));
+        builder.start_node(green::Kind(62));
         for &chunk in chunks.iter() {
-            builder.token(SyntaxKind(92), chunk.into())
+            builder.token(green::Kind(92), chunk.into())
         }
         builder.finish_node();
         api::Node::new_root(builder.finish())

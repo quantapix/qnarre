@@ -13,7 +13,7 @@ use expect_test::expect_file;
 use rayon::prelude::*;
 use test_utils::{bench, bench_fixture, project_root};
 
-use crate::{ast, fuzz, AstNode, SourceFile, SyntaxError};
+use crate::{ast, fuzz, AstNode, SourceFile, SyntaxErr};
 
 #[test]
 fn parse_smoke_test() {
@@ -115,7 +115,7 @@ fn test_data_dir() -> PathBuf {
     project_root().join("crates/syntax/test_data")
 }
 
-fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {
+fn assert_errors_are_present(errors: &[SyntaxErr], path: &Path) {
     assert!(
         !errors.is_empty(),
         "There should be errors in the file {:?}",

@@ -1,11 +1,9 @@
-use std::borrow::Cow;
-
-use rustc_lexer::unescape::{unescape_byte, unescape_char, unescape_literal, Mode};
-
 use crate::{
     ast::{self, AstToken},
-    TextRange, TextSize,
+    core::{TextRange, TextSize},
 };
+use rustc_lexer::unescape::{unescape_byte, unescape_char, unescape_literal, Mode};
+use std::borrow::Cow;
 
 impl ast::Comment {
     pub fn kind(&self) -> CommentKind {

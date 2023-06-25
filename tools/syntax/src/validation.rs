@@ -1,23 +1,21 @@
-use super::core::Direction;
-use rustc_lexer::unescape::{self, unescape_literal, Mode};
-
 use crate::{
     algo,
     ast::{self, HasAttrs, HasVisibility, IsString},
-    core::api,
-    match_ast, AstNode, SyntaxError,
+    core::{api, Direction, TextSize},
+    match_ast, AstNode, SyntaxErr,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
-    TextSize, T,
+    T,
 };
+use rustc_lexer::unescape::{self, unescape_literal, Mode};
 
 mod block {
     use crate::{
         ast::{self, AstNode, HasAttrs},
-        SyntaxError,
+        SyntaxErr,
         SyntaxKind::*,
     };
 
-    pub fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxError>) {
+    pub fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxErr>) {
         if let Some(parent) = block.syntax().parent() {
             match parent.kind() {
                 FN | EXPR_STMT | STMT_LIST => return,
@@ -26,7 +24,7 @@ mod block {
         }
         if let Some(stmt_list) = block.stmt_list() {
             errors.extend(stmt_list.attrs().filter(|attr| attr.kind().is_inner()).map(|attr| {
-                SyntaxError::new(
+                SyntaxErr::new(
                     "A block in this position cannot accept inner attributes",
                     attr.syntax().text_range(),
                 )
@@ -35,7 +33,7 @@ mod block {
     }
 }
 
-pub fn validate(root: &api::Node) -> Vec<SyntaxError> {
+pub fn validate(root: &api::Node) -> Vec<SyntaxErr> {
     let mut errors = Vec::new();
     for node in root.descendants() {
         match_ast! {
@@ -130,7 +128,7 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
     (err_message, err.is_fatal())
 }
 
-fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
+fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
@@ -142,7 +140,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         let (message, is_err) = rustc_unescape_error_to_string(err);
         if is_err {
-            acc.push(SyntaxError::new_at_offset(message, off));
+            acc.push(SyntaxErr::new_at_offset(message, off));
         }
     };
 
@@ -230,10 +228,10 @@ pub fn validate_block_structure(root: &api::Node) {
     }
 }
 
-fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxError>) {
+fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxErr>) {
     if let Some(int_token) = int_token(name_ref) {
         if int_token.text().chars().any(|c| !c.is_ascii_digit()) {
-            errors.push(SyntaxError::new(
+            errors.push(SyntaxErr::new(
                 "Tuple (struct) field access is only allowed through \
                 decimal integers with no underscores or suffix",
                 int_token.text_range(),
@@ -250,7 +248,7 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
     }
 }
 
-fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
+fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
     let path_without_in_token = vis.in_token().is_none()
         && vis
             .path()
@@ -258,7 +256,7 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
             .and_then(|n| n.ident_token())
             .is_some();
     if path_without_in_token {
-        errors.push(SyntaxError::new(
+        errors.push(SyntaxErr::new(
             "incorrect visibility restriction",
             vis.syntax.text_range(),
         ));
@@ -277,36 +275,36 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         None => return,
     };
     if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
-        errors.push(SyntaxError::new(
+        errors.push(SyntaxErr::new(
             "Unnecessary visibility qualifier",
             vis.syntax.text_range(),
         ));
     }
 }
 
-fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
+fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxErr>) {
     if expr.op_kind() == Some(ast::RangeOp::Inclusive) && expr.end().is_none() {
-        errors.push(SyntaxError::new(
+        errors.push(SyntaxErr::new(
             "An inclusive range must have an end expression",
             expr.syntax().text_range(),
         ));
     }
 }
 
-fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxError>) {
+fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>) {
     let path = segment.parent_path();
     let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
 
     if let Some(token) = segment.self_token() {
         if !is_path_start {
-            errors.push(SyntaxError::new(
+            errors.push(SyntaxErr::new(
                 "The `self` keyword is only allowed as the first segment of a path",
                 token.text_range(),
             ));
         }
     } else if let Some(token) = segment.crate_token() {
         if !is_path_start || use_prefix(path).is_some() {
-            errors.push(SyntaxError::new(
+            errors.push(SyntaxErr::new(
                 "The `crate` keyword is only allowed as the first segment of a path",
                 token.text_range(),
             ));
@@ -332,7 +330,7 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
     }
 }
 
-fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxError>) {
+fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
         if let Some(err) = validate_trait_object_ty(ty) {
             errors.push(err);
@@ -340,7 +338,7 @@ fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxError>)
     }
 }
 
-fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxError>) {
+fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
         if let Some(err) = validate_trait_object_ty(ty) {
             errors.push(err);
@@ -348,7 +346,7 @@ fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxError>)
     }
 }
 
-fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<SyntaxError>) {
+fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ret_type().and_then(|ty| ty.ty()) {
         if let Some(err) = validate_trait_object_ty(ty) {
             errors.push(err);
@@ -356,7 +354,7 @@ fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<Synt
     }
 }
 
-fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
+fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxErr> {
     let tbl = ty.type_bound_list()?;
 
     if tbl.bounds().count() > 1 {
@@ -364,36 +362,36 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
         let potential_parenthesis = algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
         let kind = potential_parenthesis.kind();
         if !matches!(kind, T!['('] | T![<] | T![=]) {
-            return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
+            return Some(SyntaxErr::new("ambiguous `+` in a type", ty.syntax().text_range()));
         }
     }
     None
 }
 
-fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxError>) {
+fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxErr>) {
     if let Some(vis) = mac.visibility() {
-        errors.push(SyntaxError::new(
+        errors.push(SyntaxErr::new(
             "visibilities are not allowed on `macro_rules!` items",
             vis.syntax().text_range(),
         ));
     }
 }
 
-fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxError>) {
+fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxErr>) {
     if let Some(mut_token) = const_
         .const_token()
         .and_then(|t| t.next_token())
         .and_then(|t| algo::skip_trivia_token(t, Direction::Next))
         .filter(|t| t.kind() == T![mut])
     {
-        errors.push(SyntaxError::new(
+        errors.push(SyntaxErr::new(
             "const globals cannot be mutable",
             mut_token.text_range(),
         ));
     }
 }
 
-fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxError>) {
+fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxErr>) {
     let mut token = let_.syntax().clone();
     loop {
         token = match token.parent() {
@@ -416,7 +414,7 @@ fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxError>) {
 
         break;
     }
-    errors.push(SyntaxError::new(
+    errors.push(SyntaxErr::new(
         "`let` expressions are not supported here",
         let_.syntax().text_range(),
     ));

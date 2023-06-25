@@ -1,131 +1,119 @@
-use std::iter::{empty, successors};
-
-use core::api::Elem;
-use parser::{SyntaxKind, T};
-
+use super::HasName;
+use crate::core::api;
 use crate::{
     algo::{self, neighbor},
     api::Node,
     api::Token,
     ast::{self, edit::IndentLevel, make, HasGenericParams},
-    ted::{self, Position},
+    ted::{self, Pos},
     AstNode, AstToken, Direction,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
 };
-
-use super::HasName;
-
+use parser::{SyntaxKind, T};
+use std::iter::{empty, successors};
 pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
     fn get_or_create_where_clause(&self) -> ast::WhereClause;
 }
-
 impl GenericParamsOwnerEdit for ast::Fn {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
                 let position = if let Some(name) = self.name() {
-                    Position::after(name.syntax)
+                    Pos::after(name.syntax)
                 } else if let Some(fn_token) = self.fn_token() {
-                    Position::after(fn_token)
+                    Pos::after(fn_token)
                 } else if let Some(param_list) = self.param_list() {
-                    Position::before(param_list.syntax)
+                    Pos::before(param_list.syntax)
                 } else {
-                    Position::last_child_of(self.syntax())
+                    Pos::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
             },
         }
     }
-
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(ty) = self.ret_type() {
-                Position::after(ty.syntax())
+                Pos::after(ty.syntax())
             } else if let Some(param_list) = self.param_list() {
-                Position::after(param_list.syntax())
+                Pos::after(param_list.syntax())
             } else {
-                Position::last_child_of(self.syntax())
+                Pos::last_child_of(self.syntax())
             };
             create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
 }
-
 impl GenericParamsOwnerEdit for ast::Impl {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
                 let position = match self.impl_token() {
-                    Some(imp_token) => Position::after(imp_token),
-                    None => Position::last_child_of(self.syntax()),
+                    Some(imp_token) => Pos::after(imp_token),
+                    None => Pos::last_child_of(self.syntax()),
                 };
                 create_generic_param_list(position)
             },
         }
     }
-
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = match self.assoc_item_list() {
-                Some(items) => Position::before(items.syntax()),
-                None => Position::last_child_of(self.syntax()),
+                Some(items) => Pos::before(items.syntax()),
+                None => Pos::last_child_of(self.syntax()),
             };
             create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
 }
-
 impl GenericParamsOwnerEdit for ast::Trait {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
                 let position = if let Some(name) = self.name() {
-                    Position::after(name.syntax)
+                    Pos::after(name.syntax)
                 } else if let Some(trait_token) = self.trait_token() {
-                    Position::after(trait_token)
+                    Pos::after(trait_token)
                 } else {
-                    Position::last_child_of(self.syntax())
+                    Pos::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
             },
         }
     }
-
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = match self.assoc_item_list() {
-                Some(items) => Position::before(items.syntax()),
-                None => Position::last_child_of(self.syntax()),
+                Some(items) => Pos::before(items.syntax()),
+                None => Pos::last_child_of(self.syntax()),
             };
             create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
 }
-
 impl GenericParamsOwnerEdit for ast::Struct {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
                 let position = if let Some(name) = self.name() {
-                    Position::after(name.syntax)
+                    Pos::after(name.syntax)
                 } else if let Some(struct_token) = self.struct_token() {
-                    Position::after(struct_token)
+                    Pos::after(struct_token)
                 } else {
-                    Position::last_child_of(self.syntax())
+                    Pos::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
             },
         }
     }
-
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let tfl = self.field_list().and_then(|fl| match fl {
@@ -133,67 +121,61 @@ impl GenericParamsOwnerEdit for ast::Struct {
                 ast::FieldList::TupleFieldList(it) => Some(it),
             });
             let position = if let Some(tfl) = tfl {
-                Position::after(tfl.syntax())
+                Pos::after(tfl.syntax())
             } else if let Some(gpl) = self.generic_param_list() {
-                Position::after(gpl.syntax())
+                Pos::after(gpl.syntax())
             } else if let Some(name) = self.name() {
-                Position::after(name.syntax())
+                Pos::after(name.syntax())
             } else {
-                Position::last_child_of(self.syntax())
+                Pos::last_child_of(self.syntax())
             };
             create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
 }
-
 impl GenericParamsOwnerEdit for ast::Enum {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
                 let position = if let Some(name) = self.name() {
-                    Position::after(name.syntax)
+                    Pos::after(name.syntax)
                 } else if let Some(enum_token) = self.enum_token() {
-                    Position::after(enum_token)
+                    Pos::after(enum_token)
                 } else {
-                    Position::last_child_of(self.syntax())
+                    Pos::last_child_of(self.syntax())
                 };
                 create_generic_param_list(position)
             },
         }
     }
-
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(gpl) = self.generic_param_list() {
-                Position::after(gpl.syntax())
+                Pos::after(gpl.syntax())
             } else if let Some(name) = self.name() {
-                Position::after(name.syntax())
+                Pos::after(name.syntax())
             } else {
-                Position::last_child_of(self.syntax())
+                Pos::last_child_of(self.syntax())
             };
             create_where_clause(position);
         }
         self.where_clause().unwrap()
     }
 }
-
-fn create_where_clause(position: Position) {
+fn create_where_clause(position: Pos) {
     let where_clause = make::where_clause(empty()).clone_for_update();
     ted::insert(position, where_clause.syntax());
 }
-
-fn create_generic_param_list(position: Position) -> ast::GenericParamList {
+fn create_generic_param_list(position: Pos) -> ast::GenericParamList {
     let gpl = make::generic_param_list(empty()).clone_for_update();
     ted::insert_raw(position, gpl.syntax());
     gpl
 }
-
 pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
         remove_attrs_and_docs(self.syntax());
-
         fn remove_attrs_and_docs(node: &api::Node) {
             let mut remove_next_ws = false;
             for child in node.children_with_tokens() {
@@ -213,14 +195,12 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
         }
     }
 }
-
 impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
-
 impl ast::GenericParamList {
     pub fn add_generic_param(&self, generic_param: ast::GenericParam) {
         match self.generic_params().last() {
             Some(last_param) => {
-                let position = Position::after(last_param.syntax());
+                let position = Pos::after(last_param.syntax());
                 let elements = vec![
                     make::token(T![,]).into(),
                     make::tokens::single_space().into(),
@@ -229,13 +209,11 @@ impl ast::GenericParamList {
                 ted::insert_all(position, elements);
             },
             None => {
-                let after_l_angle = Position::after(self.l_angle_token().unwrap());
+                let after_l_angle = Pos::after(self.l_angle_token().unwrap());
                 ted::insert(after_l_angle, generic_param.syntax());
             },
         }
     }
-
-    /// Removes the existing generic param
     pub fn remove_generic_param(&self, generic_param: ast::GenericParam) {
         if let Some(previous) = generic_param.syntax().prev_sibling() {
             if let Some(next_token) = previous.next_sibling_or_token() {
@@ -249,8 +227,6 @@ impl ast::GenericParamList {
             ted::remove(generic_param.syntax());
         }
     }
-
-    /// Constructs a matching [`ast::GenericArgList`]
     pub fn to_generic_args(&self) -> ast::GenericArgList {
         let args = self.generic_params().filter_map(|param| match param {
             ast::GenericParam::LifetimeParam(it) => {
@@ -260,15 +236,12 @@ impl ast::GenericParamList {
                 Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
             },
             ast::GenericParam::ConstParam(it) => {
-                // Name-only const params get parsed as `TypeArg`s
                 Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
             },
         });
-
         make::generic_arg_list(args)
     }
 }
-
 impl ast::WhereClause {
     pub fn add_predicate(&self, predicate: ast::WherePred) {
         if let Some(pred) = self.predicates().last() {
@@ -283,7 +256,6 @@ impl ast::WhereClause {
         ted::append_child(self.syntax(), predicate.syntax());
     }
 }
-
 impl ast::TypeParam {
     pub fn remove_default(&self) {
         if let Some((eq, last)) = self
@@ -293,7 +265,6 @@ impl ast::TypeParam {
             .zip(self.syntax().last_child_or_token())
         {
             ted::remove_all(eq..=last);
-
             // remove any trailing ws
             if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
                 last.detach();
@@ -301,7 +272,6 @@ impl ast::TypeParam {
         }
     }
 }
-
 impl ast::ConstParam {
     pub fn remove_default(&self) {
         if let Some((eq, last)) = self
@@ -311,7 +281,6 @@ impl ast::ConstParam {
             .zip(self.syntax().last_child_or_token())
         {
             ted::remove_all(eq..=last);
-
             // remove any trailing ws
             if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
                 last.detach();
@@ -319,11 +288,9 @@ impl ast::ConstParam {
         }
     }
 }
-
 pub trait Removable: AstNode {
     fn remove(&self);
 }
-
 impl Removable for ast::TypeBoundList {
     fn remove(&self) {
         match self
@@ -336,7 +303,6 @@ impl Removable for ast::TypeBoundList {
         }
     }
 }
-
 impl ast::PathSegment {
     pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
         if self.generic_arg_list().is_none() {
@@ -346,7 +312,6 @@ impl ast::PathSegment {
         self.generic_arg_list().unwrap()
     }
 }
-
 impl Removable for ast::UseTree {
     fn remove(&self) {
         for dir in [Direction::Next, Direction::Prev] {
@@ -363,13 +328,12 @@ impl Removable for ast::UseTree {
         ted::remove(self.syntax());
     }
 }
-
 impl ast::UseTree {
     pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
         match self.use_tree_list() {
             Some(it) => it,
             None => {
-                let position = Position::last_child_of(self.syntax());
+                let position = Pos::last_child_of(self.syntax());
                 let use_tree_list = make::use_tree_list(empty()).clone_for_update();
                 let mut elements = Vec::with_capacity(2);
                 if self.coloncolon_token().is_none() {
@@ -381,17 +345,6 @@ impl ast::UseTree {
             },
         }
     }
-
-    /// Splits off the given prefix, making it the path component of the use tree,
-    /// appending the rest of the path to all UseTreeList items.
-    ///
-    /// # Examples
-    ///
-    /// `prefix$0::suffix` -> `prefix::{suffix}`
-    ///
-    /// `prefix$0` -> `prefix::{self}`
-    ///
-    /// `prefix$0::*` -> `prefix::{*}`
     pub fn split_prefix(&self, prefix: &ast::Path) {
         debug_assert_eq!(self.path(), Some(prefix.top_path()));
         let path = self.path().unwrap();
@@ -412,9 +365,8 @@ impl ast::UseTree {
         // Next, transform 'suffix' use tree into 'prefix::{suffix}'
         let subtree = self.clone_subtree().clone_for_update();
         ted::remove_all_iter(self.syntax().children_with_tokens());
-        ted::insert(Position::first_child_of(self.syntax()), prefix.syntax());
+        ted::insert(Pos::first_child_of(self.syntax()), prefix.syntax());
         self.get_or_create_use_tree_list().add_use_tree(subtree);
-
         fn split_path_prefix(prefix: &ast::Path) -> Option<()> {
             let parent = prefix.parent_path()?;
             let segment = parent.segment()?;
@@ -430,12 +382,11 @@ impl ast::UseTree {
         }
     }
 }
-
 impl ast::UseTreeList {
     pub fn add_use_tree(&self, use_tree: ast::UseTree) {
         let (position, elements) = match self.use_trees().last() {
             Some(last_tree) => (
-                Position::after(last_tree.syntax()),
+                Pos::after(last_tree.syntax()),
                 vec![
                     make::token(T![,]).into(),
                     make::tokens::single_space().into(),
@@ -444,8 +395,8 @@ impl ast::UseTreeList {
             ),
             None => {
                 let position = match self.l_curly_token() {
-                    Some(l_curly) => Position::after(l_curly),
-                    None => Position::last_child_of(self.syntax()),
+                    Some(l_curly) => Pos::after(l_curly),
+                    None => Pos::last_child_of(self.syntax()),
                 };
                 (position, vec![use_tree.syntax.into()])
             },
@@ -453,7 +404,6 @@ impl ast::UseTreeList {
         ted::insert_all_raw(position, elements);
     }
 }
-
 impl Removable for ast::Use {
     fn remove(&self) {
         let next_ws = self
@@ -474,7 +424,6 @@ impl Removable for ast::Use {
         ted::remove(self.syntax());
     }
 }
-
 impl ast::Impl {
     pub fn get_or_create_assoc_item_list(&self) -> ast::AssocItemList {
         if self.assoc_item_list().is_none() {
@@ -484,23 +433,20 @@ impl ast::Impl {
         self.assoc_item_list().unwrap()
     }
 }
-
 impl ast::AssocItemList {
-    /// Attention! This function does align the first line of `item` with respect to `self`,
-    /// but it does _not_ change indentation of other lines (if any).
     pub fn add_item(&self, item: ast::AssocItem) {
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
-                Position::after(last_item.syntax()),
+                Pos::after(last_item.syntax()),
                 "\n\n",
             ),
             None => match self.l_curly_token() {
                 Some(l_curly) => {
                     normalize_ws_between_braces(self.syntax());
-                    (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
+                    (IndentLevel::from_token(&l_curly) + 1, Pos::after(&l_curly), "\n")
                 },
-                None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
+                None => (IndentLevel::single(), Pos::last_child_of(self.syntax()), "\n"),
             },
         };
         let elements: Vec<api::Elem<_>> = vec![
@@ -510,7 +456,6 @@ impl ast::AssocItemList {
         ted::insert_all(position, elements);
     }
 }
-
 impl ast::Fn {
     pub fn get_or_create_body(&self) -> ast::BlockExpr {
         if self.body().is_none() {
@@ -518,7 +463,7 @@ impl ast::Fn {
             match self.semicolon_token() {
                 Some(semi) => {
                     ted::replace(semi, body.syntax());
-                    ted::insert(Position::before(body.syntax), make::tokens::single_space());
+                    ted::insert(Pos::before(body.syntax), make::tokens::single_space());
                 },
                 None => ted::append_child(self.syntax(), body.syntax()),
             }
@@ -526,7 +471,6 @@ impl ast::Fn {
         self.body().unwrap()
     }
 }
-
 impl Removable for ast::MatchArm {
     fn remove(&self) {
         if let Some(sibling) = self.syntax().prev_sibling_or_token() {
@@ -542,7 +486,6 @@ impl Removable for ast::MatchArm {
         ted::remove(self.syntax());
     }
 }
-
 impl ast::MatchArmList {
     pub fn add_arm(&self, arm: ast::MatchArm) {
         normalize_ws_between_braces(self.syntax());
@@ -552,11 +495,11 @@ impl ast::MatchArmList {
                 if needs_comma(&last_arm) {
                     ted::append_child(last_arm.syntax(), make::token(SyntaxKind::COMMA));
                 }
-                Position::after(last_arm.syntax().clone())
+                Pos::after(last_arm.syntax().clone())
             },
             None => match self.l_curly_token() {
-                Some(it) => Position::after(it),
-                None => Position::last_child_of(self.syntax()),
+                Some(it) => Pos::after(it),
+                None => Pos::last_child_of(self.syntax()),
             },
         };
         let indent = IndentLevel::from_node(self.syntax()) + 1;
@@ -566,13 +509,11 @@ impl ast::MatchArmList {
             ted::append_child(arm.syntax(), make::token(SyntaxKind::COMMA));
         }
         ted::insert_all(position, elements);
-
         fn needs_comma(arm: &ast::MatchArm) -> bool {
             arm.expr().map_or(false, |e| !e.is_block_like()) && arm.comma_token().is_none()
         }
     }
 }
-
 impl ast::RecordExprFieldList {
     pub fn add_field(&self, field: ast::RecordExprField) {
         let is_multiline = self.syntax().text().contains_char('\n');
@@ -582,32 +523,26 @@ impl ast::RecordExprFieldList {
         } else {
             make::tokens::single_space()
         };
-
         if is_multiline {
             normalize_ws_between_braces(self.syntax());
         }
-
         let position = match self.fields().last() {
             Some(last_field) => {
                 let comma = get_or_insert_comma_after(last_field.syntax());
-                Position::after(comma)
+                Pos::after(comma)
             },
             None => match self.l_curly_token() {
-                Some(it) => Position::after(it),
-                None => Position::last_child_of(self.syntax()),
+                Some(it) => Pos::after(it),
+                None => Pos::last_child_of(self.syntax()),
             },
         };
-
         ted::insert_all(position, vec![whitespace.into(), field.syntax().clone().into()]);
         if is_multiline {
-            ted::insert(Position::after(field.syntax()), ast::make::token(T![,]));
+            ted::insert(Pos::after(field.syntax()), ast::make::token(T![,]));
         }
     }
 }
-
 impl ast::RecordExprField {
-    /// This will either replace the initializer, or in the case that this is a shorthand convert
-    /// the initializer into the name ref and insert the expr as the new initializer.
     pub fn replace_expr(&self, expr: ast::Expr) {
         if self.name_ref().is_some() {
             match self.expr() {
@@ -627,13 +562,12 @@ impl ast::RecordExprField {
                         ast::make::tokens::single_space().into(),
                         expr.syntax().clone().into(),
                     ];
-                    ted::insert_all_raw(Position::last_child_of(self.syntax()), children);
+                    ted::insert_all_raw(Pos::last_child_of(self.syntax()), children);
                 }
             }
         }
     }
 }
-
 impl ast::RecordPatFieldList {
     pub fn add_field(&self, field: ast::RecordPatField) {
         let is_multiline = self.syntax().text().contains_char('\n');
@@ -643,30 +577,26 @@ impl ast::RecordPatFieldList {
         } else {
             make::tokens::single_space()
         };
-
         if is_multiline {
             normalize_ws_between_braces(self.syntax());
         }
-
         let position = match self.fields().last() {
             Some(last_field) => {
                 let syntax = last_field.syntax();
                 let comma = get_or_insert_comma_after(syntax);
-                Position::after(comma)
+                Pos::after(comma)
             },
             None => match self.l_curly_token() {
-                Some(it) => Position::after(it),
-                None => Position::last_child_of(self.syntax()),
+                Some(it) => Pos::after(it),
+                None => Pos::last_child_of(self.syntax()),
             },
         };
-
         ted::insert_all(position, vec![whitespace.into(), field.syntax().clone().into()]);
         if is_multiline {
-            ted::insert(Position::after(field.syntax()), ast::make::token(T![,]));
+            ted::insert(Pos::after(field.syntax()), ast::make::token(T![,]));
         }
     }
 }
-
 fn get_or_insert_comma_after(syntax: &api::Node) -> api::Token {
     match syntax
         .siblings_with_tokens(Direction::Next)
@@ -676,25 +606,24 @@ fn get_or_insert_comma_after(syntax: &api::Node) -> api::Token {
         Some(it) => it,
         None => {
             let comma = ast::make::token(T![,]);
-            ted::insert(Position::after(syntax), &comma);
+            ted::insert(Pos::after(syntax), &comma);
             comma
         },
     }
 }
-
 impl ast::VariantList {
     pub fn add_variant(&self, variant: ast::Variant) {
         let (indent, position) = match self.variants().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
-                Position::after(get_or_insert_comma_after(last_item.syntax())),
+                Pos::after(get_or_insert_comma_after(last_item.syntax())),
             ),
             None => match self.l_curly_token() {
                 Some(l_curly) => {
                     normalize_ws_between_braces(self.syntax());
-                    (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly))
+                    (IndentLevel::from_token(&l_curly) + 1, Pos::after(&l_curly))
                 },
-                None => (IndentLevel::single(), Position::last_child_of(self.syntax())),
+                None => (IndentLevel::single(), Pos::last_child_of(self.syntax())),
             },
         };
         let elements: Vec<api::Elem<_>> = vec![
@@ -705,7 +634,6 @@ impl ast::VariantList {
         ted::insert_all(position, elements);
     }
 }
-
 fn normalize_ws_between_braces(node: &api::Node) -> Option<()> {
     let l = node
         .children_with_tokens()
@@ -715,9 +643,7 @@ fn normalize_ws_between_braces(node: &api::Node) -> Option<()> {
         .children_with_tokens()
         .filter_map(|it| it.into_token())
         .find(|it| it.kind() == T!['}'])?;
-
     let indent = IndentLevel::from_node(node);
-
     match l.next_sibling_or_token() {
         Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
             if ws.next_sibling_or_token()?.into_token()? == r {
@@ -725,13 +651,12 @@ fn normalize_ws_between_braces(node: &api::Node) -> Option<()> {
             }
         },
         Some(ws) if ws.kind() == T!['}'] => {
-            ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{indent}")));
+            ted::insert(Pos::after(l), make::tokens::whitespace(&format!("\n{indent}")));
         },
         _ => (),
     }
     Some(())
 }
-
 pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
@@ -748,7 +673,6 @@ pub trait Indent: AstNode + Clone + Sized {
         self.indent(target_level);
     }
 }
-
 impl<N: AstNode + Clone> Indent for N {}
 
 #[cfg(test)]
@@ -757,7 +681,6 @@ mod tests {
     use crate::SourceFile;
     use std::fmt;
     use test_utils::assert_eq_text;
-
     fn trim_indent(mut text: &str) -> String {
         if text.starts_with('\n') {
             text = &text[1..];
@@ -778,7 +701,6 @@ mod tests {
             })
             .collect()
     }
-
     fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
         let parse = SourceFile::parse(text);
         parse
@@ -789,7 +711,6 @@ mod tests {
             .unwrap()
             .clone_for_update()
     }
-
     #[test]
     fn test_create_generic_param_list() {
         fn check_create_gpl<N: GenericParamsOwnerEdit + fmt::Display>(before: &str, after: &str) {
@@ -797,26 +718,20 @@ mod tests {
             gpl_owner.get_or_create_generic_param_list();
             assert_eq!(gpl_owner.to_string(), after);
         }
-
         check_create_gpl::<ast::Fn>("fn foo", "fn foo<>");
         check_create_gpl::<ast::Fn>("fn foo() {}", "fn foo<>() {}");
-
         check_create_gpl::<ast::Impl>("impl", "impl<>");
         check_create_gpl::<ast::Impl>("impl Struct {}", "impl<> Struct {}");
         check_create_gpl::<ast::Impl>("impl Trait for Struct {}", "impl<> Trait for Struct {}");
-
         check_create_gpl::<ast::Trait>("trait Trait<>", "trait Trait<>");
         check_create_gpl::<ast::Trait>("trait Trait<> {}", "trait Trait<> {}");
-
         check_create_gpl::<ast::Struct>("struct A", "struct A<>");
         check_create_gpl::<ast::Struct>("struct A;", "struct A<>;");
         check_create_gpl::<ast::Struct>("struct A();", "struct A<>();");
         check_create_gpl::<ast::Struct>("struct A {}", "struct A<> {}");
-
         check_create_gpl::<ast::Enum>("enum E", "enum E<>");
         check_create_gpl::<ast::Enum>("enum E {", "enum E<> {");
     }
-
     #[test]
     fn test_increase_indent() {
         let arm_list = ast_mut_from_text::<ast::Fn>(
@@ -834,11 +749,9 @@ mod tests {
         }",
         );
     }
-
     #[test]
     fn add_variant_to_empty_enum() {
         let variant = make::variant(make::name("Bar"), None).clone_for_update();
-
         check_add_variant(
             r#"
 enum Foo {}
@@ -851,11 +764,9 @@ enum Foo {
             variant,
         );
     }
-
     #[test]
     fn add_variant_to_non_empty_enum() {
         let variant = make::variant(make::name("Baz"), None).clone_for_update();
-
         check_add_variant(
             r#"
 enum Foo {
@@ -871,7 +782,6 @@ enum Foo {
             variant,
         );
     }
-
     #[test]
     fn add_variant_with_tuple_field_list() {
         let variant = make::variant(
@@ -881,7 +791,6 @@ enum Foo {
             )))),
         )
         .clone_for_update();
-
         check_add_variant(
             r#"
 enum Foo {
@@ -897,7 +806,6 @@ enum Foo {
             variant,
         );
     }
-
     #[test]
     fn add_variant_with_record_field_list() {
         let variant = make::variant(
@@ -907,7 +815,6 @@ enum Foo {
             ))),
         )
         .clone_for_update();
-
         check_add_variant(
             r#"
 enum Foo {
@@ -923,7 +830,6 @@ enum Foo {
             variant,
         );
     }
-
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
         let enum_ = ast_mut_from_text::<ast::Enum>(before);
         enum_.variant_list().map(|it| it.add_variant(variant));
