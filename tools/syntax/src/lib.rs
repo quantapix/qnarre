@@ -1,4 +1,10 @@
-#![warn(unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![forbid(
+    // missing_debug_implementations,
+    unconditional_recursion,
+    future_incompatible,
+    // missing_docs,
+)]
+#![warn(unused_lifetimes)]
 #[allow(unused)]
 
 macro_rules! eprintln {
@@ -28,6 +34,7 @@ pub use smol_str::SmolStr;
 
 pub mod algo;
 pub mod ast;
+pub mod rowan;
 #[doc(hidden)]
 pub mod fuzz {
     use crate::{validation, AstNode, SourceFile, TextRange};

@@ -1,17 +1,12 @@
-#![forbid(
-    // missing_debug_implementations,
-    unconditional_recursion,
-    future_incompatible,
-    // missing_docs,
-)]
 #![deny(unsafe_code)]
 pub mod api;
 #[allow(unsafe_code)]
 pub mod cursor;
+
 #[allow(unsafe_code)]
 mod green;
 mod syntax_text {
-    use crate::{
+    use super::{
         cursor::{SyntaxNode, SyntaxToken},
         TextRange, TextSize,
     };
@@ -22,7 +17,7 @@ mod syntax_text {
         range: TextRange,
     }
     impl SyntaxText {
-        pub(crate) fn new(node: SyntaxNode) -> SyntaxText {
+        pub fn new(node: SyntaxNode) -> SyntaxText {
             let range = node.text_range();
             SyntaxText { node, range }
         }
@@ -246,8 +241,8 @@ mod syntax_text {
     }
     #[cfg(test)]
     mod tests {
+        use super::super::{green::SyntaxKind, GreenNodeBuilder};
         use super::*;
-        use crate::{green::SyntaxKind, GreenNodeBuilder};
         fn build_tree(chunks: &[&str]) -> SyntaxNode {
             let mut builder = GreenNodeBuilder::new();
             builder.start_node(SyntaxKind(62));
@@ -324,7 +319,7 @@ mod utility_types {
         }
     }
     impl<N: Deref, T: Deref> NodeOrToken<N, T> {
-        pub(crate) fn as_deref(&self) -> NodeOrToken<&N::Target, &T::Target> {
+        pub fn as_deref(&self) -> NodeOrToken<&N::Target, &T::Target> {
             match self {
                 NodeOrToken::Node(node) => NodeOrToken::Node(&*node),
                 NodeOrToken::Token(token) => NodeOrToken::Token(&*token),
@@ -415,9 +410,9 @@ mod utility_types {
             const _: i32 = 0 / $expr as i32;
         };
     }
-    pub(crate) use _static_assert as static_assert;
+    pub use _static_assert as static_assert;
     #[derive(Copy, Clone, Debug)]
-    pub(crate) enum Delta<T> {
+    pub enum Delta<T> {
         Add(T),
         Sub(T),
     }
@@ -435,6 +430,7 @@ mod utility_types {
     }
     impls!(u32 TextSize);
 }
+
 #[allow(unsafe_code)]
 mod arc {
     use memoffset::offset_of;
@@ -452,23 +448,23 @@ mod arc {
         },
     };
     const MAX_REFCOUNT: usize = (isize::MAX) as usize;
+
     #[repr(C)]
-    pub(crate) struct ArcInner<T: ?Sized> {
-        pub(crate) count: atomic::AtomicUsize,
-        pub(crate) data: T,
+    pub struct ArcInner<T: ?Sized> {
+        pub count: atomic::AtomicUsize,
+        pub data: T,
     }
     unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
     unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
+
     #[repr(transparent)]
-    pub(crate) struct Arc<T: ?Sized> {
-        pub(crate) p: ptr::NonNull<ArcInner<T>>,
-        pub(crate) phantom: PhantomData<T>,
+    pub struct Arc<T: ?Sized> {
+        pub p: ptr::NonNull<ArcInner<T>>,
+        pub phantom: PhantomData<T>,
     }
-    unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
-    unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
     impl<T> Arc<T> {
         #[inline]
-        pub(crate) unsafe fn from_raw(ptr: *const T) -> Self {
+        pub unsafe fn from_raw(ptr: *const T) -> Self {
             let ptr = (ptr as *const u8).sub(offset_of!(ArcInner<T>, data));
             Arc {
                 p: ptr::NonNull::new_unchecked(ptr as *mut ArcInner<T>),
@@ -486,11 +482,24 @@ mod arc {
             let _ = Box::from_raw(self.ptr());
         }
         #[inline]
-        pub(crate) fn ptr_eq(this: &Self, other: &Self) -> bool {
+        pub fn ptr_eq(this: &Self, other: &Self) -> bool {
             this.ptr() == other.ptr()
         }
-        pub(crate) fn ptr(&self) -> *mut ArcInner<T> {
+        pub fn ptr(&self) -> *mut ArcInner<T> {
             self.p.as_ptr()
+        }
+    }
+    impl<T: ?Sized> Arc<T> {
+        #[inline]
+        pub fn get_mut(this: &mut Self) -> Option<&mut T> {
+            if this.is_unique() {
+                unsafe { Some(&mut (*this.ptr()).data) }
+            } else {
+                None
+            }
+        }
+        pub fn is_unique(&self) -> bool {
+            self.inner().count.load(Acquire) == 1
         }
     }
     impl<T: ?Sized> Clone for Arc<T> {
@@ -513,19 +522,6 @@ mod arc {
         #[inline]
         fn deref(&self) -> &T {
             &self.inner().data
-        }
-    }
-    impl<T: ?Sized> Arc<T> {
-        #[inline]
-        pub(crate) fn get_mut(this: &mut Self) -> Option<&mut T> {
-            if this.is_unique() {
-                unsafe { Some(&mut (*this.ptr()).data) }
-            } else {
-                None
-            }
-        }
-        pub(crate) fn is_unique(&self) -> bool {
-            self.inner().count.load(Acquire) == 1
         }
     }
     impl<T: ?Sized> Drop for Arc<T> {
@@ -576,15 +572,18 @@ mod arc {
             (**self).hash(state)
         }
     }
+    unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
+    unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
+
     #[derive(Debug, Eq, PartialEq, Hash, PartialOrd)]
     #[repr(C)]
-    pub(crate) struct HeaderSlice<H, T: ?Sized> {
-        pub(crate) header: H,
+    pub struct HeaderSlice<H, T: ?Sized> {
+        pub header: H,
         length: usize,
         slice: T,
     }
     impl<H, T> HeaderSlice<H, [T]> {
-        pub(crate) fn slice(&self) -> &[T] {
+        pub fn slice(&self) -> &[T] {
             &self.slice
         }
     }
@@ -598,21 +597,44 @@ mod arc {
             }
         }
     }
+
+    impl<H, T> Arc<HeaderSlice<H, [T]>> {
+        #[inline]
+        pub fn into_thin(a: Self) -> ThinArc<H, T> {
+            assert_eq!(
+                a.length,
+                a.slice.len(),
+                "Length needs to be correct for ThinArc to work"
+            );
+            let fat_ptr: *mut ArcInner<HeaderSlice<H, [T]>> = a.ptr();
+            mem::forget(a);
+            let thin_ptr = fat_ptr as *mut [usize] as *mut usize;
+            ThinArc {
+                ptr: unsafe { ptr::NonNull::new_unchecked(thin_ptr as *mut ArcInner<HeaderSlice<H, [T; 0]>>) },
+                phantom: PhantomData,
+            }
+        }
+        #[inline]
+        pub fn from_thin(a: ThinArc<H, T>) -> Self {
+            let ptr = thin_to_thick(a.ptr.as_ptr());
+            mem::forget(a);
+            unsafe {
+                Arc {
+                    p: ptr::NonNull::new_unchecked(ptr),
+                    phantom: PhantomData,
+                }
+            }
+        }
+    }
+
     #[repr(transparent)]
-    pub(crate) struct ThinArc<H, T> {
+    pub struct ThinArc<H, T> {
         ptr: ptr::NonNull<ArcInner<HeaderSlice<H, [T; 0]>>>,
         phantom: PhantomData<(H, T)>,
     }
-    unsafe impl<H: Sync + Send, T: Sync + Send> Send for ThinArc<H, T> {}
-    unsafe impl<H: Sync + Send, T: Sync + Send> Sync for ThinArc<H, T> {}
-    fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcInner<HeaderSlice<H, [T]>> {
-        let len = unsafe { (*thin).data.length };
-        let fake_slice: *mut [T] = ptr::slice_from_raw_parts_mut(thin as *mut T, len);
-        fake_slice as *mut ArcInner<HeaderSlice<H, [T]>>
-    }
     impl<H, T> ThinArc<H, T> {
         #[inline]
-        pub(crate) fn with_arc<F, U>(&self, f: F) -> U
+        pub fn with_arc<F, U>(&self, f: F) -> U
         where
             F: FnOnce(&Arc<HeaderSlice<H, [T]>>) -> U,
         {
@@ -625,7 +647,7 @@ mod arc {
             let result = f(&transient);
             result
         }
-        pub(crate) fn from_header_and_iter<I>(header: H, mut items: I) -> Self
+        pub fn from_header_and_iter<I>(header: H, mut items: I) -> Self
         where
             I: Iterator<Item = T> + ExactSizeIterator,
         {
@@ -669,17 +691,17 @@ mod arc {
             }
         }
     }
+    impl<H, T> Clone for ThinArc<H, T> {
+        #[inline]
+        fn clone(&self) -> Self {
+            ThinArc::with_arc(self, |a| Arc::into_thin(a.clone()))
+        }
+    }
     impl<H, T> Deref for ThinArc<H, T> {
         type Target = HeaderSlice<H, [T]>;
         #[inline]
         fn deref(&self) -> &Self::Target {
             unsafe { &(*thin_to_thick(self.ptr.as_ptr())).data }
-        }
-    }
-    impl<H, T> Clone for ThinArc<H, T> {
-        #[inline]
-        fn clone(&self) -> Self {
-            ThinArc::with_arc(self, |a| Arc::into_thin(a.clone()))
         }
     }
     impl<H, T> Drop for ThinArc<H, T> {
@@ -689,34 +711,6 @@ mod arc {
                 ptr: self.ptr,
                 phantom: PhantomData,
             });
-        }
-    }
-    impl<H, T> Arc<HeaderSlice<H, [T]>> {
-        #[inline]
-        pub(crate) fn into_thin(a: Self) -> ThinArc<H, T> {
-            assert_eq!(
-                a.length,
-                a.slice.len(),
-                "Length needs to be correct for ThinArc to work"
-            );
-            let fat_ptr: *mut ArcInner<HeaderSlice<H, [T]>> = a.ptr();
-            mem::forget(a);
-            let thin_ptr = fat_ptr as *mut [usize] as *mut usize;
-            ThinArc {
-                ptr: unsafe { ptr::NonNull::new_unchecked(thin_ptr as *mut ArcInner<HeaderSlice<H, [T; 0]>>) },
-                phantom: PhantomData,
-            }
-        }
-        #[inline]
-        pub(crate) fn from_thin(a: ThinArc<H, T>) -> Self {
-            let ptr = thin_to_thick(a.ptr.as_ptr());
-            mem::forget(a);
-            unsafe {
-                Arc {
-                    p: ptr::NonNull::new_unchecked(ptr),
-                    phantom: PhantomData,
-                }
-            }
         }
     }
     impl<H: PartialEq, T: PartialEq> PartialEq for ThinArc<H, T> {
@@ -730,6 +724,14 @@ mod arc {
         fn hash<HSR: Hasher>(&self, state: &mut HSR) {
             (**self).hash(state)
         }
+    }
+    unsafe impl<H: Sync + Send, T: Sync + Send> Send for ThinArc<H, T> {}
+    unsafe impl<H: Sync + Send, T: Sync + Send> Sync for ThinArc<H, T> {}
+
+    fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcInner<HeaderSlice<H, [T]>> {
+        let len = unsafe { (*thin).data.length };
+        let fake_slice: *mut [T] = ptr::slice_from_raw_parts_mut(thin as *mut T, len);
+        fake_slice as *mut ArcInner<HeaderSlice<H, [T]>>
     }
 }
 pub mod ast {
@@ -881,7 +883,7 @@ pub mod ast {
 }
 mod cow_mut {
     #[derive(Debug)]
-    pub(crate) enum CowMut<'a, T> {
+    pub enum CowMut<'a, T> {
         Owned(T),
         Borrowed(&'a mut T),
     }
@@ -974,12 +976,12 @@ mod serde_impls {
 mod sll {
     use crate::utility_types::Delta;
     use std::{cell::Cell, cmp::Ordering, ptr};
-    pub(crate) unsafe trait Elem {
+    pub unsafe trait Elem {
         fn prev(&self) -> &Cell<*const Self>;
         fn next(&self) -> &Cell<*const Self>;
         fn key(&self) -> &Cell<u32>;
     }
-    pub(crate) enum AddToSllResult<'a, E: Elem> {
+    pub enum AddToSllResult<'a, E: Elem> {
         NoHead,
         EmptyHead(&'a Cell<*const E>),
         SmallerThanHead(&'a Cell<*const E>),
@@ -987,7 +989,7 @@ mod sll {
         AlreadyInSll(*const E),
     }
     impl<'a, E: Elem> AddToSllResult<'a, E> {
-        pub(crate) fn add_to_sll(&self, elem_ptr: *const E) {
+        pub fn add_to_sll(&self, elem_ptr: *const E) {
             unsafe {
                 (*elem_ptr).prev().set(elem_ptr);
                 (*elem_ptr).next().set(elem_ptr);
@@ -1013,7 +1015,7 @@ mod sll {
         }
     }
     #[cold]
-    pub(crate) fn init<'a, E: Elem>(head: Option<&'a Cell<*const E>>, elem: &E) -> AddToSllResult<'a, E> {
+    pub fn init<'a, E: Elem>(head: Option<&'a Cell<*const E>>, elem: &E) -> AddToSllResult<'a, E> {
         if let Some(head) = head {
             link(head, elem)
         } else {
@@ -1021,7 +1023,7 @@ mod sll {
         }
     }
     #[cold]
-    pub(crate) fn unlink<E: Elem>(head: &Cell<*const E>, elem: &E) {
+    pub fn unlink<E: Elem>(head: &Cell<*const E>, elem: &E) {
         debug_assert!(!head.get().is_null(), "invalid linked list head");
         let elem_ptr: *const E = elem;
         let prev = elem.prev().replace(elem_ptr);
@@ -1037,7 +1039,7 @@ mod sll {
         }
     }
     #[cold]
-    pub(crate) fn link<'a, E: Elem>(head: &'a Cell<*const E>, elem: &E) -> AddToSllResult<'a, E> {
+    pub fn link<'a, E: Elem>(head: &'a Cell<*const E>, elem: &E) -> AddToSllResult<'a, E> {
         unsafe {
             let old_head = head.get();
             if old_head.is_null() {
@@ -1056,7 +1058,7 @@ mod sll {
             }
         }
     }
-    pub(crate) fn adjust<E: Elem>(elem: &E, from: u32, by: Delta<u32>) {
+    pub fn adjust<E: Elem>(elem: &E, from: u32, by: Delta<u32>) {
         let elem_ptr: *const E = elem;
         unsafe {
             let mut curr = elem_ptr;
