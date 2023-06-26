@@ -669,9 +669,8 @@ impl<N: ast::Node + Clone> Indent for N {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::SourceFile;
+    use crate::{assert_eq_text, SourceFile};
     use std::fmt;
-    use test_utils::assert_eq_text;
     fn trim_indent(mut text: &str) -> String {
         if text.starts_with('\n') {
             text = &text[1..];

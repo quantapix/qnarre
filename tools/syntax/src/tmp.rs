@@ -535,3 +535,24 @@ macro_rules! impl_from {
         )*
     }
 }
+
+#[macro_export]
+macro_rules! assert_eq_text {
+    ($left:expr, $right:expr) => {
+        assert_eq_text!($left, $right,)
+    };
+    ($left:expr, $right:expr, $($tt:tt)*) => {{
+        let left = $left;
+        let right = $right;
+        if left != right {
+            if left.trim() == right.trim() {
+                std::eprintln!("Left:\n{:?}\n\nRight:\n{:?}\n\nWhitespace difference\n", left, right);
+            } else {
+                let diff = $crate::__diff(left, right);
+                std::eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, $crate::format_diff(diff));
+            }
+            std::eprintln!($($tt)*);
+            panic!("text differs");
+        }
+    }};
+}

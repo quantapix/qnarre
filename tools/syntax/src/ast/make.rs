@@ -709,7 +709,7 @@ pub fn type_bound_list(xs: impl IntoIterator<Item = ast::TypeBound>) -> Option<a
     Some(ast_from_text(&format!("fn f<T: {xs}>() {{ }}")))
 }
 pub fn type_param(name: ast::Name, xs: Option<ast::TypeBoundList>) -> ast::TypeParam {
-    let xs = xs.map_or_else(String::new, |x| format!(": {it}"));
+    let xs = xs.map_or_else(String::new, |x| format!(": {x}"));
     ast_from_text(&format!("fn f<{name}{xs}>() {{ }}"))
 }
 pub fn lifetime_param(x: ast::Lifetime) -> ast::LifetimeParam {

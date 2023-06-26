@@ -191,7 +191,7 @@ pub fn diff(from: &crate::Node, to: &crate::Node) -> TreeDiff {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast, Elem, SyntaxKind};
+    use crate::{Elem, SyntaxKind};
     use expect_test::{expect, Expect};
     use itertools::Itertools;
     use text_edit::TextEdit;
@@ -478,7 +478,7 @@ fn main() {
         let line_number = |x: &Elem| from[..x.text_range().start().into()].lines().count();
         let fmt_syntax = |x: &Elem| match x.kind() {
             SyntaxKind::WHITESPACE => format!("{:?}", x.to_string()),
-            _ => format!("{syn}"),
+            _ => format!("{x}"),
         };
         let insertions = diff
             .insertions

@@ -245,8 +245,8 @@ mod parsing {
         #[cfg(test)]
         mod tests {
             use super::*;
-            use crate::{ast, Parse, SourceFile};
-            use test_utils::{assert_eq_text, extract_range};
+            use crate::{assert_eq_text, Parse, SourceFile};
+            use test_utils::extract_range;
             fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
                 let (range, before) = extract_range(before);
                 let edit = Indel::replace(range, replace_with.to_owned());
@@ -554,8 +554,8 @@ mod ptr {
         }
     }
     impl<N: ast::Node> Hash for AstPtr<N> {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            self.raw.hash(state);
+        fn hash<H: Hasher>(&self, x: &mut H) {
+            self.raw.hash(x);
         }
     }
     impl<N: ast::Node> AstPtr<N> {
@@ -565,7 +565,7 @@ mod ptr {
                 _ty: PhantomData,
             }
         }
-        pub fn to_node(&self, root: &api::Node) -> N {
+        pub fn to_node(&self, root: &crate::Node) -> N {
             let syntax_node = self.raw.to_node(root);
             N::cast(syntax_node).unwrap()
         }
