@@ -54,13 +54,13 @@ impl<L: Lang> Node<L> {
     pub fn kind(&self) -> L::Kind {
         L::kind_from_raw(self.raw.kind())
     }
-    pub fn text_range(&self) -> TextRange {
+    pub fn text_range(&self) -> crate::TextRange {
         self.raw.text_range()
     }
     pub fn index(&self) -> usize {
         self.raw.index()
     }
-    pub fn text(&self) -> SyntaxText {
+    pub fn text(&self) -> Text {
         self.raw.text()
     }
     pub fn green(&self) -> Cow<'_, green::NodeData> {
@@ -138,13 +138,13 @@ impl<L: Lang> Node<L> {
             _p: PhantomData,
         }
     }
-    pub fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<Token<L>> {
+    pub fn token_at_offset(&self, offset: crate::TextSize) -> TokAtOffset<Token<L>> {
         self.raw.token_at_offset(offset).map(Token::from)
     }
-    pub fn covering_element(&self, range: TextRange) -> Elem<L> {
+    pub fn covering_element(&self, range: crate::TextRange) -> Elem<L> {
         NodeOrToken::from(self.raw.covering_element(range))
     }
-    pub fn child_or_token_at_range(&self, range: TextRange) -> Option<Elem<L>> {
+    pub fn child_or_token_at_range(&self, range: crate::TextRange) -> Option<Elem<L>> {
         self.raw.child_or_token_at_range(range).map(Elem::from)
     }
     pub fn clone_subtree(&self) -> Node<L> {
@@ -215,7 +215,7 @@ impl<L: Lang> Token<L> {
     pub fn kind(&self) -> L::Kind {
         L::kind_from_raw(self.raw.kind())
     }
-    pub fn text_range(&self) -> TextRange {
+    pub fn text_range(&self) -> crate::TextRange {
         self.raw.text_range()
     }
     pub fn index(&self) -> usize {
@@ -290,7 +290,7 @@ impl<L: Lang> From<Token<L>> for cursor::Token {
 
 pub type Elem<L> = NodeOrToken<Node<L>, Token<L>>;
 impl<L: Lang> Elem<L> {
-    pub fn text_range(&self) -> TextRange {
+    pub fn text_range(&self) -> crate::TextRange {
         match self {
             NodeOrToken::Node(it) => it.text_range(),
             NodeOrToken::Token(it) => it.text_range(),

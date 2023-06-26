@@ -1,5 +1,6 @@
 #![allow(unsafe_code)]
 
+use crate::TextSize;
 use memoffset::offset_of;
 use std::{
     alloc::{self, Layout},
@@ -16,7 +17,6 @@ use std::{
         Ordering::{Acquire, Relaxed, Release},
     },
 };
-pub use text_size::{TextLen, TextRange, TextSize};
 
 pub mod api;
 #[allow(unsafe_code)]
@@ -139,7 +139,7 @@ pub mod support {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodePtr<L: api::Lang> {
     kind: L::Kind,
-    range: TextRange,
+    range: crate::TextRange,
 }
 impl<L: api::Lang> NodePtr<L> {
     pub fn new(x: &api::Node<L>) -> Self {
@@ -165,20 +165,20 @@ impl<L: api::Lang> NodePtr<L> {
     pub fn kind(&self) -> L::Kind {
         self.kind
     }
-    pub fn text_range(&self) -> TextRange {
+    pub fn text_range(&self) -> crate::TextRange {
         self.range
     }
 }
 
 #[derive(Clone)]
-pub struct SyntaxText {
+pub struct Text {
     node: crate::Node,
-    range: TextRange,
+    range: crate::TextRange,
 }
-impl SyntaxText {
-    pub fn new(node: crate::Node) -> SyntaxText {
+impl Text {
+    pub fn new(node: crate::Node) -> Text {
         let range = node.text_range();
-        SyntaxText { node, range }
+        Text { node, range }
     }
     pub fn len(&self) -> TextSize {
         self.range.len()
@@ -216,7 +216,7 @@ impl SyntaxText {
         });
         found(y)
     }
-    pub fn slice<R: SyntaxTextRange>(&self, range: R) -> SyntaxText {
+    pub fn slice<R: TextRange>(&self, range: R) -> Text {
         let start = range.start().unwrap_or_default();
         let end = range.end().unwrap_or(self.len());
         assert!(start <= end);
@@ -229,14 +229,14 @@ impl SyntaxText {
             self.range,
             (range.start(), range.end()),
         );
-        let range = TextRange::new(start, end);
+        let range = crate::TextRange::new(start, end);
         assert!(
             self.range.contains_range(range),
             "invalid slice, range: {:?}, slice: {:?}",
             self.range,
             range,
         );
-        SyntaxText {
+        Text {
             node: self.node.clone(),
             range,
         }
@@ -258,7 +258,7 @@ impl SyntaxText {
             Err(void) => match void {},
         }
     }
-    fn tokens_with_ranges(&self) -> impl Iterator<Item = (crate::Token, TextRange)> {
+    fn tokens_with_ranges(&self) -> impl Iterator<Item = (crate::Token, crate::TextRange)> {
         let text_range = self.range;
         self.node
             .descendants_with_tokens()
@@ -270,8 +270,8 @@ impl SyntaxText {
             })
     }
 }
-impl Eq for SyntaxText {}
-impl PartialEq<str> for SyntaxText {
+impl Eq for Text {}
+impl PartialEq<str> for Text {
     fn eq(&self, mut rhs: &str) -> bool {
         self.try_for_each_chunk(|chunk| {
             if !rhs.starts_with(chunk) {
@@ -284,13 +284,13 @@ impl PartialEq<str> for SyntaxText {
             && rhs.is_empty()
     }
 }
-impl PartialEq<&'_ str> for SyntaxText {
+impl PartialEq<&'_ str> for Text {
     fn eq(&self, rhs: &&str) -> bool {
         self == *rhs
     }
 }
-impl PartialEq for SyntaxText {
-    fn eq(&self, other: &SyntaxText) -> bool {
+impl PartialEq for Text {
+    fn eq(&self, other: &Text) -> bool {
         if self.range.len() != other.range.len() {
             return false;
         }
@@ -299,24 +299,24 @@ impl PartialEq for SyntaxText {
         zip_texts(&mut lhs, &mut rhs).is_none() && lhs.all(|it| it.1.is_empty()) && rhs.all(|it| it.1.is_empty())
     }
 }
-impl fmt::Debug for SyntaxText {
+impl fmt::Debug for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.to_string(), f)
     }
 }
-impl fmt::Display for SyntaxText {
+impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.try_for_each_chunk(|chunk| fmt::Display::fmt(chunk, f))
     }
 }
 
-fn found<T>(res: Result<(), T>) -> Option<T> {
-    match res {
+fn found<T>(x: Result<(), T>) -> Option<T> {
+    match x {
         Ok(()) => None,
-        Err(it) => Some(it),
+        Err(x) => Some(x),
     }
 }
-fn zip_texts<I: Iterator<Item = (crate::Token, TextRange)>>(xs: &mut I, ys: &mut I) -> Option<()> {
+fn zip_texts<I: Iterator<Item = (crate::Token, crate::TextRange)>>(xs: &mut I, ys: &mut I) -> Option<()> {
     let mut x = xs.next()?;
     let mut y = ys.next()?;
     loop {
@@ -332,40 +332,40 @@ fn zip_texts<I: Iterator<Item = (crate::Token, TextRange)>>(xs: &mut I, ys: &mut
             return Some(());
         }
         let advance = std::cmp::min(x.1.len(), y.1.len());
-        x.1 = TextRange::new(x.1.start() + advance, x.1.end());
-        y.1 = TextRange::new(y.1.start() + advance, y.1.end());
+        x.1 = crate::TextRange::new(x.1.start() + advance, x.1.end());
+        y.1 = crate::TextRange::new(y.1.start() + advance, y.1.end());
     }
 }
 
-impl From<SyntaxText> for String {
-    fn from(text: SyntaxText) -> String {
+impl From<Text> for String {
+    fn from(text: Text) -> String {
         text.to_string()
     }
 }
-impl PartialEq<SyntaxText> for str {
-    fn eq(&self, rhs: &SyntaxText) -> bool {
+impl PartialEq<Text> for str {
+    fn eq(&self, rhs: &Text) -> bool {
         rhs == self
     }
 }
-impl PartialEq<SyntaxText> for &'_ str {
-    fn eq(&self, rhs: &SyntaxText) -> bool {
+impl PartialEq<Text> for &'_ str {
+    fn eq(&self, rhs: &Text) -> bool {
         rhs == self
     }
 }
 
-trait SyntaxTextRange {
+trait TextRange {
     fn start(&self) -> Option<TextSize>;
     fn end(&self) -> Option<TextSize>;
 }
-impl SyntaxTextRange for TextRange {
+impl TextRange for crate::TextRange {
     fn start(&self) -> Option<TextSize> {
-        Some(TextRange::start(*self))
+        Some(crate::TextRange::start(*self))
     }
     fn end(&self) -> Option<TextSize> {
-        Some(TextRange::end(*self))
+        Some(crate::TextRange::end(*self))
     }
 }
-impl SyntaxTextRange for ops::Range<TextSize> {
+impl TextRange for ops::Range<TextSize> {
     fn start(&self) -> Option<TextSize> {
         Some(self.start)
     }
@@ -373,7 +373,7 @@ impl SyntaxTextRange for ops::Range<TextSize> {
         Some(self.end)
     }
 }
-impl SyntaxTextRange for ops::RangeFrom<TextSize> {
+impl TextRange for ops::RangeFrom<TextSize> {
     fn start(&self) -> Option<TextSize> {
         Some(self.start)
     }
@@ -381,7 +381,7 @@ impl SyntaxTextRange for ops::RangeFrom<TextSize> {
         None
     }
 }
-impl SyntaxTextRange for ops::RangeTo<TextSize> {
+impl TextRange for ops::RangeTo<TextSize> {
     fn start(&self) -> Option<TextSize> {
         None
     }
@@ -389,7 +389,7 @@ impl SyntaxTextRange for ops::RangeTo<TextSize> {
         Some(self.end)
     }
 }
-impl SyntaxTextRange for ops::RangeFull {
+impl TextRange for ops::RangeFull {
     fn start(&self) -> Option<TextSize> {
         None
     }
@@ -406,42 +406,42 @@ pub enum NodeOrToken<N, T> {
 impl<N, T> NodeOrToken<N, T> {
     pub fn into_node(self) -> Option<N> {
         match self {
-            NodeOrToken::Node(node) => Some(node),
+            NodeOrToken::Node(x) => Some(x),
             NodeOrToken::Token(_) => None,
         }
     }
     pub fn into_token(self) -> Option<T> {
         match self {
             NodeOrToken::Node(_) => None,
-            NodeOrToken::Token(token) => Some(token),
+            NodeOrToken::Token(x) => Some(x),
         }
     }
     pub fn as_node(&self) -> Option<&N> {
         match self {
-            NodeOrToken::Node(node) => Some(node),
+            NodeOrToken::Node(x) => Some(x),
             NodeOrToken::Token(_) => None,
         }
     }
     pub fn as_token(&self) -> Option<&T> {
         match self {
             NodeOrToken::Node(_) => None,
-            NodeOrToken::Token(token) => Some(token),
+            NodeOrToken::Token(x) => Some(x),
         }
     }
 }
 impl<N: Deref, T: Deref> NodeOrToken<N, T> {
     pub fn as_deref(&self) -> NodeOrToken<&N::Target, &T::Target> {
         match self {
-            NodeOrToken::Node(node) => NodeOrToken::Node(&*node),
-            NodeOrToken::Token(token) => NodeOrToken::Token(&*token),
+            NodeOrToken::Node(x) => NodeOrToken::Node(&*x),
+            NodeOrToken::Token(x) => NodeOrToken::Token(&*x),
         }
     }
 }
 impl<N: fmt::Display, T: fmt::Display> fmt::Display for NodeOrToken<N, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NodeOrToken::Node(node) => fmt::Display::fmt(node, f),
-            NodeOrToken::Token(token) => fmt::Display::fmt(token, f),
+            NodeOrToken::Node(x) => fmt::Display::fmt(x, f),
+            NodeOrToken::Token(x) => fmt::Display::fmt(x, f),
         }
     }
 }
@@ -467,58 +467,58 @@ impl<T> WalkEvent<T> {
 }
 
 #[derive(Clone, Debug)]
-pub enum TokenAtOffset<T> {
+pub enum TokAtOffset<T> {
     None,
     Single(T),
     Between(T, T),
 }
-impl<T> TokenAtOffset<T> {
-    pub fn map<F: Fn(T) -> U, U>(self, f: F) -> TokenAtOffset<U> {
+impl<T> TokAtOffset<T> {
+    pub fn map<F: Fn(T) -> U, U>(self, f: F) -> TokAtOffset<U> {
         match self {
-            TokenAtOffset::None => TokenAtOffset::None,
-            TokenAtOffset::Single(it) => TokenAtOffset::Single(f(it)),
-            TokenAtOffset::Between(l, r) => TokenAtOffset::Between(f(l), f(r)),
+            TokAtOffset::None => TokAtOffset::None,
+            TokAtOffset::Single(it) => TokAtOffset::Single(f(it)),
+            TokAtOffset::Between(l, r) => TokAtOffset::Between(f(l), f(r)),
         }
     }
     pub fn right_biased(self) -> Option<T> {
         match self {
-            TokenAtOffset::None => None,
-            TokenAtOffset::Single(node) => Some(node),
-            TokenAtOffset::Between(_, right) => Some(right),
+            TokAtOffset::None => None,
+            TokAtOffset::Single(node) => Some(node),
+            TokAtOffset::Between(_, right) => Some(right),
         }
     }
     pub fn left_biased(self) -> Option<T> {
         match self {
-            TokenAtOffset::None => None,
-            TokenAtOffset::Single(node) => Some(node),
-            TokenAtOffset::Between(left, _) => Some(left),
+            TokAtOffset::None => None,
+            TokAtOffset::Single(node) => Some(node),
+            TokAtOffset::Between(left, _) => Some(left),
         }
     }
 }
-impl<T> Iterator for TokenAtOffset<T> {
+impl<T> Iterator for TokAtOffset<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
-        match std::mem::replace(self, TokenAtOffset::None) {
-            TokenAtOffset::None => None,
-            TokenAtOffset::Single(node) => {
-                *self = TokenAtOffset::None;
+        match std::mem::replace(self, TokAtOffset::None) {
+            TokAtOffset::None => None,
+            TokAtOffset::Single(node) => {
+                *self = TokAtOffset::None;
                 Some(node)
             },
-            TokenAtOffset::Between(left, right) => {
-                *self = TokenAtOffset::Single(right);
+            TokAtOffset::Between(left, right) => {
+                *self = TokAtOffset::Single(right);
                 Some(left)
             },
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self {
-            TokenAtOffset::None => (0, Some(0)),
-            TokenAtOffset::Single(_) => (1, Some(1)),
-            TokenAtOffset::Between(_, _) => (2, Some(2)),
+            TokAtOffset::None => (0, Some(0)),
+            TokAtOffset::Single(_) => (1, Some(1)),
+            TokAtOffset::Between(_, _) => (2, Some(2)),
         }
     }
 }
-impl<T> ExactSizeIterator for TokenAtOffset<T> {}
+impl<T> ExactSizeIterator for TokAtOffset<T> {}
 
 macro_rules! _static_assert {
     ($e:expr) => {
@@ -821,7 +821,7 @@ impl<H, T> ThinArc<H, T> {
 impl<H, T> Clone for ThinArc<H, T> {
     #[inline]
     fn clone(&self) -> Self {
-        ThinArc::with_arc(self, |a| Arc::into_thin(a.clone()))
+        ThinArc::with_arc(self, |x| Arc::into_thin(x.clone()))
     }
 }
 impl<H, T> Deref for ThinArc<H, T> {
@@ -848,8 +848,8 @@ impl<H: PartialEq, T: PartialEq> PartialEq for ThinArc<H, T> {
 }
 impl<H: Eq, T: Eq> Eq for ThinArc<H, T> {}
 impl<H: Hash, T: Hash> Hash for ThinArc<H, T> {
-    fn hash<HSR: Hasher>(&self, state: &mut HSR) {
-        (**self).hash(state)
+    fn hash<HSR: Hasher>(&self, x: &mut HSR) {
+        (**self).hash(x)
     }
 }
 unsafe impl<H: Sync + Send, T: Sync + Send> Send for ThinArc<H, T> {}
@@ -857,8 +857,8 @@ unsafe impl<H: Sync + Send, T: Sync + Send> Sync for ThinArc<H, T> {}
 
 fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcInner<HeaderSlice<H, [T]>> {
     let len = unsafe { (*thin).data.length };
-    let fake_slice: *mut [T] = ptr::slice_from_raw_parts_mut(thin as *mut T, len);
-    fake_slice as *mut ArcInner<HeaderSlice<H, [T]>>
+    let y: *mut [T] = ptr::slice_from_raw_parts_mut(thin as *mut T, len);
+    y as *mut ArcInner<HeaderSlice<H, [T]>>
 }
 
 #[cfg(feature = "serde1")]
@@ -1049,9 +1049,9 @@ mod tests {
             let t2 = build_tree(t2).text();
             let expected = t1.to_string() == t2.to_string();
             let actual = t1 == t2;
-            assert_eq!(expected, actual, "`{}` (SyntaxText) `{}` (SyntaxText)", t1, t2);
+            assert_eq!(expected, actual, "`{}` (Text) `{}` (Text)", t1, t2);
             let actual = t1 == &*t2.to_string();
-            assert_eq!(expected, actual, "`{}` (SyntaxText) `{}` (&str)", t1, t2);
+            assert_eq!(expected, actual, "`{}` (Text) `{}` (&str)", t1, t2);
         }
         fn check(t1: &[&str], t2: &[&str]) {
             do_check(t1, t2);

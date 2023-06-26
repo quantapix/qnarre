@@ -1,7 +1,5 @@
-use super::{
-    green::{self, Kind},
-    sll, Delta, Direction, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
-};
+use super::*;
+use crate::{TextRange, TextSize};
 use countme::Count;
 use std::{
     borrow::Cow,
@@ -166,7 +164,7 @@ impl NodeData {
         TextRange::at(offset, len)
     }
     #[inline]
-    fn kind(&self) -> Kind {
+    fn kind(&self) -> green::Kind {
         self.green().kind()
     }
     fn next_sibling(&self) -> Option<Node> {
@@ -364,7 +362,7 @@ impl Node {
         }
     }
     #[inline]
-    pub fn kind(&self) -> Kind {
+    pub fn kind(&self) -> green::Kind {
         self.data().kind()
     }
     #[inline]
@@ -380,8 +378,8 @@ impl Node {
         self.data().index() as usize
     }
     #[inline]
-    pub fn text(&self) -> SyntaxText {
-        SyntaxText::new(self.clone())
+    pub fn text(&self) -> Text {
+        Text::new(self.clone())
     }
     #[inline]
     pub fn green(&self) -> Cow<'_, green::NodeData> {
@@ -509,7 +507,7 @@ impl Node {
     pub fn preorder_with_tokens(&self) -> PreorderWithToks {
         PreorderWithToks::new(self.clone())
     }
-    pub fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<Token> {
+    pub fn token_at_offset(&self, offset: TextSize) -> TokAtOffset<Token> {
         let range = self.text_range();
         assert!(
             range.start() <= offset && offset <= range.end(),
@@ -518,7 +516,7 @@ impl Node {
             offset
         );
         if range.is_empty() {
-            return TokenAtOffset::None;
+            return TokAtOffset::None;
         }
         let mut children = self.children_with_tokens().filter(|child| {
             let child_range = child.text_range();
@@ -529,7 +527,7 @@ impl Node {
         assert!(children.next().is_none());
         if let Some(right) = right {
             match (left.token_at_offset(offset), right.token_at_offset(offset)) {
-                (TokenAtOffset::Single(left), TokenAtOffset::Single(right)) => TokenAtOffset::Between(left, right),
+                (TokAtOffset::Single(left), TokAtOffset::Single(right)) => TokAtOffset::Between(left, right),
                 _ => unreachable!(),
             }
         } else {
@@ -658,7 +656,7 @@ impl Token {
         parent.replace_with(new_parent)
     }
     #[inline]
-    pub fn kind(&self) -> Kind {
+    pub fn kind(&self) -> green::Kind {
         self.data().kind()
     }
     #[inline]
@@ -789,7 +787,7 @@ impl Elem {
         }
     }
     #[inline]
-    pub fn kind(&self) -> Kind {
+    pub fn kind(&self) -> green::Kind {
         match self {
             NodeOrToken::Node(it) => it.kind(),
             NodeOrToken::Token(it) => it.kind(),
@@ -834,10 +832,10 @@ impl Elem {
             NodeOrToken::Token(it) => it.prev_sibling_or_token(),
         }
     }
-    fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<Token> {
+    fn token_at_offset(&self, offset: TextSize) -> TokAtOffset<Token> {
         assert!(self.text_range().start() <= offset && offset <= self.text_range().end());
         match self {
-            NodeOrToken::Token(token) => TokenAtOffset::Single(token.clone()),
+            NodeOrToken::Token(token) => TokAtOffset::Single(token.clone()),
             NodeOrToken::Node(node) => node.token_at_offset(offset),
         }
     }

@@ -329,7 +329,7 @@ mod operators {
 pub mod prec {
     use crate::{
         ast::{self, BinaryOp, Expr, HasArgList},
-        match_ast,
+        match_ast, TextSize,
     };
     impl Expr {
         pub fn needs_parens_in(&self, parent: crate::Node) -> bool {

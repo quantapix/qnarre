@@ -5,18 +5,17 @@
     // missing_docs,
 )]
 #![warn(unused_lifetimes)]
+
 pub use crate::{
-    core::{api, green, TextRange, TextSize},
+    core::{api, green, Direction, Text},
     ptr::{AstPtr, NodePtr},
     token_text::TokenText,
 };
 pub use parser::{SyntaxKind, T};
 pub use smol_str::SmolStr;
-use std::fmt;
-
-#[allow(unused)]
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
 use text_edit::Indel;
+pub use text_size::{TextRange, TextSize};
 use triomphe::Arc;
 
 macro_rules! _eprintln {
@@ -160,17 +159,17 @@ pub mod hacks {
 mod parsing {
     mod reparsing {
         use crate::{
-            core::{api, green, TextRange, TextSize},
+            core::{api, green, NodeOrToken},
             parsing::build_tree,
             SyntaxErr,
             SyntaxKind::*,
-            T,
+            TextRange, TextSize, T,
         };
         use parser::Reparser;
         use text_edit::Indel;
 
         pub fn incremental_reparse(
-            node: &api::Node,
+            node: &crate::Node,
             edit: &Indel,
             errors: Vec<SyntaxErr>,
         ) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
@@ -182,7 +181,7 @@ mod parsing {
             }
             None
         }
-        fn reparse_token(root: &api::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
+        fn reparse_token(root: &crate::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
             let prev_token = root.covering_element(edit.delete).as_token()?.clone();
             let prev_token_kind = prev_token.kind();
             match prev_token_kind {
@@ -217,7 +216,7 @@ mod parsing {
                 _ => None,
             }
         }
-        fn reparse_block(root: &api::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
+        fn reparse_block(root: &crate::Node, edit: &Indel) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
             let (node, reparser) = find_reparsable_node(root, edit.delete)?;
             let text = get_text_after_edit(node.clone().into(), edit);
             let lexed = parser::LexedStr::new(text.as_str());
@@ -229,7 +228,7 @@ mod parsing {
             let (green, new_parser_errors, _eof) = build_tree(lexed, tree_traversal);
             Some((node.replace_with(green), new_parser_errors, node.text_range()))
         }
-        fn get_text_after_edit(element: api::Elem, edit: &Indel) -> String {
+        fn get_text_after_edit(element: crate::Elem, edit: &Indel) -> String {
             let edit = Indel::replace(edit.delete - element.text_range().start(), edit.insert.clone());
             let mut text = match element {
                 NodeOrToken::Token(token) => token.text().to_string(),
@@ -241,7 +240,7 @@ mod parsing {
         fn is_contextual_kw(text: &str) -> bool {
             matches!(text, "auto" | "default" | "union")
         }
-        fn find_reparsable_node(node: &api::Node, range: TextRange) -> Option<(api::Node, Reparser)> {
+        fn find_reparsable_node(node: &crate::Node, range: TextRange) -> Option<(crate::Node, Reparser)> {
             let node = node.covering_element(range);
             node.ancestors().find_map(|node| {
                 let first_child = node.first_child_or_token().map(|it| it.kind());
@@ -547,10 +546,7 @@ enum Foo {
         }
     }
     pub use crate::parsing::reparsing::incremental_reparse;
-    use crate::{
-        core::{green, TextRange},
-        SyntaxErr, SyntaxTreeBuilder,
-    };
+    use crate::{core::green, SyntaxErr, SyntaxTreeBuilder, TextRange};
     pub fn parse_text(text: &str) -> (green::Node, Vec<SyntaxErr>) {
         let lexed = parser::LexedStr::new(text);
         let parser_input = lexed.to_input();
@@ -579,11 +575,7 @@ enum Foo {
     }
 }
 mod ptr {
-    use crate::{
-        api, ast,
-        core::{self, TextRange},
-        Lang,
-    };
+    use crate::{api, ast, core, Lang, TextRange};
     use std::{
         hash::{Hash, Hasher},
         marker::PhantomData,
@@ -752,25 +744,25 @@ pub mod ted {
     use parser::T;
     use std::{mem, ops::RangeInclusive};
     pub trait Elem {
-        fn syntax_element(self) -> api::Elem;
+        fn syntax_element(self) -> crate::Elem;
     }
     impl<E: Elem + Clone> Elem for &'_ E {
-        fn syntax_element(self) -> api::Elem {
+        fn syntax_element(self) -> crate::Elem {
             self.clone().syntax_element()
         }
     }
-    impl Elem for api::Elem {
-        fn syntax_element(self) -> api::Elem {
+    impl Elem for crate::Elem {
+        fn syntax_element(self) -> crate::Elem {
             self
         }
     }
-    impl Elem for api::Node {
-        fn syntax_element(self) -> api::Elem {
+    impl Elem for crate::Node {
+        fn syntax_element(self) -> crate::Elem {
             self.into()
         }
     }
-    impl Elem for api::Token {
-        fn syntax_element(self) -> api::Elem {
+    impl Elem for crate::Token {
+        fn syntax_element(self) -> crate::Elem {
             self.into()
         }
     }
@@ -784,64 +776,64 @@ pub mod ted {
         After(Elem),
     }
     impl Pos {
-        pub fn after(elem: impl Elem) -> Pos {
-            let repr = PosRepr::After(elem.syntax_element());
+        pub fn after(x: impl Elem) -> Pos {
+            let repr = PosRepr::After(x.syntax_element());
             Pos { repr }
         }
-        pub fn before(elem: impl Elem) -> Pos {
-            let elem = elem.syntax_element();
-            let repr = match elem.prev_sibling_or_token() {
-                Some(it) => PosRepr::After(it),
-                None => PosRepr::FirstChild(elem.parent().unwrap()),
+        pub fn before(x: impl Elem) -> Pos {
+            let x = x.syntax_element();
+            let repr = match x.prev_sibling_or_token() {
+                Some(x) => PosRepr::After(x),
+                None => PosRepr::FirstChild(x.parent().unwrap()),
             };
             Pos { repr }
         }
-        pub fn first_child_of(node: &(impl Into<api::Node> + Clone)) -> Pos {
-            let repr = PosRepr::FirstChild(node.clone().into());
+        pub fn first_child_of(x: &(impl Into<crate::Node> + Clone)) -> Pos {
+            let repr = PosRepr::FirstChild(x.clone().into());
             Pos { repr }
         }
-        pub fn last_child_of(node: &(impl Into<api::Node> + Clone)) -> Pos {
-            let node = node.clone().into();
-            let repr = match node.last_child_or_token() {
-                Some(it) => PosRepr::After(it),
-                None => PosRepr::FirstChild(node),
+        pub fn last_child_of(x: &(impl Into<crate::Node> + Clone)) -> Pos {
+            let x = x.clone().into();
+            let repr = match x.last_child_or_token() {
+                Some(x) => PosRepr::After(x),
+                None => PosRepr::FirstChild(x),
             };
             Pos { repr }
         }
     }
-    pub fn insert(position: Pos, elem: impl Elem) {
-        insert_all(position, vec![elem.syntax_element()]);
+    pub fn insert(pos: Pos, x: impl Elem) {
+        insert_all(pos, vec![x.syntax_element()]);
     }
-    pub fn insert_raw(position: Pos, elem: impl Elem) {
-        insert_all_raw(position, vec![elem.syntax_element()]);
+    pub fn insert_raw(pos: Pos, x: impl Elem) {
+        insert_all_raw(pos, vec![x.syntax_element()]);
     }
-    pub fn insert_all(position: Pos, mut elements: Vec<api::Elem>) {
-        if let Some(first) = elements.first() {
-            if let Some(ws) = ws_before(&position, first) {
-                elements.insert(0, ws.into());
+    pub fn insert_all(pos: Pos, mut xs: Vec<crate::Elem>) {
+        if let Some(x) = xs.first() {
+            if let Some(x) = ws_before(&pos, x) {
+                xs.insert(0, x.into());
             }
         }
-        if let Some(last) = elements.last() {
-            if let Some(ws) = ws_after(&position, last) {
-                elements.push(ws.into());
+        if let Some(x) = xs.last() {
+            if let Some(x) = ws_after(&pos, x) {
+                xs.push(x.into());
             }
         }
-        insert_all_raw(position, elements);
+        insert_all_raw(pos, xs);
     }
-    pub fn insert_all_raw(position: Pos, elements: Vec<api::Elem>) {
-        let (parent, index) = match position.repr {
+    pub fn insert_all_raw(pos: Pos, xs: Vec<crate::Elem>) {
+        let (parent, index) = match pos.repr {
             PosRepr::FirstChild(parent) => (parent, 0),
             PosRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
         };
-        parent.splice_children(index..index, elements);
+        parent.splice_children(index..index, xs);
     }
-    pub fn remove(elem: impl Elem) {
-        elem.syntax_element().detach();
+    pub fn remove(x: impl Elem) {
+        x.syntax_element().detach();
     }
-    pub fn remove_all(range: RangeInclusive<api::Elem>) {
+    pub fn remove_all(range: RangeInclusive<crate::Elem>) {
         replace_all(range, Vec::new());
     }
-    pub fn remove_all_iter(range: impl IntoIterator<Item = api::Elem>) {
+    pub fn remove_all_iter(range: impl IntoIterator<Item = crate::Elem>) {
         let mut it = range.into_iter();
         if let Some(mut first) = it.next() {
             match it.last() {
@@ -858,53 +850,53 @@ pub mod ted {
     pub fn replace(old: impl Elem, new: impl Elem) {
         replace_with_many(old, vec![new.syntax_element()]);
     }
-    pub fn replace_with_many(old: impl Elem, new: Vec<api::Elem>) {
+    pub fn replace_with_many(old: impl Elem, new: Vec<crate::Elem>) {
         let old = old.syntax_element();
         replace_all(old.clone()..=old, new);
     }
-    pub fn replace_all(range: RangeInclusive<api::Elem>, new: Vec<api::Elem>) {
+    pub fn replace_all(range: RangeInclusive<crate::Elem>, new: Vec<crate::Elem>) {
         let start = range.start().index();
         let end = range.end().index();
         let parent = range.start().parent().unwrap();
         parent.splice_children(start..end + 1, new);
     }
-    pub fn append_child(node: &(impl Into<api::Node> + Clone), child: impl Elem) {
-        let position = Pos::last_child_of(node);
-        insert(position, child);
+    pub fn append_child(x: &(impl Into<crate::Node> + Clone), child: impl Elem) {
+        let pos = Pos::last_child_of(x);
+        insert(pos, child);
     }
-    pub fn append_child_raw(node: &(impl Into<api::Node> + Clone), child: impl Elem) {
-        let position = Pos::last_child_of(node);
-        insert_raw(position, child);
+    pub fn append_child_raw(x: &(impl Into<crate::Node> + Clone), child: impl Elem) {
+        let pos = Pos::last_child_of(x);
+        insert_raw(pos, child);
     }
-    fn ws_before(position: &Pos, new: &api::Elem) -> Option<api::Token> {
-        let prev = match &position.repr {
+    fn ws_before(pos: &Pos, new: &crate::Elem) -> Option<crate::Token> {
+        let prev = match &pos.repr {
             PosRepr::FirstChild(_) => return None,
-            PosRepr::After(it) => it,
+            PosRepr::After(x) => x,
         };
         if prev.kind() == T!['{'] && new.kind() == SyntaxKind::USE {
             if let Some(item_list) = prev.parent().and_then(ast::ItemList::cast) {
-                let mut indent = IndentLevel::from_element(&item_list.syntax().clone().into());
-                indent.0 += 1;
+                let mut y = IndentLevel::from_element(&item_list.syntax().clone().into());
+                y.0 += 1;
                 return Some(make::tokens::whitespace(&format!("\n{indent}")));
             }
         }
         if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
             if let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast) {
-                let mut indent = IndentLevel::from_element(&stmt_list.syntax().clone().into());
-                indent.0 += 1;
+                let mut y = IndentLevel::from_element(&stmt_list.syntax().clone().into());
+                y.0 += 1;
                 return Some(make::tokens::whitespace(&format!("\n{indent}")));
             }
         }
         ws_between(prev, new)
     }
-    fn ws_after(position: &Pos, new: &api::Elem) -> Option<api::Token> {
-        let next = match &position.repr {
-            PosRepr::FirstChild(parent) => parent.first_child_or_token()?,
-            PosRepr::After(sibling) => sibling.next_sibling_or_token()?,
+    fn ws_after(pos: &Pos, new: &crate::Elem) -> Option<crate::Token> {
+        let next = match &pos.repr {
+            PosRepr::FirstChild(x) => x.first_child_or_token()?,
+            PosRepr::After(x) => x.next_sibling_or_token()?,
         };
         ws_between(new, &next)
     }
-    fn ws_between(left: &api::Elem, right: &api::Elem) -> Option<api::Token> {
+    fn ws_between(left: &crate::Elem, right: &crate::Elem) -> Option<crate::Token> {
         if left.kind() == SyntaxKind::WHITESPACE || right.kind() == SyntaxKind::WHITESPACE {
             return None;
         }
@@ -921,9 +913,9 @@ pub mod ted {
             return None;
         }
         if right.kind() == SyntaxKind::USE {
-            let mut indent = IndentLevel::from_element(left);
+            let mut y = IndentLevel::from_element(left);
             if left.kind() == SyntaxKind::USE {
-                indent.0 = IndentLevel::from_element(right).0.max(indent.0);
+                y.0 = IndentLevel::from_element(right).0.max(y.0);
             }
             return Some(make::tokens::whitespace(&format!("\n{indent}")));
         }
@@ -1222,7 +1214,7 @@ fn api_walkthrough() {
     };
     assert_eq!(expr_syntax.kind(), SyntaxKind::BIN_EXPR);
     assert_eq!(expr_syntax.text_range(), TextRange::new(32.into(), 37.into()));
-    let text: SyntaxText = expr_syntax.text();
+    let text: Text = expr_syntax.text();
     assert_eq!(text.to_string(), "1 + 1");
     assert_eq!(expr_syntax.parent().as_ref(), Some(stmt_list.syntax()));
     assert_eq!(

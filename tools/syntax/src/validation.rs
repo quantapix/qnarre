@@ -1,10 +1,10 @@
 use crate::{
     algo,
     ast::{self, HasAttrs, HasVisibility, IsString},
-    core::{api, Direction, TextSize},
+    core::{api, Direction},
     match_ast, SyntaxErr,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
-    T,
+    TextSize, T,
 };
 use rustc_lexer::unescape::{self, unescape_literal, Mode};
 mod block {
@@ -120,11 +120,11 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
     };
     (err_message, err.is_fatal())
 }
-fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
+fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
-    let token = literal.token();
+    let token = x.token();
     let text = token.text();
     let mut push_err = |prefix_len, off, err: unescape::EscapeError| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
@@ -133,7 +133,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
             acc.push(SyntaxErr::new_at_offset(message, off));
         }
     };
-    match literal.kind() {
+    match x.kind() {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
@@ -188,7 +188,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         ast::LiteralKind::IntNumber(_) | ast::LiteralKind::FloatNumber(_) | ast::LiteralKind::Bool(_) => {},
     }
 }
-pub fn validate_block_structure(root: &api::Node) {
+pub fn validate_block_structure(root: &crate::Node) {
     let mut stack = Vec::new();
     for node in root.descendants_with_tokens() {
         match node.kind() {
@@ -225,7 +225,7 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
             ));
         }
     }
-    fn int_token(name_ref: Option<ast::NameRef>) -> Option<api::Token> {
+    fn int_token(name_ref: Option<ast::NameRef>) -> Option<crate::Token> {
         name_ref?
             .syntax()
             .first_child_or_token()?

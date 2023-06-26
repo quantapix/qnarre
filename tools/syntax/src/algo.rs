@@ -1,7 +1,7 @@
 use crate::{
     ast,
-    core::{Direction, NodeOrToken, TextRange, TextSize},
-    Elem, SyntaxKind,
+    core::{Direction, NodeOrToken},
+    Elem, SyntaxKind, TextRange, TextSize,
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
