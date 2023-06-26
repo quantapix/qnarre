@@ -1,6 +1,3 @@
-//!
-//!
-
 use std::mem;
 
 use crate::{
@@ -48,7 +45,6 @@ impl<'a> LexedStr<'a> {
         res
     }
 
-    /// NB: only valid to call with Output from Reparser/TopLevelEntry.
     pub fn intersperse_trivia(&self, output: &crate::Output, sink: &mut dyn FnMut(StrStep<'_>)) -> bool {
         let mut builder = Builder {
             lexed: self,

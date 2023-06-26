@@ -1,10 +1,3 @@
-//!
-//!
-//!
-//!
-//!
-//!
-
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 #![allow(rustdoc::private_intra_doc_links)]
 
@@ -31,12 +24,6 @@ pub use crate::{
     syntax_kind::SyntaxKind,
 };
 
-///
-///
-///
-///
-///
-///
 #[derive(Debug)]
 pub enum TopEntryPoint {
     SourceFile,
@@ -45,8 +32,6 @@ pub enum TopEntryPoint {
     Pattern,
     Type,
     Expr,
-    /// Edge case -- macros generally don't expand to attributes, with the
-    /// exception of `cfg_attr` which does!
     MetaItem,
 }
 
@@ -89,8 +74,6 @@ impl TopEntryPoint {
     }
 }
 
-///
-///
 #[derive(Debug)]
 pub enum PrefixEntryPoint {
     Vis,
@@ -129,15 +112,10 @@ impl PrefixEntryPoint {
 pub struct Reparser(fn(&mut parser::Parser<'_>));
 
 impl Reparser {
-    /// If the node is a braced block, return the corresponding `Reparser`.
     pub fn for_node(node: SyntaxKind, first_child: Option<SyntaxKind>, parent: Option<SyntaxKind>) -> Option<Reparser> {
         grammar::reparser(node, first_child, parent).map(Reparser)
     }
 
-    /// Re-parse given tokens using this `Reparser`.
-    ///
-    /// Tokens must start with `{`, end with `}` and form a valid brace
-    /// sequence.
     pub fn parse(self, tokens: &Input) -> Output {
         let Reparser(r) = self;
         let mut p = parser::Parser::new(tokens);

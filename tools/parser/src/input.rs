@@ -3,8 +3,6 @@ use crate::SyntaxKind;
 #[allow(non_camel_case_types)]
 type bits = u64;
 
-///
-///
 #[derive(Default)]
 pub struct Input {
     kind: Vec<SyntaxKind>,
@@ -21,22 +19,6 @@ impl Input {
     pub fn push_ident(&mut self, contextual_kind: SyntaxKind) {
         self.push_impl(SyntaxKind::IDENT, contextual_kind)
     }
-    /// Sets jointness for the last token we've pushed.
-    ///
-    /// This is a separate API rather than an argument to the `push` to make it
-    /// convenient both for textual and mbe tokens. With text, you know whether
-    /// the *previous* token was joint, with mbe, you know whether the *current*
-    /// one is joint. This API allows for styles of usage:
-    ///
-    /// ```
-    /// // In text:
-    /// tokens.was_joint(prev_joint);
-    /// tokens.push(curr);
-    ///
-    /// // In MBE:
-    /// token.push(curr);
-    /// tokens.push(curr_joint)
-    /// ```
     #[inline]
     pub fn was_joint(&mut self) {
         let n = self.len() - 1;

@@ -1,10 +1,3 @@
-//!
-//!
-//!
-//!
-//!
-//!
-
 mod attributes;
 mod expressions;
 mod generic_args;

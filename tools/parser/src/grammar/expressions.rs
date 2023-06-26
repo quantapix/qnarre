@@ -196,8 +196,6 @@ enum Associativity {
     Right,
 }
 
-///
-///
 #[rustfmt::skip]
 fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
     use Associativity::*;
