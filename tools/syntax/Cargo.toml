@@ -23,8 +23,8 @@ rustc-hash = "1.1"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 smol_str = "0.2"
 always-assert = { version = "0.1.2", features = ["log"] }
+parser = { path = "../../lib/rust-analyzer/crates/parser" }
 
-# parser.workspace = true
 # profile.workspace = true
 # rustc_lexer.workspace = true
 # stdx.workspace = true

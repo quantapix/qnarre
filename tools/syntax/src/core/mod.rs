@@ -169,11 +169,11 @@ pub mod support {
 
 #[derive(Clone)]
 pub struct SyntaxText {
-    node: api::Node,
+    node: crate::Node,
     range: TextRange,
 }
 impl SyntaxText {
-    pub fn new(node: api::Node) -> SyntaxText {
+    pub fn new(node: crate::Node) -> SyntaxText {
         let range = node.text_range();
         SyntaxText { node, range }
     }
@@ -184,34 +184,34 @@ impl SyntaxText {
         self.range.is_empty()
     }
     pub fn contains_char(&self, c: char) -> bool {
-        self.try_for_each_chunk(|chunk| if chunk.contains(c) { Err(()) } else { Ok(()) })
+        self.try_for_each_chunk(|x| if x.contains(c) { Err(()) } else { Ok(()) })
             .is_err()
     }
     pub fn find_char(&self, c: char) -> Option<TextSize> {
         let mut acc: TextSize = 0.into();
-        let res = self.try_for_each_chunk(|chunk| {
-            if let Some(pos) = chunk.find(c) {
-                let pos: TextSize = (pos as u32).into();
-                return Err(acc + pos);
+        let y = self.try_for_each_chunk(|x| {
+            if let Some(x) = x.find(c) {
+                let x: TextSize = (x as u32).into();
+                return Err(acc + x);
             }
-            acc += TextSize::of(chunk);
+            acc += TextSize::of(x);
             Ok(())
         });
-        found(res)
+        found(y)
     }
-    pub fn char_at(&self, offset: TextSize) -> Option<char> {
-        let offset = offset.into();
+    pub fn char_at(&self, off: TextSize) -> Option<char> {
+        let off = off.into();
         let mut start: TextSize = 0.into();
-        let res = self.try_for_each_chunk(|chunk| {
+        let y = self.try_for_each_chunk(|chunk| {
             let end = start + TextSize::of(chunk);
-            if start <= offset && offset < end {
-                let off: usize = u32::from(offset - start) as usize;
+            if start <= off && off < end {
+                let off: usize = u32::from(off - start) as usize;
                 return Err(chunk[off..].chars().next().unwrap());
             }
             start = end;
             Ok(())
         });
-        found(res)
+        found(y)
     }
     pub fn slice<R: SyntaxTextRange>(&self, range: R) -> SyntaxText {
         let start = range.start().unwrap_or_default();
@@ -255,7 +255,7 @@ impl SyntaxText {
             Err(void) => match void {},
         }
     }
-    fn tokens_with_ranges(&self) -> impl Iterator<Item = (api::Token, TextRange)> {
+    fn tokens_with_ranges(&self) -> impl Iterator<Item = (crate::Token, TextRange)> {
         let text_range = self.range;
         self.node
             .descendants_with_tokens()
@@ -313,7 +313,7 @@ fn found<T>(res: Result<(), T>) -> Option<T> {
         Err(it) => Some(it),
     }
 }
-fn zip_texts<I: Iterator<Item = (api::Token, TextRange)>>(xs: &mut I, ys: &mut I) -> Option<()> {
+fn zip_texts<I: Iterator<Item = (crate::Token, TextRange)>>(xs: &mut I, ys: &mut I) -> Option<()> {
     let mut x = xs.next()?;
     let mut y = ys.next()?;
     loop {
