@@ -228,12 +228,12 @@ pub const KINDS_SRC: KindsSrc<'_> = KindsSrc {
 #[derive(Default, Debug)]
 pub struct AstSrc {
     pub tokens: Vec<String>,
-    pub nodes: Vec<AstNodeSrc>,
-    pub enums: Vec<AstEnumSrc>,
+    pub nodes: Vec<NodeSrc>,
+    pub enums: Vec<EnumSrc>,
 }
 
 #[derive(Debug)]
-pub struct AstNodeSrc {
+pub struct NodeSrc {
     pub doc: Vec<String>,
     pub name: String,
     pub traits: Vec<String>,
@@ -257,7 +257,7 @@ pub enum Cardinality {
 }
 
 #[derive(Debug)]
-pub struct AstEnumSrc {
+pub struct EnumSrc {
     pub doc: Vec<String>,
     pub name: String,
     pub traits: Vec<String>,

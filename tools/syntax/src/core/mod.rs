@@ -25,7 +25,8 @@ pub mod cursor;
 pub mod green;
 
 pub mod ast {
-    use super::api;
+    use super::{api, Hash, Hasher};
+    use std::{fmt, marker::PhantomData};
 
     pub trait Node {
         type Lang: api::Lang;
@@ -860,7 +861,7 @@ fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcI
     fake_slice as *mut ArcInner<HeaderSlice<H, [T]>>
 }
 
-//#[cfg(feature = "serde1")]
+#[cfg(feature = "serde1")]
 mod serde_impls {
     use super::{api, NodeOrToken};
     use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
@@ -1031,15 +1032,15 @@ mod sll {
 
 #[cfg(test)]
 mod tests {
-    use super::{api, green};
-    fn build_tree(xs: &[&str]) -> api::Node {
+    use super::green;
+    fn build_tree(xs: &[&str]) -> crate::Node {
         let mut y = green::NodeBuilder::new();
         y.start_node(green::Kind(62));
         for &x in xs.iter() {
             y.token(green::Kind(92), x.into())
         }
         y.finish_node();
-        api::Node::new_root(y.finish())
+        crate::Node::new_root(y.finish())
     }
     #[test]
     fn test_text_equality() {

@@ -112,7 +112,7 @@ pub mod edit {
     fn prev_tokens(token: crate::Token) -> impl Iterator<Item = crate::Token> {
         iter::successors(Some(token), |token| token.prev_token())
     }
-    pub trait AstNodeEdit: ast::Node + Clone + Sized {
+    pub trait NodeEdit: ast::Node + Clone + Sized {
         fn indent_level(&self) -> IndentLevel {
             IndentLevel::from_node(self.syntax())
         }
@@ -140,7 +140,7 @@ pub mod edit {
             self.dedent(level)
         }
     }
-    impl<N: ast::Node + Clone> AstNodeEdit for N {}
+    impl<N: ast::Node + Clone> NodeEdit for N {}
     #[test]
     fn test_increase_indent() {
         let arm_list = {
@@ -598,7 +598,7 @@ mod traits {
         }
     }
     pub trait HasModuleItem: ast::Node {
-        fn items(&self) -> AstChildren<ast::Item> {
+        fn items(&self) -> ast::Children<ast::Item> {
             support::children(self.syntax())
         }
     }

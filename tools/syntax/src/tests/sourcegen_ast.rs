@@ -1,4 +1,4 @@
-use crate::tests::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC};
+use crate::tests::ast_src::{AstSrc, Cardinality, EnumSrc, Field, KindsSrc, NodeSrc, KINDS_SRC};
 use itertools::Itertools;
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
@@ -81,7 +81,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 let ty = field.ty();
                 if field.is_many() {
                     quote! {
-                        pub fn #method_name(&self) -> AstChildren<#ty> {
+                        pub fn #method_name(&self) -> ast::Children<#ty> {
                             support::children(&self.syntax)
                         }
                     }
@@ -112,7 +112,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     }
                 },
                 quote! {
-                    impl AstNode for #name {
+                    impl ast::Node for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
@@ -143,7 +143,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 quote! {}
             } else {
                 quote! {
-                    impl AstNode for #name {
+                    impl ast::Node for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
@@ -220,7 +220,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             }
                         }
                     }
-                    impl AstNode for #name {
+                    impl ast::Node for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
@@ -264,7 +264,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         #![allow(non_snake_case)]
         use crate::{
             crate::Node, crate::Token, SyntaxKind::{self, *},
-            ast::{self, AstNode, AstChildren, support},
+            ast::{self, support},
             T,
         };
         #(#node_defs)*
@@ -542,7 +542,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
         let rule = &grammar[node].rule;
         match lower_enum(grammar, rule) {
             Some(variants) => {
-                let enum_src = AstEnumSrc {
+                let enum_src = EnumSrc {
                     doc: Vec::new(),
                     name,
                     traits: Vec::new(),
@@ -553,7 +553,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
             None => {
                 let mut fields = Vec::new();
                 lower_rule(&mut fields, grammar, None, rule);
-                res.nodes.push(AstNodeSrc {
+                res.nodes.push(NodeSrc {
                     doc: Vec::new(),
                     name,
                     traits: Vec::new(),
@@ -767,7 +767,7 @@ fn extract_struct_traits(ast: &mut AstSrc) {
         }
     }
 }
-fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str]) {
+fn extract_struct_trait(node: &mut NodeSrc, trait_name: &str, methods: &[&str]) {
     let mut to_remove = Vec::new();
     for (i, field) in node.fields.iter().enumerate() {
         let method_name = field.method_name().to_string();
@@ -801,7 +801,7 @@ fn extract_enum_traits(ast: &mut AstSrc) {
         enm.traits = enum_traits.into_iter().collect();
     }
 }
-impl AstNodeSrc {
+impl NodeSrc {
     fn remove_field(&mut self, to_remove: Vec<usize>) {
         to_remove.into_iter().rev().for_each(|idx| {
             self.fields.remove(idx);

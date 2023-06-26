@@ -23,7 +23,7 @@ rustc-hash = "1.1"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 smol_str = "0.2"
 always-assert = { version = "0.1.2", features = ["log"] }
-parser = { path = "../parser" }
+# parser = { path = "../parser" }
 
 # profile.workspace = true
 # rustc_lexer.workspace = true
