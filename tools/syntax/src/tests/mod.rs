@@ -13,7 +13,7 @@ use expect_test::expect_file;
 use rayon::prelude::*;
 use test_utils::{bench, bench_fixture, project_root};
 
-use crate::{ast, fuzz, AstNode, SourceFile, SyntaxErr};
+use crate::{ast, fuzz, SourceFile, SyntaxErr};
 
 #[test]
 fn parse_smoke_test() {

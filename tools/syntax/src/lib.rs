@@ -6,9 +6,8 @@
 )]
 #![warn(unused_lifetimes)]
 pub use crate::{
-    ast::{AstNode, AstToken},
     core::{api, green, TextRange, TextSize},
-    ptr::{AstPtr, SyntaxNodePtr},
+    ptr::{AstPtr, NodePtr},
     token_text::TokenText,
 };
 pub use parser::{SyntaxKind, T};
@@ -76,7 +75,7 @@ pub mod ast;
 pub mod core;
 #[doc(hidden)]
 pub mod fuzz {
-    use crate::{validation, AstNode, SourceFile, TextRange};
+    use crate::{ast, validation, SourceFile, TextRange};
     use std::str::{self, FromStr};
     use text_edit::Indel;
 
@@ -147,7 +146,7 @@ pub mod fuzz {
     }
 }
 pub mod hacks {
-    use crate::{ast, AstNode};
+    use crate::ast;
     pub fn parse_expr_from_str(s: &str) -> Option<ast::Expr> {
         let s = s.trim();
         let file = ast::SourceFile::parse(&format!("const _: () = {s};"));
@@ -294,7 +293,7 @@ mod parsing {
         #[cfg(test)]
         mod tests {
             use super::*;
-            use crate::{AstNode, Parse, SourceFile};
+            use crate::{ast, Parse, SourceFile};
             use test_utils::{assert_eq_text, extract_range};
             fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
                 let (range, before) = extract_range(before);
@@ -580,18 +579,22 @@ enum Foo {
     }
 }
 mod ptr {
-    use crate::{api, core::TextRange, AstNode, Lang};
+    use crate::{
+        api, ast,
+        core::{self, TextRange},
+        Lang,
+    };
     use std::{
         hash::{Hash, Hasher},
         marker::PhantomData,
     };
-    pub type SyntaxNodePtr = core::ast::SyntaxNodePtr<Lang>;
+    pub type NodePtr = core::NodePtr<Lang>;
     #[derive(Debug)]
-    pub struct AstPtr<N: AstNode> {
-        raw: SyntaxNodePtr,
+    pub struct AstPtr<N: ast::AstNode> {
+        raw: NodePtr,
         _ty: PhantomData<fn() -> N>,
     }
-    impl<N: AstNode> Clone for AstPtr<N> {
+    impl<N: ast::AstNode> Clone for AstPtr<N> {
         fn clone(&self) -> AstPtr<N> {
             AstPtr {
                 raw: self.raw.clone(),
@@ -599,21 +602,21 @@ mod ptr {
             }
         }
     }
-    impl<N: AstNode> Eq for AstPtr<N> {}
-    impl<N: AstNode> PartialEq for AstPtr<N> {
+    impl<N: ast::AstNode> Eq for AstPtr<N> {}
+    impl<N: ast::AstNode> PartialEq for AstPtr<N> {
         fn eq(&self, other: &AstPtr<N>) -> bool {
             self.raw == other.raw
         }
     }
-    impl<N: AstNode> Hash for AstPtr<N> {
+    impl<N: ast::AstNode> Hash for AstPtr<N> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.raw.hash(state);
         }
     }
-    impl<N: AstNode> AstPtr<N> {
+    impl<N: ast::AstNode> AstPtr<N> {
         pub fn new(node: &N) -> AstPtr<N> {
             AstPtr {
-                raw: SyntaxNodePtr::new(node.syntax()),
+                raw: NodePtr::new(node.syntax()),
                 _ty: PhantomData,
             }
         }
@@ -621,13 +624,13 @@ mod ptr {
             let syntax_node = self.raw.to_node(root);
             N::cast(syntax_node).unwrap()
         }
-        pub fn syntax_node_ptr(&self) -> SyntaxNodePtr {
+        pub fn syntax_node_ptr(&self) -> NodePtr {
             self.raw.clone()
         }
         pub fn text_range(&self) -> TextRange {
             self.raw.text_range()
         }
-        pub fn cast<U: AstNode>(self) -> Option<AstPtr<U>> {
+        pub fn cast<U: ast::AstNode>(self) -> Option<AstPtr<U>> {
             if !U::can_cast(self.raw.kind()) {
                 return None;
             }
@@ -636,7 +639,7 @@ mod ptr {
                 _ty: PhantomData,
             })
         }
-        pub fn upcast<M: AstNode>(self) -> AstPtr<M>
+        pub fn upcast<M: ast::AstNode>(self) -> AstPtr<M>
         where
             N: Into<M>,
         {
@@ -645,21 +648,21 @@ mod ptr {
                 _ty: PhantomData,
             }
         }
-        pub fn try_from_raw(raw: SyntaxNodePtr) -> Option<AstPtr<N>> {
+        pub fn try_from_raw(raw: NodePtr) -> Option<AstPtr<N>> {
             N::can_cast(raw.kind()).then_some(AstPtr { raw, _ty: PhantomData })
         }
     }
-    impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr {
-        fn from(ptr: AstPtr<N>) -> SyntaxNodePtr {
+    impl<N: ast::AstNode> From<AstPtr<N>> for NodePtr {
+        fn from(ptr: AstPtr<N>) -> NodePtr {
             ptr.raw
         }
     }
     #[test]
     fn test_local_syntax_ptr() {
-        use crate::{ast, AstNode, SourceFile};
+        use crate::{ast, SourceFile};
         let file = SourceFile::parse("struct Foo { f: u32, }").ok().unwrap();
         let field = file.syntax().descendants().find_map(ast::RecordField::cast).unwrap();
-        let ptr = SyntaxNodePtr::new(field.syntax());
+        let ptr = NodePtr::new(field.syntax());
         let field_syntax = ptr.to_node(file.syntax());
         assert_eq!(field.syntax(), &field_syntax);
     }
@@ -743,7 +746,7 @@ impl SyntaxTreeBuilder {
 
 pub mod ted {
     use crate::{
-        ast::{self, edit::IndentLevel, make, AstNode},
+        ast::{self, edit::IndentLevel, make},
         SyntaxKind, *,
     };
     use parser::T;
@@ -1019,7 +1022,7 @@ mod token_text {
     }
 }
 pub mod utils {
-    use crate::{ast, match_ast, AstNode, SyntaxKind};
+    use crate::{ast, match_ast, SyntaxKind};
     use itertools::Itertools;
     pub fn path_to_string_stripping_turbo_fish(path: &ast::Path) -> String {
         path.syntax()
@@ -1087,7 +1090,7 @@ impl<T> Parse<T> {
         &self.errors
     }
 }
-impl<T: AstNode> Parse<T> {
+impl<T: ast::AstNode> Parse<T> {
     pub fn to_syntax(self) -> Parse<Node> {
         Parse {
             green: self.green,
@@ -1107,7 +1110,7 @@ impl<T: AstNode> Parse<T> {
     }
 }
 impl Parse<Node> {
-    pub fn cast<N: AstNode>(self) -> Option<Parse<N>> {
+    pub fn cast<N: ast::AstNode>(self) -> Option<Parse<N>> {
         if N::cast(self.syntax_node()).is_some() {
             Some(Parse {
                 green: self.green,

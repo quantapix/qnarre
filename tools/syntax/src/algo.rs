@@ -1,54 +1,56 @@
 use crate::{
-    core::{Direction, TextRange, TextSize},
-    AstNode, NodeOrToken, SyntaxKind, *,
+    ast,
+    core::{Direction, NodeOrToken, TextRange, TextSize},
+    Elem, SyntaxKind,
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::hash::BuildHasherDefault;
 use text_edit::TextEditBuilder;
-pub fn ancestors_at_offset(node: &Node, offset: TextSize) -> impl Iterator<Item = Node> {
-    node.token_at_offset(offset)
-        .map(|token| token.parent_ancestors())
-        .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
+
+pub fn ancestors_at_offset(x: &crate::Node, off: TextSize) -> impl Iterator<Item = crate::Node> {
+    x.token_at_offset(off)
+        .map(|x| x.parent_ancestors())
+        .kmerge_by(|x1, x2| x1.text_range().len() < x2.text_range().len())
 }
-pub fn find_node_at_offset<N: AstNode>(syntax: &Node, offset: TextSize) -> Option<N> {
-    ancestors_at_offset(syntax, offset).find_map(N::cast)
+pub fn find_node_at_offset<N: ast::AstNode>(x: &crate::Node, off: TextSize) -> Option<N> {
+    ancestors_at_offset(x, off).find_map(N::cast)
 }
-pub fn find_node_at_range<N: AstNode>(syntax: &Node, range: TextRange) -> Option<N> {
-    syntax.covering_element(range).ancestors().find_map(N::cast)
+pub fn find_node_at_range<N: ast::AstNode>(x: &crate::Node, range: TextRange) -> Option<N> {
+    x.covering_element(range).ancestors().find_map(N::cast)
 }
-pub fn skip_trivia_token(mut token: Token, direction: Direction) -> Option<Token> {
-    while token.kind().is_trivia() {
-        token = match direction {
-            Direction::Next => token.next_token()?,
-            Direction::Prev => token.prev_token()?,
+pub fn skip_trivia_token(mut x: crate::Token, dir: Direction) -> Option<crate::Token> {
+    while x.kind().is_trivia() {
+        x = match dir {
+            Direction::Next => x.next_token()?,
+            Direction::Prev => x.prev_token()?,
         }
     }
-    Some(token)
+    Some(x)
 }
-pub fn skip_whitespace_token(mut token: Token, direction: Direction) -> Option<Token> {
-    while token.kind() == SyntaxKind::WHITESPACE {
-        token = match direction {
-            Direction::Next => token.next_token()?,
-            Direction::Prev => token.prev_token()?,
+pub fn skip_whitespace_token(mut x: crate::Token, dir: Direction) -> Option<crate::Token> {
+    while x.kind() == SyntaxKind::WHITESPACE {
+        x = match dir {
+            Direction::Next => x.next_token()?,
+            Direction::Prev => x.prev_token()?,
         }
     }
-    Some(token)
+    Some(x)
 }
-pub fn non_trivia_sibling(element: Elem, direction: Direction) -> Option<Elem> {
-    return match element {
-        NodeOrToken::Node(node) => node.siblings_with_tokens(direction).skip(1).find(not_trivia),
-        NodeOrToken::Token(token) => token.siblings_with_tokens(direction).skip(1).find(not_trivia),
+pub fn non_trivia_sibling(x: Elem, x: Direction) -> Option<Elem> {
+    return match x {
+        NodeOrToken::Node(x) => x.siblings_with_tokens(x).skip(1).find(not_trivia),
+        NodeOrToken::Token(x) => x.siblings_with_tokens(x).skip(1).find(not_trivia),
     };
-    fn not_trivia(element: &Elem) -> bool {
-        match element {
+    fn not_trivia(x: &Elem) -> bool {
+        match x {
             NodeOrToken::Node(_) => true,
-            NodeOrToken::Token(token) => !token.kind().is_trivia(),
+            NodeOrToken::Token(x) => !x.kind().is_trivia(),
         }
     }
 }
-pub fn least_common_ancestor(u: &Node, v: &Node) -> Option<Node> {
+pub fn least_common_ancestor(u: &crate::Node, v: &crate::Node) -> Option<crate::Node> {
     if u == v {
         return Some(u.clone());
     }
@@ -60,11 +62,11 @@ pub fn least_common_ancestor(u: &Node, v: &Node) -> Option<Node> {
     let (res, _) = u_candidates.zip(v_candidates).find(|(x, y)| x == y)?;
     Some(res)
 }
-pub fn neighbor<T: AstNode>(me: &T, direction: Direction) -> Option<T> {
-    me.syntax().siblings(direction).skip(1).find_map(T::cast)
+pub fn neighbor<T: ast::AstNode>(x: &T, dir: Direction) -> Option<T> {
+    x.syntax().siblings(dir).skip(1).find_map(T::cast)
 }
-pub fn has_errors(node: &Node) -> bool {
-    node.children().any(|it| it.kind() == SyntaxKind::ERROR)
+pub fn has_errors(x: &crate::Node) -> bool {
+    x.children().any(|x| x.kind() == SyntaxKind::ERROR)
 }
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -99,7 +101,7 @@ impl TreeDiff {
         self.replacements.is_empty() && self.deletions.is_empty() && self.insertions.is_empty()
     }
 }
-pub fn diff(from: &Node, to: &Node) -> TreeDiff {
+pub fn diff(from: &crate::Node, to: &crate::Node) -> TreeDiff {
     let _p = profile::span("diff");
     let mut diff = TreeDiff {
         replacements: FxHashMap::default(),
@@ -189,7 +191,7 @@ pub fn diff(from: &Node, to: &Node) -> TreeDiff {
 
 #[cfg(test)]
 mod tests {
-    use crate::{AstNode, Elem};
+    use crate::{ast, Elem};
     use expect_test::{expect, Expect};
     use itertools::Itertools;
     use parser::SyntaxKind;
@@ -344,23 +346,23 @@ use baz;"#,
             r#"
 use expect_test::{expect, Expect};
 use text_edit::TextEdit;
-use crate::AstNode;
+use crate::ast::AstNode;
 "#,
             r#"
 use expect_test::{expect, Expect};
-use crate::AstNode;
+use crate::ast::AstNode;
 "#,
             expect![[r#"
                 insertions:
                 Line 1: After(Node(USE@1..35))
                 -> "\n\n"
-                -> use crate::AstNode;
+                -> use crate::ast::AstNode;
                 replacements:
 
                 deletions:
                 Line 2: use text_edit::TextEdit;
                 Line 3: "\n\n"
-                Line 4: use crate::AstNode;
+                Line 4: use crate::ast::AstNode;
                 Line 5: "\n"
             "#]],
         )
@@ -370,20 +372,20 @@ use crate::AstNode;
         check_diff(
             r#"
 use text_edit::TextEdit;
-use crate::AstNode;
+use crate::ast::AstNode;
 "#,
             r#"
-use crate::AstNode;
+use crate::ast::AstNode;
 "#,
             expect![[r#"
                 insertions:
 
                 replacements:
                 Line 2: Token(IDENT@5..14 "text_edit") -> crate
-                Line 2: Token(IDENT@16..24 "TextEdit") -> AstNode
+                Line 2: Token(IDENT@16..24 "TextEdit") -> ast::AstNode
                 Line 2: Token(WHITESPACE@25..27 "\n\n") -> "\n"
                 deletions:
-                Line 3: use crate::AstNode;
+                Line 3: use crate::ast::AstNode;
                 Line 4: "\n"
             "#]],
         )
@@ -474,9 +476,9 @@ fn main() {
         let from_node = crate::SourceFile::parse(from).tree().syntax().clone();
         let to_node = crate::SourceFile::parse(to).tree().syntax().clone();
         let diff = super::diff(&from_node, &to_node);
-        let line_number = |syn: &Elem| from[..syn.text_range().start().into()].lines().count();
-        let fmt_syntax = |syn: &Elem| match syn.kind() {
-            SyntaxKind::WHITESPACE => format!("{:?}", syn.to_string()),
+        let line_number = |x: &Elem| from[..x.text_range().start().into()].lines().count();
+        let fmt_syntax = |x: &Elem| match x.kind() {
+            SyntaxKind::WHITESPACE => format!("{:?}", x.to_string()),
             _ => format!("{syn}"),
         };
         let insertions = diff

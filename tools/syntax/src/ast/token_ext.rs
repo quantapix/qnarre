@@ -1,5 +1,5 @@
 use crate::{
-    ast::{self, AstToken},
+    ast,
     core::{TextRange, TextSize},
 };
 use rustc_lexer::unescape::{unescape_byte, unescape_char, unescape_literal, Mode};
@@ -9,19 +9,15 @@ impl ast::Comment {
     pub fn kind(&self) -> CommentKind {
         CommentKind::from_text(self.text())
     }
-
     pub fn is_doc(&self) -> bool {
         self.kind().doc.is_some()
     }
-
     pub fn is_inner(&self) -> bool {
         self.kind().doc == Some(CommentPlacement::Inner)
     }
-
     pub fn is_outer(&self) -> bool {
         self.kind().doc == Some(CommentPlacement::Outer)
     }
-
     pub fn prefix(&self) -> &'static str {
         let &(prefix, _kind) = CommentKind::BY_PREFIX
             .iter()
@@ -29,7 +25,6 @@ impl ast::Comment {
             .unwrap();
         prefix
     }
-
     /// Returns the textual content of a doc comment node as a single string with prefix and suffix
     /// removed.
     pub fn doc_comment(&self) -> Option<&str> {
@@ -49,35 +44,29 @@ impl ast::Comment {
         }
     }
 }
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct CommentKind {
     pub shape: CommentShape,
     pub doc: Option<CommentPlacement>,
 }
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommentShape {
     Line,
     Block,
 }
-
 impl CommentShape {
     pub fn is_line(self) -> bool {
         self == CommentShape::Line
     }
-
     pub fn is_block(self) -> bool {
         self == CommentShape::Block
     }
 }
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommentPlacement {
     Inner,
     Outer,
 }
-
 impl CommentKind {
     const BY_PREFIX: [(&'static str, CommentKind); 9] = [
         (
@@ -144,7 +133,6 @@ impl CommentKind {
             },
         ),
     ];
-
     pub fn from_text(text: &str) -> CommentKind {
         let &(_prefix, kind) = CommentKind::BY_PREFIX
             .iter()
@@ -152,7 +140,6 @@ impl CommentKind {
             .unwrap();
         kind
     }
-
     pub fn prefix(&self) -> &'static str {
         let &(prefix, _) = CommentKind::BY_PREFIX
             .iter()
@@ -162,19 +149,16 @@ impl CommentKind {
         prefix
     }
 }
-
 impl ast::Whitespace {
     pub fn spans_multiple_lines(&self) -> bool {
         let text = self.text();
         text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))
     }
 }
-
 pub struct QuoteOffsets {
     pub quotes: (TextRange, TextRange),
     pub contents: TextRange,
 }
-
 impl QuoteOffsets {
     fn new(literal: &str) -> Option<QuoteOffsets> {
         let left_quote = literal.find('"')?;
@@ -183,12 +167,10 @@ impl QuoteOffsets {
             // `literal` only contains one quote
             return None;
         }
-
         let start = TextSize::from(0);
         let left_quote = TextSize::try_from(left_quote).unwrap() + TextSize::of('"');
         let right_quote = TextSize::try_from(right_quote).unwrap();
         let end = TextSize::of(literal);
-
         let res = QuoteOffsets {
             quotes: (TextRange::new(start, left_quote), TextRange::new(right_quote, end)),
             contents: TextRange::new(left_quote, right_quote),
@@ -196,8 +178,7 @@ impl QuoteOffsets {
         Some(res)
     }
 }
-
-pub trait IsString: AstToken {
+pub trait IsString: ast::AstToken {
     const RAW_PREFIX: &'static str;
     fn is_raw(&self) -> bool {
         self.text().starts_with(Self::RAW_PREFIX)
@@ -226,11 +207,9 @@ pub trait IsString: AstToken {
             Some(it) => it,
             None => return,
         };
-
         let start = self.syntax().text_range().start();
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
-
         unescape_literal(text, Mode::Str, &mut |range, unescaped_char| {
             let text_range = TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
@@ -242,11 +221,9 @@ pub trait IsString: AstToken {
         Some(range + contents_range.start())
     }
 }
-
 impl IsString for ast::String {
     const RAW_PREFIX: &'static str = "r";
 }
-
 impl ast::String {
     pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
@@ -254,10 +231,8 @@ impl ast::String {
             let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text));
         }
-
         let text = self.text();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
@@ -275,7 +250,6 @@ impl ast::String {
                 (Err(_), _) => has_error = true,
             },
         );
-
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
             (false, true) => Some(Cow::Borrowed(text)),
@@ -283,11 +257,9 @@ impl ast::String {
         }
     }
 }
-
 impl IsString for ast::ByteString {
     const RAW_PREFIX: &'static str = "br";
 }
-
 impl ast::ByteString {
     pub fn value(&self) -> Option<Cow<'_, [u8]>> {
         if self.is_raw() {
@@ -295,10 +267,8 @@ impl ast::ByteString {
             let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text.as_bytes()));
         }
-
         let text = self.text();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = false;
@@ -315,7 +285,6 @@ impl ast::ByteString {
             },
             (Err(_), _) => has_error = true,
         });
-
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
             (false, true) => Some(Cow::Borrowed(text.as_bytes())),
@@ -323,11 +292,9 @@ impl ast::ByteString {
         }
     }
 }
-
 impl IsString for ast::CString {
     const RAW_PREFIX: &'static str = "cr";
 }
-
 impl ast::CString {
     pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
@@ -335,10 +302,8 @@ impl ast::CString {
             let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
             return Some(Cow::Borrowed(text));
         }
-
         let text = self.text();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
@@ -356,7 +321,6 @@ impl ast::CString {
                 (Err(_), _) => has_error = true,
             },
         );
-
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
             (false, true) => Some(Cow::Borrowed(text)),
@@ -364,7 +328,6 @@ impl ast::CString {
         }
     }
 }
-
 impl ast::IntNumber {
     pub fn radix(&self) -> Radix {
         match self.text().get(..2).unwrap_or_default() {
@@ -374,32 +337,26 @@ impl ast::IntNumber {
             _ => Radix::Decimal,
         }
     }
-
     pub fn split_into_parts(&self) -> (&str, &str, &str) {
         let radix = self.radix();
         let (prefix, mut text) = self.text().split_at(radix.prefix_len());
-
         let is_suffix_start: fn(&(usize, char)) -> bool = match radix {
             Radix::Hexadecimal => |(_, c)| matches!(c, 'g'..='z' | 'G'..='Z'),
             _ => |(_, c)| c.is_ascii_alphabetic(),
         };
-
         let mut suffix = "";
         if let Some((suffix_start, _)) = text.char_indices().find(is_suffix_start) {
             let (text2, suffix2) = text.split_at(suffix_start);
             text = text2;
             suffix = suffix2;
         };
-
         (prefix, text, suffix)
     }
-
     pub fn value(&self) -> Option<u128> {
         let (_, text, _) = self.split_into_parts();
         let value = u128::from_str_radix(&text.replace('_', ""), self.radix() as u32).ok()?;
         Some(value)
     }
-
     pub fn suffix(&self) -> Option<&str> {
         let (_, _, suffix) = self.split_into_parts();
         if suffix.is_empty() {
@@ -408,13 +365,11 @@ impl ast::IntNumber {
             Some(suffix)
         }
     }
-
     pub fn float_value(&self) -> Option<f64> {
         let (_, text, _) = self.split_into_parts();
         text.replace('_', "").parse::<f64>().ok()
     }
 }
-
 impl ast::FloatNumber {
     pub fn split_into_parts(&self) -> (&str, &str) {
         let text = self.text();
@@ -425,7 +380,6 @@ impl ast::FloatNumber {
             if c == 'e' || c == 'E' {
                 if let Some(suffix_start_tuple) = indices.find(|(_, c)| c.is_ascii_alphabetic()) {
                     suffix_start = suffix_start_tuple.0;
-
                     float_text = &text[..suffix_start];
                     suffix = &text[suffix_start..];
                 }
@@ -434,10 +388,8 @@ impl ast::FloatNumber {
                 suffix = &text[suffix_start..];
             }
         }
-
         (float_text, suffix)
     }
-
     pub fn suffix(&self) -> Option<&str> {
         let (_, suffix) = self.split_into_parts();
         if suffix.is_empty() {
@@ -446,13 +398,11 @@ impl ast::FloatNumber {
             Some(suffix)
         }
     }
-
     pub fn value(&self) -> Option<f64> {
         let (text, _) = self.split_into_parts();
         text.replace('_', "").parse::<f64>().ok()
     }
 }
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Radix {
     Binary = 2,
@@ -460,10 +410,8 @@ pub enum Radix {
     Decimal = 10,
     Hexadecimal = 16,
 }
-
 impl Radix {
     pub const ALL: &'static [Radix] = &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
-
     const fn prefix_len(self) -> usize {
         match self {
             Self::Decimal => 0,
@@ -475,7 +423,6 @@ impl Radix {
 #[cfg(test)]
 mod tests {
     use crate::ast::{self, make, FloatNumber, IntNumber};
-
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(
             FloatNumber {
@@ -485,7 +432,6 @@ mod tests {
             expected.into()
         );
     }
-
     fn check_int_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(
             IntNumber {
@@ -495,7 +441,6 @@ mod tests {
             expected.into()
         );
     }
-
     fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
         assert_eq!(
             FloatNumber {
@@ -512,7 +457,6 @@ mod tests {
             expected.into()
         );
     }
-
     fn check_int_value(lit: &str, expected: impl Into<Option<u128>>) {
         assert_eq!(
             IntNumber {
@@ -522,7 +466,6 @@ mod tests {
             expected.into()
         );
     }
-
     #[test]
     fn test_float_number_suffix() {
         check_float_suffix("123.0", None);
@@ -533,7 +476,6 @@ mod tests {
         check_float_suffix("123.0E4f32", "f32");
         check_float_suffix("1_2_3.0_f32", "f32");
     }
-
     #[test]
     fn test_int_number_suffix() {
         check_int_suffix("123", None);
@@ -546,7 +488,6 @@ mod tests {
         check_int_suffix("0o11u32", "u32");
         check_int_suffix("0xffu32", "u32");
     }
-
     fn check_string_value<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(
             ast::String {
@@ -557,7 +498,6 @@ mod tests {
             expected.into()
         );
     }
-
     #[test]
     fn test_string_escape() {
         check_string_value(r"foobar", "foobar");
@@ -570,7 +510,6 @@ mod tests {
 bcde", "abcde",
         );
     }
-
     fn check_byte_string_value<'a, const N: usize>(lit: &str, expected: impl Into<Option<&'a [u8; N]>>) {
         assert_eq!(
             ast::ByteString {
@@ -581,7 +520,6 @@ bcde", "abcde",
             expected.into().map(|value| &value[..])
         );
     }
-
     #[test]
     fn test_byte_string_escape() {
         check_byte_string_value(r"foobar", b"foobar");
@@ -594,7 +532,6 @@ bcde", "abcde",
 bcde", b"abcde",
         );
     }
-
     #[test]
     fn test_value_underscores() {
         check_float_value("1.234567891011121_f64", 1.234567891011121_f64);
@@ -603,7 +540,6 @@ bcde", b"abcde",
         check_int_value("1_1_1_1_1_1", 111111);
     }
 }
-
 impl ast::Char {
     pub fn value(&self) -> Option<char> {
         let mut text = self.text();
@@ -615,11 +551,9 @@ impl ast::Char {
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
-
         unescape_char(text).ok()
     }
 }
-
 impl ast::Byte {
     pub fn value(&self) -> Option<u8> {
         let mut text = self.text();
@@ -631,7 +565,6 @@ impl ast::Byte {
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
-
         unescape_byte(text).ok()
     }
 }

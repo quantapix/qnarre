@@ -12,17 +12,18 @@ pub use self::{
         HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };
-use crate::{NodeChildren, SyntaxKind};
+use crate::SyntaxKind;
 use either::Either;
 use std::marker::PhantomData;
 
 pub mod edit {
     use crate::{
-        ast::{self, make, AstNode},
+        ast::{self, make},
         core::{NodeOrToken, WalkEvent},
-        ted, AstToken, Elem, Node, Token,
+        ted,
     };
     use std::{fmt, iter, ops};
+
     #[derive(Debug, Clone, Copy)]
     pub struct IndentLevel(pub u8);
     impl From<u8> for IndentLevel {
@@ -57,19 +58,19 @@ pub mod edit {
         pub fn is_zero(&self) -> bool {
             self.0 == 0
         }
-        pub fn from_element(element: &Elem) -> IndentLevel {
+        pub fn from_element(element: &crate::Elem) -> IndentLevel {
             match element {
                 NodeOrToken::Node(it) => IndentLevel::from_node(it),
                 NodeOrToken::Token(it) => IndentLevel::from_token(it),
             }
         }
-        pub fn from_node(node: &Node) -> IndentLevel {
+        pub fn from_node(node: &crate::Node) -> IndentLevel {
             match node.first_token() {
                 Some(it) => Self::from_token(&it),
                 None => IndentLevel(0),
             }
         }
-        pub fn from_token(token: &Token) -> IndentLevel {
+        pub fn from_token(token: &crate::Token) -> IndentLevel {
             for ws in prev_tokens(token.clone()).filter_map(ast::Whitespace::cast) {
                 let text = ws.syntax().text();
                 if let Some(pos) = text.rfind('\n') {
@@ -79,7 +80,7 @@ pub mod edit {
             }
             IndentLevel(0)
         }
-        pub fn increase_indent(self, node: &Node) {
+        pub fn increase_indent(self, node: &crate::Node) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
                 WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
@@ -93,7 +94,7 @@ pub mod edit {
                 }
             }
         }
-        pub fn decrease_indent(self, node: &Node) {
+        pub fn decrease_indent(self, node: &crate::Node) {
             let tokens = node.preorder_with_tokens().filter_map(|event| match event {
                 WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
                 _ => None,
@@ -108,16 +109,16 @@ pub mod edit {
             }
         }
     }
-    fn prev_tokens(token: Token) -> impl Iterator<Item = Token> {
+    fn prev_tokens(token: crate::Token) -> impl Iterator<Item = crate::Token> {
         iter::successors(Some(token), |token| token.prev_token())
     }
-    pub trait AstNodeEdit: AstNode + Clone + Sized {
+    pub trait AstNodeEdit: ast::AstNode + Clone + Sized {
         fn indent_level(&self) -> IndentLevel {
             IndentLevel::from_node(self.syntax())
         }
         #[must_use]
         fn indent(&self, level: IndentLevel) -> Self {
-            fn indent_inner(node: &Node, level: IndentLevel) -> Node {
+            fn indent_inner(node: &crate::Node, level: IndentLevel) -> crate::Node {
                 let res = node.clone_subtree().clone_for_update();
                 level.increase_indent(&res);
                 res.clone_subtree()
@@ -126,7 +127,7 @@ pub mod edit {
         }
         #[must_use]
         fn dedent(&self, level: IndentLevel) -> Self {
-            fn dedent_inner(node: &Node, level: IndentLevel) -> Node {
+            fn dedent_inner(node: &crate::Node, level: IndentLevel) -> crate::Node {
                 let res = node.clone_subtree().clone_for_update();
                 level.decrease_indent(&res);
                 res.clone_subtree()
@@ -139,7 +140,7 @@ pub mod edit {
             self.dedent(level)
         }
     }
-    impl<N: AstNode + Clone> AstNodeEdit for N {}
+    impl<N: ast::AstNode + Clone> AstNodeEdit for N {}
     #[test]
     fn test_increase_indent() {
         let arm_list = {
@@ -171,18 +172,18 @@ pub mod nodes;
 #[rustfmt::skip]
 pub mod tokens;
     use crate::{
-        AstNode, Node,
+        ast,
         SyntaxKind::{self, *},
     };
     pub use nodes::*;
-    impl AstNode for Stmt {
+    impl ast::AstNode for Stmt {
         fn can_cast(kind: SyntaxKind) -> bool {
             match kind {
                 LET_STMT | EXPR_STMT => true,
                 _ => Item::can_cast(kind),
             }
         }
-        fn cast(syntax: Node) -> Option<Self> {
+        fn cast(syntax: crate::Node) -> Option<Self> {
             let res = match syntax.kind() {
                 LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
                 EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
@@ -193,7 +194,7 @@ pub mod tokens;
             };
             Some(res)
         }
-        fn syntax(&self) -> &Node {
+        fn syntax(&self) -> &crate::Node {
             match self {
                 Stmt::LetStmt(it) => &it.syntax,
                 Stmt::ExprStmt(it) => &it.syntax,
@@ -328,10 +329,10 @@ mod operators {
 pub mod prec {
     use crate::{
         ast::{self, BinaryOp, Expr, HasArgList},
-        match_ast, AstNode, Node,
+        match_ast,
     };
     impl Expr {
-        pub fn needs_parens_in(&self, parent: Node) -> bool {
+        pub fn needs_parens_in(&self, parent: crate::Node) -> bool {
             match_ast! {
                 match parent {
                     ast::Expr(e) => self.needs_parens_in_expr(&e),
@@ -568,22 +569,22 @@ pub mod prec {
 mod token_ext;
 mod traits {
     use crate::{
-        ast::{self, support, AstChildren, AstNode, AstToken},
+        ast::{self, support},
         T, *,
     };
     use either::Either;
 
-    pub trait HasName: AstNode {
+    pub trait HasName: ast::AstNode {
         fn name(&self) -> Option<ast::Name> {
             support::child(self.syntax())
         }
     }
-    pub trait HasVisibility: AstNode {
+    pub trait HasVisibility: ast::AstNode {
         fn visibility(&self) -> Option<ast::Visibility> {
             support::child(self.syntax())
         }
     }
-    pub trait HasLoopBody: AstNode {
+    pub trait HasLoopBody: ast::AstNode {
         fn loop_body(&self) -> Option<ast::BlockExpr> {
             support::child(self.syntax())
         }
@@ -591,17 +592,17 @@ mod traits {
             support::child(self.syntax())
         }
     }
-    pub trait HasArgList: AstNode {
+    pub trait HasArgList: ast::AstNode {
         fn arg_list(&self) -> Option<ast::ArgList> {
             support::child(self.syntax())
         }
     }
-    pub trait HasModuleItem: AstNode {
+    pub trait HasModuleItem: ast::AstNode {
         fn items(&self) -> AstChildren<ast::Item> {
             support::children(self.syntax())
         }
     }
-    pub trait HasGenericParams: AstNode {
+    pub trait HasGenericParams: ast::AstNode {
         fn generic_param_list(&self) -> Option<ast::GenericParamList> {
             support::child(self.syntax())
         }
@@ -609,16 +610,16 @@ mod traits {
             support::child(self.syntax())
         }
     }
-    pub trait HasTypeBounds: AstNode {
+    pub trait HasTypeBounds: ast::AstNode {
         fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
             support::child(self.syntax())
         }
-        fn colon_token(&self) -> Option<Token> {
+        fn colon_token(&self) -> Option<crate::Token> {
             support::token(self.syntax(), T![:])
         }
     }
-    pub trait HasAttrs: AstNode {
-        fn attrs(&self) -> AstChildren<ast::Attr> {
+    pub trait HasAttrs: ast::AstNode {
+        fn attrs(&self) -> ast::AstChildren<ast::Attr> {
             support::children(self.syntax())
         }
         fn has_atom_attr(&self, atom: &str) -> bool {
@@ -683,8 +684,8 @@ mod traits {
         type Item = Either<ast::Attr, ast::Comment>;
         fn next(&mut self) -> Option<Self::Item> {
             self.iter.by_ref().find_map(|el| match el {
-                Elem::Node(node) => ast::Attr::cast(node).map(Either::Left),
-                Elem::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
+                crate::Elem::Node(node) => ast::Attr::cast(node).map(Either::Left),
+                crate::Elem::Token(tok) => ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right),
             })
         }
     }
@@ -726,7 +727,7 @@ pub trait AstToken {
 }
 #[derive(Debug, Clone)]
 pub struct AstChildren<N> {
-    inner: NodeChildren,
+    inner: crate::NodeChildren,
     ph: PhantomData<N>,
 }
 impl<N> AstChildren<N> {
@@ -775,13 +776,12 @@ where
 {
 }
 mod support {
-    use super::{AstChildren, AstNode};
-    use crate::SyntaxKind;
-    pub fn child<N: AstNode>(x: &crate::Node) -> Option<N> {
+    use crate::{ast, SyntaxKind};
+    pub fn child<N: ast::AstNode>(x: &crate::Node) -> Option<N> {
         x.children().find_map(N::cast)
     }
-    pub fn children<N: AstNode>(x: &crate::Node) -> AstChildren<N> {
-        AstChildren::new(x)
+    pub fn children<N: ast::AstNode>(x: &crate::Node) -> ast::AstChildren<N> {
+        ast::AstChildren::new(x)
     }
     pub fn token(x: &crate::Node, kind: SyntaxKind) -> Option<crate::Token> {
         x.children_with_tokens()

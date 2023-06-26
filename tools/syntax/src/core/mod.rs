@@ -26,10 +26,10 @@ pub mod green;
 
 pub trait AstNode {
     type Lang: api::Lang;
-    fn can_cast(kind: <Self::Lang as api::Lang>::Kind) -> bool
+    fn can_cast(x: <Self::Lang as api::Lang>::Kind) -> bool
     where
         Self: Sized;
-    fn cast(node: api::Node<Self::Lang>) -> Option<Self>
+    fn cast(x: api::Node<Self::Lang>) -> Option<Self>
     where
         Self: Sized;
     fn syntax(&self) -> &api::Node<Self::Lang>;
@@ -48,11 +48,11 @@ pub trait AstNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SyntaxNodePtr<L: api::Lang> {
+pub struct NodePtr<L: api::Lang> {
     kind: L::Kind,
     range: TextRange,
 }
-impl<L: api::Lang> SyntaxNodePtr<L> {
+impl<L: api::Lang> NodePtr<L> {
     pub fn new(node: &api::Node<L>) -> Self {
         Self {
             kind: node.kind(),
@@ -80,25 +80,25 @@ impl<L: api::Lang> SyntaxNodePtr<L> {
         self.range
     }
 }
-impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr<N::Lang> {
-    fn from(ptr: AstPtr<N>) -> SyntaxNodePtr<N::Lang> {
+impl<N: AstNode> From<AstPtr<N>> for NodePtr<N::Lang> {
+    fn from(ptr: AstPtr<N>) -> NodePtr<N::Lang> {
         ptr.raw
     }
 }
 
 pub struct AstPtr<N: AstNode> {
-    raw: SyntaxNodePtr<N::Lang>,
+    raw: NodePtr<N::Lang>,
 }
 impl<N: AstNode> AstPtr<N> {
     pub fn new(node: &N) -> Self {
         Self {
-            raw: SyntaxNodePtr::new(node.syntax()),
+            raw: NodePtr::new(node.syntax()),
         }
     }
     pub fn to_node(&self, root: &api::Node<N::Lang>) -> N {
         N::cast(self.raw.to_node(root)).unwrap()
     }
-    pub fn syntax_node_ptr(&self) -> SyntaxNodePtr<N::Lang> {
+    pub fn syntax_node_ptr(&self) -> NodePtr<N::Lang> {
         self.raw.clone()
     }
     pub fn cast<U: AstNode<Lang = N::Lang>>(self) -> Option<AstPtr<U>> {

@@ -2,9 +2,8 @@ use crate::{
     ast::{
         self,
         operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-        support, AstChildren, AstNode,
+        support,
     },
-    AstToken,
     SyntaxKind::*,
     T,
 };
@@ -242,7 +241,7 @@ pub enum ArrayExprKind {
         initializer: Option<ast::Expr>,
         repeat: Option<ast::Expr>,
     },
-    ElementList(AstChildren<ast::Expr>),
+    ElementList(ast::AstChildren<ast::Expr>),
 }
 impl ast::ArrayExpr {
     pub fn kind(&self) -> ArrayExprKind {
@@ -358,7 +357,7 @@ pub enum CallableExpr {
 }
 impl ast::HasAttrs for CallableExpr {}
 impl ast::HasArgList for CallableExpr {}
-impl AstNode for CallableExpr {
+impl ast::AstNode for CallableExpr {
     fn can_cast(x: parser::SyntaxKind) -> bool
     where
         Self: Sized,

@@ -2,19 +2,17 @@ use crate::{
     algo,
     ast::{self, HasAttrs, HasVisibility, IsString},
     core::{api, Direction, TextSize},
-    match_ast, AstNode, SyntaxErr,
+    match_ast, SyntaxErr,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     T,
 };
 use rustc_lexer::unescape::{self, unescape_literal, Mode};
-
 mod block {
     use crate::{
-        ast::{self, AstNode, HasAttrs},
+        ast::{self, HasAttrs},
         SyntaxErr,
         SyntaxKind::*,
     };
-
     pub fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxErr>) {
         if let Some(parent) = block.syntax().parent() {
             match parent.kind() {
@@ -32,7 +30,6 @@ mod block {
         }
     }
 }
-
 pub fn validate(root: &api::Node) -> Vec<SyntaxErr> {
     let mut errors = Vec::new();
     for node in root.descendants() {
@@ -57,10 +54,8 @@ pub fn validate(root: &api::Node) -> Vec<SyntaxErr> {
     }
     errors
 }
-
 fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, bool) {
     use unescape::EscapeError as EE;
-
     #[rustfmt::skip]
     let err_message = match err {
         EE::ZeroChars => {
@@ -122,20 +117,15 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
         }
         EE::UnskippedWhitespaceWarning => "Whitespace after this escape is not skipped",
         EE::MultipleSkippedLinesWarning => "Multiple lines are skipped by this escape",
-
     };
-
     (err_message, err.is_fatal())
 }
-
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
-
     let token = literal.token();
     let text = token.text();
-
     let mut push_err = |prefix_len, off, err: unescape::EscapeError| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         let (message, is_err) = rustc_unescape_error_to_string(err);
@@ -143,7 +133,6 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
             acc.push(SyntaxErr::new_at_offset(message, off));
         }
     };
-
     match literal.kind() {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
@@ -199,7 +188,6 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         ast::LiteralKind::IntNumber(_) | ast::LiteralKind::FloatNumber(_) | ast::LiteralKind::Bool(_) => {},
     }
 }
-
 pub fn validate_block_structure(root: &api::Node) {
     let mut stack = Vec::new();
     for node in root.descendants_with_tokens() {
@@ -227,7 +215,6 @@ pub fn validate_block_structure(root: &api::Node) {
         }
     }
 }
-
 fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxErr>) {
     if let Some(int_token) = int_token(name_ref) {
         if int_token.text().chars().any(|c| !c.is_ascii_digit()) {
@@ -238,7 +225,6 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
             ));
         }
     }
-
     fn int_token(name_ref: Option<ast::NameRef>) -> Option<api::Token> {
         name_ref?
             .syntax()
@@ -247,7 +233,6 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
             .filter(|it| it.kind() == INT_NUMBER)
     }
 }
-
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
     let path_without_in_token = vis.in_token().is_none()
         && vis
@@ -269,7 +254,6 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
         FN | CONST | TYPE_ALIAS => (),
         _ => return,
     }
-
     let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::Impl::cast) {
         Some(it) => it,
         None => return,
@@ -281,7 +265,6 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
         ));
     }
 }
-
 fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxErr>) {
     if expr.op_kind() == Some(ast::RangeOp::Inclusive) && expr.end().is_none() {
         errors.push(SyntaxErr::new(
@@ -290,11 +273,9 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxErr>) {
         ));
     }
 }
-
 fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>) {
     let path = segment.parent_path();
     let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
-
     if let Some(token) = segment.self_token() {
         if !is_path_start {
             errors.push(SyntaxErr::new(
@@ -310,7 +291,6 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>
             ));
         }
     }
-
     fn use_prefix(mut path: ast::Path) -> Option<ast::Path> {
         for node in path.syntax().ancestors().skip(1) {
             match_ast! {
@@ -329,7 +309,6 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>
         None
     }
 }
-
 fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
         if let Some(err) = validate_trait_object_ty(ty) {
@@ -337,7 +316,6 @@ fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxErr>) {
         }
     }
 }
-
 fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
         if let Some(err) = validate_trait_object_ty(ty) {
@@ -345,7 +323,6 @@ fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxErr>) {
         }
     }
 }
-
 fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ret_type().and_then(|ty| ty.ty()) {
         if let Some(err) = validate_trait_object_ty(ty) {
@@ -353,10 +330,8 @@ fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<Synt
         }
     }
 }
-
 fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxErr> {
     let tbl = ty.type_bound_list()?;
-
     if tbl.bounds().count() > 1 {
         let dyn_token = ty.dyn_token()?;
         let potential_parenthesis = algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
@@ -367,7 +342,6 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxErr> {
     }
     None
 }
-
 fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxErr>) {
     if let Some(vis) = mac.visibility() {
         errors.push(SyntaxErr::new(
@@ -376,7 +350,6 @@ fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxErr>) {
         ));
     }
 }
-
 fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxErr>) {
     if let Some(mut_token) = const_
         .const_token()
@@ -390,7 +363,6 @@ fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxErr>) {
         ));
     }
 }
-
 fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxErr>) {
     let mut token = let_.syntax().clone();
     loop {
@@ -398,7 +370,6 @@ fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxErr>) {
             Some(it) => it,
             None => break,
         };
-
         if ast::ParenExpr::can_cast(token.kind()) {
             continue;
         } else if let Some(it) = ast::BinExpr::cast(token.clone()) {
@@ -411,7 +382,6 @@ fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxErr>) {
         {
             return;
         }
-
         break;
     }
     errors.push(SyntaxErr::new(
