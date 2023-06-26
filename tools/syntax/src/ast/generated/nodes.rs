@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
 use crate::{
-    api::Node,
-    api::Token,
     ast::{self, support, AstChildren, AstNode},
+    Node,
     SyntaxKind::{self, *},
-    T,
+    Token, T,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

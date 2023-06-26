@@ -1,16 +1,14 @@
 use super::HasName;
-use crate::core::api;
 use crate::{
     algo::{self, neighbor},
-    api::Node,
-    api::Token,
     ast::{self, edit::IndentLevel, make, HasGenericParams},
+    core::{api, Direction},
     ted::{self, Pos},
-    AstNode, AstToken, Direction,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
 };
 use parser::{SyntaxKind, T};
 use std::iter::{empty, successors};
+
 pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
     fn get_or_create_where_clause(&self) -> ast::WhereClause;
@@ -176,7 +174,7 @@ fn create_generic_param_list(position: Pos) -> ast::GenericParamList {
 pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
         remove_attrs_and_docs(self.syntax());
-        fn remove_attrs_and_docs(node: &api::Node) {
+        fn remove_attrs_and_docs(node: &crate::Node) {
             let mut remove_next_ws = false;
             for child in node.children_with_tokens() {
                 match child.kind() {
@@ -288,7 +286,7 @@ impl ast::ConstParam {
         }
     }
 }
-pub trait Removable: AstNode {
+pub trait Removable: ast::AstNode {
     fn remove(&self);
 }
 impl Removable for ast::TypeBoundList {
@@ -597,7 +595,7 @@ impl ast::RecordPatFieldList {
         }
     }
 }
-fn get_or_insert_comma_after(syntax: &api::Node) -> api::Token {
+fn get_or_insert_comma_after(syntax: &crate::Node) -> crate::Token {
     match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
@@ -634,7 +632,7 @@ impl ast::VariantList {
         ted::insert_all(position, elements);
     }
 }
-fn normalize_ws_between_braces(node: &api::Node) -> Option<()> {
+fn normalize_ws_between_braces(node: &crate::Node) -> Option<()> {
     let l = node
         .children_with_tokens()
         .filter_map(|it| it.into_token())
@@ -657,7 +655,7 @@ fn normalize_ws_between_braces(node: &api::Node) -> Option<()> {
     }
     Some(())
 }
-pub trait Indent: AstNode + Clone + Sized {
+pub trait Indent: ast::AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
     }
@@ -673,7 +671,7 @@ pub trait Indent: AstNode + Clone + Sized {
         self.indent(target_level);
     }
 }
-impl<N: AstNode + Clone> Indent for N {}
+impl<N: ast::AstNode + Clone> Indent for N {}
 
 #[cfg(test)]
 mod tests {
@@ -701,7 +699,7 @@ mod tests {
             })
             .collect()
     }
-    fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
+    fn ast_mut_from_text<N: ast::AstNode>(text: &str) -> N {
         let parse = SourceFile::parse(text);
         parse
             .tree()

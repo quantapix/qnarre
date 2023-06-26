@@ -1,8 +1,4 @@
-//!
-
 use crate::{
-    api::Node,
-    api::Token,
     ast::{
         self,
         operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
@@ -12,8 +8,6 @@ use crate::{
     SyntaxKind::*,
     T,
 };
-
-impl ast::HasAttrs for ast::Expr {}
 
 impl ast::Expr {
     pub fn is_block_like(&self) -> bool {
@@ -28,48 +22,42 @@ impl ast::Expr {
         )
     }
 }
+impl ast::HasAttrs for ast::Expr {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElseBranch {
     Block(ast::BlockExpr),
     IfExpr(ast::IfExpr),
 }
-
 impl From<ast::BlockExpr> for ElseBranch {
-    fn from(block_expr: ast::BlockExpr) -> Self {
-        Self::Block(block_expr)
+    fn from(x: ast::BlockExpr) -> Self {
+        Self::Block(x)
     }
 }
-
 impl From<ast::IfExpr> for ElseBranch {
-    fn from(if_expr: ast::IfExpr) -> Self {
-        Self::IfExpr(if_expr)
+    fn from(x: ast::IfExpr) -> Self {
+        Self::IfExpr(x)
     }
 }
-
 impl ast::IfExpr {
     pub fn condition(&self) -> Option<ast::Expr> {
-        // If the condition is a BlockExpr, check if the then body is missing.
-        // If it is assume the condition is the expression that is missing instead.
-        let mut exprs = support::children(self.syntax());
-        let first = exprs.next();
+        let mut xs = support::children(self.syntax());
+        let first = xs.next();
         match first {
-            Some(ast::Expr::BlockExpr(_)) => exprs.next().and(first),
+            Some(ast::Expr::BlockExpr(_)) => xs.next().and(first),
             first => first,
         }
     }
-
     pub fn then_branch(&self) -> Option<ast::BlockExpr> {
         match support::children(self.syntax()).nth(1)? {
-            ast::Expr::BlockExpr(block) => Some(block),
+            ast::Expr::BlockExpr(x) => Some(x),
             _ => None,
         }
     }
-
     pub fn else_branch(&self) -> Option<ElseBranch> {
         match support::children(self.syntax()).nth(2)? {
-            ast::Expr::BlockExpr(block) => Some(ElseBranch::Block(block)),
-            ast::Expr::IfExpr(elif) => Some(ElseBranch::IfExpr(elif)),
+            ast::Expr::BlockExpr(x) => Some(ElseBranch::Block(x)),
+            ast::Expr::IfExpr(x) => Some(ElseBranch::IfExpr(x)),
             _ => None,
         }
     }
@@ -111,7 +99,6 @@ fn if_block_condition() {
     };
     assert_eq!(else_.syntax().text(), r#"{ "else" }"#);
 }
-
 #[test]
 fn if_condition_with_if_inside() {
     let parse = ast::SourceFile::parse(
@@ -141,14 +128,12 @@ impl ast::PrefixExpr {
         };
         Some(res)
     }
-
-    pub fn op_token(&self) -> Option<api::Token> {
+    pub fn op_token(&self) -> Option<crate::Token> {
         self.syntax().first_child_or_token()?.into_token()
     }
 }
-
 impl ast::BinExpr {
-    pub fn op_details(&self) -> Option<(api::Token, BinaryOp)> {
+    pub fn op_details(&self) -> Option<(crate::Token, BinaryOp)> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -157,14 +142,12 @@ impl ast::BinExpr {
             let bin_op = match c.kind() {
                 T![||] => BinaryOp::LogicOp(LogicOp::Or),
                 T![&&] => BinaryOp::LogicOp(LogicOp::And),
-
                 T![==] => BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
                 T![!=] => BinaryOp::CmpOp(CmpOp::Eq { negated: true }),
                 T![<=] => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less,    strict: false }),
                 T![>=] => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: false }),
                 T![<]  => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less,    strict: true }),
                 T![>]  => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: true }),
-
                 T![+]  => BinaryOp::ArithOp(ArithOp::Add),
                 T![*]  => BinaryOp::ArithOp(ArithOp::Mul),
                 T![-]  => BinaryOp::ArithOp(ArithOp::Sub),
@@ -175,7 +158,6 @@ impl ast::BinExpr {
                 T![^]  => BinaryOp::ArithOp(ArithOp::BitXor),
                 T![|]  => BinaryOp::ArithOp(ArithOp::BitOr),
                 T![&]  => BinaryOp::ArithOp(ArithOp::BitAnd),
-
                 T![=]   => BinaryOp::Assignment { op: None },
                 T![+=]  => BinaryOp::Assignment { op: Some(ArithOp::Add) },
                 T![*=]  => BinaryOp::Assignment { op: Some(ArithOp::Mul) },
@@ -187,39 +169,32 @@ impl ast::BinExpr {
                 T![^=]  => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
                 T![|=]  => BinaryOp::Assignment { op: Some(ArithOp::BitOr) },
                 T![&=]  => BinaryOp::Assignment { op: Some(ArithOp::BitAnd) },
-
                 _ => return None,
             };
                 Some((c, bin_op))
             })
     }
-
     pub fn op_kind(&self) -> Option<BinaryOp> {
         self.op_details().map(|t| t.1)
     }
-
-    pub fn op_token(&self) -> Option<api::Token> {
+    pub fn op_token(&self) -> Option<crate::Token> {
         self.op_details().map(|t| t.0)
     }
-
     pub fn lhs(&self) -> Option<ast::Expr> {
         support::children(self.syntax()).next()
     }
-
     pub fn rhs(&self) -> Option<ast::Expr> {
         support::children(self.syntax()).nth(1)
     }
-
     pub fn sub_exprs(&self) -> (Option<ast::Expr>, Option<ast::Expr>) {
-        let mut children = support::children(self.syntax());
-        let first = children.next();
-        let second = children.next();
+        let mut xs = support::children(self.syntax());
+        let first = xs.next();
+        let second = xs.next();
         (first, second)
     }
 }
-
 impl ast::RangeExpr {
-    fn op_details(&self) -> Option<(usize, api::Token, RangeOp)> {
+    fn op_details(&self) -> Option<(usize, crate::Token, RangeOp)> {
         self.syntax()
             .children_with_tokens()
             .enumerate()
@@ -233,32 +208,27 @@ impl ast::RangeExpr {
                 Some((ix, token, bin_op))
             })
     }
-
     pub fn op_kind(&self) -> Option<RangeOp> {
-        self.op_details().map(|t| t.2)
+        self.op_details().map(|x| x.2)
     }
-
-    pub fn op_token(&self) -> Option<api::Token> {
-        self.op_details().map(|t| t.1)
+    pub fn op_token(&self) -> Option<crate::Token> {
+        self.op_details().map(|x| x.1)
     }
-
     pub fn start(&self) -> Option<ast::Expr> {
-        let op_ix = self.op_details()?.0;
+        let y = self.op_details()?.0;
         self.syntax()
             .children_with_tokens()
-            .take(op_ix)
-            .find_map(|it| ast::Expr::cast(it.into_node()?))
+            .take(y)
+            .find_map(|x| ast::Expr::cast(x.into_node()?))
     }
-
     pub fn end(&self) -> Option<ast::Expr> {
-        let op_ix = self.op_details()?.0;
+        let y = self.op_details()?.0;
         self.syntax()
             .children_with_tokens()
-            .skip(op_ix + 1)
-            .find_map(|it| ast::Expr::cast(it.into_node()?))
+            .skip(y + 1)
+            .find_map(|x| ast::Expr::cast(x.into_node()?))
     }
 }
-
 impl ast::IndexExpr {
     pub fn base(&self) -> Option<ast::Expr> {
         support::children(self.syntax()).next()
@@ -267,7 +237,6 @@ impl ast::IndexExpr {
         support::children(self.syntax()).nth(1)
     }
 }
-
 pub enum ArrayExprKind {
     Repeat {
         initializer: Option<ast::Expr>,
@@ -275,7 +244,6 @@ pub enum ArrayExprKind {
     },
     ElementList(AstChildren<ast::Expr>),
 }
-
 impl ast::ArrayExpr {
     pub fn kind(&self) -> ArrayExprKind {
         if self.is_repeat() {
@@ -287,12 +255,10 @@ impl ast::ArrayExpr {
             ArrayExprKind::ElementList(support::children(self.syntax()))
         }
     }
-
     fn is_repeat(&self) -> bool {
         self.semicolon_token().is_some()
     }
 }
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LiteralKind {
     String(ast::String),
@@ -304,19 +270,16 @@ pub enum LiteralKind {
     Byte(ast::Byte),
     Bool(bool),
 }
-
 impl ast::Literal {
-    pub fn token(&self) -> api::Token {
+    pub fn token(&self) -> crate::Token {
         self.syntax()
             .children_with_tokens()
-            .find(|e| e.kind() != ATTR && !e.kind().is_trivia())
-            .and_then(|e| e.into_token())
+            .find(|x| x.kind() != ATTR && !x.kind().is_trivia())
+            .and_then(|x| x.into_token())
             .unwrap()
     }
-
     pub fn kind(&self) -> LiteralKind {
         let token = self.token();
-
         if let Some(t) = ast::IntNumber::cast(token.clone()) {
             return LiteralKind::IntNumber(t);
         }
@@ -338,7 +301,6 @@ impl ast::Literal {
         if let Some(t) = ast::Byte::cast(token.clone()) {
             return LiteralKind::Byte(t);
         }
-
         match token.kind() {
             T![true] => LiteralKind::Bool(true),
             T![false] => LiteralKind::Bool(false),
@@ -346,15 +308,13 @@ impl ast::Literal {
         }
     }
 }
-
 pub enum BlockModifier {
-    Async(api::Token),
-    Unsafe(api::Token),
-    Try(api::Token),
-    Const(api::Token),
+    Async(crate::Token),
+    Unsafe(crate::Token),
+    Try(crate::Token),
+    Const(crate::Token),
     Label(ast::Label),
 }
-
 impl ast::BlockExpr {
     pub fn modifier(&self) -> Option<BlockModifier> {
         self.async_token()
@@ -364,41 +324,27 @@ impl ast::BlockExpr {
             .or_else(|| self.const_token().map(BlockModifier::Const))
             .or_else(|| self.label().map(BlockModifier::Label))
     }
-    /// false if the block is an intrinsic part of the syntax and can't be
-    /// replaced with arbitrary expression.
-    ///
-    /// ```not_rust
-    /// fn foo() { not_stand_alone }
-    /// const FOO: () = { stand_alone };
-    /// ```
     pub fn is_standalone(&self) -> bool {
         let parent = match self.syntax().parent() {
-            Some(it) => it,
+            Some(x) => x,
             None => return true,
         };
         match parent.kind() {
             FOR_EXPR | IF_EXPR => parent
                 .children()
-                .find(|it| ast::Expr::can_cast(it.kind()))
+                .find(|x| ast::Expr::can_cast(x.kind()))
                 .map_or(true, |it| it == *self.syntax()),
             LET_ELSE | FN | WHILE_EXPR | LOOP_EXPR | CONST_BLOCK_PAT => false,
             _ => true,
         }
     }
 }
-
 #[test]
 fn test_literal_with_attr() {
-    let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
-    let lit = parse
-        .tree()
-        .syntax()
-        .descendants()
-        .find_map(ast::Literal::cast)
-        .unwrap();
-    assert_eq!(lit.token().text(), r#""Hello""#);
+    let y = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
+    let y = y.tree().syntax().descendants().find_map(ast::Literal::cast).unwrap();
+    assert_eq!(y.token().text(), r#""Hello""#);
 }
-
 impl ast::RecordExprField {
     pub fn parent_record_lit(&self) -> ast::RecordExpr {
         self.syntax().ancestors().find_map(ast::RecordExpr::cast).unwrap()
@@ -410,33 +356,29 @@ pub enum CallableExpr {
     Call(ast::CallExpr),
     MethodCall(ast::MethodCallExpr),
 }
-
 impl ast::HasAttrs for CallableExpr {}
 impl ast::HasArgList for CallableExpr {}
-
 impl AstNode for CallableExpr {
-    fn can_cast(kind: parser::SyntaxKind) -> bool
+    fn can_cast(x: parser::SyntaxKind) -> bool
     where
         Self: Sized,
     {
-        ast::CallExpr::can_cast(kind) || ast::MethodCallExpr::can_cast(kind)
+        ast::CallExpr::can_cast(x) || ast::MethodCallExpr::can_cast(x)
     }
-
-    fn cast(syntax: api::Node) -> Option<Self>
+    fn cast(x: crate::Node) -> Option<Self>
     where
         Self: Sized,
     {
-        if let Some(it) = ast::CallExpr::cast(syntax.clone()) {
-            Some(Self::Call(it))
+        if let Some(x) = ast::CallExpr::cast(x.clone()) {
+            Some(Self::Call(x))
         } else {
-            ast::MethodCallExpr::cast(syntax).map(Self::MethodCall)
+            ast::MethodCallExpr::cast(x).map(Self::MethodCall)
         }
     }
-
-    fn syntax(&self) -> &api::Node {
+    fn syntax(&self) -> &crate::Node {
         match self {
-            Self::Call(it) => it.syntax(),
-            Self::MethodCall(it) => it.syntax(),
+            Self::Call(x) => x.syntax(),
+            Self::MethodCall(x) => x.syntax(),
         }
     }
 }

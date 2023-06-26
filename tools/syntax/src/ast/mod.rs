@@ -12,7 +12,7 @@ pub use self::{
         HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };
-use crate::{Node, NodeChildren, SyntaxKind, Token};
+use crate::{NodeChildren, SyntaxKind};
 use either::Either;
 use std::marker::PhantomData;
 
@@ -516,7 +516,7 @@ pub mod prec {
         fn is_ordered_before(&self, other: &Expr) -> bool {
             use Expr::*;
             return order(self) < order(other);
-            fn order(this: &Expr) -> core::TextSize {
+            fn order(this: &Expr) -> TextSize {
                 let token = match this {
                     RangeExpr(e) => e.op_token(),
                     BinExpr(e) => e.op_token(),
@@ -569,9 +569,10 @@ mod token_ext;
 mod traits {
     use crate::{
         ast::{self, support, AstChildren, AstNode, AstToken},
-        Elem, ElemChildren, Token, T,
+        T, *,
     };
     use either::Either;
+
     pub trait HasName: AstNode {
         fn name(&self) -> Option<ast::Name> {
             support::child(self.syntax())
@@ -694,10 +695,10 @@ pub trait AstNode {
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;
-    fn cast(syntax: Node) -> Option<Self>
+    fn cast(syntax: crate::Node) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &Node;
+    fn syntax(&self) -> &crate::Node;
     fn clone_for_update(&self) -> Self
     where
         Self: Sized,
@@ -712,13 +713,13 @@ pub trait AstNode {
     }
 }
 pub trait AstToken {
-    fn can_cast(token: SyntaxKind) -> bool
+    fn can_cast(x: SyntaxKind) -> bool
     where
         Self: Sized;
-    fn cast(syntax: Token) -> Option<Self>
+    fn cast(x: crate::Token) -> Option<Self>
     where
         Self: Sized;
-    fn syntax(&self) -> &Token;
+    fn syntax(&self) -> &crate::Token;
     fn text(&self) -> &str {
         self.syntax().text()
     }
@@ -729,9 +730,9 @@ pub struct AstChildren<N> {
     ph: PhantomData<N>,
 }
 impl<N> AstChildren<N> {
-    fn new(parent: &Node) -> Self {
+    fn new(x: &crate::Node) -> Self {
         AstChildren {
-            inner: parent.children(),
+            inner: x.children(),
             ph: PhantomData,
         }
     }
@@ -747,23 +748,23 @@ where
     L: AstNode,
     R: AstNode,
 {
-    fn can_cast(kind: SyntaxKind) -> bool
+    fn can_cast(x: SyntaxKind) -> bool
     where
         Self: Sized,
     {
-        L::can_cast(kind) || R::can_cast(kind)
+        L::can_cast(x) || R::can_cast(x)
     }
-    fn cast(syntax: Node) -> Option<Self>
+    fn cast(x: crate::Node) -> Option<Self>
     where
         Self: Sized,
     {
-        if L::can_cast(syntax.kind()) {
-            L::cast(syntax).map(Either::Left)
+        if L::can_cast(x.kind()) {
+            L::cast(x).map(Either::Left)
         } else {
-            R::cast(syntax).map(Either::Right)
+            R::cast(x).map(Either::Right)
         }
     }
-    fn syntax(&self) -> &Node {
+    fn syntax(&self) -> &crate::Node {
         self.as_ref().either(L::syntax, R::syntax)
     }
 }
@@ -775,20 +776,20 @@ where
 }
 mod support {
     use super::{AstChildren, AstNode};
-    use crate::{Node, SyntaxKind, Token};
-    pub fn child<N: AstNode>(parent: &Node) -> Option<N> {
-        parent.children().find_map(N::cast)
+    use crate::SyntaxKind;
+    pub fn child<N: AstNode>(x: &crate::Node) -> Option<N> {
+        x.children().find_map(N::cast)
     }
-    pub fn children<N: AstNode>(parent: &Node) -> AstChildren<N> {
-        AstChildren::new(parent)
+    pub fn children<N: AstNode>(x: &crate::Node) -> AstChildren<N> {
+        AstChildren::new(x)
     }
-    pub fn token(parent: &Node, kind: SyntaxKind) -> Option<Token> {
-        parent
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == kind)
+    pub fn token(x: &crate::Node, kind: SyntaxKind) -> Option<crate::Token> {
+        x.children_with_tokens()
+            .filter_map(|x| x.into_token())
+            .find(|x| x.kind() == kind)
     }
 }
+
 #[test]
 fn assert_ast_is_object_safe() {
     fn _f(_: &dyn AstNode, _: &dyn HasName) {}
