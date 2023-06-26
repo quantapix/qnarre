@@ -815,7 +815,7 @@ pub fn struct_(
     ))
 }
 #[track_caller]
-fn ast_from_text<N: ast::AstNode>(text: &str) -> N {
+fn ast_from_text<N: ast::Node>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {
         Some(it) => it,

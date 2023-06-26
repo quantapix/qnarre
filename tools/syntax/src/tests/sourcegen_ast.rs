@@ -37,7 +37,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
                     std::fmt::Display::fmt(&self.syntax, f)
                 }
             }
-            impl ast::AstToken for #name {
+            impl ast::Token for #name {
                 fn can_cast(kind: SyntaxKind) -> bool { kind == #kind }
                 fn cast(syntax: crate::Token) -> Option<Self> {
                     if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }

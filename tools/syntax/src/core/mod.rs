@@ -24,26 +24,114 @@ pub mod cursor;
 #[allow(unsafe_code)]
 pub mod green;
 
-pub trait AstNode {
-    type Lang: api::Lang;
-    fn can_cast(x: <Self::Lang as api::Lang>::Kind) -> bool
-    where
-        Self: Sized;
-    fn cast(x: api::Node<Self::Lang>) -> Option<Self>
-    where
-        Self: Sized;
-    fn syntax(&self) -> &api::Node<Self::Lang>;
-    fn clone_for_update(&self) -> Self
-    where
-        Self: Sized,
-    {
-        Self::cast(self.syntax().clone_for_update()).unwrap()
+pub mod ast {
+    use super::api;
+
+    pub trait Node {
+        type Lang: api::Lang;
+        fn can_cast(x: <Self::Lang as api::Lang>::Kind) -> bool
+        where
+            Self: Sized;
+        fn cast(x: api::Node<Self::Lang>) -> Option<Self>
+        where
+            Self: Sized;
+        fn syntax(&self) -> &api::Node<Self::Lang>;
+        fn clone_for_update(&self) -> Self
+        where
+            Self: Sized,
+        {
+            Self::cast(self.syntax().clone_for_update()).unwrap()
+        }
+        fn clone_subtree(&self) -> Self
+        where
+            Self: Sized,
+        {
+            Self::cast(self.syntax().clone_subtree()).unwrap()
+        }
     }
-    fn clone_subtree(&self) -> Self
-    where
-        Self: Sized,
-    {
-        Self::cast(self.syntax().clone_subtree()).unwrap()
+
+    pub struct NodePtr<N: Node> {
+        raw: NodePtr<N::Lang>,
+    }
+    impl<N: Node> NodePtr<N> {
+        pub fn new(x: &N) -> Self {
+            Self {
+                raw: NodePtr::new(x.syntax()),
+            }
+        }
+        pub fn to_node(&self, x: &api::Node<N::Lang>) -> N {
+            N::cast(self.raw.to_node(x)).unwrap()
+        }
+        pub fn syntax_node_ptr(&self) -> NodePtr<N::Lang> {
+            self.raw.clone()
+        }
+        pub fn cast<U: Node<Lang = N::Lang>>(self) -> Option<NodePtr<U>> {
+            if !U::can_cast(self.raw.kind) {
+                return None;
+            }
+            Some(NodePtr { raw: self.raw })
+        }
+    }
+    impl<N: Node> Clone for NodePtr<N> {
+        fn clone(&self) -> Self {
+            Self { raw: self.raw.clone() }
+        }
+    }
+    impl<N: Node> Eq for NodePtr<N> {}
+    impl<N: Node> PartialEq for NodePtr<N> {
+        fn eq(&self, other: &NodePtr<N>) -> bool {
+            self.raw == other.raw
+        }
+    }
+    impl<N: Node> Hash for NodePtr<N> {
+        fn hash<H: Hasher>(&self, x: &mut H) {
+            self.raw.hash(x)
+        }
+    }
+    impl<N: Node> fmt::Debug for NodePtr<N> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("ast::NodePtr").field("raw", &self.raw).finish()
+        }
+    }
+    impl<N: Node> From<NodePtr<N>> for NodePtr<N::Lang> {
+        fn from(x: NodePtr<N>) -> NodePtr<N::Lang> {
+            x.raw
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Children<N: Node> {
+        inner: api::NodeChildren<N::Lang>,
+        ph: PhantomData<N>,
+    }
+    impl<N: Node> Children<N> {
+        pub fn new(x: &api::Node<N::Lang>) -> Self {
+            Children {
+                inner: x.children(),
+                ph: PhantomData,
+            }
+        }
+    }
+    impl<N: Node> Iterator for Children<N> {
+        type Item = N;
+        fn next(&mut self) -> Option<N> {
+            self.inner.find_map(N::cast)
+        }
+    }
+}
+
+pub mod support {
+    use super::{api, ast};
+    pub fn child<N: ast::Node>(x: &api::Node<N::Lang>) -> Option<N> {
+        x.children().find_map(N::cast)
+    }
+    pub fn children<N: ast::Node>(x: &api::Node<N::Lang>) -> ast::Children<N> {
+        ast::Children::new(x)
+    }
+    pub fn token<L: api::Lang>(x: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
+        x.children_with_tokens()
+            .filter_map(|x| x.into_token())
+            .find(|x| x.kind() == kind)
     }
 }
 
@@ -53,117 +141,31 @@ pub struct NodePtr<L: api::Lang> {
     range: TextRange,
 }
 impl<L: api::Lang> NodePtr<L> {
-    pub fn new(node: &api::Node<L>) -> Self {
+    pub fn new(x: &api::Node<L>) -> Self {
         Self {
-            kind: node.kind(),
-            range: node.text_range(),
+            kind: x.kind(),
+            range: x.text_range(),
         }
     }
-    pub fn to_node(&self, root: &api::Node<L>) -> api::Node<L> {
-        assert!(root.parent().is_none());
-        successors(Some(root.clone()), |node| {
-            node.child_or_token_at_range(self.range).and_then(|it| it.into_node())
+    pub fn to_node(&self, x: &api::Node<L>) -> api::Node<L> {
+        assert!(x.parent().is_none());
+        successors(Some(x.clone()), |x| {
+            x.child_or_token_at_range(self.range).and_then(|x| x.into_node())
         })
-        .find(|it| it.text_range() == self.range && it.kind() == self.kind)
+        .find(|x| x.text_range() == self.range && x.kind() == self.kind)
         .unwrap_or_else(|| panic!("can't resolve local ptr to api::Node: {:?}", self))
     }
-    pub fn cast<N: AstNode<Lang = L>>(self) -> Option<AstPtr<N>> {
+    pub fn cast<N: ast::Node<Lang = L>>(self) -> Option<ast::NodePtr<N>> {
         if !N::can_cast(self.kind) {
             return None;
         }
-        Some(AstPtr { raw: self })
+        Some(ast::NodePtr { raw: self })
     }
     pub fn kind(&self) -> L::Kind {
         self.kind
     }
     pub fn text_range(&self) -> TextRange {
         self.range
-    }
-}
-impl<N: AstNode> From<AstPtr<N>> for NodePtr<N::Lang> {
-    fn from(ptr: AstPtr<N>) -> NodePtr<N::Lang> {
-        ptr.raw
-    }
-}
-
-pub struct AstPtr<N: AstNode> {
-    raw: NodePtr<N::Lang>,
-}
-impl<N: AstNode> AstPtr<N> {
-    pub fn new(node: &N) -> Self {
-        Self {
-            raw: NodePtr::new(node.syntax()),
-        }
-    }
-    pub fn to_node(&self, root: &api::Node<N::Lang>) -> N {
-        N::cast(self.raw.to_node(root)).unwrap()
-    }
-    pub fn syntax_node_ptr(&self) -> NodePtr<N::Lang> {
-        self.raw.clone()
-    }
-    pub fn cast<U: AstNode<Lang = N::Lang>>(self) -> Option<AstPtr<U>> {
-        if !U::can_cast(self.raw.kind) {
-            return None;
-        }
-        Some(AstPtr { raw: self.raw })
-    }
-}
-impl<N: AstNode> Clone for AstPtr<N> {
-    fn clone(&self) -> Self {
-        Self { raw: self.raw.clone() }
-    }
-}
-impl<N: AstNode> Eq for AstPtr<N> {}
-impl<N: AstNode> PartialEq for AstPtr<N> {
-    fn eq(&self, other: &AstPtr<N>) -> bool {
-        self.raw == other.raw
-    }
-}
-impl<N: AstNode> Hash for AstPtr<N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.raw.hash(state)
-    }
-}
-impl<N: AstNode> fmt::Debug for AstPtr<N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("AstPtr").field("raw", &self.raw).finish()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AstChildren<N: AstNode> {
-    inner: api::NodeChildren<N::Lang>,
-    ph: PhantomData<N>,
-}
-impl<N: AstNode> AstChildren<N> {
-    fn new(parent: &api::Node<N::Lang>) -> Self {
-        AstChildren {
-            inner: parent.children(),
-            ph: PhantomData,
-        }
-    }
-}
-impl<N: AstNode> Iterator for AstChildren<N> {
-    type Item = N;
-    fn next(&mut self) -> Option<N> {
-        self.inner.find_map(N::cast)
-    }
-}
-
-pub mod support {
-    use super::{AstChildren, AstNode};
-    use crate::core::api;
-    pub fn child<N: AstNode>(parent: &api::Node<N::Lang>) -> Option<N> {
-        parent.children().find_map(N::cast)
-    }
-    pub fn children<N: AstNode>(parent: &api::Node<N::Lang>) -> AstChildren<N> {
-        AstChildren::new(parent)
-    }
-    pub fn token<L: api::Lang>(parent: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
-        parent
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == kind)
     }
 }
 
@@ -721,8 +723,8 @@ impl<T: ?Sized + Ord> Ord for Arc<T> {
 }
 impl<T: ?Sized + Eq> Eq for Arc<T> {}
 impl<T: ?Sized + Hash> Hash for Arc<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        (**self).hash(state)
+    fn hash<H: Hasher>(&self, x: &mut H) {
+        (**self).hash(x)
     }
 }
 unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
@@ -745,8 +747,8 @@ impl<H, T> Deref for HeaderSlice<H, [T; 0]> {
     fn deref(&self) -> &Self::Target {
         unsafe {
             let len = self.length;
-            let fake_slice: *const [T] = ptr::slice_from_raw_parts(self as *const _ as *const T, len);
-            &*(fake_slice as *const HeaderSlice<H, [T]>)
+            let y: *const [T] = ptr::slice_from_raw_parts(self as *const _ as *const T, len);
+            &*(y as *const HeaderSlice<H, [T]>)
         }
     }
 }
@@ -860,7 +862,7 @@ fn thin_to_thick<H, T>(thin: *mut ArcInner<HeaderSlice<H, [T; 0]>>) -> *mut ArcI
 
 //#[cfg(feature = "serde1")]
 mod serde_impls {
-    use crate::{core::api, core::NodeOrToken};
+    use super::{api, NodeOrToken};
     use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
     use std::fmt;
 
@@ -907,16 +909,16 @@ mod serde_impls {
 
     struct Children<T>(T);
     impl<L: api::Lang> Serialize for Children<&'_ api::Node<L>> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        fn serialize<S>(&self, x: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
         {
-            let mut state = serializer.serialize_seq(None)?;
-            self.0.children_with_tokens().try_for_each(|element| match element {
-                NodeOrToken::Node(it) => state.serialize_element(&it),
-                NodeOrToken::Token(it) => state.serialize_element(&it),
+            let mut y = x.serialize_seq(None)?;
+            self.0.children_with_tokens().try_for_each(|x| match x {
+                NodeOrToken::Node(x) => y.serialize_element(&x),
+                NodeOrToken::Token(x) => y.serialize_element(&x),
             })?;
-            state.end()
+            y.end()
         }
     }
 }
@@ -939,25 +941,25 @@ mod sll {
         AlreadyInSll(*const E),
     }
     impl<'a, E: Elem> AddToSllResult<'a, E> {
-        pub fn add_to_sll(&self, elem_ptr: *const E) {
+        pub fn add_to_sll(&self, e: *const E) {
             unsafe {
-                (*elem_ptr).prev().set(elem_ptr);
-                (*elem_ptr).next().set(elem_ptr);
+                (*e).prev().set(e);
+                (*e).next().set(e);
                 match self {
-                    AddToSllResult::EmptyHead(head) => head.set(elem_ptr),
-                    AddToSllResult::SmallerThanHead(head) => {
-                        let old_head = head.get();
-                        let prev = (*old_head).prev().replace(elem_ptr);
-                        (*prev).next().set(elem_ptr);
-                        (*elem_ptr).next().set(old_head);
-                        (*elem_ptr).prev().set(prev);
-                        head.set(elem_ptr);
+                    AddToSllResult::EmptyHead(x) => x.set(e),
+                    AddToSllResult::SmallerThanHead(x) => {
+                        let old = x.get();
+                        let prev = (*old).prev().replace(e);
+                        (*prev).next().set(e);
+                        (*e).next().set(old);
+                        (*e).prev().set(prev);
+                        x.set(e);
                     },
-                    AddToSllResult::SmallerThanNotHead(curr) => {
-                        let next = (**curr).next().replace(elem_ptr);
-                        (*next).prev().set(elem_ptr);
-                        (*elem_ptr).prev().set(*curr);
-                        (*elem_ptr).next().set(next);
+                    AddToSllResult::SmallerThanNotHead(x) => {
+                        let next = (**x).next().replace(e);
+                        (*next).prev().set(e);
+                        (*e).prev().set(*x);
+                        (*e).next().set(next);
                     },
                     AddToSllResult::NoHead | AddToSllResult::AlreadyInSll(_) => (),
                 }
@@ -1029,16 +1031,15 @@ mod sll {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::core::green;
-    fn build_tree(chunks: &[&str]) -> api::Node {
-        let mut builder = green::NodeBuilder::new();
-        builder.start_node(green::Kind(62));
-        for &chunk in chunks.iter() {
-            builder.token(green::Kind(92), chunk.into())
+    use super::{api, green};
+    fn build_tree(xs: &[&str]) -> api::Node {
+        let mut y = green::NodeBuilder::new();
+        y.start_node(green::Kind(62));
+        for &x in xs.iter() {
+            y.token(green::Kind(92), x.into())
         }
-        builder.finish_node();
-        api::Node::new_root(builder.finish())
+        y.finish_node();
+        api::Node::new_root(y.finish())
     }
     #[test]
     fn test_text_equality() {

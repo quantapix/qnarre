@@ -112,7 +112,7 @@ pub mod edit {
     fn prev_tokens(token: crate::Token) -> impl Iterator<Item = crate::Token> {
         iter::successors(Some(token), |token| token.prev_token())
     }
-    pub trait AstNodeEdit: ast::AstNode + Clone + Sized {
+    pub trait AstNodeEdit: ast::Node + Clone + Sized {
         fn indent_level(&self) -> IndentLevel {
             IndentLevel::from_node(self.syntax())
         }
@@ -140,7 +140,7 @@ pub mod edit {
             self.dedent(level)
         }
     }
-    impl<N: ast::AstNode + Clone> AstNodeEdit for N {}
+    impl<N: ast::Node + Clone> AstNodeEdit for N {}
     #[test]
     fn test_increase_indent() {
         let arm_list = {
@@ -176,7 +176,7 @@ pub mod tokens;
         SyntaxKind::{self, *},
     };
     pub use nodes::*;
-    impl ast::AstNode for Stmt {
+    impl ast::Node for Stmt {
         fn can_cast(kind: SyntaxKind) -> bool {
             match kind {
                 LET_STMT | EXPR_STMT => true,
@@ -574,17 +574,17 @@ mod traits {
     };
     use either::Either;
 
-    pub trait HasName: ast::AstNode {
+    pub trait HasName: ast::Node {
         fn name(&self) -> Option<ast::Name> {
             support::child(self.syntax())
         }
     }
-    pub trait HasVisibility: ast::AstNode {
+    pub trait HasVisibility: ast::Node {
         fn visibility(&self) -> Option<ast::Visibility> {
             support::child(self.syntax())
         }
     }
-    pub trait HasLoopBody: ast::AstNode {
+    pub trait HasLoopBody: ast::Node {
         fn loop_body(&self) -> Option<ast::BlockExpr> {
             support::child(self.syntax())
         }
@@ -592,17 +592,17 @@ mod traits {
             support::child(self.syntax())
         }
     }
-    pub trait HasArgList: ast::AstNode {
+    pub trait HasArgList: ast::Node {
         fn arg_list(&self) -> Option<ast::ArgList> {
             support::child(self.syntax())
         }
     }
-    pub trait HasModuleItem: ast::AstNode {
+    pub trait HasModuleItem: ast::Node {
         fn items(&self) -> AstChildren<ast::Item> {
             support::children(self.syntax())
         }
     }
-    pub trait HasGenericParams: ast::AstNode {
+    pub trait HasGenericParams: ast::Node {
         fn generic_param_list(&self) -> Option<ast::GenericParamList> {
             support::child(self.syntax())
         }
@@ -610,7 +610,7 @@ mod traits {
             support::child(self.syntax())
         }
     }
-    pub trait HasTypeBounds: ast::AstNode {
+    pub trait HasTypeBounds: ast::Node {
         fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
             support::child(self.syntax())
         }
@@ -618,8 +618,8 @@ mod traits {
             support::token(self.syntax(), T![:])
         }
     }
-    pub trait HasAttrs: ast::AstNode {
-        fn attrs(&self) -> ast::AstChildren<ast::Attr> {
+    pub trait HasAttrs: ast::Node {
+        fn attrs(&self) -> ast::Children<ast::Attr> {
             support::children(self.syntax())
         }
         fn has_atom_attr(&self, atom: &str) -> bool {
@@ -692,7 +692,7 @@ mod traits {
     impl<A: HasName, B: HasName> HasName for Either<A, B> {}
 }
 
-pub trait AstNode {
+pub trait Node {
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;
@@ -713,7 +713,7 @@ pub trait AstNode {
         Self::cast(self.syntax().clone_subtree()).unwrap()
     }
 }
-pub trait AstToken {
+pub trait Token {
     fn can_cast(x: SyntaxKind) -> bool
     where
         Self: Sized;
@@ -726,28 +726,28 @@ pub trait AstToken {
     }
 }
 #[derive(Debug, Clone)]
-pub struct AstChildren<N> {
+pub struct Children<N> {
     inner: crate::NodeChildren,
     ph: PhantomData<N>,
 }
-impl<N> AstChildren<N> {
+impl<N> Children<N> {
     fn new(x: &crate::Node) -> Self {
-        AstChildren {
+        Children {
             inner: x.children(),
             ph: PhantomData,
         }
     }
 }
-impl<N: AstNode> Iterator for AstChildren<N> {
+impl<N: Node> Iterator for Children<N> {
     type Item = N;
     fn next(&mut self) -> Option<N> {
         self.inner.find_map(N::cast)
     }
 }
-impl<L, R> AstNode for Either<L, R>
+impl<L, R> Node for Either<L, R>
 where
-    L: AstNode,
-    R: AstNode,
+    L: Node,
+    R: Node,
 {
     fn can_cast(x: SyntaxKind) -> bool
     where
@@ -777,11 +777,11 @@ where
 }
 mod support {
     use crate::{ast, SyntaxKind};
-    pub fn child<N: ast::AstNode>(x: &crate::Node) -> Option<N> {
+    pub fn child<N: ast::Node>(x: &crate::Node) -> Option<N> {
         x.children().find_map(N::cast)
     }
-    pub fn children<N: ast::AstNode>(x: &crate::Node) -> ast::AstChildren<N> {
-        ast::AstChildren::new(x)
+    pub fn children<N: ast::Node>(x: &crate::Node) -> ast::Children<N> {
+        ast::Children::new(x)
     }
     pub fn token(x: &crate::Node, kind: SyntaxKind) -> Option<crate::Token> {
         x.children_with_tokens()
@@ -792,7 +792,7 @@ mod support {
 
 #[test]
 fn assert_ast_is_object_safe() {
-    fn _f(_: &dyn AstNode, _: &dyn HasName) {}
+    fn _f(_: &dyn Node, _: &dyn HasName) {}
 }
 #[test]
 fn test_doc_comment_none() {

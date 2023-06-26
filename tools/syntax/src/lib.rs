@@ -590,11 +590,11 @@ mod ptr {
     };
     pub type NodePtr = core::NodePtr<Lang>;
     #[derive(Debug)]
-    pub struct AstPtr<N: ast::AstNode> {
+    pub struct AstPtr<N: ast::Node> {
         raw: NodePtr,
         _ty: PhantomData<fn() -> N>,
     }
-    impl<N: ast::AstNode> Clone for AstPtr<N> {
+    impl<N: ast::Node> Clone for AstPtr<N> {
         fn clone(&self) -> AstPtr<N> {
             AstPtr {
                 raw: self.raw.clone(),
@@ -602,18 +602,18 @@ mod ptr {
             }
         }
     }
-    impl<N: ast::AstNode> Eq for AstPtr<N> {}
-    impl<N: ast::AstNode> PartialEq for AstPtr<N> {
+    impl<N: ast::Node> Eq for AstPtr<N> {}
+    impl<N: ast::Node> PartialEq for AstPtr<N> {
         fn eq(&self, other: &AstPtr<N>) -> bool {
             self.raw == other.raw
         }
     }
-    impl<N: ast::AstNode> Hash for AstPtr<N> {
+    impl<N: ast::Node> Hash for AstPtr<N> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.raw.hash(state);
         }
     }
-    impl<N: ast::AstNode> AstPtr<N> {
+    impl<N: ast::Node> AstPtr<N> {
         pub fn new(node: &N) -> AstPtr<N> {
             AstPtr {
                 raw: NodePtr::new(node.syntax()),
@@ -630,7 +630,7 @@ mod ptr {
         pub fn text_range(&self) -> TextRange {
             self.raw.text_range()
         }
-        pub fn cast<U: ast::AstNode>(self) -> Option<AstPtr<U>> {
+        pub fn cast<U: ast::Node>(self) -> Option<AstPtr<U>> {
             if !U::can_cast(self.raw.kind()) {
                 return None;
             }
@@ -639,7 +639,7 @@ mod ptr {
                 _ty: PhantomData,
             })
         }
-        pub fn upcast<M: ast::AstNode>(self) -> AstPtr<M>
+        pub fn upcast<M: ast::Node>(self) -> AstPtr<M>
         where
             N: Into<M>,
         {
@@ -652,7 +652,7 @@ mod ptr {
             N::can_cast(raw.kind()).then_some(AstPtr { raw, _ty: PhantomData })
         }
     }
-    impl<N: ast::AstNode> From<AstPtr<N>> for NodePtr {
+    impl<N: ast::Node> From<AstPtr<N>> for NodePtr {
         fn from(ptr: AstPtr<N>) -> NodePtr {
             ptr.raw
         }
@@ -1090,7 +1090,7 @@ impl<T> Parse<T> {
         &self.errors
     }
 }
-impl<T: ast::AstNode> Parse<T> {
+impl<T: ast::Node> Parse<T> {
     pub fn to_syntax(self) -> Parse<Node> {
         Parse {
             green: self.green,
@@ -1110,7 +1110,7 @@ impl<T: ast::AstNode> Parse<T> {
     }
 }
 impl Parse<Node> {
-    pub fn cast<N: ast::AstNode>(self) -> Option<Parse<N>> {
+    pub fn cast<N: ast::Node>(self) -> Option<Parse<N>> {
         if N::cast(self.syntax_node()).is_some() {
             Some(Parse {
                 green: self.green,

@@ -178,7 +178,7 @@ impl QuoteOffsets {
         Some(res)
     }
 }
-pub trait IsString: ast::AstToken {
+pub trait IsString: ast::Token {
     const RAW_PREFIX: &'static str;
     fn is_raw(&self) -> bool {
         self.text().starts_with(Self::RAW_PREFIX)

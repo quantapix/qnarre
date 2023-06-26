@@ -62,7 +62,7 @@ impl From<ast::MacroDef> for Macro {
         Macro::MacroDef(x)
     }
 }
-impl ast::AstNode for Macro {
+impl ast::Node for Macro {
     fn can_cast(x: SyntaxKind) -> bool {
         matches!(x, SyntaxKind::MACRO_RULES | SyntaxKind::MACRO_DEF)
     }
@@ -304,7 +304,7 @@ pub enum StructKind {
     Unit,
 }
 impl StructKind {
-    fn from_node<N: ast::AstNode>(x: &N) -> StructKind {
+    fn from_node<N: ast::Node>(x: &N) -> StructKind {
         if let Some(x) = support::child::<ast::RecordFieldList>(x.syntax()) {
             StructKind::Record(x)
         } else if let Some(x) = support::child::<ast::TupleFieldList>(x.syntax()) {
@@ -377,7 +377,7 @@ impl NameLike {
         }
     }
 }
-impl ast::AstNode for NameLike {
+impl ast::Node for NameLike {
     fn can_cast(x: SyntaxKind) -> bool {
         matches!(x, SyntaxKind::NAME | SyntaxKind::NAME_REF | SyntaxKind::LIFETIME)
     }
@@ -582,7 +582,7 @@ impl TypeOrConstParam {
         }
     }
 }
-impl ast::AstNode for TypeOrConstParam {
+impl ast::Node for TypeOrConstParam {
     fn can_cast(x: SyntaxKind) -> bool
     where
         Self: Sized,
@@ -621,7 +621,7 @@ impl TraitOrAlias {
         }
     }
 }
-impl ast::AstNode for TraitOrAlias {
+impl ast::Node for TraitOrAlias {
     fn can_cast(x: SyntaxKind) -> bool
     where
         Self: Sized,

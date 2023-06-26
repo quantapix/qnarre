@@ -12,7 +12,7 @@ impl std::fmt::Display for Whitespace {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for Whitespace {
+impl ast::Token for Whitespace {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == WHITESPACE
     }
@@ -37,7 +37,7 @@ impl std::fmt::Display for Comment {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for Comment {
+impl ast::Token for Comment {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == COMMENT
     }
@@ -62,7 +62,7 @@ impl std::fmt::Display for String {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for String {
+impl ast::Token for String {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == STRING
     }
@@ -87,7 +87,7 @@ impl std::fmt::Display for ByteString {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for ByteString {
+impl ast::Token for ByteString {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BYTE_STRING
     }
@@ -112,7 +112,7 @@ impl std::fmt::Display for CString {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for CString {
+impl ast::Token for CString {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == C_STRING
     }
@@ -137,7 +137,7 @@ impl std::fmt::Display for IntNumber {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for IntNumber {
+impl ast::Token for IntNumber {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == INT_NUMBER
     }
@@ -162,7 +162,7 @@ impl std::fmt::Display for FloatNumber {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for FloatNumber {
+impl ast::Token for FloatNumber {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == FLOAT_NUMBER
     }
@@ -187,7 +187,7 @@ impl std::fmt::Display for Char {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for Char {
+impl ast::Token for Char {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CHAR
     }
@@ -212,7 +212,7 @@ impl std::fmt::Display for Byte {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for Byte {
+impl ast::Token for Byte {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BYTE
     }
@@ -237,7 +237,7 @@ impl std::fmt::Display for Ident {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl ast::AstToken for Ident {
+impl ast::Token for Ident {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == IDENT
     }

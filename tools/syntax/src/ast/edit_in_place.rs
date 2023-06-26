@@ -286,7 +286,7 @@ impl ast::ConstParam {
         }
     }
 }
-pub trait Removable: ast::AstNode {
+pub trait Removable: ast::Node {
     fn remove(&self);
 }
 impl Removable for ast::TypeBoundList {
@@ -655,7 +655,7 @@ fn normalize_ws_between_braces(node: &crate::Node) -> Option<()> {
     }
     Some(())
 }
-pub trait Indent: ast::AstNode + Clone + Sized {
+pub trait Indent: ast::Node + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
     }
@@ -671,7 +671,7 @@ pub trait Indent: ast::AstNode + Clone + Sized {
         self.indent(target_level);
     }
 }
-impl<N: ast::AstNode + Clone> Indent for N {}
+impl<N: ast::Node + Clone> Indent for N {}
 
 #[cfg(test)]
 mod tests {
@@ -699,7 +699,7 @@ mod tests {
             })
             .collect()
     }
-    fn ast_mut_from_text<N: ast::AstNode>(text: &str) -> N {
+    fn ast_mut_from_text<N: ast::Node>(text: &str) -> N {
         let parse = SourceFile::parse(text);
         parse
             .tree()

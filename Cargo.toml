@@ -1,5 +1,5 @@
 [workspace]
-members = ["tools/syntax"]
+members = ["tools/syntax", "tools/parser"]
 # members = ["tools/bindgen", "tools/clang", "tools/lexer", "tools/ast", "tools/llvm/macros", "tools/llvm", "tools/probe_lib", "tools/probe"]
 resolver = "2"
 
@@ -12,3 +12,17 @@ authors = ["qnarre"]
 
 [workspace.dependencies]
 limit = { path = "../../lib/rust-analyzer/crates/limit" }
+
+[profile.dev]
+debug = 0
+
+[profile.dev.package]
+rowan.opt-level = 3
+rustc-hash.opt-level = 3
+smol_str.opt-level = 3
+text-size.opt-level = 3
+miniz_oxide.opt-level = 3
+
+[profile.release]
+incremental = true
+debug = 0

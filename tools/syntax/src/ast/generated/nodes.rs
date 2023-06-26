@@ -112,7 +112,7 @@ impl GenericArgList {
     pub fn l_angle_token(&self) -> Option<Token> {
         support::token(&self.syntax, T![<])
     }
-    pub fn generic_args(&self) -> ast::AstChildren<GenericArg> {
+    pub fn generic_args(&self) -> ast::Children<GenericArg> {
         support::children(&self.syntax)
     }
     pub fn r_angle_token(&self) -> Option<Token> {
@@ -134,7 +134,7 @@ impl ParamList {
     pub fn comma_token(&self) -> Option<Token> {
         support::token(&self.syntax, T![,])
     }
-    pub fn params(&self) -> ast::AstChildren<Param> {
+    pub fn params(&self) -> ast::Children<Param> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -232,7 +232,7 @@ pub struct TypeBoundList {
     pub syntax: Node,
 }
 impl TypeBoundList {
-    pub fn bounds(&self) -> ast::AstChildren<TypeBound> {
+    pub fn bounds(&self) -> ast::Children<TypeBound> {
         support::children(&self.syntax)
     }
 }
@@ -317,7 +317,7 @@ pub struct MacroStmts {
     pub syntax: Node,
 }
 impl MacroStmts {
-    pub fn statements(&self) -> ast::AstChildren<Stmt> {
+    pub fn statements(&self) -> ast::Children<Stmt> {
         support::children(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
@@ -816,7 +816,7 @@ impl UseTreeList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn use_trees(&self) -> ast::AstChildren<UseTree> {
+    pub fn use_trees(&self) -> ast::Children<UseTree> {
         support::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
@@ -842,7 +842,7 @@ impl GenericParamList {
     pub fn l_angle_token(&self) -> Option<Token> {
         support::token(&self.syntax, T![<])
     }
-    pub fn generic_params(&self) -> ast::AstChildren<GenericParam> {
+    pub fn generic_params(&self) -> ast::Children<GenericParam> {
         support::children(&self.syntax)
     }
     pub fn r_angle_token(&self) -> Option<Token> {
@@ -858,7 +858,7 @@ impl WhereClause {
     pub fn where_token(&self) -> Option<Token> {
         support::token(&self.syntax, T![where])
     }
-    pub fn predicates(&self) -> ast::AstChildren<WherePred> {
+    pub fn predicates(&self) -> ast::Children<WherePred> {
         support::children(&self.syntax)
     }
 }
@@ -941,7 +941,7 @@ impl RecordFieldList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn fields(&self) -> ast::AstChildren<RecordField> {
+    pub fn fields(&self) -> ast::Children<RecordField> {
         support::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
@@ -957,7 +957,7 @@ impl TupleFieldList {
     pub fn l_paren_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['('])
     }
-    pub fn fields(&self) -> ast::AstChildren<TupleField> {
+    pub fn fields(&self) -> ast::Children<TupleField> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -1003,7 +1003,7 @@ impl VariantList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn variants(&self) -> ast::AstChildren<Variant> {
+    pub fn variants(&self) -> ast::Children<Variant> {
         support::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
@@ -1040,7 +1040,7 @@ impl AssocItemList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn assoc_items(&self) -> ast::AstChildren<AssocItem> {
+    pub fn assoc_items(&self) -> ast::Children<AssocItem> {
         support::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
@@ -1057,7 +1057,7 @@ impl ExternItemList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn extern_items(&self) -> ast::AstChildren<ExternItem> {
+    pub fn extern_items(&self) -> ast::Children<ExternItem> {
         support::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
@@ -1223,7 +1223,7 @@ impl ArrayExpr {
     pub fn l_brack_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['['])
     }
-    pub fn exprs(&self) -> ast::AstChildren<Expr> {
+    pub fn exprs(&self) -> ast::Children<Expr> {
         support::children(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
@@ -1618,7 +1618,7 @@ impl TupleExpr {
     pub fn l_paren_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['('])
     }
-    pub fn fields(&self) -> ast::AstChildren<Expr> {
+    pub fn fields(&self) -> ast::Children<Expr> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -1708,7 +1708,7 @@ impl StmtList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn statements(&self) -> ast::AstChildren<Stmt> {
+    pub fn statements(&self) -> ast::Children<Stmt> {
         support::children(&self.syntax)
     }
     pub fn tail_expr(&self) -> Option<Expr> {
@@ -1741,7 +1741,7 @@ impl RecordExprFieldList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn fields(&self) -> ast::AstChildren<RecordExprField> {
+    pub fn fields(&self) -> ast::Children<RecordExprField> {
         support::children(&self.syntax)
     }
     pub fn dotdot_token(&self) -> Option<Token> {
@@ -1780,7 +1780,7 @@ impl ArgList {
     pub fn l_paren_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['('])
     }
-    pub fn args(&self) -> ast::AstChildren<Expr> {
+    pub fn args(&self) -> ast::Children<Expr> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -1797,7 +1797,7 @@ impl MatchArmList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn arms(&self) -> ast::AstChildren<MatchArm> {
+    pub fn arms(&self) -> ast::Children<MatchArm> {
         support::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
@@ -2038,7 +2038,7 @@ impl TupleType {
     pub fn l_paren_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['('])
     }
-    pub fn fields(&self) -> ast::AstChildren<Type> {
+    pub fn fields(&self) -> ast::Children<Type> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -2141,7 +2141,7 @@ pub struct OrPat {
     pub syntax: Node,
 }
 impl OrPat {
-    pub fn pats(&self) -> ast::AstChildren<Pat> {
+    pub fn pats(&self) -> ast::Children<Pat> {
         support::children(&self.syntax)
     }
 }
@@ -2225,7 +2225,7 @@ impl SlicePat {
     pub fn l_brack_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['['])
     }
-    pub fn pats(&self) -> ast::AstChildren<Pat> {
+    pub fn pats(&self) -> ast::Children<Pat> {
         support::children(&self.syntax)
     }
     pub fn r_brack_token(&self) -> Option<Token> {
@@ -2241,7 +2241,7 @@ impl TuplePat {
     pub fn l_paren_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['('])
     }
-    pub fn fields(&self) -> ast::AstChildren<Pat> {
+    pub fn fields(&self) -> ast::Children<Pat> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -2260,7 +2260,7 @@ impl TupleStructPat {
     pub fn l_paren_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['('])
     }
-    pub fn fields(&self) -> ast::AstChildren<Pat> {
+    pub fn fields(&self) -> ast::Children<Pat> {
         support::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
@@ -2289,7 +2289,7 @@ impl RecordPatFieldList {
     pub fn l_curly_token(&self) -> Option<Token> {
         support::token(&self.syntax, T!['{'])
     }
-    pub fn fields(&self) -> ast::AstChildren<RecordPatField> {
+    pub fn fields(&self) -> ast::Children<RecordPatField> {
         support::children(&self.syntax)
     }
     pub fn rest_pat(&self) -> Option<RestPat> {
@@ -2529,7 +2529,7 @@ pub struct AnyHasVisibility {
     pub syntax: Node,
 }
 impl ast::HasVisibility for AnyHasVisibility {}
-impl ast::AstNode for Name {
+impl ast::Node for Name {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == NAME
     }
@@ -2544,7 +2544,7 @@ impl ast::AstNode for Name {
         &self.syntax
     }
 }
-impl ast::AstNode for NameRef {
+impl ast::Node for NameRef {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == NAME_REF
     }
@@ -2559,7 +2559,7 @@ impl ast::AstNode for NameRef {
         &self.syntax
     }
 }
-impl ast::AstNode for Lifetime {
+impl ast::Node for Lifetime {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LIFETIME
     }
@@ -2574,7 +2574,7 @@ impl ast::AstNode for Lifetime {
         &self.syntax
     }
 }
-impl ast::AstNode for Path {
+impl ast::Node for Path {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PATH
     }
@@ -2589,7 +2589,7 @@ impl ast::AstNode for Path {
         &self.syntax
     }
 }
-impl ast::AstNode for PathSegment {
+impl ast::Node for PathSegment {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PATH_SEGMENT
     }
@@ -2604,7 +2604,7 @@ impl ast::AstNode for PathSegment {
         &self.syntax
     }
 }
-impl ast::AstNode for GenericArgList {
+impl ast::Node for GenericArgList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == GENERIC_ARG_LIST
     }
@@ -2619,7 +2619,7 @@ impl ast::AstNode for GenericArgList {
         &self.syntax
     }
 }
-impl ast::AstNode for ParamList {
+impl ast::Node for ParamList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PARAM_LIST
     }
@@ -2634,7 +2634,7 @@ impl ast::AstNode for ParamList {
         &self.syntax
     }
 }
-impl ast::AstNode for RetType {
+impl ast::Node for RetType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RET_TYPE
     }
@@ -2649,7 +2649,7 @@ impl ast::AstNode for RetType {
         &self.syntax
     }
 }
-impl ast::AstNode for PathType {
+impl ast::Node for PathType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PATH_TYPE
     }
@@ -2664,7 +2664,7 @@ impl ast::AstNode for PathType {
         &self.syntax
     }
 }
-impl ast::AstNode for TypeArg {
+impl ast::Node for TypeArg {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TYPE_ARG
     }
@@ -2679,7 +2679,7 @@ impl ast::AstNode for TypeArg {
         &self.syntax
     }
 }
-impl ast::AstNode for AssocTypeArg {
+impl ast::Node for AssocTypeArg {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ASSOC_TYPE_ARG
     }
@@ -2694,7 +2694,7 @@ impl ast::AstNode for AssocTypeArg {
         &self.syntax
     }
 }
-impl ast::AstNode for LifetimeArg {
+impl ast::Node for LifetimeArg {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LIFETIME_ARG
     }
@@ -2709,7 +2709,7 @@ impl ast::AstNode for LifetimeArg {
         &self.syntax
     }
 }
-impl ast::AstNode for ConstArg {
+impl ast::Node for ConstArg {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CONST_ARG
     }
@@ -2724,7 +2724,7 @@ impl ast::AstNode for ConstArg {
         &self.syntax
     }
 }
-impl ast::AstNode for TypeBoundList {
+impl ast::Node for TypeBoundList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TYPE_BOUND_LIST
     }
@@ -2739,7 +2739,7 @@ impl ast::AstNode for TypeBoundList {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroCall {
+impl ast::Node for MacroCall {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_CALL
     }
@@ -2754,7 +2754,7 @@ impl ast::AstNode for MacroCall {
         &self.syntax
     }
 }
-impl ast::AstNode for Attr {
+impl ast::Node for Attr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ATTR
     }
@@ -2769,7 +2769,7 @@ impl ast::AstNode for Attr {
         &self.syntax
     }
 }
-impl ast::AstNode for TokenTree {
+impl ast::Node for TokenTree {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TOKEN_TREE
     }
@@ -2784,7 +2784,7 @@ impl ast::AstNode for TokenTree {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroItems {
+impl ast::Node for MacroItems {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_ITEMS
     }
@@ -2799,7 +2799,7 @@ impl ast::AstNode for MacroItems {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroStmts {
+impl ast::Node for MacroStmts {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_STMTS
     }
@@ -2814,7 +2814,7 @@ impl ast::AstNode for MacroStmts {
         &self.syntax
     }
 }
-impl ast::AstNode for SourceFile {
+impl ast::Node for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SOURCE_FILE
     }
@@ -2829,7 +2829,7 @@ impl ast::AstNode for SourceFile {
         &self.syntax
     }
 }
-impl ast::AstNode for Const {
+impl ast::Node for Const {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CONST
     }
@@ -2844,7 +2844,7 @@ impl ast::AstNode for Const {
         &self.syntax
     }
 }
-impl ast::AstNode for Enum {
+impl ast::Node for Enum {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ENUM
     }
@@ -2859,7 +2859,7 @@ impl ast::AstNode for Enum {
         &self.syntax
     }
 }
-impl ast::AstNode for ExternBlock {
+impl ast::Node for ExternBlock {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == EXTERN_BLOCK
     }
@@ -2874,7 +2874,7 @@ impl ast::AstNode for ExternBlock {
         &self.syntax
     }
 }
-impl ast::AstNode for ExternCrate {
+impl ast::Node for ExternCrate {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == EXTERN_CRATE
     }
@@ -2889,7 +2889,7 @@ impl ast::AstNode for ExternCrate {
         &self.syntax
     }
 }
-impl ast::AstNode for Fn {
+impl ast::Node for Fn {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == FN
     }
@@ -2904,7 +2904,7 @@ impl ast::AstNode for Fn {
         &self.syntax
     }
 }
-impl ast::AstNode for Impl {
+impl ast::Node for Impl {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == IMPL
     }
@@ -2919,7 +2919,7 @@ impl ast::AstNode for Impl {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroRules {
+impl ast::Node for MacroRules {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_RULES
     }
@@ -2934,7 +2934,7 @@ impl ast::AstNode for MacroRules {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroDef {
+impl ast::Node for MacroDef {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_DEF
     }
@@ -2949,7 +2949,7 @@ impl ast::AstNode for MacroDef {
         &self.syntax
     }
 }
-impl ast::AstNode for Module {
+impl ast::Node for Module {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MODULE
     }
@@ -2964,7 +2964,7 @@ impl ast::AstNode for Module {
         &self.syntax
     }
 }
-impl ast::AstNode for Static {
+impl ast::Node for Static {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == STATIC
     }
@@ -2979,7 +2979,7 @@ impl ast::AstNode for Static {
         &self.syntax
     }
 }
-impl ast::AstNode for Struct {
+impl ast::Node for Struct {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == STRUCT
     }
@@ -2994,7 +2994,7 @@ impl ast::AstNode for Struct {
         &self.syntax
     }
 }
-impl ast::AstNode for Trait {
+impl ast::Node for Trait {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TRAIT
     }
@@ -3009,7 +3009,7 @@ impl ast::AstNode for Trait {
         &self.syntax
     }
 }
-impl ast::AstNode for TraitAlias {
+impl ast::Node for TraitAlias {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TRAIT_ALIAS
     }
@@ -3024,7 +3024,7 @@ impl ast::AstNode for TraitAlias {
         &self.syntax
     }
 }
-impl ast::AstNode for TypeAlias {
+impl ast::Node for TypeAlias {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TYPE_ALIAS
     }
@@ -3039,7 +3039,7 @@ impl ast::AstNode for TypeAlias {
         &self.syntax
     }
 }
-impl ast::AstNode for Union {
+impl ast::Node for Union {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == UNION
     }
@@ -3054,7 +3054,7 @@ impl ast::AstNode for Union {
         &self.syntax
     }
 }
-impl ast::AstNode for Use {
+impl ast::Node for Use {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == USE
     }
@@ -3069,7 +3069,7 @@ impl ast::AstNode for Use {
         &self.syntax
     }
 }
-impl ast::AstNode for Visibility {
+impl ast::Node for Visibility {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == VISIBILITY
     }
@@ -3084,7 +3084,7 @@ impl ast::AstNode for Visibility {
         &self.syntax
     }
 }
-impl ast::AstNode for ItemList {
+impl ast::Node for ItemList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ITEM_LIST
     }
@@ -3099,7 +3099,7 @@ impl ast::AstNode for ItemList {
         &self.syntax
     }
 }
-impl ast::AstNode for Rename {
+impl ast::Node for Rename {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RENAME
     }
@@ -3114,7 +3114,7 @@ impl ast::AstNode for Rename {
         &self.syntax
     }
 }
-impl ast::AstNode for UseTree {
+impl ast::Node for UseTree {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == USE_TREE
     }
@@ -3129,7 +3129,7 @@ impl ast::AstNode for UseTree {
         &self.syntax
     }
 }
-impl ast::AstNode for UseTreeList {
+impl ast::Node for UseTreeList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == USE_TREE_LIST
     }
@@ -3144,7 +3144,7 @@ impl ast::AstNode for UseTreeList {
         &self.syntax
     }
 }
-impl ast::AstNode for Abi {
+impl ast::Node for Abi {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ABI
     }
@@ -3159,7 +3159,7 @@ impl ast::AstNode for Abi {
         &self.syntax
     }
 }
-impl ast::AstNode for GenericParamList {
+impl ast::Node for GenericParamList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == GENERIC_PARAM_LIST
     }
@@ -3174,7 +3174,7 @@ impl ast::AstNode for GenericParamList {
         &self.syntax
     }
 }
-impl ast::AstNode for WhereClause {
+impl ast::Node for WhereClause {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == WHERE_CLAUSE
     }
@@ -3189,7 +3189,7 @@ impl ast::AstNode for WhereClause {
         &self.syntax
     }
 }
-impl ast::AstNode for BlockExpr {
+impl ast::Node for BlockExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BLOCK_EXPR
     }
@@ -3204,7 +3204,7 @@ impl ast::AstNode for BlockExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for SelfParam {
+impl ast::Node for SelfParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SELF_PARAM
     }
@@ -3219,7 +3219,7 @@ impl ast::AstNode for SelfParam {
         &self.syntax
     }
 }
-impl ast::AstNode for Param {
+impl ast::Node for Param {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PARAM
     }
@@ -3234,7 +3234,7 @@ impl ast::AstNode for Param {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordFieldList {
+impl ast::Node for RecordFieldList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_FIELD_LIST
     }
@@ -3249,7 +3249,7 @@ impl ast::AstNode for RecordFieldList {
         &self.syntax
     }
 }
-impl ast::AstNode for TupleFieldList {
+impl ast::Node for TupleFieldList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TUPLE_FIELD_LIST
     }
@@ -3264,7 +3264,7 @@ impl ast::AstNode for TupleFieldList {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordField {
+impl ast::Node for RecordField {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_FIELD
     }
@@ -3279,7 +3279,7 @@ impl ast::AstNode for RecordField {
         &self.syntax
     }
 }
-impl ast::AstNode for TupleField {
+impl ast::Node for TupleField {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TUPLE_FIELD
     }
@@ -3294,7 +3294,7 @@ impl ast::AstNode for TupleField {
         &self.syntax
     }
 }
-impl ast::AstNode for VariantList {
+impl ast::Node for VariantList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == VARIANT_LIST
     }
@@ -3309,7 +3309,7 @@ impl ast::AstNode for VariantList {
         &self.syntax
     }
 }
-impl ast::AstNode for Variant {
+impl ast::Node for Variant {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == VARIANT
     }
@@ -3324,7 +3324,7 @@ impl ast::AstNode for Variant {
         &self.syntax
     }
 }
-impl ast::AstNode for AssocItemList {
+impl ast::Node for AssocItemList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ASSOC_ITEM_LIST
     }
@@ -3339,7 +3339,7 @@ impl ast::AstNode for AssocItemList {
         &self.syntax
     }
 }
-impl ast::AstNode for ExternItemList {
+impl ast::Node for ExternItemList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == EXTERN_ITEM_LIST
     }
@@ -3354,7 +3354,7 @@ impl ast::AstNode for ExternItemList {
         &self.syntax
     }
 }
-impl ast::AstNode for ConstParam {
+impl ast::Node for ConstParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CONST_PARAM
     }
@@ -3369,7 +3369,7 @@ impl ast::AstNode for ConstParam {
         &self.syntax
     }
 }
-impl ast::AstNode for LifetimeParam {
+impl ast::Node for LifetimeParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LIFETIME_PARAM
     }
@@ -3384,7 +3384,7 @@ impl ast::AstNode for LifetimeParam {
         &self.syntax
     }
 }
-impl ast::AstNode for TypeParam {
+impl ast::Node for TypeParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TYPE_PARAM
     }
@@ -3399,7 +3399,7 @@ impl ast::AstNode for TypeParam {
         &self.syntax
     }
 }
-impl ast::AstNode for WherePred {
+impl ast::Node for WherePred {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == WHERE_PRED
     }
@@ -3414,7 +3414,7 @@ impl ast::AstNode for WherePred {
         &self.syntax
     }
 }
-impl ast::AstNode for Meta {
+impl ast::Node for Meta {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == META
     }
@@ -3429,7 +3429,7 @@ impl ast::AstNode for Meta {
         &self.syntax
     }
 }
-impl ast::AstNode for ExprStmt {
+impl ast::Node for ExprStmt {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == EXPR_STMT
     }
@@ -3444,7 +3444,7 @@ impl ast::AstNode for ExprStmt {
         &self.syntax
     }
 }
-impl ast::AstNode for LetStmt {
+impl ast::Node for LetStmt {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LET_STMT
     }
@@ -3459,7 +3459,7 @@ impl ast::AstNode for LetStmt {
         &self.syntax
     }
 }
-impl ast::AstNode for LetElse {
+impl ast::Node for LetElse {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LET_ELSE
     }
@@ -3474,7 +3474,7 @@ impl ast::AstNode for LetElse {
         &self.syntax
     }
 }
-impl ast::AstNode for ArrayExpr {
+impl ast::Node for ArrayExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ARRAY_EXPR
     }
@@ -3489,7 +3489,7 @@ impl ast::AstNode for ArrayExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for AwaitExpr {
+impl ast::Node for AwaitExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == AWAIT_EXPR
     }
@@ -3504,7 +3504,7 @@ impl ast::AstNode for AwaitExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for BinExpr {
+impl ast::Node for BinExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BIN_EXPR
     }
@@ -3519,7 +3519,7 @@ impl ast::AstNode for BinExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for BoxExpr {
+impl ast::Node for BoxExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BOX_EXPR
     }
@@ -3534,7 +3534,7 @@ impl ast::AstNode for BoxExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for BreakExpr {
+impl ast::Node for BreakExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BREAK_EXPR
     }
@@ -3549,7 +3549,7 @@ impl ast::AstNode for BreakExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for CallExpr {
+impl ast::Node for CallExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CALL_EXPR
     }
@@ -3564,7 +3564,7 @@ impl ast::AstNode for CallExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for CastExpr {
+impl ast::Node for CastExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CAST_EXPR
     }
@@ -3579,7 +3579,7 @@ impl ast::AstNode for CastExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for ClosureExpr {
+impl ast::Node for ClosureExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CLOSURE_EXPR
     }
@@ -3594,7 +3594,7 @@ impl ast::AstNode for ClosureExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for ContinueExpr {
+impl ast::Node for ContinueExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CONTINUE_EXPR
     }
@@ -3609,7 +3609,7 @@ impl ast::AstNode for ContinueExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for FieldExpr {
+impl ast::Node for FieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == FIELD_EXPR
     }
@@ -3624,7 +3624,7 @@ impl ast::AstNode for FieldExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for ForExpr {
+impl ast::Node for ForExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == FOR_EXPR
     }
@@ -3639,7 +3639,7 @@ impl ast::AstNode for ForExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for IfExpr {
+impl ast::Node for IfExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == IF_EXPR
     }
@@ -3654,7 +3654,7 @@ impl ast::AstNode for IfExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for IndexExpr {
+impl ast::Node for IndexExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == INDEX_EXPR
     }
@@ -3669,7 +3669,7 @@ impl ast::AstNode for IndexExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for Literal {
+impl ast::Node for Literal {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LITERAL
     }
@@ -3684,7 +3684,7 @@ impl ast::AstNode for Literal {
         &self.syntax
     }
 }
-impl ast::AstNode for LoopExpr {
+impl ast::Node for LoopExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LOOP_EXPR
     }
@@ -3699,7 +3699,7 @@ impl ast::AstNode for LoopExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroExpr {
+impl ast::Node for MacroExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_EXPR
     }
@@ -3714,7 +3714,7 @@ impl ast::AstNode for MacroExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for MatchExpr {
+impl ast::Node for MatchExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MATCH_EXPR
     }
@@ -3729,7 +3729,7 @@ impl ast::AstNode for MatchExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for MethodCallExpr {
+impl ast::Node for MethodCallExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == METHOD_CALL_EXPR
     }
@@ -3744,7 +3744,7 @@ impl ast::AstNode for MethodCallExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for ParenExpr {
+impl ast::Node for ParenExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PAREN_EXPR
     }
@@ -3759,7 +3759,7 @@ impl ast::AstNode for ParenExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for PathExpr {
+impl ast::Node for PathExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PATH_EXPR
     }
@@ -3774,7 +3774,7 @@ impl ast::AstNode for PathExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for PrefixExpr {
+impl ast::Node for PrefixExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PREFIX_EXPR
     }
@@ -3789,7 +3789,7 @@ impl ast::AstNode for PrefixExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for RangeExpr {
+impl ast::Node for RangeExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RANGE_EXPR
     }
@@ -3804,7 +3804,7 @@ impl ast::AstNode for RangeExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordExpr {
+impl ast::Node for RecordExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_EXPR
     }
@@ -3819,7 +3819,7 @@ impl ast::AstNode for RecordExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for RefExpr {
+impl ast::Node for RefExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == REF_EXPR
     }
@@ -3834,7 +3834,7 @@ impl ast::AstNode for RefExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for ReturnExpr {
+impl ast::Node for ReturnExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RETURN_EXPR
     }
@@ -3849,7 +3849,7 @@ impl ast::AstNode for ReturnExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for TryExpr {
+impl ast::Node for TryExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TRY_EXPR
     }
@@ -3864,7 +3864,7 @@ impl ast::AstNode for TryExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for TupleExpr {
+impl ast::Node for TupleExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TUPLE_EXPR
     }
@@ -3879,7 +3879,7 @@ impl ast::AstNode for TupleExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for WhileExpr {
+impl ast::Node for WhileExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == WHILE_EXPR
     }
@@ -3894,7 +3894,7 @@ impl ast::AstNode for WhileExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for YieldExpr {
+impl ast::Node for YieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == YIELD_EXPR
     }
@@ -3909,7 +3909,7 @@ impl ast::AstNode for YieldExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for YeetExpr {
+impl ast::Node for YeetExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == YEET_EXPR
     }
@@ -3924,7 +3924,7 @@ impl ast::AstNode for YeetExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for LetExpr {
+impl ast::Node for LetExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LET_EXPR
     }
@@ -3939,7 +3939,7 @@ impl ast::AstNode for LetExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for UnderscoreExpr {
+impl ast::Node for UnderscoreExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == UNDERSCORE_EXPR
     }
@@ -3954,7 +3954,7 @@ impl ast::AstNode for UnderscoreExpr {
         &self.syntax
     }
 }
-impl ast::AstNode for StmtList {
+impl ast::Node for StmtList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == STMT_LIST
     }
@@ -3969,7 +3969,7 @@ impl ast::AstNode for StmtList {
         &self.syntax
     }
 }
-impl ast::AstNode for Label {
+impl ast::Node for Label {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LABEL
     }
@@ -3984,7 +3984,7 @@ impl ast::AstNode for Label {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordExprFieldList {
+impl ast::Node for RecordExprFieldList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_EXPR_FIELD_LIST
     }
@@ -3999,7 +3999,7 @@ impl ast::AstNode for RecordExprFieldList {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordExprField {
+impl ast::Node for RecordExprField {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_EXPR_FIELD
     }
@@ -4014,7 +4014,7 @@ impl ast::AstNode for RecordExprField {
         &self.syntax
     }
 }
-impl ast::AstNode for ArgList {
+impl ast::Node for ArgList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ARG_LIST
     }
@@ -4029,7 +4029,7 @@ impl ast::AstNode for ArgList {
         &self.syntax
     }
 }
-impl ast::AstNode for MatchArmList {
+impl ast::Node for MatchArmList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MATCH_ARM_LIST
     }
@@ -4044,7 +4044,7 @@ impl ast::AstNode for MatchArmList {
         &self.syntax
     }
 }
-impl ast::AstNode for MatchArm {
+impl ast::Node for MatchArm {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MATCH_ARM
     }
@@ -4059,7 +4059,7 @@ impl ast::AstNode for MatchArm {
         &self.syntax
     }
 }
-impl ast::AstNode for MatchGuard {
+impl ast::Node for MatchGuard {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MATCH_GUARD
     }
@@ -4074,7 +4074,7 @@ impl ast::AstNode for MatchGuard {
         &self.syntax
     }
 }
-impl ast::AstNode for ArrayType {
+impl ast::Node for ArrayType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == ARRAY_TYPE
     }
@@ -4089,7 +4089,7 @@ impl ast::AstNode for ArrayType {
         &self.syntax
     }
 }
-impl ast::AstNode for DynTraitType {
+impl ast::Node for DynTraitType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == DYN_TRAIT_TYPE
     }
@@ -4104,7 +4104,7 @@ impl ast::AstNode for DynTraitType {
         &self.syntax
     }
 }
-impl ast::AstNode for FnPtrType {
+impl ast::Node for FnPtrType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == FN_PTR_TYPE
     }
@@ -4119,7 +4119,7 @@ impl ast::AstNode for FnPtrType {
         &self.syntax
     }
 }
-impl ast::AstNode for ForType {
+impl ast::Node for ForType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == FOR_TYPE
     }
@@ -4134,7 +4134,7 @@ impl ast::AstNode for ForType {
         &self.syntax
     }
 }
-impl ast::AstNode for ImplTraitType {
+impl ast::Node for ImplTraitType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == IMPL_TRAIT_TYPE
     }
@@ -4149,7 +4149,7 @@ impl ast::AstNode for ImplTraitType {
         &self.syntax
     }
 }
-impl ast::AstNode for InferType {
+impl ast::Node for InferType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == INFER_TYPE
     }
@@ -4164,7 +4164,7 @@ impl ast::AstNode for InferType {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroType {
+impl ast::Node for MacroType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_TYPE
     }
@@ -4179,7 +4179,7 @@ impl ast::AstNode for MacroType {
         &self.syntax
     }
 }
-impl ast::AstNode for NeverType {
+impl ast::Node for NeverType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == NEVER_TYPE
     }
@@ -4194,7 +4194,7 @@ impl ast::AstNode for NeverType {
         &self.syntax
     }
 }
-impl ast::AstNode for ParenType {
+impl ast::Node for ParenType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PAREN_TYPE
     }
@@ -4209,7 +4209,7 @@ impl ast::AstNode for ParenType {
         &self.syntax
     }
 }
-impl ast::AstNode for PtrType {
+impl ast::Node for PtrType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PTR_TYPE
     }
@@ -4224,7 +4224,7 @@ impl ast::AstNode for PtrType {
         &self.syntax
     }
 }
-impl ast::AstNode for RefType {
+impl ast::Node for RefType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == REF_TYPE
     }
@@ -4239,7 +4239,7 @@ impl ast::AstNode for RefType {
         &self.syntax
     }
 }
-impl ast::AstNode for SliceType {
+impl ast::Node for SliceType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SLICE_TYPE
     }
@@ -4254,7 +4254,7 @@ impl ast::AstNode for SliceType {
         &self.syntax
     }
 }
-impl ast::AstNode for TupleType {
+impl ast::Node for TupleType {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TUPLE_TYPE
     }
@@ -4269,7 +4269,7 @@ impl ast::AstNode for TupleType {
         &self.syntax
     }
 }
-impl ast::AstNode for TypeBound {
+impl ast::Node for TypeBound {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TYPE_BOUND
     }
@@ -4284,7 +4284,7 @@ impl ast::AstNode for TypeBound {
         &self.syntax
     }
 }
-impl ast::AstNode for IdentPat {
+impl ast::Node for IdentPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == IDENT_PAT
     }
@@ -4299,7 +4299,7 @@ impl ast::AstNode for IdentPat {
         &self.syntax
     }
 }
-impl ast::AstNode for BoxPat {
+impl ast::Node for BoxPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == BOX_PAT
     }
@@ -4314,7 +4314,7 @@ impl ast::AstNode for BoxPat {
         &self.syntax
     }
 }
-impl ast::AstNode for RestPat {
+impl ast::Node for RestPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == REST_PAT
     }
@@ -4329,7 +4329,7 @@ impl ast::AstNode for RestPat {
         &self.syntax
     }
 }
-impl ast::AstNode for LiteralPat {
+impl ast::Node for LiteralPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == LITERAL_PAT
     }
@@ -4344,7 +4344,7 @@ impl ast::AstNode for LiteralPat {
         &self.syntax
     }
 }
-impl ast::AstNode for MacroPat {
+impl ast::Node for MacroPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == MACRO_PAT
     }
@@ -4359,7 +4359,7 @@ impl ast::AstNode for MacroPat {
         &self.syntax
     }
 }
-impl ast::AstNode for OrPat {
+impl ast::Node for OrPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == OR_PAT
     }
@@ -4374,7 +4374,7 @@ impl ast::AstNode for OrPat {
         &self.syntax
     }
 }
-impl ast::AstNode for ParenPat {
+impl ast::Node for ParenPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PAREN_PAT
     }
@@ -4389,7 +4389,7 @@ impl ast::AstNode for ParenPat {
         &self.syntax
     }
 }
-impl ast::AstNode for PathPat {
+impl ast::Node for PathPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == PATH_PAT
     }
@@ -4404,7 +4404,7 @@ impl ast::AstNode for PathPat {
         &self.syntax
     }
 }
-impl ast::AstNode for WildcardPat {
+impl ast::Node for WildcardPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == WILDCARD_PAT
     }
@@ -4419,7 +4419,7 @@ impl ast::AstNode for WildcardPat {
         &self.syntax
     }
 }
-impl ast::AstNode for RangePat {
+impl ast::Node for RangePat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RANGE_PAT
     }
@@ -4434,7 +4434,7 @@ impl ast::AstNode for RangePat {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordPat {
+impl ast::Node for RecordPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_PAT
     }
@@ -4449,7 +4449,7 @@ impl ast::AstNode for RecordPat {
         &self.syntax
     }
 }
-impl ast::AstNode for RefPat {
+impl ast::Node for RefPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == REF_PAT
     }
@@ -4464,7 +4464,7 @@ impl ast::AstNode for RefPat {
         &self.syntax
     }
 }
-impl ast::AstNode for SlicePat {
+impl ast::Node for SlicePat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SLICE_PAT
     }
@@ -4479,7 +4479,7 @@ impl ast::AstNode for SlicePat {
         &self.syntax
     }
 }
-impl ast::AstNode for TuplePat {
+impl ast::Node for TuplePat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TUPLE_PAT
     }
@@ -4494,7 +4494,7 @@ impl ast::AstNode for TuplePat {
         &self.syntax
     }
 }
-impl ast::AstNode for TupleStructPat {
+impl ast::Node for TupleStructPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == TUPLE_STRUCT_PAT
     }
@@ -4509,7 +4509,7 @@ impl ast::AstNode for TupleStructPat {
         &self.syntax
     }
 }
-impl ast::AstNode for ConstBlockPat {
+impl ast::Node for ConstBlockPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == CONST_BLOCK_PAT
     }
@@ -4524,7 +4524,7 @@ impl ast::AstNode for ConstBlockPat {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordPatFieldList {
+impl ast::Node for RecordPatFieldList {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_PAT_FIELD_LIST
     }
@@ -4539,7 +4539,7 @@ impl ast::AstNode for RecordPatFieldList {
         &self.syntax
     }
 }
-impl ast::AstNode for RecordPatField {
+impl ast::Node for RecordPatField {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == RECORD_PAT_FIELD
     }
@@ -4574,7 +4574,7 @@ impl From<ConstArg> for GenericArg {
         GenericArg::ConstArg(node)
     }
 }
-impl ast::AstNode for GenericArg {
+impl ast::Node for GenericArg {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG)
     }
@@ -4667,7 +4667,7 @@ impl From<TupleType> for Type {
         Type::TupleType(node)
     }
 }
-impl ast::AstNode for Type {
+impl ast::Node for Type {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -4891,7 +4891,7 @@ impl From<UnderscoreExpr> for Expr {
         Expr::UnderscoreExpr(node)
     }
 }
-impl ast::AstNode for Expr {
+impl ast::Node for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5092,7 +5092,7 @@ impl From<Use> for Item {
         Item::Use(node)
     }
 }
-impl ast::AstNode for Item {
+impl ast::Node for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5255,7 +5255,7 @@ impl From<ConstBlockPat> for Pat {
         Pat::ConstBlockPat(node)
     }
 }
-impl ast::AstNode for Pat {
+impl ast::Node for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5330,7 +5330,7 @@ impl From<TupleFieldList> for FieldList {
         FieldList::TupleFieldList(node)
     }
 }
-impl ast::AstNode for FieldList {
+impl ast::Node for FieldList {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, RECORD_FIELD_LIST | TUPLE_FIELD_LIST)
     }
@@ -5364,7 +5364,7 @@ impl From<Union> for Adt {
         Adt::Union(node)
     }
 }
-impl ast::AstNode for Adt {
+impl ast::Node for Adt {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, ENUM | STRUCT | UNION)
     }
@@ -5405,7 +5405,7 @@ impl From<TypeAlias> for AssocItem {
         AssocItem::TypeAlias(node)
     }
 }
-impl ast::AstNode for AssocItem {
+impl ast::Node for AssocItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, CONST | FN | MACRO_CALL | TYPE_ALIAS)
     }
@@ -5448,7 +5448,7 @@ impl From<TypeAlias> for ExternItem {
         ExternItem::TypeAlias(node)
     }
 }
-impl ast::AstNode for ExternItem {
+impl ast::Node for ExternItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, FN | MACRO_CALL | STATIC | TYPE_ALIAS)
     }
@@ -5486,7 +5486,7 @@ impl From<TypeParam> for GenericParam {
         GenericParam::TypeParam(node)
     }
 }
-impl ast::AstNode for GenericParam {
+impl ast::Node for GenericParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, CONST_PARAM | LIFETIME_PARAM | TYPE_PARAM)
     }
@@ -5515,7 +5515,7 @@ impl AnyHasArgList {
         }
     }
 }
-impl ast::AstNode for AnyHasArgList {
+impl ast::Node for AnyHasArgList {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, CALL_EXPR | METHOD_CALL_EXPR)
     }
@@ -5534,7 +5534,7 @@ impl AnyHasAttrs {
         }
     }
 }
-impl ast::AstNode for AnyHasAttrs {
+impl ast::Node for AnyHasAttrs {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5624,7 +5624,7 @@ impl AnyHasDocComments {
         }
     }
 }
-impl ast::AstNode for AnyHasDocComments {
+impl ast::Node for AnyHasDocComments {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5666,7 +5666,7 @@ impl AnyHasGenericParams {
         }
     }
 }
-impl ast::AstNode for AnyHasGenericParams {
+impl ast::Node for AnyHasGenericParams {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5688,7 +5688,7 @@ impl AnyHasLoopBody {
         }
     }
 }
-impl ast::AstNode for AnyHasLoopBody {
+impl ast::Node for AnyHasLoopBody {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, FOR_EXPR | LOOP_EXPR | WHILE_EXPR)
     }
@@ -5707,7 +5707,7 @@ impl AnyHasModuleItem {
         }
     }
 }
-impl ast::AstNode for AnyHasModuleItem {
+impl ast::Node for AnyHasModuleItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(kind, MACRO_ITEMS | SOURCE_FILE | ITEM_LIST)
     }
@@ -5726,7 +5726,7 @@ impl AnyHasName {
         }
     }
 }
-impl ast::AstNode for AnyHasName {
+impl ast::Node for AnyHasName {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5766,7 +5766,7 @@ impl AnyHasTypeBounds {
         }
     }
 }
-impl ast::AstNode for AnyHasTypeBounds {
+impl ast::Node for AnyHasTypeBounds {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
@@ -5788,7 +5788,7 @@ impl AnyHasVisibility {
         }
     }
 }
-impl ast::AstNode for AnyHasVisibility {
+impl ast::Node for AnyHasVisibility {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,

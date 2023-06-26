@@ -14,10 +14,10 @@ pub fn ancestors_at_offset(x: &crate::Node, off: TextSize) -> impl Iterator<Item
         .map(|x| x.parent_ancestors())
         .kmerge_by(|x1, x2| x1.text_range().len() < x2.text_range().len())
 }
-pub fn find_node_at_offset<N: ast::AstNode>(x: &crate::Node, off: TextSize) -> Option<N> {
+pub fn find_node_at_offset<N: ast::Node>(x: &crate::Node, off: TextSize) -> Option<N> {
     ancestors_at_offset(x, off).find_map(N::cast)
 }
-pub fn find_node_at_range<N: ast::AstNode>(x: &crate::Node, range: TextRange) -> Option<N> {
+pub fn find_node_at_range<N: ast::Node>(x: &crate::Node, range: TextRange) -> Option<N> {
     x.covering_element(range).ancestors().find_map(N::cast)
 }
 pub fn skip_trivia_token(mut x: crate::Token, dir: Direction) -> Option<crate::Token> {
@@ -62,7 +62,7 @@ pub fn least_common_ancestor(u: &crate::Node, v: &crate::Node) -> Option<crate::
     let (res, _) = u_candidates.zip(v_candidates).find(|(x, y)| x == y)?;
     Some(res)
 }
-pub fn neighbor<T: ast::AstNode>(x: &T, dir: Direction) -> Option<T> {
+pub fn neighbor<T: ast::Node>(x: &T, dir: Direction) -> Option<T> {
     x.syntax().siblings(dir).skip(1).find_map(T::cast)
 }
 pub fn has_errors(x: &crate::Node) -> bool {
@@ -346,23 +346,23 @@ use baz;"#,
             r#"
 use expect_test::{expect, Expect};
 use text_edit::TextEdit;
-use crate::ast::AstNode;
+use crate::ast::Node;
 "#,
             r#"
 use expect_test::{expect, Expect};
-use crate::ast::AstNode;
+use crate::ast::Node;
 "#,
             expect![[r#"
                 insertions:
                 Line 1: After(Node(USE@1..35))
                 -> "\n\n"
-                -> use crate::ast::AstNode;
+                -> use crate::ast::Node;
                 replacements:
 
                 deletions:
                 Line 2: use text_edit::TextEdit;
                 Line 3: "\n\n"
-                Line 4: use crate::ast::AstNode;
+                Line 4: use crate::ast::Node;
                 Line 5: "\n"
             "#]],
         )
@@ -372,20 +372,20 @@ use crate::ast::AstNode;
         check_diff(
             r#"
 use text_edit::TextEdit;
-use crate::ast::AstNode;
+use crate::ast::Node;
 "#,
             r#"
-use crate::ast::AstNode;
+use crate::ast::Node;
 "#,
             expect![[r#"
                 insertions:
 
                 replacements:
                 Line 2: Token(IDENT@5..14 "text_edit") -> crate
-                Line 2: Token(IDENT@16..24 "TextEdit") -> ast::AstNode
+                Line 2: Token(IDENT@16..24 "TextEdit") -> ast::Node
                 Line 2: Token(WHITESPACE@25..27 "\n\n") -> "\n"
                 deletions:
-                Line 3: use crate::ast::AstNode;
+                Line 3: use crate::ast::Node;
                 Line 4: "\n"
             "#]],
         )

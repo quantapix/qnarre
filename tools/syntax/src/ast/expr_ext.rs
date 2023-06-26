@@ -241,7 +241,7 @@ pub enum ArrayExprKind {
         initializer: Option<ast::Expr>,
         repeat: Option<ast::Expr>,
     },
-    ElementList(ast::AstChildren<ast::Expr>),
+    ElementList(ast::Children<ast::Expr>),
 }
 impl ast::ArrayExpr {
     pub fn kind(&self) -> ArrayExprKind {
@@ -357,7 +357,7 @@ pub enum CallableExpr {
 }
 impl ast::HasAttrs for CallableExpr {}
 impl ast::HasArgList for CallableExpr {}
-impl ast::AstNode for CallableExpr {
+impl ast::Node for CallableExpr {
     fn can_cast(x: parser::SyntaxKind) -> bool
     where
         Self: Sized,
