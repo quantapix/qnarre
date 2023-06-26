@@ -358,7 +358,7 @@ pub enum CallableExpr {
 impl ast::HasAttrs for CallableExpr {}
 impl ast::HasArgList for CallableExpr {}
 impl ast::Node for CallableExpr {
-    fn can_cast(x: parser::SyntaxKind) -> bool
+    fn can_cast(x: crate::SyntaxKind) -> bool
     where
         Self: Sized,
     {

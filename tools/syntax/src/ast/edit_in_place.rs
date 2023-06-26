@@ -4,9 +4,9 @@ use crate::{
     ast::{self, edit::IndentLevel, make, HasGenericParams},
     core::{api, Direction},
     ted::{self, Pos},
-    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
+    SyntaxKind::{self, ATTR, COMMENT, WHITESPACE},
+    T,
 };
-use parser::{SyntaxKind, T};
 use std::iter::{empty, successors};
 
 pub trait GenericParamsOwnerEdit: ast::HasGenericParams {

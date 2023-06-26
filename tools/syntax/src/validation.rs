@@ -1,7 +1,7 @@
 use crate::{
     algo,
     ast::{self, HasAttrs, HasVisibility, IsString},
-    core::{api, Direction},
+    core::Direction,
     match_ast, SyntaxErr,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     TextSize, T,
@@ -30,7 +30,7 @@ mod block {
         }
     }
 }
-pub fn validate(root: &api::Node) -> Vec<SyntaxErr> {
+pub fn validate(root: &crate::Node) -> Vec<SyntaxErr> {
     let mut errors = Vec::new();
     for node in root.descendants() {
         match_ast! {

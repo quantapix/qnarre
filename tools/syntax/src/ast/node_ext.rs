@@ -1,10 +1,9 @@
 use crate::{
     ast::{self, support},
     core::{green, NodeOrToken},
-    SmolStr, TokenText, T,
+    SmolStr, SyntaxKind, TokenText, T,
 };
 use itertools::Itertools;
-use parser::SyntaxKind;
 use std::{borrow::Cow, fmt, iter::successors};
 
 impl ast::Lifetime {

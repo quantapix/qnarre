@@ -638,27 +638,25 @@ mod traits {
             }
         }
     }
+    pub struct DocCommentIter {
+        iter: ElemChildren,
+    }
     impl DocCommentIter {
-        pub fn from_syntax_node(syntax_node: &ast::api::Node) -> DocCommentIter {
+        pub fn from_syntax_node(x: &crate::Node) -> DocCommentIter {
             DocCommentIter {
-                iter: syntax_node.children_with_tokens(),
+                iter: x.children_with_tokens(),
             }
         }
         #[cfg(test)]
         pub fn doc_comment_text(self) -> Option<String> {
-            let docs = itertools::Itertools::join(
-                &mut self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)),
-                "\n",
-            );
+            let docs =
+                itertools::Itertools::join(&mut self.filter_map(|x| x.doc_comment().map(ToOwned::to_owned)), "\n");
             if docs.is_empty() {
                 None
             } else {
                 Some(docs)
             }
         }
-    }
-    pub struct DocCommentIter {
-        iter: ElemChildren,
     }
     impl Iterator for DocCommentIter {
         type Item = ast::Comment;
@@ -674,9 +672,9 @@ mod traits {
         iter: ElemChildren,
     }
     impl AttrDocCommentIter {
-        pub fn from_syntax_node(syntax_node: &ast::api::Node) -> AttrDocCommentIter {
+        pub fn from_syntax_node(x: &crate::Node) -> AttrDocCommentIter {
             AttrDocCommentIter {
-                iter: syntax_node.children_with_tokens(),
+                iter: x.children_with_tokens(),
             }
         }
     }

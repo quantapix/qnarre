@@ -38,7 +38,7 @@ pub fn skip_whitespace_token(mut x: crate::Token, dir: Direction) -> Option<crat
     }
     Some(x)
 }
-pub fn non_trivia_sibling(x: Elem, x: Direction) -> Option<Elem> {
+pub fn non_trivia_sibling(x: Elem, dir: Direction) -> Option<Elem> {
     return match x {
         NodeOrToken::Node(x) => x.siblings_with_tokens(x).skip(1).find(not_trivia),
         NodeOrToken::Token(x) => x.siblings_with_tokens(x).skip(1).find(not_trivia),
@@ -88,7 +88,7 @@ impl TreeDiff {
                 TreeDiffInsertPos::After(it) => it.text_range().end(),
                 TreeDiffInsertPos::AsFirstChild(it) => it.text_range().start(),
             };
-            to.iter().for_each(|to| builder.insert(offset, to.to_string()));
+            to.iter().for_each(|x| builder.insert(offset, x.to_string()));
         }
         for (from, to) in &self.replacements {
             builder.replace(from.text_range(), to.to_string());
@@ -191,10 +191,9 @@ pub fn diff(from: &crate::Node, to: &crate::Node) -> TreeDiff {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast, Elem};
+    use crate::{ast, Elem, SyntaxKind};
     use expect_test::{expect, Expect};
     use itertools::Itertools;
-    use parser::SyntaxKind;
     use text_edit::TextEdit;
     #[test]
     fn replace_node_token() {

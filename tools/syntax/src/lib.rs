@@ -11,63 +11,15 @@ pub use crate::{
     ptr::{AstPtr, NodePtr},
     token_text::TokenText,
 };
-pub use parser::{SyntaxKind, T};
 pub use smol_str::SmolStr;
 use std::{fmt, marker::PhantomData};
 use text_edit::Indel;
 pub use text_size::{TextRange, TextSize};
 use triomphe::Arc;
 
-macro_rules! _eprintln {
-    ($($tt:tt)*) => {{
-        if $crate::is_ci() {
-            panic!("Forgot to remove debug-print?")
-        }
-        std::eprintln!($($tt)*)
-    }}
-}
-
-#[macro_export]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { _eprintln!($($tt)*) };
-}
-
-#[macro_export]
-macro_rules! format_to {
-    ($buf:expr) => ();
-    ($buf:expr, $lit:literal $($arg:tt)*) => {
-        { use ::std::fmt::Write as _; let _ = ::std::write!($buf, $lit $($arg)*); }
-    };
-}
-
-#[macro_export]
-macro_rules! impl_from {
-    ($($variant:ident $(($($sub_variant:ident),*))?),* for $enum:ident) => {
-        $(
-            impl From<$variant> for $enum {
-                fn from(it: $variant) -> $enum {
-                    $enum::$variant(it)
-                }
-            }
-            $($(
-                impl From<$sub_variant> for $enum {
-                    fn from(it: $sub_variant) -> $enum {
-                        $enum::$variant($variant::$sub_variant(it))
-                    }
-                }
-            )*)?
-        )*
-    };
-    ($($variant:ident$(<$V:ident>)?),* for $enum:ident) => {
-        $(
-            impl$(<$V>)? From<$variant$(<$V>)?> for $enum$(<$V>)? {
-                fn from(it: $variant$(<$V>)?) -> $enum$(<$V>)? {
-                    $enum::$variant(it)
-                }
-            }
-        )*
-    }
-}
+//pub use parser::{SyntaxKind, T};
+pub mod tmp;
+pub use tmp::*;
 
 pub mod algo;
 pub mod ast;
@@ -159,7 +111,7 @@ pub mod hacks {
 mod parsing {
     mod reparsing {
         use crate::{
-            core::{api, green, NodeOrToken},
+            core::{green, NodeOrToken},
             parsing::build_tree,
             SyntaxErr,
             SyntaxKind::*,
@@ -169,15 +121,15 @@ mod parsing {
         use text_edit::Indel;
 
         pub fn incremental_reparse(
-            node: &crate::Node,
+            x: &crate::Node,
             edit: &Indel,
-            errors: Vec<SyntaxErr>,
+            es: Vec<SyntaxErr>,
         ) -> Option<(green::Node, Vec<SyntaxErr>, TextRange)> {
-            if let Some((green, new_errors, old_range)) = reparse_token(node, edit) {
-                return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
+            if let Some((green, new_errors, old_range)) = reparse_token(x, edit) {
+                return Some((green, merge_errors(es, new_errors, old_range, edit), old_range));
             }
-            if let Some((green, new_errors, old_range)) = reparse_block(node, edit) {
-                return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
+            if let Some((green, new_errors, old_range)) = reparse_block(x, edit) {
+                return Some((green, merge_errors(es, new_errors, old_range, edit), old_range));
             }
             None
         }
@@ -205,11 +157,11 @@ mod parsing {
                         }
                         new_text.pop();
                     }
-                    let new_token = green::Token::new(core::SyntaxKind(prev_token_kind.into()), &new_text);
+                    let new_token = green::Token::new(green::Kind(prev_token_kind.into()), &new_text);
                     let range = TextRange::up_to(TextSize::of(&new_text));
                     Some((
                         prev_token.replace_with(new_token),
-                        new_err.into_iter().map(|msg| SyntaxErr::new(msg, range)).collect(),
+                        new_err.into_iter().map(|x| SyntaxErr::new(x, range)).collect(),
                         prev_token.text_range(),
                     ))
                 },
@@ -687,11 +639,11 @@ impl fmt::Display for SyntaxErr {
 pub enum Lang {}
 impl api::Lang for Lang {
     type Kind = SyntaxKind;
-    fn kind_from_raw(raw: core::SyntaxKind) -> SyntaxKind {
-        SyntaxKind::from(raw.0)
+    fn kind_from_raw(x: green::Kind) -> SyntaxKind {
+        SyntaxKind::from(x.0)
     }
-    fn kind_to_raw(kind: SyntaxKind) -> core::SyntaxKind {
-        core::SyntaxKind(kind.into())
+    fn kind_to_raw(x: SyntaxKind) -> green::Kind {
+        green::Kind(x.into())
     }
 }
 pub type Node = api::Node<Lang>;
@@ -703,45 +655,44 @@ pub type PreorderWithToks = api::PreorderWithToks<Lang>;
 
 #[derive(Default)]
 pub struct SyntaxTreeBuilder {
-    errors: Vec<SyntaxErr>,
+    errs: Vec<SyntaxErr>,
     inner: green::NodeBuilder<'static>,
 }
 impl SyntaxTreeBuilder {
     pub fn finish_raw(self) -> (green::Node, Vec<SyntaxErr>) {
         let green = self.inner.finish();
-        (green, self.errors)
+        (green, self.errs)
     }
     pub fn finish(self) -> Parse<Node> {
-        let (green, errors) = self.finish_raw();
+        let (green, errs) = self.finish_raw();
         #[allow(clippy::overly_complex_bool_expr)]
         if cfg!(debug_assertions) && false {
             let node = api::Node::new_root(green.clone());
             crate::validation::validate_block_structure(&node);
         }
-        Parse::new(green, errors)
+        Parse::new(green, errs)
     }
-    pub fn token(&mut self, kind: SyntaxKind, text: &str) {
-        let kind = Lang::kind_to_raw(kind);
-        self.inner.token(kind, text);
+    pub fn token(&mut self, x: SyntaxKind, text: &str) {
+        let y = Lang::kind_to_raw(x);
+        self.inner.token(y, text);
     }
-    pub fn start_node(&mut self, kind: SyntaxKind) {
-        let kind = Lang::kind_to_raw(kind);
-        self.inner.start_node(kind);
+    pub fn start_node(&mut self, x: SyntaxKind) {
+        let y = Lang::kind_to_raw(x);
+        self.inner.start_node(y);
     }
     pub fn finish_node(&mut self) {
         self.inner.finish_node();
     }
-    pub fn error(&mut self, error: String, text_pos: TextSize) {
-        self.errors.push(SyntaxErr::new_at_offset(error, text_pos));
+    pub fn error(&mut self, err: String, pos: TextSize) {
+        self.errs.push(SyntaxErr::new_at_offset(err, pos));
     }
 }
 
 pub mod ted {
     use crate::{
         ast::{self, edit::IndentLevel, make},
-        SyntaxKind, *,
+        SyntaxKind, T, *,
     };
-    use parser::T;
     use std::{mem, ops::RangeInclusive};
     pub trait Elem {
         fn syntax_element(self) -> crate::Elem;
@@ -1153,13 +1104,13 @@ impl<T> Clone for Parse<T> {
 pub use crate::ast::SourceFile;
 impl SourceFile {
     pub fn parse(text: &str) -> Parse<SourceFile> {
-        let (green, mut errors) = parsing::parse_text(text);
+        let (green, mut errs) = parsing::parse_text(text);
         let root = api::Node::new_root(green.clone());
-        errors.extend(validation::validate(&root));
+        errs.extend(validation::validate(&root));
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse {
             green,
-            errors: Arc::new(errors),
+            errors: Arc::new(errs),
             _ty: PhantomData,
         }
     }

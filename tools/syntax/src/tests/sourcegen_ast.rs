@@ -7,6 +7,7 @@ use std::{
     fmt::Write,
 };
 use ungrammar::{Grammar, Rule};
+
 #[test]
 fn sourcegen_ast() {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC);

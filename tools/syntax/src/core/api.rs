@@ -3,8 +3,8 @@ use std::{borrow::Cow, fmt, iter, marker::PhantomData, ops::Range};
 
 pub trait Lang: Sized + Copy + fmt::Debug + Eq + Ord + std::hash::Hash {
     type Kind: Sized + Copy + fmt::Debug + Eq + Ord + std::hash::Hash;
-    fn kind_from_raw(raw: SyntaxKind) -> Self::Kind;
-    fn kind_to_raw(kind: Self::Kind) -> SyntaxKind;
+    fn kind_from_raw(x: green::Kind) -> Self::Kind;
+    fn kind_to_raw(x: Self::Kind) -> green::Kind;
 }
 
 pub struct Preorder<L: Lang> {
