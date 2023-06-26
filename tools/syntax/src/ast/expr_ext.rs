@@ -135,7 +135,7 @@ impl ast::BinExpr {
     pub fn op_details(&self) -> Option<(crate::Token, BinaryOp)> {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| it.into_token())
+            .filter_map(|x| x.into_token())
             .find_map(|c| {
                 #[rustfmt::skip]
             let bin_op = match c.kind() {
@@ -332,7 +332,7 @@ impl ast::BlockExpr {
             FOR_EXPR | IF_EXPR => parent
                 .children()
                 .find(|x| ast::Expr::can_cast(x.kind()))
-                .map_or(true, |it| it == *self.syntax()),
+                .map_or(true, |x| x == *self.syntax()),
             LET_ELSE | FN | WHILE_EXPR | LOOP_EXPR | CONST_BLOCK_PAT => false,
             _ => true,
         }

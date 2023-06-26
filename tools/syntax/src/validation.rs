@@ -2,11 +2,11 @@ use crate::{
     algo,
     ast::{self, HasAttrs, HasVisibility, IsString},
     core::Direction,
+    lexer::unescape::{self, unescape_literal, Mode},
     match_ast, SyntaxErr,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     TextSize, T,
 };
-use rustc_lexer::unescape::{self, unescape_literal, Mode};
 mod block {
     use crate::{
         ast::{self, HasAttrs},
@@ -54,7 +54,7 @@ pub fn validate(root: &crate::Node) -> Vec<SyntaxErr> {
     }
     errors
 }
-fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, bool) {
+fn unescape_err_to_string(err: unescape::EscapeError) -> (&'static str, bool) {
     use unescape::EscapeError as EE;
     #[rustfmt::skip]
     let err_message = match err {
@@ -128,7 +128,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
     let text = token.text();
     let mut push_err = |prefix_len, off, err: unescape::EscapeError| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
-        let (message, is_err) = rustc_unescape_error_to_string(err);
+        let (message, is_err) = unescape_err_to_string(err);
         if is_err {
             acc.push(SyntaxErr::new_at_offset(message, off));
         }
@@ -230,7 +230,7 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
             .syntax()
             .first_child_or_token()?
             .into_token()
-            .filter(|it| it.kind() == INT_NUMBER)
+            .filter(|x| x.kind() == INT_NUMBER)
     }
 }
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
@@ -254,7 +254,7 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
         FN | CONST | TYPE_ALIAS => (),
         _ => return,
     }
-    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::Impl::cast) {
+    let impl_def = match parent.parent().and_then(|x| x.parent()).and_then(ast::Impl::cast) {
         Some(it) => it,
         None => return,
     };

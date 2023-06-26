@@ -149,36 +149,33 @@ impl NodeData {
     pub fn child_at_range(&self, rel_range: TextRange) -> Option<(usize, TextSize, ElemRef<'_>)> {
         let idx = self
             .slice()
-            .binary_search_by(|it| {
-                let child_range = it.rel_range();
+            .binary_search_by(|x| {
+                let child_range = x.rel_range();
                 TextRange::ordering(child_range, rel_range)
             })
-            .unwrap_or_else(|it| it.saturating_sub(1));
+            .unwrap_or_else(|x| x.saturating_sub(1));
         let child = &self
             .slice()
             .get(idx)
-            .filter(|it| it.rel_range().contains_range(rel_range))?;
+            .filter(|x| x.rel_range().contains_range(rel_range))?;
         Some((idx, child.rel_offset(), child.as_ref()))
     }
     #[must_use]
-    pub fn replace_child(&self, index: usize, new_child: Elem) -> Node {
-        let mut replacement = Some(new_child);
-        let children = self.children().enumerate().map(|(i, child)| {
-            if i == index {
-                replacement.take().unwrap()
-            } else {
-                child.to_owned()
-            }
-        });
+    pub fn replace_child(&self, idx: usize, x: Elem) -> Node {
+        let mut x = Some(x);
+        let children =
+            self.children()
+                .enumerate()
+                .map(|(i, child)| if i == idx { x.take().unwrap() } else { child.to_owned() });
         Node::new(self.kind(), children)
     }
     #[must_use]
-    pub fn insert_child(&self, index: usize, new_child: Elem) -> Node {
-        self.splice_children(index..index, iter::once(new_child))
+    pub fn insert_child(&self, idx: usize, x: Elem) -> Node {
+        self.splice_children(idx..idx, iter::once(x))
     }
     #[must_use]
-    pub fn remove_child(&self, index: usize) -> Node {
-        self.splice_children(index..=index, iter::empty())
+    pub fn remove_child(&self, idx: usize) -> Node {
+        self.splice_children(idx..=idx, iter::empty())
     }
     #[must_use]
     pub fn splice_children<R, I>(&self, range: R, replace_with: I) -> Node
@@ -186,7 +183,7 @@ impl NodeData {
         R: ops::RangeBounds<usize>,
         I: IntoIterator<Item = Elem>,
     {
-        let mut children: Vec<_> = self.children().map(|it| it.to_owned()).collect();
+        let mut children: Vec<_> = self.children().map(|x| x.to_owned()).collect();
         children.splice(range, replace_with);
         Node::new(self.kind(), children)
     }

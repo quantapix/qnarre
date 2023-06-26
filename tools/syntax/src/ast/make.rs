@@ -283,20 +283,20 @@ pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
 pub fn path_concat(first: ast::Path, second: ast::Path) -> ast::Path {
     ast_from_text(&format!("type __ = {first}::{second};"))
 }
-pub fn path_from_segments(segments: impl IntoIterator<Item = ast::PathSegment>, is_abs: bool) -> ast::Path {
-    let segments = segments.into_iter().map(|it| it.syntax().clone()).join("::");
+pub fn path_from_segments(xs: impl IntoIterator<Item = ast::PathSegment>, is_abs: bool) -> ast::Path {
+    let xs = xs.into_iter().map(|x| x.syntax().clone()).join("::");
     ast_from_text(&if is_abs {
-        format!("fn f(x: ::{segments}) {{}}")
+        format!("fn f(x: ::{xs}) {{}}")
     } else {
-        format!("fn f(x: {segments}) {{}}")
+        format!("fn f(x: {xs}) {{}}")
     })
 }
-pub fn join_paths(paths: impl IntoIterator<Item = ast::Path>) -> ast::Path {
-    let paths = paths.into_iter().map(|it| it.syntax().clone()).join("::");
-    ast_from_text(&format!("type __ = {paths};"))
+pub fn join_paths(xs: impl IntoIterator<Item = ast::Path>) -> ast::Path {
+    let xs = xs.into_iter().map(|x| x.syntax().clone()).join("::");
+    ast_from_text(&format!("type __ = {xs};"))
 }
-pub fn path_from_text(text: &str) -> ast::Path {
-    ast_from_text(&format!("fn main() {{ let test = {text}; }}"))
+pub fn path_from_text(x: &str) -> ast::Path {
+    ast_from_text(&format!("fn main() {{ let test = {x}; }}"))
 }
 pub fn use_tree_glob() -> ast::UseTree {
     ast_from_text("use *;")
@@ -321,7 +321,7 @@ pub fn use_tree(
     ast_from_text(&buf)
 }
 pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::UseTreeList {
-    let use_trees = use_trees.into_iter().map(|it| it.syntax().clone()).join(", ");
+    let use_trees = use_trees.into_iter().map(|x| x.syntax().clone()).join(", ");
     ast_from_text(&format!("use {{{use_trees}}};"))
 }
 pub fn use_(visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast::Use {
@@ -618,7 +618,7 @@ pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::Mat
     let arms_str = arms
         .into_iter()
         .map(|arm| {
-            let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
+            let needs_comma = arm.expr().map_or(true, |x| !x.is_block_like());
             let comma = if needs_comma { "," } else { "" };
             let arm = arm.syntax();
             format!("    {arm}{comma}\n")
@@ -698,22 +698,22 @@ pub fn param_list(self_param: Option<ast::SelfParam>, pats: impl IntoIterator<It
     };
     ast_from_text(&list)
 }
-pub fn type_bound(bound: &str) -> ast::TypeBound {
-    ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
+pub fn type_bound(x: &str) -> ast::TypeBound {
+    ast_from_text(&format!("fn f<T: {x}>() {{ }}"))
 }
-pub fn type_bound_list(bounds: impl IntoIterator<Item = ast::TypeBound>) -> Option<ast::TypeBoundList> {
-    let bounds = bounds.into_iter().map(|it| it.to_string()).unique().join(" + ");
-    if bounds.is_empty() {
+pub fn type_bound_list(xs: impl IntoIterator<Item = ast::TypeBound>) -> Option<ast::TypeBoundList> {
+    let xs = xs.into_iter().map(|x| x.to_string()).unique().join(" + ");
+    if xs.is_empty() {
         return None;
     }
-    Some(ast_from_text(&format!("fn f<T: {bounds}>() {{ }}")))
+    Some(ast_from_text(&format!("fn f<T: {xs}>() {{ }}")))
 }
-pub fn type_param(name: ast::Name, bounds: Option<ast::TypeBoundList>) -> ast::TypeParam {
-    let bounds = bounds.map_or_else(String::new, |it| format!(": {it}"));
-    ast_from_text(&format!("fn f<{name}{bounds}>() {{ }}"))
+pub fn type_param(name: ast::Name, xs: Option<ast::TypeBoundList>) -> ast::TypeParam {
+    let xs = xs.map_or_else(String::new, |x| format!(": {it}"));
+    ast_from_text(&format!("fn f<{name}{xs}>() {{ }}"))
 }
-pub fn lifetime_param(lifetime: ast::Lifetime) -> ast::LifetimeParam {
-    ast_from_text(&format!("fn f<{lifetime}>() {{ }}"))
+pub fn lifetime_param(x: ast::Lifetime) -> ast::LifetimeParam {
+    ast_from_text(&format!("fn f<{x}>() {{ }}"))
 }
 pub fn generic_param_list(pats: impl IntoIterator<Item = ast::GenericParam>) -> ast::GenericParamList {
     let args = pats.into_iter().join(", ");
@@ -722,12 +722,12 @@ pub fn generic_param_list(pats: impl IntoIterator<Item = ast::GenericParam>) -> 
 pub fn type_arg(ty: ast::Type) -> ast::TypeArg {
     ast_from_text(&format!("const S: T<{ty}> = ();"))
 }
-pub fn lifetime_arg(lifetime: ast::Lifetime) -> ast::LifetimeArg {
-    ast_from_text(&format!("const S: T<{lifetime}> = ();"))
+pub fn lifetime_arg(x: ast::Lifetime) -> ast::LifetimeArg {
+    ast_from_text(&format!("const S: T<{x}> = ();"))
 }
-pub fn generic_arg_list(args: impl IntoIterator<Item = ast::GenericArg>) -> ast::GenericArgList {
-    let args = args.into_iter().join(", ");
-    ast_from_text(&format!("const S: T<{args}> = ();"))
+pub fn generic_arg_list(xs: impl IntoIterator<Item = ast::GenericArg>) -> ast::GenericArgList {
+    let xs = xs.into_iter().join(", ");
+    ast_from_text(&format!("const S: T<{xs}> = ();"))
 }
 pub fn visibility_pub_crate() -> ast::Visibility {
     ast_from_text("pub struct S")
@@ -735,20 +735,20 @@ pub fn visibility_pub_crate() -> ast::Visibility {
 pub fn visibility_pub() -> ast::Visibility {
     ast_from_text("pub struct S")
 }
-pub fn tuple_field_list(fields: impl IntoIterator<Item = ast::TupleField>) -> ast::TupleFieldList {
-    let fields = fields.into_iter().join(", ");
-    ast_from_text(&format!("struct f({fields});"))
+pub fn tuple_field_list(xs: impl IntoIterator<Item = ast::TupleField>) -> ast::TupleFieldList {
+    let xs = xs.into_iter().join(", ");
+    ast_from_text(&format!("struct f({xs});"))
 }
-pub fn record_field_list(fields: impl IntoIterator<Item = ast::RecordField>) -> ast::RecordFieldList {
-    let fields = fields.into_iter().join(", ");
-    ast_from_text(&format!("struct f {{ {fields} }}"))
+pub fn record_field_list(xs: impl IntoIterator<Item = ast::RecordField>) -> ast::RecordFieldList {
+    let xs = xs.into_iter().join(", ");
+    ast_from_text(&format!("struct f {{ {xs} }}"))
 }
-pub fn tuple_field(visibility: Option<ast::Visibility>, ty: ast::Type) -> ast::TupleField {
-    let visibility = match visibility {
+pub fn tuple_field(x: Option<ast::Visibility>, ty: ast::Type) -> ast::TupleField {
+    let x = match x {
         None => String::new(),
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
     };
-    ast_from_text(&format!("struct f({visibility}{ty});"))
+    ast_from_text(&format!("struct f({x}{ty});"))
 }
 pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
     let field_list = match field_list {
@@ -806,10 +806,10 @@ pub fn struct_(
     } else {
         ""
     };
-    let type_params = generic_param_list.map_or_else(String::new, |it| it.to_string());
+    let type_params = generic_param_list.map_or_else(String::new, |x| x.to_string());
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
     };
     ast_from_text(&format!(
         "{visibility}struct {strukt_name}{type_params}{field_list}{semicolon}",
@@ -819,7 +819,7 @@ pub fn struct_(
 fn ast_from_text<N: ast::Node>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {
-        Some(it) => it,
+        Some(x) => x,
         None => {
             let node = std::any::type_name::<N>();
             panic!("Failed to make ast node `{node}` from text {text}")
@@ -835,8 +835,8 @@ pub fn token(kind: SyntaxKind) -> crate::Token {
         .syntax()
         .clone_for_update()
         .descendants_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == kind)
+        .filter_map(|x| x.into_token())
+        .find(|x| x.kind() == kind)
         .unwrap_or_else(|| panic!("unhandled token: {kind:?}"))
 }
 pub mod tokens {
@@ -853,8 +853,8 @@ pub mod tokens {
             .syntax()
             .clone_for_update()
             .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text() == " ")
+            .filter_map(|x| x.into_token())
+            .find(|x| x.kind() == WHITESPACE && x.text() == " ")
             .unwrap()
     }
     pub fn whitespace(text: &str) -> crate::Token {
@@ -883,8 +883,8 @@ pub mod tokens {
             .syntax()
             .clone_for_update()
             .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text() == "\n")
+            .filter_map(|x| x.into_token())
+            .find(|x| x.kind() == WHITESPACE && x.text() == "\n")
             .unwrap();
         res.detach();
         res
@@ -895,8 +895,8 @@ pub mod tokens {
             .syntax()
             .clone_for_update()
             .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == WHITESPACE && it.text() == "\n\n")
+            .filter_map(|x| x.into_token())
+            .find(|x| x.kind() == WHITESPACE && x.text() == "\n\n")
             .unwrap()
     }
     pub struct WsBuilder(SourceFile);

@@ -241,17 +241,17 @@ impl ast::GenericParamList {
     }
 }
 impl ast::WhereClause {
-    pub fn add_predicate(&self, predicate: ast::WherePred) {
+    pub fn add_predicate(&self, pred: ast::WherePred) {
         if let Some(pred) = self.predicates().last() {
             if !pred
                 .syntax()
                 .siblings_with_tokens(Direction::Next)
-                .any(|it| it.kind() == T![,])
+                .any(|x| x.kind() == T![,])
             {
                 ted::append_child_raw(self.syntax(), make::token(T![,]));
             }
         }
-        ted::append_child(self.syntax(), predicate.syntax());
+        ted::append_child(self.syntax(), pred.syntax());
     }
 }
 impl ast::TypeParam {
@@ -259,13 +259,12 @@ impl ast::TypeParam {
         if let Some((eq, last)) = self
             .syntax()
             .children_with_tokens()
-            .find(|it| it.kind() == T![=])
+            .find(|x| x.kind() == T![=])
             .zip(self.syntax().last_child_or_token())
         {
             ted::remove_all(eq..=last);
-            // remove any trailing ws
-            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
-                last.detach();
+            if let Some(x) = self.syntax().last_token().filter(|x| x.kind() == WHITESPACE) {
+                x.detach();
             }
         }
     }
@@ -275,13 +274,12 @@ impl ast::ConstParam {
         if let Some((eq, last)) = self
             .syntax()
             .children_with_tokens()
-            .find(|it| it.kind() == T![=])
+            .find(|x| x.kind() == T![=])
             .zip(self.syntax().last_child_or_token())
         {
             ted::remove_all(eq..=last);
-            // remove any trailing ws
-            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
-                last.detach();
+            if let Some(x) = self.syntax().last_token().filter(|x| x.kind() == WHITESPACE) {
+                x.detach();
             }
         }
     }
@@ -294,9 +292,9 @@ impl Removable for ast::TypeBoundList {
         match self
             .syntax()
             .siblings_with_tokens(Direction::Prev)
-            .find(|it| it.kind() == T![:])
+            .find(|x| x.kind() == T![:])
         {
-            Some(colon) => ted::remove_all(colon..=self.syntax().clone().into()),
+            Some(x) => ted::remove_all(x..=self.syntax().clone().into()),
             None => ted::remove(self.syntax()),
         }
     }
@@ -318,7 +316,7 @@ impl Removable for ast::UseTree {
                     .syntax()
                     .siblings_with_tokens(dir)
                     .skip(1)
-                    .take_while(|it| it.as_node() != Some(next_use_tree.syntax()));
+                    .take_while(|x| x.as_node() != Some(next_use_tree.syntax()));
                 ted::remove_all_iter(separators);
                 break;
             }
@@ -348,19 +346,15 @@ impl ast::UseTree {
         let path = self.path().unwrap();
         if &path == prefix && self.use_tree_list().is_none() {
             if self.star_token().is_some() {
-                // path$0::* -> *
                 self.coloncolon_token().map(ted::remove);
                 ted::remove(prefix.syntax());
             } else {
-                // path$0 -> self
                 let self_suffix = make::path_unqualified(make::path_segment_self()).clone_for_update();
                 ted::replace(path.syntax(), self_suffix.syntax());
             }
         } else if split_path_prefix(prefix).is_none() {
             return;
         }
-        // At this point, prefix path is detached; _self_ use tree has suffix path.
-        // Next, transform 'suffix' use tree into 'prefix::{suffix}'
         let subtree = self.clone_subtree().clone_for_update();
         ted::remove_all_iter(self.syntax().children_with_tokens());
         ted::insert(Pos::first_child_of(self.syntax()), prefix.syntax());
@@ -371,7 +365,7 @@ impl ast::UseTree {
             if algo::has_errors(segment.syntax()) {
                 return None;
             }
-            for p in successors(parent.parent_path(), |it| it.parent_path()) {
+            for p in successors(parent.parent_path(), |x| x.parent_path()) {
                 p.segment()?;
             }
             prefix.parent_path().and_then(|p| p.coloncolon_token()).map(ted::remove);
@@ -407,7 +401,7 @@ impl Removable for ast::Use {
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
-            .and_then(|it| it.into_token())
+            .and_then(|x| x.into_token())
             .and_then(ast::Whitespace::cast);
         if let Some(next_ws) = next_ws {
             let ws_text = next_ws.syntax().text();
@@ -549,7 +543,6 @@ impl ast::RecordExprField {
             }
             return;
         }
-        // this is a shorthand
         if let Some(ast::Expr::PathExpr(path_expr)) = self.expr() {
             if let Some(path) = path_expr.path() {
                 if let Some(name_ref) = path.as_single_name_ref() {
@@ -598,10 +591,10 @@ impl ast::RecordPatFieldList {
 fn get_or_insert_comma_after(syntax: &crate::Node) -> crate::Token {
     match syntax
         .siblings_with_tokens(Direction::Next)
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T![,])
+        .filter_map(|x| x.into_token())
+        .find(|x| x.kind() == T![,])
     {
-        Some(it) => it,
+        Some(x) => x,
         None => {
             let comma = ast::make::token(T![,]);
             ted::insert(Pos::after(syntax), &comma);
@@ -635,20 +628,20 @@ impl ast::VariantList {
 fn normalize_ws_between_braces(node: &crate::Node) -> Option<()> {
     let l = node
         .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T!['{'])?;
+        .filter_map(|x| x.into_token())
+        .find(|x| x.kind() == T!['{'])?;
     let r = node
         .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T!['}'])?;
+        .filter_map(|x| x.into_token())
+        .find(|x| x.kind() == T!['}'])?;
     let indent = IndentLevel::from_node(node);
     match l.next_sibling_or_token() {
-        Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
-            if ws.next_sibling_or_token()?.into_token()? == r {
-                ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
+        Some(x) if x.kind() == SyntaxKind::WHITESPACE => {
+            if x.next_sibling_or_token()?.into_token()? == r {
+                ted::replace(x, make::tokens::whitespace(&format!("\n{indent}")));
             }
         },
-        Some(ws) if ws.kind() == T!['}'] => {
+        Some(x) if x.kind() == T!['}'] => {
             ted::insert(Pos::after(l), make::tokens::whitespace(&format!("\n{indent}")));
         },
         _ => (),
@@ -685,8 +678,8 @@ mod tests {
         }
         let indent = text
             .lines()
-            .filter(|it| !it.trim().is_empty())
-            .map(|it| it.len() - it.trim_start().len())
+            .filter(|x| !x.trim().is_empty())
+            .map(|x| x.len() - x.trim_start().len())
             .min()
             .unwrap_or(0);
         text.split_inclusive('\n')
@@ -830,7 +823,7 @@ enum Foo {
     }
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
         let enum_ = ast_mut_from_text::<ast::Enum>(before);
-        enum_.variant_list().map(|it| it.add_variant(variant));
+        enum_.variant_list().map(|x| x.add_variant(variant));
         let after = enum_.to_string();
         assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(after.trim()));
     }

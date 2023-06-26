@@ -38,7 +38,7 @@ impl NodeData {
         let res = NodeData {
             _c: Count::new(),
             rc: Cell::new(1),
-            parent: Cell::new(parent.as_ref().map(|it| it.ptr)),
+            parent: Cell::new(parent.as_ref().map(|x| x.ptr)),
             index: Cell::new(index),
             green,
             mutable,
@@ -50,7 +50,7 @@ impl NodeData {
         unsafe {
             if mutable {
                 let res_ptr: *const NodeData = &res;
-                match sll::init((*res_ptr).parent().map(|it| &it.first), res_ptr.as_ref().unwrap()) {
+                match sll::init((*res_ptr).parent().map(|x| &x.first), res_ptr.as_ref().unwrap()) {
                     sll::AddToSllResult::AlreadyInSll(node) => {
                         if cfg!(debug_assertions) {
                             assert_eq!((*node).index(), (*res_ptr).index());
@@ -114,7 +114,7 @@ impl NodeData {
     }
     #[inline]
     fn parent(&self) -> Option<&NodeData> {
-        self.parent.get().map(|it| unsafe { &*it.as_ptr() })
+        self.parent.get().map(|x| unsafe { &*x.as_ptr() })
     }
     #[inline]
     fn green(&self) -> green::ElemRef<'_> {
@@ -125,7 +125,7 @@ impl NodeData {
     }
     #[inline]
     fn green_siblings(&self) -> slice::Iter<green::Child> {
-        match &self.parent().map(|it| &it.green) {
+        match &self.parent().map(|x| &x.green) {
             Some(Green::Node { ptr }) => unsafe { &*ptr.get().as_ptr() }.children().raw,
             Some(Green::Token { .. }) => {
                 debug_assert!(false);
@@ -628,7 +628,7 @@ impl fmt::Display for Node {
                 WalkEvent::Enter(NodeOrToken::Token(token)) => Some(token),
                 _ => None,
             })
-            .try_for_each(|it| fmt::Display::fmt(&it, f))
+            .try_for_each(|x| fmt::Display::fmt(&x, f))
     }
 }
 
@@ -700,29 +700,29 @@ impl Token {
         self.data().prev_sibling_or_token()
     }
     #[inline]
-    pub fn siblings_with_tokens(&self, direction: Direction) -> impl Iterator<Item = Elem> {
+    pub fn siblings_with_tokens(&self, dir: Direction) -> impl Iterator<Item = Elem> {
         let me: Elem = self.clone().into();
-        iter::successors(Some(me), move |el| match direction {
-            Direction::Next => el.next_sibling_or_token(),
-            Direction::Prev => el.prev_sibling_or_token(),
+        iter::successors(Some(me), move |x| match dir {
+            Direction::Next => x.next_sibling_or_token(),
+            Direction::Prev => x.prev_sibling_or_token(),
         })
     }
     pub fn next_token(&self) -> Option<Token> {
         match self.next_sibling_or_token() {
-            Some(element) => element.first_token(),
+            Some(x) => x.first_token(),
             None => self
                 .ancestors()
-                .find_map(|it| it.next_sibling_or_token())
-                .and_then(|element| element.first_token()),
+                .find_map(|x| x.next_sibling_or_token())
+                .and_then(|x| x.first_token()),
         }
     }
     pub fn prev_token(&self) -> Option<Token> {
         match self.prev_sibling_or_token() {
-            Some(element) => element.last_token(),
+            Some(x) => x.last_token(),
             None => self
                 .ancestors()
-                .find_map(|it| it.prev_sibling_or_token())
-                .and_then(|element| element.last_token()),
+                .find_map(|x| x.prev_sibling_or_token())
+                .and_then(|x| x.last_token()),
         }
     }
     pub fn detach(&self) {

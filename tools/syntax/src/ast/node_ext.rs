@@ -24,7 +24,7 @@ impl ast::NameRef {
         self.text().parse().ok()
     }
     pub fn token_kind(&self) -> SyntaxKind {
-        self.syntax().first_token().map_or(SyntaxKind::ERROR, |it| it.kind())
+        self.syntax().first_token().map_or(SyntaxKind::ERROR, |x| x.kind())
     }
 }
 fn text_of_first_token(x: &crate::Node) -> TokenText<'_> {

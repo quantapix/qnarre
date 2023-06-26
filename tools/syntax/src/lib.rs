@@ -20,13 +20,14 @@ use triomphe::Arc;
 //pub use parser::{SyntaxKind, T};
 pub mod tmp;
 pub use tmp::*;
+pub mod lexer;
 
 pub mod algo;
 pub mod ast;
 pub mod core;
 #[doc(hidden)]
 pub mod fuzz {
-    use crate::{ast, validation, SourceFile, TextRange};
+    use crate::{validation, SourceFile, TextRange};
     use std::str::{self, FromStr};
     use text_edit::Indel;
 
@@ -195,8 +196,8 @@ mod parsing {
         fn find_reparsable_node(node: &crate::Node, range: TextRange) -> Option<(crate::Node, Reparser)> {
             let node = node.covering_element(range);
             node.ancestors().find_map(|node| {
-                let first_child = node.first_child_or_token().map(|it| it.kind());
-                let parent = node.parent().map(|it| it.kind());
+                let first_child = node.first_child_or_token().map(|x| x.kind());
+                let parent = node.parent().map(|x| x.kind());
                 Reparser::for_node(node.kind(), first_child, parent).map(|r| (node, r))
             })
         }
@@ -1169,18 +1170,18 @@ fn api_walkthrough() {
     assert_eq!(text.to_string(), "1 + 1");
     assert_eq!(expr_syntax.parent().as_ref(), Some(stmt_list.syntax()));
     assert_eq!(
-        stmt_list.syntax().first_child_or_token().map(|it| it.kind()),
+        stmt_list.syntax().first_child_or_token().map(|x| x.kind()),
         Some(T!['{'])
     );
     assert_eq!(
-        expr_syntax.next_sibling_or_token().map(|it| it.kind()),
+        expr_syntax.next_sibling_or_token().map(|x| x.kind()),
         Some(SyntaxKind::WHITESPACE)
     );
     let f = expr_syntax.ancestors().find_map(ast::Fn::cast);
     assert_eq!(f, Some(func));
     assert!(expr_syntax
         .siblings_with_tokens(Direction::Next)
-        .any(|it| it.kind() == T!['}']));
+        .any(|x| x.kind() == T!['}']));
     assert_eq!(expr_syntax.descendants_with_tokens().count(), 8,);
     let mut buf = String::new();
     let mut indent = 0;

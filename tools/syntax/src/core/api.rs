@@ -19,7 +19,7 @@ impl<L: Lang> Preorder<L> {
 impl<L: Lang> Iterator for Preorder<L> {
     type Item = WalkEvent<Node<L>>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.raw.next().map(|it| it.map(Node::from))
+        self.raw.next().map(|x| x.map(Node::from))
     }
 }
 
@@ -35,7 +35,7 @@ impl<L: Lang> PreorderWithToks<L> {
 impl<L: Lang> Iterator for PreorderWithToks<L> {
     type Item = WalkEvent<Elem<L>>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.raw.next().map(|it| it.map(Elem::from))
+        self.raw.next().map(|x| x.map(Elem::from))
     }
 }
 

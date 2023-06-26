@@ -236,14 +236,14 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
             )
         })
         .unzip();
-    let enum_names = grammar.enums.iter().map(|it| &it.name);
-    let node_names = grammar.nodes.iter().map(|it| &it.name);
+    let enum_names = grammar.enums.iter().map(|x| &x.name);
+    let node_names = grammar.nodes.iter().map(|x| &x.name);
     let display_impls = enum_names
         .chain(node_names.clone())
-        .map(|it| format_ident!("{}", it))
-        .map(|name| {
+        .map(|x| format_ident!("{}", x))
+        .map(|x| {
             quote! {
-                impl std::fmt::Display for #name {
+                impl std::fmt::Display for #x {
                     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                         std::fmt::Display::fmt(self.syntax(), f)
                     }
@@ -254,12 +254,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     for node in kinds
         .nodes
         .iter()
-        .map(|kind| to_pascal_case(kind))
-        .filter(|name| !defined_nodes.iter().any(|&it| it == name))
+        .map(|x| to_pascal_case(x))
+        .filter(|x| !defined_nodes.iter().any(|&x2| x2 == x))
     {
         drop(node)
-        // FIXME: restore this
-        // eprintln!("Warning: node {} not defined in ast source", node);
     }
     let ast = quote! {
         #![allow(non_snake_case)]
@@ -281,8 +279,8 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let mut docs = grammar
         .nodes
         .iter()
-        .map(|it| &it.doc)
-        .chain(grammar.enums.iter().map(|it| &it.doc));
+        .map(|x| &x.doc)
+        .chain(grammar.enums.iter().map(|x| &x.doc));
     for chunk in ast.split("# [pretty_doc_comment_placeholder_workaround] ") {
         res.push_str(chunk);
         if let Some(doc) = docs.next() {
@@ -533,7 +531,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc {
         tokens: "Whitespace Comment String ByteString CString IntNumber FloatNumber Char Byte Ident"
             .split_ascii_whitespace()
-            .map(|it| it.to_string())
+            .map(|x| x.to_string())
             .collect::<Vec<_>>(),
         ..Default::default()
     };
@@ -706,7 +704,7 @@ fn extract_enums(ast: &mut AstSrc) {
             let mut to_remove = Vec::new();
             for (i, field) in node.fields.iter().enumerate() {
                 let ty = field.ty().to_string();
-                if enm.variants.iter().any(|it| it == &ty) {
+                if enm.variants.iter().any(|x| x == &ty) {
                     to_remove.push(i);
                 }
             }
@@ -790,7 +788,7 @@ fn extract_enum_traits(ast: &mut AstSrc) {
         let mut variant_traits = enm
             .variants
             .iter()
-            .map(|var| nodes.iter().find(|it| &it.name == var).unwrap())
+            .map(|var| nodes.iter().find(|x| &x.name == var).unwrap())
             .map(|node| node.traits.iter().cloned().collect::<BTreeSet<_>>());
         let mut enum_traits = match variant_traits.next() {
             Some(it) => it,

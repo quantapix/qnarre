@@ -1,5 +1,4 @@
-use crate::{ast, TextRange, TextSize};
-use rustc_lexer::unescape::{unescape_byte, unescape_char, unescape_literal, Mode};
+use crate::{ast, lexer::unescape, TextRange, TextSize};
 use std::borrow::Cow;
 
 pub trait IsString: ast::Token {
@@ -18,15 +17,15 @@ pub trait IsString: ast::Token {
         Some(offsets)
     }
     fn text_range_between_quotes(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.contents)
+        self.quote_offsets().map(|x| x.contents)
     }
     fn open_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes.0)
+        self.quote_offsets().map(|x| x.quotes.0)
     }
     fn close_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes.1)
+        self.quote_offsets().map(|x| x.quotes.1)
     }
-    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)) {
+    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, unescape::EscapeError>)) {
         let text_range_no_quotes = match self.text_range_between_quotes() {
             Some(it) => it,
             None => return,
@@ -34,7 +33,7 @@ pub trait IsString: ast::Token {
         let start = self.syntax().text_range().start();
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
-        unescape_literal(text, Mode::Str, &mut |range, unescaped_char| {
+        unescape::unescape_literal(text, unescape::Mode::Str, &mut |range, unescaped_char| {
             let text_range = TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
         });
@@ -66,7 +65,7 @@ impl ast::Char {
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
-        unescape_char(text).ok()
+        unescape::unescape_char(text).ok()
     }
 }
 impl ast::String {
@@ -81,20 +80,19 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(
-            text,
-            Mode::Str,
-            &mut |char_range, unescaped_char| match (unescaped_char, buf.capacity() == 0) {
-                (Ok(c), false) => buf.push(c),
-                (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
-                (Ok(c), true) => {
-                    buf.reserve_exact(text.len());
-                    buf.push_str(&text[..prev_end]);
-                    buf.push(c);
-                },
-                (Err(_), _) => has_error = true,
+        unescape::unescape_literal(text, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+            unescaped_char,
+            buf.capacity() == 0,
+        ) {
+            (Ok(c), false) => buf.push(c),
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
+            (Ok(c), true) => {
+                buf.reserve_exact(text.len());
+                buf.push_str(&text[..prev_end]);
+                buf.push(c);
             },
-        );
+            (Err(_), _) => has_error = true,
+        });
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
             (false, true) => Some(Cow::Borrowed(text)),
@@ -113,7 +111,7 @@ impl ast::Byte {
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
-        unescape_byte(text).ok()
+        unescape::unescape_byte(text).ok()
     }
 }
 impl ast::ByteString {
@@ -128,7 +126,7 @@ impl ast::ByteString {
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Mode::ByteStr, &mut |char_range, unescaped_char| match (
+        unescape::unescape_literal(text, unescape::Mode::ByteStr, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -160,20 +158,19 @@ impl ast::CString {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(
-            text,
-            Mode::Str,
-            &mut |char_range, unescaped_char| match (unescaped_char, buf.capacity() == 0) {
-                (Ok(c), false) => buf.push(c),
-                (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
-                (Ok(c), true) => {
-                    buf.reserve_exact(text.len());
-                    buf.push_str(&text[..prev_end]);
-                    buf.push(c);
-                },
-                (Err(_), _) => has_error = true,
+        unescape::unescape_literal(text, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+            unescaped_char,
+            buf.capacity() == 0,
+        ) {
+            (Ok(c), false) => buf.push(c),
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => prev_end = char_range.end,
+            (Ok(c), true) => {
+                buf.reserve_exact(text.len());
+                buf.push_str(&text[..prev_end]);
+                buf.push(c);
             },
-        );
+            (Err(_), _) => has_error = true,
+        });
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
             (false, true) => Some(Cow::Borrowed(text)),
