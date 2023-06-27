@@ -78,7 +78,7 @@ mod adt {
         m.complete(p, VARIANT_LIST);
         fn variant(p: &mut Parser<'_>) {
             let m = p.start();
-            outer_attrs(p);
+            attr::outers(p);
             if p.at(IDENT) {
                 name(p);
                 match p.current() {
@@ -114,12 +114,12 @@ mod adt {
         m.complete(p, RECORD_FIELD_LIST);
         fn record_field(p: &mut Parser<'_>) {
             let m = p.start();
-            outer_attrs(p);
+            attr::outers(p);
             opt_vis(p, false);
             if p.at(IDENT) {
                 name(p);
                 p.expect(T![:]);
-                types::type_(p);
+                ty(p);
                 m.complete(p, RECORD_FIELD);
             } else {
                 m.abandon(p);
@@ -127,15 +127,15 @@ mod adt {
             }
         }
     }
-    const TUPLE_FIELD_FIRST: TokenSet = types::TYPE_FIRST.union(ATTR_FIRST).union(VIS_FIRST);
+    const TUPLE_FIELD_FIRST: TokenSet = ty::FIRST.union(attr::FIRST).union(VIS_FIRST);
     fn tuple_field_list(p: &mut Parser<'_>) {
         assert!(p.at(T!['(']));
         let m = p.start();
         delimited(p, T!['('], T![')'], T![,], TUPLE_FIELD_FIRST, |p| {
             let m = p.start();
-            outer_attrs(p);
+            attr::outers(p);
             let has_vis = opt_vis(p, true);
-            if !p.at_ts(types::TYPE_FIRST) {
+            if !p.at_ts(ty::FIRST) {
                 p.error("expected a type");
                 if has_vis {
                     m.complete(p, ERROR);
@@ -144,7 +144,7 @@ mod adt {
                 }
                 return false;
             }
-            types::type_(p);
+            ty(p);
             m.complete(p, TUPLE_FIELD);
             true
         });
@@ -168,7 +168,7 @@ mod consts {
             name(p);
         }
         if p.at(T![:]) {
-            types::ascription(p);
+            ty::ascription(p);
         } else {
             p.error("missing type for `const` or `static`");
         }
@@ -226,7 +226,7 @@ mod traits {
         assert!(p.at(T!['{']));
         let m = p.start();
         p.bump(T!['{']);
-        inner_attrs(p);
+        attr::inners(p);
         while !p.at(EOF) && !p.at(T!['}']) {
             if p.at(T!['{']) {
                 err_block(p, "expected an item");
@@ -249,7 +249,7 @@ mod traits {
             p.error("expected trait or type");
             return;
         }
-        types::type_(p);
+        ty(p);
     }
 }
 mod use_item {
@@ -317,7 +317,7 @@ mod use_item {
 }
 
 pub fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
-    inner_attrs(p);
+    attr::inners(p);
     while !(p.at(EOF) || (p.at(T!['}']) && stop_on_r_curly)) {
         item_or_macro(p, stop_on_r_curly);
     }
@@ -340,7 +340,7 @@ pub const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
 ]);
 pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     let m = p.start();
-    outer_attrs(p);
+    attr::outers(p);
     let m = match opt_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
@@ -513,7 +513,7 @@ fn type_alias(p: &mut Parser<'_>, m: Marker) {
     }
     opt_where_clause(p);
     if p.eat(T![=]) {
-        types::type_(p);
+        ty(p);
     }
     opt_where_clause(p);
     p.expect(T![;]);

@@ -254,7 +254,7 @@ mod atom {
         });
         let m = p.start();
         if p.at(T![for]) {
-            types::for_binder(p);
+            ty::for_binder(p);
         }
         // test const_closure
         // fn main() { let cl = const || _ = 0; }
@@ -401,7 +401,7 @@ mod atom {
         //         _ => (),
         //     }
         // }
-        inner_attrs(p);
+        attr::inners(p);
         while !p.at(EOF) && !p.at(T!['}']) {
             if p.at(T!['{']) {
                 err_block(p, "expected match arm");
@@ -437,7 +437,7 @@ mod atom {
         //         _ => (),
         //     }
         // }
-        outer_attrs(p);
+        attr::outers(p);
         patterns::pattern_top_r(p, TokenSet::EMPTY);
         if p.at(T![if]) {
             match_guard(p);
@@ -684,7 +684,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     //     #[C] #[D] {}
     //     #[D] return ();
     // }
-    outer_attrs(p);
+    attr::outers(p);
     if p.at(T![let]) {
         let_stmt(p, m, semicolon);
         return;
@@ -741,7 +741,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
         if p.at(T![:]) {
             // test let_stmt_ascription
             // fn f() { let x: i32; }
-            types::ascription(p);
+            ty::ascription(p);
         }
         let mut expr_after_eq: Option<CompletedMarker> = None;
         if p.eat(T![=]) {
@@ -777,7 +777,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     }
 }
 pub fn expr_block_contents(p: &mut Parser<'_>) {
-    inner_attrs(p);
+    attr::inners(p);
     while !p.at(EOF) && !p.at(T!['}']) {
         // test nocontentexpr
         // fn foo(){
@@ -852,7 +852,7 @@ fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
 fn expr_bp(p: &mut Parser<'_>, m: Option<Marker>, mut r: Restrictions, bp: u8) -> Option<(CompletedMarker, BlockLike)> {
     let m = m.unwrap_or_else(|| {
         let m = p.start();
-        outer_attrs(p);
+        attr::outers(p);
         m
     });
     if !p.at_ts(EXPR_FIRST) {
@@ -1170,7 +1170,7 @@ fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
     p.bump(T![as]);
     // Use type_no_bounds(), because cast expressions are not
     // allowed to have bounds.
-    types::type_no_bounds(p);
+    ty::no_bounds(p);
     m.complete(p, CAST_EXPR)
 }
 // test_err arg_list_recovery
@@ -1191,7 +1191,7 @@ fn arg_list(p: &mut Parser<'_>) {
         T!['('],
         T![')'],
         T![,],
-        EXPR_FIRST.union(ATTR_FIRST),
+        EXPR_FIRST.union(attr::FIRST),
         |p: &mut Parser<'_>| expr(p).is_some(),
     );
     m.complete(p, ARG_LIST);
@@ -1238,7 +1238,7 @@ pub fn record_expr_field_list(p: &mut Parser<'_>) {
         // fn main() {
         //     S { #[cfg(test)] field: 1 }
         // }
-        outer_attrs(p);
+        attr::outers(p);
         match p.current() {
             IDENT | INT_NUMBER => {
                 // test_err record_literal_missing_ellipsis_recovery

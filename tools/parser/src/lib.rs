@@ -24,12 +24,12 @@ impl TopEntryPoint {
     pub fn parse(&self, input: &Input) -> Output {
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             TopEntryPoint::SourceFile => grammar::top::src_file,
-            TopEntryPoint::MacroStmts => grammar::top::macro_stmts,
-            TopEntryPoint::MacroItems => grammar::top::macro_items,
+            TopEntryPoint::MacroStmts => grammar::top::mac_stmts,
+            TopEntryPoint::MacroItems => grammar::top::mac_items,
             TopEntryPoint::Pattern => grammar::top::pattern,
             TopEntryPoint::Type => grammar::top::ty,
             TopEntryPoint::Expr => grammar::top::expr,
-            TopEntryPoint::MetaItem => grammar::top::meta_item,
+            TopEntryPoint::MetaItem => grammar::top::meta,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
@@ -73,16 +73,16 @@ pub enum PrefixEntryPoint {
 impl PrefixEntryPoint {
     pub fn parse(&self, input: &Input) -> Output {
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
-            PrefixEntryPoint::Vis => grammar::prefix::vis,
-            PrefixEntryPoint::Block => grammar::prefix::block,
-            PrefixEntryPoint::Stmt => grammar::prefix::stmt,
-            PrefixEntryPoint::Pat => grammar::prefix::pat,
-            PrefixEntryPoint::PatTop => grammar::prefix::pat_top,
-            PrefixEntryPoint::Ty => grammar::prefix::ty,
-            PrefixEntryPoint::Expr => grammar::prefix::expr,
-            PrefixEntryPoint::Path => grammar::prefix::path,
-            PrefixEntryPoint::Item => grammar::prefix::item,
-            PrefixEntryPoint::MetaItem => grammar::prefix::meta_item,
+            PrefixEntryPoint::Vis => grammar::pre::vis,
+            PrefixEntryPoint::Block => grammar::pre::block,
+            PrefixEntryPoint::Stmt => grammar::pre::stmt,
+            PrefixEntryPoint::Pat => grammar::pre::pat,
+            PrefixEntryPoint::PatTop => grammar::pre::pat_top,
+            PrefixEntryPoint::Ty => grammar::pre::ty,
+            PrefixEntryPoint::Expr => grammar::pre::expr,
+            PrefixEntryPoint::Path => grammar::pre::path,
+            PrefixEntryPoint::Item => grammar::pre::item,
+            PrefixEntryPoint::MetaItem => grammar::pre::meta,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);

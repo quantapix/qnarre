@@ -198,7 +198,7 @@ fn macro_pattern() {
 }
 
 #[test]
-fn type_() {
+fn ty() {
     check(
         TopEntryPoint::Type,
         "",

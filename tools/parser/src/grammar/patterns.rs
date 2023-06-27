@@ -315,7 +315,7 @@ fn record_pat_field_list(p: &mut Parser<'_>) {
     p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         let m = p.start();
-        outer_attrs(p);
+        attr::outers(p);
         match p.current() {
             // A trailing `..` is *not* treated as a REST_PAT.
             T![.] if p.at(T![..]) => {
