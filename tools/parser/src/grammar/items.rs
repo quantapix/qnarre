@@ -580,7 +580,7 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     name_r(p, ITEM_RECOVERY_SET);
     opt_generic_params(p);
     if p.at(T!['(']) {
-        params_fn_def(p);
+        param::fn_def(p);
     } else {
         p.error("expected function arguments");
     }

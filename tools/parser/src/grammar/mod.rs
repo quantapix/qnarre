@@ -291,7 +291,7 @@ fn generic_arg(x: &mut Parser<'_>) -> bool {
         IDENT if x.nth_at(1, T!['(']) => {
             let y = x.start();
             name_ref(x);
-            params_fn_trait(x);
+            param::fn_trait(x);
             if x.at(T![:]) && !x.at(T![::]) {
                 bounds(x);
                 y.complete(x, ASSOC_TYPE_ARG);
@@ -528,159 +528,162 @@ fn where_pred(x: &mut Parser<'_>) {
     y.complete(x, WHERE_PRED);
 }
 
-const PARAM_FIRST: TokenSet = patterns::PATTERN_FIRST.union(ty::FIRST);
-
-pub fn params_fn_def(x: &mut Parser<'_>) {
-    list_(x, Flavor::FnDef);
-}
-pub fn params_fn_trait(x: &mut Parser<'_>) {
-    list_(x, Flavor::FnTrait);
-}
-pub fn params_fn_ptr(x: &mut Parser<'_>) {
-    list_(x, Flavor::FnPointer);
-}
-pub fn params_closure(x: &mut Parser<'_>) {
-    list_(x, Flavor::Closure);
-}
-#[derive(Debug, Clone, Copy)]
-enum Flavor {
-    FnDef,
-    FnTrait,
-    FnPointer,
-    Closure,
-}
-fn list_(x: &mut Parser<'_>, flavor: Flavor) {
-    use Flavor::*;
-    let (bra, ket) = match flavor {
-        Closure => (T![|], T![|]),
-        FnDef | FnTrait | FnPointer => (T!['('], T![')']),
-    };
-    let y = x.start();
-    x.bump(bra);
-    let mut param_marker = None;
-    if let FnDef = flavor {
-        let m = x.start();
-        attr::outers(x);
-        match opt_self_param(x, m) {
-            Ok(()) => {},
-            Err(m) => param_marker = Some(m),
-        }
+pub mod param {
+    use super::*;
+    pub const FIRST: TokenSet = patterns::PATTERN_FIRST.union(ty::FIRST);
+    pub fn fn_def(x: &mut Parser<'_>) {
+        many(x, Flavor::FnDef);
     }
-    while !x.at(EOF) && !x.at(ket) {
-        let m = match param_marker.take() {
-            Some(m) => m,
-            None => {
-                let m = x.start();
-                attr::outers(x);
-                m
-            },
+    pub fn fn_trait(x: &mut Parser<'_>) {
+        many(x, Flavor::FnTrait);
+    }
+    pub fn fn_ptr(x: &mut Parser<'_>) {
+        many(x, Flavor::FnPtr);
+    }
+    pub fn closure(x: &mut Parser<'_>) {
+        many(x, Flavor::Closure);
+    }
+    #[derive(Debug, Clone, Copy)]
+    enum Flavor {
+        FnDef,
+        FnPtr,
+        FnTrait,
+        Closure,
+    }
+    fn many(x: &mut Parser<'_>, flavor: Flavor) {
+        use Flavor::*;
+        let (bra, ket) = match flavor {
+            Closure => (T![|], T![|]),
+            FnDef | FnTrait | FnPtr => (T!['('], T![')']),
         };
-        if !x.at_ts(PARAM_FIRST.union(attr::FIRST)) {
-            x.error("expected value parameter");
-            m.abandon(x);
-            break;
+        let y = x.start();
+        x.bump(bra);
+        let mut marker = None;
+        if let FnDef = flavor {
+            let y = x.start();
+            attr::outers(x);
+            match opt_self(x, y) {
+                Ok(()) => {},
+                Err(x) => marker = Some(x),
+            }
         }
-        param(x, m, flavor);
-        if !x.at(T![,]) {
-            if x.at_ts(PARAM_FIRST.union(attr::FIRST)) {
-                x.error("expected `,`");
-            } else {
+        while !x.at(EOF) && !x.at(ket) {
+            let y = match marker.take() {
+                Some(x) => x,
+                None => {
+                    let y = x.start();
+                    attr::outers(x);
+                    y
+                },
+            };
+            if !x.at_ts(param::FIRST.union(attr::FIRST)) {
+                x.error("expected value parameter");
+                y.abandon(x);
                 break;
             }
-        } else {
-            x.bump(T![,]);
-        }
-    }
-    if let Some(m) = param_marker {
-        m.abandon(x);
-    }
-    x.expect(ket);
-    y.complete(x, PARAM_LIST);
-}
-fn param(x: &mut Parser<'_>, y: Marker, flavor: Flavor) {
-    match flavor {
-        Flavor::FnDef | Flavor::FnPointer if x.eat(T![...]) => {},
-        Flavor::FnDef => {
-            patterns::pattern(x);
-            if !variadic_param(x) {
-                if x.at(T![:]) {
-                    ty::ascription(x);
+            one(x, y, flavor);
+            if !x.at(T![,]) {
+                if x.at_ts(param::FIRST.union(attr::FIRST)) {
+                    x.error("expected `,`");
                 } else {
-                    x.error("missing type for function parameter");
+                    break;
                 }
+            } else {
+                x.bump(T![,]);
             }
-        },
-        Flavor::FnTrait => {
-            ty(x);
-        },
-        Flavor::FnPointer => {
-            if (x.at(IDENT) || x.at(UNDERSCORE)) && x.nth(1) == T![:] && !x.nth_at(1, T![::]) {
-                patterns::pattern_single(x);
-                if !variadic_param(x) {
+        }
+        if let Some(y) = marker {
+            y.abandon(x);
+        }
+        x.expect(ket);
+        y.complete(x, PARAM_LIST);
+    }
+    fn one(x: &mut Parser<'_>, y: Marker, flavor: Flavor) {
+        use Flavor::*;
+        match flavor {
+            FnDef | FnPtr if x.eat(T![...]) => {},
+            FnDef => {
+                patterns::pattern(x);
+                if !variadic(x) {
                     if x.at(T![:]) {
                         ty::ascription(x);
                     } else {
                         x.error("missing type for function parameter");
                     }
                 }
-            } else {
+            },
+            FnTrait => {
                 ty(x);
-            }
-        },
-        Flavor::Closure => {
-            patterns::pattern_single(x);
-            if x.at(T![:]) && !x.at(T![::]) {
+            },
+            FnPtr => {
+                if (x.at(IDENT) || x.at(UNDERSCORE)) && x.nth(1) == T![:] && !x.nth_at(1, T![::]) {
+                    patterns::pattern_single(x);
+                    if !variadic(x) {
+                        if x.at(T![:]) {
+                            ty::ascription(x);
+                        } else {
+                            x.error("missing type for function parameter");
+                        }
+                    }
+                } else {
+                    ty(x);
+                }
+            },
+            Closure => {
+                patterns::pattern_single(x);
+                if x.at(T![:]) && !x.at(T![::]) {
+                    ty::ascription(x);
+                }
+            },
+        }
+        y.complete(x, PARAM);
+    }
+    fn opt_self(x: &mut Parser<'_>, y: Marker) -> Result<(), Marker> {
+        if x.at(T![self]) || x.at(T![mut]) && x.nth(1) == T![self] {
+            x.eat(T![mut]);
+            self_as_name(x);
+            if x.at(T![:]) {
                 ty::ascription(x);
             }
-        },
-    }
-    y.complete(x, PARAM);
-}
-fn variadic_param(x: &mut Parser<'_>) -> bool {
-    if x.at(T![:]) && x.nth_at(1, T![...]) {
-        x.bump(T![:]);
-        x.bump(T![...]);
-        true
-    } else {
-        false
-    }
-}
-fn opt_self_param(x: &mut Parser<'_>, y: Marker) -> Result<(), Marker> {
-    if x.at(T![self]) || x.at(T![mut]) && x.nth(1) == T![self] {
-        x.eat(T![mut]);
-        self_as_name(x);
-        if x.at(T![:]) {
-            ty::ascription(x);
+        } else {
+            let la1 = x.nth(1);
+            let la2 = x.nth(2);
+            let la3 = x.nth(3);
+            if !matches!(
+                (x.current(), la1, la2, la3),
+                (T![&], T![self], _, _)
+                    | (T![&], T![mut] | LIFETIME_IDENT, T![self], _)
+                    | (T![&], LIFETIME_IDENT, T![mut], T![self])
+            ) {
+                return Err(y);
+            }
+            x.bump(T![&]);
+            if x.at(LIFETIME_IDENT) {
+                lifetime(x);
+            }
+            x.eat(T![mut]);
+            self_as_name(x);
         }
-    } else {
-        let la1 = x.nth(1);
-        let la2 = x.nth(2);
-        let la3 = x.nth(3);
-        if !matches!(
-            (x.current(), la1, la2, la3),
-            (T![&], T![self], _, _)
-                | (T![&], T![mut] | LIFETIME_IDENT, T![self], _)
-                | (T![&], LIFETIME_IDENT, T![mut], T![self])
-        ) {
-            return Err(y);
+        y.complete(x, SELF_PARAM);
+        if !x.at(T![')']) {
+            x.expect(T![,]);
         }
-        x.bump(T![&]);
-        if x.at(LIFETIME_IDENT) {
-            lifetime(x);
+        Ok(())
+    }
+    fn self_as_name(x: &mut Parser<'_>) {
+        let y = x.start();
+        x.bump(T![self]);
+        y.complete(x, NAME);
+    }
+    fn variadic(x: &mut Parser<'_>) -> bool {
+        if x.at(T![:]) && x.nth_at(1, T![...]) {
+            x.bump(T![:]);
+            x.bump(T![...]);
+            true
+        } else {
+            false
         }
-        x.eat(T![mut]);
-        self_as_name(x);
     }
-    y.complete(x, SELF_PARAM);
-    if !x.at(T![')']) {
-        x.expect(T![,]);
-    }
-    Ok(())
-}
-fn self_as_name(x: &mut Parser<'_>) {
-    let y = x.start();
-    x.bump(T![self]);
-    y.complete(x, NAME);
 }
 
 pub const PATH_FIRST: TokenSet = TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
@@ -793,7 +796,7 @@ fn opt_path_type_args(x: &mut Parser<'_>, mode: Mode) {
                 x.bump(T![::]);
             }
             if x.at(T!['(']) {
-                params_fn_trait(x);
+                param::fn_trait(x);
                 opt_ret_type(x);
             } else {
                 opt_generic_args(x, false);
@@ -1065,7 +1068,7 @@ mod ty {
             return;
         }
         if x.at(T!['(']) {
-            params_fn_ptr(x);
+            param::fn_ptr(x);
         } else {
             x.error("expected parameters");
         }
