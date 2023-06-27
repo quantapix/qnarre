@@ -1,5 +1,5 @@
 use super::*;
-pub const PATTERN_FIRST: TokenSet = exprs::LITERAL_FIRST.union(PATH_FIRST).union(TokenSet::new(&[
+pub const PATTERN_FIRST: TokenSet = expr::LITERAL_FIRST.union(PATH_FIRST).union(TokenSet::new(&[
     T![box],
     T![ref],
     T![mut],
@@ -12,7 +12,7 @@ pub const PATTERN_FIRST: TokenSet = exprs::LITERAL_FIRST.union(PATH_FIRST).union
     T![.],
 ]));
 const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
-const RANGE_PAT_END_FIRST: TokenSet = exprs::LITERAL_FIRST
+const RANGE_PAT_END_FIRST: TokenSet = expr::LITERAL_FIRST
     .union(PATH_FIRST)
     .union(TokenSet::new(&[T![-], T![const]]));
 pub fn pattern(p: &mut Parser<'_>) {
@@ -210,7 +210,7 @@ fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarke
     Some(m)
 }
 fn is_literal_pat_start(p: &Parser<'_>) -> bool {
-    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER) || p.at_ts(exprs::LITERAL_FIRST)
+    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER) || p.at_ts(expr::LITERAL_FIRST)
 }
 // test literal_pattern
 // fn main() {
@@ -227,7 +227,7 @@ fn literal_pat(p: &mut Parser<'_>) -> CompletedMarker {
     if p.at(T![-]) {
         p.bump(T![-]);
     }
-    exprs::literal(p);
+    expr::literal(p);
     m.complete(p, LITERAL_PAT)
 }
 // test path_part
@@ -255,7 +255,7 @@ fn path_or_macro_pat(p: &mut Parser<'_>) -> CompletedMarker {
         //     let m!(x) = 0;
         // }
         T![!] => {
-            items::macro_call_after_excl(p);
+            item::macro_call_after_excl(p);
             return m.complete(p, MACRO_CALL).precede(p).complete(p, MACRO_PAT);
         },
         _ => PATH_PAT,
@@ -482,6 +482,6 @@ fn const_block_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![const]));
     let m = p.start();
     p.bump(T![const]);
-    exprs::block_expr(p);
+    expr::block_expr(p);
     m.complete(p, CONST_BLOCK_PAT)
 }

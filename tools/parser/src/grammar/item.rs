@@ -1,6 +1,6 @@
 pub use self::{
     adt::{record_field_list, variant_list},
-    exprs::{match_arm_list, record_expr_field_list},
+    expr::{match_arm_list, record_expr_field_list},
     traits::assoc_item_list,
     use_item::use_tree_list,
 };
@@ -87,7 +87,7 @@ mod adt {
                     _ => (),
                 }
                 if p.eat(T![=]) {
-                    exprs::expr(p);
+                    expr::expr(p);
                 }
                 m.complete(p, VARIANT);
             } else {
@@ -173,7 +173,7 @@ mod consts {
             p.error("missing type for `const` or `static`");
         }
         if p.eat(T![=]) {
-            exprs::expr(p);
+            expr::expr(p);
         }
         p.expect(T![;]);
         m.complete(p, if is_const { CONST } else { STATIC });
@@ -589,7 +589,7 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     if p.at(T![;]) {
         p.bump(T![;]);
     } else {
-        exprs::block_expr(p);
+        expr::block_expr(p);
     }
     m.complete(p, FN);
 }

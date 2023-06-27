@@ -10,19 +10,19 @@ pub fn reparser(
     parent: Option<SyntaxKind>,
 ) -> Option<fn(&mut Parser<'_>)> {
     let y = match x {
-        BLOCK_EXPR => exprs::block_expr,
-        RECORD_FIELD_LIST => items::record_field_list,
-        RECORD_EXPR_FIELD_LIST => items::record_expr_field_list,
-        VARIANT_LIST => items::variant_list,
-        MATCH_ARM_LIST => items::match_arm_list,
-        USE_TREE_LIST => items::use_tree_list,
-        EXTERN_ITEM_LIST => items::extern_item_list,
-        TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
+        BLOCK_EXPR => expr::block_expr,
+        RECORD_FIELD_LIST => item::record_field_list,
+        RECORD_EXPR_FIELD_LIST => item::record_expr_field_list,
+        VARIANT_LIST => item::variant_list,
+        MATCH_ARM_LIST => item::match_arm_list,
+        USE_TREE_LIST => item::use_tree_list,
+        EXTERN_ITEM_LIST => item::extern_item_list,
+        TOKEN_TREE if first_child? == T!['{'] => item::token_tree,
         ASSOC_ITEM_LIST => match parent? {
-            IMPL | TRAIT => items::assoc_item_list,
+            IMPL | TRAIT => item::assoc_item_list,
             _ => return None,
         },
-        ITEM_LIST => items::item_list,
+        ITEM_LIST => item::item_list,
         _ => return None,
     };
     Some(y)
@@ -151,7 +151,7 @@ fn err_block(x: &mut Parser<'_>, msg: &str) {
     let y = x.start();
     x.error(msg);
     x.bump(T!['{']);
-    exprs::expr_block_contents(x);
+    expr::expr_block_contents(x);
     x.eat(T!['}']);
     y.complete(x, ERROR);
 }
@@ -207,11 +207,11 @@ pub mod attr {
         match x.current() {
             T![=] => {
                 x.bump(T![=]);
-                if exprs::expr(x).is_none() {
+                if expr::expr(x).is_none() {
                     x.error("expected expression");
                 }
             },
-            T!['('] | T!['['] | T!['{'] => items::token_tree(x),
+            T!['('] | T!['['] | T!['{'] => item::token_tree(x),
             _ => {},
         }
         y.complete(x, META);
@@ -319,7 +319,7 @@ pub mod generic {
     }
     fn const_arg(x: &mut Parser<'_>) {
         let y = x.start();
-        exprs::const_arg(x);
+        expr::const_arg(x);
         y.complete(x, CONST_ARG);
     }
     fn type_arg(x: &mut Parser<'_>) {
@@ -386,7 +386,7 @@ pub mod generic {
         }
         if x.at(T![=]) {
             x.bump(T![=]);
-            exprs::const_arg(x);
+            expr::const_arg(x);
         }
         m.complete(x, CONST_PARAM);
     }
@@ -511,7 +511,7 @@ pub mod generic {
 
 pub mod param {
     use super::*;
-    pub const FIRST: TokenSet = patterns::PATTERN_FIRST.union(ty::FIRST);
+    pub const FIRST: TokenSet = pattern::PATTERN_FIRST.union(ty::FIRST);
     pub fn fn_def(x: &mut Parser<'_>) {
         many(x, Flavor::FnDef);
     }
@@ -584,7 +584,7 @@ pub mod param {
         match flavor {
             FnDef | FnPtr if x.eat(T![...]) => {},
             FnDef => {
-                patterns::pattern(x);
+                pattern::pattern(x);
                 if !variadic(x) {
                     if x.at(T![:]) {
                         ty::ascription(x);
@@ -598,7 +598,7 @@ pub mod param {
             },
             FnPtr => {
                 if (x.at(IDENT) || x.at(UNDERSCORE)) && x.nth(1) == T![:] && !x.nth_at(1, T![::]) {
-                    patterns::pattern_single(x);
+                    pattern::pattern_single(x);
                     if !variadic(x) {
                         if x.at(T![:]) {
                             ty::ascription(x);
@@ -611,7 +611,7 @@ pub mod param {
                 }
             },
             Closure => {
-                patterns::pattern_single(x);
+                pattern::pattern_single(x);
                 if x.at(T![:]) && !x.at(T![::]) {
                     ty::ascription(x);
                 }
@@ -718,7 +718,7 @@ fn path_for_qual(x: &mut Parser<'_>, mode: Mode, mut qual: CompletedMarker) -> C
     }
 }
 
-const EXPR_PATH_SEG_REC_SET: TokenSet = items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
+const EXPR_PATH_SEG_REC_SET: TokenSet = item::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
 const TYPE_PATH_SEG_REC_SET: TokenSet = ty::TYPE_RECOVERY_SET;
 
 fn path_segment(x: &mut Parser<'_>, mode: Mode, first: bool) {
@@ -755,7 +755,7 @@ fn path_segment(x: &mut Parser<'_>, mode: Mode, first: bool) {
             },
             _ => {
                 let rec_set = match mode {
-                    Mode::Use => items::ITEM_RECOVERY_SET,
+                    Mode::Use => item::ITEM_RECOVERY_SET,
                     Mode::Type => TYPE_PATH_SEG_REC_SET,
                     Mode::Expr => EXPR_PATH_SEG_REC_SET,
                 };
@@ -793,28 +793,28 @@ pub mod pre {
         opt_vis(x, false);
     }
     pub fn block(x: &mut Parser<'_>) {
-        exprs::block_expr(x);
+        expr::block_expr(x);
     }
     pub fn stmt(x: &mut Parser<'_>) {
-        exprs::stmt(x, exprs::Semicolon::Forbidden);
+        expr::stmt(x, expr::Semicolon::Forbidden);
     }
     pub fn pat(x: &mut Parser<'_>) {
-        patterns::pattern_single(x);
+        pattern::pattern_single(x);
     }
     pub fn pat_top(x: &mut Parser<'_>) {
-        patterns::pattern_top(x);
+        pattern::pattern_top(x);
     }
     pub fn ty(x: &mut Parser<'_>) {
         ty(x);
     }
     pub fn expr(x: &mut Parser<'_>) {
-        exprs::expr(x);
+        expr::expr(x);
     }
     pub fn path(x: &mut Parser<'_>) {
         type_path(x);
     }
     pub fn item(x: &mut Parser<'_>) {
-        items::item_or_macro(x, true);
+        item::item_or_macro(x, true);
     }
     pub fn meta(x: &mut Parser<'_>) {
         attr::meta(x);
@@ -825,24 +825,24 @@ pub mod top {
     pub fn src_file(x: &mut Parser<'_>) {
         let y = x.start();
         x.eat(SHEBANG);
-        items::mod_contents(x, false);
+        item::mod_contents(x, false);
         y.complete(x, SOURCE_FILE);
     }
     pub fn mac_stmts(x: &mut Parser<'_>) {
         let y = x.start();
         while !x.at(EOF) {
-            exprs::stmt(x, exprs::Semicolon::Optional);
+            expr::stmt(x, expr::Semicolon::Optional);
         }
         y.complete(x, MACRO_STMTS);
     }
     pub fn mac_items(x: &mut Parser<'_>) {
         let y = x.start();
-        items::mod_contents(x, false);
+        item::mod_contents(x, false);
         y.complete(x, MACRO_ITEMS);
     }
     pub fn pattern(x: &mut Parser<'_>) {
         let y = x.start();
-        patterns::pattern_top(x);
+        pattern::pattern_top(x);
         if x.at(EOF) {
             y.abandon(x);
             return;
@@ -866,7 +866,7 @@ pub mod top {
     }
     pub fn expr(x: &mut Parser<'_>) {
         let y = x.start();
-        exprs::expr(x);
+        expr::expr(x);
         if x.at(EOF) {
             y.abandon(x);
             return;
@@ -890,9 +890,9 @@ pub mod top {
     }
 }
 
-mod exprs;
-mod items;
-mod patterns;
+mod expr;
+mod item;
+mod pattern;
 
 pub fn ty(x: &mut Parser<'_>) {
     ty::with_bounds(x, true);
@@ -1008,7 +1008,7 @@ mod ty {
             T![;] => {
                 x.bump(T![;]);
                 let y = x.start();
-                exprs::expr(x);
+                expr::expr(x);
                 y.complete(x, CONST_ARG);
                 x.expect(T![']']);
                 ARRAY_TYPE
@@ -1119,7 +1119,7 @@ mod ty {
         let m = x.start();
         type_path(x);
         let kind = if x.at(T![!]) && !x.at(T![!=]) {
-            items::macro_call_after_excl(x);
+            item::macro_call_after_excl(x);
             m.complete(x, MACRO_CALL);
             MACRO_TYPE
         } else {

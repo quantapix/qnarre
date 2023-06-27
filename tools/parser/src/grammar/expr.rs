@@ -350,7 +350,7 @@ mod atom {
         assert!(p.at(T![for]));
         let m = m.unwrap_or_else(|| p.start());
         p.bump(T![for]);
-        patterns::pattern(p);
+        pattern::pattern(p);
         p.expect(T![in]);
         expr_no_struct(p);
         block_expr(p);
@@ -364,7 +364,7 @@ mod atom {
     fn let_expr(p: &mut Parser<'_>) -> CompletedMarker {
         let m = p.start();
         p.bump(T![let]);
-        patterns::pattern_top(p);
+        pattern::pattern_top(p);
         p.expect(T![=]);
         expr_let(p);
         m.complete(p, LET_EXPR)
@@ -438,7 +438,7 @@ mod atom {
         //     }
         // }
         attr::outers(p);
-        patterns::pattern_top_r(p, TokenSet::EMPTY);
+        pattern::pattern_top_r(p, TokenSet::EMPTY);
         if p.at(T![if]) {
             match_guard(p);
         }
@@ -604,7 +604,7 @@ mod atom {
             name_ref.complete(p, NAME_REF);
             path_segment.complete(p, PATH_SEGMENT);
             path.complete(p, PATH);
-            let _block_like = items::macro_call_after_excl(p);
+            let _block_like = item::macro_call_after_excl(p);
             macro_call.complete(p, MACRO_CALL);
             return m.complete(p, MACRO_EXPR);
         }
@@ -714,7 +714,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     }
     // test block_items
     // fn a() { fn b() {} }
-    let m = match items::opt_item(p, m) {
+    let m = match item::opt_item(p, m) {
         Ok(()) => return,
         Err(m) => m,
     };
@@ -760,7 +760,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     // fn f() { let x: i32 = 92; }
     fn let_stmt(p: &mut Parser<'_>, m: Marker, with_semi: Semicolon) {
         p.bump(T![let]);
-        patterns::pattern(p);
+        pattern::pattern(p);
         if p.at(T![:]) {
             // test let_stmt_ascription
             // fn f() { let x: i32; }
@@ -770,7 +770,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
         if p.eat(T![=]) {
             // test let_stmt_init
             // fn f() { let x = 92; }
-            expr_after_eq = exprs::expr(p);
+            expr_after_eq = expr::expr(p);
         }
         if p.at(T![else]) {
             // test_err let_else_right_curly_brace
@@ -1235,7 +1235,7 @@ fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike
             (m.complete(p, RECORD_EXPR), BlockLike::NotBlock)
         },
         T![!] if !p.at(T![!=]) => {
-            let block_like = items::macro_call_after_excl(p);
+            let block_like = item::macro_call_after_excl(p);
             (m.complete(p, MACRO_CALL).precede(p).complete(p, MACRO_EXPR), block_like)
         },
         _ => (m.complete(p, PATH_EXPR), BlockLike::NotBlock),

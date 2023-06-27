@@ -1,16 +1,14 @@
-mod sourcegen_inline_tests;
-mod top_entries;
-mod prefix_entries;
+mod gen;
+mod pre;
+mod top;
 
+use crate::{LexedStr, TopEntryPoint};
+use expect_test::expect_file;
 use std::{
     fmt::Write,
     fs,
     path::{Path, PathBuf},
 };
-
-use expect_test::expect_file;
-
-use crate::{LexedStr, TopEntryPoint};
 
 #[test]
 fn lex_ok() {
@@ -100,23 +98,23 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
             assert!(depth > 0);
             len += text.len();
             writeln!(buf, "{indent}{kind:?} {text:?}").unwrap();
-        }
+        },
         crate::StrStep::Enter { kind } => {
             assert!(depth > 0 || len == 0);
             depth += 1;
             writeln!(buf, "{indent}{kind:?}").unwrap();
             indent.push_str("  ");
-        }
+        },
         crate::StrStep::Exit => {
             assert!(depth > 0);
             depth -= 1;
             indent.pop();
             indent.pop();
-        }
+        },
         crate::StrStep::Error { msg, pos } => {
             assert!(depth > 0);
             errors.push(format!("error {pos}: {msg}\n"))
-        }
+        },
     });
     assert_eq!(
         len,
@@ -152,8 +150,7 @@ impl TestCase {
         let dir = test_data_dir.join(path);
 
         let mut res = Vec::new();
-        let read_dir = fs::read_dir(&dir)
-            .unwrap_or_else(|err| panic!("can't `read_dir` {}: {err}", dir.display()));
+        let read_dir = fs::read_dir(&dir).unwrap_or_else(|err| panic!("can't `read_dir` {}: {err}", dir.display()));
         for file in read_dir {
             let file = file.unwrap();
             let path = file.path();
