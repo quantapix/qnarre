@@ -5,12 +5,12 @@ use crate::{
 };
 
 pub fn reparser(
-    node: SyntaxKind,
+    x: SyntaxKind,
     first_child: Option<SyntaxKind>,
     parent: Option<SyntaxKind>,
 ) -> Option<fn(&mut Parser<'_>)> {
-    let res = match node {
-        BLOCK_EXPR => expressions::block_expr,
+    let y = match x {
+        BLOCK_EXPR => exprs::block_expr,
         RECORD_FIELD_LIST => items::record_field_list,
         RECORD_EXPR_FIELD_LIST => items::record_expr_field_list,
         VARIANT_LIST => items::variant_list,
@@ -25,7 +25,7 @@ pub fn reparser(
         ITEM_LIST => items::item_list,
         _ => return None,
     };
-    Some(res)
+    Some(y)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -45,9 +45,9 @@ impl BlockLike {
     }
 }
 
-const VISIBILITY_FIRST: TokenSet = TokenSet::new(&[T![pub], T![crate]]);
+const VIS_FIRST: TokenSet = TokenSet::new(&[T![pub], T![crate]]);
 
-fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
+fn opt_vis(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
     match p.current() {
         T![pub] => {
             let m = p.start();
@@ -57,14 +57,14 @@ fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
                     T![crate] | T![self] | T![super] | T![ident] | T![')'] if p.nth(2) != T![:] => {
                         if !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) {
                             p.bump(T!['(']);
-                            paths::use_path(p);
+                            use_path(p);
                             p.expect(T![')']);
                         }
                     },
                     T![in] => {
                         p.bump(T!['(']);
                         p.bump(T![in]);
-                        paths::use_path(p);
+                        use_path(p);
                         p.expect(T![')']);
                     },
                     _ => {},
@@ -134,7 +134,7 @@ fn name_ref(p: &mut Parser<'_>) {
         p.err_and_bump("expected identifier");
     }
 }
-fn name_ref_or_index(p: &mut Parser<'_>) {
+fn name_ref_or_idx(p: &mut Parser<'_>) {
     assert!(p.at(IDENT) || p.at(INT_NUMBER));
     let m = p.start();
     p.bump_any();
@@ -146,12 +146,12 @@ fn lifetime(p: &mut Parser<'_>) {
     p.bump(LIFETIME_IDENT);
     m.complete(p, LIFETIME);
 }
-fn error_block(p: &mut Parser<'_>, message: &str) {
+fn err_block(p: &mut Parser<'_>, message: &str) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.error(message);
     p.bump(T!['{']);
-    expressions::expr_block_contents(p);
+    exprs::expr_block_contents(p);
     p.eat(T!['}']);
     m.complete(p, ERROR);
 }
@@ -181,178 +181,174 @@ fn delimited(
     p.expect(ket);
 }
 
-mod attributes {
-    use super::*;
-    pub const ATTRIBUTE_FIRST: TokenSet = TokenSet::new(&[T![#]]);
-    pub fn inner_attrs(p: &mut Parser<'_>) {
-        while p.at(T![#]) && p.nth(1) == T![!] {
-            attr(p, true);
-        }
-    }
-    pub fn outer_attrs(p: &mut Parser<'_>) {
-        while p.at(T![#]) {
-            attr(p, false);
-        }
-    }
-    fn attr(p: &mut Parser<'_>, inner: bool) {
-        assert!(p.at(T![#]));
-        let attr = p.start();
-        p.bump(T![#]);
-        if inner {
-            p.bump(T![!]);
-        }
-        if p.eat(T!['[']) {
-            meta(p);
-            if !p.eat(T![']']) {
-                p.error("expected `]`");
+pub const ATTR_FIRST: TokenSet = TokenSet::new(&[T![#]]);
+
+pub fn meta(x: &mut Parser<'_>) {
+    let y = x.start();
+    use_path(x);
+    match x.current() {
+        T![=] => {
+            x.bump(T![=]);
+            if exprs::expr(x).is_none() {
+                x.error("expected expression");
             }
-        } else {
-            p.error("expected `[`");
-        }
-        attr.complete(p, ATTR);
+        },
+        T!['('] | T!['['] | T!['{'] => items::token_tree(x),
+        _ => {},
     }
-    pub fn meta(p: &mut Parser<'_>) {
-        let meta = p.start();
-        paths::use_path(p);
-        match p.current() {
-            T![=] => {
-                p.bump(T![=]);
-                if expressions::expr(p).is_none() {
-                    p.error("expected expression");
-                }
-            },
-            T!['('] | T!['['] | T!['{'] => items::token_tree(p),
-            _ => {},
-        }
-        meta.complete(p, META);
+    y.complete(x, META);
+}
+pub fn inner_attrs(x: &mut Parser<'_>) {
+    while x.at(T![#]) && x.nth(1) == T![!] {
+        attr(x, true);
     }
 }
-mod expressions;
-mod generic_args {
-    use super::*;
-    pub fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: bool) {
-        let m;
-        if p.at(T![::]) && p.nth(2) == T![<] {
-            m = p.start();
-            p.bump(T![::]);
-        } else if !colon_colon_required && p.at(T![<]) && p.nth(1) != T![=] {
-            m = p.start();
-        } else {
-            return;
-        }
-        delimited(p, T![<], T![>], T![,], GENERIC_ARG_FIRST, generic_arg);
-        m.complete(p, GENERIC_ARG_LIST);
-    }
-    const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
-        LIFETIME_IDENT,
-        IDENT,
-        T!['{'],
-        T![true],
-        T![false],
-        T![-],
-        INT_NUMBER,
-        FLOAT_NUMBER,
-        CHAR,
-        BYTE,
-        STRING,
-        BYTE_STRING,
-        C_STRING,
-    ])
-    .union(types::TYPE_FIRST);
-    fn generic_arg(p: &mut Parser<'_>) -> bool {
-        match p.current() {
-            LIFETIME_IDENT if !p.nth_at(1, T![+]) => lifetime_arg(p),
-            T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
-            k if k.is_literal() => const_arg(p),
-            IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) && !p.nth_at(1, T![::]) => {
-                let m = p.start();
-                name_ref(p);
-                opt_generic_arg_list(p, false);
-                match p.current() {
-                    T![=] => {
-                        p.bump_any();
-                        if types::TYPE_FIRST.contains(p.current()) {
-                            types::type_(p);
-                        } else {
-                            const_arg(p);
-                        }
-                        m.complete(p, ASSOC_TYPE_ARG);
-                    },
-                    T![:] if !p.at(T![::]) => {
-                        generic_params::bounds(p);
-                        m.complete(p, ASSOC_TYPE_ARG);
-                    },
-                    _ => {
-                        let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
-                        let m = paths::type_path_for_qualifier(p, m);
-                        m.precede(p).complete(p, PATH_TYPE).precede(p).complete(p, TYPE_ARG);
-                    },
-                }
-            },
-            IDENT if p.nth_at(1, T!['(']) => {
-                let m = p.start();
-                name_ref(p);
-                params::param_list_fn_trait(p);
-                if p.at(T![:]) && !p.at(T![::]) {
-                    generic_params::bounds(p);
-                    m.complete(p, ASSOC_TYPE_ARG);
-                } else {
-                    opt_ret_type(p);
-                    let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
-                    let m = paths::type_path_for_qualifier(p, m);
-                    let m = m.precede(p).complete(p, PATH_TYPE);
-                    let m = types::opt_type_bounds_as_dyn_trait_type(p, m);
-                    m.precede(p).complete(p, TYPE_ARG);
-                }
-            },
-            _ if p.at_ts(types::TYPE_FIRST) => type_arg(p),
-            _ => return false,
-        }
-        true
-    }
-    fn lifetime_arg(p: &mut Parser<'_>) {
-        let m = p.start();
-        lifetime(p);
-        m.complete(p, LIFETIME_ARG);
-    }
-    pub fn const_arg_expr(p: &mut Parser<'_>) {
-        match p.current() {
-            T!['{'] => {
-                expressions::block_expr(p);
-            },
-            k if k.is_literal() => {
-                expressions::literal(p);
-            },
-            T![true] | T![false] => {
-                expressions::literal(p);
-            },
-            T![-] => {
-                let lm = p.start();
-                p.bump(T![-]);
-                expressions::literal(p);
-                lm.complete(p, PREFIX_EXPR);
-            },
-            _ => {
-                let lm = p.start();
-                paths::use_path(p);
-                lm.complete(p, PATH_EXPR);
-            },
-        }
-    }
-    pub fn const_arg(p: &mut Parser<'_>) {
-        let m = p.start();
-        const_arg_expr(p);
-        m.complete(p, CONST_ARG);
-    }
-    fn type_arg(p: &mut Parser<'_>) {
-        let m = p.start();
-        types::type_(p);
-        m.complete(p, TYPE_ARG);
+pub fn outer_attrs(x: &mut Parser<'_>) {
+    while x.at(T![#]) {
+        attr(x, false);
     }
 }
+fn attr(x: &mut Parser<'_>, inner: bool) {
+    assert!(x.at(T![#]));
+    let y = x.start();
+    x.bump(T![#]);
+    if inner {
+        x.bump(T![!]);
+    }
+    if x.eat(T!['[']) {
+        meta(x);
+        if !x.eat(T![']']) {
+            x.error("expected `]`");
+        }
+    } else {
+        x.error("expected `[`");
+    }
+    y.complete(x, ATTR);
+}
+
+const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
+    LIFETIME_IDENT,
+    IDENT,
+    T!['{'],
+    T![true],
+    T![false],
+    T![-],
+    INT_NUMBER,
+    FLOAT_NUMBER,
+    CHAR,
+    BYTE,
+    STRING,
+    BYTE_STRING,
+    C_STRING,
+])
+.union(types::TYPE_FIRST);
+
+pub fn opt_generic_args(x: &mut Parser<'_>, colon_colon_required: bool) {
+    let y;
+    if x.at(T![::]) && x.nth(2) == T![<] {
+        y = x.start();
+        x.bump(T![::]);
+    } else if !colon_colon_required && x.at(T![<]) && x.nth(1) != T![=] {
+        y = x.start();
+    } else {
+        return;
+    }
+    delimited(x, T![<], T![>], T![,], GENERIC_ARG_FIRST, generic_arg);
+    y.complete(x, GENERIC_ARG_LIST);
+}
+fn generic_arg(x: &mut Parser<'_>) -> bool {
+    match x.current() {
+        LIFETIME_IDENT if !x.nth_at(1, T![+]) => lifetime_arg(x),
+        T!['{'] | T![true] | T![false] | T![-] => const_arg(x),
+        k if k.is_literal() => const_arg(x),
+        IDENT if [T![<], T![=], T![:]].contains(&x.nth(1)) && !x.nth_at(1, T![::]) => {
+            let y = x.start();
+            name_ref(x);
+            opt_generic_args(x, false);
+            match x.current() {
+                T![=] => {
+                    x.bump_any();
+                    if types::TYPE_FIRST.contains(x.current()) {
+                        types::type_(x);
+                    } else {
+                        const_arg(x);
+                    }
+                    y.complete(x, ASSOC_TYPE_ARG);
+                },
+                T![:] if !x.at(T![::]) => {
+                    generic_params::bounds(x);
+                    y.complete(x, ASSOC_TYPE_ARG);
+                },
+                _ => {
+                    let y = y.complete(x, PATH_SEGMENT).precede(x).complete(x, PATH);
+                    let y = type_path_for_qual(x, y);
+                    y.precede(x).complete(x, PATH_TYPE).precede(x).complete(x, TYPE_ARG);
+                },
+            }
+        },
+        IDENT if x.nth_at(1, T!['(']) => {
+            let y = x.start();
+            name_ref(x);
+            params::param_list_fn_trait(x);
+            if x.at(T![:]) && !x.at(T![::]) {
+                generic_params::bounds(x);
+                y.complete(x, ASSOC_TYPE_ARG);
+            } else {
+                opt_ret_type(x);
+                let y = y.complete(x, PATH_SEGMENT).precede(x).complete(x, PATH);
+                let y = type_path_for_qual(x, y);
+                let y = y.precede(x).complete(x, PATH_TYPE);
+                let y = types::opt_type_bounds_as_dyn_trait_type(x, y);
+                y.precede(x).complete(x, TYPE_ARG);
+            }
+        },
+        _ if x.at_ts(types::TYPE_FIRST) => type_arg(x),
+        _ => return false,
+    }
+    true
+}
+fn lifetime_arg(x: &mut Parser<'_>) {
+    let y = x.start();
+    lifetime(x);
+    y.complete(x, LIFETIME_ARG);
+}
+pub fn const_arg_expr(x: &mut Parser<'_>) {
+    match x.current() {
+        T!['{'] => {
+            exprs::block_expr(x);
+        },
+        k if k.is_literal() => {
+            exprs::literal(x);
+        },
+        T![true] | T![false] => {
+            exprs::literal(x);
+        },
+        T![-] => {
+            let y = x.start();
+            x.bump(T![-]);
+            exprs::literal(x);
+            y.complete(x, PREFIX_EXPR);
+        },
+        _ => {
+            let y = x.start();
+            use_path(x);
+            y.complete(x, PATH_EXPR);
+        },
+    }
+}
+pub fn const_arg(x: &mut Parser<'_>) {
+    let y = x.start();
+    const_arg_expr(x);
+    y.complete(x, CONST_ARG);
+}
+fn type_arg(x: &mut Parser<'_>) {
+    let y = x.start();
+    types::type_(x);
+    y.complete(x, TYPE_ARG);
+}
+
 mod generic_params {
     use super::*;
-    use crate::grammar::attributes::ATTRIBUTE_FIRST;
     pub fn opt_generic_param_list(p: &mut Parser<'_>) {
         if p.at(T![<]) {
             generic_param_list(p);
@@ -361,18 +357,11 @@ mod generic_params {
     fn generic_param_list(p: &mut Parser<'_>) {
         assert!(p.at(T![<]));
         let m = p.start();
-        delimited(
-            p,
-            T![<],
-            T![>],
-            T![,],
-            GENERIC_PARAM_FIRST.union(ATTRIBUTE_FIRST),
-            |p| {
-                let m = p.start();
-                attributes::outer_attrs(p);
-                generic_param(p, m)
-            },
-        );
+        delimited(p, T![<], T![>], T![,], GENERIC_PARAM_FIRST.union(ATTR_FIRST), |p| {
+            let m = p.start();
+            outer_attrs(p);
+            generic_param(p, m)
+        });
         m.complete(p, GENERIC_PARAM_LIST);
     }
     const GENERIC_PARAM_FIRST: TokenSet = TokenSet::new(&[IDENT, LIFETIME_IDENT, T![const]]);
@@ -419,7 +408,7 @@ mod generic_params {
         }
         if p.at(T![=]) {
             p.bump(T![=]);
-            generic_args::const_arg_expr(p);
+            const_arg_expr(p);
         }
         m.complete(p, CONST_PARAM);
     }
@@ -469,7 +458,7 @@ mod generic_params {
                     },
                     _ => (),
                 }
-                if paths::is_use_path_start(p) {
+                if is_use_path_start(p) {
                     types::path_type_(p, false);
                 } else {
                     m.abandon(p);
@@ -538,10 +527,9 @@ mod generic_params {
         m.complete(p, WHERE_PRED);
     }
 }
-mod items;
 mod params {
     use super::*;
-    use crate::grammar::attributes::ATTRIBUTE_FIRST;
+    use crate::grammar::ATTR_FIRST;
     pub fn param_list_fn_def(p: &mut Parser<'_>) {
         list_(p, Flavor::FnDef);
     }
@@ -572,7 +560,7 @@ mod params {
         let mut param_marker = None;
         if let FnDef = flavor {
             let m = p.start();
-            attributes::outer_attrs(p);
+            outer_attrs(p);
             match opt_self_param(p, m) {
                 Ok(()) => {},
                 Err(m) => param_marker = Some(m),
@@ -583,18 +571,18 @@ mod params {
                 Some(m) => m,
                 None => {
                     let m = p.start();
-                    attributes::outer_attrs(p);
+                    outer_attrs(p);
                     m
                 },
             };
-            if !p.at_ts(PARAM_FIRST.union(ATTRIBUTE_FIRST)) {
+            if !p.at_ts(PARAM_FIRST.union(ATTR_FIRST)) {
                 p.error("expected value parameter");
                 m.abandon(p);
                 break;
             }
             param(p, m, flavor);
             if !p.at(T![,]) {
-                if p.at_ts(PARAM_FIRST.union(ATTRIBUTE_FIRST)) {
+                if p.at_ts(PARAM_FIRST.union(ATTR_FIRST)) {
                     p.error("expected `,`");
                 } else {
                     break;
@@ -696,230 +684,229 @@ mod params {
         m.complete(p, NAME);
     }
 }
-mod paths {
-    use super::*;
-    pub const PATH_FIRST: TokenSet = TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
-    pub fn is_path_start(p: &Parser<'_>) -> bool {
-        is_use_path_start(p) || p.at(T![<]) || p.at(T![Self])
+
+pub const PATH_FIRST: TokenSet = TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
+
+pub fn is_path_start(x: &Parser<'_>) -> bool {
+    is_use_path_start(x) || x.at(T![<]) || x.at(T![Self])
+}
+pub fn is_use_path_start(x: &Parser<'_>) -> bool {
+    match x.current() {
+        IDENT | T![self] | T![super] | T![crate] => true,
+        T![:] if x.at(T![::]) => true,
+        _ => false,
     }
-    pub fn is_use_path_start(p: &Parser<'_>) -> bool {
-        match p.current() {
-            IDENT | T![self] | T![super] | T![crate] => true,
-            T![:] if p.at(T![::]) => true,
-            _ => false,
-        }
-    }
-    pub fn use_path(p: &mut Parser<'_>) {
-        path(p, Mode::Use);
-    }
-    pub fn type_path(p: &mut Parser<'_>) {
-        path(p, Mode::Type);
-    }
-    pub fn expr_path(p: &mut Parser<'_>) {
-        path(p, Mode::Expr);
-    }
-    pub fn type_path_for_qualifier(p: &mut Parser<'_>, qual: CompletedMarker) -> CompletedMarker {
-        path_for_qualifier(p, Mode::Type, qual)
-    }
-    #[derive(Clone, Copy, Eq, PartialEq)]
-    enum Mode {
-        Use,
-        Type,
-        Expr,
-    }
-    fn path(p: &mut Parser<'_>, mode: Mode) {
-        let path = p.start();
-        path_segment(p, mode, true);
-        let qual = path.complete(p, PATH);
-        path_for_qualifier(p, mode, qual);
-    }
-    fn path_for_qualifier(p: &mut Parser<'_>, mode: Mode, mut qual: CompletedMarker) -> CompletedMarker {
-        loop {
-            let use_tree = mode == Mode::Use && matches!(p.nth(2), T![*] | T!['{']);
-            if p.at(T![::]) && !use_tree {
-                let path = qual.precede(p);
-                p.bump(T![::]);
-                path_segment(p, mode, false);
-                let path = path.complete(p, PATH);
-                qual = path;
-            } else {
-                return qual;
-            }
-        }
-    }
-    const EXPR_PATH_SEGMENT_RECOVERY_SET: TokenSet =
-        items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
-    const TYPE_PATH_SEGMENT_RECOVERY_SET: TokenSet = types::TYPE_RECOVERY_SET;
-    fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
-        let m = p.start();
-        if first && p.eat(T![<]) {
-            types::type_(p);
-            if p.eat(T![as]) {
-                if is_use_path_start(p) {
-                    types::path_type(p);
-                } else {
-                    p.error("expected a trait");
-                }
-            }
-            p.expect(T![>]);
-            if !p.at(T![::]) {
-                p.error("expected `::`");
-            }
+}
+pub fn use_path(x: &mut Parser<'_>) {
+    path(x, Mode::Use);
+}
+pub fn type_path(x: &mut Parser<'_>) {
+    path(x, Mode::Type);
+}
+pub fn expr_path(x: &mut Parser<'_>) {
+    path(x, Mode::Expr);
+}
+pub fn type_path_for_qual(x: &mut Parser<'_>, qual: CompletedMarker) -> CompletedMarker {
+    path_for_qual(x, Mode::Type, qual)
+}
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Mode {
+    Use,
+    Type,
+    Expr,
+}
+fn path(x: &mut Parser<'_>, mode: Mode) {
+    let y = x.start();
+    path_segment(x, mode, true);
+    let qual = y.complete(x, PATH);
+    path_for_qual(x, mode, qual);
+}
+fn path_for_qual(x: &mut Parser<'_>, mode: Mode, mut qual: CompletedMarker) -> CompletedMarker {
+    loop {
+        let use_tree = mode == Mode::Use && matches!(x.nth(2), T![*] | T!['{']);
+        if x.at(T![::]) && !use_tree {
+            let y = qual.precede(x);
+            x.bump(T![::]);
+            path_segment(x, mode, false);
+            let y = y.complete(x, PATH);
+            qual = y;
         } else {
-            let empty = if first {
-                p.eat(T![::]);
-                false
-            } else {
-                true
-            };
-            match p.current() {
-                IDENT => {
-                    name_ref(p);
-                    opt_path_type_args(p, mode);
-                },
-                T![self] | T![super] | T![crate] | T![Self] => {
-                    let m = p.start();
-                    p.bump_any();
-                    m.complete(p, NAME_REF);
-                },
-                _ => {
-                    let recover_set = match mode {
-                        Mode::Use => items::ITEM_RECOVERY_SET,
-                        Mode::Type => TYPE_PATH_SEGMENT_RECOVERY_SET,
-                        Mode::Expr => EXPR_PATH_SEGMENT_RECOVERY_SET,
-                    };
-                    p.err_recover("expected identifier", recover_set);
-                    if empty {
-                        m.abandon(p);
-                        return;
-                    }
-                },
-            };
+            return qual;
         }
-        m.complete(p, PATH_SEGMENT);
     }
-    fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
-        match mode {
-            Mode::Use => {},
-            Mode::Type => {
-                if p.at(T![::]) && p.nth_at(2, T!['(']) {
-                    p.bump(T![::]);
-                }
-                if p.at(T!['(']) {
-                    params::param_list_fn_trait(p);
-                    opt_ret_type(p);
-                } else {
-                    generic_args::opt_generic_arg_list(p, false);
+}
+const EXPR_PATH_SEG_REC_SET: TokenSet = items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
+const TYPE_PATH_SEG_REC_SET: TokenSet = types::TYPE_RECOVERY_SET;
+fn path_segment(x: &mut Parser<'_>, mode: Mode, first: bool) {
+    let y = x.start();
+    if first && x.eat(T![<]) {
+        types::type_(x);
+        if x.eat(T![as]) {
+            if is_use_path_start(x) {
+                types::path_type(x);
+            } else {
+                x.error("expected a trait");
+            }
+        }
+        x.expect(T![>]);
+        if !x.at(T![::]) {
+            x.error("expected `::`");
+        }
+    } else {
+        let empty = if first {
+            x.eat(T![::]);
+            false
+        } else {
+            true
+        };
+        match x.current() {
+            IDENT => {
+                name_ref(x);
+                opt_path_type_args(x, mode);
+            },
+            T![self] | T![super] | T![crate] | T![Self] => {
+                let y = x.start();
+                x.bump_any();
+                y.complete(x, NAME_REF);
+            },
+            _ => {
+                let rec_set = match mode {
+                    Mode::Use => items::ITEM_RECOVERY_SET,
+                    Mode::Type => TYPE_PATH_SEG_REC_SET,
+                    Mode::Expr => EXPR_PATH_SEG_REC_SET,
+                };
+                x.err_recover("expected identifier", rec_set);
+                if empty {
+                    y.abandon(x);
+                    return;
                 }
             },
-            Mode::Expr => generic_args::opt_generic_arg_list(p, true),
-        }
+        };
+    }
+    y.complete(x, PATH_SEGMENT);
+}
+fn opt_path_type_args(x: &mut Parser<'_>, mode: Mode) {
+    match mode {
+        Mode::Use => {},
+        Mode::Type => {
+            if x.at(T![::]) && x.nth_at(2, T!['(']) {
+                x.bump(T![::]);
+            }
+            if x.at(T!['(']) {
+                params::param_list_fn_trait(x);
+                opt_ret_type(x);
+            } else {
+                opt_generic_args(x, false);
+            }
+        },
+        Mode::Expr => opt_generic_args(x, true),
     }
 }
+
+pub mod prefix {
+    use super::*;
+    pub fn vis(p: &mut Parser<'_>) {
+        opt_vis(p, false);
+    }
+    pub fn block(p: &mut Parser<'_>) {
+        exprs::block_expr(p);
+    }
+    pub fn stmt(p: &mut Parser<'_>) {
+        exprs::stmt(p, exprs::Semicolon::Forbidden);
+    }
+    pub fn pat(p: &mut Parser<'_>) {
+        patterns::pattern_single(p);
+    }
+    pub fn pat_top(p: &mut Parser<'_>) {
+        patterns::pattern_top(p);
+    }
+    pub fn ty(p: &mut Parser<'_>) {
+        types::type_(p);
+    }
+    pub fn expr(p: &mut Parser<'_>) {
+        exprs::expr(p);
+    }
+    pub fn path(p: &mut Parser<'_>) {
+        type_path(p);
+    }
+    pub fn item(p: &mut Parser<'_>) {
+        items::item_or_macro(p, true);
+    }
+    pub fn meta_item(p: &mut Parser<'_>) {
+        meta(p);
+    }
+}
+pub mod top {
+    use super::*;
+    pub fn source_file(p: &mut Parser<'_>) {
+        let m = p.start();
+        p.eat(SHEBANG);
+        items::mod_contents(p, false);
+        m.complete(p, SOURCE_FILE);
+    }
+    pub fn macro_stmts(p: &mut Parser<'_>) {
+        let m = p.start();
+        while !p.at(EOF) {
+            exprs::stmt(p, exprs::Semicolon::Optional);
+        }
+        m.complete(p, MACRO_STMTS);
+    }
+    pub fn macro_items(p: &mut Parser<'_>) {
+        let m = p.start();
+        items::mod_contents(p, false);
+        m.complete(p, MACRO_ITEMS);
+    }
+    pub fn pattern(p: &mut Parser<'_>) {
+        let m = p.start();
+        patterns::pattern_top(p);
+        if p.at(EOF) {
+            m.abandon(p);
+            return;
+        }
+        while !p.at(EOF) {
+            p.bump_any();
+        }
+        m.complete(p, ERROR);
+    }
+    pub fn type_(p: &mut Parser<'_>) {
+        let m = p.start();
+        types::type_(p);
+        if p.at(EOF) {
+            m.abandon(p);
+            return;
+        }
+        while !p.at(EOF) {
+            p.bump_any();
+        }
+        m.complete(p, ERROR);
+    }
+    pub fn expr(p: &mut Parser<'_>) {
+        let m = p.start();
+        exprs::expr(p);
+        if p.at(EOF) {
+            m.abandon(p);
+            return;
+        }
+        while !p.at(EOF) {
+            p.bump_any();
+        }
+        m.complete(p, ERROR);
+    }
+    pub fn meta_item(p: &mut Parser<'_>) {
+        let m = p.start();
+        meta(p);
+        if p.at(EOF) {
+            m.abandon(p);
+            return;
+        }
+        while !p.at(EOF) {
+            p.bump_any();
+        }
+        m.complete(p, ERROR);
+    }
+}
+
+mod exprs;
+mod items;
 mod patterns;
 mod types;
-pub mod entry {
-    use super::*;
-    pub mod prefix {
-        use super::*;
-        pub fn vis(p: &mut Parser<'_>) {
-            opt_visibility(p, false);
-        }
-        pub fn block(p: &mut Parser<'_>) {
-            expressions::block_expr(p);
-        }
-        pub fn stmt(p: &mut Parser<'_>) {
-            expressions::stmt(p, expressions::Semicolon::Forbidden);
-        }
-        pub fn pat(p: &mut Parser<'_>) {
-            patterns::pattern_single(p);
-        }
-        pub fn pat_top(p: &mut Parser<'_>) {
-            patterns::pattern_top(p);
-        }
-        pub fn ty(p: &mut Parser<'_>) {
-            types::type_(p);
-        }
-        pub fn expr(p: &mut Parser<'_>) {
-            expressions::expr(p);
-        }
-        pub fn path(p: &mut Parser<'_>) {
-            paths::type_path(p);
-        }
-        pub fn item(p: &mut Parser<'_>) {
-            items::item_or_macro(p, true);
-        }
-        pub fn meta_item(p: &mut Parser<'_>) {
-            attributes::meta(p);
-        }
-    }
-    pub mod top {
-        use super::*;
-        pub fn source_file(p: &mut Parser<'_>) {
-            let m = p.start();
-            p.eat(SHEBANG);
-            items::mod_contents(p, false);
-            m.complete(p, SOURCE_FILE);
-        }
-        pub fn macro_stmts(p: &mut Parser<'_>) {
-            let m = p.start();
-            while !p.at(EOF) {
-                expressions::stmt(p, expressions::Semicolon::Optional);
-            }
-            m.complete(p, MACRO_STMTS);
-        }
-        pub fn macro_items(p: &mut Parser<'_>) {
-            let m = p.start();
-            items::mod_contents(p, false);
-            m.complete(p, MACRO_ITEMS);
-        }
-        pub fn pattern(p: &mut Parser<'_>) {
-            let m = p.start();
-            patterns::pattern_top(p);
-            if p.at(EOF) {
-                m.abandon(p);
-                return;
-            }
-            while !p.at(EOF) {
-                p.bump_any();
-            }
-            m.complete(p, ERROR);
-        }
-        pub fn type_(p: &mut Parser<'_>) {
-            let m = p.start();
-            types::type_(p);
-            if p.at(EOF) {
-                m.abandon(p);
-                return;
-            }
-            while !p.at(EOF) {
-                p.bump_any();
-            }
-            m.complete(p, ERROR);
-        }
-        pub fn expr(p: &mut Parser<'_>) {
-            let m = p.start();
-            expressions::expr(p);
-            if p.at(EOF) {
-                m.abandon(p);
-                return;
-            }
-            while !p.at(EOF) {
-                p.bump_any();
-            }
-            m.complete(p, ERROR);
-        }
-        pub fn meta_item(p: &mut Parser<'_>) {
-            let m = p.start();
-            attributes::meta(p);
-            if p.at(EOF) {
-                m.abandon(p);
-                return;
-            }
-            while !p.at(EOF) {
-                p.bump_any();
-            }
-            m.complete(p, ERROR);
-        }
-    }
-}

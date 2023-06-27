@@ -1,21 +1,19 @@
 use super::*;
-pub const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
-    .union(paths::PATH_FIRST)
-    .union(TokenSet::new(&[
-        T![box],
-        T![ref],
-        T![mut],
-        T![const],
-        T!['('],
-        T!['['],
-        T![&],
-        T![_],
-        T![-],
-        T![.],
-    ]));
+pub const PATTERN_FIRST: TokenSet = exprs::LITERAL_FIRST.union(PATH_FIRST).union(TokenSet::new(&[
+    T![box],
+    T![ref],
+    T![mut],
+    T![const],
+    T!['('],
+    T!['['],
+    T![&],
+    T![_],
+    T![-],
+    T![.],
+]));
 const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
-const RANGE_PAT_END_FIRST: TokenSet = expressions::LITERAL_FIRST
-    .union(paths::PATH_FIRST)
+const RANGE_PAT_END_FIRST: TokenSet = exprs::LITERAL_FIRST
+    .union(PATH_FIRST)
     .union(TokenSet::new(&[T![-], T![const]]));
 pub fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
@@ -198,7 +196,7 @@ fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarke
         },
         // test type_path_in_pattern
         // fn main() { let <_>::Foo = (); }
-        _ if paths::is_path_start(p) => path_or_macro_pat(p),
+        _ if is_path_start(p) => path_or_macro_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
         T![_] => wildcard_pat(p),
         T![&] => ref_pat(p),
@@ -212,7 +210,7 @@ fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarke
     Some(m)
 }
 fn is_literal_pat_start(p: &Parser<'_>) -> bool {
-    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER) || p.at_ts(expressions::LITERAL_FIRST)
+    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER) || p.at_ts(exprs::LITERAL_FIRST)
 }
 // test literal_pattern
 // fn main() {
@@ -229,7 +227,7 @@ fn literal_pat(p: &mut Parser<'_>) -> CompletedMarker {
     if p.at(T![-]) {
         p.bump(T![-]);
     }
-    expressions::literal(p);
+    exprs::literal(p);
     m.complete(p, LITERAL_PAT)
 }
 // test path_part
@@ -240,9 +238,9 @@ fn literal_pat(p: &mut Parser<'_>) -> CompletedMarker {
 //     let Bar(..) = ();
 // }
 fn path_or_macro_pat(p: &mut Parser<'_>) -> CompletedMarker {
-    assert!(paths::is_path_start(p));
+    assert!(is_path_start(p));
     let m = p.start();
-    paths::expr_path(p);
+    expr_path(p);
     let kind = match p.current() {
         T!['('] => {
             tuple_pat_fields(p);
@@ -287,7 +285,7 @@ fn tuple_pat_fields(p: &mut Parser<'_>) {
 fn record_pat_field(p: &mut Parser<'_>) {
     match p.current() {
         IDENT | INT_NUMBER if p.nth(1) == T![:] => {
-            name_ref_or_index(p);
+            name_ref_or_idx(p);
             p.bump(T![:]);
             pattern(p);
         },
@@ -317,7 +315,7 @@ fn record_pat_field_list(p: &mut Parser<'_>) {
     p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         let m = p.start();
-        attributes::outer_attrs(p);
+        outer_attrs(p);
         match p.current() {
             // A trailing `..` is *not* treated as a REST_PAT.
             T![.] if p.at(T![..]) => {
@@ -325,7 +323,7 @@ fn record_pat_field_list(p: &mut Parser<'_>) {
                 m.complete(p, REST_PAT);
             },
             T!['{'] => {
-                error_block(p, "expected ident");
+                err_block(p, "expected ident");
                 m.abandon(p);
             },
             _ => {
@@ -484,6 +482,6 @@ fn const_block_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![const]));
     let m = p.start();
     p.bump(T![const]);
-    expressions::block_expr(p);
+    exprs::block_expr(p);
     m.complete(p, CONST_BLOCK_PAT)
 }

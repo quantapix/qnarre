@@ -1,5 +1,5 @@
 use super::*;
-pub const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
+pub const TYPE_FIRST: TokenSet = PATH_FIRST.union(TokenSet::new(&[
     T!['('],
     T!['['],
     T![<],
@@ -36,7 +36,7 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![impl] => impl_trait_type(p),
         T![dyn] => dyn_trait_type(p),
         T![<] => path_type_(p, allow_bounds),
-        _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
+        _ if is_path_start(p) => path_or_macro_type_(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
@@ -111,7 +111,7 @@ fn array_or_slice_type(p: &mut Parser<'_>) {
         T![;] => {
             p.bump(T![;]);
             let m = p.start();
-            expressions::expr(p);
+            exprs::expr(p);
             m.complete(p, CONST_ARG);
             p.expect(T![']']);
             ARRAY_TYPE
@@ -174,7 +174,7 @@ pub fn for_type(p: &mut Parser<'_>, allow_bounds: bool) {
     for_binder(p);
     match p.current() {
         T![fn] | T![unsafe] | T![extern] => {},
-        _ if paths::is_use_path_start(p) => {},
+        _ if is_use_path_start(p) => {},
         _ => {
             p.error("expected a function pointer or path");
         },
@@ -208,10 +208,10 @@ pub fn path_type(p: &mut Parser<'_>) {
     path_type_(p, true);
 }
 fn path_or_macro_type_(p: &mut Parser<'_>, allow_bounds: bool) {
-    assert!(paths::is_path_start(p));
+    assert!(is_path_start(p));
     let r = p.start();
     let m = p.start();
-    paths::type_path(p);
+    type_path(p);
     let kind = if p.at(T![!]) && !p.at(T![!=]) {
         items::macro_call_after_excl(p);
         m.complete(p, MACRO_CALL);
@@ -226,9 +226,9 @@ fn path_or_macro_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 pub fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
-    assert!(paths::is_path_start(p));
+    assert!(is_path_start(p));
     let m = p.start();
-    paths::type_path(p);
+    type_path(p);
     let path = m.complete(p, PATH_TYPE);
     if allow_bounds {
         opt_type_bounds_as_dyn_trait_type(p, path);

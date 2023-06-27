@@ -1,5 +1,4 @@
 use super::*;
-use crate::grammar::attributes::ATTRIBUTE_FIRST;
 
 mod atom {
     use super::*;
@@ -38,7 +37,7 @@ mod atom {
         Some(m.complete(p, LITERAL))
     }
     // E.g. for after the break in `if break {}`, this should not match
-    pub const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[
+    pub const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(PATH_FIRST).union(TokenSet::new(&[
         T!['('],
         T!['{'],
         T!['['],
@@ -68,7 +67,7 @@ mod atom {
         if let Some(m) = literal(p) {
             return Some((m, BlockLike::NotBlock));
         }
-        if paths::is_path_start(p) {
+        if is_path_start(p) {
             return Some(path_expr(p, r));
         }
         let la = p.nth(1);
@@ -402,10 +401,10 @@ mod atom {
         //         _ => (),
         //     }
         // }
-        attributes::inner_attrs(p);
+        inner_attrs(p);
         while !p.at(EOF) && !p.at(T!['}']) {
             if p.at(T!['{']) {
-                error_block(p, "expected match arm");
+                err_block(p, "expected match arm");
                 continue;
             }
             match_arm(p);
@@ -438,7 +437,7 @@ mod atom {
         //         _ => (),
         //     }
         // }
-        attributes::outer_attrs(p);
+        outer_attrs(p);
         patterns::pattern_top_r(p, TokenSet::EMPTY);
         if p.at(T![if]) {
             match_guard(p);
@@ -685,7 +684,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     //     #[C] #[D] {}
     //     #[D] return ();
     // }
-    attributes::outer_attrs(p);
+    outer_attrs(p);
     if p.at(T![let]) {
         let_stmt(p, m, semicolon);
         return;
@@ -748,7 +747,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
         if p.eat(T![=]) {
             // test let_stmt_init
             // fn f() { let x = 92; }
-            expr_after_eq = expressions::expr(p);
+            expr_after_eq = exprs::expr(p);
         }
         if p.at(T![else]) {
             // test_err let_else_right_curly_brace
@@ -778,7 +777,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     }
 }
 pub fn expr_block_contents(p: &mut Parser<'_>) {
-    attributes::inner_attrs(p);
+    inner_attrs(p);
     while !p.at(EOF) && !p.at(T!['}']) {
         // test nocontentexpr
         // fn foo(){
@@ -853,7 +852,7 @@ fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
 fn expr_bp(p: &mut Parser<'_>, m: Option<Marker>, mut r: Restrictions, bp: u8) -> Option<(CompletedMarker, BlockLike)> {
     let m = m.unwrap_or_else(|| {
         let m = p.start();
-        attributes::outer_attrs(p);
+        outer_attrs(p);
         m
     });
     if !p.at_ts(EXPR_FIRST) {
@@ -1108,7 +1107,7 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(p: &mut Parser<'_>, lhs: Complet
         p.bump(T![.]);
     }
     name_ref(p);
-    generic_args::opt_generic_arg_list(p, true);
+    opt_generic_args(p, true);
     if p.at(T!['(']) {
         arg_list(p);
     }
@@ -1134,7 +1133,7 @@ fn field_expr<const FLOAT_RECOVERY: bool>(
         p.bump(T![.]);
     }
     if p.at(IDENT) || p.at(INT_NUMBER) {
-        name_ref_or_index(p);
+        name_ref_or_idx(p);
     } else if p.at(FLOAT_NUMBER) {
         return match p.split_float(m) {
             (true, m) => {
@@ -1192,7 +1191,7 @@ fn arg_list(p: &mut Parser<'_>) {
         T!['('],
         T![')'],
         T![,],
-        EXPR_FIRST.union(ATTRIBUTE_FIRST),
+        EXPR_FIRST.union(ATTR_FIRST),
         |p: &mut Parser<'_>| expr(p).is_some(),
     );
     m.complete(p, ARG_LIST);
@@ -1205,9 +1204,9 @@ fn arg_list(p: &mut Parser<'_>) {
 //     let _ = format!();
 // }
 fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike) {
-    assert!(paths::is_path_start(p));
+    assert!(is_path_start(p));
     let m = p.start();
-    paths::expr_path(p);
+    expr_path(p);
     match p.current() {
         T!['{'] if !r.forbid_structs => {
             record_expr_field_list(p);
@@ -1239,7 +1238,7 @@ pub fn record_expr_field_list(p: &mut Parser<'_>) {
         // fn main() {
         //     S { #[cfg(test)] field: 1 }
         // }
-        attributes::outer_attrs(p);
+        outer_attrs(p);
         match p.current() {
             IDENT | INT_NUMBER => {
                 // test_err record_literal_missing_ellipsis_recovery
@@ -1256,7 +1255,7 @@ pub fn record_expr_field_list(p: &mut Parser<'_>) {
                     //     S { field ..S::default() }
                     // }
                     if p.nth_at(1, T![:]) || p.nth_at(1, T![..]) {
-                        name_ref_or_index(p);
+                        name_ref_or_idx(p);
                         p.expect(T![:]);
                     }
                     expr(p);
@@ -1276,7 +1275,7 @@ pub fn record_expr_field_list(p: &mut Parser<'_>) {
                 }
             },
             T!['{'] => {
-                error_block(p, "expected a field");
+                err_block(p, "expected a field");
                 m.abandon(p);
             },
             _ => {

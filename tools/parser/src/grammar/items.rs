@@ -1,6 +1,6 @@
 pub use self::{
     adt::{record_field_list, variant_list},
-    expressions::{match_arm_list, record_expr_field_list},
+    exprs::{match_arm_list, record_expr_field_list},
     traits::assoc_item_list,
     use_item::use_tree_list,
 };
@@ -8,7 +8,6 @@ use super::*;
 
 mod adt {
     use super::*;
-    use crate::grammar::attributes::ATTRIBUTE_FIRST;
     pub fn strukt(p: &mut Parser<'_>, m: Marker) {
         p.bump(T![struct]);
         struct_or_union(p, m, true);
@@ -67,7 +66,7 @@ mod adt {
         p.bump(T!['{']);
         while !p.at(EOF) && !p.at(T!['}']) {
             if p.at(T!['{']) {
-                error_block(p, "expected enum variant");
+                err_block(p, "expected enum variant");
                 continue;
             }
             variant(p);
@@ -79,7 +78,7 @@ mod adt {
         m.complete(p, VARIANT_LIST);
         fn variant(p: &mut Parser<'_>) {
             let m = p.start();
-            attributes::outer_attrs(p);
+            outer_attrs(p);
             if p.at(IDENT) {
                 name(p);
                 match p.current() {
@@ -88,7 +87,7 @@ mod adt {
                     _ => (),
                 }
                 if p.eat(T![=]) {
-                    expressions::expr(p);
+                    exprs::expr(p);
                 }
                 m.complete(p, VARIANT);
             } else {
@@ -103,7 +102,7 @@ mod adt {
         p.bump(T!['{']);
         while !p.at(T!['}']) && !p.at(EOF) {
             if p.at(T!['{']) {
-                error_block(p, "expected field");
+                err_block(p, "expected field");
                 continue;
             }
             record_field(p);
@@ -115,8 +114,8 @@ mod adt {
         m.complete(p, RECORD_FIELD_LIST);
         fn record_field(p: &mut Parser<'_>) {
             let m = p.start();
-            attributes::outer_attrs(p);
-            opt_visibility(p, false);
+            outer_attrs(p);
+            opt_vis(p, false);
             if p.at(IDENT) {
                 name(p);
                 p.expect(T![:]);
@@ -128,14 +127,14 @@ mod adt {
             }
         }
     }
-    const TUPLE_FIELD_FIRST: TokenSet = types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
+    const TUPLE_FIELD_FIRST: TokenSet = types::TYPE_FIRST.union(ATTR_FIRST).union(VIS_FIRST);
     fn tuple_field_list(p: &mut Parser<'_>) {
         assert!(p.at(T!['(']));
         let m = p.start();
         delimited(p, T!['('], T![')'], T![,], TUPLE_FIELD_FIRST, |p| {
             let m = p.start();
-            attributes::outer_attrs(p);
-            let has_vis = opt_visibility(p, true);
+            outer_attrs(p);
+            let has_vis = opt_vis(p, true);
             if !p.at_ts(types::TYPE_FIRST) {
                 p.error("expected a type");
                 if has_vis {
@@ -174,7 +173,7 @@ mod consts {
             p.error("missing type for `const` or `static`");
         }
         if p.eat(T![=]) {
-            expressions::expr(p);
+            exprs::expr(p);
         }
         p.expect(T![;]);
         m.complete(p, if is_const { CONST } else { STATIC });
@@ -227,10 +226,10 @@ mod traits {
         assert!(p.at(T!['{']));
         let m = p.start();
         p.bump(T!['{']);
-        attributes::inner_attrs(p);
+        inner_attrs(p);
         while !p.at(EOF) && !p.at(T!['}']) {
             if p.at(T!['{']) {
-                error_block(p, "expected an item");
+                err_block(p, "expected an item");
                 continue;
             }
             item_or_macro(p, true);
@@ -274,8 +273,8 @@ mod use_item {
                 p.bump(T![::]);
                 use_tree_list(p);
             },
-            _ if paths::is_use_path_start(p) => {
-                paths::use_path(p);
+            _ if is_use_path_start(p) => {
+                use_path(p);
                 match p.current() {
                     T![as] => opt_rename(p),
                     T![:] if p.at(T![::]) => {
@@ -318,7 +317,7 @@ mod use_item {
 }
 
 pub fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
-    attributes::inner_attrs(p);
+    inner_attrs(p);
     while !(p.at(EOF) || (p.at(T!['}']) && stop_on_r_curly)) {
         item_or_macro(p, stop_on_r_curly);
     }
@@ -341,7 +340,7 @@ pub const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
 ]);
 pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     let m = p.start();
-    attributes::outer_attrs(p);
+    outer_attrs(p);
     let m = match opt_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
@@ -354,7 +353,7 @@ pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
         },
         Err(m) => m,
     };
-    if paths::is_use_path_start(p) {
+    if is_use_path_start(p) {
         match macro_call(p) {
             BlockLike::Block => (),
             BlockLike::NotBlock => {
@@ -366,7 +365,7 @@ pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     }
     m.abandon(p);
     match p.current() {
-        T!['{'] => error_block(p, "expected an item"),
+        T!['{'] => err_block(p, "expected an item"),
         T!['}'] if !stop_on_r_curly => {
             let e = p.start();
             p.error("unmatched `}`");
@@ -378,7 +377,7 @@ pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     }
 }
 pub fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
-    let has_visibility = opt_visibility(p, false);
+    let has_visibility = opt_vis(p, false);
     let m = match opt_item_without_modifiers(p, m) {
         Ok(()) => return Ok(()),
         Err(m) => m,
@@ -590,13 +589,13 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     if p.at(T![;]) {
         p.bump(T![;]);
     } else {
-        expressions::block_expr(p);
+        exprs::block_expr(p);
     }
     m.complete(p, FN);
 }
 fn macro_call(p: &mut Parser<'_>) -> BlockLike {
-    assert!(paths::is_use_path_start(p));
-    paths::use_path(p);
+    assert!(is_use_path_start(p));
+    use_path(p);
     macro_call_after_excl(p)
 }
 pub fn macro_call_after_excl(p: &mut Parser<'_>) -> BlockLike {
