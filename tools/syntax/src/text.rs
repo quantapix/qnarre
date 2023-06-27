@@ -1,3 +1,5 @@
+// https://github.com/rust-analyzer/text-size.git (e4d0f2b)
+
 use cmp::Ordering;
 use std::{
     cmp,
