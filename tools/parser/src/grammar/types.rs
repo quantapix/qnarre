@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
+pub const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
     T!['('],
     T!['['],
     T![<],
@@ -18,7 +18,7 @@ pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
     LIFETIME_IDENT,
 ]));
 
-pub(super) const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
+pub const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![')'],
     T![>],
     T![,],
@@ -27,11 +27,11 @@ pub(super) const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![pub],
 ]);
 
-pub(crate) fn type_(p: &mut Parser<'_>) {
+pub fn type_(p: &mut Parser<'_>) {
     type_with_bounds_cond(p, true);
 }
 
-pub(super) fn type_no_bounds(p: &mut Parser<'_>) {
+pub fn type_no_bounds(p: &mut Parser<'_>) {
     type_with_bounds_cond(p, false);
 }
 
@@ -57,7 +57,7 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 
-pub(super) fn ascription(p: &mut Parser<'_>) {
+pub fn ascription(p: &mut Parser<'_>) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
     if p.at(T![=]) {
@@ -223,7 +223,7 @@ fn fn_ptr_type(p: &mut Parser<'_>) {
     m.complete(p, FN_PTR_TYPE);
 }
 
-pub(super) fn for_binder(p: &mut Parser<'_>) {
+pub fn for_binder(p: &mut Parser<'_>) {
     assert!(p.at(T![for]));
     p.bump(T![for]);
     if p.at(T![<]) {
@@ -237,7 +237,7 @@ pub(super) fn for_binder(p: &mut Parser<'_>) {
 // type A = for<'a> fn() -> ();
 // type B = for<'a> unsafe extern "C" fn(&'a ()) -> ();
 // type Obj = for<'a> PartialEq<&'a i32>;
-pub(super) fn for_type(p: &mut Parser<'_>, allow_bounds: bool) {
+pub fn for_type(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(p.at(T![for]));
     let m = p.start();
     for_binder(p);
@@ -293,7 +293,7 @@ fn bare_dyn_trait_type(p: &mut Parser<'_>) {
 // type B = ::Foo;
 // type C = self::Foo;
 // type D = super::Foo;
-pub(super) fn path_type(p: &mut Parser<'_>) {
+pub fn path_type(p: &mut Parser<'_>) {
     path_type_(p, true);
 }
 
@@ -323,7 +323,7 @@ fn path_or_macro_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 
-pub(super) fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
+pub fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
@@ -337,7 +337,7 @@ pub(super) fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 
-pub(super) fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser<'_>, type_marker: CompletedMarker) -> CompletedMarker {
+pub fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser<'_>, type_marker: CompletedMarker) -> CompletedMarker {
     assert!(matches!(
         type_marker.kind(),
         SyntaxKind::PATH_TYPE | SyntaxKind::FOR_TYPE | SyntaxKind::MACRO_TYPE

@@ -2,7 +2,7 @@ use super::*;
 
 // test trait_item
 // trait T { fn new() -> Self; }
-pub(super) fn trait_(p: &mut Parser<'_>, m: Marker) {
+pub fn trait_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![trait]);
     name_r(p, ITEM_RECOVERY_SET);
 
@@ -44,7 +44,7 @@ pub(super) fn trait_(p: &mut Parser<'_>, m: Marker) {
 
 // test impl_item
 // impl S {}
-pub(super) fn impl_(p: &mut Parser<'_>, m: Marker) {
+pub fn impl_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![impl]);
     if p.at(T![<]) && not_a_qualified_path(p) {
         generic_params::opt_generic_param_list(p);
@@ -80,7 +80,7 @@ pub(super) fn impl_(p: &mut Parser<'_>, m: Marker) {
 //     fn foo() {}
 //     fn bar(&self) {}
 // }
-pub(crate) fn assoc_item_list(p: &mut Parser<'_>) {
+pub fn assoc_item_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
 
     let m = p.start();
@@ -131,7 +131,7 @@ fn not_a_qualified_path(p: &Parser<'_>) -> bool {
 // impl Trait1 for T {}
 // impl impl NotType {}
 // impl Trait2 for impl NotType {}
-pub(crate) fn impl_type(p: &mut Parser<'_>) {
+pub fn impl_type(p: &mut Parser<'_>) {
     if p.at(T![impl]) {
         p.error("expected trait or type");
         return;

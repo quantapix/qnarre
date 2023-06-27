@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
+pub const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
     .union(paths::PATH_FIRST)
     .union(TokenSet::new(&[
         T![box],
@@ -21,19 +21,19 @@ const RANGE_PAT_END_FIRST: TokenSet = expressions::LITERAL_FIRST
     .union(paths::PATH_FIRST)
     .union(TokenSet::new(&[T![-], T![const]]));
 
-pub(crate) fn pattern(p: &mut Parser<'_>) {
+pub fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
 }
 
-pub(super) fn pattern_top(p: &mut Parser<'_>) {
+pub fn pattern_top(p: &mut Parser<'_>) {
     pattern_top_r(p, PAT_RECOVERY_SET);
 }
 
-pub(crate) fn pattern_single(p: &mut Parser<'_>) {
+pub fn pattern_single(p: &mut Parser<'_>) {
     pattern_single_r(p, PAT_RECOVERY_SET);
 }
 
-pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
+pub fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     p.eat(T![|]);
     pattern_r(p, recovery_set);
 }

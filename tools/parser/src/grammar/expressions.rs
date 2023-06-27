@@ -4,11 +4,11 @@ use crate::grammar::attributes::ATTRIBUTE_FIRST;
 
 use super::*;
 
-pub(crate) use atom::{block_expr, match_arm_list};
-pub(super) use atom::{literal, LITERAL_FIRST};
+pub use atom::{block_expr, match_arm_list};
+pub use atom::{literal, LITERAL_FIRST};
 
 #[derive(PartialEq, Eq)]
-pub(super) enum Semicolon {
+pub enum Semicolon {
     Required,
     Optional,
     Forbidden,
@@ -16,7 +16,7 @@ pub(super) enum Semicolon {
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub(super) fn expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub fn expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let r = Restrictions {
         forbid_structs: false,
         prefer_stmt: false,
@@ -24,7 +24,7 @@ pub(super) fn expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     expr_bp(p, None, r, 1).map(|(m, _)| m)
 }
 
-pub(super) fn expr_stmt(p: &mut Parser<'_>, m: Option<Marker>) -> Option<(CompletedMarker, BlockLike)> {
+pub fn expr_stmt(p: &mut Parser<'_>, m: Option<Marker>) -> Option<(CompletedMarker, BlockLike)> {
     let r = Restrictions {
         forbid_structs: false,
         prefer_stmt: true,
@@ -48,7 +48,7 @@ fn expr_let(p: &mut Parser<'_>) {
     expr_bp(p, None, r, 5);
 }
 
-pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
+pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     if p.eat(T![;]) {
         return;
     }
@@ -163,7 +163,7 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     }
 }
 
-pub(super) fn expr_block_contents(p: &mut Parser<'_>) {
+pub fn expr_block_contents(p: &mut Parser<'_>) {
     attributes::inner_attrs(p);
 
     while !p.at(EOF) && !p.at(T!['}']) {
@@ -643,7 +643,7 @@ fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike
 //     S { x: ::default() };
 //     TupleStruct { 0: 1 };
 // }
-pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
+pub fn record_expr_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);

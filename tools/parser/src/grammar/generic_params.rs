@@ -2,7 +2,7 @@ use crate::grammar::attributes::ATTRIBUTE_FIRST;
 
 use super::*;
 
-pub(super) fn opt_generic_param_list(p: &mut Parser<'_>) {
+pub fn opt_generic_param_list(p: &mut Parser<'_>) {
     if p.at(T![<]) {
         generic_param_list(p);
     }
@@ -13,13 +13,20 @@ pub(super) fn opt_generic_param_list(p: &mut Parser<'_>) {
 fn generic_param_list(p: &mut Parser<'_>) {
     assert!(p.at(T![<]));
     let m = p.start();
-    delimited(p, T![<], T![>], T![,], GENERIC_PARAM_FIRST.union(ATTRIBUTE_FIRST), |p| {
-        // test generic_param_attribute
-        // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
-        let m = p.start();
-        attributes::outer_attrs(p);
-        generic_param(p, m)
-    });
+    delimited(
+        p,
+        T![<],
+        T![>],
+        T![,],
+        GENERIC_PARAM_FIRST.union(ATTRIBUTE_FIRST),
+        |p| {
+            // test generic_param_attribute
+            // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
+            let m = p.start();
+            attributes::outer_attrs(p);
+            generic_param(p, m)
+        },
+    );
 
     m.complete(p, GENERIC_PARAM_LIST);
 }
@@ -35,7 +42,7 @@ fn generic_param(p: &mut Parser<'_>, m: Marker) -> bool {
             m.abandon(p);
             p.err_and_bump("expected generic parameter");
             return false;
-        }
+        },
     }
     true
 }
@@ -108,18 +115,18 @@ fn lifetime_bounds(p: &mut Parser<'_>) {
 
 // test type_param_bounds
 // struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;
-pub(super) fn bounds(p: &mut Parser<'_>) {
+pub fn bounds(p: &mut Parser<'_>) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
     bounds_without_colon(p);
 }
 
-pub(super) fn bounds_without_colon(p: &mut Parser<'_>) {
+pub fn bounds_without_colon(p: &mut Parser<'_>) {
     let m = p.start();
     bounds_without_colon_m(p, m);
 }
 
-pub(super) fn bounds_without_colon_m(p: &mut Parser<'_>, marker: Marker) -> CompletedMarker {
+pub fn bounds_without_colon_m(p: &mut Parser<'_>, marker: Marker) -> CompletedMarker {
     while type_bound(p) {
         if !p.eat(T![+]) {
             break;
@@ -139,14 +146,14 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
             // fn f<T>() where T: ?for<> Sized {}
             p.bump_any();
             types::for_type(p, false)
-        }
+        },
         current => {
             match current {
                 T![?] => p.bump_any(),
                 T![~] => {
                     p.bump_any();
                     p.expect(T![const]);
-                }
+                },
                 _ => (),
             }
             if paths::is_use_path_start(p) {
@@ -155,7 +162,7 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                 m.abandon(p);
                 return false;
             }
-        }
+        },
     }
     if has_paren {
         p.expect(T![')']);
@@ -173,7 +180,7 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
 //    Iterator::Item: 'a,
 //    <T as Iterator>::Item: 'a
 // {}
-pub(super) fn opt_where_clause(p: &mut Parser<'_>) {
+pub fn opt_where_clause(p: &mut Parser<'_>) {
     if !p.at(T![where]) {
         return;
     }
@@ -216,10 +223,10 @@ fn where_predicate(p: &mut Parser<'_>) {
             } else {
                 p.error("expected colon");
             }
-        }
+        },
         T![impl] => {
             p.error("expected lifetime or type");
-        }
+        },
         _ => {
             if p.at(T![for]) {
                 // test where_pred_for
@@ -237,7 +244,7 @@ fn where_predicate(p: &mut Parser<'_>) {
             } else {
                 p.error("expected colon");
             }
-        }
+        },
     }
     m.complete(p, WHERE_PRED);
 }

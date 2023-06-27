@@ -2,7 +2,7 @@ use super::*;
 
 // test use_item
 // use std::collections;
-pub(super) fn use_(p: &mut Parser<'_>, m: Marker) {
+pub fn use_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![use]);
     use_tree(p, true);
     p.expect(T![;]);
@@ -24,12 +24,12 @@ fn use_tree(p: &mut Parser<'_>, top_level: bool) {
         T![:] if p.at(T![::]) && p.nth(2) == T![*] => {
             p.bump(T![::]);
             p.bump(T![*]);
-        }
+        },
         T!['{'] => use_tree_list(p),
         T![:] if p.at(T![::]) && p.nth(2) == T!['{'] => {
             p.bump(T![::]);
             use_tree_list(p);
-        }
+        },
 
         // test use_tree_path
         // use ::std;
@@ -56,10 +56,10 @@ fn use_tree(p: &mut Parser<'_>, top_level: bool) {
                         T!['{'] => use_tree_list(p),
                         _ => p.error("expected `{` or `*`"),
                     }
-                }
+                },
                 _ => (),
             }
-        }
+        },
         _ => {
             m.abandon(p);
             let msg = "expected one of `*`, `::`, `{`, `self`, `super` or an identifier";
@@ -71,14 +71,14 @@ fn use_tree(p: &mut Parser<'_>, top_level: bool) {
                 p.err_and_bump(msg);
             }
             return;
-        }
+        },
     }
     m.complete(p, USE_TREE);
 }
 
 // test use_tree_list
 // use {a, b, c};
-pub(crate) fn use_tree_list(p: &mut Parser<'_>) {
+pub fn use_tree_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);

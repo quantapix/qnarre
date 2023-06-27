@@ -2,7 +2,7 @@ use crate::{LexedStr, PrefixEntryPoint, Step};
 
 #[test]
 fn vis() {
-    check(PrefixEntryPoint::Vis, "pub(crate) fn foo() {}", "pub(crate)");
+    check(PrefixEntryPoint::Vis, "pub fn foo() {}", "pub(crate)");
     check(PrefixEntryPoint::Vis, "fn foo() {}", "");
     check(PrefixEntryPoint::Vis, "pub(fn foo() {}", "pub");
     check(PrefixEntryPoint::Vis, "pub(crate fn foo() {}", "pub(crate");
@@ -69,7 +69,11 @@ fn path() {
 fn item() {
     // FIXME: This shouldn't consume the semicolon.
     check(PrefixEntryPoint::Item, "fn foo() {};", "fn foo() {};");
-    check(PrefixEntryPoint::Item, "#[attr] pub struct S {} 92", "#[attr] pub struct S {}");
+    check(
+        PrefixEntryPoint::Item,
+        "#[attr] pub struct S {} 92",
+        "#[attr] pub struct S {}",
+    );
     check(PrefixEntryPoint::Item, "item!{}?", "item!{}");
     check(PrefixEntryPoint::Item, "????", "?");
 }
@@ -77,7 +81,11 @@ fn item() {
 #[test]
 fn meta_item() {
     check(PrefixEntryPoint::MetaItem, "attr, ", "attr");
-    check(PrefixEntryPoint::MetaItem, "attr(some token {stream});", "attr(some token {stream})");
+    check(
+        PrefixEntryPoint::MetaItem,
+        "attr(some token {stream});",
+        "attr(some token {stream})",
+    );
     check(PrefixEntryPoint::MetaItem, "path::attr = 2 * 2!", "path::attr = 2 * 2");
 }
 

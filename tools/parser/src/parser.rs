@@ -10,7 +10,7 @@ use crate::{
     TokenSet, T,
 };
 
-pub(crate) struct Parser<'t> {
+pub struct Parser<'t> {
     inp: &'t Input,
     pos: usize,
     events: Vec<Event>,
@@ -20,7 +20,7 @@ pub(crate) struct Parser<'t> {
 static PARSER_STEP_LIMIT: Limit = Limit::new(15_000_000);
 
 impl<'t> Parser<'t> {
-    pub(super) fn new(inp: &'t Input) -> Parser<'t> {
+    pub fn new(inp: &'t Input) -> Parser<'t> {
         Parser {
             inp,
             pos: 0,
@@ -29,15 +29,15 @@ impl<'t> Parser<'t> {
         }
     }
 
-    pub(crate) fn finish(self) -> Vec<Event> {
+    pub fn finish(self) -> Vec<Event> {
         self.events
     }
 
-    pub(crate) fn current(&self) -> SyntaxKind {
+    pub fn current(&self) -> SyntaxKind {
         self.nth(0)
     }
 
-    pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
+    pub fn nth(&self, n: usize) -> SyntaxKind {
         assert!(n <= 3);
 
         let steps = self.steps.get();
@@ -50,11 +50,11 @@ impl<'t> Parser<'t> {
         self.inp.kind(self.pos + n)
     }
 
-    pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
+    pub fn at(&self, kind: SyntaxKind) -> bool {
         self.nth_at(0, kind)
     }
 
-    pub(crate) fn nth_at(&self, n: usize, kind: SyntaxKind) -> bool {
+    pub fn nth_at(&self, n: usize, kind: SyntaxKind) -> bool {
         match kind {
             T![-=] => self.at_composite2(n, T![-], T![=]),
             T![->] => self.at_composite2(n, T![-], T![>]),
@@ -86,7 +86,7 @@ impl<'t> Parser<'t> {
         }
     }
 
-    pub(crate) fn eat(&mut self, kind: SyntaxKind) -> bool {
+    pub fn eat(&mut self, kind: SyntaxKind) -> bool {
         if !self.at(kind) {
             return false;
         }
@@ -131,29 +131,29 @@ impl<'t> Parser<'t> {
             && self.inp.is_joint(self.pos + n + 1)
     }
 
-    pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
+    pub fn at_ts(&self, kinds: TokenSet) -> bool {
         kinds.contains(self.current())
     }
 
-    pub(crate) fn at_contextual_kw(&self, kw: SyntaxKind) -> bool {
+    pub fn at_contextual_kw(&self, kw: SyntaxKind) -> bool {
         self.inp.contextual_kind(self.pos) == kw
     }
 
-    pub(crate) fn nth_at_contextual_kw(&self, n: usize, kw: SyntaxKind) -> bool {
+    pub fn nth_at_contextual_kw(&self, n: usize, kw: SyntaxKind) -> bool {
         self.inp.contextual_kind(self.pos + n) == kw
     }
 
-    pub(crate) fn start(&mut self) -> Marker {
+    pub fn start(&mut self) -> Marker {
         let pos = self.events.len() as u32;
         self.push_event(Event::tombstone());
         Marker::new(pos)
     }
 
-    pub(crate) fn bump(&mut self, kind: SyntaxKind) {
+    pub fn bump(&mut self, kind: SyntaxKind) {
         assert!(self.eat(kind));
     }
 
-    pub(crate) fn bump_any(&mut self) {
+    pub fn bump_any(&mut self) {
         let kind = self.nth(0);
         if kind == EOF {
             return;
@@ -161,7 +161,7 @@ impl<'t> Parser<'t> {
         self.do_bump(kind, 1);
     }
 
-    pub(crate) fn split_float(&mut self, mut marker: Marker) -> (bool, Marker) {
+    pub fn split_float(&mut self, mut marker: Marker) -> (bool, Marker) {
         assert!(self.at(SyntaxKind::FLOAT_NUMBER));
         // we have parse `<something>.`
         // `<something>`.0.1
@@ -189,7 +189,7 @@ impl<'t> Parser<'t> {
         (ends_in_dot, marker)
     }
 
-    pub(crate) fn bump_remap(&mut self, kind: SyntaxKind) {
+    pub fn bump_remap(&mut self, kind: SyntaxKind) {
         if self.nth(0) == EOF {
             // FIXME: panic!?
             return;
@@ -197,12 +197,12 @@ impl<'t> Parser<'t> {
         self.do_bump(kind, 1);
     }
 
-    pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
+    pub fn error<T: Into<String>>(&mut self, message: T) {
         let msg = message.into();
         self.push_event(Event::Error { msg });
     }
 
-    pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
+    pub fn expect(&mut self, kind: SyntaxKind) -> bool {
         if self.eat(kind) {
             return true;
         }
@@ -210,11 +210,11 @@ impl<'t> Parser<'t> {
         false
     }
 
-    pub(crate) fn err_and_bump(&mut self, message: &str) {
+    pub fn err_and_bump(&mut self, message: &str) {
         self.err_recover(message, TokenSet::EMPTY);
     }
 
-    pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
+    pub fn err_recover(&mut self, message: &str, recovery: TokenSet) {
         match self.current() {
             T!['{'] | T!['}'] => {
                 self.error(message);
@@ -245,7 +245,7 @@ impl<'t> Parser<'t> {
     }
 }
 
-pub(crate) struct Marker {
+pub struct Marker {
     pos: u32,
     bomb: DropBomb,
 }
@@ -258,7 +258,7 @@ impl Marker {
         }
     }
 
-    pub(crate) fn complete(mut self, p: &mut Parser<'_>, kind: SyntaxKind) -> CompletedMarker {
+    pub fn complete(mut self, p: &mut Parser<'_>, kind: SyntaxKind) -> CompletedMarker {
         self.bomb.defuse();
         let idx = self.pos as usize;
         match &mut p.events[idx] {
@@ -271,7 +271,7 @@ impl Marker {
         CompletedMarker::new(self.pos, kind)
     }
 
-    pub(crate) fn abandon(mut self, p: &mut Parser<'_>) {
+    pub fn abandon(mut self, p: &mut Parser<'_>) {
         self.bomb.defuse();
         let idx = self.pos as usize;
         if idx == p.events.len() - 1 {
@@ -286,7 +286,7 @@ impl Marker {
     }
 }
 
-pub(crate) struct CompletedMarker {
+pub struct CompletedMarker {
     pos: u32,
     kind: SyntaxKind,
 }
@@ -296,7 +296,7 @@ impl CompletedMarker {
         CompletedMarker { pos, kind }
     }
 
-    pub(crate) fn precede(self, p: &mut Parser<'_>) -> Marker {
+    pub fn precede(self, p: &mut Parser<'_>) -> Marker {
         let new_pos = p.start();
         let idx = self.pos as usize;
         match &mut p.events[idx] {
@@ -308,7 +308,7 @@ impl CompletedMarker {
         new_pos
     }
 
-    pub(crate) fn extend_to(self, p: &mut Parser<'_>, mut m: Marker) -> CompletedMarker {
+    pub fn extend_to(self, p: &mut Parser<'_>, mut m: Marker) -> CompletedMarker {
         m.bomb.defuse();
         let idx = m.pos as usize;
         match &mut p.events[idx] {
@@ -320,7 +320,7 @@ impl CompletedMarker {
         self
     }
 
-    pub(crate) fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> SyntaxKind {
         self.kind
     }
 }

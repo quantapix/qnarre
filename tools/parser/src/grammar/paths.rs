@@ -1,13 +1,12 @@
 use super::*;
 
-pub(super) const PATH_FIRST: TokenSet =
-    TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
+pub const PATH_FIRST: TokenSet = TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
 
-pub(super) fn is_path_start(p: &Parser<'_>) -> bool {
+pub fn is_path_start(p: &Parser<'_>) -> bool {
     is_use_path_start(p) || p.at(T![<]) || p.at(T![Self])
 }
 
-pub(super) fn is_use_path_start(p: &Parser<'_>) -> bool {
+pub fn is_use_path_start(p: &Parser<'_>) -> bool {
     match p.current() {
         IDENT | T![self] | T![super] | T![crate] => true,
         T![:] if p.at(T![::]) => true,
@@ -15,22 +14,19 @@ pub(super) fn is_use_path_start(p: &Parser<'_>) -> bool {
     }
 }
 
-pub(super) fn use_path(p: &mut Parser<'_>) {
+pub fn use_path(p: &mut Parser<'_>) {
     path(p, Mode::Use);
 }
 
-pub(crate) fn type_path(p: &mut Parser<'_>) {
+pub fn type_path(p: &mut Parser<'_>) {
     path(p, Mode::Type);
 }
 
-pub(super) fn expr_path(p: &mut Parser<'_>) {
+pub fn expr_path(p: &mut Parser<'_>) {
     path(p, Mode::Expr);
 }
 
-pub(crate) fn type_path_for_qualifier(
-    p: &mut Parser<'_>,
-    qual: CompletedMarker,
-) -> CompletedMarker {
+pub fn type_path_for_qualifier(p: &mut Parser<'_>, qual: CompletedMarker) -> CompletedMarker {
     path_for_qualifier(p, Mode::Type, qual)
 }
 
@@ -48,11 +44,7 @@ fn path(p: &mut Parser<'_>, mode: Mode) {
     path_for_qualifier(p, mode, qual);
 }
 
-fn path_for_qualifier(
-    p: &mut Parser<'_>,
-    mode: Mode,
-    mut qual: CompletedMarker,
-) -> CompletedMarker {
+fn path_for_qualifier(p: &mut Parser<'_>, mode: Mode, mut qual: CompletedMarker) -> CompletedMarker {
     loop {
         let use_tree = mode == Mode::Use && matches!(p.nth(2), T![*] | T!['{']);
         if p.at(T![::]) && !use_tree {
@@ -103,14 +95,14 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
             IDENT => {
                 name_ref(p);
                 opt_path_type_args(p, mode);
-            }
+            },
             // test crate_path
             // use crate::foo;
             T![self] | T![super] | T![crate] | T![Self] => {
                 let m = p.start();
                 p.bump_any();
                 m.complete(p, NAME_REF);
-            }
+            },
             _ => {
                 let recover_set = match mode {
                     Mode::Use => items::ITEM_RECOVERY_SET,
@@ -124,7 +116,7 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
                     m.abandon(p);
                     return;
                 }
-            }
+            },
         };
     }
     m.complete(p, PATH_SEGMENT);
@@ -132,7 +124,7 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
 
 fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
     match mode {
-        Mode::Use => {}
+        Mode::Use => {},
         Mode::Type => {
             // test typepathfn_with_coloncolon
             // type F = Start::(Middle) -> (Middle)::End;
@@ -148,7 +140,7 @@ fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
             } else {
                 generic_args::opt_generic_arg_list(p, false);
             }
-        }
+        },
         Mode::Expr => generic_args::opt_generic_arg_list(p, true),
     }
 }

@@ -1,14 +1,14 @@
 use super::*;
 
-pub(super) const ATTRIBUTE_FIRST: TokenSet = TokenSet::new(&[T![#]]);
+pub const ATTRIBUTE_FIRST: TokenSet = TokenSet::new(&[T![#]]);
 
-pub(super) fn inner_attrs(p: &mut Parser<'_>) {
+pub fn inner_attrs(p: &mut Parser<'_>) {
     while p.at(T![#]) && p.nth(1) == T![!] {
         attr(p, true);
     }
 }
 
-pub(super) fn outer_attrs(p: &mut Parser<'_>) {
+pub fn outer_attrs(p: &mut Parser<'_>) {
     while p.at(T![#]) {
         attr(p, false);
     }
@@ -36,7 +36,7 @@ fn attr(p: &mut Parser<'_>, inner: bool) {
     attr.complete(p, ATTR);
 }
 
-pub(super) fn meta(p: &mut Parser<'_>) {
+pub fn meta(p: &mut Parser<'_>) {
     let meta = p.start();
     paths::use_path(p);
 
@@ -46,9 +46,9 @@ pub(super) fn meta(p: &mut Parser<'_>) {
             if expressions::expr(p).is_none() {
                 p.error("expected expression");
             }
-        }
+        },
         T!['('] | T!['['] | T!['{'] => items::token_tree(p),
-        _ => {}
+        _ => {},
     }
 
     meta.complete(p, META);

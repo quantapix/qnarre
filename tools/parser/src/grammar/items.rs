@@ -3,7 +3,7 @@ mod consts;
 mod traits;
 mod use_item;
 
-pub(crate) use self::{
+pub use self::{
     adt::{record_field_list, variant_list},
     expressions::{match_arm_list, record_expr_field_list},
     traits::assoc_item_list,
@@ -17,14 +17,14 @@ use super::*;
 // foo::bar!();
 // super::baz! {}
 // struct S;
-pub(super) fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
+pub fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     attributes::inner_attrs(p);
     while !(p.at(EOF) || (p.at(T!['}']) && stop_on_r_curly)) {
         item_or_macro(p, stop_on_r_curly);
     }
 }
 
-pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
+pub const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![fn],
     T![struct],
     T![enum],
@@ -41,7 +41,7 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![;],
 ]);
 
-pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
+pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     let m = p.start();
     attributes::outer_attrs(p);
 
@@ -83,7 +83,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     }
 }
 
-pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
+pub fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p, false);
@@ -261,7 +261,7 @@ fn extern_crate(p: &mut Parser<'_>, m: Marker) {
 
 // test mod_item
 // mod a;
-pub(crate) fn mod_item(p: &mut Parser<'_>, m: Marker) {
+pub fn mod_item(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![mod]);
     name(p);
     if p.at(T!['{']) {
@@ -304,7 +304,7 @@ fn type_alias(p: &mut Parser<'_>, m: Marker) {
     m.complete(p, TYPE_ALIAS);
 }
 
-pub(crate) fn item_list(p: &mut Parser<'_>) {
+pub fn item_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -313,7 +313,7 @@ pub(crate) fn item_list(p: &mut Parser<'_>) {
     m.complete(p, ITEM_LIST);
 }
 
-pub(crate) fn extern_item_list(p: &mut Parser<'_>) {
+pub fn extern_item_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -419,7 +419,7 @@ fn macro_call(p: &mut Parser<'_>) -> BlockLike {
     macro_call_after_excl(p)
 }
 
-pub(super) fn macro_call_after_excl(p: &mut Parser<'_>) -> BlockLike {
+pub fn macro_call_after_excl(p: &mut Parser<'_>) -> BlockLike {
     p.expect(T![!]);
 
     match p.current() {
@@ -438,7 +438,7 @@ pub(super) fn macro_call_after_excl(p: &mut Parser<'_>) -> BlockLike {
     }
 }
 
-pub(crate) fn token_tree(p: &mut Parser<'_>) {
+pub fn token_tree(p: &mut Parser<'_>) {
     let closing_paren_kind = match p.current() {
         T!['{'] => T!['}'],
         T!['('] => T![')'],

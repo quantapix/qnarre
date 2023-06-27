@@ -4,14 +4,14 @@ use super::*;
 
 // test struct_item
 // struct S {}
-pub(super) fn strukt(p: &mut Parser<'_>, m: Marker) {
+pub fn strukt(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![struct]);
     struct_or_union(p, m, true);
 }
 
 // test union_item
 // struct U { i: i32, f: f32 }
-pub(super) fn union(p: &mut Parser<'_>, m: Marker) {
+pub fn union(p: &mut Parser<'_>, m: Marker) {
     assert!(p.at_contextual_kw(T![union]));
     p.bump_remap(T![union]);
     struct_or_union(p, m, false);
@@ -29,15 +29,15 @@ fn struct_or_union(p: &mut Parser<'_>, m: Marker, is_struct: bool) {
                 _ => {
                     //FIXME: special case `(` error message
                     p.error("expected `;` or `{`");
-                }
+                },
             }
-        }
+        },
         T!['{'] => record_field_list(p),
         // test unit_struct
         // struct S;
         T![;] if is_struct => {
             p.bump(T![;]);
-        }
+        },
         // test tuple_struct
         // struct S(String, usize);
         T!['('] if is_struct => {
@@ -46,13 +46,17 @@ fn struct_or_union(p: &mut Parser<'_>, m: Marker, is_struct: bool) {
             // struct S<T>(T) where T: Clone;
             generic_params::opt_where_clause(p);
             p.expect(T![;]);
-        }
-        _ => p.error(if is_struct { "expected `;`, `{`, or `(`" } else { "expected `{`" }),
+        },
+        _ => p.error(if is_struct {
+            "expected `;`, `{`, or `(`"
+        } else {
+            "expected `{`"
+        }),
     }
     m.complete(p, if is_struct { STRUCT } else { UNION });
 }
 
-pub(super) fn enum_(p: &mut Parser<'_>, m: Marker) {
+pub fn enum_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![enum]);
     name_r(p, ITEM_RECOVERY_SET);
     generic_params::opt_generic_param_list(p);
@@ -65,7 +69,7 @@ pub(super) fn enum_(p: &mut Parser<'_>, m: Marker) {
     m.complete(p, ENUM);
 }
 
-pub(crate) fn variant_list(p: &mut Parser<'_>) {
+pub fn variant_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -108,7 +112,7 @@ pub(crate) fn variant_list(p: &mut Parser<'_>) {
 
 // test record_field_list
 // struct S { a: i32, b: f32 }
-pub(crate) fn record_field_list(p: &mut Parser<'_>) {
+pub fn record_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -143,8 +147,7 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
     }
 }
 
-const TUPLE_FIELD_FIRST: TokenSet =
-    types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
+const TUPLE_FIELD_FIRST: TokenSet = types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
 
 fn tuple_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));

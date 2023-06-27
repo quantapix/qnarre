@@ -7,21 +7,21 @@ use super::*;
 // fn b(x: i32) {}
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
-pub(super) fn param_list_fn_def(p: &mut Parser<'_>) {
+pub fn param_list_fn_def(p: &mut Parser<'_>) {
     list_(p, Flavor::FnDef);
 }
 
 // test param_list_opt_patterns
 // fn foo<F: FnMut(&mut Foo<'a>)>(){}
-pub(super) fn param_list_fn_trait(p: &mut Parser<'_>) {
+pub fn param_list_fn_trait(p: &mut Parser<'_>) {
     list_(p, Flavor::FnTrait);
 }
 
-pub(super) fn param_list_fn_ptr(p: &mut Parser<'_>) {
+pub fn param_list_fn_ptr(p: &mut Parser<'_>) {
     list_(p, Flavor::FnPointer);
 }
 
-pub(super) fn param_list_closure(p: &mut Parser<'_>) {
+pub fn param_list_closure(p: &mut Parser<'_>) {
     list_(p, Flavor::Closure);
 }
 
@@ -51,7 +51,7 @@ fn list_(p: &mut Parser<'_>, flavor: Flavor) {
         let m = p.start();
         attributes::outer_attrs(p);
         match opt_self_param(p, m) {
-            Ok(()) => {}
+            Ok(()) => {},
             Err(m) => param_marker = Some(m),
         }
     }
@@ -65,7 +65,7 @@ fn list_(p: &mut Parser<'_>, flavor: Flavor) {
                 let m = p.start();
                 attributes::outer_attrs(p);
                 m
-            }
+            },
         };
 
         if !p.at_ts(PARAM_FIRST.union(ATTRIBUTE_FIRST)) {
@@ -99,7 +99,7 @@ fn param(p: &mut Parser<'_>, m: Marker, flavor: Flavor) {
     match flavor {
         // test param_list_vararg
         // extern "C" { fn printf(format: *const i8, ..., _: u8) -> i32; }
-        Flavor::FnDef | Flavor::FnPointer if p.eat(T![...]) => {}
+        Flavor::FnDef | Flavor::FnPointer if p.eat(T![...]) => {},
 
         // test fn_def_param
         // fn foo(..., (x, y): (i32, i32)) {}
@@ -114,12 +114,12 @@ fn param(p: &mut Parser<'_>, m: Marker, flavor: Flavor) {
                     p.error("missing type for function parameter");
                 }
             }
-        }
+        },
         // test value_parameters_no_patterns
         // type F = Box<Fn(i32, &i32, &i32, ())>;
         Flavor::FnTrait => {
             types::type_(p);
-        }
+        },
         // test fn_pointer_param_ident_path
         // type Foo = fn(Bar::Baz);
         // type Qux = fn(baz: Bar::Baz);
@@ -139,7 +139,7 @@ fn param(p: &mut Parser<'_>, m: Marker, flavor: Flavor) {
             } else {
                 types::type_(p);
             }
-        }
+        },
         // test closure_params
         // fn main() {
         //    let foo = |bar, baz: Baz, qux: Qux::Quux| ();
@@ -149,7 +149,7 @@ fn param(p: &mut Parser<'_>, m: Marker, flavor: Flavor) {
             if p.at(T![:]) && !p.at(T![::]) {
                 types::ascription(p);
             }
-        }
+        },
     }
     m.complete(p, PARAM);
 }
