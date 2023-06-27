@@ -21,6 +21,7 @@ use triomphe::Arc;
 pub mod tmp;
 pub use tmp::*;
 pub mod lexer;
+pub mod text;
 
 pub mod algo;
 pub mod ast;

@@ -2,6 +2,7 @@
 mod ast_src;
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen_ast;
+mod text;
 
 use std::{
     fs,
