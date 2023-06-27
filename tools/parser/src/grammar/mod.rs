@@ -228,304 +228,285 @@ pub mod attr {
     }
 }
 
-const GEN_ARG_FIRST: TokenSet = TokenSet::new(&[
-    LIFETIME_IDENT,
-    IDENT,
-    T!['{'],
-    T![true],
-    T![false],
-    T![-],
-    INT_NUMBER,
-    FLOAT_NUMBER,
-    CHAR,
-    BYTE,
-    STRING,
-    BYTE_STRING,
-    C_STRING,
-])
-.union(ty::FIRST);
+pub mod generic {
+    use super::*;
 
-pub fn opt_generic_args(x: &mut Parser<'_>, colon_colon_required: bool) {
-    let y;
-    if x.at(T![::]) && x.nth(2) == T![<] {
-        y = x.start();
-        x.bump(T![::]);
-    } else if !colon_colon_required && x.at(T![<]) && x.nth(1) != T![=] {
-        y = x.start();
-    } else {
-        return;
+    const ARG_FIRST: TokenSet = TokenSet::new(&[
+        LIFETIME_IDENT,
+        IDENT,
+        T!['{'],
+        T![true],
+        T![false],
+        T![-],
+        INT_NUMBER,
+        FLOAT_NUMBER,
+        CHAR,
+        BYTE,
+        STRING,
+        BYTE_STRING,
+        C_STRING,
+    ])
+    .union(ty::FIRST);
+
+    pub fn opt_args(x: &mut Parser<'_>, colon_colon_required: bool) {
+        let y;
+        if x.at(T![::]) && x.nth(2) == T![<] {
+            y = x.start();
+            x.bump(T![::]);
+        } else if !colon_colon_required && x.at(T![<]) && x.nth(1) != T![=] {
+            y = x.start();
+        } else {
+            return;
+        }
+        delimited(x, T![<], T![>], T![,], ARG_FIRST, one_arg);
+        y.complete(x, GENERIC_ARG_LIST);
     }
-    delimited(x, T![<], T![>], T![,], GEN_ARG_FIRST, generic_arg);
-    y.complete(x, GENERIC_ARG_LIST);
-}
-fn generic_arg(x: &mut Parser<'_>) -> bool {
-    match x.current() {
-        LIFETIME_IDENT if !x.nth_at(1, T![+]) => lifetime_arg(x),
-        T!['{'] | T![true] | T![false] | T![-] => const_arg(x),
-        k if k.is_literal() => const_arg(x),
-        IDENT if [T![<], T![=], T![:]].contains(&x.nth(1)) && !x.nth_at(1, T![::]) => {
-            let y = x.start();
-            name_ref(x);
-            opt_generic_args(x, false);
-            match x.current() {
-                T![=] => {
-                    x.bump_any();
-                    if ty::FIRST.contains(x.current()) {
-                        ty(x);
-                    } else {
-                        const_arg(x);
-                    }
+    fn one_arg(x: &mut Parser<'_>) -> bool {
+        match x.current() {
+            LIFETIME_IDENT if !x.nth_at(1, T![+]) => lifetime_arg(x),
+            T!['{'] | T![true] | T![false] | T![-] => const_arg(x),
+            k if k.is_literal() => const_arg(x),
+            IDENT if [T![<], T![=], T![:]].contains(&x.nth(1)) && !x.nth_at(1, T![::]) => {
+                let y = x.start();
+                name_ref(x);
+                opt_args(x, false);
+                match x.current() {
+                    T![=] => {
+                        x.bump_any();
+                        if ty::FIRST.contains(x.current()) {
+                            ty(x);
+                        } else {
+                            const_arg(x);
+                        }
+                        y.complete(x, ASSOC_TYPE_ARG);
+                    },
+                    T![:] if !x.at(T![::]) => {
+                        generic::bounds(x);
+                        y.complete(x, ASSOC_TYPE_ARG);
+                    },
+                    _ => {
+                        let y = y.complete(x, PATH_SEGMENT).precede(x).complete(x, PATH);
+                        let y = type_path_for_qual(x, y);
+                        y.precede(x).complete(x, PATH_TYPE).precede(x).complete(x, TYPE_ARG);
+                    },
+                }
+            },
+            IDENT if x.nth_at(1, T!['(']) => {
+                let y = x.start();
+                name_ref(x);
+                param::fn_trait(x);
+                if x.at(T![:]) && !x.at(T![::]) {
+                    generic::bounds(x);
                     y.complete(x, ASSOC_TYPE_ARG);
-                },
-                T![:] if !x.at(T![::]) => {
-                    bounds(x);
-                    y.complete(x, ASSOC_TYPE_ARG);
-                },
-                _ => {
+                } else {
+                    opt_ret_type(x);
                     let y = y.complete(x, PATH_SEGMENT).precede(x).complete(x, PATH);
                     let y = type_path_for_qual(x, y);
-                    y.precede(x).complete(x, PATH_TYPE).precede(x).complete(x, TYPE_ARG);
-                },
-            }
-        },
-        IDENT if x.nth_at(1, T!['(']) => {
-            let y = x.start();
-            name_ref(x);
-            param::fn_trait(x);
-            if x.at(T![:]) && !x.at(T![::]) {
-                bounds(x);
-                y.complete(x, ASSOC_TYPE_ARG);
-            } else {
-                opt_ret_type(x);
-                let y = y.complete(x, PATH_SEGMENT).precede(x).complete(x, PATH);
-                let y = type_path_for_qual(x, y);
-                let y = y.precede(x).complete(x, PATH_TYPE);
-                let y = ty::opt_bounds_as_dyn_trait(x, y);
-                y.precede(x).complete(x, TYPE_ARG);
-            }
-        },
-        _ if x.at_ts(ty::FIRST) => type_arg(x),
-        _ => return false,
+                    let y = y.precede(x).complete(x, PATH_TYPE);
+                    let y = ty::opt_bounds_as_dyn_trait(x, y);
+                    y.precede(x).complete(x, TYPE_ARG);
+                }
+            },
+            _ if x.at_ts(ty::FIRST) => type_arg(x),
+            _ => return false,
+        }
+        true
     }
-    true
-}
-fn lifetime_arg(x: &mut Parser<'_>) {
-    let y = x.start();
-    lifetime(x);
-    y.complete(x, LIFETIME_ARG);
-}
-pub fn const_arg_expr(x: &mut Parser<'_>) {
-    match x.current() {
-        T!['{'] => {
-            exprs::block_expr(x);
-        },
-        k if k.is_literal() => {
-            exprs::literal(x);
-        },
-        T![true] | T![false] => {
-            exprs::literal(x);
-        },
-        T![-] => {
-            let y = x.start();
-            x.bump(T![-]);
-            exprs::literal(x);
-            y.complete(x, PREFIX_EXPR);
-        },
-        _ => {
-            let y = x.start();
-            use_path(x);
-            y.complete(x, PATH_EXPR);
-        },
-    }
-}
-pub fn const_arg(x: &mut Parser<'_>) {
-    let y = x.start();
-    const_arg_expr(x);
-    y.complete(x, CONST_ARG);
-}
-fn type_arg(x: &mut Parser<'_>) {
-    let y = x.start();
-    ty(x);
-    y.complete(x, TYPE_ARG);
-}
-
-const GEN_PARAM_FIRST: TokenSet = TokenSet::new(&[IDENT, LIFETIME_IDENT, T![const]]);
-
-pub fn opt_generic_params(x: &mut Parser<'_>) {
-    if x.at(T![<]) {
-        generic_params(x);
-    }
-}
-fn generic_params(x: &mut Parser<'_>) {
-    assert!(x.at(T![<]));
-    let y = x.start();
-    delimited(x, T![<], T![>], T![,], GEN_PARAM_FIRST.union(attr::FIRST), |x| {
+    fn lifetime_arg(x: &mut Parser<'_>) {
         let y = x.start();
-        attr::outers(x);
-        generic_param(x, y)
-    });
-    y.complete(x, GENERIC_PARAM_LIST);
-}
-fn generic_param(x: &mut Parser<'_>, m: Marker) -> bool {
-    match x.current() {
-        LIFETIME_IDENT => lifetime_param(x, m),
-        IDENT => type_param(x, m),
-        T![const] => const_param(x, m),
-        _ => {
-            m.abandon(x);
-            x.err_and_bump("expected generic parameter");
-            return false;
-        },
-    }
-    true
-}
-fn lifetime_param(x: &mut Parser<'_>, m: Marker) {
-    assert!(x.at(LIFETIME_IDENT));
-    lifetime(x);
-    if x.at(T![:]) {
-        lifetime_bounds(x);
-    }
-    m.complete(x, LIFETIME_PARAM);
-}
-fn type_param(x: &mut Parser<'_>, m: Marker) {
-    assert!(x.at(IDENT));
-    name(x);
-    if x.at(T![:]) {
-        bounds(x);
-    }
-    if x.at(T![=]) {
-        x.bump(T![=]);
-        ty(x);
-    }
-    m.complete(x, TYPE_PARAM);
-}
-fn const_param(x: &mut Parser<'_>, m: Marker) {
-    x.bump(T![const]);
-    name(x);
-    if x.at(T![:]) {
-        ty::ascription(x);
-    } else {
-        x.error("missing type for const parameter");
-    }
-    if x.at(T![=]) {
-        x.bump(T![=]);
-        const_arg_expr(x);
-    }
-    m.complete(x, CONST_PARAM);
-}
-fn lifetime_bounds(x: &mut Parser<'_>) {
-    assert!(x.at(T![:]));
-    x.bump(T![:]);
-    while x.at(LIFETIME_IDENT) {
         lifetime(x);
-        if !x.eat(T![+]) {
-            break;
+        y.complete(x, LIFETIME_ARG);
+    }
+    fn const_arg(x: &mut Parser<'_>) {
+        let y = x.start();
+        exprs::const_arg(x);
+        y.complete(x, CONST_ARG);
+    }
+    fn type_arg(x: &mut Parser<'_>) {
+        let y = x.start();
+        ty(x);
+        y.complete(x, TYPE_ARG);
+    }
+
+    const PARAM_FIRST: TokenSet = TokenSet::new(&[IDENT, LIFETIME_IDENT, T![const]]);
+
+    pub fn opt_params(x: &mut Parser<'_>) {
+        if x.at(T![<]) {
+            many_params(x);
         }
     }
-}
-pub fn bounds(x: &mut Parser<'_>) {
-    assert!(x.at(T![:]));
-    x.bump(T![:]);
-    bounds_without_colon(x);
-}
-pub fn bounds_without_colon(x: &mut Parser<'_>) {
-    let y = x.start();
-    bounds_without_colon_m(x, y);
-}
-pub fn bounds_without_colon_m(x: &mut Parser<'_>, m: Marker) -> CompletedMarker {
-    while type_bound(x) {
-        if !x.eat(T![+]) {
-            break;
+    fn many_params(x: &mut Parser<'_>) {
+        assert!(x.at(T![<]));
+        let y = x.start();
+        delimited(x, T![<], T![>], T![,], PARAM_FIRST.union(attr::FIRST), |x| {
+            let y = x.start();
+            attr::outers(x);
+            one_param(x, y)
+        });
+        y.complete(x, GENERIC_PARAM_LIST);
+    }
+    fn one_param(x: &mut Parser<'_>, m: Marker) -> bool {
+        match x.current() {
+            LIFETIME_IDENT => lifetime_param(x, m),
+            IDENT => type_param(x, m),
+            T![const] => const_param(x, m),
+            _ => {
+                m.abandon(x);
+                x.err_and_bump("expected generic parameter");
+                return false;
+            },
+        }
+        true
+    }
+    fn lifetime_param(x: &mut Parser<'_>, m: Marker) {
+        assert!(x.at(LIFETIME_IDENT));
+        lifetime(x);
+        if x.at(T![:]) {
+            lifetime_bounds(x);
+        }
+        m.complete(x, LIFETIME_PARAM);
+    }
+    fn lifetime_bounds(x: &mut Parser<'_>) {
+        assert!(x.at(T![:]));
+        x.bump(T![:]);
+        while x.at(LIFETIME_IDENT) {
+            lifetime(x);
+            if !x.eat(T![+]) {
+                break;
+            }
         }
     }
-    m.complete(x, TYPE_BOUND_LIST)
-}
-fn type_bound(x: &mut Parser<'_>) -> bool {
-    let y = x.start();
-    let has_paren = x.eat(T!['(']);
-    match x.current() {
-        LIFETIME_IDENT => lifetime(x),
-        T![for] => ty::for_ty(x, false),
-        T![?] if x.nth_at(1, T![for]) => {
-            x.bump_any();
-            ty::for_ty(x, false)
-        },
-        current => {
-            match current {
-                T![?] => x.bump_any(),
-                T![~] => {
-                    x.bump_any();
-                    x.expect(T![const]);
-                },
+    fn const_param(x: &mut Parser<'_>, m: Marker) {
+        x.bump(T![const]);
+        name(x);
+        if x.at(T![:]) {
+            ty::ascription(x);
+        } else {
+            x.error("missing type for const parameter");
+        }
+        if x.at(T![=]) {
+            x.bump(T![=]);
+            exprs::const_arg(x);
+        }
+        m.complete(x, CONST_PARAM);
+    }
+    fn type_param(x: &mut Parser<'_>, m: Marker) {
+        assert!(x.at(IDENT));
+        name(x);
+        if x.at(T![:]) {
+            generic::bounds(x);
+        }
+        if x.at(T![=]) {
+            x.bump(T![=]);
+            ty(x);
+        }
+        m.complete(x, TYPE_PARAM);
+    }
+
+    pub fn bounds(x: &mut Parser<'_>) {
+        assert!(x.at(T![:]));
+        x.bump(T![:]);
+        bounds_no_colon(x);
+    }
+    pub fn bounds_no_colon(x: &mut Parser<'_>) {
+        let y = x.start();
+        bounds_with_marker(x, y);
+    }
+    pub fn bounds_with_marker(x: &mut Parser<'_>, m: Marker) -> CompletedMarker {
+        while type_bound(x) {
+            if !x.eat(T![+]) {
+                break;
+            }
+        }
+        m.complete(x, TYPE_BOUND_LIST)
+    }
+    fn type_bound(x: &mut Parser<'_>) -> bool {
+        let y = x.start();
+        let has_paren = x.eat(T!['(']);
+        match x.current() {
+            LIFETIME_IDENT => lifetime(x),
+            T![for] => ty::for_ty(x, false),
+            T![?] if x.nth_at(1, T![for]) => {
+                x.bump_any();
+                ty::for_ty(x, false)
+            },
+            current => {
+                match current {
+                    T![?] => x.bump_any(),
+                    T![~] => {
+                        x.bump_any();
+                        x.expect(T![const]);
+                    },
+                    _ => (),
+                }
+                if is_use_path_start(x) {
+                    ty::path_with_bounds(x, false);
+                } else {
+                    y.abandon(x);
+                    return false;
+                }
+            },
+        }
+        if has_paren {
+            x.expect(T![')']);
+        }
+        y.complete(x, TYPE_BOUND);
+        true
+    }
+    pub fn opt_where_clause(x: &mut Parser<'_>) {
+        if !x.at(T![where]) {
+            return;
+        }
+        let y = x.start();
+        x.bump(T![where]);
+        while is_where_pred(x) {
+            where_pred(x);
+            let comma = x.eat(T![,]);
+            match x.current() {
+                T!['{'] | T![;] | T![=] => break,
                 _ => (),
             }
-            if is_use_path_start(x) {
-                ty::path_with_bounds(x, false);
-            } else {
-                y.abandon(x);
-                return false;
+            if !comma {
+                x.error("expected comma");
             }
-        },
+        }
+        y.complete(x, WHERE_CLAUSE);
+        fn is_where_pred(x: &mut Parser<'_>) -> bool {
+            match x.current() {
+                LIFETIME_IDENT => true,
+                T![impl] => false,
+                token => ty::FIRST.contains(token),
+            }
+        }
     }
-    if has_paren {
-        x.expect(T![')']);
-    }
-    y.complete(x, TYPE_BOUND);
-    true
-}
-pub fn opt_where_clause(x: &mut Parser<'_>) {
-    if !x.at(T![where]) {
-        return;
-    }
-    let y = x.start();
-    x.bump(T![where]);
-    while is_where_pred(x) {
-        where_pred(x);
-        let comma = x.eat(T![,]);
+    fn where_pred(x: &mut Parser<'_>) {
+        let y = x.start();
         match x.current() {
-            T!['{'] | T![;] | T![=] => break,
-            _ => (),
+            LIFETIME_IDENT => {
+                lifetime(x);
+                if x.at(T![:]) {
+                    bounds(x);
+                } else {
+                    x.error("expected colon");
+                }
+            },
+            T![impl] => {
+                x.error("expected lifetime or type");
+            },
+            _ => {
+                if x.at(T![for]) {
+                    ty::for_binder(x);
+                }
+                ty(x);
+                if x.at(T![:]) {
+                    bounds(x);
+                } else {
+                    x.error("expected colon");
+                }
+            },
         }
-        if !comma {
-            x.error("expected comma");
-        }
+        y.complete(x, WHERE_PRED);
     }
-    y.complete(x, WHERE_CLAUSE);
-    fn is_where_pred(x: &mut Parser<'_>) -> bool {
-        match x.current() {
-            LIFETIME_IDENT => true,
-            T![impl] => false,
-            token => ty::FIRST.contains(token),
-        }
-    }
-}
-fn where_pred(x: &mut Parser<'_>) {
-    let y = x.start();
-    match x.current() {
-        LIFETIME_IDENT => {
-            lifetime(x);
-            if x.at(T![:]) {
-                bounds(x);
-            } else {
-                x.error("expected colon");
-            }
-        },
-        T![impl] => {
-            x.error("expected lifetime or type");
-        },
-        _ => {
-            if x.at(T![for]) {
-                ty::for_binder(x);
-            }
-            ty(x);
-            if x.at(T![:]) {
-                bounds(x);
-            } else {
-                x.error("expected colon");
-            }
-        },
-    }
-    y.complete(x, WHERE_PRED);
 }
 
 pub mod param {
@@ -799,10 +780,10 @@ fn opt_path_type_args(x: &mut Parser<'_>, mode: Mode) {
                 param::fn_trait(x);
                 opt_ret_type(x);
             } else {
-                opt_generic_args(x, false);
+                generic::opt_args(x, false);
             }
         },
-        Mode::Expr => opt_generic_args(x, true),
+        Mode::Expr => generic::opt_args(x, true),
     }
 }
 
@@ -1079,7 +1060,7 @@ mod ty {
         assert!(x.at(T![for]));
         x.bump(T![for]);
         if x.at(T![<]) {
-            opt_generic_params(x);
+            generic::opt_params(x);
         } else {
             x.error("expected `<`");
         }
@@ -1105,19 +1086,19 @@ mod ty {
         assert!(x.at(T![impl]));
         let y = x.start();
         x.bump(T![impl]);
-        bounds_without_colon(x);
+        generic::bounds_no_colon(x);
         y.complete(x, IMPL_TRAIT_TYPE);
     }
     fn dyn_trait(x: &mut Parser<'_>) {
         assert!(x.at(T![dyn]));
         let y = x.start();
         x.bump(T![dyn]);
-        bounds_without_colon(x);
+        generic::bounds_no_colon(x);
         y.complete(x, DYN_TRAIT_TYPE);
     }
     fn bare_dyn_trait(x: &mut Parser<'_>) {
         let y = x.start();
-        bounds_without_colon(x);
+        generic::bounds_no_colon(x);
         y.complete(x, DYN_TRAIT_TYPE);
     }
     pub fn path(x: &mut Parser<'_>) {
@@ -1161,7 +1142,7 @@ mod ty {
         let y = y.precede(x).complete(x, TYPE_BOUND);
         let y = y.precede(x);
         x.eat(T![+]);
-        let y = bounds_without_colon_m(x, y);
+        let y = generic::bounds_with_marker(x, y);
         y.precede(x).complete(x, DYN_TRAIT_TYPE)
     }
 }

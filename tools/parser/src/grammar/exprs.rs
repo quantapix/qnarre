@@ -631,9 +631,32 @@ mod atom {
         }
         m.complete(p, BOX_EXPR)
     }
+    pub fn const_arg(x: &mut Parser<'_>) {
+        match x.current() {
+            T!['{'] => {
+                block_expr(x);
+            },
+            k if k.is_literal() => {
+                literal(x);
+            },
+            T![true] | T![false] => {
+                literal(x);
+            },
+            T![-] => {
+                let y = x.start();
+                x.bump(T![-]);
+                literal(x);
+                y.complete(x, PREFIX_EXPR);
+            },
+            _ => {
+                let y = x.start();
+                use_path(x);
+                y.complete(x, PATH_EXPR);
+            },
+        }
+    }
 }
-pub use atom::{block_expr, match_arm_list};
-pub use atom::{literal, LITERAL_FIRST};
+pub use atom::{block_expr, const_arg, literal, match_arm_list, LITERAL_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub enum Semicolon {
@@ -806,6 +829,7 @@ enum Associativity {
     Left,
     Right,
 }
+
 #[rustfmt::skip]
 fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
     use Associativity::*;
@@ -1107,7 +1131,7 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(p: &mut Parser<'_>, lhs: Complet
         p.bump(T![.]);
     }
     name_ref(p);
-    opt_generic_args(p, true);
+    generic::opt_args(p, true);
     if p.at(T!['(']) {
         arg_list(p);
     }
@@ -1168,8 +1192,6 @@ fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![as]));
     let m = lhs.precede(p);
     p.bump(T![as]);
-    // Use type_no_bounds(), because cast expressions are not
-    // allowed to have bounds.
     ty::no_bounds(p);
     m.complete(p, CAST_EXPR)
 }
