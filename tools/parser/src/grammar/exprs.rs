@@ -266,7 +266,7 @@ mod atom {
             p.error("expected `|`");
             return m.complete(p, CLOSURE_EXPR);
         }
-        params::param_list_closure(p);
+        params_closure(p);
         if opt_ret_type(p) {
             // test lambda_ret_block
             // fn main() { || -> i32 { 92 }(); }

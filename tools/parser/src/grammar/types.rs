@@ -152,7 +152,7 @@ fn fn_ptr_type(p: &mut Parser<'_>) {
         return;
     }
     if p.at(T!['(']) {
-        params::param_list_fn_ptr(p);
+        params_fn_ptr(p);
     } else {
         p.error("expected parameters");
     }
@@ -163,7 +163,7 @@ pub fn for_binder(p: &mut Parser<'_>) {
     assert!(p.at(T![for]));
     p.bump(T![for]);
     if p.at(T![<]) {
-        generic_params::opt_generic_param_list(p);
+        opt_generic_params(p);
     } else {
         p.error("expected `<`");
     }
@@ -189,19 +189,19 @@ fn impl_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![impl]));
     let m = p.start();
     p.bump(T![impl]);
-    generic_params::bounds_without_colon(p);
+    bounds_without_colon(p);
     m.complete(p, IMPL_TRAIT_TYPE);
 }
 fn dyn_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![dyn]));
     let m = p.start();
     p.bump(T![dyn]);
-    generic_params::bounds_without_colon(p);
+    bounds_without_colon(p);
     m.complete(p, DYN_TRAIT_TYPE);
 }
 fn bare_dyn_trait_type(p: &mut Parser<'_>) {
     let m = p.start();
-    generic_params::bounds_without_colon(p);
+    bounds_without_colon(p);
     m.complete(p, DYN_TRAIT_TYPE);
 }
 pub fn path_type(p: &mut Parser<'_>) {
@@ -245,6 +245,6 @@ pub fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser<'_>, type_marker: Comple
     let m = type_marker.precede(p).complete(p, TYPE_BOUND);
     let m = m.precede(p);
     p.eat(T![+]);
-    let m = generic_params::bounds_without_colon_m(p, m);
+    let m = bounds_without_colon_m(p, m);
     m.precede(p).complete(p, DYN_TRAIT_TYPE)
 }

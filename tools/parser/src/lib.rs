@@ -23,11 +23,11 @@ pub enum TopEntryPoint {
 impl TopEntryPoint {
     pub fn parse(&self, input: &Input) -> Output {
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
-            TopEntryPoint::SourceFile => grammar::top::source_file,
+            TopEntryPoint::SourceFile => grammar::top::src_file,
             TopEntryPoint::MacroStmts => grammar::top::macro_stmts,
             TopEntryPoint::MacroItems => grammar::top::macro_items,
             TopEntryPoint::Pattern => grammar::top::pattern,
-            TopEntryPoint::Type => grammar::top::type_,
+            TopEntryPoint::Type => grammar::top::ty,
             TopEntryPoint::Expr => grammar::top::expr,
             TopEntryPoint::MetaItem => grammar::top::meta_item,
         };

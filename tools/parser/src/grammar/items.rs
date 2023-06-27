@@ -19,10 +19,10 @@ mod adt {
     }
     fn struct_or_union(p: &mut Parser<'_>, m: Marker, is_struct: bool) {
         name_r(p, ITEM_RECOVERY_SET);
-        generic_params::opt_generic_param_list(p);
+        opt_generic_params(p);
         match p.current() {
             T![where] => {
-                generic_params::opt_where_clause(p);
+                opt_where_clause(p);
                 match p.current() {
                     T![;] => p.bump(T![;]),
                     T!['{'] => record_field_list(p),
@@ -37,7 +37,7 @@ mod adt {
             },
             T!['('] if is_struct => {
                 tuple_field_list(p);
-                generic_params::opt_where_clause(p);
+                opt_where_clause(p);
                 p.expect(T![;]);
             },
             _ => p.error(if is_struct {
@@ -51,8 +51,8 @@ mod adt {
     pub fn enum_(p: &mut Parser<'_>, m: Marker) {
         p.bump(T![enum]);
         name_r(p, ITEM_RECOVERY_SET);
-        generic_params::opt_generic_param_list(p);
-        generic_params::opt_where_clause(p);
+        opt_generic_params(p);
+        opt_where_clause(p);
         if p.at(T!['{']) {
             variant_list(p);
         } else {
@@ -184,18 +184,18 @@ mod traits {
     pub fn trait_(p: &mut Parser<'_>, m: Marker) {
         p.bump(T![trait]);
         name_r(p, ITEM_RECOVERY_SET);
-        generic_params::opt_generic_param_list(p);
+        opt_generic_params(p);
         if p.eat(T![=]) {
-            generic_params::bounds_without_colon(p);
-            generic_params::opt_where_clause(p);
+            bounds_without_colon(p);
+            opt_where_clause(p);
             p.expect(T![;]);
             m.complete(p, TRAIT_ALIAS);
             return;
         }
         if p.at(T![:]) {
-            generic_params::bounds(p);
+            bounds(p);
         }
-        generic_params::opt_where_clause(p);
+        opt_where_clause(p);
         if p.at(T!['{']) {
             assoc_item_list(p);
         } else {
@@ -206,7 +206,7 @@ mod traits {
     pub fn impl_(p: &mut Parser<'_>, m: Marker) {
         p.bump(T![impl]);
         if p.at(T![<]) && not_a_qualified_path(p) {
-            generic_params::opt_generic_param_list(p);
+            opt_generic_params(p);
         }
         p.eat(T![const]);
         p.eat(T![!]);
@@ -214,7 +214,7 @@ mod traits {
         if p.eat(T![for]) {
             impl_type(p);
         }
-        generic_params::opt_where_clause(p);
+        opt_where_clause(p);
         if p.at(T!['{']) {
             assoc_item_list(p);
         } else {
@@ -507,15 +507,15 @@ pub fn mod_item(p: &mut Parser<'_>, m: Marker) {
 fn type_alias(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![type]);
     name(p);
-    generic_params::opt_generic_param_list(p);
+    opt_generic_params(p);
     if p.at(T![:]) {
-        generic_params::bounds(p);
+        bounds(p);
     }
-    generic_params::opt_where_clause(p);
+    opt_where_clause(p);
     if p.eat(T![=]) {
         types::type_(p);
     }
-    generic_params::opt_where_clause(p);
+    opt_where_clause(p);
     p.expect(T![;]);
     m.complete(p, TYPE_ALIAS);
 }
@@ -578,14 +578,14 @@ fn macro_def(p: &mut Parser<'_>, m: Marker) {
 fn fn_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![fn]);
     name_r(p, ITEM_RECOVERY_SET);
-    generic_params::opt_generic_param_list(p);
+    opt_generic_params(p);
     if p.at(T!['(']) {
-        params::param_list_fn_def(p);
+        params_fn_def(p);
     } else {
         p.error("expected function arguments");
     }
     opt_ret_type(p);
-    generic_params::opt_where_clause(p);
+    opt_where_clause(p);
     if p.at(T![;]) {
         p.bump(T![;]);
     } else {
