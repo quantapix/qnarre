@@ -1,13 +1,13 @@
 use crate::{
     ast,
     core::{Direction, NodeOrToken},
+    text::EditBuilder,
     Elem, SyntaxKind, TextRange, TextSize,
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::hash::BuildHasherDefault;
-use text_edit::TextEditBuilder;
 
 pub fn ancestors_at_offset(x: &crate::Node, off: TextSize) -> impl Iterator<Item = crate::Node> {
     x.token_at_offset(off)
@@ -81,7 +81,7 @@ pub struct TreeDiff {
     insertions: FxIndexMap<TreeDiffInsertPos, Vec<Elem>>,
 }
 impl TreeDiff {
-    pub fn into_text_edit(&self, builder: &mut TextEditBuilder) {
+    pub fn into_text_edit(&self, builder: &mut EditBuilder) {
         let _p = profile::span("into_text_edit");
         for (anchor, to) in &self.insertions {
             let offset = match anchor {
@@ -191,10 +191,9 @@ pub fn diff(from: &crate::Node, to: &crate::Node) -> TreeDiff {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Elem, SyntaxKind};
+    use crate::{text::Edit, Elem, SyntaxKind};
     use expect_test::{expect, Expect};
     use itertools::Itertools;
-    use text_edit::TextEdit;
     #[test]
     fn replace_node_token() {
         cov_mark::check!(diff_node_token_replace);
@@ -509,7 +508,7 @@ fn main() {
             format!("insertions:\n\n{insertions}\n\nreplacements:\n\n{replacements}\n\ndeletions:\n\n{deletions}\n");
         expected_diff.assert_eq(&actual);
         let mut from = from.to_owned();
-        let mut text_edit = TextEdit::builder();
+        let mut text_edit = Edit::builder();
         diff.into_text_edit(&mut text_edit);
         text_edit.finish().apply(&mut from);
         assert_eq!(&*from, to, "diff did not turn `from` to `to`");

@@ -16,15 +16,14 @@ hashbrown = { version = "0.14", features = [
 indexmap = "2"
 itertools = "0.11"
 memoffset = "0.9"
-once_cell = "1.18"
+once_cell = "1"
 serde = { version = "1", optional = true, default-features = false }
-text-size = "1.1"
 rustc-hash = "1.1"
-triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
+triomphe = { version = "0.1", default-features = false, features = ["std"] }
 smol_str = "0.2"
-always-assert = { version = "0.1.2", features = ["log"] }
-unic-emoji-char = "0.9.0"
-unicode-xid = "0.2.0"
+always-assert = { version = "0.1", features = ["log"] }
+unic-emoji-char = "0.9"
+unicode-xid = "0.2"
 
 # parser = { path = "../parser" }
 
@@ -47,4 +46,4 @@ static_assertions = "1"
 
 [features]
 in-rust-tree = []
-serde1 = ["serde", "text-size/serde"]
+serde1 = ["serde"]

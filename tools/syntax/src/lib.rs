@@ -13,8 +13,6 @@ pub use crate::{
 };
 pub use smol_str::SmolStr;
 use std::{fmt, marker::PhantomData};
-use text_edit::Indel;
-pub use text_size::{TextRange, TextSize};
 use triomphe::Arc;
 
 //pub use parser::{SyntaxKind, T};
@@ -22,15 +20,15 @@ pub mod tmp;
 pub use tmp::*;
 pub mod lexer;
 pub mod text;
+pub use text::{Indel, TextRange, TextSize};
 
 pub mod algo;
 pub mod ast;
 pub mod core;
 #[doc(hidden)]
 pub mod fuzz {
-    use crate::{validation, SourceFile, TextRange};
+    use super::{validation, Indel, SourceFile, TextRange};
     use std::str::{self, FromStr};
-    use text_edit::Indel;
 
     fn check_file_invariants(file: &SourceFile) {
         let root = file.syntax();
@@ -99,7 +97,7 @@ pub mod fuzz {
     }
 }
 pub mod hacks {
-    use crate::ast;
+    use super::ast;
     pub fn parse_expr_from_str(s: &str) -> Option<ast::Expr> {
         let s = s.trim();
         let file = ast::SourceFile::parse(&format!("const _: () = {s};"));
@@ -115,12 +113,11 @@ mod parsing {
         use crate::{
             core::{green, NodeOrToken},
             parsing::build_tree,
-            SyntaxErr,
+            Indel, SyntaxErr,
             SyntaxKind::*,
             TextRange, TextSize, T,
         };
         use parser::Reparser;
-        use text_edit::Indel;
 
         pub fn incremental_reparse(
             x: &crate::Node,
@@ -529,12 +526,14 @@ enum Foo {
     }
 }
 mod ptr {
-    use crate::{api, ast, core, Lang, TextRange};
+    use crate::{ast, core, Lang, TextRange};
     use std::{
         hash::{Hash, Hasher},
         marker::PhantomData,
     };
+
     pub type NodePtr = core::NodePtr<Lang>;
+
     #[derive(Debug)]
     pub struct AstPtr<N: ast::Node> {
         raw: NodePtr,
@@ -830,14 +829,14 @@ pub mod ted {
             if let Some(item_list) = prev.parent().and_then(ast::ItemList::cast) {
                 let mut y = IndentLevel::from_element(&item_list.syntax().clone().into());
                 y.0 += 1;
-                return Some(make::tokens::whitespace(&format!("\n{indent}")));
+                return Some(make::tokens::whitespace(&format!("\n{y}")));
             }
         }
         if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
             if let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast) {
                 let mut y = IndentLevel::from_element(&stmt_list.syntax().clone().into());
                 y.0 += 1;
-                return Some(make::tokens::whitespace(&format!("\n{indent}")));
+                return Some(make::tokens::whitespace(&format!("\n{y}")));
             }
         }
         ws_between(prev, new)
@@ -870,7 +869,7 @@ pub mod ted {
             if left.kind() == SyntaxKind::USE {
                 y.0 = IndentLevel::from_element(right).0.max(y.0);
             }
-            return Some(make::tokens::whitespace(&format!("\n{indent}")));
+            return Some(make::tokens::whitespace(&format!("\n{y}")));
         }
         Some(make::tokens::single_space())
     }

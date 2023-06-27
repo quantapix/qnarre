@@ -7,7 +7,7 @@ use std::{
     ops,
     panic::{RefUnwindSafe, UnwindSafe},
 };
-use text_size::*;
+use syntax::{TextRange, TextSize};
 
 fn size(x: u32) -> TextSize {
     TextSize::from(x)
