@@ -190,7 +190,7 @@ mod atom {
             return m.complete(p, CLOSURE_EXPR);
         }
         param::closure(p);
-        if opt_ret_type(p) {
+        if is_opt_ret_type(p) {
             block_expr(p);
         } else if p.at_ts(EXPR_FIRST) {
             expr(p);
@@ -241,7 +241,7 @@ mod atom {
         assert!(p.at(T![for]));
         let m = m.unwrap_or_else(|| p.start());
         p.bump(T![for]);
-        pattern::pattern(p);
+        pattern::one(p);
         p.expect(T![in]);
         expr_no_struct(p);
         block_expr(p);
@@ -510,7 +510,7 @@ pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     }
     fn let_stmt(p: &mut Parser<'_>, m: Marker, with_semi: Semicolon) {
         p.bump(T![let]);
-        pattern::pattern(p);
+        pattern::one(p);
         if p.at(T![:]) {
             ty::ascription(p);
         }

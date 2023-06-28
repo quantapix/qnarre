@@ -115,7 +115,7 @@ mod adt {
         fn record_field(p: &mut Parser<'_>) {
             let m = p.start();
             attr::outers(p);
-            opt_vis(p, false);
+            is_opt_vis(p, false);
             if p.at(IDENT) {
                 name(p);
                 p.expect(T![:]);
@@ -134,7 +134,7 @@ mod adt {
         delimited(p, T!['('], T![')'], T![,], TUPLE_FIELD_FIRST, |p| {
             let m = p.start();
             attr::outers(p);
-            let has_vis = opt_vis(p, true);
+            let has_vis = is_opt_vis(p, true);
             if !p.at_ts(ty::FIRST) {
                 p.error("expected a type");
                 if has_vis {
@@ -377,7 +377,7 @@ pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     }
 }
 pub fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
-    let has_visibility = opt_vis(p, false);
+    let has_visibility = is_opt_vis(p, false);
     let m = match opt_item_without_modifiers(p, m) {
         Ok(()) => return Ok(()),
         Err(m) => m,
@@ -584,7 +584,7 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     } else {
         p.error("expected function arguments");
     }
-    opt_ret_type(p);
+    is_opt_ret_type(p);
     generic::opt_where_clause(p);
     if p.at(T![;]) {
         p.bump(T![;]);
