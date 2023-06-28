@@ -11,18 +11,18 @@ pub fn reparser(
 ) -> Option<fn(&mut Parser<'_>)> {
     let y = match x {
         BLOCK_EXPR => expr::block_expr,
-        RECORD_FIELD_LIST => item::record_field_list,
-        RECORD_EXPR_FIELD_LIST => item::record_expr_field_list,
-        VARIANT_LIST => item::variant_list,
-        MATCH_ARM_LIST => item::match_arm_list,
-        USE_TREE_LIST => item::use_tree_list,
-        EXTERN_ITEM_LIST => item::extern_item_list,
+        RECORD_FIELD_LIST => item::record_fields,
+        RECORD_EXPR_FIELD_LIST => expr::record_fields,
+        VARIANT_LIST => item::variants,
+        MATCH_ARM_LIST => expr::match_arms,
+        USE_TREE_LIST => item::use_trees,
+        EXTERN_ITEM_LIST => item::externs,
         TOKEN_TREE if first_child? == T!['{'] => item::token_tree,
         ASSOC_ITEM_LIST => match parent? {
-            IMPL | TRAIT => item::assoc_item_list,
+            IMPL | TRAIT => item::assoc_items,
             _ => return None,
         },
-        ITEM_LIST => item::item_list,
+        ITEM_LIST => item::items,
         _ => return None,
     };
     Some(y)
@@ -913,7 +913,7 @@ mod pattern {
                 RECORD_PAT
             },
             T![!] => {
-                item::macro_call_after_excl(x);
+                item::mac_call_after_excl(x);
                 return y.complete(x, MACRO_CALL).precede(x).complete(x, MACRO_PAT);
             },
             _ => PATH_PAT,
@@ -1297,7 +1297,7 @@ mod ty {
         let m = x.start();
         path::for_type(x);
         let kind = if x.at(T![!]) && !x.at(T![!=]) {
-            item::macro_call_after_excl(x);
+            item::mac_call_after_excl(x);
             m.complete(x, MACRO_CALL);
             MACRO_TYPE
         } else {
@@ -1352,7 +1352,7 @@ pub mod pre {
         path::for_type(x);
     }
     pub fn item(x: &mut Parser<'_>) {
-        item::item_or_macro(x, true);
+        item::item_or_mac(x, true);
     }
     pub fn meta(x: &mut Parser<'_>) {
         attr::meta(x);

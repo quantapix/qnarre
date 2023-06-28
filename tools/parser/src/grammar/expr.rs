@@ -261,13 +261,13 @@ mod atom {
         x.bump(T![match]);
         expr_no_struct(x);
         if x.at(T!['{']) {
-            match_arm_list(x);
+            match_arms(x);
         } else {
             x.error("expected `{`");
         }
         y.complete(x, MATCH_EXPR)
     }
-    pub fn match_arm_list(x: &mut Parser<'_>) {
+    pub fn match_arms(x: &mut Parser<'_>) {
         assert!(x.at(T!['{']));
         let y = x.start();
         x.eat(T!['{']);
@@ -385,7 +385,7 @@ mod atom {
             name_ref.complete(x, NAME_REF);
             segment.complete(x, PATH_SEGMENT);
             path.complete(x, PATH);
-            let _block_like = item::macro_call_after_excl(x);
+            let _block_like = item::mac_call_after_excl(x);
             mac_call.complete(x, MACRO_CALL);
             return y.complete(x, MACRO_EXPR);
         }
@@ -431,7 +431,7 @@ mod atom {
         }
     }
 }
-pub use atom::{block_expr, const_arg, literal, match_arm_list, LIT_FIRST};
+pub use atom::{block_expr, const_arg, literal, match_arms, LIT_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub enum Semicolon {
@@ -847,17 +847,17 @@ fn path_expr(x: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike
     path::for_expr(x);
     match x.current() {
         T!['{'] if !r.no_structs => {
-            record_expr_field_list(x);
+            record_fields(x);
             (y.complete(x, RECORD_EXPR), BlockLike::NotBlock)
         },
         T![!] if !x.at(T![!=]) => {
-            let blocklike = item::macro_call_after_excl(x);
+            let blocklike = item::mac_call_after_excl(x);
             (y.complete(x, MACRO_CALL).precede(x).complete(x, MACRO_EXPR), blocklike)
         },
         _ => (y.complete(x, PATH_EXPR), BlockLike::NotBlock),
     }
 }
-pub fn record_expr_field_list(x: &mut Parser<'_>) {
+pub fn record_fields(x: &mut Parser<'_>) {
     assert!(x.at(T!['{']));
     let y = x.start();
     x.bump(T!['{']);
