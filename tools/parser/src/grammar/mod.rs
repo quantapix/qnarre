@@ -712,8 +712,8 @@ mod path {
             }
         }
     }
-    const EXPR_SET: TokenSet = item::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
-    const TYPE_SET: TokenSet = ty::TYPE_RECOVERY_SET;
+    const EXPR_SET: TokenSet = item::RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
+    const TYPE_SET: TokenSet = ty::RECOVERY_SET;
     fn segment(x: &mut Parser<'_>, m: Mode, first: bool) {
         let y = x.start();
         if first && x.eat(T![<]) {
@@ -749,7 +749,7 @@ mod path {
                 _ => {
                     use Mode::*;
                     let rec_set = match m {
-                        Use => item::ITEM_RECOVERY_SET,
+                        Use => item::RECOVERY_SET,
                         Type => TYPE_SET,
                         Expr => EXPR_SET,
                     };
@@ -784,7 +784,7 @@ mod path {
 }
 mod pattern {
     use super::*;
-    pub const FIRST: TokenSet = expr::LITERAL_FIRST.union(path::FIRST).union(TokenSet::new(&[
+    pub const FIRST: TokenSet = expr::LIT_FIRST.union(path::FIRST).union(TokenSet::new(&[
         T![box],
         T![ref],
         T![mut],
@@ -797,7 +797,7 @@ mod pattern {
         T![.],
     ]));
     const TOP_FIRST: TokenSet = FIRST.union(TokenSet::new(&[T![|]]));
-    const END_FIRST: TokenSet = expr::LITERAL_FIRST
+    const END_FIRST: TokenSet = expr::LIT_FIRST
         .union(path::FIRST)
         .union(TokenSet::new(&[T![-], T![const]]));
     const RECOVERY_SET: TokenSet =
@@ -888,7 +888,7 @@ mod pattern {
         Some(y)
     }
     fn is_literal_start(x: &Parser<'_>) -> bool {
-        x.at(T![-]) && (x.nth(1) == INT_NUMBER || x.nth(1) == FLOAT_NUMBER) || x.at_ts(expr::LITERAL_FIRST)
+        x.at(T![-]) && (x.nth(1) == INT_NUMBER || x.nth(1) == FLOAT_NUMBER) || x.at_ts(expr::LIT_FIRST)
     }
     fn literal(x: &mut Parser<'_>) -> CompletedMarker {
         assert!(is_literal_start(x));
@@ -1094,7 +1094,7 @@ mod ty {
         T![Self],
         LIFETIME_IDENT,
     ]));
-    pub const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![>], T![,], T![pub]]);
+    pub const RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![>], T![,], T![pub]]);
     pub fn no_bounds(x: &mut Parser<'_>) {
         with_bounds(x, false);
     }
@@ -1114,7 +1114,7 @@ mod ty {
             _ if path::is_start(x) => path_or_mac(x, bounds),
             LIFETIME_IDENT if x.nth_at(1, T![+]) => bare_dyn_trait(x),
             _ => {
-                x.err_recover("expected type", TYPE_RECOVERY_SET);
+                x.err_recover("expected type", RECOVERY_SET);
             },
         }
     }
@@ -1369,7 +1369,7 @@ pub mod top {
     pub fn mac_stmts(x: &mut Parser<'_>) {
         let y = x.start();
         while !x.at(EOF) {
-            expr::stmt(x, expr::Semicolon::Optional);
+            expr::stmt(x, expr::Semicolon::Opt);
         }
         y.complete(x, MACRO_STMTS);
     }

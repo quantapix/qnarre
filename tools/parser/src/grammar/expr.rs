@@ -2,7 +2,7 @@ use super::*;
 
 mod atom {
     use super::*;
-    pub const LITERAL_FIRST: TokenSet = TokenSet::new(&[
+    pub const LIT_FIRST: TokenSet = TokenSet::new(&[
         T![true],
         T![false],
         INT_NUMBER,
@@ -13,15 +13,15 @@ mod atom {
         BYTE_STRING,
         C_STRING,
     ]);
-    pub fn literal(p: &mut Parser<'_>) -> Option<CompletedMarker> {
-        if !p.at_ts(LITERAL_FIRST) {
+    pub fn literal(x: &mut Parser<'_>) -> Option<CompletedMarker> {
+        if !x.at_ts(LIT_FIRST) {
             return None;
         }
-        let m = p.start();
-        p.bump_any();
-        Some(m.complete(p, LITERAL))
+        let y = x.start();
+        x.bump_any();
+        Some(y.complete(x, LITERAL))
     }
-    pub const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(path::FIRST).union(TokenSet::new(&[
+    pub const ATOM_FIRST: TokenSet = LIT_FIRST.union(path::FIRST).union(TokenSet::new(&[
         T!['('],
         T!['{'],
         T!['['],
@@ -46,76 +46,76 @@ mod atom {
         T![yield],
         LIFETIME_IDENT,
     ]));
-    pub const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![']']]);
-    pub fn atom_expr(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
-        if let Some(m) = literal(p) {
-            return Some((m, BlockLike::NotBlock));
+    pub const RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![']']]);
+    pub fn atom_expr(x: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
+        if let Some(x) = literal(x) {
+            return Some((x, BlockLike::NotBlock));
         }
-        if path::is_start(p) {
-            return Some(path_expr(p, r));
+        if path::is_start(x) {
+            return Some(path_expr(x, r));
         }
-        let la = p.nth(1);
-        let done = match p.current() {
-            T!['('] => tuple_expr(p),
-            T!['['] => array_expr(p),
-            T![if] => if_expr(p),
-            T![let] => let_expr(p),
+        let la = x.nth(1);
+        let done = match x.current() {
+            T!['('] => tuple_expr(x),
+            T!['['] => array_expr(x),
+            T![if] => if_expr(x),
+            T![let] => let_expr(x),
             T![_] => {
-                let m = p.start();
-                p.bump(T![_]);
-                m.complete(p, UNDERSCORE_EXPR)
+                let y = x.start();
+                x.bump(T![_]);
+                y.complete(x, UNDERSCORE_EXPR)
             },
-            T![loop] => loop_expr(p, None),
-            T![box] => box_expr(p, None),
-            T![while] => while_expr(p, None),
-            T![try] => try_block_expr(p, None),
-            T![match] => match_expr(p),
-            T![return] => return_expr(p),
-            T![yield] => yield_expr(p),
-            T![do] if p.nth_at_contextual_kw(1, T![yeet]) => yeet_expr(p),
-            T![continue] => continue_expr(p),
-            T![break] => break_expr(p, r),
+            T![loop] => loop_expr(x, None),
+            T![box] => box_expr(x, None),
+            T![while] => while_expr(x, None),
+            T![try] => try_block_expr(x, None),
+            T![match] => match_expr(x),
+            T![return] => return_expr(x),
+            T![yield] => yield_expr(x),
+            T![do] if x.nth_at_contextual_kw(1, T![yeet]) => yeet_expr(x),
+            T![continue] => continue_expr(x),
+            T![break] => break_expr(x, r),
             LIFETIME_IDENT if la == T![:] => {
-                let m = p.start();
-                label(p);
-                match p.current() {
-                    T![loop] => loop_expr(p, Some(m)),
-                    T![for] => for_expr(p, Some(m)),
-                    T![while] => while_expr(p, Some(m)),
+                let y = x.start();
+                label(x);
+                match x.current() {
+                    T![loop] => loop_expr(x, Some(y)),
+                    T![for] => for_expr(x, Some(y)),
+                    T![while] => while_expr(x, Some(y)),
                     T!['{'] => {
-                        stmt_list(p);
-                        m.complete(p, BLOCK_EXPR)
+                        stmt_list(x);
+                        y.complete(x, BLOCK_EXPR)
                     },
                     _ => {
-                        p.error("expected a loop or block");
-                        m.complete(p, ERROR);
+                        x.error("expected a loop or block");
+                        y.complete(x, ERROR);
                         return None;
                     },
                 }
             },
             T![const] | T![unsafe] | T![async] if la == T!['{'] => {
-                let m = p.start();
-                p.bump_any();
-                stmt_list(p);
-                m.complete(p, BLOCK_EXPR)
+                let y = x.start();
+                x.bump_any();
+                stmt_list(x);
+                y.complete(x, BLOCK_EXPR)
             },
-            T![async] if la == T![move] && p.nth(2) == T!['{'] => {
-                let m = p.start();
-                p.bump(T![async]);
-                p.eat(T![move]);
-                stmt_list(p);
-                m.complete(p, BLOCK_EXPR)
+            T![async] if la == T![move] && x.nth(2) == T!['{'] => {
+                let y = x.start();
+                x.bump(T![async]);
+                x.eat(T![move]);
+                stmt_list(x);
+                y.complete(x, BLOCK_EXPR)
             },
             T!['{'] => {
-                let m = p.start();
-                stmt_list(p);
-                m.complete(p, BLOCK_EXPR)
+                let y = x.start();
+                stmt_list(x);
+                y.complete(x, BLOCK_EXPR)
             },
-            T![const] | T![static] | T![async] | T![move] | T![|] => closure_expr(p),
-            T![for] if la == T![<] => closure_expr(p),
-            T![for] => for_expr(p, None),
+            T![const] | T![static] | T![async] | T![move] | T![|] => closure_expr(x),
+            T![for] if la == T![<] => closure_expr(x),
+            T![for] => for_expr(x, None),
             _ => {
-                p.err_and_bump("expected expression");
+                x.err_and_bump("expected expression");
                 return None;
             },
         };
@@ -126,285 +126,285 @@ mod atom {
         };
         Some((done, blocklike))
     }
-    fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T!['(']));
-        let m = p.start();
-        p.expect(T!['(']);
-        let mut saw_comma = false;
-        let mut saw_expr = false;
-        if p.eat(T![,]) {
-            p.error("expected expression");
-            saw_comma = true;
+    fn tuple_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T!['(']));
+        let y = x.start();
+        x.expect(T!['(']);
+        let mut has_comma = false;
+        let mut has_expr = false;
+        if x.eat(T![,]) {
+            x.error("expected expression");
+            has_comma = true;
         }
-        while !p.at(EOF) && !p.at(T![')']) {
-            saw_expr = true;
-            if expr(p).is_none() {
+        while !x.at(EOF) && !x.at(T![')']) {
+            has_expr = true;
+            if expr(x).is_none() {
                 break;
             }
-            if !p.at(T![')']) {
-                saw_comma = true;
-                p.expect(T![,]);
+            if !x.at(T![')']) {
+                has_comma = true;
+                x.expect(T![,]);
             }
         }
-        p.expect(T![')']);
-        m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
+        x.expect(T![')']);
+        y.complete(x, if has_expr && !has_comma { PAREN_EXPR } else { TUPLE_EXPR })
     }
-    fn array_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T!['[']));
-        let m = p.start();
-        let mut n_exprs = 0u32;
+    fn array_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T!['[']));
+        let y = x.start();
+        let mut n = 0u32;
         let mut has_semi = false;
-        p.bump(T!['[']);
-        while !p.at(EOF) && !p.at(T![']']) {
-            n_exprs += 1;
-            if expr(p).is_none() {
+        x.bump(T!['[']);
+        while !x.at(EOF) && !x.at(T![']']) {
+            n += 1;
+            if expr(x).is_none() {
                 break;
             }
-            if n_exprs == 1 && p.eat(T![;]) {
+            if n == 1 && x.eat(T![;]) {
                 has_semi = true;
                 continue;
             }
-            if has_semi || !p.at(T![']']) && !p.expect(T![,]) {
+            if has_semi || !x.at(T![']']) && !x.expect(T![,]) {
                 break;
             }
         }
-        p.expect(T![']']);
-        m.complete(p, ARRAY_EXPR)
+        x.expect(T![']']);
+        y.complete(x, ARRAY_EXPR)
     }
-    fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(match p.current() {
+    fn closure_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(match x.current() {
             T![const] | T![static] | T![async] | T![move] | T![|] => true,
-            T![for] => p.nth(1) == T![<],
+            T![for] => x.nth(1) == T![<],
             _ => false,
         });
-        let m = p.start();
-        if p.at(T![for]) {
-            ty::for_binder(p);
+        let y = x.start();
+        if x.at(T![for]) {
+            ty::for_binder(x);
         }
-        p.eat(T![const]);
-        p.eat(T![static]);
-        p.eat(T![async]);
-        p.eat(T![move]);
-        if !p.at(T![|]) {
-            p.error("expected `|`");
-            return m.complete(p, CLOSURE_EXPR);
+        x.eat(T![const]);
+        x.eat(T![static]);
+        x.eat(T![async]);
+        x.eat(T![move]);
+        if !x.at(T![|]) {
+            x.error("expected `|`");
+            return y.complete(x, CLOSURE_EXPR);
         }
-        param::closure(p);
-        if is_opt_ret_type(p) {
-            block_expr(p);
-        } else if p.at_ts(EXPR_FIRST) {
-            expr(p);
+        param::closure(x);
+        if is_opt_ret_type(x) {
+            block_expr(x);
+        } else if x.at_ts(EXPR_FIRST) {
+            expr(x);
         } else {
-            p.error("expected expression");
+            x.error("expected expression");
         }
-        m.complete(p, CLOSURE_EXPR)
+        y.complete(x, CLOSURE_EXPR)
     }
-    fn if_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![if]));
-        let m = p.start();
-        p.bump(T![if]);
-        expr_no_struct(p);
-        block_expr(p);
-        if p.at(T![else]) {
-            p.bump(T![else]);
-            if p.at(T![if]) {
-                if_expr(p);
+    fn if_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![if]));
+        let y = x.start();
+        x.bump(T![if]);
+        expr_no_struct(x);
+        block_expr(x);
+        if x.at(T![else]) {
+            x.bump(T![else]);
+            if x.at(T![if]) {
+                if_expr(x);
             } else {
-                block_expr(p);
+                block_expr(x);
             }
         }
-        m.complete(p, IF_EXPR)
+        y.complete(x, IF_EXPR)
     }
-    fn label(p: &mut Parser<'_>) {
-        assert!(p.at(LIFETIME_IDENT) && p.nth(1) == T![:]);
-        let m = p.start();
-        lifetime(p);
-        p.bump_any();
-        m.complete(p, LABEL);
+    fn label(x: &mut Parser<'_>) {
+        assert!(x.at(LIFETIME_IDENT) && x.nth(1) == T![:]);
+        let y = x.start();
+        lifetime(x);
+        x.bump_any();
+        y.complete(x, LABEL);
     }
-    fn loop_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
-        assert!(p.at(T![loop]));
-        let m = m.unwrap_or_else(|| p.start());
-        p.bump(T![loop]);
-        block_expr(p);
-        m.complete(p, LOOP_EXPR)
+    fn loop_expr(x: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
+        assert!(x.at(T![loop]));
+        let y = m.unwrap_or_else(|| x.start());
+        x.bump(T![loop]);
+        block_expr(x);
+        y.complete(x, LOOP_EXPR)
     }
-    fn while_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
-        assert!(p.at(T![while]));
-        let m = m.unwrap_or_else(|| p.start());
-        p.bump(T![while]);
-        expr_no_struct(p);
-        block_expr(p);
-        m.complete(p, WHILE_EXPR)
+    fn while_expr(x: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
+        assert!(x.at(T![while]));
+        let y = m.unwrap_or_else(|| x.start());
+        x.bump(T![while]);
+        expr_no_struct(x);
+        block_expr(x);
+        y.complete(x, WHILE_EXPR)
     }
-    fn for_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
-        assert!(p.at(T![for]));
-        let m = m.unwrap_or_else(|| p.start());
-        p.bump(T![for]);
-        pattern::one(p);
-        p.expect(T![in]);
-        expr_no_struct(p);
-        block_expr(p);
-        m.complete(p, FOR_EXPR)
+    fn for_expr(x: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
+        assert!(x.at(T![for]));
+        let y = m.unwrap_or_else(|| x.start());
+        x.bump(T![for]);
+        pattern::one(x);
+        x.expect(T![in]);
+        expr_no_struct(x);
+        block_expr(x);
+        y.complete(x, FOR_EXPR)
     }
-    fn let_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        let m = p.start();
-        p.bump(T![let]);
-        pattern::top(p);
-        p.expect(T![=]);
-        expr_let(p);
-        m.complete(p, LET_EXPR)
+    fn let_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        let y = x.start();
+        x.bump(T![let]);
+        pattern::top(x);
+        x.expect(T![=]);
+        expr_let(x);
+        y.complete(x, LET_EXPR)
     }
-    fn match_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![match]));
-        let m = p.start();
-        p.bump(T![match]);
-        expr_no_struct(p);
-        if p.at(T!['{']) {
-            match_arm_list(p);
+    fn match_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![match]));
+        let y = x.start();
+        x.bump(T![match]);
+        expr_no_struct(x);
+        if x.at(T!['{']) {
+            match_arm_list(x);
         } else {
-            p.error("expected `{`");
+            x.error("expected `{`");
         }
-        m.complete(p, MATCH_EXPR)
+        y.complete(x, MATCH_EXPR)
     }
-    pub fn match_arm_list(p: &mut Parser<'_>) {
-        assert!(p.at(T!['{']));
-        let m = p.start();
-        p.eat(T!['{']);
-        attr::inners(p);
-        while !p.at(EOF) && !p.at(T!['}']) {
-            if p.at(T!['{']) {
-                err_block(p, "expected match arm");
+    pub fn match_arm_list(x: &mut Parser<'_>) {
+        assert!(x.at(T!['{']));
+        let y = x.start();
+        x.eat(T!['{']);
+        attr::inners(x);
+        while !x.at(EOF) && !x.at(T!['}']) {
+            if x.at(T!['{']) {
+                err_block(x, "expected match arm");
                 continue;
             }
-            match_arm(p);
+            match_arm(x);
         }
-        p.expect(T!['}']);
-        m.complete(p, MATCH_ARM_LIST);
+        x.expect(T!['}']);
+        y.complete(x, MATCH_ARM_LIST);
     }
-    fn match_arm(p: &mut Parser<'_>) {
-        let m = p.start();
-        attr::outers(p);
-        pattern::top_r(p, TokenSet::EMPTY);
-        if p.at(T![if]) {
-            match_guard(p);
+    fn match_arm(x: &mut Parser<'_>) {
+        let y = x.start();
+        attr::outers(x);
+        pattern::top_r(x, TokenSet::EMPTY);
+        if x.at(T![if]) {
+            match_guard(x);
         }
-        p.expect(T![=>]);
-        let blocklike = match expr_stmt(p, None) {
-            Some((_, blocklike)) => blocklike,
+        x.expect(T![=>]);
+        let blocklike = match expr_stmt(x, None) {
+            Some((_, x)) => x,
             None => BlockLike::NotBlock,
         };
-        if !p.eat(T![,]) && !blocklike.is_block() && !p.at(T!['}']) {
-            p.error("expected `,`");
+        if !x.eat(T![,]) && !blocklike.is_block() && !x.at(T!['}']) {
+            x.error("expected `,`");
         }
-        m.complete(p, MATCH_ARM);
+        y.complete(x, MATCH_ARM);
     }
-    fn match_guard(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![if]));
-        let m = p.start();
-        p.bump(T![if]);
-        expr(p);
-        m.complete(p, MATCH_GUARD)
+    fn match_guard(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![if]));
+        let y = x.start();
+        x.bump(T![if]);
+        expr(x);
+        y.complete(x, MATCH_GUARD)
     }
-    pub fn block_expr(p: &mut Parser<'_>) {
-        if !p.at(T!['{']) {
-            p.error("expected a block");
+    pub fn block_expr(x: &mut Parser<'_>) {
+        if !x.at(T!['{']) {
+            x.error("expected a block");
             return;
         }
-        let m = p.start();
-        stmt_list(p);
-        m.complete(p, BLOCK_EXPR);
+        let y = x.start();
+        stmt_list(x);
+        y.complete(x, BLOCK_EXPR);
     }
-    fn stmt_list(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T!['{']));
-        let m = p.start();
-        p.bump(T!['{']);
-        expr_block_contents(p);
-        p.expect(T!['}']);
-        m.complete(p, STMT_LIST)
+    fn stmt_list(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T!['{']));
+        let y = x.start();
+        x.bump(T!['{']);
+        expr_block_contents(x);
+        x.expect(T!['}']);
+        y.complete(x, STMT_LIST)
     }
-    fn return_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![return]));
-        let m = p.start();
-        p.bump(T![return]);
-        if p.at_ts(EXPR_FIRST) {
-            expr(p);
+    fn return_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![return]));
+        let y = x.start();
+        x.bump(T![return]);
+        if x.at_ts(EXPR_FIRST) {
+            expr(x);
         }
-        m.complete(p, RETURN_EXPR)
+        y.complete(x, RETURN_EXPR)
     }
-    fn yield_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![yield]));
-        let m = p.start();
-        p.bump(T![yield]);
-        if p.at_ts(EXPR_FIRST) {
-            expr(p);
+    fn yield_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![yield]));
+        let y = x.start();
+        x.bump(T![yield]);
+        if x.at_ts(EXPR_FIRST) {
+            expr(x);
         }
-        m.complete(p, YIELD_EXPR)
+        y.complete(x, YIELD_EXPR)
     }
-    fn yeet_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![do]));
-        assert!(p.nth_at_contextual_kw(1, T![yeet]));
-        let m = p.start();
-        p.bump(T![do]);
-        p.bump_remap(T![yeet]);
-        if p.at_ts(EXPR_FIRST) {
-            expr(p);
+    fn yeet_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![do]));
+        assert!(x.nth_at_contextual_kw(1, T![yeet]));
+        let y = x.start();
+        x.bump(T![do]);
+        x.bump_remap(T![yeet]);
+        if x.at_ts(EXPR_FIRST) {
+            expr(x);
         }
-        m.complete(p, YEET_EXPR)
+        y.complete(x, YEET_EXPR)
     }
-    fn continue_expr(p: &mut Parser<'_>) -> CompletedMarker {
-        assert!(p.at(T![continue]));
-        let m = p.start();
-        p.bump(T![continue]);
-        if p.at(LIFETIME_IDENT) {
-            lifetime(p);
+    fn continue_expr(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![continue]));
+        let y = x.start();
+        x.bump(T![continue]);
+        if x.at(LIFETIME_IDENT) {
+            lifetime(x);
         }
-        m.complete(p, CONTINUE_EXPR)
+        y.complete(x, CONTINUE_EXPR)
     }
-    fn break_expr(p: &mut Parser<'_>, r: Restrictions) -> CompletedMarker {
-        assert!(p.at(T![break]));
-        let m = p.start();
-        p.bump(T![break]);
-        if p.at(LIFETIME_IDENT) {
-            lifetime(p);
+    fn break_expr(x: &mut Parser<'_>, r: Restrictions) -> CompletedMarker {
+        assert!(x.at(T![break]));
+        let y = x.start();
+        x.bump(T![break]);
+        if x.at(LIFETIME_IDENT) {
+            lifetime(x);
         }
-        if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{'])) {
-            expr(p);
+        if x.at_ts(EXPR_FIRST) && !(r.no_structs && x.at(T!['{'])) {
+            expr(x);
         }
-        m.complete(p, BREAK_EXPR)
+        y.complete(x, BREAK_EXPR)
     }
-    fn try_block_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
-        assert!(p.at(T![try]));
-        let m = m.unwrap_or_else(|| p.start());
-        if p.nth_at(1, T![!]) {
-            let macro_call = p.start();
-            let path = p.start();
-            let segment = p.start();
-            let name_ref = p.start();
-            p.bump_remap(IDENT);
-            name_ref.complete(p, NAME_REF);
-            segment.complete(p, PATH_SEGMENT);
-            path.complete(p, PATH);
-            let _block_like = item::macro_call_after_excl(p);
-            macro_call.complete(p, MACRO_CALL);
-            return m.complete(p, MACRO_EXPR);
+    fn try_block_expr(x: &mut Parser<'_>, y: Option<Marker>) -> CompletedMarker {
+        assert!(x.at(T![try]));
+        let y = y.unwrap_or_else(|| x.start());
+        if x.nth_at(1, T![!]) {
+            let mac_call = x.start();
+            let path = x.start();
+            let segment = x.start();
+            let name_ref = x.start();
+            x.bump_remap(IDENT);
+            name_ref.complete(x, NAME_REF);
+            segment.complete(x, PATH_SEGMENT);
+            path.complete(x, PATH);
+            let _block_like = item::macro_call_after_excl(x);
+            mac_call.complete(x, MACRO_CALL);
+            return y.complete(x, MACRO_EXPR);
         }
-        p.bump(T![try]);
-        if p.at(T!['{']) {
-            stmt_list(p);
+        x.bump(T![try]);
+        if x.at(T!['{']) {
+            stmt_list(x);
         } else {
-            p.error("expected a block");
+            x.error("expected a block");
         }
-        m.complete(p, BLOCK_EXPR)
+        y.complete(x, BLOCK_EXPR)
     }
-    fn box_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
-        assert!(p.at(T![box]));
-        let m = m.unwrap_or_else(|| p.start());
-        p.bump(T![box]);
-        if p.at_ts(EXPR_FIRST) {
-            expr(p);
+    fn box_expr(x: &mut Parser<'_>, y: Option<Marker>) -> CompletedMarker {
+        assert!(x.at(T![box]));
+        let y = y.unwrap_or_else(|| x.start());
+        x.bump(T![box]);
+        if x.at_ts(EXPR_FIRST) {
+            expr(x);
         }
-        m.complete(p, BOX_EXPR)
+        y.complete(x, BOX_EXPR)
     }
     pub fn const_arg(x: &mut Parser<'_>) {
         match x.current() {
@@ -431,126 +431,128 @@ mod atom {
         }
     }
 }
-pub use atom::{block_expr, const_arg, literal, match_arm_list, LITERAL_FIRST};
+pub use atom::{block_expr, const_arg, literal, match_arm_list, LIT_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub enum Semicolon {
-    Required,
-    Optional,
+    Req,
+    Opt,
     Forbidden,
 }
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub fn expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub fn expr(x: &mut Parser<'_>) -> Option<CompletedMarker> {
     let r = Restrictions {
-        forbid_structs: false,
+        no_structs: false,
         prefer_stmt: false,
     };
-    expr_bp(p, None, r, 1).map(|(m, _)| m)
+    expr_bp(x, None, r, 1).map(|(m, _)| m)
 }
-pub fn expr_stmt(p: &mut Parser<'_>, m: Option<Marker>) -> Option<(CompletedMarker, BlockLike)> {
+pub fn expr_stmt(x: &mut Parser<'_>, y: Option<Marker>) -> Option<(CompletedMarker, BlockLike)> {
     let r = Restrictions {
-        forbid_structs: false,
+        no_structs: false,
         prefer_stmt: true,
     };
-    expr_bp(p, m, r, 1)
+    expr_bp(x, y, r, 1)
 }
-fn expr_no_struct(p: &mut Parser<'_>) {
+fn expr_no_struct(x: &mut Parser<'_>) {
     let r = Restrictions {
-        forbid_structs: true,
+        no_structs: true,
         prefer_stmt: false,
     };
-    expr_bp(p, None, r, 1);
+    expr_bp(x, None, r, 1);
 }
-fn expr_let(p: &mut Parser<'_>) {
+fn expr_let(x: &mut Parser<'_>) {
     let r = Restrictions {
-        forbid_structs: true,
+        no_structs: true,
         prefer_stmt: false,
     };
-    expr_bp(p, None, r, 5);
+    expr_bp(x, None, r, 5);
 }
-pub fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
-    if p.eat(T![;]) {
+pub fn stmt(x: &mut Parser<'_>, semi: Semicolon) {
+    if x.eat(T![;]) {
         return;
     }
-    let m = p.start();
-    attr::outers(p);
-    if p.at(T![let]) {
-        let_stmt(p, m, semicolon);
+    let y = x.start();
+    attr::outers(x);
+    if x.at(T![let]) {
+        let_stmt(x, y, semi);
         return;
     }
-    let m = match item::opt_item(p, m) {
+    let y = match item::opt_item(x, y) {
         Ok(()) => return,
-        Err(m) => m,
+        Err(x) => x,
     };
-    if !p.at_ts(EXPR_FIRST) {
-        p.err_and_bump("expected expression, item or let statement");
-        m.abandon(p);
+    if !x.at_ts(EXPR_FIRST) {
+        x.err_and_bump("expected expression, item or let statement");
+        y.abandon(x);
         return;
     }
-    if let Some((cm, blocklike)) = expr_stmt(p, Some(m)) {
-        if !(p.at(T!['}']) || (semicolon != Semicolon::Required && p.at(EOF))) {
-            let m = cm.precede(p);
-            match semicolon {
-                Semicolon::Required => {
+    if let Some((cm, blocklike)) = expr_stmt(x, Some(y)) {
+        use Semicolon::*;
+        if !(x.at(T!['}']) || (semi != Req && x.at(EOF))) {
+            let y = cm.precede(x);
+            match semi {
+                Req => {
                     if blocklike.is_block() {
-                        p.eat(T![;]);
+                        x.eat(T![;]);
                     } else {
-                        p.expect(T![;]);
+                        x.expect(T![;]);
                     }
                 },
-                Semicolon::Optional => {
-                    p.eat(T![;]);
+                Opt => {
+                    x.eat(T![;]);
                 },
-                Semicolon::Forbidden => (),
+                Forbidden => (),
             }
-            m.complete(p, EXPR_STMT);
+            y.complete(x, EXPR_STMT);
         }
     }
-    fn let_stmt(p: &mut Parser<'_>, m: Marker, with_semi: Semicolon) {
-        p.bump(T![let]);
-        pattern::one(p);
-        if p.at(T![:]) {
-            ty::ascription(p);
+    fn let_stmt(x: &mut Parser<'_>, y: Marker, semi: Semicolon) {
+        x.bump(T![let]);
+        pattern::one(x);
+        if x.at(T![:]) {
+            ty::ascription(x);
         }
-        let mut expr_after_eq: Option<CompletedMarker> = None;
-        if p.eat(T![=]) {
-            expr_after_eq = expr::expr(p);
+        let mut after_eq: Option<CompletedMarker> = None;
+        if x.eat(T![=]) {
+            after_eq = expr::expr(x);
         }
-        if p.at(T![else]) {
-            if let Some(expr) = expr_after_eq {
+        if x.at(T![else]) {
+            if let Some(expr) = after_eq {
                 if BlockLike::is_blocklike(expr.kind()) {
-                    p.error("right curly brace `}` before `else` in a `let...else` statement not allowed")
+                    x.error("right curly brace `}` before `else` in a `let...else` statement not allowed")
                 }
             }
-            let m = p.start();
-            p.bump(T![else]);
-            block_expr(p);
-            m.complete(p, LET_ELSE);
+            let y = x.start();
+            x.bump(T![else]);
+            block_expr(x);
+            y.complete(x, LET_ELSE);
         }
-        match with_semi {
-            Semicolon::Forbidden => (),
-            Semicolon::Optional => {
-                p.eat(T![;]);
+        use Semicolon::*;
+        match semi {
+            Forbidden => (),
+            Opt => {
+                x.eat(T![;]);
             },
-            Semicolon::Required => {
-                p.expect(T![;]);
+            Req => {
+                x.expect(T![;]);
             },
         }
-        m.complete(p, LET_STMT);
+        y.complete(x, LET_STMT);
     }
 }
-pub fn expr_block_contents(p: &mut Parser<'_>) {
-    attr::inners(p);
-    while !p.at(EOF) && !p.at(T!['}']) {
-        stmt(p, Semicolon::Required);
+pub fn expr_block_contents(x: &mut Parser<'_>) {
+    attr::inners(x);
+    while !x.at(EOF) && !x.at(T!['}']) {
+        stmt(x, Semicolon::Req);
     }
 }
 
 #[derive(Clone, Copy)]
 struct Restrictions {
-    forbid_structs: bool,
+    no_structs: bool,
     prefer_stmt: bool,
 }
 
@@ -600,59 +602,60 @@ fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
         _                      => NOT_AN_OP
     }
 }
-fn expr_bp(p: &mut Parser<'_>, m: Option<Marker>, mut r: Restrictions, bp: u8) -> Option<(CompletedMarker, BlockLike)> {
-    let m = m.unwrap_or_else(|| {
-        let m = p.start();
-        attr::outers(p);
-        m
+fn expr_bp(x: &mut Parser<'_>, y: Option<Marker>, mut r: Restrictions, bp: u8) -> Option<(CompletedMarker, BlockLike)> {
+    let y = y.unwrap_or_else(|| {
+        let y = x.start();
+        attr::outers(x);
+        y
     });
-    if !p.at_ts(EXPR_FIRST) {
-        p.err_recover("expected expression", atom::EXPR_RECOVERY_SET);
-        m.abandon(p);
+    if !x.at_ts(EXPR_FIRST) {
+        x.err_recover("expected expression", atom::RECOVERY_SET);
+        y.abandon(x);
         return None;
     }
-    let mut lhs = match lhs(p, r) {
+    let mut lhs = match lhs(x, r) {
         Some((lhs, blocklike)) => {
-            let lhs = lhs.extend_to(p, m);
+            let lhs = lhs.extend_to(x, y);
             if r.prefer_stmt && blocklike.is_block() {
                 return Some((lhs, BlockLike::Block));
             }
             lhs
         },
         None => {
-            m.abandon(p);
+            y.abandon(x);
             return None;
         },
     };
     loop {
-        let is_range = p.at(T![..]) || p.at(T![..=]);
-        let (op_bp, op, associativity) = current_op(p);
+        let is_range = x.at(T![..]) || x.at(T![..=]);
+        let (op_bp, op, assoc) = current_op(x);
         if op_bp < bp {
             break;
         }
-        if p.at(T![as]) {
-            lhs = cast_expr(p, lhs);
+        if x.at(T![as]) {
+            lhs = cast_expr(x, lhs);
             continue;
         }
-        let m = lhs.precede(p);
-        p.bump(op);
+        let y = lhs.precede(x);
+        x.bump(op);
         r = Restrictions {
             prefer_stmt: false,
             ..r
         };
         if is_range {
-            let has_trailing_expression = p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{']));
-            if !has_trailing_expression {
-                lhs = m.complete(p, RANGE_EXPR);
+            let has_trailing = x.at_ts(EXPR_FIRST) && !(r.no_structs && x.at(T!['{']));
+            if !has_trailing {
+                lhs = y.complete(x, RANGE_EXPR);
                 break;
             }
         }
-        let op_bp = match associativity {
-            Associativity::Left => op_bp + 1,
-            Associativity::Right => op_bp,
+        use Associativity::*;
+        let op_bp = match assoc {
+            Left => op_bp + 1,
+            Right => op_bp,
         };
         expr_bp(
-            p,
+            x,
             None,
             Restrictions {
                 prefer_stmt: false,
@@ -660,242 +663,242 @@ fn expr_bp(p: &mut Parser<'_>, m: Option<Marker>, mut r: Restrictions, bp: u8) -
             },
             op_bp,
         );
-        lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
+        lhs = y.complete(x, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
     Some((lhs, BlockLike::NotBlock))
 }
-const LHS_FIRST: TokenSet = atom::ATOM_EXPR_FIRST.union(TokenSet::new(&[T![&], T![*], T![!], T![.], T![-], T![_]]));
-fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
-    let m;
-    let kind = match p.current() {
+const LHS_FIRST: TokenSet = atom::ATOM_FIRST.union(TokenSet::new(&[T![&], T![*], T![!], T![.], T![-], T![_]]));
+fn lhs(x: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
+    let y;
+    let kind = match x.current() {
         T![&] => {
-            m = p.start();
-            p.bump(T![&]);
-            if p.at_contextual_kw(T![raw]) && (p.nth_at(1, T![mut]) || p.nth_at(1, T![const])) {
-                p.bump_remap(T![raw]);
-                p.bump_any();
+            y = x.start();
+            x.bump(T![&]);
+            if x.at_contextual_kw(T![raw]) && (x.nth_at(1, T![mut]) || x.nth_at(1, T![const])) {
+                x.bump_remap(T![raw]);
+                x.bump_any();
             } else {
-                p.eat(T![mut]);
+                x.eat(T![mut]);
             }
             REF_EXPR
         },
         T![*] | T![!] | T![-] => {
-            m = p.start();
-            p.bump_any();
+            y = x.start();
+            x.bump_any();
             PREFIX_EXPR
         },
         _ => {
             for op in [T![..=], T![..]] {
-                if p.at(op) {
-                    m = p.start();
-                    p.bump(op);
-                    if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{'])) {
-                        expr_bp(p, None, r, 2);
+                if x.at(op) {
+                    y = x.start();
+                    x.bump(op);
+                    if x.at_ts(EXPR_FIRST) && !(r.no_structs && x.at(T!['{'])) {
+                        expr_bp(x, None, r, 2);
                     }
-                    let cm = m.complete(p, RANGE_EXPR);
+                    let cm = y.complete(x, RANGE_EXPR);
                     return Some((cm, BlockLike::NotBlock));
                 }
             }
-            let (lhs, blocklike) = atom::atom_expr(p, r)?;
-            let (cm, block_like) = postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block()));
+            let (lhs, blocklike) = atom::atom_expr(x, r)?;
+            let (cm, block_like) = postfix_expr(x, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block()));
             return Some((cm, block_like));
         },
     };
-    expr_bp(p, None, r, 255);
-    let cm = m.complete(p, kind);
+    expr_bp(x, None, r, 255);
+    let cm = y.complete(x, kind);
     Some((cm, BlockLike::NotBlock))
 }
 fn postfix_expr(
-    p: &mut Parser<'_>,
-    mut lhs: CompletedMarker,
-    mut block_like: BlockLike,
-    mut allow_calls: bool,
+    x: &mut Parser<'_>,
+    mut y: CompletedMarker,
+    mut blocklike: BlockLike,
+    mut calls: bool,
 ) -> (CompletedMarker, BlockLike) {
     loop {
-        lhs = match p.current() {
-            T!['('] if allow_calls => call_expr(p, lhs),
-            T!['['] if allow_calls => index_expr(p, lhs),
-            T![.] => match postfix_dot_expr::<false>(p, lhs) {
-                Ok(it) => it,
-                Err(it) => {
-                    lhs = it;
+        y = match x.current() {
+            T!['('] if calls => call_expr(x, y),
+            T!['['] if calls => index_expr(x, y),
+            T![.] => match postfix_dot_expr::<false>(x, y) {
+                Ok(x) => x,
+                Err(x) => {
+                    y = x;
                     break;
                 },
             },
-            T![?] => try_expr(p, lhs),
+            T![?] => try_expr(x, y),
             _ => break,
         };
-        allow_calls = true;
-        block_like = BlockLike::NotBlock;
+        calls = true;
+        blocklike = BlockLike::NotBlock;
     }
-    (lhs, block_like)
+    (y, blocklike)
 }
 fn postfix_dot_expr<const FLOAT_RECOVERY: bool>(
-    p: &mut Parser<'_>,
-    lhs: CompletedMarker,
+    x: &mut Parser<'_>,
+    y: CompletedMarker,
 ) -> Result<CompletedMarker, CompletedMarker> {
     if !FLOAT_RECOVERY {
-        assert!(p.at(T![.]));
+        assert!(x.at(T![.]));
     }
     let nth1 = if FLOAT_RECOVERY { 0 } else { 1 };
     let nth2 = if FLOAT_RECOVERY { 1 } else { 2 };
-    if p.nth(nth1) == IDENT && (p.nth(nth2) == T!['('] || p.nth_at(nth2, T![::])) {
-        return Ok(method_call_expr::<FLOAT_RECOVERY>(p, lhs));
+    if x.nth(nth1) == IDENT && (x.nth(nth2) == T!['('] || x.nth_at(nth2, T![::])) {
+        return Ok(method_call_expr::<FLOAT_RECOVERY>(x, y));
     }
-    if p.nth(nth1) == T![await] {
-        let m = lhs.precede(p);
+    if x.nth(nth1) == T![await] {
+        let m = y.precede(x);
         if !FLOAT_RECOVERY {
-            p.bump(T![.]);
+            x.bump(T![.]);
         }
-        p.bump(T![await]);
-        return Ok(m.complete(p, AWAIT_EXPR));
+        x.bump(T![await]);
+        return Ok(m.complete(x, AWAIT_EXPR));
     }
-    if p.at(T![..=]) || p.at(T![..]) {
-        return Err(lhs);
+    if x.at(T![..=]) || x.at(T![..]) {
+        return Err(y);
     }
-    field_expr::<FLOAT_RECOVERY>(p, lhs)
+    field_expr::<FLOAT_RECOVERY>(x, y)
 }
-fn call_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T!['(']));
-    let m = lhs.precede(p);
-    arg_list(p);
-    m.complete(p, CALL_EXPR)
+fn call_expr(x: &mut Parser<'_>, y: CompletedMarker) -> CompletedMarker {
+    assert!(x.at(T!['(']));
+    let y = y.precede(x);
+    arg_list(x);
+    y.complete(x, CALL_EXPR)
 }
-fn index_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T!['[']));
-    let m = lhs.precede(p);
-    p.bump(T!['[']);
-    expr(p);
-    p.expect(T![']']);
-    m.complete(p, INDEX_EXPR)
+fn index_expr(x: &mut Parser<'_>, y: CompletedMarker) -> CompletedMarker {
+    assert!(x.at(T!['[']));
+    let y = y.precede(x);
+    x.bump(T!['[']);
+    expr(x);
+    x.expect(T![']']);
+    y.complete(x, INDEX_EXPR)
 }
-fn method_call_expr<const FLOAT_RECOVERY: bool>(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
+fn method_call_expr<const FLOAT_RECOVERY: bool>(x: &mut Parser<'_>, y: CompletedMarker) -> CompletedMarker {
     if FLOAT_RECOVERY {
-        assert!(p.nth(0) == IDENT && (p.nth(1) == T!['('] || p.nth_at(1, T![::])));
+        assert!(x.nth(0) == IDENT && (x.nth(1) == T!['('] || x.nth_at(1, T![::])));
     } else {
-        assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
+        assert!(x.at(T![.]) && x.nth(1) == IDENT && (x.nth(2) == T!['('] || x.nth_at(2, T![::])));
     }
-    let m = lhs.precede(p);
+    let y = y.precede(x);
     if !FLOAT_RECOVERY {
-        p.bump(T![.]);
+        x.bump(T![.]);
     }
-    name_ref(p);
-    generic::opt_args(p, true);
-    if p.at(T!['(']) {
-        arg_list(p);
+    name_ref(x);
+    generic::opt_args(x, true);
+    if x.at(T!['(']) {
+        arg_list(x);
     }
-    m.complete(p, METHOD_CALL_EXPR)
+    y.complete(x, METHOD_CALL_EXPR)
 }
 fn field_expr<const FLOAT_RECOVERY: bool>(
-    p: &mut Parser<'_>,
-    lhs: CompletedMarker,
+    x: &mut Parser<'_>,
+    y: CompletedMarker,
 ) -> Result<CompletedMarker, CompletedMarker> {
     if !FLOAT_RECOVERY {
-        assert!(p.at(T![.]));
+        assert!(x.at(T![.]));
     }
-    let m = lhs.precede(p);
+    let y = y.precede(x);
     if !FLOAT_RECOVERY {
-        p.bump(T![.]);
+        x.bump(T![.]);
     }
-    if p.at(IDENT) || p.at(INT_NUMBER) {
-        name_ref_or_idx(p);
-    } else if p.at(FLOAT_NUMBER) {
-        return match p.split_float(m) {
-            (true, m) => {
-                let lhs = m.complete(p, FIELD_EXPR);
-                postfix_dot_expr::<true>(p, lhs)
+    if x.at(IDENT) || x.at(INT_NUMBER) {
+        name_ref_or_idx(x);
+    } else if x.at(FLOAT_NUMBER) {
+        return match x.split_float(y) {
+            (true, y) => {
+                let y = y.complete(x, FIELD_EXPR);
+                postfix_dot_expr::<true>(x, y)
             },
-            (false, m) => Ok(m.complete(p, FIELD_EXPR)),
+            (false, y) => Ok(y.complete(x, FIELD_EXPR)),
         };
     } else {
-        p.error("expected field name or number");
+        x.error("expected field name or number");
     }
-    Ok(m.complete(p, FIELD_EXPR))
+    Ok(y.complete(x, FIELD_EXPR))
 }
-fn try_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T![?]));
-    let m = lhs.precede(p);
-    p.bump(T![?]);
-    m.complete(p, TRY_EXPR)
+fn try_expr(x: &mut Parser<'_>, y: CompletedMarker) -> CompletedMarker {
+    assert!(x.at(T![?]));
+    let y = y.precede(x);
+    x.bump(T![?]);
+    y.complete(x, TRY_EXPR)
 }
-fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T![as]));
-    let m = lhs.precede(p);
-    p.bump(T![as]);
-    ty::no_bounds(p);
-    m.complete(p, CAST_EXPR)
+fn cast_expr(x: &mut Parser<'_>, y: CompletedMarker) -> CompletedMarker {
+    assert!(x.at(T![as]));
+    let y = y.precede(x);
+    x.bump(T![as]);
+    ty::no_bounds(x);
+    y.complete(x, CAST_EXPR)
 }
-fn arg_list(p: &mut Parser<'_>) {
-    assert!(p.at(T!['(']));
-    let m = p.start();
+fn arg_list(x: &mut Parser<'_>) {
+    assert!(x.at(T!['(']));
+    let y = x.start();
     delimited(
-        p,
+        x,
         T!['('],
         T![')'],
         T![,],
         EXPR_FIRST.union(attr::FIRST),
-        |p: &mut Parser<'_>| expr(p).is_some(),
+        |x: &mut Parser<'_>| expr(x).is_some(),
     );
-    m.complete(p, ARG_LIST);
+    y.complete(x, ARG_LIST);
 }
-fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike) {
-    assert!(path::is_start(p));
-    let m = p.start();
-    path::for_expr(p);
-    match p.current() {
-        T!['{'] if !r.forbid_structs => {
-            record_expr_field_list(p);
-            (m.complete(p, RECORD_EXPR), BlockLike::NotBlock)
+fn path_expr(x: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike) {
+    assert!(path::is_start(x));
+    let y = x.start();
+    path::for_expr(x);
+    match x.current() {
+        T!['{'] if !r.no_structs => {
+            record_expr_field_list(x);
+            (y.complete(x, RECORD_EXPR), BlockLike::NotBlock)
         },
-        T![!] if !p.at(T![!=]) => {
-            let block_like = item::macro_call_after_excl(p);
-            (m.complete(p, MACRO_CALL).precede(p).complete(p, MACRO_EXPR), block_like)
+        T![!] if !x.at(T![!=]) => {
+            let blocklike = item::macro_call_after_excl(x);
+            (y.complete(x, MACRO_CALL).precede(x).complete(x, MACRO_EXPR), blocklike)
         },
-        _ => (m.complete(p, PATH_EXPR), BlockLike::NotBlock),
+        _ => (y.complete(x, PATH_EXPR), BlockLike::NotBlock),
     }
 }
-pub fn record_expr_field_list(p: &mut Parser<'_>) {
-    assert!(p.at(T!['{']));
-    let m = p.start();
-    p.bump(T!['{']);
-    while !p.at(EOF) && !p.at(T!['}']) {
-        let m = p.start();
-        attr::outers(p);
-        match p.current() {
+pub fn record_expr_field_list(x: &mut Parser<'_>) {
+    assert!(x.at(T!['{']));
+    let y = x.start();
+    x.bump(T!['{']);
+    while !x.at(EOF) && !x.at(T!['}']) {
+        let y = x.start();
+        attr::outers(x);
+        match x.current() {
             IDENT | INT_NUMBER => {
-                if p.nth_at(1, T![::]) {
-                    m.abandon(p);
-                    p.expect(T![..]);
-                    expr(p);
+                if x.nth_at(1, T![::]) {
+                    y.abandon(x);
+                    x.expect(T![..]);
+                    expr(x);
                 } else {
-                    if p.nth_at(1, T![:]) || p.nth_at(1, T![..]) {
-                        name_ref_or_idx(p);
-                        p.expect(T![:]);
+                    if x.nth_at(1, T![:]) || x.nth_at(1, T![..]) {
+                        name_ref_or_idx(x);
+                        x.expect(T![:]);
                     }
-                    expr(p);
-                    m.complete(p, RECORD_EXPR_FIELD);
+                    expr(x);
+                    y.complete(x, RECORD_EXPR_FIELD);
                 }
             },
-            T![.] if p.at(T![..]) => {
-                m.abandon(p);
-                p.bump(T![..]);
-                if !p.at(T!['}']) {
-                    expr(p);
+            T![.] if x.at(T![..]) => {
+                y.abandon(x);
+                x.bump(T![..]);
+                if !x.at(T!['}']) {
+                    expr(x);
                 }
             },
             T!['{'] => {
-                err_block(p, "expected a field");
-                m.abandon(p);
+                err_block(x, "expected a field");
+                y.abandon(x);
             },
             _ => {
-                p.err_and_bump("expected identifier");
-                m.abandon(p);
+                x.err_and_bump("expected identifier");
+                y.abandon(x);
             },
         }
-        if !p.at(T!['}']) {
-            p.expect(T![,]);
+        if !x.at(T!['}']) {
+            x.expect(T![,]);
         }
     }
-    p.expect(T!['}']);
-    m.complete(p, RECORD_EXPR_FIELD_LIST);
+    x.expect(T!['}']);
+    y.complete(x, RECORD_EXPR_FIELD_LIST);
 }

@@ -125,14 +125,12 @@ impl Builder<'_, '_> {
         }
 
         let n_trivias = (self.pos..self.lexed.len())
-            .take_while(|&it| self.lexed.kind(it).is_trivia())
+            .take_while(|&x| self.lexed.kind(x).is_trivia())
             .count();
         let leading_trivias = self.pos..self.pos + n_trivias;
         let n_attached_trivias = n_attached_trivias(
             kind,
-            leading_trivias
-                .rev()
-                .map(|it| (self.lexed.kind(it), self.lexed.text(it))),
+            leading_trivias.rev().map(|x| (self.lexed.kind(x), self.lexed.text(x))),
         );
         self.eat_n_trivias(n_trivias - n_attached_trivias);
         (self.sink)(StrStep::Enter { kind });

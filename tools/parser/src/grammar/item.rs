@@ -18,7 +18,7 @@ mod adt {
         struct_or_union(p, m, false);
     }
     fn struct_or_union(p: &mut Parser<'_>, m: Marker, is_struct: bool) {
-        name_r(p, ITEM_RECOVERY_SET);
+        name_r(p, RECOVERY_SET);
         generic::opt_params(p);
         match p.current() {
             T![where] => {
@@ -50,7 +50,7 @@ mod adt {
     }
     pub fn enum_(p: &mut Parser<'_>, m: Marker) {
         p.bump(T![enum]);
-        name_r(p, ITEM_RECOVERY_SET);
+        name_r(p, RECOVERY_SET);
         generic::opt_params(p);
         generic::opt_where_clause(p);
         if p.at(T!['{']) {
@@ -183,7 +183,7 @@ mod traits {
     use super::*;
     pub fn trait_(p: &mut Parser<'_>, m: Marker) {
         p.bump(T![trait]);
-        name_r(p, ITEM_RECOVERY_SET);
+        name_r(p, RECOVERY_SET);
         generic::opt_params(p);
         if p.eat(T![=]) {
             generic::bounds_no_colon(p);
@@ -292,7 +292,7 @@ mod use_item {
                 m.abandon(p);
                 let msg = "expected one of `*`, `::`, `{`, `self`, `super` or an identifier";
                 if top_level {
-                    p.err_recover(msg, ITEM_RECOVERY_SET);
+                    p.err_recover(msg, RECOVERY_SET);
                 } else {
                     p.err_and_bump(msg);
                 }
@@ -322,7 +322,7 @@ pub fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
         item_or_macro(p, stop_on_r_curly);
     }
 }
-pub const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
+pub const RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![fn],
     T![struct],
     T![enum],
@@ -559,7 +559,7 @@ fn macro_rules(p: &mut Parser<'_>, m: Marker) {
 }
 fn macro_def(p: &mut Parser<'_>, m: Marker) {
     p.expect(T![macro]);
-    name_r(p, ITEM_RECOVERY_SET);
+    name_r(p, RECOVERY_SET);
     if p.at(T!['{']) {
         token_tree(p);
     } else if p.at(T!['(']) {
@@ -577,7 +577,7 @@ fn macro_def(p: &mut Parser<'_>, m: Marker) {
 }
 fn fn_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![fn]);
-    name_r(p, ITEM_RECOVERY_SET);
+    name_r(p, RECOVERY_SET);
     generic::opt_params(p);
     if p.at(T!['(']) {
         param::fn_def(p);
