@@ -79,7 +79,6 @@ impl<'a> LexedStr<'a> {
         &self.text[lo..hi]
     }
 
-    // Naming is hard.
     pub fn text_range(&self, i: usize) -> ops::Range<usize> {
         assert!(i < self.len());
         let lo = self.start[i] as usize;
@@ -147,10 +146,6 @@ impl<'a> Converter<'a> {
     }
 
     fn extend_token(&mut self, kind: &rustc_lexer::TokenKind, token_text: &str) {
-        // A note on an intended tradeoff:
-        // We drop some useful information here (see patterns with double dots `..`)
-        // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
-        // being `u16` that come from `rowan::SyntaxKind`.
         let mut err = "";
 
         let syntax_kind = {

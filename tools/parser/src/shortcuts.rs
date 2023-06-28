@@ -31,9 +31,6 @@ impl<'a> LexedStr<'a> {
                         res.was_joint();
                     }
                     res.push(kind);
-                    // Tag the token as joint if it is float with a fractional part
-                    // we use this jointness to inform the parser about what token split
-                    // event to emit when we encounter a float literal in a field access
                     if kind == SyntaxKind::FLOAT_NUMBER && !self.text(i).ends_with('.') {
                         res.was_joint();
                     }
@@ -79,7 +76,6 @@ impl<'a> LexedStr<'a> {
             State::PendingEnter | State::Normal => unreachable!(),
         }
 
-        // is_eof?
         builder.pos == builder.lexed.len()
     }
 }
@@ -122,8 +118,6 @@ impl Builder<'_, '_> {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingEnter => {
                 (self.sink)(StrStep::Enter { kind });
-                // No need to attach trivias to previous node: there is no
-                // previous node.
                 return;
             },
             State::PendingExit => (self.sink)(StrStep::Exit),
@@ -192,7 +186,6 @@ impl Builder<'_, '_> {
                 });
                 (self.sink)(StrStep::Exit);
 
-                // here we move the exit up, the original exit has been deleted in process
                 (self.sink)(StrStep::Exit);
 
                 (self.sink)(StrStep::Token {
@@ -213,7 +206,6 @@ impl Builder<'_, '_> {
                     });
                     (self.sink)(StrStep::Exit);
 
-                    // the parser creates an unbalanced start node, we are required to close it here
                     self.state = State::PendingExit;
                 }
             },
@@ -232,8 +224,6 @@ fn n_attached_trivias<'a>(kind: SyntaxKind, trivias: impl Iterator<Item = (Synta
             while let Some((i, (kind, text))) = trivias.next() {
                 match kind {
                     WHITESPACE if text.contains("\n\n") => {
-                        // we check whether the next token is a doc-comment
-                        // and skip the whitespace in this case
                         if let Some((COMMENT, peek_text)) = trivias.peek().map(|(_, pair)| pair) {
                             if is_outer(peek_text) {
                                 continue;

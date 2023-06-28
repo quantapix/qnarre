@@ -162,13 +162,6 @@ impl<'t> Parser<'t> {
 
     pub fn split_float(&mut self, mut marker: Marker) -> (bool, Marker) {
         assert!(self.at(SyntaxKind::FLOAT_NUMBER));
-        // we have parse `<something>.`
-        // `<something>`.0.1
-        // here we need to insert an extra event
-        //
-        // `<something>`. 0. 1;
-        // here we need to change the follow up parse, the return value will cause us to emulate a dot
-        // the actual splitting happens later
         let ends_in_dot = !self.inp.is_joint(self.pos);
         if !ends_in_dot {
             let new_marker = self.start();
@@ -190,7 +183,6 @@ impl<'t> Parser<'t> {
 
     pub fn bump_remap(&mut self, kind: SyntaxKind) {
         if self.nth(0) == EOF {
-            // FIXME: panic!?
             return;
         }
         self.do_bump(kind, 1);

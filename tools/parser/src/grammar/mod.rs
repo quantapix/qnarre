@@ -506,7 +506,7 @@ mod generic {
 }
 mod param {
     use super::*;
-    pub const FIRST: TokenSet = pattern::PATTERN_FIRST.union(ty::FIRST);
+    pub const FIRST: TokenSet = pattern::FIRST.union(ty::FIRST);
     pub fn fn_def(x: &mut Parser<'_>) {
         many(x, Flavor::FnDef);
     }
@@ -593,7 +593,7 @@ mod param {
             },
             FnPtr => {
                 if (x.at(IDENT) || x.at(UNDERSCORE)) && x.nth(1) == T![:] && !x.nth_at(1, T![::]) {
-                    pattern::pattern_single(x);
+                    pattern::single(x);
                     if !variadic(x) {
                         if x.at(T![:]) {
                             ty::ascription(x);
@@ -606,7 +606,7 @@ mod param {
                 }
             },
             Closure => {
-                pattern::pattern_single(x);
+                pattern::single(x);
                 if x.at(T![:]) && !x.at(T![::]) {
                     ty::ascription(x);
                 }
@@ -782,9 +782,296 @@ mod path {
         }
     }
 }
+mod pattern {
+    use super::*;
+    pub const FIRST: TokenSet = expr::LITERAL_FIRST.union(path::FIRST).union(TokenSet::new(&[
+        T![box],
+        T![ref],
+        T![mut],
+        T![const],
+        T!['('],
+        T!['['],
+        T![&],
+        T![_],
+        T![-],
+        T![.],
+    ]));
+    const TOP_FIRST: TokenSet = FIRST.union(TokenSet::new(&[T![|]]));
+    const END_FIRST: TokenSet = expr::LITERAL_FIRST
+        .union(path::FIRST)
+        .union(TokenSet::new(&[T![-], T![const]]));
+    const RECOVERY_SET: TokenSet =
+        TokenSet::new(&[T![let], T![if], T![while], T![loop], T![match], T![')'], T![,], T![=]]);
+
+    pub fn pattern(x: &mut Parser<'_>) {
+        pattern_r(x, RECOVERY_SET);
+    }
+    pub fn top(x: &mut Parser<'_>) {
+        top_r(x, RECOVERY_SET);
+    }
+    pub fn single(x: &mut Parser<'_>) {
+        single_r(x, RECOVERY_SET);
+    }
+    pub fn top_r(x: &mut Parser<'_>, rec_set: TokenSet) {
+        x.eat(T![|]);
+        pattern_r(x, rec_set);
+    }
+    fn pattern_r(x: &mut Parser<'_>, rec_set: TokenSet) {
+        let y = x.start();
+        single_r(x, rec_set);
+        if !x.at(T![|]) {
+            y.abandon(x);
+            return;
+        }
+        while x.eat(T![|]) {
+            single_r(x, rec_set);
+        }
+        y.complete(x, OR_PAT);
+    }
+    fn single_r(x: &mut Parser<'_>, rec_set: TokenSet) {
+        if x.at(T![..=]) {
+            let y = x.start();
+            x.bump(T![..=]);
+            atom(x, rec_set);
+            y.complete(x, RANGE_PAT);
+            return;
+        }
+        if x.at(T![..]) {
+            let y = x.start();
+            x.bump(T![..]);
+            if x.at_ts(END_FIRST) {
+                atom(x, rec_set);
+                y.complete(x, RANGE_PAT);
+            } else {
+                y.complete(x, REST_PAT);
+            }
+            return;
+        }
+        if let Some(lhs) = atom(x, rec_set) {
+            for range_op in [T![...], T![..=], T![..]] {
+                if x.at(range_op) {
+                    let y = lhs.precede(x);
+                    x.bump(range_op);
+                    if matches!(
+                        x.current(),
+                        T![=] | T![,] | T![:] | T![')'] | T!['}'] | T![']'] | T![if]
+                    ) {
+                    } else {
+                        atom(x, rec_set);
+                    }
+                    y.complete(x, RANGE_PAT);
+                    return;
+                }
+            }
+        }
+    }
+    fn atom(x: &mut Parser<'_>, rec_set: TokenSet) -> Option<CompletedMarker> {
+        let y = match x.current() {
+            T![box] => box_pat(x),
+            T![ref] | T![mut] => ident(x, true),
+            T![const] => const_block(x),
+            IDENT => match x.nth(1) {
+                T!['('] | T!['{'] | T![!] => path_or_macro(x),
+                T![:] if x.nth_at(1, T![::]) => path_or_macro(x),
+                _ => ident(x, true),
+            },
+            _ if path::is_start(x) => path_or_macro(x),
+            _ if is_literal_start(x) => literal(x),
+            T![_] => wildcard(x),
+            T![&] => ref_pat(x),
+            T!['('] => tuple_pat(x),
+            T!['['] => slice(x),
+            _ => {
+                x.err_recover("expected pattern", rec_set);
+                return None;
+            },
+        };
+        Some(y)
+    }
+    fn is_literal_start(x: &Parser<'_>) -> bool {
+        x.at(T![-]) && (x.nth(1) == INT_NUMBER || x.nth(1) == FLOAT_NUMBER) || x.at_ts(expr::LITERAL_FIRST)
+    }
+    fn literal(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(is_literal_start(x));
+        let y = x.start();
+        if x.at(T![-]) {
+            x.bump(T![-]);
+        }
+        expr::literal(x);
+        y.complete(x, LITERAL_PAT)
+    }
+    fn path_or_macro(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(path::is_start(x));
+        let y = x.start();
+        path::for_expr(x);
+        let kind = match x.current() {
+            T!['('] => {
+                tuple_fields(x);
+                TUPLE_STRUCT_PAT
+            },
+            T!['{'] => {
+                record_fields(x);
+                RECORD_PAT
+            },
+            T![!] => {
+                item::macro_call_after_excl(x);
+                return y.complete(x, MACRO_CALL).precede(x).complete(x, MACRO_PAT);
+            },
+            _ => PATH_PAT,
+        };
+        y.complete(x, kind)
+    }
+    fn tuple_fields(x: &mut Parser<'_>) {
+        assert!(x.at(T!['(']));
+        x.bump(T!['(']);
+        pat_list(x, T![')']);
+        x.expect(T![')']);
+    }
+    fn record_field(x: &mut Parser<'_>) {
+        match x.current() {
+            IDENT | INT_NUMBER if x.nth(1) == T![:] => {
+                name_ref_or_idx(x);
+                x.bump(T![:]);
+                pattern(x);
+            },
+            T![box] => {
+                box_pat(x);
+            },
+            T![ref] | T![mut] | IDENT => {
+                ident(x, false);
+            },
+            _ => {
+                x.err_and_bump("expected identifier");
+            },
+        }
+    }
+    fn record_fields(x: &mut Parser<'_>) {
+        assert!(x.at(T!['{']));
+        let y = x.start();
+        x.bump(T!['{']);
+        while !x.at(EOF) && !x.at(T!['}']) {
+            let m = x.start();
+            attr::outers(x);
+            match x.current() {
+                T![.] if x.at(T![..]) => {
+                    x.bump(T![..]);
+                    m.complete(x, REST_PAT);
+                },
+                T!['{'] => {
+                    err_block(x, "expected ident");
+                    m.abandon(x);
+                },
+                _ => {
+                    record_field(x);
+                    m.complete(x, RECORD_PAT_FIELD);
+                },
+            }
+            if !x.at(T!['}']) {
+                x.expect(T![,]);
+            }
+        }
+        x.expect(T!['}']);
+        y.complete(x, RECORD_PAT_FIELD_LIST);
+    }
+    fn wildcard(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![_]));
+        let y = x.start();
+        x.bump(T![_]);
+        y.complete(x, WILDCARD_PAT)
+    }
+    fn ref_pat(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![&]));
+        let y = x.start();
+        x.bump(T![&]);
+        x.eat(T![mut]);
+        single(x);
+        y.complete(x, REF_PAT)
+    }
+    fn tuple_pat(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T!['(']));
+        let y = x.start();
+        x.bump(T!['(']);
+        let mut has_comma = false;
+        let mut has_pat = false;
+        let mut has_rest = false;
+        if x.eat(T![,]) {
+            x.error("expected pattern");
+            has_comma = true;
+        }
+        while !x.at(EOF) && !x.at(T![')']) {
+            has_pat = true;
+            if !x.at_ts(TOP_FIRST) {
+                x.error("expected a pattern");
+                break;
+            }
+            has_rest |= x.at(T![..]);
+            top(x);
+            if !x.at(T![')']) {
+                has_comma = true;
+                x.expect(T![,]);
+            }
+        }
+        x.expect(T![')']);
+        y.complete(
+            x,
+            if !has_comma && !has_rest && has_pat {
+                PAREN_PAT
+            } else {
+                TUPLE_PAT
+            },
+        )
+    }
+    fn slice(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T!['[']));
+        let y = x.start();
+        x.bump(T!['[']);
+        pat_list(x, T![']']);
+        x.expect(T![']']);
+        y.complete(x, SLICE_PAT)
+    }
+    fn pat_list(x: &mut Parser<'_>, ket: SyntaxKind) {
+        while !x.at(EOF) && !x.at(ket) {
+            top(x);
+            if !x.at(T![,]) {
+                if x.at_ts(TOP_FIRST) {
+                    x.error(format!("expected {:?}, got {:?}", T![,], x.current()));
+                } else {
+                    break;
+                }
+            } else {
+                x.bump(T![,]);
+            }
+        }
+    }
+    fn ident(x: &mut Parser<'_>, with_at: bool) -> CompletedMarker {
+        assert!(matches!(x.current(), T![ref] | T![mut] | IDENT));
+        let y = x.start();
+        x.eat(T![ref]);
+        x.eat(T![mut]);
+        name_r(x, RECOVERY_SET);
+        if with_at && x.eat(T![@]) {
+            single(x);
+        }
+        y.complete(x, IDENT_PAT)
+    }
+    fn box_pat(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![box]));
+        let y = x.start();
+        x.bump(T![box]);
+        single(x);
+        y.complete(x, BOX_PAT)
+    }
+    fn const_block(x: &mut Parser<'_>) -> CompletedMarker {
+        assert!(x.at(T![const]));
+        let y = x.start();
+        x.bump(T![const]);
+        expr::block_expr(x);
+        y.complete(x, CONST_BLOCK_PAT)
+    }
+}
+
 mod expr;
 mod item;
-mod pattern;
 
 pub mod pre {
     use super::*;
@@ -798,10 +1085,10 @@ pub mod pre {
         expr::stmt(x, expr::Semicolon::Forbidden);
     }
     pub fn pat(x: &mut Parser<'_>) {
-        pattern::pattern_single(x);
+        pattern::single(x);
     }
     pub fn pat_top(x: &mut Parser<'_>) {
-        pattern::pattern_top(x);
+        pattern::top(x);
     }
     pub fn ty(x: &mut Parser<'_>) {
         ty(x);
@@ -841,7 +1128,7 @@ pub mod top {
     }
     pub fn pattern(x: &mut Parser<'_>) {
         let y = x.start();
-        pattern::pattern_top(x);
+        pattern::top(x);
         if x.at(EOF) {
             y.abandon(x);
             return;

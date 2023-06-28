@@ -17,7 +17,6 @@ fn sourcegen_parser_tests() {
         if !tests_dir.is_dir() {
             fs::create_dir_all(&tests_dir).unwrap();
         }
-        // ok is never actually read, but it needs to be specified to create a Test in existing_tests
         let existing = existing_tests(&tests_dir, true);
         for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
             panic!("Test is deleted: {t}");

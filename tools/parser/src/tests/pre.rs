@@ -61,13 +61,11 @@ fn path() {
     check(PrefixEntryPoint::Path, "foo::<> baz", "foo::<>");
     check(PrefixEntryPoint::Path, "foo<> baz", "foo<>");
     check(PrefixEntryPoint::Path, "Fn() -> i32?", "Fn() -> i32");
-    // FIXME: This shouldn't be accepted as path actually.
     check(PrefixEntryPoint::Path, "<_>::foo", "<_>::foo");
 }
 
 #[test]
 fn item() {
-    // FIXME: This shouldn't consume the semicolon.
     check(PrefixEntryPoint::Item, "fn foo() {};", "fn foo() {};");
     check(
         PrefixEntryPoint::Item,
