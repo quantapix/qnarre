@@ -1,7 +1,6 @@
-use std::cell::Cell;
-
 use drop_bomb::DropBomb;
 use limit::Limit;
+use std::cell::Cell;
 
 use crate::{
     event::Event,

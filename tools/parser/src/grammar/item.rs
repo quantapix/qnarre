@@ -273,8 +273,8 @@ mod use_item {
                 p.bump(T![::]);
                 use_tree_list(p);
             },
-            _ if is_use_path_start(p) => {
-                use_path(p);
+            _ if path::is_use_start(p) => {
+                path::for_use(p);
                 match p.current() {
                     T![as] => opt_rename(p),
                     T![:] if p.at(T![::]) => {
@@ -353,7 +353,7 @@ pub fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
         },
         Err(m) => m,
     };
-    if is_use_path_start(p) {
+    if path::is_use_start(p) {
         match macro_call(p) {
             BlockLike::Block => (),
             BlockLike::NotBlock => {
@@ -594,8 +594,8 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     m.complete(p, FN);
 }
 fn macro_call(p: &mut Parser<'_>) -> BlockLike {
-    assert!(is_use_path_start(p));
-    use_path(p);
+    assert!(path::is_use_start(p));
+    path::for_use(p);
     macro_call_after_excl(p)
 }
 pub fn macro_call_after_excl(p: &mut Parser<'_>) -> BlockLike {

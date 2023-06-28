@@ -18,7 +18,6 @@ fn lex_ok() {
         expect_file![case.rast].assert_eq(&actual)
     }
 }
-
 #[test]
 fn lex_err() {
     for case in TestCase::list("lexer/err") {
@@ -27,22 +26,18 @@ fn lex_err() {
         expect_file![case.rast].assert_eq(&actual)
     }
 }
-
 fn lex(text: &str) -> String {
     let lexed = LexedStr::new(text);
-
     let mut res = String::new();
     for i in 0..lexed.len() {
         let kind = lexed.kind(i);
         let text = lexed.text(i);
         let error = lexed.error(i);
-
         let error = error.map(|err| format!(" error: {err}")).unwrap_or_default();
         writeln!(res, "{kind:?} {text:?}{error}").unwrap();
     }
     res
 }
-
 #[test]
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
@@ -52,7 +47,6 @@ fn parse_ok() {
         expect_file![case.rast].assert_eq(&actual);
     }
 }
-
 #[test]
 fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
@@ -62,7 +56,6 @@ fn parse_inline_ok() {
         expect_file![case.rast].assert_eq(&actual);
     }
 }
-
 #[test]
 fn parse_err() {
     for case in TestCase::list("parser/err") {
@@ -72,7 +65,6 @@ fn parse_err() {
         expect_file![case.rast].assert_eq(&actual)
     }
 }
-
 #[test]
 fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
@@ -82,12 +74,10 @@ fn parse_inline_err() {
         expect_file![case.rast].assert_eq(&actual)
     }
 }
-
 fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
     let lexed = LexedStr::new(text);
     let input = lexed.to_input();
     let output = entry.parse(&input);
-
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut indent = String::new();
@@ -123,32 +113,27 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
         &text[..len],
         text
     );
-
     for (token, msg) in lexed.errors() {
         let pos = lexed.text_start(token);
         errors.push(format!("error {pos}: {msg}\n"));
     }
-
     let has_errors = !errors.is_empty();
     for e in errors {
         buf.push_str(&e);
     }
     (buf, has_errors)
 }
-
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct TestCase {
     rs: PathBuf,
     rast: PathBuf,
     text: String,
 }
-
 impl TestCase {
     fn list(path: &'static str) -> Vec<TestCase> {
         let crate_root_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let test_data_dir = crate_root_dir.join("test_data");
         let dir = test_data_dir.join(path);
-
         let mut res = Vec::new();
         let read_dir = fs::read_dir(&dir).unwrap_or_else(|err| panic!("can't `read_dir` {}: {err}", dir.display()));
         for file in read_dir {

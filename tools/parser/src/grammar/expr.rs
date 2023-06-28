@@ -37,7 +37,7 @@ mod atom {
         Some(m.complete(p, LITERAL))
     }
     // E.g. for after the break in `if break {}`, this should not match
-    pub const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(PATH_FIRST).union(TokenSet::new(&[
+    pub const ATOM_EXPR_FIRST: TokenSet = LITERAL_FIRST.union(path::FIRST).union(TokenSet::new(&[
         T!['('],
         T!['{'],
         T!['['],
@@ -67,7 +67,7 @@ mod atom {
         if let Some(m) = literal(p) {
             return Some((m, BlockLike::NotBlock));
         }
-        if is_path_start(p) {
+        if path::is_start(p) {
             return Some(path_expr(p, r));
         }
         let la = p.nth(1);
@@ -598,11 +598,11 @@ mod atom {
             // fn foo() { try!(Ok(())); }
             let macro_call = p.start();
             let path = p.start();
-            let path_segment = p.start();
+            let segment = p.start();
             let name_ref = p.start();
             p.bump_remap(IDENT);
             name_ref.complete(p, NAME_REF);
-            path_segment.complete(p, PATH_SEGMENT);
+            segment.complete(p, PATH_SEGMENT);
             path.complete(p, PATH);
             let _block_like = item::macro_call_after_excl(p);
             macro_call.complete(p, MACRO_CALL);
@@ -650,7 +650,7 @@ mod atom {
             },
             _ => {
                 let y = x.start();
-                use_path(x);
+                path::for_use(x);
                 y.complete(x, PATH_EXPR);
             },
         }
@@ -1226,9 +1226,9 @@ fn arg_list(p: &mut Parser<'_>) {
 //     let _ = format!();
 // }
 fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike) {
-    assert!(is_path_start(p));
+    assert!(path::is_start(p));
     let m = p.start();
-    expr_path(p);
+    path::for_expr(p);
     match p.current() {
         T!['{'] if !r.forbid_structs => {
             record_expr_field_list(p);

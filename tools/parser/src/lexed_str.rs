@@ -1,9 +1,8 @@
-use std::ops;
-
 use crate::{
     SyntaxKind::{self, *},
     T,
 };
+use std::ops;
 
 pub struct LexedStr<'a> {
     text: &'a str,

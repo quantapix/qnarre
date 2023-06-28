@@ -1,5 +1,5 @@
 use super::*;
-pub const PATTERN_FIRST: TokenSet = expr::LITERAL_FIRST.union(PATH_FIRST).union(TokenSet::new(&[
+pub const PATTERN_FIRST: TokenSet = expr::LITERAL_FIRST.union(path::FIRST).union(TokenSet::new(&[
     T![box],
     T![ref],
     T![mut],
@@ -13,7 +13,7 @@ pub const PATTERN_FIRST: TokenSet = expr::LITERAL_FIRST.union(PATH_FIRST).union(
 ]));
 const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
 const RANGE_PAT_END_FIRST: TokenSet = expr::LITERAL_FIRST
-    .union(PATH_FIRST)
+    .union(path::FIRST)
     .union(TokenSet::new(&[T![-], T![const]]));
 pub fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
@@ -196,7 +196,7 @@ fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarke
         },
         // test type_path_in_pattern
         // fn main() { let <_>::Foo = (); }
-        _ if is_path_start(p) => path_or_macro_pat(p),
+        _ if path::is_start(p) => path_or_macro_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
         T![_] => wildcard_pat(p),
         T![&] => ref_pat(p),
@@ -238,9 +238,9 @@ fn literal_pat(p: &mut Parser<'_>) -> CompletedMarker {
 //     let Bar(..) = ();
 // }
 fn path_or_macro_pat(p: &mut Parser<'_>) -> CompletedMarker {
-    assert!(is_path_start(p));
+    assert!(path::is_start(p));
     let m = p.start();
-    expr_path(p);
+    path::for_expr(p);
     let kind = match p.current() {
         T!['('] => {
             tuple_pat_fields(p);
