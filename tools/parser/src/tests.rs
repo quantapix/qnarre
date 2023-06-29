@@ -5,15 +5,57 @@ mod top;
 use crate::{Lexed, TopEntry};
 use expect_test::expect_file;
 use std::{
+    cell::RefCell,
     fmt::Write,
-    fs,
+    fs, panic,
     path::{Path, PathBuf},
+    sync::Once,
 };
+
+pub fn enter(context: String) -> PanicContext {
+    static ONCE: Once = Once::new();
+    ONCE.call_once(PanicContext::init);
+    with_ctx(|ctx| ctx.push(context));
+    PanicContext { _priv: () }
+}
+
+#[must_use]
+pub struct PanicContext {
+    _priv: (),
+}
+impl PanicContext {
+    fn init() {
+        let default_hook = panic::take_hook();
+        let hook = move |panic_info: &panic::PanicInfo<'_>| {
+            with_ctx(|ctx| {
+                if !ctx.is_empty() {
+                    eprintln!("Panic context:");
+                    for frame in ctx.iter() {
+                        eprintln!("> {frame}\n");
+                    }
+                }
+                default_hook(panic_info);
+            });
+        };
+        panic::set_hook(Box::new(hook));
+    }
+}
+impl Drop for PanicContext {
+    fn drop(&mut self) {
+        with_ctx(|ctx| assert!(ctx.pop().is_some()));
+    }
+}
+fn with_ctx(f: impl FnOnce(&mut Vec<String>)) {
+    thread_local! {
+        static CTX: RefCell<Vec<String>> = RefCell::new(Vec::new());
+    }
+    CTX.with(|ctx| f(&mut ctx.borrow_mut()));
+}
 
 #[test]
 fn lex_ok() {
     for case in TestCase::list("lexer/ok") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
+        let _guard = enter(format!("{:?}", case.rs));
         let actual = lex(&case.text);
         expect_file![case.rast].assert_eq(&actual)
     }
@@ -21,7 +63,7 @@ fn lex_ok() {
 #[test]
 fn lex_err() {
     for case in TestCase::list("lexer/err") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
+        let _guard = enter(format!("{:?}", case.rs));
         let actual = lex(&case.text);
         expect_file![case.rast].assert_eq(&actual)
     }
@@ -41,7 +83,7 @@ fn lex(text: &str) -> String {
 #[test]
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
+        let _guard = enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
@@ -50,7 +92,7 @@ fn parse_ok() {
 #[test]
 fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
+        let _guard = enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
@@ -59,7 +101,7 @@ fn parse_inline_ok() {
 #[test]
 fn parse_err() {
     for case in TestCase::list("parser/err") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
+        let _guard = enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
@@ -68,7 +110,7 @@ fn parse_err() {
 #[test]
 fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
+        let _guard = enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)

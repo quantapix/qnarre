@@ -6,16 +6,16 @@ sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/
 sudo apt-get update
 
 sudo apt-get install --no-install-recommends \
-    cuda-12-1 \
-    libcudnn8=8.9.0.131-1+cuda12.1 \
-    libcudnn8-dev=8.9.0.131-1+cuda12.1 \
-    libnccl2=2.17.1-1+cuda12.1 \
-    libnccl-dev=2.17.1-1+cuda12.1
+    cuda-12-2 \
+    libcudnn8=8.9.2.26-1+cuda12.1 \
+    libcudnn8-dev=8.9.2.26-1+cuda12.1 \
+    libnccl2=2.18.3-1+cuda12.1 \
+    libnccl-dev=2.18.3-1+cuda12.1
 
 sudo apt-get install -y --no-install-recommends \
-    libnvinfer8=8.6.0.12-1+cuda12.0 \
-    libnvinfer-dev=8.6.0.12-1+cuda12.0 \
-    libnvinfer-plugin8=8.6.0.12-1+cuda12.0
+    libnvinfer8=8.6.1.6-1+cuda12.0 \
+    libnvinfer-dev=8.6.1.6-1+cuda12.0 \
+    libnvinfer-plugin8=8.6.1.6-1+cuda12.0
 
 function lib_installed() { /sbin/ldconfig -N -v $(sed 's/:/ /' <<< $LD_LIBRARY_PATH) 2>/dev/null | grep $1; }
 function check() { lib_installed $1 && echo "$1 is installed" || echo "ERROR: $1 is NOT installed"; }

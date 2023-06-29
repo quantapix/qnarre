@@ -551,7 +551,7 @@ pub fn expr_block_contents(x: &mut Parser<'_>) {
 }
 
 #[derive(Clone, Copy)]
-struct Restrictions {
+pub struct Restrictions {
     no_structs: bool,
     prefer_stmt: bool,
 }

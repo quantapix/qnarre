@@ -1,9 +1,9 @@
 use drop_bomb::DropBomb;
-use limit::Limit;
 use std::cell::Cell;
 
 use crate::{
     input::Input,
+    limit::Limit,
     Event,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, T,

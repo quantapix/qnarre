@@ -29,7 +29,7 @@ pub fn reparser(
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum BlockLike {
+pub enum BlockLike {
     Block,
     NotBlock,
 }
@@ -1343,7 +1343,7 @@ pub mod pre {
         pattern::top(x);
     }
     pub fn ty(x: &mut Parser<'_>) {
-        ty(x);
+        super::ty(x);
     }
     pub fn expr(x: &mut Parser<'_>) {
         expr::expr(x);
@@ -1392,7 +1392,7 @@ pub mod top {
     }
     pub fn ty(x: &mut Parser<'_>) {
         let y = x.start();
-        ty(x);
+        super::ty(x);
         if x.at(EOF) {
             y.abandon(x);
             return;

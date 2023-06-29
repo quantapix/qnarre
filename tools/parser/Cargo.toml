@@ -12,6 +12,7 @@ doctest = false
 drop_bomb = "0.1"
 unic-emoji-char = "0.9"
 unicode-xid = "0.2"
+xshell = "0.2.2"
 
 # limit.workspace = true
 

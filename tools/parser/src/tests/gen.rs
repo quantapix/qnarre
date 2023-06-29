@@ -1,3 +1,4 @@
+use crate::srcgen;
 use std::{
     collections::HashMap,
     fs, iter,
@@ -6,14 +7,14 @@ use std::{
 
 #[test]
 fn sourcegen_parser_tests() {
-    let grammar_dir = sourcegen::project_root().join(Path::new("crates/parser/src/grammar"));
+    let grammar_dir = srcgen::project_root().join(Path::new("crates/parser/src/grammar"));
     let tests = tests_from_dir(&grammar_dir);
 
     install_tests(&tests.ok, "crates/parser/test_data/parser/inline/ok");
     install_tests(&tests.err, "crates/parser/test_data/parser/inline/err");
 
     fn install_tests(tests: &HashMap<String, Test>, into: &str) {
-        let tests_dir = sourcegen::project_root().join(into);
+        let tests_dir = srcgen::project_root().join(into);
         if !tests_dir.is_dir() {
             fs::create_dir_all(&tests_dir).unwrap();
         }
@@ -32,7 +33,7 @@ fn sourcegen_parser_tests() {
                     tests_dir.join(file_name)
                 },
             };
-            sourcegen::ensure_file_contents(&path, &test.text);
+            srcgen::ensure_file_contents(&path, &test.text);
         }
     }
 }
@@ -52,7 +53,7 @@ struct Tests {
 
 fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = Vec::new();
-    for comment_block in sourcegen::CommentBlock::extract_untagged(s) {
+    for comment_block in srcgen::CommentBlock::extract_untagged(s) {
         let first_line = &comment_block.contents[0];
         let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
             (name.to_string(), true)
@@ -75,7 +76,7 @@ fn collect_tests(s: &str) -> Vec<Test> {
 
 fn tests_from_dir(dir: &Path) -> Tests {
     let mut res = Tests::default();
-    for entry in sourcegen::list_rust_files(dir) {
+    for entry in srcgen::list_rust_files(dir) {
         process_file(&mut res, entry.as_path());
     }
     let grammar_rs = dir.parent().unwrap().join("grammar.rs");
