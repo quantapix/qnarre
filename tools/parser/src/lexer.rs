@@ -423,25 +423,27 @@ impl Cursor<'_> {
     }
     fn number(&mut self, first_digit: char) -> LitKind {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
-        let mut base = Base::Dec;
+        use Base::*;
+        use LitKind::*;
+        let mut base = Dec;
         if first_digit == '0' {
             match self.first() {
                 'b' => {
-                    base = Base::Bin;
+                    base = Bin;
                     self.bump();
                     if !self.eat_dec_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 'o' => {
-                    base = Base::Oct;
+                    base = Oct;
                     self.bump();
                     if !self.eat_dec_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 'x' => {
-                    base = Base::Hex;
+                    base = Hex;
                     self.bump();
                     if !self.eat_hex_digits() {
                         return Int { base, empty_int: true };
@@ -488,6 +490,8 @@ impl Cursor<'_> {
     }
     fn lifetime_or_char(&mut self) -> TokKind {
         debug_assert!(self.prev() == '\'');
+        use LitKind::*;
+        use TokKind::*;
         let can_be_a_lifetime = if self.second() == '\'' {
             false
         } else {
@@ -495,30 +499,25 @@ impl Cursor<'_> {
         };
         if !can_be_a_lifetime {
             let terminated = self.single_quoted_str();
-            let suffix_start = self.pos_in_tok();
+            let suff_start = self.pos_in_tok();
             if terminated {
                 self.eat_lit_suff();
             }
             let kind = Char { terminated };
-            return Literal {
-                kind,
-                suff_start: suffix_start,
-            };
+            return Lit { kind, suff_start };
         }
-        let starts_with_number = self.first().is_ascii_digit();
+        let starts_with_num = self.first().is_ascii_digit();
         self.bump();
         self.eat_while(is_id_cont);
         if self.first() == '\'' {
             self.bump();
             let kind = Char { terminated: true };
-            Literal {
+            Lit {
                 kind,
                 suff_start: self.pos_in_tok(),
             }
         } else {
-            Lifetime {
-                starts_with_num: starts_with_number,
-            }
+            Lifetime { starts_with_num }
         }
     }
     fn single_quoted_str(&mut self) -> bool {

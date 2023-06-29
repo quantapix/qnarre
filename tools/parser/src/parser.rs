@@ -246,7 +246,6 @@ pub struct Marker {
     pos: u32,
     bomb: DropBomb,
 }
-
 impl Marker {
     fn new(pos: u32) -> Marker {
         Marker {
@@ -287,12 +286,10 @@ pub struct CompletedMarker {
     pos: u32,
     kind: SyntaxKind,
 }
-
 impl CompletedMarker {
     fn new(pos: u32, kind: SyntaxKind) -> Self {
         CompletedMarker { pos, kind }
     }
-
     pub fn precede(self, p: &mut Parser<'_>) -> Marker {
         let new_pos = p.start();
         let idx = self.pos as usize;
@@ -307,7 +304,6 @@ impl CompletedMarker {
         }
         new_pos
     }
-
     pub fn extend_to(self, p: &mut Parser<'_>, mut m: Marker) -> CompletedMarker {
         m.bomb.defuse();
         let idx = m.pos as usize;
@@ -322,7 +318,6 @@ impl CompletedMarker {
         }
         self
     }
-
     pub fn kind(&self) -> SyntaxKind {
         self.kind
     }

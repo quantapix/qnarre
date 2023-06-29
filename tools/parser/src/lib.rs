@@ -1,4 +1,11 @@
 #![allow(dead_code)]
+#![forbid(
+    // missing_debug_implementations,
+    unconditional_recursion,
+    future_incompatible,
+    // missing_docs,
+)]
+#![warn(unused_lifetimes)]
 
 pub use crate::{
     input::Input,
@@ -614,6 +621,7 @@ mod srcgen {
         res
     }
 }
+pub mod syntax;
 
 #[cfg(test)]
 mod tests;
