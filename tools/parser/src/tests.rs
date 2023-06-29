@@ -2,7 +2,7 @@ mod gen;
 mod pre;
 mod top;
 
-use crate::{LexedStr, TopEntryPoint};
+use crate::{Lexed, TopEntry};
 use expect_test::expect_file;
 use std::{
     fmt::Write,
@@ -27,12 +27,12 @@ fn lex_err() {
     }
 }
 fn lex(text: &str) -> String {
-    let lexed = LexedStr::new(text);
+    let lexed = Lexed::new(text);
     let mut res = String::new();
     for i in 0..lexed.len() {
         let kind = lexed.kind(i);
         let text = lexed.text(i);
-        let error = lexed.error(i);
+        let error = lexed.err(i);
         let error = error.map(|err| format!(" error: {err}")).unwrap_or_default();
         writeln!(res, "{kind:?} {text:?}{error}").unwrap();
     }
@@ -42,7 +42,7 @@ fn lex(text: &str) -> String {
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
     }
@@ -51,7 +51,7 @@ fn parse_ok() {
 fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
     }
@@ -60,7 +60,7 @@ fn parse_inline_ok() {
 fn parse_err() {
     for case in TestCase::list("parser/err") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
     }
@@ -69,13 +69,13 @@ fn parse_err() {
 fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
     }
 }
-fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
-    let lexed = LexedStr::new(text);
+fn parse(entry: TopEntry, text: &str) -> (String, bool) {
+    let lexed = Lexed::new(text);
     let input = lexed.to_input();
     let output = entry.parse(&input);
     let mut buf = String::new();
@@ -113,7 +113,7 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
         &text[..len],
         text
     );
-    for (token, msg) in lexed.errors() {
+    for (token, msg) in lexed.errs() {
         let pos = lexed.text_start(token);
         errors.push(format!("error {pos}: {msg}\n"));
     }

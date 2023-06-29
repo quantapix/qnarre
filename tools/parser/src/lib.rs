@@ -3,15 +3,16 @@
 
 pub use crate::{
     input::Input,
-    lexed_str::LexedStr,
+    kind::SyntaxKind,
+    lexed::Lexed,
     output::{Output, Step},
     shortcuts::StrStep,
-    syntax_kind::SyntaxKind,
 };
+use std::mem;
 pub use token_set::TokenSet;
 
 #[derive(Debug)]
-pub enum TopEntryPoint {
+pub enum TopEntry {
     SourceFile,
     MacroStmts,
     MacroItems,
@@ -20,45 +21,46 @@ pub enum TopEntryPoint {
     Expr,
     MetaItem,
 }
-impl TopEntryPoint {
-    pub fn parse(&self, input: &Input) -> Output {
-        let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
-            TopEntryPoint::SourceFile => grammar::top::src_file,
-            TopEntryPoint::MacroStmts => grammar::top::mac_stmts,
-            TopEntryPoint::MacroItems => grammar::top::mac_items,
-            TopEntryPoint::Pattern => grammar::top::pattern,
-            TopEntryPoint::Type => grammar::top::ty,
-            TopEntryPoint::Expr => grammar::top::expr,
-            TopEntryPoint::MetaItem => grammar::top::meta,
+impl TopEntry {
+    pub fn parse(&self, x: &Input) -> Output {
+        let mut p = parser::Parser::new(x);
+        let entry: fn(&'_ mut parser::Parser<'_>) = match self {
+            TopEntry::SourceFile => grammar::top::src_file,
+            TopEntry::MacroStmts => grammar::top::mac_stmts,
+            TopEntry::MacroItems => grammar::top::mac_items,
+            TopEntry::Pattern => grammar::top::pattern,
+            TopEntry::Type => grammar::top::ty,
+            TopEntry::Expr => grammar::top::expr,
+            TopEntry::MetaItem => grammar::top::meta,
         };
-        let mut p = parser::Parser::new(input);
-        entry_point(&mut p);
-        let events = p.finish();
-        let res = event::process(events);
+        entry(&mut p);
+        let y = p.finish();
+        let y = process(y);
         if cfg!(debug_assertions) {
             let mut depth = 0;
             let mut first = true;
-            for step in res.iter() {
+            for x in y.iter() {
                 assert!(depth > 0 || first);
                 first = false;
-                match step {
-                    Step::Enter { .. } => depth += 1,
-                    Step::Exit => depth -= 1,
-                    Step::FloatSplit {
+                use Step::*;
+                match x {
+                    Enter { .. } => depth += 1,
+                    Exit => depth -= 1,
+                    FloatSplit {
                         ends_in_dot: has_pseudo_dot,
                     } => depth -= 1 + !has_pseudo_dot as usize,
-                    Step::Token { .. } | Step::Error { .. } => (),
+                    Token { .. } | Step::Error { .. } => (),
                 }
             }
             assert!(!first, "no tree at all");
             assert_eq!(depth, 0, "unbalanced tree");
         }
-        res
+        y
     }
 }
 
 #[derive(Debug)]
-pub enum PrefixEntryPoint {
+pub enum PreEntry {
     Vis,
     Block,
     Stmt,
@@ -70,113 +72,99 @@ pub enum PrefixEntryPoint {
     Item,
     MetaItem,
 }
-impl PrefixEntryPoint {
-    pub fn parse(&self, input: &Input) -> Output {
-        let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
-            PrefixEntryPoint::Vis => grammar::pre::vis,
-            PrefixEntryPoint::Block => grammar::pre::block,
-            PrefixEntryPoint::Stmt => grammar::pre::stmt,
-            PrefixEntryPoint::Pat => grammar::pre::pat,
-            PrefixEntryPoint::PatTop => grammar::pre::pat_top,
-            PrefixEntryPoint::Ty => grammar::pre::ty,
-            PrefixEntryPoint::Expr => grammar::pre::expr,
-            PrefixEntryPoint::Path => grammar::pre::path,
-            PrefixEntryPoint::Item => grammar::pre::item,
-            PrefixEntryPoint::MetaItem => grammar::pre::meta,
+impl PreEntry {
+    pub fn parse(&self, x: &Input) -> Output {
+        let mut p = parser::Parser::new(x);
+        let entry: fn(&'_ mut parser::Parser<'_>) = match self {
+            PreEntry::Vis => grammar::pre::vis,
+            PreEntry::Block => grammar::pre::block,
+            PreEntry::Stmt => grammar::pre::stmt,
+            PreEntry::Pat => grammar::pre::pat,
+            PreEntry::PatTop => grammar::pre::pat_top,
+            PreEntry::Ty => grammar::pre::ty,
+            PreEntry::Expr => grammar::pre::expr,
+            PreEntry::Path => grammar::pre::path,
+            PreEntry::Item => grammar::pre::item,
+            PreEntry::MetaItem => grammar::pre::meta,
         };
-        let mut p = parser::Parser::new(input);
-        entry_point(&mut p);
-        let events = p.finish();
-        event::process(events)
+        entry(&mut p);
+        let y = p.finish();
+        process(y)
     }
 }
 
 pub struct Reparser(fn(&mut parser::Parser<'_>));
 impl Reparser {
-    pub fn for_node(node: SyntaxKind, first_child: Option<SyntaxKind>, parent: Option<SyntaxKind>) -> Option<Reparser> {
-        grammar::reparser(node, first_child, parent).map(Reparser)
+    pub fn for_node(x: SyntaxKind, first_child: Option<SyntaxKind>, parent: Option<SyntaxKind>) -> Option<Reparser> {
+        grammar::reparser(x, first_child, parent).map(Reparser)
     }
-    pub fn parse(self, tokens: &Input) -> Output {
+    pub fn parse(self, x: &Input) -> Output {
+        let mut p = parser::Parser::new(x);
         let Reparser(r) = self;
-        let mut p = parser::Parser::new(tokens);
         r(&mut p);
-        let events = p.finish();
-        event::process(events)
+        let y = p.finish();
+        process(y)
     }
 }
 
-mod event {
-    use crate::{
-        output::Output,
-        SyntaxKind::{self, *},
-    };
-    use std::mem;
-    #[derive(Debug)]
-    pub enum Event {
-        Start {
-            kind: SyntaxKind,
-            forward_parent: Option<u32>,
-        },
-        Finish,
-        Token {
-            kind: SyntaxKind,
-            n_raw_tokens: u8,
-        },
-        FloatSplitHack {
-            ends_in_dot: bool,
-        },
-        Error {
-            msg: String,
-        },
-    }
-    impl Event {
-        pub fn tombstone() -> Self {
-            Event::Start {
-                kind: TOMBSTONE,
-                forward_parent: None,
-            }
+#[derive(Debug)]
+pub enum Event {
+    Start { kind: SyntaxKind, fwd_parent: Option<u32> },
+    Finish,
+    Token { kind: SyntaxKind, n_raw_toks: u8 },
+    FloatSplitHack { ends_in_dot: bool },
+    Error { msg: String },
+}
+impl Event {
+    pub fn tombstone() -> Self {
+        Event::Start {
+            kind: SyntaxKind::TOMBSTONE,
+            fwd_parent: None,
         }
-    }
-    pub fn process(mut events: Vec<Event>) -> Output {
-        let mut res = Output::default();
-        let mut forward_parents = Vec::new();
-        for i in 0..events.len() {
-            match mem::replace(&mut events[i], Event::tombstone()) {
-                Event::Start { kind, forward_parent } => {
-                    forward_parents.push(kind);
-                    let mut idx = i;
-                    let mut fp = forward_parent;
-                    while let Some(fwd) = fp {
-                        idx += fwd as usize;
-                        fp = match mem::replace(&mut events[idx], Event::tombstone()) {
-                            Event::Start { kind, forward_parent } => {
-                                forward_parents.push(kind);
-                                forward_parent
-                            },
-                            _ => unreachable!(),
-                        };
-                    }
-                    for kind in forward_parents.drain(..).rev() {
-                        if kind != TOMBSTONE {
-                            res.enter_node(kind);
-                        }
-                    }
-                },
-                Event::Finish => res.leave_node(),
-                Event::Token { kind, n_raw_tokens } => {
-                    res.token(kind, n_raw_tokens);
-                },
-                Event::FloatSplitHack { ends_in_dot } => {
-                    res.float_split_hack(ends_in_dot);
-                    let ev = mem::replace(&mut events[i + 1], Event::tombstone());
-                    assert!(matches!(ev, Event::Finish), "{ev:?}");
-                },
-                Event::Error { msg } => res.error(msg),
-            }
-        }
-        res
     }
 }
+
+pub fn process(mut xs: Vec<Event>) -> Output {
+    let mut y = Output::default();
+    let mut fwd_parents = Vec::new();
+    for i in 0..xs.len() {
+        use Event::*;
+        match mem::replace(&mut xs[i], Event::tombstone()) {
+            Start { kind, fwd_parent } => {
+                fwd_parents.push(kind);
+                let mut idx = i;
+                let mut fp = fwd_parent;
+                while let Some(fwd) = fp {
+                    idx += fwd as usize;
+                    fp = match mem::replace(&mut xs[idx], Event::tombstone()) {
+                        Start { kind, fwd_parent } => {
+                            fwd_parents.push(kind);
+                            fwd_parent
+                        },
+                        _ => unreachable!(),
+                    };
+                }
+                for kind in fwd_parents.drain(..).rev() {
+                    if kind != SyntaxKind::TOMBSTONE {
+                        y.enter_node(kind);
+                    }
+                }
+            },
+            Finish => y.leave_node(),
+            Token { kind, n_raw_toks } => {
+                y.token(kind, n_raw_toks);
+            },
+            FloatSplitHack { ends_in_dot } => {
+                y.float_split_hack(ends_in_dot);
+                let ev = mem::replace(&mut xs[i + 1], Event::tombstone());
+                assert!(matches!(ev, Event::Finish), "{ev:?}");
+            },
+            Error { msg } => y.error(msg),
+        }
+    }
+    y
+}
+
 mod grammar;
 mod input {
     use crate::SyntaxKind;
@@ -184,18 +172,18 @@ mod input {
     type bits = u64;
     #[derive(Default)]
     pub struct Input {
-        kind: Vec<SyntaxKind>,
+        kinds: Vec<SyntaxKind>,
         joint: Vec<bits>,
-        contextual_kind: Vec<SyntaxKind>,
+        contextuals: Vec<SyntaxKind>,
     }
     impl Input {
         #[inline]
-        pub fn push(&mut self, kind: SyntaxKind) {
-            self.push_impl(kind, SyntaxKind::EOF)
+        pub fn push(&mut self, x: SyntaxKind) {
+            self.push_impl(x, SyntaxKind::EOF)
         }
         #[inline]
-        pub fn push_ident(&mut self, contextual_kind: SyntaxKind) {
-            self.push_impl(SyntaxKind::IDENT, contextual_kind)
+        pub fn push_ident(&mut self, contextual: SyntaxKind) {
+            self.push_impl(SyntaxKind::IDENT, contextual)
         }
         #[inline]
         pub fn was_joint(&mut self) {
@@ -204,21 +192,21 @@ mod input {
             self.joint[idx] |= 1 << b_idx;
         }
         #[inline]
-        fn push_impl(&mut self, kind: SyntaxKind, contextual_kind: SyntaxKind) {
+        fn push_impl(&mut self, x: SyntaxKind, contextual: SyntaxKind) {
             let idx = self.len();
             if idx % (bits::BITS as usize) == 0 {
                 self.joint.push(0);
             }
-            self.kind.push(kind);
-            self.contextual_kind.push(contextual_kind);
+            self.kinds.push(x);
+            self.contextuals.push(contextual);
         }
     }
     impl Input {
-        pub fn kind(&self, idx: usize) -> SyntaxKind {
-            self.kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
+        pub fn kind(&self, i: usize) -> SyntaxKind {
+            self.kinds.get(i).copied().unwrap_or(SyntaxKind::EOF)
         }
-        pub fn contextual_kind(&self, idx: usize) -> SyntaxKind {
-            self.contextual_kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
+        pub fn contextual_kind(&self, i: usize) -> SyntaxKind {
+            self.contextuals.get(i).copied().unwrap_or(SyntaxKind::EOF)
         }
         pub fn is_joint(&self, n: usize) -> bool {
             let (idx, b_idx) = self.bit_index(n);
@@ -232,21 +220,22 @@ mod input {
             (idx, b_idx)
         }
         fn len(&self) -> usize {
-            self.kind.len()
+            self.kinds.len()
         }
     }
 }
-mod lexed_str;
+mod lexed;
+mod lexer;
 mod output {
     use crate::SyntaxKind;
     #[derive(Default)]
     pub struct Output {
         event: Vec<u32>,
-        error: Vec<String>,
+        errs: Vec<String>,
     }
     #[derive(Debug)]
     pub enum Step<'a> {
-        Token { kind: SyntaxKind, n_input_tokens: u8 },
+        Token { kind: SyntaxKind, n_input_toks: u8 },
         FloatSplit { ends_in_dot: bool },
         Enter { kind: SyntaxKind },
         Exit,
@@ -266,78 +255,77 @@ mod output {
         const EXIT_EVENT: u8 = 2;
         const SPLIT_EVENT: u8 = 3;
         pub fn iter(&self) -> impl Iterator<Item = Step<'_>> {
-            self.event.iter().map(|&event| {
-                if event & Self::EVENT_MASK == 0 {
+            self.event.iter().map(|&x| {
+                if x & Self::EVENT_MASK == 0 {
                     return Step::Error {
-                        msg: self.error[(event as usize) >> Self::ERROR_SHIFT].as_str(),
+                        msg: self.errs[(x as usize) >> Self::ERROR_SHIFT].as_str(),
                     };
                 }
-                let tag = ((event & Self::TAG_MASK) >> Self::TAG_SHIFT) as u8;
+                let tag = ((x & Self::TAG_MASK) >> Self::TAG_SHIFT) as u8;
                 match tag {
                     Self::TOKEN_EVENT => {
-                        let kind: SyntaxKind = (((event & Self::KIND_MASK) >> Self::KIND_SHIFT) as u16).into();
-                        let n_input_tokens = ((event & Self::N_INPUT_TOKEN_MASK) >> Self::N_INPUT_TOKEN_SHIFT) as u8;
-                        Step::Token { kind, n_input_tokens }
+                        let kind: SyntaxKind = (((x & Self::KIND_MASK) >> Self::KIND_SHIFT) as u16).into();
+                        let n_input_toks = ((x & Self::N_INPUT_TOKEN_MASK) >> Self::N_INPUT_TOKEN_SHIFT) as u8;
+                        Step::Token { kind, n_input_toks }
                     },
                     Self::ENTER_EVENT => {
-                        let kind: SyntaxKind = (((event & Self::KIND_MASK) >> Self::KIND_SHIFT) as u16).into();
+                        let kind: SyntaxKind = (((x & Self::KIND_MASK) >> Self::KIND_SHIFT) as u16).into();
                         Step::Enter { kind }
                     },
                     Self::EXIT_EVENT => Step::Exit,
                     Self::SPLIT_EVENT => Step::FloatSplit {
-                        ends_in_dot: event & Self::N_INPUT_TOKEN_MASK != 0,
+                        ends_in_dot: x & Self::N_INPUT_TOKEN_MASK != 0,
                     },
                     _ => unreachable!(),
                 }
             })
         }
-        pub fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
-            let e = ((kind as u16 as u32) << Self::KIND_SHIFT)
-                | ((n_tokens as u32) << Self::N_INPUT_TOKEN_SHIFT)
-                | Self::EVENT_MASK;
-            self.event.push(e)
+        pub fn token(&mut self, x: SyntaxKind, n: u8) {
+            let y =
+                ((x as u16 as u32) << Self::KIND_SHIFT) | ((n as u32) << Self::N_INPUT_TOKEN_SHIFT) | Self::EVENT_MASK;
+            self.event.push(y)
         }
         pub fn float_split_hack(&mut self, ends_in_dot: bool) {
-            let e = (Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT
+            let y = (Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT
                 | ((ends_in_dot as u32) << Self::N_INPUT_TOKEN_SHIFT)
                 | Self::EVENT_MASK;
-            self.event.push(e);
+            self.event.push(y);
         }
-        pub fn enter_node(&mut self, kind: SyntaxKind) {
-            let e = ((kind as u16 as u32) << Self::KIND_SHIFT)
+        pub fn enter_node(&mut self, x: SyntaxKind) {
+            let y = ((x as u16 as u32) << Self::KIND_SHIFT)
                 | ((Self::ENTER_EVENT as u32) << Self::TAG_SHIFT)
                 | Self::EVENT_MASK;
-            self.event.push(e)
+            self.event.push(y)
         }
         pub fn leave_node(&mut self) {
-            let e = (Self::EXIT_EVENT as u32) << Self::TAG_SHIFT | Self::EVENT_MASK;
-            self.event.push(e)
+            let y = (Self::EXIT_EVENT as u32) << Self::TAG_SHIFT | Self::EVENT_MASK;
+            self.event.push(y)
         }
-        pub fn error(&mut self, error: String) {
-            let idx = self.error.len();
-            self.error.push(error);
-            let e = (idx as u32) << Self::ERROR_SHIFT;
-            self.event.push(e);
+        pub fn error(&mut self, err: String) {
+            let i = self.errs.len();
+            self.errs.push(err);
+            let y = (i as u32) << Self::ERROR_SHIFT;
+            self.event.push(y);
         }
     }
 }
 mod parser;
 mod shortcuts;
-mod syntax_kind {
+mod kind {
     mod generated;
     #[allow(unreachable_pub)]
     pub use self::generated::{SyntaxKind, T};
     impl From<u16> for SyntaxKind {
         #[inline]
-        fn from(d: u16) -> SyntaxKind {
-            assert!(d <= (SyntaxKind::__LAST as u16));
-            unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
+        fn from(x: u16) -> SyntaxKind {
+            assert!(x <= (SyntaxKind::__LAST as u16));
+            unsafe { std::mem::transmute::<u16, SyntaxKind>(x) }
         }
     }
     impl From<SyntaxKind> for u16 {
         #[inline]
-        fn from(k: SyntaxKind) -> u16 {
-            k as u16
+        fn from(x: SyntaxKind) -> u16 {
+            x as u16
         }
     }
     impl SyntaxKind {
@@ -353,32 +341,32 @@ mod token_set {
     pub struct TokenSet(u128);
     impl TokenSet {
         pub const EMPTY: TokenSet = TokenSet(0);
-        pub const fn new(kinds: &[SyntaxKind]) -> TokenSet {
-            let mut res = 0u128;
+        pub const fn new(xs: &[SyntaxKind]) -> TokenSet {
+            let mut y = 0u128;
             let mut i = 0;
-            while i < kinds.len() {
-                res |= mask(kinds[i]);
+            while i < xs.len() {
+                y |= mask(xs[i]);
                 i += 1;
             }
-            TokenSet(res)
+            TokenSet(y)
         }
         pub const fn union(self, other: TokenSet) -> TokenSet {
             TokenSet(self.0 | other.0)
         }
-        pub const fn contains(&self, kind: SyntaxKind) -> bool {
-            self.0 & mask(kind) != 0
+        pub const fn contains(&self, x: SyntaxKind) -> bool {
+            self.0 & mask(x) != 0
         }
     }
-    const fn mask(kind: SyntaxKind) -> u128 {
-        1u128 << (kind as usize)
+    const fn mask(x: SyntaxKind) -> u128 {
+        1u128 << (x as usize)
     }
     #[test]
     fn token_set_works_for_tokens() {
         use crate::SyntaxKind::*;
-        let ts = TokenSet::new(&[EOF, SHEBANG]);
-        assert!(ts.contains(EOF));
-        assert!(ts.contains(SHEBANG));
-        assert!(!ts.contains(PLUS));
+        let y = TokenSet::new(&[EOF, SHEBANG]);
+        assert!(y.contains(EOF));
+        assert!(y.contains(SHEBANG));
+        assert!(!y.contains(PLUS));
     }
 }
 

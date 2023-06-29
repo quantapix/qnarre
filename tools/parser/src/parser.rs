@@ -3,8 +3,8 @@ use limit::Limit;
 use std::cell::Cell;
 
 use crate::{
-    event::Event,
     input::Input,
+    Event,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, T,
 };
@@ -167,7 +167,10 @@ impl<'t> Parser<'t> {
             let new_marker = self.start();
             let idx = marker.pos as usize;
             match &mut self.events[idx] {
-                Event::Start { forward_parent, kind } => {
+                Event::Start {
+                    fwd_parent: forward_parent,
+                    kind,
+                } => {
                     *kind = SyntaxKind::FIELD_EXPR;
                     *forward_parent = Some(new_marker.pos - marker.pos);
                 },
@@ -228,7 +231,10 @@ impl<'t> Parser<'t> {
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
         self.pos += n_raw_tokens as usize;
         self.steps.set(0);
-        self.push_event(Event::Token { kind, n_raw_tokens });
+        self.push_event(Event::Token {
+            kind,
+            n_raw_toks: n_raw_tokens,
+        });
     }
 
     fn push_event(&mut self, event: Event) {
@@ -269,7 +275,7 @@ impl Marker {
             match p.events.pop() {
                 Some(Event::Start {
                     kind: TOMBSTONE,
-                    forward_parent: None,
+                    fwd_parent: None,
                 }) => (),
                 _ => unreachable!(),
             }
@@ -291,7 +297,10 @@ impl CompletedMarker {
         let new_pos = p.start();
         let idx = self.pos as usize;
         match &mut p.events[idx] {
-            Event::Start { forward_parent, .. } => {
+            Event::Start {
+                fwd_parent: forward_parent,
+                ..
+            } => {
                 *forward_parent = Some(new_pos.pos - self.pos);
             },
             _ => unreachable!(),
@@ -303,7 +312,10 @@ impl CompletedMarker {
         m.bomb.defuse();
         let idx = m.pos as usize;
         match &mut p.events[idx] {
-            Event::Start { forward_parent, .. } => {
+            Event::Start {
+                fwd_parent: forward_parent,
+                ..
+            } => {
                 *forward_parent = Some(self.pos - m.pos);
             },
             _ => unreachable!(),

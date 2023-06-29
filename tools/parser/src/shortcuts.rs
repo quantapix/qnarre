@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    LexedStr, Step,
+    Lexed, Step,
     SyntaxKind::{self, *},
 };
 
@@ -13,7 +13,7 @@ pub enum StrStep<'a> {
     Error { msg: &'a str, pos: usize },
 }
 
-impl<'a> LexedStr<'a> {
+impl<'a> Lexed<'a> {
     pub fn to_input(&self) -> crate::Input {
         let mut res = crate::Input::default();
         let mut was_joint = false;
@@ -54,7 +54,7 @@ impl<'a> LexedStr<'a> {
             match event {
                 Step::Token {
                     kind,
-                    n_input_tokens: n_raw_tokens,
+                    n_input_toks: n_raw_tokens,
                 } => builder.token(kind, n_raw_tokens),
                 Step::FloatSplit {
                     ends_in_dot: has_pseudo_dot,
@@ -81,7 +81,7 @@ impl<'a> LexedStr<'a> {
 }
 
 struct Builder<'a, 'b> {
-    lexed: &'a LexedStr<'a>,
+    lexed: &'a Lexed<'a>,
     pos: usize,
     state: State,
     sink: &'b mut dyn FnMut(StrStep<'_>),

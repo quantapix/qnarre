@@ -1,11 +1,11 @@
 use expect_test::expect;
 
-use crate::TopEntryPoint;
+use crate::TopEntry;
 
 #[test]
 fn source_file() {
     check(
-        TopEntryPoint::SourceFile,
+        TopEntry::SourceFile,
         "",
         expect![[r#"
         SOURCE_FILE
@@ -13,7 +13,7 @@ fn source_file() {
     );
 
     check(
-        TopEntryPoint::SourceFile,
+        TopEntry::SourceFile,
         "struct S;",
         expect![[r#"
         SOURCE_FILE
@@ -27,7 +27,7 @@ fn source_file() {
     );
 
     check(
-        TopEntryPoint::SourceFile,
+        TopEntry::SourceFile,
         "@error@",
         expect![[r#"
         SOURCE_FILE
@@ -52,14 +52,14 @@ fn source_file() {
 #[test]
 fn macro_stmt() {
     check(
-        TopEntryPoint::MacroStmts,
+        TopEntry::MacroStmts,
         "",
         expect![[r#"
             MACRO_STMTS
         "#]],
     );
     check(
-        TopEntryPoint::MacroStmts,
+        TopEntry::MacroStmts,
         "#!/usr/bin/rust",
         expect![[r##"
             MACRO_STMTS
@@ -69,7 +69,7 @@ fn macro_stmt() {
         "##]],
     );
     check(
-        TopEntryPoint::MacroStmts,
+        TopEntry::MacroStmts,
         "let x = 1 2 struct S;",
         expect![[r#"
             MACRO_STMTS
@@ -102,14 +102,14 @@ fn macro_stmt() {
 #[test]
 fn macro_items() {
     check(
-        TopEntryPoint::MacroItems,
+        TopEntry::MacroItems,
         "",
         expect![[r#"
             MACRO_ITEMS
         "#]],
     );
     check(
-        TopEntryPoint::MacroItems,
+        TopEntry::MacroItems,
         "#!/usr/bin/rust",
         expect![[r##"
             MACRO_ITEMS
@@ -119,7 +119,7 @@ fn macro_items() {
         "##]],
     );
     check(
-        TopEntryPoint::MacroItems,
+        TopEntry::MacroItems,
         "struct S; foo!{}",
         expect![[r#"
             MACRO_ITEMS
@@ -146,7 +146,7 @@ fn macro_items() {
 #[test]
 fn macro_pattern() {
     check(
-        TopEntryPoint::Pattern,
+        TopEntry::Pattern,
         "",
         expect![[r#"
             ERROR
@@ -154,7 +154,7 @@ fn macro_pattern() {
         "#]],
     );
     check(
-        TopEntryPoint::Pattern,
+        TopEntry::Pattern,
         "Some(_)",
         expect![[r#"
             TUPLE_STRUCT_PAT
@@ -170,7 +170,7 @@ fn macro_pattern() {
     );
 
     check(
-        TopEntryPoint::Pattern,
+        TopEntry::Pattern,
         "None leftover tokens",
         expect![[r#"
             ERROR
@@ -185,7 +185,7 @@ fn macro_pattern() {
     );
 
     check(
-        TopEntryPoint::Pattern,
+        TopEntry::Pattern,
         "@err",
         expect![[r#"
             ERROR
@@ -200,7 +200,7 @@ fn macro_pattern() {
 #[test]
 fn ty() {
     check(
-        TopEntryPoint::Type,
+        TopEntry::Type,
         "",
         expect![[r#"
             ERROR
@@ -209,7 +209,7 @@ fn ty() {
     );
 
     check(
-        TopEntryPoint::Type,
+        TopEntry::Type,
         "Option<!>",
         expect![[r#"
             PATH_TYPE
@@ -226,7 +226,7 @@ fn ty() {
         "#]],
     );
     check(
-        TopEntryPoint::Type,
+        TopEntry::Type,
         "() () ()",
         expect![[r#"
             ERROR
@@ -242,7 +242,7 @@ fn ty() {
         "#]],
     );
     check(
-        TopEntryPoint::Type,
+        TopEntry::Type,
         "$$$",
         expect![[r#"
             ERROR
@@ -258,7 +258,7 @@ fn ty() {
 #[test]
 fn expr() {
     check(
-        TopEntryPoint::Expr,
+        TopEntry::Expr,
         "",
         expect![[r#"
             ERROR
@@ -266,7 +266,7 @@ fn expr() {
         "#]],
     );
     check(
-        TopEntryPoint::Expr,
+        TopEntry::Expr,
         "2 + 2 == 5",
         expect![[r#"
         BIN_EXPR
@@ -286,7 +286,7 @@ fn expr() {
     "#]],
     );
     check(
-        TopEntryPoint::Expr,
+        TopEntry::Expr,
         "let _ = 0;",
         expect![[r#"
             ERROR
@@ -306,7 +306,7 @@ fn expr() {
 }
 
 #[track_caller]
-fn check(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
+fn check(entry: TopEntry, input: &str, expect: expect_test::Expect) {
     let (parsed, _errors) = super::parse(entry, input);
     expect.assert_eq(&parsed)
 }
