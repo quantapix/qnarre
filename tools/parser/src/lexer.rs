@@ -6,8 +6,8 @@ use unicode_xid::UnicodeXID;
 pub enum LitKind {
     Byte { terminated: bool },
     Char { terminated: bool },
-    Int { base: Base, empty_int: bool },
-    Float { base: Base, empty_exp: bool },
+    Int { base: Base, empty: bool },
+    Float { base: Base, empty: bool },
     ByteStr { terminated: bool },
     CStr { terminated: bool },
     Str { terminated: bool },
@@ -15,7 +15,6 @@ pub enum LitKind {
     RawCStr { n_hashes: Option<u8> },
     RawStr { n_hashes: Option<u8> },
 }
-//use LitKind::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokKind {
@@ -58,7 +57,6 @@ pub enum TokKind {
     Unknown,
     Eof,
 }
-//use TokKind::*;
 
 #[derive(Debug)]
 pub struct Token {
@@ -80,12 +78,12 @@ pub enum DocStyle {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RawStrErr {
     InvalidStart {
-        bad_char: char,
+        bad: char,
     },
     NoTerminator {
         expected: u32,
         found: u32,
-        possible_terminator_offset: Option<u32>,
+        possible_offset: Option<u32>,
     },
     ManyDelimiters {
         found: u32,
@@ -382,20 +380,20 @@ impl Cursor<'_> {
     }
     fn c_or_byte_str(
         &mut self,
-        mk_kind: impl FnOnce(bool) -> LitKind,
-        mk_kind_raw: impl FnOnce(Option<u8>) -> LitKind,
+        f_kind: impl FnOnce(bool) -> LitKind,
+        f_raw: impl FnOnce(Option<u8>) -> LitKind,
         single_quoted: Option<fn(bool) -> LitKind>,
     ) -> TokKind {
         use TokKind::*;
         match (self.first(), self.second(), single_quoted) {
-            ('\'', _, Some(mk_kind)) => {
+            ('\'', _, Some(f_kind)) => {
                 self.bump();
                 let terminated = self.single_quoted_str();
                 let suff_start = self.pos_in_tok();
                 if terminated {
                     self.eat_lit_suff();
                 }
-                let kind = mk_kind(terminated);
+                let kind = f_kind(terminated);
                 Lit { kind, suff_start }
             },
             ('"', _, _) => {
@@ -405,55 +403,55 @@ impl Cursor<'_> {
                 if terminated {
                     self.eat_lit_suff();
                 }
-                let kind = mk_kind(terminated);
+                let kind = f_kind(terminated);
                 Lit { kind, suff_start }
             },
             ('r', '"', _) | ('r', '#', _) => {
                 self.bump();
-                let res = self.raw_dbl_quoted_str(2);
+                let y = self.raw_dbl_quoted_str(2);
                 let suff_start = self.pos_in_tok();
-                if res.is_ok() {
+                if y.is_ok() {
                     self.eat_lit_suff();
                 }
-                let kind = mk_kind_raw(res.ok());
+                let kind = f_raw(y.ok());
                 Lit { kind, suff_start }
             },
             _ => self.ident_or_unknown_pre(),
         }
     }
-    fn number(&mut self, first_digit: char) -> LitKind {
+    fn number(&mut self, first: char) -> LitKind {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         use Base::*;
         use LitKind::*;
         let mut base = Dec;
-        if first_digit == '0' {
+        if first == '0' {
             match self.first() {
                 'b' => {
                     base = Bin;
                     self.bump();
                     if !self.eat_dec_digits() {
-                        return Int { base, empty_int: true };
+                        return Int { base, empty: true };
                     }
                 },
                 'o' => {
                     base = Oct;
                     self.bump();
                     if !self.eat_dec_digits() {
-                        return Int { base, empty_int: true };
+                        return Int { base, empty: true };
                     }
                 },
                 'x' => {
                     base = Hex;
                     self.bump();
                     if !self.eat_hex_digits() {
-                        return Int { base, empty_int: true };
+                        return Int { base, empty: true };
                     }
                 },
                 '0'..='9' | '_' => {
                     self.eat_dec_digits();
                 },
                 '.' | 'e' | 'E' => {},
-                _ => return Int { base, empty_int: false },
+                _ => return Int { base, empty: false },
             }
         } else {
             self.eat_dec_digits();
@@ -461,43 +459,37 @@ impl Cursor<'_> {
         match self.first() {
             '.' if self.second() != '.' && !is_id_start(self.second()) => {
                 self.bump();
-                let mut empty_exponent = false;
+                let mut empty = false;
                 if self.first().is_ascii_digit() {
                     self.eat_dec_digits();
                     match self.first() {
                         'e' | 'E' => {
                             self.bump();
-                            empty_exponent = !self.eat_float_exp();
+                            empty = !self.eat_float_exp();
                         },
                         _ => (),
                     }
                 }
-                Float {
-                    base,
-                    empty_exp: empty_exponent,
-                }
+                Float { base, empty }
             },
             'e' | 'E' => {
                 self.bump();
-                let empty_exponent = !self.eat_float_exp();
-                Float {
-                    base,
-                    empty_exp: empty_exponent,
-                }
+                let empty = !self.eat_float_exp();
+                Float { base, empty }
             },
-            _ => Int { base, empty_int: false },
+            _ => Int { base, empty: false },
         }
     }
     fn lifetime_or_char(&mut self) -> TokKind {
         debug_assert!(self.prev() == '\'');
         use LitKind::*;
         use TokKind::*;
-        let can_be_a_lifetime = if self.second() == '\'' {
+        let lifetime = if self.second() == '\'' {
             false
         } else {
             is_id_start(self.first()) || self.first().is_ascii_digit()
         };
-        if !can_be_a_lifetime {
+        if !lifetime {
             let terminated = self.single_quoted_str();
             let suff_start = self.pos_in_tok();
             if terminated {
@@ -549,8 +541,8 @@ impl Cursor<'_> {
     }
     fn dbl_quoted_str(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
-        while let Some(c) = self.bump() {
-            match c {
+        while let Some(x) = self.bump() {
+            match x {
                 '"' => {
                     return true;
                 },
@@ -563,84 +555,84 @@ impl Cursor<'_> {
         false
     }
     fn raw_dbl_quoted_str(&mut self, pre_len: u32) -> Result<u8, RawStrErr> {
-        let n_hashes = self.raw_str_unvalidated(pre_len)?;
-        match u8::try_from(n_hashes) {
-            Ok(num) => Ok(num),
-            Err(_) => Err(RawStrErr::ManyDelimiters { found: n_hashes }),
+        let found = self.raw_str_unvalidated(pre_len)?;
+        match u8::try_from(found) {
+            Ok(x) => Ok(x),
+            Err(_) => Err(RawStrErr::ManyDelimiters { found }),
         }
     }
     fn raw_str_unvalidated(&mut self, pre_len: u32) -> Result<u32, RawStrErr> {
         debug_assert!(self.prev() == 'r');
         let start_pos = self.pos_in_tok();
-        let mut possible_terminator_offset = None;
-        let mut max_hashes = 0;
+        let mut possible_offset = None;
+        let mut found = 0;
         let mut eaten = 0;
         while self.first() == '#' {
             eaten += 1;
             self.bump();
         }
-        let n_start_hashes = eaten;
+        let expected = eaten;
         match self.bump() {
             Some('"') => (),
-            c => {
-                let c = c.unwrap_or(EOF_CHAR);
-                return Err(RawStrErr::InvalidStart { bad_char: c });
+            x => {
+                let bad = x.unwrap_or(EOF_CHAR);
+                return Err(RawStrErr::InvalidStart { bad });
             },
         }
         loop {
-            self.eat_while(|c| c != '"');
+            self.eat_while(|x| x != '"');
             if self.is_eof() {
                 return Err(RawStrErr::NoTerminator {
-                    expected: n_start_hashes,
-                    found: max_hashes,
-                    possible_terminator_offset,
+                    expected,
+                    found,
+                    possible_offset,
                 });
             }
             self.bump();
-            let mut n_end_hashes = 0;
-            while self.first() == '#' && n_end_hashes < n_start_hashes {
-                n_end_hashes += 1;
+            let mut y = 0;
+            while self.first() == '#' && y < expected {
+                y += 1;
                 self.bump();
             }
-            if n_end_hashes == n_start_hashes {
-                return Ok(n_start_hashes);
-            } else if n_end_hashes > max_hashes {
-                possible_terminator_offset = Some(self.pos_in_tok() - start_pos - n_end_hashes + pre_len);
-                max_hashes = n_end_hashes;
+            if y == expected {
+                return Ok(expected);
+            } else if y > found {
+                possible_offset = Some(self.pos_in_tok() - start_pos - y + pre_len);
+                found = y;
             }
         }
     }
     fn eat_dec_digits(&mut self) -> bool {
-        let mut has_digits = false;
+        let mut y = false;
         loop {
             match self.first() {
                 '_' => {
                     self.bump();
                 },
                 '0'..='9' => {
-                    has_digits = true;
+                    y = true;
                     self.bump();
                 },
                 _ => break,
             }
         }
-        has_digits
+        y
     }
     fn eat_hex_digits(&mut self) -> bool {
-        let mut has_digits = false;
+        let mut y = false;
         loop {
             match self.first() {
                 '_' => {
                     self.bump();
                 },
                 '0'..='9' | 'a'..='f' | 'A'..='F' => {
-                    has_digits = true;
+                    y = true;
                     self.bump();
                 },
                 _ => break,
             }
         }
-        has_digits
+        y
     }
     fn eat_float_exp(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
@@ -662,21 +654,20 @@ impl Cursor<'_> {
 }
 
 pub mod unescape {
-    use std::ops::Range;
-    use std::str::Chars;
+    use std::{ops::Range, str::Chars};
 
     pub enum CStrUnit {
         Byte(u8),
         Char(char),
     }
     impl From<u8> for CStrUnit {
-        fn from(value: u8) -> Self {
-            CStrUnit::Byte(value)
+        fn from(x: u8) -> Self {
+            CStrUnit::Byte(x)
         }
     }
     impl From<char> for CStrUnit {
-        fn from(value: char) -> Self {
-            CStrUnit::Char(value)
+        fn from(x: char) -> Self {
+            CStrUnit::Char(x)
         }
     }
 
@@ -693,34 +684,39 @@ pub mod unescape {
     }
     impl Mode {
         pub fn in_dbl_quotes(self) -> bool {
+            use Mode::*;
             match self {
-                Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => true,
-                Mode::Char | Mode::Byte => false,
+                Str | ByteStr | RawStr | RawByteStr | CStr | RawCStr => true,
+                Char | Byte => false,
             }
         }
         pub fn ascii_escapes_should_be_ascii(self) -> bool {
+            use Mode::*;
             match self {
-                Mode::Char | Mode::Str | Mode::RawStr => true,
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
+                Char | Str | RawStr => true,
+                Byte | ByteStr | RawByteStr | CStr | RawCStr => false,
             }
         }
         pub fn chars_should_be_ascii(self) -> bool {
+            use Mode::*;
             match self {
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+                Byte | ByteStr | RawByteStr => true,
+                Char | Str | RawStr | CStr | RawCStr => false,
             }
         }
         pub fn is_unicode_escape_disallowed(self) -> bool {
+            use Mode::*;
             match self {
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-                Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+                Byte | ByteStr | RawByteStr => true,
+                Char | Str | RawStr | CStr | RawCStr => false,
             }
         }
         pub fn prefix_noraw(self) -> &'static str {
+            use Mode::*;
             match self {
-                Mode::Byte | Mode::ByteStr | Mode::RawByteStr => "b",
-                Mode::CStr | Mode::RawCStr => "c",
-                Mode::Char | Mode::Str | Mode::RawStr => "",
+                Byte | ByteStr | RawByteStr => "b",
+                CStr | RawCStr => "c",
+                Char | Str | RawStr => "",
             }
         }
     }
@@ -763,15 +759,16 @@ pub mod unescape {
     where
         F: FnMut(Range<usize>, Result<char, EscapeErr>),
     {
+        use Mode::*;
         match mode {
-            Mode::Char | Mode::Byte => {
+            Char | Byte => {
                 let mut chars = src.chars();
-                let res = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
+                let res = unescape_char_or_byte(&mut chars, mode == Byte);
                 callback(0..(src.len() - chars.as_str().len()), res);
             },
-            Mode::Str | Mode::ByteStr => unescape_str_common(src, mode, callback),
-            Mode::RawStr | Mode::RawByteStr => unescape_raw_str_or_byte_str(src, mode == Mode::RawByteStr, callback),
-            Mode::CStr | Mode::RawCStr => unreachable!(),
+            Str | ByteStr => unescape_str_common(src, mode, callback),
+            RawStr | RawByteStr => unescape_raw_str_or_byte_str(src, mode == RawByteStr, callback),
+            CStr | RawCStr => unreachable!(),
         }
     }
     pub fn unescape_c_str<F>(src: &str, mode: Mode, callback: &mut F)
@@ -875,8 +872,9 @@ pub mod unescape {
     }
     fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeErr> {
         let c = chars.next().ok_or(EscapeErr::ZeroChars)?;
+        use Mode::*;
         let res = match c {
-            '\\' => scan_escape(chars, if is_byte { Mode::Byte } else { Mode::Char }),
+            '\\' => scan_escape(chars, if is_byte { Byte } else { Char }),
             '\n' | '\t' | '\'' => Err(EscapeErr::EscapeOnlyChar),
             '\r' => Err(EscapeErr::BareCarriageReturn),
             _ => ascii_check(c, is_byte),
@@ -984,7 +982,7 @@ mod tests {
             Err(RawStrErr::NoTerminator {
                 expected: 1,
                 found: 0,
-                possible_terminator_offset: None,
+                possible_offset: None,
             }),
         );
         check_raw_str(
@@ -992,7 +990,7 @@ mod tests {
             Err(RawStrErr::NoTerminator {
                 expected: 2,
                 found: 1,
-                possible_terminator_offset: Some(7),
+                possible_offset: Some(7),
             }),
         );
         check_raw_str(
@@ -1000,13 +998,13 @@ mod tests {
             Err(RawStrErr::NoTerminator {
                 expected: 2,
                 found: 0,
-                possible_terminator_offset: None,
+                possible_offset: None,
             }),
         )
     }
     #[test]
     fn test_invalid_start() {
-        check_raw_str(r##"#~"abc"#"##, Err(RawStrErr::InvalidStart { bad_char: '~' }));
+        check_raw_str(r##"#~"abc"#"##, Err(RawStrErr::InvalidStart { bad: '~' }));
     }
     #[test]
     fn test_unterminated_no_pound() {
@@ -1015,7 +1013,7 @@ mod tests {
             Err(RawStrErr::NoTerminator {
                 expected: 0,
                 found: 0,
-                possible_terminator_offset: None,
+                possible_offset: None,
             }),
         );
     }
@@ -1103,7 +1101,7 @@ mod tests {
                 Token { kind: Ident, len: 7 }
                 Token { kind: Bang, len: 1 }
                 Token { kind: OpenParen, len: 1 }
-                Token { kind: Literal { kind: Str { terminated: true }, suffix_start: 7 }, len: 7 }
+                Token { kind: Literal { kind: Str { terminated: true }, suff_start: 7 }, len: 7 }
                 Token { kind: CloseParen, len: 1 }
                 Token { kind: Semi, len: 1 }
                 Token { kind: Whitespace, len: 1 }
@@ -1155,7 +1153,7 @@ mod tests {
             "/* /* */ */'a'",
             expect![[r#"
                 Token { kind: BlockComment { doc_style: None, terminated: true }, len: 11 }
-                Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
+                Token { kind: Literal { kind: Char { terminated: true }, suff_start: 3 }, len: 3 }
             "#]],
         )
     }
@@ -1164,11 +1162,11 @@ mod tests {
         check_lexing(
             "'a' ' ' '\\n'",
             expect![[r#"
-                Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
+                Token { kind: Literal { kind: Char { terminated: true }, suff_start: 3 }, len: 3 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
+                Token { kind: Literal { kind: Char { terminated: true }, suff_start: 3 }, len: 3 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 4 }, len: 4 }
+                Token { kind: Literal { kind: Char { terminated: true }, suff_start: 4 }, len: 4 }
             "#]],
         );
     }
@@ -1186,7 +1184,7 @@ mod tests {
         check_lexing(
             "r###\"\"#a\\b\x00c\"\"###",
             expect![[r#"
-                Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 17 }, len: 17 }
+                Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suff_start: 17 }, len: 17 }
             "#]],
         )
     }
@@ -1209,29 +1207,29 @@ mod tests {
     "####,
             expect![[r#"
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
+                Token { kind: Literal { kind: Char { terminated: true }, suff_start: 3 }, len: 3 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Byte { terminated: true }, suffix_start: 4 }, len: 4 }
+                Token { kind: Literal { kind: Byte { terminated: true }, suff_start: 4 }, len: 4 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Str { terminated: true }, suffix_start: 3 }, len: 3 }
+                Token { kind: Literal { kind: Str { terminated: true }, suff_start: 3 }, len: 3 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: ByteStr { terminated: true }, suffix_start: 4 }, len: 4 }
+                Token { kind: Literal { kind: ByteStr { terminated: true }, suff_start: 4 }, len: 4 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 4 }, len: 4 }
+                Token { kind: Literal { kind: Int { base: Decimal, empty: false }, suff_start: 4 }, len: 4 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Int { base: Binary, empty_int: false }, suffix_start: 5 }, len: 5 }
+                Token { kind: Literal { kind: Int { base: Binary, empty: false }, suff_start: 5 }, len: 5 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Int { base: Hexadecimal, empty_int: false }, suffix_start: 5 }, len: 5 }
+                Token { kind: Literal { kind: Int { base: Hexadecimal, empty: false }, suff_start: 5 }, len: 5 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Float { base: Decimal, empty_exponent: false }, suffix_start: 3 }, len: 3 }
+                Token { kind: Literal { kind: Float { base: Decimal, empty: false }, suff_start: 3 }, len: 3 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Float { base: Decimal, empty_exponent: false }, suffix_start: 6 }, len: 6 }
+                Token { kind: Literal { kind: Float { base: Decimal, empty: false }, suff_start: 6 }, len: 6 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 3 }
+                Token { kind: Literal { kind: Int { base: Decimal, empty: false }, suff_start: 1 }, len: 3 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 12 }, len: 18 }
+                Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suff_start: 12 }, len: 18 }
                 Token { kind: Whitespace, len: 1 }
-                Token { kind: Literal { kind: RawByteStr { n_hashes: Some(3) }, suffix_start: 13 }, len: 19 }
+                Token { kind: Literal { kind: RawByteStr { n_hashes: Some(3) }, suff_start: 13 }, len: 19 }
                 Token { kind: Whitespace, len: 1 }
             "#]],
         )

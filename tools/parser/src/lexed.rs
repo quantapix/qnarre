@@ -198,17 +198,14 @@ impl<'a> Converter<'a> {
         let mut err = "";
         use lexer::LitKind::*;
         let y = match *kind {
-            Int { empty_int, base: _ } => {
-                if empty_int {
+            Int { empty, base: _ } => {
+                if empty {
                     err = "Missing digits after the integer base prefix";
                 }
                 INT_NUMBER
             },
-            Float {
-                empty_exp: empty_exponent,
-                base: _,
-            } => {
-                if empty_exponent {
+            Float { empty, base: _ } => {
+                if empty {
                     err = "Missing digits after the exponent symbol";
                 }
                 FLOAT_NUMBER

@@ -198,18 +198,18 @@ impl ast::IntNumber {
     }
     pub fn split_into_parts(&self) -> (&str, &str, &str) {
         let radix = self.radix();
-        let (prefix, mut text) = self.text().split_at(radix.prefix_len());
-        let is_suffix_start: fn(&(usize, char)) -> bool = match radix {
+        let (pre, mut text) = self.text().split_at(radix.prefix_len());
+        let is_suff_start: fn(&(usize, char)) -> bool = match radix {
             Radix::Hexadecimal => |(_, c)| matches!(c, 'g'..='z' | 'G'..='Z'),
             _ => |(_, c)| c.is_ascii_alphabetic(),
         };
-        let mut suffix = "";
-        if let Some((suffix_start, _)) = text.char_indices().find(is_suffix_start) {
-            let (text2, suffix2) = text.split_at(suffix_start);
+        let mut suff = "";
+        if let Some((suff_start, _)) = text.char_indices().find(is_suff_start) {
+            let (text2, suffix2) = text.split_at(suff_start);
             text = text2;
-            suffix = suffix2;
+            suff = suffix2;
         };
-        (prefix, text, suffix)
+        (pre, text, suff)
     }
     pub fn value(&self) -> Option<u128> {
         let (_, text, _) = self.split_into_parts();
@@ -233,21 +233,21 @@ impl ast::FloatNumber {
     pub fn split_into_parts(&self) -> (&str, &str) {
         let text = self.text();
         let mut float_text = self.text();
-        let mut suffix = "";
+        let mut suff = "";
         let mut indices = text.char_indices();
-        if let Some((mut suffix_start, c)) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic()) {
+        if let Some((mut suff_start, c)) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic()) {
             if c == 'e' || c == 'E' {
-                if let Some(suffix_start_tuple) = indices.find(|(_, c)| c.is_ascii_alphabetic()) {
-                    suffix_start = suffix_start_tuple.0;
-                    float_text = &text[..suffix_start];
-                    suffix = &text[suffix_start..];
+                if let Some(suff_start_tuple) = indices.find(|(_, c)| c.is_ascii_alphabetic()) {
+                    suff_start = suff_start_tuple.0;
+                    float_text = &text[..suff_start];
+                    suff = &text[suff_start..];
                 }
             } else {
-                float_text = &text[..suffix_start];
-                suffix = &text[suffix_start..];
+                float_text = &text[..suff_start];
+                suff = &text[suff_start..];
             }
         }
-        (float_text, suffix)
+        (float_text, suff)
     }
     pub fn suffix(&self) -> Option<&str> {
         let (_, suffix) = self.split_into_parts();
