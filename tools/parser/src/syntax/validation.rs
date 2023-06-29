@@ -1,5 +1,5 @@
 use crate::{
-    lexer::unescape::{self, unesc_lit, Mode},
+    lexer::unescape::{self, unesc_lit, EscErr, Mode},
     match_ast,
     syntax::{
         self, algo,
@@ -7,190 +7,189 @@ use crate::{
         core::Direction,
         SyntaxErr, TextSize, T,
     },
-    SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
+    SyntaxKind::{self, CONST, FN, INT_NUMBER, TYPE_ALIAS},
 };
-mod block {
-    use super::{
-        ast::{self, HasAttrs},
-        SyntaxErr,
-    };
-    use crate::SyntaxKind::*;
-    pub fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxErr>) {
-        if let Some(parent) = block.syntax().parent() {
-            match parent.kind() {
-                FN | EXPR_STMT | STMT_LIST => return,
-                _ => {},
-            }
-        }
-        if let Some(stmt_list) = block.stmt_list() {
-            errors.extend(stmt_list.attrs().filter(|attr| attr.kind().is_inner()).map(|attr| {
-                SyntaxErr::new(
-                    "A block in this position cannot accept inner attributes",
-                    attr.syntax().text_range(),
-                )
-            }));
-        }
-    }
-}
+
 pub fn validate(root: &syntax::Node) -> Vec<SyntaxErr> {
-    let mut errors = Vec::new();
-    for node in root.descendants() {
+    let mut y = Vec::new();
+    for x in root.descendants() {
+        use ast::*;
         match_ast! {
-            match node {
-                ast::Literal(it) => validate_literal(it, &mut errors),
-                ast::Const(it) => validate_const(it, &mut errors),
-                ast::BlockExpr(it) => block::validate_block_expr(it, &mut errors),
-                ast::FieldExpr(it) => validate_numeric_name(it.name_ref(), &mut errors),
-                ast::RecordExprField(it) => validate_numeric_name(it.name_ref(), &mut errors),
-                ast::Visibility(it) => validate_visibility(it, &mut errors),
-                ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
-                ast::PathSegment(it) => validate_path_keywords(it, &mut errors),
-                ast::RefType(it) => validate_trait_object_ref_ty(it, &mut errors),
-                ast::PtrType(it) => validate_trait_object_ptr_ty(it, &mut errors),
-                ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, &mut errors),
-                ast::MacroRules(it) => validate_macro_rules(it, &mut errors),
-                ast::LetExpr(it) => validate_let_expr(it, &mut errors),
+            match x {
+                Literal(x) => literal(x, &mut y),
+                Const(x) => validate_const(x, &mut y),
+                BlockExpr(x) => block_expr(x, &mut y),
+                FieldExpr(x) => num_name(x.name_ref(), &mut y),
+                RecordExprField(x) => num_name(x.name_ref(), &mut y),
+                Visibility(x) => visibility(x, &mut y),
+                RangeExpr(x) => range_expr(x, &mut y),
+                PathSegment(x) => validate_path_keywords(x, &mut y),
+                RefType(x) => validate_trait_object_ref_ty(x, &mut y),
+                PtrType(x) => validate_trait_object_ptr_ty(x, &mut y),
+                FnPtrType(x) => validate_trait_object_fn_ptr_ret_ty(x, &mut y),
+                MacroRules(x) => mac_rules(x, &mut y),
+                LetExpr(x) => let_expr(x, &mut y),
                 _ => (),
             }
         }
     }
-    errors
+    y
 }
-fn unescape_err_to_string(err: unescape::EscErr) -> (&'static str, bool) {
-    use unescape::EscErr as EE;
+
+pub fn block_expr(x: ast::BlockExpr, y: &mut Vec<SyntaxErr>) {
+    if let Some(x) = x.syntax().parent() {
+        use SyntaxKind::*;
+        match x.kind() {
+            FN | EXPR_STMT | STMT_LIST => return,
+            _ => {},
+        }
+    }
+    if let Some(x) = x.stmt_list() {
+        y.extend(x.attrs().filter(|x| x.kind().is_inner()).map(|x| {
+            SyntaxErr::new(
+                "A block in this position cannot accept inner attributes",
+                x.syntax().text_range(),
+            )
+        }));
+    }
+}
+
+fn unescape_err_to_string(x: EscErr) -> (&'static str, bool) {
+    use EscErr::*;
     #[rustfmt::skip]
-    let err_message = match err {
-        EE::ZeroChars => {
+    let y = match x {
+        ZeroChars => {
             "Literal must not be empty"
         }
-        EE::ManyChars => {
+        ManyChars => {
             "Literal must be one character long"
         }
-        EE::OneSlash => {
+        OneSlash => {
             "Character must be escaped: `\\`"
         }
-        EE::InvalidEsc => {
+        InvalidEsc => {
             "Invalid escape"
         }
-        EE::BareCarriageReturn | EE::CarriageReturnInRaw => {
+        BareCarriageReturn | CarriageReturnInRaw => {
             "Character must be escaped: `\r`"
         }
-        EE::EscOnlyChar => {
+        EscOnlyChar => {
             "Escape character `\\` must be escaped itself"
         }
-        EE::ShortHexEsc => {
+        ShortHexEsc => {
             "ASCII hex escape code must have exactly two digits"
         }
-        EE::InvalidInHexEsc => {
+        InvalidInHexEsc => {
             "ASCII hex escape code must contain only hex characters"
         }
-        EE::OutOfRangeHexEsc => {
+        OutOfRangeHexEsc => {
             "ASCII hex escape code must be at most 0x7F"
         }
-        EE::NoBraceInUniEsc => {
+        NoBraceInUniEsc => {
             "Missing `{` to begin the unicode escape"
         }
-        EE::InvalidInUniEsc => {
+        InvalidInUniEsc => {
             "Unicode escape must contain only hex characters and underscores"
         }
-        EE::EmptyUniEsc => {
+        EmptyUniEsc => {
             "Unicode escape must not be empty"
         }
-        EE::UnclosedUniEsc => {
+        UnclosedUniEsc => {
             "Missing `}` to terminate the unicode escape"
         }
-        EE::UnderscoreUniEsc => {
+        UnderscoreUniEsc => {
             "Unicode escape code must not begin with an underscore"
         }
-        EE::LongUniEsc => {
+        LongUniEsc => {
             "Unicode escape code must have at most 6 digits"
         }
-        EE::LoneSurrogateUniEsc => {
+        LoneSurrogateUniEsc => {
             "Unicode escape code must not be a surrogate"
         }
-        EE::OutOfRangeUniEsc => {
+        OutOfRangeUniEsc => {
             "Unicode escape code must be at most 0x10FFFF"
         }
-        EE::UniEscInByte => {
+        UniEscInByte => {
             "Byte literals must not contain unicode escapes"
         }
-        EE::NonAsciiInByte  => {
+        NonAsciiInByte  => {
             "Byte literals must not contain non-ASCII characters"
         }
-        EE::UnskippedWhitespace => "Whitespace after this escape is not skipped",
-        EE::ManySkippedLines => "Multiple lines are skipped by this escape",
+        UnskippedWhitespace => "Whitespace after this escape is not skipped",
+        ManySkippedLines => "Multiple lines are skipped by this escape",
     };
-    (err_message, err.is_fatal())
+    (y, x.is_fatal())
 }
-fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
-    fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
-        text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
+fn literal(x: ast::Literal, y: &mut Vec<SyntaxErr>) {
+    fn unquote(text: &str, beg: usize, delim: char) -> Option<&str> {
+        text.rfind(delim).and_then(|end| text.get(beg..end))
     }
     let token = x.token();
     let text = token.text();
-    let mut push_err = |prefix_len, off, err: unescape::EscErr| {
-        let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
-        let (message, is_err) = unescape_err_to_string(err);
+    let mut push_err = |pre_len, off, err: EscErr| {
+        let off = token.text_range().start() + TextSize::try_from(off + pre_len).unwrap();
+        let (msg, is_err) = unescape_err_to_string(err);
         if is_err {
-            acc.push(SyntaxErr::new_at_offset(message, off));
+            y.push(SyntaxErr::new_at_offset(msg, off));
         }
     };
+    use ast::LiteralKind::*;
     match x.kind() {
-        ast::LiteralKind::String(s) => {
-            if !s.is_raw() {
-                if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unesc_lit(without_quotes, Mode::Str, &mut |range, char| {
-                        if let Err(err) = char {
-                            push_err(1, range.start, err);
+        String(x) => {
+            if !x.is_raw() {
+                if let Some(x) = unquote(text, 1, '"') {
+                    unesc_lit(x, Mode::Str, &mut |range, x| {
+                        if let Err(x) = x {
+                            push_err(1, range.start, x);
                         }
                     });
                 }
             }
         },
-        ast::LiteralKind::ByteString(s) => {
-            if !s.is_raw() {
-                if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unesc_lit(without_quotes, Mode::ByteStr, &mut |range, char| {
-                        if let Err(err) = char {
-                            push_err(1, range.start, err);
+        ByteString(x) => {
+            if !x.is_raw() {
+                if let Some(x) = unquote(text, 2, '"') {
+                    unesc_lit(x, Mode::ByteStr, &mut |range, x| {
+                        if let Err(x) = x {
+                            push_err(1, range.start, x);
                         }
                     });
                 }
             }
         },
-        ast::LiteralKind::CString(s) => {
-            if !s.is_raw() {
-                if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unesc_lit(without_quotes, Mode::ByteStr, &mut |range, char| {
-                        if let Err(err) = char {
-                            push_err(1, range.start, err);
+        CString(x) => {
+            if !x.is_raw() {
+                if let Some(x) = unquote(text, 2, '"') {
+                    unesc_lit(x, Mode::ByteStr, &mut |range, x| {
+                        if let Err(x) = x {
+                            push_err(1, range.start, x);
                         }
                     });
                 }
             }
         },
-        ast::LiteralKind::Char(_) => {
-            if let Some(without_quotes) = unquote(text, 1, '\'') {
-                unesc_lit(without_quotes, Mode::Char, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(1, range.start, err);
+        Char(_) => {
+            if let Some(x) = unquote(text, 1, '\'') {
+                unesc_lit(x, Mode::Char, &mut |range, x| {
+                    if let Err(x) = x {
+                        push_err(1, range.start, x);
                     }
                 });
             }
         },
-        ast::LiteralKind::Byte(_) => {
-            if let Some(without_quotes) = unquote(text, 2, '\'') {
-                unesc_lit(without_quotes, Mode::Byte, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(2, range.start, err);
+        Byte(_) => {
+            if let Some(x) = unquote(text, 2, '\'') {
+                unesc_lit(x, Mode::Byte, &mut |range, x| {
+                    if let Err(x) = x {
+                        push_err(2, range.start, x);
                     }
                 });
             }
         },
-        ast::LiteralKind::IntNumber(_) | ast::LiteralKind::FloatNumber(_) | ast::LiteralKind::Bool(_) => {},
+        IntNumber(_) | FloatNumber(_) | Bool(_) => {},
     }
 }
-pub fn validate_block_structure(root: &syntax::Node) {
+pub fn block_structure(root: &syntax::Node) {
     let mut stack = Vec::new();
     for node in root.descendants_with_tokens() {
         match node.kind() {
@@ -217,13 +216,13 @@ pub fn validate_block_structure(root: &syntax::Node) {
         }
     }
 }
-fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxErr>) {
-    if let Some(int_token) = int_token(name_ref) {
-        if int_token.text().chars().any(|c| !c.is_ascii_digit()) {
-            errors.push(SyntaxErr::new(
+fn num_name(x: Option<ast::NameRef>, y: &mut Vec<SyntaxErr>) {
+    if let Some(x) = int_token(x) {
+        if x.text().chars().any(|x| !x.is_ascii_digit()) {
+            y.push(SyntaxErr::new(
                 "Tuple (struct) field access is only allowed through \
                 decimal integers with no underscores or suffix",
-                int_token.text_range(),
+                x.text_range(),
             ));
         }
     }
@@ -235,20 +234,19 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
             .filter(|x| x.kind() == INT_NUMBER)
     }
 }
-fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
-    let path_without_in_token = vis.in_token().is_none()
-        && vis
-            .path()
+fn visibility(x: ast::Visibility, y: &mut Vec<SyntaxErr>) {
+    let path_without_in_token = x.in_token().is_none()
+        && x.path()
             .and_then(|p| p.as_single_name_ref())
             .and_then(|n| n.ident_token())
             .is_some();
     if path_without_in_token {
-        errors.push(SyntaxErr::new(
+        y.push(SyntaxErr::new(
             "incorrect visibility restriction",
-            vis.syntax.text_range(),
+            x.syntax.text_range(),
         ));
     }
-    let parent = match vis.syntax().parent() {
+    let parent = match x.syntax().parent() {
         Some(it) => it,
         None => return,
     };
@@ -261,17 +259,17 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxErr>) {
         None => return,
     };
     if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
-        errors.push(SyntaxErr::new(
+        y.push(SyntaxErr::new(
             "Unnecessary visibility qualifier",
-            vis.syntax.text_range(),
+            x.syntax.text_range(),
         ));
     }
 }
-fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxErr>) {
-    if expr.op_kind() == Some(ast::RangeOp::Inclusive) && expr.end().is_none() {
-        errors.push(SyntaxErr::new(
+fn range_expr(x: ast::RangeExpr, y: &mut Vec<SyntaxErr>) {
+    if x.op_kind() == Some(ast::RangeOp::Inclusive) && x.end().is_none() {
+        y.push(SyntaxErr::new(
             "An inclusive range must have an end expression",
-            expr.syntax().text_range(),
+            x.syntax().text_range(),
         ));
     }
 }
@@ -313,81 +311,76 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>
 }
 fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
-        if let Some(err) = validate_trait_object_ty(ty) {
+        if let Some(err) = trait_obj_ty(ty) {
             errors.push(err);
         }
     }
 }
 fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
-        if let Some(err) = validate_trait_object_ty(ty) {
+        if let Some(err) = trait_obj_ty(ty) {
             errors.push(err);
         }
     }
 }
 fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<SyntaxErr>) {
     if let Some(ast::Type::DynTraitType(ty)) = ty.ret_type().and_then(|ty| ty.ty()) {
-        if let Some(err) = validate_trait_object_ty(ty) {
+        if let Some(err) = trait_obj_ty(ty) {
             errors.push(err);
         }
     }
 }
-fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxErr> {
-    let tbl = ty.type_bound_list()?;
+fn trait_obj_ty(x: ast::DynTraitType) -> Option<SyntaxErr> {
+    let tbl = x.type_bound_list()?;
     if tbl.bounds().count() > 1 {
-        let dyn_token = ty.dyn_token()?;
+        let dyn_token = x.dyn_token()?;
         let potential_parenthesis = algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
         let kind = potential_parenthesis.kind();
         if !matches!(kind, T!['('] | T![<] | T![=]) {
-            return Some(SyntaxErr::new("ambiguous `+` in a type", ty.syntax().text_range()));
+            return Some(SyntaxErr::new("ambiguous `+` in a type", x.syntax().text_range()));
         }
     }
     None
 }
-fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxErr>) {
-    if let Some(vis) = mac.visibility() {
-        errors.push(SyntaxErr::new(
+fn mac_rules(x: ast::MacroRules, y: &mut Vec<SyntaxErr>) {
+    if let Some(x) = x.visibility() {
+        y.push(SyntaxErr::new(
             "visibilities are not allowed on `macro_rules!` items",
-            vis.syntax().text_range(),
+            x.syntax().text_range(),
         ));
     }
 }
-fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxErr>) {
-    if let Some(mut_token) = const_
+fn validate_const(x: ast::Const, y: &mut Vec<SyntaxErr>) {
+    if let Some(x) = x
         .const_token()
-        .and_then(|t| t.next_token())
-        .and_then(|t| algo::skip_trivia_token(t, Direction::Next))
-        .filter(|t| t.kind() == T![mut])
+        .and_then(|x| x.next_token())
+        .and_then(|x| algo::skip_trivia_token(x, Direction::Next))
+        .filter(|x| x.kind() == T![mut])
     {
-        errors.push(SyntaxErr::new(
-            "const globals cannot be mutable",
-            mut_token.text_range(),
-        ));
+        y.push(SyntaxErr::new("const globals cannot be mutable", x.text_range()));
     }
 }
-fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxErr>) {
-    let mut token = let_.syntax().clone();
+fn let_expr(x: ast::LetExpr, y: &mut Vec<SyntaxErr>) {
+    let mut tok = x.syntax().clone();
     loop {
-        token = match token.parent() {
-            Some(it) => it,
+        use ast::*;
+        tok = match tok.parent() {
+            Some(x) => x,
             None => break,
         };
-        if ast::ParenExpr::can_cast(token.kind()) {
+        if ParenExpr::can_cast(tok.kind()) {
             continue;
-        } else if let Some(it) = ast::BinExpr::cast(token.clone()) {
-            if it.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And)) {
+        } else if let Some(x) = BinExpr::cast(tok.clone()) {
+            if x.op_kind() == Some(BinaryOp::LogicOp(LogicOp::And)) {
                 continue;
             }
-        } else if ast::IfExpr::can_cast(token.kind())
-            || ast::WhileExpr::can_cast(token.kind())
-            || ast::MatchGuard::can_cast(token.kind())
-        {
+        } else if IfExpr::can_cast(tok.kind()) || WhileExpr::can_cast(tok.kind()) || MatchGuard::can_cast(tok.kind()) {
             return;
         }
         break;
     }
-    errors.push(SyntaxErr::new(
+    y.push(SyntaxErr::new(
         "`let` expressions are not supported here",
-        let_.syntax().text_range(),
+        x.syntax().text_range(),
     ));
 }

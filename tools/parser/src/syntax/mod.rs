@@ -23,7 +23,7 @@ pub mod fuzz {
 
     fn check_file_invariants(file: &SourceFile) {
         let root = file.syntax();
-        validation::validate_block_structure(root);
+        validation::block_structure(root);
     }
     pub fn check_parser(text: &str) {
         let file = SourceFile::parse(text);
@@ -666,7 +666,7 @@ impl SyntaxTreeBuilder {
         #[allow(clippy::overly_complex_bool_expr)]
         if cfg!(debug_assertions) && false {
             let node = api::Node::new_root(green.clone());
-            crate::syntax::validation::validate_block_structure(&node);
+            crate::syntax::validation::block_structure(&node);
         }
         Parse::new(green, errs)
     }
