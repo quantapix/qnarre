@@ -1,39 +1,33 @@
+use std::str::Chars;
+use unic_emoji_char::is_emoji;
+use unicode_xid::UnicodeXID;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LiteralKind {
-    Int { base: Base, empty_int: bool },
-    Float { base: Base, empty_exponent: bool },
-    Char { terminated: bool },
+pub enum LitKind {
     Byte { terminated: bool },
-    Str { terminated: bool },
+    Char { terminated: bool },
+    Int { base: Base, empty_int: bool },
+    Float { base: Base, empty_exp: bool },
     ByteStr { terminated: bool },
     CStr { terminated: bool },
-    RawStr { n_hashes: Option<u8> },
+    Str { terminated: bool },
     RawByteStr { n_hashes: Option<u8> },
     RawCStr { n_hashes: Option<u8> },
+    RawStr { n_hashes: Option<u8> },
 }
-use LiteralKind::*;
+//use LitKind::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TokenKind {
-    LineComment {
-        doc_style: Option<DocStyle>,
-    },
-    BlockComment {
-        doc_style: Option<DocStyle>,
-        terminated: bool,
-    },
+pub enum TokKind {
+    LineComment { style: Option<DocStyle> },
+    BlockComment { style: Option<DocStyle>, terminated: bool },
     Whitespace,
     Ident,
     InvalidIdent,
     RawIdent,
     UnknownPrefix,
-    Literal {
-        kind: LiteralKind,
-        suffix_start: u32,
-    },
-    Lifetime {
-        starts_with_number: bool,
-    },
+    Lit { kind: LitKind, suff_start: u32 },
+    Lifetime { starts_with_num: bool },
     Semi,
     Comma,
     Dot,
@@ -64,15 +58,15 @@ pub enum TokenKind {
     Unknown,
     Eof,
 }
-use TokenKind::*;
+//use TokKind::*;
 
 #[derive(Debug)]
 pub struct Token {
-    pub kind: TokenKind,
+    pub kind: TokKind,
     pub len: u32,
 }
 impl Token {
-    fn new(kind: TokenKind, len: u32) -> Token {
+    fn new(kind: TokKind, len: u32) -> Token {
         Token { kind, len }
     }
 }
@@ -84,8 +78,8 @@ pub enum DocStyle {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RawStrError {
-    InvalidStarter {
+pub enum RawStrErr {
+    InvalidStart {
         bad_char: char,
     },
     NoTerminator {
@@ -93,178 +87,170 @@ pub enum RawStrError {
         found: u32,
         possible_terminator_offset: Option<u32>,
     },
-    TooManyDelimiters {
+    ManyDelimiters {
         found: u32,
     },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Base {
-    Binary = 2,
-    Octal = 8,
-    Decimal = 10,
-    Hexadecimal = 16,
+    Bin = 2,
+    Oct = 8,
+    Dec = 10,
+    Hex = 16,
 }
 
-pub fn strip_shebang(input: &str) -> Option<usize> {
-    if let Some(input_tail) = input.strip_prefix("#!") {
-        let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok| {
+pub fn strip_shebang(x: &str) -> Option<usize> {
+    if let Some(y) = x.strip_prefix("#!") {
+        use TokKind::*;
+        let next = tokenize(y).map(|x| x.kind).find(|x| {
             !matches!(
-                tok,
-                TokenKind::Whitespace
-                    | TokenKind::LineComment { doc_style: None }
-                    | TokenKind::BlockComment { doc_style: None, .. }
+                x,
+                Whitespace | LineComment { style: None } | BlockComment { style: None, .. }
             )
         });
-        if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
-            return Some(2 + input_tail.lines().next().unwrap_or_default().len());
+        if next != Some(OpenBracket) {
+            return Some(2 + y.lines().next().unwrap_or_default().len());
         }
     }
     None
 }
 #[inline]
-pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError> {
-    debug_assert!(!input.is_empty());
-    let mut cursor = Cursor::new(input);
-    for _ in 0..prefix_len {
-        cursor.bump().unwrap();
+pub fn validate_raw_str(x: &str, pre_len: u32) -> Result<(), RawStrErr> {
+    debug_assert!(!x.is_empty());
+    let mut c = Cursor::new(x);
+    for _ in 0..pre_len {
+        c.bump().unwrap();
     }
-    cursor.raw_double_quoted_string(prefix_len).map(|_| ())
+    c.raw_double_quoted_string(pre_len).map(|_| ())
 }
-pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    let mut cursor = Cursor::new(input);
+pub fn tokenize(x: &str) -> impl Iterator<Item = Token> + '_ {
+    let mut c = Cursor::new(x);
     std::iter::from_fn(move || {
-        let token = cursor.advance_token();
-        if token.kind != TokenKind::Eof {
-            Some(token)
+        let y = c.advance_tok();
+        if y.kind != TokKind::Eof {
+            Some(y)
         } else {
             None
         }
     })
 }
-pub fn is_whitespace(c: char) -> bool {
+pub fn is_whitespace(x: char) -> bool {
     matches!(
-        c,
+        x,
         '\u{0009}'   // \t
         | '\u{000A}' // \n
         | '\u{000B}' // vertical tab
         | '\u{000C}' // form feed
         | '\u{000D}' // \r
         | '\u{0020}' // space
-        // NEXT LINE from latin1
-        | '\u{0085}'
-        // Bidi markers
+        | '\u{0085}' // NEXT LINE from latin1
         | '\u{200E}' // LEFT-TO-RIGHT MARK
         | '\u{200F}' // RIGHT-TO-LEFT MARK
-        // Dedicated whitespace characters from Unicode
         | '\u{2028}' // LINE SEPARATOR
         | '\u{2029}' // PARAGRAPH SEPARATOR
     )
 }
-pub fn is_id_start(c: char) -> bool {
-    c == '_' || unicode_xid::UnicodeXID::is_xid_start(c)
+pub fn is_id_start(x: char) -> bool {
+    x == '_' || UnicodeXID::is_xid_start(x)
 }
-pub fn is_id_continue(c: char) -> bool {
-    unicode_xid::UnicodeXID::is_xid_continue(c)
+pub fn is_id_cont(x: char) -> bool {
+    UnicodeXID::is_xid_continue(x)
 }
-pub fn is_ident(string: &str) -> bool {
-    let mut chars = string.chars();
-    if let Some(start) = chars.next() {
-        is_id_start(start) && chars.all(is_id_continue)
+pub fn is_ident(x: &str) -> bool {
+    let mut xs = x.chars();
+    if let Some(x) = xs.next() {
+        is_id_start(x) && xs.all(is_id_cont)
     } else {
         false
     }
 }
 
-mod cursor {
-    use std::str::Chars;
+pub const EOF_CHAR: char = '\0';
 
-    pub const EOF_CHAR: char = '\0';
-
-    pub struct Cursor<'a> {
-        len_remaining: usize,
-        chars: Chars<'a>,
-        #[cfg(debug_assertions)]
-        prev: char,
+pub struct Cursor<'a> {
+    len_rest: usize,
+    chars: Chars<'a>,
+    #[cfg(debug_assertions)]
+    prev: char,
+}
+impl<'a> Cursor<'a> {
+    pub fn new(x: &'a str) -> Cursor<'a> {
+        Cursor {
+            len_rest: x.len(),
+            chars: x.chars(),
+            #[cfg(debug_assertions)]
+            prev: EOF_CHAR,
+        }
     }
-    impl<'a> Cursor<'a> {
-        pub fn new(input: &'a str) -> Cursor<'a> {
-            Cursor {
-                len_remaining: input.len(),
-                chars: input.chars(),
-                #[cfg(debug_assertions)]
-                prev: EOF_CHAR,
-            }
+    pub fn prev(&self) -> char {
+        #[cfg(debug_assertions)]
+        {
+            self.prev
         }
-        pub fn prev(&self) -> char {
-            #[cfg(debug_assertions)]
-            {
-                self.prev
-            }
-            #[cfg(not(debug_assertions))]
-            {
-                EOF_CHAR
-            }
+        #[cfg(not(debug_assertions))]
+        {
+            EOF_CHAR
         }
-        pub fn first(&self) -> char {
-            self.chars.clone().next().unwrap_or(EOF_CHAR)
+    }
+    pub fn first(&self) -> char {
+        self.chars.clone().next().unwrap_or(EOF_CHAR)
+    }
+    pub fn second(&self) -> char {
+        let mut it = self.chars.clone();
+        it.next();
+        it.next().unwrap_or(EOF_CHAR)
+    }
+    pub fn is_eof(&self) -> bool {
+        self.chars.as_str().is_empty()
+    }
+    pub fn pos_within_tok(&self) -> u32 {
+        (self.len_rest - self.chars.as_str().len()) as u32
+    }
+    pub fn reset_pos_within_tok(&mut self) {
+        self.len_rest = self.chars.as_str().len();
+    }
+    pub fn bump(&mut self) -> Option<char> {
+        let y = self.chars.next()?;
+        #[cfg(debug_assertions)]
+        {
+            self.prev = y;
         }
-        pub fn second(&self) -> char {
-            let mut iter = self.chars.clone();
-            iter.next();
-            iter.next().unwrap_or(EOF_CHAR)
-        }
-        pub fn is_eof(&self) -> bool {
-            self.chars.as_str().is_empty()
-        }
-        pub fn pos_within_token(&self) -> u32 {
-            (self.len_remaining - self.chars.as_str().len()) as u32
-        }
-        pub fn reset_pos_within_token(&mut self) {
-            self.len_remaining = self.chars.as_str().len();
-        }
-        pub fn bump(&mut self) -> Option<char> {
-            let c = self.chars.next()?;
-            #[cfg(debug_assertions)]
-            {
-                self.prev = c;
-            }
-            Some(c)
-        }
-        pub fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
-            while predicate(self.first()) && !self.is_eof() {
-                self.bump();
-            }
+        Some(y)
+    }
+    pub fn eat_while(&mut self, mut pred: impl FnMut(char) -> bool) {
+        while pred(self.first()) && !self.is_eof() {
+            self.bump();
         }
     }
 }
-pub use cursor::{Cursor, EOF_CHAR};
-
 impl Cursor<'_> {
-    pub fn advance_token(&mut self) -> Token {
-        let first_char = match self.bump() {
-            Some(c) => c,
-            None => return Token::new(TokenKind::Eof, 0),
+    pub fn advance_tok(&mut self) -> Token {
+        use LitKind::*;
+        use TokKind::*;
+        let first = match self.bump() {
+            Some(x) => x,
+            None => return Token::new(Eof, 0),
         };
-        let token_kind = match first_char {
+        let y = match first {
             '/' => match self.first() {
                 '/' => self.line_comment(),
                 '*' => self.block_comment(),
                 _ => Slash,
             },
-            c if is_whitespace(c) => self.whitespace(),
+            x if is_whitespace(x) => self.whitespace(),
             'r' => match (self.first(), self.second()) {
-                ('#', c1) if is_id_start(c1) => self.raw_ident(),
+                ('#', x) if is_id_start(x) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
-                    let res = self.raw_double_quoted_string(1);
-                    let suffix_start = self.pos_within_token();
-                    if res.is_ok() {
+                    let y = self.raw_double_quoted_string(1);
+                    let suff_start = self.pos_within_tok();
+                    if y.is_ok() {
                         self.eat_literal_suffix();
                     }
-                    let kind = RawStr { n_hashes: res.ok() };
-                    Literal { kind, suffix_start }
+                    let kind = RawStr { n_hashes: y.ok() };
+                    Lit { kind, suff_start }
                 },
-                _ => self.ident_or_unknown_prefix(),
+                _ => self.ident_or_unknown_pre(),
             },
             'b' => self.c_or_byte_string(
                 |terminated| ByteStr { terminated },
@@ -272,15 +258,12 @@ impl Cursor<'_> {
                 Some(|terminated| Byte { terminated }),
             ),
             'c' => self.c_or_byte_string(|terminated| CStr { terminated }, |n_hashes| RawCStr { n_hashes }, None),
-            c if is_id_start(c) => self.ident_or_unknown_prefix(),
-            c @ '0'..='9' => {
-                let literal_kind = self.number(c);
-                let suffix_start = self.pos_within_token();
+            x if is_id_start(x) => self.ident_or_unknown_pre(),
+            x @ '0'..='9' => {
+                let kind = self.number(x);
+                let suff_start = self.pos_within_tok();
                 self.eat_literal_suffix();
-                TokenKind::Literal {
-                    kind: literal_kind,
-                    suffix_start,
-                }
+                Lit { kind, suff_start }
             },
             ';' => Semi,
             ',' => Comma,
@@ -311,42 +294,44 @@ impl Cursor<'_> {
             '\'' => self.lifetime_or_char(),
             '"' => {
                 let terminated = self.double_quoted_string();
-                let suffix_start = self.pos_within_token();
+                let suff_start = self.pos_within_tok();
                 if terminated {
                     self.eat_literal_suffix();
                 }
                 let kind = Str { terminated };
-                Literal { kind, suffix_start }
+                Lit { kind, suff_start }
             },
-            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => self.fake_ident_or_unknown_prefix(),
+            x if !x.is_ascii() && is_emoji(x) => self.fake_ident_or_unknown_pre(),
             _ => Unknown,
         };
-        let res = Token::new(token_kind, self.pos_within_token());
-        self.reset_pos_within_token();
-        res
+        let y = Token::new(y, self.pos_within_tok());
+        self.reset_pos_within_tok();
+        y
     }
-    fn line_comment(&mut self) -> TokenKind {
+    fn line_comment(&mut self) -> TokKind {
         debug_assert!(self.prev() == '/' && self.first() == '/');
         self.bump();
-        let doc_style = match self.first() {
-            '!' => Some(DocStyle::Inner),
-            '/' if self.second() != '/' => Some(DocStyle::Outer),
+        use DocStyle::*;
+        let style = match self.first() {
+            '!' => Some(Inner),
+            '/' if self.second() != '/' => Some(Outer),
             _ => None,
         };
-        self.eat_while(|c| c != '\n');
-        LineComment { doc_style }
+        self.eat_while(|x| x != '\n');
+        TokKind::LineComment { style }
     }
-    fn block_comment(&mut self) -> TokenKind {
+    fn block_comment(&mut self) -> TokKind {
         debug_assert!(self.prev() == '/' && self.first() == '*');
         self.bump();
-        let doc_style = match self.first() {
-            '!' => Some(DocStyle::Inner),
-            '*' if !matches!(self.second(), '*' | '/') => Some(DocStyle::Outer),
+        use DocStyle::*;
+        let style = match self.first() {
+            '!' => Some(Inner),
+            '*' if !matches!(self.second(), '*' | '/') => Some(Outer),
             _ => None,
         };
         let mut depth = 1usize;
-        while let Some(c) = self.bump() {
-            match c {
+        while let Some(x) = self.bump() {
+            match x {
                 '/' if self.first() == '*' => {
                     self.bump();
                     depth += 1;
@@ -361,37 +346,35 @@ impl Cursor<'_> {
                 _ => (),
             }
         }
-        BlockComment {
-            doc_style,
+        TokKind::BlockComment {
+            style,
             terminated: depth == 0,
         }
     }
-    fn whitespace(&mut self) -> TokenKind {
+    fn whitespace(&mut self) -> TokKind {
         debug_assert!(is_whitespace(self.prev()));
         self.eat_while(is_whitespace);
-        Whitespace
+        TokKind::Whitespace
     }
-    fn raw_ident(&mut self) -> TokenKind {
+    fn raw_ident(&mut self) -> TokKind {
         debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
         self.bump();
         self.eat_identifier();
-        RawIdent
+        TokKind::RawIdent
     }
-    fn ident_or_unknown_prefix(&mut self) -> TokenKind {
+    fn ident_or_unknown_pre(&mut self) -> TokKind {
         debug_assert!(is_id_start(self.prev()));
-        self.eat_while(is_id_continue);
+        self.eat_while(is_id_cont);
+        use TokKind::*;
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => self.fake_ident_or_unknown_prefix(),
+            x if !x.is_ascii() && is_emoji(x) => self.fake_ident_or_unknown_pre(),
             _ => Ident,
         }
     }
-    fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
-        self.eat_while(|c| {
-            unicode_xid::UnicodeXID::is_xid_continue(c)
-                || (!c.is_ascii() && unic_emoji_char::is_emoji(c))
-                || c == '\u{200d}'
-        });
+    fn fake_ident_or_unknown_pre(&mut self) -> TokKind {
+        self.eat_while(|x| UnicodeXID::is_xid_continue(x) || (!x.is_ascii() && is_emoji(x)) || x == '\u{200d}');
+        use TokKind::*;
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
             _ => InvalidIdent,
@@ -399,65 +382,66 @@ impl Cursor<'_> {
     }
     fn c_or_byte_string(
         &mut self,
-        mk_kind: impl FnOnce(bool) -> LiteralKind,
-        mk_kind_raw: impl FnOnce(Option<u8>) -> LiteralKind,
-        single_quoted: Option<fn(bool) -> LiteralKind>,
-    ) -> TokenKind {
+        mk_kind: impl FnOnce(bool) -> LitKind,
+        mk_kind_raw: impl FnOnce(Option<u8>) -> LitKind,
+        single_quoted: Option<fn(bool) -> LitKind>,
+    ) -> TokKind {
+        use TokKind::*;
         match (self.first(), self.second(), single_quoted) {
             ('\'', _, Some(mk_kind)) => {
                 self.bump();
                 let terminated = self.single_quoted_string();
-                let suffix_start = self.pos_within_token();
+                let suff_start = self.pos_within_tok();
                 if terminated {
                     self.eat_literal_suffix();
                 }
                 let kind = mk_kind(terminated);
-                Literal { kind, suffix_start }
+                Lit { kind, suff_start }
             },
             ('"', _, _) => {
                 self.bump();
                 let terminated = self.double_quoted_string();
-                let suffix_start = self.pos_within_token();
+                let suff_start = self.pos_within_tok();
                 if terminated {
                     self.eat_literal_suffix();
                 }
                 let kind = mk_kind(terminated);
-                Literal { kind, suffix_start }
+                Lit { kind, suff_start }
             },
             ('r', '"', _) | ('r', '#', _) => {
                 self.bump();
                 let res = self.raw_double_quoted_string(2);
-                let suffix_start = self.pos_within_token();
+                let suff_start = self.pos_within_tok();
                 if res.is_ok() {
                     self.eat_literal_suffix();
                 }
                 let kind = mk_kind_raw(res.ok());
-                Literal { kind, suffix_start }
+                Lit { kind, suff_start }
             },
-            _ => self.ident_or_unknown_prefix(),
+            _ => self.ident_or_unknown_pre(),
         }
     }
-    fn number(&mut self, first_digit: char) -> LiteralKind {
+    fn number(&mut self, first_digit: char) -> LitKind {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
-        let mut base = Base::Decimal;
+        let mut base = Base::Dec;
         if first_digit == '0' {
             match self.first() {
                 'b' => {
-                    base = Base::Binary;
+                    base = Base::Bin;
                     self.bump();
                     if !self.eat_decimal_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 'o' => {
-                    base = Base::Octal;
+                    base = Base::Oct;
                     self.bump();
                     if !self.eat_decimal_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 'x' => {
-                    base = Base::Hexadecimal;
+                    base = Base::Hex;
                     self.bump();
                     if !self.eat_hexadecimal_digits() {
                         return Int { base, empty_int: true };
@@ -486,17 +470,23 @@ impl Cursor<'_> {
                         _ => (),
                     }
                 }
-                Float { base, empty_exponent }
+                Float {
+                    base,
+                    empty_exp: empty_exponent,
+                }
             },
             'e' | 'E' => {
                 self.bump();
                 let empty_exponent = !self.eat_float_exponent();
-                Float { base, empty_exponent }
+                Float {
+                    base,
+                    empty_exp: empty_exponent,
+                }
             },
             _ => Int { base, empty_int: false },
         }
     }
-    fn lifetime_or_char(&mut self) -> TokenKind {
+    fn lifetime_or_char(&mut self) -> TokKind {
         debug_assert!(self.prev() == '\'');
         let can_be_a_lifetime = if self.second() == '\'' {
             false
@@ -505,25 +495,30 @@ impl Cursor<'_> {
         };
         if !can_be_a_lifetime {
             let terminated = self.single_quoted_string();
-            let suffix_start = self.pos_within_token();
+            let suffix_start = self.pos_within_tok();
             if terminated {
                 self.eat_literal_suffix();
             }
             let kind = Char { terminated };
-            return Literal { kind, suffix_start };
+            return Literal {
+                kind,
+                suff_start: suffix_start,
+            };
         }
         let starts_with_number = self.first().is_ascii_digit();
         self.bump();
-        self.eat_while(is_id_continue);
+        self.eat_while(is_id_cont);
         if self.first() == '\'' {
             self.bump();
             let kind = Char { terminated: true };
             Literal {
                 kind,
-                suffix_start: self.pos_within_token(),
+                suff_start: self.pos_within_tok(),
             }
         } else {
-            Lifetime { starts_with_number }
+            Lifetime {
+                starts_with_num: starts_with_number,
+            }
         }
     }
     fn single_quoted_string(&mut self) -> bool {
@@ -568,16 +563,16 @@ impl Cursor<'_> {
         }
         false
     }
-    fn raw_double_quoted_string(&mut self, prefix_len: u32) -> Result<u8, RawStrError> {
+    fn raw_double_quoted_string(&mut self, prefix_len: u32) -> Result<u8, RawStrErr> {
         let n_hashes = self.raw_string_unvalidated(prefix_len)?;
         match u8::try_from(n_hashes) {
             Ok(num) => Ok(num),
-            Err(_) => Err(RawStrError::TooManyDelimiters { found: n_hashes }),
+            Err(_) => Err(RawStrErr::ManyDelimiters { found: n_hashes }),
         }
     }
-    fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrError> {
+    fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrErr> {
         debug_assert!(self.prev() == 'r');
-        let start_pos = self.pos_within_token();
+        let start_pos = self.pos_within_tok();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
         let mut eaten = 0;
@@ -590,13 +585,13 @@ impl Cursor<'_> {
             Some('"') => (),
             c => {
                 let c = c.unwrap_or(EOF_CHAR);
-                return Err(RawStrError::InvalidStarter { bad_char: c });
+                return Err(RawStrErr::InvalidStart { bad_char: c });
             },
         }
         loop {
             self.eat_while(|c| c != '"');
             if self.is_eof() {
-                return Err(RawStrError::NoTerminator {
+                return Err(RawStrErr::NoTerminator {
                     expected: n_start_hashes,
                     found: max_hashes,
                     possible_terminator_offset,
@@ -611,7 +606,7 @@ impl Cursor<'_> {
             if n_end_hashes == n_start_hashes {
                 return Ok(n_start_hashes);
             } else if n_end_hashes > max_hashes {
-                possible_terminator_offset = Some(self.pos_within_token() - start_pos - n_end_hashes + prefix_len);
+                possible_terminator_offset = Some(self.pos_within_tok() - start_pos - n_end_hashes + prefix_len);
                 max_hashes = n_end_hashes;
             }
         }
@@ -663,7 +658,7 @@ impl Cursor<'_> {
             return;
         }
         self.bump();
-        self.eat_while(is_id_continue);
+        self.eat_while(is_id_cont);
     }
 }
 
@@ -966,7 +961,7 @@ mod tests {
     use super::*;
     use expect_test::{expect, Expect};
 
-    fn check_raw_str(s: &str, expected: Result<u8, RawStrError>) {
+    fn check_raw_str(s: &str, expected: Result<u8, RawStrErr>) {
         let s = &format!("r{}", s);
         let mut cursor = Cursor::new(s);
         cursor.bump();
@@ -989,7 +984,7 @@ mod tests {
     fn test_unterminated() {
         check_raw_str(
             r#"#"abc"#,
-            Err(RawStrError::NoTerminator {
+            Err(RawStrErr::NoTerminator {
                 expected: 1,
                 found: 0,
                 possible_terminator_offset: None,
@@ -997,7 +992,7 @@ mod tests {
         );
         check_raw_str(
             r###"##"abc"#"###,
-            Err(RawStrError::NoTerminator {
+            Err(RawStrErr::NoTerminator {
                 expected: 2,
                 found: 1,
                 possible_terminator_offset: Some(7),
@@ -1005,7 +1000,7 @@ mod tests {
         );
         check_raw_str(
             r###"##"abc#"###,
-            Err(RawStrError::NoTerminator {
+            Err(RawStrErr::NoTerminator {
                 expected: 2,
                 found: 0,
                 possible_terminator_offset: None,
@@ -1014,13 +1009,13 @@ mod tests {
     }
     #[test]
     fn test_invalid_start() {
-        check_raw_str(r##"#~"abc"#"##, Err(RawStrError::InvalidStarter { bad_char: '~' }));
+        check_raw_str(r##"#~"abc"#"##, Err(RawStrErr::InvalidStart { bad_char: '~' }));
     }
     #[test]
     fn test_unterminated_no_pound() {
         check_raw_str(
             r#"""#,
-            Err(RawStrError::NoTerminator {
+            Err(RawStrErr::NoTerminator {
                 expected: 0,
                 found: 0,
                 possible_terminator_offset: None,
@@ -1038,7 +1033,7 @@ mod tests {
         check_raw_str(&s1, Ok(255));
         check_raw_str(
             &s2,
-            Err(RawStrError::TooManyDelimiters {
+            Err(RawStrErr::ManyDelimiters {
                 found: u32::from(max_count) + 1,
             }),
         );

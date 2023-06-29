@@ -124,16 +124,13 @@ impl<'a> Converter<'a> {
             self.res.errs.push(LexErr { msg, tok });
         }
     }
-    fn extend_tok(&mut self, x: &lexer::TokenKind, txt: &str) {
+    fn extend_tok(&mut self, x: &lexer::TokKind, txt: &str) {
         let mut err = "";
         let y = {
-            use lexer::TokenKind::*;
+            use lexer::TokKind::*;
             match x {
-                LineComment { doc_style: _ } => COMMENT,
-                BlockComment {
-                    doc_style: _,
-                    terminated,
-                } => {
+                LineComment { style: _ } => COMMENT,
+                BlockComment { style: _, terminated } => {
                     if !terminated {
                         err = "Missing trailing `*/` symbols to terminate the block comment";
                     }
@@ -147,11 +144,13 @@ impl<'a> Converter<'a> {
                     IDENT
                 },
                 RawIdent => IDENT,
-                Literal { kind, .. } => {
+                Lit { kind, .. } => {
                     self.extend_lit(txt.len(), kind);
                     return;
                 },
-                Lifetime { starts_with_number } => {
+                Lifetime {
+                    starts_with_num: starts_with_number,
+                } => {
                     if *starts_with_number {
                         err = "Lifetime name cannot start with a number";
                     }
@@ -195,9 +194,9 @@ impl<'a> Converter<'a> {
         let err = if err.is_empty() { None } else { Some(err) };
         self.push(y, txt.len(), err);
     }
-    fn extend_lit(&mut self, len: usize, kind: &lexer::LiteralKind) {
+    fn extend_lit(&mut self, len: usize, kind: &lexer::LitKind) {
         let mut err = "";
-        use lexer::LiteralKind::*;
+        use lexer::LitKind::*;
         let y = match *kind {
             Int { empty_int, base: _ } => {
                 if empty_int {
@@ -206,7 +205,7 @@ impl<'a> Converter<'a> {
                 INT_NUMBER
             },
             Float {
-                empty_exponent,
+                empty_exp: empty_exponent,
                 base: _,
             } => {
                 if empty_exponent {
