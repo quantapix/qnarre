@@ -122,7 +122,7 @@ pub fn validate_raw_str(x: &str, pre_len: u32) -> Result<(), RawStrErr> {
     for _ in 0..pre_len {
         c.bump().unwrap();
     }
-    c.raw_double_quoted_string(pre_len).map(|_| ())
+    c.raw_dbl_quoted_str(pre_len).map(|_| ())
 }
 pub fn tokenize(x: &str) -> impl Iterator<Item = Token> + '_ {
     let mut c = Cursor::new(x);
@@ -169,7 +169,7 @@ pub fn is_ident(x: &str) -> bool {
 pub const EOF_CHAR: char = '\0';
 
 pub struct Cursor<'a> {
-    len_rest: usize,
+    n_rest: usize,
     chars: Chars<'a>,
     #[cfg(debug_assertions)]
     prev: char,
@@ -177,7 +177,7 @@ pub struct Cursor<'a> {
 impl<'a> Cursor<'a> {
     pub fn new(x: &'a str) -> Cursor<'a> {
         Cursor {
-            len_rest: x.len(),
+            n_rest: x.len(),
             chars: x.chars(),
             #[cfg(debug_assertions)]
             prev: EOF_CHAR,
@@ -204,11 +204,11 @@ impl<'a> Cursor<'a> {
     pub fn is_eof(&self) -> bool {
         self.chars.as_str().is_empty()
     }
-    pub fn pos_within_tok(&self) -> u32 {
-        (self.len_rest - self.chars.as_str().len()) as u32
+    pub fn pos_in_tok(&self) -> u32 {
+        (self.n_rest - self.chars.as_str().len()) as u32
     }
-    pub fn reset_pos_within_tok(&mut self) {
-        self.len_rest = self.chars.as_str().len();
+    pub fn reset_pos_in_tok(&mut self) {
+        self.n_rest = self.chars.as_str().len();
     }
     pub fn bump(&mut self) -> Option<char> {
         let y = self.chars.next()?;
@@ -242,27 +242,27 @@ impl Cursor<'_> {
             'r' => match (self.first(), self.second()) {
                 ('#', x) if is_id_start(x) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
-                    let y = self.raw_double_quoted_string(1);
-                    let suff_start = self.pos_within_tok();
+                    let y = self.raw_dbl_quoted_str(1);
+                    let suff_start = self.pos_in_tok();
                     if y.is_ok() {
-                        self.eat_literal_suffix();
+                        self.eat_lit_suff();
                     }
                     let kind = RawStr { n_hashes: y.ok() };
                     Lit { kind, suff_start }
                 },
                 _ => self.ident_or_unknown_pre(),
             },
-            'b' => self.c_or_byte_string(
+            'b' => self.c_or_byte_str(
                 |terminated| ByteStr { terminated },
                 |n_hashes| RawByteStr { n_hashes },
                 Some(|terminated| Byte { terminated }),
             ),
-            'c' => self.c_or_byte_string(|terminated| CStr { terminated }, |n_hashes| RawCStr { n_hashes }, None),
+            'c' => self.c_or_byte_str(|terminated| CStr { terminated }, |n_hashes| RawCStr { n_hashes }, None),
             x if is_id_start(x) => self.ident_or_unknown_pre(),
             x @ '0'..='9' => {
                 let kind = self.number(x);
-                let suff_start = self.pos_within_tok();
-                self.eat_literal_suffix();
+                let suff_start = self.pos_in_tok();
+                self.eat_lit_suff();
                 Lit { kind, suff_start }
             },
             ';' => Semi,
@@ -293,19 +293,19 @@ impl Cursor<'_> {
             '%' => Percent,
             '\'' => self.lifetime_or_char(),
             '"' => {
-                let terminated = self.double_quoted_string();
-                let suff_start = self.pos_within_tok();
+                let terminated = self.dbl_quoted_str();
+                let suff_start = self.pos_in_tok();
                 if terminated {
-                    self.eat_literal_suffix();
+                    self.eat_lit_suff();
                 }
                 let kind = Str { terminated };
                 Lit { kind, suff_start }
             },
-            x if !x.is_ascii() && is_emoji(x) => self.fake_ident_or_unknown_pre(),
+            x if !x.is_ascii() && is_emoji(x) => self.fake_or_unknown_pre(),
             _ => Unknown,
         };
-        let y = Token::new(y, self.pos_within_tok());
-        self.reset_pos_within_tok();
+        let y = Token::new(y, self.pos_in_tok());
+        self.reset_pos_in_tok();
         y
     }
     fn line_comment(&mut self) -> TokKind {
@@ -359,7 +359,7 @@ impl Cursor<'_> {
     fn raw_ident(&mut self) -> TokKind {
         debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
         self.bump();
-        self.eat_identifier();
+        self.eat_ident();
         TokKind::RawIdent
     }
     fn ident_or_unknown_pre(&mut self) -> TokKind {
@@ -368,11 +368,11 @@ impl Cursor<'_> {
         use TokKind::*;
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            x if !x.is_ascii() && is_emoji(x) => self.fake_ident_or_unknown_pre(),
+            x if !x.is_ascii() && is_emoji(x) => self.fake_or_unknown_pre(),
             _ => Ident,
         }
     }
-    fn fake_ident_or_unknown_pre(&mut self) -> TokKind {
+    fn fake_or_unknown_pre(&mut self) -> TokKind {
         self.eat_while(|x| UnicodeXID::is_xid_continue(x) || (!x.is_ascii() && is_emoji(x)) || x == '\u{200d}');
         use TokKind::*;
         match self.first() {
@@ -380,7 +380,7 @@ impl Cursor<'_> {
             _ => InvalidIdent,
         }
     }
-    fn c_or_byte_string(
+    fn c_or_byte_str(
         &mut self,
         mk_kind: impl FnOnce(bool) -> LitKind,
         mk_kind_raw: impl FnOnce(Option<u8>) -> LitKind,
@@ -390,30 +390,30 @@ impl Cursor<'_> {
         match (self.first(), self.second(), single_quoted) {
             ('\'', _, Some(mk_kind)) => {
                 self.bump();
-                let terminated = self.single_quoted_string();
-                let suff_start = self.pos_within_tok();
+                let terminated = self.single_quoted_str();
+                let suff_start = self.pos_in_tok();
                 if terminated {
-                    self.eat_literal_suffix();
+                    self.eat_lit_suff();
                 }
                 let kind = mk_kind(terminated);
                 Lit { kind, suff_start }
             },
             ('"', _, _) => {
                 self.bump();
-                let terminated = self.double_quoted_string();
-                let suff_start = self.pos_within_tok();
+                let terminated = self.dbl_quoted_str();
+                let suff_start = self.pos_in_tok();
                 if terminated {
-                    self.eat_literal_suffix();
+                    self.eat_lit_suff();
                 }
                 let kind = mk_kind(terminated);
                 Lit { kind, suff_start }
             },
             ('r', '"', _) | ('r', '#', _) => {
                 self.bump();
-                let res = self.raw_double_quoted_string(2);
-                let suff_start = self.pos_within_tok();
+                let res = self.raw_dbl_quoted_str(2);
+                let suff_start = self.pos_in_tok();
                 if res.is_ok() {
-                    self.eat_literal_suffix();
+                    self.eat_lit_suff();
                 }
                 let kind = mk_kind_raw(res.ok());
                 Lit { kind, suff_start }
@@ -429,43 +429,43 @@ impl Cursor<'_> {
                 'b' => {
                     base = Base::Bin;
                     self.bump();
-                    if !self.eat_decimal_digits() {
+                    if !self.eat_dec_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 'o' => {
                     base = Base::Oct;
                     self.bump();
-                    if !self.eat_decimal_digits() {
+                    if !self.eat_dec_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 'x' => {
                     base = Base::Hex;
                     self.bump();
-                    if !self.eat_hexadecimal_digits() {
+                    if !self.eat_hex_digits() {
                         return Int { base, empty_int: true };
                     }
                 },
                 '0'..='9' | '_' => {
-                    self.eat_decimal_digits();
+                    self.eat_dec_digits();
                 },
                 '.' | 'e' | 'E' => {},
                 _ => return Int { base, empty_int: false },
             }
         } else {
-            self.eat_decimal_digits();
+            self.eat_dec_digits();
         };
         match self.first() {
             '.' if self.second() != '.' && !is_id_start(self.second()) => {
                 self.bump();
                 let mut empty_exponent = false;
                 if self.first().is_ascii_digit() {
-                    self.eat_decimal_digits();
+                    self.eat_dec_digits();
                     match self.first() {
                         'e' | 'E' => {
                             self.bump();
-                            empty_exponent = !self.eat_float_exponent();
+                            empty_exponent = !self.eat_float_exp();
                         },
                         _ => (),
                     }
@@ -477,7 +477,7 @@ impl Cursor<'_> {
             },
             'e' | 'E' => {
                 self.bump();
-                let empty_exponent = !self.eat_float_exponent();
+                let empty_exponent = !self.eat_float_exp();
                 Float {
                     base,
                     empty_exp: empty_exponent,
@@ -494,10 +494,10 @@ impl Cursor<'_> {
             is_id_start(self.first()) || self.first().is_ascii_digit()
         };
         if !can_be_a_lifetime {
-            let terminated = self.single_quoted_string();
-            let suffix_start = self.pos_within_tok();
+            let terminated = self.single_quoted_str();
+            let suffix_start = self.pos_in_tok();
             if terminated {
-                self.eat_literal_suffix();
+                self.eat_lit_suff();
             }
             let kind = Char { terminated };
             return Literal {
@@ -513,7 +513,7 @@ impl Cursor<'_> {
             let kind = Char { terminated: true };
             Literal {
                 kind,
-                suff_start: self.pos_within_tok(),
+                suff_start: self.pos_in_tok(),
             }
         } else {
             Lifetime {
@@ -521,7 +521,7 @@ impl Cursor<'_> {
             }
         }
     }
-    fn single_quoted_string(&mut self) -> bool {
+    fn single_quoted_str(&mut self) -> bool {
         debug_assert!(self.prev() == '\'');
         if self.second() == '\'' && self.first() != '\\' {
             self.bump();
@@ -548,7 +548,7 @@ impl Cursor<'_> {
         }
         false
     }
-    fn double_quoted_string(&mut self) -> bool {
+    fn dbl_quoted_str(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
         while let Some(c) = self.bump() {
             match c {
@@ -563,16 +563,16 @@ impl Cursor<'_> {
         }
         false
     }
-    fn raw_double_quoted_string(&mut self, prefix_len: u32) -> Result<u8, RawStrErr> {
-        let n_hashes = self.raw_string_unvalidated(prefix_len)?;
+    fn raw_dbl_quoted_str(&mut self, pre_len: u32) -> Result<u8, RawStrErr> {
+        let n_hashes = self.raw_str_unvalidated(pre_len)?;
         match u8::try_from(n_hashes) {
             Ok(num) => Ok(num),
             Err(_) => Err(RawStrErr::ManyDelimiters { found: n_hashes }),
         }
     }
-    fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrErr> {
+    fn raw_str_unvalidated(&mut self, pre_len: u32) -> Result<u32, RawStrErr> {
         debug_assert!(self.prev() == 'r');
-        let start_pos = self.pos_within_tok();
+        let start_pos = self.pos_in_tok();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
         let mut eaten = 0;
@@ -606,12 +606,12 @@ impl Cursor<'_> {
             if n_end_hashes == n_start_hashes {
                 return Ok(n_start_hashes);
             } else if n_end_hashes > max_hashes {
-                possible_terminator_offset = Some(self.pos_within_tok() - start_pos - n_end_hashes + prefix_len);
+                possible_terminator_offset = Some(self.pos_in_tok() - start_pos - n_end_hashes + pre_len);
                 max_hashes = n_end_hashes;
             }
         }
     }
-    fn eat_decimal_digits(&mut self) -> bool {
+    fn eat_dec_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
             match self.first() {
@@ -627,7 +627,7 @@ impl Cursor<'_> {
         }
         has_digits
     }
-    fn eat_hexadecimal_digits(&mut self) -> bool {
+    fn eat_hex_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
             match self.first() {
@@ -643,17 +643,17 @@ impl Cursor<'_> {
         }
         has_digits
     }
-    fn eat_float_exponent(&mut self) -> bool {
+    fn eat_float_exp(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
         if self.first() == '-' || self.first() == '+' {
             self.bump();
         }
-        self.eat_decimal_digits()
+        self.eat_dec_digits()
     }
-    fn eat_literal_suffix(&mut self) {
-        self.eat_identifier();
+    fn eat_lit_suff(&mut self) {
+        self.eat_ident();
     }
-    fn eat_identifier(&mut self) {
+    fn eat_ident(&mut self) {
         if !is_id_start(self.first()) {
             return;
         }
@@ -683,17 +683,17 @@ pub mod unescape {
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Mode {
-        Char,
-        Str,
         Byte,
+        Char,
         ByteStr,
-        RawStr,
-        RawByteStr,
         CStr,
+        Str,
+        RawByteStr,
         RawCStr,
+        RawStr,
     }
     impl Mode {
-        pub fn in_double_quotes(self) -> bool {
+        pub fn in_dbl_quotes(self) -> bool {
             match self {
                 Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => true,
                 Mode::Char | Mode::Byte => false,
@@ -705,7 +705,7 @@ pub mod unescape {
                 Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
             }
         }
-        pub fn characters_should_be_ascii(self) -> bool {
+        pub fn chars_should_be_ascii(self) -> bool {
             match self {
                 Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
                 Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
@@ -727,7 +727,7 @@ pub mod unescape {
     }
 
     #[derive(Debug, PartialEq, Eq)]
-    pub enum EscapeError {
+    pub enum EscapeErr {
         ZeroChars,
         MoreThanOneChar,
         LoneSlash,
@@ -751,18 +751,18 @@ pub mod unescape {
         UnskippedWhitespaceWarning,
         MultipleSkippedLinesWarning,
     }
-    impl EscapeError {
+    impl EscapeErr {
         pub fn is_fatal(&self) -> bool {
             !matches!(
                 self,
-                EscapeError::UnskippedWhitespaceWarning | EscapeError::MultipleSkippedLinesWarning
+                EscapeErr::UnskippedWhitespaceWarning | EscapeErr::MultipleSkippedLinesWarning
             )
         }
     }
 
-    pub fn unescape_literal<F>(src: &str, mode: Mode, callback: &mut F)
+    pub fn unescape_lit<F>(src: &str, mode: Mode, callback: &mut F)
     where
-        F: FnMut(Range<usize>, Result<char, EscapeError>),
+        F: FnMut(Range<usize>, Result<char, EscapeErr>),
     {
         match mode {
             Mode::Char | Mode::Byte => {
@@ -771,28 +771,26 @@ pub mod unescape {
                 callback(0..(src.len() - chars.as_str().len()), res);
             },
             Mode::Str | Mode::ByteStr => unescape_str_common(src, mode, callback),
-            Mode::RawStr | Mode::RawByteStr => {
-                unescape_raw_str_or_raw_byte_str(src, mode == Mode::RawByteStr, callback)
-            },
+            Mode::RawStr | Mode::RawByteStr => unescape_raw_str_or_byte_str(src, mode == Mode::RawByteStr, callback),
             Mode::CStr | Mode::RawCStr => unreachable!(),
         }
     }
-    pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
+    pub fn unescape_c_str<F>(src: &str, mode: Mode, callback: &mut F)
     where
-        F: FnMut(Range<usize>, Result<CStrUnit, EscapeError>),
+        F: FnMut(Range<usize>, Result<CStrUnit, EscapeErr>),
     {
         if mode == Mode::RawCStr {
-            unescape_raw_str_or_raw_byte_str(src, mode.characters_should_be_ascii(), &mut |r, result| {
+            unescape_raw_str_or_byte_str(src, mode.chars_should_be_ascii(), &mut |r, result| {
                 callback(r, result.map(CStrUnit::Char))
             });
         } else {
             unescape_str_common(src, mode, callback);
         }
     }
-    pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
+    pub fn unescape_char(src: &str) -> Result<char, EscapeErr> {
         unescape_char_or_byte(&mut src.chars(), false)
     }
-    pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
+    pub fn unescape_byte(src: &str) -> Result<u8, EscapeErr> {
         unescape_char_or_byte(&mut src.chars(), true).map(byte_from_char)
     }
 
@@ -803,8 +801,8 @@ pub mod unescape {
         res as u8
     }
 
-    fn scan_escape<T: From<u8> + From<char>>(chars: &mut Chars<'_>, mode: Mode) -> Result<T, EscapeError> {
-        let res = match chars.next().ok_or(EscapeError::LoneSlash)? {
+    fn scan_escape<T: From<u8> + From<char>>(chars: &mut Chars<'_>, mode: Mode) -> Result<T, EscapeErr> {
+        let res = match chars.next().ok_or(EscapeErr::LoneSlash)? {
             '"' => b'"',
             'n' => b'\n',
             'r' => b'\r',
@@ -813,52 +811,52 @@ pub mod unescape {
             '\'' => b'\'',
             '0' => b'\0',
             'x' => {
-                let hi = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
-                let hi = hi.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
-                let lo = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
-                let lo = lo.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
+                let hi = chars.next().ok_or(EscapeErr::TooShortHexEscape)?;
+                let hi = hi.to_digit(16).ok_or(EscapeErr::InvalidCharInHexEscape)?;
+                let lo = chars.next().ok_or(EscapeErr::TooShortHexEscape)?;
+                let lo = lo.to_digit(16).ok_or(EscapeErr::InvalidCharInHexEscape)?;
                 let value = hi * 16 + lo;
                 if mode.ascii_escapes_should_be_ascii() && !is_ascii(value) {
-                    return Err(EscapeError::OutOfRangeHexEscape);
+                    return Err(EscapeErr::OutOfRangeHexEscape);
                 }
                 value as u8
             },
             'u' => return scan_unicode(chars, mode.is_unicode_escape_disallowed()).map(Into::into),
-            _ => return Err(EscapeError::InvalidEscape),
+            _ => return Err(EscapeErr::InvalidEscape),
         };
         Ok(res.into())
     }
-    fn scan_unicode(chars: &mut Chars<'_>, is_unicode_escape_disallowed: bool) -> Result<char, EscapeError> {
+    fn scan_unicode(chars: &mut Chars<'_>, is_unicode_escape_disallowed: bool) -> Result<char, EscapeErr> {
         if chars.next() != Some('{') {
-            return Err(EscapeError::NoBraceInUnicodeEscape);
+            return Err(EscapeErr::NoBraceInUnicodeEscape);
         }
         let mut n_digits = 1;
-        let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
-            '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
-            '}' => return Err(EscapeError::EmptyUnicodeEscape),
-            c => c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?,
+        let mut value: u32 = match chars.next().ok_or(EscapeErr::UnclosedUnicodeEscape)? {
+            '_' => return Err(EscapeErr::LeadingUnderscoreUnicodeEscape),
+            '}' => return Err(EscapeErr::EmptyUnicodeEscape),
+            c => c.to_digit(16).ok_or(EscapeErr::InvalidCharInUnicodeEscape)?,
         };
         loop {
             match chars.next() {
-                None => return Err(EscapeError::UnclosedUnicodeEscape),
+                None => return Err(EscapeErr::UnclosedUnicodeEscape),
                 Some('_') => continue,
                 Some('}') => {
                     if n_digits > 6 {
-                        return Err(EscapeError::OverlongUnicodeEscape);
+                        return Err(EscapeErr::OverlongUnicodeEscape);
                     }
                     if is_unicode_escape_disallowed {
-                        return Err(EscapeError::UnicodeEscapeInByte);
+                        return Err(EscapeErr::UnicodeEscapeInByte);
                     }
                     break std::char::from_u32(value).ok_or({
                         if value > 0x10FFFF {
-                            EscapeError::OutOfRangeUnicodeEscape
+                            EscapeErr::OutOfRangeUnicodeEscape
                         } else {
-                            EscapeError::LoneSurrogateUnicodeEscape
+                            EscapeErr::LoneSurrogateUnicodeEscape
                         }
                     });
                 },
                 Some(c) => {
-                    let digit: u32 = c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
+                    let digit: u32 = c.to_digit(16).ok_or(EscapeErr::InvalidCharInUnicodeEscape)?;
                     n_digits += 1;
                     if n_digits > 6 {
                         continue;
@@ -869,29 +867,29 @@ pub mod unescape {
         }
     }
     #[inline]
-    fn ascii_check(c: char, characters_should_be_ascii: bool) -> Result<char, EscapeError> {
+    fn ascii_check(c: char, characters_should_be_ascii: bool) -> Result<char, EscapeErr> {
         if characters_should_be_ascii && !c.is_ascii() {
-            Err(EscapeError::NonAsciiCharInByte)
+            Err(EscapeErr::NonAsciiCharInByte)
         } else {
             Ok(c)
         }
     }
-    fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError> {
-        let c = chars.next().ok_or(EscapeError::ZeroChars)?;
+    fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeErr> {
+        let c = chars.next().ok_or(EscapeErr::ZeroChars)?;
         let res = match c {
             '\\' => scan_escape(chars, if is_byte { Mode::Byte } else { Mode::Char }),
-            '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
-            '\r' => Err(EscapeError::BareCarriageReturn),
+            '\n' | '\t' | '\'' => Err(EscapeErr::EscapeOnlyChar),
+            '\r' => Err(EscapeErr::BareCarriageReturn),
             _ => ascii_check(c, is_byte),
         }?;
         if chars.next().is_some() {
-            return Err(EscapeError::MoreThanOneChar);
+            return Err(EscapeErr::MoreThanOneChar);
         }
         Ok(res)
     }
     fn unescape_str_common<F, T: From<u8> + From<char>>(src: &str, mode: Mode, callback: &mut F)
     where
-        F: FnMut(Range<usize>, Result<T, EscapeError>),
+        F: FnMut(Range<usize>, Result<T, EscapeErr>),
     {
         let mut chars = src.chars();
         while let Some(c) = chars.next() {
@@ -906,9 +904,9 @@ pub mod unescape {
                 },
                 '\n' => Ok(b'\n'.into()),
                 '\t' => Ok(b'\t'.into()),
-                '"' => Err(EscapeError::EscapeOnlyChar),
-                '\r' => Err(EscapeError::BareCarriageReturn),
-                _ => ascii_check(c, mode.characters_should_be_ascii()).map(Into::into),
+                '"' => Err(EscapeErr::EscapeOnlyChar),
+                '\r' => Err(EscapeErr::BareCarriageReturn),
+                _ => ascii_check(c, mode.chars_should_be_ascii()).map(Into::into),
             };
             let end = src.len() - chars.as_str().len();
             callback(start..end, res.map(Into::into));
@@ -916,7 +914,7 @@ pub mod unescape {
     }
     fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
     where
-        F: FnMut(Range<usize>, EscapeError),
+        F: FnMut(Range<usize>, EscapeErr),
     {
         let tail = chars.as_str();
         let first_non_space = tail
@@ -925,26 +923,26 @@ pub mod unescape {
             .unwrap_or(tail.len());
         if tail[1..first_non_space].contains('\n') {
             let end = start + first_non_space + 1;
-            callback(start..end, EscapeError::MultipleSkippedLinesWarning);
+            callback(start..end, EscapeErr::MultipleSkippedLinesWarning);
         }
         let tail = &tail[first_non_space..];
         if let Some(c) = tail.chars().next() {
             if c.is_whitespace() {
                 let end = start + first_non_space + c.len_utf8() + 1;
-                callback(start..end, EscapeError::UnskippedWhitespaceWarning);
+                callback(start..end, EscapeErr::UnskippedWhitespaceWarning);
             }
         }
         *chars = tail.chars();
     }
-    fn unescape_raw_str_or_raw_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
+    fn unescape_raw_str_or_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
     where
-        F: FnMut(Range<usize>, Result<char, EscapeError>),
+        F: FnMut(Range<usize>, Result<char, EscapeErr>),
     {
         let mut chars = src.chars();
         while let Some(c) = chars.next() {
             let start = src.len() - chars.as_str().len() - c.len_utf8();
             let res = match c {
-                '\r' => Err(EscapeError::BareCarriageReturnInRawString),
+                '\r' => Err(EscapeErr::BareCarriageReturnInRawString),
                 _ => ascii_check(c, is_byte),
             };
             let end = src.len() - chars.as_str().len();
@@ -965,7 +963,7 @@ mod tests {
         let s = &format!("r{}", s);
         let mut cursor = Cursor::new(s);
         cursor.bump();
-        let res = cursor.raw_double_quoted_string(0);
+        let res = cursor.raw_dbl_quoted_str(0);
         assert_eq!(res, expected);
     }
     #[test]
@@ -1246,58 +1244,58 @@ mod tests {
 
         #[test]
         fn test_unescape_char_bad() {
-            fn check(literal_text: &str, expected_error: EscapeError) {
+            fn check(literal_text: &str, expected_error: EscapeErr) {
                 assert_eq!(unescape_char(literal_text), Err(expected_error));
             }
-            check("", EscapeError::ZeroChars);
-            check(r"\", EscapeError::LoneSlash);
-            check("\n", EscapeError::EscapeOnlyChar);
-            check("\t", EscapeError::EscapeOnlyChar);
-            check("'", EscapeError::EscapeOnlyChar);
-            check("\r", EscapeError::BareCarriageReturn);
-            check("spam", EscapeError::MoreThanOneChar);
-            check(r"\x0ff", EscapeError::MoreThanOneChar);
-            check(r#"\"a"#, EscapeError::MoreThanOneChar);
-            check(r"\na", EscapeError::MoreThanOneChar);
-            check(r"\ra", EscapeError::MoreThanOneChar);
-            check(r"\ta", EscapeError::MoreThanOneChar);
-            check(r"\\a", EscapeError::MoreThanOneChar);
-            check(r"\'a", EscapeError::MoreThanOneChar);
-            check(r"\0a", EscapeError::MoreThanOneChar);
-            check(r"\u{0}x", EscapeError::MoreThanOneChar);
-            check(r"\u{1F63b}}", EscapeError::MoreThanOneChar);
-            check(r"\v", EscapeError::InvalidEscape);
-            check(r"\💩", EscapeError::InvalidEscape);
-            check(r"\●", EscapeError::InvalidEscape);
-            check("\\\r", EscapeError::InvalidEscape);
-            check(r"\x", EscapeError::TooShortHexEscape);
-            check(r"\x0", EscapeError::TooShortHexEscape);
-            check(r"\xf", EscapeError::TooShortHexEscape);
-            check(r"\xa", EscapeError::TooShortHexEscape);
-            check(r"\xx", EscapeError::InvalidCharInHexEscape);
-            check(r"\xы", EscapeError::InvalidCharInHexEscape);
-            check(r"\x🦀", EscapeError::InvalidCharInHexEscape);
-            check(r"\xtt", EscapeError::InvalidCharInHexEscape);
-            check(r"\xff", EscapeError::OutOfRangeHexEscape);
-            check(r"\xFF", EscapeError::OutOfRangeHexEscape);
-            check(r"\x80", EscapeError::OutOfRangeHexEscape);
-            check(r"\u", EscapeError::NoBraceInUnicodeEscape);
-            check(r"\u[0123]", EscapeError::NoBraceInUnicodeEscape);
-            check(r"\u{0x}", EscapeError::InvalidCharInUnicodeEscape);
-            check(r"\u{", EscapeError::UnclosedUnicodeEscape);
-            check(r"\u{0000", EscapeError::UnclosedUnicodeEscape);
-            check(r"\u{}", EscapeError::EmptyUnicodeEscape);
-            check(r"\u{_0000}", EscapeError::LeadingUnderscoreUnicodeEscape);
-            check(r"\u{0000000}", EscapeError::OverlongUnicodeEscape);
-            check(r"\u{FFFFFF}", EscapeError::OutOfRangeUnicodeEscape);
-            check(r"\u{ffffff}", EscapeError::OutOfRangeUnicodeEscape);
-            check(r"\u{ffffff}", EscapeError::OutOfRangeUnicodeEscape);
-            check(r"\u{DC00}", EscapeError::LoneSurrogateUnicodeEscape);
-            check(r"\u{DDDD}", EscapeError::LoneSurrogateUnicodeEscape);
-            check(r"\u{DFFF}", EscapeError::LoneSurrogateUnicodeEscape);
-            check(r"\u{D800}", EscapeError::LoneSurrogateUnicodeEscape);
-            check(r"\u{DAAA}", EscapeError::LoneSurrogateUnicodeEscape);
-            check(r"\u{DBFF}", EscapeError::LoneSurrogateUnicodeEscape);
+            check("", EscapeErr::ZeroChars);
+            check(r"\", EscapeErr::LoneSlash);
+            check("\n", EscapeErr::EscapeOnlyChar);
+            check("\t", EscapeErr::EscapeOnlyChar);
+            check("'", EscapeErr::EscapeOnlyChar);
+            check("\r", EscapeErr::BareCarriageReturn);
+            check("spam", EscapeErr::MoreThanOneChar);
+            check(r"\x0ff", EscapeErr::MoreThanOneChar);
+            check(r#"\"a"#, EscapeErr::MoreThanOneChar);
+            check(r"\na", EscapeErr::MoreThanOneChar);
+            check(r"\ra", EscapeErr::MoreThanOneChar);
+            check(r"\ta", EscapeErr::MoreThanOneChar);
+            check(r"\\a", EscapeErr::MoreThanOneChar);
+            check(r"\'a", EscapeErr::MoreThanOneChar);
+            check(r"\0a", EscapeErr::MoreThanOneChar);
+            check(r"\u{0}x", EscapeErr::MoreThanOneChar);
+            check(r"\u{1F63b}}", EscapeErr::MoreThanOneChar);
+            check(r"\v", EscapeErr::InvalidEscape);
+            check(r"\💩", EscapeErr::InvalidEscape);
+            check(r"\●", EscapeErr::InvalidEscape);
+            check("\\\r", EscapeErr::InvalidEscape);
+            check(r"\x", EscapeErr::TooShortHexEscape);
+            check(r"\x0", EscapeErr::TooShortHexEscape);
+            check(r"\xf", EscapeErr::TooShortHexEscape);
+            check(r"\xa", EscapeErr::TooShortHexEscape);
+            check(r"\xx", EscapeErr::InvalidCharInHexEscape);
+            check(r"\xы", EscapeErr::InvalidCharInHexEscape);
+            check(r"\x🦀", EscapeErr::InvalidCharInHexEscape);
+            check(r"\xtt", EscapeErr::InvalidCharInHexEscape);
+            check(r"\xff", EscapeErr::OutOfRangeHexEscape);
+            check(r"\xFF", EscapeErr::OutOfRangeHexEscape);
+            check(r"\x80", EscapeErr::OutOfRangeHexEscape);
+            check(r"\u", EscapeErr::NoBraceInUnicodeEscape);
+            check(r"\u[0123]", EscapeErr::NoBraceInUnicodeEscape);
+            check(r"\u{0x}", EscapeErr::InvalidCharInUnicodeEscape);
+            check(r"\u{", EscapeErr::UnclosedUnicodeEscape);
+            check(r"\u{0000", EscapeErr::UnclosedUnicodeEscape);
+            check(r"\u{}", EscapeErr::EmptyUnicodeEscape);
+            check(r"\u{_0000}", EscapeErr::LeadingUnderscoreUnicodeEscape);
+            check(r"\u{0000000}", EscapeErr::OverlongUnicodeEscape);
+            check(r"\u{FFFFFF}", EscapeErr::OutOfRangeUnicodeEscape);
+            check(r"\u{ffffff}", EscapeErr::OutOfRangeUnicodeEscape);
+            check(r"\u{ffffff}", EscapeErr::OutOfRangeUnicodeEscape);
+            check(r"\u{DC00}", EscapeErr::LoneSurrogateUnicodeEscape);
+            check(r"\u{DDDD}", EscapeErr::LoneSurrogateUnicodeEscape);
+            check(r"\u{DFFF}", EscapeErr::LoneSurrogateUnicodeEscape);
+            check(r"\u{D800}", EscapeErr::LoneSurrogateUnicodeEscape);
+            check(r"\u{DAAA}", EscapeErr::LoneSurrogateUnicodeEscape);
+            check(r"\u{DBFF}", EscapeErr::LoneSurrogateUnicodeEscape);
         }
         #[test]
         fn test_unescape_char_good() {
@@ -1328,9 +1326,9 @@ mod tests {
         }
         #[test]
         fn test_unescape_str_warn() {
-            fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
+            fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeErr>)]) {
                 let mut unescaped = Vec::with_capacity(literal.len());
-                unescape_literal(literal, Mode::Str, &mut |range, res| unescaped.push((range, res)));
+                unescape_lit(literal, Mode::Str, &mut |range, res| unescaped.push((range, res)));
                 assert_eq!(unescaped, expected);
             }
             check("\\\n", &[]);
@@ -1338,7 +1336,7 @@ mod tests {
             check(
                 "\\\n \u{a0} x",
                 &[
-                    (0..5, Err(EscapeError::UnskippedWhitespaceWarning)),
+                    (0..5, Err(EscapeErr::UnskippedWhitespaceWarning)),
                     (3..5, Ok('\u{a0}')),
                     (5..6, Ok(' ')),
                     (6..7, Ok('x')),
@@ -1346,14 +1344,14 @@ mod tests {
             );
             check(
                 "\\\n  \n  x",
-                &[(0..7, Err(EscapeError::MultipleSkippedLinesWarning)), (7..8, Ok('x'))],
+                &[(0..7, Err(EscapeErr::MultipleSkippedLinesWarning)), (7..8, Ok('x'))],
             );
         }
         #[test]
         fn test_unescape_str_good() {
             fn check(literal_text: &str, expected: &str) {
                 let mut buf = Ok(String::with_capacity(literal_text.len()));
-                unescape_literal(literal_text, Mode::Str, &mut |range, c| {
+                unescape_lit(literal_text, Mode::Str, &mut |range, c| {
                     if let Ok(b) = &mut buf {
                         match c {
                             Ok(c) => b.push(c),
@@ -1371,63 +1369,63 @@ mod tests {
         }
         #[test]
         fn test_unescape_byte_bad() {
-            fn check(literal_text: &str, expected_error: EscapeError) {
+            fn check(literal_text: &str, expected_error: EscapeErr) {
                 assert_eq!(unescape_byte(literal_text), Err(expected_error));
             }
-            check("", EscapeError::ZeroChars);
-            check(r"\", EscapeError::LoneSlash);
-            check("\n", EscapeError::EscapeOnlyChar);
-            check("\t", EscapeError::EscapeOnlyChar);
-            check("'", EscapeError::EscapeOnlyChar);
-            check("\r", EscapeError::BareCarriageReturn);
-            check("spam", EscapeError::MoreThanOneChar);
-            check(r"\x0ff", EscapeError::MoreThanOneChar);
-            check(r#"\"a"#, EscapeError::MoreThanOneChar);
-            check(r"\na", EscapeError::MoreThanOneChar);
-            check(r"\ra", EscapeError::MoreThanOneChar);
-            check(r"\ta", EscapeError::MoreThanOneChar);
-            check(r"\\a", EscapeError::MoreThanOneChar);
-            check(r"\'a", EscapeError::MoreThanOneChar);
-            check(r"\0a", EscapeError::MoreThanOneChar);
-            check(r"\v", EscapeError::InvalidEscape);
-            check(r"\💩", EscapeError::InvalidEscape);
-            check(r"\●", EscapeError::InvalidEscape);
-            check(r"\x", EscapeError::TooShortHexEscape);
-            check(r"\x0", EscapeError::TooShortHexEscape);
-            check(r"\xa", EscapeError::TooShortHexEscape);
-            check(r"\xf", EscapeError::TooShortHexEscape);
-            check(r"\xx", EscapeError::InvalidCharInHexEscape);
-            check(r"\xы", EscapeError::InvalidCharInHexEscape);
-            check(r"\x🦀", EscapeError::InvalidCharInHexEscape);
-            check(r"\xtt", EscapeError::InvalidCharInHexEscape);
-            check(r"\u", EscapeError::NoBraceInUnicodeEscape);
-            check(r"\u[0123]", EscapeError::NoBraceInUnicodeEscape);
-            check(r"\u{0x}", EscapeError::InvalidCharInUnicodeEscape);
-            check(r"\u{", EscapeError::UnclosedUnicodeEscape);
-            check(r"\u{0000", EscapeError::UnclosedUnicodeEscape);
-            check(r"\u{}", EscapeError::EmptyUnicodeEscape);
-            check(r"\u{_0000}", EscapeError::LeadingUnderscoreUnicodeEscape);
-            check(r"\u{0000000}", EscapeError::OverlongUnicodeEscape);
-            check("ы", EscapeError::NonAsciiCharInByte);
-            check("🦀", EscapeError::NonAsciiCharInByte);
-            check(r"\u{0}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{000000}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{41}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{0041}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{00_41}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{4__1__}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{1F63b}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{0}x", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{1F63b}}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{FFFFFF}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{ffffff}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{ffffff}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{DC00}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{DDDD}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{DFFF}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{D800}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{DAAA}", EscapeError::UnicodeEscapeInByte);
-            check(r"\u{DBFF}", EscapeError::UnicodeEscapeInByte);
+            check("", EscapeErr::ZeroChars);
+            check(r"\", EscapeErr::LoneSlash);
+            check("\n", EscapeErr::EscapeOnlyChar);
+            check("\t", EscapeErr::EscapeOnlyChar);
+            check("'", EscapeErr::EscapeOnlyChar);
+            check("\r", EscapeErr::BareCarriageReturn);
+            check("spam", EscapeErr::MoreThanOneChar);
+            check(r"\x0ff", EscapeErr::MoreThanOneChar);
+            check(r#"\"a"#, EscapeErr::MoreThanOneChar);
+            check(r"\na", EscapeErr::MoreThanOneChar);
+            check(r"\ra", EscapeErr::MoreThanOneChar);
+            check(r"\ta", EscapeErr::MoreThanOneChar);
+            check(r"\\a", EscapeErr::MoreThanOneChar);
+            check(r"\'a", EscapeErr::MoreThanOneChar);
+            check(r"\0a", EscapeErr::MoreThanOneChar);
+            check(r"\v", EscapeErr::InvalidEscape);
+            check(r"\💩", EscapeErr::InvalidEscape);
+            check(r"\●", EscapeErr::InvalidEscape);
+            check(r"\x", EscapeErr::TooShortHexEscape);
+            check(r"\x0", EscapeErr::TooShortHexEscape);
+            check(r"\xa", EscapeErr::TooShortHexEscape);
+            check(r"\xf", EscapeErr::TooShortHexEscape);
+            check(r"\xx", EscapeErr::InvalidCharInHexEscape);
+            check(r"\xы", EscapeErr::InvalidCharInHexEscape);
+            check(r"\x🦀", EscapeErr::InvalidCharInHexEscape);
+            check(r"\xtt", EscapeErr::InvalidCharInHexEscape);
+            check(r"\u", EscapeErr::NoBraceInUnicodeEscape);
+            check(r"\u[0123]", EscapeErr::NoBraceInUnicodeEscape);
+            check(r"\u{0x}", EscapeErr::InvalidCharInUnicodeEscape);
+            check(r"\u{", EscapeErr::UnclosedUnicodeEscape);
+            check(r"\u{0000", EscapeErr::UnclosedUnicodeEscape);
+            check(r"\u{}", EscapeErr::EmptyUnicodeEscape);
+            check(r"\u{_0000}", EscapeErr::LeadingUnderscoreUnicodeEscape);
+            check(r"\u{0000000}", EscapeErr::OverlongUnicodeEscape);
+            check("ы", EscapeErr::NonAsciiCharInByte);
+            check("🦀", EscapeErr::NonAsciiCharInByte);
+            check(r"\u{0}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{000000}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{41}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{0041}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{00_41}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{4__1__}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{1F63b}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{0}x", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{1F63b}}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{FFFFFF}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{ffffff}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{ffffff}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{DC00}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{DDDD}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{DFFF}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{D800}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{DAAA}", EscapeErr::UnicodeEscapeInByte);
+            check(r"\u{DBFF}", EscapeErr::UnicodeEscapeInByte);
         }
         #[test]
         fn test_unescape_byte_good() {
@@ -1454,7 +1452,7 @@ mod tests {
         fn test_unescape_byte_str_good() {
             fn check(literal_text: &str, expected: &[u8]) {
                 let mut buf = Ok(Vec::with_capacity(literal_text.len()));
-                unescape_literal(literal_text, Mode::ByteStr, &mut |range, c| {
+                unescape_lit(literal_text, Mode::ByteStr, &mut |range, c| {
                     if let Ok(b) = &mut buf {
                         match c {
                             Ok(c) => b.push(byte_from_char(c)),
@@ -1472,29 +1470,29 @@ mod tests {
         }
         #[test]
         fn test_unescape_raw_str() {
-            fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
+            fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeErr>)]) {
                 let mut unescaped = Vec::with_capacity(literal.len());
-                unescape_literal(literal, Mode::RawStr, &mut |range, res| unescaped.push((range, res)));
+                unescape_lit(literal, Mode::RawStr, &mut |range, res| unescaped.push((range, res)));
                 assert_eq!(unescaped, expected);
             }
-            check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
+            check("\r", &[(0..1, Err(EscapeErr::BareCarriageReturnInRawString))]);
             check(
                 "\rx",
-                &[(0..1, Err(EscapeError::BareCarriageReturnInRawString)), (1..2, Ok('x'))],
+                &[(0..1, Err(EscapeErr::BareCarriageReturnInRawString)), (1..2, Ok('x'))],
             );
         }
         #[test]
         fn test_unescape_raw_byte_str() {
-            fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
+            fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeErr>)]) {
                 let mut unescaped = Vec::with_capacity(literal.len());
-                unescape_literal(literal, Mode::RawByteStr, &mut |range, res| {
+                unescape_lit(literal, Mode::RawByteStr, &mut |range, res| {
                     unescaped.push((range, res))
                 });
                 assert_eq!(unescaped, expected);
             }
-            check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
-            check("🦀", &[(0..4, Err(EscapeError::NonAsciiCharInByte))]);
-            check("🦀a", &[(0..4, Err(EscapeError::NonAsciiCharInByte)), (4..5, Ok('a'))]);
+            check("\r", &[(0..1, Err(EscapeErr::BareCarriageReturnInRawString))]);
+            check("🦀", &[(0..4, Err(EscapeErr::NonAsciiCharInByte))]);
+            check("🦀a", &[(0..4, Err(EscapeErr::NonAsciiCharInByte)), (4..5, Ok('a'))]);
         }
     }
 }
