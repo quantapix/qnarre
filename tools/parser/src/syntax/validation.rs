@@ -1,5 +1,5 @@
 use crate::{
-    lexer::unescape::{self, unescape_lit, Mode},
+    lexer::unescape::{self, unesc_lit, Mode},
     match_ast,
     syntax::{
         self, algo,
@@ -56,69 +56,69 @@ pub fn validate(root: &syntax::Node) -> Vec<SyntaxErr> {
     }
     errors
 }
-fn unescape_err_to_string(err: unescape::EscapeErr) -> (&'static str, bool) {
-    use unescape::EscapeErr as EE;
+fn unescape_err_to_string(err: unescape::EscErr) -> (&'static str, bool) {
+    use unescape::EscErr as EE;
     #[rustfmt::skip]
     let err_message = match err {
         EE::ZeroChars => {
             "Literal must not be empty"
         }
-        EE::MoreThanOneChar => {
+        EE::ManyChars => {
             "Literal must be one character long"
         }
-        EE::LoneSlash => {
+        EE::OneSlash => {
             "Character must be escaped: `\\`"
         }
-        EE::InvalidEscape => {
+        EE::InvalidEsc => {
             "Invalid escape"
         }
-        EE::BareCarriageReturn | EE::BareCarriageReturnInRawString => {
+        EE::BareCarriageReturn | EE::CarriageReturnInRaw => {
             "Character must be escaped: `\r`"
         }
-        EE::EscapeOnlyChar => {
+        EE::EscOnlyChar => {
             "Escape character `\\` must be escaped itself"
         }
-        EE::TooShortHexEscape => {
+        EE::ShortHexEsc => {
             "ASCII hex escape code must have exactly two digits"
         }
-        EE::InvalidCharInHexEscape => {
+        EE::InvalidInHexEsc => {
             "ASCII hex escape code must contain only hex characters"
         }
-        EE::OutOfRangeHexEscape => {
+        EE::OutOfRangeHexEsc => {
             "ASCII hex escape code must be at most 0x7F"
         }
-        EE::NoBraceInUnicodeEscape => {
+        EE::NoBraceInUniEsc => {
             "Missing `{` to begin the unicode escape"
         }
-        EE::InvalidCharInUnicodeEscape => {
+        EE::InvalidInUniEsc => {
             "Unicode escape must contain only hex characters and underscores"
         }
-        EE::EmptyUnicodeEscape => {
+        EE::EmptyUniEsc => {
             "Unicode escape must not be empty"
         }
-        EE::UnclosedUnicodeEscape => {
+        EE::UnclosedUniEsc => {
             "Missing `}` to terminate the unicode escape"
         }
-        EE::LeadingUnderscoreUnicodeEscape => {
+        EE::UnderscoreUniEsc => {
             "Unicode escape code must not begin with an underscore"
         }
-        EE::OverlongUnicodeEscape => {
+        EE::LongUniEsc => {
             "Unicode escape code must have at most 6 digits"
         }
-        EE::LoneSurrogateUnicodeEscape => {
+        EE::LoneSurrogateUniEsc => {
             "Unicode escape code must not be a surrogate"
         }
-        EE::OutOfRangeUnicodeEscape => {
+        EE::OutOfRangeUniEsc => {
             "Unicode escape code must be at most 0x10FFFF"
         }
-        EE::UnicodeEscapeInByte => {
+        EE::UniEscInByte => {
             "Byte literals must not contain unicode escapes"
         }
-        EE::NonAsciiCharInByte  => {
+        EE::NonAsciiInByte  => {
             "Byte literals must not contain non-ASCII characters"
         }
-        EE::UnskippedWhitespaceWarning => "Whitespace after this escape is not skipped",
-        EE::MultipleSkippedLinesWarning => "Multiple lines are skipped by this escape",
+        EE::UnskippedWhitespace => "Whitespace after this escape is not skipped",
+        EE::ManySkippedLines => "Multiple lines are skipped by this escape",
     };
     (err_message, err.is_fatal())
 }
@@ -128,7 +128,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
     }
     let token = x.token();
     let text = token.text();
-    let mut push_err = |prefix_len, off, err: unescape::EscapeErr| {
+    let mut push_err = |prefix_len, off, err: unescape::EscErr| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         let (message, is_err) = unescape_err_to_string(err);
         if is_err {
@@ -139,7 +139,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_lit(without_quotes, Mode::Str, &mut |range, char| {
+                    unesc_lit(without_quotes, Mode::Str, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -150,7 +150,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_lit(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unesc_lit(without_quotes, Mode::ByteStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -161,7 +161,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_lit(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unesc_lit(without_quotes, Mode::ByteStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -171,7 +171,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         },
         ast::LiteralKind::Char(_) => {
             if let Some(without_quotes) = unquote(text, 1, '\'') {
-                unescape_lit(without_quotes, Mode::Char, &mut |range, char| {
+                unesc_lit(without_quotes, Mode::Char, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(1, range.start, err);
                     }
@@ -180,7 +180,7 @@ fn validate_literal(x: ast::Literal, acc: &mut Vec<SyntaxErr>) {
         },
         ast::LiteralKind::Byte(_) => {
             if let Some(without_quotes) = unquote(text, 2, '\'') {
-                unescape_lit(without_quotes, Mode::Byte, &mut |range, char| {
+                unesc_lit(without_quotes, Mode::Byte, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(2, range.start, err);
                     }

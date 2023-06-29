@@ -28,7 +28,7 @@ pub trait IsString: ast::Token {
     fn close_quote_text_range(&self) -> Option<TextRange> {
         self.quote_offsets().map(|x| x.quotes.1)
     }
-    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, unescape::EscapeErr>)) {
+    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, unescape::EscErr>)) {
         let text_range_no_quotes = match self.text_range_between_quotes() {
             Some(it) => it,
             None => return,
@@ -36,7 +36,7 @@ pub trait IsString: ast::Token {
         let start = self.syntax().text_range().start();
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
-        unescape::unescape_lit(text, unescape::Mode::Str, &mut |range, unescaped_char| {
+        unescape::unesc_lit(text, unescape::Mode::Str, &mut |range, unescaped_char| {
             let text_range = TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
         });
@@ -68,7 +68,7 @@ impl ast::Char {
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
-        unescape::unescape_char(text).ok()
+        unescape::unesc_char(text).ok()
     }
 }
 impl ast::String {
@@ -83,7 +83,7 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape::unescape_lit(text, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+        unescape::unesc_lit(text, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -114,7 +114,7 @@ impl ast::Byte {
         if text.ends_with('\'') {
             text = &text[0..text.len() - 1];
         }
-        unescape::unescape_byte(text).ok()
+        unescape::unesc_byte(text).ok()
     }
 }
 impl ast::ByteString {
@@ -129,7 +129,7 @@ impl ast::ByteString {
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape::unescape_lit(text, unescape::Mode::ByteStr, &mut |char_range, unescaped_char| match (
+        unescape::unesc_lit(text, unescape::Mode::ByteStr, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -161,7 +161,7 @@ impl ast::CString {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape::unescape_lit(text, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+        unescape::unesc_lit(text, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
