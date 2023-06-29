@@ -1128,8 +1128,8 @@ fn benchmark_parser() {
 }
 
 #[test]
-fn validation_tests() {
-    dir_tests(&test_data_dir(), &["parser/validation"], "rast", |text, path| {
+fn validate_tests() {
+    dir_tests(&test_data_dir(), &["parser/validate"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
         assert_errors_are_present(errors, path);

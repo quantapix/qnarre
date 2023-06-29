@@ -18,12 +18,12 @@ pub mod ast;
 pub mod core;
 #[doc(hidden)]
 pub mod fuzz {
-    use super::{validation, Indel, SourceFile, TextRange};
+    use super::{validate, Indel, SourceFile, TextRange};
     use std::str::{self, FromStr};
 
     fn check_file_invariants(file: &SourceFile) {
         let root = file.syntax();
-        validation::block_structure(root);
+        validate::block_braces(root);
     }
     pub fn check_parser(text: &str) {
         let file = SourceFile::parse(text);
@@ -666,7 +666,7 @@ impl SyntaxTreeBuilder {
         #[allow(clippy::overly_complex_bool_expr)]
         if cfg!(debug_assertions) && false {
             let node = api::Node::new_root(green.clone());
-            crate::syntax::validation::block_structure(&node);
+            crate::syntax::validate::block_braces(&node);
         }
         Parse::new(green, errs)
     }
@@ -1011,7 +1011,7 @@ pub mod utils {
         }
     }
 }
-mod validation;
+mod validate;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
@@ -1107,7 +1107,7 @@ impl SourceFile {
     pub fn parse(text: &str) -> Parse<SourceFile> {
         let (green, mut errs) = parsing::parse_text(text);
         let root = api::Node::new_root(green.clone());
-        errs.extend(validation::validate(&root));
+        errs.extend(validate::validate(&root));
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse {
             green,

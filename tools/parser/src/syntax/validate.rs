@@ -1,5 +1,5 @@
 use crate::{
-    lexer::unescape::{self, unesc_lit, EscErr, Mode},
+    lexer::unescape::{unesc_lit, EscErr, Mode},
     match_ast,
     syntax::{
         self, algo,
@@ -7,7 +7,7 @@ use crate::{
         core::Direction,
         SyntaxErr, TextSize, T,
     },
-    SyntaxKind::{self, CONST, FN, INT_NUMBER, TYPE_ALIAS},
+    SyntaxKind,
 };
 
 pub fn validate(root: &syntax::Node) -> Vec<SyntaxErr> {
@@ -17,16 +17,16 @@ pub fn validate(root: &syntax::Node) -> Vec<SyntaxErr> {
         match_ast! {
             match x {
                 Literal(x) => literal(x, &mut y),
-                Const(x) => validate_const(x, &mut y),
+                Const(x) => const_(x, &mut y),
                 BlockExpr(x) => block_expr(x, &mut y),
                 FieldExpr(x) => num_name(x.name_ref(), &mut y),
                 RecordExprField(x) => num_name(x.name_ref(), &mut y),
                 Visibility(x) => visibility(x, &mut y),
                 RangeExpr(x) => range_expr(x, &mut y),
-                PathSegment(x) => validate_path_keywords(x, &mut y),
-                RefType(x) => validate_trait_object_ref_ty(x, &mut y),
-                PtrType(x) => validate_trait_object_ptr_ty(x, &mut y),
-                FnPtrType(x) => validate_trait_object_fn_ptr_ret_ty(x, &mut y),
+                PathSegment(x) => path_segment(x, &mut y),
+                RefType(x) => ref_ty(x, &mut y),
+                PtrType(x) => ptr_ty(x, &mut y),
+                FnPtrType(x) => fn_ptr_ty(x, &mut y),
                 MacroRules(x) => mac_rules(x, &mut y),
                 LetExpr(x) => let_expr(x, &mut y),
                 _ => (),
@@ -53,73 +53,34 @@ pub fn block_expr(x: ast::BlockExpr, y: &mut Vec<SyntaxErr>) {
         }));
     }
 }
-
-fn unescape_err_to_string(x: EscErr) -> (&'static str, bool) {
-    use EscErr::*;
-    #[rustfmt::skip]
-    let y = match x {
-        ZeroChars => {
-            "Literal must not be empty"
+pub fn block_braces(root: &syntax::Node) {
+    let mut stack = Vec::new();
+    for x in root.descendants_with_tokens() {
+        match x.kind() {
+            T!['{'] => stack.push(x),
+            T!['}'] => {
+                if let Some(y) = stack.pop() {
+                    assert_eq!(
+                        x.parent(),
+                        y.parent(),
+                        "\nunpaired curlies:\n{}\n{:#?}\n",
+                        root.text(),
+                        root,
+                    );
+                    assert!(
+                        x.next_sibling_or_token().is_none() && y.prev_sibling_or_token().is_none(),
+                        "\nfloating curlies at {:?}\nfile:\n{}\nerror:\n{}\n",
+                        x,
+                        root.text(),
+                        x,
+                    );
+                }
+            },
+            _ => (),
         }
-        ManyChars => {
-            "Literal must be one character long"
-        }
-        OneSlash => {
-            "Character must be escaped: `\\`"
-        }
-        InvalidEsc => {
-            "Invalid escape"
-        }
-        BareCarriageReturn | CarriageReturnInRaw => {
-            "Character must be escaped: `\r`"
-        }
-        EscOnlyChar => {
-            "Escape character `\\` must be escaped itself"
-        }
-        ShortHexEsc => {
-            "ASCII hex escape code must have exactly two digits"
-        }
-        InvalidInHexEsc => {
-            "ASCII hex escape code must contain only hex characters"
-        }
-        OutOfRangeHexEsc => {
-            "ASCII hex escape code must be at most 0x7F"
-        }
-        NoBraceInUniEsc => {
-            "Missing `{` to begin the unicode escape"
-        }
-        InvalidInUniEsc => {
-            "Unicode escape must contain only hex characters and underscores"
-        }
-        EmptyUniEsc => {
-            "Unicode escape must not be empty"
-        }
-        UnclosedUniEsc => {
-            "Missing `}` to terminate the unicode escape"
-        }
-        UnderscoreUniEsc => {
-            "Unicode escape code must not begin with an underscore"
-        }
-        LongUniEsc => {
-            "Unicode escape code must have at most 6 digits"
-        }
-        LoneSurrogateUniEsc => {
-            "Unicode escape code must not be a surrogate"
-        }
-        OutOfRangeUniEsc => {
-            "Unicode escape code must be at most 0x10FFFF"
-        }
-        UniEscInByte => {
-            "Byte literals must not contain unicode escapes"
-        }
-        NonAsciiInByte  => {
-            "Byte literals must not contain non-ASCII characters"
-        }
-        UnskippedWhitespace => "Whitespace after this escape is not skipped",
-        ManySkippedLines => "Multiple lines are skipped by this escape",
-    };
-    (y, x.is_fatal())
+    }
 }
+
 fn literal(x: ast::Literal, y: &mut Vec<SyntaxErr>) {
     fn unquote(text: &str, beg: usize, delim: char) -> Option<&str> {
         text.rfind(delim).and_then(|end| text.get(beg..end))
@@ -189,34 +150,79 @@ fn literal(x: ast::Literal, y: &mut Vec<SyntaxErr>) {
         IntNumber(_) | FloatNumber(_) | Bool(_) => {},
     }
 }
-pub fn block_structure(root: &syntax::Node) {
-    let mut stack = Vec::new();
-    for node in root.descendants_with_tokens() {
-        match node.kind() {
-            T!['{'] => stack.push(node),
-            T!['}'] => {
-                if let Some(pair) = stack.pop() {
-                    assert_eq!(
-                        node.parent(),
-                        pair.parent(),
-                        "\nunpaired curlies:\n{}\n{:#?}\n",
-                        root.text(),
-                        root,
-                    );
-                    assert!(
-                        node.next_sibling_or_token().is_none() && pair.prev_sibling_or_token().is_none(),
-                        "\nfloating curlies at {:?}\nfile:\n{}\nerror:\n{}\n",
-                        node,
-                        root.text(),
-                        node,
-                    );
-                }
-            },
-            _ => (),
+fn unescape_err_to_string(x: EscErr) -> (&'static str, bool) {
+    use EscErr::*;
+    #[rustfmt::skip]
+    let y = match x {
+        ZeroChars => {
+            "Literal must not be empty"
         }
-    }
+        ManyChars => {
+            "Literal must be one character long"
+        }
+        OneSlash => {
+            "Character must be escaped: `\\`"
+        }
+        InvalidEsc => {
+            "Invalid escape"
+        }
+        BareCarriageReturn | CarriageReturnInRaw => {
+            "Character must be escaped: `\r`"
+        }
+        EscOnlyChar => {
+            "Escape character `\\` must be escaped itself"
+        }
+        ShortHexEsc => {
+            "ASCII hex escape code must have exactly two digits"
+        }
+        InvalidInHexEsc => {
+            "ASCII hex escape code must contain only hex characters"
+        }
+        OutOfRangeHexEsc => {
+            "ASCII hex escape code must be at most 0x7F"
+        }
+        NoBraceInUniEsc => {
+            "Missing `{` to begin the unicode escape"
+        }
+        InvalidInUniEsc => {
+            "Unicode escape must contain only hex characters and underscores"
+        }
+        EmptyUniEsc => {
+            "Unicode escape must not be empty"
+        }
+        UnclosedUniEsc => {
+            "Missing `}` to terminate the unicode escape"
+        }
+        UnderscoreUniEsc => {
+            "Unicode escape code must not begin with an underscore"
+        }
+        LongUniEsc => {
+            "Unicode escape code must have at most 6 digits"
+        }
+        LoneSurrogateUniEsc => {
+            "Unicode escape code must not be a surrogate"
+        }
+        OutOfRangeUniEsc => {
+            "Unicode escape code must be at most 0x10FFFF"
+        }
+        UniEscInByte => {
+            "Byte literals must not contain unicode escapes"
+        }
+        NonAsciiInByte  => {
+            "Byte literals must not contain non-ASCII characters"
+        }
+        UnskippedWhitespace => "Whitespace after this escape is not skipped",
+        ManySkippedLines => "Multiple lines are skipped by this escape",
+    };
+    (y, x.is_fatal())
 }
 fn num_name(x: Option<ast::NameRef>, y: &mut Vec<SyntaxErr>) {
+    fn int_token(x: Option<ast::NameRef>) -> Option<syntax::Token> {
+        x?.syntax()
+            .first_child_or_token()?
+            .into_token()
+            .filter(|x| x.kind() == SyntaxKind::INT_NUMBER)
+    }
     if let Some(x) = int_token(x) {
         if x.text().chars().any(|x| !x.is_ascii_digit()) {
             y.push(SyntaxErr::new(
@@ -225,13 +231,6 @@ fn num_name(x: Option<ast::NameRef>, y: &mut Vec<SyntaxErr>) {
                 x.text_range(),
             ));
         }
-    }
-    fn int_token(name_ref: Option<ast::NameRef>) -> Option<syntax::Token> {
-        name_ref?
-            .syntax()
-            .first_child_or_token()?
-            .into_token()
-            .filter(|x| x.kind() == INT_NUMBER)
     }
 }
 fn visibility(x: ast::Visibility, y: &mut Vec<SyntaxErr>) {
@@ -250,6 +249,7 @@ fn visibility(x: ast::Visibility, y: &mut Vec<SyntaxErr>) {
         Some(it) => it,
         None => return,
     };
+    use SyntaxKind::*;
     match parent.kind() {
         FN | CONST | TYPE_ALIAS => (),
         _ => return,
@@ -273,35 +273,36 @@ fn range_expr(x: ast::RangeExpr, y: &mut Vec<SyntaxErr>) {
         ));
     }
 }
-fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>) {
-    let path = segment.parent_path();
-    let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
-    if let Some(token) = segment.self_token() {
-        if !is_path_start {
-            errors.push(SyntaxErr::new(
+fn path_segment(x: ast::PathSegment, y: &mut Vec<SyntaxErr>) {
+    let path = x.parent_path();
+    let is_start = x.coloncolon_token().is_none() && path.qualifier().is_none();
+    if let Some(x) = x.self_token() {
+        if !is_start {
+            y.push(SyntaxErr::new(
                 "The `self` keyword is only allowed as the first segment of a path",
-                token.text_range(),
+                x.text_range(),
             ));
         }
-    } else if let Some(token) = segment.crate_token() {
-        if !is_path_start || use_prefix(path).is_some() {
-            errors.push(SyntaxErr::new(
+    } else if let Some(x) = x.crate_token() {
+        if !is_start || use_prefix(path).is_some() {
+            y.push(SyntaxErr::new(
                 "The `crate` keyword is only allowed as the first segment of a path",
-                token.text_range(),
+                x.text_range(),
             ));
         }
     }
-    fn use_prefix(mut path: ast::Path) -> Option<ast::Path> {
-        for node in path.syntax().ancestors().skip(1) {
+    fn use_prefix(mut x: ast::Path) -> Option<ast::Path> {
+        for node in x.syntax().ancestors().skip(1) {
+            use ast::*;
             match_ast! {
                 match node {
-                    ast::UseTree(it) => if let Some(tree_path) = it.path() {
-                        if tree_path != path {
-                            return Some(tree_path);
+                    UseTree(y) => if let Some(y) = y.path() {
+                        if y != x {
+                            return Some(y);
                         }
                     },
-                    ast::UseTreeList(_) => continue,
-                    ast::Path(parent) => path = parent,
+                    UseTreeList(_) => continue,
+                    Path(y) => x = y,
                     _ => return None,
                 }
             };
@@ -309,33 +310,33 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErr>
         None
     }
 }
-fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxErr>) {
-    if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
-        if let Some(err) = trait_obj_ty(ty) {
-            errors.push(err);
+fn ref_ty(x: ast::RefType, y: &mut Vec<SyntaxErr>) {
+    if let Some(ast::Type::DynTraitType(x)) = x.ty() {
+        if let Some(x) = trait_ty(x) {
+            y.push(x);
         }
     }
 }
-fn validate_trait_object_ptr_ty(ty: ast::PtrType, errors: &mut Vec<SyntaxErr>) {
-    if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
-        if let Some(err) = trait_obj_ty(ty) {
-            errors.push(err);
+fn ptr_ty(x: ast::PtrType, y: &mut Vec<SyntaxErr>) {
+    if let Some(ast::Type::DynTraitType(x)) = x.ty() {
+        if let Some(x) = trait_ty(x) {
+            y.push(x);
         }
     }
 }
-fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<SyntaxErr>) {
-    if let Some(ast::Type::DynTraitType(ty)) = ty.ret_type().and_then(|ty| ty.ty()) {
-        if let Some(err) = trait_obj_ty(ty) {
-            errors.push(err);
+fn fn_ptr_ty(x: ast::FnPtrType, y: &mut Vec<SyntaxErr>) {
+    if let Some(ast::Type::DynTraitType(x)) = x.ret_type().and_then(|x| x.ty()) {
+        if let Some(x) = trait_ty(x) {
+            y.push(x);
         }
     }
 }
-fn trait_obj_ty(x: ast::DynTraitType) -> Option<SyntaxErr> {
-    let tbl = x.type_bound_list()?;
-    if tbl.bounds().count() > 1 {
-        let dyn_token = x.dyn_token()?;
-        let potential_parenthesis = algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
-        let kind = potential_parenthesis.kind();
+fn trait_ty(x: ast::DynTraitType) -> Option<SyntaxErr> {
+    let xs = x.type_bound_list()?;
+    if xs.bounds().count() > 1 {
+        let tok = x.dyn_token()?;
+        let paren = algo::skip_trivia_token(tok.prev_token()?, Direction::Prev)?;
+        let kind = paren.kind();
         if !matches!(kind, T!['('] | T![<] | T![=]) {
             return Some(SyntaxErr::new("ambiguous `+` in a type", x.syntax().text_range()));
         }
@@ -350,7 +351,7 @@ fn mac_rules(x: ast::MacroRules, y: &mut Vec<SyntaxErr>) {
         ));
     }
 }
-fn validate_const(x: ast::Const, y: &mut Vec<SyntaxErr>) {
+fn const_(x: ast::Const, y: &mut Vec<SyntaxErr>) {
     if let Some(x) = x
         .const_token()
         .and_then(|x| x.next_token())

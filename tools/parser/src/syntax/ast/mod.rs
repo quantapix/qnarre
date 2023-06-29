@@ -168,38 +168,36 @@ pub mod edit {
 pub mod edit_in_place;
 mod expr_ext;
 mod generated {
-    #[rustfmt::skip]
-pub mod nodes;
-#[rustfmt::skip]
-pub mod tokens;
+    pub mod nodes;
+    pub mod tokens;
     use crate::{
         syntax::{self, ast},
         SyntaxKind::{self, *},
     };
     pub use nodes::*;
     impl ast::Node for Stmt {
-        fn can_cast(kind: SyntaxKind) -> bool {
-            match kind {
+        fn can_cast(x: SyntaxKind) -> bool {
+            match x {
                 LET_STMT | EXPR_STMT => true,
-                _ => Item::can_cast(kind),
+                _ => Item::can_cast(x),
             }
         }
         fn cast(syntax: syntax::Node) -> Option<Self> {
-            let res = match syntax.kind() {
+            let y = match syntax.kind() {
                 LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
                 EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
                 _ => {
-                    let item = Item::cast(syntax)?;
-                    Stmt::Item(item)
+                    let x = Item::cast(syntax)?;
+                    Stmt::Item(x)
                 },
             };
-            Some(res)
+            Some(y)
         }
         fn syntax(&self) -> &syntax::Node {
             match self {
-                Stmt::LetStmt(it) => &it.syntax,
-                Stmt::ExprStmt(it) => &it.syntax,
-                Stmt::Item(it) => it.syntax(),
+                Stmt::LetStmt(x) => &x.syntax,
+                Stmt::ExprStmt(x) => &x.syntax,
+                Stmt::Item(x) => x.syntax(),
             }
         }
     }
