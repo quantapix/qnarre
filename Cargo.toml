@@ -1,5 +1,5 @@
 [workspace]
-members = ["tools/syntax", "tools/parser"]
+members = ["tools/parser"]
 # members = ["tools/bindgen", "tools/clang", "tools/lexer", "tools/ast", "tools/llvm/macros", "tools/llvm", "tools/probe_lib", "tools/probe"]
 resolver = "2"
 
