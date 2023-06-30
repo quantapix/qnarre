@@ -172,6 +172,7 @@ where
         r.start().into()..r.end().into()
     }
 }
+
 macro_rules! ops {
     (impl $Op:ident for TextRange by fn $f:ident = $op:tt) => {
         impl $Op<&TextSize> for TextRange {
@@ -195,6 +196,7 @@ macro_rules! ops {
 }
 ops!(impl Add for TextRange by fn add = +);
 ops!(impl Sub for TextRange by fn sub = -);
+
 impl<A> AddAssign<A> for TextRange
 where
     TextRange: Add<A, Output = TextRange>,
@@ -262,6 +264,7 @@ impl From<TextSize> for usize {
         value.raw as usize
     }
 }
+
 macro_rules! ops2 {
         (impl $Op:ident for TextSize by fn $f:ident = $op:tt) => {
             impl $Op<TextSize> for TextSize {
@@ -292,6 +295,7 @@ macro_rules! ops2 {
     }
 ops2!(impl Add for TextSize by fn add = +);
 ops2!(impl Sub for TextSize by fn sub = -);
+
 impl<A> AddAssign<A> for TextSize
 where
     TextSize: Add<A, Output = TextSize>,
@@ -319,6 +323,7 @@ where
         iter.fold(0.into(), Add::add)
     }
 }
+
 use priv_in_pub::Sealed;
 mod priv_in_pub {
     pub trait Sealed {}
@@ -404,16 +409,16 @@ impl Indel {
     pub fn delete(range: TextRange) -> Indel {
         Indel::replace(range, String::new())
     }
-    pub fn replace(range: TextRange, replace_with: String) -> Indel {
+    pub fn replace(range: TextRange, with: String) -> Indel {
         Indel {
             delete: range,
-            insert: replace_with,
+            insert: with,
         }
     }
     pub fn apply(&self, text: &mut String) {
-        let start: usize = self.delete.start().into();
+        let beg: usize = self.delete.start().into();
         let end: usize = self.delete.end().into();
-        text.replace_range(start..end, &self.insert);
+        text.replace_range(beg..end, &self.insert);
     }
 }
 
@@ -425,20 +430,20 @@ impl Edit {
     pub fn builder() -> EditBuilder {
         EditBuilder::default()
     }
-    pub fn insert(offset: TextSize, text: String) -> Edit {
-        let mut builder = Edit::builder();
-        builder.insert(offset, text);
-        builder.finish()
+    pub fn insert(offset: TextSize, x: String) -> Edit {
+        let mut y = Edit::builder();
+        y.insert(offset, x);
+        y.finish()
     }
     pub fn delete(range: TextRange) -> Edit {
-        let mut builder = Edit::builder();
-        builder.delete(range);
-        builder.finish()
+        let mut y = Edit::builder();
+        y.delete(range);
+        y.finish()
     }
-    pub fn replace(range: TextRange, replace_with: String) -> Edit {
-        let mut builder = Edit::builder();
-        builder.replace(range, replace_with);
-        builder.finish()
+    pub fn replace(range: TextRange, with: String) -> Edit {
+        let mut y = Edit::builder();
+        y.replace(range, with);
+        y.finish()
     }
     pub fn len(&self) -> usize {
         self.indels.len()
@@ -481,7 +486,6 @@ impl Edit {
         if !check_disjoint(&mut iter_merge.clone()) {
             return Err(other);
         }
-        // Only dedup deletions and replacements, keep all insertions
         self.indels = iter_merge
             .dedup_by(|a, b| a == b && !a.delete.is_empty())
             .cloned()
@@ -581,6 +585,33 @@ fn coalesce_indels(indels: Vec<Indel>) -> Vec<Indel> {
             }
         })
         .collect_vec()
+}
+
+pub fn extract_offset(x: &str) -> (TextSize, String) {
+    match try_extract_offset(x) {
+        None => panic!("text should contain cursor marker"),
+        Some(x) => x,
+    }
+}
+pub fn extract_range(x: &str) -> (TextRange, String) {
+    fn try_extract(x: &str) -> Option<(TextRange, String)> {
+        let (beg, x) = try_extract_offset(x)?;
+        let (end, x) = try_extract_offset(&x)?;
+        Some((TextRange::new(beg, end), x))
+    }
+    match try_extract(x) {
+        None => panic!("text should contain cursor marker"),
+        Some(x) => x,
+    }
+}
+const MARKER: &str = "$0";
+fn try_extract_offset(x: &str) -> Option<(TextSize, String)> {
+    let pos = x.find(MARKER)?;
+    let mut y = String::with_capacity(x.len() - MARKER.len());
+    y.push_str(&x[..pos]);
+    y.push_str(&x[pos + MARKER.len()..]);
+    let pos = TextSize::from(pos as u32);
+    Some((pos, y))
 }
 
 #[cfg(test)]

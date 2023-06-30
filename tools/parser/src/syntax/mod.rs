@@ -8,8 +8,7 @@ pub use smol_str::SmolStr;
 use std::{fmt, marker::PhantomData};
 use triomphe::Arc;
 
-pub mod tmp;
-pub use tmp::*;
+pub mod macros;
 pub mod text;
 pub use text::{Indel, TextRange, TextSize};
 
@@ -234,14 +233,14 @@ mod parsing {
             }));
             res
         }
+
         #[cfg(test)]
         mod tests {
             use super::*;
             use crate::{
                 assert_eq_text,
-                syntax::{Parse, SourceFile},
+                syntax::{text::extract_range, Parse, SourceFile},
             };
-            use test_utils::extract_range;
             fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
                 let (range, before) = extract_range(before);
                 let edit = Indel::replace(range, replace_with.to_owned());
@@ -493,11 +492,11 @@ enum Foo {
             }
         }
     }
-    pub use crate::parsing::reparsing::incremental_reparse;
     use crate::{
         syntax::{core::green, SyntaxErr, SyntaxTreeBuilder, TextRange},
         Lexed, Output, StrStep, TopEntry,
     };
+    pub use reparsing::incremental_reparse;
     pub fn parse_text(text: &str) -> (green::Node, Vec<SyntaxErr>) {
         let lexed = Lexed::new(text);
         let parser_input = lexed.to_input();
@@ -522,6 +521,7 @@ enum Foo {
         (node, errors, is_eof)
     }
 }
+
 mod ptr {
     use crate::syntax::{self, ast, core, Lang, TextRange};
     use std::{
@@ -1116,6 +1116,7 @@ impl SourceFile {
         }
     }
 }
+
 #[macro_export]
 macro_rules! match_ast {
     (match $node:ident { $($tt:tt)* }) => { $crate::match_ast!(match ($node) { $($tt)* }) };

@@ -1,4 +1,4 @@
-use super::{static_assert, Arc, CowMut, HeaderSlice, NodeOrToken, ThinArc};
+use super::{Arc, CowMut, HeaderSlice, NodeOrToken, ThinArc};
 use crate::syntax::{TextRange, TextSize};
 use countme::Count;
 use hashbrown::hash_map::RawEntryMut;
@@ -89,21 +89,23 @@ struct NodeHead {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Child {
-    Node { rel_offset: TextSize, node: Node },
-    Token { rel_offset: TextSize, token: Token },
+    Node { offset: TextSize, node: Node },
+    Token { offset: TextSize, token: Token },
 }
 impl Child {
     #[inline]
     pub fn as_ref(&self) -> ElemRef {
+        use Child::*;
         match self {
-            Child::Node { node, .. } => NodeOrToken::Node(node),
-            Child::Token { token, .. } => NodeOrToken::Token(token),
+            Node { node, .. } => NodeOrToken::Node(node),
+            Token { token, .. } => NodeOrToken::Token(token),
         }
     }
     #[inline]
     pub fn rel_offset(&self) -> TextSize {
+        use Child::*;
         match self {
-            Child::Node { rel_offset, .. } | Child::Token { rel_offset, .. } => *rel_offset,
+            Node { offset, .. } | Token { offset, .. } => *offset,
         }
     }
     #[inline]
@@ -113,15 +115,19 @@ impl Child {
     }
 }
 
-#[cfg(target_pointer_width = "64")]
+macro_rules! static_assert {
+    ($e:expr) => {
+        const _: i32 = 0 / $e as i32;
+    };
+}
 static_assert!(mem::size_of::<Child>() == mem::size_of::<usize>() * 2);
 
 type NodeRepr = HeaderSlice<NodeHead, [Child]>;
-type NodeReprThin = HeaderSlice<NodeHead, [Child; 0]>;
+type ThinRepr = HeaderSlice<NodeHead, [Child; 0]>;
 
 #[repr(transparent)]
 pub struct NodeData {
-    data: NodeReprThin,
+    data: ThinRepr,
 }
 impl NodeData {
     #[inline]
@@ -239,8 +245,14 @@ impl Node {
             let rel_offset = text_len;
             text_len += el.text_len();
             match el {
-                NodeOrToken::Node(node) => Child::Node { rel_offset, node },
-                NodeOrToken::Token(token) => Child::Token { rel_offset, token },
+                NodeOrToken::Node(node) => Child::Node {
+                    offset: rel_offset,
+                    node,
+                },
+                NodeOrToken::Token(token) => Child::Token {
+                    offset: rel_offset,
+                    token,
+                },
             }
         });
         let data = ThinArc::from_header_and_iter(
@@ -266,8 +278,8 @@ impl Node {
     }
     #[inline]
     pub unsafe fn from_raw(ptr: ptr::NonNull<NodeData>) -> Node {
-        let arc = Arc::from_raw(&ptr.as_ref().data as *const NodeReprThin);
-        let arc = mem::transmute::<Arc<NodeReprThin>, ThinArc<NodeHead, Child>>(arc);
+        let arc = Arc::from_raw(&ptr.as_ref().data as *const ThinRepr);
+        let arc = mem::transmute::<Arc<ThinRepr>, ThinArc<NodeHead, Child>>(arc);
         Node { ptr: arc }
     }
 }
@@ -301,8 +313,8 @@ impl ops::Deref for Node {
     fn deref(&self) -> &NodeData {
         unsafe {
             let repr: &NodeRepr = &self.ptr;
-            let repr: &NodeReprThin = &*(repr as *const NodeRepr as *const NodeReprThin);
-            mem::transmute::<&NodeReprThin, &NodeData>(repr)
+            let repr: &ThinRepr = &*(repr as *const NodeRepr as *const ThinRepr);
+            mem::transmute::<&ThinRepr, &NodeData>(repr)
         }
     }
 }

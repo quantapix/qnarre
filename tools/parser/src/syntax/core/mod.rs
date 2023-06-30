@@ -52,7 +52,7 @@ pub mod ast {
     }
 
     pub struct NodePtr<N: Node> {
-        raw: NodePtr<N::Lang>,
+        raw: super::NodePtr<N::Lang>,
     }
     impl<N: Node> NodePtr<N> {
         pub fn new(x: &N) -> Self {
@@ -63,7 +63,7 @@ pub mod ast {
         pub fn to_node(&self, x: &api::Node<N::Lang>) -> N {
             N::cast(self.raw.to_node(x)).unwrap()
         }
-        pub fn syntax_node_ptr(&self) -> NodePtr<N::Lang> {
+        pub fn syntax_node_ptr(&self) -> super::NodePtr<N::Lang> {
             self.raw.clone()
         }
         pub fn cast<U: Node<Lang = N::Lang>>(self) -> Option<NodePtr<U>> {
@@ -94,8 +94,8 @@ pub mod ast {
             f.debug_struct("ast::NodePtr").field("raw", &self.raw).finish()
         }
     }
-    impl<N: Node> From<NodePtr<N>> for NodePtr<N::Lang> {
-        fn from(x: NodePtr<N>) -> NodePtr<N::Lang> {
+    impl<N: Node> From<NodePtr<N>> for super::NodePtr<N::Lang> {
+        fn from(x: NodePtr<N>) -> super::NodePtr<N::Lang> {
             x.raw
         }
     }
@@ -474,58 +474,56 @@ pub enum TokAtOffset<T> {
 }
 impl<T> TokAtOffset<T> {
     pub fn map<F: Fn(T) -> U, U>(self, f: F) -> TokAtOffset<U> {
+        use TokAtOffset::*;
         match self {
-            TokAtOffset::None => TokAtOffset::None,
-            TokAtOffset::Single(it) => TokAtOffset::Single(f(it)),
-            TokAtOffset::Between(l, r) => TokAtOffset::Between(f(l), f(r)),
+            None => None,
+            Single(x) => Single(f(x)),
+            Between(l, r) => Between(f(l), f(r)),
         }
     }
     pub fn right_biased(self) -> Option<T> {
+        use TokAtOffset::*;
         match self {
-            TokAtOffset::None => None,
-            TokAtOffset::Single(node) => Some(node),
-            TokAtOffset::Between(_, right) => Some(right),
+            None => None,
+            Single(x) => Some(x),
+            Between(_, r) => Some(r),
         }
     }
     pub fn left_biased(self) -> Option<T> {
+        use TokAtOffset::*;
         match self {
-            TokAtOffset::None => None,
-            TokAtOffset::Single(node) => Some(node),
-            TokAtOffset::Between(left, _) => Some(left),
+            None => None,
+            Single(x) => Some(x),
+            Between(l, _) => Some(l),
         }
     }
 }
 impl<T> Iterator for TokAtOffset<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
-        match std::mem::replace(self, TokAtOffset::None) {
-            TokAtOffset::None => None,
-            TokAtOffset::Single(node) => {
-                *self = TokAtOffset::None;
-                Some(node)
+        use TokAtOffset::*;
+        match std::mem::replace(self, None) {
+            None => None,
+            Single(x) => {
+                *self = None;
+                Some(x)
             },
-            TokAtOffset::Between(left, right) => {
-                *self = TokAtOffset::Single(right);
-                Some(left)
+            Between(l, r) => {
+                *self = Single(r);
+                Some(l)
             },
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
+        use TokAtOffset::*;
         match self {
-            TokAtOffset::None => (0, Some(0)),
-            TokAtOffset::Single(_) => (1, Some(1)),
-            TokAtOffset::Between(_, _) => (2, Some(2)),
+            None => (0, Some(0)),
+            Single(_) => (1, Some(1)),
+            Between(_, _) => (2, Some(2)),
         }
     }
 }
 impl<T> ExactSizeIterator for TokAtOffset<T> {}
-
-macro_rules! _static_assert {
-    ($e:expr) => {
-        const _: i32 = 0 / $e as i32;
-    };
-}
-pub use _static_assert as static_assert;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Delta<T> {
