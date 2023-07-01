@@ -28,8 +28,8 @@ pub mod edit {
     #[derive(Debug, Clone, Copy)]
     pub struct IndentLevel(pub u8);
     impl From<u8> for IndentLevel {
-        fn from(level: u8) -> IndentLevel {
-            IndentLevel(level)
+        fn from(x: u8) -> IndentLevel {
+            IndentLevel(x)
         }
     }
     impl fmt::Display for IndentLevel {
@@ -37,19 +37,19 @@ pub mod edit {
             let spaces = "                                        ";
             let buf;
             let len = self.0 as usize * 4;
-            let indent = if len <= spaces.len() {
+            let y = if len <= spaces.len() {
                 &spaces[..len]
             } else {
                 buf = " ".repeat(len);
                 &buf
             };
-            fmt::Display::fmt(indent, f)
+            fmt::Display::fmt(y, f)
         }
     }
     impl ops::Add<u8> for IndentLevel {
         type Output = IndentLevel;
-        fn add(self, rhs: u8) -> IndentLevel {
-            IndentLevel(self.0 + rhs)
+        fn add(self, x: u8) -> IndentLevel {
+            IndentLevel(self.0 + x)
         }
     }
     impl IndentLevel {
@@ -59,105 +59,106 @@ pub mod edit {
         pub fn is_zero(&self) -> bool {
             self.0 == 0
         }
-        pub fn from_element(element: &syntax::Elem) -> IndentLevel {
-            match element {
-                NodeOrToken::Node(it) => IndentLevel::from_node(it),
-                NodeOrToken::Token(it) => IndentLevel::from_token(it),
+        pub fn from_elem(x: &syntax::Elem) -> IndentLevel {
+            use NodeOrToken::*;
+            match x {
+                Node(it) => IndentLevel::from_node(it),
+                Token(it) => IndentLevel::from_tok(it),
             }
         }
-        pub fn from_node(node: &syntax::Node) -> IndentLevel {
-            match node.first_token() {
-                Some(it) => Self::from_token(&it),
+        pub fn from_node(x: &syntax::Node) -> IndentLevel {
+            match x.first_token() {
+                Some(x) => Self::from_tok(&x),
                 None => IndentLevel(0),
             }
         }
-        pub fn from_token(token: &syntax::Token) -> IndentLevel {
-            for ws in prev_tokens(token.clone()).filter_map(ast::Whitespace::cast) {
+        pub fn from_tok(x: &syntax::Token) -> IndentLevel {
+            for ws in prev_toks(x.clone()).filter_map(ast::Whitespace::cast) {
                 let text = ws.syntax().text();
                 if let Some(pos) = text.rfind('\n') {
-                    let level = text[pos + 1..].chars().count() / 4;
-                    return IndentLevel(level as u8);
+                    let y = text[pos + 1..].chars().count() / 4;
+                    return IndentLevel(y as u8);
                 }
             }
             IndentLevel(0)
         }
-        pub fn increase_indent(self, node: &syntax::Node) {
-            let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-                WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+        pub fn increase(self, x: &syntax::Node) {
+            let xs = x.preorder_with_tokens().filter_map(|x| match x {
+                WalkEvent::Leave(NodeOrToken::Token(x)) => Some(x),
                 _ => None,
             });
-            for token in tokens {
-                if let Some(ws) = ast::Whitespace::cast(token) {
-                    if ws.text().contains('\n') {
-                        let new_ws = make::tokens::whitespace(&format!("{}{self}", ws.syntax()));
-                        ted::replace(ws.syntax(), &new_ws);
+            for x in xs {
+                if let Some(x) = ast::Whitespace::cast(x) {
+                    if x.text().contains('\n') {
+                        let y = make::tokens::whitespace(&format!("{}{self}", x.syntax()));
+                        ted::replace(x.syntax(), &y);
                     }
                 }
             }
         }
-        pub fn decrease_indent(self, node: &syntax::Node) {
-            let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-                WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+        pub fn decrease(self, x: &syntax::Node) {
+            let xs = x.preorder_with_tokens().filter_map(|x| match x {
+                WalkEvent::Leave(NodeOrToken::Token(x)) => Some(x),
                 _ => None,
             });
-            for token in tokens {
-                if let Some(ws) = ast::Whitespace::cast(token) {
-                    if ws.text().contains('\n') {
-                        let new_ws = make::tokens::whitespace(&ws.syntax().text().replace(&format!("\n{self}"), "\n"));
-                        ted::replace(ws.syntax(), &new_ws);
+            for x in xs {
+                if let Some(x) = ast::Whitespace::cast(x) {
+                    if x.text().contains('\n') {
+                        let y = make::tokens::whitespace(&x.syntax().text().replace(&format!("\n{self}"), "\n"));
+                        ted::replace(x.syntax(), &y);
                     }
                 }
             }
         }
     }
-    fn prev_tokens(token: syntax::Token) -> impl Iterator<Item = syntax::Token> {
-        iter::successors(Some(token), |token| token.prev_token())
+    fn prev_toks(x: syntax::Token) -> impl Iterator<Item = syntax::Token> {
+        iter::successors(Some(x), |x| x.prev_token())
     }
     pub trait NodeEdit: ast::Node + Clone + Sized {
         fn indent_level(&self) -> IndentLevel {
             IndentLevel::from_node(self.syntax())
         }
         #[must_use]
-        fn indent(&self, level: IndentLevel) -> Self {
-            fn indent_inner(node: &syntax::Node, level: IndentLevel) -> syntax::Node {
-                let res = node.clone_subtree().clone_for_update();
-                level.increase_indent(&res);
-                res.clone_subtree()
+        fn indent(&self, x: IndentLevel) -> Self {
+            fn inner(n: &syntax::Node, x: IndentLevel) -> syntax::Node {
+                let y = n.clone_subtree().clone_for_update();
+                x.increase(&y);
+                y.clone_subtree()
             }
-            Self::cast(indent_inner(self.syntax(), level)).unwrap()
+            Self::cast(inner(self.syntax(), x)).unwrap()
         }
         #[must_use]
-        fn dedent(&self, level: IndentLevel) -> Self {
-            fn dedent_inner(node: &syntax::Node, level: IndentLevel) -> syntax::Node {
-                let res = node.clone_subtree().clone_for_update();
-                level.decrease_indent(&res);
-                res.clone_subtree()
+        fn dedent(&self, x: IndentLevel) -> Self {
+            fn inner(n: &syntax::Node, x: IndentLevel) -> syntax::Node {
+                let y = n.clone_subtree().clone_for_update();
+                x.decrease(&y);
+                y.clone_subtree()
             }
-            Self::cast(dedent_inner(self.syntax(), level)).unwrap()
+            Self::cast(inner(self.syntax(), x)).unwrap()
         }
         #[must_use]
         fn reset_indent(&self) -> Self {
-            let level = IndentLevel::from_node(self.syntax());
-            self.dedent(level)
+            let y = IndentLevel::from_node(self.syntax());
+            self.dedent(y)
         }
     }
     impl<N: ast::Node + Clone> NodeEdit for N {}
     #[test]
     fn test_increase_indent() {
-        let arm_list = {
-            let arm = make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit());
-            make::match_arm_list(vec![arm.clone(), arm])
+        let y = {
+            let x = make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit());
+            make::match_arm_list(vec![x.clone(), x])
         };
         assert_eq!(
-            arm_list.syntax().to_string(),
+            y.syntax().to_string(),
             "{
     _ => (),
     _ => (),
 }"
         );
-        let indented = arm_list.indent(IndentLevel(2));
+        let y = y.indent(IndentLevel(2));
         assert_eq!(
-            indented.syntax().to_string(),
+            y.syntax().to_string(),
             "{
             _ => (),
             _ => (),

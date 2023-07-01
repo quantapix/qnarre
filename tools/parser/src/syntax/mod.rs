@@ -827,14 +827,14 @@ pub mod ted {
         };
         if prev.kind() == T!['{'] && new.kind() == SyntaxKind::USE {
             if let Some(item_list) = prev.parent().and_then(ast::ItemList::cast) {
-                let mut y = IndentLevel::from_element(&item_list.syntax().clone().into());
+                let mut y = IndentLevel::from_elem(&item_list.syntax().clone().into());
                 y.0 += 1;
                 return Some(make::tokens::whitespace(&format!("\n{y}")));
             }
         }
         if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
             if let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast) {
-                let mut y = IndentLevel::from_element(&stmt_list.syntax().clone().into());
+                let mut y = IndentLevel::from_elem(&stmt_list.syntax().clone().into());
                 y.0 += 1;
                 return Some(make::tokens::whitespace(&format!("\n{y}")));
             }
@@ -865,9 +865,9 @@ pub mod ted {
             return None;
         }
         if right.kind() == SyntaxKind::USE {
-            let mut y = IndentLevel::from_element(left);
+            let mut y = IndentLevel::from_elem(left);
             if left.kind() == SyntaxKind::USE {
-                y.0 = IndentLevel::from_element(right).0.max(y.0);
+                y.0 = IndentLevel::from_elem(right).0.max(y.0);
             }
             return Some(make::tokens::whitespace(&format!("\n{y}")));
         }
