@@ -321,10 +321,9 @@ impl<L: Lang> Elem<L> {
         }
     }
     pub fn ancestors(&self) -> impl Iterator<Item = Node<L>> {
-        use NodeOrToken::*;
         let y = match self {
-            Node(x) => Some(x.clone()),
-            Token(x) => x.parent(),
+            NodeOrToken::Node(x) => Some(x.clone()),
+            NodeOrToken::Token(x) => x.parent(),
         };
         iter::successors(y, Node::parent)
     }
