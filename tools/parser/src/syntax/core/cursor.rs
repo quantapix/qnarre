@@ -84,7 +84,7 @@ impl NodeData {
     #[inline]
     fn inc_rc(&self) {
         let rc = match self.rc.get().checked_add(1) {
-            Some(it) => it,
+            Some(x) => x,
             None => std::process::abort(),
         };
         self.rc.set(rc)
@@ -220,20 +220,21 @@ impl NodeData {
             sll::adjust(self, self.index() + 1, Delta::Sub(1));
             let parent = parent_ptr.as_ref();
             sll::unlink(&parent.first, self);
+            use NodeOrToken::*;
             match self.green().to_owned() {
-                NodeOrToken::Node(it) => {
-                    green::Node::into_raw(it);
+                Node(x) => {
+                    green::Node::into_raw(x);
                 },
-                NodeOrToken::Token(it) => {
-                    green::Token::into_raw(it);
+                Token(x) => {
+                    green::Token::into_raw(x);
                 },
             }
             match parent.green() {
-                NodeOrToken::Node(green) => {
-                    let green = green.remove_child(self.index() as usize);
-                    parent.respine(green)
+                Node(x) => {
+                    let x = x.remove_child(self.index() as usize);
+                    parent.respine(x)
                 },
-                NodeOrToken::Token(_) => unreachable!(),
+                Token(_) => unreachable!(),
             }
             if parent.dec_rc() {
                 free(parent_ptr)
@@ -471,32 +472,36 @@ impl Node {
         self.last_child_or_token()?.last_token()
     }
     #[inline]
-    pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = Node> {
-        iter::successors(Some(self.clone()), move |node| match direction {
-            Direction::Next => node.next_sibling(),
-            Direction::Prev => node.prev_sibling(),
+    pub fn siblings(&self, dir: Direction) -> impl Iterator<Item = Node> {
+        use Direction::*;
+        iter::successors(Some(self.clone()), move |x| match dir {
+            Next => x.next_sibling(),
+            Prev => x.prev_sibling(),
         })
     }
     #[inline]
-    pub fn siblings_with_tokens(&self, direction: Direction) -> impl Iterator<Item = Elem> {
-        let me: Elem = self.clone().into();
-        iter::successors(Some(me), move |el| match direction {
-            Direction::Next => el.next_sibling_or_token(),
-            Direction::Prev => el.prev_sibling_or_token(),
+    pub fn siblings_with_tokens(&self, dir: Direction) -> impl Iterator<Item = Elem> {
+        let y: Elem = self.clone().into();
+        use Direction::*;
+        iter::successors(Some(y), move |x| match dir {
+            Next => x.next_sibling_or_token(),
+            Prev => x.prev_sibling_or_token(),
         })
     }
     #[inline]
     pub fn descendants(&self) -> impl Iterator<Item = Node> {
-        self.preorder().filter_map(|event| match event {
-            WalkEvent::Enter(node) => Some(node),
-            WalkEvent::Leave(_) => None,
+        use WalkEvent::*;
+        self.preorder().filter_map(|x| match x {
+            Enter(x) => Some(x),
+            Leave(_) => None,
         })
     }
     #[inline]
     pub fn descendants_with_tokens(&self) -> impl Iterator<Item = Elem> {
-        self.preorder_with_tokens().filter_map(|event| match event {
-            WalkEvent::Enter(it) => Some(it),
-            WalkEvent::Leave(_) => None,
+        use WalkEvent::*;
+        self.preorder_with_tokens().filter_map(|x| match x {
+            Enter(x) => Some(x),
+            Leave(_) => None,
         })
     }
     #[inline]
@@ -546,7 +551,7 @@ impl Node {
             res = match &res {
                 NodeOrToken::Token(_) => return res,
                 NodeOrToken::Node(node) => match node.child_or_token_at_range(range) {
-                    Some(it) => it,
+                    Some(x) => x,
                     None => return res,
                 },
             };
@@ -579,8 +584,8 @@ impl Node {
         assert!(self.data().mutable, "immutable tree: {}", self);
         child.detach();
         let data = match &child {
-            NodeOrToken::Node(it) => it.data(),
-            NodeOrToken::Token(it) => it.data(),
+            NodeOrToken::Node(x) => x.data(),
+            NodeOrToken::Token(x) => x.data(),
         };
         self.data().attach_child(index, data)
     }
@@ -670,7 +675,7 @@ impl Token {
     #[inline]
     pub fn text(&self) -> &str {
         match self.data().green().as_token() {
-            Some(it) => it.text(),
+            Some(x) => x.text(),
             None => {
                 debug_assert!(
                     false,
@@ -766,96 +771,107 @@ impl fmt::Display for Token {
 
 pub type Elem = NodeOrToken<Node, Token>;
 impl Elem {
-    fn new(element: green::ElemRef<'_>, parent: Node, index: u32, offset: TextSize) -> Elem {
-        match element {
-            NodeOrToken::Node(node) => Node::new_child(node, parent, index as u32, offset).into(),
-            NodeOrToken::Token(token) => Token::new(token, parent, index as u32, offset).into(),
+    fn new(x: green::ElemRef<'_>, parent: Node, index: u32, offset: TextSize) -> Elem {
+        match x {
+            NodeOrToken::Node(x) => Node::new_child(x, parent, index as u32, offset).into(),
+            NodeOrToken::Token(x) => Token::new(x, parent, index as u32, offset).into(),
         }
     }
     #[inline]
     pub fn text_range(&self) -> TextRange {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.text_range(),
-            NodeOrToken::Token(it) => it.text_range(),
+            Node(x) => x.text_range(),
+            Token(x) => x.text_range(),
         }
     }
     #[inline]
     pub fn index(&self) -> usize {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.index(),
-            NodeOrToken::Token(it) => it.index(),
+            Node(x) => x.index(),
+            Token(x) => x.index(),
         }
     }
     #[inline]
     pub fn kind(&self) -> green::Kind {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.kind(),
-            NodeOrToken::Token(it) => it.kind(),
+            Node(x) => x.kind(),
+            Token(x) => x.kind(),
         }
     }
     #[inline]
     pub fn parent(&self) -> Option<Node> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.parent(),
-            NodeOrToken::Token(it) => it.parent(),
+            Node(x) => x.parent(),
+            Token(x) => x.parent(),
         }
     }
     #[inline]
     pub fn ancestors(&self) -> impl Iterator<Item = Node> {
-        let first = match self {
-            NodeOrToken::Node(it) => Some(it.clone()),
-            NodeOrToken::Token(it) => it.parent(),
+        use NodeOrToken::*;
+        let y = match self {
+            Node(x) => Some(x.clone()),
+            Token(x) => x.parent(),
         };
-        iter::successors(first, Node::parent)
+        iter::successors(y, Node::parent)
     }
     pub fn first_token(&self) -> Option<Token> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.first_token(),
-            NodeOrToken::Token(it) => Some(it.clone()),
+            Node(x) => x.first_token(),
+            Token(x) => Some(x.clone()),
         }
     }
     pub fn last_token(&self) -> Option<Token> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.last_token(),
-            NodeOrToken::Token(it) => Some(it.clone()),
+            Node(x) => x.last_token(),
+            Token(x) => Some(x.clone()),
         }
     }
     pub fn next_sibling_or_token(&self) -> Option<Elem> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.next_sibling_or_token(),
-            NodeOrToken::Token(it) => it.next_sibling_or_token(),
+            Node(x) => x.next_sibling_or_token(),
+            Token(x) => x.next_sibling_or_token(),
         }
     }
     pub fn prev_sibling_or_token(&self) -> Option<Elem> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.prev_sibling_or_token(),
-            NodeOrToken::Token(it) => it.prev_sibling_or_token(),
+            Node(x) => x.prev_sibling_or_token(),
+            Token(x) => x.prev_sibling_or_token(),
         }
     }
-    fn token_at_offset(&self, offset: TextSize) -> TokAtOffset<Token> {
-        assert!(self.text_range().start() <= offset && offset <= self.text_range().end());
+    fn token_at_offset(&self, off: TextSize) -> TokAtOffset<Token> {
+        assert!(self.text_range().start() <= off && off <= self.text_range().end());
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Token(token) => TokAtOffset::Single(token.clone()),
-            NodeOrToken::Node(node) => node.token_at_offset(offset),
+            Token(x) => TokAtOffset::Single(x.clone()),
+            Node(x) => x.token_at_offset(off),
         }
     }
     pub fn detach(&self) {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.detach(),
-            NodeOrToken::Token(it) => it.detach(),
+            Node(x) => x.detach(),
+            Token(x) => x.detach(),
         }
     }
 }
 impl From<Node> for Elem {
     #[inline]
-    fn from(node: Node) -> Elem {
-        NodeOrToken::Node(node)
+    fn from(x: Node) -> Elem {
+        NodeOrToken::Node(x)
     }
 }
 impl From<Token> for Elem {
     #[inline]
-    fn from(token: Token) -> Elem {
-        NodeOrToken::Token(token)
+    fn from(x: Token) -> Elem {
+        NodeOrToken::Token(x)
     }
 }
 
@@ -864,18 +880,16 @@ pub struct NodeChildren {
     next: Option<Node>,
 }
 impl NodeChildren {
-    fn new(parent: Node) -> NodeChildren {
-        NodeChildren {
-            next: parent.first_child(),
-        }
+    fn new(x: Node) -> NodeChildren {
+        NodeChildren { next: x.first_child() }
     }
 }
 impl Iterator for NodeChildren {
     type Item = Node;
     fn next(&mut self) -> Option<Node> {
-        self.next.take().map(|next| {
-            self.next = next.next_sibling();
-            next
+        self.next.take().map(|x| {
+            self.next = x.next_sibling();
+            x
         })
     }
 }
@@ -885,18 +899,18 @@ pub struct ElemChildren {
     next: Option<Elem>,
 }
 impl ElemChildren {
-    fn new(parent: Node) -> ElemChildren {
+    fn new(x: Node) -> ElemChildren {
         ElemChildren {
-            next: parent.first_child_or_token(),
+            next: x.first_child_or_token(),
         }
     }
 }
 impl Iterator for ElemChildren {
     type Item = Elem;
     fn next(&mut self) -> Option<Elem> {
-        self.next.take().map(|next| {
-            self.next = next.next_sibling_or_token();
-            next
+        self.next.take().map(|x| {
+            self.next = x.next_sibling_or_token();
+            x
         })
     }
 }
@@ -920,9 +934,9 @@ impl Preorder {
     }
     #[cold]
     fn do_skip(&mut self) {
-        self.next = self.next.take().map(|next| match next {
-            WalkEvent::Enter(first_child) => WalkEvent::Leave(first_child.parent().unwrap()),
-            WalkEvent::Leave(parent) => WalkEvent::Leave(parent),
+        self.next = self.next.take().map(|x| match x {
+            WalkEvent::Enter(x) => WalkEvent::Leave(x.parent().unwrap()),
+            WalkEvent::Leave(x) => WalkEvent::Leave(x),
         })
     }
 }

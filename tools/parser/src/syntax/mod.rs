@@ -253,7 +253,7 @@ mod parsing {
                 let incrementally_reparsed: Parse<SourceFile> = {
                     let before = SourceFile::parse(&before);
                     let (green, new_errors, range) =
-                        incremental_reparse(before.tree().syntax(), &edit, before.errors.to_vec()).unwrap();
+                        incremental_reparse(before.tree().syntax(), &edit, before.errs.to_vec()).unwrap();
                     assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
                     Parse::new(green, new_errors)
                 };
@@ -261,7 +261,7 @@ mod parsing {
                     &format!("{:#?}", fully_reparsed.tree().syntax()),
                     &format!("{:#?}", incrementally_reparsed.tree().syntax()),
                 );
-                assert_eq!(fully_reparsed.errors(), incrementally_reparsed.errors());
+                assert_eq!(fully_reparsed.errs(), incrementally_reparsed.errs());
             }
             #[test]
             fn reparse_block_tests() {
@@ -690,7 +690,7 @@ pub mod ted {
     use crate::{
         syntax::{
             self,
-            ast::{self, edit::IndentLevel, make},
+            ast::{self, edit::Indent, make},
         },
         SyntaxKind, T,
     };
@@ -827,14 +827,14 @@ pub mod ted {
         };
         if prev.kind() == T!['{'] && new.kind() == SyntaxKind::USE {
             if let Some(item_list) = prev.parent().and_then(ast::ItemList::cast) {
-                let mut y = IndentLevel::from_elem(&item_list.syntax().clone().into());
+                let mut y = Indent::from_elem(&item_list.syntax().clone().into());
                 y.0 += 1;
                 return Some(make::tokens::whitespace(&format!("\n{y}")));
             }
         }
         if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
             if let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast) {
-                let mut y = IndentLevel::from_elem(&stmt_list.syntax().clone().into());
+                let mut y = Indent::from_elem(&stmt_list.syntax().clone().into());
                 y.0 += 1;
                 return Some(make::tokens::whitespace(&format!("\n{y}")));
             }
@@ -865,9 +865,9 @@ pub mod ted {
             return None;
         }
         if right.kind() == SyntaxKind::USE {
-            let mut y = IndentLevel::from_elem(left);
+            let mut y = Indent::from_elem(left);
             if left.kind() == SyntaxKind::USE {
-                y.0 = IndentLevel::from_elem(right).0.max(y.0);
+                y.0 = Indent::from_elem(right).0.max(y.0);
             }
             return Some(make::tokens::whitespace(&format!("\n{y}")));
         }
@@ -884,16 +884,17 @@ mod token_text {
         Owned(green::Token),
     }
     impl<'a> TokenText<'a> {
-        pub fn borrowed(text: &'a str) -> Self {
-            TokenText(Repr::Borrowed(text))
+        pub fn borrowed(x: &'a str) -> Self {
+            TokenText(Repr::Borrowed(x))
         }
-        pub fn owned(green: green::Token) -> Self {
-            TokenText(Repr::Owned(green))
+        pub fn owned(x: green::Token) -> Self {
+            TokenText(Repr::Owned(x))
         }
         pub fn as_str(&self) -> &str {
+            use Repr::*;
             match &self.0 {
-                &Repr::Borrowed(it) => it,
-                Repr::Owned(green) => green.text(),
+                &Borrowed(x) => x,
+                Owned(x) => x.text(),
             }
         }
     }
@@ -909,76 +910,76 @@ mod token_text {
         }
     }
     impl From<TokenText<'_>> for String {
-        fn from(token_text: TokenText<'_>) -> Self {
-            token_text.as_str().into()
+        fn from(x: TokenText<'_>) -> Self {
+            x.as_str().into()
         }
     }
     impl From<TokenText<'_>> for SmolStr {
-        fn from(token_text: TokenText<'_>) -> Self {
-            SmolStr::new(token_text.as_str())
+        fn from(x: TokenText<'_>) -> Self {
+            SmolStr::new(x.as_str())
         }
     }
     impl PartialEq<&'_ str> for TokenText<'_> {
-        fn eq(&self, other: &&str) -> bool {
-            self.as_str() == *other
+        fn eq(&self, x: &&str) -> bool {
+            self.as_str() == *x
         }
     }
     impl PartialEq<TokenText<'_>> for &'_ str {
-        fn eq(&self, other: &TokenText<'_>) -> bool {
-            other == self
+        fn eq(&self, x: &TokenText<'_>) -> bool {
+            x == self
         }
     }
     impl PartialEq<String> for TokenText<'_> {
-        fn eq(&self, other: &String) -> bool {
-            self.as_str() == other.as_str()
+        fn eq(&self, x: &String) -> bool {
+            self.as_str() == x.as_str()
         }
     }
     impl PartialEq<TokenText<'_>> for String {
-        fn eq(&self, other: &TokenText<'_>) -> bool {
-            other == self
+        fn eq(&self, x: &TokenText<'_>) -> bool {
+            x == self
         }
     }
     impl PartialEq for TokenText<'_> {
-        fn eq(&self, other: &TokenText<'_>) -> bool {
-            self.as_str() == other.as_str()
+        fn eq(&self, x: &TokenText<'_>) -> bool {
+            self.as_str() == x.as_str()
         }
     }
     impl Eq for TokenText<'_> {}
     impl Ord for TokenText<'_> {
-        fn cmp(&self, other: &Self) -> Ordering {
-            self.as_str().cmp(other.as_str())
+        fn cmp(&self, x: &Self) -> Ordering {
+            self.as_str().cmp(x.as_str())
         }
     }
     impl PartialOrd for TokenText<'_> {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            Some(self.cmp(other))
+        fn partial_cmp(&self, x: &Self) -> Option<Ordering> {
+            Some(self.cmp(x))
         }
     }
     impl fmt::Display for TokenText<'_> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Display::fmt(self.as_str(), f)
+        fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Display::fmt(self.as_str(), x)
         }
     }
     impl fmt::Debug for TokenText<'_> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Debug::fmt(self.as_str(), f)
+        fn fmt(&self, x: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Debug::fmt(self.as_str(), x)
         }
     }
 }
 pub mod utils {
     use crate::{match_ast, syntax::ast, SyntaxKind};
     use itertools::Itertools;
-    pub fn path_to_string_stripping_turbo_fish(path: &ast::Path) -> String {
-        path.syntax()
+    pub fn path_to_string_stripping_turbo_fish(x: &ast::Path) -> String {
+        x.syntax()
             .children()
-            .filter_map(|node| {
+            .filter_map(|x| {
                 match_ast! {
-                    match node {
-                        ast::PathSegment(it) => {
-                            Some(it.name_ref()?.to_string())
+                    match x {
+                        ast::PathSegment(x) => {
+                            Some(x.name_ref()?.to_string())
                         },
-                        ast::Path(it) => {
-                            Some(path_to_string_stripping_turbo_fish(&it))
+                        ast::Path(x) => {
+                            Some(path_to_string_stripping_turbo_fish(&x))
                         },
                         _ => None,
                     }
@@ -986,9 +987,9 @@ pub mod utils {
             })
             .join("::")
     }
-    pub fn is_raw_identifier(name: &str) -> bool {
-        let is_keyword = SyntaxKind::from_keyword(name).is_some();
-        is_keyword && !matches!(name, "self" | "crate" | "super" | "Self")
+    pub fn is_raw_identifier(x: &str) -> bool {
+        let y = SyntaxKind::from_keyword(x).is_some();
+        y && !matches!(x, "self" | "crate" | "super" | "Self")
     }
     #[cfg(test)]
     mod tests {
@@ -1016,29 +1017,29 @@ mod validate;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
     green: green::Node,
-    errors: Arc<Vec<SyntaxErr>>,
+    errs: Arc<Vec<SyntaxErr>>,
     _ty: PhantomData<fn() -> T>,
 }
 impl<T> Parse<T> {
-    fn new(green: green::Node, errors: Vec<SyntaxErr>) -> Parse<T> {
+    fn new(green: green::Node, errs: Vec<SyntaxErr>) -> Parse<T> {
         Parse {
             green,
-            errors: Arc::new(errors),
+            errs: Arc::new(errs),
             _ty: PhantomData,
         }
     }
     pub fn syntax_node(&self) -> Node {
         api::Node::new_root(self.green.clone())
     }
-    pub fn errors(&self) -> &[SyntaxErr] {
-        &self.errors
+    pub fn errs(&self) -> &[SyntaxErr] {
+        &self.errs
     }
 }
 impl<T: ast::Node> Parse<T> {
     pub fn to_syntax(self) -> Parse<Node> {
         Parse {
             green: self.green,
-            errors: self.errors,
+            errs: self.errs,
             _ty: PhantomData,
         }
     }
@@ -1046,10 +1047,10 @@ impl<T: ast::Node> Parse<T> {
         T::cast(self.syntax_node()).unwrap()
     }
     pub fn ok(self) -> Result<T, Arc<Vec<SyntaxErr>>> {
-        if self.errors.is_empty() {
+        if self.errs.is_empty() {
             Ok(self.tree())
         } else {
-            Err(self.errors)
+            Err(self.errs)
         }
     }
 }
@@ -1058,7 +1059,7 @@ impl Parse<Node> {
         if N::cast(self.syntax_node()).is_some() {
             Some(Parse {
                 green: self.green,
-                errors: self.errors,
+                errs: self.errs,
                 _ty: PhantomData,
             })
         } else {
@@ -1068,50 +1069,49 @@ impl Parse<Node> {
 }
 impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
-        let mut buf = format!("{:#?}", self.tree().syntax());
-        for err in self.errors.iter() {
-            format_to!(buf, "error {:?}: {}\n", err.range(), err);
+        let mut y = format!("{:#?}", self.tree().syntax());
+        for x in self.errs.iter() {
+            format_to!(y, "error {:?}: {}\n", x.range(), x);
         }
-        buf
+        y
     }
-    pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-        self.incremental_reparse(indel)
-            .unwrap_or_else(|| self.full_reparse(indel))
+    pub fn reparse(&self, x: &Indel) -> Parse<SourceFile> {
+        self.incremental_reparse(x).unwrap_or_else(|| self.full_reparse(x))
     }
-    fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
-        parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
-            |(green_node, errors, _reparsed_range)| Parse {
+    fn incremental_reparse(&self, x: &Indel) -> Option<Parse<SourceFile>> {
+        parsing::incremental_reparse(self.tree().syntax(), x, self.errs.to_vec()).map(
+            |(green_node, errs, _reparsed_range)| Parse {
                 green: green_node,
-                errors: Arc::new(errors),
+                errs: Arc::new(errs),
                 _ty: PhantomData,
             },
         )
     }
-    fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-        let mut text = self.tree().syntax().text().to_string();
-        indel.apply(&mut text);
-        SourceFile::parse(&text)
+    fn full_reparse(&self, x: &Indel) -> Parse<SourceFile> {
+        let mut y = self.tree().syntax().text().to_string();
+        x.apply(&mut y);
+        SourceFile::parse(&y)
     }
 }
 impl<T> Clone for Parse<T> {
     fn clone(&self) -> Parse<T> {
         Parse {
             green: self.green.clone(),
-            errors: self.errors.clone(),
+            errs: self.errs.clone(),
             _ty: PhantomData,
         }
     }
 }
 pub use crate::syntax::ast::SourceFile;
 impl SourceFile {
-    pub fn parse(text: &str) -> Parse<SourceFile> {
-        let (green, mut errs) = parsing::parse_text(text);
+    pub fn parse(x: &str) -> Parse<SourceFile> {
+        let (green, mut errs) = parsing::parse_text(x);
         let root = api::Node::new_root(green.clone());
         errs.extend(validate::validate(&root));
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse {
             green,
-            errors: Arc::new(errs),
+            errs: Arc::new(errs),
             _ty: PhantomData,
         }
     }
@@ -1139,7 +1139,7 @@ fn api_walkthrough() {
         }
     ";
     let parse = SourceFile::parse(source_code);
-    assert!(parse.errors().is_empty());
+    assert!(parse.errs().is_empty());
     let file: SourceFile = parse.tree();
     let mut func = None;
     for item in file.items() {
@@ -1190,8 +1190,8 @@ fn api_walkthrough() {
         match event {
             WalkEvent::Enter(node) => {
                 let text = match &node {
-                    NodeOrToken::Node(it) => it.text().to_string(),
-                    NodeOrToken::Token(it) => it.text().to_string(),
+                    NodeOrToken::Node(x) => x.text().to_string(),
+                    NodeOrToken::Token(x) => x.text().to_string(),
                 };
                 format_to!(buf, "{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;
@@ -1224,9 +1224,9 @@ fn api_walkthrough() {
     for node in file.syntax().descendants() {
         match_ast! {
             match node {
-                ast::Expr(it) => {
-                    let res = it.syntax().text().to_string();
-                    exprs_visit.push(res);
+                ast::Expr(x) => {
+                    let y = x.syntax().text().to_string();
+                    exprs_visit.push(y);
                 },
                 _ => (),
             }

@@ -11,14 +11,14 @@ macro_rules! impl_from {
     ($($variant:ident $(($($sub_variant:ident),*))?),* for $enum:ident) => {
         $(
             impl From<$variant> for $enum {
-                fn from(it: $variant) -> $enum {
-                    $enum::$variant(it)
+                fn from(x: $variant) -> $enum {
+                    $enum::$variant(x)
                 }
             }
             $($(
                 impl From<$sub_variant> for $enum {
-                    fn from(it: $sub_variant) -> $enum {
-                        $enum::$variant($variant::$sub_variant(it))
+                    fn from(x: $sub_variant) -> $enum {
+                        $enum::$variant($variant::$sub_variant(x))
                     }
                 }
             )*)?
@@ -27,8 +27,8 @@ macro_rules! impl_from {
     ($($variant:ident$(<$V:ident>)?),* for $enum:ident) => {
         $(
             impl$(<$V>)? From<$variant$(<$V>)?> for $enum$(<$V>)? {
-                fn from(it: $variant$(<$V>)?) -> $enum$(<$V>)? {
-                    $enum::$variant(it)
+                fn from(x: $variant$(<$V>)?) -> $enum$(<$V>)? {
+                    $enum::$variant(x)
                 }
             }
         )*

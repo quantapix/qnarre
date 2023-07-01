@@ -331,7 +331,7 @@ pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::
 pub fn use_(visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast::Use {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
     };
     ast_from_text(&format!("{visibility}use {use_tree};"))
 }
@@ -354,7 +354,7 @@ pub fn record_expr_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::Re
 pub fn record_field(visibility: Option<ast::Visibility>, name: ast::Name, ty: ast::Type) -> ast::RecordField {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
     };
     ast_from_text(&format!("struct S {{ {visibility}{name}: {ty}, }}"))
 }
@@ -654,7 +654,7 @@ pub fn let_stmt(pattern: ast::Pat, ty: Option<ast::Type>, initializer: Option<as
         format_to!(text, ": {ty}");
     }
     match initializer {
-        Some(it) => format_to!(text, " = {it};"),
+        Some(x) => format_to!(text, " = {x};"),
         None => format_to!(text, ";"),
     };
     ast_from_text(&format!("fn f() {{ {text} }}"))
@@ -680,7 +680,7 @@ pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
 pub fn item_const(visibility: Option<ast::Visibility>, name: ast::Name, ty: ast::Type, expr: ast::Expr) -> ast::Const {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
     };
     ast_from_text(&format!("{visibility} const {name}: {ty} = {expr};"))
 }
@@ -757,9 +757,9 @@ pub fn tuple_field(x: Option<ast::Visibility>, ty: ast::Type) -> ast::TupleField
 pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
     let field_list = match field_list {
         None => String::new(),
-        Some(it) => match it {
-            ast::FieldList::RecordFieldList(record) => format!(" {record}"),
-            ast::FieldList::TupleFieldList(tuple) => format!("{tuple}"),
+        Some(x) => match x {
+            ast::FieldList::RecordFieldList(x) => format!(" {x}"),
+            ast::FieldList::TupleFieldList(x) => format!("{x}"),
         },
     };
     ast_from_text(&format!("enum f {{ {name}{field_list} }}"))
@@ -781,7 +781,7 @@ pub fn fn_(
         None => "".into(),
     };
     let where_clause = match where_clause {
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
         None => "".into(),
     };
     let ret_type = match ret_type {
@@ -790,7 +790,7 @@ pub fn fn_(
     };
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{it} "),
+        Some(x) => format!("{x} "),
     };
     let async_literal = if is_async { "async " } else { "" };
     let const_literal = if is_const { "const " } else { "" };

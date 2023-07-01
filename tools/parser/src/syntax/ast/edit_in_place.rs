@@ -3,7 +3,7 @@ use crate::{
     syntax::{
         self,
         algo::{self, neighbor},
-        ast::{self, edit::IndentLevel, make, HasGenericParams},
+        ast::{self, edit, make, HasGenericParams},
         core::{api, Direction},
         ted::{self, Pos},
     },
@@ -19,7 +19,7 @@ pub trait GenericParamsEdit: ast::HasGenericParams {
 impl GenericParamsEdit for ast::Fn {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
-            Some(it) => it,
+            Some(x) => x,
             None => {
                 let position = if let Some(name) = self.name() {
                     Pos::after(name.syntax)
@@ -51,7 +51,7 @@ impl GenericParamsEdit for ast::Fn {
 impl GenericParamsEdit for ast::Impl {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
-            Some(it) => it,
+            Some(x) => x,
             None => {
                 let position = match self.impl_token() {
                     Some(imp_token) => Pos::after(imp_token),
@@ -75,7 +75,7 @@ impl GenericParamsEdit for ast::Impl {
 impl GenericParamsEdit for ast::Trait {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
-            Some(it) => it,
+            Some(x) => x,
             None => {
                 let position = if let Some(name) = self.name() {
                     Pos::after(name.syntax)
@@ -102,7 +102,7 @@ impl GenericParamsEdit for ast::Trait {
 impl GenericParamsEdit for ast::Struct {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
-            Some(it) => it,
+            Some(x) => x,
             None => {
                 let position = if let Some(name) = self.name() {
                     Pos::after(name.syntax)
@@ -119,7 +119,7 @@ impl GenericParamsEdit for ast::Struct {
         if self.where_clause().is_none() {
             let tfl = self.field_list().and_then(|fl| match fl {
                 ast::FieldList::RecordFieldList(_) => None,
-                ast::FieldList::TupleFieldList(it) => Some(it),
+                ast::FieldList::TupleFieldList(x) => Some(x),
             });
             let position = if let Some(tfl) = tfl {
                 Pos::after(tfl.syntax())
@@ -138,7 +138,7 @@ impl GenericParamsEdit for ast::Struct {
 impl GenericParamsEdit for ast::Enum {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
-            Some(it) => it,
+            Some(x) => x,
             None => {
                 let position = if let Some(name) = self.name() {
                     Pos::after(name.syntax)
@@ -258,17 +258,17 @@ impl Removable for ast::MatchArm {
 }
 
 pub trait Indent: ast::Node + Clone + Sized {
-    fn indent_level(&self) -> IndentLevel {
-        IndentLevel::from_node(self.syntax())
+    fn indent_level(&self) -> edit::Indent {
+        edit::Indent::from_node(self.syntax())
     }
-    fn indent(&self, by: IndentLevel) {
+    fn indent(&self, by: edit::Indent) {
         by.increase(self.syntax());
     }
-    fn dedent(&self, by: IndentLevel) {
+    fn dedent(&self, by: edit::Indent) {
         by.decrease(self.syntax());
     }
-    fn reindent_to(&self, target_level: IndentLevel) {
-        let current_level = IndentLevel::from_node(self.syntax());
+    fn reindent_to(&self, target_level: edit::Indent) {
+        let current_level = edit::Indent::from_node(self.syntax());
         self.dedent(current_level);
         self.indent(target_level);
     }
@@ -308,14 +308,14 @@ impl ast::GenericParamList {
     }
     pub fn to_generic_args(&self) -> ast::GenericArgList {
         let args = self.generic_params().filter_map(|param| match param {
-            ast::GenericParam::LifetimeParam(it) => {
-                Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(it.lifetime()?)))
+            ast::GenericParam::LifetimeParam(x) => {
+                Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(x.lifetime()?)))
             },
-            ast::GenericParam::TypeParam(it) => {
-                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            ast::GenericParam::TypeParam(x) => {
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(x.name()?))))
             },
-            ast::GenericParam::ConstParam(it) => {
-                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            ast::GenericParam::ConstParam(x) => {
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(x.name()?))))
             },
         });
         make::generic_arg_list(args)
@@ -377,7 +377,7 @@ impl ast::PathSegment {
 impl ast::UseTree {
     pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
         match self.use_tree_list() {
-            Some(it) => it,
+            Some(x) => x,
             None => {
                 let position = Pos::last_child_of(self.syntax());
                 let use_tree_list = make::use_tree_list(empty()).clone_for_update();
@@ -459,16 +459,16 @@ impl ast::AssocItemList {
     pub fn add_item(&self, item: ast::AssocItem) {
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (
-                IndentLevel::from_node(last_item.syntax()),
+                edit::Indent::from_node(last_item.syntax()),
                 Pos::after(last_item.syntax()),
                 "\n\n",
             ),
             None => match self.l_curly_token() {
                 Some(l_curly) => {
                     normalize_ws_between_braces(self.syntax());
-                    (IndentLevel::from_tok(&l_curly) + 1, Pos::after(&l_curly), "\n")
+                    (edit::Indent::from_tok(&l_curly) + 1, Pos::after(&l_curly), "\n")
                 },
-                None => (IndentLevel::single(), Pos::last_child_of(self.syntax()), "\n"),
+                None => (edit::Indent::single(), Pos::last_child_of(self.syntax()), "\n"),
             },
         };
         let elements: Vec<api::Elem<_>> = vec![
@@ -505,11 +505,11 @@ impl ast::MatchArmList {
                 Pos::after(last_arm.syntax().clone())
             },
             None => match self.l_curly_token() {
-                Some(it) => Pos::after(it),
+                Some(x) => Pos::after(x),
                 None => Pos::last_child_of(self.syntax()),
             },
         };
-        let indent = IndentLevel::from_node(self.syntax()) + 1;
+        let indent = edit::Indent::from_node(self.syntax()) + 1;
         elements.push(make::tokens::whitespace(&format!("\n{indent}")).into());
         elements.push(arm.syntax().clone().into());
         if needs_comma(&arm) {
@@ -525,7 +525,7 @@ impl ast::RecordExprFieldList {
     pub fn add_field(&self, field: ast::RecordExprField) {
         let is_multiline = self.syntax().text().contains_char('\n');
         let whitespace = if is_multiline {
-            let indent = IndentLevel::from_node(self.syntax()) + 1;
+            let indent = edit::Indent::from_node(self.syntax()) + 1;
             make::tokens::whitespace(&format!("\n{indent}"))
         } else {
             make::tokens::single_space()
@@ -539,7 +539,7 @@ impl ast::RecordExprFieldList {
                 Pos::after(comma)
             },
             None => match self.l_curly_token() {
-                Some(it) => Pos::after(it),
+                Some(x) => Pos::after(x),
                 None => Pos::last_child_of(self.syntax()),
             },
         };
@@ -578,7 +578,7 @@ impl ast::RecordPatFieldList {
     pub fn add_field(&self, field: ast::RecordPatField) {
         let is_multiline = self.syntax().text().contains_char('\n');
         let whitespace = if is_multiline {
-            let indent = IndentLevel::from_node(self.syntax()) + 1;
+            let indent = edit::Indent::from_node(self.syntax()) + 1;
             make::tokens::whitespace(&format!("\n{indent}"))
         } else {
             make::tokens::single_space()
@@ -593,7 +593,7 @@ impl ast::RecordPatFieldList {
                 Pos::after(comma)
             },
             None => match self.l_curly_token() {
-                Some(it) => Pos::after(it),
+                Some(x) => Pos::after(x),
                 None => Pos::last_child_of(self.syntax()),
             },
         };
@@ -607,15 +607,15 @@ impl ast::VariantList {
     pub fn add_variant(&self, variant: ast::Variant) {
         let (indent, position) = match self.variants().last() {
             Some(last_item) => (
-                IndentLevel::from_node(last_item.syntax()),
+                edit::Indent::from_node(last_item.syntax()),
                 Pos::after(get_or_insert_comma_after(last_item.syntax())),
             ),
             None => match self.l_curly_token() {
                 Some(l_curly) => {
                     normalize_ws_between_braces(self.syntax());
-                    (IndentLevel::from_tok(&l_curly) + 1, Pos::after(&l_curly))
+                    (edit::Indent::from_tok(&l_curly) + 1, Pos::after(&l_curly))
                 },
-                None => (IndentLevel::single(), Pos::last_child_of(self.syntax())),
+                None => (edit::Indent::single(), Pos::last_child_of(self.syntax())),
             },
         };
         let elements: Vec<api::Elem<_>> = vec![
@@ -659,7 +659,7 @@ fn normalize_ws_between_braces(x: &syntax::Node) -> Option<()> {
         .children_with_tokens()
         .filter_map(|x| x.into_token())
         .find(|x| x.kind() == T!['}'])?;
-    let indent = IndentLevel::from_node(x);
+    let indent = edit::Indent::from_node(x);
     match l.next_sibling_or_token() {
         Some(x) if x.kind() == SyntaxKind::WHITESPACE => {
             if x.next_sibling_or_token()?.into_token()? == r {
@@ -738,7 +738,7 @@ mod tests {
     ;
 }",
         );
-        arm_list.indent(IndentLevel(2));
+        arm_list.indent(edit::Indent(2));
         assert_eq!(
             arm_list.to_string(),
             "fn foo() {

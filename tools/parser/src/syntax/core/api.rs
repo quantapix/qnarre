@@ -115,11 +115,11 @@ impl<L: Lang> Node<L> {
     pub fn last_token(&self) -> Option<Token<L>> {
         self.raw.last_token().map(Token::from)
     }
-    pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = Node<L>> {
-        self.raw.siblings(direction).map(Node::from)
+    pub fn siblings(&self, dir: Direction) -> impl Iterator<Item = Node<L>> {
+        self.raw.siblings(dir).map(Node::from)
     }
-    pub fn siblings_with_tokens(&self, direction: Direction) -> impl Iterator<Item = Elem<L>> {
-        self.raw.siblings_with_tokens(direction).map(Elem::from)
+    pub fn siblings_with_tokens(&self, dir: Direction) -> impl Iterator<Item = Elem<L>> {
+        self.raw.siblings_with_tokens(dir).map(Elem::from)
     }
     pub fn descendants(&self) -> impl Iterator<Item = Node<L>> {
         self.raw.descendants().map(Node::from)
@@ -139,14 +139,14 @@ impl<L: Lang> Node<L> {
             _p: PhantomData,
         }
     }
-    pub fn token_at_offset(&self, offset: syntax::TextSize) -> TokAtOffset<Token<L>> {
-        self.raw.token_at_offset(offset).map(Token::from)
+    pub fn token_at_offset(&self, x: syntax::TextSize) -> TokAtOffset<Token<L>> {
+        self.raw.token_at_offset(x).map(Token::from)
     }
-    pub fn covering_element(&self, range: syntax::TextRange) -> Elem<L> {
-        NodeOrToken::from(self.raw.covering_element(range))
+    pub fn covering_element(&self, x: syntax::TextRange) -> Elem<L> {
+        NodeOrToken::from(self.raw.covering_element(x))
     }
-    pub fn child_or_token_at_range(&self, range: syntax::TextRange) -> Option<Elem<L>> {
-        self.raw.child_or_token_at_range(range).map(Elem::from)
+    pub fn child_or_token_at_range(&self, x: syntax::TextRange) -> Option<Elem<L>> {
+        self.raw.child_or_token_at_range(x).map(Elem::from)
     }
     pub fn clone_subtree(&self) -> Node<L> {
         Node::from(self.raw.clone_subtree())
@@ -172,9 +172,10 @@ impl<L: Lang> fmt::Debug for Node<L> {
                         for _ in 0..level {
                             write!(f, "  ")?;
                         }
+                        use NodeOrToken::*;
                         match element {
-                            NodeOrToken::Node(node) => writeln!(f, "{:?}", node)?,
-                            NodeOrToken::Token(token) => writeln!(f, "{:?}", token)?,
+                            Node(node) => writeln!(f, "{:?}", node)?,
+                            Token(token) => writeln!(f, "{:?}", token)?,
                         }
                         level += 1;
                     },
@@ -199,8 +200,8 @@ impl<L: Lang> From<cursor::Node> for Node<L> {
     }
 }
 impl<L: Lang> From<Node<L>> for cursor::Node {
-    fn from(node: Node<L>) -> cursor::Node {
-        node.raw
+    fn from(x: Node<L>) -> cursor::Node {
+        x.raw
     }
 }
 
@@ -210,8 +211,8 @@ pub struct Token<L: Lang> {
     _p: PhantomData<L>,
 }
 impl<L: Lang> Token<L> {
-    pub fn replace_with(&self, new_token: green::Token) -> green::Node {
-        self.raw.replace_with(new_token)
+    pub fn replace_with(&self, x: green::Token) -> green::Node {
+        self.raw.replace_with(x)
     }
     pub fn kind(&self) -> L::Kind {
         L::kind_from_raw(self.raw.kind())
@@ -244,8 +245,8 @@ impl<L: Lang> Token<L> {
     pub fn prev_sibling_or_token(&self) -> Option<Elem<L>> {
         self.raw.prev_sibling_or_token().map(NodeOrToken::from)
     }
-    pub fn siblings_with_tokens(&self, direction: Direction) -> impl Iterator<Item = Elem<L>> {
-        self.raw.siblings_with_tokens(direction).map(Elem::from)
+    pub fn siblings_with_tokens(&self, dir: Direction) -> impl Iterator<Item = Elem<L>> {
+        self.raw.siblings_with_tokens(dir).map(Elem::from)
     }
     pub fn next_token(&self) -> Option<Token<L>> {
         self.raw.next_token().map(Token::from)
@@ -284,86 +285,96 @@ impl<L: Lang> From<cursor::Token> for Token<L> {
     }
 }
 impl<L: Lang> From<Token<L>> for cursor::Token {
-    fn from(token: Token<L>) -> cursor::Token {
-        token.raw
+    fn from(x: Token<L>) -> cursor::Token {
+        x.raw
     }
 }
 
 pub type Elem<L> = NodeOrToken<Node<L>, Token<L>>;
 impl<L: Lang> Elem<L> {
     pub fn text_range(&self) -> syntax::TextRange {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.text_range(),
-            NodeOrToken::Token(it) => it.text_range(),
+            Node(x) => x.text_range(),
+            Token(x) => x.text_range(),
         }
     }
     pub fn index(&self) -> usize {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.index(),
-            NodeOrToken::Token(it) => it.index(),
+            Node(x) => x.index(),
+            Token(x) => x.index(),
         }
     }
     pub fn kind(&self) -> L::Kind {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.kind(),
-            NodeOrToken::Token(it) => it.kind(),
+            Node(x) => x.kind(),
+            Token(x) => x.kind(),
         }
     }
     pub fn parent(&self) -> Option<Node<L>> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.parent(),
-            NodeOrToken::Token(it) => it.parent(),
+            Node(x) => x.parent(),
+            Token(x) => x.parent(),
         }
     }
     pub fn ancestors(&self) -> impl Iterator<Item = Node<L>> {
-        let first = match self {
-            NodeOrToken::Node(it) => Some(it.clone()),
-            NodeOrToken::Token(it) => it.parent(),
+        use NodeOrToken::*;
+        let y = match self {
+            Node(x) => Some(x.clone()),
+            Token(x) => x.parent(),
         };
-        iter::successors(first, Node::parent)
+        iter::successors(y, Node::parent)
     }
     pub fn next_sibling_or_token(&self) -> Option<Elem<L>> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.next_sibling_or_token(),
-            NodeOrToken::Token(it) => it.next_sibling_or_token(),
+            Node(x) => x.next_sibling_or_token(),
+            Token(x) => x.next_sibling_or_token(),
         }
     }
     pub fn prev_sibling_or_token(&self) -> Option<Elem<L>> {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.prev_sibling_or_token(),
-            NodeOrToken::Token(it) => it.prev_sibling_or_token(),
+            Node(x) => x.prev_sibling_or_token(),
+            Token(x) => x.prev_sibling_or_token(),
         }
     }
     pub fn detach(&self) {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.detach(),
-            NodeOrToken::Token(it) => it.detach(),
+            Node(x) => x.detach(),
+            Token(x) => x.detach(),
         }
     }
 }
 impl<L: Lang> From<Node<L>> for Elem<L> {
-    fn from(node: Node<L>) -> Elem<L> {
-        NodeOrToken::Node(node)
+    fn from(x: Node<L>) -> Elem<L> {
+        NodeOrToken::Node(x)
     }
 }
 impl<L: Lang> From<Token<L>> for Elem<L> {
-    fn from(token: Token<L>) -> Elem<L> {
-        NodeOrToken::Token(token)
+    fn from(x: Token<L>) -> Elem<L> {
+        NodeOrToken::Token(x)
     }
 }
 impl<L: Lang> From<cursor::Elem> for Elem<L> {
-    fn from(raw: cursor::Elem) -> Elem<L> {
-        match raw {
-            NodeOrToken::Node(it) => NodeOrToken::Node(it.into()),
-            NodeOrToken::Token(it) => NodeOrToken::Token(it.into()),
+    fn from(x: cursor::Elem) -> Elem<L> {
+        use NodeOrToken::*;
+        match x {
+            Node(x) => Node(x.into()),
+            Token(x) => Token(x.into()),
         }
     }
 }
 impl<L: Lang> From<Elem<L>> for cursor::Elem {
-    fn from(element: Elem<L>) -> cursor::Elem {
-        match element {
-            NodeOrToken::Node(it) => NodeOrToken::Node(it.into()),
-            NodeOrToken::Token(it) => NodeOrToken::Token(it.into()),
+    fn from(x: Elem<L>) -> cursor::Elem {
+        use NodeOrToken::*;
+        match x {
+            Node(x) => Node(x.into()),
+            Token(x) => Token(x.into()),
         }
     }
 }

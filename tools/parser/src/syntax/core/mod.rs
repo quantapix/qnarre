@@ -459,9 +459,10 @@ pub enum WalkEvent<T> {
 }
 impl<T> WalkEvent<T> {
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> WalkEvent<U> {
+        use WalkEvent::*;
         match self {
-            WalkEvent::Enter(it) => WalkEvent::Enter(f(it)),
-            WalkEvent::Leave(it) => WalkEvent::Leave(f(it)),
+            Enter(x) => Enter(f(x)),
+            Leave(x) => Leave(f(x)),
         }
     }
 }
@@ -553,17 +554,19 @@ pub enum CowMut<'a, T> {
 impl<T> std::ops::Deref for CowMut<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
+        use CowMut::*;
         match self {
-            CowMut::Owned(it) => it,
-            CowMut::Borrowed(it) => *it,
+            Owned(x) => x,
+            Borrowed(x) => *x,
         }
     }
 }
 impl<T> std::ops::DerefMut for CowMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
+        use CowMut::*;
         match self {
-            CowMut::Owned(it) => it,
-            CowMut::Borrowed(it) => *it,
+            Owned(x) => x,
+            Borrowed(x) => *x,
         }
     }
 }

@@ -88,8 +88,8 @@ impl TreeDiff {
         // let _p = profile::span("into_text_edit");
         for (anchor, to) in &self.insertions {
             let offset = match anchor {
-                TreeDiffInsertPos::After(it) => it.text_range().end(),
-                TreeDiffInsertPos::AsFirstChild(it) => it.text_range().start(),
+                TreeDiffInsertPos::After(x) => x.text_range().end(),
+                TreeDiffInsertPos::AsFirstChild(x) => x.text_range().start(),
             };
             to.iter().for_each(|x| builder.insert(offset, x.to_string()));
         }
@@ -441,7 +441,7 @@ fn main() {
             r#"
 fn main() {
     let x = match Err(92) {
-        Ok(it) => it,
+        Ok(x) => x,
         _ => return,
     };
     foo(x);
@@ -452,7 +452,7 @@ fn main() {
                 Line 3: After(Node(BLOCK_EXPR@40..63))
                 -> " "
                 -> match Err(92) {
-                        Ok(it) => it,
+                        Ok(x) => x,
                         _ => return,
                     }
                 -> ;

@@ -517,56 +517,59 @@ impl Elem {
 }
 impl From<Node> for Elem {
     #[inline]
-    fn from(node: Node) -> Elem {
-        NodeOrToken::Node(node)
+    fn from(x: Node) -> Elem {
+        NodeOrToken::Node(x)
     }
 }
 impl From<Token> for Elem {
     #[inline]
-    fn from(token: Token) -> Elem {
-        NodeOrToken::Token(token)
+    fn from(x: Token) -> Elem {
+        NodeOrToken::Token(x)
     }
 }
 impl From<Cow<'_, NodeData>> for Elem {
     #[inline]
-    fn from(cow: Cow<'_, NodeData>) -> Self {
-        NodeOrToken::Node(cow.into_owned())
+    fn from(x: Cow<'_, NodeData>) -> Self {
+        NodeOrToken::Node(x.into_owned())
     }
 }
 
 pub type ElemRef<'a> = NodeOrToken<&'a NodeData, &'a TokData>;
 impl ElemRef<'_> {
     pub fn to_owned(self) -> Elem {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => NodeOrToken::Node(it.to_owned()),
-            NodeOrToken::Token(it) => NodeOrToken::Token(it.to_owned()),
+            Node(x) => Node(x.to_owned()),
+            Token(x) => Token(x.to_owned()),
         }
     }
     #[inline]
     pub fn kind(&self) -> Kind {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.kind(),
-            NodeOrToken::Token(it) => it.kind(),
+            Node(x) => x.kind(),
+            Token(x) => x.kind(),
         }
     }
     #[inline]
     pub fn text_len(self) -> TextSize {
+        use NodeOrToken::*;
         match self {
-            NodeOrToken::Node(it) => it.text_len(),
-            NodeOrToken::Token(it) => it.text_len(),
+            Node(x) => x.text_len(),
+            Token(x) => x.text_len(),
         }
     }
 }
 impl<'a> From<&'a Node> for ElemRef<'a> {
     #[inline]
-    fn from(node: &'a Node) -> ElemRef<'a> {
-        NodeOrToken::Node(node)
+    fn from(x: &'a Node) -> ElemRef<'a> {
+        NodeOrToken::Node(x)
     }
 }
 impl<'a> From<&'a Token> for ElemRef<'a> {
     #[inline]
-    fn from(token: &'a Token) -> ElemRef<'a> {
-        NodeOrToken::Token(token)
+    fn from(x: &'a Token) -> ElemRef<'a> {
+        NodeOrToken::Token(x)
     }
 }
 
@@ -656,18 +659,20 @@ fn node_hash(node: &NodeData) -> u64 {
     let mut h = FxHasher::default();
     node.kind().hash(&mut h);
     for child in node.children() {
+        use NodeOrToken::*;
         match child {
-            NodeOrToken::Node(it) => node_hash(it),
-            NodeOrToken::Token(it) => token_hash(it),
+            Node(x) => node_hash(x),
+            Token(x) => token_hash(x),
         }
         .hash(&mut h)
     }
     h.finish()
 }
-fn element_id(elem: ElemRef<'_>) -> *const () {
-    match elem {
-        NodeOrToken::Node(it) => it as *const NodeData as *const (),
-        NodeOrToken::Token(it) => it as *const TokData as *const (),
+fn element_id(x: ElemRef<'_>) -> *const () {
+    use NodeOrToken::*;
+    match x {
+        Node(x) => x as *const NodeData as *const (),
+        Token(x) => x as *const TokData as *const (),
     }
 }
 

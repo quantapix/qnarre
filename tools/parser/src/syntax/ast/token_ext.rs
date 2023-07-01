@@ -30,7 +30,7 @@ pub trait IsString: ast::Token {
     }
     fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, unescape::EscErr>)) {
         let text_range_no_quotes = match self.text_range_between_quotes() {
-            Some(it) => it,
+            Some(x) => x,
             None => return,
         };
         let start = self.syntax().text_range().start();

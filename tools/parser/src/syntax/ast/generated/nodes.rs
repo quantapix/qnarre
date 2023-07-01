@@ -4592,10 +4592,10 @@ impl ast::Node for GenericArg {
     }
     fn syntax(&self) -> &Node {
         match self {
-            GenericArg::TypeArg(it) => &it.syntax,
-            GenericArg::AssocTypeArg(it) => &it.syntax,
-            GenericArg::LifetimeArg(it) => &it.syntax,
-            GenericArg::ConstArg(it) => &it.syntax,
+            GenericArg::TypeArg(x) => &x.syntax,
+            GenericArg::AssocTypeArg(x) => &x.syntax,
+            GenericArg::LifetimeArg(x) => &x.syntax,
+            GenericArg::ConstArg(x) => &x.syntax,
         }
     }
 }
@@ -4711,20 +4711,20 @@ impl ast::Node for Type {
     }
     fn syntax(&self) -> &Node {
         match self {
-            Type::ArrayType(it) => &it.syntax,
-            Type::DynTraitType(it) => &it.syntax,
-            Type::FnPtrType(it) => &it.syntax,
-            Type::ForType(it) => &it.syntax,
-            Type::ImplTraitType(it) => &it.syntax,
-            Type::InferType(it) => &it.syntax,
-            Type::MacroType(it) => &it.syntax,
-            Type::NeverType(it) => &it.syntax,
-            Type::ParenType(it) => &it.syntax,
-            Type::PathType(it) => &it.syntax,
-            Type::PtrType(it) => &it.syntax,
-            Type::RefType(it) => &it.syntax,
-            Type::SliceType(it) => &it.syntax,
-            Type::TupleType(it) => &it.syntax,
+            Type::ArrayType(x) => &x.syntax,
+            Type::DynTraitType(x) => &x.syntax,
+            Type::FnPtrType(x) => &x.syntax,
+            Type::ForType(x) => &x.syntax,
+            Type::ImplTraitType(x) => &x.syntax,
+            Type::InferType(x) => &x.syntax,
+            Type::MacroType(x) => &x.syntax,
+            Type::NeverType(x) => &x.syntax,
+            Type::ParenType(x) => &x.syntax,
+            Type::PathType(x) => &x.syntax,
+            Type::PtrType(x) => &x.syntax,
+            Type::RefType(x) => &x.syntax,
+            Type::SliceType(x) => &x.syntax,
+            Type::TupleType(x) => &x.syntax,
         }
     }
 }
@@ -4973,39 +4973,39 @@ impl ast::Node for Expr {
     }
     fn syntax(&self) -> &Node {
         match self {
-            Expr::ArrayExpr(it) => &it.syntax,
-            Expr::AwaitExpr(it) => &it.syntax,
-            Expr::BinExpr(it) => &it.syntax,
-            Expr::BlockExpr(it) => &it.syntax,
-            Expr::BoxExpr(it) => &it.syntax,
-            Expr::BreakExpr(it) => &it.syntax,
-            Expr::CallExpr(it) => &it.syntax,
-            Expr::CastExpr(it) => &it.syntax,
-            Expr::ClosureExpr(it) => &it.syntax,
-            Expr::ContinueExpr(it) => &it.syntax,
-            Expr::FieldExpr(it) => &it.syntax,
-            Expr::ForExpr(it) => &it.syntax,
-            Expr::IfExpr(it) => &it.syntax,
-            Expr::IndexExpr(it) => &it.syntax,
-            Expr::Literal(it) => &it.syntax,
-            Expr::LoopExpr(it) => &it.syntax,
-            Expr::MacroExpr(it) => &it.syntax,
-            Expr::MatchExpr(it) => &it.syntax,
-            Expr::MethodCallExpr(it) => &it.syntax,
-            Expr::ParenExpr(it) => &it.syntax,
-            Expr::PathExpr(it) => &it.syntax,
-            Expr::PrefixExpr(it) => &it.syntax,
-            Expr::RangeExpr(it) => &it.syntax,
-            Expr::RecordExpr(it) => &it.syntax,
-            Expr::RefExpr(it) => &it.syntax,
-            Expr::ReturnExpr(it) => &it.syntax,
-            Expr::TryExpr(it) => &it.syntax,
-            Expr::TupleExpr(it) => &it.syntax,
-            Expr::WhileExpr(it) => &it.syntax,
-            Expr::YieldExpr(it) => &it.syntax,
-            Expr::YeetExpr(it) => &it.syntax,
-            Expr::LetExpr(it) => &it.syntax,
-            Expr::UnderscoreExpr(it) => &it.syntax,
+            Expr::ArrayExpr(x) => &x.syntax,
+            Expr::AwaitExpr(x) => &x.syntax,
+            Expr::BinExpr(x) => &x.syntax,
+            Expr::BlockExpr(x) => &x.syntax,
+            Expr::BoxExpr(x) => &x.syntax,
+            Expr::BreakExpr(x) => &x.syntax,
+            Expr::CallExpr(x) => &x.syntax,
+            Expr::CastExpr(x) => &x.syntax,
+            Expr::ClosureExpr(x) => &x.syntax,
+            Expr::ContinueExpr(x) => &x.syntax,
+            Expr::FieldExpr(x) => &x.syntax,
+            Expr::ForExpr(x) => &x.syntax,
+            Expr::IfExpr(x) => &x.syntax,
+            Expr::IndexExpr(x) => &x.syntax,
+            Expr::Literal(x) => &x.syntax,
+            Expr::LoopExpr(x) => &x.syntax,
+            Expr::MacroExpr(x) => &x.syntax,
+            Expr::MatchExpr(x) => &x.syntax,
+            Expr::MethodCallExpr(x) => &x.syntax,
+            Expr::ParenExpr(x) => &x.syntax,
+            Expr::PathExpr(x) => &x.syntax,
+            Expr::PrefixExpr(x) => &x.syntax,
+            Expr::RangeExpr(x) => &x.syntax,
+            Expr::RecordExpr(x) => &x.syntax,
+            Expr::RefExpr(x) => &x.syntax,
+            Expr::ReturnExpr(x) => &x.syntax,
+            Expr::TryExpr(x) => &x.syntax,
+            Expr::TupleExpr(x) => &x.syntax,
+            Expr::WhileExpr(x) => &x.syntax,
+            Expr::YieldExpr(x) => &x.syntax,
+            Expr::YeetExpr(x) => &x.syntax,
+            Expr::LetExpr(x) => &x.syntax,
+            Expr::UnderscoreExpr(x) => &x.syntax,
         }
     }
 }
@@ -5142,23 +5142,23 @@ impl ast::Node for Item {
     }
     fn syntax(&self) -> &Node {
         match self {
-            Item::Const(it) => &it.syntax,
-            Item::Enum(it) => &it.syntax,
-            Item::ExternBlock(it) => &it.syntax,
-            Item::ExternCrate(it) => &it.syntax,
-            Item::Fn(it) => &it.syntax,
-            Item::Impl(it) => &it.syntax,
-            Item::MacroCall(it) => &it.syntax,
-            Item::MacroRules(it) => &it.syntax,
-            Item::MacroDef(it) => &it.syntax,
-            Item::Module(it) => &it.syntax,
-            Item::Static(it) => &it.syntax,
-            Item::Struct(it) => &it.syntax,
-            Item::Trait(it) => &it.syntax,
-            Item::TraitAlias(it) => &it.syntax,
-            Item::TypeAlias(it) => &it.syntax,
-            Item::Union(it) => &it.syntax,
-            Item::Use(it) => &it.syntax,
+            Item::Const(x) => &x.syntax,
+            Item::Enum(x) => &x.syntax,
+            Item::ExternBlock(x) => &x.syntax,
+            Item::ExternCrate(x) => &x.syntax,
+            Item::Fn(x) => &x.syntax,
+            Item::Impl(x) => &x.syntax,
+            Item::MacroCall(x) => &x.syntax,
+            Item::MacroRules(x) => &x.syntax,
+            Item::MacroDef(x) => &x.syntax,
+            Item::Module(x) => &x.syntax,
+            Item::Static(x) => &x.syntax,
+            Item::Struct(x) => &x.syntax,
+            Item::Trait(x) => &x.syntax,
+            Item::TraitAlias(x) => &x.syntax,
+            Item::TypeAlias(x) => &x.syntax,
+            Item::Union(x) => &x.syntax,
+            Item::Use(x) => &x.syntax,
         }
     }
 }
@@ -5303,22 +5303,22 @@ impl ast::Node for Pat {
     }
     fn syntax(&self) -> &Node {
         match self {
-            Pat::IdentPat(it) => &it.syntax,
-            Pat::BoxPat(it) => &it.syntax,
-            Pat::RestPat(it) => &it.syntax,
-            Pat::LiteralPat(it) => &it.syntax,
-            Pat::MacroPat(it) => &it.syntax,
-            Pat::OrPat(it) => &it.syntax,
-            Pat::ParenPat(it) => &it.syntax,
-            Pat::PathPat(it) => &it.syntax,
-            Pat::WildcardPat(it) => &it.syntax,
-            Pat::RangePat(it) => &it.syntax,
-            Pat::RecordPat(it) => &it.syntax,
-            Pat::RefPat(it) => &it.syntax,
-            Pat::SlicePat(it) => &it.syntax,
-            Pat::TuplePat(it) => &it.syntax,
-            Pat::TupleStructPat(it) => &it.syntax,
-            Pat::ConstBlockPat(it) => &it.syntax,
+            Pat::IdentPat(x) => &x.syntax,
+            Pat::BoxPat(x) => &x.syntax,
+            Pat::RestPat(x) => &x.syntax,
+            Pat::LiteralPat(x) => &x.syntax,
+            Pat::MacroPat(x) => &x.syntax,
+            Pat::OrPat(x) => &x.syntax,
+            Pat::ParenPat(x) => &x.syntax,
+            Pat::PathPat(x) => &x.syntax,
+            Pat::WildcardPat(x) => &x.syntax,
+            Pat::RangePat(x) => &x.syntax,
+            Pat::RecordPat(x) => &x.syntax,
+            Pat::RefPat(x) => &x.syntax,
+            Pat::SlicePat(x) => &x.syntax,
+            Pat::TuplePat(x) => &x.syntax,
+            Pat::TupleStructPat(x) => &x.syntax,
+            Pat::ConstBlockPat(x) => &x.syntax,
         }
     }
 }
@@ -5346,8 +5346,8 @@ impl ast::Node for FieldList {
     }
     fn syntax(&self) -> &Node {
         match self {
-            FieldList::RecordFieldList(it) => &it.syntax,
-            FieldList::TupleFieldList(it) => &it.syntax,
+            FieldList::RecordFieldList(x) => &x.syntax,
+            FieldList::TupleFieldList(x) => &x.syntax,
         }
     }
 }
@@ -5381,9 +5381,9 @@ impl ast::Node for Adt {
     }
     fn syntax(&self) -> &Node {
         match self {
-            Adt::Enum(it) => &it.syntax,
-            Adt::Struct(it) => &it.syntax,
-            Adt::Union(it) => &it.syntax,
+            Adt::Enum(x) => &x.syntax,
+            Adt::Struct(x) => &x.syntax,
+            Adt::Union(x) => &x.syntax,
         }
     }
 }
@@ -5423,10 +5423,10 @@ impl ast::Node for AssocItem {
     }
     fn syntax(&self) -> &Node {
         match self {
-            AssocItem::Const(it) => &it.syntax,
-            AssocItem::Fn(it) => &it.syntax,
-            AssocItem::MacroCall(it) => &it.syntax,
-            AssocItem::TypeAlias(it) => &it.syntax,
+            AssocItem::Const(x) => &x.syntax,
+            AssocItem::Fn(x) => &x.syntax,
+            AssocItem::MacroCall(x) => &x.syntax,
+            AssocItem::TypeAlias(x) => &x.syntax,
         }
     }
 }
@@ -5466,10 +5466,10 @@ impl ast::Node for ExternItem {
     }
     fn syntax(&self) -> &Node {
         match self {
-            ExternItem::Fn(it) => &it.syntax,
-            ExternItem::MacroCall(it) => &it.syntax,
-            ExternItem::Static(it) => &it.syntax,
-            ExternItem::TypeAlias(it) => &it.syntax,
+            ExternItem::Fn(x) => &x.syntax,
+            ExternItem::MacroCall(x) => &x.syntax,
+            ExternItem::Static(x) => &x.syntax,
+            ExternItem::TypeAlias(x) => &x.syntax,
         }
     }
 }
@@ -5503,9 +5503,9 @@ impl ast::Node for GenericParam {
     }
     fn syntax(&self) -> &Node {
         match self {
-            GenericParam::ConstParam(it) => &it.syntax,
-            GenericParam::LifetimeParam(it) => &it.syntax,
-            GenericParam::TypeParam(it) => &it.syntax,
+            GenericParam::ConstParam(x) => &x.syntax,
+            GenericParam::LifetimeParam(x) => &x.syntax,
+            GenericParam::TypeParam(x) => &x.syntax,
         }
     }
 }

@@ -26,13 +26,13 @@ pub mod edit {
     use std::{fmt, iter, ops};
 
     #[derive(Debug, Clone, Copy)]
-    pub struct IndentLevel(pub u8);
-    impl From<u8> for IndentLevel {
-        fn from(x: u8) -> IndentLevel {
-            IndentLevel(x)
+    pub struct Indent(pub u8);
+    impl From<u8> for Indent {
+        fn from(x: u8) -> Indent {
+            Indent(x)
         }
     }
-    impl fmt::Display for IndentLevel {
+    impl fmt::Display for Indent {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let spaces = "                                        ";
             let buf;
@@ -46,41 +46,41 @@ pub mod edit {
             fmt::Display::fmt(y, f)
         }
     }
-    impl ops::Add<u8> for IndentLevel {
-        type Output = IndentLevel;
-        fn add(self, x: u8) -> IndentLevel {
-            IndentLevel(self.0 + x)
+    impl ops::Add<u8> for Indent {
+        type Output = Indent;
+        fn add(self, x: u8) -> Indent {
+            Indent(self.0 + x)
         }
     }
-    impl IndentLevel {
-        pub fn single() -> IndentLevel {
-            IndentLevel(0)
+    impl Indent {
+        pub fn single() -> Indent {
+            Indent(0)
         }
         pub fn is_zero(&self) -> bool {
             self.0 == 0
         }
-        pub fn from_elem(x: &syntax::Elem) -> IndentLevel {
+        pub fn from_elem(x: &syntax::Elem) -> Indent {
             use NodeOrToken::*;
             match x {
-                Node(it) => IndentLevel::from_node(it),
-                Token(it) => IndentLevel::from_tok(it),
+                Node(x) => Indent::from_node(x),
+                Token(x) => Indent::from_tok(x),
             }
         }
-        pub fn from_node(x: &syntax::Node) -> IndentLevel {
+        pub fn from_node(x: &syntax::Node) -> Indent {
             match x.first_token() {
                 Some(x) => Self::from_tok(&x),
-                None => IndentLevel(0),
+                None => Indent(0),
             }
         }
-        pub fn from_tok(x: &syntax::Token) -> IndentLevel {
+        pub fn from_tok(x: &syntax::Token) -> Indent {
             for ws in prev_toks(x.clone()).filter_map(ast::Whitespace::cast) {
                 let text = ws.syntax().text();
                 if let Some(pos) = text.rfind('\n') {
                     let y = text[pos + 1..].chars().count() / 4;
-                    return IndentLevel(y as u8);
+                    return Indent(y as u8);
                 }
             }
-            IndentLevel(0)
+            Indent(0)
         }
         pub fn increase(self, x: &syntax::Node) {
             let xs = x.preorder_with_tokens().filter_map(|x| match x {
@@ -115,12 +115,12 @@ pub mod edit {
         iter::successors(Some(x), |x| x.prev_token())
     }
     pub trait NodeEdit: ast::Node + Clone + Sized {
-        fn indent_level(&self) -> IndentLevel {
-            IndentLevel::from_node(self.syntax())
+        fn indent_level(&self) -> Indent {
+            Indent::from_node(self.syntax())
         }
         #[must_use]
-        fn indent(&self, x: IndentLevel) -> Self {
-            fn inner(n: &syntax::Node, x: IndentLevel) -> syntax::Node {
+        fn indent(&self, x: Indent) -> Self {
+            fn inner(n: &syntax::Node, x: Indent) -> syntax::Node {
                 let y = n.clone_subtree().clone_for_update();
                 x.increase(&y);
                 y.clone_subtree()
@@ -128,8 +128,8 @@ pub mod edit {
             Self::cast(inner(self.syntax(), x)).unwrap()
         }
         #[must_use]
-        fn dedent(&self, x: IndentLevel) -> Self {
-            fn inner(n: &syntax::Node, x: IndentLevel) -> syntax::Node {
+        fn dedent(&self, x: Indent) -> Self {
+            fn inner(n: &syntax::Node, x: Indent) -> syntax::Node {
                 let y = n.clone_subtree().clone_for_update();
                 x.decrease(&y);
                 y.clone_subtree()
@@ -138,7 +138,7 @@ pub mod edit {
         }
         #[must_use]
         fn reset_indent(&self) -> Self {
-            let y = IndentLevel::from_node(self.syntax());
+            let y = Indent::from_node(self.syntax());
             self.dedent(y)
         }
     }
@@ -156,7 +156,7 @@ pub mod edit {
     _ => (),
 }"
         );
-        let y = y.indent(IndentLevel(2));
+        let y = y.indent(Indent(2));
         assert_eq!(
             y.syntax().to_string(),
             "{

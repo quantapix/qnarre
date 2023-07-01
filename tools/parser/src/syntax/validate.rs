@@ -246,7 +246,7 @@ fn visibility(x: ast::Visibility, y: &mut Vec<SyntaxErr>) {
         ));
     }
     let parent = match x.syntax().parent() {
-        Some(it) => it,
+        Some(x) => x,
         None => return,
     };
     use SyntaxKind::*;
@@ -255,7 +255,7 @@ fn visibility(x: ast::Visibility, y: &mut Vec<SyntaxErr>) {
         _ => return,
     }
     let impl_def = match parent.parent().and_then(|x| x.parent()).and_then(ast::Impl::cast) {
-        Some(it) => it,
+        Some(x) => x,
         None => return,
     };
     if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
