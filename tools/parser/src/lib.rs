@@ -439,20 +439,20 @@ mod srcgen {
     };
     use xshell::{cmd, Shell};
 
-    pub fn list_rust_files(dir: &Path) -> Vec<PathBuf> {
-        let mut res = list_files(dir);
-        res.retain(|it| {
-            it.file_name()
+    pub fn list_rust_files(x: &Path) -> Vec<PathBuf> {
+        let mut ys = list_files(x);
+        ys.retain(|x| {
+            x.file_name()
                 .unwrap_or_default()
                 .to_str()
                 .unwrap_or_default()
                 .ends_with(".rs")
         });
-        res
+        ys
     }
-    pub fn list_files(dir: &Path) -> Vec<PathBuf> {
-        let mut res = Vec::new();
-        let mut work = vec![dir.to_path_buf()];
+    pub fn list_files(x: &Path) -> Vec<PathBuf> {
+        let mut ys = Vec::new();
+        let mut work = vec![x.to_path_buf()];
         while let Some(dir) = work.pop() {
             for entry in dir.read_dir().unwrap() {
                 let entry = entry.unwrap();
@@ -468,12 +468,12 @@ mod srcgen {
                     if file_type.is_dir() {
                         work.push(path);
                     } else if file_type.is_file() {
-                        res.push(path);
+                        ys.push(path);
                     }
                 }
             }
         }
-        res
+        ys
     }
 
     #[derive(Clone)]

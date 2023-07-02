@@ -299,7 +299,7 @@ nan
 (+ (* 15 2) 62)
 ";
     let root = parse(sexps).root();
-    let res = root.sexps().map(|it| it.eval()).collect::<Vec<_>>();
+    let res = root.sexps().map(|x| x.eval()).collect::<Vec<_>>();
     eprintln!("{:?}", res);
     assert_eq!(res, vec![Some(92), Some(92), None, None, Some(92),])
 }

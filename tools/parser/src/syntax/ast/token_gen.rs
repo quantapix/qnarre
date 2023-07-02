@@ -13,8 +13,8 @@ impl std::fmt::Display for Whitespace {
     }
 }
 impl ast::Token for Whitespace {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == WHITESPACE
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == WHITESPACE
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -38,8 +38,8 @@ impl std::fmt::Display for Comment {
     }
 }
 impl ast::Token for Comment {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == COMMENT
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == COMMENT
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -63,8 +63,8 @@ impl std::fmt::Display for String {
     }
 }
 impl ast::Token for String {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == STRING
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == STRING
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -88,8 +88,8 @@ impl std::fmt::Display for ByteString {
     }
 }
 impl ast::Token for ByteString {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == BYTE_STRING
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == BYTE_STRING
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -113,8 +113,8 @@ impl std::fmt::Display for CString {
     }
 }
 impl ast::Token for CString {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == C_STRING
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == C_STRING
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -138,8 +138,8 @@ impl std::fmt::Display for IntNumber {
     }
 }
 impl ast::Token for IntNumber {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == INT_NUMBER
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == INT_NUMBER
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -163,8 +163,8 @@ impl std::fmt::Display for FloatNumber {
     }
 }
 impl ast::Token for FloatNumber {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == FLOAT_NUMBER
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == FLOAT_NUMBER
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -188,8 +188,8 @@ impl std::fmt::Display for Char {
     }
 }
 impl ast::Token for Char {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == CHAR
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == CHAR
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -213,8 +213,8 @@ impl std::fmt::Display for Byte {
     }
 }
 impl ast::Token for Byte {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == BYTE
+    fn can_cast(x: SyntaxKind) -> bool {
+        x == BYTE
     }
     fn cast(syntax: syntax::Token) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {

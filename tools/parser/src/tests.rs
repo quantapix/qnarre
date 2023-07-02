@@ -1,5 +1,5 @@
-mod gen;
 mod pre;
+mod srcgen;
 mod top;
 
 use crate::{Lexed, TopEntry};

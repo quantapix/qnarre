@@ -6,7 +6,7 @@ use std::{
 };
 
 #[test]
-fn sourcegen_parser_tests() {
+fn srcgen_parser_tests() {
     let grammar_dir = srcgen::project_root().join(Path::new("crates/parser/src/grammar"));
     let tests = tests_from_dir(&grammar_dir);
 
