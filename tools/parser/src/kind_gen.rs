@@ -1,4 +1,4 @@
-#![allow(bad_style, missing_docs, unreachable_pub)]
+#![allow(bad_style)]
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[repr(u16)]
