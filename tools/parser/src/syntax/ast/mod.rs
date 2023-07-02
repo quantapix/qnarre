@@ -12,7 +12,10 @@ pub use self::{
         HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };
-use crate::{syntax, SyntaxKind};
+use crate::{
+    syntax::{self, ast},
+    SyntaxKind,
+};
 use either::Either;
 use std::marker::PhantomData;
 
@@ -573,61 +576,58 @@ pub mod prec {
 mod token;
 mod traits {
     use crate::{
-        syntax::{
-            self,
-            ast::{self, support},
-        },
+        syntax::{self, ast},
         T,
     };
     use either::Either;
 
     pub trait HasName: ast::Node {
         fn name(&self) -> Option<ast::Name> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
     }
     pub trait HasVisibility: ast::Node {
         fn visibility(&self) -> Option<ast::Visibility> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
     }
     pub trait HasLoopBody: ast::Node {
         fn loop_body(&self) -> Option<ast::BlockExpr> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
         fn label(&self) -> Option<ast::Label> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
     }
     pub trait HasArgList: ast::Node {
         fn arg_list(&self) -> Option<ast::ArgList> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
     }
     pub trait HasModuleItem: ast::Node {
         fn items(&self) -> ast::Children<ast::Item> {
-            support::children(self.syntax())
+            ast::children(self.syntax())
         }
     }
     pub trait HasGenericParams: ast::Node {
         fn generic_param_list(&self) -> Option<ast::GenericParamList> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
         fn where_clause(&self) -> Option<ast::WhereClause> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
     }
     pub trait HasTypeBounds: ast::Node {
         fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
-            support::child(self.syntax())
+            ast::child(self.syntax())
         }
         fn colon_token(&self) -> Option<syntax::Token> {
-            support::token(self.syntax(), T![:])
+            ast::token(self.syntax(), T![:])
         }
     }
     pub trait HasAttrs: ast::Node {
         fn attrs(&self) -> ast::Children<ast::Attr> {
-            support::children(self.syntax())
+            ast::children(self.syntax())
         }
         fn has_atom_attr(&self, atom: &str) -> bool {
             self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
@@ -718,6 +718,7 @@ pub trait Node {
         Self::cast(self.syntax().clone_subtree()).unwrap()
     }
 }
+
 pub trait Token {
     fn can_cast(x: SyntaxKind) -> bool
     where
@@ -730,6 +731,7 @@ pub trait Token {
         self.syntax().text()
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct Children<N> {
     inner: syntax::NodeChildren,
@@ -749,6 +751,7 @@ impl<N: Node> Iterator for Children<N> {
         self.inner.find_map(N::cast)
     }
 }
+
 impl<L, R> Node for Either<L, R>
 where
     L: Node,
@@ -780,22 +783,17 @@ where
     R: HasAttrs,
 {
 }
-mod support {
-    use crate::{
-        syntax::{self, ast},
-        SyntaxKind,
-    };
-    pub fn child<N: ast::Node>(x: &syntax::Node) -> Option<N> {
-        x.children().find_map(N::cast)
-    }
-    pub fn children<N: ast::Node>(x: &syntax::Node) -> ast::Children<N> {
-        ast::Children::new(x)
-    }
-    pub fn token(x: &syntax::Node, kind: SyntaxKind) -> Option<syntax::Token> {
-        x.children_with_tokens()
-            .filter_map(|x| x.into_token())
-            .find(|x| x.kind() == kind)
-    }
+
+pub fn child<N: ast::Node>(x: &syntax::Node) -> Option<N> {
+    x.children().find_map(N::cast)
+}
+pub fn children<N: ast::Node>(x: &syntax::Node) -> ast::Children<N> {
+    ast::Children::new(x)
+}
+pub fn token(x: &syntax::Node, kind: SyntaxKind) -> Option<syntax::Token> {
+    x.children_with_tokens()
+        .filter_map(|x| x.into_token())
+        .find(|x| x.kind() == kind)
 }
 
 #[test]

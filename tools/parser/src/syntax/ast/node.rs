@@ -1,7 +1,6 @@
 use crate::{
     syntax::{
-        self,
-        ast::{self, support},
+        self, ast,
         core::{green, NodeOrToken},
         SmolStr, TokenText,
     },
@@ -285,7 +284,7 @@ impl ast::Impl {
         }
     }
     fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         let second = xs.next();
         (first, second)
@@ -308,9 +307,9 @@ pub enum StructKind {
 }
 impl StructKind {
     fn from_node<N: ast::Node>(x: &N) -> StructKind {
-        if let Some(x) = support::child::<ast::RecordFieldList>(x.syntax()) {
+        if let Some(x) = ast::child::<ast::RecordFieldList>(x.syntax()) {
             StructKind::Record(x)
-        } else if let Some(x) = support::child::<ast::TupleFieldList>(x.syntax()) {
+        } else if let Some(x) = ast::child::<ast::TupleFieldList>(x.syntax()) {
             StructKind::Tuple(x)
         } else {
             StructKind::Unit
@@ -561,9 +560,9 @@ pub enum TypeBoundKind {
 }
 impl ast::TypeBound {
     pub fn kind(&self) -> TypeBoundKind {
-        if let Some(x) = support::children(self.syntax()).next() {
+        if let Some(x) = ast::children(self.syntax()).next() {
             TypeBoundKind::PathType(x)
-        } else if let Some(x) = support::children(self.syntax()).next() {
+        } else if let Some(x) = ast::children(self.syntax()).next() {
             TypeBoundKind::ForType(x)
         } else if let Some(x) = self.lifetime() {
             TypeBoundKind::Lifetime(x)
@@ -759,7 +758,7 @@ impl ast::GenericParamList {
 }
 impl ast::ForExpr {
     pub fn iterable(&self) -> Option<ast::Expr> {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         match first {
             Some(ast::Expr::BlockExpr(_)) => xs.next().and(first),
@@ -769,7 +768,7 @@ impl ast::ForExpr {
 }
 impl ast::HasLoopBody for ast::ForExpr {
     fn loop_body(&self) -> Option<ast::BlockExpr> {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         let second = xs.next();
         second.or(first)
@@ -777,7 +776,7 @@ impl ast::HasLoopBody for ast::ForExpr {
 }
 impl ast::WhileExpr {
     pub fn condition(&self) -> Option<ast::Expr> {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         match first {
             Some(ast::Expr::BlockExpr(_)) => xs.next().and(first),
@@ -787,7 +786,7 @@ impl ast::WhileExpr {
 }
 impl ast::HasLoopBody for ast::WhileExpr {
     fn loop_body(&self) -> Option<ast::BlockExpr> {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         let second = xs.next();
         second.or(first)
@@ -805,7 +804,7 @@ impl From<ast::Adt> for ast::Item {
 }
 impl ast::MatchGuard {
     pub fn condition(&self) -> Option<ast::Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 impl From<ast::Item> for ast::AnyHasAttrs {

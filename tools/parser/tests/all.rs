@@ -143,7 +143,6 @@ mod ast_src {
             "LITERAL_PAT",
             "MACRO_PAT",
             "CONST_BLOCK_PAT",
-            // atoms
             "TUPLE_EXPR",
             "ARRAY_EXPR",
             "PAREN_EXPR",
@@ -172,7 +171,6 @@ mod ast_src {
             "RECORD_EXPR_FIELD_LIST",
             "RECORD_EXPR_FIELD",
             "BOX_EXPR",
-            // postfix
             "CALL_EXPR",
             "INDEX_EXPR",
             "METHOD_CALL_EXPR",
@@ -180,10 +178,9 @@ mod ast_src {
             "AWAIT_EXPR",
             "TRY_EXPR",
             "CAST_EXPR",
-            // unary
             "REF_EXPR",
             "PREFIX_EXPR",
-            "RANGE_EXPR", // just weird
+            "RANGE_EXPR",
             "BIN_EXPR",
             "EXTERN_BLOCK",
             "EXTERN_ITEM_LIST",
@@ -230,7 +227,6 @@ mod ast_src {
             "ARG_LIST",
             "TYPE_BOUND",
             "TYPE_BOUND_LIST",
-            // macro related
             "MACRO_ITEMS",
             "MACRO_STMTS",
         ],
@@ -349,7 +345,6 @@ mod sourcegen_ast {
                     .traits
                     .iter()
                     .filter(|trait_name| {
-                        // Loops have two expressions so this might collide, therefore manual impl it
                         node.name != "ForExpr" && node.name != "WhileExpr" || trait_name.as_str() != "HasLoopBody"
                     })
                     .map(|trait_name| {
@@ -362,19 +357,19 @@ mod sourcegen_ast {
                     if field.is_many() {
                         quote! {
                             pub fn #method_name(&self) -> ast::Children<#ty> {
-                                support::children(&self.syntax)
+                                ast::children(&self.syntax)
                             }
                         }
                     } else if let Some(token_kind) = field.token_kind() {
                         quote! {
                             pub fn #method_name(&self) -> Option<#ty> {
-                                support::token(&self.syntax, #token_kind)
+                                ast::token(&self.syntax, #token_kind)
                             }
                         }
                     } else {
                         quote! {
                             pub fn #method_name(&self) -> Option<#ty> {
-                                support::child(&self.syntax)
+                                ast::child(&self.syntax)
                             }
                         }
                     }
@@ -542,7 +537,7 @@ mod sourcegen_ast {
             #![allow(non_snake_case)]
             use crate::{
                 crate::Node, syntax::Token, SyntaxKind::{self, *},
-                ast::{self, support},
+                ast,
                 T,
             };
             #(#node_defs)*
@@ -628,12 +623,9 @@ mod sourcegen_ast {
             .collect::<Vec<_>>();
         let ast = quote! {
             #![allow(bad_style, missing_docs, unreachable_pub)]
-            /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT`.
             #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
             #[repr(u16)]
             pub enum SyntaxKind {
-                // Technical SyntaxKinds: they appear temporally during parsing,
-                // but never end up in the final tree
                 #[doc(hidden)]
                 TOMBSTONE,
                 #[doc(hidden)]
@@ -643,7 +635,6 @@ mod sourcegen_ast {
                 #(#literals,)*
                 #(#tokens,)*
                 #(#nodes,)*
-                // Technical kind so that we can cast from u16 safely
                 #[doc(hidden)]
                 __LAST,
             }
@@ -933,7 +924,6 @@ mod sourcegen_ast {
             Rule::Opt(rule) => lower_rule(acc, grammar, label, rule),
         }
     }
-    // (T (',' T)* ','?)
     fn lower_comma_list(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, rule: &Rule) -> bool {
         let rule = match rule {
             Rule::Seq(it) => it,

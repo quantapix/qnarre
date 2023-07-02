@@ -4,7 +4,6 @@ use crate::{
         ast::{
             self,
             operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-            support,
         },
     },
     SyntaxKind::*,
@@ -43,7 +42,7 @@ impl From<ast::IfExpr> for ElseBranch {
 }
 impl ast::IfExpr {
     pub fn condition(&self) -> Option<ast::Expr> {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         match first {
             Some(ast::Expr::BlockExpr(_)) => xs.next().and(first),
@@ -51,13 +50,13 @@ impl ast::IfExpr {
         }
     }
     pub fn then_branch(&self) -> Option<ast::BlockExpr> {
-        match support::children(self.syntax()).nth(1)? {
+        match ast::children(self.syntax()).nth(1)? {
             ast::Expr::BlockExpr(x) => Some(x),
             _ => None,
         }
     }
     pub fn else_branch(&self) -> Option<ElseBranch> {
-        match support::children(self.syntax()).nth(2)? {
+        match ast::children(self.syntax()).nth(2)? {
             ast::Expr::BlockExpr(x) => Some(ElseBranch::Block(x)),
             ast::Expr::IfExpr(x) => Some(ElseBranch::IfExpr(x)),
             _ => None,
@@ -183,13 +182,13 @@ impl ast::BinExpr {
         self.op_details().map(|t| t.0)
     }
     pub fn lhs(&self) -> Option<ast::Expr> {
-        support::children(self.syntax()).next()
+        ast::children(self.syntax()).next()
     }
     pub fn rhs(&self) -> Option<ast::Expr> {
-        support::children(self.syntax()).nth(1)
+        ast::children(self.syntax()).nth(1)
     }
     pub fn sub_exprs(&self) -> (Option<ast::Expr>, Option<ast::Expr>) {
-        let mut xs = support::children(self.syntax());
+        let mut xs = ast::children(self.syntax());
         let first = xs.next();
         let second = xs.next();
         (first, second)
@@ -233,10 +232,10 @@ impl ast::RangeExpr {
 }
 impl ast::IndexExpr {
     pub fn base(&self) -> Option<ast::Expr> {
-        support::children(self.syntax()).next()
+        ast::children(self.syntax()).next()
     }
     pub fn index(&self) -> Option<ast::Expr> {
-        support::children(self.syntax()).nth(1)
+        ast::children(self.syntax()).nth(1)
     }
 }
 pub enum ArrayExprKind {
@@ -250,11 +249,11 @@ impl ast::ArrayExpr {
     pub fn kind(&self) -> ArrayExprKind {
         if self.is_repeat() {
             ArrayExprKind::Repeat {
-                initializer: support::children(self.syntax()).next(),
-                repeat: support::children(self.syntax()).nth(1),
+                initializer: ast::children(self.syntax()).next(),
+                repeat: ast::children(self.syntax()).nth(1),
             }
         } else {
-            ArrayExprKind::ElementList(support::children(self.syntax()))
+            ArrayExprKind::ElementList(ast::children(self.syntax()))
         }
     }
     fn is_repeat(&self) -> bool {

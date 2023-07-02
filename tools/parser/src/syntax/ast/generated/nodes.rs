@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 use crate::{
-    syntax::{
-        ast::{self, support},
-        Node, Token,
-    },
+    syntax::{ast, Node, Token},
     SyntaxKind::{self, *},
     T,
 };
@@ -14,10 +11,10 @@ pub struct Name {
 }
 impl Name {
     pub fn ident_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![ident])
+        ast::token(&self.syntax, T![ident])
     }
     pub fn self_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![self])
+        ast::token(&self.syntax, T![self])
     }
 }
 
@@ -27,19 +24,19 @@ pub struct NameRef {
 }
 impl NameRef {
     pub fn ident_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![ident])
+        ast::token(&self.syntax, T![ident])
     }
     pub fn self_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![self])
+        ast::token(&self.syntax, T![self])
     }
     pub fn super_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![super])
+        ast::token(&self.syntax, T![super])
     }
     pub fn crate_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![crate])
+        ast::token(&self.syntax, T![crate])
     }
     pub fn Self_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![Self])
+        ast::token(&self.syntax, T![Self])
     }
 }
 
@@ -49,7 +46,7 @@ pub struct Lifetime {
 }
 impl Lifetime {
     pub fn lifetime_ident_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![lifetime_ident])
+        ast::token(&self.syntax, T![lifetime_ident])
     }
 }
 
@@ -59,13 +56,13 @@ pub struct Path {
 }
 impl Path {
     pub fn qualifier(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn coloncolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![::])
+        ast::token(&self.syntax, T![::])
     }
     pub fn segment(&self) -> Option<PathSegment> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -75,31 +72,31 @@ pub struct PathSegment {
 }
 impl PathSegment {
     pub fn coloncolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![::])
+        ast::token(&self.syntax, T![::])
     }
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn param_list(&self) -> Option<ParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn l_angle_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![<])
+        ast::token(&self.syntax, T![<])
     }
     pub fn path_type(&self) -> Option<PathType> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn as_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![as])
+        ast::token(&self.syntax, T![as])
     }
     pub fn r_angle_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![>])
+        ast::token(&self.syntax, T![>])
     }
 }
 
@@ -109,16 +106,16 @@ pub struct GenericArgList {
 }
 impl GenericArgList {
     pub fn coloncolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![::])
+        ast::token(&self.syntax, T![::])
     }
     pub fn l_angle_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![<])
+        ast::token(&self.syntax, T![<])
     }
     pub fn generic_args(&self) -> ast::Children<GenericArg> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_angle_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![>])
+        ast::token(&self.syntax, T![>])
     }
 }
 
@@ -128,22 +125,22 @@ pub struct ParamList {
 }
 impl ParamList {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn self_param(&self) -> Option<SelfParam> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn comma_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![,])
+        ast::token(&self.syntax, T![,])
     }
     pub fn params(&self) -> ast::Children<Param> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
     pub fn pipe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![|])
+        ast::token(&self.syntax, T![|])
     }
 }
 
@@ -153,10 +150,10 @@ pub struct RetType {
 }
 impl RetType {
     pub fn thin_arrow_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![->])
+        ast::token(&self.syntax, T![->])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -166,7 +163,7 @@ pub struct PathType {
 }
 impl PathType {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -176,7 +173,7 @@ pub struct TypeArg {
 }
 impl TypeArg {
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -187,25 +184,25 @@ pub struct AssocTypeArg {
 impl ast::HasTypeBounds for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn param_list(&self) -> Option<ParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn const_arg(&self) -> Option<ConstArg> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -215,7 +212,7 @@ pub struct LifetimeArg {
 }
 impl LifetimeArg {
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -225,7 +222,7 @@ pub struct ConstArg {
 }
 impl ConstArg {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -235,7 +232,7 @@ pub struct TypeBoundList {
 }
 impl TypeBoundList {
     pub fn bounds(&self) -> ast::Children<TypeBound> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
 }
 
@@ -247,16 +244,16 @@ impl ast::HasAttrs for MacroCall {}
 impl ast::HasDocComments for MacroCall {}
 impl MacroCall {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn excl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![!])
+        ast::token(&self.syntax, T![!])
     }
     pub fn token_tree(&self) -> Option<TokenTree> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -266,19 +263,19 @@ pub struct Attr {
 }
 impl Attr {
     pub fn pound_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![#])
+        ast::token(&self.syntax, T![#])
     }
     pub fn excl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![!])
+        ast::token(&self.syntax, T![!])
     }
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn meta(&self) -> Option<Meta> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -288,22 +285,22 @@ pub struct TokenTree {
 }
 impl TokenTree {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -320,10 +317,10 @@ pub struct MacroStmts {
 }
 impl MacroStmts {
     pub fn statements(&self) -> ast::Children<Stmt> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -336,7 +333,7 @@ impl ast::HasModuleItem for SourceFile {}
 impl ast::HasDocComments for SourceFile {}
 impl SourceFile {
     pub fn shebang_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![shebang])
+        ast::token(&self.syntax, T![shebang])
     }
 }
 
@@ -350,28 +347,28 @@ impl ast::HasVisibility for Const {}
 impl ast::HasDocComments for Const {}
 impl Const {
     pub fn default_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![default])
+        ast::token(&self.syntax, T![default])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn underscore_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![_])
+        ast::token(&self.syntax, T![_])
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn body(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -386,10 +383,10 @@ impl ast::HasGenericParams for Enum {}
 impl ast::HasDocComments for Enum {}
 impl Enum {
     pub fn enum_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![enum])
+        ast::token(&self.syntax, T![enum])
     }
     pub fn variant_list(&self) -> Option<VariantList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -401,13 +398,13 @@ impl ast::HasAttrs for ExternBlock {}
 impl ast::HasDocComments for ExternBlock {}
 impl ExternBlock {
     pub fn unsafe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![unsafe])
+        ast::token(&self.syntax, T![unsafe])
     }
     pub fn abi(&self) -> Option<Abi> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn extern_item_list(&self) -> Option<ExternItemList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -420,19 +417,19 @@ impl ast::HasVisibility for ExternCrate {}
 impl ast::HasDocComments for ExternCrate {}
 impl ExternCrate {
     pub fn extern_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![extern])
+        ast::token(&self.syntax, T![extern])
     }
     pub fn crate_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![crate])
+        ast::token(&self.syntax, T![crate])
     }
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn rename(&self) -> Option<Rename> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -447,34 +444,34 @@ impl ast::HasGenericParams for Fn {}
 impl ast::HasDocComments for Fn {}
 impl Fn {
     pub fn default_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![default])
+        ast::token(&self.syntax, T![default])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn async_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![async])
+        ast::token(&self.syntax, T![async])
     }
     pub fn unsafe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![unsafe])
+        ast::token(&self.syntax, T![unsafe])
     }
     pub fn abi(&self) -> Option<Abi> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn fn_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![fn])
+        ast::token(&self.syntax, T![fn])
     }
     pub fn param_list(&self) -> Option<ParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn body(&self) -> Option<BlockExpr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -488,25 +485,25 @@ impl ast::HasGenericParams for Impl {}
 impl ast::HasDocComments for Impl {}
 impl Impl {
     pub fn default_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![default])
+        ast::token(&self.syntax, T![default])
     }
     pub fn unsafe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![unsafe])
+        ast::token(&self.syntax, T![unsafe])
     }
     pub fn impl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![impl])
+        ast::token(&self.syntax, T![impl])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn excl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![!])
+        ast::token(&self.syntax, T![!])
     }
     pub fn for_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![for])
+        ast::token(&self.syntax, T![for])
     }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -520,13 +517,13 @@ impl ast::HasVisibility for MacroRules {}
 impl ast::HasDocComments for MacroRules {}
 impl MacroRules {
     pub fn macro_rules_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![macro_rules])
+        ast::token(&self.syntax, T![macro_rules])
     }
     pub fn excl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![!])
+        ast::token(&self.syntax, T![!])
     }
     pub fn token_tree(&self) -> Option<TokenTree> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -540,13 +537,13 @@ impl ast::HasVisibility for MacroDef {}
 impl ast::HasDocComments for MacroDef {}
 impl MacroDef {
     pub fn macro_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![macro])
+        ast::token(&self.syntax, T![macro])
     }
     pub fn args(&self) -> Option<TokenTree> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn body(&self) -> Option<TokenTree> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -560,13 +557,13 @@ impl ast::HasVisibility for Module {}
 impl ast::HasDocComments for Module {}
 impl Module {
     pub fn mod_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mod])
+        ast::token(&self.syntax, T![mod])
     }
     pub fn item_list(&self) -> Option<ItemList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -580,25 +577,25 @@ impl ast::HasVisibility for Static {}
 impl ast::HasDocComments for Static {}
 impl Static {
     pub fn static_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![static])
+        ast::token(&self.syntax, T![static])
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn body(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -613,13 +610,13 @@ impl ast::HasGenericParams for Struct {}
 impl ast::HasDocComments for Struct {}
 impl Struct {
     pub fn struct_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![struct])
+        ast::token(&self.syntax, T![struct])
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
     pub fn field_list(&self) -> Option<FieldList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -635,16 +632,16 @@ impl ast::HasTypeBounds for Trait {}
 impl ast::HasDocComments for Trait {}
 impl Trait {
     pub fn unsafe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![unsafe])
+        ast::token(&self.syntax, T![unsafe])
     }
     pub fn auto_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![auto])
+        ast::token(&self.syntax, T![auto])
     }
     pub fn trait_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![trait])
+        ast::token(&self.syntax, T![trait])
     }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -659,16 +656,16 @@ impl ast::HasGenericParams for TraitAlias {}
 impl ast::HasDocComments for TraitAlias {}
 impl TraitAlias {
     pub fn trait_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![trait])
+        ast::token(&self.syntax, T![trait])
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn type_bound_list(&self) -> Option<TypeBoundList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -684,19 +681,19 @@ impl ast::HasTypeBounds for TypeAlias {}
 impl ast::HasDocComments for TypeAlias {}
 impl TypeAlias {
     pub fn default_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![default])
+        ast::token(&self.syntax, T![default])
     }
     pub fn type_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![type])
+        ast::token(&self.syntax, T![type])
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -711,10 +708,10 @@ impl ast::HasGenericParams for Union {}
 impl ast::HasDocComments for Union {}
 impl Union {
     pub fn union_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![union])
+        ast::token(&self.syntax, T![union])
     }
     pub fn record_field_list(&self) -> Option<RecordFieldList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -727,13 +724,13 @@ impl ast::HasVisibility for Use {}
 impl ast::HasDocComments for Use {}
 impl Use {
     pub fn use_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![use])
+        ast::token(&self.syntax, T![use])
     }
     pub fn use_tree(&self) -> Option<UseTree> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -743,19 +740,19 @@ pub struct Visibility {
 }
 impl Visibility {
     pub fn pub_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![pub])
+        ast::token(&self.syntax, T![pub])
     }
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn in_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![in])
+        ast::token(&self.syntax, T![in])
     }
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -767,10 +764,10 @@ impl ast::HasAttrs for ItemList {}
 impl ast::HasModuleItem for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -781,10 +778,10 @@ pub struct Rename {
 impl ast::HasName for Rename {}
 impl Rename {
     pub fn as_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![as])
+        ast::token(&self.syntax, T![as])
     }
     pub fn underscore_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![_])
+        ast::token(&self.syntax, T![_])
     }
 }
 
@@ -794,19 +791,19 @@ pub struct UseTree {
 }
 impl UseTree {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn coloncolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![::])
+        ast::token(&self.syntax, T![::])
     }
     pub fn star_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![*])
+        ast::token(&self.syntax, T![*])
     }
     pub fn use_tree_list(&self) -> Option<UseTreeList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn rename(&self) -> Option<Rename> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -816,13 +813,13 @@ pub struct UseTreeList {
 }
 impl UseTreeList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn use_trees(&self) -> ast::Children<UseTree> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -832,7 +829,7 @@ pub struct Abi {
 }
 impl Abi {
     pub fn extern_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![extern])
+        ast::token(&self.syntax, T![extern])
     }
 }
 
@@ -842,13 +839,13 @@ pub struct GenericParamList {
 }
 impl GenericParamList {
     pub fn l_angle_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![<])
+        ast::token(&self.syntax, T![<])
     }
     pub fn generic_params(&self) -> ast::Children<GenericParam> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_angle_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![>])
+        ast::token(&self.syntax, T![>])
     }
 }
 
@@ -858,10 +855,10 @@ pub struct WhereClause {
 }
 impl WhereClause {
     pub fn where_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![where])
+        ast::token(&self.syntax, T![where])
     }
     pub fn predicates(&self) -> ast::Children<WherePred> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
 }
 
@@ -872,22 +869,22 @@ pub struct BlockExpr {
 impl ast::HasAttrs for BlockExpr {}
 impl BlockExpr {
     pub fn label(&self) -> Option<Label> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn try_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![try])
+        ast::token(&self.syntax, T![try])
     }
     pub fn unsafe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![unsafe])
+        ast::token(&self.syntax, T![unsafe])
     }
     pub fn async_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![async])
+        ast::token(&self.syntax, T![async])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn stmt_list(&self) -> Option<StmtList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -899,19 +896,19 @@ impl ast::HasAttrs for SelfParam {}
 impl ast::HasName for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![&])
+        ast::token(&self.syntax, T![&])
     }
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -922,16 +919,16 @@ pub struct Param {
 impl ast::HasAttrs for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn dotdotdot_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![...])
+        ast::token(&self.syntax, T![...])
     }
 }
 
@@ -941,13 +938,13 @@ pub struct RecordFieldList {
 }
 impl RecordFieldList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn fields(&self) -> ast::Children<RecordField> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -957,13 +954,13 @@ pub struct TupleFieldList {
 }
 impl TupleFieldList {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn fields(&self) -> ast::Children<TupleField> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -977,10 +974,10 @@ impl ast::HasVisibility for RecordField {}
 impl ast::HasDocComments for RecordField {}
 impl RecordField {
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -993,7 +990,7 @@ impl ast::HasVisibility for TupleField {}
 impl ast::HasDocComments for TupleField {}
 impl TupleField {
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1003,13 +1000,13 @@ pub struct VariantList {
 }
 impl VariantList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn variants(&self) -> ast::Children<Variant> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -1023,13 +1020,13 @@ impl ast::HasVisibility for Variant {}
 impl ast::HasDocComments for Variant {}
 impl Variant {
     pub fn field_list(&self) -> Option<FieldList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1040,13 +1037,13 @@ pub struct AssocItemList {
 impl ast::HasAttrs for AssocItemList {}
 impl AssocItemList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn assoc_items(&self) -> ast::Children<AssocItem> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -1057,13 +1054,13 @@ pub struct ExternItemList {
 impl ast::HasAttrs for ExternItemList {}
 impl ExternItemList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn extern_items(&self) -> ast::Children<ExternItem> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -1075,19 +1072,19 @@ impl ast::HasAttrs for ConstParam {}
 impl ast::HasName for ConstParam {}
 impl ConstParam {
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn default_val(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1099,7 +1096,7 @@ impl ast::HasAttrs for LifetimeParam {}
 impl ast::HasTypeBounds for LifetimeParam {}
 impl LifetimeParam {
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1112,10 +1109,10 @@ impl ast::HasName for TypeParam {}
 impl ast::HasTypeBounds for TypeParam {}
 impl TypeParam {
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn default_type(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1126,16 +1123,16 @@ pub struct WherePred {
 impl ast::HasTypeBounds for WherePred {}
 impl WherePred {
     pub fn for_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![for])
+        ast::token(&self.syntax, T![for])
     }
     pub fn generic_param_list(&self) -> Option<GenericParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1145,16 +1142,16 @@ pub struct Meta {
 }
 impl Meta {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn token_tree(&self) -> Option<TokenTree> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1164,10 +1161,10 @@ pub struct ExprStmt {
 }
 impl ExprStmt {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -1178,28 +1175,28 @@ pub struct LetStmt {
 impl ast::HasAttrs for LetStmt {}
 impl LetStmt {
     pub fn let_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![let])
+        ast::token(&self.syntax, T![let])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn initializer(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn let_else(&self) -> Option<LetElse> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
 }
 
@@ -1209,10 +1206,10 @@ pub struct LetElse {
 }
 impl LetElse {
     pub fn else_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![else])
+        ast::token(&self.syntax, T![else])
     }
     pub fn block_expr(&self) -> Option<BlockExpr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1223,19 +1220,19 @@ pub struct ArrayExpr {
 impl ast::HasAttrs for ArrayExpr {}
 impl ArrayExpr {
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn exprs(&self) -> ast::Children<Expr> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -1246,13 +1243,13 @@ pub struct AwaitExpr {
 impl ast::HasAttrs for AwaitExpr {}
 impl AwaitExpr {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn dot_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![.])
+        ast::token(&self.syntax, T![.])
     }
     pub fn await_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![await])
+        ast::token(&self.syntax, T![await])
     }
 }
 
@@ -1270,10 +1267,10 @@ pub struct BoxExpr {
 impl ast::HasAttrs for BoxExpr {}
 impl BoxExpr {
     pub fn box_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![box])
+        ast::token(&self.syntax, T![box])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1284,13 +1281,13 @@ pub struct BreakExpr {
 impl ast::HasAttrs for BreakExpr {}
 impl BreakExpr {
     pub fn break_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![break])
+        ast::token(&self.syntax, T![break])
     }
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1302,7 +1299,7 @@ impl ast::HasAttrs for CallExpr {}
 impl ast::HasArgList for CallExpr {}
 impl CallExpr {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1313,13 +1310,13 @@ pub struct CastExpr {
 impl ast::HasAttrs for CastExpr {}
 impl CastExpr {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn as_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![as])
+        ast::token(&self.syntax, T![as])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1330,31 +1327,31 @@ pub struct ClosureExpr {
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
     pub fn for_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![for])
+        ast::token(&self.syntax, T![for])
     }
     pub fn generic_param_list(&self) -> Option<GenericParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn static_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![static])
+        ast::token(&self.syntax, T![static])
     }
     pub fn async_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![async])
+        ast::token(&self.syntax, T![async])
     }
     pub fn move_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![move])
+        ast::token(&self.syntax, T![move])
     }
     pub fn param_list(&self) -> Option<ParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn body(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1365,10 +1362,10 @@ pub struct ContinueExpr {
 impl ast::HasAttrs for ContinueExpr {}
 impl ContinueExpr {
     pub fn continue_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![continue])
+        ast::token(&self.syntax, T![continue])
     }
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1379,13 +1376,13 @@ pub struct FieldExpr {
 impl ast::HasAttrs for FieldExpr {}
 impl FieldExpr {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn dot_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![.])
+        ast::token(&self.syntax, T![.])
     }
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1396,13 +1393,13 @@ pub struct ForExpr {
 impl ast::HasAttrs for ForExpr {}
 impl ForExpr {
     pub fn for_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![for])
+        ast::token(&self.syntax, T![for])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn in_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![in])
+        ast::token(&self.syntax, T![in])
     }
 }
 
@@ -1413,10 +1410,10 @@ pub struct IfExpr {
 impl ast::HasAttrs for IfExpr {}
 impl IfExpr {
     pub fn if_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![if])
+        ast::token(&self.syntax, T![if])
     }
     pub fn else_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![else])
+        ast::token(&self.syntax, T![else])
     }
 }
 
@@ -1427,10 +1424,10 @@ pub struct IndexExpr {
 impl ast::HasAttrs for IndexExpr {}
 impl IndexExpr {
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -1449,7 +1446,7 @@ impl ast::HasAttrs for LoopExpr {}
 impl ast::HasLoopBody for LoopExpr {}
 impl LoopExpr {
     pub fn loop_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![loop])
+        ast::token(&self.syntax, T![loop])
     }
 }
 
@@ -1459,7 +1456,7 @@ pub struct MacroExpr {
 }
 impl MacroExpr {
     pub fn macro_call(&self) -> Option<MacroCall> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1470,13 +1467,13 @@ pub struct MatchExpr {
 impl ast::HasAttrs for MatchExpr {}
 impl MatchExpr {
     pub fn match_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![match])
+        ast::token(&self.syntax, T![match])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn match_arm_list(&self) -> Option<MatchArmList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1488,16 +1485,16 @@ impl ast::HasAttrs for MethodCallExpr {}
 impl ast::HasArgList for MethodCallExpr {}
 impl MethodCallExpr {
     pub fn receiver(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn dot_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![.])
+        ast::token(&self.syntax, T![.])
     }
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1508,13 +1505,13 @@ pub struct ParenExpr {
 impl ast::HasAttrs for ParenExpr {}
 impl ParenExpr {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -1525,7 +1522,7 @@ pub struct PathExpr {
 impl ast::HasAttrs for PathExpr {}
 impl PathExpr {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1536,7 +1533,7 @@ pub struct PrefixExpr {
 impl ast::HasAttrs for PrefixExpr {}
 impl PrefixExpr {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1553,10 +1550,10 @@ pub struct RecordExpr {
 }
 impl RecordExpr {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn record_expr_field_list(&self) -> Option<RecordExprFieldList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1567,19 +1564,19 @@ pub struct RefExpr {
 impl ast::HasAttrs for RefExpr {}
 impl RefExpr {
     pub fn amp_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![&])
+        ast::token(&self.syntax, T![&])
     }
     pub fn raw_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![raw])
+        ast::token(&self.syntax, T![raw])
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1590,10 +1587,10 @@ pub struct ReturnExpr {
 impl ast::HasAttrs for ReturnExpr {}
 impl ReturnExpr {
     pub fn return_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![return])
+        ast::token(&self.syntax, T![return])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1604,10 +1601,10 @@ pub struct TryExpr {
 impl ast::HasAttrs for TryExpr {}
 impl TryExpr {
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn question_mark_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![?])
+        ast::token(&self.syntax, T![?])
     }
 }
 
@@ -1618,13 +1615,13 @@ pub struct TupleExpr {
 impl ast::HasAttrs for TupleExpr {}
 impl TupleExpr {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn fields(&self) -> ast::Children<Expr> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -1635,7 +1632,7 @@ pub struct WhileExpr {
 impl ast::HasAttrs for WhileExpr {}
 impl WhileExpr {
     pub fn while_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![while])
+        ast::token(&self.syntax, T![while])
     }
 }
 
@@ -1646,10 +1643,10 @@ pub struct YieldExpr {
 impl ast::HasAttrs for YieldExpr {}
 impl YieldExpr {
     pub fn yield_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![yield])
+        ast::token(&self.syntax, T![yield])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1660,13 +1657,13 @@ pub struct YeetExpr {
 impl ast::HasAttrs for YeetExpr {}
 impl YeetExpr {
     pub fn do_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![do])
+        ast::token(&self.syntax, T![do])
     }
     pub fn yeet_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![yeet])
+        ast::token(&self.syntax, T![yeet])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1677,16 +1674,16 @@ pub struct LetExpr {
 impl ast::HasAttrs for LetExpr {}
 impl LetExpr {
     pub fn let_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![let])
+        ast::token(&self.syntax, T![let])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn eq_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=])
+        ast::token(&self.syntax, T![=])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1697,7 +1694,7 @@ pub struct UnderscoreExpr {
 impl ast::HasAttrs for UnderscoreExpr {}
 impl UnderscoreExpr {
     pub fn underscore_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![_])
+        ast::token(&self.syntax, T![_])
     }
 }
 
@@ -1708,16 +1705,16 @@ pub struct StmtList {
 impl ast::HasAttrs for StmtList {}
 impl StmtList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn statements(&self) -> ast::Children<Stmt> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn tail_expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -1727,10 +1724,10 @@ pub struct Label {
 }
 impl Label {
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
 }
 
@@ -1741,19 +1738,19 @@ pub struct RecordExprFieldList {
 impl ast::HasAttrs for RecordExprFieldList {}
 impl RecordExprFieldList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn fields(&self) -> ast::Children<RecordExprField> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn dotdot_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![..])
+        ast::token(&self.syntax, T![..])
     }
     pub fn spread(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -1764,13 +1761,13 @@ pub struct RecordExprField {
 impl ast::HasAttrs for RecordExprField {}
 impl RecordExprField {
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1780,13 +1777,13 @@ pub struct ArgList {
 }
 impl ArgList {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn args(&self) -> ast::Children<Expr> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -1797,13 +1794,13 @@ pub struct MatchArmList {
 impl ast::HasAttrs for MatchArmList {}
 impl MatchArmList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn arms(&self) -> ast::Children<MatchArm> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -1814,19 +1811,19 @@ pub struct MatchArm {
 impl ast::HasAttrs for MatchArm {}
 impl MatchArm {
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn guard(&self) -> Option<MatchGuard> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn fat_arrow_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![=>])
+        ast::token(&self.syntax, T![=>])
     }
     pub fn expr(&self) -> Option<Expr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn comma_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![,])
+        ast::token(&self.syntax, T![,])
     }
 }
 
@@ -1836,7 +1833,7 @@ pub struct MatchGuard {
 }
 impl MatchGuard {
     pub fn if_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![if])
+        ast::token(&self.syntax, T![if])
     }
 }
 
@@ -1846,19 +1843,19 @@ pub struct ArrayType {
 }
 impl ArrayType {
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn semicolon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![;])
+        ast::token(&self.syntax, T![;])
     }
     pub fn const_arg(&self) -> Option<ConstArg> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -1868,10 +1865,10 @@ pub struct DynTraitType {
 }
 impl DynTraitType {
     pub fn dyn_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![dyn])
+        ast::token(&self.syntax, T![dyn])
     }
     pub fn type_bound_list(&self) -> Option<TypeBoundList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1881,25 +1878,25 @@ pub struct FnPtrType {
 }
 impl FnPtrType {
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn async_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![async])
+        ast::token(&self.syntax, T![async])
     }
     pub fn unsafe_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![unsafe])
+        ast::token(&self.syntax, T![unsafe])
     }
     pub fn abi(&self) -> Option<Abi> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn fn_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![fn])
+        ast::token(&self.syntax, T![fn])
     }
     pub fn param_list(&self) -> Option<ParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1909,13 +1906,13 @@ pub struct ForType {
 }
 impl ForType {
     pub fn for_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![for])
+        ast::token(&self.syntax, T![for])
     }
     pub fn generic_param_list(&self) -> Option<GenericParamList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1925,10 +1922,10 @@ pub struct ImplTraitType {
 }
 impl ImplTraitType {
     pub fn impl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![impl])
+        ast::token(&self.syntax, T![impl])
     }
     pub fn type_bound_list(&self) -> Option<TypeBoundList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1938,7 +1935,7 @@ pub struct InferType {
 }
 impl InferType {
     pub fn underscore_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![_])
+        ast::token(&self.syntax, T![_])
     }
 }
 
@@ -1948,7 +1945,7 @@ pub struct MacroType {
 }
 impl MacroType {
     pub fn macro_call(&self) -> Option<MacroCall> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -1958,7 +1955,7 @@ pub struct NeverType {
 }
 impl NeverType {
     pub fn excl_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![!])
+        ast::token(&self.syntax, T![!])
     }
 }
 
@@ -1968,13 +1965,13 @@ pub struct ParenType {
 }
 impl ParenType {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -1984,16 +1981,16 @@ pub struct PtrType {
 }
 impl PtrType {
     pub fn star_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![*])
+        ast::token(&self.syntax, T![*])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2003,16 +2000,16 @@ pub struct RefType {
 }
 impl RefType {
     pub fn amp_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![&])
+        ast::token(&self.syntax, T![&])
     }
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2022,13 +2019,13 @@ pub struct SliceType {
 }
 impl SliceType {
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -2038,13 +2035,13 @@ pub struct TupleType {
 }
 impl TupleType {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn fields(&self) -> ast::Children<Type> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -2054,19 +2051,19 @@ pub struct TypeBound {
 }
 impl TypeBound {
     pub fn lifetime(&self) -> Option<Lifetime> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn question_mark_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![?])
+        ast::token(&self.syntax, T![?])
     }
     pub fn tilde_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![~])
+        ast::token(&self.syntax, T![~])
     }
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn ty(&self) -> Option<Type> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2078,16 +2075,16 @@ impl ast::HasAttrs for IdentPat {}
 impl ast::HasName for IdentPat {}
 impl IdentPat {
     pub fn ref_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![ref])
+        ast::token(&self.syntax, T![ref])
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn at_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![@])
+        ast::token(&self.syntax, T![@])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2097,10 +2094,10 @@ pub struct BoxPat {
 }
 impl BoxPat {
     pub fn box_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![box])
+        ast::token(&self.syntax, T![box])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2111,7 +2108,7 @@ pub struct RestPat {
 impl ast::HasAttrs for RestPat {}
 impl RestPat {
     pub fn dotdot_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![..])
+        ast::token(&self.syntax, T![..])
     }
 }
 
@@ -2121,10 +2118,10 @@ pub struct LiteralPat {
 }
 impl LiteralPat {
     pub fn minus_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![-])
+        ast::token(&self.syntax, T![-])
     }
     pub fn literal(&self) -> Option<Literal> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2134,7 +2131,7 @@ pub struct MacroPat {
 }
 impl MacroPat {
     pub fn macro_call(&self) -> Option<MacroCall> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2144,7 +2141,7 @@ pub struct OrPat {
 }
 impl OrPat {
     pub fn pats(&self) -> ast::Children<Pat> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
 }
 
@@ -2154,13 +2151,13 @@ pub struct ParenPat {
 }
 impl ParenPat {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -2170,7 +2167,7 @@ pub struct PathPat {
 }
 impl PathPat {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2180,7 +2177,7 @@ pub struct WildcardPat {
 }
 impl WildcardPat {
     pub fn underscore_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![_])
+        ast::token(&self.syntax, T![_])
     }
 }
 
@@ -2196,10 +2193,10 @@ pub struct RecordPat {
 }
 impl RecordPat {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn record_pat_field_list(&self) -> Option<RecordPatFieldList> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2209,13 +2206,13 @@ pub struct RefPat {
 }
 impl RefPat {
     pub fn amp_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![&])
+        ast::token(&self.syntax, T![&])
     }
     pub fn mut_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![mut])
+        ast::token(&self.syntax, T![mut])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2225,13 +2222,13 @@ pub struct SlicePat {
 }
 impl SlicePat {
     pub fn l_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['['])
+        ast::token(&self.syntax, T!['['])
     }
     pub fn pats(&self) -> ast::Children<Pat> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_brack_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![']'])
+        ast::token(&self.syntax, T![']'])
     }
 }
 
@@ -2241,13 +2238,13 @@ pub struct TuplePat {
 }
 impl TuplePat {
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn fields(&self) -> ast::Children<Pat> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -2257,16 +2254,16 @@ pub struct TupleStructPat {
 }
 impl TupleStructPat {
     pub fn path(&self) -> Option<Path> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn l_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['('])
+        ast::token(&self.syntax, T!['('])
     }
     pub fn fields(&self) -> ast::Children<Pat> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn r_paren_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![')'])
+        ast::token(&self.syntax, T![')'])
     }
 }
 
@@ -2276,10 +2273,10 @@ pub struct ConstBlockPat {
 }
 impl ConstBlockPat {
     pub fn const_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![const])
+        ast::token(&self.syntax, T![const])
     }
     pub fn block_expr(&self) -> Option<BlockExpr> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 
@@ -2289,16 +2286,16 @@ pub struct RecordPatFieldList {
 }
 impl RecordPatFieldList {
     pub fn l_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['{'])
+        ast::token(&self.syntax, T!['{'])
     }
     pub fn fields(&self) -> ast::Children<RecordPatField> {
-        support::children(&self.syntax)
+        ast::children(&self.syntax)
     }
     pub fn rest_pat(&self) -> Option<RestPat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn r_curly_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T!['}'])
+        ast::token(&self.syntax, T!['}'])
     }
 }
 
@@ -2309,13 +2306,13 @@ pub struct RecordPatField {
 impl ast::HasAttrs for RecordPatField {}
 impl RecordPatField {
     pub fn name_ref(&self) -> Option<NameRef> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
     pub fn colon_token(&self) -> Option<Token> {
-        support::token(&self.syntax, T![:])
+        ast::token(&self.syntax, T![:])
     }
     pub fn pat(&self) -> Option<Pat> {
-        support::child(&self.syntax)
+        ast::child(&self.syntax)
     }
 }
 

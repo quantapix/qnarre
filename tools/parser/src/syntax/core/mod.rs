@@ -121,19 +121,16 @@ pub mod ast {
     }
 }
 
-pub mod support {
-    use super::{api, ast};
-    pub fn child<N: ast::Node>(x: &api::Node<N::Lang>) -> Option<N> {
-        x.children().find_map(N::cast)
-    }
-    pub fn children<N: ast::Node>(x: &api::Node<N::Lang>) -> ast::Children<N> {
-        ast::Children::new(x)
-    }
-    pub fn token<L: api::Lang>(x: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
-        x.children_with_tokens()
-            .filter_map(|x| x.into_token())
-            .find(|x| x.kind() == kind)
-    }
+pub fn child<N: ast::Node>(x: &api::Node<N::Lang>) -> Option<N> {
+    x.children().find_map(N::cast)
+}
+pub fn children<N: ast::Node>(x: &api::Node<N::Lang>) -> ast::Children<N> {
+    ast::Children::new(x)
+}
+pub fn token<L: api::Lang>(x: &api::Node<L>, kind: L::Kind) -> Option<api::Token<L>> {
+    x.children_with_tokens()
+        .filter_map(|x| x.into_token())
+        .find(|x| x.kind() == kind)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
