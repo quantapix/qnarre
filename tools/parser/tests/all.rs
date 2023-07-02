@@ -272,7 +272,7 @@ mod ast_src {
     }
 }
 #[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen_ast {
+mod srcgen_ast {
     use super::ast_src::{AstSrc, Cardinality, EnumSrc, Field, KindsSrc, NodeSrc, KINDS_SRC};
     use itertools::Itertools;
     use proc_macro2::{Punct, Spacing};

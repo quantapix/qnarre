@@ -315,14 +315,15 @@ mod output {
     }
 }
 mod kind_gen;
+pub use kind_gen::SyntaxKind;
+
 mod parser;
 mod shortcuts {
-    use std::mem;
-
     use crate::{
         Lexed, Step,
         SyntaxKind::{self, *},
     };
+    use std::mem;
 
     #[derive(Debug)]
     pub enum StrStep<'a> {
@@ -355,7 +356,6 @@ mod shortcuts {
                             res.was_joint();
                         }
                     }
-
                     was_joint = true;
                 }
             }
@@ -369,7 +369,6 @@ mod shortcuts {
                 state: State::PendingEnter,
                 sink,
             };
-
             for event in output.iter() {
                 match event {
                     Step::Token {
@@ -387,7 +386,6 @@ mod shortcuts {
                     },
                 }
             }
-
             match mem::replace(&mut builder.state, State::Normal) {
                 State::PendingExit => {
                     builder.eat_trivias();
@@ -395,7 +393,6 @@ mod shortcuts {
                 },
                 State::PendingEnter | State::Normal => unreachable!(),
             }
-
             builder.pos == builder.lexed.len()
         }
     }
@@ -423,7 +420,6 @@ mod shortcuts {
             self.eat_trivias();
             self.do_token(kind, n_tokens as usize);
         }
-
         fn float_split(&mut self, has_pseudo_dot: bool) {
             match mem::replace(&mut self.state, State::Normal) {
                 State::PendingEnter => unreachable!(),
@@ -433,7 +429,6 @@ mod shortcuts {
             self.eat_trivias();
             self.do_float_split(has_pseudo_dot);
         }
-
         fn enter(&mut self, kind: SyntaxKind) {
             match mem::replace(&mut self.state, State::Normal) {
                 State::PendingEnter => {
@@ -443,7 +438,6 @@ mod shortcuts {
                 State::PendingExit => (self.sink)(StrStep::Exit),
                 State::Normal => (),
             }
-
             let n_trivias = (self.pos..self.lexed.len())
                 .take_while(|&x| self.lexed.kind(x).is_trivia())
                 .count();
@@ -456,7 +450,6 @@ mod shortcuts {
             (self.sink)(StrStep::Enter { kind });
             self.eat_n_trivias(n_attached_trivias);
         }
-
         fn exit(&mut self) {
             match mem::replace(&mut self.state, State::PendingExit) {
                 State::PendingEnter => unreachable!(),
@@ -464,7 +457,6 @@ mod shortcuts {
                 State::Normal => (),
             }
         }
-
         fn eat_trivias(&mut self) {
             while self.pos < self.lexed.len() {
                 let kind = self.lexed.kind(self.pos);
@@ -474,7 +466,6 @@ mod shortcuts {
                 self.do_token(kind, 1);
             }
         }
-
         fn eat_n_trivias(&mut self, n: usize) {
             for _ in 0..n {
                 let kind = self.lexed.kind(self.pos);
@@ -482,13 +473,11 @@ mod shortcuts {
                 self.do_token(kind, 1);
             }
         }
-
         fn do_token(&mut self, kind: SyntaxKind, n_tokens: usize) {
             let text = &self.lexed.range_text(self.pos..self.pos + n_tokens);
             self.pos += n_tokens;
             (self.sink)(StrStep::Token { kind, text });
         }
-
         fn do_float_split(&mut self, has_pseudo_dot: bool) {
             let text = &self.lexed.range_text(self.pos..self.pos + 1);
             self.pos += 1;
@@ -510,7 +499,6 @@ mod shortcuts {
                         kind: SyntaxKind::DOT,
                         text: ".",
                     });
-
                     if has_pseudo_dot {
                         assert!(right.is_empty(), "{left}.{right}");
                         self.state = State::Normal;
@@ -531,7 +519,6 @@ mod shortcuts {
             }
         }
     }
-
     fn n_attached_trivias<'a>(kind: SyntaxKind, trivias: impl Iterator<Item = (SyntaxKind, &'a str)>) -> usize {
         match kind {
             CONST | ENUM | FN | IMPL | MACRO_CALL | MACRO_DEF | MACRO_RULES | MODULE | RECORD_FIELD | STATIC
@@ -563,20 +550,17 @@ mod shortcuts {
             _ => 0,
         }
     }
-
     fn is_outer(text: &str) -> bool {
         if text.starts_with("////") || text.starts_with("/***") {
             return false;
         }
         text.starts_with("///") || text.starts_with("/**")
     }
-
     fn is_inner(text: &str) -> bool {
         text.starts_with("//!") || text.starts_with("/*!")
     }
 }
 
-pub use kind_gen::SyntaxKind;
 impl From<u16> for SyntaxKind {
     #[inline]
     fn from(x: u16) -> SyntaxKind {
