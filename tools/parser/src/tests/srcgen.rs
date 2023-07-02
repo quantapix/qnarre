@@ -54,7 +54,7 @@ struct Tests {
 fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = Vec::new();
     for comment_block in srcgen::CommentBlock::extract_untagged(s) {
-        let first_line = &comment_block.contents[0];
+        let first_line = &comment_block.texts[0];
         let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
             (name.to_string(), true)
         } else if let Some(name) = first_line.strip_prefix("test_err ") {
@@ -62,7 +62,7 @@ fn collect_tests(s: &str) -> Vec<Test> {
         } else {
             continue;
         };
-        let text: String = comment_block.contents[1..]
+        let text: String = comment_block.texts[1..]
             .iter()
             .cloned()
             .chain(iter::once(String::new()))

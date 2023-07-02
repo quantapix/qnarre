@@ -439,6 +439,96 @@ mod srcgen {
     };
     use xshell::{cmd, Shell};
 
+    #[derive(Clone)]
+    pub struct CommentBlock {
+        pub id: String,
+        pub line: usize,
+        pub texts: Vec<String>,
+        is_doc: bool,
+    }
+    impl CommentBlock {
+        pub fn extract(tag: &str, x: &str) -> Vec<CommentBlock> {
+            assert!(tag.starts_with(char::is_uppercase));
+            let tag = format!("{tag}:");
+            let mut ys = CommentBlock::extract_untagged(x);
+            ys.retain_mut(|x| {
+                let first = x.texts.remove(0);
+                let Some(id) = first.strip_prefix(&tag) else {
+                    return false;
+                };
+                if x.is_doc {
+                    panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");
+                }
+                x.id = id.trim().to_string();
+                true
+            });
+            ys
+        }
+        pub fn extract_untagged(x: &str) -> Vec<CommentBlock> {
+            let mut ys = Vec::new();
+            let xs = x.lines().map(str::trim_start);
+            let dummy = CommentBlock {
+                id: String::new(),
+                line: 0,
+                texts: Vec::new(),
+                is_doc: false,
+            };
+            let mut y = dummy.clone();
+            for (i, x) in xs.enumerate() {
+                match x.strip_prefix("//") {
+                    Some(mut x) => {
+                        if let Some('/' | '!') = x.chars().next() {
+                            x = &x[1..];
+                            y.is_doc = true;
+                        }
+                        if let Some(' ') = x.chars().next() {
+                            x = &x[1..];
+                        }
+                        y.texts.push(x.to_string());
+                    },
+                    None => {
+                        if !y.texts.is_empty() {
+                            let y = mem::replace(&mut y, dummy.clone());
+                            ys.push(y);
+                        }
+                        y.line = i + 2;
+                    },
+                }
+            }
+            if !y.texts.is_empty() {
+                ys.push(y);
+            }
+            ys
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct Location {
+        pub file: PathBuf,
+        pub line: usize,
+    }
+    impl fmt::Display for Location {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let p = self.file.strip_prefix(project_root()).unwrap().display().to_string();
+            let p = p.replace('\\', "/");
+            let n = self.file.file_name().unwrap();
+            write!(
+                f,
+                "https://github.com/rust-lang/rust-analyzer/blob/master/{}#L{}[{}]",
+                p,
+                self.line,
+                n.to_str().unwrap()
+            )
+        }
+    }
+
+    pub fn project_root() -> PathBuf {
+        let y = env!("CARGO_MANIFEST_DIR");
+        let y = PathBuf::from(y).parent().unwrap().parent().unwrap().to_owned();
+        assert!(y.join("triagebot.toml").exists());
+        y
+    }
+
     pub fn list_rust_files(x: &Path) -> Vec<PathBuf> {
         let mut ys = list_files(x);
         ys.retain(|x| {
@@ -450,25 +540,25 @@ mod srcgen {
         });
         ys
     }
-    pub fn list_files(x: &Path) -> Vec<PathBuf> {
+    fn list_files(x: &Path) -> Vec<PathBuf> {
         let mut ys = Vec::new();
-        let mut work = vec![x.to_path_buf()];
-        while let Some(dir) = work.pop() {
-            for entry in dir.read_dir().unwrap() {
-                let entry = entry.unwrap();
-                let file_type = entry.file_type().unwrap();
-                let path = entry.path();
-                let is_hidden = path
+        let mut xs = vec![x.to_path_buf()];
+        while let Some(x) = xs.pop() {
+            for e in x.read_dir().unwrap() {
+                let e = e.unwrap();
+                let p = e.path();
+                let is_hidden = p
                     .file_name()
                     .unwrap_or_default()
                     .to_str()
                     .unwrap_or_default()
                     .starts_with('.');
                 if !is_hidden {
-                    if file_type.is_dir() {
-                        work.push(path);
-                    } else if file_type.is_file() {
-                        ys.push(path);
+                    let t = e.file_type().unwrap();
+                    if t.is_dir() {
+                        xs.push(p);
+                    } else if t.is_file() {
+                        ys.push(p);
                     }
                 }
             }
@@ -476,98 +566,6 @@ mod srcgen {
         ys
     }
 
-    #[derive(Clone)]
-    pub struct CommentBlock {
-        pub id: String,
-        pub line: usize,
-        pub contents: Vec<String>,
-        is_doc: bool,
-    }
-    impl CommentBlock {
-        pub fn extract(tag: &str, text: &str) -> Vec<CommentBlock> {
-            assert!(tag.starts_with(char::is_uppercase));
-            let tag = format!("{tag}:");
-            let mut y = CommentBlock::extract_untagged(text);
-            y.retain_mut(|x| {
-                let first = x.contents.remove(0);
-                let Some(id) = first.strip_prefix(&tag) else { return false; };
-                if x.is_doc {
-                    panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");
-                }
-                x.id = id.trim().to_string();
-                true
-            });
-            y
-        }
-        pub fn extract_untagged(text: &str) -> Vec<CommentBlock> {
-            let mut y = Vec::new();
-            let lines = text.lines().map(str::trim_start);
-            let dummy = CommentBlock {
-                id: String::new(),
-                line: 0,
-                contents: Vec::new(),
-                is_doc: false,
-            };
-            let mut block = dummy.clone();
-            for (n, line) in lines.enumerate() {
-                match line.strip_prefix("//") {
-                    Some(mut x) => {
-                        if let Some('/' | '!') = x.chars().next() {
-                            x = &x[1..];
-                            block.is_doc = true;
-                        }
-                        if let Some(' ') = x.chars().next() {
-                            x = &x[1..];
-                        }
-                        block.contents.push(x.to_string());
-                    },
-                    None => {
-                        if !block.contents.is_empty() {
-                            let x = mem::replace(&mut block, dummy.clone());
-                            y.push(x);
-                        }
-                        block.line = n + 2;
-                    },
-                }
-            }
-            if !block.contents.is_empty() {
-                y.push(block);
-            }
-            y
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct Location {
-        pub file: PathBuf,
-        pub line: usize,
-    }
-    impl fmt::Display for Location {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let path = self.file.strip_prefix(project_root()).unwrap().display().to_string();
-            let path = path.replace('\\', "/");
-            let name = self.file.file_name().unwrap();
-            write!(
-                f,
-                "https://github.com/rust-lang/rust-analyzer/blob/master/{}#L{}[{}]",
-                path,
-                self.line,
-                name.to_str().unwrap()
-            )
-        }
-    }
-
-    fn ensure_rustfmt(sh: &Shell) {
-        let y = cmd!(sh, "rustup run stable rustfmt --version")
-            .read()
-            .unwrap_or_default();
-        if !y.contains("stable") {
-            panic!(
-                "Failed to run rustfmt from toolchain 'stable'. \
-                 Please run `rustup component add rustfmt --toolchain stable` to install it.",
-            );
-        }
-    }
     pub fn reformat(x: String) -> String {
         let sh = Shell::new().unwrap();
         ensure_rustfmt(&sh);
@@ -584,14 +582,24 @@ mod srcgen {
         }
         y
     }
-    pub fn add_preamble(generator: &'static str, mut text: String) -> String {
-        let preamble = format!("//! Generated by `{generator}`, do not edit by hand.\n\n");
-        text.insert_str(0, &preamble);
-        text
+    fn ensure_rustfmt(x: &Shell) {
+        let y = cmd!(x, "rustup run stable rustfmt --version")
+            .read()
+            .unwrap_or_default();
+        if !y.contains("stable") {
+            panic!("Failed to run rustfmt from toolchain 'stable'.",);
+        }
     }
-    pub fn ensure_file_contents(file: &Path, contents: &str) {
-        if let Ok(old_contents) = fs::read_to_string(file) {
-            if normalize_newlines(&old_contents) == normalize_newlines(contents) {
+
+    pub fn add_preamble(gen: &'static str, mut y: String) -> String {
+        let x = format!("//! Generated by `{gen}`, do not edit by hand.\n\n");
+        y.insert_str(0, &x);
+        y
+    }
+
+    pub fn ensure_file_contents(file: &Path, x: &str) {
+        if let Ok(y) = fs::read_to_string(file) {
+            if normalize_newlines(&y) == normalize_newlines(x) {
                 return;
             }
         }
@@ -606,19 +614,12 @@ mod srcgen {
         if let Some(parent) = file.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        fs::write(file, contents).unwrap();
+        fs::write(file, x).unwrap();
         panic!("some file was not up to date and has been updated, simply re-run the tests");
     }
 
     fn normalize_newlines(x: &str) -> String {
         x.replace("\r\n", "\n")
-    }
-
-    pub fn project_root() -> PathBuf {
-        let dir = env!("CARGO_MANIFEST_DIR");
-        let y = PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned();
-        assert!(y.join("triagebot.toml").exists());
-        y
     }
 }
 pub mod syntax;

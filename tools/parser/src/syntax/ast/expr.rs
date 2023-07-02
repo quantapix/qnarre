@@ -238,6 +238,7 @@ impl ast::IndexExpr {
         ast::children(self.syntax()).nth(1)
     }
 }
+
 pub enum ArrayExprKind {
     Repeat {
         initializer: Option<ast::Expr>,
@@ -260,6 +261,7 @@ impl ast::ArrayExpr {
         self.semicolon_token().is_some()
     }
 }
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LiteralKind {
     String(ast::String),
@@ -309,6 +311,7 @@ impl ast::Literal {
         }
     }
 }
+
 pub enum BlockModifier {
     Async(syntax::Token),
     Unsafe(syntax::Token),
@@ -316,6 +319,7 @@ pub enum BlockModifier {
     Const(syntax::Token),
     Label(ast::Label),
 }
+
 impl ast::BlockExpr {
     pub fn modifier(&self) -> Option<BlockModifier> {
         self.async_token()
@@ -340,12 +344,14 @@ impl ast::BlockExpr {
         }
     }
 }
+
 #[test]
 fn test_literal_with_attr() {
     let y = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
     let y = y.tree().syntax().descendants().find_map(ast::Literal::cast).unwrap();
     assert_eq!(y.token().text(), r#""Hello""#);
 }
+
 impl ast::RecordExprField {
     pub fn parent_record_lit(&self) -> ast::RecordExpr {
         self.syntax().ancestors().find_map(ast::RecordExpr::cast).unwrap()

@@ -103,13 +103,13 @@ pub mod ast {
     #[derive(Debug, Clone)]
     pub struct Children<N: Node> {
         inner: api::NodeChildren<N::Lang>,
-        ph: PhantomData<N>,
+        _ty: PhantomData<N>,
     }
     impl<N: Node> Children<N> {
         pub fn new(x: &api::Node<N::Lang>) -> Self {
             Children {
                 inner: x.children(),
-                ph: PhantomData,
+                _ty: PhantomData,
             }
         }
     }
@@ -586,7 +586,7 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 #[repr(transparent)]
 pub struct Arc<T: ?Sized> {
     pub p: ptr::NonNull<ArcInner<T>>,
-    pub phantom: PhantomData<T>,
+    _ty: PhantomData<T>,
 }
 impl<T> Arc<T> {
     #[inline]
@@ -594,7 +594,7 @@ impl<T> Arc<T> {
         let ptr = (ptr as *const u8).sub(offset_of!(ArcInner<T>, data));
         Arc {
             p: ptr::NonNull::new_unchecked(ptr as *mut ArcInner<T>),
-            phantom: PhantomData,
+            _ty: PhantomData,
         }
     }
 }
@@ -641,7 +641,7 @@ impl<H, T> Arc<HeaderSlice<H, [T]>> {
         let thin_ptr = fat_ptr as *mut [usize] as *mut usize;
         ThinArc {
             ptr: unsafe { ptr::NonNull::new_unchecked(thin_ptr as *mut ArcInner<HeaderSlice<H, [T; 0]>>) },
-            phantom: PhantomData,
+            _ty: PhantomData,
         }
     }
     #[inline]
@@ -651,7 +651,7 @@ impl<H, T> Arc<HeaderSlice<H, [T]>> {
         unsafe {
             Arc {
                 p: ptr::NonNull::new_unchecked(ptr),
-                phantom: PhantomData,
+                _ty: PhantomData,
             }
         }
     }
@@ -666,7 +666,7 @@ impl<T: ?Sized> Clone for Arc<T> {
         unsafe {
             Arc {
                 p: ptr::NonNull::new_unchecked(self.ptr()),
-                phantom: PhantomData,
+                _ty: PhantomData,
             }
         }
     }
@@ -755,7 +755,7 @@ impl<H, T> Deref for HeaderSlice<H, [T; 0]> {
 #[repr(transparent)]
 pub struct ThinArc<H, T> {
     ptr: ptr::NonNull<ArcInner<HeaderSlice<H, [T; 0]>>>,
-    phantom: PhantomData<(H, T)>,
+    _ty: PhantomData<(H, T)>,
 }
 impl<H, T> ThinArc<H, T> {
     #[inline]
@@ -766,7 +766,7 @@ impl<H, T> ThinArc<H, T> {
         let transient = unsafe {
             ManuallyDrop::new(Arc {
                 p: ptr::NonNull::new_unchecked(thin_to_thick(self.ptr.as_ptr())),
-                phantom: PhantomData,
+                _ty: PhantomData,
             })
         };
         let result = f(&transient);
@@ -812,7 +812,7 @@ impl<H, T> ThinArc<H, T> {
         }
         ThinArc {
             ptr: unsafe { ptr::NonNull::new_unchecked(ptr) },
-            phantom: PhantomData,
+            _ty: PhantomData,
         }
     }
 }
@@ -834,7 +834,7 @@ impl<H, T> Drop for ThinArc<H, T> {
     fn drop(&mut self) {
         let _ = Arc::from_thin(ThinArc {
             ptr: self.ptr,
-            phantom: PhantomData,
+            _ty: PhantomData,
         });
     }
 }

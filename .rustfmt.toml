@@ -9,3 +9,6 @@ newline_style = "Unix"
 use_field_init_shorthand = true
 use_try_shorthand = true
 # wrap_comments = true
+
+# reorder_modules = false
+# use_small_heuristics = "Max"

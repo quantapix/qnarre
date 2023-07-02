@@ -733,13 +733,13 @@ pub trait Token {
 #[derive(Debug, Clone)]
 pub struct Children<N> {
     inner: syntax::NodeChildren,
-    ph: PhantomData<N>,
+    _ty: PhantomData<N>,
 }
 impl<N> Children<N> {
     fn new(x: &syntax::Node) -> Self {
         Children {
             inner: x.children(),
-            ph: PhantomData,
+            _ty: PhantomData,
         }
     }
 }

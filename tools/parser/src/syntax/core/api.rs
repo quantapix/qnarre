@@ -10,7 +10,7 @@ pub trait Lang: Sized + Copy + fmt::Debug + Eq + Ord + std::hash::Hash {
 
 pub struct Preorder<L: Lang> {
     raw: cursor::Preorder,
-    _p: PhantomData<L>,
+    _ty: PhantomData<L>,
 }
 impl<L: Lang> Preorder<L> {
     pub fn skip_subtree(&mut self) {
@@ -26,7 +26,7 @@ impl<L: Lang> Iterator for Preorder<L> {
 
 pub struct PreorderWithToks<L: Lang> {
     raw: cursor::PreorderWithToks,
-    _p: PhantomData<L>,
+    _ty: PhantomData<L>,
 }
 impl<L: Lang> PreorderWithToks<L> {
     pub fn skip_subtree(&mut self) {
@@ -43,7 +43,7 @@ impl<L: Lang> Iterator for PreorderWithToks<L> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Node<L: Lang> {
     raw: cursor::Node,
-    _p: PhantomData<L>,
+    _ty: PhantomData<L>,
 }
 impl<L: Lang> Node<L> {
     pub fn new_root(x: green::Node) -> Node<L> {
@@ -76,13 +76,13 @@ impl<L: Lang> Node<L> {
     pub fn children(&self) -> NodeChildren<L> {
         NodeChildren {
             raw: self.raw.children(),
-            _p: PhantomData,
+            _ty: PhantomData,
         }
     }
     pub fn children_with_tokens(&self) -> ElemChildren<L> {
         ElemChildren {
             raw: self.raw.children_with_tokens(),
-            _p: PhantomData,
+            _ty: PhantomData,
         }
     }
     pub fn first_child(&self) -> Option<Node<L>> {
@@ -130,13 +130,13 @@ impl<L: Lang> Node<L> {
     pub fn preorder(&self) -> Preorder<L> {
         Preorder {
             raw: self.raw.preorder(),
-            _p: PhantomData,
+            _ty: PhantomData,
         }
     }
     pub fn preorder_with_tokens(&self) -> PreorderWithToks<L> {
         PreorderWithToks {
             raw: self.raw.preorder_with_tokens(),
-            _p: PhantomData,
+            _ty: PhantomData,
         }
     }
     pub fn token_at_offset(&self, x: syntax::TextSize) -> TokAtOffset<Token<L>> {
@@ -196,7 +196,7 @@ impl<L: Lang> fmt::Display for Node<L> {
 }
 impl<L: Lang> From<cursor::Node> for Node<L> {
     fn from(raw: cursor::Node) -> Node<L> {
-        Node { raw, _p: PhantomData }
+        Node { raw, _ty: PhantomData }
     }
 }
 impl<L: Lang> From<Node<L>> for cursor::Node {
@@ -208,7 +208,7 @@ impl<L: Lang> From<Node<L>> for cursor::Node {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Token<L: Lang> {
     raw: cursor::Token,
-    _p: PhantomData<L>,
+    _ty: PhantomData<L>,
 }
 impl<L: Lang> Token<L> {
     pub fn replace_with(&self, x: green::Token) -> green::Node {
@@ -281,7 +281,7 @@ impl<L: Lang> fmt::Display for Token<L> {
 }
 impl<L: Lang> From<cursor::Token> for Token<L> {
     fn from(raw: cursor::Token) -> Token<L> {
-        Token { raw, _p: PhantomData }
+        Token { raw, _ty: PhantomData }
     }
 }
 impl<L: Lang> From<Token<L>> for cursor::Token {
@@ -381,7 +381,7 @@ impl<L: Lang> From<Elem<L>> for cursor::Elem {
 #[derive(Debug, Clone)]
 pub struct NodeChildren<L: Lang> {
     raw: cursor::NodeChildren,
-    _p: PhantomData<L>,
+    _ty: PhantomData<L>,
 }
 impl<L: Lang> Iterator for NodeChildren<L> {
     type Item = Node<L>;
@@ -393,7 +393,7 @@ impl<L: Lang> Iterator for NodeChildren<L> {
 #[derive(Debug, Clone)]
 pub struct ElemChildren<L: Lang> {
     raw: cursor::ElemChildren,
-    _p: PhantomData<L>,
+    _ty: PhantomData<L>,
 }
 impl<L: Lang> Iterator for ElemChildren<L> {
     type Item = Elem<L>;
