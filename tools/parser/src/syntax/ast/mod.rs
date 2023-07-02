@@ -1,12 +1,12 @@
 pub use self::{
-    expr_ext::{ArrayExprKind, BlockModifier, CallableExpr, ElseBranch, LiteralKind},
+    expr::{ArrayExprKind, BlockModifier, CallableExpr, ElseBranch, LiteralKind},
     generated::{nodes::*, tokens::*},
-    node_ext::{
+    node::{
         AttrKind, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
         StructKind, TraitOrAlias, TypeBoundKind, TypeOrConstParam, VisibilityKind,
     },
     operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-    token_ext::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
+    token::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
     traits::{
         AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
         HasModuleItem, HasName, HasTypeBounds, HasVisibility,
@@ -167,7 +167,7 @@ pub mod edit {
     }
 }
 pub mod edit_in_place;
-mod expr_ext;
+mod expr;
 mod generated {
     pub mod nodes;
     pub mod tokens;
@@ -204,7 +204,7 @@ mod generated {
     }
 }
 pub mod make;
-mod node_ext;
+mod node;
 mod operators {
     use std::fmt;
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -570,7 +570,7 @@ pub mod prec {
         }
     }
 }
-mod token_ext;
+mod token;
 mod traits {
     use crate::{
         syntax::{
