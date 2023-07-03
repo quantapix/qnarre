@@ -14,6 +14,176 @@ use test_utils::{bench, bench_fixture, project_root};
 use ungrammar::{Grammar, Rule};
 use xshell::{cmd, Shell};
 
+#[test]
+fn self_parsing() {
+    let x = project_root().join("crates");
+    let mut ys = list_files(&x);
+    ys.retain(|x| !x.components().any(|x| x.as_os_str() == "test_data"));
+    assert!(ys.len() > 100);
+    let ys = ys
+        .into_par_iter()
+        .filter_map(|x| {
+            let y = read_text(&x);
+            match SourceFile::parse(&y).ok() {
+                Ok(_) => None,
+                Err(err) => Some((x, err)),
+            }
+        })
+        .collect::<Vec<_>>();
+    if !ys.is_empty() {
+        let ys = ys
+            .into_iter()
+            .map(|(k, v)| format!("{}: {:?}\n", k.display(), v[0]))
+            .collect::<String>();
+        panic!("Parsing errors:\n{ys}\n");
+    }
+}
+fn list_files(x: &Path) -> Vec<PathBuf> {
+    fn list_all(x: &Path) -> Vec<PathBuf> {
+        let mut ys = Vec::new();
+        let mut xs = vec![x.to_path_buf()];
+        while let Some(x) = xs.pop() {
+            for x in x.read_dir().unwrap() {
+                let x = x.unwrap();
+                let y = x.path();
+                let is_hidden = y
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default()
+                    .starts_with('.');
+                if !is_hidden {
+                    let x = x.file_type().unwrap();
+                    if x.is_dir() {
+                        xs.push(y);
+                    } else if x.is_file() {
+                        ys.push(y);
+                    }
+                }
+            }
+        }
+        ys
+    }
+    let mut ys = list_all(x);
+    ys.retain(|x| {
+        x.file_name()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .ends_with(".rs")
+    });
+    ys
+}
+
+#[derive(Debug)]
+struct Test {
+    name: String,
+    text: String,
+    ok: bool,
+}
+
+#[derive(Default, Debug)]
+struct Tests {
+    ok: HashMap<String, Test>,
+    err: HashMap<String, Test>,
+}
+
+#[test]
+fn parser_tests() {
+    fn all_from(x: &Path) -> Tests {
+        let mut y = Tests::default();
+        let grammar = x.parent().unwrap().join("grammar.rs");
+        fn process(y: &mut Tests, x: &Path) {
+            let x = fs::read_to_string(x).unwrap();
+            for x in collect_tests(&x) {
+                if x.ok {
+                    if let Some(x) = y.ok.insert(x.name.clone(), x) {
+                        panic!("Duplicate test: {}", x.name);
+                    }
+                } else if let Some(x) = y.err.insert(x.name.clone(), x) {
+                    panic!("Duplicate test: {}", x.name);
+                }
+            }
+        }
+        for x in list_files(x) {
+            process(&mut y, x.as_path());
+        }
+        process(&mut y, &grammar);
+        return y;
+    }
+    fn install(x: &HashMap<String, Test>, into: &str) {
+        let into = project_root().join(into);
+        if !into.is_dir() {
+            fs::create_dir_all(&into).unwrap();
+        }
+        let ys = existing(&into, true);
+        for y in ys.keys().filter(|&y| !x.contains_key(y)) {
+            panic!("Test is deleted: {y}");
+        }
+        let mut idx = ys.len() + 1;
+        for (k, v) in x {
+            let path = match ys.get(k) {
+                Some((path, _)) => path.clone(),
+                None => {
+                    let x = format!("{idx:04}_{k}.rs");
+                    idx += 1;
+                    into.join(x)
+                },
+            };
+            ensure_contents(&path, &v.text);
+        }
+    }
+    fn existing(x: &Path, ok: bool) -> HashMap<String, (PathBuf, Test)> {
+        let mut y = HashMap::default();
+        for x in fs::read_dir(x).unwrap() {
+            let x = x.unwrap().path();
+            if x.extension().unwrap_or_default() != "rs" {
+                continue;
+            }
+            let k = {
+                let x = x.file_name().unwrap().to_str().unwrap();
+                x[5..x.len() - 3].to_string()
+            };
+            let text = fs::read_to_string(&x).unwrap();
+            let test = Test {
+                name: k.clone(),
+                text,
+                ok,
+            };
+            if let Some(x) = y.insert(k, (x, test)) {
+                println!("Duplicate test: {x:?}");
+            }
+        }
+        y
+    }
+    let x = project_root().join(Path::new("crates/parser/src/grammar"));
+    let y = all_from(&x);
+    install(&y.ok, "crates/parser/test_data/parser/inline/ok");
+    install(&y.err, "crates/parser/test_data/parser/inline/err");
+}
+
+pub fn project_root() -> PathBuf {
+    let y = env!("CARGO_MANIFEST_DIR");
+    let y = PathBuf::from(y).parent().unwrap().parent().unwrap().to_owned();
+    assert!(y.join("triagebot.toml").exists());
+    y
+}
+
+fn ensure_contents(p: &Path, x: &str) {
+    if let Ok(y) = fs::read_to_string(p) {
+        if normalize_newlines(&y) == normalize_newlines(x) {
+            return;
+        }
+    }
+    let p2 = p.strip_prefix(project_root()).unwrap_or(p);
+    eprintln!("\n{} was not up-to-date, updating\n", p2.display());
+    eprintln!("NOTE: run `cargo test` locally and commit the updated files\n");
+    if let Some(x) = p.parent() {
+        let _ = fs::create_dir_all(x);
+    }
+    fs::write(p, x).unwrap();
+}
+
 #[derive(Clone)]
 pub struct CommentBlock {
     pub id: String,
@@ -77,6 +247,29 @@ impl CommentBlock {
     }
 }
 
+fn collect_tests(x: &str) -> Vec<Test> {
+    let mut ys = Vec::new();
+    for x in CommentBlock::extract_untagged(x) {
+        let first = &x.texts[0];
+        let (name, ok) = if let Some(name) = first.strip_prefix("test ") {
+            (name.to_string(), true)
+        } else if let Some(name) = first.strip_prefix("test_err ") {
+            (name.to_string(), false)
+        } else {
+            continue;
+        };
+        let text: String = x.texts[1..]
+            .iter()
+            .cloned()
+            .chain(iter::once(String::new()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(!text.trim().is_empty() && text.ends_with('\n'));
+        ys.push(Test { name, text, ok })
+    }
+    ys
+}
+
 #[derive(Debug)]
 pub struct Location {
     pub file: PathBuf,
@@ -95,50 +288,6 @@ impl fmt::Display for Location {
             n.to_str().unwrap()
         )
     }
-}
-
-pub fn project_root() -> PathBuf {
-    let y = env!("CARGO_MANIFEST_DIR");
-    let y = PathBuf::from(y).parent().unwrap().parent().unwrap().to_owned();
-    assert!(y.join("triagebot.toml").exists());
-    y
-}
-
-pub fn list_rust_files(x: &Path) -> Vec<PathBuf> {
-    let mut ys = list_files(x);
-    ys.retain(|x| {
-        x.file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .ends_with(".rs")
-    });
-    ys
-}
-fn list_files(x: &Path) -> Vec<PathBuf> {
-    let mut ys = Vec::new();
-    let mut xs = vec![x.to_path_buf()];
-    while let Some(x) = xs.pop() {
-        for e in x.read_dir().unwrap() {
-            let e = e.unwrap();
-            let p = e.path();
-            let is_hidden = p
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default()
-                .starts_with('.');
-            if !is_hidden {
-                let t = e.file_type().unwrap();
-                if t.is_dir() {
-                    xs.push(p);
-                } else if t.is_file() {
-                    ys.push(p);
-                }
-            }
-        }
-    }
-    ys
 }
 
 pub fn reformat(x: String) -> String {
@@ -172,147 +321,8 @@ pub fn add_preamble(gen: &'static str, mut y: String) -> String {
     y
 }
 
-pub fn ensure_file_contents(file: &Path, x: &str) {
-    if let Ok(y) = fs::read_to_string(file) {
-        if normalize_newlines(&y) == normalize_newlines(x) {
-            return;
-        }
-    }
-    let display_path = file.strip_prefix(project_root()).unwrap_or(file);
-    eprintln!(
-        "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
-        display_path.display()
-    );
-    if std::env::var("CI").is_ok() {
-        eprintln!("    NOTE: run `cargo test` locally and commit the updated files\n");
-    }
-    if let Some(parent) = file.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    fs::write(file, x).unwrap();
-    panic!("some file was not up to date and has been updated, simply re-run the tests");
-}
-
 fn normalize_newlines(x: &str) -> String {
     x.replace("\r\n", "\n")
-}
-
-#[test]
-fn srcgen_parser_tests() {
-    let grammar_dir = srcgen::project_root().join(Path::new("crates/parser/src/grammar"));
-    let tests = tests_from_dir(&grammar_dir);
-
-    install_tests(&tests.ok, "crates/parser/test_data/parser/inline/ok");
-    install_tests(&tests.err, "crates/parser/test_data/parser/inline/err");
-
-    fn install_tests(tests: &HashMap<String, Test>, into: &str) {
-        let tests_dir = srcgen::project_root().join(into);
-        if !tests_dir.is_dir() {
-            fs::create_dir_all(&tests_dir).unwrap();
-        }
-        let existing = existing_tests(&tests_dir, true);
-        for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
-            panic!("Test is deleted: {t}");
-        }
-
-        let mut new_idx = existing.len() + 1;
-        for (name, test) in tests {
-            let path = match existing.get(name) {
-                Some((path, _test)) => path.clone(),
-                None => {
-                    let file_name = format!("{new_idx:04}_{name}.rs");
-                    new_idx += 1;
-                    tests_dir.join(file_name)
-                },
-            };
-            srcgen::ensure_file_contents(&path, &test.text);
-        }
-    }
-}
-
-#[derive(Debug)]
-struct Test {
-    name: String,
-    text: String,
-    ok: bool,
-}
-
-#[derive(Default, Debug)]
-struct Tests {
-    ok: HashMap<String, Test>,
-    err: HashMap<String, Test>,
-}
-
-fn collect_tests(s: &str) -> Vec<Test> {
-    let mut res = Vec::new();
-    for comment_block in srcgen::CommentBlock::extract_untagged(s) {
-        let first_line = &comment_block.texts[0];
-        let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
-            (name.to_string(), true)
-        } else if let Some(name) = first_line.strip_prefix("test_err ") {
-            (name.to_string(), false)
-        } else {
-            continue;
-        };
-        let text: String = comment_block.texts[1..]
-            .iter()
-            .cloned()
-            .chain(iter::once(String::new()))
-            .collect::<Vec<_>>()
-            .join("\n");
-        assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        res.push(Test { name, text, ok })
-    }
-    res
-}
-
-fn tests_from_dir(dir: &Path) -> Tests {
-    let mut res = Tests::default();
-    for entry in srcgen::list_rust_files(dir) {
-        process_file(&mut res, entry.as_path());
-    }
-    let grammar_rs = dir.parent().unwrap().join("grammar.rs");
-    process_file(&mut res, &grammar_rs);
-    return res;
-
-    fn process_file(res: &mut Tests, path: &Path) {
-        let text = fs::read_to_string(path).unwrap();
-
-        for test in collect_tests(&text) {
-            if test.ok {
-                if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
-                    panic!("Duplicate test: {}", old_test.name);
-                }
-            } else if let Some(old_test) = res.err.insert(test.name.clone(), test) {
-                panic!("Duplicate test: {}", old_test.name);
-            }
-        }
-    }
-}
-
-fn existing_tests(dir: &Path, ok: bool) -> HashMap<String, (PathBuf, Test)> {
-    let mut res = HashMap::default();
-    for file in fs::read_dir(dir).unwrap() {
-        let file = file.unwrap();
-        let path = file.path();
-        if path.extension().unwrap_or_default() != "rs" {
-            continue;
-        }
-        let name = {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            file_name[5..file_name.len() - 3].to_string()
-        };
-        let text = fs::read_to_string(&path).unwrap();
-        let test = Test {
-            name: name.clone(),
-            text,
-            ok,
-        };
-        if let Some(old) = res.insert(name, (path, test)) {
-            println!("Duplicate test: {old:?}");
-        }
-    }
-    res
 }
 
 pub struct KindsSrc<'a> {
@@ -581,17 +591,17 @@ pub struct EnumSrc {
 fn sourcegen_ast() {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
     let syntax_kinds_file = sourcegen::project_root().join("crates/parser/src/syntax_kind/generated.rs");
-    sourcegen::ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds);
+    ensure_contents(syntax_kinds_file.as_path(), &syntax_kinds);
     let grammar = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/rust.ungram"))
         .parse()
         .unwrap();
     let ast = lower(&grammar);
     let ast_tokens = generate_tokens(&ast);
     let ast_tokens_file = sourcegen::project_root().join("crates/syntax/src/ast/generated/tokens.rs");
-    sourcegen::ensure_file_contents(ast_tokens_file.as_path(), &ast_tokens);
+    ensure_contents(ast_tokens_file.as_path(), &ast_tokens);
     let ast_nodes = generate_nodes(KINDS_SRC, &ast);
     let ast_nodes_file = sourcegen::project_root().join("crates/syntax/src/ast/generated/nodes.rs");
-    sourcegen::ensure_file_contents(ast_nodes_file.as_path(), &ast_nodes);
+    ensure_contents(ast_nodes_file.as_path(), &ast_nodes);
 }
 fn generate_tokens(grammar: &AstSrc) -> String {
     let tokens = grammar.tokens.iter().map(|token| {

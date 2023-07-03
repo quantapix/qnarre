@@ -65,35 +65,6 @@ fn reparse_fuzz_tests() {
     }
 }
 
-#[test]
-fn self_hosting_parsing() {
-    let crates_dir = project_root().join("crates");
-    let mut files = ::sourcegen::list_rust_files(&crates_dir);
-    files.retain(|path| !path.components().any(|component| component.as_os_str() == "test_data"));
-
-    assert!(
-        files.len() > 100,
-        "self_hosting_parsing found too few files - is it running in the right directory?"
-    );
-    let errors = files
-        .into_par_iter()
-        .filter_map(|file| {
-            let text = read_text(&file);
-            match SourceFile::parse(&text).ok() {
-                Ok(_) => None,
-                Err(err) => Some((file, err)),
-            }
-        })
-        .collect::<Vec<_>>();
-    if !errors.is_empty() {
-        let errors = errors
-            .into_iter()
-            .map(|(path, err)| format!("{}: {:?}\n", path.display(), err[0]))
-            .collect::<String>();
-        panic!("Parsing errors:\n{errors}\n");
-    }
-}
-
 fn test_data_dir() -> PathBuf {
     project_root().join("crates/syntax/test_data")
 }
