@@ -8,140 +8,6 @@ use std::{
     sync::Once,
 };
 
-mod srcgen {
-    use crate::srcgen;
-    use std::{
-        collections::HashMap,
-        fs, iter,
-        path::{Path, PathBuf},
-    };
-
-    #[test]
-    fn srcgen_parser_tests() {
-        let grammar_dir = srcgen::project_root().join(Path::new("crates/parser/src/grammar"));
-        let tests = tests_from_dir(&grammar_dir);
-
-        install_tests(&tests.ok, "crates/parser/test_data/parser/inline/ok");
-        install_tests(&tests.err, "crates/parser/test_data/parser/inline/err");
-
-        fn install_tests(tests: &HashMap<String, Test>, into: &str) {
-            let tests_dir = srcgen::project_root().join(into);
-            if !tests_dir.is_dir() {
-                fs::create_dir_all(&tests_dir).unwrap();
-            }
-            let existing = existing_tests(&tests_dir, true);
-            for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
-                panic!("Test is deleted: {t}");
-            }
-
-            let mut new_idx = existing.len() + 1;
-            for (name, test) in tests {
-                let path = match existing.get(name) {
-                    Some((path, _test)) => path.clone(),
-                    None => {
-                        let file_name = format!("{new_idx:04}_{name}.rs");
-                        new_idx += 1;
-                        tests_dir.join(file_name)
-                    },
-                };
-                srcgen::ensure_file_contents(&path, &test.text);
-            }
-        }
-    }
-
-    #[derive(Debug)]
-    struct Test {
-        name: String,
-        text: String,
-        ok: bool,
-    }
-
-    #[derive(Default, Debug)]
-    struct Tests {
-        ok: HashMap<String, Test>,
-        err: HashMap<String, Test>,
-    }
-
-    fn collect_tests(s: &str) -> Vec<Test> {
-        let mut res = Vec::new();
-        for comment_block in srcgen::CommentBlock::extract_untagged(s) {
-            let first_line = &comment_block.texts[0];
-            let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
-                (name.to_string(), true)
-            } else if let Some(name) = first_line.strip_prefix("test_err ") {
-                (name.to_string(), false)
-            } else {
-                continue;
-            };
-            let text: String = comment_block.texts[1..]
-                .iter()
-                .cloned()
-                .chain(iter::once(String::new()))
-                .collect::<Vec<_>>()
-                .join("\n");
-            assert!(!text.trim().is_empty() && text.ends_with('\n'));
-            res.push(Test { name, text, ok })
-        }
-        res
-    }
-
-    fn tests_from_dir(dir: &Path) -> Tests {
-        let mut res = Tests::default();
-        for entry in srcgen::list_rust_files(dir) {
-            process_file(&mut res, entry.as_path());
-        }
-        let grammar_rs = dir.parent().unwrap().join("grammar.rs");
-        process_file(&mut res, &grammar_rs);
-        return res;
-
-        fn process_file(res: &mut Tests, path: &Path) {
-            let text = fs::read_to_string(path).unwrap();
-
-            for test in collect_tests(&text) {
-                if test.ok {
-                    if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
-                        panic!("Duplicate test: {}", old_test.name);
-                    }
-                } else if let Some(old_test) = res.err.insert(test.name.clone(), test) {
-                    panic!("Duplicate test: {}", old_test.name);
-                }
-            }
-        }
-    }
-
-    fn existing_tests(dir: &Path, ok: bool) -> HashMap<String, (PathBuf, Test)> {
-        let mut res = HashMap::default();
-        for file in fs::read_dir(dir).unwrap() {
-            let file = file.unwrap();
-            let path = file.path();
-            if path.extension().unwrap_or_default() != "rs" {
-                continue;
-            }
-            let name = {
-                let file_name = path.file_name().unwrap().to_str().unwrap();
-                file_name[5..file_name.len() - 3].to_string()
-            };
-            let text = fs::read_to_string(&path).unwrap();
-            let test = Test {
-                name: name.clone(),
-                text,
-                ok,
-            };
-            if let Some(old) = res.insert(name, (path, test)) {
-                println!("Duplicate test: {old:?}");
-            }
-        }
-        res
-    }
-}
-
-pub fn enter(context: String) -> PanicContext {
-    static ONCE: Once = Once::new();
-    ONCE.call_once(PanicContext::init);
-    with_ctx(|ctx| ctx.push(context));
-    PanicContext { _priv: () }
-}
-
 #[must_use]
 pub struct PanicContext {
     _priv: (),
@@ -149,15 +15,15 @@ pub struct PanicContext {
 impl PanicContext {
     fn init() {
         let default_hook = panic::take_hook();
-        let hook = move |panic_info: &panic::PanicInfo<'_>| {
-            with_ctx(|ctx| {
-                if !ctx.is_empty() {
+        let hook = move |p: &panic::PanicInfo<'_>| {
+            with_ctx(|x| {
+                if !x.is_empty() {
                     eprintln!("Panic context:");
-                    for frame in ctx.iter() {
+                    for frame in x.iter() {
                         eprintln!("> {frame}\n");
                     }
                 }
-                default_hook(panic_info);
+                default_hook(p);
             });
         };
         panic::set_hook(Box::new(hook));
@@ -165,103 +31,111 @@ impl PanicContext {
 }
 impl Drop for PanicContext {
     fn drop(&mut self) {
-        with_ctx(|ctx| assert!(ctx.pop().is_some()));
+        with_ctx(|x| assert!(x.pop().is_some()));
     }
 }
 fn with_ctx(f: impl FnOnce(&mut Vec<String>)) {
     thread_local! {
         static CTX: RefCell<Vec<String>> = RefCell::new(Vec::new());
     }
-    CTX.with(|ctx| f(&mut ctx.borrow_mut()));
+    CTX.with(|x| f(&mut x.borrow_mut()));
+}
+
+pub fn enter(ctx: String) -> PanicContext {
+    static ONCE: Once = Once::new();
+    ONCE.call_once(PanicContext::init);
+    with_ctx(|x| x.push(ctx));
+    PanicContext { _priv: () }
 }
 
 #[test]
 fn lex_ok() {
-    for case in TestCase::list("lexer/ok") {
-        let _guard = enter(format!("{:?}", case.rs));
-        let actual = lex(&case.text);
-        expect_file![case.rast].assert_eq(&actual)
+    for x in TestCase::list("lexer/ok") {
+        let _guard = enter(format!("{:?}", x.rs));
+        let y = lex(&x.text);
+        expect_file![x.rast].assert_eq(&y)
     }
 }
 #[test]
 fn lex_err() {
-    for case in TestCase::list("lexer/err") {
-        let _guard = enter(format!("{:?}", case.rs));
-        let actual = lex(&case.text);
-        expect_file![case.rast].assert_eq(&actual)
+    for x in TestCase::list("lexer/err") {
+        let _guard = enter(format!("{:?}", x.rs));
+        let y = lex(&x.text);
+        expect_file![x.rast].assert_eq(&y)
     }
 }
-fn lex(text: &str) -> String {
-    let lexed = Lexed::new(text);
-    let mut res = String::new();
-    for i in 0..lexed.len() {
-        let kind = lexed.kind(i);
-        let text = lexed.text(i);
-        let error = lexed.err(i);
-        let error = error.map(|err| format!(" error: {err}")).unwrap_or_default();
-        writeln!(res, "{kind:?} {text:?}{error}").unwrap();
+fn lex(x: &str) -> String {
+    let x = Lexed::new(x);
+    let mut y = String::new();
+    for i in 0..x.len() {
+        let kind = x.kind(i);
+        let text = x.text(i);
+        let err = x.err(i);
+        let err = err.map(|x| format!(" error: {x}")).unwrap_or_default();
+        writeln!(y, "{kind:?} {text:?}{err}").unwrap();
     }
-    res
+    y
 }
 #[test]
 fn parse_ok() {
-    for case in TestCase::list("parser/ok") {
-        let _guard = enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
-        assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual);
+    for x in TestCase::list("parser/ok") {
+        let _guard = enter(format!("{:?}", x.rs));
+        let (y, errs) = parse(TopEntry::SourceFile, &x.text);
+        assert!(!errs, "errors in an OK file {}:\n{y}", x.rs.display());
+        expect_file![x.rast].assert_eq(&y);
     }
 }
 #[test]
 fn parse_inline_ok() {
-    for case in TestCase::list("parser/inline/ok") {
-        let _guard = enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
-        assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual);
+    for x in TestCase::list("parser/inline/ok") {
+        let _guard = enter(format!("{:?}", x.rs));
+        let (y, errs) = parse(TopEntry::SourceFile, &x.text);
+        assert!(!errs, "errors in an OK file {}:\n{y}", x.rs.display());
+        expect_file![x.rast].assert_eq(&y);
     }
 }
 #[test]
 fn parse_err() {
-    for case in TestCase::list("parser/err") {
-        let _guard = enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
-        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual)
+    for x in TestCase::list("parser/err") {
+        let _guard = enter(format!("{:?}", x.rs));
+        let (y, errs) = parse(TopEntry::SourceFile, &x.text);
+        assert!(errs, "no errors in an ERR file {}:\n{y}", x.rs.display());
+        expect_file![x.rast].assert_eq(&y)
     }
 }
 #[test]
 fn parse_inline_err() {
-    for case in TestCase::list("parser/inline/err") {
-        let _guard = enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntry::SourceFile, &case.text);
-        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual)
+    for x in TestCase::list("parser/inline/err") {
+        let _guard = enter(format!("{:?}", x.rs));
+        let (y, errs) = parse(TopEntry::SourceFile, &x.text);
+        assert!(errs, "no errors in an ERR file {}:\n{y}", x.rs.display());
+        expect_file![x.rast].assert_eq(&y)
     }
 }
 
 fn parse(entry: TopEntry, text: &str) -> (String, bool) {
     let lexed = Lexed::new(text);
     let input = lexed.to_input();
-    let output = entry.parse(&input);
-    let mut buf = String::new();
-    let mut errors = Vec::new();
+    let out = entry.parse(&input);
+    let mut y = String::new();
+    let mut errs = Vec::new();
     let mut indent = String::new();
     let mut depth = 0;
     let mut len = 0;
-    lexed.intersperse_trivia(&output, &mut |step| match step {
-        crate::StrStep::Token { kind, text } => {
+    use crate::StrStep::*;
+    lexed.intersperse_trivia(&out, &mut |step| match step {
+        Token { kind, text } => {
             assert!(depth > 0);
             len += text.len();
-            writeln!(buf, "{indent}{kind:?} {text:?}").unwrap();
+            writeln!(y, "{indent}{kind:?} {text:?}").unwrap();
         },
-        crate::StrStep::Enter { kind } => {
+        Enter { kind } => {
             assert!(depth > 0 || len == 0);
             depth += 1;
-            writeln!(buf, "{indent}{kind:?}").unwrap();
+            writeln!(y, "{indent}{kind:?}").unwrap();
             indent.push_str("  ");
         },
-        crate::StrStep::Exit => {
+        Exit => {
             assert!(depth > 0);
             depth -= 1;
             indent.pop();
@@ -269,7 +143,7 @@ fn parse(entry: TopEntry, text: &str) -> (String, bool) {
         },
         crate::StrStep::Error { msg, pos } => {
             assert!(depth > 0);
-            errors.push(format!("error {pos}: {msg}\n"))
+            errs.push(format!("error {pos}: {msg}\n"))
         },
     });
     assert_eq!(
@@ -281,13 +155,13 @@ fn parse(entry: TopEntry, text: &str) -> (String, bool) {
     );
     for (token, msg) in lexed.errs() {
         let pos = lexed.text_start(token);
-        errors.push(format!("error {pos}: {msg}\n"));
+        errs.push(format!("error {pos}: {msg}\n"));
     }
-    let has_errors = !errors.is_empty();
-    for e in errors {
-        buf.push_str(&e);
+    let has_errs = !errs.is_empty();
+    for e in errs {
+        y.push_str(&e);
     }
-    (buf, has_errors)
+    (y, has_errs)
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -301,7 +175,7 @@ impl TestCase {
         let crate_root_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let test_data_dir = crate_root_dir.join("test_data");
         let dir = test_data_dir.join(path);
-        let mut res = Vec::new();
+        let mut y = Vec::new();
         let read_dir = fs::read_dir(&dir).unwrap_or_else(|err| panic!("can't `read_dir` {}: {err}", dir.display()));
         for file in read_dir {
             let file = file.unwrap();
@@ -310,105 +184,94 @@ impl TestCase {
                 let rs = path;
                 let rast = rs.with_extension("rast");
                 let text = fs::read_to_string(&rs).unwrap();
-                res.push(TestCase { rs, rast, text });
+                y.push(TestCase { rs, rast, text });
             }
         }
-        res.sort();
-        res
+        y.sort();
+        y
     }
 }
 
 mod pre {
-    use crate::{Lexed, PreEntry, Step};
-
+    use crate::{
+        Lexed,
+        PreEntry::{self, *},
+        Step,
+    };
     #[test]
     fn vis() {
-        check(PreEntry::Vis, "pub fn foo() {}", "pub(crate)");
-        check(PreEntry::Vis, "fn foo() {}", "");
-        check(PreEntry::Vis, "pub(fn foo() {}", "pub");
-        check(PreEntry::Vis, "pub(crate fn foo() {}", "pub(crate");
-        check(PreEntry::Vis, "crate fn foo() {}", "crate");
+        check(Vis, "pub fn foo() {}", "pub(crate)");
+        check(Vis, "fn foo() {}", "");
+        check(Vis, "pub(fn foo() {}", "pub");
+        check(Vis, "pub(crate fn foo() {}", "pub(crate");
+        check(Vis, "crate fn foo() {}", "crate");
     }
-
     #[test]
     fn block() {
-        check(PreEntry::Block, "{}, 92", "{}");
-        check(PreEntry::Block, "{, 92)", "{, 92)");
-        check(PreEntry::Block, "()", "");
+        check(Block, "{}, 92", "{}");
+        check(Block, "{, 92)", "{, 92)");
+        check(Block, "()", "");
     }
-
     #[test]
     fn stmt() {
-        check(PreEntry::Stmt, "92; fn", "92");
-        check(PreEntry::Stmt, "let _ = 92; 1", "let _ = 92");
-        check(PreEntry::Stmt, "pub fn f() {} = 92", "pub fn f() {}");
-        check(PreEntry::Stmt, "struct S;;", "struct S;");
-        check(PreEntry::Stmt, "fn f() {};", "fn f() {}");
-        check(PreEntry::Stmt, ";;;", ";");
-        check(PreEntry::Stmt, "+", "+");
-        check(PreEntry::Stmt, "@", "@");
-        check(PreEntry::Stmt, "loop {} - 1", "loop {}");
+        check(Stmt, "92; fn", "92");
+        check(Stmt, "let _ = 92; 1", "let _ = 92");
+        check(Stmt, "pub fn f() {} = 92", "pub fn f() {}");
+        check(Stmt, "struct S;;", "struct S;");
+        check(Stmt, "fn f() {};", "fn f() {}");
+        check(Stmt, ";;;", ";");
+        check(Stmt, "+", "+");
+        check(Stmt, "@", "@");
+        check(Stmt, "loop {} - 1", "loop {}");
     }
-
     #[test]
     fn pat() {
-        check(PreEntry::Pat, "x y", "x");
-        check(PreEntry::Pat, "fn f() {}", "fn");
-        check(PreEntry::Pat, ".. ..", "..");
+        check(Pat, "x y", "x");
+        check(Pat, "fn f() {}", "fn");
+        check(Pat, ".. ..", "..");
     }
-
     #[test]
     fn ty() {
-        check(PreEntry::Ty, "fn() foo", "fn()");
-        check(PreEntry::Ty, "Clone + Copy + fn", "Clone + Copy +");
-        check(PreEntry::Ty, "struct f", "struct");
+        check(Ty, "fn() foo", "fn()");
+        check(Ty, "Clone + Copy + fn", "Clone + Copy +");
+        check(Ty, "struct f", "struct");
     }
-
     #[test]
     fn expr() {
-        check(PreEntry::Expr, "92 92", "92");
-        check(PreEntry::Expr, "+1", "+");
-        check(PreEntry::Expr, "-1", "-1");
-        check(PreEntry::Expr, "fn foo() {}", "fn");
-        check(PreEntry::Expr, "#[attr] ()", "#[attr] ()");
-        check(PreEntry::Expr, "foo.0", "foo.0");
-        check(PreEntry::Expr, "foo.0.1", "foo.0.1");
-        check(PreEntry::Expr, "foo.0. foo", "foo.0. foo");
+        check(Expr, "92 92", "92");
+        check(Expr, "+1", "+");
+        check(Expr, "-1", "-1");
+        check(Expr, "fn foo() {}", "fn");
+        check(Expr, "#[attr] ()", "#[attr] ()");
+        check(Expr, "foo.0", "foo.0");
+        check(Expr, "foo.0.1", "foo.0.1");
+        check(Expr, "foo.0. foo", "foo.0. foo");
     }
-
     #[test]
     fn path() {
-        check(PreEntry::Path, "foo::bar baz", "foo::bar");
-        check(PreEntry::Path, "foo::<> baz", "foo::<>");
-        check(PreEntry::Path, "foo<> baz", "foo<>");
-        check(PreEntry::Path, "Fn() -> i32?", "Fn() -> i32");
-        check(PreEntry::Path, "<_>::foo", "<_>::foo");
+        check(Path, "foo::bar baz", "foo::bar");
+        check(Path, "foo::<> baz", "foo::<>");
+        check(Path, "foo<> baz", "foo<>");
+        check(Path, "Fn() -> i32?", "Fn() -> i32");
+        check(Path, "<_>::foo", "<_>::foo");
     }
-
     #[test]
     fn item() {
-        check(PreEntry::Item, "fn foo() {};", "fn foo() {};");
-        check(PreEntry::Item, "#[attr] pub struct S {} 92", "#[attr] pub struct S {}");
-        check(PreEntry::Item, "item!{}?", "item!{}");
-        check(PreEntry::Item, "????", "?");
+        check(Item, "fn foo() {};", "fn foo() {};");
+        check(Item, "#[attr] pub struct S {} 92", "#[attr] pub struct S {}");
+        check(Item, "item!{}?", "item!{}");
+        check(Item, "????", "?");
     }
-
     #[test]
     fn meta_item() {
-        check(PreEntry::MetaItem, "attr, ", "attr");
-        check(
-            PreEntry::MetaItem,
-            "attr(some token {stream});",
-            "attr(some token {stream})",
-        );
-        check(PreEntry::MetaItem, "path::attr = 2 * 2!", "path::attr = 2 * 2");
+        check(MetaItem, "attr, ", "attr");
+        check(MetaItem, "attr(some token {stream});", "attr(some token {stream})");
+        check(MetaItem, "path::attr = 2 * 2!", "path::attr = 2 * 2");
     }
-
     #[track_caller]
     fn check(entry: PreEntry, input: &str, prefix: &str) {
         let lexed = Lexed::new(input);
         let input = lexed.to_input();
-
         let mut n_tokens = 0;
         for step in entry.parse(&input).iter() {
             match step {
@@ -437,22 +300,20 @@ mod pre {
 }
 
 mod top {
+    use crate::TopEntry::{self, *};
     use expect_test::expect;
-
-    use crate::TopEntry;
 
     #[test]
     fn source_file() {
         check(
-            TopEntry::SourceFile,
+            SourceFile,
             "",
             expect![[r#"
         SOURCE_FILE
     "#]],
         );
-
         check(
-            TopEntry::SourceFile,
+            SourceFile,
             "struct S;",
             expect![[r#"
         SOURCE_FILE
@@ -464,9 +325,8 @@ mod top {
             SEMICOLON ";"
     "#]],
         );
-
         check(
-            TopEntry::SourceFile,
+            SourceFile,
             "@error@",
             expect![[r#"
         SOURCE_FILE
@@ -487,18 +347,17 @@ mod top {
     "#]],
         );
     }
-
     #[test]
     fn macro_stmt() {
         check(
-            TopEntry::MacroStmts,
+            MacroStmts,
             "",
             expect![[r#"
             MACRO_STMTS
         "#]],
         );
         check(
-            TopEntry::MacroStmts,
+            MacroStmts,
             "#!/usr/bin/rust",
             expect![[r##"
             MACRO_STMTS
@@ -508,7 +367,7 @@ mod top {
         "##]],
         );
         check(
-            TopEntry::MacroStmts,
+            MacroStmts,
             "let x = 1 2 struct S;",
             expect![[r#"
             MACRO_STMTS
@@ -537,18 +396,17 @@ mod top {
         "#]],
         );
     }
-
     #[test]
     fn macro_items() {
         check(
-            TopEntry::MacroItems,
+            MacroItems,
             "",
             expect![[r#"
             MACRO_ITEMS
         "#]],
         );
         check(
-            TopEntry::MacroItems,
+            MacroItems,
             "#!/usr/bin/rust",
             expect![[r##"
             MACRO_ITEMS
@@ -558,7 +416,7 @@ mod top {
         "##]],
         );
         check(
-            TopEntry::MacroItems,
+            MacroItems,
             "struct S; foo!{}",
             expect![[r#"
             MACRO_ITEMS
@@ -581,11 +439,10 @@ mod top {
         "#]],
         );
     }
-
     #[test]
     fn macro_pattern() {
         check(
-            TopEntry::Pattern,
+            Pattern,
             "",
             expect![[r#"
             ERROR
@@ -593,7 +450,7 @@ mod top {
         "#]],
         );
         check(
-            TopEntry::Pattern,
+            Pattern,
             "Some(_)",
             expect![[r#"
             TUPLE_STRUCT_PAT
@@ -607,9 +464,8 @@ mod top {
               R_PAREN ")"
         "#]],
         );
-
         check(
-            TopEntry::Pattern,
+            Pattern,
             "None leftover tokens",
             expect![[r#"
             ERROR
@@ -622,9 +478,8 @@ mod top {
               IDENT "tokens"
         "#]],
         );
-
         check(
-            TopEntry::Pattern,
+            Pattern,
             "@err",
             expect![[r#"
             ERROR
@@ -635,20 +490,18 @@ mod top {
         "#]],
         );
     }
-
     #[test]
     fn ty() {
         check(
-            TopEntry::Type,
+            Type,
             "",
             expect![[r#"
             ERROR
             error 0: expected type
         "#]],
         );
-
         check(
-            TopEntry::Type,
+            Type,
             "Option<!>",
             expect![[r#"
             PATH_TYPE
@@ -665,7 +518,7 @@ mod top {
         "#]],
         );
         check(
-            TopEntry::Type,
+            Type,
             "() () ()",
             expect![[r#"
             ERROR
@@ -681,7 +534,7 @@ mod top {
         "#]],
         );
         check(
-            TopEntry::Type,
+            Type,
             "$$$",
             expect![[r#"
             ERROR
@@ -693,11 +546,10 @@ mod top {
         "#]],
         );
     }
-
     #[test]
     fn expr() {
         check(
-            TopEntry::Expr,
+            Expr,
             "",
             expect![[r#"
             ERROR
@@ -705,7 +557,7 @@ mod top {
         "#]],
         );
         check(
-            TopEntry::Expr,
+            Expr,
             "2 + 2 == 5",
             expect![[r#"
         BIN_EXPR
@@ -725,7 +577,7 @@ mod top {
     "#]],
         );
         check(
-            TopEntry::Expr,
+            Expr,
             "let _ = 0;",
             expect![[r#"
             ERROR
@@ -743,7 +595,6 @@ mod top {
         "#]],
         );
     }
-
     #[track_caller]
     fn check(entry: TopEntry, input: &str, expect: expect_test::Expect) {
         let (parsed, _errors) = super::parse(entry, input);
