@@ -2,14 +2,15 @@ use crate::{
     syntax::{self, ast},
     SyntaxKind::{self, *},
 };
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Whitespace {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for Whitespace {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for Whitespace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for Whitespace {
@@ -32,9 +33,9 @@ impl ast::Token for Whitespace {
 pub struct Comment {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for Comment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for Comment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for Comment {
@@ -57,9 +58,9 @@ impl ast::Token for Comment {
 pub struct String {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for String {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for String {
@@ -82,9 +83,9 @@ impl ast::Token for String {
 pub struct ByteString {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for ByteString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for ByteString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for ByteString {
@@ -107,9 +108,9 @@ impl ast::Token for ByteString {
 pub struct CString {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for CString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for CString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for CString {
@@ -132,9 +133,9 @@ impl ast::Token for CString {
 pub struct IntNumber {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for IntNumber {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for IntNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for IntNumber {
@@ -157,9 +158,9 @@ impl ast::Token for IntNumber {
 pub struct FloatNumber {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for FloatNumber {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for FloatNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for FloatNumber {
@@ -182,9 +183,9 @@ impl ast::Token for FloatNumber {
 pub struct Char {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for Char {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for Char {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for Char {
@@ -207,9 +208,9 @@ impl ast::Token for Char {
 pub struct Byte {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for Byte {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for Byte {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for Byte {
@@ -232,9 +233,9 @@ impl ast::Token for Byte {
 pub struct Ident {
     pub syntax: syntax::Token,
 }
-impl std::fmt::Display for Ident {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.syntax, f)
     }
 }
 impl ast::Token for Ident {

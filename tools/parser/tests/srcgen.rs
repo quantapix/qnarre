@@ -596,7 +596,7 @@ fn gen_ast() {
         .unwrap();
     let g = lower(&g);
     let x = gen_toks(&g);
-    let y = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
+    let y = project_root().join("src/syntax/ast/token_gen.rs");
     ensure_contents(y.as_path(), &x);
     let x = gen_nodes(KINDS_SRC, &g);
     let y = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
@@ -724,9 +724,9 @@ fn gen_ast() {
                 pub struct #n {
                     pub syntax: syntax::Token,
                 }
-                impl std::fmt::Display for #n {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        std::fmt::Display::fmt(&self.syntax, f)
+                impl fmt::Display for #n {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        fmt::Display::fmt(&self.syntax, f)
                     }
                 }
                 impl ast::Token for #n {
@@ -742,7 +742,11 @@ fn gen_ast() {
             "gen_ast",
             reformat(
                 quote! {
-                    use crate::{SyntaxKind::{self, *}, syntax::Token, ast};
+                    use crate::{
+                        syntax::{self, ast},
+                        SyntaxKind::{self, *},
+                    };
+                    use std::fmt;
                     #(#ys)*
                 }
                 .to_string(),
