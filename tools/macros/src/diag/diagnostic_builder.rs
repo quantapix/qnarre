@@ -1,12 +1,10 @@
 #![deny(unused_must_use)]
 
-use crate::diagnostics::error::{
-    span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
-};
-use crate::diagnostics::utils::{
+use crate::diag::error::{span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError};
+use crate::diag::utils::{
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
-    should_generate_set_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo,
-    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_set_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy, FieldMap,
+    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
@@ -78,7 +76,7 @@ impl DiagnosticDeriveBuilder {
             syn::Data::Struct(..) | syn::Data::Enum(..) => (),
             syn::Data::Union(..) => {
                 span_err(span, "diagnostic derives can only be used on structs and enums").emit();
-            }
+            },
         }
 
         if matches!(ast.data, syn::Data::Enum(..)) {
@@ -125,7 +123,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         let ast = variant.ast();
         let attrs = &ast.attrs;
         let preamble = attrs.iter().map(|attr| {
-            self.generate_structure_code_for_attr(attr).unwrap_or_else(|v| v.to_compile_error())
+            self.generate_structure_code_for_attr(attr)
+                .unwrap_or_else(|v| v.to_compile_error())
         });
 
         quote! {
@@ -142,7 +141,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             body.extend(self.generate_field_code(binding));
         }
         // ..and then subdiagnostic additions.
-        for binding in variant.bindings().iter().filter(|bi| !should_generate_set_arg(bi.ast())) {
+        for binding in variant
+            .bindings()
+            .iter()
+            .filter(|bi| !should_generate_set_arg(bi.ast()))
+        {
             body.extend(self.generate_field_attrs_code(binding));
         }
         body
@@ -160,8 +163,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         };
 
         if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag.kind {
-            throw_invalid_attr!(attr, |diag| diag
-                .help("consider creating a `Subdiagnostic` instead"));
+            throw_invalid_attr!(attr, |diag| diag.help("consider creating a `Subdiagnostic` instead"));
         }
 
         let slug = subdiag.slug.unwrap_or_else(|| match subdiag.kind {
@@ -179,10 +181,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
     /// attributes like `#[diag(..)]`, such as the slug and error code. Generates
     /// diagnostic builder calls for setting error code and creating note/help messages.
-    fn generate_structure_code_for_attr(
-        &mut self,
-        attr: &Attribute,
-    ) -> Result<TokenStream, DiagnosticDeriveError> {
+    fn generate_structure_code_for_attr(&mut self, attr: &Attribute) -> Result<TokenStream, DiagnosticDeriveError> {
         let diag = &self.parent.diag;
 
         // Always allow documentation comments.
@@ -203,14 +202,18 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 if first && (nested.input.is_empty() || nested.input.peek(Token![,])) {
                     self.slug.set_once(path.clone(), path.span().unwrap());
                     first = false;
-                    return Ok(())
+                    return Ok(());
                 }
 
                 first = false;
 
                 let Ok(nested) = nested.value() else {
-                    span_err(nested.input.span().unwrap(), "diagnostic slug must be the first argument").emit();
-                    return Ok(())
+                    span_err(
+                        nested.input.span().unwrap(),
+                        "diagnostic slug must be the first argument",
+                    )
+                    .emit();
+                    return Ok(());
                 };
 
                 if path.is_ident("code") {
@@ -221,7 +224,9 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                     });
                 } else {
-                    span_err(path.span().unwrap(), "unknown argument").note("only the `code` parameter is valid after the slug").emit();
+                    span_err(path.span().unwrap(), "unknown argument")
+                        .note("only the `code` parameter is valid after the slug")
+                        .emit();
 
                     // consume the buffer so we don't have syntax errors from syn
                     let _ = nested.parse::<TokenStream>();
@@ -240,11 +245,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         match subdiag {
             SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
                 Ok(self.add_subdiagnostic(&fn_ident, slug))
-            }
+            },
             SubdiagnosticKind::Label | SubdiagnosticKind::Suggestion { .. } => {
                 throw_invalid_attr!(attr, |diag| diag
                     .help("`#[label]` and `#[suggestion]` can only be applied to fields"));
-            }
+            },
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         }
     }
@@ -283,8 +288,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 }
 
                 let name = attr.path().segments.last().unwrap().ident.to_string();
-                let needs_clone =
-                    name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
+                let needs_clone = name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
                 let (binding, needs_destructure) = if needs_clone {
                     // `primary_span` can accept a `Vec<Span>` so don't destructure that.
                     (quote_spanned! {inner_ty.span()=> #field_binding.clone() }, false)
@@ -295,7 +299,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 let generated_code = self
                     .generate_inner_field_code(
                         attr,
-                        FieldInfo { binding: binding_info, ty: inner_ty, span: &field.span() },
+                        FieldInfo {
+                            binding: binding_info,
+                            ty: inner_ty,
+                            span: &field.span(),
+                        },
                         binding,
                     )
                     .unwrap_or_else(|v| v.to_compile_error());
@@ -323,22 +331,20 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             // Don't need to do anything - by virtue of the attribute existing, the
             // `set_arg` call will not be generated.
             (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
-            (Meta::Path(_), "primary_span") => {
-                match self.parent.kind {
-                    DiagnosticDeriveKind::Diagnostic { .. } => {
-                        report_error_if_not_applied_to_span(attr, &info)?;
+            (Meta::Path(_), "primary_span") => match self.parent.kind {
+                DiagnosticDeriveKind::Diagnostic { .. } => {
+                    report_error_if_not_applied_to_span(attr, &info)?;
 
-                        return Ok(quote! {
-                            #diag.set_span(#binding);
-                        });
-                    }
-                    DiagnosticDeriveKind::LintDiagnostic => {
-                        throw_invalid_attr!(attr, |diag| {
-                            diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
-                        })
-                    }
-                }
-            }
+                    return Ok(quote! {
+                        #diag.set_span(#binding);
+                    });
+                },
+                DiagnosticDeriveKind::LintDiagnostic => {
+                    throw_invalid_attr!(attr, |diag| {
+                        diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
+                    })
+                },
+            },
             (Meta::Path(_), "subdiagnostic") => {
                 if FieldInnerTy::from_type(&info.binding.ast().ty).will_iterate() {
                     let DiagnosticDeriveKind::Diagnostic { handler } = &self.parent.kind else {
@@ -349,7 +355,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 } else {
                     return Ok(quote! { #diag.subdiagnostic(#binding); });
                 }
-            }
+            },
             (Meta::List(meta_list), "subdiagnostic") => {
                 let err = || {
                     span_err(
@@ -375,10 +381,10 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         throw_invalid_attr!(attr, |diag| {
                             diag.help("eager subdiagnostics are not supported on lints")
                         })
-                    }
+                    },
                 };
                 return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
-            }
+            },
             _ => (),
         }
 
@@ -392,21 +398,19 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             SubdiagnosticKind::Label => {
                 report_error_if_not_applied_to_span(attr, &info)?;
                 Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
-            }
+            },
             SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
                 let inner = info.ty.inner_type();
                 if type_matches_path(inner, &["rustc_span", "Span"])
                     || type_matches_path(inner, &["rustc_span", "MultiSpan"])
                 {
                     Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
-                } else if type_is_unit(inner)
-                    || (matches!(info.ty, FieldInnerTy::Plain(_)) && type_is_bool(inner))
-                {
+                } else if type_is_unit(inner) || (matches!(info.ty, FieldInnerTy::Plain(_)) && type_is_bool(inner)) {
                     Ok(self.add_subdiagnostic(&fn_ident, slug))
                 } else {
                     report_type_error(attr, "`Span`, `MultiSpan`, `bool` or `()`")?
                 }
-            }
+            },
             SubdiagnosticKind::Suggestion {
                 suggestion_kind,
                 applicability: static_applicability,
@@ -443,7 +447,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         #style
                     );
                 })
-            }
+            },
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         }
     }
@@ -484,7 +488,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             ty @ Type::Path(..) if type_matches_path(ty, &["rustc_span", "Span"]) => {
                 let binding = &info.binding.binding;
                 Ok((quote!(#binding), None))
-            }
+            },
             // If `ty` is `(Span, Applicability)` then return tokens accessing those.
             Type::Tuple(tup) => {
                 let mut span_idx = None;
@@ -521,7 +525,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 let applicability = quote!(#binding.#applicability_idx);
 
                 Ok((span, Some((applicability, applicability_span))))
-            }
+            },
             // If `ty` isn't a `Span` or `(Span, Applicability)` then emit an error.
             _ => throw_span_err!(info.span.unwrap(), "wrong field type for suggestion", |diag| {
                 diag.help(

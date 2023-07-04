@@ -19,7 +19,7 @@ impl DiagnosticDeriveError {
                 quote! {
                     { unreachable!(); }
                 }
-            }
+            },
         }
     }
 }
@@ -31,10 +31,7 @@ impl From<SynError> for DiagnosticDeriveError {
 }
 
 /// Helper function for use with `throw_*` macros - constraints `$f` to an `impl FnOnce`.
-pub(crate) fn _throw_err(
-    diag: Diagnostic,
-    f: impl FnOnce(Diagnostic) -> Diagnostic,
-) -> DiagnosticDeriveError {
+pub(crate) fn _throw_err(diag: Diagnostic, f: impl FnOnce(Diagnostic) -> Diagnostic) -> DiagnosticDeriveError {
     f(diag).emit();
     DiagnosticDeriveError::ErrorHandled
 }
@@ -63,10 +60,12 @@ pub(crate) fn span_err(span: impl MultiSpan, msg: &str) -> Diagnostic {
 ///
 /// For methods that return a `Result<_, DiagnosticDeriveError>`:
 macro_rules! throw_span_err {
-    ($span:expr, $msg:expr) => {{ throw_span_err!($span, $msg, |diag| diag) }};
+    ($span:expr, $msg:expr) => {{
+        throw_span_err!($span, $msg, |diag| diag)
+    }};
     ($span:expr, $msg:expr, $f:expr) => {{
         let diag = span_err($span, $msg);
-        return Err(crate::diagnostics::error::_throw_err(diag, $f));
+        return Err(crate::diag::error::_throw_err(diag, $f));
     }};
 }
 
@@ -78,9 +77,7 @@ pub(crate) fn invalid_attr(attr: &Attribute) -> Diagnostic {
     let path = path_to_string(attr.path());
     match attr.meta {
         Meta::Path(_) => span_err(span, &format!("`#[{path}]` is not a valid attribute")),
-        Meta::NameValue(_) => {
-            span_err(span, &format!("`#[{path} = ...]` is not a valid attribute"))
-        }
+        Meta::NameValue(_) => span_err(span, &format!("`#[{path} = ...]` is not a valid attribute")),
         Meta::List(_) => span_err(span, &format!("`#[{path}(...)]` is not a valid attribute")),
     }
 }
@@ -90,10 +87,12 @@ pub(crate) fn invalid_attr(attr: &Attribute) -> Diagnostic {
 ///
 /// For methods that return a `Result<_, DiagnosticDeriveError>`:
 macro_rules! throw_invalid_attr {
-    ($attr:expr) => {{ throw_invalid_attr!($attr, |diag| diag) }};
+    ($attr:expr) => {{
+        throw_invalid_attr!($attr, |diag| diag)
+    }};
     ($attr:expr, $f:expr) => {{
-        let diag = crate::diagnostics::error::invalid_attr($attr);
-        return Err(crate::diagnostics::error::_throw_err(diag, $f));
+        let diag = crate::diag::error::invalid_attr($attr);
+        return Err(crate::diag::error::_throw_err(diag, $f));
     }};
 }
 

@@ -1,8 +1,8 @@
 #![deny(unused_must_use)]
 
-use crate::diagnostics::diagnostic_builder::{DiagnosticDeriveBuilder, DiagnosticDeriveKind};
-use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
-use crate::diagnostics::utils::SetOnce;
+use crate::diag::diagnostic_builder::{DiagnosticDeriveBuilder, DiagnosticDeriveKind};
+use crate::diag::error::{span_err, DiagnosticDeriveError};
+use crate::diag::utils::SetOnce;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
@@ -26,7 +26,10 @@ impl<'a> DiagnosticDerive<'a> {
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let DiagnosticDerive { mut structure, mut builder } = self;
+        let DiagnosticDerive {
+            mut structure,
+            mut builder,
+        } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
@@ -72,7 +75,9 @@ impl<'a> DiagnosticDerive<'a> {
             }
         });
 
-        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else { unreachable!() };
+        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else {
+            unreachable!()
+        };
         structure.gen_impl(quote! {
             gen impl<'__diagnostic_handler_sess, G>
                     rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
@@ -102,13 +107,19 @@ pub(crate) struct LintDiagnosticDerive<'a> {
 impl<'a> LintDiagnosticDerive<'a> {
     pub(crate) fn new(diag: syn::Ident, structure: Structure<'a>) -> Self {
         Self {
-            builder: DiagnosticDeriveBuilder { diag, kind: DiagnosticDeriveKind::LintDiagnostic },
+            builder: DiagnosticDeriveBuilder {
+                diag,
+                kind: DiagnosticDeriveKind::LintDiagnostic,
+            },
             structure,
         }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let LintDiagnosticDerive { mut structure, mut builder } = self;
+        let LintDiagnosticDerive {
+            mut structure,
+            mut builder,
+        } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
@@ -188,11 +199,17 @@ impl Mismatch {
         let crate_name = std::env::var("CARGO_CRATE_NAME").ok()?;
 
         // If we're not in a "rustc_" crate, bail.
-        let Some(("rustc", slug_prefix)) = crate_name.split_once('_') else { return None };
+        let Some(("rustc", slug_prefix)) = crate_name.split_once('_') else {
+            return None;
+        };
 
         let slug_name = slug.segments.first()?.ident.to_string();
         if !slug_name.starts_with(slug_prefix) {
-            Some(Mismatch { slug_name, slug_prefix: slug_prefix.to_string(), crate_name })
+            Some(Mismatch {
+                slug_name,
+                slug_prefix: slug_prefix.to_string(),
+                crate_name,
+            })
         } else {
             None
         }
