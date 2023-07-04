@@ -1,6 +1,6 @@
 [workspace]
-members = ["tools/parser"]
-# members = ["tools/bindgen", "tools/clang", "tools/lexer", "tools/ast", "tools/llvm/macros", "tools/llvm", "tools/probe_lib", "tools/probe"]
+members = ["tools/macros", "tools/parser"]
+# members = ["tools/bindgen", "tools/clang", "tools/lexer", "tools/llvm/macros", "tools/llvm", "tools/probe_lib", "tools/probe"]
 resolver = "2"
 
 [workspace.package]
@@ -11,7 +11,7 @@ rust-version = "1.72"
 authors = ["qnarre"]
 
 [workspace.dependencies]
-limit = { path = "../../lib/rust-analyzer/crates/limit" }
+# limit = { path = "../../lib/rust-analyzer/crates/limit" }
 
 [profile.dev]
 debug = 0

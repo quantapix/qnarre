@@ -1,32 +1,10 @@
-#![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
-    test(attr(deny(warnings)))
-)]
-#![feature(associated_type_bounds)]
-#![feature(box_patterns)]
-#![feature(const_trait_impl)]
-#![feature(if_let_guard)]
-#![feature(let_chains)]
-#![feature(min_specialization)]
-#![feature(negative_impls)]
-#![feature(stmt_expr_attributes)]
-#![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-
-#[macro_use]
-extern crate rustc_macros;
-
-#[macro_use]
-extern crate tracing;
-
+use macros::HashStable_Generic;
 use rustc_data_structures::{
     fx::FxHashMap,
     stable_hasher::{HashStable, StableHasher},
     stack::ensure_sufficient_stack,
     sync::Lrc,
 };
-use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{
     source_map::{respan, Spanned},
@@ -36,9 +14,14 @@ use rustc_span::{
 use std::{fmt, marker::PhantomData, mem};
 use thin_vec::{thin_vec, ThinVec};
 
+#[macro_use]
+extern crate macros;
+
+#[macro_use]
+extern crate tracing;
+
 pub mod attr;
 pub mod expand;
-pub mod lexer;
 pub mod mut_visit;
 pub mod ptr {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1283,7 +1266,7 @@ pub enum AttrArgs {
 pub trait HashStableContext: rustc_span::HashStableContext {
     fn hash_attr(&mut self, _: &Attribute, hasher: &mut StableHasher);
 }
-impl<AstCtx: crate::HashStableContext> HashStable<AstCtx> for Attribute {
+impl<AstCtx: crate::ast::HashStableContext> HashStable<AstCtx> for Attribute {
     fn hash_stable(&self, hcx: &mut AstCtx, hasher: &mut StableHasher) {
         hcx.hash_attr(self, hasher)
     }
@@ -1318,7 +1301,7 @@ impl AttrArgs {
 }
 impl<CTX> HashStable<CTX> for AttrArgs
 where
-    CTX: crate::HashStableContext,
+    CTX: crate::ast::HashStableContext,
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(ctx, hasher);
@@ -1355,7 +1338,7 @@ impl DelimArgs {
 }
 impl<CTX> HashStable<CTX> for DelimArgs
 where
-    CTX: crate::HashStableContext,
+    CTX: crate::ast::HashStableContext,
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         let DelimArgs { dspan, delim, tokens } = self;

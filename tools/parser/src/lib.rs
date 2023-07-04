@@ -1,6 +1,17 @@
 #![allow(dead_code)]
 #![forbid(unconditional_recursion, future_incompatible)]
 #![warn(unused_lifetimes)]
+#![feature(associated_type_bounds)]
+#![feature(box_patterns)]
+#![feature(const_trait_impl)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
+#![feature(min_specialization)]
+#![feature(negative_impls)]
+#![feature(stmt_expr_attributes)]
+#![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub use crate::{
     input::Input,
@@ -120,6 +131,60 @@ impl Event {
         Event::Start {
             kind: SyntaxKind::TOMBSTONE,
             fwd_parent: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Limit {
+    upper_bound: usize,
+    #[cfg(feature = "tracking")]
+    max: AtomicUsize,
+}
+impl Limit {
+    #[inline]
+    pub const fn new(upper_bound: usize) -> Self {
+        Self {
+            upper_bound,
+            #[cfg(feature = "tracking")]
+            max: AtomicUsize::new(0),
+        }
+    }
+    #[inline]
+    #[cfg(feature = "tracking")]
+    pub const fn new_tracking(upper_bound: usize) -> Self {
+        use std::sync::atomic;
+        Self {
+            upper_bound,
+            #[cfg(feature = "tracking")]
+            max: atomic::AtomicUsize::new(1),
+        }
+    }
+    #[inline]
+    pub const fn _inner(&self) -> usize {
+        self.upper_bound
+    }
+    #[inline]
+    pub fn check(&self, other: usize) -> Result<(), ()> {
+        if other > self.upper_bound {
+            Err(())
+        } else {
+            #[cfg(feature = "tracking")]
+            loop {
+                use std::sync::atomic;
+                let old_max = self.max.load(atomic::Ordering::Relaxed);
+                if other <= old_max || old_max == 0 {
+                    break;
+                }
+                if self
+                    .max
+                    .compare_exchange_weak(old_max, other, atomic::Ordering::Relaxed, Ordering::Relaxed)
+                    .is_ok()
+                {
+                    eprintln!("new max: {other}");
+                }
+            }
+            Ok(())
         }
     }
 }
@@ -610,63 +675,8 @@ mod token_set {
         assert!(!y.contains(PLUS));
     }
 }
-mod limit {
-    #[cfg(feature = "tracking")]
-    use std::sync::atomic::AtomicUsize;
-    #[derive(Debug)]
-    pub struct Limit {
-        upper_bound: usize,
-        #[cfg(feature = "tracking")]
-        max: AtomicUsize,
-    }
-    impl Limit {
-        #[inline]
-        pub const fn new(upper_bound: usize) -> Self {
-            Self {
-                upper_bound,
-                #[cfg(feature = "tracking")]
-                max: AtomicUsize::new(0),
-            }
-        }
-        #[inline]
-        #[cfg(feature = "tracking")]
-        pub const fn new_tracking(upper_bound: usize) -> Self {
-            Self {
-                upper_bound,
-                #[cfg(feature = "tracking")]
-                max: AtomicUsize::new(1),
-            }
-        }
-        #[inline]
-        pub const fn _inner(&self) -> usize {
-            self.upper_bound
-        }
-        #[inline]
-        pub fn check(&self, other: usize) -> Result<(), ()> {
-            if other > self.upper_bound {
-                Err(())
-            } else {
-                #[cfg(feature = "tracking")]
-                loop {
-                    use std::sync::atomic::Ordering;
-                    let old_max = self.max.load(Ordering::Relaxed);
-                    if other <= old_max || old_max == 0 {
-                        break;
-                    }
-                    if self
-                        .max
-                        .compare_exchange_weak(old_max, other, Ordering::Relaxed, Ordering::Relaxed)
-                        .is_ok()
-                    {
-                        eprintln!("new max: {other}");
-                    }
-                }
 
-                Ok(())
-            }
-        }
-    }
-}
+pub mod ast;
 pub mod syntax;
 
 #[cfg(test)]

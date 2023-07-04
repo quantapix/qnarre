@@ -1,0 +1,14 @@
+[package]
+name = "macros"
+license = "https://github.com/rust-lang/rust.git (04075b32021)"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+synstructure = "0.13"
+syn = { version = "2", features = ["full"] }
+proc-macro2 = "1"
+quote = "1"

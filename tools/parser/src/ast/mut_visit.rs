@@ -1582,8 +1582,8 @@ impl DummyAstNode for Crate {
         }
     }
 }
-impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::AstNodeWrapper<N, T> {
+impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast::AstNodeWrapper<N, T> {
     fn dummy() -> Self {
-        crate::AstNodeWrapper::new(N::dummy(), T::dummy())
+        crate::ast::AstNodeWrapper::new(N::dummy(), T::dummy())
     }
 }

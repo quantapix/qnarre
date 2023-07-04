@@ -6,7 +6,7 @@ pub mod case {
     }
 }
 pub mod classify {
-    use crate::*;
+    use crate::ast::*;
     pub fn expr_requires_semi_to_be_stmt(e: &Expr) -> bool {
         !matches!(
             e.kind,
@@ -47,7 +47,7 @@ pub mod classify {
     }
 }
 pub mod comments {
-    use crate::{lexer, token::CommentKind};
+    use crate::{ast::token::CommentKind, lexer};
     use rustc_span::{source_map::SourceMap, BytePos, CharPos, FileName, Pos, Symbol};
 
     #[derive(Clone, Copy, PartialEq, Debug)]
@@ -210,8 +210,9 @@ pub mod comments {
         }
         for token in lexer::tokenize(&text[pos..]) {
             let token_text = &text[pos..pos + token.len as usize];
+            use lexer::TokKind::*;
             match token.kind {
-                lexer::TokenKind::Whitespace => {
+                Whitespace => {
                     if let Some(mut idx) = token_text.find('\n') {
                         code_to_the_left = false;
                         while let Some(next_newline) = &token_text[idx + 1..].find('\n') {
@@ -224,7 +225,7 @@ pub mod comments {
                         }
                     }
                 },
-                lexer::TokenKind::BlockComment { doc_style, .. } => {
+                BlockComment { doc_style, .. } => {
                     if doc_style.is_none() {
                         let code_to_the_right =
                             !matches!(text[pos + token.len as usize..].chars().next(), Some('\r' | '\n'));
@@ -245,8 +246,8 @@ pub mod comments {
                         })
                     }
                 },
-                lexer::TokenKind::LineComment { doc_style } => {
-                    if doc_style.is_none() {
+                LineComment { style } => {
+                    if style.is_none() {
                         comments.push(Comment {
                             style: if code_to_the_left {
                                 CommentStyle::Trailing
@@ -331,11 +332,11 @@ pub mod comments {
 }
 pub mod literal {
     use crate::{
-        lexer::unescape::{
-            byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit, Mode,
+        ast::{
+            token::{self, Token},
+            *,
         },
-        token::{self, Token},
-        *,
+        lexer::unescape::{byte_from_char, unesc_byte, unesc_c_str, unesc_char, unesc_lit, CStrUnit, Mode},
     };
     use rustc_span::{
         symbol::{kw, sym, Symbol},
@@ -383,12 +384,12 @@ pub mod literal {
                     LitKind::Bool(symbol == kw::True)
                 },
                 token::Byte => {
-                    return unescape_byte(symbol.as_str())
+                    return unesc_byte(symbol.as_str())
                         .map(LitKind::Byte)
                         .map_err(|_| LitError::LexerError);
                 },
                 token::Char => {
-                    return unescape_char(symbol.as_str())
+                    return unesc_char(symbol.as_str())
                         .map(LitKind::Char)
                         .map_err(|_| LitError::LexerError);
                 },
@@ -399,7 +400,7 @@ pub mod literal {
                     let symbol = if s.contains(['\\', '\r']) {
                         let mut buf = String::with_capacity(s.len());
                         let mut error = Ok(());
-                        unescape_literal(
+                        unesc_lit(
                             s,
                             Mode::Str,
                             &mut #[inline(always)]
@@ -424,7 +425,7 @@ pub mod literal {
                     let symbol = if s.contains('\r') {
                         let mut buf = String::with_capacity(s.len());
                         let mut error = Ok(());
-                        unescape_literal(s, Mode::RawStr, &mut |_, unescaped_char| match unescaped_char {
+                        unesc_lit(s, Mode::RawStr, &mut |_, unescaped_char| match unescaped_char {
                             Ok(c) => buf.push(c),
                             Err(err) => {
                                 if err.is_fatal() {
@@ -443,7 +444,7 @@ pub mod literal {
                     let s = symbol.as_str();
                     let mut buf = Vec::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_literal(s, Mode::ByteStr, &mut |_, c| match c {
+                    unesc_lit(s, Mode::ByteStr, &mut |_, c| match c {
                         Ok(c) => buf.push(byte_from_char(c)),
                         Err(err) => {
                             if err.is_fatal() {
@@ -459,7 +460,7 @@ pub mod literal {
                     let bytes = if s.contains('\r') {
                         let mut buf = Vec::with_capacity(s.len());
                         let mut error = Ok(());
-                        unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
+                        unesc_lit(s, Mode::RawByteStr, &mut |_, c| match c {
                             Ok(c) => buf.push(byte_from_char(c)),
                             Err(err) => {
                                 if err.is_fatal() {
@@ -478,7 +479,7 @@ pub mod literal {
                     let s = symbol.as_str();
                     let mut buf = Vec::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_c_string(s, Mode::CStr, &mut |span, c| match c {
+                    unesc_c_str(s, Mode::CStr, &mut |span, c| match c {
                         Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
                             error = Err(LitError::NulInCStr(span));
                         },
@@ -499,7 +500,7 @@ pub mod literal {
                     let s = symbol.as_str();
                     let mut buf = Vec::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_c_string(s, Mode::RawCStr, &mut |span, c| match c {
+                    unesc_c_str(s, Mode::RawCStr, &mut |span, c| match c {
                         Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
                             error = Err(LitError::NulInCStr(span));
                         },
@@ -675,7 +676,7 @@ pub mod literal {
     }
 }
 pub mod parser {
-    use crate::{
+    use crate::ast::{
         token::{self, BinOpToken, Token},
         *,
     };

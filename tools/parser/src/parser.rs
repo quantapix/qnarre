@@ -1,7 +1,6 @@
 use crate::{
     input::Input,
-    limit::Limit,
-    Event,
+    Event, Limit,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, T,
 };

@@ -1,9 +1,9 @@
 use super::{ptr::P, util::case::Case, *};
+use macros::HashStable_Generic;
 use rustc_data_structures::{
     stable_hasher::{HashStable, StableHasher},
     sync::Lrc,
 };
-use rustc_macros::HashStable_Generic;
 use rustc_span::{
     self,
     edition::Edition,
@@ -728,7 +728,7 @@ impl fmt::Debug for Nonterminal {
 }
 impl<CTX> HashStable<CTX> for Nonterminal
 where
-    CTX: crate::HashStableContext,
+    CTX: crate::ast::HashStableContext,
 {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         panic!("interpolated tokens should not be present in the HIR")
@@ -737,15 +737,15 @@ where
 pub use Nonterminal::*;
 
 pub mod stream {
-    use crate::{
+    use crate::ast::{
         token::{self, Delimiter, Nonterminal, Token, TokenKind},
         *,
     };
+    use macros::HashStable_Generic;
     use rustc_data_structures::{
         stable_hasher::{HashStable, StableHasher},
         sync::{self, Lrc},
     };
-    use rustc_macros::HashStable_Generic;
     use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
     use rustc_span::{Span, DUMMY_SP};
     use smallvec::{smallvec, SmallVec};
@@ -856,8 +856,8 @@ pub mod stream {
                         let mut inner_attrs = Vec::new();
                         for attr in &data.attrs {
                             match attr.style {
-                                crate::AttrStyle::Outer => outer_attrs.push(attr),
-                                crate::AttrStyle::Inner => inner_attrs.push(attr),
+                                crate::ast::AttrStyle::Outer => outer_attrs.push(attr),
+                                crate::ast::AttrStyle::Inner => inner_attrs.push(attr),
                             }
                         }
                         let mut target_tokens: Vec<_> = data
@@ -1107,7 +1107,7 @@ pub mod stream {
     }
     impl<CTX> HashStable<CTX> for TokenStream
     where
-        CTX: crate::HashStableContext,
+        CTX: crate::ast::HashStableContext,
     {
         fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
             for sub_tt in self.trees() {
