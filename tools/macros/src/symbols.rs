@@ -246,7 +246,7 @@ mod tests {
         // symbols, keywords, and common words. Then we search for the
         // `symbols! { ... }` call.
 
-        static SYMBOL_RS_FILE: &str = include_str!("../../../rustc_span/src/symbol.rs");
+        static SYMBOL_RS_FILE: &str = include_str!("symbol.rs");
 
         let file = syn::parse_file(SYMBOL_RS_FILE).unwrap();
         let symbols_path: syn::Path = syn::parse_quote!(symbols);
