@@ -24,6 +24,12 @@ pub fn derive(x: proc_macro::TokenStream) -> proc_macro::TokenStream {
             env: Option<Vec<String>>,
             current_dir: Option<String>,
         }
+        impl CommandBuilder {
+            fn executable(&mut self, exe: String) -> &mut Self {
+                self.executable = Some(exe);
+                self
+            }
+        }
     };
     proc_macro::TokenStream::from(y)
 }
