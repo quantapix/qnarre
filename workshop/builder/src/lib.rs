@@ -6,9 +6,23 @@ use syn::{parse_macro_input, parse_quote, spanned::Spanned, Data, DeriveInput, F
 pub fn derive(x: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let x = parse_macro_input!(x as DeriveInput);
     let n = x.ident;
+    //let b = format!("{:?}Builder", n);
     let y = quote! {
         impl #n {
-            pub fn builder() {}
+            pub fn builder() -> CommandBuilder {
+                CommandBuilder {
+                    executable: None,
+                    args: None,
+                    env: None,
+                    current_dir: None,
+                }
+            }
+        }
+        pub struct CommandBuilder {
+            executable: Option<String>,
+            args: Option<Vec<String>>,
+            env: Option<Vec<String>>,
+            current_dir: Option<String>,
         }
     };
     proc_macro::TokenStream::from(y)
