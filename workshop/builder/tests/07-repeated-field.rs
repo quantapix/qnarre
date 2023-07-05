@@ -29,7 +29,7 @@
 //     https://docs.rs/syn/1.0/syn/struct.Attribute.html
 //     https://docs.rs/syn/1.0/syn/enum.Meta.html
 
-use derive_builder::Builder;
+use builder::Builder;
 
 #[derive(Builder)]
 pub struct Command {

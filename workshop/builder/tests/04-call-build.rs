@@ -11,7 +11,7 @@
 //         }
 //     }
 
-use derive_builder::Builder;
+use builder::Builder;
 
 #[derive(Builder)]
 pub struct Command {
