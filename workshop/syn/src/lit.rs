@@ -11,7 +11,6 @@ use std::{
 };
 
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum Lit {
         Str(LitStr),
         ByteStr(LitByteStr),

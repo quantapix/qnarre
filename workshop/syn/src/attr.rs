@@ -185,7 +185,6 @@ pub fn meta_parser(logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Par
     }
 }
 
-#[non_exhaustive]
 pub struct ParseNestedMeta<'a> {
     pub path: Path,
     pub input: ParseStream<'a>,

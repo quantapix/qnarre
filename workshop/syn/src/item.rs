@@ -3,7 +3,6 @@ use crate::punctuated::Punctuated;
 use proc_macro2::TokenStream;
 use std::mem;
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum Item {
         Const(ItemConst),
         Enum(ItemEnum),
@@ -331,7 +330,6 @@ ast_struct! {
     }
 }
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum ForeignItem {
         Fn(ForeignItemFn),
         Static(ForeignItemStatic),
@@ -378,7 +376,6 @@ ast_struct! {
     }
 }
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum TraitItem {
         Const(TraitItemConst),
         Fn(TraitItemFn),
@@ -427,7 +424,6 @@ ast_struct! {
     }
 }
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum ImplItem {
         Const(ImplItemConst),
         Fn(ImplItemFn),
@@ -534,14 +530,12 @@ ast_struct! {
     }
 }
 ast_enum! {
-    #[non_exhaustive]
     pub enum StaticMutability {
         Mut(Token![mut]),
         None,
     }
 }
 ast_enum! {
-    #[non_exhaustive]
     pub enum ImplRestriction {}
 }
 pub(crate) mod parsing {

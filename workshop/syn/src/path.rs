@@ -82,7 +82,6 @@ impl PathArguments {
     }
 }
 ast_enum! {
-    #[non_exhaustive]
     pub enum GenericArgument {
         Lifetime(Lifetime),
         Type(Type),

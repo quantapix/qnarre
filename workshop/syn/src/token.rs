@@ -1,25 +1,20 @@
-use self::private::WithSpan;
-use crate::buffer::Cursor;
-use crate::err::Result;
-use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr};
-use crate::lookahead;
-use crate::parse::{Parse, ParseStream};
-use crate::IntoSpans;
-use crate::Lifetime;
-use proc_macro2::extra::DelimSpan;
-use proc_macro2::Span;
-use proc_macro2::TokenStream;
-use proc_macro2::{Delimiter, Ident};
-use proc_macro2::{Literal, Punct, TokenTree};
+use super::{
+    buffer::Cursor,
+    err::Result,
+    lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr},
+    lookahead,
+    parse::{Parse, ParseStream},
+    IntoSpans, Lifetime,
+};
+use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
-use std::cmp;
-use std::fmt::{self, Debug};
-use std::hash::{Hash, Hasher};
-use std::ops::{Deref, DerefMut};
-pub trait Token: private::Sealed {
-    fn peek(cursor: Cursor) -> bool;
-    fn display() -> &'static str;
-}
+use std::{
+    cmp,
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+};
+
 mod private {
     use proc_macro2::Span;
     pub trait Sealed {}
@@ -29,15 +24,21 @@ mod private {
     }
 }
 impl private::Sealed for Ident {}
+
 fn peek_impl(cursor: Cursor, peek: fn(ParseStream) -> bool) -> bool {
     use crate::parse::Unexpected;
-    use std::cell::Cell;
-    use std::rc::Rc;
+    use std::{cell::Cell, rc::Rc};
     let scope = Span::call_site();
     let unexpected = Rc::new(Cell::new(Unexpected::None));
     let buffer = crate::parse::new_parse_buffer(scope, cursor, unexpected);
     peek(&buffer)
 }
+
+pub trait Token: private::Sealed {
+    fn peek(cursor: Cursor) -> bool;
+    fn display() -> &'static str;
+}
+
 macro_rules! impl_token {
     ($display:literal $name:ty) => {
         impl Token for $name {
@@ -64,6 +65,7 @@ impl_token!("integer literal" LitInt);
 impl_token!("floating point literal" LitFloat);
 impl_token!("boolean literal" LitBool);
 impl_token!("group token" proc_macro2::Group);
+
 macro_rules! impl_low_level_token {
     ($display:literal $ty:ident $get:ident) => {
         impl Token for $ty {
@@ -80,6 +82,7 @@ macro_rules! impl_low_level_token {
 impl_low_level_token!("punctuation token" Punct punct);
 impl_low_level_token!("literal" Literal literal);
 impl_low_level_token!("token" TokenTree token_tree);
+
 pub trait CustomToken {
     fn peek(cursor: Cursor) -> bool;
     fn display() -> &'static str;
@@ -93,6 +96,7 @@ impl<T: CustomToken> Token for T {
         <Self as CustomToken>::display()
     }
 }
+
 macro_rules! define_keywords {
     ($($token:literal pub struct $name:ident)*) => {
         $(
@@ -161,14 +165,14 @@ macro_rules! define_keywords {
 macro_rules! impl_deref_if_len_is_1 {
     ($name:ident/1) => {
         impl Deref for $name {
-            type Target = WithSpan;
+            type Target = private::WithSpan;
             fn deref(&self) -> &Self::Target {
-                unsafe { &*(self as *const Self).cast::<WithSpan>() }
+                unsafe { &*(self as *const Self).cast::<private::WithSpan>() }
             }
         }
         impl DerefMut for $name {
             fn deref_mut(&mut self) -> &mut Self::Target {
-                unsafe { &mut *(self as *mut Self).cast::<WithSpan>() }
+                unsafe { &mut *(self as *mut Self).cast::<private::WithSpan>() }
             }
         }
     };
@@ -303,15 +307,16 @@ macro_rules! define_delimiters {
         )*
     };
 }
+
 define_punctuation_structs! {
     "_" pub struct Underscore/1 /// wildcard patterns, inferred types, unnamed items in constants, extern crates, use declarations, and destructuring assignment
 }
+
 impl ToTokens for Underscore {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append(Ident::new("_", self.span));
     }
 }
-
 impl Parse for Underscore {
     fn parse(input: ParseStream) -> Result<Self> {
         input.step(|cursor| {
@@ -344,14 +349,9 @@ impl Token for Underscore {
     }
 }
 impl private::Sealed for Underscore {}
+
 pub struct Group {
     pub span: Span,
-}
-#[allow(non_snake_case)]
-pub fn Group<S: IntoSpans<Span>>(span: S) -> Group {
-    Group {
-        span: span.into_spans(),
-    }
 }
 impl std::default::Default for Group {
     fn default() -> Self {
@@ -391,6 +391,14 @@ impl Group {
     }
 }
 impl private::Sealed for Group {}
+
+#[allow(non_snake_case)]
+pub fn Group<S: IntoSpans<Span>>(span: S) -> Group {
+    Group {
+        span: span.into_spans(),
+    }
+}
+
 impl Token for Paren {
     fn peek(cursor: Cursor) -> bool {
         lookahead::is_delimiter(cursor, Delimiter::Parenthesis)
@@ -423,6 +431,7 @@ impl Token for Group {
         "invisible group"
     }
 }
+
 define_keywords! {
     "abstract"    pub struct Abstract
     "as"          pub struct As
@@ -530,6 +539,7 @@ define_delimiters! {
     Bracket       pub struct Bracket      /// `[`&hellip;`]`
     Parenthesis   pub struct Paren        /// `(`&hellip;`)`
 }
+
 #[macro_export]
 macro_rules! Token {
     [abstract]    => { $crate::token::Abstract };
@@ -632,12 +642,13 @@ macro_rules! Token {
     [~]           => { $crate::token::Tilde };
     [_]           => { $crate::token::Underscore };
 }
-pub(crate) mod parsing {
+
+pub mod parsing {
     use crate::buffer::Cursor;
     use crate::err::{Err, Result};
     use crate::parse::ParseStream;
     use proc_macro2::{Spacing, Span};
-    pub(crate) fn keyword(input: ParseStream, token: &str) -> Result<Span> {
+    pub fn keyword(input: ParseStream, token: &str) -> Result<Span> {
         input.step(|cursor| {
             if let Some((ident, rest)) = cursor.ident() {
                 if ident == token {
@@ -647,7 +658,7 @@ pub(crate) mod parsing {
             Err(cursor.error(format!("expected `{}`", token)))
         })
     }
-    pub(crate) fn peek_keyword(cursor: Cursor, token: &str) -> bool {
+    pub fn peek_keyword(cursor: Cursor, token: &str) -> bool {
         if let Some((ident, _rest)) = cursor.ident() {
             ident == token
         } else {
@@ -701,7 +712,7 @@ pub(crate) mod parsing {
         false
     }
 }
-pub(crate) mod printing {
+pub mod printing {
     use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream};
     use quote::TokenStreamExt;
     pub fn punct(s: &str, spans: &[Span], tokens: &mut TokenStream) {
@@ -719,10 +730,10 @@ pub(crate) mod printing {
         op.set_span(*span);
         tokens.append(op);
     }
-    pub(crate) fn keyword(s: &str, span: Span, tokens: &mut TokenStream) {
+    pub fn keyword(s: &str, span: Span, tokens: &mut TokenStream) {
         tokens.append(Ident::new(s, span));
     }
-    pub(crate) fn delim(delim: Delimiter, span: Span, tokens: &mut TokenStream, inner: TokenStream) {
+    pub fn delim(delim: Delimiter, span: Span, tokens: &mut TokenStream, inner: TokenStream) {
         let mut g = Group::new(delim, inner);
         g.set_span(span);
         tokens.append(g);

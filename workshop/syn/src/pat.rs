@@ -2,8 +2,6 @@ use super::*;
 use crate::punctuated::Punctuated;
 use proc_macro2::TokenStream;
 ast_enum_of_structs! {
-
-    #[non_exhaustive]
     pub enum Pat {
         Const(PatConst),
         Ident(PatIdent),
@@ -25,7 +23,6 @@ ast_enum_of_structs! {
     }
 }
 ast_struct! {
-
     pub struct PatIdent {
         pub attrs: Vec<Attribute>,
         pub by_ref: Option<Token![ref]>,
@@ -35,7 +32,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatOr {
         pub attrs: Vec<Attribute>,
         pub leading_vert: Option<Token![|]>,
@@ -50,7 +46,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatReference {
         pub attrs: Vec<Attribute>,
         pub and_token: Token![&],
@@ -59,14 +54,12 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatRest {
         pub attrs: Vec<Attribute>,
         pub dot2_token: Token![..],
     }
 }
 ast_struct! {
-
     pub struct PatSlice {
         pub attrs: Vec<Attribute>,
         pub bracket_token: token::Bracket,
@@ -74,7 +67,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatStruct {
         pub attrs: Vec<Attribute>,
         pub qself: Option<QSelf>,
@@ -85,7 +77,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatTuple {
         pub attrs: Vec<Attribute>,
         pub paren_token: token::Paren,
@@ -93,7 +84,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatTupleStruct {
         pub attrs: Vec<Attribute>,
         pub qself: Option<QSelf>,
@@ -103,7 +93,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatType {
         pub attrs: Vec<Attribute>,
         pub pat: Box<Pat>,
@@ -112,14 +101,12 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct PatWild {
         pub attrs: Vec<Attribute>,
         pub underscore_token: Token![_],
     }
 }
 ast_struct! {
-
     pub struct FieldPat {
         pub attrs: Vec<Attribute>,
         pub member: Member,
@@ -132,7 +119,6 @@ pub(crate) mod parsing {
     use crate::ext::IdentExt;
     use crate::parse::{ParseBuffer, ParseStream, Result};
     use crate::path;
-
     impl Pat {
         pub fn parse_single(input: ParseStream) -> Result<Self> {
             let begin = input.fork();

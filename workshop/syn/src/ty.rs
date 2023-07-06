@@ -1,8 +1,7 @@
-use super::*;
-use crate::punctuated::Punctuated;
+use super::{punctuated::Punctuated, *};
 use proc_macro2::TokenStream;
+
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum Type {
         Array(TypeArray),
         BareFn(TypeBareFn),

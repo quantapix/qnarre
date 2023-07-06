@@ -1668,7 +1668,6 @@ mod printing {
 }
 
 ast_enum! {
-    #[non_exhaustive]
     pub enum BinOp {
         Add(Token![+]),
         Sub(Token![-]),
@@ -1701,7 +1700,6 @@ ast_enum! {
     }
 }
 ast_enum! {
-    #[non_exhaustive]
     pub enum UnOp {
         Deref(Token![*]),
         Not(Token![!]),
@@ -1971,7 +1969,6 @@ mod restriction {
         }
     }
     ast_enum! {
-        #[non_exhaustive]
         pub enum FieldMutability {
             None,
         }

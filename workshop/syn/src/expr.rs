@@ -6,7 +6,6 @@ use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
 use std::mem;
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum Expr {
         Array(ExprArray),
         Assign(ExprAssign),

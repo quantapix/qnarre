@@ -255,7 +255,6 @@ impl From<Ident> for TypeParam {
     }
 }
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum TypeParamBound {
         Trait(TraitBound),
         Lifetime(Lifetime),
@@ -283,7 +282,6 @@ ast_struct! {
     }
 }
 ast_enum_of_structs! {
-    #[non_exhaustive]
     pub enum WherePredicate {
         Lifetime(PredicateLifetime),
         Type(PredicateType),
