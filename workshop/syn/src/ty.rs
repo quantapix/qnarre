@@ -331,7 +331,7 @@ pub(crate) mod parsing {
             }
             if input.peek(Token![!]) && !input.peek(Token![!=]) && ty.path.is_mod_style() {
                 let bang_token: Token![!] = input.parse()?;
-                let (delimiter, tokens) = mac::parse_delimiter(input)?;
+                let (delimiter, tokens) = mac_parse_delimiter(input)?;
                 return Ok(Type::Macro(TypeMacro {
                     mac: Macro {
                         path: ty.path,
@@ -631,7 +631,7 @@ pub(crate) mod parsing {
             }
             if !at_least_one_trait {
                 let msg = "at least one trait is required for an object type";
-                return Err(error::new2(dyn_span, last_lifetime_span.unwrap(), msg));
+                return Err(err::new2(dyn_span, last_lifetime_span.unwrap(), msg));
             }
             Ok(bounds)
         }
@@ -666,7 +666,7 @@ pub(crate) mod parsing {
             }
             if !at_least_one_trait {
                 let msg = "at least one trait must be specified";
-                return Err(error::new2(impl_token.span, last_lifetime_span.unwrap(), msg));
+                return Err(err::new2(impl_token.span, last_lifetime_span.unwrap(), msg));
             }
             Ok(TypeImplTrait { impl_token, bounds })
         }
@@ -783,8 +783,7 @@ pub(crate) mod parsing {
 }
 mod printing {
     use super::*;
-    use crate::attr::FilterAttrs;
-    use crate::print::TokensOrDefault;
+    use crate::{attr::FilterAttrs, TokensOrDefault};
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
     impl ToTokens for TypeSlice {

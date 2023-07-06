@@ -208,7 +208,7 @@ pub(crate) mod parsing {
         let (qself, path) = path::parsing::qpath(input, true)?;
         if qself.is_none() && input.peek(Token![!]) && !input.peek(Token![!=]) && path.is_mod_style() {
             let bang_token: Token![!] = input.parse()?;
-            let (delimiter, tokens) = mac::parse_delimiter(input)?;
+            let (delimiter, tokens) = mac_parse_delimiter(input)?;
             return Ok(Pat::Macro(ExprMacro {
                 attrs: Vec::new(),
                 mac: Macro {
@@ -516,7 +516,7 @@ pub(crate) mod parsing {
                         RangeLimits::Closed(dot_dot_eq) => (dot_dot_eq.spans[0], dot_dot_eq.spans[2]),
                     };
                     let msg = "range pattern is not allowed unparenthesized inside slice pattern";
-                    return Err(error::new2(start, end, msg));
+                    return Err(err::new2(start, end, msg));
                 },
                 _ => {},
             }

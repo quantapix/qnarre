@@ -150,9 +150,9 @@ macro_rules! custom_keyword {
             pub span: $crate::__private::Span,
         }
         #[allow(dead_code, non_snake_case)]
-        pub fn $ident<__S: $crate::__private::IntoSpans<$crate::__private::Span>>(span: __S) -> $ident {
+        pub fn $ident<__S: $crate::IntoSpans<$crate::__private::Span>>(span: __S) -> $ident {
             $ident {
-                span: $crate::__private::IntoSpans::into_spans(span),
+                span: $crate::IntoSpans::into_spans(span),
             }
         }
         const _: () = {
@@ -256,12 +256,12 @@ macro_rules! custom_punctuation {
             pub spans: $crate::custom_punctuation_repr!($($tt)+),
         }
                 #[allow(dead_code, non_snake_case)]
-        pub fn $ident<__S: $crate::__private::IntoSpans<$crate::custom_punctuation_repr!($($tt)+)>>(
+        pub fn $ident<__S: $crate::IntoSpans<$crate::custom_punctuation_repr!($($tt)+)>>(
             spans: __S,
         ) -> $ident {
             let _validate_len = 0 $(+ $crate::custom_punctuation_len!(strict, $tt))*;
             $ident {
-                spans: $crate::__private::IntoSpans::into_spans(spans)
+                spans: $crate::IntoSpans::into_spans(spans)
             }
         }
         const _: () = {

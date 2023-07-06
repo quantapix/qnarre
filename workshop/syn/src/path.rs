@@ -452,7 +452,7 @@ pub(crate) mod parsing {
 }
 pub(crate) mod printing {
     use super::*;
-    use crate::print::TokensOrDefault;
+    use crate::TokensOrDefault;
     use proc_macro2::TokenStream;
     use quote::ToTokens;
     use std::cmp;

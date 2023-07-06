@@ -709,8 +709,7 @@ pub(crate) mod parsing {
 }
 mod printing {
     use super::*;
-    use crate::attr::FilterAttrs;
-    use crate::print::TokensOrDefault;
+    use crate::{attr::FilterAttrs, TokensOrDefault};
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
     impl ToTokens for Generics {

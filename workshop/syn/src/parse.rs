@@ -47,8 +47,8 @@ pub mod discouraged {
     }
 }
 use crate::buffer::{Cursor, TokenBuffer};
-use crate::error;
-pub use crate::error::{Error, Result};
+use crate::err;
+pub use crate::err::{Err, Result};
 use crate::lookahead;
 pub use crate::lookahead::{Lookahead1, Peek};
 use crate::proc_macro;
@@ -111,8 +111,8 @@ impl<'c, 'a> Clone for StepCursor<'c, 'a> {
     }
 }
 impl<'c, 'a> StepCursor<'c, 'a> {
-    pub fn error<T: Display>(self, message: T) -> Error {
-        error::new_at(self.scope, self.cursor, message)
+    pub fn error<T: Display>(self, message: T) -> Err {
+        err::new_at(self.scope, self.cursor, message)
     }
 }
 pub(crate) fn advance_step_cursor<'c, 'a>(proof: StepCursor<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
@@ -242,8 +242,8 @@ impl<'a> ParseBuffer<'a> {
             unexpected: Cell::new(Some(Rc::new(Cell::new(Unexpected::None)))),
         }
     }
-    pub fn error<T: Display>(&self, message: T) -> Error {
-        error::new_at(self.scope, self.cursor(), message)
+    pub fn error<T: Display>(&self, message: T) -> Err {
+        err::new_at(self.scope, self.cursor(), message)
     }
     pub fn step<F, R>(&self, function: F) -> Result<R>
     where
@@ -270,7 +270,7 @@ impl<'a> ParseBuffer<'a> {
     }
     fn check_unexpected(&self) -> Result<()> {
         match inner_unexpected(self).1 {
-            Some(span) => Err(Error::new(span, "unexpected token")),
+            Some(span) => Err(Err::new(span, "unexpected token")),
             None => Ok(()),
         }
     }
@@ -368,7 +368,7 @@ where
         let node = self(&state)?;
         state.check_unexpected()?;
         if let Some(unexpected_span) = span_of_unexpected_ignoring_nones(state.cursor()) {
-            Err(Error::new(unexpected_span, "unexpected token"))
+            Err(Err::new(unexpected_span, "unexpected token"))
         } else {
             Ok(node)
         }
@@ -381,7 +381,7 @@ where
         let node = self(&state)?;
         state.check_unexpected()?;
         if let Some(unexpected_span) = span_of_unexpected_ignoring_nones(state.cursor()) {
-            Err(Error::new(unexpected_span, "unexpected token"))
+            Err(Err::new(unexpected_span, "unexpected token"))
         } else {
             Ok(node)
         }

@@ -814,7 +814,7 @@ pub(crate) mod parsing {
             } else {
                 input.parse()
             }?;
-            let (delimiter, tokens) = input.call(mac::parse_delimiter)?;
+            let (delimiter, tokens) = input.call(mac::mac_parse_delimiter)?;
             let semi_token: Option<Token![;]> = if !delimiter.is_brace() {
                 Some(input.parse()?)
             } else {
@@ -1206,13 +1206,10 @@ pub(crate) mod parsing {
             };
             match &arg {
                 FnArg::Receiver(receiver) if has_receiver => {
-                    return Err(Error::new(
-                        receiver.self_token.span,
-                        "unexpected second method receiver",
-                    ));
+                    return Err(Err::new(receiver.self_token.span, "unexpected second method receiver"));
                 },
                 FnArg::Receiver(receiver) if !args.is_empty() => {
-                    return Err(Error::new(receiver.self_token.span, "unexpected method receiver"));
+                    return Err(Err::new(receiver.self_token.span, "unexpected method receiver"));
                 },
                 FnArg::Receiver(_) => has_receiver = true,
                 FnArg::Typed(_) => {},
@@ -1914,9 +1911,9 @@ pub(crate) mod parsing {
                     unreachable!();
                 }
             } else if !allow_verbatim_impl {
-                return Err(Error::new_spanned(first_ty_ref, "expected trait path"));
+                return Err(Err::new_spanned(first_ty_ref, "expected trait path"));
                 #[cfg(not(feature = "printing"))]
-                return Err(Error::new(first_ty_span, "expected trait path"));
+                return Err(Err::new(first_ty_span, "expected trait path"));
             } else {
                 trait_ = None;
             }
@@ -2174,8 +2171,7 @@ pub(crate) mod parsing {
 }
 mod printing {
     use super::*;
-    use crate::attr::FilterAttrs;
-    use crate::print::TokensOrDefault;
+    use crate::{attr::FilterAttrs, TokensOrDefault};
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
     impl ToTokens for ItemExternCrate {

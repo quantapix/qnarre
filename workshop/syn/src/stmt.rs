@@ -146,7 +146,7 @@ pub(crate) mod parsing {
     }
     fn stmt_mac(input: ParseStream, attrs: Vec<Attribute>, path: Path) -> Result<StmtMacro> {
         let bang_token: Token![!] = input.parse()?;
-        let (delimiter, tokens) = mac::parse_delimiter(input)?;
+        let (delimiter, tokens) = mac_parse_delimiter(input)?;
         let semi_token: Option<Token![;]> = input.parse()?;
         Ok(StmtMacro {
             attrs,

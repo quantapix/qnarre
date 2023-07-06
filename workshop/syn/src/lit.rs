@@ -1,7 +1,7 @@
 use crate::{
     lookahead,
     parse::{Parse, Parser},
-    Error, Result,
+    Err, Result,
 };
 use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use std::{
@@ -234,7 +234,7 @@ impl LitInt {
         N: FromStr,
         N::Err: Display,
     {
-        self.base10_digits().parse().map_err(|err| Error::new(self.span(), err))
+        self.base10_digits().parse().map_err(|err| Err::new(self.span(), err))
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suffix
@@ -286,7 +286,7 @@ impl LitFloat {
         N: FromStr,
         N::Err: Display,
     {
-        self.base10_digits().parse().map_err(|err| Error::new(self.span(), err))
+        self.base10_digits().parse().map_err(|err| Err::new(self.span(), err))
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suffix

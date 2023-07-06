@@ -1148,7 +1148,7 @@ pub(crate) mod parsing {
         let (qself, path) = path::parsing::qpath(input, true)?;
         if qself.is_none() && input.peek(Token![!]) && !input.peek(Token![!=]) && path.is_mod_style() {
             let bang_token: Token![!] = input.parse()?;
-            let (delimiter, tokens) = mac::parse_delimiter(input)?;
+            let (delimiter, tokens) = mac_parse_delimiter(input)?;
             return Ok(Expr::Macro(ExprMacro {
                 attrs: Vec::new(),
                 mac: Macro {
@@ -1968,11 +1968,11 @@ pub(crate) mod parsing {
             let lit: LitInt = input.parse()?;
             if lit.suffix().is_empty() {
                 Ok(Index {
-                    index: lit.base10_digits().parse().map_err(|err| Error::new(lit.span(), err))?,
+                    index: lit.base10_digits().parse().map_err(|err| Err::new(lit.span(), err))?,
                     span: lit.span(),
                 })
             } else {
-                Err(Error::new(lit.span(), "expected unsuffixed integer"))
+                Err(Err::new(lit.span(), "expected unsuffixed integer"))
             }
         }
     }
@@ -1986,7 +1986,7 @@ pub(crate) mod parsing {
         }
         let mut offset = 0;
         for part in float_repr.split('.') {
-            let mut index: Index = crate::parse_str(part).map_err(|err| Error::new(float_span, err))?;
+            let mut index: Index = crate::parse_str(part).map_err(|err| Err::new(float_span, err))?;
             let part_end = offset + part.len();
             index.span = float_token.subspan(offset..part_end).unwrap_or(float_span);
             let base = mem::replace(e, Expr::DUMMY);

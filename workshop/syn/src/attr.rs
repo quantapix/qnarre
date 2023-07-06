@@ -1,9 +1,14 @@
-use super::*;
-use crate::meta::{self, ParseNestedMeta};
-use crate::parse::{Parse, ParseStream, Parser, Result};
-use proc_macro2::TokenStream;
-use std::iter;
-use std::slice;
+use super::{
+    parse::{Parse, ParseStream, Parser, Result},
+    *,
+};
+use crate::ext::IdentExt;
+use crate::lit::Lit;
+use crate::parse::{Err, ParseStream, Parser, Result};
+use crate::path::{Path, PathSegment};
+use crate::punctuated::Punctuated;
+use proc_macro2::{Ident, TokenStream};
+use std::{fmt::Display, iter, slice};
 
 ast_struct! {
     pub struct Attribute {
@@ -22,7 +27,7 @@ impl Attribute {
     }
     pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
         match &self.meta {
-            Meta::Path(x) => Err(crate::error::new2(
+            Meta::Path(x) => Err(crate::err::new2(
                 x.segments.first().unwrap().ident.span(),
                 x.segments.last().unwrap().ident.span(),
                 format!(
@@ -31,7 +36,7 @@ impl Attribute {
                     parsing::DisplayPath(x),
                 ),
             )),
-            Meta::NameValue(x) => Err(Error::new(
+            Meta::NameValue(x) => Err(Err::new(
                 x.eq_token.span,
                 format_args!(
                     "expected parentheses: {}[{}(...)]",
@@ -43,7 +48,7 @@ impl Attribute {
         }
     }
     pub fn parse_nested_meta(&self, x: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
-        self.parse_args_with(meta::parser(x))
+        self.parse_args_with(meta_parser(x))
     }
     pub fn parse_outer(x: ParseStream) -> Result<Vec<Self>> {
         let mut y = Vec::new();
@@ -99,12 +104,12 @@ impl Meta {
             Meta::List(x) => x.delimiter.span().open(),
             Meta::NameValue(x) => x.eq_token.span,
         };
-        Err(Error::new(y, "unexpected token in attribute"))
+        Err(Err::new(y, "unexpected token in attribute"))
     }
     pub fn require_list(&self) -> Result<&MetaList> {
         match self {
             Meta::List(x) => Ok(x),
-            Meta::Path(x) => Err(crate::error::new2(
+            Meta::Path(x) => Err(crate::err::new2(
                 x.segments.first().unwrap().ident.span(),
                 x.segments.last().unwrap().ident.span(),
                 format!(
@@ -112,13 +117,13 @@ impl Meta {
                     parsing::DisplayPath(x),
                 ),
             )),
-            Meta::NameValue(x) => Err(Error::new(x.eq_token.span, "expected `(`")),
+            Meta::NameValue(x) => Err(Err::new(x.eq_token.span, "expected `(`")),
         }
     }
     pub fn require_name_value(&self) -> Result<&MetaNameValue> {
         match self {
             Meta::NameValue(x) => Ok(x),
-            Meta::Path(x) => Err(crate::error::new2(
+            Meta::Path(x) => Err(crate::err::new2(
                 x.segments.first().unwrap().ident.span(),
                 x.segments.last().unwrap().ident.span(),
                 format!(
@@ -126,7 +131,7 @@ impl Meta {
                     parsing::DisplayPath(x),
                 ),
             )),
-            Meta::List(x) => Err(Error::new(x.delimiter.span().open(), "expected `=`")),
+            Meta::List(x) => Err(Err::new(x.delimiter.span().open(), "expected `=`")),
         }
     }
 }
@@ -139,9 +144,10 @@ impl MetaList {
         crate::parse::parse_scoped(parser, y, self.tokens.clone())
     }
     pub fn parse_nested_meta(&self, x: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
-        self.parse_args_with(meta::parser(x))
+        self.parse_args_with(meta_parser(x))
     }
 }
+
 pub(crate) trait FilterAttrs<'a> {
     type Ret: Iterator<Item = &'a Attribute>;
     fn outer(self) -> Self::Ret;
@@ -168,6 +174,82 @@ impl<'a> FilterAttrs<'a> for &'a [Attribute] {
         self.iter().filter(is_inner)
     }
 }
+
+pub fn meta_parser(logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Parser<Output = ()> {
+    |input: ParseStream| {
+        if input.is_empty() {
+            Ok(())
+        } else {
+            parse_nested_meta(input, logic)
+        }
+    }
+}
+
+#[non_exhaustive]
+pub struct ParseNestedMeta<'a> {
+    pub path: Path,
+    pub input: ParseStream<'a>,
+}
+impl<'a> ParseNestedMeta<'a> {
+    pub fn value(&self) -> Result<ParseStream<'a>> {
+        self.input.parse::<Token![=]>()?;
+        Ok(self.input)
+    }
+    pub fn parse_nested_meta(&self, logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
+        let content;
+        parenthesized!(content in self.input);
+        parse_nested_meta(&content, logic)
+    }
+    pub fn error(&self, msg: impl Display) -> Err {
+        let start_span = self.path.segments[0].ident.span();
+        let end_span = self.input.cursor().prev_span();
+        crate::err::new2(start_span, end_span, msg)
+    }
+}
+
+pub(crate) fn parse_nested_meta(
+    input: ParseStream,
+    mut logic: impl FnMut(ParseNestedMeta) -> Result<()>,
+) -> Result<()> {
+    loop {
+        let path = input.call(parse_meta_path)?;
+        logic(ParseNestedMeta { path, input })?;
+        if input.is_empty() {
+            return Ok(());
+        }
+        input.parse::<Token![,]>()?;
+        if input.is_empty() {
+            return Ok(());
+        }
+    }
+}
+
+fn parse_meta_path(input: ParseStream) -> Result<Path> {
+    Ok(Path {
+        leading_colon: input.parse()?,
+        segments: {
+            let mut segments = Punctuated::new();
+            if input.peek(Ident::peek_any) {
+                let ident = Ident::parse_any(input)?;
+                segments.push_value(PathSegment::from(ident));
+            } else if input.is_empty() {
+                return Err(input.error("expected nested attribute"));
+            } else if input.peek(Lit) {
+                return Err(input.error("unexpected literal in nested attribute, expected ident"));
+            } else {
+                return Err(input.error("unexpected token in nested attribute, expected ident"));
+            }
+            while input.peek(Token![::]) {
+                let punct = input.parse()?;
+                segments.push_punct(punct);
+                let ident = Ident::parse_any(input)?;
+                segments.push_value(PathSegment::from(ident));
+            }
+            segments
+        },
+    })
+}
+
 pub(crate) mod parsing {
     use super::{
         parse::{discouraged::Speculative, Parse, ParseStream, Result},
@@ -226,7 +308,7 @@ pub(crate) mod parsing {
         }
     }
     fn parse_meta_list_after_path(path: Path, x: ParseStream) -> Result<MetaList> {
-        let (delimiter, tokens) = mac::parse_delimiter(x)?;
+        let (delimiter, tokens) = mac_parse_delimiter(x)?;
         Ok(MetaList {
             path,
             delimiter,

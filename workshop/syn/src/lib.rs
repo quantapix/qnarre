@@ -43,14 +43,27 @@
     clippy::wildcard_imports,
 )]
 
-use std::ops;
+use crate::{
+    lookahead,
+    parse::{Parse, ParseStream, Parser, Result},
+    token::{Brace, Bracket, Paren},
+};
+use proc_macro2::{extra::DelimSpan, Delimiter, Group, Ident, Span, TokenStream, TokenTree};
+use quote::{spanned, ToTokens};
+use std::{
+    cmp::Ordering,
+    fmt::{self, Debug, Display},
+    hash::{Hash, Hasher},
+    ops,
+    thread::{self, ThreadId},
+};
 
 extern crate proc_macro;
 #[macro_use]
 mod macros;
 #[macro_use]
 mod group {
-    use crate::{error::Result, parse::ParseBuffer, token};
+    use crate::{err::Result, parse::ParseBuffer, token};
     use proc_macro2::{extra::DelimSpan, Delimiter};
     pub struct Parens<'a> {
         pub token: token::Paren,
@@ -168,6 +181,9 @@ pub use crate::expr::{
     ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, FieldValue,
     Index, Label, Member, RangeLimits,
 };
+pub use crate::expr::{
+    ExprConst as PatConst, ExprLit as PatLit, ExprMacro as PatMacro, ExprPath as PatPath, ExprRange as PatRange,
+};
 mod generic;
 pub use crate::generic::{
     BoundLifetimes, ConstParam, GenericParam, Generics, ImplGenerics, LifetimeParam, PredicateLifetime, PredicateType,
@@ -180,6 +196,27 @@ pub use crate::item::{
     ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait, ItemTraitAlias, ItemType,
     ItemUnion, ItemUse, Receiver, Signature, StaticMutability, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro,
     TraitItemType, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variadic,
+};
+pub mod punctuated;
+use punctuated::Punctuated;
+mod lit;
+pub use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
+mod pat;
+pub use crate::pat::{
+    FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
+    PatType, PatWild,
+};
+mod path;
+pub use crate::path::{
+    AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
+    Path, PathArguments, PathSegment, QSelf,
+};
+mod stmt;
+pub use crate::stmt::{Block, Local, LocalInit, Stmt, StmtMacro};
+mod ty;
+pub use crate::ty::{
+    Abi, BareFnArg, BareVariadic, ReturnType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
+    TypeMacro, TypeNever, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
 };
 
 pub struct BigInt {
@@ -404,7 +441,7 @@ pub(crate) mod parsing {
 }
 mod printing {
     use super::*;
-    use crate::print::TokensOrDefault;
+    use crate::TokensOrDefault;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
     impl ToTokens for Variant {
@@ -595,8 +632,7 @@ pub(crate) mod parsing {
 }
 mod printing {
     use super::*;
-    use crate::attr::FilterAttrs;
-    use crate::print::TokensOrDefault;
+    use crate::{attr::FilterAttrs, TokensOrDefault};
     use proc_macro2::TokenStream;
     use quote::ToTokens;
     impl ToTokens for DeriveInput {
@@ -643,19 +679,18 @@ mod printing {
     }
 }
 
-mod error {
-    use crate::buffer::Cursor;
-    use crate::thread::ThreadBound;
+mod err {
+    use crate::{buffer::Cursor, ThreadBound};
     use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
     use quote::ToTokens;
     use std::fmt::{self, Debug, Display};
     use std::slice;
     use std::vec;
-    pub type Result<T> = std::result::Result<T, Error>;
-    pub struct Error {
-        messages: Vec<ErrorMessage>,
+    pub type Result<T> = std::result::Result<T, Err>;
+    pub struct Err {
+        messages: Vec<ErrMsg>,
     }
-    struct ErrorMessage {
+    struct ErrMsg {
         span: ThreadBound<SpanRange>,
         message: String,
     }
@@ -666,13 +701,13 @@ mod error {
     #[cfg(test)]
     struct _Test
     where
-        Error: Send + Sync;
-    impl Error {
+        Err: Send + Sync;
+    impl Err {
         pub fn new<T: Display>(span: Span, message: T) -> Self {
             return new(span, message.to_string());
-            fn new(span: Span, message: String) -> Error {
-                Error {
-                    messages: vec![ErrorMessage {
+            fn new(span: Span, message: String) -> Err {
+                Err {
+                    messages: vec![ErrMsg {
                         span: ThreadBound::new(SpanRange { start: span, end: span }),
                         message,
                     }],
@@ -681,12 +716,12 @@ mod error {
         }
         pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, message: U) -> Self {
             return new_spanned(tokens.into_token_stream(), message.to_string());
-            fn new_spanned(tokens: TokenStream, message: String) -> Error {
+            fn new_spanned(tokens: TokenStream, message: String) -> Err {
                 let mut iter = tokens.into_iter();
                 let start = iter.next().map_or_else(Span::call_site, |t| t.span());
                 let end = iter.last().map_or(start, |t| t.span());
-                Error {
-                    messages: vec![ErrorMessage {
+                Err {
+                    messages: vec![ErrMsg {
                         span: ThreadBound::new(SpanRange { start, end }),
                         message,
                     }],
@@ -701,16 +736,16 @@ mod error {
             start.join(end).unwrap_or(start)
         }
         pub fn to_compile_error(&self) -> TokenStream {
-            self.messages.iter().map(ErrorMessage::to_compile_error).collect()
+            self.messages.iter().map(ErrMsg::to_compile_error).collect()
         }
         pub fn into_compile_error(self) -> TokenStream {
             self.to_compile_error()
         }
-        pub fn combine(&mut self, another: Error) {
+        pub fn combine(&mut self, another: Err) {
             self.messages.extend(another.messages);
         }
     }
-    impl ErrorMessage {
+    impl ErrMsg {
         fn to_compile_error(&self) -> TokenStream {
             let (start, end) = match self.span.get() {
                 Some(range) => (range.start, range.end),
@@ -758,26 +793,26 @@ mod error {
             ])
         }
     }
-    pub(crate) fn new_at<T: Display>(scope: Span, cursor: Cursor, message: T) -> Error {
+    pub(crate) fn new_at<T: Display>(scope: Span, cursor: Cursor, message: T) -> Err {
         if cursor.eof() {
-            Error::new(scope, format!("unexpected end of input, {}", message))
+            Err::new(scope, format!("unexpected end of input, {}", message))
         } else {
             let span = crate::buffer::open_span_of_group(cursor);
-            Error::new(span, message)
+            Err::new(span, message)
         }
     }
-    pub(crate) fn new2<T: Display>(start: Span, end: Span, message: T) -> Error {
+    pub(crate) fn new2<T: Display>(start: Span, end: Span, message: T) -> Err {
         return new2(start, end, message.to_string());
-        fn new2(start: Span, end: Span, message: String) -> Error {
-            Error {
-                messages: vec![ErrorMessage {
+        fn new2(start: Span, end: Span, message: String) -> Err {
+            Err {
+                messages: vec![ErrMsg {
                     span: ThreadBound::new(SpanRange { start, end }),
                     message,
                 }],
             }
         }
     }
-    impl Debug for Error {
+    impl Debug for Err {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             if self.messages.len() == 1 {
                 formatter.debug_tuple("Error").field(&self.messages[0]).finish()
@@ -786,26 +821,26 @@ mod error {
             }
         }
     }
-    impl Debug for ErrorMessage {
+    impl Debug for ErrMsg {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             Debug::fmt(&self.message, formatter)
         }
     }
-    impl Display for Error {
+    impl Display for Err {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str(&self.messages[0].message)
         }
     }
-    impl Clone for Error {
+    impl Clone for Err {
         fn clone(&self) -> Self {
-            Error {
+            Err {
                 messages: self.messages.clone(),
             }
         }
     }
-    impl Clone for ErrorMessage {
+    impl Clone for ErrMsg {
         fn clone(&self) -> Self {
-            ErrorMessage {
+            ErrMsg {
                 span: self.span,
                 message: self.message.clone(),
             }
@@ -817,14 +852,14 @@ mod error {
         }
     }
     impl Copy for SpanRange {}
-    impl std::error::Error for Error {}
-    impl From<LexError> for Error {
+    impl std::error::Error for Err {}
+    impl From<LexError> for Err {
         fn from(err: LexError) -> Self {
-            Error::new(err.span(), "lex error")
+            Err::new(err.span(), "lex error")
         }
     }
-    impl IntoIterator for Error {
-        type Item = Error;
+    impl IntoIterator for Err {
+        type Item = Err;
         type IntoIter = IntoIter;
         fn into_iter(self) -> Self::IntoIter {
             IntoIter {
@@ -833,18 +868,18 @@ mod error {
         }
     }
     pub struct IntoIter {
-        messages: vec::IntoIter<ErrorMessage>,
+        messages: vec::IntoIter<ErrMsg>,
     }
     impl Iterator for IntoIter {
-        type Item = Error;
+        type Item = Err;
         fn next(&mut self) -> Option<Self::Item> {
-            Some(Error {
+            Some(Err {
                 messages: vec![self.messages.next()?],
             })
         }
     }
-    impl<'a> IntoIterator for &'a Error {
-        type Item = Error;
+    impl<'a> IntoIterator for &'a Err {
+        type Item = Err;
         type IntoIter = Iter<'a>;
         fn into_iter(self) -> Self::IntoIter {
             Iter {
@@ -853,25 +888,25 @@ mod error {
         }
     }
     pub struct Iter<'a> {
-        messages: slice::Iter<'a, ErrorMessage>,
+        messages: slice::Iter<'a, ErrMsg>,
     }
     impl<'a> Iterator for Iter<'a> {
-        type Item = Error;
+        type Item = Err;
         fn next(&mut self) -> Option<Self::Item> {
-            Some(Error {
+            Some(Err {
                 messages: vec![self.messages.next()?.clone()],
             })
         }
     }
-    impl Extend<Error> for Error {
-        fn extend<T: IntoIterator<Item = Error>>(&mut self, iter: T) {
+    impl Extend<Err> for Err {
+        fn extend<T: IntoIterator<Item = Err>>(&mut self, iter: T) {
             for err in iter {
                 self.combine(err);
             }
         }
     }
 }
-pub use crate::error::{Error, Result};
+pub use crate::err::{Err, Result};
 
 pub mod ext {
     use crate::buffer::Cursor;
@@ -928,48 +963,46 @@ pub mod ext {
         }
     }
 }
-mod file {
+
+ast_struct! {
+    pub struct File {
+        pub shebang: Option<String>,
+        pub attrs: Vec<Attribute>,
+        pub items: Vec<Item>,
+    }
+}
+pub(crate) mod parsing {
     use super::*;
-    ast_struct! {
-        pub struct File {
-            pub shebang: Option<String>,
-            pub attrs: Vec<Attribute>,
-            pub items: Vec<Item>,
-        }
-    }
-    pub(crate) mod parsing {
-        use super::*;
-        use crate::parse::{Parse, ParseStream, Result};
-        impl Parse for File {
-            fn parse(input: ParseStream) -> Result<Self> {
-                Ok(File {
-                    shebang: None,
-                    attrs: input.call(Attribute::parse_inner)?,
-                    items: {
-                        let mut items = Vec::new();
-                        while !input.is_empty() {
-                            items.push(input.parse()?);
-                        }
-                        items
-                    },
-                })
-            }
-        }
-    }
-    mod printing {
-        use super::*;
-        use crate::attr::FilterAttrs;
-        use proc_macro2::TokenStream;
-        use quote::{ToTokens, TokenStreamExt};
-        impl ToTokens for File {
-            fn to_tokens(&self, tokens: &mut TokenStream) {
-                tokens.append_all(self.attrs.inner());
-                tokens.append_all(&self.items);
-            }
+    use crate::parse::{Parse, ParseStream, Result};
+    impl Parse for File {
+        fn parse(input: ParseStream) -> Result<Self> {
+            Ok(File {
+                shebang: None,
+                attrs: input.call(Attribute::parse_inner)?,
+                items: {
+                    let mut items = Vec::new();
+                    while !input.is_empty() {
+                        items.push(input.parse()?);
+                    }
+                    items
+                },
+            })
         }
     }
 }
-pub use crate::file::File;
+mod printing {
+    use super::*;
+    use crate::attr::FilterAttrs;
+    use proc_macro2::TokenStream;
+    use quote::{ToTokens, TokenStreamExt};
+    impl ToTokens for File {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.inner());
+            tokens.append_all(&self.items);
+        }
+    }
+}
+
 mod ident {
     use crate::lookahead;
     pub use proc_macro2::Ident;
@@ -1056,115 +1089,107 @@ mod ident {
     }
 }
 pub use crate::ident::Ident;
-mod lifetime {
-    use crate::lookahead;
-    use proc_macro2::{Ident, Span};
-    use std::cmp::Ordering;
-    use std::fmt::{self, Display};
-    use std::hash::{Hash, Hasher};
-    pub struct Lifetime {
-        pub apostrophe: Span,
-        pub ident: Ident,
-    }
-    impl Lifetime {
-        pub fn new(symbol: &str, span: Span) -> Self {
-            if !symbol.starts_with('\'') {
-                panic!(
-                    "lifetime name must start with apostrophe as in \"'a\", got {:?}",
-                    symbol
-                );
-            }
-            if symbol == "'" {
-                panic!("lifetime name must not be empty");
-            }
-            if !crate::ident::xid_ok(&symbol[1..]) {
-                panic!("{:?} is not a valid lifetime name", symbol);
-            }
-            Lifetime {
-                apostrophe: span,
-                ident: Ident::new(&symbol[1..], span),
-            }
-        }
-        pub fn span(&self) -> Span {
-            self.apostrophe.join(self.ident.span()).unwrap_or(self.apostrophe)
-        }
-        pub fn set_span(&mut self, span: Span) {
-            self.apostrophe = span;
-            self.ident.set_span(span);
-        }
-    }
-    impl Display for Lifetime {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            "'".fmt(formatter)?;
-            self.ident.fmt(formatter)
-        }
-    }
-    impl Clone for Lifetime {
-        fn clone(&self) -> Self {
-            Lifetime {
-                apostrophe: self.apostrophe,
-                ident: self.ident.clone(),
-            }
-        }
-    }
-    impl PartialEq for Lifetime {
-        fn eq(&self, other: &Lifetime) -> bool {
-            self.ident.eq(&other.ident)
-        }
-    }
-    impl Eq for Lifetime {}
-    impl PartialOrd for Lifetime {
-        fn partial_cmp(&self, other: &Lifetime) -> Option<Ordering> {
-            Some(self.cmp(other))
-        }
-    }
-    impl Ord for Lifetime {
-        fn cmp(&self, other: &Lifetime) -> Ordering {
-            self.ident.cmp(&other.ident)
-        }
-    }
-    impl Hash for Lifetime {
-        fn hash<H: Hasher>(&self, h: &mut H) {
-            self.ident.hash(h);
-        }
-    }
-    #[allow(non_snake_case)]
-    pub fn Lifetime(marker: lookahead::TokenMarker) -> Lifetime {
-        match marker {}
-    }
-    pub(crate) mod parsing {
-        use super::*;
-        use crate::parse::{Parse, ParseStream, Result};
 
-        impl Parse for Lifetime {
-            fn parse(input: ParseStream) -> Result<Self> {
-                input.step(|cursor| cursor.lifetime().ok_or_else(|| cursor.error("expected lifetime")))
-            }
+pub struct Lifetime {
+    pub apostrophe: Span,
+    pub ident: Ident,
+}
+impl Lifetime {
+    pub fn new(symbol: &str, span: Span) -> Self {
+        if !symbol.starts_with('\'') {
+            panic!(
+                "lifetime name must start with apostrophe as in \"'a\", got {:?}",
+                symbol
+            );
+        }
+        if symbol == "'" {
+            panic!("lifetime name must not be empty");
+        }
+        if !crate::ident::xid_ok(&symbol[1..]) {
+            panic!("{:?} is not a valid lifetime name", symbol);
+        }
+        Lifetime {
+            apostrophe: span,
+            ident: Ident::new(&symbol[1..], span),
         }
     }
-    mod printing {
-        use super::*;
-        use proc_macro2::{Punct, Spacing, TokenStream};
-        use quote::{ToTokens, TokenStreamExt};
-        impl ToTokens for Lifetime {
-            fn to_tokens(&self, tokens: &mut TokenStream) {
-                let mut apostrophe = Punct::new('\'', Spacing::Joint);
-                apostrophe.set_span(self.apostrophe);
-                tokens.append(apostrophe);
-                self.ident.to_tokens(tokens);
-            }
+    pub fn span(&self) -> Span {
+        self.apostrophe.join(self.ident.span()).unwrap_or(self.apostrophe)
+    }
+    pub fn set_span(&mut self, span: Span) {
+        self.apostrophe = span;
+        self.ident.set_span(span);
+    }
+}
+impl Display for Lifetime {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        "'".fmt(formatter)?;
+        self.ident.fmt(formatter)
+    }
+}
+impl Clone for Lifetime {
+    fn clone(&self) -> Self {
+        Lifetime {
+            apostrophe: self.apostrophe,
+            ident: self.ident.clone(),
         }
     }
 }
-pub use crate::lifetime::Lifetime;
-mod lit;
-pub use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
+impl PartialEq for Lifetime {
+    fn eq(&self, other: &Lifetime) -> bool {
+        self.ident.eq(&other.ident)
+    }
+}
+impl Eq for Lifetime {}
+impl PartialOrd for Lifetime {
+    fn partial_cmp(&self, other: &Lifetime) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Lifetime {
+    fn cmp(&self, other: &Lifetime) -> Ordering {
+        self.ident.cmp(&other.ident)
+    }
+}
+impl Hash for Lifetime {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.ident.hash(h);
+    }
+}
+#[allow(non_snake_case)]
+pub fn Lifetime(marker: lookahead::TokenMarker) -> Lifetime {
+    match marker {}
+}
+
+pub(crate) mod parsing {
+    use super::*;
+    use crate::parse::{Parse, ParseStream, Result};
+    impl Parse for Lifetime {
+        fn parse(input: ParseStream) -> Result<Self> {
+            input.step(|cursor| cursor.lifetime().ok_or_else(|| cursor.error("expected lifetime")))
+        }
+    }
+}
+mod printing {
+    use super::*;
+    use proc_macro2::{Punct, Spacing, TokenStream};
+    use quote::{ToTokens, TokenStreamExt};
+    impl ToTokens for Lifetime {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let mut apostrophe = Punct::new('\'', Spacing::Joint);
+            apostrophe.set_span(self.apostrophe);
+            tokens.append(apostrophe);
+            self.ident.to_tokens(tokens);
+        }
+    }
+}
+
 mod lookahead {
     use crate::buffer::Cursor;
-    use crate::error::{self, Error};
+    use crate::err::{self, Err};
     use crate::sealed::lookahead::Sealed;
-    use crate::span::IntoSpans;
     use crate::token::Token;
+    use crate::IntoSpans;
     use proc_macro2::{Delimiter, Span};
     use std::cell::RefCell;
     pub struct Lookahead1<'a> {
@@ -1172,6 +1197,38 @@ mod lookahead {
         cursor: Cursor<'a>,
         comparisons: RefCell<Vec<&'static str>>,
     }
+    impl<'a> Lookahead1<'a> {
+        pub fn peek<T: Peek>(&self, token: T) -> bool {
+            let _ = token;
+            peek_impl(self, T::Token::peek, T::Token::display)
+        }
+        pub fn error(self) -> Err {
+            let comparisons = self.comparisons.borrow();
+            match comparisons.len() {
+                0 => {
+                    if self.cursor.eof() {
+                        Err::new(self.scope, "unexpected end of input")
+                    } else {
+                        Err::new(self.cursor.span(), "unexpected token")
+                    }
+                },
+                1 => {
+                    let message = format!("expected {}", comparisons[0]);
+                    err::new_at(self.scope, self.cursor, message)
+                },
+                2 => {
+                    let message = format!("expected {} or {}", comparisons[0], comparisons[1]);
+                    err::new_at(self.scope, self.cursor, message)
+                },
+                _ => {
+                    let join = comparisons.join(", ");
+                    let message = format!("expected one of: {}", join);
+                    err::new_at(self.scope, self.cursor, message)
+                },
+            }
+        }
+    }
+
     pub(crate) fn new(scope: Span, cursor: Cursor) -> Lookahead1 {
         Lookahead1 {
             scope,
@@ -1186,422 +1243,305 @@ mod lookahead {
         lookahead.comparisons.borrow_mut().push(display());
         false
     }
-    impl<'a> Lookahead1<'a> {
-        pub fn peek<T: Peek>(&self, token: T) -> bool {
-            let _ = token;
-            peek_impl(self, T::Token::peek, T::Token::display)
-        }
-        pub fn error(self) -> Error {
-            let comparisons = self.comparisons.borrow();
-            match comparisons.len() {
-                0 => {
-                    if self.cursor.eof() {
-                        Error::new(self.scope, "unexpected end of input")
-                    } else {
-                        Error::new(self.cursor.span(), "unexpected token")
-                    }
-                },
-                1 => {
-                    let message = format!("expected {}", comparisons[0]);
-                    error::new_at(self.scope, self.cursor, message)
-                },
-                2 => {
-                    let message = format!("expected {} or {}", comparisons[0], comparisons[1]);
-                    error::new_at(self.scope, self.cursor, message)
-                },
-                _ => {
-                    let join = comparisons.join(", ");
-                    let message = format!("expected one of: {}", join);
-                    error::new_at(self.scope, self.cursor, message)
-                },
-            }
-        }
-    }
+
     pub trait Peek: Sealed {
         type Token: Token;
     }
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Token> Peek for F {
         type Token = T;
     }
+
     pub enum TokenMarker {}
     impl<S> IntoSpans<S> for TokenMarker {
         fn into_spans(self) -> S {
             match self {}
         }
     }
+
     pub(crate) fn is_delimiter(cursor: Cursor, delimiter: Delimiter) -> bool {
         cursor.group(delimiter).is_some()
     }
+
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Token> Sealed for F {}
 }
-mod mac {
-    use super::*;
-    use crate::parse::{Parse, ParseStream, Parser, Result};
-    use crate::token::{Brace, Bracket, Paren};
-    use proc_macro2::extra::DelimSpan;
-    use proc_macro2::Delimiter;
-    use proc_macro2::TokenStream;
-    use proc_macro2::TokenTree;
-    ast_struct! {
-        pub struct Macro {
-            pub path: Path,
-            pub bang_token: Token![!],
-            pub delimiter: MacroDelimiter,
-            pub tokens: TokenStream,
-        }
-    }
-    ast_enum! {
-        pub enum MacroDelimiter {
-            Paren(Paren),
-            Brace(Brace),
-            Bracket(Bracket),
-        }
-    }
-    impl MacroDelimiter {
-        pub fn span(&self) -> &DelimSpan {
-            match self {
-                MacroDelimiter::Paren(token) => &token.span,
-                MacroDelimiter::Brace(token) => &token.span,
-                MacroDelimiter::Bracket(token) => &token.span,
-            }
-        }
-    }
-    impl Macro {
-        pub fn parse_body<T: Parse>(&self) -> Result<T> {
-            self.parse_body_with(T::parse)
-        }
 
-        pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
-            let scope = self.delimiter.span().close();
-            crate::parse::parse_scoped(parser, scope, self.tokens.clone())
-        }
-    }
-    pub(crate) fn parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
-        input.step(|cursor| {
-            if let Some((TokenTree::Group(g), rest)) = cursor.token_tree() {
-                let span = g.delim_span();
-                let delimiter = match g.delimiter() {
-                    Delimiter::Parenthesis => MacroDelimiter::Paren(Paren(span)),
-                    Delimiter::Brace => MacroDelimiter::Brace(Brace(span)),
-                    Delimiter::Bracket => MacroDelimiter::Bracket(Bracket(span)),
-                    Delimiter::None => {
-                        return Err(cursor.error("expected delimiter"));
-                    },
-                };
-                Ok(((delimiter, g.stream()), rest))
-            } else {
-                Err(cursor.error("expected delimiter"))
-            }
-        })
-    }
-    pub(crate) mod parsing {
-        use super::*;
-        use crate::parse::{Parse, ParseStream, Result};
-
-        impl Parse for Macro {
-            fn parse(input: ParseStream) -> Result<Self> {
-                let tokens;
-                Ok(Macro {
-                    path: input.call(Path::parse_mod_style)?,
-                    bang_token: input.parse()?,
-                    delimiter: {
-                        let (delimiter, content) = parse_delimiter(input)?;
-                        tokens = content;
-                        delimiter
-                    },
-                    tokens,
-                })
-            }
-        }
-    }
-    mod printing {
-        use super::*;
-        use proc_macro2::TokenStream;
-        use quote::ToTokens;
-        impl MacroDelimiter {
-            pub(crate) fn surround(&self, tokens: &mut TokenStream, inner: TokenStream) {
-                let (delim, span) = match self {
-                    MacroDelimiter::Paren(paren) => (Delimiter::Parenthesis, paren.span),
-                    MacroDelimiter::Brace(brace) => (Delimiter::Brace, brace.span),
-                    MacroDelimiter::Bracket(bracket) => (Delimiter::Bracket, bracket.span),
-                };
-                token::printing::delim(delim, span.join(), tokens, inner);
-            }
-        }
-        impl ToTokens for Macro {
-            fn to_tokens(&self, tokens: &mut TokenStream) {
-                self.path.to_tokens(tokens);
-                self.bang_token.to_tokens(tokens);
-                self.delimiter.surround(tokens, self.tokens.clone());
-            }
-        }
-    }
-}
-pub use crate::mac::{Macro, MacroDelimiter};
-pub mod meta {
-    use crate::ext::IdentExt;
-    use crate::lit::Lit;
-    use crate::parse::{Error, ParseStream, Parser, Result};
-    use crate::path::{Path, PathSegment};
-    use crate::punctuated::Punctuated;
-    use proc_macro2::Ident;
-    use std::fmt::Display;
-    pub fn parser(logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Parser<Output = ()> {
-        |input: ParseStream| {
-            if input.is_empty() {
-                Ok(())
-            } else {
-                parse_nested_meta(input, logic)
-            }
-        }
-    }
-    #[non_exhaustive]
-    pub struct ParseNestedMeta<'a> {
+ast_struct! {
+    pub struct Macro {
         pub path: Path,
-        pub input: ParseStream<'a>,
-    }
-    impl<'a> ParseNestedMeta<'a> {
-        pub fn value(&self) -> Result<ParseStream<'a>> {
-            self.input.parse::<Token![=]>()?;
-            Ok(self.input)
-        }
-        pub fn parse_nested_meta(&self, logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
-            let content;
-            parenthesized!(content in self.input);
-            parse_nested_meta(&content, logic)
-        }
-        pub fn error(&self, msg: impl Display) -> Error {
-            let start_span = self.path.segments[0].ident.span();
-            let end_span = self.input.cursor().prev_span();
-            crate::error::new2(start_span, end_span, msg)
-        }
-    }
-    pub(crate) fn parse_nested_meta(
-        input: ParseStream,
-        mut logic: impl FnMut(ParseNestedMeta) -> Result<()>,
-    ) -> Result<()> {
-        loop {
-            let path = input.call(parse_meta_path)?;
-            logic(ParseNestedMeta { path, input })?;
-            if input.is_empty() {
-                return Ok(());
-            }
-            input.parse::<Token![,]>()?;
-            if input.is_empty() {
-                return Ok(());
-            }
-        }
-    }
-    fn parse_meta_path(input: ParseStream) -> Result<Path> {
-        Ok(Path {
-            leading_colon: input.parse()?,
-            segments: {
-                let mut segments = Punctuated::new();
-                if input.peek(Ident::peek_any) {
-                    let ident = Ident::parse_any(input)?;
-                    segments.push_value(PathSegment::from(ident));
-                } else if input.is_empty() {
-                    return Err(input.error("expected nested attribute"));
-                } else if input.peek(Lit) {
-                    return Err(input.error("unexpected literal in nested attribute, expected ident"));
-                } else {
-                    return Err(input.error("unexpected token in nested attribute, expected ident"));
-                }
-                while input.peek(Token![::]) {
-                    let punct = input.parse()?;
-                    segments.push_punct(punct);
-                    let ident = Ident::parse_any(input)?;
-                    segments.push_value(PathSegment::from(ident));
-                }
-                segments
-            },
-        })
+        pub bang_token: Token![!],
+        pub delimiter: MacroDelimiter,
+        pub tokens: TokenStream,
     }
 }
-mod op {
-    ast_enum! {
-        #[non_exhaustive]
-        pub enum BinOp {
-            Add(Token![+]),
-            Sub(Token![-]),
-            Mul(Token![*]),
-            Div(Token![/]),
-            Rem(Token![%]),
-            And(Token![&&]),
-            Or(Token![||]),
-            BitXor(Token![^]),
-            BitAnd(Token![&]),
-            BitOr(Token![|]),
-            Shl(Token![<<]),
-            Shr(Token![>>]),
-            Eq(Token![==]),
-            Lt(Token![<]),
-            Le(Token![<=]),
-            Ne(Token![!=]),
-            Ge(Token![>=]),
-            Gt(Token![>]),
-            AddAssign(Token![+=]),
-            SubAssign(Token![-=]),
-            MulAssign(Token![*=]),
-            DivAssign(Token![/=]),
-            RemAssign(Token![%=]),
-            BitXorAssign(Token![^=]),
-            BitAndAssign(Token![&=]),
-            BitOrAssign(Token![|=]),
-            ShlAssign(Token![<<=]),
-            ShrAssign(Token![>>=]),
+ast_enum! {
+    pub enum MacroDelimiter {
+        Paren(Paren),
+        Brace(Brace),
+        Bracket(Bracket),
+    }
+}
+impl MacroDelimiter {
+    pub fn span(&self) -> &DelimSpan {
+        match self {
+            MacroDelimiter::Paren(token) => &token.span,
+            MacroDelimiter::Brace(token) => &token.span,
+            MacroDelimiter::Bracket(token) => &token.span,
         }
     }
-    ast_enum! {
-        #[non_exhaustive]
-        pub enum UnOp {
-            Deref(Token![*]),
-            Not(Token![!]),
-            Neg(Token![-]),
-        }
+}
+impl Macro {
+    pub fn parse_body<T: Parse>(&self) -> Result<T> {
+        self.parse_body_with(T::parse)
     }
-    pub(crate) mod parsing {
-        use super::*;
-        use crate::parse::{Parse, ParseStream, Result};
-        fn parse_binop(input: ParseStream) -> Result<BinOp> {
-            if input.peek(Token![&&]) {
-                input.parse().map(BinOp::And)
-            } else if input.peek(Token![||]) {
-                input.parse().map(BinOp::Or)
-            } else if input.peek(Token![<<]) {
-                input.parse().map(BinOp::Shl)
-            } else if input.peek(Token![>>]) {
-                input.parse().map(BinOp::Shr)
-            } else if input.peek(Token![==]) {
-                input.parse().map(BinOp::Eq)
-            } else if input.peek(Token![<=]) {
-                input.parse().map(BinOp::Le)
-            } else if input.peek(Token![!=]) {
-                input.parse().map(BinOp::Ne)
-            } else if input.peek(Token![>=]) {
-                input.parse().map(BinOp::Ge)
-            } else if input.peek(Token![+]) {
-                input.parse().map(BinOp::Add)
-            } else if input.peek(Token![-]) {
-                input.parse().map(BinOp::Sub)
-            } else if input.peek(Token![*]) {
-                input.parse().map(BinOp::Mul)
-            } else if input.peek(Token![/]) {
-                input.parse().map(BinOp::Div)
-            } else if input.peek(Token![%]) {
-                input.parse().map(BinOp::Rem)
-            } else if input.peek(Token![^]) {
-                input.parse().map(BinOp::BitXor)
-            } else if input.peek(Token![&]) {
-                input.parse().map(BinOp::BitAnd)
-            } else if input.peek(Token![|]) {
-                input.parse().map(BinOp::BitOr)
-            } else if input.peek(Token![<]) {
-                input.parse().map(BinOp::Lt)
-            } else if input.peek(Token![>]) {
-                input.parse().map(BinOp::Gt)
-            } else {
-                Err(input.error("expected binary operator"))
-            }
-        }
 
-        impl Parse for BinOp {
-            #[cfg(not(feature = "full"))]
-            fn parse(input: ParseStream) -> Result<Self> {
+    pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
+        let scope = self.delimiter.span().close();
+        crate::parse::parse_scoped(parser, scope, self.tokens.clone())
+    }
+}
+pub(crate) fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
+    input.step(|cursor| {
+        if let Some((TokenTree::Group(g), rest)) = cursor.token_tree() {
+            let span = g.delim_span();
+            let delimiter = match g.delimiter() {
+                Delimiter::Parenthesis => MacroDelimiter::Paren(Paren(span)),
+                Delimiter::Brace => MacroDelimiter::Brace(Brace(span)),
+                Delimiter::Bracket => MacroDelimiter::Bracket(Bracket(span)),
+                Delimiter::None => {
+                    return Err(cursor.error("expected delimiter"));
+                },
+            };
+            Ok(((delimiter, g.stream()), rest))
+        } else {
+            Err(cursor.error("expected delimiter"))
+        }
+    })
+}
+pub(crate) mod parsing {
+    use super::*;
+    use crate::parse::{Parse, ParseStream, Result};
+
+    impl Parse for Macro {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let tokens;
+            Ok(Macro {
+                path: input.call(Path::parse_mod_style)?,
+                bang_token: input.parse()?,
+                delimiter: {
+                    let (delimiter, content) = mac_parse_delimiter(input)?;
+                    tokens = content;
+                    delimiter
+                },
+                tokens,
+            })
+        }
+    }
+}
+mod printing {
+    use super::*;
+    use proc_macro2::TokenStream;
+    use quote::ToTokens;
+    impl MacroDelimiter {
+        pub(crate) fn surround(&self, tokens: &mut TokenStream, inner: TokenStream) {
+            let (delim, span) = match self {
+                MacroDelimiter::Paren(paren) => (Delimiter::Parenthesis, paren.span),
+                MacroDelimiter::Brace(brace) => (Delimiter::Brace, brace.span),
+                MacroDelimiter::Bracket(bracket) => (Delimiter::Bracket, bracket.span),
+            };
+            token::printing::delim(delim, span.join(), tokens, inner);
+        }
+    }
+    impl ToTokens for Macro {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.path.to_tokens(tokens);
+            self.bang_token.to_tokens(tokens);
+            self.delimiter.surround(tokens, self.tokens.clone());
+        }
+    }
+}
+
+ast_enum! {
+    #[non_exhaustive]
+    pub enum BinOp {
+        Add(Token![+]),
+        Sub(Token![-]),
+        Mul(Token![*]),
+        Div(Token![/]),
+        Rem(Token![%]),
+        And(Token![&&]),
+        Or(Token![||]),
+        BitXor(Token![^]),
+        BitAnd(Token![&]),
+        BitOr(Token![|]),
+        Shl(Token![<<]),
+        Shr(Token![>>]),
+        Eq(Token![==]),
+        Lt(Token![<]),
+        Le(Token![<=]),
+        Ne(Token![!=]),
+        Ge(Token![>=]),
+        Gt(Token![>]),
+        AddAssign(Token![+=]),
+        SubAssign(Token![-=]),
+        MulAssign(Token![*=]),
+        DivAssign(Token![/=]),
+        RemAssign(Token![%=]),
+        BitXorAssign(Token![^=]),
+        BitAndAssign(Token![&=]),
+        BitOrAssign(Token![|=]),
+        ShlAssign(Token![<<=]),
+        ShrAssign(Token![>>=]),
+    }
+}
+ast_enum! {
+    #[non_exhaustive]
+    pub enum UnOp {
+        Deref(Token![*]),
+        Not(Token![!]),
+        Neg(Token![-]),
+    }
+}
+pub(crate) mod parsing {
+    use super::*;
+    use crate::parse::{Parse, ParseStream, Result};
+    fn parse_binop(input: ParseStream) -> Result<BinOp> {
+        if input.peek(Token![&&]) {
+            input.parse().map(BinOp::And)
+        } else if input.peek(Token![||]) {
+            input.parse().map(BinOp::Or)
+        } else if input.peek(Token![<<]) {
+            input.parse().map(BinOp::Shl)
+        } else if input.peek(Token![>>]) {
+            input.parse().map(BinOp::Shr)
+        } else if input.peek(Token![==]) {
+            input.parse().map(BinOp::Eq)
+        } else if input.peek(Token![<=]) {
+            input.parse().map(BinOp::Le)
+        } else if input.peek(Token![!=]) {
+            input.parse().map(BinOp::Ne)
+        } else if input.peek(Token![>=]) {
+            input.parse().map(BinOp::Ge)
+        } else if input.peek(Token![+]) {
+            input.parse().map(BinOp::Add)
+        } else if input.peek(Token![-]) {
+            input.parse().map(BinOp::Sub)
+        } else if input.peek(Token![*]) {
+            input.parse().map(BinOp::Mul)
+        } else if input.peek(Token![/]) {
+            input.parse().map(BinOp::Div)
+        } else if input.peek(Token![%]) {
+            input.parse().map(BinOp::Rem)
+        } else if input.peek(Token![^]) {
+            input.parse().map(BinOp::BitXor)
+        } else if input.peek(Token![&]) {
+            input.parse().map(BinOp::BitAnd)
+        } else if input.peek(Token![|]) {
+            input.parse().map(BinOp::BitOr)
+        } else if input.peek(Token![<]) {
+            input.parse().map(BinOp::Lt)
+        } else if input.peek(Token![>]) {
+            input.parse().map(BinOp::Gt)
+        } else {
+            Err(input.error("expected binary operator"))
+        }
+    }
+
+    impl Parse for BinOp {
+        #[cfg(not(feature = "full"))]
+        fn parse(input: ParseStream) -> Result<Self> {
+            parse_binop(input)
+        }
+        fn parse(input: ParseStream) -> Result<Self> {
+            if input.peek(Token![+=]) {
+                input.parse().map(BinOp::AddAssign)
+            } else if input.peek(Token![-=]) {
+                input.parse().map(BinOp::SubAssign)
+            } else if input.peek(Token![*=]) {
+                input.parse().map(BinOp::MulAssign)
+            } else if input.peek(Token![/=]) {
+                input.parse().map(BinOp::DivAssign)
+            } else if input.peek(Token![%=]) {
+                input.parse().map(BinOp::RemAssign)
+            } else if input.peek(Token![^=]) {
+                input.parse().map(BinOp::BitXorAssign)
+            } else if input.peek(Token![&=]) {
+                input.parse().map(BinOp::BitAndAssign)
+            } else if input.peek(Token![|=]) {
+                input.parse().map(BinOp::BitOrAssign)
+            } else if input.peek(Token![<<=]) {
+                input.parse().map(BinOp::ShlAssign)
+            } else if input.peek(Token![>>=]) {
+                input.parse().map(BinOp::ShrAssign)
+            } else {
                 parse_binop(input)
             }
-            fn parse(input: ParseStream) -> Result<Self> {
-                if input.peek(Token![+=]) {
-                    input.parse().map(BinOp::AddAssign)
-                } else if input.peek(Token![-=]) {
-                    input.parse().map(BinOp::SubAssign)
-                } else if input.peek(Token![*=]) {
-                    input.parse().map(BinOp::MulAssign)
-                } else if input.peek(Token![/=]) {
-                    input.parse().map(BinOp::DivAssign)
-                } else if input.peek(Token![%=]) {
-                    input.parse().map(BinOp::RemAssign)
-                } else if input.peek(Token![^=]) {
-                    input.parse().map(BinOp::BitXorAssign)
-                } else if input.peek(Token![&=]) {
-                    input.parse().map(BinOp::BitAndAssign)
-                } else if input.peek(Token![|=]) {
-                    input.parse().map(BinOp::BitOrAssign)
-                } else if input.peek(Token![<<=]) {
-                    input.parse().map(BinOp::ShlAssign)
-                } else if input.peek(Token![>>=]) {
-                    input.parse().map(BinOp::ShrAssign)
-                } else {
-                    parse_binop(input)
-                }
-            }
-        }
-
-        impl Parse for UnOp {
-            fn parse(input: ParseStream) -> Result<Self> {
-                let lookahead = input.lookahead1();
-                if lookahead.peek(Token![*]) {
-                    input.parse().map(UnOp::Deref)
-                } else if lookahead.peek(Token![!]) {
-                    input.parse().map(UnOp::Not)
-                } else if lookahead.peek(Token![-]) {
-                    input.parse().map(UnOp::Neg)
-                } else {
-                    Err(lookahead.error())
-                }
-            }
         }
     }
-    mod printing {
-        use super::*;
-        use proc_macro2::TokenStream;
-        use quote::ToTokens;
-        impl ToTokens for BinOp {
-            fn to_tokens(&self, tokens: &mut TokenStream) {
-                match self {
-                    BinOp::Add(t) => t.to_tokens(tokens),
-                    BinOp::Sub(t) => t.to_tokens(tokens),
-                    BinOp::Mul(t) => t.to_tokens(tokens),
-                    BinOp::Div(t) => t.to_tokens(tokens),
-                    BinOp::Rem(t) => t.to_tokens(tokens),
-                    BinOp::And(t) => t.to_tokens(tokens),
-                    BinOp::Or(t) => t.to_tokens(tokens),
-                    BinOp::BitXor(t) => t.to_tokens(tokens),
-                    BinOp::BitAnd(t) => t.to_tokens(tokens),
-                    BinOp::BitOr(t) => t.to_tokens(tokens),
-                    BinOp::Shl(t) => t.to_tokens(tokens),
-                    BinOp::Shr(t) => t.to_tokens(tokens),
-                    BinOp::Eq(t) => t.to_tokens(tokens),
-                    BinOp::Lt(t) => t.to_tokens(tokens),
-                    BinOp::Le(t) => t.to_tokens(tokens),
-                    BinOp::Ne(t) => t.to_tokens(tokens),
-                    BinOp::Ge(t) => t.to_tokens(tokens),
-                    BinOp::Gt(t) => t.to_tokens(tokens),
-                    BinOp::AddAssign(t) => t.to_tokens(tokens),
-                    BinOp::SubAssign(t) => t.to_tokens(tokens),
-                    BinOp::MulAssign(t) => t.to_tokens(tokens),
-                    BinOp::DivAssign(t) => t.to_tokens(tokens),
-                    BinOp::RemAssign(t) => t.to_tokens(tokens),
-                    BinOp::BitXorAssign(t) => t.to_tokens(tokens),
-                    BinOp::BitAndAssign(t) => t.to_tokens(tokens),
-                    BinOp::BitOrAssign(t) => t.to_tokens(tokens),
-                    BinOp::ShlAssign(t) => t.to_tokens(tokens),
-                    BinOp::ShrAssign(t) => t.to_tokens(tokens),
-                }
-            }
-        }
-        impl ToTokens for UnOp {
-            fn to_tokens(&self, tokens: &mut TokenStream) {
-                match self {
-                    UnOp::Deref(t) => t.to_tokens(tokens),
-                    UnOp::Not(t) => t.to_tokens(tokens),
-                    UnOp::Neg(t) => t.to_tokens(tokens),
-                }
+
+    impl Parse for UnOp {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(Token![*]) {
+                input.parse().map(UnOp::Deref)
+            } else if lookahead.peek(Token![!]) {
+                input.parse().map(UnOp::Not)
+            } else if lookahead.peek(Token![-]) {
+                input.parse().map(UnOp::Neg)
+            } else {
+                Err(lookahead.error())
             }
         }
     }
 }
-pub use crate::op::{BinOp, UnOp};
+mod printing {
+    use super::*;
+    use proc_macro2::TokenStream;
+    use quote::ToTokens;
+    impl ToTokens for BinOp {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                BinOp::Add(t) => t.to_tokens(tokens),
+                BinOp::Sub(t) => t.to_tokens(tokens),
+                BinOp::Mul(t) => t.to_tokens(tokens),
+                BinOp::Div(t) => t.to_tokens(tokens),
+                BinOp::Rem(t) => t.to_tokens(tokens),
+                BinOp::And(t) => t.to_tokens(tokens),
+                BinOp::Or(t) => t.to_tokens(tokens),
+                BinOp::BitXor(t) => t.to_tokens(tokens),
+                BinOp::BitAnd(t) => t.to_tokens(tokens),
+                BinOp::BitOr(t) => t.to_tokens(tokens),
+                BinOp::Shl(t) => t.to_tokens(tokens),
+                BinOp::Shr(t) => t.to_tokens(tokens),
+                BinOp::Eq(t) => t.to_tokens(tokens),
+                BinOp::Lt(t) => t.to_tokens(tokens),
+                BinOp::Le(t) => t.to_tokens(tokens),
+                BinOp::Ne(t) => t.to_tokens(tokens),
+                BinOp::Ge(t) => t.to_tokens(tokens),
+                BinOp::Gt(t) => t.to_tokens(tokens),
+                BinOp::AddAssign(t) => t.to_tokens(tokens),
+                BinOp::SubAssign(t) => t.to_tokens(tokens),
+                BinOp::MulAssign(t) => t.to_tokens(tokens),
+                BinOp::DivAssign(t) => t.to_tokens(tokens),
+                BinOp::RemAssign(t) => t.to_tokens(tokens),
+                BinOp::BitXorAssign(t) => t.to_tokens(tokens),
+                BinOp::BitAndAssign(t) => t.to_tokens(tokens),
+                BinOp::BitOrAssign(t) => t.to_tokens(tokens),
+                BinOp::ShlAssign(t) => t.to_tokens(tokens),
+                BinOp::ShrAssign(t) => t.to_tokens(tokens),
+            }
+        }
+    }
+    impl ToTokens for UnOp {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                UnOp::Deref(t) => t.to_tokens(tokens),
+                UnOp::Not(t) => t.to_tokens(tokens),
+                UnOp::Neg(t) => t.to_tokens(tokens),
+            }
+        }
+    }
+}
+
 pub mod parse;
 mod parse_macro_input {
     #[macro_export]
@@ -1692,37 +1632,19 @@ mod parse_quote {
         }
     }
 }
-mod pat;
-pub use crate::expr::{
-    ExprConst as PatConst, ExprLit as PatLit, ExprMacro as PatMacro, ExprPath as PatPath, ExprRange as PatRange,
-};
-pub use crate::pat::{
-    FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
-    PatType, PatWild,
-};
-mod path;
-pub use crate::path::{
-    AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
-    Path, PathArguments, PathSegment, QSelf,
-};
-mod print {
-    use proc_macro2::TokenStream;
-    use quote::ToTokens;
-    pub(crate) struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
-    impl<'a, T> ToTokens for TokensOrDefault<'a, T>
-    where
-        T: ToTokens + Default,
-    {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            match self.0 {
-                Some(t) => t.to_tokens(tokens),
-                None => T::default().to_tokens(tokens),
-            }
+
+pub(crate) struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
+impl<'a, T> ToTokens for TokensOrDefault<'a, T>
+where
+    T: ToTokens + Default,
+{
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self.0 {
+            Some(t) => t.to_tokens(tokens),
+            None => T::default().to_tokens(tokens),
         }
     }
 }
-pub mod punctuated;
-use punctuated::Punctuated;
 
 mod restriction {
     use super::*;
@@ -1840,118 +1762,108 @@ mod sealed {
         pub trait Sealed: Copy {}
     }
 }
-mod span {
-    use proc_macro2::extra::DelimSpan;
-    use proc_macro2::{Delimiter, Group, Span, TokenStream};
-    pub trait IntoSpans<S> {
-        fn into_spans(self) -> S;
+
+pub trait IntoSpans<S> {
+    fn into_spans(self) -> S;
+}
+impl IntoSpans<Span> for Span {
+    fn into_spans(self) -> Span {
+        self
     }
-    impl IntoSpans<Span> for Span {
-        fn into_spans(self) -> Span {
-            self
+}
+impl IntoSpans<[Span; 1]> for Span {
+    fn into_spans(self) -> [Span; 1] {
+        [self]
+    }
+}
+impl IntoSpans<[Span; 2]> for Span {
+    fn into_spans(self) -> [Span; 2] {
+        [self, self]
+    }
+}
+impl IntoSpans<[Span; 3]> for Span {
+    fn into_spans(self) -> [Span; 3] {
+        [self, self, self]
+    }
+}
+impl IntoSpans<[Span; 1]> for [Span; 1] {
+    fn into_spans(self) -> [Span; 1] {
+        self
+    }
+}
+impl IntoSpans<[Span; 2]> for [Span; 2] {
+    fn into_spans(self) -> [Span; 2] {
+        self
+    }
+}
+impl IntoSpans<[Span; 3]> for [Span; 3] {
+    fn into_spans(self) -> [Span; 3] {
+        self
+    }
+}
+impl IntoSpans<DelimSpan> for Span {
+    fn into_spans(self) -> DelimSpan {
+        let mut group = Group::new(Delimiter::None, TokenStream::new());
+        group.set_span(self);
+        group.delim_span()
+    }
+}
+impl IntoSpans<DelimSpan> for DelimSpan {
+    fn into_spans(self) -> DelimSpan {
+        self
+    }
+}
+
+pub trait Spanned: private::Sealed {
+    fn span(&self) -> Span;
+}
+impl<T: ?Sized + spanned::Spanned> Spanned for T {
+    fn span(&self) -> Span {
+        self.__span()
+    }
+}
+mod private {
+    use super::*;
+    pub trait Sealed {}
+    impl<T: ?Sized + spanned::Spanned> Sealed for T {}
+}
+
+pub(crate) struct ThreadBound<T> {
+    value: T,
+    thread_id: ThreadId,
+}
+unsafe impl<T> Sync for ThreadBound<T> {}
+unsafe impl<T: Copy> Send for ThreadBound<T> {}
+impl<T> ThreadBound<T> {
+    pub(crate) fn new(value: T) -> Self {
+        ThreadBound {
+            value,
+            thread_id: thread::current().id(),
         }
     }
-    impl IntoSpans<[Span; 1]> for Span {
-        fn into_spans(self) -> [Span; 1] {
-            [self]
-        }
-    }
-    impl IntoSpans<[Span; 2]> for Span {
-        fn into_spans(self) -> [Span; 2] {
-            [self, self]
-        }
-    }
-    impl IntoSpans<[Span; 3]> for Span {
-        fn into_spans(self) -> [Span; 3] {
-            [self, self, self]
-        }
-    }
-    impl IntoSpans<[Span; 1]> for [Span; 1] {
-        fn into_spans(self) -> [Span; 1] {
-            self
-        }
-    }
-    impl IntoSpans<[Span; 2]> for [Span; 2] {
-        fn into_spans(self) -> [Span; 2] {
-            self
-        }
-    }
-    impl IntoSpans<[Span; 3]> for [Span; 3] {
-        fn into_spans(self) -> [Span; 3] {
-            self
-        }
-    }
-    impl IntoSpans<DelimSpan> for Span {
-        fn into_spans(self) -> DelimSpan {
-            let mut group = Group::new(Delimiter::None, TokenStream::new());
-            group.set_span(self);
-            group.delim_span()
-        }
-    }
-    impl IntoSpans<DelimSpan> for DelimSpan {
-        fn into_spans(self) -> DelimSpan {
-            self
+    pub(crate) fn get(&self) -> Option<&T> {
+        if thread::current().id() == self.thread_id {
+            Some(&self.value)
+        } else {
+            None
         }
     }
 }
-pub mod spanned {
-    use proc_macro2::Span;
-    use quote::spanned::Spanned as ToTokens;
-    pub trait Spanned: private::Sealed {
-        fn span(&self) -> Span;
-    }
-    impl<T: ?Sized + ToTokens> Spanned for T {
-        fn span(&self) -> Span {
-            self.__span()
-        }
-    }
-    mod private {
-        use super::*;
-        pub trait Sealed {}
-        impl<T: ?Sized + ToTokens> Sealed for T {}
-    }
-}
-mod stmt;
-pub use crate::stmt::{Block, Local, LocalInit, Stmt, StmtMacro};
-mod thread {
-    use std::fmt::{self, Debug};
-    use std::thread::{self, ThreadId};
-    pub(crate) struct ThreadBound<T> {
-        value: T,
-        thread_id: ThreadId,
-    }
-    unsafe impl<T> Sync for ThreadBound<T> {}
-    unsafe impl<T: Copy> Send for ThreadBound<T> {}
-    impl<T> ThreadBound<T> {
-        pub(crate) fn new(value: T) -> Self {
-            ThreadBound {
-                value,
-                thread_id: thread::current().id(),
-            }
-        }
-        pub(crate) fn get(&self) -> Option<&T> {
-            if thread::current().id() == self.thread_id {
-                Some(&self.value)
-            } else {
-                None
-            }
-        }
-    }
-    impl<T: Debug> Debug for ThreadBound<T> {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            match self.get() {
-                Some(value) => Debug::fmt(value, formatter),
-                None => formatter.write_str("unknown"),
-            }
-        }
-    }
-    impl<T: Copy> Copy for ThreadBound<T> {}
-    impl<T: Copy> Clone for ThreadBound<T> {
-        fn clone(&self) -> Self {
-            *self
+impl<T: Debug> Debug for ThreadBound<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match self.get() {
+            Some(value) => Debug::fmt(value, formatter),
+            None => formatter.write_str("unknown"),
         }
     }
 }
+impl<T: Copy> Copy for ThreadBound<T> {}
+impl<T: Copy> Clone for ThreadBound<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 mod tt {
     use proc_macro2::{Delimiter, TokenStream, TokenTree};
     use std::hash::{Hash, Hasher};
@@ -2050,11 +1962,6 @@ mod tt {
         }
     }
 }
-mod ty;
-pub use crate::ty::{
-    Abi, BareFnArg, BareVariadic, ReturnType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
-    TypeMacro, TypeNever, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
-};
 mod verbatim {
     use crate::parse::ParseStream;
     use proc_macro2::{Delimiter, TokenStream};
@@ -2194,9 +2101,7 @@ mod gen {
 }
 pub use crate::gen::*;
 pub mod __private {
-    pub use crate::group::{parse_braces, parse_brackets, parse_parens};
     pub use crate::parse_quote::parse as parse_quote;
-    pub use crate::span::IntoSpans;
     pub use crate::token::parsing::{peek_punct, punct as parse_punct};
     pub use crate::token::printing::punct as print_punct;
     pub use proc_macro::TokenStream;

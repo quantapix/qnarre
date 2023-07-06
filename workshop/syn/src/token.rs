@@ -1,11 +1,11 @@
 use self::private::WithSpan;
 use crate::buffer::Cursor;
-use crate::error::Result;
-use crate::lifetime::Lifetime;
+use crate::err::Result;
 use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr};
 use crate::lookahead;
 use crate::parse::{Parse, ParseStream};
-use crate::span::IntoSpans;
+use crate::IntoSpans;
+use crate::Lifetime;
 use proc_macro2::extra::DelimSpan;
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
@@ -634,7 +634,7 @@ macro_rules! Token {
 }
 pub(crate) mod parsing {
     use crate::buffer::Cursor;
-    use crate::error::{Error, Result};
+    use crate::err::{Err, Result};
     use crate::parse::ParseStream;
     use proc_macro2::{Spacing, Span};
     pub(crate) fn keyword(input: ParseStream, token: &str) -> Result<Span> {
@@ -679,7 +679,7 @@ pub(crate) mod parsing {
                     None => break,
                 }
             }
-            Err(Error::new(spans[0], format!("expected `{}`", token)))
+            Err(Err::new(spans[0], format!("expected `{}`", token)))
         })
     }
     pub fn peek_punct(mut cursor: Cursor, token: &str) -> bool {
