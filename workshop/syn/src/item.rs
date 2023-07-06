@@ -2259,7 +2259,6 @@ mod printing {
     use crate::print::TokensOrDefault;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemExternCrate {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2274,7 +2273,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemUse {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2285,7 +2283,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemStatic {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2300,7 +2297,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemConst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2314,7 +2310,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemFn {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2326,7 +2321,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemMod {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2344,7 +2338,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemForeignMod {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2356,7 +2349,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2370,7 +2362,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemEnum {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2384,7 +2375,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2409,7 +2399,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemUnion {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2421,7 +2410,6 @@ mod printing {
             self.fields.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemTrait {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2442,7 +2430,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemTraitAlias {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2456,7 +2443,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemImpl {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2477,7 +2463,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ItemMacro {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2498,7 +2483,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for UsePath {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -2506,13 +2490,11 @@ mod printing {
             self.tree.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for UseName {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for UseRename {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -2520,13 +2502,11 @@ mod printing {
             self.rename.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for UseGlob {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.star_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for UseGroup {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.brace_token.surround(tokens, |tokens| {
@@ -2534,7 +2514,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TraitItemConst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2549,7 +2528,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TraitItemFn {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2567,7 +2545,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TraitItemType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2586,7 +2563,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TraitItemMacro {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2594,7 +2570,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ImplItemConst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2609,7 +2584,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ImplItemFn {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2622,7 +2596,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ImplItemType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2637,7 +2610,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ImplItemMacro {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2645,7 +2617,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ForeignItemFn {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2654,7 +2625,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ForeignItemStatic {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2667,7 +2637,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ForeignItemType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2679,7 +2648,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ForeignItemMacro {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2687,7 +2655,6 @@ mod printing {
             self.semi_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Signature {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.constness.to_tokens(tokens);
@@ -2710,7 +2677,6 @@ mod printing {
             self.generics.where_clause.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Receiver {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2742,7 +2708,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Variadic {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -2754,7 +2719,6 @@ mod printing {
             self.comma.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for StaticMutability {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {

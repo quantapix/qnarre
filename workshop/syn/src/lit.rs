@@ -335,7 +335,6 @@ impl LitBool {
 mod debug_impls {
     use super::*;
     use std::fmt::{self, Debug};
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitStr {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitStr {
@@ -349,7 +348,6 @@ mod debug_impls {
             self.debug(formatter, "LitStr")
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitByteStr {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitByteStr {
@@ -363,7 +361,6 @@ mod debug_impls {
             self.debug(formatter, "LitByteStr")
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitByte {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitByte {
@@ -377,7 +374,6 @@ mod debug_impls {
             self.debug(formatter, "LitByte")
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitChar {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitChar {
@@ -391,7 +387,6 @@ mod debug_impls {
             self.debug(formatter, "LitChar")
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitInt {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitInt {
@@ -405,7 +400,6 @@ mod debug_impls {
             self.debug(formatter, "LitInt")
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitFloat {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitFloat {
@@ -419,7 +413,6 @@ mod debug_impls {
             self.debug(formatter, "LitFloat")
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
     impl Debug for LitBool {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             impl LitBool {
@@ -459,7 +452,6 @@ impl Clone for LitFloatRepr {
 }
 macro_rules! lit_extra_traits {
     ($ty:ident) => {
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
         impl Clone for $ty {
             fn clone(&self) -> Self {
                 $ty {
@@ -467,13 +459,11 @@ macro_rules! lit_extra_traits {
                 }
             }
         }
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
         impl PartialEq for $ty {
             fn eq(&self, other: &Self) -> bool {
                 self.repr.token.to_string() == other.repr.token.to_string()
             }
         }
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
         impl Hash for $ty {
             fn hash<H>(&self, state: &mut H)
             where
@@ -642,43 +632,36 @@ mod printing {
     use super::*;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitStr {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.repr.token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitByteStr {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.repr.token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitByte {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.repr.token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitChar {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.repr.token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitInt {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.repr.token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitFloat {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.repr.token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LitBool {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append(self.token());

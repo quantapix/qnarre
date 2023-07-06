@@ -548,7 +548,6 @@ mod printing {
     use crate::attr::FilterAttrs;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatIdent {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -561,7 +560,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatOr {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -569,7 +567,6 @@ mod printing {
             self.cases.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatParen {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -578,7 +575,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatReference {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -587,14 +583,12 @@ mod printing {
             self.pat.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatRest {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
             self.dot2_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatSlice {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -603,7 +597,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -617,7 +610,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatTuple {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -626,7 +618,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatTupleStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -636,7 +627,6 @@ mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -645,14 +635,12 @@ mod printing {
             self.ty.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PatWild {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
             self.underscore_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for FieldPat {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());

@@ -113,33 +113,26 @@ macro_rules! define_keywords {
                     }
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
             impl Copy for $name {}
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
             impl Clone for $name {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl Debug for $name {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     f.write_str(stringify!($name))
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl cmp::Eq for $name {}
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl PartialEq for $name {
                 fn eq(&self, _other: &$name) -> bool {
                     true
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl Hash for $name {
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
             impl ToTokens for $name {
                 fn to_tokens(&self, tokens: &mut TokenStream) {
                     printing::keyword($token, self.span, tokens);
@@ -203,29 +196,23 @@ macro_rules! define_punctuation_structs {
                     }
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
             impl Copy for $name {}
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
             impl Clone for $name {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl Debug for $name {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     f.write_str(stringify!($name))
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl cmp::Eq for $name {}
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl PartialEq for $name {
                 fn eq(&self, _other: &$name) -> bool {
                     true
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl Hash for $name {
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }
@@ -239,7 +226,6 @@ macro_rules! define_punctuation {
             define_punctuation_structs! {
                 $token pub struct $name/$len #[doc = $usage]
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
             impl ToTokens for $name {
                 fn to_tokens(&self, tokens: &mut TokenStream) {
                     printing::punct($token, &self.spans, tokens);
@@ -283,29 +269,23 @@ macro_rules! define_delimiters {
                     $name(Span::call_site())
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
             impl Copy for $name {}
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
             impl Clone for $name {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl Debug for $name {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     f.write_str(stringify!($name))
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl cmp::Eq for $name {}
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl PartialEq for $name {
                 fn eq(&self, _other: &$name) -> bool {
                     true
                 }
             }
-                        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
             impl Hash for $name {
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }

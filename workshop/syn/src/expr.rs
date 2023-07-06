@@ -626,7 +626,6 @@ pub(crate) mod parsing {
         }
     }
     impl Expr {
-        #[cfg_attr(doc_cfg, doc(cfg(all(feature = "full", feature = "parsing"))))]
         pub fn parse_without_eager_brace(input: ParseStream) -> Result<Expr> {
             ambiguous_expr(input, AllowStruct(false))
         }
@@ -2055,7 +2054,6 @@ pub(crate) mod printing {
     }
     #[cfg(not(feature = "full"))]
     pub(crate) fn outer_attrs_to_tokens(_attrs: &[Attribute], _tokens: &mut TokenStream) {}
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprArray {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2064,7 +2062,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprAssign {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2073,7 +2070,6 @@ pub(crate) mod printing {
             self.right.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprAsync {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2082,7 +2078,6 @@ pub(crate) mod printing {
             self.block.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprAwait {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2091,7 +2086,6 @@ pub(crate) mod printing {
             self.await_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprBinary {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2100,7 +2094,6 @@ pub(crate) mod printing {
             self.right.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprBlock {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2111,7 +2104,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprBreak {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2120,7 +2112,6 @@ pub(crate) mod printing {
             self.expr.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprCall {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2130,7 +2121,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprCast {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2139,7 +2129,6 @@ pub(crate) mod printing {
             self.ty.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprClosure {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2155,7 +2144,6 @@ pub(crate) mod printing {
             self.body.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprConst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2166,7 +2154,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprContinue {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2174,7 +2161,6 @@ pub(crate) mod printing {
             self.label.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprField {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2183,7 +2169,6 @@ pub(crate) mod printing {
             self.member.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprForLoop {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2198,7 +2183,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprGroup {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2207,7 +2191,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprIf {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2223,7 +2206,6 @@ pub(crate) mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprIndex {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2233,14 +2215,12 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprInfer {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
             self.underscore_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprLet {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2250,14 +2230,12 @@ pub(crate) mod printing {
             wrap_bare_struct(tokens, &self.expr);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprLit {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
             self.lit.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprLoop {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2269,14 +2247,12 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprMacro {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
             self.mac.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprMatch {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2294,7 +2270,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprMethodCall {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2307,7 +2282,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprParen {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2316,14 +2290,12 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprPath {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
             path::printing::print_path(tokens, &self.qself, &self.path);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprRange {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2332,7 +2304,6 @@ pub(crate) mod printing {
             self.end.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprReference {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2341,7 +2312,6 @@ pub(crate) mod printing {
             self.expr.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprRepeat {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2352,7 +2322,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprReturn {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2360,7 +2329,6 @@ pub(crate) mod printing {
             self.expr.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2376,7 +2344,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprTry {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2384,7 +2351,6 @@ pub(crate) mod printing {
             self.question_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprTryBlock {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2392,7 +2358,6 @@ pub(crate) mod printing {
             self.block.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprTuple {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2404,7 +2369,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprUnary {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2412,7 +2376,6 @@ pub(crate) mod printing {
             self.expr.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprUnsafe {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2423,7 +2386,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprWhile {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2436,7 +2398,6 @@ pub(crate) mod printing {
             });
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprYield {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2444,7 +2405,6 @@ pub(crate) mod printing {
             self.expr.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Arm {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(&self.attrs);
@@ -2458,7 +2418,6 @@ pub(crate) mod printing {
             self.comma.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for FieldValue {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
@@ -2469,7 +2428,6 @@ pub(crate) mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Index {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let mut lit = Literal::i64_unsuffixed(i64::from(self.index));
@@ -2477,14 +2435,12 @@ pub(crate) mod printing {
             tokens.append(lit);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Label {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.name.to_tokens(tokens);
             self.colon_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Member {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {
@@ -2493,7 +2449,6 @@ pub(crate) mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for RangeLimits {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {

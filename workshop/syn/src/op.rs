@@ -135,7 +135,6 @@ mod printing {
     use super::*;
     use proc_macro2::TokenStream;
     use quote::ToTokens;
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for BinOp {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {
@@ -170,7 +169,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for UnOp {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {

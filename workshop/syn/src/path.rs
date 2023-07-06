@@ -261,7 +261,6 @@ pub(crate) mod parsing {
         Err(lookahead.error())
     }
     impl AngleBracketedGenericArguments {
-        #[cfg_attr(doc_cfg, doc(cfg(all(feature = "parsing", feature = "full"))))]
         pub fn parse_turbofish(input: ParseStream) -> Result<Self> {
             let colon2_token: Token![::] = input.parse()?;
             Self::do_parse(Some(colon2_token), input)
@@ -457,21 +456,18 @@ pub(crate) mod printing {
     use proc_macro2::TokenStream;
     use quote::ToTokens;
     use std::cmp;
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Path {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.leading_colon.to_tokens(tokens);
             self.segments.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PathSegment {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
             self.arguments.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PathArguments {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {
@@ -485,7 +481,6 @@ pub(crate) mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for GenericArgument {
         #[allow(clippy::match_same_arms)]
         fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -505,7 +500,6 @@ pub(crate) mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for AngleBracketedGenericArguments {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.colon2_token.to_tokens(tokens);
@@ -543,7 +537,6 @@ pub(crate) mod printing {
             self.gt_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for AssocType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -552,7 +545,6 @@ pub(crate) mod printing {
             self.ty.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for AssocConst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -561,7 +553,6 @@ pub(crate) mod printing {
             self.value.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Constraint {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.ident.to_tokens(tokens);
@@ -570,7 +561,6 @@ pub(crate) mod printing {
             self.bounds.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ParenthesizedGenericArguments {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.paren_token.surround(tokens, |tokens| {

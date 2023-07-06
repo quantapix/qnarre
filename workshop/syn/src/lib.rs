@@ -46,12 +46,122 @@ extern crate proc_macro;
 #[macro_use]
 mod macros;
 #[macro_use]
-mod group;
+mod group {
+    use crate::error::Result;
+    use crate::parse::ParseBuffer;
+    use crate::token;
+    use proc_macro2::extra::DelimSpan;
+    use proc_macro2::Delimiter;
+    pub struct Parens<'a> {
+        pub token: token::Paren,
+        pub content: ParseBuffer<'a>,
+    }
+    pub struct Braces<'a> {
+        pub token: token::Brace,
+        pub content: ParseBuffer<'a>,
+    }
+    pub struct Brackets<'a> {
+        pub token: token::Bracket,
+        pub content: ParseBuffer<'a>,
+    }
+
+    pub struct Group<'a> {
+        pub token: token::Group,
+        pub content: ParseBuffer<'a>,
+    }
+    pub fn parse_parens<'a>(input: &ParseBuffer<'a>) -> Result<Parens<'a>> {
+        parse_delimited(input, Delimiter::Parenthesis).map(|(span, content)| Parens {
+            token: token::Paren(span),
+            content,
+        })
+    }
+    pub fn parse_braces<'a>(input: &ParseBuffer<'a>) -> Result<Braces<'a>> {
+        parse_delimited(input, Delimiter::Brace).map(|(span, content)| Braces {
+            token: token::Brace(span),
+            content,
+        })
+    }
+    pub fn parse_brackets<'a>(input: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
+        parse_delimited(input, Delimiter::Bracket).map(|(span, content)| Brackets {
+            token: token::Bracket(span),
+            content,
+        })
+    }
+
+    pub(crate) fn parse_group<'a>(input: &ParseBuffer<'a>) -> Result<Group<'a>> {
+        parse_delimited(input, Delimiter::None).map(|(span, content)| Group {
+            token: token::Group(span.join()),
+            content,
+        })
+    }
+    fn parse_delimited<'a>(input: &ParseBuffer<'a>, delimiter: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
+        input.step(|cursor| {
+            if let Some((content, span, rest)) = cursor.group(delimiter) {
+                let scope = crate::buffer::close_span_of_group(*cursor);
+                let nested = crate::parse::advance_step_cursor(cursor, content);
+                let unexpected = crate::parse::get_unexpected(input);
+                let content = crate::parse::new_parse_buffer(scope, nested, unexpected);
+                Ok(((span, content), rest))
+            } else {
+                let message = match delimiter {
+                    Delimiter::Parenthesis => "expected parentheses",
+                    Delimiter::Brace => "expected curly braces",
+                    Delimiter::Bracket => "expected square brackets",
+                    Delimiter::None => "expected invisible group",
+                };
+                Err(cursor.error(message))
+            }
+        })
+    }
+    #[macro_export]
+
+    macro_rules! parenthesized {
+        ($content:ident in $cursor:expr) => {
+            match $crate::__private::parse_parens(&$cursor) {
+                $crate::__private::Ok(parens) => {
+                    $content = parens.content;
+                    parens.token
+                },
+                $crate::__private::Err(error) => {
+                    return $crate::__private::Err(error);
+                },
+            }
+        };
+    }
+    #[macro_export]
+
+    macro_rules! braced {
+        ($content:ident in $cursor:expr) => {
+            match $crate::__private::parse_braces(&$cursor) {
+                $crate::__private::Ok(braces) => {
+                    $content = braces.content;
+                    braces.token
+                },
+                $crate::__private::Err(error) => {
+                    return $crate::__private::Err(error);
+                },
+            }
+        };
+    }
+    #[macro_export]
+
+    macro_rules! bracketed {
+        ($content:ident in $cursor:expr) => {
+            match $crate::__private::parse_brackets(&$cursor) {
+                $crate::__private::Ok(brackets) => {
+                    $content = brackets.content;
+                    brackets.token
+                },
+                $crate::__private::Err(error) => {
+                    return $crate::__private::Err(error);
+                },
+            }
+        };
+    }
+}
 #[macro_use]
 pub mod token;
-
 mod attr;
-
 pub use crate::attr::{AttrStyle, Attribute, Meta, MetaList, MetaNameValue};
 mod bigint {
     use std::ops::{AddAssign, MulAssign};
@@ -106,15 +216,11 @@ mod bigint {
         }
     }
 }
-
 pub mod buffer;
 mod custom_keyword;
 mod custom_punctuation;
-
 mod data;
-
 pub use crate::data::{Field, Fields, FieldsNamed, FieldsUnnamed, Variant};
-
 mod derive;
 pub use crate::derive::{Data, DataEnum, DataStruct, DataUnion, DeriveInput};
 mod drops {
@@ -167,10 +273,8 @@ mod drops {
 }
 mod error;
 pub use crate::error::{Error, Result};
-
 mod expr;
 pub use crate::expr::{Arm, FieldValue, Label, RangeLimits};
-
 pub use crate::expr::{
     Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock, ExprBreak, ExprCall, ExprCast,
     ExprClosure, ExprConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf, ExprIndex, ExprInfer, ExprLet,
@@ -178,19 +282,195 @@ pub use crate::expr::{
     ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, Index,
     Member,
 };
-
-pub mod ext;
-mod file;
+pub mod ext {
+    use crate::buffer::Cursor;
+    use crate::parse::Peek;
+    use crate::parse::{ParseStream, Result};
+    use crate::sealed::lookahead;
+    use crate::token::CustomToken;
+    use proc_macro2::Ident;
+    pub trait IdentExt: Sized + private::Sealed {
+        fn parse_any(input: ParseStream) -> Result<Self>;
+        #[allow(non_upper_case_globals)]
+        const peek_any: private::PeekFn = private::PeekFn;
+        fn unraw(&self) -> Ident;
+    }
+    impl IdentExt for Ident {
+        fn parse_any(input: ParseStream) -> Result<Self> {
+            input.step(|cursor| match cursor.ident() {
+                Some((ident, rest)) => Ok((ident, rest)),
+                None => Err(cursor.error("expected ident")),
+            })
+        }
+        fn unraw(&self) -> Ident {
+            let string = self.to_string();
+            if let Some(string) = string.strip_prefix("r#") {
+                Ident::new(string, self.span())
+            } else {
+                self.clone()
+            }
+        }
+    }
+    impl Peek for private::PeekFn {
+        type Token = private::IdentAny;
+    }
+    impl CustomToken for private::IdentAny {
+        fn peek(cursor: Cursor) -> bool {
+            cursor.ident().is_some()
+        }
+        fn display() -> &'static str {
+            "identifier"
+        }
+    }
+    impl lookahead::Sealed for private::PeekFn {}
+    mod private {
+        use proc_macro2::Ident;
+        pub trait Sealed {}
+        impl Sealed for Ident {}
+        pub struct PeekFn;
+        pub struct IdentAny;
+        impl Copy for PeekFn {}
+        impl Clone for PeekFn {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+    }
+}
+mod file {
+    use super::*;
+    ast_struct! {
+        pub struct File {
+            pub shebang: Option<String>,
+            pub attrs: Vec<Attribute>,
+            pub items: Vec<Item>,
+        }
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::parse::{Parse, ParseStream, Result};
+        impl Parse for File {
+            fn parse(input: ParseStream) -> Result<Self> {
+                Ok(File {
+                    shebang: None,
+                    attrs: input.call(Attribute::parse_inner)?,
+                    items: {
+                        let mut items = Vec::new();
+                        while !input.is_empty() {
+                            items.push(input.parse()?);
+                        }
+                        items
+                    },
+                })
+            }
+        }
+    }
+    mod printing {
+        use super::*;
+        use crate::attr::FilterAttrs;
+        use proc_macro2::TokenStream;
+        use quote::{ToTokens, TokenStreamExt};
+        impl ToTokens for File {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                tokens.append_all(self.attrs.inner());
+                tokens.append_all(&self.items);
+            }
+        }
+    }
+}
 pub use crate::file::File;
-
 mod generics;
-
 pub use crate::generics::{
     BoundLifetimes, ConstParam, GenericParam, Generics, LifetimeParam, PredicateLifetime, PredicateType, TraitBound,
     TraitBoundModifier, TypeParam, TypeParamBound, WhereClause, WherePredicate,
 };
 pub use crate::generics::{ImplGenerics, Turbofish, TypeGenerics};
-mod ident;
+mod ident {
+    use crate::lookahead;
+    pub use proc_macro2::Ident;
+    #[cfg(not(doc))] // rustdoc bug: https://github.com/rust-lang/rust/issues/105735
+    #[allow(non_snake_case)]
+    pub fn Ident(marker: lookahead::TokenMarker) -> Ident {
+        match marker {}
+    }
+    macro_rules! ident_from_token {
+        ($token:ident) => {
+            impl From<Token![$token]> for Ident {
+                fn from(token: Token![$token]) -> Ident {
+                    Ident::new(stringify!($token), token.span)
+                }
+            }
+        };
+    }
+    ident_from_token!(self);
+    ident_from_token!(Self);
+    ident_from_token!(super);
+    ident_from_token!(crate);
+    ident_from_token!(extern);
+    impl From<Token![_]> for Ident {
+        fn from(token: Token![_]) -> Ident {
+            Ident::new("_", token.span)
+        }
+    }
+    pub(crate) fn xid_ok(symbol: &str) -> bool {
+        let mut chars = symbol.chars();
+        let first = chars.next().unwrap();
+        if !(first == '_' || unicode_ident::is_xid_start(first)) {
+            return false;
+        }
+        for ch in chars {
+            if !unicode_ident::is_xid_continue(ch) {
+                return false;
+            }
+        }
+        true
+    }
+    mod parsing {
+        use crate::buffer::Cursor;
+        use crate::parse::{Parse, ParseStream, Result};
+        use crate::token::Token;
+        use proc_macro2::Ident;
+        fn accept_as_ident(ident: &Ident) -> bool {
+            match ident.to_string().as_str() {
+                "_" | "abstract" | "as" | "async" | "await" | "become" | "box" | "break" | "const" | "continue"
+                | "crate" | "do" | "dyn" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if"
+                | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut" | "override" | "priv"
+                | "pub" | "ref" | "return" | "Self" | "self" | "static" | "struct" | "super" | "trait" | "true"
+                | "try" | "type" | "typeof" | "unsafe" | "unsized" | "use" | "virtual" | "where" | "while"
+                | "yield" => false,
+                _ => true,
+            }
+        }
+
+        impl Parse for Ident {
+            fn parse(input: ParseStream) -> Result<Self> {
+                input.step(|cursor| {
+                    if let Some((ident, rest)) = cursor.ident() {
+                        if accept_as_ident(&ident) {
+                            Ok((ident, rest))
+                        } else {
+                            Err(cursor.error(format_args!("expected identifier, found keyword `{}`", ident,)))
+                        }
+                    } else {
+                        Err(cursor.error("expected identifier"))
+                    }
+                })
+            }
+        }
+        impl Token for Ident {
+            fn peek(cursor: Cursor) -> bool {
+                if let Some((ident, _rest)) = cursor.ident() {
+                    accept_as_ident(&ident)
+                } else {
+                    false
+                }
+            }
+            fn display() -> &'static str {
+                "identifier"
+            }
+        }
+    }
+}
 pub use crate::ident::Ident;
 mod item;
 pub use crate::item::{
@@ -200,24 +480,460 @@ pub use crate::item::{
     ItemUnion, ItemUse, Receiver, Signature, StaticMutability, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro,
     TraitItemType, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variadic,
 };
-mod lifetime;
+mod lifetime {
+    use crate::lookahead;
+    use proc_macro2::{Ident, Span};
+    use std::cmp::Ordering;
+    use std::fmt::{self, Display};
+    use std::hash::{Hash, Hasher};
+    pub struct Lifetime {
+        pub apostrophe: Span,
+        pub ident: Ident,
+    }
+    impl Lifetime {
+        pub fn new(symbol: &str, span: Span) -> Self {
+            if !symbol.starts_with('\'') {
+                panic!(
+                    "lifetime name must start with apostrophe as in \"'a\", got {:?}",
+                    symbol
+                );
+            }
+            if symbol == "'" {
+                panic!("lifetime name must not be empty");
+            }
+            if !crate::ident::xid_ok(&symbol[1..]) {
+                panic!("{:?} is not a valid lifetime name", symbol);
+            }
+            Lifetime {
+                apostrophe: span,
+                ident: Ident::new(&symbol[1..], span),
+            }
+        }
+        pub fn span(&self) -> Span {
+            self.apostrophe.join(self.ident.span()).unwrap_or(self.apostrophe)
+        }
+        pub fn set_span(&mut self, span: Span) {
+            self.apostrophe = span;
+            self.ident.set_span(span);
+        }
+    }
+    impl Display for Lifetime {
+        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            "'".fmt(formatter)?;
+            self.ident.fmt(formatter)
+        }
+    }
+    impl Clone for Lifetime {
+        fn clone(&self) -> Self {
+            Lifetime {
+                apostrophe: self.apostrophe,
+                ident: self.ident.clone(),
+            }
+        }
+    }
+    impl PartialEq for Lifetime {
+        fn eq(&self, other: &Lifetime) -> bool {
+            self.ident.eq(&other.ident)
+        }
+    }
+    impl Eq for Lifetime {}
+    impl PartialOrd for Lifetime {
+        fn partial_cmp(&self, other: &Lifetime) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl Ord for Lifetime {
+        fn cmp(&self, other: &Lifetime) -> Ordering {
+            self.ident.cmp(&other.ident)
+        }
+    }
+    impl Hash for Lifetime {
+        fn hash<H: Hasher>(&self, h: &mut H) {
+            self.ident.hash(h);
+        }
+    }
+    #[allow(non_snake_case)]
+    pub fn Lifetime(marker: lookahead::TokenMarker) -> Lifetime {
+        match marker {}
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::parse::{Parse, ParseStream, Result};
+
+        impl Parse for Lifetime {
+            fn parse(input: ParseStream) -> Result<Self> {
+                input.step(|cursor| cursor.lifetime().ok_or_else(|| cursor.error("expected lifetime")))
+            }
+        }
+    }
+    mod printing {
+        use super::*;
+        use proc_macro2::{Punct, Spacing, TokenStream};
+        use quote::{ToTokens, TokenStreamExt};
+        impl ToTokens for Lifetime {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                let mut apostrophe = Punct::new('\'', Spacing::Joint);
+                apostrophe.set_span(self.apostrophe);
+                tokens.append(apostrophe);
+                self.ident.to_tokens(tokens);
+            }
+        }
+    }
+}
 pub use crate::lifetime::Lifetime;
 mod lit;
 pub use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
-mod lookahead;
+mod lookahead {
+    use crate::buffer::Cursor;
+    use crate::error::{self, Error};
+    use crate::sealed::lookahead::Sealed;
+    use crate::span::IntoSpans;
+    use crate::token::Token;
+    use proc_macro2::{Delimiter, Span};
+    use std::cell::RefCell;
+    pub struct Lookahead1<'a> {
+        scope: Span,
+        cursor: Cursor<'a>,
+        comparisons: RefCell<Vec<&'static str>>,
+    }
+    pub(crate) fn new(scope: Span, cursor: Cursor) -> Lookahead1 {
+        Lookahead1 {
+            scope,
+            cursor,
+            comparisons: RefCell::new(Vec::new()),
+        }
+    }
+    fn peek_impl(lookahead: &Lookahead1, peek: fn(Cursor) -> bool, display: fn() -> &'static str) -> bool {
+        if peek(lookahead.cursor) {
+            return true;
+        }
+        lookahead.comparisons.borrow_mut().push(display());
+        false
+    }
+    impl<'a> Lookahead1<'a> {
+        pub fn peek<T: Peek>(&self, token: T) -> bool {
+            let _ = token;
+            peek_impl(self, T::Token::peek, T::Token::display)
+        }
+        pub fn error(self) -> Error {
+            let comparisons = self.comparisons.borrow();
+            match comparisons.len() {
+                0 => {
+                    if self.cursor.eof() {
+                        Error::new(self.scope, "unexpected end of input")
+                    } else {
+                        Error::new(self.cursor.span(), "unexpected token")
+                    }
+                },
+                1 => {
+                    let message = format!("expected {}", comparisons[0]);
+                    error::new_at(self.scope, self.cursor, message)
+                },
+                2 => {
+                    let message = format!("expected {} or {}", comparisons[0], comparisons[1]);
+                    error::new_at(self.scope, self.cursor, message)
+                },
+                _ => {
+                    let join = comparisons.join(", ");
+                    let message = format!("expected one of: {}", join);
+                    error::new_at(self.scope, self.cursor, message)
+                },
+            }
+        }
+    }
+    pub trait Peek: Sealed {
+        type Token: Token;
+    }
+    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Token> Peek for F {
+        type Token = T;
+    }
+    pub enum TokenMarker {}
+    impl<S> IntoSpans<S> for TokenMarker {
+        fn into_spans(self) -> S {
+            match self {}
+        }
+    }
+    pub(crate) fn is_delimiter(cursor: Cursor, delimiter: Delimiter) -> bool {
+        cursor.group(delimiter).is_some()
+    }
+    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Token> Sealed for F {}
+}
+mod mac {
+    use super::*;
+    use crate::parse::{Parse, ParseStream, Parser, Result};
+    use crate::token::{Brace, Bracket, Paren};
+    use proc_macro2::extra::DelimSpan;
+    use proc_macro2::Delimiter;
+    use proc_macro2::TokenStream;
+    use proc_macro2::TokenTree;
+    ast_struct! {
+        pub struct Macro {
+            pub path: Path,
+            pub bang_token: Token![!],
+            pub delimiter: MacroDelimiter,
+            pub tokens: TokenStream,
+        }
+    }
+    ast_enum! {
+        pub enum MacroDelimiter {
+            Paren(Paren),
+            Brace(Brace),
+            Bracket(Bracket),
+        }
+    }
+    impl MacroDelimiter {
+        pub fn span(&self) -> &DelimSpan {
+            match self {
+                MacroDelimiter::Paren(token) => &token.span,
+                MacroDelimiter::Brace(token) => &token.span,
+                MacroDelimiter::Bracket(token) => &token.span,
+            }
+        }
+    }
+    impl Macro {
+        pub fn parse_body<T: Parse>(&self) -> Result<T> {
+            self.parse_body_with(T::parse)
+        }
 
-mod mac;
+        pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
+            let scope = self.delimiter.span().close();
+            crate::parse::parse_scoped(parser, scope, self.tokens.clone())
+        }
+    }
+    pub(crate) fn parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
+        input.step(|cursor| {
+            if let Some((TokenTree::Group(g), rest)) = cursor.token_tree() {
+                let span = g.delim_span();
+                let delimiter = match g.delimiter() {
+                    Delimiter::Parenthesis => MacroDelimiter::Paren(Paren(span)),
+                    Delimiter::Brace => MacroDelimiter::Brace(Brace(span)),
+                    Delimiter::Bracket => MacroDelimiter::Bracket(Bracket(span)),
+                    Delimiter::None => {
+                        return Err(cursor.error("expected delimiter"));
+                    },
+                };
+                Ok(((delimiter, g.stream()), rest))
+            } else {
+                Err(cursor.error("expected delimiter"))
+            }
+        })
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::parse::{Parse, ParseStream, Result};
 
+        impl Parse for Macro {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let tokens;
+                Ok(Macro {
+                    path: input.call(Path::parse_mod_style)?,
+                    bang_token: input.parse()?,
+                    delimiter: {
+                        let (delimiter, content) = parse_delimiter(input)?;
+                        tokens = content;
+                        delimiter
+                    },
+                    tokens,
+                })
+            }
+        }
+    }
+    mod printing {
+        use super::*;
+        use proc_macro2::TokenStream;
+        use quote::ToTokens;
+        impl MacroDelimiter {
+            pub(crate) fn surround(&self, tokens: &mut TokenStream, inner: TokenStream) {
+                let (delim, span) = match self {
+                    MacroDelimiter::Paren(paren) => (Delimiter::Parenthesis, paren.span),
+                    MacroDelimiter::Brace(brace) => (Delimiter::Brace, brace.span),
+                    MacroDelimiter::Bracket(bracket) => (Delimiter::Bracket, bracket.span),
+                };
+                token::printing::delim(delim, span.join(), tokens, inner);
+            }
+        }
+        impl ToTokens for Macro {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                self.path.to_tokens(tokens);
+                self.bang_token.to_tokens(tokens);
+                self.delimiter.surround(tokens, self.tokens.clone());
+            }
+        }
+    }
+}
 pub use crate::mac::{Macro, MacroDelimiter};
-pub mod meta;
-
+pub mod meta {
+    use crate::ext::IdentExt;
+    use crate::lit::Lit;
+    use crate::parse::{Error, ParseStream, Parser, Result};
+    use crate::path::{Path, PathSegment};
+    use crate::punctuated::Punctuated;
+    use proc_macro2::Ident;
+    use std::fmt::Display;
+    pub fn parser(logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Parser<Output = ()> {
+        |input: ParseStream| {
+            if input.is_empty() {
+                Ok(())
+            } else {
+                parse_nested_meta(input, logic)
+            }
+        }
+    }
+    #[non_exhaustive]
+    pub struct ParseNestedMeta<'a> {
+        pub path: Path,
+        pub input: ParseStream<'a>,
+    }
+    impl<'a> ParseNestedMeta<'a> {
+        pub fn value(&self) -> Result<ParseStream<'a>> {
+            self.input.parse::<Token![=]>()?;
+            Ok(self.input)
+        }
+        pub fn parse_nested_meta(&self, logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
+            let content;
+            parenthesized!(content in self.input);
+            parse_nested_meta(&content, logic)
+        }
+        pub fn error(&self, msg: impl Display) -> Error {
+            let start_span = self.path.segments[0].ident.span();
+            let end_span = self.input.cursor().prev_span();
+            crate::error::new2(start_span, end_span, msg)
+        }
+    }
+    pub(crate) fn parse_nested_meta(
+        input: ParseStream,
+        mut logic: impl FnMut(ParseNestedMeta) -> Result<()>,
+    ) -> Result<()> {
+        loop {
+            let path = input.call(parse_meta_path)?;
+            logic(ParseNestedMeta { path, input })?;
+            if input.is_empty() {
+                return Ok(());
+            }
+            input.parse::<Token![,]>()?;
+            if input.is_empty() {
+                return Ok(());
+            }
+        }
+    }
+    fn parse_meta_path(input: ParseStream) -> Result<Path> {
+        Ok(Path {
+            leading_colon: input.parse()?,
+            segments: {
+                let mut segments = Punctuated::new();
+                if input.peek(Ident::peek_any) {
+                    let ident = Ident::parse_any(input)?;
+                    segments.push_value(PathSegment::from(ident));
+                } else if input.is_empty() {
+                    return Err(input.error("expected nested attribute"));
+                } else if input.peek(Lit) {
+                    return Err(input.error("unexpected literal in nested attribute, expected ident"));
+                } else {
+                    return Err(input.error("unexpected token in nested attribute, expected ident"));
+                }
+                while input.peek(Token![::]) {
+                    let punct = input.parse()?;
+                    segments.push_punct(punct);
+                    let ident = Ident::parse_any(input)?;
+                    segments.push_value(PathSegment::from(ident));
+                }
+                segments
+            },
+        })
+    }
+}
 mod op;
-
 pub use crate::op::{BinOp, UnOp};
-
 pub mod parse;
-mod parse_macro_input;
-mod parse_quote;
+mod parse_macro_input {
+    #[macro_export]
+    macro_rules! parse_macro_input {
+        ($tokenstream:ident as $ty:ty) => {
+            match $crate::parse::<$ty>($tokenstream) {
+                $crate::__private::Ok(data) => data,
+                $crate::__private::Err(err) => {
+                    return $crate::__private::TokenStream::from(err.to_compile_error());
+                },
+            }
+        };
+        ($tokenstream:ident with $parser:path) => {
+            match $crate::parse::Parser::parse($parser, $tokenstream) {
+                $crate::__private::Ok(data) => data,
+                $crate::__private::Err(err) => {
+                    return $crate::__private::TokenStream::from(err.to_compile_error());
+                },
+            }
+        };
+        ($tokenstream:ident) => {
+            $crate::parse_macro_input!($tokenstream as _)
+        };
+    }
+}
+mod parse_quote {
+    #[macro_export]
+    macro_rules! parse_quote {
+    ($($tt:tt)*) => {
+        $crate::__private::parse_quote($crate::__private::quote::quote!($($tt)*))
+    };
+}
+    #[macro_export]
+    macro_rules! parse_quote_spanned {
+    ($span:expr=> $($tt:tt)*) => {
+        $crate::__private::parse_quote($crate::__private::quote::quote_spanned!($span=> $($tt)*))
+    };
+}
+    use crate::parse::{Parse, ParseStream, Parser, Result};
+    use proc_macro2::TokenStream;
+    pub fn parse<T: ParseQuote>(token_stream: TokenStream) -> T {
+        let parser = T::parse;
+        match parser.parse2(token_stream) {
+            Ok(t) => t,
+            Err(err) => panic!("{}", err),
+        }
+    }
+    pub trait ParseQuote: Sized {
+        fn parse(input: ParseStream) -> Result<Self>;
+    }
+    impl<T: Parse> ParseQuote for T {
+        fn parse(input: ParseStream) -> Result<Self> {
+            <T as Parse>::parse(input)
+        }
+    }
+    use crate::punctuated::Punctuated;
+
+    use crate::{attr, Attribute};
+    use crate::{Block, Pat, Stmt};
+
+    impl ParseQuote for Attribute {
+        fn parse(input: ParseStream) -> Result<Self> {
+            if input.peek(Token![#]) && input.peek2(Token![!]) {
+                attr::parsing::single_parse_inner(input)
+            } else {
+                attr::parsing::single_parse_outer(input)
+            }
+        }
+    }
+    impl ParseQuote for Pat {
+        fn parse(input: ParseStream) -> Result<Self> {
+            Pat::parse_multi_with_leading_vert(input)
+        }
+    }
+    impl ParseQuote for Box<Pat> {
+        fn parse(input: ParseStream) -> Result<Self> {
+            <Pat as ParseQuote>::parse(input).map(Box::new)
+        }
+    }
+    impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
+        fn parse(input: ParseStream) -> Result<Self> {
+            Self::parse_terminated(input)
+        }
+    }
+    impl ParseQuote for Vec<Stmt> {
+        fn parse(input: ParseStream) -> Result<Self> {
+            Block::parse_within(input)
+        }
+    }
+}
 mod pat;
 pub use crate::expr::{
     ExprConst as PatConst, ExprLit as PatLit, ExprMacro as PatMacro, ExprPath as PatPath, ExprRange as PatRange,
@@ -226,9 +942,7 @@ pub use crate::pat::{
     FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
     PatType, PatWild,
 };
-
 mod path;
-
 pub use crate::path::{
     AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
     Path, PathArguments, PathSegment, QSelf,
@@ -250,9 +964,116 @@ mod print {
     }
 }
 pub mod punctuated;
+mod restriction {
+    use super::*;
+    ast_enum! {
+        pub enum Visibility {
+            Public(Token![pub]),
+            Restricted(VisRestricted),
+            Inherited,
+        }
+    }
+    ast_struct! {
+        pub struct VisRestricted {
+            pub pub_token: Token![pub],
+            pub paren_token: token::Paren,
+            pub in_token: Option<Token![in]>,
+            pub path: Box<Path>,
+        }
+    }
+    ast_enum! {
+        #[non_exhaustive]
+        pub enum FieldMutability {
+            None,
+        }
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::ext::IdentExt;
+        use crate::parse::discouraged::Speculative;
+        use crate::parse::{Parse, ParseStream, Result};
 
-mod restriction;
-
+        impl Parse for Visibility {
+            fn parse(input: ParseStream) -> Result<Self> {
+                if input.peek(token::Group) {
+                    let ahead = input.fork();
+                    let group = crate::group::parse_group(&ahead)?;
+                    if group.content.is_empty() {
+                        input.advance_to(&ahead);
+                        return Ok(Visibility::Inherited);
+                    }
+                }
+                if input.peek(Token![pub]) {
+                    Self::parse_pub(input)
+                } else {
+                    Ok(Visibility::Inherited)
+                }
+            }
+        }
+        impl Visibility {
+            fn parse_pub(input: ParseStream) -> Result<Self> {
+                let pub_token = input.parse::<Token![pub]>()?;
+                if input.peek(token::Paren) {
+                    let ahead = input.fork();
+                    let content;
+                    let paren_token = parenthesized!(content in ahead);
+                    if content.peek(Token![crate]) || content.peek(Token![self]) || content.peek(Token![super]) {
+                        let path = content.call(Ident::parse_any)?;
+                        if content.is_empty() {
+                            input.advance_to(&ahead);
+                            return Ok(Visibility::Restricted(VisRestricted {
+                                pub_token,
+                                paren_token,
+                                in_token: None,
+                                path: Box::new(Path::from(path)),
+                            }));
+                        }
+                    } else if content.peek(Token![in]) {
+                        let in_token: Token![in] = content.parse()?;
+                        let path = content.call(Path::parse_mod_style)?;
+                        input.advance_to(&ahead);
+                        return Ok(Visibility::Restricted(VisRestricted {
+                            pub_token,
+                            paren_token,
+                            in_token: Some(in_token),
+                            path: Box::new(path),
+                        }));
+                    }
+                }
+                Ok(Visibility::Public(pub_token))
+            }
+            pub(crate) fn is_some(&self) -> bool {
+                match self {
+                    Visibility::Inherited => false,
+                    _ => true,
+                }
+            }
+        }
+    }
+    mod printing {
+        use super::*;
+        use proc_macro2::TokenStream;
+        use quote::ToTokens;
+        impl ToTokens for Visibility {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                match self {
+                    Visibility::Public(pub_token) => pub_token.to_tokens(tokens),
+                    Visibility::Restricted(vis_restricted) => vis_restricted.to_tokens(tokens),
+                    Visibility::Inherited => {},
+                }
+            }
+        }
+        impl ToTokens for VisRestricted {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                self.pub_token.to_tokens(tokens);
+                self.paren_token.surround(tokens, |tokens| {
+                    self.in_token.to_tokens(tokens);
+                    self.path.to_tokens(tokens);
+                });
+            }
+        }
+    }
+}
 pub use crate::restriction::{FieldMutability, VisRestricted, Visibility};
 mod sealed {
     pub(crate) mod lookahead {
@@ -313,7 +1134,23 @@ mod span {
         }
     }
 }
-pub mod spanned;
+pub mod spanned {
+    use proc_macro2::Span;
+    use quote::spanned::Spanned as ToTokens;
+    pub trait Spanned: private::Sealed {
+        fn span(&self) -> Span;
+    }
+    impl<T: ?Sized + ToTokens> Spanned for T {
+        fn span(&self) -> Span {
+            self.__span()
+        }
+    }
+    mod private {
+        use super::*;
+        pub trait Sealed {}
+        impl<T: ?Sized + ToTokens> Sealed for T {}
+    }
+}
 mod stmt;
 pub use crate::stmt::{Block, Local, LocalInit, Stmt, StmtMacro};
 mod thread {
@@ -453,9 +1290,7 @@ mod tt {
         }
     }
 }
-
 mod ty;
-
 pub use crate::ty::{
     Abi, BareFnArg, BareVariadic, ReturnType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
     TypeMacro, TypeNever, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
@@ -550,16 +1385,10 @@ mod whitespace {
     }
 }
 mod gen {
-    #[cfg(feature = "fold")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "fold")))]
     #[rustfmt::skip]
     pub mod fold;
-    #[cfg(feature = "visit")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "visit")))]
     #[rustfmt::skip]
     pub mod visit;
-    #[cfg(feature = "visit-mut")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "visit-mut")))]
     #[rustfmt::skip]
     pub mod visit_mut;
         #[rustfmt::skip]
@@ -571,7 +1400,6 @@ mod gen {
         #[rustfmt::skip]
     mod hash;
     mod helper {
-        #[cfg(feature = "fold")]
         pub(crate) mod fold {
             use crate::punctuated::{Pair, Punctuated};
             pub(crate) trait FoldHelper {
@@ -638,11 +1466,9 @@ pub mod __private {
 pub fn parse<T: parse::Parse>(tokens: proc_macro::TokenStream) -> Result<T> {
     parse::Parser::parse(T::parse, tokens)
 }
-
 pub fn parse2<T: parse::Parse>(tokens: proc_macro2::TokenStream) -> Result<T> {
     parse::Parser::parse2(T::parse, tokens)
 }
-
 pub fn parse_str<T: parse::Parse>(s: &str) -> Result<T> {
     parse::Parser::parse_str(T::parse, s)
 }

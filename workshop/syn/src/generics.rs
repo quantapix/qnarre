@@ -173,53 +173,32 @@ impl<'a> Iterator for ConstParamsMut<'a> {
         }
     }
 }
-#[cfg_attr(
-    doc_cfg,
-    doc(cfg(all(any(feature = "full", feature = "derive"), feature = "printing")))
-)]
 pub struct ImplGenerics<'a>(&'a Generics);
-#[cfg_attr(
-    doc_cfg,
-    doc(cfg(all(any(feature = "full", feature = "derive"), feature = "printing")))
-)]
 pub struct TypeGenerics<'a>(&'a Generics);
-#[cfg_attr(
-    doc_cfg,
-    doc(cfg(all(any(feature = "full", feature = "derive"), feature = "printing")))
-)]
 pub struct Turbofish<'a>(&'a Generics);
 impl Generics {
-    #[cfg_attr(
-        doc_cfg,
-        doc(cfg(all(any(feature = "full", feature = "derive"), feature = "printing")))
-    )]
     pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
         (ImplGenerics(self), TypeGenerics(self), self.where_clause.as_ref())
     }
 }
 macro_rules! generics_wrapper_impls {
     ($ty:ident) => {
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
         impl<'a> Clone for $ty<'a> {
             fn clone(&self) -> Self {
                 $ty(self.0)
             }
         }
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
         impl<'a> Debug for $ty<'a> {
             fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.debug_tuple(stringify!($ty)).field(self.0).finish()
             }
         }
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
         impl<'a> Eq for $ty<'a> {}
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
         impl<'a> PartialEq for $ty<'a> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
             }
         }
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
         impl<'a> Hash for $ty<'a> {
             fn hash<H: Hasher>(&self, state: &mut H) {
                 self.0.hash(state);
@@ -734,7 +713,6 @@ mod printing {
     use crate::print::TokensOrDefault;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for Generics {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             if self.params.is_empty() {
@@ -851,7 +829,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for BoundLifetimes {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.for_token.to_tokens(tokens);
@@ -860,7 +837,6 @@ mod printing {
             self.gt_token.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for LifetimeParam {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -871,7 +847,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TypeParam {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -886,7 +861,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TraitBound {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let to_tokens = |tokens: &mut TokenStream| {
@@ -900,7 +874,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TraitBoundModifier {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {
@@ -909,7 +882,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for ConstParam {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
@@ -923,7 +895,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for WhereClause {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             if !self.predicates.is_empty() {
@@ -932,7 +903,6 @@ mod printing {
             }
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PredicateLifetime {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.lifetime.to_tokens(tokens);
@@ -940,7 +910,6 @@ mod printing {
             self.bounds.to_tokens(tokens);
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for PredicateType {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.lifetimes.to_tokens(tokens);

@@ -713,7 +713,6 @@ mod printing {
     use super::*;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl<T, P> ToTokens for Punctuated<T, P>
     where
         T: ToTokens,
@@ -723,7 +722,6 @@ mod printing {
             tokens.append_all(self.pairs());
         }
     }
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl<T, P> ToTokens for Pair<T, P>
     where
         T: ToTokens,
