@@ -217,11 +217,727 @@ mod bigint {
     }
 }
 pub mod buffer;
-mod custom_keyword;
-mod custom_punctuation;
-mod data;
+mod custom_keyword {
+    #[macro_export]
+    macro_rules! custom_keyword {
+        ($ident:ident) => {
+            #[allow(non_camel_case_types)]
+            pub struct $ident {
+                pub span: $crate::__private::Span,
+            }
+            #[allow(dead_code, non_snake_case)]
+            pub fn $ident<__S: $crate::__private::IntoSpans<$crate::__private::Span>>(span: __S) -> $ident {
+                $ident {
+                    span: $crate::__private::IntoSpans::into_spans(span),
+                }
+            }
+            const _: () = {
+                impl $crate::__private::Default for $ident {
+                    fn default() -> Self {
+                        $ident {
+                            span: $crate::__private::Span::call_site(),
+                        }
+                    }
+                }
+                $crate::impl_parse_for_custom_keyword!($ident);
+                $crate::impl_to_tokens_for_custom_keyword!($ident);
+                $crate::impl_clone_for_custom_keyword!($ident);
+                $crate::impl_extra_traits_for_custom_keyword!($ident);
+            };
+        };
+    }
+    #[macro_export]
+    macro_rules! impl_parse_for_custom_keyword {
+        ($ident:ident) => {
+            impl $crate::token::CustomToken for $ident {
+                fn peek(cursor: $crate::buffer::Cursor) -> $crate::__private::bool {
+                    if let $crate::__private::Some((ident, _rest)) = cursor.ident() {
+                        ident == $crate::__private::stringify!($ident)
+                    } else {
+                        false
+                    }
+                }
+                fn display() -> &'static $crate::__private::str {
+                    $crate::__private::concat!("`", $crate::__private::stringify!($ident), "`")
+                }
+            }
+            impl $crate::parse::Parse for $ident {
+                fn parse(input: $crate::parse::ParseStream) -> $crate::parse::Result<$ident> {
+                    input.step(|cursor| {
+                        if let $crate::__private::Some((ident, rest)) = cursor.ident() {
+                            if ident == $crate::__private::stringify!($ident) {
+                                return $crate::__private::Ok(($ident { span: ident.span() }, rest));
+                            }
+                        }
+                        $crate::__private::Err(cursor.error($crate::__private::concat!(
+                            "expected `",
+                            $crate::__private::stringify!($ident),
+                            "`",
+                        )))
+                    })
+                }
+            }
+        };
+    }
+    #[cfg(not(feature = "parsing"))]
+    #[macro_export]
+    macro_rules! impl_parse_for_custom_keyword {
+        ($ident:ident) => {};
+    }
+    #[macro_export]
+    macro_rules! impl_to_tokens_for_custom_keyword {
+        ($ident:ident) => {
+            impl $crate::__private::ToTokens for $ident {
+                fn to_tokens(&self, tokens: &mut $crate::__private::TokenStream2) {
+                    let ident = $crate::Ident::new($crate::__private::stringify!($ident), self.span);
+                    $crate::__private::TokenStreamExt::append(tokens, ident);
+                }
+            }
+        };
+    }
+    #[cfg(not(feature = "printing"))]
+    #[macro_export]
+    macro_rules! impl_to_tokens_for_custom_keyword {
+        ($ident:ident) => {};
+    }
+    #[macro_export]
+    macro_rules! impl_clone_for_custom_keyword {
+        ($ident:ident) => {
+            impl $crate::__private::Copy for $ident {}
+            #[allow(clippy::expl_impl_clone_on_copy)]
+            impl $crate::__private::Clone for $ident {
+                fn clone(&self) -> Self {
+                    *self
+                }
+            }
+        };
+    }
+    #[cfg(not(feature = "clone-impls"))]
+    #[macro_export]
+    macro_rules! impl_clone_for_custom_keyword {
+        ($ident:ident) => {};
+    }
+    #[macro_export]
+    macro_rules! impl_extra_traits_for_custom_keyword {
+        ($ident:ident) => {
+            impl $crate::__private::Debug for $ident {
+                fn fmt(&self, f: &mut $crate::__private::Formatter) -> $crate::__private::fmt::Result {
+                    $crate::__private::Formatter::write_str(
+                        f,
+                        $crate::__private::concat!("Keyword [", $crate::__private::stringify!($ident), "]",),
+                    )
+                }
+            }
+            impl $crate::__private::Eq for $ident {}
+            impl $crate::__private::PartialEq for $ident {
+                fn eq(&self, _other: &Self) -> $crate::__private::bool {
+                    true
+                }
+            }
+            impl $crate::__private::Hash for $ident {
+                fn hash<__H: $crate::__private::Hasher>(&self, _state: &mut __H) {}
+            }
+        };
+    }
+    #[cfg(not(feature = "extra-traits"))]
+    #[macro_export]
+    macro_rules! impl_extra_traits_for_custom_keyword {
+        ($ident:ident) => {};
+    }
+}
+mod custom_punctuation {
+    #[macro_export]
+    macro_rules! custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {
+            pub struct $ident {
+                pub spans: $crate::custom_punctuation_repr!($($tt)+),
+            }
+                    #[allow(dead_code, non_snake_case)]
+            pub fn $ident<__S: $crate::__private::IntoSpans<$crate::custom_punctuation_repr!($($tt)+)>>(
+                spans: __S,
+            ) -> $ident {
+                let _validate_len = 0 $(+ $crate::custom_punctuation_len!(strict, $tt))*;
+                $ident {
+                    spans: $crate::__private::IntoSpans::into_spans(spans)
+                }
+            }
+            const _: () = {
+                impl $crate::__private::Default for $ident {
+                    fn default() -> Self {
+                        $ident($crate::__private::Span::call_site())
+                    }
+                }
+                $crate::impl_parse_for_custom_punctuation!($ident, $($tt)+);
+                $crate::impl_to_tokens_for_custom_punctuation!($ident, $($tt)+);
+                $crate::impl_clone_for_custom_punctuation!($ident, $($tt)+);
+                $crate::impl_extra_traits_for_custom_punctuation!($ident, $($tt)+);
+            };
+        };
+    }
+    #[macro_export]
+    macro_rules! impl_parse_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {
+            impl $crate::token::CustomToken for $ident {
+                fn peek(cursor: $crate::buffer::Cursor) -> bool {
+                    $crate::__private::peek_punct(cursor, $crate::stringify_punct!($($tt)+))
+                }
+                fn display() -> &'static $crate::__private::str {
+                    $crate::__private::concat!("`", $crate::stringify_punct!($($tt)+), "`")
+                }
+            }
+            impl $crate::parse::Parse for $ident {
+                fn parse(input: $crate::parse::ParseStream) -> $crate::parse::Result<$ident> {
+                    let spans: $crate::custom_punctuation_repr!($($tt)+) =
+                        $crate::__private::parse_punct(input, $crate::stringify_punct!($($tt)+))?;
+                    Ok($ident(spans))
+                }
+            }
+        };
+    }
+    #[cfg(not(feature = "parsing"))]
+    #[macro_export]
+    macro_rules! impl_parse_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {};
+    }
+    #[macro_export]
+    macro_rules! impl_to_tokens_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {
+            impl $crate::__private::ToTokens for $ident {
+                fn to_tokens(&self, tokens: &mut $crate::__private::TokenStream2) {
+                    $crate::__private::print_punct($crate::stringify_punct!($($tt)+), &self.spans, tokens)
+                }
+            }
+        };
+    }
+    #[cfg(not(feature = "printing"))]
+    #[macro_export]
+    macro_rules! impl_to_tokens_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {};
+    }
+    #[macro_export]
+    macro_rules! impl_clone_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {
+            impl $crate::__private::Copy for $ident {}
+            #[allow(clippy::expl_impl_clone_on_copy)]
+            impl $crate::__private::Clone for $ident {
+                fn clone(&self) -> Self {
+                    *self
+                }
+            }
+        };
+    }
+    #[cfg(not(feature = "clone-impls"))]
+    #[macro_export]
+    macro_rules! impl_clone_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {};
+    }
+    #[macro_export]
+    macro_rules! impl_extra_traits_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {
+            impl $crate::__private::Debug for $ident {
+                fn fmt(&self, f: &mut $crate::__private::Formatter) -> $crate::__private::fmt::Result {
+                    $crate::__private::Formatter::write_str(f, $crate::__private::stringify!($ident))
+                }
+            }
+            impl $crate::__private::Eq for $ident {}
+            impl $crate::__private::PartialEq for $ident {
+                fn eq(&self, _other: &Self) -> $crate::__private::bool {
+                    true
+                }
+            }
+            impl $crate::__private::Hash for $ident {
+                fn hash<__H: $crate::__private::Hasher>(&self, _state: &mut __H) {}
+            }
+        };
+    }
+    #[cfg(not(feature = "extra-traits"))]
+    #[macro_export]
+    macro_rules! impl_extra_traits_for_custom_punctuation {
+        ($ident:ident, $($tt:tt)+) => {};
+    }
+    #[macro_export]
+    macro_rules! custom_punctuation_repr {
+        ($($tt:tt)+) => {
+            [$crate::__private::Span; 0 $(+ $crate::custom_punctuation_len!(lenient, $tt))+]
+        };
+    }
+    #[macro_export]
+    #[rustfmt::skip]
+    macro_rules! custom_punctuation_len {
+        ($mode:ident, +)     => { 1 };
+        ($mode:ident, +=)    => { 2 };
+        ($mode:ident, &)     => { 1 };
+        ($mode:ident, &&)    => { 2 };
+        ($mode:ident, &=)    => { 2 };
+        ($mode:ident, @)     => { 1 };
+        ($mode:ident, !)     => { 1 };
+        ($mode:ident, ^)     => { 1 };
+        ($mode:ident, ^=)    => { 2 };
+        ($mode:ident, :)     => { 1 };
+        ($mode:ident, ::)    => { 2 };
+        ($mode:ident, ,)     => { 1 };
+        ($mode:ident, /)     => { 1 };
+        ($mode:ident, /=)    => { 2 };
+        ($mode:ident, .)     => { 1 };
+        ($mode:ident, ..)    => { 2 };
+        ($mode:ident, ...)   => { 3 };
+        ($mode:ident, ..=)   => { 3 };
+        ($mode:ident, =)     => { 1 };
+        ($mode:ident, ==)    => { 2 };
+        ($mode:ident, >=)    => { 2 };
+        ($mode:ident, >)     => { 1 };
+        ($mode:ident, <=)    => { 2 };
+        ($mode:ident, <)     => { 1 };
+        ($mode:ident, *=)    => { 2 };
+        ($mode:ident, !=)    => { 2 };
+        ($mode:ident, |)     => { 1 };
+        ($mode:ident, |=)    => { 2 };
+        ($mode:ident, ||)    => { 2 };
+        ($mode:ident, #)     => { 1 };
+        ($mode:ident, ?)     => { 1 };
+        ($mode:ident, ->)    => { 2 };
+        ($mode:ident, <-)    => { 2 };
+        ($mode:ident, %)     => { 1 };
+        ($mode:ident, %=)    => { 2 };
+        ($mode:ident, =>)    => { 2 };
+        ($mode:ident, ;)     => { 1 };
+        ($mode:ident, <<)    => { 2 };
+        ($mode:ident, <<=)   => { 3 };
+        ($mode:ident, >>)    => { 2 };
+        ($mode:ident, >>=)   => { 3 };
+        ($mode:ident, *)     => { 1 };
+        ($mode:ident, -)     => { 1 };
+        ($mode:ident, -=)    => { 2 };
+        ($mode:ident, ~)     => { 1 };
+        (lenient, $tt:tt)    => { 0 };
+        (strict, $tt:tt)     => {{ $crate::custom_punctuation_unexpected!($tt); 0 }};
+    }
+    #[macro_export]
+    macro_rules! custom_punctuation_unexpected {
+        () => {};
+    }
+    #[macro_export]
+    macro_rules! stringify_punct {
+        ($($tt:tt)+) => {
+            $crate::__private::concat!($($crate::__private::stringify!($tt)),+)
+        };
+    }
+}
+mod data {
+    use super::*;
+    use crate::punctuated::Punctuated;
+    ast_struct! {
+        pub struct Variant {
+            pub attrs: Vec<Attribute>,
+            pub ident: Ident,
+            pub fields: Fields,
+            pub discriminant: Option<(Token![=], Expr)>,
+        }
+    }
+    ast_enum_of_structs! {
+        pub enum Fields {
+            Named(FieldsNamed),
+            Unnamed(FieldsUnnamed),
+            Unit,
+        }
+    }
+    ast_struct! {
+        pub struct FieldsNamed {
+            pub brace_token: token::Brace,
+            pub named: Punctuated<Field, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct FieldsUnnamed {
+            pub paren_token: token::Paren,
+            pub unnamed: Punctuated<Field, Token![,]>,
+        }
+    }
+    impl Fields {
+        pub fn iter(&self) -> punctuated::Iter<Field> {
+            match self {
+                Fields::Unit => crate::punctuated::empty_punctuated_iter(),
+                Fields::Named(f) => f.named.iter(),
+                Fields::Unnamed(f) => f.unnamed.iter(),
+            }
+        }
+        pub fn iter_mut(&mut self) -> punctuated::IterMut<Field> {
+            match self {
+                Fields::Unit => crate::punctuated::empty_punctuated_iter_mut(),
+                Fields::Named(f) => f.named.iter_mut(),
+                Fields::Unnamed(f) => f.unnamed.iter_mut(),
+            }
+        }
+        pub fn len(&self) -> usize {
+            match self {
+                Fields::Unit => 0,
+                Fields::Named(f) => f.named.len(),
+                Fields::Unnamed(f) => f.unnamed.len(),
+            }
+        }
+        pub fn is_empty(&self) -> bool {
+            match self {
+                Fields::Unit => true,
+                Fields::Named(f) => f.named.is_empty(),
+                Fields::Unnamed(f) => f.unnamed.is_empty(),
+            }
+        }
+    }
+    impl IntoIterator for Fields {
+        type Item = Field;
+        type IntoIter = punctuated::IntoIter<Field>;
+        fn into_iter(self) -> Self::IntoIter {
+            match self {
+                Fields::Unit => Punctuated::<Field, ()>::new().into_iter(),
+                Fields::Named(f) => f.named.into_iter(),
+                Fields::Unnamed(f) => f.unnamed.into_iter(),
+            }
+        }
+    }
+    impl<'a> IntoIterator for &'a Fields {
+        type Item = &'a Field;
+        type IntoIter = punctuated::Iter<'a, Field>;
+        fn into_iter(self) -> Self::IntoIter {
+            self.iter()
+        }
+    }
+    impl<'a> IntoIterator for &'a mut Fields {
+        type Item = &'a mut Field;
+        type IntoIter = punctuated::IterMut<'a, Field>;
+        fn into_iter(self) -> Self::IntoIter {
+            self.iter_mut()
+        }
+    }
+    ast_struct! {
+        pub struct Field {
+            pub attrs: Vec<Attribute>,
+            pub vis: Visibility,
+            pub mutability: FieldMutability,
+            pub ident: Option<Ident>,
+            pub colon_token: Option<Token![:]>,
+            pub ty: Type,
+        }
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::ext::IdentExt;
+        use crate::parse::{Parse, ParseStream, Result};
+        impl Parse for Variant {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let attrs = input.call(Attribute::parse_outer)?;
+                let _visibility: Visibility = input.parse()?;
+                let ident: Ident = input.parse()?;
+                let fields = if input.peek(token::Brace) {
+                    Fields::Named(input.parse()?)
+                } else if input.peek(token::Paren) {
+                    Fields::Unnamed(input.parse()?)
+                } else {
+                    Fields::Unit
+                };
+                let discriminant = if input.peek(Token![=]) {
+                    let eq_token: Token![=] = input.parse()?;
+                    let discriminant: Expr = input.parse()?;
+                    Some((eq_token, discriminant))
+                } else {
+                    None
+                };
+                Ok(Variant {
+                    attrs,
+                    ident,
+                    fields,
+                    discriminant,
+                })
+            }
+        }
+        impl Parse for FieldsNamed {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let content;
+                Ok(FieldsNamed {
+                    brace_token: braced!(content in input),
+                    named: content.parse_terminated(Field::parse_named, Token![,])?,
+                })
+            }
+        }
+        impl Parse for FieldsUnnamed {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let content;
+                Ok(FieldsUnnamed {
+                    paren_token: parenthesized!(content in input),
+                    unnamed: content.parse_terminated(Field::parse_unnamed, Token![,])?,
+                })
+            }
+        }
+        impl Field {
+            pub fn parse_named(input: ParseStream) -> Result<Self> {
+                Ok(Field {
+                    attrs: input.call(Attribute::parse_outer)?,
+                    vis: input.parse()?,
+                    mutability: FieldMutability::None,
+                    ident: Some(if input.peek(Token![_]) {
+                        input.call(Ident::parse_any)
+                    } else {
+                        input.parse()
+                    }?),
+                    colon_token: Some(input.parse()?),
+                    ty: input.parse()?,
+                })
+            }
+            pub fn parse_unnamed(input: ParseStream) -> Result<Self> {
+                Ok(Field {
+                    attrs: input.call(Attribute::parse_outer)?,
+                    vis: input.parse()?,
+                    mutability: FieldMutability::None,
+                    ident: None,
+                    colon_token: None,
+                    ty: input.parse()?,
+                })
+            }
+        }
+    }
+    mod printing {
+        use super::*;
+        use crate::print::TokensOrDefault;
+        use proc_macro2::TokenStream;
+        use quote::{ToTokens, TokenStreamExt};
+        impl ToTokens for Variant {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                tokens.append_all(&self.attrs);
+                self.ident.to_tokens(tokens);
+                self.fields.to_tokens(tokens);
+                if let Some((eq_token, disc)) = &self.discriminant {
+                    eq_token.to_tokens(tokens);
+                    disc.to_tokens(tokens);
+                }
+            }
+        }
+        impl ToTokens for FieldsNamed {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                self.brace_token.surround(tokens, |tokens| {
+                    self.named.to_tokens(tokens);
+                });
+            }
+        }
+        impl ToTokens for FieldsUnnamed {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                self.paren_token.surround(tokens, |tokens| {
+                    self.unnamed.to_tokens(tokens);
+                });
+            }
+        }
+        impl ToTokens for Field {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                tokens.append_all(&self.attrs);
+                self.vis.to_tokens(tokens);
+                if let Some(ident) = &self.ident {
+                    ident.to_tokens(tokens);
+                    TokensOrDefault(&self.colon_token).to_tokens(tokens);
+                }
+                self.ty.to_tokens(tokens);
+            }
+        }
+    }
+}
 pub use crate::data::{Field, Fields, FieldsNamed, FieldsUnnamed, Variant};
-mod derive;
+mod derive {
+    use super::*;
+    use crate::punctuated::Punctuated;
+    ast_struct! {
+        pub struct DeriveInput {
+            pub attrs: Vec<Attribute>,
+            pub vis: Visibility,
+            pub ident: Ident,
+            pub generics: Generics,
+            pub data: Data,
+        }
+    }
+    ast_enum! {
+        pub enum Data {
+            Struct(DataStruct),
+            Enum(DataEnum),
+            Union(DataUnion),
+        }
+    }
+    ast_struct! {
+        pub struct DataStruct {
+            pub struct_token: Token![struct],
+            pub fields: Fields,
+            pub semi_token: Option<Token![;]>,
+        }
+    }
+    ast_struct! {
+        pub struct DataEnum {
+            pub enum_token: Token![enum],
+            pub brace_token: token::Brace,
+            pub variants: Punctuated<Variant, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct DataUnion {
+            pub union_token: Token![union],
+            pub fields: FieldsNamed,
+        }
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::parse::{Parse, ParseStream, Result};
+        impl Parse for DeriveInput {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let attrs = input.call(Attribute::parse_outer)?;
+                let vis = input.parse::<Visibility>()?;
+                let lookahead = input.lookahead1();
+                if lookahead.peek(Token![struct]) {
+                    let struct_token = input.parse::<Token![struct]>()?;
+                    let ident = input.parse::<Ident>()?;
+                    let generics = input.parse::<Generics>()?;
+                    let (where_clause, fields, semi) = data_struct(input)?;
+                    Ok(DeriveInput {
+                        attrs,
+                        vis,
+                        ident,
+                        generics: Generics {
+                            where_clause,
+                            ..generics
+                        },
+                        data: Data::Struct(DataStruct {
+                            struct_token,
+                            fields,
+                            semi_token: semi,
+                        }),
+                    })
+                } else if lookahead.peek(Token![enum]) {
+                    let enum_token = input.parse::<Token![enum]>()?;
+                    let ident = input.parse::<Ident>()?;
+                    let generics = input.parse::<Generics>()?;
+                    let (where_clause, brace, variants) = data_enum(input)?;
+                    Ok(DeriveInput {
+                        attrs,
+                        vis,
+                        ident,
+                        generics: Generics {
+                            where_clause,
+                            ..generics
+                        },
+                        data: Data::Enum(DataEnum {
+                            enum_token,
+                            brace_token: brace,
+                            variants,
+                        }),
+                    })
+                } else if lookahead.peek(Token![union]) {
+                    let union_token = input.parse::<Token![union]>()?;
+                    let ident = input.parse::<Ident>()?;
+                    let generics = input.parse::<Generics>()?;
+                    let (where_clause, fields) = data_union(input)?;
+                    Ok(DeriveInput {
+                        attrs,
+                        vis,
+                        ident,
+                        generics: Generics {
+                            where_clause,
+                            ..generics
+                        },
+                        data: Data::Union(DataUnion { union_token, fields }),
+                    })
+                } else {
+                    Err(lookahead.error())
+                }
+            }
+        }
+        pub(crate) fn data_struct(input: ParseStream) -> Result<(Option<WhereClause>, Fields, Option<Token![;]>)> {
+            let mut lookahead = input.lookahead1();
+            let mut where_clause = None;
+            if lookahead.peek(Token![where]) {
+                where_clause = Some(input.parse()?);
+                lookahead = input.lookahead1();
+            }
+            if where_clause.is_none() && lookahead.peek(token::Paren) {
+                let fields = input.parse()?;
+                lookahead = input.lookahead1();
+                if lookahead.peek(Token![where]) {
+                    where_clause = Some(input.parse()?);
+                    lookahead = input.lookahead1();
+                }
+                if lookahead.peek(Token![;]) {
+                    let semi = input.parse()?;
+                    Ok((where_clause, Fields::Unnamed(fields), Some(semi)))
+                } else {
+                    Err(lookahead.error())
+                }
+            } else if lookahead.peek(token::Brace) {
+                let fields = input.parse()?;
+                Ok((where_clause, Fields::Named(fields), None))
+            } else if lookahead.peek(Token![;]) {
+                let semi = input.parse()?;
+                Ok((where_clause, Fields::Unit, Some(semi)))
+            } else {
+                Err(lookahead.error())
+            }
+        }
+        pub(crate) fn data_enum(
+            input: ParseStream,
+        ) -> Result<(Option<WhereClause>, token::Brace, Punctuated<Variant, Token![,]>)> {
+            let where_clause = input.parse()?;
+            let content;
+            let brace = braced!(content in input);
+            let variants = content.parse_terminated(Variant::parse, Token![,])?;
+            Ok((where_clause, brace, variants))
+        }
+        pub(crate) fn data_union(input: ParseStream) -> Result<(Option<WhereClause>, FieldsNamed)> {
+            let where_clause = input.parse()?;
+            let fields = input.parse()?;
+            Ok((where_clause, fields))
+        }
+    }
+    mod printing {
+        use super::*;
+        use crate::attr::FilterAttrs;
+        use crate::print::TokensOrDefault;
+        use proc_macro2::TokenStream;
+        use quote::ToTokens;
+        impl ToTokens for DeriveInput {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                for attr in self.attrs.outer() {
+                    attr.to_tokens(tokens);
+                }
+                self.vis.to_tokens(tokens);
+                match &self.data {
+                    Data::Struct(d) => d.struct_token.to_tokens(tokens),
+                    Data::Enum(d) => d.enum_token.to_tokens(tokens),
+                    Data::Union(d) => d.union_token.to_tokens(tokens),
+                }
+                self.ident.to_tokens(tokens);
+                self.generics.to_tokens(tokens);
+                match &self.data {
+                    Data::Struct(data) => match &data.fields {
+                        Fields::Named(fields) => {
+                            self.generics.where_clause.to_tokens(tokens);
+                            fields.to_tokens(tokens);
+                        },
+                        Fields::Unnamed(fields) => {
+                            fields.to_tokens(tokens);
+                            self.generics.where_clause.to_tokens(tokens);
+                            TokensOrDefault(&data.semi_token).to_tokens(tokens);
+                        },
+                        Fields::Unit => {
+                            self.generics.where_clause.to_tokens(tokens);
+                            TokensOrDefault(&data.semi_token).to_tokens(tokens);
+                        },
+                    },
+                    Data::Enum(data) => {
+                        self.generics.where_clause.to_tokens(tokens);
+                        data.brace_token.surround(tokens, |tokens| {
+                            data.variants.to_tokens(tokens);
+                        });
+                    },
+                    Data::Union(data) => {
+                        self.generics.where_clause.to_tokens(tokens);
+                        data.fields.to_tokens(tokens);
+                    },
+                }
+            }
+        }
+    }
+}
 pub use crate::derive::{Data, DataEnum, DataStruct, DataUnion, DeriveInput};
 mod drops {
     use std::iter;
@@ -271,7 +987,234 @@ mod drops {
         assert!(!needs_drop::<option::IntoIter<&mut NeedsDrop>>());
     }
 }
-mod error;
+mod error {
+    use crate::buffer::Cursor;
+    use crate::thread::ThreadBound;
+    use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+    use quote::ToTokens;
+    use std::fmt::{self, Debug, Display};
+    use std::slice;
+    use std::vec;
+    pub type Result<T> = std::result::Result<T, Error>;
+    pub struct Error {
+        messages: Vec<ErrorMessage>,
+    }
+    struct ErrorMessage {
+        span: ThreadBound<SpanRange>,
+        message: String,
+    }
+    struct SpanRange {
+        start: Span,
+        end: Span,
+    }
+    #[cfg(test)]
+    struct _Test
+    where
+        Error: Send + Sync;
+    impl Error {
+        pub fn new<T: Display>(span: Span, message: T) -> Self {
+            return new(span, message.to_string());
+            fn new(span: Span, message: String) -> Error {
+                Error {
+                    messages: vec![ErrorMessage {
+                        span: ThreadBound::new(SpanRange { start: span, end: span }),
+                        message,
+                    }],
+                }
+            }
+        }
+        pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, message: U) -> Self {
+            return new_spanned(tokens.into_token_stream(), message.to_string());
+            fn new_spanned(tokens: TokenStream, message: String) -> Error {
+                let mut iter = tokens.into_iter();
+                let start = iter.next().map_or_else(Span::call_site, |t| t.span());
+                let end = iter.last().map_or(start, |t| t.span());
+                Error {
+                    messages: vec![ErrorMessage {
+                        span: ThreadBound::new(SpanRange { start, end }),
+                        message,
+                    }],
+                }
+            }
+        }
+        pub fn span(&self) -> Span {
+            let SpanRange { start, end } = match self.messages[0].span.get() {
+                Some(span) => *span,
+                None => return Span::call_site(),
+            };
+            start.join(end).unwrap_or(start)
+        }
+        pub fn to_compile_error(&self) -> TokenStream {
+            self.messages.iter().map(ErrorMessage::to_compile_error).collect()
+        }
+        pub fn into_compile_error(self) -> TokenStream {
+            self.to_compile_error()
+        }
+        pub fn combine(&mut self, another: Error) {
+            self.messages.extend(another.messages);
+        }
+    }
+    impl ErrorMessage {
+        fn to_compile_error(&self) -> TokenStream {
+            let (start, end) = match self.span.get() {
+                Some(range) => (range.start, range.end),
+                None => (Span::call_site(), Span::call_site()),
+            };
+            TokenStream::from_iter(vec![
+                TokenTree::Punct({
+                    let mut punct = Punct::new(':', Spacing::Joint);
+                    punct.set_span(start);
+                    punct
+                }),
+                TokenTree::Punct({
+                    let mut punct = Punct::new(':', Spacing::Alone);
+                    punct.set_span(start);
+                    punct
+                }),
+                TokenTree::Ident(Ident::new("core", start)),
+                TokenTree::Punct({
+                    let mut punct = Punct::new(':', Spacing::Joint);
+                    punct.set_span(start);
+                    punct
+                }),
+                TokenTree::Punct({
+                    let mut punct = Punct::new(':', Spacing::Alone);
+                    punct.set_span(start);
+                    punct
+                }),
+                TokenTree::Ident(Ident::new("compile_error", start)),
+                TokenTree::Punct({
+                    let mut punct = Punct::new('!', Spacing::Alone);
+                    punct.set_span(start);
+                    punct
+                }),
+                TokenTree::Group({
+                    let mut group = Group::new(Delimiter::Brace, {
+                        TokenStream::from_iter(vec![TokenTree::Literal({
+                            let mut string = Literal::string(&self.message);
+                            string.set_span(end);
+                            string
+                        })])
+                    });
+                    group.set_span(end);
+                    group
+                }),
+            ])
+        }
+    }
+    pub(crate) fn new_at<T: Display>(scope: Span, cursor: Cursor, message: T) -> Error {
+        if cursor.eof() {
+            Error::new(scope, format!("unexpected end of input, {}", message))
+        } else {
+            let span = crate::buffer::open_span_of_group(cursor);
+            Error::new(span, message)
+        }
+    }
+    pub(crate) fn new2<T: Display>(start: Span, end: Span, message: T) -> Error {
+        return new2(start, end, message.to_string());
+        fn new2(start: Span, end: Span, message: String) -> Error {
+            Error {
+                messages: vec![ErrorMessage {
+                    span: ThreadBound::new(SpanRange { start, end }),
+                    message,
+                }],
+            }
+        }
+    }
+    impl Debug for Error {
+        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            if self.messages.len() == 1 {
+                formatter.debug_tuple("Error").field(&self.messages[0]).finish()
+            } else {
+                formatter.debug_tuple("Error").field(&self.messages).finish()
+            }
+        }
+    }
+    impl Debug for ErrorMessage {
+        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            Debug::fmt(&self.message, formatter)
+        }
+    }
+    impl Display for Error {
+        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str(&self.messages[0].message)
+        }
+    }
+    impl Clone for Error {
+        fn clone(&self) -> Self {
+            Error {
+                messages: self.messages.clone(),
+            }
+        }
+    }
+    impl Clone for ErrorMessage {
+        fn clone(&self) -> Self {
+            ErrorMessage {
+                span: self.span,
+                message: self.message.clone(),
+            }
+        }
+    }
+    impl Clone for SpanRange {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+    impl Copy for SpanRange {}
+    impl std::error::Error for Error {}
+    impl From<LexError> for Error {
+        fn from(err: LexError) -> Self {
+            Error::new(err.span(), "lex error")
+        }
+    }
+    impl IntoIterator for Error {
+        type Item = Error;
+        type IntoIter = IntoIter;
+        fn into_iter(self) -> Self::IntoIter {
+            IntoIter {
+                messages: self.messages.into_iter(),
+            }
+        }
+    }
+    pub struct IntoIter {
+        messages: vec::IntoIter<ErrorMessage>,
+    }
+    impl Iterator for IntoIter {
+        type Item = Error;
+        fn next(&mut self) -> Option<Self::Item> {
+            Some(Error {
+                messages: vec![self.messages.next()?],
+            })
+        }
+    }
+    impl<'a> IntoIterator for &'a Error {
+        type Item = Error;
+        type IntoIter = Iter<'a>;
+        fn into_iter(self) -> Self::IntoIter {
+            Iter {
+                messages: self.messages.iter(),
+            }
+        }
+    }
+    pub struct Iter<'a> {
+        messages: slice::Iter<'a, ErrorMessage>,
+    }
+    impl<'a> Iterator for Iter<'a> {
+        type Item = Error;
+        fn next(&mut self) -> Option<Self::Item> {
+            Some(Error {
+                messages: vec![self.messages.next()?.clone()],
+            })
+        }
+    }
+    impl Extend<Error> for Error {
+        fn extend<T: IntoIterator<Item = Error>>(&mut self, iter: T) {
+            for err in iter {
+                self.combine(err);
+            }
+        }
+    }
+}
 pub use crate::error::{Error, Result};
 mod expr;
 pub use crate::expr::{Arm, FieldValue, Label, RangeLimits};
@@ -842,7 +1785,189 @@ pub mod meta {
         })
     }
 }
-mod op;
+mod op {
+    ast_enum! {
+        #[non_exhaustive]
+        pub enum BinOp {
+            Add(Token![+]),
+            Sub(Token![-]),
+            Mul(Token![*]),
+            Div(Token![/]),
+            Rem(Token![%]),
+            And(Token![&&]),
+            Or(Token![||]),
+            BitXor(Token![^]),
+            BitAnd(Token![&]),
+            BitOr(Token![|]),
+            Shl(Token![<<]),
+            Shr(Token![>>]),
+            Eq(Token![==]),
+            Lt(Token![<]),
+            Le(Token![<=]),
+            Ne(Token![!=]),
+            Ge(Token![>=]),
+            Gt(Token![>]),
+            AddAssign(Token![+=]),
+            SubAssign(Token![-=]),
+            MulAssign(Token![*=]),
+            DivAssign(Token![/=]),
+            RemAssign(Token![%=]),
+            BitXorAssign(Token![^=]),
+            BitAndAssign(Token![&=]),
+            BitOrAssign(Token![|=]),
+            ShlAssign(Token![<<=]),
+            ShrAssign(Token![>>=]),
+        }
+    }
+    ast_enum! {
+        #[non_exhaustive]
+        pub enum UnOp {
+            Deref(Token![*]),
+            Not(Token![!]),
+            Neg(Token![-]),
+        }
+    }
+    pub(crate) mod parsing {
+        use super::*;
+        use crate::parse::{Parse, ParseStream, Result};
+        fn parse_binop(input: ParseStream) -> Result<BinOp> {
+            if input.peek(Token![&&]) {
+                input.parse().map(BinOp::And)
+            } else if input.peek(Token![||]) {
+                input.parse().map(BinOp::Or)
+            } else if input.peek(Token![<<]) {
+                input.parse().map(BinOp::Shl)
+            } else if input.peek(Token![>>]) {
+                input.parse().map(BinOp::Shr)
+            } else if input.peek(Token![==]) {
+                input.parse().map(BinOp::Eq)
+            } else if input.peek(Token![<=]) {
+                input.parse().map(BinOp::Le)
+            } else if input.peek(Token![!=]) {
+                input.parse().map(BinOp::Ne)
+            } else if input.peek(Token![>=]) {
+                input.parse().map(BinOp::Ge)
+            } else if input.peek(Token![+]) {
+                input.parse().map(BinOp::Add)
+            } else if input.peek(Token![-]) {
+                input.parse().map(BinOp::Sub)
+            } else if input.peek(Token![*]) {
+                input.parse().map(BinOp::Mul)
+            } else if input.peek(Token![/]) {
+                input.parse().map(BinOp::Div)
+            } else if input.peek(Token![%]) {
+                input.parse().map(BinOp::Rem)
+            } else if input.peek(Token![^]) {
+                input.parse().map(BinOp::BitXor)
+            } else if input.peek(Token![&]) {
+                input.parse().map(BinOp::BitAnd)
+            } else if input.peek(Token![|]) {
+                input.parse().map(BinOp::BitOr)
+            } else if input.peek(Token![<]) {
+                input.parse().map(BinOp::Lt)
+            } else if input.peek(Token![>]) {
+                input.parse().map(BinOp::Gt)
+            } else {
+                Err(input.error("expected binary operator"))
+            }
+        }
+
+        impl Parse for BinOp {
+            #[cfg(not(feature = "full"))]
+            fn parse(input: ParseStream) -> Result<Self> {
+                parse_binop(input)
+            }
+            fn parse(input: ParseStream) -> Result<Self> {
+                if input.peek(Token![+=]) {
+                    input.parse().map(BinOp::AddAssign)
+                } else if input.peek(Token![-=]) {
+                    input.parse().map(BinOp::SubAssign)
+                } else if input.peek(Token![*=]) {
+                    input.parse().map(BinOp::MulAssign)
+                } else if input.peek(Token![/=]) {
+                    input.parse().map(BinOp::DivAssign)
+                } else if input.peek(Token![%=]) {
+                    input.parse().map(BinOp::RemAssign)
+                } else if input.peek(Token![^=]) {
+                    input.parse().map(BinOp::BitXorAssign)
+                } else if input.peek(Token![&=]) {
+                    input.parse().map(BinOp::BitAndAssign)
+                } else if input.peek(Token![|=]) {
+                    input.parse().map(BinOp::BitOrAssign)
+                } else if input.peek(Token![<<=]) {
+                    input.parse().map(BinOp::ShlAssign)
+                } else if input.peek(Token![>>=]) {
+                    input.parse().map(BinOp::ShrAssign)
+                } else {
+                    parse_binop(input)
+                }
+            }
+        }
+
+        impl Parse for UnOp {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let lookahead = input.lookahead1();
+                if lookahead.peek(Token![*]) {
+                    input.parse().map(UnOp::Deref)
+                } else if lookahead.peek(Token![!]) {
+                    input.parse().map(UnOp::Not)
+                } else if lookahead.peek(Token![-]) {
+                    input.parse().map(UnOp::Neg)
+                } else {
+                    Err(lookahead.error())
+                }
+            }
+        }
+    }
+    mod printing {
+        use super::*;
+        use proc_macro2::TokenStream;
+        use quote::ToTokens;
+        impl ToTokens for BinOp {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                match self {
+                    BinOp::Add(t) => t.to_tokens(tokens),
+                    BinOp::Sub(t) => t.to_tokens(tokens),
+                    BinOp::Mul(t) => t.to_tokens(tokens),
+                    BinOp::Div(t) => t.to_tokens(tokens),
+                    BinOp::Rem(t) => t.to_tokens(tokens),
+                    BinOp::And(t) => t.to_tokens(tokens),
+                    BinOp::Or(t) => t.to_tokens(tokens),
+                    BinOp::BitXor(t) => t.to_tokens(tokens),
+                    BinOp::BitAnd(t) => t.to_tokens(tokens),
+                    BinOp::BitOr(t) => t.to_tokens(tokens),
+                    BinOp::Shl(t) => t.to_tokens(tokens),
+                    BinOp::Shr(t) => t.to_tokens(tokens),
+                    BinOp::Eq(t) => t.to_tokens(tokens),
+                    BinOp::Lt(t) => t.to_tokens(tokens),
+                    BinOp::Le(t) => t.to_tokens(tokens),
+                    BinOp::Ne(t) => t.to_tokens(tokens),
+                    BinOp::Ge(t) => t.to_tokens(tokens),
+                    BinOp::Gt(t) => t.to_tokens(tokens),
+                    BinOp::AddAssign(t) => t.to_tokens(tokens),
+                    BinOp::SubAssign(t) => t.to_tokens(tokens),
+                    BinOp::MulAssign(t) => t.to_tokens(tokens),
+                    BinOp::DivAssign(t) => t.to_tokens(tokens),
+                    BinOp::RemAssign(t) => t.to_tokens(tokens),
+                    BinOp::BitXorAssign(t) => t.to_tokens(tokens),
+                    BinOp::BitAndAssign(t) => t.to_tokens(tokens),
+                    BinOp::BitOrAssign(t) => t.to_tokens(tokens),
+                    BinOp::ShlAssign(t) => t.to_tokens(tokens),
+                    BinOp::ShrAssign(t) => t.to_tokens(tokens),
+                }
+            }
+        }
+        impl ToTokens for UnOp {
+            fn to_tokens(&self, tokens: &mut TokenStream) {
+                match self {
+                    UnOp::Deref(t) => t.to_tokens(tokens),
+                    UnOp::Not(t) => t.to_tokens(tokens),
+                    UnOp::Neg(t) => t.to_tokens(tokens),
+                }
+            }
+        }
+    }
+}
 pub use crate::op::{BinOp, UnOp};
 pub mod parse;
 mod parse_macro_input {
