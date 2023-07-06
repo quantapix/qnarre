@@ -24,45 +24,45 @@ ast_enum_of_structs! {
 }
 ast_struct! {
     pub struct LitStr {
-        repr: Box<LitRepr>,
+        pub repr: Box<LitRepr>,
     }
 }
 ast_struct! {
     pub struct LitByteStr {
-        repr: Box<LitRepr>,
+        pub repr: Box<LitRepr>,
     }
 }
 ast_struct! {
     pub struct LitByte {
-        repr: Box<LitRepr>,
+        pub repr: Box<LitRepr>,
     }
 }
 ast_struct! {
     pub struct LitChar {
-        repr: Box<LitRepr>,
+        pub repr: Box<LitRepr>,
     }
 }
 struct LitRepr {
-    token: Literal,
+    pub token: Literal,
     suffix: Box<str>,
 }
 ast_struct! {
     pub struct LitInt {
-        repr: Box<LitIntRepr>,
+        pub repr: Box<LitIntRepr>,
     }
 }
 struct LitIntRepr {
-    token: Literal,
+    pub token: Literal,
     digits: Box<str>,
     suffix: Box<str>,
 }
 ast_struct! {
     pub struct LitFloat {
-        repr: Box<LitFloatRepr>,
+        pub repr: Box<LitFloatRepr>,
     }
 }
 struct LitFloatRepr {
-    token: Literal,
+    pub token: Literal,
     digits: Box<str>,
     suffix: Box<str>,
 }
@@ -500,176 +500,6 @@ ast_enum! {
 #[allow(non_snake_case)]
 pub fn Lit(x: lookahead::TokenMarker) -> Lit {
     match x {}
-}
-pub(crate) mod parsing {
-    use super::*;
-    use crate::buffer::Cursor;
-    use crate::parse::{Parse, ParseStream, Result};
-    use proc_macro2::Punct;
-
-    impl Parse for Lit {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| {
-                if let Some((lit, rest)) = cursor.literal() {
-                    return Ok((Lit::new(lit), rest));
-                }
-                if let Some((ident, rest)) = cursor.ident() {
-                    let value = ident == "true";
-                    if value || ident == "false" {
-                        let lit_bool = LitBool {
-                            value,
-                            span: ident.span(),
-                        };
-                        return Ok((Lit::Bool(lit_bool), rest));
-                    }
-                }
-                if let Some((punct, rest)) = cursor.punct() {
-                    if punct.as_char() == '-' {
-                        if let Some((lit, rest)) = parse_negative_lit(punct, rest) {
-                            return Ok((lit, rest));
-                        }
-                    }
-                }
-                Err(cursor.error("expected literal"))
-            })
-        }
-    }
-    fn parse_negative_lit(neg: Punct, cursor: Cursor) -> Option<(Lit, Cursor)> {
-        let (lit, rest) = cursor.literal()?;
-        let mut span = neg.span();
-        span = span.join(lit.span()).unwrap_or(span);
-        let mut repr = lit.to_string();
-        repr.insert(0, '-');
-        if let Some((digits, suffix)) = value::parse_lit_int(&repr) {
-            let mut token: Literal = repr.parse().unwrap();
-            token.set_span(span);
-            return Some((
-                Lit::Int(LitInt {
-                    repr: Box::new(LitIntRepr { token, digits, suffix }),
-                }),
-                rest,
-            ));
-        }
-        let (digits, suffix) = value::parse_lit_float(&repr)?;
-        let mut token: Literal = repr.parse().unwrap();
-        token.set_span(span);
-        Some((
-            Lit::Float(LitFloat {
-                repr: Box::new(LitFloatRepr { token, digits, suffix }),
-            }),
-            rest,
-        ))
-    }
-
-    impl Parse for LitStr {
-        fn parse(x: ParseStream) -> Result<Self> {
-            let head = x.fork();
-            match x.parse() {
-                Ok(Lit::Str(lit)) => Ok(lit),
-                _ => Err(head.error("expected string literal")),
-            }
-        }
-    }
-
-    impl Parse for LitByteStr {
-        fn parse(x: ParseStream) -> Result<Self> {
-            let head = x.fork();
-            match x.parse() {
-                Ok(Lit::ByteStr(lit)) => Ok(lit),
-                _ => Err(head.error("expected byte string literal")),
-            }
-        }
-    }
-
-    impl Parse for LitByte {
-        fn parse(x: ParseStream) -> Result<Self> {
-            let head = x.fork();
-            match x.parse() {
-                Ok(Lit::Byte(lit)) => Ok(lit),
-                _ => Err(head.error("expected byte literal")),
-            }
-        }
-    }
-
-    impl Parse for LitChar {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
-                Ok(Lit::Char(lit)) => Ok(lit),
-                _ => Err(head.error("expected character literal")),
-            }
-        }
-    }
-
-    impl Parse for LitInt {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
-                Ok(Lit::Int(lit)) => Ok(lit),
-                _ => Err(head.error("expected integer literal")),
-            }
-        }
-    }
-
-    impl Parse for LitFloat {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
-                Ok(Lit::Float(lit)) => Ok(lit),
-                _ => Err(head.error("expected floating point literal")),
-            }
-        }
-    }
-
-    impl Parse for LitBool {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
-                Ok(Lit::Bool(lit)) => Ok(lit),
-                _ => Err(head.error("expected boolean literal")),
-            }
-        }
-    }
-}
-mod printing {
-    use super::*;
-    use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt};
-    impl ToTokens for LitStr {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.repr.token.to_tokens(tokens);
-        }
-    }
-    impl ToTokens for LitByteStr {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.repr.token.to_tokens(tokens);
-        }
-    }
-    impl ToTokens for LitByte {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.repr.token.to_tokens(tokens);
-        }
-    }
-    impl ToTokens for LitChar {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.repr.token.to_tokens(tokens);
-        }
-    }
-    impl ToTokens for LitInt {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.repr.token.to_tokens(tokens);
-        }
-    }
-    impl ToTokens for LitFloat {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.repr.token.to_tokens(tokens);
-        }
-    }
-    impl ToTokens for LitBool {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.append(self.token());
-        }
-    }
 }
 mod value {
     use super::*;
