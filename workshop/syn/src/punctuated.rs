@@ -1,14 +1,16 @@
-use crate::drops::{NoDrop, TrivialDrop};
-use crate::parse::{Parse, ParseStream, Result};
-use crate::token::Token;
-use std::fmt::{self, Debug};
-use std::hash::{Hash, Hasher};
+use super::{
+    parse::{Parse, ParseStream, Result},
+    token::Token,
+};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+    iter,
+    mem::ManuallyDrop,
+    ops::{Deref, DerefMut, Index, IndexMut},
+    option, slice, vec,
+};
 
-use std::iter;
-use std::ops::{Index, IndexMut};
-use std::option;
-use std::slice;
-use std::vec;
 pub struct Punctuated<T, P> {
     inner: Vec<(T, P)>,
     last: Option<Box<T>>,
@@ -277,24 +279,6 @@ where
         do_extend(self, i.into_iter());
     }
 }
-fn do_extend<T, P, I>(punctuated: &mut Punctuated<T, P>, i: I)
-where
-    I: Iterator<Item = Pair<T, P>>,
-{
-    let mut nomore = false;
-    for pair in i {
-        if nomore {
-            panic!("Punctuated extended with items after a Pair::End");
-        }
-        match pair {
-            Pair::Punctuated(a, b) => punctuated.inner.push((a, b)),
-            Pair::End(a) => {
-                punctuated.last = Some(Box::new(a));
-                nomore = true;
-            },
-        }
-    }
-}
 impl<T, P> IntoIterator for Punctuated<T, P> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -326,6 +310,51 @@ impl<T, P> Default for Punctuated<T, P> {
         Punctuated::new()
     }
 }
+impl<T, P> Index<usize> for Punctuated<T, P> {
+    type Output = T;
+    fn index(&self, index: usize) -> &Self::Output {
+        if index == self.len() - 1 {
+            match &self.last {
+                Some(t) => t,
+                None => &self.inner[index].0,
+            }
+        } else {
+            &self.inner[index].0
+        }
+    }
+}
+impl<T, P> IndexMut<usize> for Punctuated<T, P> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index == self.len() - 1 {
+            match &mut self.last {
+                Some(t) => t,
+                None => &mut self.inner[index].0,
+            }
+        } else {
+            &mut self.inner[index].0
+        }
+    }
+}
+
+fn do_extend<T, P, I>(punctuated: &mut Punctuated<T, P>, i: I)
+where
+    I: Iterator<Item = Pair<T, P>>,
+{
+    let mut nomore = false;
+    for pair in i {
+        if nomore {
+            panic!("Punctuated extended with items after a Pair::End");
+        }
+        match pair {
+            Pair::Punctuated(a, b) => punctuated.inner.push((a, b)),
+            Pair::End(a) => {
+                punctuated.last = Some(Box::new(a));
+                nomore = true;
+            },
+        }
+    }
+}
+
 pub struct Pairs<'a, T: 'a, P: 'a> {
     inner: slice::Iter<'a, (T, P)>,
     last: option::IntoIter<&'a T>,
@@ -363,6 +392,7 @@ impl<'a, T, P> Clone for Pairs<'a, T, P> {
         }
     }
 }
+
 pub struct PairsMut<'a, T: 'a, P: 'a> {
     inner: slice::IterMut<'a, (T, P)>,
     last: option::IntoIter<&'a mut T>,
@@ -392,6 +422,7 @@ impl<'a, T, P> ExactSizeIterator for PairsMut<'a, T, P> {
         self.inner.len() + self.last.len()
     }
 }
+
 pub struct IntoPairs<T, P> {
     inner: vec::IntoIter<(T, P)>,
     last: option::IntoIter<T>,
@@ -433,6 +464,7 @@ where
         }
     }
 }
+
 pub struct IntoIter<T> {
     inner: vec::IntoIter<T>,
 }
@@ -465,27 +497,9 @@ where
         }
     }
 }
+
 pub struct Iter<'a, T: 'a> {
     inner: Box<NoDrop<dyn IterTrait<'a, T> + 'a>>,
-}
-trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> + DoubleEndedIterator + ExactSizeIterator {
-    fn clone_box(&self) -> Box<NoDrop<dyn IterTrait<'a, T> + 'a>>;
-}
-struct PrivateIter<'a, T: 'a, P: 'a> {
-    inner: slice::Iter<'a, (T, P)>,
-    last: option::IntoIter<&'a T>,
-}
-impl<'a, T, P> TrivialDrop for PrivateIter<'a, T, P>
-where
-    slice::Iter<'a, (T, P)>: TrivialDrop,
-    option::IntoIter<&'a T>: TrivialDrop,
-{
-}
-
-pub(crate) fn empty_punctuated_iter<'a, T>() -> Iter<'a, T> {
-    Iter {
-        inner: Box::new(NoDrop::new(iter::empty())),
-    }
 }
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Self {
@@ -512,6 +526,21 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     fn len(&self) -> usize {
         self.inner.len()
     }
+}
+
+trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> + DoubleEndedIterator + ExactSizeIterator {
+    fn clone_box(&self) -> Box<NoDrop<dyn IterTrait<'a, T> + 'a>>;
+}
+
+struct PrivateIter<'a, T: 'a, P: 'a> {
+    inner: slice::Iter<'a, (T, P)>,
+    last: option::IntoIter<&'a T>,
+}
+impl<'a, T, P> TrivialDrop for PrivateIter<'a, T, P>
+where
+    slice::Iter<'a, (T, P)>: TrivialDrop,
+    option::IntoIter<&'a T>: TrivialDrop,
+{
 }
 impl<'a, T, P> Iterator for PrivateIter<'a, T, P> {
     type Item = &'a T;
@@ -546,26 +575,17 @@ where
         Box::new(NoDrop::new(self.clone()))
     }
 }
+
+pub(crate) fn empty_punctuated_iter<'a, T>() -> Iter<'a, T> {
+    Iter {
+        inner: Box::new(NoDrop::new(iter::empty())),
+    }
+}
+
 pub struct IterMut<'a, T: 'a> {
     inner: Box<NoDrop<dyn IterMutTrait<'a, T, Item = &'a mut T> + 'a>>,
 }
 trait IterMutTrait<'a, T: 'a>: DoubleEndedIterator<Item = &'a mut T> + ExactSizeIterator<Item = &'a mut T> {}
-struct PrivateIterMut<'a, T: 'a, P: 'a> {
-    inner: slice::IterMut<'a, (T, P)>,
-    last: option::IntoIter<&'a mut T>,
-}
-impl<'a, T, P> TrivialDrop for PrivateIterMut<'a, T, P>
-where
-    slice::IterMut<'a, (T, P)>: TrivialDrop,
-    option::IntoIter<&'a mut T>: TrivialDrop,
-{
-}
-
-pub(crate) fn empty_punctuated_iter_mut<'a, T>() -> IterMut<'a, T> {
-    IterMut {
-        inner: Box::new(NoDrop::new(iter::empty())),
-    }
-}
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -584,6 +604,17 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
     fn len(&self) -> usize {
         self.inner.len()
     }
+}
+
+struct PrivateIterMut<'a, T: 'a, P: 'a> {
+    inner: slice::IterMut<'a, (T, P)>,
+    last: option::IntoIter<&'a mut T>,
+}
+impl<'a, T, P> TrivialDrop for PrivateIterMut<'a, T, P>
+where
+    slice::IterMut<'a, (T, P)>: TrivialDrop,
+    option::IntoIter<&'a mut T>: TrivialDrop,
+{
 }
 impl<'a, T, P> Iterator for PrivateIterMut<'a, T, P> {
     type Item = &'a mut T;
@@ -609,6 +640,13 @@ where
     I: DoubleEndedIterator<Item = &'a mut T> + ExactSizeIterator<Item = &'a mut T> + 'a,
 {
 }
+
+pub(crate) fn empty_punctuated_iter_mut<'a, T>() -> IterMut<'a, T> {
+    IterMut {
+        inner: Box::new(NoDrop::new(iter::empty())),
+    }
+}
+
 pub enum Pair<T, P> {
     Punctuated(T, P),
     End(T),
@@ -684,31 +722,51 @@ where
     P: Copy,
 {
 }
-impl<T, P> Index<usize> for Punctuated<T, P> {
-    type Output = T;
-    fn index(&self, index: usize) -> &Self::Output {
-        if index == self.len() - 1 {
-            match &self.last {
-                Some(t) => t,
-                None => &self.inner[index].0,
-            }
-        } else {
-            &self.inner[index].0
-        }
+
+#[repr(transparent)]
+pub(crate) struct NoDrop<T: ?Sized>(ManuallyDrop<T>);
+impl<T> NoDrop<T> {
+    pub(crate) fn new(value: T) -> Self
+    where
+        T: TrivialDrop,
+    {
+        NoDrop(ManuallyDrop::new(value))
     }
 }
-impl<T, P> IndexMut<usize> for Punctuated<T, P> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index == self.len() - 1 {
-            match &mut self.last {
-                Some(t) => t,
-                None => &mut self.inner[index].0,
-            }
-        } else {
-            &mut self.inner[index].0
-        }
+impl<T: ?Sized> Deref for NoDrop<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
+impl<T: ?Sized> DerefMut for NoDrop<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+pub(crate) trait TrivialDrop {}
+impl<T> TrivialDrop for iter::Empty<T> {}
+impl<'a, T> TrivialDrop for slice::Iter<'a, T> {}
+impl<'a, T> TrivialDrop for slice::IterMut<'a, T> {}
+impl<'a, T> TrivialDrop for option::IntoIter<&'a T> {}
+impl<'a, T> TrivialDrop for option::IntoIter<&'a mut T> {}
+
+#[test]
+fn test_needs_drop() {
+    use std::mem::needs_drop;
+    struct NeedsDrop;
+    impl Drop for NeedsDrop {
+        fn drop(&mut self) {}
+    }
+    assert!(needs_drop::<NeedsDrop>());
+    assert!(!needs_drop::<iter::Empty<NeedsDrop>>());
+    assert!(!needs_drop::<slice::Iter<NeedsDrop>>());
+    assert!(!needs_drop::<slice::IterMut<NeedsDrop>>());
+    assert!(!needs_drop::<option::IntoIter<&NeedsDrop>>());
+    assert!(!needs_drop::<option::IntoIter<&mut NeedsDrop>>());
+}
+
 mod printing {
     use super::*;
     use proc_macro2::TokenStream;

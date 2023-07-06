@@ -1,10 +1,8 @@
 use super::*;
-use crate::derive::{Data, DataEnum, DataStruct, DataUnion, DeriveInput};
 use crate::punctuated::Punctuated;
 use proc_macro2::TokenStream;
 use std::mem;
 ast_enum_of_structs! {
-
     #[non_exhaustive]
     pub enum Item {
         Const(ItemConst),
@@ -26,7 +24,6 @@ ast_enum_of_structs! {
     }
 }
 ast_struct! {
-
     pub struct ItemConst {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -41,7 +38,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemEnum {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -53,7 +49,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemExternCrate {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -65,7 +60,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemFn {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -74,7 +68,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemForeignMod {
         pub attrs: Vec<Attribute>,
         pub unsafety: Option<Token![unsafe]>,
@@ -84,7 +77,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemImpl {
         pub attrs: Vec<Attribute>,
         pub defaultness: Option<Token![default]>,
@@ -98,7 +90,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemMacro {
         pub attrs: Vec<Attribute>,
         pub ident: Option<Ident>,
@@ -107,7 +98,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemMod {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -119,7 +109,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemStatic {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -134,7 +123,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemStruct {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -146,7 +134,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemTrait {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -163,7 +150,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemTraitAlias {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -176,7 +162,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemType {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -189,7 +174,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemUnion {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -200,7 +184,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ItemUse {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -309,7 +292,6 @@ impl From<ItemUnion> for DeriveInput {
     }
 }
 ast_enum_of_structs! {
-
     pub enum UseTree {
         Path(UsePath),
         Name(UseName),
@@ -319,7 +301,6 @@ ast_enum_of_structs! {
     }
 }
 ast_struct! {
-
     pub struct UsePath {
         pub ident: Ident,
         pub colon2_token: Token![::],
@@ -327,13 +308,11 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct UseName {
         pub ident: Ident,
     }
 }
 ast_struct! {
-
     pub struct UseRename {
         pub ident: Ident,
         pub as_token: Token![as],
@@ -341,20 +320,17 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct UseGlob {
         pub star_token: Token![*],
     }
 }
 ast_struct! {
-
     pub struct UseGroup {
         pub brace_token: token::Brace,
         pub items: Punctuated<UseTree, Token![,]>,
     }
 }
 ast_enum_of_structs! {
-
     #[non_exhaustive]
     pub enum ForeignItem {
         Fn(ForeignItemFn),
@@ -365,7 +341,6 @@ ast_enum_of_structs! {
     }
 }
 ast_struct! {
-
     pub struct ForeignItemFn {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -374,7 +349,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ForeignItemStatic {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -387,7 +361,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ForeignItemType {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -398,7 +371,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ForeignItemMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
@@ -406,7 +378,6 @@ ast_struct! {
     }
 }
 ast_enum_of_structs! {
-
     #[non_exhaustive]
     pub enum TraitItem {
         Const(TraitItemConst),
@@ -417,7 +388,6 @@ ast_enum_of_structs! {
     }
 }
 ast_struct! {
-
     pub struct TraitItemConst {
         pub attrs: Vec<Attribute>,
         pub const_token: Token![const],
@@ -430,7 +400,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct TraitItemFn {
         pub attrs: Vec<Attribute>,
         pub sig: Signature,
@@ -439,7 +408,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct TraitItemType {
         pub attrs: Vec<Attribute>,
         pub type_token: Token![type],
@@ -452,7 +420,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct TraitItemMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
@@ -460,7 +427,6 @@ ast_struct! {
     }
 }
 ast_enum_of_structs! {
-
     #[non_exhaustive]
     pub enum ImplItem {
         Const(ImplItemConst),
@@ -471,7 +437,6 @@ ast_enum_of_structs! {
     }
 }
 ast_struct! {
-
     pub struct ImplItemConst {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -487,7 +452,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ImplItemFn {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -497,7 +461,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ImplItemType {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
@@ -511,7 +474,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct ImplItemMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
@@ -519,7 +481,6 @@ ast_struct! {
     }
 }
 ast_struct! {
-
     pub struct Signature {
         pub constness: Option<Token![const]>,
         pub asyncness: Option<Token![async]>,
@@ -544,14 +505,12 @@ impl Signature {
     }
 }
 ast_enum_of_structs! {
-
     pub enum FnArg {
         Receiver(Receiver),
         Typed(PatType),
     }
 }
 ast_struct! {
-
     pub struct Receiver {
         pub attrs: Vec<Attribute>,
         pub reference: Option<(Token![&], Option<Lifetime>)>,
@@ -567,7 +526,6 @@ impl Receiver {
     }
 }
 ast_struct! {
-
     pub struct Variadic {
         pub attrs: Vec<Attribute>,
         pub pat: Option<(Box<Pat>, Token![:])>,
@@ -576,7 +534,6 @@ ast_struct! {
     }
 }
 ast_enum! {
-
     #[non_exhaustive]
     pub enum StaticMutability {
         Mut(Token![mut]),
@@ -584,17 +541,14 @@ ast_enum! {
     }
 }
 ast_enum! {
-
     #[non_exhaustive]
     pub enum ImplRestriction {}
-
 }
 pub(crate) mod parsing {
     use super::*;
     use crate::ext::IdentExt;
     use crate::parse::discouraged::Speculative;
     use crate::parse::{Parse, ParseBuffer, ParseStream, Result};
-
     impl Parse for Item {
         fn parse(input: ParseStream) -> Result<Self> {
             let begin = input.fork();
@@ -850,7 +804,6 @@ pub(crate) mod parsing {
             }
         }
     }
-
     impl Parse for ItemMacro {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -899,7 +852,6 @@ pub(crate) mod parsing {
         }
         Ok(Item::Verbatim(verbatim::between(&begin, input)))
     }
-
     impl Parse for ItemExternCrate {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ItemExternCrate {
@@ -931,7 +883,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ItemUse {
         fn parse(input: ParseStream) -> Result<Self> {
             let allow_crate_root_in_path = false;
@@ -958,7 +909,6 @@ pub(crate) mod parsing {
             semi_token,
         }))
     }
-
     impl Parse for UseTree {
         fn parse(input: ParseStream) -> Result<UseTree> {
             let allow_crate_root_in_path = false;
@@ -1032,7 +982,6 @@ pub(crate) mod parsing {
             Err(lookahead.error())
         }
     }
-
     impl Parse for ItemStatic {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ItemStatic {
@@ -1049,7 +998,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ItemConst {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ItemConst {
@@ -1081,7 +1029,6 @@ pub(crate) mod parsing {
             && fork.parse::<Option<Abi>>().is_ok()
             && fork.peek(Token![fn])
     }
-
     impl Parse for Signature {
         fn parse(input: ParseStream) -> Result<Self> {
             let constness: Option<Token![const]> = input.parse()?;
@@ -1111,7 +1058,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ItemFn {
         fn parse(input: ParseStream) -> Result<Self> {
             let outer_attrs = input.call(Attribute::parse_outer)?;
@@ -1137,7 +1083,6 @@ pub(crate) mod parsing {
             block: Box::new(Block { brace_token, stmts }),
         })
     }
-
     impl Parse for FnArg {
         fn parse(input: ParseStream) -> Result<Self> {
             let allow_variadic = false;
@@ -1194,7 +1139,6 @@ pub(crate) mod parsing {
             ty: input.parse()?,
         })))
     }
-
     impl Parse for Receiver {
         fn parse(input: ParseStream) -> Result<Self> {
             let reference = if input.peek(Token![&]) {
@@ -1282,7 +1226,6 @@ pub(crate) mod parsing {
         }
         Ok((args, variadic))
     }
-
     impl Parse for ItemMod {
         fn parse(input: ParseStream) -> Result<Self> {
             let mut attrs = input.call(Attribute::parse_outer)?;
@@ -1327,7 +1270,6 @@ pub(crate) mod parsing {
             }
         }
     }
-
     impl Parse for ItemForeignMod {
         fn parse(input: ParseStream) -> Result<Self> {
             let mut attrs = input.call(Attribute::parse_outer)?;
@@ -1349,7 +1291,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ForeignItem {
         fn parse(input: ParseStream) -> Result<Self> {
             let begin = input.fork();
@@ -1423,7 +1364,6 @@ pub(crate) mod parsing {
             Ok(item)
         }
     }
-
     impl Parse for ForeignItemFn {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1438,7 +1378,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ForeignItemStatic {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ForeignItemStatic {
@@ -1453,7 +1392,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ForeignItemType {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ForeignItemType {
@@ -1495,7 +1433,6 @@ pub(crate) mod parsing {
             }))
         }
     }
-
     impl Parse for ForeignItemMacro {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1508,7 +1445,6 @@ pub(crate) mod parsing {
             Ok(ForeignItemMacro { attrs, mac, semi_token })
         }
     }
-
     impl Parse for ItemType {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ItemType {
@@ -1554,7 +1490,6 @@ pub(crate) mod parsing {
             semi_token,
         }))
     }
-
     impl Parse for ItemStruct {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1562,7 +1497,7 @@ pub(crate) mod parsing {
             let struct_token = input.parse::<Token![struct]>()?;
             let ident = input.parse::<Ident>()?;
             let generics = input.parse::<Generics>()?;
-            let (where_clause, fields, semi_token) = derive::parsing::data_struct(input)?;
+            let (where_clause, fields, semi_token) = parsing::data_struct(input)?;
             Ok(ItemStruct {
                 attrs,
                 vis,
@@ -1577,7 +1512,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ItemEnum {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1585,7 +1519,7 @@ pub(crate) mod parsing {
             let enum_token = input.parse::<Token![enum]>()?;
             let ident = input.parse::<Ident>()?;
             let generics = input.parse::<Generics>()?;
-            let (where_clause, brace_token, variants) = derive::parsing::data_enum(input)?;
+            let (where_clause, brace_token, variants) = parsing::data_enum(input)?;
             Ok(ItemEnum {
                 attrs,
                 vis,
@@ -1600,7 +1534,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ItemUnion {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1608,7 +1541,7 @@ pub(crate) mod parsing {
             let union_token = input.parse::<Token![union]>()?;
             let ident = input.parse::<Ident>()?;
             let generics = input.parse::<Generics>()?;
-            let (where_clause, fields) = derive::parsing::data_union(input)?;
+            let (where_clause, fields) = parsing::data_union(input)?;
             Ok(ItemUnion {
                 attrs,
                 vis,
@@ -1635,7 +1568,6 @@ pub(crate) mod parsing {
             Err(lookahead.error())
         }
     }
-
     impl Parse for ItemTrait {
         fn parse(input: ParseStream) -> Result<Self> {
             let outer_attrs = input.call(Attribute::parse_outer)?;
@@ -1704,7 +1636,6 @@ pub(crate) mod parsing {
             items,
         })
     }
-
     impl Parse for ItemTraitAlias {
         fn parse(input: ParseStream) -> Result<Self> {
             let (attrs, vis, trait_token, ident, generics) = parse_start_of_trait_alias(input)?;
@@ -1754,7 +1685,6 @@ pub(crate) mod parsing {
             semi_token,
         })
     }
-
     impl Parse for TraitItem {
         fn parse(input: ParseStream) -> Result<Self> {
             let begin = input.fork();
@@ -1809,7 +1739,6 @@ pub(crate) mod parsing {
             Ok(item)
         }
     }
-
     impl Parse for TraitItemConst {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(TraitItemConst {
@@ -1839,7 +1768,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for TraitItemFn {
         fn parse(input: ParseStream) -> Result<Self> {
             let mut attrs = input.call(Attribute::parse_outer)?;
@@ -1865,7 +1793,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for TraitItemType {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1915,7 +1842,6 @@ pub(crate) mod parsing {
             }))
         }
     }
-
     impl Parse for TraitItemMacro {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -1928,7 +1854,6 @@ pub(crate) mod parsing {
             Ok(TraitItemMacro { attrs, mac, semi_token })
         }
     }
-
     impl Parse for ItemImpl {
         fn parse(input: ParseStream) -> Result<Self> {
             let allow_verbatim_impl = false;
@@ -2028,7 +1953,6 @@ pub(crate) mod parsing {
             }))
         }
     }
-
     impl Parse for ImplItem {
         fn parse(input: ParseStream) -> Result<Self> {
             let begin = input.fork();
@@ -2107,7 +2031,6 @@ pub(crate) mod parsing {
             Ok(item)
         }
     }
-
     impl Parse for ImplItemConst {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(ImplItemConst {
@@ -2132,7 +2055,6 @@ pub(crate) mod parsing {
             })
         }
     }
-
     impl Parse for ImplItemFn {
         fn parse(input: ParseStream) -> Result<Self> {
             let allow_omitted_body = false;
@@ -2162,7 +2084,6 @@ pub(crate) mod parsing {
             block,
         }))
     }
-
     impl Parse for ImplItemType {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -2216,7 +2137,6 @@ pub(crate) mod parsing {
             semi_token,
         }))
     }
-
     impl Parse for ImplItemMacro {
         fn parse(input: ParseStream) -> Result<Self> {
             let attrs = input.call(Attribute::parse_outer)?;
@@ -2245,7 +2165,6 @@ pub(crate) mod parsing {
             }
         }
     }
-
     impl Parse for StaticMutability {
         fn parse(input: ParseStream) -> Result<Self> {
             let mut_token: Option<Token![mut]> = input.parse()?;
