@@ -844,7 +844,7 @@ pub(crate) mod parsing {
             }
             let expr = Box::new(unary_expr(input, allow_struct)?);
             if raw.is_some() {
-                Ok(Expr::Verbatim(verbatim::between(&begin, input)))
+                Ok(Expr::Verbatim(verbatim_between(&begin, input)))
             } else {
                 Ok(Expr::Reference(ExprReference {
                     attrs,
@@ -880,7 +880,7 @@ pub(crate) mod parsing {
         let atom = atom_expr(input, allow_struct)?;
         let mut e = trailer_helper(input, atom)?;
         if let Expr::Verbatim(tokens) = &mut e {
-            *tokens = verbatim::between(&begin, input);
+            *tokens = verbatim_between(&begin, input);
         } else {
             let inner_attrs = e.replace_attrs(Vec::new());
             attrs.extend(inner_attrs);
@@ -1126,7 +1126,7 @@ pub(crate) mod parsing {
                 let content;
                 braced!(content in scan);
                 if content.parse::<Expr>().is_ok() && content.is_empty() {
-                    let expr_block = verbatim::between(input, &scan);
+                    let expr_block = verbatim_between(input, &scan);
                     input.advance_to(&scan);
                     return Ok(Expr::Verbatim(expr_block));
                 }
@@ -1142,7 +1142,7 @@ pub(crate) mod parsing {
         let args;
         parenthesized!(args in input);
         args.parse::<TokenStream>()?;
-        Ok(Expr::Verbatim(verbatim::between(&begin, input)))
+        Ok(Expr::Verbatim(verbatim_between(&begin, input)))
     }
     fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_struct: AllowStruct) -> Result<Expr> {
         let (qself, path) = path::parsing::qpath(input, true)?;

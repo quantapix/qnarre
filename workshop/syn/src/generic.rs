@@ -522,7 +522,7 @@ pub(crate) mod parsing {
             let mut bound: TraitBound = content.parse()?;
             bound.paren_token = paren_token;
             if is_tilde_const {
-                Ok(TypeParamBound::Verbatim(verbatim::between(&begin, input)))
+                Ok(TypeParamBound::Verbatim(verbatim_between(&begin, input)))
             } else {
                 Ok(TypeParamBound::Trait(bound))
             }

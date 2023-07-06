@@ -141,7 +141,7 @@ mod group {
         pub token: token::Group,
         pub content: ParseBuffer<'a>,
     }
-    pub(crate) fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
+    pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
         parse_delimited(x, Delimiter::None).map(|(span, content)| Group {
             token: token::Group(span.join()),
             content,
@@ -211,8 +211,315 @@ pub use crate::path::{
     AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
     Path, PathArguments, PathSegment, QSelf,
 };
-mod stmt;
-pub use crate::stmt::{Block, Local, LocalInit, Stmt, StmtMacro};
+
+ast_struct! {
+    pub struct Block {
+        pub brace_token: token::Brace,
+        pub stmts: Vec<Stmt>,
+    }
+}
+ast_enum! {
+    pub enum Stmt {
+        Local(Local),
+        Item(Item),
+        Expr(Expr, Option<Token![;]>),
+        Macro(StmtMacro),
+    }
+}
+ast_struct! {
+    pub struct Local {
+        pub attrs: Vec<Attribute>,
+        pub let_token: Token![let],
+        pub pat: Pat,
+        pub init: Option<LocalInit>,
+        pub semi_token: Token![;],
+    }
+}
+ast_struct! {
+    pub struct LocalInit {
+        pub eq_token: Token![=],
+        pub expr: Box<Expr>,
+        pub diverge: Option<(Token![else], Box<Expr>)>,
+    }
+}
+ast_struct! {
+    pub struct StmtMacro {
+        pub attrs: Vec<Attribute>,
+        pub mac: Macro,
+        pub semi_token: Option<Token![;]>,
+    }
+}
+
+mod parsing {
+    use super::*;
+    use crate::parse::{discouraged::Speculative, Parse, ParseStream, Result};
+    use proc_macro2::TokenStream;
+    struct AllowNoSemi(bool);
+    impl Block {
+        pub fn parse_within(x: ParseStream) -> Result<Vec<Stmt>> {
+            let mut ys = Vec::new();
+            loop {
+                while let semi @ Some(_) = x.parse()? {
+                    ys.push(Stmt::Expr(Expr::Verbatim(TokenStream::new()), semi));
+                }
+                if x.is_empty() {
+                    break;
+                }
+                let stmt = parse_stmt(x, AllowNoSemi(true))?;
+                let requires_semicolon = match &stmt {
+                    Stmt::Expr(x, None) => expr::requires_terminator(x),
+                    Stmt::Macro(x) => x.semi_token.is_none() && !x.mac.delimiter.is_brace(),
+                    Stmt::Local(_) | Stmt::Item(_) | Stmt::Expr(_, Some(_)) => false,
+                };
+                ys.push(stmt);
+                if x.is_empty() {
+                    break;
+                } else if requires_semicolon {
+                    return Err(x.error("unexpected token, expected `;`"));
+                }
+            }
+            Ok(ys)
+        }
+    }
+    impl Parse for Block {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let content;
+            Ok(Block {
+                brace_token: braced!(content in x),
+                stmts: content.call(Block::parse_within)?,
+            })
+        }
+    }
+    impl Parse for Stmt {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let allow_nosemi = AllowNoSemi(false);
+            parse_stmt(x, allow_nosemi)
+        }
+    }
+    fn parse_stmt(x: ParseStream, allow_nosemi: AllowNoSemi) -> Result<Stmt> {
+        let begin = x.fork();
+        let attrs = x.call(Attribute::parse_outer)?;
+        let ahead = x.fork();
+        let mut is_item_macro = false;
+        if let Ok(path) = ahead.call(Path::parse_mod_style) {
+            if ahead.peek(Token![!]) {
+                if ahead.peek2(Ident) || ahead.peek2(Token![try]) {
+                    is_item_macro = true;
+                } else if ahead.peek2(token::Brace) && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?])) {
+                    x.advance_to(&ahead);
+                    return stmt_mac(x, attrs, path).map(Stmt::Macro);
+                }
+            }
+        }
+        if x.peek(Token![let]) {
+            stmt_local(x, attrs).map(Stmt::Local)
+        } else if x.peek(Token![pub])
+            || x.peek(Token![crate]) && !x.peek2(Token![::])
+            || x.peek(Token![extern])
+            || x.peek(Token![use])
+            || x.peek(Token![static])
+                && (x.peek2(Token![mut])
+                    || x.peek2(Ident) && !(x.peek2(Token![async]) && (x.peek3(Token![move]) || x.peek3(Token![|]))))
+            || x.peek(Token![const])
+                && !(x.peek2(token::Brace)
+                    || x.peek2(Token![static])
+                    || x.peek2(Token![async])
+                        && !(x.peek3(Token![unsafe]) || x.peek3(Token![extern]) || x.peek3(Token![fn]))
+                    || x.peek2(Token![move])
+                    || x.peek2(Token![|]))
+            || x.peek(Token![unsafe]) && !x.peek2(token::Brace)
+            || x.peek(Token![async]) && (x.peek2(Token![unsafe]) || x.peek2(Token![extern]) || x.peek2(Token![fn]))
+            || x.peek(Token![fn])
+            || x.peek(Token![mod])
+            || x.peek(Token![type])
+            || x.peek(Token![struct])
+            || x.peek(Token![enum])
+            || x.peek(Token![union]) && x.peek2(Ident)
+            || x.peek(Token![auto]) && x.peek2(Token![trait])
+            || x.peek(Token![trait])
+            || x.peek(Token![default]) && (x.peek2(Token![unsafe]) || x.peek2(Token![impl]))
+            || x.peek(Token![impl])
+            || x.peek(Token![macro])
+            || is_item_macro
+        {
+            let item = item::parsing::parse_rest_of_item(begin, attrs, x)?;
+            Ok(Stmt::Item(item))
+        } else {
+            stmt_expr(x, allow_nosemi, attrs)
+        }
+    }
+    fn stmt_mac(x: ParseStream, attrs: Vec<Attribute>, path: Path) -> Result<StmtMacro> {
+        let bang_token: Token![!] = x.parse()?;
+        let (delimiter, tokens) = mac_parse_delimiter(x)?;
+        let semi_token: Option<Token![;]> = x.parse()?;
+        Ok(StmtMacro {
+            attrs,
+            mac: Macro {
+                path,
+                bang_token,
+                delimiter,
+                tokens,
+            },
+            semi_token,
+        })
+    }
+    fn stmt_local(x: ParseStream, attrs: Vec<Attribute>) -> Result<Local> {
+        let let_token: Token![let] = x.parse()?;
+        let mut pat = Pat::parse_single(x)?;
+        if x.peek(Token![:]) {
+            let colon_token: Token![:] = x.parse()?;
+            let ty: Type = x.parse()?;
+            pat = Pat::Type(PatType {
+                attrs: Vec::new(),
+                pat: Box::new(pat),
+                colon_token,
+                ty: Box::new(ty),
+            });
+        }
+        let init = if let Some(eq_token) = x.parse()? {
+            let eq_token: Token![=] = eq_token;
+            let expr: Expr = x.parse()?;
+            let diverge = if let Some(else_token) = x.parse()? {
+                let else_token: Token![else] = else_token;
+                let diverge = ExprBlock {
+                    attrs: Vec::new(),
+                    label: None,
+                    block: x.parse()?,
+                };
+                Some((else_token, Box::new(Expr::Block(diverge))))
+            } else {
+                None
+            };
+            Some(LocalInit {
+                eq_token,
+                expr: Box::new(expr),
+                diverge,
+            })
+        } else {
+            None
+        };
+        let semi_token: Token![;] = x.parse()?;
+        Ok(Local {
+            attrs,
+            let_token,
+            pat,
+            init,
+            semi_token,
+        })
+    }
+    fn stmt_expr(x: ParseStream, allow_nosemi: AllowNoSemi, mut attrs: Vec<Attribute>) -> Result<Stmt> {
+        let mut e = expr::parsing::expr_early(x)?;
+        let mut attr_target = &mut e;
+        loop {
+            attr_target = match attr_target {
+                Expr::Assign(e) => &mut e.left,
+                Expr::Binary(e) => &mut e.left,
+                Expr::Cast(e) => &mut e.expr,
+                Expr::Array(_)
+                | Expr::Async(_)
+                | Expr::Await(_)
+                | Expr::Block(_)
+                | Expr::Break(_)
+                | Expr::Call(_)
+                | Expr::Closure(_)
+                | Expr::Const(_)
+                | Expr::Continue(_)
+                | Expr::Field(_)
+                | Expr::ForLoop(_)
+                | Expr::Group(_)
+                | Expr::If(_)
+                | Expr::Index(_)
+                | Expr::Infer(_)
+                | Expr::Let(_)
+                | Expr::Lit(_)
+                | Expr::Loop(_)
+                | Expr::Macro(_)
+                | Expr::Match(_)
+                | Expr::MethodCall(_)
+                | Expr::Paren(_)
+                | Expr::Path(_)
+                | Expr::Range(_)
+                | Expr::Reference(_)
+                | Expr::Repeat(_)
+                | Expr::Return(_)
+                | Expr::Struct(_)
+                | Expr::Try(_)
+                | Expr::TryBlock(_)
+                | Expr::Tuple(_)
+                | Expr::Unary(_)
+                | Expr::Unsafe(_)
+                | Expr::While(_)
+                | Expr::Yield(_)
+                | Expr::Verbatim(_) => break,
+            };
+        }
+        attrs.extend(attr_target.replace_attrs(Vec::new()));
+        attr_target.replace_attrs(attrs);
+        let semi_token: Option<Token![;]> = x.parse()?;
+        match e {
+            Expr::Macro(ExprMacro { attrs, mac }) if semi_token.is_some() || mac.delimiter.is_brace() => {
+                return Ok(Stmt::Macro(StmtMacro { attrs, mac, semi_token }));
+            },
+            _ => {},
+        }
+        if semi_token.is_some() {
+            Ok(Stmt::Expr(e, semi_token))
+        } else if allow_nosemi.0 || !expr::requires_terminator(&e) {
+            Ok(Stmt::Expr(e, None))
+        } else {
+            Err(x.error("expected semicolon"))
+        }
+    }
+}
+mod printing {
+    use super::*;
+    use proc_macro2::TokenStream;
+    use quote::{ToTokens, TokenStreamExt};
+    impl ToTokens for Block {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.brace_token.surround(tokens, |tokens| {
+                tokens.append_all(&self.stmts);
+            });
+        }
+    }
+    impl ToTokens for Stmt {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                Stmt::Local(local) => local.to_tokens(tokens),
+                Stmt::Item(item) => item.to_tokens(tokens),
+                Stmt::Expr(expr, semi) => {
+                    expr.to_tokens(tokens);
+                    semi.to_tokens(tokens);
+                },
+                Stmt::Macro(mac) => mac.to_tokens(tokens),
+            }
+        }
+    }
+    impl ToTokens for Local {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            expr::printing::outer_attrs_to_tokens(&self.attrs, tokens);
+            self.let_token.to_tokens(tokens);
+            self.pat.to_tokens(tokens);
+            if let Some(init) = &self.init {
+                init.eq_token.to_tokens(tokens);
+                init.expr.to_tokens(tokens);
+                if let Some((else_token, diverge)) = &init.diverge {
+                    else_token.to_tokens(tokens);
+                    diverge.to_tokens(tokens);
+                }
+            }
+            self.semi_token.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for StmtMacro {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            expr::printing::outer_attrs_to_tokens(&self.attrs, tokens);
+            self.mac.to_tokens(tokens);
+            self.semi_token.to_tokens(tokens);
+        }
+    }
+}
+
 mod ty;
 pub use crate::ty::{
     Abi, BareFnArg, BareVariadic, ReturnType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
@@ -363,7 +670,7 @@ ast_struct! {
     }
 }
 
-pub(crate) mod parsing {
+mod parsing {
     use super::*;
     use crate::ext::IdentExt;
     use crate::parse::{Parse, ParseStream, Result};
@@ -519,7 +826,7 @@ ast_struct! {
     }
 }
 
-pub(crate) mod parsing {
+mod parsing {
     use super::*;
     use crate::parse::{Parse, ParseStream, Result};
     impl Parse for DeriveInput {
@@ -585,7 +892,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    pub(crate) fn data_struct(input: ParseStream) -> Result<(Option<WhereClause>, Fields, Option<Token![;]>)> {
+    pub fn data_struct(input: ParseStream) -> Result<(Option<WhereClause>, Fields, Option<Token![;]>)> {
         let mut lookahead = input.lookahead1();
         let mut where_clause = None;
         if lookahead.peek(Token![where]) {
@@ -615,7 +922,7 @@ pub(crate) mod parsing {
             Err(lookahead.error())
         }
     }
-    pub(crate) fn data_enum(
+    pub fn data_enum(
         input: ParseStream,
     ) -> Result<(Option<WhereClause>, token::Brace, Punctuated<Variant, Token![,]>)> {
         let where_clause = input.parse()?;
@@ -624,7 +931,7 @@ pub(crate) mod parsing {
         let variants = content.parse_terminated(Variant::parse, Token![,])?;
         Ok((where_clause, brace, variants))
     }
-    pub(crate) fn data_union(input: ParseStream) -> Result<(Option<WhereClause>, FieldsNamed)> {
+    pub fn data_union(input: ParseStream) -> Result<(Option<WhereClause>, FieldsNamed)> {
         let where_clause = input.parse()?;
         let fields = input.parse()?;
         Ok((where_clause, fields))
@@ -793,7 +1100,7 @@ mod err {
             ])
         }
     }
-    pub(crate) fn new_at<T: Display>(scope: Span, cursor: Cursor, message: T) -> Err {
+    pub fn new_at<T: Display>(scope: Span, cursor: Cursor, message: T) -> Err {
         if cursor.eof() {
             Err::new(scope, format!("unexpected end of input, {}", message))
         } else {
@@ -801,7 +1108,7 @@ mod err {
             Err::new(span, message)
         }
     }
-    pub(crate) fn new2<T: Display>(start: Span, end: Span, message: T) -> Err {
+    pub fn new2<T: Display>(start: Span, end: Span, message: T) -> Err {
         return new2(start, end, message.to_string());
         fn new2(start: Span, end: Span, message: String) -> Err {
             Err {
@@ -971,7 +1278,7 @@ ast_struct! {
         pub items: Vec<Item>,
     }
 }
-pub(crate) mod parsing {
+mod parsing {
     use super::*;
     use crate::parse::{Parse, ParseStream, Result};
     impl Parse for File {
@@ -1029,7 +1336,7 @@ mod ident {
             Ident::new("_", token.span)
         }
     }
-    pub(crate) fn xid_ok(symbol: &str) -> bool {
+    pub fn xid_ok(symbol: &str) -> bool {
         let mut chars = symbol.chars();
         let first = chars.next().unwrap();
         if !(first == '_' || unicode_ident::is_xid_start(first)) {
@@ -1161,7 +1468,7 @@ pub fn Lifetime(marker: lookahead::TokenMarker) -> Lifetime {
     match marker {}
 }
 
-pub(crate) mod parsing {
+mod parsing {
     use super::*;
     use crate::parse::{Parse, ParseStream, Result};
     impl Parse for Lifetime {
@@ -1229,7 +1536,7 @@ mod lookahead {
         }
     }
 
-    pub(crate) fn new(scope: Span, cursor: Cursor) -> Lookahead1 {
+    pub fn new(scope: Span, cursor: Cursor) -> Lookahead1 {
         Lookahead1 {
             scope,
             cursor,
@@ -1258,7 +1565,7 @@ mod lookahead {
         }
     }
 
-    pub(crate) fn is_delimiter(cursor: Cursor, delimiter: Delimiter) -> bool {
+    pub fn is_delimiter(cursor: Cursor, delimiter: Delimiter) -> bool {
         cursor.group(delimiter).is_some()
     }
 
@@ -1299,7 +1606,7 @@ impl Macro {
         crate::parse::parse_scoped(parser, scope, self.tokens.clone())
     }
 }
-pub(crate) fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
+fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
     input.step(|cursor| {
         if let Some((TokenTree::Group(g), rest)) = cursor.token_tree() {
             let span = g.delim_span();
@@ -1317,7 +1624,7 @@ pub(crate) fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter,
         }
     })
 }
-pub(crate) mod parsing {
+mod parsing {
     use super::*;
     use crate::parse::{Parse, ParseStream, Result};
 
@@ -1342,7 +1649,7 @@ mod printing {
     use proc_macro2::TokenStream;
     use quote::ToTokens;
     impl MacroDelimiter {
-        pub(crate) fn surround(&self, tokens: &mut TokenStream, inner: TokenStream) {
+        pub fn surround(&self, tokens: &mut TokenStream, inner: TokenStream) {
             let (delim, span) = match self {
                 MacroDelimiter::Paren(paren) => (Delimiter::Parenthesis, paren.span),
                 MacroDelimiter::Brace(brace) => (Delimiter::Brace, brace.span),
@@ -1401,7 +1708,7 @@ ast_enum! {
         Neg(Token![-]),
     }
 }
-pub(crate) mod parsing {
+mod parsing {
     use super::*;
     use crate::parse::{Parse, ParseStream, Result};
     fn parse_binop(input: ParseStream) -> Result<BinOp> {
@@ -1633,7 +1940,7 @@ mod parse_quote {
     }
 }
 
-pub(crate) struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
+struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
 impl<'a, T> ToTokens for TokensOrDefault<'a, T>
 where
     T: ToTokens + Default,
@@ -1669,7 +1976,7 @@ mod restriction {
             None,
         }
     }
-    pub(crate) mod parsing {
+    mod parsing {
         use super::*;
         use crate::ext::IdentExt;
         use crate::parse::discouraged::Speculative;
@@ -1724,7 +2031,7 @@ mod restriction {
                 }
                 Ok(Visibility::Public(pub_token))
             }
-            pub(crate) fn is_some(&self) -> bool {
+            pub fn is_some(&self) -> bool {
                 match self {
                     Visibility::Inherited => false,
                     _ => true,
@@ -1758,7 +2065,7 @@ mod restriction {
 }
 pub use crate::restriction::{FieldMutability, VisRestricted, Visibility};
 mod sealed {
-    pub(crate) mod lookahead {
+    pub mod lookahead {
         pub trait Sealed: Copy {}
     }
 }
@@ -1828,20 +2135,20 @@ mod private {
     impl<T: ?Sized + spanned::Spanned> Sealed for T {}
 }
 
-pub(crate) struct ThreadBound<T> {
+struct ThreadBound<T> {
     value: T,
     thread_id: ThreadId,
 }
 unsafe impl<T> Sync for ThreadBound<T> {}
 unsafe impl<T: Copy> Send for ThreadBound<T> {}
 impl<T> ThreadBound<T> {
-    pub(crate) fn new(value: T) -> Self {
+    pub fn new(value: T) -> Self {
         ThreadBound {
             value,
             thread_id: thread::current().id(),
         }
     }
-    pub(crate) fn get(&self) -> Option<&T> {
+    pub fn get(&self) -> Option<&T> {
         if thread::current().id() == self.thread_id {
             Some(&self.value)
         } else {
@@ -1864,193 +2171,182 @@ impl<T: Copy> Clone for ThreadBound<T> {
     }
 }
 
-mod tt {
-    use proc_macro2::{Delimiter, TokenStream, TokenTree};
-    use std::hash::{Hash, Hasher};
-    pub(crate) struct TokenTreeHelper<'a>(pub &'a TokenTree);
-    impl<'a> PartialEq for TokenTreeHelper<'a> {
-        fn eq(&self, other: &Self) -> bool {
-            use proc_macro2::Spacing;
-            match (self.0, other.0) {
-                (TokenTree::Group(g1), TokenTree::Group(g2)) => {
-                    match (g1.delimiter(), g2.delimiter()) {
-                        (Delimiter::Parenthesis, Delimiter::Parenthesis)
-                        | (Delimiter::Brace, Delimiter::Brace)
-                        | (Delimiter::Bracket, Delimiter::Bracket)
-                        | (Delimiter::None, Delimiter::None) => {},
-                        _ => return false,
+struct TokenTreeHelper<'a>(pub &'a TokenTree);
+impl<'a> PartialEq for TokenTreeHelper<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        use proc_macro2::Spacing;
+        match (self.0, other.0) {
+            (TokenTree::Group(g1), TokenTree::Group(g2)) => {
+                match (g1.delimiter(), g2.delimiter()) {
+                    (Delimiter::Parenthesis, Delimiter::Parenthesis)
+                    | (Delimiter::Brace, Delimiter::Brace)
+                    | (Delimiter::Bracket, Delimiter::Bracket)
+                    | (Delimiter::None, Delimiter::None) => {},
+                    _ => return false,
+                }
+                let s1 = g1.stream().into_iter();
+                let mut s2 = g2.stream().into_iter();
+                for item1 in s1 {
+                    let item2 = match s2.next() {
+                        Some(item) => item,
+                        None => return false,
+                    };
+                    if TokenTreeHelper(&item1) != TokenTreeHelper(&item2) {
+                        return false;
                     }
-                    let s1 = g1.stream().into_iter();
-                    let mut s2 = g2.stream().into_iter();
-                    for item1 in s1 {
-                        let item2 = match s2.next() {
-                            Some(item) => item,
-                            None => return false,
-                        };
-                        if TokenTreeHelper(&item1) != TokenTreeHelper(&item2) {
-                            return false;
-                        }
+                }
+                s2.next().is_none()
+            },
+            (TokenTree::Punct(o1), TokenTree::Punct(o2)) => {
+                o1.as_char() == o2.as_char()
+                    && match (o1.spacing(), o2.spacing()) {
+                        (Spacing::Alone, Spacing::Alone) | (Spacing::Joint, Spacing::Joint) => true,
+                        _ => false,
                     }
-                    s2.next().is_none()
-                },
-                (TokenTree::Punct(o1), TokenTree::Punct(o2)) => {
-                    o1.as_char() == o2.as_char()
-                        && match (o1.spacing(), o2.spacing()) {
-                            (Spacing::Alone, Spacing::Alone) | (Spacing::Joint, Spacing::Joint) => true,
-                            _ => false,
-                        }
-                },
-                (TokenTree::Literal(l1), TokenTree::Literal(l2)) => l1.to_string() == l2.to_string(),
-                (TokenTree::Ident(s1), TokenTree::Ident(s2)) => s1 == s2,
-                _ => false,
-            }
+            },
+            (TokenTree::Literal(l1), TokenTree::Literal(l2)) => l1.to_string() == l2.to_string(),
+            (TokenTree::Ident(s1), TokenTree::Ident(s2)) => s1 == s2,
+            _ => false,
         }
     }
-    impl<'a> Hash for TokenTreeHelper<'a> {
-        fn hash<H: Hasher>(&self, h: &mut H) {
-            use proc_macro2::Spacing;
-            match self.0 {
-                TokenTree::Group(g) => {
-                    0u8.hash(h);
-                    match g.delimiter() {
-                        Delimiter::Parenthesis => 0u8.hash(h),
-                        Delimiter::Brace => 1u8.hash(h),
-                        Delimiter::Bracket => 2u8.hash(h),
-                        Delimiter::None => 3u8.hash(h),
-                    }
-                    for item in g.stream() {
-                        TokenTreeHelper(&item).hash(h);
-                    }
-                    0xffu8.hash(h); // terminator w/ a variant we don't normally hash
-                },
-                TokenTree::Punct(op) => {
-                    1u8.hash(h);
-                    op.as_char().hash(h);
-                    match op.spacing() {
-                        Spacing::Alone => 0u8.hash(h),
-                        Spacing::Joint => 1u8.hash(h),
-                    }
-                },
-                TokenTree::Literal(lit) => (2u8, lit.to_string()).hash(h),
-                TokenTree::Ident(word) => (3u8, word).hash(h),
-            }
+}
+impl<'a> Hash for TokenTreeHelper<'a> {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        use proc_macro2::Spacing;
+        match self.0 {
+            TokenTree::Group(g) => {
+                0u8.hash(h);
+                match g.delimiter() {
+                    Delimiter::Parenthesis => 0u8.hash(h),
+                    Delimiter::Brace => 1u8.hash(h),
+                    Delimiter::Bracket => 2u8.hash(h),
+                    Delimiter::None => 3u8.hash(h),
+                }
+                for item in g.stream() {
+                    TokenTreeHelper(&item).hash(h);
+                }
+                0xffu8.hash(h); // terminator w/ a variant we don't normally hash
+            },
+            TokenTree::Punct(op) => {
+                1u8.hash(h);
+                op.as_char().hash(h);
+                match op.spacing() {
+                    Spacing::Alone => 0u8.hash(h),
+                    Spacing::Joint => 1u8.hash(h),
+                }
+            },
+            TokenTree::Literal(lit) => (2u8, lit.to_string()).hash(h),
+            TokenTree::Ident(word) => (3u8, word).hash(h),
         }
     }
-    pub(crate) struct TokenStreamHelper<'a>(pub &'a TokenStream);
-    impl<'a> PartialEq for TokenStreamHelper<'a> {
-        fn eq(&self, other: &Self) -> bool {
-            let left = self.0.clone().into_iter().collect::<Vec<_>>();
-            let right = other.0.clone().into_iter().collect::<Vec<_>>();
-            if left.len() != right.len() {
+}
+
+struct TokenStreamHelper<'a>(pub &'a TokenStream);
+impl<'a> PartialEq for TokenStreamHelper<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        let left = self.0.clone().into_iter().collect::<Vec<_>>();
+        let right = other.0.clone().into_iter().collect::<Vec<_>>();
+        if left.len() != right.len() {
+            return false;
+        }
+        for (a, b) in left.into_iter().zip(right) {
+            if TokenTreeHelper(&a) != TokenTreeHelper(&b) {
                 return false;
             }
-            for (a, b) in left.into_iter().zip(right) {
-                if TokenTreeHelper(&a) != TokenTreeHelper(&b) {
-                    return false;
-                }
-            }
-            true
         }
+        true
     }
-    impl<'a> Hash for TokenStreamHelper<'a> {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            let tts = self.0.clone().into_iter().collect::<Vec<_>>();
-            tts.len().hash(state);
-            for tt in tts {
-                TokenTreeHelper(&tt).hash(state);
-            }
+}
+impl<'a> Hash for TokenStreamHelper<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let tts = self.0.clone().into_iter().collect::<Vec<_>>();
+        tts.len().hash(state);
+        for tt in tts {
+            TokenTreeHelper(&tt).hash(state);
         }
     }
 }
-mod verbatim {
-    use crate::parse::ParseStream;
-    use proc_macro2::{Delimiter, TokenStream};
-    use std::cmp::Ordering;
-    use std::iter;
-    pub(crate) fn between<'a>(begin: ParseStream<'a>, end: ParseStream<'a>) -> TokenStream {
-        let end = end.cursor();
-        let mut cursor = begin.cursor();
-        assert!(crate::buffer::same_buffer(end, cursor));
-        let mut tokens = TokenStream::new();
-        while cursor != end {
-            let (tt, next) = cursor.token_tree().unwrap();
-            if crate::buffer::cmp_assuming_same_buffer(end, next) == Ordering::Less {
-                if let Some((inside, _span, after)) = cursor.group(Delimiter::None) {
-                    assert!(next == after);
-                    cursor = inside;
+
+pub fn verbatim_between<'a>(begin: ParseStream<'a>, end: ParseStream<'a>) -> TokenStream {
+    let end = end.cursor();
+    let mut cursor = begin.cursor();
+    assert!(crate::buffer::same_buffer(end, cursor));
+    let mut tokens = TokenStream::new();
+    while cursor != end {
+        let (tt, next) = cursor.token_tree().unwrap();
+        if crate::buffer::cmp_assuming_same_buffer(end, next) == Ordering::Less {
+            if let Some((inside, _span, after)) = cursor.group(Delimiter::None) {
+                assert!(next == after);
+                cursor = inside;
+                continue;
+            } else {
+                panic!("verbatim end must not be inside a delimited group");
+            }
+        }
+        tokens.extend(iter::once(tt));
+        cursor = next;
+    }
+    tokens
+}
+
+pub fn ws_skip(mut s: &str) -> &str {
+    'skip: while !s.is_empty() {
+        let byte = s.as_bytes()[0];
+        if byte == b'/' {
+            if s.starts_with("//") && (!s.starts_with("///") || s.starts_with("////")) && !s.starts_with("//!") {
+                if let Some(i) = s.find('\n') {
+                    s = &s[i + 1..];
                     continue;
                 } else {
-                    panic!("verbatim end must not be inside a delimited group");
+                    return "";
                 }
-            }
-            tokens.extend(iter::once(tt));
-            cursor = next;
-        }
-        tokens
-    }
-}
-mod whitespace {
-    pub(crate) fn skip(mut s: &str) -> &str {
-        'skip: while !s.is_empty() {
-            let byte = s.as_bytes()[0];
-            if byte == b'/' {
-                if s.starts_with("//") && (!s.starts_with("///") || s.starts_with("////")) && !s.starts_with("//!") {
-                    if let Some(i) = s.find('\n') {
-                        s = &s[i + 1..];
-                        continue;
-                    } else {
-                        return "";
-                    }
-                } else if s.starts_with("/**/") {
-                    s = &s[4..];
-                    continue;
-                } else if s.starts_with("/*")
-                    && (!s.starts_with("/**") || s.starts_with("/***"))
-                    && !s.starts_with("/*!")
-                {
-                    let mut depth = 0;
-                    let bytes = s.as_bytes();
-                    let mut i = 0;
-                    let upper = bytes.len() - 1;
-                    while i < upper {
-                        if bytes[i] == b'/' && bytes[i + 1] == b'*' {
-                            depth += 1;
-                            i += 1; // eat '*'
-                        } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
-                            depth -= 1;
-                            if depth == 0 {
-                                s = &s[i + 2..];
-                                continue 'skip;
-                            }
-                            i += 1; // eat '/'
+            } else if s.starts_with("/**/") {
+                s = &s[4..];
+                continue;
+            } else if s.starts_with("/*") && (!s.starts_with("/**") || s.starts_with("/***")) && !s.starts_with("/*!") {
+                let mut depth = 0;
+                let bytes = s.as_bytes();
+                let mut i = 0;
+                let upper = bytes.len() - 1;
+                while i < upper {
+                    if bytes[i] == b'/' && bytes[i + 1] == b'*' {
+                        depth += 1;
+                        i += 1; // eat '*'
+                    } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+                        depth -= 1;
+                        if depth == 0 {
+                            s = &s[i + 2..];
+                            continue 'skip;
                         }
-                        i += 1;
+                        i += 1; // eat '/'
                     }
-                    return s;
+                    i += 1;
                 }
+                return s;
             }
-            match byte {
-                b' ' | 0x09..=0x0d => {
-                    s = &s[1..];
-                    continue;
-                },
-                b if b <= 0x7f => {},
-                _ => {
-                    let ch = s.chars().next().unwrap();
-                    if is_whitespace(ch) {
-                        s = &s[ch.len_utf8()..];
-                        continue;
-                    }
-                },
-            }
-            return s;
         }
-        s
+        match byte {
+            b' ' | 0x09..=0x0d => {
+                s = &s[1..];
+                continue;
+            },
+            b if b <= 0x7f => {},
+            _ => {
+                let ch = s.chars().next().unwrap();
+                if is_whitespace(ch) {
+                    s = &s[ch.len_utf8()..];
+                    continue;
+                }
+            },
+        }
+        return s;
     }
-    fn is_whitespace(ch: char) -> bool {
-        ch.is_whitespace() || ch == '\u{200e}' || ch == '\u{200f}'
-    }
+    s
 }
+fn is_whitespace(x: char) -> bool {
+    x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
+}
+
 mod gen {
     #[rustfmt::skip]
     pub mod fold;
@@ -2067,9 +2363,9 @@ mod gen {
         #[rustfmt::skip]
     mod hash;
     mod helper {
-        pub(crate) mod fold {
+        pub mod fold {
             use crate::punctuated::{Pair, Punctuated};
-            pub(crate) trait FoldHelper {
+            pub trait FoldHelper {
                 type Item;
                 fn lift<F>(self, f: F) -> Self
                 where
@@ -2118,9 +2414,7 @@ pub mod __private {
     pub use std::option::Option::{None, Some};
     pub use std::result::Result::{Err, Ok};
     pub use std::stringify;
-    #[allow(non_camel_case_types)]
     pub type bool = help::Bool;
-    #[allow(non_camel_case_types)]
     pub type str = help::Str;
     mod help {
         pub type Bool = bool;
@@ -2144,7 +2438,7 @@ pub fn parse_file(mut content: &str) -> Result<File> {
     }
     let mut shebang = None;
     if content.starts_with("#!") {
-        let rest = whitespace::skip(&content[2..]);
+        let rest = whitespace::ws_skip(&content[2..]);
         if !rest.starts_with('[') {
             if let Some(idx) = content.find('\n') {
                 shebang = Some(content[..idx].to_string());
