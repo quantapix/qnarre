@@ -42,180 +42,174 @@
     clippy::used_underscore_binding,
     clippy::wildcard_imports,
 )]
+
+use std::ops;
+
 extern crate proc_macro;
 #[macro_use]
 mod macros;
 #[macro_use]
 mod group {
-    use crate::error::Result;
-    use crate::parse::ParseBuffer;
-    use crate::token;
-    use proc_macro2::extra::DelimSpan;
-    use proc_macro2::Delimiter;
+    use crate::{error::Result, parse::ParseBuffer, token};
+    use proc_macro2::{extra::DelimSpan, Delimiter};
     pub struct Parens<'a> {
         pub token: token::Paren,
         pub content: ParseBuffer<'a>,
+    }
+    pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
+        parse_delimited(x, Delimiter::Parenthesis).map(|(span, content)| Parens {
+            token: token::Paren(span),
+            content,
+        })
+    }
+    #[macro_export]
+    macro_rules! parenthesized {
+        ($content:ident in $cur:expr) => {
+            match $crate::group::parse_parens(&$cur) {
+                $crate::__private::Ok(x) => {
+                    $content = x.content;
+                    x.token
+                },
+                $crate::__private::Err(x) => {
+                    return $crate::__private::Err(x);
+                },
+            }
+        };
     }
     pub struct Braces<'a> {
         pub token: token::Brace,
         pub content: ParseBuffer<'a>,
     }
-    pub struct Brackets<'a> {
-        pub token: token::Bracket,
-        pub content: ParseBuffer<'a>,
-    }
-
-    pub struct Group<'a> {
-        pub token: token::Group,
-        pub content: ParseBuffer<'a>,
-    }
-    pub fn parse_parens<'a>(input: &ParseBuffer<'a>) -> Result<Parens<'a>> {
-        parse_delimited(input, Delimiter::Parenthesis).map(|(span, content)| Parens {
-            token: token::Paren(span),
-            content,
-        })
-    }
-    pub fn parse_braces<'a>(input: &ParseBuffer<'a>) -> Result<Braces<'a>> {
-        parse_delimited(input, Delimiter::Brace).map(|(span, content)| Braces {
+    pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
+        parse_delimited(x, Delimiter::Brace).map(|(span, content)| Braces {
             token: token::Brace(span),
             content,
         })
     }
-    pub fn parse_brackets<'a>(input: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
-        parse_delimited(input, Delimiter::Bracket).map(|(span, content)| Brackets {
+    #[macro_export]
+    macro_rules! braced {
+        ($content:ident in $cur:expr) => {
+            match $crate::group::parse_braces(&$cur) {
+                $crate::__private::Ok(x) => {
+                    $content = x.content;
+                    x.token
+                },
+                $crate::__private::Err(x) => {
+                    return $crate::__private::Err(x);
+                },
+            }
+        };
+    }
+    pub struct Brackets<'a> {
+        pub token: token::Bracket,
+        pub content: ParseBuffer<'a>,
+    }
+    pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
+        parse_delimited(x, Delimiter::Bracket).map(|(span, content)| Brackets {
             token: token::Bracket(span),
             content,
         })
     }
-
-    pub(crate) fn parse_group<'a>(input: &ParseBuffer<'a>) -> Result<Group<'a>> {
-        parse_delimited(input, Delimiter::None).map(|(span, content)| Group {
+    #[macro_export]
+    macro_rules! bracketed {
+        ($content:ident in $cur:expr) => {
+            match $crate::group::parse_brackets(&$cur) {
+                $crate::__private::Ok(x) => {
+                    $content = x.content;
+                    x.token
+                },
+                $crate::__private::Err(x) => {
+                    return $crate::__private::Err(x);
+                },
+            }
+        };
+    }
+    pub struct Group<'a> {
+        pub token: token::Group,
+        pub content: ParseBuffer<'a>,
+    }
+    pub(crate) fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
+        parse_delimited(x, Delimiter::None).map(|(span, content)| Group {
             token: token::Group(span.join()),
             content,
         })
     }
-    fn parse_delimited<'a>(input: &ParseBuffer<'a>, delimiter: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
-        input.step(|cursor| {
-            if let Some((content, span, rest)) = cursor.group(delimiter) {
+    fn parse_delimited<'a>(x: &ParseBuffer<'a>, delim: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
+        x.step(|cursor| {
+            if let Some((content, span, rest)) = cursor.group(delim) {
                 let scope = crate::buffer::close_span_of_group(*cursor);
                 let nested = crate::parse::advance_step_cursor(cursor, content);
-                let unexpected = crate::parse::get_unexpected(input);
+                let unexpected = crate::parse::get_unexpected(x);
                 let content = crate::parse::new_parse_buffer(scope, nested, unexpected);
                 Ok(((span, content), rest))
             } else {
-                let message = match delimiter {
+                let y = match delim {
                     Delimiter::Parenthesis => "expected parentheses",
                     Delimiter::Brace => "expected curly braces",
                     Delimiter::Bracket => "expected square brackets",
                     Delimiter::None => "expected invisible group",
                 };
-                Err(cursor.error(message))
+                Err(cursor.error(y))
             }
         })
-    }
-    #[macro_export]
-
-    macro_rules! parenthesized {
-        ($content:ident in $cursor:expr) => {
-            match $crate::__private::parse_parens(&$cursor) {
-                $crate::__private::Ok(parens) => {
-                    $content = parens.content;
-                    parens.token
-                },
-                $crate::__private::Err(error) => {
-                    return $crate::__private::Err(error);
-                },
-            }
-        };
-    }
-    #[macro_export]
-
-    macro_rules! braced {
-        ($content:ident in $cursor:expr) => {
-            match $crate::__private::parse_braces(&$cursor) {
-                $crate::__private::Ok(braces) => {
-                    $content = braces.content;
-                    braces.token
-                },
-                $crate::__private::Err(error) => {
-                    return $crate::__private::Err(error);
-                },
-            }
-        };
-    }
-    #[macro_export]
-
-    macro_rules! bracketed {
-        ($content:ident in $cursor:expr) => {
-            match $crate::__private::parse_brackets(&$cursor) {
-                $crate::__private::Ok(brackets) => {
-                    $content = brackets.content;
-                    brackets.token
-                },
-                $crate::__private::Err(error) => {
-                    return $crate::__private::Err(error);
-                },
-            }
-        };
     }
 }
 #[macro_use]
 pub mod token;
 mod attr;
 pub use crate::attr::{AttrStyle, Attribute, Meta, MetaList, MetaNameValue};
-mod bigint {
-    use std::ops::{AddAssign, MulAssign};
-    pub(crate) struct BigInt {
-        digits: Vec<u8>,
+
+pub struct BigInt {
+    digits: Vec<u8>,
+}
+impl BigInt {
+    pub fn new() -> Self {
+        BigInt { digits: Vec::new() }
     }
-    impl BigInt {
-        pub(crate) fn new() -> Self {
-            BigInt { digits: Vec::new() }
-        }
-        pub(crate) fn to_string(&self) -> String {
-            let mut repr = String::with_capacity(self.digits.len());
-            let mut has_nonzero = false;
-            for digit in self.digits.iter().rev() {
-                has_nonzero |= *digit != 0;
-                if has_nonzero {
-                    repr.push((*digit + b'0') as char);
-                }
+    pub fn to_string(&self) -> String {
+        let mut y = String::with_capacity(self.digits.len());
+        let mut has_nonzero = false;
+        for x in self.digits.iter().rev() {
+            has_nonzero |= *x != 0;
+            if has_nonzero {
+                y.push((*x + b'0') as char);
             }
-            if repr.is_empty() {
-                repr.push('0');
-            }
-            repr
         }
-        fn reserve_two_digits(&mut self) {
-            let len = self.digits.len();
-            let desired = len + !self.digits.ends_with(&[0, 0]) as usize + !self.digits.ends_with(&[0]) as usize;
-            self.digits.resize(desired, 0);
+        if y.is_empty() {
+            y.push('0');
         }
+        y
     }
-    impl AddAssign<u8> for BigInt {
-        fn add_assign(&mut self, mut increment: u8) {
-            self.reserve_two_digits();
-            let mut i = 0;
-            while increment > 0 {
-                let sum = self.digits[i] + increment;
-                self.digits[i] = sum % 10;
-                increment = sum / 10;
-                i += 1;
-            }
-        }
+    fn reserve_two_digits(&mut self) {
+        let len = self.digits.len();
+        let desired = len + !self.digits.ends_with(&[0, 0]) as usize + !self.digits.ends_with(&[0]) as usize;
+        self.digits.resize(desired, 0);
     }
-    impl MulAssign<u8> for BigInt {
-        fn mul_assign(&mut self, base: u8) {
-            self.reserve_two_digits();
-            let mut carry = 0;
-            for digit in &mut self.digits {
-                let prod = *digit * base + carry;
-                *digit = prod % 10;
-                carry = prod / 10;
-            }
+}
+impl ops::AddAssign<u8> for BigInt {
+    fn add_assign(&mut self, mut increment: u8) {
+        self.reserve_two_digits();
+        let mut i = 0;
+        while increment > 0 {
+            let sum = self.digits[i] + increment;
+            self.digits[i] = sum % 10;
+            increment = sum / 10;
+            i += 1;
         }
     }
 }
+impl ops::MulAssign<u8> for BigInt {
+    fn mul_assign(&mut self, base: u8) {
+        self.reserve_two_digits();
+        let mut carry = 0;
+        for digit in &mut self.digits {
+            let prod = *digit * base + carry;
+            *digit = prod % 10;
+            carry = prod / 10;
+        }
+    }
+}
+
 pub mod buffer;
 mod custom_keyword {
     #[macro_export]
@@ -1322,12 +1316,12 @@ mod file {
     }
 }
 pub use crate::file::File;
-mod generics;
-pub use crate::generics::{
+mod generic;
+pub use crate::generic::{
     BoundLifetimes, ConstParam, GenericParam, Generics, LifetimeParam, PredicateLifetime, PredicateType, TraitBound,
     TraitBoundModifier, TypeParam, TypeParamBound, WhereClause, WherePredicate,
 };
-pub use crate::generics::{ImplGenerics, Turbofish, TypeGenerics};
+pub use crate::generic::{ImplGenerics, Turbofish, TypeGenerics};
 mod ident {
     use crate::lookahead;
     pub use proc_macro2::Ident;

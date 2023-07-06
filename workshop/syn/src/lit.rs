@@ -1,11 +1,15 @@
-use crate::lookahead;
-use crate::parse::{Parse, Parser};
-use crate::{Error, Result};
-use proc_macro2::{Ident, Literal, Span};
-use proc_macro2::{TokenStream, TokenTree};
-use std::fmt::{self, Display};
-use std::hash::{Hash, Hasher};
-use std::str::{self, FromStr};
+use crate::{
+    lookahead,
+    parse::{Parse, Parser},
+    Error, Result,
+};
+use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
+use std::{
+    fmt::{self, Display},
+    hash::{Hash, Hasher},
+    str::{self, FromStr},
+};
+
 ast_enum_of_structs! {
     #[non_exhaustive]
     pub enum Lit {
@@ -70,8 +74,8 @@ ast_struct! {
     }
 }
 impl LitStr {
-    pub fn new(value: &str, span: Span) -> Self {
-        let mut token = Literal::string(value);
+    pub fn new(x: &str, span: Span) -> Self {
+        let mut token = Literal::string(x);
         token.set_span(span);
         LitStr {
             repr: Box::new(LitRepr {
@@ -113,8 +117,8 @@ impl LitStr {
     pub fn span(&self) -> Span {
         self.repr.token.span()
     }
-    pub fn set_span(&mut self, span: Span) {
-        self.repr.token.set_span(span);
+    pub fn set_span(&mut self, x: Span) {
+        self.repr.token.set_span(x);
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suffix
@@ -124,8 +128,8 @@ impl LitStr {
     }
 }
 impl LitByteStr {
-    pub fn new(value: &[u8], span: Span) -> Self {
-        let mut token = Literal::byte_string(value);
+    pub fn new(x: &[u8], span: Span) -> Self {
+        let mut token = Literal::byte_string(x);
         token.set_span(span);
         LitByteStr {
             repr: Box::new(LitRepr {
@@ -171,8 +175,8 @@ impl LitByte {
     pub fn span(&self) -> Span {
         self.repr.token.span()
     }
-    pub fn set_span(&mut self, span: Span) {
-        self.repr.token.set_span(span);
+    pub fn set_span(&mut self, x: Span) {
+        self.repr.token.set_span(x);
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suffix
@@ -495,8 +499,8 @@ ast_enum! {
     }
 }
 #[allow(non_snake_case)]
-pub fn Lit(marker: lookahead::TokenMarker) -> Lit {
-    match marker {}
+pub fn Lit(x: lookahead::TokenMarker) -> Lit {
+    match x {}
 }
 pub(crate) mod parsing {
     use super::*;
@@ -559,9 +563,9 @@ pub(crate) mod parsing {
     }
 
     impl Parse for LitStr {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let head = x.fork();
+            match x.parse() {
                 Ok(Lit::Str(lit)) => Ok(lit),
                 _ => Err(head.error("expected string literal")),
             }
@@ -569,9 +573,9 @@ pub(crate) mod parsing {
     }
 
     impl Parse for LitByteStr {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let head = x.fork();
+            match x.parse() {
                 Ok(Lit::ByteStr(lit)) => Ok(lit),
                 _ => Err(head.error("expected byte string literal")),
             }
@@ -579,9 +583,9 @@ pub(crate) mod parsing {
     }
 
     impl Parse for LitByte {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let head = input.fork();
-            match input.parse() {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let head = x.fork();
+            match x.parse() {
                 Ok(Lit::Byte(lit)) => Ok(lit),
                 _ => Err(head.error("expected byte literal")),
             }
@@ -670,9 +674,10 @@ mod printing {
 }
 mod value {
     use super::*;
-    use crate::bigint::BigInt;
-    use std::char;
-    use std::ops::{Index, RangeFrom};
+    use std::{
+        char,
+        ops::{Index, RangeFrom},
+    };
     impl Lit {
         pub fn new(token: Literal) -> Self {
             let repr = token.to_string();
