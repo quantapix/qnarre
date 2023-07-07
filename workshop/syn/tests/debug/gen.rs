@@ -8,7 +8,7 @@ impl Debug for Lite<syn::Abi> {
         if let Some(val) = &self.value.name {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::LitStr);
+            struct Print(syn::lit::Str);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -2868,7 +2868,7 @@ impl Debug for Lite<syn::Lit> {
             syn::Lit::Float(_val) => write!(formatter, "{}", _val),
             syn::Lit::Bool(_val) => {
                 let mut formatter = formatter.debug_struct("Lit::Bool");
-                formatter.field("value", Lite(&_val.value));
+                formatter.field("value", Lite(&_val.val));
                 formatter.finish()
             },
             syn::Lit::Verbatim(_val) => {
@@ -2882,39 +2882,39 @@ impl Debug for Lite<syn::Lit> {
         }
     }
 }
-impl Debug for Lite<syn::LitBool> {
+impl Debug for Lite<syn::lit::Bool> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("LitBool");
-        formatter.field("value", Lite(&self.value.value));
+        let mut formatter = formatter.debug_struct("lit::Bool");
+        formatter.field("value", Lite(&self.value.val));
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::LitByte> {
+impl Debug for Lite<syn::lit::Byte> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{:?}", self.value.value())
     }
 }
-impl Debug for Lite<syn::LitByteStr> {
+impl Debug for Lite<syn::lit::ByteStr> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{:?}", self.value.value())
     }
 }
-impl Debug for Lite<syn::LitChar> {
+impl Debug for Lite<syn::lit::Char> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{:?}", self.value.value())
     }
 }
-impl Debug for Lite<syn::LitFloat> {
+impl Debug for Lite<syn::lit::Float> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", &self.value)
     }
 }
-impl Debug for Lite<syn::LitInt> {
+impl Debug for Lite<syn::lit::Int> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", &self.value)
     }
 }
-impl Debug for Lite<syn::LitStr> {
+impl Debug for Lite<syn::lit::Str> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{:?}", self.value.value())
     }

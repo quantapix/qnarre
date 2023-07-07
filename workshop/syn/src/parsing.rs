@@ -782,7 +782,7 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
             }
         {
             let mut dot_token: Token![.] = input.parse()?;
-            let float_token: Option<LitFloat> = input.parse()?;
+            let float_token: Option<lit::Float> = input.parse()?;
             if let Some(float_token) = float_token {
                 if multi_index(&mut e, &mut dot_token, float_token)? {
                     continue;
@@ -1743,7 +1743,7 @@ impl Parse for Member {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Ident) {
             input.parse().map(Member::Named)
-        } else if input.peek(LitInt) {
+        } else if input.peek(lit::Int) {
             input.parse().map(Member::Unnamed)
         } else {
             Err(input.error("expected identifier or integer"))
@@ -1783,7 +1783,7 @@ impl Parse for Arm {
 }
 impl Parse for Index {
     fn parse(input: ParseStream) -> Result<Self> {
-        let lit: LitInt = input.parse()?;
+        let lit: lit::Int = input.parse()?;
         if lit.suffix().is_empty() {
             Ok(Index {
                 index: lit.base10_digits().parse().map_err(|err| Err::new(lit.span(), err))?,
@@ -1794,7 +1794,7 @@ impl Parse for Index {
         }
     }
 }
-fn multi_index(e: &mut Expr, dot_token: &mut Token![.], float: LitFloat) -> Result<bool> {
+fn multi_index(e: &mut Expr, dot_token: &mut Token![.], float: lit::Float) -> Result<bool> {
     let float_token = float.token();
     let float_span = float_token.span();
     let mut float_repr = float_token.to_string();
@@ -1877,8 +1877,8 @@ pub(crate) fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<Attribute>, 
             input.parse().map(Item::ExternCrate)
         } else if lookahead.peek(tok::Brace) {
             input.parse().map(Item::ForeignMod)
-        } else if lookahead.peek(LitStr) {
-            ahead.parse::<LitStr>()?;
+        } else if lookahead.peek(lit::Str) {
+            ahead.parse::<lit::Str>()?;
             let lookahead = ahead.lookahead1();
             if lookahead.peek(tok::Brace) {
                 input.parse().map(Item::ForeignMod)
@@ -4110,7 +4110,7 @@ pub(crate) mod parsing {
                 if let Some((ident, rest)) = cursor.ident() {
                     let value = ident == "true";
                     if value || ident == "false" {
-                        let lit_bool = LitBool {
+                        let lit_bool = lit::Bool {
                             value,
                             span: ident.span(),
                         };
@@ -4138,8 +4138,8 @@ pub(crate) mod parsing {
             let mut token: Literal = repr.parse().unwrap();
             token.set_span(span);
             return Some((
-                Lit::Int(LitInt {
-                    repr: Box::new(LitIntRepr { token, digits, suffix }),
+                Lit::Int(lit::Int {
+                    repr: Box::new(lit::IntRepr { token, digits, suffix }),
                 }),
                 rest,
             ));
@@ -4148,13 +4148,13 @@ pub(crate) mod parsing {
         let mut token: Literal = repr.parse().unwrap();
         token.set_span(span);
         Some((
-            Lit::Float(LitFloat {
-                repr: Box::new(LitFloatRepr { token, digits, suffix }),
+            Lit::Float(lit::Float {
+                repr: Box::new(lit::FloatRepr { token, digits, suffix }),
             }),
             rest,
         ))
     }
-    impl Parse for LitStr {
+    impl Parse for lit::Str {
         fn parse(x: ParseStream) -> Result<Self> {
             let head = x.fork();
             match x.parse() {
@@ -4163,7 +4163,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    impl Parse for LitByteStr {
+    impl Parse for lit::ByteStr {
         fn parse(x: ParseStream) -> Result<Self> {
             let head = x.fork();
             match x.parse() {
@@ -4172,7 +4172,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    impl Parse for LitByte {
+    impl Parse for lit::Byte {
         fn parse(x: ParseStream) -> Result<Self> {
             let head = x.fork();
             match x.parse() {
@@ -4181,7 +4181,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    impl Parse for LitChar {
+    impl Parse for lit::Char {
         fn parse(input: ParseStream) -> Result<Self> {
             let head = input.fork();
             match input.parse() {
@@ -4190,7 +4190,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    impl Parse for LitInt {
+    impl Parse for lit::Int {
         fn parse(input: ParseStream) -> Result<Self> {
             let head = input.fork();
             match input.parse() {
@@ -4199,7 +4199,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    impl Parse for LitFloat {
+    impl Parse for lit::Float {
         fn parse(input: ParseStream) -> Result<Self> {
             let head = input.fork();
             match input.parse() {
@@ -4208,7 +4208,7 @@ pub(crate) mod parsing {
             }
         }
     }
-    impl Parse for LitBool {
+    impl Parse for lit::Bool {
         fn parse(input: ParseStream) -> Result<Self> {
             let head = input.fork();
             match input.parse() {

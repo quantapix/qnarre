@@ -15,7 +15,7 @@
         },
         "name": {
           "option": {
-            "syn": "LitStr"
+            "syn": "lit::Str"
           }
         }
       }
@@ -3354,37 +3354,37 @@
       "variants": {
         "Str": [
           {
-            "syn": "LitStr"
+            "syn": "lit::Str"
           }
         ],
         "ByteStr": [
           {
-            "syn": "LitByteStr"
+            "syn": "lit::ByteStr"
           }
         ],
         "Byte": [
           {
-            "syn": "LitByte"
+            "syn": "lit::Byte"
           }
         ],
         "Char": [
           {
-            "syn": "LitChar"
+            "syn": "lit::Char"
           }
         ],
         "Int": [
           {
-            "syn": "LitInt"
+            "syn": "lit::Int"
           }
         ],
         "Float": [
           {
-            "syn": "LitFloat"
+            "syn": "lit::Float"
           }
         ],
         "Bool": [
           {
-            "syn": "LitBool"
+            "syn": "lit::Bool"
           }
         ],
         "Verbatim": [
@@ -3396,7 +3396,7 @@
       "exhaustive": false
     },
     {
-      "ident": "LitBool",
+      "ident": "lit::Bool",
       "features": {
         "any": []
       },
@@ -3410,37 +3410,37 @@
       }
     },
     {
-      "ident": "LitByte",
+      "ident": "lit::Byte",
       "features": {
         "any": []
       }
     },
     {
-      "ident": "LitByteStr",
+      "ident": "lit::ByteStr",
       "features": {
         "any": []
       }
     },
     {
-      "ident": "LitChar",
+      "ident": "lit::Char",
       "features": {
         "any": []
       }
     },
     {
-      "ident": "LitFloat",
+      "ident": "lit::Float",
       "features": {
         "any": []
       }
     },
     {
-      "ident": "LitInt",
+      "ident": "lit::Int",
       "features": {
         "any": []
       }
     },
     {
-      "ident": "LitStr",
+      "ident": "lit::Str",
       "features": {
         "any": []
       }

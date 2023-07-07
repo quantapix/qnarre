@@ -1,6 +1,6 @@
 use super::{
     err::Result,
-    lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr},
+    lit::{lit::Bool, lit::Byte, lit::ByteStr, lit::Char, lit::Float, lit::Int, lit::Str, Lit},
     parse::{Parse, ParseStream},
     *,
 };
@@ -55,13 +55,13 @@ macro_rules! impl_token {
 }
 impl_token!("lifetime" Lifetime);
 impl_token!("literal" Lit);
-impl_token!("string literal" LitStr);
-impl_token!("byte string literal" LitByteStr);
-impl_token!("byte literal" LitByte);
-impl_token!("character literal" LitChar);
-impl_token!("integer literal" LitInt);
-impl_token!("floating point literal" LitFloat);
-impl_token!("boolean literal" LitBool);
+impl_token!("string literal" lit::Str);
+impl_token!("byte string literal" lit::ByteStr);
+impl_token!("byte literal" lit::Byte);
+impl_token!("character literal" lit::Char);
+impl_token!("integer literal" lit::Int);
+impl_token!("floating point literal" lit::Float);
+impl_token!("boolean literal" lit::Bool);
 impl_token!("group token" proc_macro2::Group);
 
 macro_rules! impl_low_level_token {

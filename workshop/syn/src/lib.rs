@@ -1015,8 +1015,8 @@ pub use item::{
 };
 pub mod punctuated;
 use punctuated::Punctuated;
-mod lit;
-pub use lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
+pub mod lit;
+pub use lit::{self, Lit};
 
 ast_enum_of_structs! {
     pub enum Pat {
@@ -1436,7 +1436,7 @@ mod ty {
     ast_struct! {
         pub struct Abi {
             pub extern_: Token![extern],
-            pub name: Option<LitStr>,
+            pub name: Option<lit::Str>,
         }
     }
     ast_struct! {

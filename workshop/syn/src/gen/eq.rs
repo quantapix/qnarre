@@ -879,18 +879,18 @@ impl PartialEq for Lit {
         }
     }
 }
-impl Eq for LitBool {}
-impl PartialEq for LitBool {
+impl Eq for lit::Bool {}
+impl PartialEq for lit::Bool {
     fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
+        self.val == other.val
     }
 }
-impl Eq for LitByte {}
-impl Eq for LitByteStr {}
-impl Eq for LitChar {}
-impl Eq for LitFloat {}
-impl Eq for LitInt {}
-impl Eq for LitStr {}
+impl Eq for lit::Byte {}
+impl Eq for lit::ByteStr {}
+impl Eq for lit::Char {}
+impl Eq for lit::Float {}
+impl Eq for lit::Int {}
+impl Eq for lit::Str {}
 impl Eq for Local {}
 impl PartialEq for Local {
     fn eq(&self, other: &Self) -> bool {

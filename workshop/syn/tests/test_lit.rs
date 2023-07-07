@@ -4,7 +4,7 @@ mod macros;
 use proc_macro2::{Delimiter, Group, Literal, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use std::str::FromStr;
-use syn::{Lit, LitFloat, LitInt, LitStr};
+use syn::{lit::Float, lit::Int, lit::Str, Lit};
 fn lit(s: &str) -> Lit {
     match TokenStream::from_str(s).unwrap().into_iter().next().unwrap() {
         TokenTree::Literal(lit) => Lit::new(lit),
@@ -187,14 +187,14 @@ fn floats() {
 #[test]
 fn negative() {
     let span = Span::call_site();
-    assert_eq!("-1", LitInt::new("-1", span).to_string());
-    assert_eq!("-1i8", LitInt::new("-1i8", span).to_string());
-    assert_eq!("-1i16", LitInt::new("-1i16", span).to_string());
-    assert_eq!("-1i32", LitInt::new("-1i32", span).to_string());
-    assert_eq!("-1i64", LitInt::new("-1i64", span).to_string());
-    assert_eq!("-1.5", LitFloat::new("-1.5", span).to_string());
-    assert_eq!("-1.5f32", LitFloat::new("-1.5f32", span).to_string());
-    assert_eq!("-1.5f64", LitFloat::new("-1.5f64", span).to_string());
+    assert_eq!("-1", lit::Int::new("-1", span).to_string());
+    assert_eq!("-1i8", lit::Int::new("-1i8", span).to_string());
+    assert_eq!("-1i16", lit::Int::new("-1i16", span).to_string());
+    assert_eq!("-1i32", lit::Int::new("-1i32", span).to_string());
+    assert_eq!("-1i64", lit::Int::new("-1i64", span).to_string());
+    assert_eq!("-1.5", lit::Float::new("-1.5", span).to_string());
+    assert_eq!("-1.5f32", lit::Float::new("-1.5f32", span).to_string());
+    assert_eq!("-1.5f64", lit::Float::new("-1.5f64", span).to_string());
 }
 #[test]
 fn suffix() {
@@ -235,8 +235,8 @@ fn test_deep_group_empty() {
 }
 #[test]
 fn test_error() {
-    let err = syn::parse_str::<LitStr>("...").unwrap_err();
+    let err = syn::parse_str::<lit::Str>("...").unwrap_err();
     assert_eq!("expected string literal", err.to_string());
-    let err = syn::parse_str::<LitStr>("5").unwrap_err();
+    let err = syn::parse_str::<lit::Str>("5").unwrap_err();
     assert_eq!("expected string literal", err.to_string());
 }

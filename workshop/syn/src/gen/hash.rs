@@ -1483,12 +1483,12 @@ impl Hash for Lit {
         }
     }
 }
-impl Hash for LitBool {
+impl Hash for lit::Bool {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.value.hash(state);
+        self.val.hash(state);
     }
 }
 impl Hash for Local {

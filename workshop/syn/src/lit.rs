@@ -10,82 +10,80 @@ use std::{
     str::{self, FromStr},
 };
 
+macro_rules! extra_traits {
+    ($ty:ident) => {
+        impl Clone for $ty {
+            fn clone(&self) -> Self {
+                $ty {
+                    repr: self.repr.clone(),
+                }
+            }
+        }
+        impl PartialEq for $ty {
+            fn eq(&self, x: &Self) -> bool {
+                self.repr.tok.to_string() == x.repr.tok.to_string()
+            }
+        }
+        impl Hash for $ty {
+            fn hash<H>(&self, x: &mut H)
+            where
+                H: Hasher,
+            {
+                self.repr.tok.to_string().hash(x);
+            }
+        }
+        #[allow(non_snake_case)]
+        pub fn $ty(x: lookahead::TokenMarker) -> $ty {
+            match x {}
+        }
+    };
+}
+
 ast_enum_of_structs! {
     pub enum Lit {
-        Str(LitStr),
-        ByteStr(LitByteStr),
-        Byte(LitByte),
-        Char(LitChar),
-        Int(LitInt),
-        Float(LitFloat),
-        Bool(LitBool),
+        Str(Str),
+        ByteStr(ByteStr),
+        Byte(Byte),
+        Char(Char),
+        Int(Int),
+        Float(Float),
+        Bool(Bool),
         Verbatim(Literal),
     }
 }
-ast_struct! {
-    pub struct LitStr {
-        pub repr: Box<LitRepr>,
+
+struct Repr {
+    pub tok: Literal,
+    suff: Box<str>,
+}
+impl Clone for Repr {
+    fn clone(&self) -> Self {
+        Repr {
+            tok: self.tok.clone(),
+            suff: self.suff.clone(),
+        }
     }
 }
+
 ast_struct! {
-    pub struct LitByteStr {
-        pub repr: Box<LitRepr>,
+    pub struct Str {
+        pub repr: Box<Repr>,
     }
 }
-ast_struct! {
-    pub struct LitByte {
-        pub repr: Box<LitRepr>,
-    }
-}
-ast_struct! {
-    pub struct LitChar {
-        pub repr: Box<LitRepr>,
-    }
-}
-struct LitRepr {
-    pub token: Literal,
-    suffix: Box<str>,
-}
-ast_struct! {
-    pub struct LitInt {
-        pub repr: Box<LitIntRepr>,
-    }
-}
-struct LitIntRepr {
-    pub token: Literal,
-    digits: Box<str>,
-    suffix: Box<str>,
-}
-ast_struct! {
-    pub struct LitFloat {
-        pub repr: Box<LitFloatRepr>,
-    }
-}
-struct LitFloatRepr {
-    pub token: Literal,
-    digits: Box<str>,
-    suffix: Box<str>,
-}
-ast_struct! {
-    pub struct LitBool {
-        pub value: bool,
-        pub span: Span,
-    }
-}
-impl LitStr {
+impl Str {
     pub fn new(x: &str, span: Span) -> Self {
         let mut token = Literal::string(x);
         token.set_span(span);
-        LitStr {
-            repr: Box::new(LitRepr {
-                token,
-                suffix: Box::<str>::default(),
+        Str {
+            repr: Box::new(Repr {
+                tok: token,
+                suff: Box::<str>::default(),
             }),
         }
     }
     pub fn value(&self) -> String {
-        let repr = self.repr.token.to_string();
-        let (value, _suffix) = value::parse_lit_str(&repr);
+        let repr = self.repr.tok.to_string();
+        let (value, _) = value::parse_lit_str(&repr);
         String::from(value)
     }
 
@@ -114,106 +112,149 @@ impl LitStr {
         parser.parse2(tokens)
     }
     pub fn span(&self) -> Span {
-        self.repr.token.span()
+        self.repr.tok.span()
     }
     pub fn set_span(&mut self, x: Span) {
-        self.repr.token.set_span(x);
+        self.repr.tok.set_span(x);
     }
     pub fn suffix(&self) -> &str {
-        &self.repr.suffix
+        &self.repr.suff
     }
     pub fn token(&self) -> Literal {
-        self.repr.token.clone()
+        self.repr.tok.clone()
     }
 }
-impl LitByteStr {
+extra_traits!(Str);
+
+ast_struct! {
+    pub struct ByteStr {
+        pub repr: Box<Repr>,
+    }
+}
+impl ByteStr {
     pub fn new(x: &[u8], span: Span) -> Self {
         let mut token = Literal::byte_string(x);
         token.set_span(span);
-        LitByteStr {
-            repr: Box::new(LitRepr {
-                token,
-                suffix: Box::<str>::default(),
+        ByteStr {
+            repr: Box::new(Repr {
+                tok: token,
+                suff: Box::<str>::default(),
             }),
         }
     }
     pub fn value(&self) -> Vec<u8> {
-        let repr = self.repr.token.to_string();
-        let (value, _suffix) = value::parse_lit_byte_str(&repr);
+        let repr = self.repr.tok.to_string();
+        let (value, _) = value::parse_lit_byte_str(&repr);
         value
     }
     pub fn span(&self) -> Span {
-        self.repr.token.span()
+        self.repr.tok.span()
     }
     pub fn set_span(&mut self, span: Span) {
-        self.repr.token.set_span(span);
+        self.repr.tok.set_span(span);
     }
     pub fn suffix(&self) -> &str {
-        &self.repr.suffix
+        &self.repr.suff
     }
     pub fn token(&self) -> Literal {
-        self.repr.token.clone()
+        self.repr.tok.clone()
     }
 }
-impl LitByte {
+extra_traits!(ByteStr);
+
+ast_struct! {
+    pub struct Byte {
+        pub repr: Box<Repr>,
+    }
+}
+impl Byte {
     pub fn new(value: u8, span: Span) -> Self {
         let mut token = Literal::u8_suffixed(value);
         token.set_span(span);
-        LitByte {
-            repr: Box::new(LitRepr {
-                token,
-                suffix: Box::<str>::default(),
+        Byte {
+            repr: Box::new(Repr {
+                tok: token,
+                suff: Box::<str>::default(),
             }),
         }
     }
     pub fn value(&self) -> u8 {
-        let repr = self.repr.token.to_string();
-        let (value, _suffix) = value::parse_lit_byte(&repr);
+        let repr = self.repr.tok.to_string();
+        let (value, _) = value::parse_lit_byte(&repr);
         value
     }
     pub fn span(&self) -> Span {
-        self.repr.token.span()
+        self.repr.tok.span()
     }
     pub fn set_span(&mut self, x: Span) {
-        self.repr.token.set_span(x);
+        self.repr.tok.set_span(x);
     }
     pub fn suffix(&self) -> &str {
-        &self.repr.suffix
+        &self.repr.suff
     }
     pub fn token(&self) -> Literal {
-        self.repr.token.clone()
+        self.repr.tok.clone()
     }
 }
-impl LitChar {
-    pub fn new(value: char, span: Span) -> Self {
-        let mut token = Literal::character(value);
-        token.set_span(span);
-        LitChar {
-            repr: Box::new(LitRepr {
-                token,
-                suffix: Box::<str>::default(),
+extra_traits!(Byte);
+
+ast_struct! {
+    pub struct Char {
+        pub repr: Box<Repr>,
+    }
+}
+impl Char {
+    pub fn new(x: char, span: Span) -> Self {
+        let mut tok = Literal::character(x);
+        tok.set_span(span);
+        Char {
+            repr: Box::new(Repr {
+                tok,
+                suff: Box::<str>::default(),
             }),
         }
     }
     pub fn value(&self) -> char {
-        let repr = self.repr.token.to_string();
-        let (value, _suffix) = value::parse_lit_char(&repr);
+        let repr = self.repr.tok.to_string();
+        let (value, _) = value::parse_lit_char(&repr);
         value
     }
     pub fn span(&self) -> Span {
-        self.repr.token.span()
+        self.repr.tok.span()
     }
     pub fn set_span(&mut self, span: Span) {
-        self.repr.token.set_span(span);
+        self.repr.tok.set_span(span);
     }
     pub fn suffix(&self) -> &str {
-        &self.repr.suffix
+        &self.repr.suff
     }
     pub fn token(&self) -> Literal {
-        self.repr.token.clone()
+        self.repr.tok.clone()
     }
 }
-impl LitInt {
+extra_traits!(Char);
+
+struct IntRepr {
+    pub tok: Literal,
+    digits: Box<str>,
+    suff: Box<str>,
+}
+impl Clone for IntRepr {
+    fn clone(&self) -> Self {
+        IntRepr {
+            tok: self.tok.clone(),
+            digits: self.digits.clone(),
+            suff: self.suff.clone(),
+        }
+    }
+}
+
+ast_struct! {
+    pub struct Int {
+        pub repr: Box<IntRepr>,
+    }
+}
+impl Int {
     pub fn new(repr: &str, span: Span) -> Self {
         let (digits, suffix) = match value::parse_lit_int(repr) {
             Some(parse) => parse,
@@ -221,8 +262,12 @@ impl LitInt {
         };
         let mut token: Literal = repr.parse().unwrap();
         token.set_span(span);
-        LitInt {
-            repr: Box::new(LitIntRepr { token, digits, suffix }),
+        Int {
+            repr: Box::new(IntRepr {
+                tok: token,
+                digits,
+                suff: suffix,
+            }),
         }
     }
     pub fn base10_digits(&self) -> &str {
@@ -236,36 +281,62 @@ impl LitInt {
         self.base10_digits().parse().map_err(|err| Err::new(self.span(), err))
     }
     pub fn suffix(&self) -> &str {
-        &self.repr.suffix
+        &self.repr.suff
     }
     pub fn span(&self) -> Span {
-        self.repr.token.span()
+        self.repr.tok.span()
     }
     pub fn set_span(&mut self, span: Span) {
-        self.repr.token.set_span(span);
+        self.repr.tok.set_span(span);
     }
     pub fn token(&self) -> Literal {
-        self.repr.token.clone()
+        self.repr.tok.clone()
     }
 }
-impl From<Literal> for LitInt {
+impl From<Literal> for Int {
     fn from(token: Literal) -> Self {
         let repr = token.to_string();
         if let Some((digits, suffix)) = value::parse_lit_int(&repr) {
-            LitInt {
-                repr: Box::new(LitIntRepr { token, digits, suffix }),
+            Int {
+                repr: Box::new(IntRepr {
+                    tok: token,
+                    digits,
+                    suff: suffix,
+                }),
             }
         } else {
             panic!("Not an integer literal: `{}`", repr);
         }
     }
 }
-impl Display for LitInt {
+impl Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.token.fmt(f)
+        self.repr.tok.fmt(f)
     }
 }
-impl LitFloat {
+extra_traits!(Int);
+
+struct FloatRepr {
+    pub tok: Literal,
+    digits: Box<str>,
+    suff: Box<str>,
+}
+impl Clone for FloatRepr {
+    fn clone(&self) -> Self {
+        FloatRepr {
+            tok: self.tok.clone(),
+            digits: self.digits.clone(),
+            suff: self.suff.clone(),
+        }
+    }
+}
+
+ast_struct! {
+    pub struct Float {
+        pub repr: Box<FloatRepr>,
+    }
+}
+impl Float {
     pub fn new(repr: &str, span: Span) -> Self {
         let (digits, suffix) = match value::parse_lit_float(repr) {
             Some(parse) => parse,
@@ -273,8 +344,12 @@ impl LitFloat {
         };
         let mut token: Literal = repr.parse().unwrap();
         token.set_span(span);
-        LitFloat {
-            repr: Box::new(LitFloatRepr { token, digits, suffix }),
+        Float {
+            repr: Box::new(FloatRepr {
+                tok: token,
+                digits,
+                suff: suffix,
+            }),
         }
     }
     pub fn base10_digits(&self) -> &str {
@@ -288,41 +363,53 @@ impl LitFloat {
         self.base10_digits().parse().map_err(|err| Err::new(self.span(), err))
     }
     pub fn suffix(&self) -> &str {
-        &self.repr.suffix
+        &self.repr.suff
     }
     pub fn span(&self) -> Span {
-        self.repr.token.span()
+        self.repr.tok.span()
     }
     pub fn set_span(&mut self, span: Span) {
-        self.repr.token.set_span(span);
+        self.repr.tok.set_span(span);
     }
     pub fn token(&self) -> Literal {
-        self.repr.token.clone()
+        self.repr.tok.clone()
     }
 }
-impl From<Literal> for LitFloat {
+impl From<Literal> for Float {
     fn from(token: Literal) -> Self {
         let repr = token.to_string();
         if let Some((digits, suffix)) = value::parse_lit_float(&repr) {
-            LitFloat {
-                repr: Box::new(LitFloatRepr { token, digits, suffix }),
+            Float {
+                repr: Box::new(FloatRepr {
+                    tok: token,
+                    digits,
+                    suff: suffix,
+                }),
             }
         } else {
             panic!("Not a float literal: `{}`", repr);
         }
     }
 }
-impl Display for LitFloat {
+impl Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.token.fmt(f)
+        self.repr.tok.fmt(f)
     }
 }
-impl LitBool {
+extra_traits!(Float);
+
+ast_struct! {
+    pub struct Bool {
+        pub val: bool,
+        pub span: Span,
+    }
+}
+impl Bool {
     pub fn new(value: bool, span: Span) -> Self {
-        LitBool { value, span }
+        Bool { val: value, span }
     }
     pub fn value(&self) -> bool {
-        self.value
+        self.val
     }
     pub fn span(&self) -> Span {
         self.span
@@ -331,170 +418,27 @@ impl LitBool {
         self.span = span;
     }
     pub fn token(&self) -> Ident {
-        let s = if self.value { "true" } else { "false" };
+        let s = if self.val { "true" } else { "false" };
         Ident::new(s, self.span)
     }
 }
-mod debug_impls {
-    use super::*;
-    use std::fmt::{self, Debug};
-    impl Debug for LitStr {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitStr {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
-            self.debug(f, "LitStr")
-        }
-    }
-    impl Debug for LitByteStr {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitByteStr {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
-            self.debug(f, "LitByteStr")
-        }
-    }
-    impl Debug for LitByte {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitByte {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
-            self.debug(f, "LitByte")
-        }
-    }
-    impl Debug for LitChar {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitChar {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
-            self.debug(f, "LitChar")
-        }
-    }
-    impl Debug for LitInt {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitInt {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
-            self.debug(f, "LitInt")
-        }
-    }
-    impl Debug for LitFloat {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitFloat {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name)
-                        .field("token", &format_args!("{}", self.repr.token))
-                        .finish()
-                }
-            }
-            self.debug(f, "LitFloat")
-        }
-    }
-    impl Debug for LitBool {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl LitBool {
-                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    f.debug_struct(name).field("value", &self.value).finish()
-                }
-            }
-            self.debug(f, "LitBool")
-        }
-    }
-}
-impl Clone for LitRepr {
-    fn clone(&self) -> Self {
-        LitRepr {
-            token: self.token.clone(),
-            suffix: self.suffix.clone(),
-        }
-    }
-}
-impl Clone for LitIntRepr {
-    fn clone(&self) -> Self {
-        LitIntRepr {
-            token: self.token.clone(),
-            digits: self.digits.clone(),
-            suffix: self.suffix.clone(),
-        }
-    }
-}
-impl Clone for LitFloatRepr {
-    fn clone(&self) -> Self {
-        LitFloatRepr {
-            token: self.token.clone(),
-            digits: self.digits.clone(),
-            suffix: self.suffix.clone(),
-        }
-    }
-}
-macro_rules! lit_extra_traits {
-    ($ty:ident) => {
-        impl Clone for $ty {
-            fn clone(&self) -> Self {
-                $ty {
-                    repr: self.repr.clone(),
-                }
-            }
-        }
-        impl PartialEq for $ty {
-            fn eq(&self, other: &Self) -> bool {
-                self.repr.token.to_string() == other.repr.token.to_string()
-            }
-        }
-        impl Hash for $ty {
-            fn hash<H>(&self, state: &mut H)
-            where
-                H: Hasher,
-            {
-                self.repr.token.to_string().hash(state);
-            }
-        }
-        #[allow(non_snake_case)]
-        pub fn $ty(marker: lookahead::TokenMarker) -> $ty {
-            match marker {}
-        }
-    };
-}
-lit_extra_traits!(LitStr);
-lit_extra_traits!(LitByteStr);
-lit_extra_traits!(LitByte);
-lit_extra_traits!(LitChar);
-lit_extra_traits!(LitInt);
-lit_extra_traits!(LitFloat);
+
 #[allow(non_snake_case)]
-pub fn LitBool(marker: lookahead::TokenMarker) -> LitBool {
-    match marker {}
+pub fn Lit(x: lookahead::TokenMarker) -> Lit {
+    match x {}
 }
+#[allow(non_snake_case)]
+pub fn Bool(x: lookahead::TokenMarker) -> Bool {
+    match x {}
+}
+
 ast_enum! {
     pub enum StrStyle #no_visit {
         Cooked,
         Raw(usize),
     }
 }
-#[allow(non_snake_case)]
-pub fn Lit(x: lookahead::TokenMarker) -> Lit {
-    match x {}
-}
+
 mod value {
     use super::*;
     use std::{
@@ -507,47 +451,67 @@ mod value {
             match byte(&repr, 0) {
                 b'"' | b'r' => {
                     let (_, suffix) = parse_lit_str(&repr);
-                    return Lit::Str(LitStr {
-                        repr: Box::new(LitRepr { token, suffix }),
+                    return Lit::Str(Str {
+                        repr: Box::new(Repr {
+                            tok: token,
+                            suff: suffix,
+                        }),
                     });
                 },
                 b'b' => match byte(&repr, 1) {
                     b'"' | b'r' => {
                         let (_, suffix) = parse_lit_byte_str(&repr);
-                        return Lit::ByteStr(LitByteStr {
-                            repr: Box::new(LitRepr { token, suffix }),
+                        return Lit::ByteStr(ByteStr {
+                            repr: Box::new(Repr {
+                                tok: token,
+                                suff: suffix,
+                            }),
                         });
                     },
                     b'\'' => {
                         let (_, suffix) = parse_lit_byte(&repr);
-                        return Lit::Byte(LitByte {
-                            repr: Box::new(LitRepr { token, suffix }),
+                        return Lit::Byte(Byte {
+                            repr: Box::new(Repr {
+                                tok: token,
+                                suff: suffix,
+                            }),
                         });
                     },
                     _ => {},
                 },
                 b'\'' => {
                     let (_, suffix) = parse_lit_char(&repr);
-                    return Lit::Char(LitChar {
-                        repr: Box::new(LitRepr { token, suffix }),
+                    return Lit::Char(Char {
+                        repr: Box::new(Repr {
+                            tok: token,
+                            suff: suffix,
+                        }),
                     });
                 },
                 b'0'..=b'9' | b'-' => {
                     if let Some((digits, suffix)) = parse_lit_int(&repr) {
-                        return Lit::Int(LitInt {
-                            repr: Box::new(LitIntRepr { token, digits, suffix }),
+                        return Lit::Int(Int {
+                            repr: Box::new(IntRepr {
+                                tok: token,
+                                digits,
+                                suff: suffix,
+                            }),
                         });
                     }
                     if let Some((digits, suffix)) = parse_lit_float(&repr) {
-                        return Lit::Float(LitFloat {
-                            repr: Box::new(LitFloatRepr { token, digits, suffix }),
+                        return Lit::Float(Float {
+                            repr: Box::new(FloatRepr {
+                                tok: token,
+                                digits,
+                                suff: suffix,
+                            }),
                         });
                     }
                 },
                 b't' | b'f' => {
                     if repr == "true" || repr == "false" {
-                        return Lit::Bool(LitBool {
-                            value: repr == "true",
+                        return Lit::Bool(Bool {
+                            val: repr == "true",
                             span: token.span(),
                         });
                     }
@@ -1037,6 +1001,93 @@ mod value {
             Some((digits.into_boxed_str(), suffix.into_boxed_str()))
         } else {
             None
+        }
+    }
+}
+
+mod debug_impls {
+    use super::*;
+    use std::fmt::{self, Debug};
+    impl Debug for Str {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Str {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
+                        .field("token", &format_args!("{}", self.repr.tok))
+                        .finish()
+                }
+            }
+            self.debug(f, "lit::Str")
+        }
+    }
+    impl Debug for ByteStr {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl ByteStr {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
+                        .field("token", &format_args!("{}", self.repr.tok))
+                        .finish()
+                }
+            }
+            self.debug(f, "lit::ByteStr")
+        }
+    }
+    impl Debug for Byte {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Byte {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
+                        .field("token", &format_args!("{}", self.repr.tok))
+                        .finish()
+                }
+            }
+            self.debug(f, "LitByte")
+        }
+    }
+    impl Debug for Char {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Char {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
+                        .field("token", &format_args!("{}", self.repr.tok))
+                        .finish()
+                }
+            }
+            self.debug(f, "lit::Char")
+        }
+    }
+    impl Debug for Int {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Int {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
+                        .field("token", &format_args!("{}", self.repr.tok))
+                        .finish()
+                }
+            }
+            self.debug(f, "LitInt")
+        }
+    }
+    impl Debug for Float {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Float {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
+                        .field("token", &format_args!("{}", self.repr.tok))
+                        .finish()
+                }
+            }
+            self.debug(f, "lit::Float")
+        }
+    }
+    impl Debug for Bool {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Bool {
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name).field("value", &self.val).finish()
+                }
+            }
+            self.debug(f, "lit::Bool")
         }
     }
 }

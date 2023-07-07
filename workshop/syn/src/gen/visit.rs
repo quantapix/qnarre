@@ -327,25 +327,25 @@ pub trait Visit<'ast> {
     fn visit_lit(&mut self, i: &'ast Lit) {
         visit_lit(self, i);
     }
-    fn visit_lit_bool(&mut self, i: &'ast LitBool) {
+    fn visit_lit_bool(&mut self, i: &'ast lit::Bool) {
         visit_lit_bool(self, i);
     }
-    fn visit_lit_byte(&mut self, i: &'ast LitByte) {
+    fn visit_lit_byte(&mut self, i: &'ast lit::Byte) {
         visit_lit_byte(self, i);
     }
-    fn visit_lit_byte_str(&mut self, i: &'ast LitByteStr) {
+    fn visit_lit_byte_str(&mut self, i: &'ast lit::ByteStr) {
         visit_lit_byte_str(self, i);
     }
-    fn visit_lit_char(&mut self, i: &'ast LitChar) {
+    fn visit_lit_char(&mut self, i: &'ast lit::Char) {
         visit_lit_char(self, i);
     }
-    fn visit_lit_float(&mut self, i: &'ast LitFloat) {
+    fn visit_lit_float(&mut self, i: &'ast lit::Float) {
         visit_lit_float(self, i);
     }
-    fn visit_lit_int(&mut self, i: &'ast LitInt) {
+    fn visit_lit_int(&mut self, i: &'ast lit::Int) {
         visit_lit_int(self, i);
     }
-    fn visit_lit_str(&mut self, i: &'ast LitStr) {
+    fn visit_lit_str(&mut self, i: &'ast lit::Str) {
         visit_lit_str(self, i);
     }
     fn visit_local(&mut self, i: &'ast Local) {
@@ -2152,39 +2152,39 @@ where
         },
     }
 }
-pub fn visit_lit_bool<'ast, V>(v: &mut V, node: &'ast LitBool)
+pub fn visit_lit_bool<'ast, V>(v: &mut V, node: &'ast lit::Bool)
 where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.value);
     v.visit_span(&node.span);
 }
-pub fn visit_lit_byte<'ast, V>(v: &mut V, node: &'ast LitByte)
+pub fn visit_lit_byte<'ast, V>(v: &mut V, node: &'ast lit::Byte)
 where
     V: Visit<'ast> + ?Sized,
 {
 }
-pub fn visit_lit_byte_str<'ast, V>(v: &mut V, node: &'ast LitByteStr)
+pub fn visit_lit_byte_str<'ast, V>(v: &mut V, node: &'ast lit::ByteStr)
 where
     V: Visit<'ast> + ?Sized,
 {
 }
-pub fn visit_lit_char<'ast, V>(v: &mut V, node: &'ast LitChar)
+pub fn visit_lit_char<'ast, V>(v: &mut V, node: &'ast lit::Char)
 where
     V: Visit<'ast> + ?Sized,
 {
 }
-pub fn visit_lit_float<'ast, V>(v: &mut V, node: &'ast LitFloat)
+pub fn visit_lit_float<'ast, V>(v: &mut V, node: &'ast lit::Float)
 where
     V: Visit<'ast> + ?Sized,
 {
 }
-pub fn visit_lit_int<'ast, V>(v: &mut V, node: &'ast LitInt)
+pub fn visit_lit_int<'ast, V>(v: &mut V, node: &'ast lit::Int)
 where
     V: Visit<'ast> + ?Sized,
 {
 }
-pub fn visit_lit_str<'ast, V>(v: &mut V, node: &'ast LitStr)
+pub fn visit_lit_str<'ast, V>(v: &mut V, node: &'ast lit::Str)
 where
     V: Visit<'ast> + ?Sized,
 {

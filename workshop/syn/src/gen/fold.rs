@@ -328,25 +328,25 @@ pub trait Fold {
     fn fold_lit(&mut self, i: Lit) -> Lit {
         fold_lit(self, i)
     }
-    fn fold_lit_bool(&mut self, i: LitBool) -> LitBool {
+    fn fold_lit_bool(&mut self, i: lit::Bool) -> lit::Bool {
         fold_lit_bool(self, i)
     }
-    fn fold_lit_byte(&mut self, i: LitByte) -> LitByte {
+    fn fold_lit_byte(&mut self, i: lit::Byte) -> lit::Byte {
         fold_lit_byte(self, i)
     }
-    fn fold_lit_byte_str(&mut self, i: LitByteStr) -> LitByteStr {
+    fn fold_lit_byte_str(&mut self, i: lit::ByteStr) -> lit::ByteStr {
         fold_lit_byte_str(self, i)
     }
-    fn fold_lit_char(&mut self, i: LitChar) -> LitChar {
+    fn fold_lit_char(&mut self, i: lit::Char) -> lit::Char {
         fold_lit_char(self, i)
     }
-    fn fold_lit_float(&mut self, i: LitFloat) -> LitFloat {
+    fn fold_lit_float(&mut self, i: lit::Float) -> lit::Float {
         fold_lit_float(self, i)
     }
-    fn fold_lit_int(&mut self, i: LitInt) -> LitInt {
+    fn fold_lit_int(&mut self, i: lit::Int) -> lit::Int {
         fold_lit_int(self, i)
     }
-    fn fold_lit_str(&mut self, i: LitStr) -> LitStr {
+    fn fold_lit_str(&mut self, i: lit::Str) -> lit::Str {
         fold_lit_str(self, i)
     }
     fn fold_local(&mut self, i: Local) -> Local {
@@ -1823,16 +1823,16 @@ where
         Lit::Verbatim(_binding_0) => Lit::Verbatim(_binding_0),
     }
 }
-pub fn fold_lit_bool<F>(f: &mut F, node: LitBool) -> LitBool
+pub fn fold_lit_bool<F>(f: &mut F, node: lit::Bool) -> lit::Bool
 where
     F: Fold + ?Sized,
 {
-    LitBool {
-        value: node.value,
+    lit::Bool {
+        val: node.val,
         span: f.fold_span(node.span),
     }
 }
-pub fn fold_lit_byte<F>(f: &mut F, node: LitByte) -> LitByte
+pub fn fold_lit_byte<F>(f: &mut F, node: lit::Byte) -> lit::Byte
 where
     F: Fold + ?Sized,
 {
@@ -1841,7 +1841,7 @@ where
     node.set_span(span);
     node
 }
-pub fn fold_lit_byte_str<F>(f: &mut F, node: LitByteStr) -> LitByteStr
+pub fn fold_lit_byte_str<F>(f: &mut F, node: lit::ByteStr) -> lit::ByteStr
 where
     F: Fold + ?Sized,
 {
@@ -1850,7 +1850,7 @@ where
     node.set_span(span);
     node
 }
-pub fn fold_lit_char<F>(f: &mut F, node: LitChar) -> LitChar
+pub fn fold_lit_char<F>(f: &mut F, node: lit::Char) -> lit::Char
 where
     F: Fold + ?Sized,
 {
@@ -1859,7 +1859,7 @@ where
     node.set_span(span);
     node
 }
-pub fn fold_lit_float<F>(f: &mut F, node: LitFloat) -> LitFloat
+pub fn fold_lit_float<F>(f: &mut F, node: lit::Float) -> lit::Float
 where
     F: Fold + ?Sized,
 {
@@ -1868,7 +1868,7 @@ where
     node.set_span(span);
     node
 }
-pub fn fold_lit_int<F>(f: &mut F, node: LitInt) -> LitInt
+pub fn fold_lit_int<F>(f: &mut F, node: lit::Int) -> lit::Int
 where
     F: Fold + ?Sized,
 {
@@ -1877,7 +1877,7 @@ where
     node.set_span(span);
     node
 }
-pub fn fold_lit_str<F>(f: &mut F, node: LitStr) -> LitStr
+pub fn fold_lit_str<F>(f: &mut F, node: lit::Str) -> lit::Str
 where
     F: Fold + ?Sized,
 {

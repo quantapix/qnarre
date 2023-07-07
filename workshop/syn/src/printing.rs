@@ -1345,37 +1345,37 @@ impl ToTokens for VisRestricted {
     }
 }
 
-impl ToTokens for LitStr {
+impl ToTokens for lit::Str {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.repr.token.to_tokens(tokens);
+        self.repr.tok.to_tokens(tokens);
     }
 }
-impl ToTokens for LitByteStr {
+impl ToTokens for lit::ByteStr {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.repr.token.to_tokens(tokens);
+        self.repr.tok.to_tokens(tokens);
     }
 }
-impl ToTokens for LitByte {
+impl ToTokens for lit::Byte {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.repr.token.to_tokens(tokens);
+        self.repr.tok.to_tokens(tokens);
     }
 }
-impl ToTokens for LitChar {
+impl ToTokens for lit::Char {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.repr.token.to_tokens(tokens);
+        self.repr.tok.to_tokens(tokens);
     }
 }
-impl ToTokens for LitInt {
+impl ToTokens for lit::Int {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.repr.token.to_tokens(tokens);
+        self.repr.tok.to_tokens(tokens);
     }
 }
-impl ToTokens for LitFloat {
+impl ToTokens for lit::Float {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.repr.token.to_tokens(tokens);
+        self.repr.tok.to_tokens(tokens);
     }
 }
-impl ToTokens for LitBool {
+impl ToTokens for lit::Bool {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append(self.token());
     }

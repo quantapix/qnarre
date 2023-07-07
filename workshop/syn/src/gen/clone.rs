@@ -1104,10 +1104,10 @@ impl Clone for Lit {
         }
     }
 }
-impl Clone for LitBool {
+impl Clone for lit::Bool {
     fn clone(&self) -> Self {
-        LitBool {
-            value: self.value.clone(),
+        lit::Bool {
+            val: self.val.clone(),
             span: self.span.clone(),
         }
     }
