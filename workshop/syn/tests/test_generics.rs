@@ -2,7 +2,7 @@
 #[macro_use]
 mod macros;
 use quote::quote;
-use syn::{DeriveInput, ItemFn, TypeParamBound, WhereClause, WherePredicate};
+use syn::{DeriveInput, ItemFn, TypeParamBound, WhereClause, WherePred};
 #[test]
 fn test_split_for_impl() {
     let input = quote! {
@@ -230,7 +230,7 @@ fn test_fn_precedence_in_where_clause() {
     let where_clause = input.sig.generics.where_clause.as_ref().unwrap();
     assert_eq!(where_clause.predicates.len(), 1);
     let predicate = match &where_clause.predicates[0] {
-        WherePredicate::Type(pred) => pred,
+        WherePred::Type(pred) => pred,
         _ => panic!("wrong predicate kind"),
     };
     assert_eq!(predicate.bounds.len(), 2, "{:#?}", predicate.bounds);

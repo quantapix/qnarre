@@ -211,7 +211,7 @@ impl Hash for ConstParam {
         self.attrs.hash(state);
         self.ident.hash(state);
         self.ty.hash(state);
-        self.eq_token.hash(state);
+        self.equal.hash(state);
         self.default.hash(state);
     }
 }
@@ -260,7 +260,7 @@ impl Hash for DataStruct {
         H: Hasher,
     {
         self.fields.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for DataUnion {
@@ -844,13 +844,13 @@ impl Hash for Field {
         self.ty.hash(state);
     }
 }
-impl Hash for FieldMutability {
+impl Hash for FieldMut {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            FieldMutability::None => {
+            FieldMut::None => {
                 state.write_u8(0u8);
             },
         }
@@ -863,7 +863,7 @@ impl Hash for FieldPat {
     {
         self.attrs.hash(state);
         self.member.hash(state);
-        self.colon_token.hash(state);
+        self.colon.hash(state);
         self.pat.hash(state);
     }
 }
@@ -1072,10 +1072,10 @@ impl Hash for Generics {
     where
         H: Hasher,
     {
-        self.lt_token.hash(state);
+        self.lt.hash(state);
         self.params.hash(state);
-        self.gt_token.hash(state);
-        self.where_clause.hash(state);
+        self.gt.hash(state);
+        self.clause.hash(state);
     }
 }
 impl Hash for ImplItem {
@@ -1438,7 +1438,7 @@ impl Hash for LifetimeParam {
     {
         self.attrs.hash(state);
         self.lifetime.hash(state);
-        self.colon_token.hash(state);
+        self.colon.hash(state);
         self.bounds.hash(state);
     }
 }
@@ -1516,8 +1516,8 @@ impl Hash for Macro {
         H: Hasher,
     {
         self.path.hash(state);
-        self.delimiter.hash(state);
-        TokenStreamHelper(&self.tokens).hash(state);
+        self.delim.hash(state);
+        TokenStreamHelper(&self.toks).hash(state);
     }
 }
 impl Hash for MacroDelimiter {
@@ -1670,8 +1670,8 @@ impl Hash for PatIdent {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.by_ref.hash(state);
-        self.mutability.hash(state);
+        self.ref_.hash(state);
+        self.mut_.hash(state);
         self.ident.hash(state);
         self.subpat.hash(state);
     }
@@ -1810,7 +1810,7 @@ impl Hash for PathSegment {
         self.arguments.hash(state);
     }
 }
-impl Hash for PredicateLifetime {
+impl Hash for PredLifetime {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1819,7 +1819,7 @@ impl Hash for PredicateLifetime {
         self.bounds.hash(state);
     }
 }
-impl Hash for PredicateType {
+impl Hash for PredType {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1836,7 +1836,7 @@ impl Hash for QSelf {
     {
         self.ty.hash(state);
         self.position.hash(state);
-        self.as_token.hash(state);
+        self.as_.hash(state);
     }
 }
 impl Hash for RangeLimits {
@@ -1946,7 +1946,7 @@ impl Hash for StmtMacro {
     {
         self.attrs.hash(state);
         self.mac.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for TraitBound {
@@ -1954,7 +1954,7 @@ impl Hash for TraitBound {
     where
         H: Hasher,
     {
-        self.paren_token.hash(state);
+        self.paren.hash(state);
         self.modifier.hash(state);
         self.lifetimes.hash(state);
         self.path.hash(state);
@@ -2134,7 +2134,7 @@ impl Hash for TypeBareFn {
         H: Hasher,
     {
         self.lifetimes.hash(state);
-        self.unsafety.hash(state);
+        self.unsafe_.hash(state);
         self.abi.hash(state);
         self.inputs.hash(state);
         self.variadic.hash(state);
@@ -2186,9 +2186,9 @@ impl Hash for TypeParam {
     {
         self.attrs.hash(state);
         self.ident.hash(state);
-        self.colon_token.hash(state);
+        self.colon.hash(state);
         self.bounds.hash(state);
-        self.eq_token.hash(state);
+        self.equal.hash(state);
         self.default.hash(state);
     }
 }
@@ -2235,8 +2235,8 @@ impl Hash for TypePtr {
     where
         H: Hasher,
     {
-        self.const_token.hash(state);
-        self.mutability.hash(state);
+        self.const_.hash(state);
+        self.mut_.hash(state);
         self.elem.hash(state);
     }
 }
@@ -2246,7 +2246,7 @@ impl Hash for TypeReference {
         H: Hasher,
     {
         self.lifetime.hash(state);
-        self.mutability.hash(state);
+        self.mut_.hash(state);
         self.elem.hash(state);
     }
 }
@@ -2263,7 +2263,7 @@ impl Hash for TypeTraitObject {
     where
         H: Hasher,
     {
-        self.dyn_token.hash(state);
+        self.dyn_.hash(state);
         self.bounds.hash(state);
     }
 }
@@ -2389,7 +2389,7 @@ impl Hash for VisRestricted {
     where
         H: Hasher,
     {
-        self.in_token.hash(state);
+        self.in_.hash(state);
         self.path.hash(state);
     }
 }
@@ -2417,20 +2417,20 @@ impl Hash for WhereClause {
     where
         H: Hasher,
     {
-        self.predicates.hash(state);
+        self.preds.hash(state);
     }
 }
-impl Hash for WherePredicate {
+impl Hash for WherePred {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            WherePredicate::Lifetime(v0) => {
+            WherePred::Lifetime(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            WherePredicate::Type(v0) => {
+            WherePred::Type(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },

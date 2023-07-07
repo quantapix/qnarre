@@ -412,6 +412,7 @@ enum Entry {
     Literal(Literal),
     End(isize),
 }
+
 pub struct Cursor<'a> {
     ptr: *const Entry,
     scope: *const Entry,
@@ -616,6 +617,7 @@ impl<'a> PartialOrd for Cursor<'a> {
         }
     }
 }
+
 fn same_scope(a: Cursor, b: Cursor) -> bool {
     a.scope == b.scope
 }
@@ -694,320 +696,315 @@ pub use expr::{
     ExprRepeat, ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield,
     FieldValue, Index, Label, Member, RangeLimits,
 };
-mod generic {
-    use super::{
-        punctuated::{Iter, IterMut, Punctuated},
-        *,
-    };
-    use proc_macro2::TokenStream;
-    use std::{
-        fmt::{self, Debug},
-        hash::{Hash, Hasher},
-    };
-    ast_struct! {
-        pub struct Generics {
-            pub lt_token: Option<Token![<]>,
-            pub params: Punctuated<GenericParam, Token![,]>,
-            pub gt_token: Option<Token![>]>,
-            pub where_clause: Option<WhereClause>,
-        }
+
+ast_struct! {
+    pub struct LifetimeParam {
+        pub attrs: Vec<Attribute>,
+        pub lifetime: Lifetime,
+        pub colon: Option<Token![:]>,
+        pub bounds: Punctuated<Lifetime, Token![+]>,
     }
-    ast_enum_of_structs! {
-        pub enum GenericParam {
-            Lifetime(LifetimeParam),
-            Type(TypeParam),
-            Const(ConstParam),
-        }
+}
+ast_struct! {
+    pub struct TypeParam {
+        pub attrs: Vec<Attribute>,
+        pub ident: Ident,
+        pub colon: Option<Token![:]>,
+        pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        pub equal: Option<Token![=]>,
+        pub default: Option<Type>,
     }
-    ast_struct! {
-        pub struct LifetimeParam {
-            pub attrs: Vec<Attribute>,
-            pub lifetime: Lifetime,
-            pub colon_token: Option<Token![:]>,
-            pub bounds: Punctuated<Lifetime, Token![+]>,
-        }
+}
+ast_struct! {
+    pub struct ConstParam {
+        pub attrs: Vec<Attribute>,
+        pub const_: Token![const],
+        pub ident: Ident,
+        pub colon: Token![:],
+        pub ty: Type,
+        pub equal: Option<Token![=]>,
+        pub default: Option<Expr>,
     }
-    ast_struct! {
-        pub struct TypeParam {
-            pub attrs: Vec<Attribute>,
-            pub ident: Ident,
-            pub colon_token: Option<Token![:]>,
-            pub bounds: Punctuated<TypeParamBound, Token![+]>,
-            pub eq_token: Option<Token![=]>,
-            pub default: Option<Type>,
-        }
+}
+ast_enum_of_structs! {
+    pub enum GenericParam {
+        Lifetime(LifetimeParam),
+        Type(TypeParam),
+        Const(ConstParam),
     }
-    ast_struct! {
-        pub struct ConstParam {
-            pub attrs: Vec<Attribute>,
-            pub const_token: Token![const],
-            pub ident: Ident,
-            pub colon_token: Token![:],
-            pub ty: Type,
-            pub eq_token: Option<Token![=]>,
-            pub default: Option<Expr>,
-        }
+}
+ast_struct! {
+    pub struct Generics {
+        pub lt: Option<Token![<]>,
+        pub params: Punctuated<GenericParam, Token![,]>,
+        pub gt: Option<Token![>]>,
+        pub clause: Option<WhereClause>,
     }
-    impl Default for Generics {
-        fn default() -> Self {
-            Generics {
-                lt_token: None,
-                params: Punctuated::new(),
-                gt_token: None,
-                where_clause: None,
-            }
-        }
+}
+impl Generics {
+    pub fn lifetimes(&self) -> Lifetimes {
+        Lifetimes(self.params.iter())
     }
-    impl Generics {
-        pub fn lifetimes(&self) -> Lifetimes {
-            Lifetimes(self.params.iter())
-        }
-        pub fn lifetimes_mut(&mut self) -> LifetimesMut {
-            LifetimesMut(self.params.iter_mut())
-        }
-        pub fn type_params(&self) -> TypeParams {
-            TypeParams(self.params.iter())
-        }
-        pub fn type_params_mut(&mut self) -> TypeParamsMut {
-            TypeParamsMut(self.params.iter_mut())
-        }
-        pub fn const_params(&self) -> ConstParams {
-            ConstParams(self.params.iter())
-        }
-        pub fn const_params_mut(&mut self) -> ConstParamsMut {
-            ConstParamsMut(self.params.iter_mut())
-        }
-        pub fn make_where_clause(&mut self) -> &mut WhereClause {
-            self.where_clause.get_or_insert_with(|| WhereClause {
-                where_token: <Token![where]>::default(),
-                predicates: Punctuated::new(),
-            })
-        }
+    pub fn lifetimes_mut(&mut self) -> LifetimesMut {
+        LifetimesMut(self.params.iter_mut())
     }
-    pub struct Lifetimes<'a>(Iter<'a, GenericParam>);
-    impl<'a> Iterator for Lifetimes<'a> {
-        type Item = &'a LifetimeParam;
-        fn next(&mut self) -> Option<Self::Item> {
-            let next = match self.0.next() {
-                Some(item) => item,
-                None => return None,
-            };
-            if let GenericParam::Lifetime(lifetime) = next {
-                Some(lifetime)
-            } else {
-                self.next()
-            }
-        }
+    pub fn type_params(&self) -> TypeParams {
+        TypeParams(self.params.iter())
     }
-    pub struct LifetimesMut<'a>(IterMut<'a, GenericParam>);
-    impl<'a> Iterator for LifetimesMut<'a> {
-        type Item = &'a mut LifetimeParam;
-        fn next(&mut self) -> Option<Self::Item> {
-            let next = match self.0.next() {
-                Some(item) => item,
-                None => return None,
-            };
-            if let GenericParam::Lifetime(lifetime) = next {
-                Some(lifetime)
-            } else {
-                self.next()
-            }
-        }
+    pub fn type_params_mut(&mut self) -> TypeParamsMut {
+        TypeParamsMut(self.params.iter_mut())
     }
-    pub struct TypeParams<'a>(Iter<'a, GenericParam>);
-    impl<'a> Iterator for TypeParams<'a> {
-        type Item = &'a TypeParam;
-        fn next(&mut self) -> Option<Self::Item> {
-            let next = match self.0.next() {
-                Some(item) => item,
-                None => return None,
-            };
-            if let GenericParam::Type(type_param) = next {
-                Some(type_param)
-            } else {
-                self.next()
-            }
-        }
+    pub fn const_params(&self) -> ConstParams {
+        ConstParams(self.params.iter())
     }
-    pub struct TypeParamsMut<'a>(IterMut<'a, GenericParam>);
-    impl<'a> Iterator for TypeParamsMut<'a> {
-        type Item = &'a mut TypeParam;
-        fn next(&mut self) -> Option<Self::Item> {
-            let next = match self.0.next() {
-                Some(item) => item,
-                None => return None,
-            };
-            if let GenericParam::Type(type_param) = next {
-                Some(type_param)
-            } else {
-                self.next()
-            }
-        }
+    pub fn const_params_mut(&mut self) -> ConstParamsMut {
+        ConstParamsMut(self.params.iter_mut())
     }
-    pub struct ConstParams<'a>(Iter<'a, GenericParam>);
-    impl<'a> Iterator for ConstParams<'a> {
-        type Item = &'a ConstParam;
-        fn next(&mut self) -> Option<Self::Item> {
-            let next = match self.0.next() {
-                Some(item) => item,
-                None => return None,
-            };
-            if let GenericParam::Const(const_param) = next {
-                Some(const_param)
-            } else {
-                self.next()
-            }
-        }
+    pub fn make_where_clause(&mut self) -> &mut WhereClause {
+        self.clause.get_or_insert_with(|| WhereClause {
+            where_: <Token![where]>::default(),
+            preds: Punctuated::new(),
+        })
     }
-    pub struct ConstParamsMut<'a>(IterMut<'a, GenericParam>);
-    impl<'a> Iterator for ConstParamsMut<'a> {
-        type Item = &'a mut ConstParam;
-        fn next(&mut self) -> Option<Self::Item> {
-            let next = match self.0.next() {
-                Some(item) => item,
-                None => return None,
-            };
-            if let GenericParam::Const(const_param) = next {
-                Some(const_param)
-            } else {
-                self.next()
-            }
-        }
+    pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
+        (ImplGenerics(self), TypeGenerics(self), self.clause.as_ref())
     }
-    pub struct ImplGenerics<'a>(pub &'a Generics);
-    pub struct TypeGenerics<'a>(pub &'a Generics);
-    pub struct Turbofish<'a>(pub &'a Generics);
-    impl Generics {
-        pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
-            (ImplGenerics(self), TypeGenerics(self), self.where_clause.as_ref())
-        }
-    }
-    macro_rules! generics_wrapper_impls {
-        ($ty:ident) => {
-            impl<'a> Clone for $ty<'a> {
-                fn clone(&self) -> Self {
-                    $ty(self.0)
-                }
-            }
-            impl<'a> Debug for $ty<'a> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    f.debug_tuple(stringify!($ty)).field(self.0).finish()
-                }
-            }
-            impl<'a> Eq for $ty<'a> {}
-            impl<'a> PartialEq for $ty<'a> {
-                fn eq(&self, other: &Self) -> bool {
-                    self.0 == other.0
-                }
-            }
-            impl<'a> Hash for $ty<'a> {
-                fn hash<H: Hasher>(&self, state: &mut H) {
-                    self.0.hash(state);
-                }
-            }
-        };
-    }
-    generics_wrapper_impls!(ImplGenerics);
-    generics_wrapper_impls!(TypeGenerics);
-    generics_wrapper_impls!(Turbofish);
-    impl<'a> TypeGenerics<'a> {
-        pub fn as_turbofish(&self) -> Turbofish {
-            Turbofish(self.0)
-        }
-    }
-    ast_struct! {
-        pub struct BoundLifetimes {
-            pub for_token: Token![for],
-            pub lt_token: Token![<],
-            pub lifetimes: Punctuated<GenericParam, Token![,]>,
-            pub gt_token: Token![>],
-        }
-    }
-    impl Default for BoundLifetimes {
-        fn default() -> Self {
-            BoundLifetimes {
-                for_token: Default::default(),
-                lt_token: Default::default(),
-                lifetimes: Punctuated::new(),
-                gt_token: Default::default(),
-            }
-        }
-    }
-    impl LifetimeParam {
-        pub fn new(lifetime: Lifetime) -> Self {
-            LifetimeParam {
-                attrs: Vec::new(),
-                lifetime,
-                colon_token: None,
-                bounds: Punctuated::new(),
-            }
-        }
-    }
-    impl From<Ident> for TypeParam {
-        fn from(ident: Ident) -> Self {
-            TypeParam {
-                attrs: vec![],
-                ident,
-                colon_token: None,
-                bounds: Punctuated::new(),
-                eq_token: None,
-                default: None,
-            }
-        }
-    }
-    ast_enum_of_structs! {
-        pub enum TypeParamBound {
-            Trait(TraitBound),
-            Lifetime(Lifetime),
-            Verbatim(TokenStream),
-        }
-    }
-    ast_struct! {
-        pub struct TraitBound {
-            pub paren_token: Option<tok::Paren>,
-            pub modifier: TraitBoundModifier,
-            pub lifetimes: Option<BoundLifetimes>,
-            pub path: Path,
-        }
-    }
-    ast_enum! {
-        pub enum TraitBoundModifier {
-            None,
-            Maybe(Token![?]),
-        }
-    }
-    ast_struct! {
-        pub struct WhereClause {
-            pub where_token: Token![where],
-            pub predicates: Punctuated<WherePredicate, Token![,]>,
-        }
-    }
-    ast_enum_of_structs! {
-        pub enum WherePredicate {
-            Lifetime(PredicateLifetime),
-            Type(PredicateType),
-        }
-    }
-    ast_struct! {
-        pub struct PredicateLifetime {
-            pub lifetime: Lifetime,
-            pub colon_token: Token![:],
-            pub bounds: Punctuated<Lifetime, Token![+]>,
-        }
-    }
-    ast_struct! {
-        pub struct PredicateType {
-            pub lifetimes: Option<BoundLifetimes>,
-            pub bounded_ty: Type,
-            pub colon_token: Token![:],
-            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+}
+impl Default for Generics {
+    fn default() -> Self {
+        Generics {
+            lt: None,
+            params: Punctuated::new(),
+            gt: None,
+            clause: None,
         }
     }
 }
-pub use generic::{
-    BoundLifetimes, ConstParam, GenericParam, Generics, ImplGenerics, LifetimeParam, PredicateLifetime, PredicateType,
-    TraitBound, TraitBoundModifier, Turbofish, TypeGenerics, TypeParam, TypeParamBound, WhereClause, WherePredicate,
-};
+
+pub struct Lifetimes<'a>(Iter<'a, GenericParam>);
+impl<'a> Iterator for Lifetimes<'a> {
+    type Item = &'a LifetimeParam;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.0.next() {
+            Some(x) => x,
+            None => return None,
+        };
+        if let GenericParam::Lifetime(lifetime) = next {
+            Some(lifetime)
+        } else {
+            self.next()
+        }
+    }
+}
+
+pub struct LifetimesMut<'a>(IterMut<'a, GenericParam>);
+impl<'a> Iterator for LifetimesMut<'a> {
+    type Item = &'a mut LifetimeParam;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.0.next() {
+            Some(x) => x,
+            None => return None,
+        };
+        if let GenericParam::Lifetime(lifetime) = next {
+            Some(lifetime)
+        } else {
+            self.next()
+        }
+    }
+}
+
+pub struct TypeParams<'a>(Iter<'a, GenericParam>);
+impl<'a> Iterator for TypeParams<'a> {
+    type Item = &'a TypeParam;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.0.next() {
+            Some(x) => x,
+            None => return None,
+        };
+        if let GenericParam::Type(type_param) = next {
+            Some(type_param)
+        } else {
+            self.next()
+        }
+    }
+}
+
+pub struct TypeParamsMut<'a>(IterMut<'a, GenericParam>);
+impl<'a> Iterator for TypeParamsMut<'a> {
+    type Item = &'a mut TypeParam;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.0.next() {
+            Some(x) => x,
+            None => return None,
+        };
+        if let GenericParam::Type(type_param) = next {
+            Some(type_param)
+        } else {
+            self.next()
+        }
+    }
+}
+
+pub struct ConstParams<'a>(Iter<'a, GenericParam>);
+impl<'a> Iterator for ConstParams<'a> {
+    type Item = &'a ConstParam;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.0.next() {
+            Some(x) => x,
+            None => return None,
+        };
+        if let GenericParam::Const(const_param) = next {
+            Some(const_param)
+        } else {
+            self.next()
+        }
+    }
+}
+
+pub struct ConstParamsMut<'a>(IterMut<'a, GenericParam>);
+impl<'a> Iterator for ConstParamsMut<'a> {
+    type Item = &'a mut ConstParam;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = match self.0.next() {
+            Some(x) => x,
+            None => return None,
+        };
+        if let GenericParam::Const(const_param) = next {
+            Some(const_param)
+        } else {
+            self.next()
+        }
+    }
+}
+
+pub struct ImplGenerics<'a>(pub &'a Generics);
+pub struct TypeGenerics<'a>(pub &'a Generics);
+pub struct Turbofish<'a>(pub &'a Generics);
+
+macro_rules! generics_wrapper_impls {
+    ($ty:ident) => {
+        impl<'a> Clone for $ty<'a> {
+            fn clone(&self) -> Self {
+                $ty(self.0)
+            }
+        }
+        impl<'a> Debug for $ty<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_tuple(stringify!($ty)).field(self.0).finish()
+            }
+        }
+        impl<'a> Eq for $ty<'a> {}
+        impl<'a> PartialEq for $ty<'a> {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+        impl<'a> Hash for $ty<'a> {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.0.hash(state);
+            }
+        }
+    };
+}
+generics_wrapper_impls!(ImplGenerics);
+generics_wrapper_impls!(TypeGenerics);
+generics_wrapper_impls!(Turbofish);
+
+impl<'a> TypeGenerics<'a> {
+    pub fn as_turbofish(&self) -> Turbofish {
+        Turbofish(self.0)
+    }
+}
+
+ast_struct! {
+    pub struct BoundLifetimes {
+        pub for_: Token![for],
+        pub lt: Token![<],
+        pub lifetimes: Punctuated<GenericParam, Token![,]>,
+        pub gt: Token![>],
+    }
+}
+impl Default for BoundLifetimes {
+    fn default() -> Self {
+        BoundLifetimes {
+            for_: Default::default(),
+            lt: Default::default(),
+            lifetimes: Punctuated::new(),
+            gt: Default::default(),
+        }
+    }
+}
+impl LifetimeParam {
+    pub fn new(lifetime: Lifetime) -> Self {
+        LifetimeParam {
+            attrs: Vec::new(),
+            lifetime,
+            colon: None,
+            bounds: Punctuated::new(),
+        }
+    }
+}
+impl From<Ident> for TypeParam {
+    fn from(ident: Ident) -> Self {
+        TypeParam {
+            attrs: vec![],
+            ident,
+            colon: None,
+            bounds: Punctuated::new(),
+            equal: None,
+            default: None,
+        }
+    }
+}
+ast_enum_of_structs! {
+    pub enum TypeParamBound {
+        Trait(TraitBound),
+        Lifetime(Lifetime),
+        Verbatim(TokenStream),
+    }
+}
+ast_struct! {
+    pub struct TraitBound {
+        pub paren: Option<tok::Paren>,
+        pub modifier: TraitBoundModifier,
+        pub lifetimes: Option<BoundLifetimes>,
+        pub path: Path,
+    }
+}
+ast_enum! {
+    pub enum TraitBoundModifier {
+        None,
+        Maybe(Token![?]),
+    }
+}
+ast_struct! {
+    pub struct WhereClause {
+        pub where_: Token![where],
+        pub preds: Punctuated<WherePred, Token![,]>,
+    }
+}
+ast_enum_of_structs! {
+    pub enum WherePred {
+        Lifetime(PredLifetime),
+        Type(PredType),
+    }
+}
+ast_struct! {
+    pub struct PredLifetime {
+        pub lifetime: Lifetime,
+        pub colon: Token![:],
+        pub bounds: Punctuated<Lifetime, Token![+]>,
+    }
+}
+ast_struct! {
+    pub struct PredType {
+        pub lifetimes: Option<BoundLifetimes>,
+        pub bounded_ty: Type,
+        pub colon: Token![:],
+        pub bounds: Punctuated<TypeParamBound, Token![+]>,
+    }
+}
+
 mod item;
 pub use item::{
     FnArg, ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, ImplItem, ImplItemConst,
@@ -1020,127 +1017,121 @@ pub mod punctuated;
 use punctuated::Punctuated;
 mod lit;
 pub use lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
-mod pat {
-    use super::{punctuated::Punctuated, *};
-    use proc_macro2::TokenStream;
-    ast_enum_of_structs! {
-        pub enum Pat {
-            Const(PatConst),
-            Ident(PatIdent),
-            Lit(PatLit),
-            Macro(PatMacro),
-            Or(PatOr),
-            Paren(PatParen),
-            Path(PatPath),
-            Range(PatRange),
-            Reference(PatReference),
-            Rest(PatRest),
-            Slice(PatSlice),
-            Struct(PatStruct),
-            Tuple(PatTuple),
-            TupleStruct(PatTupleStruct),
-            Type(PatType),
-            Verbatim(TokenStream),
-            Wild(PatWild),
-        }
-    }
-    ast_struct! {
-        pub struct PatIdent {
-            pub attrs: Vec<Attribute>,
-            pub by_ref: Option<Token![ref]>,
-            pub mutability: Option<Token![mut]>,
-            pub ident: Ident,
-            pub subpat: Option<(Token![@], Box<Pat>)>,
-        }
-    }
-    ast_struct! {
-        pub struct PatOr {
-            pub attrs: Vec<Attribute>,
-            pub leading_vert: Option<Token![|]>,
-            pub cases: Punctuated<Pat, Token![|]>,
-        }
-    }
-    ast_struct! {
-        pub struct PatParen {
-            pub attrs: Vec<Attribute>,
-            pub paren_token: tok::Paren,
-            pub pat: Box<Pat>,
-        }
-    }
-    ast_struct! {
-        pub struct PatReference {
-            pub attrs: Vec<Attribute>,
-            pub and_token: Token![&],
-            pub mutability: Option<Token![mut]>,
-            pub pat: Box<Pat>,
-        }
-    }
-    ast_struct! {
-        pub struct PatRest {
-            pub attrs: Vec<Attribute>,
-            pub dot2_token: Token![..],
-        }
-    }
-    ast_struct! {
-        pub struct PatSlice {
-            pub attrs: Vec<Attribute>,
-            pub bracket_token: tok::Bracket,
-            pub elems: Punctuated<Pat, Token![,]>,
-        }
-    }
-    ast_struct! {
-        pub struct PatStruct {
-            pub attrs: Vec<Attribute>,
-            pub qself: Option<QSelf>,
-            pub path: Path,
-            pub brace_token: tok::Brace,
-            pub fields: Punctuated<FieldPat, Token![,]>,
-            pub rest: Option<PatRest>,
-        }
-    }
-    ast_struct! {
-        pub struct PatTuple {
-            pub attrs: Vec<Attribute>,
-            pub paren_token: tok::Paren,
-            pub elems: Punctuated<Pat, Token![,]>,
-        }
-    }
-    ast_struct! {
-        pub struct PatTupleStruct {
-            pub attrs: Vec<Attribute>,
-            pub qself: Option<QSelf>,
-            pub path: Path,
-            pub paren_token: tok::Paren,
-            pub elems: Punctuated<Pat, Token![,]>,
-        }
-    }
-    ast_struct! {
-        pub struct PatType {
-            pub attrs: Vec<Attribute>,
-            pub pat: Box<Pat>,
-            pub colon_token: Token![:],
-            pub ty: Box<Type>,
-        }
-    }
-    ast_struct! {
-        pub struct PatWild {
-            pub attrs: Vec<Attribute>,
-            pub underscore_token: Token![_],
-        }
-    }
-    ast_struct! {
-        pub struct FieldPat {
-            pub attrs: Vec<Attribute>,
-            pub member: Member,
-            pub colon_token: Option<Token![:]>,
-            pub pat: Box<Pat>,
-        }
+
+ast_enum_of_structs! {
+    pub enum Pat {
+        Const(PatConst),
+        Ident(PatIdent),
+        Lit(PatLit),
+        Macro(PatMacro),
+        Or(PatOr),
+        Paren(PatParen),
+        Path(PatPath),
+        Range(PatRange),
+        Reference(PatReference),
+        Rest(PatRest),
+        Slice(PatSlice),
+        Struct(PatStruct),
+        Tuple(PatTuple),
+        TupleStruct(PatTupleStruct),
+        Type(PatType),
+        Verbatim(TokenStream),
+        Wild(PatWild),
     }
 }
-pub use pat::{
-    FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
-    PatType, PatWild,
-};
+ast_struct! {
+    pub struct PatIdent {
+        pub attrs: Vec<Attribute>,
+        pub ref_: Option<Token![ref]>,
+        pub mut_: Option<Token![mut]>,
+        pub ident: Ident,
+        pub subpat: Option<(Token![@], Box<Pat>)>,
+    }
+}
+ast_struct! {
+    pub struct PatOr {
+        pub attrs: Vec<Attribute>,
+        pub leading_vert: Option<Token![|]>,
+        pub cases: Punctuated<Pat, Token![|]>,
+    }
+}
+ast_struct! {
+    pub struct PatParen {
+        pub attrs: Vec<Attribute>,
+        pub paren: tok::Paren,
+        pub pat: Box<Pat>,
+    }
+}
+ast_struct! {
+    pub struct PatReference {
+        pub attrs: Vec<Attribute>,
+        pub and_: Token![&],
+        pub mutability: Option<Token![mut]>,
+        pub pat: Box<Pat>,
+    }
+}
+ast_struct! {
+    pub struct PatRest {
+        pub attrs: Vec<Attribute>,
+        pub dot2: Token![..],
+    }
+}
+ast_struct! {
+    pub struct PatSlice {
+        pub attrs: Vec<Attribute>,
+        pub bracket: tok::Bracket,
+        pub elems: Punctuated<Pat, Token![,]>,
+    }
+}
+ast_struct! {
+    pub struct PatStruct {
+        pub attrs: Vec<Attribute>,
+        pub qself: Option<QSelf>,
+        pub path: Path,
+        pub brace: tok::Brace,
+        pub fields: Punctuated<FieldPat, Token![,]>,
+        pub rest: Option<PatRest>,
+    }
+}
+ast_struct! {
+    pub struct PatTuple {
+        pub attrs: Vec<Attribute>,
+        pub paren: tok::Paren,
+        pub elems: Punctuated<Pat, Token![,]>,
+    }
+}
+ast_struct! {
+    pub struct PatTupleStruct {
+        pub attrs: Vec<Attribute>,
+        pub qself: Option<QSelf>,
+        pub path: Path,
+        pub paren: tok::Paren,
+        pub elems: Punctuated<Pat, Token![,]>,
+    }
+}
+ast_struct! {
+    pub struct PatType {
+        pub attrs: Vec<Attribute>,
+        pub pat: Box<Pat>,
+        pub colon: Token![:],
+        pub ty: Box<Type>,
+    }
+}
+ast_struct! {
+    pub struct PatWild {
+        pub attrs: Vec<Attribute>,
+        pub underscore: Token![_],
+    }
+}
+ast_struct! {
+    pub struct FieldPat {
+        pub attrs: Vec<Attribute>,
+        pub member: Member,
+        pub colon: Option<Token![:]>,
+        pub pat: Box<Pat>,
+    }
+}
+
 mod path {
     use super::{punctuated::Punctuated, *};
     ast_struct! {
@@ -1237,16 +1228,16 @@ mod path {
     ast_struct! {
         pub struct AngleBracketedGenericArguments {
             pub colon2_token: Option<Token![::]>,
-            pub lt_token: Token![<],
+            pub lt: Token![<],
             pub args: Punctuated<GenericArgument, Token![,]>,
-            pub gt_token: Token![>],
+            pub gt: Token![>],
         }
     }
     ast_struct! {
         pub struct AssocType {
             pub ident: Ident,
             pub generics: Option<AngleBracketedGenericArguments>,
-            pub eq_token: Token![=],
+            pub equal: Token![=],
             pub ty: Type,
         }
     }
@@ -1254,7 +1245,7 @@ mod path {
         pub struct AssocConst {
             pub ident: Ident,
             pub generics: Option<AngleBracketedGenericArguments>,
-            pub eq_token: Token![=],
+            pub equal: Token![=],
             pub value: Expr,
         }
     }
@@ -1262,24 +1253,24 @@ mod path {
         pub struct Constraint {
             pub ident: Ident,
             pub generics: Option<AngleBracketedGenericArguments>,
-            pub colon_token: Token![:],
+            pub colon: Token![:],
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
     }
     ast_struct! {
         pub struct ParenthesizedGenericArguments {
-            pub paren_token: tok::Paren,
+            pub paren: tok::Paren,
             pub inputs: Punctuated<Type, Token![,]>,
             pub output: ReturnType,
         }
     }
     ast_struct! {
         pub struct QSelf {
-            pub lt_token: Token![<],
+            pub lt: Token![<],
             pub ty: Box<Type>,
             pub position: usize,
-            pub as_token: Option<Token![as]>,
-            pub gt_token: Token![>],
+            pub as_: Option<Token![as]>,
+            pub gt_: Token![>],
         }
     }
 }
@@ -1290,7 +1281,7 @@ pub use path::{
 
 ast_struct! {
     pub struct Block {
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub stmts: Vec<Stmt>,
     }
 }
@@ -1305,15 +1296,15 @@ ast_enum! {
 ast_struct! {
     pub struct Local {
         pub attrs: Vec<Attribute>,
-        pub let_token: Token![let],
+        pub let_: Token![let],
         pub pat: Pat,
         pub init: Option<LocalInit>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct LocalInit {
-        pub eq_token: Token![=],
+        pub equal: Token![=],
         pub expr: Box<Expr>,
         pub diverge: Option<(Token![else], Box<Expr>)>,
     }
@@ -1322,7 +1313,7 @@ ast_struct! {
     pub struct StmtMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 
@@ -1353,17 +1344,17 @@ mod ty {
         pub struct TypeArray {
             pub bracket_token: tok::Bracket,
             pub elem: Box<Type>,
-            pub semi_token: Token![;],
+            pub semi: Token![;],
             pub len: Expr,
         }
     }
     ast_struct! {
         pub struct TypeBareFn {
             pub lifetimes: Option<BoundLifetimes>,
-            pub unsafety: Option<Token![unsafe]>,
+            pub unsafe_: Option<Token![unsafe]>,
             pub abi: Option<Abi>,
-            pub fn_token: Token![fn],
-            pub paren_token: tok::Paren,
+            pub fn_: Token![fn],
+            pub paren: tok::Paren,
             pub inputs: Punctuated<BareFnArg, Token![,]>,
             pub variadic: Option<BareVariadic>,
             pub output: ReturnType,
@@ -1371,19 +1362,19 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeGroup {
-            pub group_token: tok::Group,
+            pub group: tok::Group,
             pub elem: Box<Type>,
         }
     }
     ast_struct! {
         pub struct TypeImplTrait {
-            pub impl_token: Token![impl],
+            pub impl_: Token![impl],
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
     }
     ast_struct! {
         pub struct TypeInfer {
-            pub underscore_token: Token![_],
+            pub underscore: Token![_],
         }
     }
     ast_struct! {
@@ -1393,7 +1384,7 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeNever {
-            pub bang_token: Token![!],
+            pub bang: Token![!],
         }
     }
     ast_struct! {
@@ -1410,41 +1401,41 @@ mod ty {
     }
     ast_struct! {
         pub struct TypePtr {
-            pub star_token: Token![*],
-            pub const_token: Option<Token![const]>,
-            pub mutability: Option<Token![mut]>,
+            pub star: Token![*],
+            pub const_: Option<Token![const]>,
+            pub mut_: Option<Token![mut]>,
             pub elem: Box<Type>,
         }
     }
     ast_struct! {
         pub struct TypeReference {
-            pub and_token: Token![&],
+            pub and_: Token![&],
             pub lifetime: Option<Lifetime>,
-            pub mutability: Option<Token![mut]>,
+            pub mut_: Option<Token![mut]>,
             pub elem: Box<Type>,
         }
     }
     ast_struct! {
         pub struct TypeSlice {
-            pub bracket_token: tok::Bracket,
+            pub bracket: tok::Bracket,
             pub elem: Box<Type>,
         }
     }
     ast_struct! {
         pub struct TypeTraitObject {
-            pub dyn_token: Option<Token![dyn]>,
+            pub dyn_: Option<Token![dyn]>,
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
     }
     ast_struct! {
         pub struct TypeTuple {
-            pub paren_token: tok::Paren,
+            pub paren: tok::Paren,
             pub elems: Punctuated<Type, Token![,]>,
         }
     }
     ast_struct! {
         pub struct Abi {
-            pub extern_token: Token![extern],
+            pub extern_: Token![extern],
             pub name: Option<LitStr>,
         }
     }
@@ -1612,7 +1603,7 @@ ast_struct! {
     pub struct Field {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub mutability: FieldMutability,
+        pub mutability: FieldMut,
         pub ident: Option<Ident>,
         pub colon_token: Option<Token![:]>,
         pub ty: Type,
@@ -1636,21 +1627,21 @@ ast_enum! {
 }
 ast_struct! {
     pub struct DataStruct {
-        pub struct_token: Token![struct],
+        pub struct_: Token![struct],
         pub fields: Fields,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_struct! {
     pub struct DataEnum {
-        pub enum_token: Token![enum],
-        pub brace_token: tok::Brace,
+        pub enum_: Token![enum],
+        pub brace: tok::Brace,
         pub variants: Punctuated<Variant, Token![,]>,
     }
 }
 ast_struct! {
     pub struct DataUnion {
-        pub union_token: Token![union],
+        pub union_: Token![union],
         pub fields: FieldsNamed,
     }
 }
@@ -2148,9 +2139,9 @@ mod lookahead {
 ast_struct! {
     pub struct Macro {
         pub path: Path,
-        pub bang_token: Token![!],
-        pub delimiter: MacroDelimiter,
-        pub tokens: TokenStream,
+        pub bang: Token![!],
+        pub delim: MacroDelimiter,
+        pub toks: TokenStream,
     }
 }
 ast_enum! {
@@ -2175,8 +2166,8 @@ impl Macro {
     }
 
     pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
-        let scope = self.delimiter.span().close();
-        parse::parse_scoped(parser, scope, self.tokens.clone())
+        let scope = self.delim.span().close();
+        parse::parse_scoped(parser, scope, self.toks.clone())
     }
 }
 fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
@@ -2308,14 +2299,14 @@ ast_enum! {
 }
 ast_struct! {
     pub struct VisRestricted {
-        pub pub_token: Token![pub],
-        pub paren_token: tok::Paren,
-        pub in_token: Option<Token![in]>,
+        pub pub_: Token![pub],
+        pub paren: tok::Paren,
+        pub in_: Option<Token![in]>,
         pub path: Box<Path>,
     }
 }
 ast_enum! {
-    pub enum FieldMutability {
+    pub enum FieldMut {
         None,
     }
 }
@@ -2444,7 +2435,7 @@ impl<'a> PartialEq for TokenTreeHelper<'a> {
                 let mut s2 = g2.stream().into_iter();
                 for item1 in s1 {
                     let item2 = match s2.next() {
-                        Some(item) => item,
+                        Some(x) => x,
                         None => return false,
                     };
                     if TokenTreeHelper(&item1) != TokenTreeHelper(&item2) {

@@ -146,9 +146,9 @@ impl Parse for Generics {
                 params.push_value(GenericParam::Type(TypeParam {
                     attrs,
                     ident: input.call(Ident::parse_any)?,
-                    colon_token: None,
+                    colon: None,
                     bounds: Punctuated::new(),
-                    eq_token: None,
+                    equal: None,
                     default: None,
                 }));
             } else {
@@ -162,10 +162,10 @@ impl Parse for Generics {
         }
         let gt_token: Token![>] = input.parse()?;
         Ok(Generics {
-            lt_token: Some(lt_token),
+            lt: Some(lt_token),
             params,
-            gt_token: Some(gt_token),
-            where_clause: None,
+            gt: Some(gt_token),
+            clause: None,
         })
     }
 }
@@ -199,7 +199,7 @@ impl Parse for LifetimeParam {
         Ok(LifetimeParam {
             attrs: input.call(Attribute::parse_outer)?,
             lifetime: input.parse()?,
-            colon_token: {
+            colon: {
                 if input.peek(Token![:]) {
                     has_colon = true;
                     Some(input.parse()?)
@@ -232,8 +232,8 @@ impl Parse for LifetimeParam {
 impl Parse for BoundLifetimes {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(BoundLifetimes {
-            for_token: input.parse()?,
-            lt_token: input.parse()?,
+            for_: input.parse()?,
+            lt: input.parse()?,
             lifetimes: {
                 let mut lifetimes = Punctuated::new();
                 while !input.peek(Token![>]) {
@@ -242,7 +242,7 @@ impl Parse for BoundLifetimes {
                     lifetimes.push_value(GenericParam::Lifetime(LifetimeParam {
                         attrs,
                         lifetime,
-                        colon_token: None,
+                        colon: None,
                         bounds: Punctuated::new(),
                     }));
                     if input.peek(Token![>]) {
@@ -252,7 +252,7 @@ impl Parse for BoundLifetimes {
                 }
                 lifetimes
             },
-            gt_token: input.parse()?,
+            gt: input.parse()?,
         })
     }
 }
@@ -294,9 +294,9 @@ impl Parse for TypeParam {
         Ok(TypeParam {
             attrs,
             ident,
-            colon_token,
+            colon: colon_token,
             bounds,
-            eq_token,
+            equal: eq_token,
             default,
         })
     }
@@ -319,7 +319,7 @@ impl Parse for TypeParamBound {
             content.parse::<Token![const]>()?;
         }
         let mut bound: TraitBound = content.parse()?;
-        bound.paren_token = paren_token;
+        bound.paren = paren_token;
         if is_tilde_const {
             Ok(TypeParamBound::Verbatim(verbatim_between(&begin, input)))
         } else {
@@ -365,7 +365,7 @@ impl Parse for TraitBound {
             path.segments.last_mut().unwrap().arguments = parenthesized;
         }
         Ok(TraitBound {
-            paren_token: None,
+            paren: None,
             modifier,
             lifetimes,
             path,
@@ -386,11 +386,11 @@ impl Parse for ConstParam {
         let mut default = None;
         Ok(ConstParam {
             attrs: input.call(Attribute::parse_outer)?,
-            const_token: input.parse()?,
+            const_: input.parse()?,
             ident: input.parse()?,
-            colon_token: input.parse()?,
+            colon: input.parse()?,
             ty: input.parse()?,
-            eq_token: {
+            equal: {
                 if input.peek(Token![=]) {
                     let eq_token = input.parse()?;
                     default = Some(const_argument(input)?);
@@ -406,8 +406,8 @@ impl Parse for ConstParam {
 impl Parse for WhereClause {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(WhereClause {
-            where_token: input.parse()?,
-            predicates: {
+            where_: input.parse()?,
+            preds: {
                 let mut predicates = Punctuated::new();
                 loop {
                     if input.is_empty()
@@ -441,12 +441,12 @@ impl Parse for Option<WhereClause> {
         }
     }
 }
-impl Parse for WherePredicate {
+impl Parse for WherePred {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Lifetime) && input.peek2(Token![:]) {
-            Ok(WherePredicate::Lifetime(PredicateLifetime {
+            Ok(WherePred::Lifetime(PredLifetime {
                 lifetime: input.parse()?,
-                colon_token: input.parse()?,
+                colon: input.parse()?,
                 bounds: {
                     let mut bounds = Punctuated::new();
                     loop {
@@ -471,10 +471,10 @@ impl Parse for WherePredicate {
                 },
             }))
         } else {
-            Ok(WherePredicate::Type(PredicateType {
+            Ok(WherePred::Type(PredType {
                 lifetimes: input.parse()?,
                 bounded_ty: input.parse()?,
-                colon_token: input.parse()?,
+                colon: input.parse()?,
                 bounds: {
                     let mut bounds = Punctuated::new();
                     loop {
@@ -954,9 +954,9 @@ fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_st
             attrs: Vec::new(),
             mac: Macro {
                 path,
-                bang_token,
-                delimiter,
-                tokens,
+                bang: bang_token,
+                delim: delimiter,
+                toks: tokens,
             },
         }));
     }
@@ -1231,7 +1231,10 @@ impl Parse for ExprForLoop {
             pat: Box::new(pat),
             in_token,
             expr: Box::new(expr),
-            body: Block { brace_token, stmts },
+            body: Block {
+                brace: brace_token,
+                stmts,
+            },
         })
     }
 }
@@ -1248,7 +1251,10 @@ impl Parse for ExprLoop {
             attrs,
             label,
             loop_token,
-            body: Block { brace_token, stmts },
+            body: Block {
+                brace: brace_token,
+                stmts,
+            },
         })
     }
 }
@@ -1442,7 +1448,7 @@ fn closure_arg(input: ParseStream) -> Result<Pat> {
         Ok(Pat::Type(PatType {
             attrs,
             pat: Box::new(pat),
-            colon_token: input.parse()?,
+            colon: input.parse()?,
             ty: input.parse()?,
         }))
     } else {
@@ -1483,7 +1489,10 @@ impl Parse for ExprWhile {
             label,
             while_token,
             cond: Box::new(cond),
-            body: Block { brace_token, stmts },
+            body: Block {
+                brace: brace_token,
+                stmts,
+            },
         })
     }
 }
@@ -1497,7 +1506,10 @@ impl Parse for ExprConst {
         Ok(ExprConst {
             attrs: inner_attrs,
             const_token,
-            block: Block { brace_token, stmts },
+            block: Block {
+                brace: brace_token,
+                stmts,
+            },
         })
     }
 }
@@ -1639,7 +1651,10 @@ impl Parse for ExprUnsafe {
         Ok(ExprUnsafe {
             attrs: inner_attrs,
             unsafe_token,
-            block: Block { brace_token, stmts },
+            block: Block {
+                brace: brace_token,
+                stmts,
+            },
         })
     }
 }
@@ -1654,7 +1669,10 @@ impl Parse for ExprBlock {
         Ok(ExprBlock {
             attrs,
             label,
-            block: Block { brace_token, stmts },
+            block: Block {
+                brace: brace_token,
+                stmts,
+            },
         })
     }
 }
@@ -2030,14 +2048,14 @@ impl FlexibleItemType {
         let (colon_token, bounds) = Self::parse_optional_bounds(input)?;
         match where_clause_location {
             WhereClauseLocation::BeforeEq | WhereClauseLocation::Both => {
-                generics.where_clause = input.parse()?;
+                generics.clause = input.parse()?;
             },
             WhereClauseLocation::AfterEq => {},
         }
         let ty = Self::parse_optional_definition(input)?;
         match where_clause_location {
-            WhereClauseLocation::AfterEq | WhereClauseLocation::Both if generics.where_clause.is_none() => {
-                generics.where_clause = input.parse()?;
+            WhereClauseLocation::AfterEq | WhereClauseLocation::Both if generics.clause.is_none() => {
+                generics.clause = input.parse()?;
             },
             _ => {},
         }
@@ -2102,9 +2120,9 @@ impl Parse for ItemMacro {
             ident,
             mac: Macro {
                 path,
-                bang_token,
-                delimiter,
-                tokens,
+                bang: bang_token,
+                delim: delimiter,
+                toks: tokens,
             },
             semi_token,
         })
@@ -2319,7 +2337,7 @@ impl Parse for Signature {
         let paren_token = parenthesized!(content in input);
         let (inputs, variadic) = parse_fn_args(&content)?;
         let output: ReturnType = input.parse()?;
-        generics.where_clause = input.parse()?;
+        generics.clause = input.parse()?;
         Ok(Signature {
             constness,
             asyncness,
@@ -2352,7 +2370,10 @@ fn parse_rest_of_fn(input: ParseStream, mut attrs: Vec<Attribute>, vis: Visibili
         attrs,
         vis,
         sig,
-        block: Box::new(Block { brace_token, stmts }),
+        block: Box::new(Block {
+            brace: brace_token,
+            stmts,
+        }),
     })
 }
 impl Parse for FnArg {
@@ -2386,9 +2407,9 @@ fn parse_fn_arg_or_variadic(
             attrs,
             pat: Box::new(Pat::Wild(PatWild {
                 attrs: Vec::new(),
-                underscore_token: Token![_](span),
+                underscore: Token![_](span),
             })),
-            colon_token: Token![:](span),
+            colon: Token![:](span),
             ty: input.parse()?,
         })));
     }
@@ -2407,7 +2428,7 @@ fn parse_fn_arg_or_variadic(
     Ok(FnArgOrVariadic::FnArg(FnArg::Typed(PatType {
         attrs,
         pat,
-        colon_token,
+        colon: colon_token,
         ty: input.parse()?,
     })))
 }
@@ -2432,9 +2453,9 @@ impl Parse for Receiver {
             });
             if let Some((ampersand, lifetime)) = reference.as_ref() {
                 ty = Type::Reference(TypeReference {
-                    and_token: Token![&](ampersand.span),
+                    and_: Token![&](ampersand.span),
                     lifetime: lifetime.clone(),
-                    mutability: mutability.as_ref().map(|m| Token![mut](m.span)),
+                    mut_: mutability.as_ref().map(|m| Token![mut](m.span)),
                     elem: Box::new(ty),
                 });
             }
@@ -2670,7 +2691,7 @@ impl Parse for ForeignItemType {
             ident: input.parse()?,
             generics: {
                 let mut generics: Generics = input.parse()?;
-                generics.where_clause = input.parse()?;
+                generics.clause = input.parse()?;
                 generics
             },
             semi_token: input.parse()?,
@@ -2706,7 +2727,7 @@ impl Parse for ForeignItemMacro {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let mac: Macro = input.parse()?;
-        let semi_token: Option<Token![;]> = if mac.delimiter.is_brace() {
+        let semi_token: Option<Token![;]> = if mac.delim.is_brace() {
             None
         } else {
             Some(input.parse()?)
@@ -2723,7 +2744,7 @@ impl Parse for ItemType {
             ident: input.parse()?,
             generics: {
                 let mut generics: Generics = input.parse()?;
-                generics.where_clause = input.parse()?;
+                generics.clause = input.parse()?;
                 generics
             },
             eq_token: input.parse()?,
@@ -2773,7 +2794,7 @@ impl Parse for ItemStruct {
             struct_token,
             ident,
             generics: Generics {
-                where_clause,
+                clause: where_clause,
                 ..generics
             },
             fields,
@@ -2795,7 +2816,7 @@ impl Parse for ItemEnum {
             enum_token,
             ident,
             generics: Generics {
-                where_clause,
+                clause: where_clause,
                 ..generics
             },
             brace_token,
@@ -2817,7 +2838,7 @@ impl Parse for ItemUnion {
             union_token,
             ident,
             generics: Generics {
-                where_clause,
+                clause: where_clause,
                 ..generics
             },
             fields,
@@ -2882,7 +2903,7 @@ fn parse_rest_of_trait(
             supertraits.push_punct(input.parse()?);
         }
     }
-    generics.where_clause = input.parse()?;
+    generics.clause = input.parse()?;
     let content;
     let brace_token = braced!(content in input);
     parse_inner(&content, &mut attrs)?;
@@ -2941,7 +2962,7 @@ fn parse_rest_of_trait_alias(
         }
         bounds.push_punct(input.parse()?);
     }
-    generics.where_clause = input.parse()?;
+    generics.clause = input.parse()?;
     let semi_token: Token![;] = input.parse()?;
     Ok(ItemTraitAlias {
         attrs,
@@ -3057,7 +3078,10 @@ impl Parse for TraitItemFn {
         Ok(TraitItemFn {
             attrs,
             sig,
-            default: brace_token.map(|brace_token| Block { brace_token, stmts }),
+            default: brace_token.map(|brace_token| Block {
+                brace: brace_token,
+                stmts,
+            }),
             semi_token,
         })
     }
@@ -3070,7 +3094,7 @@ impl Parse for TraitItemType {
         let mut generics: Generics = input.parse()?;
         let (colon_token, bounds) = FlexibleItemType::parse_optional_bounds(input)?;
         let default = FlexibleItemType::parse_optional_definition(input)?;
-        generics.where_clause = input.parse()?;
+        generics.clause = input.parse()?;
         let semi_token: Token![;] = input.parse()?;
         Ok(TraitItemType {
             attrs,
@@ -3115,7 +3139,7 @@ impl Parse for TraitItemMacro {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let mac: Macro = input.parse()?;
-        let semi_token: Option<Token![;]> = if mac.delimiter.is_brace() {
+        let semi_token: Option<Token![;]> = if mac.delim.is_brace() {
             None
         } else {
             Some(input.parse()?)
@@ -3198,7 +3222,7 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
             Type::Verbatim(verbatim_between(&begin, input))
         };
     }
-    generics.where_clause = input.parse()?;
+    generics.clause = input.parse()?;
     let content;
     let brace_token = braced!(content in input);
     parse_inner(&content, &mut attrs)?;
@@ -3342,7 +3366,7 @@ fn parse_impl_item_fn(input: ParseStream, allow_omitted_body: bool) -> Result<Op
     let brace_token = braced!(content in input);
     attrs.extend(content.call(Attribute::parse_inner)?);
     let block = Block {
-        brace_token,
+        brace: brace_token,
         stmts: content.call(Block::parse_within)?,
     };
     Ok(Some(ImplItemFn {
@@ -3363,7 +3387,7 @@ impl Parse for ImplItemType {
         let mut generics: Generics = input.parse()?;
         let eq_token: Token![=] = input.parse()?;
         let ty: Type = input.parse()?;
-        generics.where_clause = input.parse()?;
+        generics.clause = input.parse()?;
         let semi_token: Token![;] = input.parse()?;
         Ok(ImplItemType {
             attrs,
@@ -3410,7 +3434,7 @@ impl Parse for ImplItemMacro {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let mac: Macro = input.parse()?;
-        let semi_token: Option<Token![;]> = if mac.delimiter.is_brace() {
+        let semi_token: Option<Token![;]> = if mac.delim.is_brace() {
             None
         } else {
             Some(input.parse()?)

@@ -220,25 +220,25 @@ impl From<DeriveInput> for Item {
             Data::Struct(data) => Item::Struct(ItemStruct {
                 attrs: input.attrs,
                 vis: input.vis,
-                struct_token: data.struct_token,
+                struct_token: data.struct_,
                 ident: input.ident,
                 generics: input.generics,
                 fields: data.fields,
-                semi_token: data.semi_token,
+                semi_token: data.semi,
             }),
             Data::Enum(data) => Item::Enum(ItemEnum {
                 attrs: input.attrs,
                 vis: input.vis,
-                enum_token: data.enum_token,
+                enum_token: data.enum_,
                 ident: input.ident,
                 generics: input.generics,
-                brace_token: data.brace_token,
+                brace_token: data.brace,
                 variants: data.variants,
             }),
             Data::Union(data) => Item::Union(ItemUnion {
                 attrs: input.attrs,
                 vis: input.vis,
-                union_token: data.union_token,
+                union_token: data.union_,
                 ident: input.ident,
                 generics: input.generics,
                 fields: data.fields,
@@ -254,9 +254,9 @@ impl From<ItemStruct> for DeriveInput {
             ident: input.ident,
             generics: input.generics,
             data: Data::Struct(DataStruct {
-                struct_token: input.struct_token,
+                struct_: input.struct_token,
                 fields: input.fields,
-                semi_token: input.semi_token,
+                semi: input.semi_token,
             }),
         }
     }
@@ -269,8 +269,8 @@ impl From<ItemEnum> for DeriveInput {
             ident: input.ident,
             generics: input.generics,
             data: Data::Enum(DataEnum {
-                enum_token: input.enum_token,
-                brace_token: input.brace_token,
+                enum_: input.enum_token,
+                brace: input.brace_token,
                 variants: input.variants,
             }),
         }
@@ -284,7 +284,7 @@ impl From<ItemUnion> for DeriveInput {
             ident: input.ident,
             generics: input.generics,
             data: Data::Union(DataUnion {
-                union_token: input.union_token,
+                union_: input.union_token,
                 fields: input.fields,
             }),
         }

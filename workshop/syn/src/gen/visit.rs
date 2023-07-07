@@ -195,7 +195,7 @@ pub trait Visit<'ast> {
     fn visit_field(&mut self, i: &'ast Field) {
         visit_field(self, i);
     }
-    fn visit_field_mutability(&mut self, i: &'ast FieldMutability) {
+    fn visit_field_mutability(&mut self, i: &'ast FieldMut) {
         visit_field_mutability(self, i);
     }
     fn visit_field_pat(&mut self, i: &'ast FieldPat) {
@@ -420,10 +420,10 @@ pub trait Visit<'ast> {
     fn visit_path_segment(&mut self, i: &'ast PathSegment) {
         visit_path_segment(self, i);
     }
-    fn visit_predicate_lifetime(&mut self, i: &'ast PredicateLifetime) {
+    fn visit_predicate_lifetime(&mut self, i: &'ast PredLifetime) {
         visit_predicate_lifetime(self, i);
     }
-    fn visit_predicate_type(&mut self, i: &'ast PredicateType) {
+    fn visit_predicate_type(&mut self, i: &'ast PredType) {
         visit_predicate_type(self, i);
     }
     fn visit_qself(&mut self, i: &'ast QSelf) {
@@ -561,7 +561,7 @@ pub trait Visit<'ast> {
     fn visit_where_clause(&mut self, i: &'ast WhereClause) {
         visit_where_clause(self, i);
     }
-    fn visit_where_predicate(&mut self, i: &'ast WherePredicate) {
+    fn visit_where_predicate(&mut self, i: &'ast WherePred) {
         visit_where_predicate(self, i);
     }
 }
@@ -1480,12 +1480,12 @@ where
     skip!(node.colon_token);
     v.visit_type(&node.ty);
 }
-pub fn visit_field_mutability<'ast, V>(v: &mut V, node: &'ast FieldMutability)
+pub fn visit_field_mutability<'ast, V>(v: &mut V, node: &'ast FieldMut)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        FieldMutability::None => {},
+        FieldMut::None => {},
     }
 }
 pub fn visit_field_pat<'ast, V>(v: &mut V, node: &'ast FieldPat)
@@ -1691,7 +1691,7 @@ where
         v.visit_generic_param(it);
     }
     skip!(node.gt_token);
-    if let Some(it) = &node.where_clause {
+    if let Some(it) = &node.clause {
         v.visit_where_clause(it);
     }
 }
@@ -2220,7 +2220,7 @@ where
 {
     v.visit_path(&node.path);
     skip!(node.bang_token);
-    v.visit_macro_delimiter(&node.delimiter);
+    v.visit_macro_delimiter(&node.delim);
     skip!(node.tokens);
 }
 pub fn visit_macro_delimiter<'ast, V>(v: &mut V, node: &'ast MacroDelimiter)
@@ -2525,7 +2525,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_path_arguments(&node.arguments);
 }
-pub fn visit_predicate_lifetime<'ast, V>(v: &mut V, node: &'ast PredicateLifetime)
+pub fn visit_predicate_lifetime<'ast, V>(v: &mut V, node: &'ast PredLifetime)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2536,7 +2536,7 @@ where
         v.visit_lifetime(it);
     }
 }
-pub fn visit_predicate_type<'ast, V>(v: &mut V, node: &'ast PredicateType)
+pub fn visit_predicate_type<'ast, V>(v: &mut V, node: &'ast PredType)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -3125,20 +3125,20 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.where_token);
-    for el in Punctuated::pairs(&node.predicates) {
+    for el in Punctuated::pairs(&node.preds) {
         let it = el.value();
         v.visit_where_predicate(it);
     }
 }
-pub fn visit_where_predicate<'ast, V>(v: &mut V, node: &'ast WherePredicate)
+pub fn visit_where_predicate<'ast, V>(v: &mut V, node: &'ast WherePred)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        WherePredicate::Lifetime(_binding_0) => {
+        WherePred::Lifetime(_binding_0) => {
             v.visit_predicate_lifetime(_binding_0);
         },
-        WherePredicate::Type(_binding_0) => {
+        WherePred::Type(_binding_0) => {
             v.visit_predicate_type(_binding_0);
         },
     }

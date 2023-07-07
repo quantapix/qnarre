@@ -320,7 +320,7 @@ impl Debug for Lite<syn::ConstParam> {
         }
         formatter.field("ident", Lite(&self.value.ident));
         formatter.field("ty", Lite(&self.value.ty));
-        if self.value.eq_token.is_some() {
+        if self.value.equal.is_some() {
             formatter.field("eq_token", &Present);
         }
         if let Some(val) = &self.value.default {
@@ -370,7 +370,7 @@ impl Debug for Lite<syn::Data> {
             syn::Data::Struct(_val) => {
                 let mut formatter = formatter.debug_struct("Data::Struct");
                 formatter.field("fields", Lite(&_val.fields));
-                if _val.semi_token.is_some() {
+                if _val.semi.is_some() {
                     formatter.field("semi_token", &Present);
                 }
                 formatter.finish()
@@ -403,7 +403,7 @@ impl Debug for Lite<syn::DataStruct> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("DataStruct");
         formatter.field("fields", Lite(&self.value.fields));
-        if self.value.semi_token.is_some() {
+        if self.value.semi.is_some() {
             formatter.field("semi_token", &Present);
         }
         formatter.finish()
@@ -1711,7 +1711,7 @@ impl Debug for Lite<syn::Field> {
         }
         formatter.field("vis", Lite(&self.value.vis));
         match self.value.mutability {
-            syn::FieldMutability::None => {},
+            syn::FieldMut::None => {},
             _ => {
                 formatter.field("mutability", Lite(&self.value.mutability));
             },
@@ -1737,10 +1737,10 @@ impl Debug for Lite<syn::Field> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::FieldMutability> {
+impl Debug for Lite<syn::FieldMut> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::FieldMutability::None => formatter.write_str("FieldMutability::None"),
+            syn::FieldMut::None => formatter.write_str("FieldMutability::None"),
             _ => unreachable!(),
         }
     }
@@ -1752,7 +1752,7 @@ impl Debug for Lite<syn::FieldPat> {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
         formatter.field("member", Lite(&self.value.member));
-        if self.value.colon_token.is_some() {
+        if self.value.colon.is_some() {
             formatter.field("colon_token", &Present);
         }
         formatter.field("pat", Lite(&self.value.pat));
@@ -2051,16 +2051,16 @@ impl Debug for Lite<syn::GenericParam> {
 impl Debug for Lite<syn::Generics> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Generics");
-        if self.value.lt_token.is_some() {
+        if self.value.lt.is_some() {
             formatter.field("lt_token", &Present);
         }
         if !self.value.params.is_empty() {
             formatter.field("params", Lite(&self.value.params));
         }
-        if self.value.gt_token.is_some() {
+        if self.value.gt.is_some() {
             formatter.field("gt_token", &Present);
         }
-        if let Some(val) = &self.value.where_clause {
+        if let Some(val) = &self.value.clause {
             #[derive(RefCast)]
             #[repr(transparent)]
             struct Print(syn::WhereClause);
@@ -2848,7 +2848,7 @@ impl Debug for Lite<syn::LifetimeParam> {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
         formatter.field("lifetime", Lite(&self.value.lifetime));
-        if self.value.colon_token.is_some() {
+        if self.value.colon.is_some() {
             formatter.field("colon_token", &Present);
         }
         if !self.value.bounds.is_empty() {
@@ -2968,8 +2968,8 @@ impl Debug for Lite<syn::Macro> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Macro");
         formatter.field("path", Lite(&self.value.path));
-        formatter.field("delimiter", Lite(&self.value.delimiter));
-        formatter.field("tokens", Lite(&self.value.tokens));
+        formatter.field("delimiter", Lite(&self.value.delim));
+        formatter.field("tokens", Lite(&self.value.toks));
         formatter.finish()
     }
 }
@@ -3082,10 +3082,10 @@ impl Debug for Lite<syn::Pat> {
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
-                if _val.by_ref.is_some() {
+                if _val.ref_.is_some() {
                     formatter.field("by_ref", &Present);
                 }
-                if _val.mutability.is_some() {
+                if _val.mut_.is_some() {
                     formatter.field("mutability", &Present);
                 }
                 formatter.field("ident", Lite(&_val.ident));
@@ -3289,10 +3289,10 @@ impl Debug for Lite<syn::PatIdent> {
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
-        if self.value.by_ref.is_some() {
+        if self.value.ref_.is_some() {
             formatter.field("by_ref", &Present);
         }
-        if self.value.mutability.is_some() {
+        if self.value.mut_.is_some() {
             formatter.field("mutability", &Present);
         }
         formatter.field("ident", Lite(&self.value.ident));
@@ -3522,7 +3522,7 @@ impl Debug for Lite<syn::PathSegment> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::PredicateLifetime> {
+impl Debug for Lite<syn::PredLifetime> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateLifetime");
         formatter.field("lifetime", Lite(&self.value.lifetime));
@@ -3532,7 +3532,7 @@ impl Debug for Lite<syn::PredicateLifetime> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::PredicateType> {
+impl Debug for Lite<syn::PredType> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateType");
         if let Some(val) = &self.value.lifetimes {
@@ -3561,7 +3561,7 @@ impl Debug for Lite<syn::QSelf> {
         let mut formatter = formatter.debug_struct("QSelf");
         formatter.field("ty", Lite(&self.value.ty));
         formatter.field("position", Lite(&self.value.position));
-        if self.value.as_token.is_some() {
+        if self.value.as_.is_some() {
             formatter.field("as_token", &Present);
         }
         formatter.finish()
@@ -3749,7 +3749,7 @@ impl Debug for Lite<syn::Stmt> {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
                 formatter.field("mac", Lite(&_val.mac));
-                if _val.semi_token.is_some() {
+                if _val.semi.is_some() {
                     formatter.field("semi_token", &Present);
                 }
                 formatter.finish()
@@ -3764,7 +3764,7 @@ impl Debug for Lite<syn::StmtMacro> {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
         formatter.field("mac", Lite(&self.value.mac));
-        if self.value.semi_token.is_some() {
+        if self.value.semi.is_some() {
             formatter.field("semi_token", &Present);
         }
         formatter.finish()
@@ -3773,7 +3773,7 @@ impl Debug for Lite<syn::StmtMacro> {
 impl Debug for Lite<syn::TraitBound> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("TraitBound");
-        if self.value.paren_token.is_some() {
+        if self.value.paren.is_some() {
             formatter.field("paren_token", &Present);
         }
         match self.value.modifier {
@@ -4036,7 +4036,7 @@ impl Debug for Lite<syn::Type> {
                     }
                     formatter.field("lifetimes", Print::ref_cast(val));
                 }
-                if _val.unsafety.is_some() {
+                if _val.unsafe_.is_some() {
                     formatter.field("unsafety", &Present);
                 }
                 if let Some(val) = &_val.abi {
@@ -4124,10 +4124,10 @@ impl Debug for Lite<syn::Type> {
             },
             syn::Type::Ptr(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Ptr");
-                if _val.const_token.is_some() {
+                if _val.const_.is_some() {
                     formatter.field("const_token", &Present);
                 }
-                if _val.mutability.is_some() {
+                if _val.mut_.is_some() {
                     formatter.field("mutability", &Present);
                 }
                 formatter.field("elem", Lite(&_val.elem));
@@ -4149,7 +4149,7 @@ impl Debug for Lite<syn::Type> {
                     }
                     formatter.field("lifetime", Print::ref_cast(val));
                 }
-                if _val.mutability.is_some() {
+                if _val.mut_.is_some() {
                     formatter.field("mutability", &Present);
                 }
                 formatter.field("elem", Lite(&_val.elem));
@@ -4162,7 +4162,7 @@ impl Debug for Lite<syn::Type> {
             },
             syn::Type::TraitObject(_val) => {
                 let mut formatter = formatter.debug_struct("Type::TraitObject");
-                if _val.dyn_token.is_some() {
+                if _val.dyn_.is_some() {
                     formatter.field("dyn_token", &Present);
                 }
                 if !_val.bounds.is_empty() {
@@ -4213,7 +4213,7 @@ impl Debug for Lite<syn::TypeBareFn> {
             }
             formatter.field("lifetimes", Print::ref_cast(val));
         }
-        if self.value.unsafety.is_some() {
+        if self.value.unsafe_.is_some() {
             formatter.field("unsafety", &Present);
         }
         if let Some(val) = &self.value.abi {
@@ -4293,13 +4293,13 @@ impl Debug for Lite<syn::TypeParam> {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
         formatter.field("ident", Lite(&self.value.ident));
-        if self.value.colon_token.is_some() {
+        if self.value.colon.is_some() {
             formatter.field("colon_token", &Present);
         }
         if !self.value.bounds.is_empty() {
             formatter.field("bounds", Lite(&self.value.bounds));
         }
-        if self.value.eq_token.is_some() {
+        if self.value.equal.is_some() {
             formatter.field("eq_token", &Present);
         }
         if let Some(val) = &self.value.default {
@@ -4376,10 +4376,10 @@ impl Debug for Lite<syn::TypePath> {
 impl Debug for Lite<syn::TypePtr> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("TypePtr");
-        if self.value.const_token.is_some() {
+        if self.value.const_.is_some() {
             formatter.field("const_token", &Present);
         }
-        if self.value.mutability.is_some() {
+        if self.value.mut_.is_some() {
             formatter.field("mutability", &Present);
         }
         formatter.field("elem", Lite(&self.value.elem));
@@ -4403,7 +4403,7 @@ impl Debug for Lite<syn::TypeReference> {
             }
             formatter.field("lifetime", Print::ref_cast(val));
         }
-        if self.value.mutability.is_some() {
+        if self.value.mut_.is_some() {
             formatter.field("mutability", &Present);
         }
         formatter.field("elem", Lite(&self.value.elem));
@@ -4420,7 +4420,7 @@ impl Debug for Lite<syn::TypeSlice> {
 impl Debug for Lite<syn::TypeTraitObject> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("TypeTraitObject");
-        if self.value.dyn_token.is_some() {
+        if self.value.dyn_.is_some() {
             formatter.field("dyn_token", &Present);
         }
         if !self.value.bounds.is_empty() {
@@ -4590,7 +4590,7 @@ impl Debug for Lite<syn::Variant> {
 impl Debug for Lite<syn::VisRestricted> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("VisRestricted");
-        if self.value.in_token.is_some() {
+        if self.value.in_.is_some() {
             formatter.field("in_token", &Present);
         }
         formatter.field("path", Lite(&self.value.path));
@@ -4606,7 +4606,7 @@ impl Debug for Lite<syn::Visibility> {
             },
             syn::Visibility::Restricted(_val) => {
                 let mut formatter = formatter.debug_struct("Visibility::Restricted");
-                if _val.in_token.is_some() {
+                if _val.in_.is_some() {
                     formatter.field("in_token", &Present);
                 }
                 formatter.field("path", Lite(&_val.path));
@@ -4619,23 +4619,23 @@ impl Debug for Lite<syn::Visibility> {
 impl Debug for Lite<syn::WhereClause> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("WhereClause");
-        if !self.value.predicates.is_empty() {
-            formatter.field("predicates", Lite(&self.value.predicates));
+        if !self.value.preds.is_empty() {
+            formatter.field("predicates", Lite(&self.value.preds));
         }
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::WherePredicate> {
+impl Debug for Lite<syn::WherePred> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::WherePredicate::Lifetime(_val) => {
+            syn::WherePred::Lifetime(_val) => {
                 formatter.write_str("WherePredicate::Lifetime")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::WherePredicate::Type(_val) => {
+            syn::WherePred::Type(_val) => {
                 formatter.write_str("WherePredicate::Type")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;

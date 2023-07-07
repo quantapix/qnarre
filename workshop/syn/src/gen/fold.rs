@@ -196,7 +196,7 @@ pub trait Fold {
     fn fold_field(&mut self, i: Field) -> Field {
         fold_field(self, i)
     }
-    fn fold_field_mutability(&mut self, i: FieldMutability) -> FieldMutability {
+    fn fold_field_mutability(&mut self, i: FieldMut) -> FieldMut {
         fold_field_mutability(self, i)
     }
     fn fold_field_pat(&mut self, i: FieldPat) -> FieldPat {
@@ -424,10 +424,10 @@ pub trait Fold {
     fn fold_path_segment(&mut self, i: PathSegment) -> PathSegment {
         fold_path_segment(self, i)
     }
-    fn fold_predicate_lifetime(&mut self, i: PredicateLifetime) -> PredicateLifetime {
+    fn fold_predicate_lifetime(&mut self, i: PredLifetime) -> PredLifetime {
         fold_predicate_lifetime(self, i)
     }
-    fn fold_predicate_type(&mut self, i: PredicateType) -> PredicateType {
+    fn fold_predicate_type(&mut self, i: PredType) -> PredType {
         fold_predicate_type(self, i)
     }
     fn fold_qself(&mut self, i: QSelf) -> QSelf {
@@ -565,7 +565,7 @@ pub trait Fold {
     fn fold_where_clause(&mut self, i: WhereClause) -> WhereClause {
         fold_where_clause(self, i)
     }
-    fn fold_where_predicate(&mut self, i: WherePredicate) -> WherePredicate {
+    fn fold_where_predicate(&mut self, i: WherePred) -> WherePred {
         fold_where_predicate(self, i)
     }
 }
@@ -574,7 +574,7 @@ where
     F: Fold + ?Sized,
 {
     Abi {
-        extern_token: node.extern_token,
+        extern_: node.extern_,
         name: (node.name).map(|it| f.fold_lit_str(it)),
     }
 }
@@ -587,9 +587,9 @@ where
 {
     AngleBracketedGenericArguments {
         colon2_token: node.colon2_token,
-        lt_token: node.lt_token,
+        lt: node.lt,
         args: FoldHelper::lift(node.args, |it| f.fold_generic_argument(it)),
-        gt_token: node.gt_token,
+        gt: node.gt,
     }
 }
 pub fn fold_arm<F>(f: &mut F, node: Arm) -> Arm
@@ -612,7 +612,7 @@ where
     AssocConst {
         ident: f.fold_ident(node.ident),
         generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        eq_token: node.eq_token,
+        equal: node.equal,
         value: f.fold_expr(node.value),
     }
 }
@@ -623,7 +623,7 @@ where
     AssocType {
         ident: f.fold_ident(node.ident),
         generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        eq_token: node.eq_token,
+        equal: node.equal,
         ty: f.fold_type(node.ty),
     }
 }
@@ -708,7 +708,7 @@ where
     F: Fold + ?Sized,
 {
     Block {
-        brace_token: node.brace_token,
+        brace: node.brace,
         stmts: FoldHelper::lift(node.stmts, |it| f.fold_stmt(it)),
     }
 }
@@ -717,10 +717,10 @@ where
     F: Fold + ?Sized,
 {
     BoundLifetimes {
-        for_token: node.for_token,
-        lt_token: node.lt_token,
+        for_: node.for_,
+        lt: node.lt,
         lifetimes: FoldHelper::lift(node.lifetimes, |it| f.fold_generic_param(it)),
-        gt_token: node.gt_token,
+        gt: node.gt,
     }
 }
 pub fn fold_const_param<F>(f: &mut F, node: ConstParam) -> ConstParam
@@ -729,11 +729,11 @@ where
 {
     ConstParam {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        const_token: node.const_token,
+        const_: node.const_,
         ident: f.fold_ident(node.ident),
-        colon_token: node.colon_token,
+        colon: node.colon,
         ty: f.fold_type(node.ty),
-        eq_token: node.eq_token,
+        equal: node.equal,
         default: (node.default).map(|it| f.fold_expr(it)),
     }
 }
@@ -744,7 +744,7 @@ where
     Constraint {
         ident: f.fold_ident(node.ident),
         generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        colon_token: node.colon_token,
+        colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
@@ -763,8 +763,8 @@ where
     F: Fold + ?Sized,
 {
     DataEnum {
-        enum_token: node.enum_token,
-        brace_token: node.brace_token,
+        enum_: node.enum_,
+        brace: node.brace,
         variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
     }
 }
@@ -773,9 +773,9 @@ where
     F: Fold + ?Sized,
 {
     DataStruct {
-        struct_token: node.struct_token,
+        struct_: node.struct_,
         fields: f.fold_fields(node.fields),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_data_union<F>(f: &mut F, node: DataUnion) -> DataUnion
@@ -783,7 +783,7 @@ where
     F: Fold + ?Sized,
 {
     DataUnion {
-        union_token: node.union_token,
+        union_: node.union_,
         fields: f.fold_fields_named(node.fields),
     }
 }
@@ -1277,12 +1277,12 @@ where
         ty: f.fold_type(node.ty),
     }
 }
-pub fn fold_field_mutability<F>(f: &mut F, node: FieldMutability) -> FieldMutability
+pub fn fold_field_mutability<F>(f: &mut F, node: FieldMut) -> FieldMut
 where
     F: Fold + ?Sized,
 {
     match node {
-        FieldMutability::None => FieldMutability::None,
+        FieldMut::None => FieldMut::None,
     }
 }
 pub fn fold_field_pat<F>(f: &mut F, node: FieldPat) -> FieldPat
@@ -1292,7 +1292,7 @@ where
     FieldPat {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         member: f.fold_member(node.member),
-        colon_token: node.colon_token,
+        colon: node.colon,
         pat: Box::new(f.fold_pat(*node.pat)),
     }
 }
@@ -1443,10 +1443,10 @@ where
     F: Fold + ?Sized,
 {
     Generics {
-        lt_token: node.lt_token,
+        lt: node.lt,
         params: FoldHelper::lift(node.params, |it| f.fold_generic_param(it)),
-        gt_token: node.gt_token,
-        where_clause: (node.where_clause).map(|it| f.fold_where_clause(it)),
+        gt: node.gt,
+        clause: (node.clause).map(|it| f.fold_where_clause(it)),
     }
 }
 pub fn fold_ident<F>(f: &mut F, node: Ident) -> Ident
@@ -1804,7 +1804,7 @@ where
     LifetimeParam {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         lifetime: f.fold_lifetime(node.lifetime),
-        colon_token: node.colon_token,
+        colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
     }
 }
@@ -1892,10 +1892,10 @@ where
 {
     Local {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        let_token: node.let_token,
+        let_: node.let_,
         pat: f.fold_pat(node.pat),
         init: (node.init).map(|it| f.fold_local_init(it)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_local_init<F>(f: &mut F, node: LocalInit) -> LocalInit
@@ -1903,7 +1903,7 @@ where
     F: Fold + ?Sized,
 {
     LocalInit {
-        eq_token: node.eq_token,
+        equal: node.equal,
         expr: Box::new(f.fold_expr(*node.expr)),
         diverge: (node.diverge).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
     }
@@ -1914,9 +1914,9 @@ where
 {
     Macro {
         path: f.fold_path(node.path),
-        bang_token: node.bang_token,
-        delimiter: f.fold_macro_delimiter(node.delimiter),
-        tokens: node.tokens,
+        bang: node.bang,
+        delim: f.fold_macro_delimiter(node.delim),
+        toks: node.toks,
     }
 }
 pub fn fold_macro_delimiter<F>(f: &mut F, node: MacroDelimiter) -> MacroDelimiter
@@ -1976,7 +1976,7 @@ where
     F: Fold + ?Sized,
 {
     ParenthesizedGenericArguments {
-        paren_token: node.paren_token,
+        paren: node.paren,
         inputs: FoldHelper::lift(node.inputs, |it| f.fold_type(it)),
         output: f.fold_return_type(node.output),
     }
@@ -2011,8 +2011,8 @@ where
 {
     PatIdent {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        by_ref: node.by_ref,
-        mutability: node.mutability,
+        ref_: node.ref_,
+        mut_: node.mut_,
         ident: f.fold_ident(node.ident),
         subpat: (node.subpat).map(|it| ((it).0, Box::new(f.fold_pat(*(it).1)))),
     }
@@ -2033,7 +2033,7 @@ where
 {
     PatParen {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren_token: node.paren_token,
+        paren: node.paren,
         pat: Box::new(f.fold_pat(*node.pat)),
     }
 }
@@ -2043,7 +2043,7 @@ where
 {
     PatReference {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        and_token: node.and_token,
+        and_: node.and_,
         mutability: node.mutability,
         pat: Box::new(f.fold_pat(*node.pat)),
     }
@@ -2054,7 +2054,7 @@ where
 {
     PatRest {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        dot2_token: node.dot2_token,
+        dot2: node.dot2,
     }
 }
 pub fn fold_pat_slice<F>(f: &mut F, node: PatSlice) -> PatSlice
@@ -2063,7 +2063,7 @@ where
 {
     PatSlice {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
@@ -2075,7 +2075,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
-        brace_token: node.brace_token,
+        brace: node.brace,
         fields: FoldHelper::lift(node.fields, |it| f.fold_field_pat(it)),
         rest: (node.rest).map(|it| f.fold_pat_rest(it)),
     }
@@ -2086,7 +2086,7 @@ where
 {
     PatTuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren_token: node.paren_token,
+        paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
@@ -2098,7 +2098,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
-        paren_token: node.paren_token,
+        paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
@@ -2109,7 +2109,7 @@ where
     PatType {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         pat: Box::new(f.fold_pat(*node.pat)),
-        colon_token: node.colon_token,
+        colon: node.colon,
         ty: Box::new(f.fold_type(*node.ty)),
     }
 }
@@ -2119,7 +2119,7 @@ where
 {
     PatWild {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        underscore_token: node.underscore_token,
+        underscore: node.underscore,
     }
 }
 pub fn fold_path<F>(f: &mut F, node: Path) -> Path
@@ -2154,24 +2154,24 @@ where
         arguments: f.fold_path_arguments(node.arguments),
     }
 }
-pub fn fold_predicate_lifetime<F>(f: &mut F, node: PredicateLifetime) -> PredicateLifetime
+pub fn fold_predicate_lifetime<F>(f: &mut F, node: PredLifetime) -> PredLifetime
 where
     F: Fold + ?Sized,
 {
-    PredicateLifetime {
+    PredLifetime {
         lifetime: f.fold_lifetime(node.lifetime),
-        colon_token: node.colon_token,
+        colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
     }
 }
-pub fn fold_predicate_type<F>(f: &mut F, node: PredicateType) -> PredicateType
+pub fn fold_predicate_type<F>(f: &mut F, node: PredType) -> PredType
 where
     F: Fold + ?Sized,
 {
-    PredicateType {
+    PredType {
         lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
         bounded_ty: f.fold_type(node.bounded_ty),
-        colon_token: node.colon_token,
+        colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
@@ -2180,11 +2180,11 @@ where
     F: Fold + ?Sized,
 {
     QSelf {
-        lt_token: node.lt_token,
+        lt: node.lt,
         ty: Box::new(f.fold_type(*node.ty)),
         position: node.position,
-        as_token: node.as_token,
-        gt_token: node.gt_token,
+        as_: node.as_,
+        gt_: node.gt_,
     }
 }
 pub fn fold_range_limits<F>(f: &mut F, node: RangeLimits) -> RangeLimits
@@ -2269,7 +2269,7 @@ where
     StmtMacro {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         mac: f.fold_macro(node.mac),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_trait_bound<F>(f: &mut F, node: TraitBound) -> TraitBound
@@ -2277,7 +2277,7 @@ where
     F: Fold + ?Sized,
 {
     TraitBound {
-        paren_token: node.paren_token,
+        paren: node.paren,
         modifier: f.fold_trait_bound_modifier(node.modifier),
         lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
         path: f.fold_path(node.path),
@@ -2384,7 +2384,7 @@ where
     TypeArray {
         bracket_token: node.bracket_token,
         elem: Box::new(f.fold_type(*node.elem)),
-        semi_token: node.semi_token,
+        semi: node.semi,
         len: f.fold_expr(node.len),
     }
 }
@@ -2394,10 +2394,10 @@ where
 {
     TypeBareFn {
         lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
-        unsafety: node.unsafety,
+        unsafe_: node.unsafe_,
         abi: (node.abi).map(|it| f.fold_abi(it)),
-        fn_token: node.fn_token,
-        paren_token: node.paren_token,
+        fn_: node.fn_,
+        paren: node.paren,
         inputs: FoldHelper::lift(node.inputs, |it| f.fold_bare_fn_arg(it)),
         variadic: (node.variadic).map(|it| f.fold_bare_variadic(it)),
         output: f.fold_return_type(node.output),
@@ -2408,7 +2408,7 @@ where
     F: Fold + ?Sized,
 {
     TypeGroup {
-        group_token: node.group_token,
+        group: node.group,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
@@ -2417,7 +2417,7 @@ where
     F: Fold + ?Sized,
 {
     TypeImplTrait {
-        impl_token: node.impl_token,
+        impl_: node.impl_,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
@@ -2426,7 +2426,7 @@ where
     F: Fold + ?Sized,
 {
     TypeInfer {
-        underscore_token: node.underscore_token,
+        underscore: node.underscore,
     }
 }
 pub fn fold_type_macro<F>(f: &mut F, node: TypeMacro) -> TypeMacro
@@ -2441,9 +2441,7 @@ pub fn fold_type_never<F>(f: &mut F, node: TypeNever) -> TypeNever
 where
     F: Fold + ?Sized,
 {
-    TypeNever {
-        bang_token: node.bang_token,
-    }
+    TypeNever { bang: node.bang }
 }
 pub fn fold_type_param<F>(f: &mut F, node: TypeParam) -> TypeParam
 where
@@ -2452,9 +2450,9 @@ where
     TypeParam {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         ident: f.fold_ident(node.ident),
-        colon_token: node.colon_token,
+        colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-        eq_token: node.eq_token,
+        equal: node.equal,
         default: (node.default).map(|it| f.fold_type(it)),
     }
 }
@@ -2491,9 +2489,9 @@ where
     F: Fold + ?Sized,
 {
     TypePtr {
-        star_token: node.star_token,
-        const_token: node.const_token,
-        mutability: node.mutability,
+        star: node.star,
+        const_: node.const_,
+        mut_: node.mut_,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
@@ -2502,9 +2500,9 @@ where
     F: Fold + ?Sized,
 {
     TypeReference {
-        and_token: node.and_token,
+        and_: node.and_,
         lifetime: (node.lifetime).map(|it| f.fold_lifetime(it)),
-        mutability: node.mutability,
+        mut_: node.mut_,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
@@ -2513,7 +2511,7 @@ where
     F: Fold + ?Sized,
 {
     TypeSlice {
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
@@ -2522,7 +2520,7 @@ where
     F: Fold + ?Sized,
 {
     TypeTraitObject {
-        dyn_token: node.dyn_token,
+        dyn_: node.dyn_,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
@@ -2531,7 +2529,7 @@ where
     F: Fold + ?Sized,
 {
     TypeTuple {
-        paren_token: node.paren_token,
+        paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_type(it)),
     }
 }
@@ -2629,9 +2627,9 @@ where
     F: Fold + ?Sized,
 {
     VisRestricted {
-        pub_token: node.pub_token,
-        paren_token: node.paren_token,
-        in_token: node.in_token,
+        pub_: node.pub_,
+        paren: node.paren,
+        in_: node.in_,
         path: Box::new(f.fold_path(*node.path)),
     }
 }
@@ -2650,16 +2648,16 @@ where
     F: Fold + ?Sized,
 {
     WhereClause {
-        where_token: node.where_token,
-        predicates: FoldHelper::lift(node.predicates, |it| f.fold_where_predicate(it)),
+        where_: node.where_,
+        preds: FoldHelper::lift(node.preds, |it| f.fold_where_predicate(it)),
     }
 }
-pub fn fold_where_predicate<F>(f: &mut F, node: WherePredicate) -> WherePredicate
+pub fn fold_where_predicate<F>(f: &mut F, node: WherePred) -> WherePred
 where
     F: Fold + ?Sized,
 {
     match node {
-        WherePredicate::Lifetime(_binding_0) => WherePredicate::Lifetime(f.fold_predicate_lifetime(_binding_0)),
-        WherePredicate::Type(_binding_0) => WherePredicate::Type(f.fold_predicate_type(_binding_0)),
+        WherePred::Lifetime(_binding_0) => WherePred::Lifetime(f.fold_predicate_lifetime(_binding_0)),
+        WherePred::Type(_binding_0) => WherePred::Type(f.fold_predicate_type(_binding_0)),
     }
 }

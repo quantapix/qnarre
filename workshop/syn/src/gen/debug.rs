@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 impl Debug for Abi {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Abi");
-        formatter.field("extern_token", &self.extern_token);
+        formatter.field("extern_token", &self.extern_);
         formatter.field("name", &self.name);
         formatter.finish()
     }
@@ -14,9 +14,9 @@ impl Debug for AngleBracketedGenericArguments {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("colon2_token", &self.colon2_token);
-                formatter.field("lt_token", &self.lt_token);
+                formatter.field("lt_token", &self.lt);
                 formatter.field("args", &self.args);
-                formatter.field("gt_token", &self.gt_token);
+                formatter.field("gt_token", &self.gt);
                 formatter.finish()
             }
         }
@@ -40,7 +40,7 @@ impl Debug for AssocConst {
         let mut formatter = formatter.debug_struct("AssocConst");
         formatter.field("ident", &self.ident);
         formatter.field("generics", &self.generics);
-        formatter.field("eq_token", &self.eq_token);
+        formatter.field("eq_token", &self.equal);
         formatter.field("value", &self.value);
         formatter.finish()
     }
@@ -50,7 +50,7 @@ impl Debug for AssocType {
         let mut formatter = formatter.debug_struct("AssocType");
         formatter.field("ident", &self.ident);
         formatter.field("generics", &self.generics);
-        formatter.field("eq_token", &self.eq_token);
+        formatter.field("eq_token", &self.equal);
         formatter.field("ty", &self.ty);
         formatter.finish()
     }
@@ -247,7 +247,7 @@ impl Debug for BinOp {
 impl Debug for Block {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Block");
-        formatter.field("brace_token", &self.brace_token);
+        formatter.field("brace_token", &self.brace);
         formatter.field("stmts", &self.stmts);
         formatter.finish()
     }
@@ -255,10 +255,10 @@ impl Debug for Block {
 impl Debug for BoundLifetimes {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("BoundLifetimes");
-        formatter.field("for_token", &self.for_token);
-        formatter.field("lt_token", &self.lt_token);
+        formatter.field("for_token", &self.for_);
+        formatter.field("lt_token", &self.lt);
         formatter.field("lifetimes", &self.lifetimes);
-        formatter.field("gt_token", &self.gt_token);
+        formatter.field("gt_token", &self.gt);
         formatter.finish()
     }
 }
@@ -266,11 +266,11 @@ impl Debug for ConstParam {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("ConstParam");
         formatter.field("attrs", &self.attrs);
-        formatter.field("const_token", &self.const_token);
+        formatter.field("const_token", &self.const_);
         formatter.field("ident", &self.ident);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("ty", &self.ty);
-        formatter.field("eq_token", &self.eq_token);
+        formatter.field("eq_token", &self.equal);
         formatter.field("default", &self.default);
         formatter.finish()
     }
@@ -280,7 +280,7 @@ impl Debug for Constraint {
         let mut formatter = formatter.debug_struct("Constraint");
         formatter.field("ident", &self.ident);
         formatter.field("generics", &self.generics);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
     }
@@ -300,8 +300,8 @@ impl Debug for DataEnum {
         impl DataEnum {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("enum_token", &self.enum_token);
-                formatter.field("brace_token", &self.brace_token);
+                formatter.field("enum_token", &self.enum_);
+                formatter.field("brace_token", &self.brace);
                 formatter.field("variants", &self.variants);
                 formatter.finish()
             }
@@ -314,9 +314,9 @@ impl Debug for DataStruct {
         impl DataStruct {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("struct_token", &self.struct_token);
+                formatter.field("struct_token", &self.struct_);
                 formatter.field("fields", &self.fields);
-                formatter.field("semi_token", &self.semi_token);
+                formatter.field("semi_token", &self.semi);
                 formatter.finish()
             }
         }
@@ -328,7 +328,7 @@ impl Debug for DataUnion {
         impl DataUnion {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("union_token", &self.union_token);
+                formatter.field("union_token", &self.union_);
                 formatter.field("fields", &self.fields);
                 formatter.finish()
             }
@@ -982,11 +982,11 @@ impl Debug for Field {
         formatter.finish()
     }
 }
-impl Debug for FieldMutability {
+impl Debug for FieldMut {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("FieldMutability::")?;
         match self {
-            FieldMutability::None => formatter.write_str("None"),
+            FieldMut::None => formatter.write_str("None"),
         }
     }
 }
@@ -995,7 +995,7 @@ impl Debug for FieldPat {
         let mut formatter = formatter.debug_struct("FieldPat");
         formatter.field("attrs", &self.attrs);
         formatter.field("member", &self.member);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("pat", &self.pat);
         formatter.finish()
     }
@@ -1215,10 +1215,10 @@ impl Debug for GenericParam {
 impl Debug for Generics {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Generics");
-        formatter.field("lt_token", &self.lt_token);
+        formatter.field("lt_token", &self.lt);
         formatter.field("params", &self.params);
-        formatter.field("gt_token", &self.gt_token);
-        formatter.field("where_clause", &self.where_clause);
+        formatter.field("gt_token", &self.gt);
+        formatter.field("where_clause", &self.clause);
         formatter.finish()
     }
 }
@@ -1651,7 +1651,7 @@ impl Debug for LifetimeParam {
         let mut formatter = formatter.debug_struct("LifetimeParam");
         formatter.field("attrs", &self.attrs);
         formatter.field("lifetime", &self.lifetime);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
     }
@@ -1681,10 +1681,10 @@ impl Debug for Local {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("let_token", &self.let_token);
+                formatter.field("let_token", &self.let_);
                 formatter.field("pat", &self.pat);
                 formatter.field("init", &self.init);
-                formatter.field("semi_token", &self.semi_token);
+                formatter.field("semi_token", &self.semi);
                 formatter.finish()
             }
         }
@@ -1694,7 +1694,7 @@ impl Debug for Local {
 impl Debug for LocalInit {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("LocalInit");
-        formatter.field("eq_token", &self.eq_token);
+        formatter.field("eq_token", &self.equal);
         formatter.field("expr", &self.expr);
         formatter.field("diverge", &self.diverge);
         formatter.finish()
@@ -1704,9 +1704,9 @@ impl Debug for Macro {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Macro");
         formatter.field("path", &self.path);
-        formatter.field("bang_token", &self.bang_token);
-        formatter.field("delimiter", &self.delimiter);
-        formatter.field("tokens", &self.tokens);
+        formatter.field("bang_token", &self.bang);
+        formatter.field("delimiter", &self.delim);
+        formatter.field("tokens", &self.toks);
         formatter.finish()
     }
 }
@@ -1792,7 +1792,7 @@ impl Debug for ParenthesizedGenericArguments {
         impl ParenthesizedGenericArguments {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("paren_token", &self.paren_token);
+                formatter.field("paren_token", &self.paren);
                 formatter.field("inputs", &self.inputs);
                 formatter.field("output", &self.output);
                 formatter.finish()
@@ -1835,8 +1835,8 @@ impl Debug for PatIdent {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("by_ref", &self.by_ref);
-                formatter.field("mutability", &self.mutability);
+                formatter.field("by_ref", &self.ref_);
+                formatter.field("mutability", &self.mut_);
                 formatter.field("ident", &self.ident);
                 formatter.field("subpat", &self.subpat);
                 formatter.finish()
@@ -1865,7 +1865,7 @@ impl Debug for PatParen {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("paren_token", &self.paren_token);
+                formatter.field("paren_token", &self.paren);
                 formatter.field("pat", &self.pat);
                 formatter.finish()
             }
@@ -1879,7 +1879,7 @@ impl Debug for PatReference {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("and_token", &self.and_token);
+                formatter.field("and_token", &self.and_);
                 formatter.field("mutability", &self.mutability);
                 formatter.field("pat", &self.pat);
                 formatter.finish()
@@ -1894,7 +1894,7 @@ impl Debug for PatRest {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("dot2_token", &self.dot2_token);
+                formatter.field("dot2_token", &self.dot2);
                 formatter.finish()
             }
         }
@@ -1907,7 +1907,7 @@ impl Debug for PatSlice {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("bracket_token", &self.bracket_token);
+                formatter.field("bracket_token", &self.bracket);
                 formatter.field("elems", &self.elems);
                 formatter.finish()
             }
@@ -1923,7 +1923,7 @@ impl Debug for PatStruct {
                 formatter.field("attrs", &self.attrs);
                 formatter.field("qself", &self.qself);
                 formatter.field("path", &self.path);
-                formatter.field("brace_token", &self.brace_token);
+                formatter.field("brace_token", &self.brace);
                 formatter.field("fields", &self.fields);
                 formatter.field("rest", &self.rest);
                 formatter.finish()
@@ -1938,7 +1938,7 @@ impl Debug for PatTuple {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("paren_token", &self.paren_token);
+                formatter.field("paren_token", &self.paren);
                 formatter.field("elems", &self.elems);
                 formatter.finish()
             }
@@ -1954,7 +1954,7 @@ impl Debug for PatTupleStruct {
                 formatter.field("attrs", &self.attrs);
                 formatter.field("qself", &self.qself);
                 formatter.field("path", &self.path);
-                formatter.field("paren_token", &self.paren_token);
+                formatter.field("paren_token", &self.paren);
                 formatter.field("elems", &self.elems);
                 formatter.finish()
             }
@@ -1969,7 +1969,7 @@ impl Debug for PatType {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("pat", &self.pat);
-                formatter.field("colon_token", &self.colon_token);
+                formatter.field("colon_token", &self.colon);
                 formatter.field("ty", &self.ty);
                 formatter.finish()
             }
@@ -1983,7 +1983,7 @@ impl Debug for PatWild {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("underscore_token", &self.underscore_token);
+                formatter.field("underscore_token", &self.underscore);
                 formatter.finish()
             }
         }
@@ -2021,21 +2021,21 @@ impl Debug for PathSegment {
         formatter.finish()
     }
 }
-impl Debug for PredicateLifetime {
+impl Debug for PredLifetime {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateLifetime");
         formatter.field("lifetime", &self.lifetime);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
     }
 }
-impl Debug for PredicateType {
+impl Debug for PredType {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateType");
         formatter.field("lifetimes", &self.lifetimes);
         formatter.field("bounded_ty", &self.bounded_ty);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
     }
@@ -2043,11 +2043,11 @@ impl Debug for PredicateType {
 impl Debug for QSelf {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("QSelf");
-        formatter.field("lt_token", &self.lt_token);
+        formatter.field("lt_token", &self.lt);
         formatter.field("ty", &self.ty);
         formatter.field("position", &self.position);
-        formatter.field("as_token", &self.as_token);
-        formatter.field("gt_token", &self.gt_token);
+        formatter.field("as_token", &self.as_);
+        formatter.field("gt_token", &self.gt_);
         formatter.finish()
     }
 }
@@ -2151,7 +2151,7 @@ impl Debug for StmtMacro {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("mac", &self.mac);
-                formatter.field("semi_token", &self.semi_token);
+                formatter.field("semi_token", &self.semi);
                 formatter.finish()
             }
         }
@@ -2161,7 +2161,7 @@ impl Debug for StmtMacro {
 impl Debug for TraitBound {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("TraitBound");
-        formatter.field("paren_token", &self.paren_token);
+        formatter.field("paren_token", &self.paren);
         formatter.field("modifier", &self.modifier);
         formatter.field("lifetimes", &self.lifetimes);
         formatter.field("path", &self.path);
@@ -2297,7 +2297,7 @@ impl Debug for TypeArray {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("bracket_token", &self.bracket_token);
                 formatter.field("elem", &self.elem);
-                formatter.field("semi_token", &self.semi_token);
+                formatter.field("semi_token", &self.semi);
                 formatter.field("len", &self.len);
                 formatter.finish()
             }
@@ -2311,10 +2311,10 @@ impl Debug for TypeBareFn {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("lifetimes", &self.lifetimes);
-                formatter.field("unsafety", &self.unsafety);
+                formatter.field("unsafety", &self.unsafe_);
                 formatter.field("abi", &self.abi);
-                formatter.field("fn_token", &self.fn_token);
-                formatter.field("paren_token", &self.paren_token);
+                formatter.field("fn_token", &self.fn_);
+                formatter.field("paren_token", &self.paren);
                 formatter.field("inputs", &self.inputs);
                 formatter.field("variadic", &self.variadic);
                 formatter.field("output", &self.output);
@@ -2329,7 +2329,7 @@ impl Debug for TypeGroup {
         impl TypeGroup {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("group_token", &self.group_token);
+                formatter.field("group_token", &self.group);
                 formatter.field("elem", &self.elem);
                 formatter.finish()
             }
@@ -2342,7 +2342,7 @@ impl Debug for TypeImplTrait {
         impl TypeImplTrait {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("impl_token", &self.impl_token);
+                formatter.field("impl_token", &self.impl_);
                 formatter.field("bounds", &self.bounds);
                 formatter.finish()
             }
@@ -2355,7 +2355,7 @@ impl Debug for TypeInfer {
         impl TypeInfer {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("underscore_token", &self.underscore_token);
+                formatter.field("underscore_token", &self.underscore);
                 formatter.finish()
             }
         }
@@ -2379,7 +2379,7 @@ impl Debug for TypeNever {
         impl TypeNever {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("bang_token", &self.bang_token);
+                formatter.field("bang_token", &self.bang);
                 formatter.finish()
             }
         }
@@ -2391,9 +2391,9 @@ impl Debug for TypeParam {
         let mut formatter = formatter.debug_struct("TypeParam");
         formatter.field("attrs", &self.attrs);
         formatter.field("ident", &self.ident);
-        formatter.field("colon_token", &self.colon_token);
+        formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
-        formatter.field("eq_token", &self.eq_token);
+        formatter.field("eq_token", &self.equal);
         formatter.field("default", &self.default);
         formatter.finish()
     }
@@ -2447,9 +2447,9 @@ impl Debug for TypePtr {
         impl TypePtr {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("star_token", &self.star_token);
-                formatter.field("const_token", &self.const_token);
-                formatter.field("mutability", &self.mutability);
+                formatter.field("star_token", &self.star);
+                formatter.field("const_token", &self.const_);
+                formatter.field("mutability", &self.mut_);
                 formatter.field("elem", &self.elem);
                 formatter.finish()
             }
@@ -2462,9 +2462,9 @@ impl Debug for TypeReference {
         impl TypeReference {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("and_token", &self.and_token);
+                formatter.field("and_token", &self.and_);
                 formatter.field("lifetime", &self.lifetime);
-                formatter.field("mutability", &self.mutability);
+                formatter.field("mutability", &self.mut_);
                 formatter.field("elem", &self.elem);
                 formatter.finish()
             }
@@ -2477,7 +2477,7 @@ impl Debug for TypeSlice {
         impl TypeSlice {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("bracket_token", &self.bracket_token);
+                formatter.field("bracket_token", &self.bracket);
                 formatter.field("elem", &self.elem);
                 formatter.finish()
             }
@@ -2490,7 +2490,7 @@ impl Debug for TypeTraitObject {
         impl TypeTraitObject {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("dyn_token", &self.dyn_token);
+                formatter.field("dyn_token", &self.dyn_);
                 formatter.field("bounds", &self.bounds);
                 formatter.finish()
             }
@@ -2503,7 +2503,7 @@ impl Debug for TypeTuple {
         impl TypeTuple {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("paren_token", &self.paren_token);
+                formatter.field("paren_token", &self.paren);
                 formatter.field("elems", &self.elems);
                 formatter.finish()
             }
@@ -2630,9 +2630,9 @@ impl Debug for VisRestricted {
         impl VisRestricted {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("pub_token", &self.pub_token);
-                formatter.field("paren_token", &self.paren_token);
-                formatter.field("in_token", &self.in_token);
+                formatter.field("pub_token", &self.pub_);
+                formatter.field("paren_token", &self.paren);
+                formatter.field("in_token", &self.in_);
                 formatter.field("path", &self.path);
                 formatter.finish()
             }
@@ -2657,21 +2657,21 @@ impl Debug for Visibility {
 impl Debug for WhereClause {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("WhereClause");
-        formatter.field("where_token", &self.where_token);
-        formatter.field("predicates", &self.predicates);
+        formatter.field("where_token", &self.where_);
+        formatter.field("predicates", &self.preds);
         formatter.finish()
     }
 }
-impl Debug for WherePredicate {
+impl Debug for WherePred {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("WherePredicate::")?;
         match self {
-            WherePredicate::Lifetime(v0) => {
+            WherePred::Lifetime(v0) => {
                 let mut formatter = formatter.debug_tuple("Lifetime");
                 formatter.field(v0);
                 formatter.finish()
             },
-            WherePredicate::Type(v0) => {
+            WherePred::Type(v0) => {
                 let mut formatter = formatter.debug_tuple("Type");
                 formatter.field(v0);
                 formatter.finish()
