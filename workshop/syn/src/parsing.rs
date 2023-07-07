@@ -4134,7 +4134,7 @@ pub(crate) mod parsing {
         span = span.join(lit.span()).unwrap_or(span);
         let mut repr = lit.to_string();
         repr.insert(0, '-');
-        if let Some((digits, suffix)) = value::parse_lit_int(&repr) {
+        if let Some((digits, suffix)) = crate::lit::parse_int(&repr) {
             let mut token: Literal = repr.parse().unwrap();
             token.set_span(span);
             return Some((
@@ -4144,7 +4144,7 @@ pub(crate) mod parsing {
                 rest,
             ));
         }
-        let (digits, suffix) = value::parse_lit_float(&repr)?;
+        let (digits, suffix) = crate::lit::parse_float(&repr)?;
         let mut token: Literal = repr.parse().unwrap();
         token.set_span(span);
         Some((

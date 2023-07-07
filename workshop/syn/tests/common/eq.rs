@@ -158,6 +158,14 @@ use rustc_span::{Span, Symbol, SyntaxContext, DUMMY_SP};
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use thin_vec::ThinVec;
+
+ast_enum! {
+    pub enum StrStyle #no_visit {
+        Cooked,
+        Raw(usize),
+    }
+}
+
 pub trait SpanlessEq {
     fn eq(&self, other: &Self) -> bool;
 }

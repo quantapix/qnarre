@@ -389,7 +389,7 @@ fn parse_meta_path(x: ParseStream) -> Result<Path> {
                 ys.push_value(PathSegment::from(y));
             } else if x.is_empty() {
                 return Err(x.error("expected nested attribute"));
-            } else if x.peek(Lit) {
+            } else if x.peek(lit::Lit) {
                 return Err(x.error("unexpected literal in nested attribute, expected ident"));
             } else {
                 return Err(x.error("unexpected token in nested attribute, expected ident"));
@@ -1016,7 +1016,6 @@ pub use item::{
 pub mod punctuated;
 use punctuated::Punctuated;
 pub mod lit;
-pub use lit::{self, Lit};
 
 ast_enum_of_structs! {
     pub enum Pat {
