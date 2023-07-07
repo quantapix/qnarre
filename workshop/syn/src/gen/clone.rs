@@ -59,9 +59,9 @@ impl Clone for AttrStyle {
 impl Clone for Attribute {
     fn clone(&self) -> Self {
         Attribute {
-            pound_token: self.pound_token.clone(),
+            pound: self.pound.clone(),
             style: self.style.clone(),
-            bracket_token: self.bracket_token.clone(),
+            bracket: self.bracket.clone(),
             meta: self.meta.clone(),
         }
     }
@@ -1172,8 +1172,8 @@ impl Clone for MetaList {
     fn clone(&self) -> Self {
         MetaList {
             path: self.path.clone(),
-            delimiter: self.delimiter.clone(),
-            tokens: self.tokens.clone(),
+            delim: self.delim.clone(),
+            toks: self.toks.clone(),
         }
     }
 }
@@ -1181,8 +1181,8 @@ impl Clone for MetaNameValue {
     fn clone(&self) -> Self {
         MetaNameValue {
             path: self.path.clone(),
-            eq_token: self.eq_token.clone(),
-            value: self.value.clone(),
+            equal: self.equal.clone(),
+            val: self.val.clone(),
         }
     }
 }

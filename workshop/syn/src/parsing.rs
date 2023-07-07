@@ -22,18 +22,18 @@ pub(crate) fn parse_inner(x: ParseStream, ys: &mut Vec<Attribute>) -> Result<()>
 pub(crate) fn single_parse_inner(x: ParseStream) -> Result<Attribute> {
     let content;
     Ok(Attribute {
-        pound_token: x.parse()?,
+        pound: x.parse()?,
         style: AttrStyle::Inner(x.parse()?),
-        bracket_token: bracketed!(content in x),
+        bracket: bracketed!(content in x),
         meta: content.parse()?,
     })
 }
 pub(crate) fn single_parse_outer(x: ParseStream) -> Result<Attribute> {
     let content;
     Ok(Attribute {
-        pound_token: x.parse()?,
+        pound: x.parse()?,
         style: AttrStyle::Outer,
-        bracket_token: bracketed!(content in x),
+        bracket: bracketed!(content in x),
         meta: content.parse()?,
     })
 }
@@ -70,8 +70,8 @@ fn parse_meta_list_after_path(path: Path, x: ParseStream) -> Result<MetaList> {
     let (delimiter, tokens) = mac_parse_delimiter(x)?;
     Ok(MetaList {
         path,
-        delimiter,
-        tokens,
+        delim: delimiter,
+        toks: tokens,
     })
 }
 fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNameValue> {
@@ -86,7 +86,11 @@ fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNa
     } else {
         x.parse()?
     };
-    Ok(MetaNameValue { path, eq_token, value })
+    Ok(MetaNameValue {
+        path,
+        equal: eq_token,
+        val: value,
+    })
 }
 
 pub(super) struct DisplayAttrStyle<'a>(pub &'a AttrStyle);

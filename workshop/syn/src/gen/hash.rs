@@ -1565,8 +1565,8 @@ impl Hash for MetaList {
         H: Hasher,
     {
         self.path.hash(state);
-        self.delimiter.hash(state);
-        TokenStreamHelper(&self.tokens).hash(state);
+        self.delim.hash(state);
+        TokenStreamHelper(&self.toks).hash(state);
     }
 }
 impl Hash for MetaNameValue {
@@ -1575,7 +1575,7 @@ impl Hash for MetaNameValue {
         H: Hasher,
     {
         self.path.hash(state);
-        self.value.hash(state);
+        self.val.hash(state);
     }
 }
 impl Hash for ParenthesizedGenericArguments {

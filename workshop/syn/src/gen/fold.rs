@@ -641,9 +641,9 @@ where
     F: Fold + ?Sized,
 {
     Attribute {
-        pound_token: node.pound_token,
+        pound: node.pound,
         style: f.fold_attr_style(node.style),
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         meta: f.fold_meta(node.meta),
     }
 }
@@ -1954,8 +1954,8 @@ where
 {
     MetaList {
         path: f.fold_path(node.path),
-        delimiter: f.fold_macro_delimiter(node.delimiter),
-        tokens: node.tokens,
+        delim: f.fold_macro_delimiter(node.delim),
+        toks: node.toks,
     }
 }
 pub fn fold_meta_name_value<F>(f: &mut F, node: MetaNameValue) -> MetaNameValue
@@ -1964,8 +1964,8 @@ where
 {
     MetaNameValue {
         path: f.fold_path(node.path),
-        eq_token: node.eq_token,
-        value: f.fold_expr(node.value),
+        equal: node.equal,
+        val: f.fold_expr(node.val),
     }
 }
 pub fn fold_parenthesized_generic_arguments<F>(

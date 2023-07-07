@@ -2273,7 +2273,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     v.visit_path(&node.path);
-    v.visit_macro_delimiter(&node.delimiter);
+    v.visit_macro_delimiter(&node.delim);
     skip!(node.tokens);
 }
 pub fn visit_meta_name_value<'ast, V>(v: &mut V, node: &'ast MetaNameValue)
@@ -2282,7 +2282,7 @@ where
 {
     v.visit_path(&node.path);
     skip!(node.eq_token);
-    v.visit_expr(&node.value);
+    v.visit_expr(&node.val);
 }
 pub fn visit_parenthesized_generic_arguments<'ast, V>(v: &mut V, node: &'ast ParenthesizedGenericArguments)
 where

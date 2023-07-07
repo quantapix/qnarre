@@ -1,15 +1,15 @@
-use super::{attr::FilterAttrs, TokensOrDefault, *};
+use super::*;
 use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
 use std::cmp;
 
 impl ToTokens for Attribute {
     fn to_tokens(&self, xs: &mut TokenStream) {
-        self.pound_token.to_tokens(xs);
+        self.pound.to_tokens(xs);
         if let AttrStyle::Inner(x) = &self.style {
             x.to_tokens(xs);
         }
-        self.bracket_token.surround(xs, |x| {
+        self.bracket.surround(xs, |x| {
             self.meta.to_tokens(x);
         });
     }
@@ -17,14 +17,14 @@ impl ToTokens for Attribute {
 impl ToTokens for MetaList {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
-        self.delimiter.surround(xs, self.tokens.clone());
+        self.delim.surround(xs, self.toks.clone());
     }
 }
 impl ToTokens for MetaNameValue {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
-        self.eq_token.to_tokens(xs);
-        self.value.to_tokens(xs);
+        self.equal.to_tokens(xs);
+        self.val.to_tokens(xs);
     }
 }
 

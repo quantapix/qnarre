@@ -943,14 +943,14 @@ impl Eq for MetaList {}
 impl PartialEq for MetaList {
     fn eq(&self, other: &Self) -> bool {
         self.path == other.path
-            && self.delimiter == other.delimiter
-            && TokenStreamHelper(&self.tokens) == TokenStreamHelper(&other.tokens)
+            && self.delim == other.delim
+            && TokenStreamHelper(&self.toks) == TokenStreamHelper(&other.toks)
     }
 }
 impl Eq for MetaNameValue {}
 impl PartialEq for MetaNameValue {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.value == other.value
+        self.path == other.path && self.val == other.val
     }
 }
 impl Eq for ParenthesizedGenericArguments {}

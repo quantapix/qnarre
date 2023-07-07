@@ -71,9 +71,9 @@ impl Debug for AttrStyle {
 impl Debug for Attribute {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Attribute");
-        formatter.field("pound_token", &self.pound_token);
+        formatter.field("pound_token", &self.pound);
         formatter.field("style", &self.style);
-        formatter.field("bracket_token", &self.bracket_token);
+        formatter.field("bracket_token", &self.bracket);
         formatter.field("meta", &self.meta);
         formatter.finish()
     }
@@ -1765,8 +1765,8 @@ impl Debug for MetaList {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("path", &self.path);
-                formatter.field("delimiter", &self.delimiter);
-                formatter.field("tokens", &self.tokens);
+                formatter.field("delimiter", &self.delim);
+                formatter.field("tokens", &self.toks);
                 formatter.finish()
             }
         }
@@ -1779,8 +1779,8 @@ impl Debug for MetaNameValue {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("path", &self.path);
-                formatter.field("eq_token", &self.eq_token);
-                formatter.field("value", &self.value);
+                formatter.field("eq_token", &self.equal);
+                formatter.field("value", &self.val);
                 formatter.finish()
             }
         }

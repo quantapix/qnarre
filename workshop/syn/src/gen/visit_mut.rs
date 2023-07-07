@@ -2275,7 +2275,7 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_path_mut(&mut node.path);
-    v.visit_macro_delimiter_mut(&mut node.delimiter);
+    v.visit_macro_delimiter_mut(&mut node.delim);
     skip!(node.tokens);
 }
 pub fn visit_meta_name_value_mut<V>(v: &mut V, node: &mut MetaNameValue)
@@ -2284,7 +2284,7 @@ where
 {
     v.visit_path_mut(&mut node.path);
     skip!(node.eq_token);
-    v.visit_expr_mut(&mut node.value);
+    v.visit_expr_mut(&mut node.val);
 }
 pub fn visit_parenthesized_generic_arguments_mut<V>(v: &mut V, node: &mut ParenthesizedGenericArguments)
 where
