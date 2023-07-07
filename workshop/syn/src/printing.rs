@@ -490,7 +490,7 @@ impl ToTokens for ExprParen {
 impl ToTokens for ExprPath {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        path::printing::print_path(tokens, &self.qself, &self.path);
+        print_path(tokens, &self.qself, &self.path);
     }
 }
 impl ToTokens for ExprRange {
@@ -529,7 +529,7 @@ impl ToTokens for ExprReturn {
 impl ToTokens for ExprStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        path::printing::print_path(tokens, &self.qself, &self.path);
+        print_path(tokens, &self.qself, &self.path);
         self.brace_token.surround(tokens, |tokens| {
             self.fields.to_tokens(tokens);
             if let Some(dot2_token) = &self.dot2_token {
@@ -1146,7 +1146,7 @@ impl ToTokens for Stmt {
 }
 impl ToTokens for Local {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        expr::printing::outer_attrs_to_tokens(&self.attrs, tokens);
+        outer_attrs_to_tokens(&self.attrs, tokens);
         self.let_token.to_tokens(tokens);
         self.pat.to_tokens(tokens);
         if let Some(init) = &self.init {
@@ -1162,7 +1162,7 @@ impl ToTokens for Local {
 }
 impl ToTokens for StmtMacro {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        expr::printing::outer_attrs_to_tokens(&self.attrs, tokens);
+        outer_attrs_to_tokens(&self.attrs, tokens);
         self.mac.to_tokens(tokens);
         self.semi_token.to_tokens(tokens);
     }
@@ -1271,7 +1271,7 @@ impl MacroDelimiter {
             MacroDelimiter::Brace(brace) => (Delimiter::Brace, brace.span),
             MacroDelimiter::Bracket(bracket) => (Delimiter::Bracket, bracket.span),
         };
-        token::printing::delim(delim, span.join(), tokens, inner);
+        delim(delim, span.join(), tokens, inner);
     }
 }
 impl ToTokens for Macro {
@@ -1433,7 +1433,7 @@ impl ToTokens for PatSlice {
 impl ToTokens for PatStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        path::printing::print_path(tokens, &self.qself, &self.path);
+        print_path(tokens, &self.qself, &self.path);
         self.brace_token.surround(tokens, |tokens| {
             self.fields.to_tokens(tokens);
             if !self.fields.empty_or_trailing() && self.rest.is_some() {
@@ -1454,7 +1454,7 @@ impl ToTokens for PatTuple {
 impl ToTokens for PatTupleStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        path::printing::print_path(tokens, &self.qself, &self.path);
+        print_path(tokens, &self.qself, &self.path);
         self.paren_token.surround(tokens, |tokens| {
             self.elems.to_tokens(tokens);
         });
@@ -1727,7 +1727,7 @@ impl ToTokens for TypeTuple {
 }
 impl ToTokens for TypePath {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        path::printing::print_path(tokens, &self.qself, &self.path);
+        print_path(tokens, &self.qself, &self.path);
     }
 }
 impl ToTokens for TypeTraitObject {

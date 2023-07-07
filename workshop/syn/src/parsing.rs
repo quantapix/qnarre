@@ -15,7 +15,7 @@ use std::{
 
 pub(crate) fn parse_inner(x: ParseStream, ys: &mut Vec<Attribute>) -> Result<()> {
     while x.peek(Token![#]) && x.peek2(Token![!]) {
-        ys.push(x.call(parsing::single_parse_inner)?);
+        ys.push(x.call(single_parse_inner)?);
     }
     Ok(())
 }
@@ -391,7 +391,7 @@ impl Parse for ConstParam {
             eq_token: {
                 if input.peek(Token![=]) {
                     let eq_token = input.parse()?;
-                    default = Some(path::parsing::const_argument(input)?);
+                    default = Some(const_argument(input)?);
                     Some(eq_token)
                 } else {
                     None
@@ -661,7 +661,7 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
             let as_token: Token![as] = input.parse()?;
             let allow_plus = false;
             let allow_group_generic = false;
-            let ty = ty::parsing::ambig_ty(input, allow_plus, allow_group_generic)?;
+            let ty = ambig_ty(input, allow_plus, allow_group_generic)?;
             check_cast(input)?;
             lhs = Expr::Cast(ExprCast {
                 attrs: Vec::new(),
@@ -701,13 +701,13 @@ fn expr_attrs(input: ParseStream) -> Result<Vec<Attribute>> {
             if !group.content.peek(Token![#]) || group.content.peek2(Token![!]) {
                 break;
             }
-            let attr = group.content.call(attr::parsing::single_parse_outer)?;
+            let attr = group.content.call(single_parse_outer)?;
             if !group.content.is_empty() {
                 break;
             }
             attrs.push(attr);
         } else if input.peek(Token![#]) {
-            attrs.push(input.call(attr::parsing::single_parse_outer)?);
+            attrs.push(input.call(single_parse_outer)?);
         } else {
             break;
         }
@@ -944,7 +944,7 @@ fn expr_builtin(input: ParseStream) -> Result<Expr> {
     Ok(Expr::Verbatim(verbatim_between(&begin, input)))
 }
 fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_struct: AllowStruct) -> Result<Expr> {
-    let (qself, path) = path::parsing::qpath(input, true)?;
+    let (qself, path) = qpath(input, true)?;
     if qself.is_none() && input.peek(Token![!]) && !input.peek(Token![!=]) && path.is_mod_style() {
         let bang_token: Token![!] = input.parse()?;
         let (delimiter, tokens) = mac_parse_delimiter(input)?;
@@ -1220,7 +1220,7 @@ impl Parse for ExprForLoop {
         let expr: Expr = input.call(Expr::parse_without_eager_brace)?;
         let content;
         let brace_token = braced!(content in input);
-        attr::parsing::parse_inner(&content, &mut attrs)?;
+        parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(ExprForLoop {
             attrs,
@@ -1240,7 +1240,7 @@ impl Parse for ExprLoop {
         let loop_token: Token![loop] = input.parse()?;
         let content;
         let brace_token = braced!(content in input);
-        attr::parsing::parse_inner(&content, &mut attrs)?;
+        parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(ExprLoop {
             attrs,
@@ -1257,7 +1257,7 @@ impl Parse for ExprMatch {
         let expr = Expr::parse_without_eager_brace(input)?;
         let content;
         let brace_token = braced!(content in input);
-        attr::parsing::parse_inner(&content, &mut attrs)?;
+        parse_inner(&content, &mut attrs)?;
         let mut arms = Vec::new();
         while !content.is_empty() {
             arms.push(content.call(Arm::parse)?);
@@ -1474,7 +1474,7 @@ impl Parse for ExprWhile {
         let cond = Expr::parse_without_eager_brace(input)?;
         let content;
         let brace_token = braced!(content in input);
-        attr::parsing::parse_inner(&content, &mut attrs)?;
+        parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(ExprWhile {
             attrs,
@@ -1586,7 +1586,7 @@ impl Parse for FieldValue {
 }
 impl Parse for ExprStruct {
     fn parse(input: ParseStream) -> Result<Self> {
-        let (qself, path) = path::parsing::qpath(input, true)?;
+        let (qself, path) = qpath(input, true)?;
         expr_struct_helper(input, qself, path)
     }
 }
@@ -1647,7 +1647,7 @@ impl Parse for ExprBlock {
         let label: Option<Label> = input.parse()?;
         let content;
         let brace_token = braced!(content in input);
-        attr::parsing::parse_inner(&content, &mut attrs)?;
+        parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(ExprBlock {
             attrs,
@@ -1715,7 +1715,7 @@ impl Parse for ExprPath {
         #[cfg(not(feature = "full"))]
         let attrs = Vec::new();
         let attrs = input.call(Attribute::parse_outer)?;
-        let (qself, path) = path::parsing::qpath(input, true)?;
+        let (qself, path) = qpath(input, true)?;
         Ok(ExprPath { attrs, qself, path })
     }
 }
@@ -2344,7 +2344,7 @@ impl Parse for ItemFn {
 fn parse_rest_of_fn(input: ParseStream, mut attrs: Vec<Attribute>, vis: Visibility, sig: Signature) -> Result<ItemFn> {
     let content;
     let brace_token = braced!(content in input);
-    attr::parsing::parse_inner(&content, &mut attrs)?;
+    parse_inner(&content, &mut attrs)?;
     let stmts = content.call(Block::parse_within)?;
     Ok(ItemFn {
         attrs,
@@ -2518,7 +2518,7 @@ impl Parse for ItemMod {
         } else if lookahead.peek(token::Brace) {
             let content;
             let brace_token = braced!(content in input);
-            attr::parsing::parse_inner(&content, &mut attrs)?;
+            parse_inner(&content, &mut attrs)?;
             let mut items = Vec::new();
             while !content.is_empty() {
                 items.push(content.parse()?);
@@ -2544,7 +2544,7 @@ impl Parse for ItemForeignMod {
         let abi: Abi = input.parse()?;
         let content;
         let brace_token = braced!(content in input);
-        attr::parsing::parse_inner(&content, &mut attrs)?;
+        parse_inner(&content, &mut attrs)?;
         let mut items = Vec::new();
         while !content.is_empty() {
             items.push(content.parse()?);
@@ -2764,7 +2764,7 @@ impl Parse for ItemStruct {
         let struct_token = input.parse::<Token![struct]>()?;
         let ident = input.parse::<Ident>()?;
         let generics = input.parse::<Generics>()?;
-        let (where_clause, fields, semi_token) = parsing::data_struct(input)?;
+        let (where_clause, fields, semi_token) = data_struct(input)?;
         Ok(ItemStruct {
             attrs,
             vis,
@@ -2786,7 +2786,7 @@ impl Parse for ItemEnum {
         let enum_token = input.parse::<Token![enum]>()?;
         let ident = input.parse::<Ident>()?;
         let generics = input.parse::<Generics>()?;
-        let (where_clause, brace_token, variants) = parsing::data_enum(input)?;
+        let (where_clause, brace_token, variants) = data_enum(input)?;
         Ok(ItemEnum {
             attrs,
             vis,
@@ -2808,7 +2808,7 @@ impl Parse for ItemUnion {
         let union_token = input.parse::<Token![union]>()?;
         let ident = input.parse::<Ident>()?;
         let generics = input.parse::<Generics>()?;
-        let (where_clause, fields) = parsing::data_union(input)?;
+        let (where_clause, fields) = data_union(input)?;
         Ok(ItemUnion {
             attrs,
             vis,
@@ -2883,7 +2883,7 @@ fn parse_rest_of_trait(
     generics.where_clause = input.parse()?;
     let content;
     let brace_token = braced!(content in input);
-    attr::parsing::parse_inner(&content, &mut attrs)?;
+    parse_inner(&content, &mut attrs)?;
     let mut items = Vec::new();
     while !content.is_empty() {
         items.push(content.parse()?);
@@ -3043,7 +3043,7 @@ impl Parse for TraitItemFn {
         let (brace_token, stmts, semi_token) = if lookahead.peek(token::Brace) {
             let content;
             let brace_token = braced!(content in input);
-            attr::parsing::parse_inner(&content, &mut attrs)?;
+            parse_inner(&content, &mut attrs)?;
             let stmts = content.call(Block::parse_within)?;
             (Some(brace_token), stmts, None)
         } else if lookahead.peek(Token![;]) {
@@ -3199,7 +3199,7 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
     generics.where_clause = input.parse()?;
     let content;
     let brace_token = braced!(content in input);
-    attr::parsing::parse_inner(&content, &mut attrs)?;
+    parse_inner(&content, &mut attrs)?;
     let mut items = Vec::new();
     while !content.is_empty() {
         items.push(content.parse()?);
@@ -3528,7 +3528,7 @@ mod parsing {
             || x.peek(Token![macro])
             || is_item_macro
         {
-            let item = item::parsing::parse_rest_of_item(begin, attrs, x)?;
+            let item = parse_rest_of_item(begin, attrs, x)?;
             Ok(Stmt::Item(item))
         } else {
             stmt_expr(x, allow_nosemi, attrs)
@@ -3594,7 +3594,7 @@ mod parsing {
         })
     }
     fn stmt_expr(x: ParseStream, allow_nosemi: AllowNoSemi, mut attrs: Vec<Attribute>) -> Result<Stmt> {
-        let mut e = expr::parsing::expr_early(x)?;
+        let mut e = expr_early(x)?;
         let mut attr_target = &mut e;
         loop {
             attr_target = match attr_target {
@@ -4266,7 +4266,7 @@ pub(crate) mod parsing {
         Ok(pat)
     }
     fn pat_path_or_macro_or_struct_or_range(input: ParseStream) -> Result<Pat> {
-        let (qself, path) = path::parsing::qpath(input, true)?;
+        let (qself, path) = qpath(input, true)?;
         if qself.is_none() && input.peek(Token![!]) && !input.peek(Token![!=]) && path.is_mod_style() {
             let bang_token: Token![!] = input.parse()?;
             let (delimiter, tokens) = mac_parse_delimiter(input)?;
@@ -5379,7 +5379,7 @@ pub(crate) mod parsing {
     impl Parse for TypePath {
         fn parse(input: ParseStream) -> Result<Self> {
             let expr_style = false;
-            let (qself, path) = path::parsing::qpath(input, expr_style)?;
+            let (qself, path) = qpath(input, expr_style)?;
             Ok(TypePath { qself, path })
         }
     }

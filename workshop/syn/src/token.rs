@@ -104,7 +104,7 @@ macro_rules! define_keywords {
             pub struct $name {
                 pub span: Span,
             }
-                        #[allow(non_snake_case)]
+            #[allow(non_snake_case)]
             pub fn $name<S: IntoSpans<Span>>(span: S) -> $name {
                 $name {
                     span: span.into_spans(),
@@ -142,7 +142,6 @@ macro_rules! define_keywords {
                     printing::keyword($token, self.span, tokens);
                 }
             }
-
             impl Parse for $name {
                 fn parse(input: ParseStream) -> Result<Self> {
                     Ok($name {
@@ -150,7 +149,7 @@ macro_rules! define_keywords {
                     })
                 }
             }
-                        impl Token for $name {
+            impl Token for $name {
                 fn peek(cursor: Cursor) -> bool {
                     parsing::peek_keyword(cursor, $token)
                 }
@@ -158,7 +157,7 @@ macro_rules! define_keywords {
                     concat!("`", $token, "`")
                 }
             }
-                        impl private::Sealed for $name {}
+            impl private::Sealed for $name {}
         )*
     };
 }
@@ -235,7 +234,6 @@ macro_rules! define_punctuation {
                     printing::punct($token, &self.spans, tokens);
                 }
             }
-
             impl Parse for $name {
                 fn parse(input: ParseStream) -> Result<Self> {
                     Ok($name {
@@ -243,7 +241,7 @@ macro_rules! define_punctuation {
                     })
                 }
             }
-                        impl Token for $name {
+            impl Token for $name {
                 fn peek(cursor: Cursor) -> bool {
                     parsing::peek_punct(cursor, $token)
                 }
@@ -251,7 +249,7 @@ macro_rules! define_punctuation {
                     concat!("`", $token, "`")
                 }
             }
-                        impl private::Sealed for $name {}
+            impl private::Sealed for $name {}
         )*
     };
 }
@@ -294,7 +292,7 @@ macro_rules! define_delimiters {
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }
             impl $name {
-                                pub fn surround<F>(&self, tokens: &mut TokenStream, f: F)
+                pub fn surround<F>(&self, tokens: &mut TokenStream, f: F)
                 where
                     F: FnOnce(&mut TokenStream),
                 {
@@ -303,7 +301,7 @@ macro_rules! define_delimiters {
                     printing::delim(Delimiter::$delim, self.span.join(), tokens, inner);
                 }
             }
-                        impl private::Sealed for $name {}
+            impl private::Sealed for $name {}
         )*
     };
 }

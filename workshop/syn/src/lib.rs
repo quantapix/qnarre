@@ -170,7 +170,254 @@ mod group {
 #[macro_use]
 pub mod token;
 
-mod attr;
+mod attr {
+    use super::{
+        ext::IdentExt,
+        lit::Lit,
+        parse::{Err, Parse, ParseStream, Parser, Result},
+        parsing,
+        path::{Path, PathSegment},
+        punctuated::Punctuated,
+        *,
+    };
+    use proc_macro2::{Ident, TokenStream};
+    use std::{fmt::Display, iter, slice};
+
+    ast_struct! {
+        pub struct Attribute {
+            pub pound_token: Token![#],
+            pub style: AttrStyle,
+            pub bracket_token: token::Bracket,
+            pub meta: Meta,
+        }
+    }
+    impl Attribute {
+        pub fn path(&self) -> &Path {
+            self.meta.path()
+        }
+        pub fn parse_args<T: Parse>(&self) -> Result<T> {
+            self.parse_args_with(T::parse)
+        }
+        pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
+            match &self.meta {
+                Meta::Path(x) => Err(crate::err::new2(
+                    x.segments.first().unwrap().ident.span(),
+                    x.segments.last().unwrap().ident.span(),
+                    format!(
+                        "expected attribute arguments in parentheses: {}[{}(...)]",
+                        parsing::DisplayAttrStyle(&self.style),
+                        parsing::DisplayPath(x),
+                    ),
+                )),
+                Meta::NameValue(x) => Err(Err::new(
+                    x.eq_token.span,
+                    format_args!(
+                        "expected parentheses: {}[{}(...)]",
+                        parsing::DisplayAttrStyle(&self.style),
+                        parsing::DisplayPath(&meta.path),
+                    ),
+                )),
+                Meta::List(x) => x.parse_args_with(parser),
+            }
+        }
+        pub fn parse_nested_meta(&self, x: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
+            self.parse_args_with(meta_parser(x))
+        }
+        pub fn parse_outer(x: ParseStream) -> Result<Vec<Self>> {
+            let mut y = Vec::new();
+            while x.peek(Token![#]) {
+                y.push(x.call(parsing::single_parse_outer)?);
+            }
+            Ok(y)
+        }
+        pub fn parse_inner(x: ParseStream) -> Result<Vec<Self>> {
+            let mut y = Vec::new();
+            parsing::parse_inner(x, &mut y)?;
+            Ok(y)
+        }
+    }
+    ast_enum! {
+        pub enum AttrStyle {
+            Outer,
+            Inner(Token![!]),
+        }
+    }
+    ast_enum_of_structs! {
+        pub enum Meta {
+            Path(Path),
+            List(MetaList),
+            NameValue(MetaNameValue),
+        }
+    }
+    ast_struct! {
+        pub struct MetaList {
+            pub path: Path,
+            pub delimiter: MacroDelimiter,
+            pub tokens: TokenStream,
+        }
+    }
+    ast_struct! {
+        pub struct MetaNameValue {
+            pub path: Path,
+            pub eq_token: Token![=],
+            pub value: Expr,
+        }
+    }
+    impl Meta {
+        pub fn path(&self) -> &Path {
+            match self {
+                Meta::Path(x) => x,
+                Meta::List(x) => &x.path,
+                Meta::NameValue(x) => &x.path,
+            }
+        }
+        pub fn require_path_only(&self) -> Result<&Path> {
+            let y = match self {
+                Meta::Path(x) => return Ok(x),
+                Meta::List(x) => x.delimiter.span().open(),
+                Meta::NameValue(x) => x.eq_token.span,
+            };
+            Err(Err::new(y, "unexpected token in attribute"))
+        }
+        pub fn require_list(&self) -> Result<&MetaList> {
+            match self {
+                Meta::List(x) => Ok(x),
+                Meta::Path(x) => Err(crate::err::new2(
+                    x.segments.first().unwrap().ident.span(),
+                    x.segments.last().unwrap().ident.span(),
+                    format!(
+                        "expected attribute arguments in parentheses: `{}(...)`",
+                        parsing::DisplayPath(x),
+                    ),
+                )),
+                Meta::NameValue(x) => Err(Err::new(x.eq_token.span, "expected `(`")),
+            }
+        }
+        pub fn require_name_value(&self) -> Result<&MetaNameValue> {
+            match self {
+                Meta::NameValue(x) => Ok(x),
+                Meta::Path(x) => Err(crate::err::new2(
+                    x.segments.first().unwrap().ident.span(),
+                    x.segments.last().unwrap().ident.span(),
+                    format!(
+                        "expected a value for this attribute: `{} = ...`",
+                        parsing::DisplayPath(x),
+                    ),
+                )),
+                Meta::List(x) => Err(Err::new(x.delimiter.span().open(), "expected `=`")),
+            }
+        }
+    }
+    impl MetaList {
+        pub fn parse_args<T: Parse>(&self) -> Result<T> {
+            self.parse_args_with(T::parse)
+        }
+        pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
+            let y = self.delimiter.span().close();
+            crate::parse::parse_scoped(parser, y, self.tokens.clone())
+        }
+        pub fn parse_nested_meta(&self, x: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
+            self.parse_args_with(meta_parser(x))
+        }
+    }
+
+    pub trait FilterAttrs<'a> {
+        type Ret: Iterator<Item = &'a Attribute>;
+        fn outer(self) -> Self::Ret;
+        fn inner(self) -> Self::Ret;
+    }
+    impl<'a> FilterAttrs<'a> for &'a [Attribute] {
+        type Ret = iter::Filter<slice::Iter<'a, Attribute>, fn(&&Attribute) -> bool>;
+        fn outer(self) -> Self::Ret {
+            fn is_outer(x: &&Attribute) -> bool {
+                match x.style {
+                    AttrStyle::Outer => true,
+                    AttrStyle::Inner(_) => false,
+                }
+            }
+            self.iter().filter(is_outer)
+        }
+        fn inner(self) -> Self::Ret {
+            fn is_inner(x: &&Attribute) -> bool {
+                match x.style {
+                    AttrStyle::Inner(_) => true,
+                    AttrStyle::Outer => false,
+                }
+            }
+            self.iter().filter(is_inner)
+        }
+    }
+    pub fn meta_parser(logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Parser<Output = ()> {
+        |input: ParseStream| {
+            if input.is_empty() {
+                Ok(())
+            } else {
+                parse_nested_meta(input, logic)
+            }
+        }
+    }
+
+    pub struct ParseNestedMeta<'a> {
+        pub path: Path,
+        pub input: ParseStream<'a>,
+    }
+    impl<'a> ParseNestedMeta<'a> {
+        pub fn value(&self) -> Result<ParseStream<'a>> {
+            self.input.parse::<Token![=]>()?;
+            Ok(self.input)
+        }
+        pub fn parse_nested_meta(&self, logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
+            let content;
+            parenthesized!(content in self.input);
+            parse_nested_meta(&content, logic)
+        }
+        pub fn error(&self, msg: impl Display) -> Err {
+            let start_span = self.path.segments[0].ident.span();
+            let end_span = self.input.cursor().prev_span();
+            crate::err::new2(start_span, end_span, msg)
+        }
+    }
+
+    pub fn parse_nested_meta(input: ParseStream, mut logic: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
+        loop {
+            let path = input.call(parse_meta_path)?;
+            logic(ParseNestedMeta { path, input })?;
+            if input.is_empty() {
+                return Ok(());
+            }
+            input.parse::<Token![,]>()?;
+            if input.is_empty() {
+                return Ok(());
+            }
+        }
+    }
+
+    fn parse_meta_path(input: ParseStream) -> Result<Path> {
+        Ok(Path {
+            leading_colon: input.parse()?,
+            segments: {
+                let mut segments = Punctuated::new();
+                if input.peek(Ident::peek_any) {
+                    let ident = Ident::parse_any(input)?;
+                    segments.push_value(PathSegment::from(ident));
+                } else if input.is_empty() {
+                    return Err(input.error("expected nested attribute"));
+                } else if input.peek(Lit) {
+                    return Err(input.error("unexpected literal in nested attribute, expected ident"));
+                } else {
+                    return Err(input.error("unexpected token in nested attribute, expected ident"));
+                }
+                while input.peek(Token![::]) {
+                    let punct = input.parse()?;
+                    segments.push_punct(punct);
+                    let ident = Ident::parse_any(input)?;
+                    segments.push_value(PathSegment::from(ident));
+                }
+                segments
+            },
+        })
+    }
+}
 pub use crate::attr::{AttrStyle, Attribute, Meta, MetaList, MetaNameValue};
 pub mod buffer;
 mod expr;
@@ -201,7 +448,124 @@ pub mod punctuated;
 use punctuated::Punctuated;
 mod lit;
 pub use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
-mod pat;
+mod pat {
+    use super::*;
+    use crate::punctuated::Punctuated;
+    use proc_macro2::TokenStream;
+    ast_enum_of_structs! {
+        pub enum Pat {
+            Const(PatConst),
+            Ident(PatIdent),
+            Lit(PatLit),
+            Macro(PatMacro),
+            Or(PatOr),
+            Paren(PatParen),
+            Path(PatPath),
+            Range(PatRange),
+            Reference(PatReference),
+            Rest(PatRest),
+            Slice(PatSlice),
+            Struct(PatStruct),
+            Tuple(PatTuple),
+            TupleStruct(PatTupleStruct),
+            Type(PatType),
+            Verbatim(TokenStream),
+            Wild(PatWild),
+        }
+    }
+    ast_struct! {
+        pub struct PatIdent {
+            pub attrs: Vec<Attribute>,
+            pub by_ref: Option<Token![ref]>,
+            pub mutability: Option<Token![mut]>,
+            pub ident: Ident,
+            pub subpat: Option<(Token![@], Box<Pat>)>,
+        }
+    }
+    ast_struct! {
+        pub struct PatOr {
+            pub attrs: Vec<Attribute>,
+            pub leading_vert: Option<Token![|]>,
+            pub cases: Punctuated<Pat, Token![|]>,
+        }
+    }
+    ast_struct! {
+        pub struct PatParen {
+            pub attrs: Vec<Attribute>,
+            pub paren_token: token::Paren,
+            pub pat: Box<Pat>,
+        }
+    }
+    ast_struct! {
+        pub struct PatReference {
+            pub attrs: Vec<Attribute>,
+            pub and_token: Token![&],
+            pub mutability: Option<Token![mut]>,
+            pub pat: Box<Pat>,
+        }
+    }
+    ast_struct! {
+        pub struct PatRest {
+            pub attrs: Vec<Attribute>,
+            pub dot2_token: Token![..],
+        }
+    }
+    ast_struct! {
+        pub struct PatSlice {
+            pub attrs: Vec<Attribute>,
+            pub bracket_token: token::Bracket,
+            pub elems: Punctuated<Pat, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct PatStruct {
+            pub attrs: Vec<Attribute>,
+            pub qself: Option<QSelf>,
+            pub path: Path,
+            pub brace_token: token::Brace,
+            pub fields: Punctuated<FieldPat, Token![,]>,
+            pub rest: Option<PatRest>,
+        }
+    }
+    ast_struct! {
+        pub struct PatTuple {
+            pub attrs: Vec<Attribute>,
+            pub paren_token: token::Paren,
+            pub elems: Punctuated<Pat, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct PatTupleStruct {
+            pub attrs: Vec<Attribute>,
+            pub qself: Option<QSelf>,
+            pub path: Path,
+            pub paren_token: token::Paren,
+            pub elems: Punctuated<Pat, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct PatType {
+            pub attrs: Vec<Attribute>,
+            pub pat: Box<Pat>,
+            pub colon_token: Token![:],
+            pub ty: Box<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct PatWild {
+            pub attrs: Vec<Attribute>,
+            pub underscore_token: Token![_],
+        }
+    }
+    ast_struct! {
+        pub struct FieldPat {
+            pub attrs: Vec<Attribute>,
+            pub member: Member,
+            pub colon_token: Option<Token![:]>,
+            pub pat: Box<Pat>,
+        }
+    }
+}
 pub use crate::pat::{
     FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
     PatType, PatWild,
@@ -250,7 +614,150 @@ ast_struct! {
     }
 }
 
-mod ty;
+mod ty {
+    use super::{punctuated::Punctuated, *};
+    use proc_macro2::TokenStream;
+
+    ast_enum_of_structs! {
+        pub enum Type {
+            Array(TypeArray),
+            BareFn(TypeBareFn),
+            Group(TypeGroup),
+            ImplTrait(TypeImplTrait),
+            Infer(TypeInfer),
+            Macro(TypeMacro),
+            Never(TypeNever),
+            Paren(TypeParen),
+            Path(TypePath),
+            Ptr(TypePtr),
+            Reference(TypeReference),
+            Slice(TypeSlice),
+            TraitObject(TypeTraitObject),
+            Tuple(TypeTuple),
+            Verbatim(TokenStream),
+        }
+    }
+    ast_struct! {
+        pub struct TypeArray {
+            pub bracket_token: token::Bracket,
+            pub elem: Box<Type>,
+            pub semi_token: Token![;],
+            pub len: Expr,
+        }
+    }
+    ast_struct! {
+        pub struct TypeBareFn {
+            pub lifetimes: Option<BoundLifetimes>,
+            pub unsafety: Option<Token![unsafe]>,
+            pub abi: Option<Abi>,
+            pub fn_token: Token![fn],
+            pub paren_token: token::Paren,
+            pub inputs: Punctuated<BareFnArg, Token![,]>,
+            pub variadic: Option<BareVariadic>,
+            pub output: ReturnType,
+        }
+    }
+    ast_struct! {
+        pub struct TypeGroup {
+            pub group_token: token::Group,
+            pub elem: Box<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeImplTrait {
+            pub impl_token: Token![impl],
+            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeInfer {
+            pub underscore_token: Token![_],
+        }
+    }
+    ast_struct! {
+        pub struct TypeMacro {
+            pub mac: Macro,
+        }
+    }
+    ast_struct! {
+        pub struct TypeNever {
+            pub bang_token: Token![!],
+        }
+    }
+    ast_struct! {
+        pub struct TypeParen {
+            pub paren_token: token::Paren,
+            pub elem: Box<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct TypePath {
+            pub qself: Option<QSelf>,
+            pub path: Path,
+        }
+    }
+    ast_struct! {
+        pub struct TypePtr {
+            pub star_token: Token![*],
+            pub const_token: Option<Token![const]>,
+            pub mutability: Option<Token![mut]>,
+            pub elem: Box<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeReference {
+            pub and_token: Token![&],
+            pub lifetime: Option<Lifetime>,
+            pub mutability: Option<Token![mut]>,
+            pub elem: Box<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeSlice {
+            pub bracket_token: token::Bracket,
+            pub elem: Box<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeTraitObject {
+            pub dyn_token: Option<Token![dyn]>,
+            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeTuple {
+            pub paren_token: token::Paren,
+            pub elems: Punctuated<Type, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct Abi {
+            pub extern_token: Token![extern],
+            pub name: Option<LitStr>,
+        }
+    }
+    ast_struct! {
+        pub struct BareFnArg {
+            pub attrs: Vec<Attribute>,
+            pub name: Option<(Ident, Token![:])>,
+            pub ty: Type,
+        }
+    }
+    ast_struct! {
+        pub struct BareVariadic {
+            pub attrs: Vec<Attribute>,
+            pub name: Option<(Ident, Token![:])>,
+            pub dots: Token![...],
+            pub comma: Option<Token![,]>,
+        }
+    }
+    ast_enum! {
+        pub enum ReturnType {
+            Default,
+            Type(Token![->], Box<Type>),
+        }
+    }
+}
 pub use crate::ty::{
     Abi, BareFnArg, BareVariadic, ReturnType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
     TypeMacro, TypeNever, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
@@ -1079,9 +1586,9 @@ mod parse_quote {
     impl ParseQuote for Attribute {
         fn parse(input: ParseStream) -> Result<Self> {
             if input.peek(Token![#]) && input.peek2(Token![!]) {
-                attr::parsing::single_parse_inner(input)
+                parsing::single_parse_inner(input)
             } else {
-                attr::parsing::single_parse_outer(input)
+                parsing::single_parse_outer(input)
             }
         }
     }
@@ -1478,8 +1985,8 @@ mod gen {
 pub use crate::gen::*;
 pub mod __private {
     pub use crate::parse_quote::parse as parse_quote;
-    pub use crate::token::parsing::{peek_punct, punct as parse_punct};
-    pub use crate::token::printing::punct as print_punct;
+    pub use crate::parsing::{peek_punct, punct as parse_punct};
+    pub use crate::printing::punct as print_punct;
     pub use proc_macro::TokenStream;
     pub use proc_macro2::{Span, TokenStream as TokenStream2};
     pub use quote;
