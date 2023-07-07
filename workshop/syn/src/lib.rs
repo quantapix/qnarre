@@ -45,22 +45,26 @@
 
 extern crate proc_macro;
 
-use proc_macro2::{extra::DelimSpan, Delimiter, Group, Ident, Span, TokenStream, TokenTree};
+use proc_macro2::{extra::DelimSpan, Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{spanned, ToTokens};
 use std::{
     cmp::Ordering,
     fmt::{self, Debug, Display},
     hash::{Hash, Hasher},
+    marker::PhantomData,
     ops,
     thread::{self, ThreadId},
 };
-use std::{fmt::Display, iter, slice};
 
 #[macro_use]
 mod mac;
 #[macro_use]
 mod group {
-    use crate::{err::Result, parse::ParseBuffer, tok};
+    use super::{
+        err::Result,
+        parse::{self, ParseBuffer},
+        tok,
+    };
     use proc_macro2::{extra::DelimSpan, Delimiter};
     pub struct Parens<'a> {
         pub token: tok::Paren,
@@ -147,10 +151,10 @@ mod group {
     fn parse_delimited<'a>(x: &ParseBuffer<'a>, delim: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
         x.step(|cursor| {
             if let Some((content, span, rest)) = cursor.group(delim) {
-                let scope = crate::buffer::close_span_of_group(*cursor);
-                let nested = crate::parse::advance_step_cursor(cursor, content);
-                let unexpected = crate::parse::get_unexpected(x);
-                let content = crate::parse::new_parse_buffer(scope, nested, unexpected);
+                let scope = super::close_span_of_group(*cursor);
+                let nested = parse::advance_step_cursor(cursor, content);
+                let unexpected = arse::get_unexpected(x);
+                let content = parse::new_parse_buffer(scope, nested, unexpected);
                 Ok(((span, content), rest))
             } else {
                 let y = match delim {
@@ -190,7 +194,7 @@ impl Attribute {
     }
     pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
         match &self.meta {
-            Meta::Path(x) => Err(crate::err::new2(
+            Meta::Path(x) => Err(err::new2(
                 x.segments.first().unwrap().ident.span(),
                 x.segments.last().unwrap().ident.span(),
                 format!(
@@ -279,7 +283,7 @@ impl Meta {
     pub fn require_list(&self) -> Result<&MetaList> {
         match self {
             Meta::List(x) => Ok(x),
-            Meta::Path(x) => Err(crate::err::new2(
+            Meta::Path(x) => Err(err::new2(
                 x.segments.first().unwrap().ident.span(),
                 x.segments.last().unwrap().ident.span(),
                 format!(
@@ -293,7 +297,7 @@ impl Meta {
     pub fn require_name_value(&self) -> Result<&MetaNameValue> {
         match self {
             Meta::NameValue(x) => Ok(x),
-            Meta::Path(x) => Err(crate::err::new2(
+            Meta::Path(x) => Err(err::new2(
                 x.segments.first().unwrap().ident.span(),
                 x.segments.last().unwrap().ident.span(),
                 format!(
@@ -318,7 +322,7 @@ impl MetaList {
     }
     pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
         let y = self.delim.span().close();
-        crate::parse::parse_scoped(parser, y, self.toks.clone())
+        parse::parse_scoped(parser, y, self.toks.clone())
     }
     pub fn parse_nested_meta(&self, x: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
         self.parse_args_with(meta_parser(x))
@@ -349,7 +353,7 @@ impl<'a> ParseNestedMeta<'a> {
     pub fn error(&self, x: impl Display) -> Err {
         let beg = self.path.segments[0].ident.span();
         let end = self.input.cursor().prev_span();
-        crate::err::new2(beg, end, x)
+        err::new2(beg, end, x)
     }
 }
 
@@ -401,310 +405,305 @@ fn parse_meta_path(x: ParseStream) -> Result<Path> {
     })
 }
 
-pub mod buffer {
-    use crate::Lifetime;
-    use proc_macro2::{
-        extra::DelimSpan, Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree,
-    };
-    use std::{cmp::Ordering, marker::PhantomData};
-
-    enum Entry {
-        Group(Group, usize),
-        Ident(Ident),
-        Punct(Punct),
-        Literal(Literal),
-        End(isize),
-    }
-    pub struct TokenBuffer {
-        entries: Box<[Entry]>,
-    }
-    impl TokenBuffer {
-        fn recursive_new(ys: &mut Vec<Entry>, xs: TokenStream) {
-            for tt in xs {
-                match tt {
-                    TokenTree::Ident(x) => ys.push(Entry::Ident(x)),
-                    TokenTree::Punct(x) => ys.push(Entry::Punct(x)),
-                    TokenTree::Literal(x) => ys.push(Entry::Literal(x)),
-                    TokenTree::Group(x) => {
-                        let beg = ys.len();
-                        ys.push(Entry::End(0));
-                        Self::recursive_new(ys, x.stream());
-                        let end = ys.len();
-                        ys.push(Entry::End(-(end as isize)));
-                        let off = end - beg;
-                        ys[beg] = Entry::Group(x, off);
-                    },
-                }
-            }
-        }
-        pub fn new(x: proc_macro::TokenStream) -> Self {
-            Self::new2(x.into())
-        }
-        pub fn new2(x: TokenStream) -> Self {
-            let mut ys = Vec::new();
-            Self::recursive_new(&mut ys, x);
-            ys.push(Entry::End(-(ys.len() as isize)));
-            Self {
-                entries: ys.into_boxed_slice(),
-            }
-        }
-        pub fn begin(&self) -> Cursor {
-            let ptr = self.entries.as_ptr();
-            unsafe { Cursor::create(ptr, ptr.add(self.entries.len() - 1)) }
+enum Entry {
+    Group(Group, usize),
+    Ident(Ident),
+    Punct(Punct),
+    Literal(Literal),
+    End(isize),
+}
+pub struct Cursor<'a> {
+    ptr: *const Entry,
+    scope: *const Entry,
+    marker: PhantomData<&'a Entry>,
+}
+impl<'a> Cursor<'a> {
+    pub fn empty() -> Self {
+        struct UnsafeSyncEntry(Entry);
+        unsafe impl Sync for UnsafeSyncEntry {}
+        static EMPTY_ENTRY: UnsafeSyncEntry = UnsafeSyncEntry(Entry::End(0));
+        Cursor {
+            ptr: &EMPTY_ENTRY.0,
+            scope: &EMPTY_ENTRY.0,
+            marker: PhantomData,
         }
     }
-    pub struct Cursor<'a> {
-        ptr: *const Entry,
-        scope: *const Entry,
-        marker: PhantomData<&'a Entry>,
+    unsafe fn create(mut ptr: *const Entry, scope: *const Entry) -> Self {
+        while let Entry::End(_) = *ptr {
+            if ptr == scope {
+                break;
+            }
+            ptr = ptr.add(1);
+        }
+        Cursor {
+            ptr,
+            scope,
+            marker: PhantomData,
+        }
     }
-    impl<'a> Cursor<'a> {
-        pub fn empty() -> Self {
-            struct UnsafeSyncEntry(Entry);
-            unsafe impl Sync for UnsafeSyncEntry {}
-            static EMPTY_ENTRY: UnsafeSyncEntry = UnsafeSyncEntry(Entry::End(0));
-            Cursor {
-                ptr: &EMPTY_ENTRY.0,
-                scope: &EMPTY_ENTRY.0,
-                marker: PhantomData,
+    fn entry(self) -> &'a Entry {
+        unsafe { &*self.ptr }
+    }
+    unsafe fn bump_ignore_group(self) -> Cursor<'a> {
+        Cursor::create(self.ptr.offset(1), self.scope)
+    }
+    fn ignore_none(&mut self) {
+        while let Entry::Group(x, _) = self.entry() {
+            if x.delimiter() == Delimiter::None {
+                unsafe { *self = self.bump_ignore_group() };
+            } else {
+                break;
             }
         }
-        unsafe fn create(mut ptr: *const Entry, scope: *const Entry) -> Self {
-            while let Entry::End(_) = *ptr {
-                if ptr == scope {
-                    break;
-                }
-                ptr = ptr.add(1);
-            }
-            Cursor {
-                ptr,
-                scope,
-                marker: PhantomData,
-            }
+    }
+    pub fn eof(self) -> bool {
+        self.ptr == self.scope
+    }
+    pub fn group(mut self, delim: Delimiter) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
+        if delim != Delimiter::None {
+            self.ignore_none();
         }
-        fn entry(self) -> &'a Entry {
-            unsafe { &*self.ptr }
-        }
-        unsafe fn bump_ignore_group(self) -> Cursor<'a> {
-            Cursor::create(self.ptr.offset(1), self.scope)
-        }
-        fn ignore_none(&mut self) {
-            while let Entry::Group(x, _) = self.entry() {
-                if x.delimiter() == Delimiter::None {
-                    unsafe { *self = self.bump_ignore_group() };
-                } else {
-                    break;
-                }
-            }
-        }
-        pub fn eof(self) -> bool {
-            self.ptr == self.scope
-        }
-        pub fn group(mut self, delim: Delimiter) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
-            if delim != Delimiter::None {
-                self.ignore_none();
-            }
-            if let Entry::Group(x, end) = self.entry() {
-                if x.delimiter() == delim {
-                    let span = x.delim_span();
-                    let end_of_group = unsafe { self.ptr.add(*end) };
-                    let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
-                    let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
-                    return Some((inside_of_group, span, after_group));
-                }
-            }
-            None
-        }
-        pub(crate) fn any_group(self) -> Option<(Cursor<'a>, Delimiter, DelimSpan, Cursor<'a>)> {
-            if let Entry::Group(x, end) = self.entry() {
-                let delimiter = x.delimiter();
+        if let Entry::Group(x, end) = self.entry() {
+            if x.delimiter() == delim {
                 let span = x.delim_span();
                 let end_of_group = unsafe { self.ptr.add(*end) };
                 let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
                 let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
-                return Some((inside_of_group, delimiter, span, after_group));
-            }
-            None
-        }
-        pub(crate) fn any_group_token(self) -> Option<(Group, Cursor<'a>)> {
-            if let Entry::Group(x, end) = self.entry() {
-                let end_of_group = unsafe { self.ptr.add(*end) };
-                let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
-                return Some((x.clone(), after_group));
-            }
-            None
-        }
-        pub fn ident(mut self) -> Option<(Ident, Cursor<'a>)> {
-            self.ignore_none();
-            match self.entry() {
-                Entry::Ident(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
-                _ => None,
+                return Some((inside_of_group, span, after_group));
             }
         }
-        pub fn punct(mut self) -> Option<(Punct, Cursor<'a>)> {
-            self.ignore_none();
-            match self.entry() {
-                Entry::Punct(x) if x.as_char() != '\'' => Some((x.clone(), unsafe { self.bump_ignore_group() })),
-                _ => None,
-            }
+        None
+    }
+    pub(crate) fn any_group(self) -> Option<(Cursor<'a>, Delimiter, DelimSpan, Cursor<'a>)> {
+        if let Entry::Group(x, end) = self.entry() {
+            let delimiter = x.delimiter();
+            let span = x.delim_span();
+            let end_of_group = unsafe { self.ptr.add(*end) };
+            let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
+            let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
+            return Some((inside_of_group, delimiter, span, after_group));
         }
-        pub fn literal(mut self) -> Option<(Literal, Cursor<'a>)> {
-            self.ignore_none();
-            match self.entry() {
-                Entry::Literal(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
-                _ => None,
-            }
+        None
+    }
+    pub(crate) fn any_group_token(self) -> Option<(Group, Cursor<'a>)> {
+        if let Entry::Group(x, end) = self.entry() {
+            let end_of_group = unsafe { self.ptr.add(*end) };
+            let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
+            return Some((x.clone(), after_group));
         }
-        pub fn lifetime(mut self) -> Option<(Lifetime, Cursor<'a>)> {
-            self.ignore_none();
-            match self.entry() {
-                Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
-                    let next = unsafe { self.bump_ignore_group() };
-                    let (ident, rest) = next.ident()?;
-                    let lifetime = Lifetime {
-                        apostrophe: x.span(),
-                        ident,
-                    };
-                    Some((lifetime, rest))
-                },
-                _ => None,
-            }
+        None
+    }
+    pub fn ident(mut self) -> Option<(Ident, Cursor<'a>)> {
+        self.ignore_none();
+        match self.entry() {
+            Entry::Ident(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+            _ => None,
         }
-        pub fn token_stream(self) -> TokenStream {
-            let mut ys = Vec::new();
-            let mut cur = self;
-            while let Some((x, rest)) = cur.token_tree() {
-                ys.push(x);
-                cur = rest;
-            }
-            ys.into_iter().collect()
+    }
+    pub fn punct(mut self) -> Option<(Punct, Cursor<'a>)> {
+        self.ignore_none();
+        match self.entry() {
+            Entry::Punct(x) if x.as_char() != '\'' => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+            _ => None,
         }
-        pub fn token_tree(self) -> Option<(TokenTree, Cursor<'a>)> {
-            let (tree, len) = match self.entry() {
-                Entry::Group(x, end) => (x.clone().into(), *end),
-                Entry::Literal(x) => (x.clone().into(), 1),
-                Entry::Ident(x) => (x.clone().into(), 1),
-                Entry::Punct(x) => (x.clone().into(), 1),
-                Entry::End(_) => return None,
-            };
-            let rest = unsafe { Cursor::create(self.ptr.add(len), self.scope) };
-            Some((tree, rest))
+    }
+    pub fn literal(mut self) -> Option<(Literal, Cursor<'a>)> {
+        self.ignore_none();
+        match self.entry() {
+            Entry::Literal(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+            _ => None,
         }
-        pub fn span(self) -> Span {
-            match self.entry() {
-                Entry::Group(x, _) => x.span(),
-                Entry::Literal(x) => x.span(),
-                Entry::Ident(x) => x.span(),
-                Entry::Punct(x) => x.span(),
-                Entry::End(_) => Span::call_site(),
-            }
+    }
+    pub fn lifetime(mut self) -> Option<(Lifetime, Cursor<'a>)> {
+        self.ignore_none();
+        match self.entry() {
+            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
+                let next = unsafe { self.bump_ignore_group() };
+                let (ident, rest) = next.ident()?;
+                let lifetime = Lifetime {
+                    apostrophe: x.span(),
+                    ident,
+                };
+                Some((lifetime, rest))
+            },
+            _ => None,
         }
-        pub(crate) fn prev_span(mut self) -> Span {
-            if start_of_buffer(self) < self.ptr {
-                self.ptr = unsafe { self.ptr.offset(-1) };
-                if let Entry::End(_) = self.entry() {
-                    let mut depth = 1;
-                    loop {
-                        self.ptr = unsafe { self.ptr.offset(-1) };
-                        match self.entry() {
-                            Entry::Group(x, _) => {
-                                depth -= 1;
-                                if depth == 0 {
-                                    return x.span();
-                                }
-                            },
-                            Entry::End(_) => depth += 1,
-                            Entry::Literal(_) | Entry::Ident(_) | Entry::Punct(_) => {},
-                        }
+    }
+    pub fn token_stream(self) -> TokenStream {
+        let mut ys = Vec::new();
+        let mut cur = self;
+        while let Some((x, rest)) = cur.token_tree() {
+            ys.push(x);
+            cur = rest;
+        }
+        ys.into_iter().collect()
+    }
+    pub fn token_tree(self) -> Option<(TokenTree, Cursor<'a>)> {
+        let (tree, len) = match self.entry() {
+            Entry::Group(x, end) => (x.clone().into(), *end),
+            Entry::Literal(x) => (x.clone().into(), 1),
+            Entry::Ident(x) => (x.clone().into(), 1),
+            Entry::Punct(x) => (x.clone().into(), 1),
+            Entry::End(_) => return None,
+        };
+        let rest = unsafe { Cursor::create(self.ptr.add(len), self.scope) };
+        Some((tree, rest))
+    }
+    pub fn span(self) -> Span {
+        match self.entry() {
+            Entry::Group(x, _) => x.span(),
+            Entry::Literal(x) => x.span(),
+            Entry::Ident(x) => x.span(),
+            Entry::Punct(x) => x.span(),
+            Entry::End(_) => Span::call_site(),
+        }
+    }
+    pub(crate) fn prev_span(mut self) -> Span {
+        if buff_start(self) < self.ptr {
+            self.ptr = unsafe { self.ptr.offset(-1) };
+            if let Entry::End(_) = self.entry() {
+                let mut depth = 1;
+                loop {
+                    self.ptr = unsafe { self.ptr.offset(-1) };
+                    match self.entry() {
+                        Entry::Group(x, _) => {
+                            depth -= 1;
+                            if depth == 0 {
+                                return x.span();
+                            }
+                        },
+                        Entry::End(_) => depth += 1,
+                        Entry::Literal(_) | Entry::Ident(_) | Entry::Punct(_) => {},
                     }
                 }
             }
-            self.span()
         }
-        pub(crate) fn skip(self) -> Option<Cursor<'a>> {
-            let y = match self.entry() {
-                Entry::End(_) => return None,
-                Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
-                    match unsafe { &*self.ptr.add(1) } {
-                        Entry::Ident(_) => 2,
-                        _ => 1,
-                    }
-                },
-                Entry::Group(_, x) => *x,
-                _ => 1,
-            };
-            Some(unsafe { Cursor::create(self.ptr.add(y), self.scope) })
-        }
+        self.span()
     }
-    impl<'a> Copy for Cursor<'a> {}
-    impl<'a> Clone for Cursor<'a> {
-        fn clone(&self) -> Self {
-            *self
-        }
+    pub(crate) fn skip(self) -> Option<Cursor<'a>> {
+        let y = match self.entry() {
+            Entry::End(_) => return None,
+            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
+                match unsafe { &*self.ptr.add(1) } {
+                    Entry::Ident(_) => 2,
+                    _ => 1,
+                }
+            },
+            Entry::Group(_, x) => *x,
+            _ => 1,
+        };
+        Some(unsafe { Cursor::create(self.ptr.add(y), self.scope) })
     }
-    impl<'a> Eq for Cursor<'a> {}
-    impl<'a> PartialEq for Cursor<'a> {
-        fn eq(&self, x: &Self) -> bool {
-            self.ptr == x.ptr
-        }
+}
+impl<'a> Copy for Cursor<'a> {}
+impl<'a> Clone for Cursor<'a> {
+    fn clone(&self) -> Self {
+        *self
     }
-    impl<'a> PartialOrd for Cursor<'a> {
-        fn partial_cmp(&self, x: &Self) -> Option<Ordering> {
-            if same_buffer(*self, *x) {
-                Some(self.ptr.cmp(&x.ptr))
-            } else {
-                None
-            }
-        }
+}
+impl<'a> Eq for Cursor<'a> {}
+impl<'a> PartialEq for Cursor<'a> {
+    fn eq(&self, x: &Self) -> bool {
+        self.ptr == x.ptr
     }
-    pub(crate) fn same_scope(a: Cursor, b: Cursor) -> bool {
-        a.scope == b.scope
-    }
-    pub(crate) fn same_buffer(a: Cursor, b: Cursor) -> bool {
-        start_of_buffer(a) == start_of_buffer(b)
-    }
-    fn start_of_buffer(c: Cursor) -> *const Entry {
-        unsafe {
-            match &*c.scope {
-                Entry::End(x) => c.scope.offset(*x),
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    pub(crate) fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
-        a.ptr.cmp(&b.ptr)
-    }
-    pub(crate) fn open_span_of_group(c: Cursor) -> Span {
-        match c.entry() {
-            Entry::Group(x, _) => x.span_open(),
-            _ => c.span(),
-        }
-    }
-    pub(crate) fn close_span_of_group(c: Cursor) -> Span {
-        match c.entry() {
-            Entry::Group(x, _) => x.span_close(),
-            _ => c.span(),
+}
+impl<'a> PartialOrd for Cursor<'a> {
+    fn partial_cmp(&self, x: &Self) -> Option<Ordering> {
+        if same_buff(*self, *x) {
+            Some(self.ptr.cmp(&x.ptr))
+        } else {
+            None
         }
     }
 }
+fn same_scope(a: Cursor, b: Cursor) -> bool {
+    a.scope == b.scope
+}
+fn same_buff(a: Cursor, b: Cursor) -> bool {
+    buff_start(a) == buff_start(b)
+}
+fn buff_start(c: Cursor) -> *const Entry {
+    unsafe {
+        match &*c.scope {
+            Entry::End(x) => c.scope.offset(*x),
+            _ => unreachable!(),
+        }
+    }
+}
+fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
+    a.ptr.cmp(&b.ptr)
+}
+fn open_span_of_group(c: Cursor) -> Span {
+    match c.entry() {
+        Entry::Group(x, _) => x.span_open(),
+        _ => c.span(),
+    }
+}
+fn close_span_of_group(c: Cursor) -> Span {
+    match c.entry() {
+        Entry::Group(x, _) => x.span_close(),
+        _ => c.span(),
+    }
+}
+
+pub struct TokBuff {
+    entries: Box<[Entry]>,
+}
+impl TokBuff {
+    fn recursive_new(ys: &mut Vec<Entry>, xs: TokenStream) {
+        for x in xs {
+            match x {
+                TokenTree::Ident(x) => ys.push(Entry::Ident(x)),
+                TokenTree::Punct(x) => ys.push(Entry::Punct(x)),
+                TokenTree::Literal(x) => ys.push(Entry::Literal(x)),
+                TokenTree::Group(x) => {
+                    let beg = ys.len();
+                    ys.push(Entry::End(0));
+                    Self::recursive_new(ys, x.stream());
+                    let end = ys.len();
+                    ys.push(Entry::End(-(end as isize)));
+                    let off = end - beg;
+                    ys[beg] = Entry::Group(x, off);
+                },
+            }
+        }
+    }
+    pub fn new(x: proc_macro::TokenStream) -> Self {
+        Self::new2(x.into())
+    }
+    pub fn new2(x: TokenStream) -> Self {
+        let mut ys = Vec::new();
+        Self::recursive_new(&mut ys, x);
+        ys.push(Entry::End(-(ys.len() as isize)));
+        Self {
+            entries: ys.into_boxed_slice(),
+        }
+    }
+    pub fn begin(&self) -> Cursor {
+        let y = self.entries.as_ptr();
+        unsafe { Cursor::create(y, y.add(self.entries.len() - 1)) }
+    }
+}
+
 mod expr;
-pub use crate::expr::{
+pub use expr::{
     Arm, Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock, ExprBreak, ExprCall, ExprCast,
-    ExprClosure, ExprConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf, ExprIndex, ExprInfer, ExprLet,
-    ExprLit, ExprLoop, ExprMacro, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprRange, ExprReference, ExprRepeat,
-    ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, FieldValue,
-    Index, Label, Member, RangeLimits,
-};
-pub use crate::expr::{
-    ExprConst as PatConst, ExprLit as PatLit, ExprMacro as PatMacro, ExprPath as PatPath, ExprRange as PatRange,
+    ExprClosure, ExprConst, ExprConst as PatConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf, ExprIndex,
+    ExprInfer, ExprLet, ExprLit, ExprLit as PatLit, ExprLoop, ExprMacro, ExprMacro as PatMacro, ExprMatch,
+    ExprMethodCall, ExprParen, ExprPath, ExprPath as PatPath, ExprRange, ExprRange as PatRange, ExprReference,
+    ExprRepeat, ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield,
+    FieldValue, Index, Label, Member, RangeLimits,
 };
 mod generic {
-    use super::*;
-    use crate::punctuated::{Iter, IterMut, Punctuated};
+    use super::{
+        punctuated::{Iter, IterMut, Punctuated},
+        *,
+    };
     use proc_macro2::TokenStream;
-    use std::fmt::{self, Debug};
-    use std::hash::{Hash, Hasher};
+    use std::{
+        fmt::{self, Debug},
+        hash::{Hash, Hasher},
+    };
     ast_struct! {
         pub struct Generics {
             pub lt_token: Option<Token![<]>,
@@ -891,8 +890,8 @@ mod generic {
                 }
             }
             impl<'a> Debug for $ty<'a> {
-                fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                    formatter.debug_tuple(stringify!($ty)).field(self.0).finish()
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    f.debug_tuple(stringify!($ty)).field(self.0).finish()
                 }
             }
             impl<'a> Eq for $ty<'a> {}
@@ -1005,12 +1004,12 @@ mod generic {
         }
     }
 }
-pub use crate::generic::{
+pub use generic::{
     BoundLifetimes, ConstParam, GenericParam, Generics, ImplGenerics, LifetimeParam, PredicateLifetime, PredicateType,
     TraitBound, TraitBoundModifier, Turbofish, TypeGenerics, TypeParam, TypeParamBound, WhereClause, WherePredicate,
 };
 mod item;
-pub use crate::item::{
+pub use item::{
     FnArg, ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, ImplItem, ImplItemConst,
     ImplItemFn, ImplItemMacro, ImplItemType, ImplRestriction, Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn,
     ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait, ItemTraitAlias, ItemType,
@@ -1020,10 +1019,9 @@ pub use crate::item::{
 pub mod punctuated;
 use punctuated::Punctuated;
 mod lit;
-pub use crate::lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
+pub use lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle};
 mod pat {
-    use super::*;
-    use crate::punctuated::Punctuated;
+    use super::{punctuated::Punctuated, *};
     use proc_macro2::TokenStream;
     ast_enum_of_structs! {
         pub enum Pat {
@@ -1139,13 +1137,12 @@ mod pat {
         }
     }
 }
-pub use crate::pat::{
+pub use pat::{
     FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
     PatType, PatWild,
 };
 mod path {
-    use super::*;
-    use crate::punctuated::Punctuated;
+    use super::{punctuated::Punctuated, *};
     ast_struct! {
         pub struct Path {
             pub leading_colon: Option<Token![::]>,
@@ -1286,7 +1283,7 @@ mod path {
         }
     }
 }
-pub use crate::path::{
+pub use path::{
     AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
     Path, PathArguments, PathSegment, QSelf,
 };
@@ -1473,7 +1470,7 @@ mod ty {
         }
     }
 }
-pub use crate::ty::{
+pub use ty::{
     Abi, BareFnArg, BareVariadic, ReturnType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
     TypeMacro, TypeNever, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
 };
@@ -1559,14 +1556,14 @@ ast_struct! {
 impl Fields {
     pub fn iter(&self) -> punctuated::Iter<Field> {
         match self {
-            Fields::Unit => crate::punctuated::empty_punctuated_iter(),
+            Fields::Unit => punctuated::empty_punctuated_iter(),
             Fields::Named(f) => f.named.iter(),
             Fields::Unnamed(f) => f.unnamed.iter(),
         }
     }
     pub fn iter_mut(&mut self) -> punctuated::IterMut<Field> {
         match self {
-            Fields::Unit => crate::punctuated::empty_punctuated_iter_mut(),
+            Fields::Unit => punctuated::empty_punctuated_iter_mut(),
             Fields::Named(f) => f.named.iter_mut(),
             Fields::Unnamed(f) => f.unnamed.iter_mut(),
         }
@@ -1659,12 +1656,13 @@ ast_struct! {
 }
 
 mod err {
-    use crate::{buffer::Cursor, ThreadBound};
+    use super::{Cursor, ThreadBound};
     use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
     use quote::ToTokens;
-    use std::fmt::{self, Debug, Display};
-    use std::slice;
-    use std::vec;
+    use std::{
+        fmt::{self, Debug, Display},
+        slice, vec,
+    };
     pub type Result<T> = std::result::Result<T, Err>;
     pub struct Err {
         messages: Vec<ErrMsg>,
@@ -1776,7 +1774,7 @@ mod err {
         if cursor.eof() {
             Err::new(scope, format!("unexpected end of input, {}", message))
         } else {
-            let span = crate::buffer::open_span_of_group(cursor);
+            let span = super::open_span_of_group(cursor);
             Err::new(span, message)
         }
     }
@@ -1792,22 +1790,22 @@ mod err {
         }
     }
     impl Debug for Err {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             if self.messages.len() == 1 {
-                formatter.debug_tuple("Error").field(&self.messages[0]).finish()
+                f.debug_tuple("Error").field(&self.messages[0]).finish()
             } else {
-                formatter.debug_tuple("Error").field(&self.messages).finish()
+                f.debug_tuple("Error").field(&self.messages).finish()
             }
         }
     }
     impl Debug for ErrMsg {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            Debug::fmt(&self.message, formatter)
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            Debug::fmt(&self.message, f)
         }
     }
     impl Display for Err {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str(&self.messages[0].message)
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str(&self.messages[0].message)
         }
     }
     impl Clone for Err {
@@ -1885,14 +1883,15 @@ mod err {
         }
     }
 }
-pub use crate::err::{Err, Result};
+pub use err::{Err, Result};
 
 pub mod ext {
-    use crate::buffer::Cursor;
-    use crate::parse::Peek;
-    use crate::parse::{ParseStream, Result};
-    use crate::sealed::lookahead;
-    use crate::tok::CustomToken;
+    use super::{
+        parse::{ParseStream, Peek, Result},
+        sealed::lookahead,
+        tok::CustomToken,
+        Cursor,
+    };
     use proc_macro2::Ident;
     pub trait IdentExt: Sized + private::Sealed {
         fn parse_any(input: ParseStream) -> Result<Self>;
@@ -1952,7 +1951,7 @@ ast_struct! {
 }
 
 mod ident {
-    use crate::lookahead;
+    use super::lookahead;
     pub use proc_macro2::Ident;
     #[allow(non_snake_case)]
     pub fn Ident(x: lookahead::TokenMarker) -> Ident {
@@ -1991,7 +1990,7 @@ mod ident {
         true
     }
 }
-pub use crate::ident::Ident;
+pub use ident::Ident;
 
 pub struct Lifetime {
     pub apostrophe: Span,
@@ -2008,7 +2007,7 @@ impl Lifetime {
         if symbol == "'" {
             panic!("lifetime name must not be empty");
         }
-        if !crate::ident::xid_ok(&symbol[1..]) {
+        if !ident::xid_ok(&symbol[1..]) {
             panic!("{:?} is not a valid lifetime name", symbol);
         }
         Lifetime {
@@ -2025,9 +2024,9 @@ impl Lifetime {
     }
 }
 impl Display for Lifetime {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        "'".fmt(formatter)?;
-        self.ident.fmt(formatter)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "'".fmt(f)?;
+        self.ident.fmt(f)
     }
 }
 impl Clone for Lifetime {
@@ -2065,11 +2064,12 @@ pub fn Lifetime(marker: lookahead::TokenMarker) -> Lifetime {
 }
 
 mod lookahead {
-    use crate::buffer::Cursor;
-    use crate::err::{self, Err};
-    use crate::sealed::lookahead::Sealed;
-    use crate::tok::Token;
-    use crate::IntoSpans;
+    use super::{
+        err::{self, Err},
+        sealed::lookahead::Sealed,
+        tok::Token,
+        Cursor, IntoSpans,
+    };
     use proc_macro2::{Delimiter, Span};
     use std::cell::RefCell;
     pub struct Lookahead1<'a> {
@@ -2176,7 +2176,7 @@ impl Macro {
 
     pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
         let scope = self.delimiter.span().close();
-        crate::parse::parse_scoped(parser, scope, self.tokens.clone())
+        parse::parse_scoped(parser, scope, self.tokens.clone())
     }
 }
 fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
@@ -2239,93 +2239,50 @@ ast_enum! {
 }
 
 pub mod parse;
-mod parse_macro_input {
-    #[macro_export]
-    macro_rules! parse_macro_input {
-        ($tokenstream:ident as $ty:ty) => {
-            match $crate::parse::<$ty>($tokenstream) {
-                $crate::__private::Ok(data) => data,
-                $crate::__private::Err(err) => {
-                    return $crate::__private::TokenStream::from(err.to_compile_error());
-                },
-            }
-        };
-        ($tokenstream:ident with $parser:path) => {
-            match $crate::parse::Parser::parse($parser, $tokenstream) {
-                $crate::__private::Ok(data) => data,
-                $crate::__private::Err(err) => {
-                    return $crate::__private::TokenStream::from(err.to_compile_error());
-                },
-            }
-        };
-        ($tokenstream:ident) => {
-            $crate::parse_macro_input!($tokenstream as _)
-        };
-    }
-}
-mod parse_quote {
-    #[macro_export]
-    macro_rules! parse_quote {
-    ($($tt:tt)*) => {
-        $crate::__private::parse_quote($crate::__private::quote::quote!($($tt)*))
-    };
-}
-    #[macro_export]
-    macro_rules! parse_quote_spanned {
-    ($span:expr=> $($tt:tt)*) => {
-        $crate::__private::parse_quote($crate::__private::quote::quote_spanned!($span=> $($tt)*))
-    };
-}
-    use crate::parse::{Parse, ParseStream, Parser, Result};
-    use proc_macro2::TokenStream;
-    pub fn parse<T: ParseQuote>(token_stream: TokenStream) -> T {
-        let parser = T::parse;
-        match parser.parse2(token_stream) {
-            Ok(t) => t,
-            Err(err) => panic!("{}", err),
-        }
-    }
-    pub trait ParseQuote: Sized {
-        fn parse(input: ParseStream) -> Result<Self>;
-    }
-    impl<T: Parse> ParseQuote for T {
-        fn parse(input: ParseStream) -> Result<Self> {
-            <T as Parse>::parse(input)
-        }
-    }
-    use crate::punctuated::Punctuated;
 
-    use crate::{attr, Attribute};
-    use crate::{Block, Pat, Stmt};
+pub trait ParseQuote: Sized {
+    fn parse(x: ParseStream) -> Result<Self>;
+}
+impl<T: Parse> ParseQuote for T {
+    fn parse(x: ParseStream) -> Result<Self> {
+        <T as Parse>::parse(x)
+    }
+}
+impl ParseQuote for Attribute {
+    fn parse(x: ParseStream) -> Result<Self> {
+        if x.peek(Token![#]) && x.peek2(Token![!]) {
+            parsing::single_parse_inner(x)
+        } else {
+            parsing::single_parse_outer(x)
+        }
+    }
+}
+impl ParseQuote for Pat {
+    fn parse(x: ParseStream) -> Result<Self> {
+        Pat::parse_multi_with_leading_vert(x)
+    }
+}
+impl ParseQuote for Box<Pat> {
+    fn parse(x: ParseStream) -> Result<Self> {
+        <Pat as ParseQuote>::parse(x).map(Box::new)
+    }
+}
+impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
+    fn parse(x: ParseStream) -> Result<Self> {
+        Self::parse_terminated(x)
+    }
+}
+impl ParseQuote for Vec<Stmt> {
+    fn parse(x: ParseStream) -> Result<Self> {
+        Block::parse_within(x)
+    }
+}
 
-    impl ParseQuote for Attribute {
-        fn parse(input: ParseStream) -> Result<Self> {
-            if input.peek(Token![#]) && input.peek2(Token![!]) {
-                parsing::single_parse_inner(input)
-            } else {
-                parsing::single_parse_outer(input)
-            }
-        }
-    }
-    impl ParseQuote for Pat {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Pat::parse_multi_with_leading_vert(input)
-        }
-    }
-    impl ParseQuote for Box<Pat> {
-        fn parse(input: ParseStream) -> Result<Self> {
-            <Pat as ParseQuote>::parse(input).map(Box::new)
-        }
-    }
-    impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Self::parse_terminated(input)
-        }
-    }
-    impl ParseQuote for Vec<Stmt> {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Block::parse_within(input)
-        }
+pub fn parse_quote_fn<T: ParseQuote>(x: TokenStream) -> T {
+    let y = T::parse;
+    match y.parse2(x) {
+        Ok(x) => x,
+        Err(x) => panic!("{}", x),
     }
 }
 
@@ -2334,38 +2291,35 @@ impl<'a, T> ToTokens for TokensOrDefault<'a, T>
 where
     T: ToTokens + Default,
 {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut TokenStream) {
         match self.0 {
-            Some(t) => t.to_tokens(tokens),
-            None => T::default().to_tokens(tokens),
+            Some(x) => x.to_tokens(ys),
+            None => T::default().to_tokens(ys),
         }
     }
 }
 
-mod restriction {
-    use super::*;
-    ast_enum! {
-        pub enum Visibility {
-            Public(Token![pub]),
-            Restricted(VisRestricted),
-            Inherited,
-        }
-    }
-    ast_struct! {
-        pub struct VisRestricted {
-            pub pub_token: Token![pub],
-            pub paren_token: tok::Paren,
-            pub in_token: Option<Token![in]>,
-            pub path: Box<Path>,
-        }
-    }
-    ast_enum! {
-        pub enum FieldMutability {
-            None,
-        }
+ast_enum! {
+    pub enum Visibility {
+        Public(Token![pub]),
+        Restricted(VisRestricted),
+        Inherited,
     }
 }
-pub use crate::restriction::{FieldMutability, VisRestricted, Visibility};
+ast_struct! {
+    pub struct VisRestricted {
+        pub pub_token: Token![pub],
+        pub paren_token: tok::Paren,
+        pub in_token: Option<Token![in]>,
+        pub path: Box<Path>,
+    }
+}
+ast_enum! {
+    pub enum FieldMutability {
+        None,
+    }
+}
+
 mod sealed {
     pub mod lookahead {
         pub trait Sealed: Copy {}
@@ -2412,9 +2366,9 @@ impl IntoSpans<[Span; 3]> for [Span; 3] {
 }
 impl IntoSpans<DelimSpan> for Span {
     fn into_spans(self) -> DelimSpan {
-        let mut group = Group::new(Delimiter::None, TokenStream::new());
-        group.set_span(self);
-        group.delim_span()
+        let mut y = Group::new(Delimiter::None, TokenStream::new());
+        y.set_span(self);
+        y.delim_span()
     }
 }
 impl IntoSpans<DelimSpan> for DelimSpan {
@@ -2438,31 +2392,31 @@ mod private {
 }
 
 struct ThreadBound<T> {
-    value: T,
-    thread_id: ThreadId,
+    val: T,
+    id: ThreadId,
 }
 unsafe impl<T> Sync for ThreadBound<T> {}
 unsafe impl<T: Copy> Send for ThreadBound<T> {}
 impl<T> ThreadBound<T> {
-    pub fn new(value: T) -> Self {
+    pub fn new(val: T) -> Self {
         ThreadBound {
-            value,
-            thread_id: thread::current().id(),
+            val,
+            id: thread::current().id(),
         }
     }
     pub fn get(&self) -> Option<&T> {
-        if thread::current().id() == self.thread_id {
-            Some(&self.value)
+        if thread::current().id() == self.id {
+            Some(&self.val)
         } else {
             None
         }
     }
 }
 impl<T: Debug> Debug for ThreadBound<T> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            Some(value) => Debug::fmt(value, formatter),
-            None => formatter.write_str("unknown"),
+            Some(x) => Debug::fmt(x, f),
+            None => f.write_str("unknown"),
         }
     }
 }
@@ -2572,11 +2526,11 @@ impl<'a> Hash for TokenStreamHelper<'a> {
 pub fn verbatim_between<'a>(begin: ParseStream<'a>, end: ParseStream<'a>) -> TokenStream {
     let end = end.cursor();
     let mut cursor = begin.cursor();
-    assert!(crate::buffer::same_buffer(end, cursor));
+    assert!(same_buffer(end, cursor));
     let mut tokens = TokenStream::new();
     while cursor != end {
         let (tt, next) = cursor.token_tree().unwrap();
-        if crate::buffer::cmp_assuming_same_buffer(end, next) == Ordering::Less {
+        if cmp_assuming_same_buffer(end, next) == Ordering::Less {
             if let Some((inside, _span, after)) = cursor.group(Delimiter::None) {
                 assert!(next == after);
                 cursor = inside;
@@ -2697,25 +2651,28 @@ mod gen {
         }
     }
 }
-pub use crate::gen::*;
+pub use gen::*;
 pub mod __private {
-    pub use crate::parse_quote::parse as parse_quote;
-    pub use crate::parsing::{peek_punct, punct as parse_punct};
-    pub use crate::printing::punct as print_punct;
+    pub use super::{
+        parse_quote_fn,
+        parsing::{peek_punct, punct as parse_punct},
+        printing::punct as print_punct,
+    };
     pub use proc_macro::TokenStream;
     pub use proc_macro2::{Span, TokenStream as TokenStream2};
-    pub use quote;
-    pub use quote::{ToTokens, TokenStreamExt};
-    pub use std::clone::Clone;
-    pub use std::cmp::{Eq, PartialEq};
-    pub use std::concat;
-    pub use std::default::Default;
-    pub use std::fmt::{self, Debug, Formatter};
-    pub use std::hash::{Hash, Hasher};
-    pub use std::marker::Copy;
-    pub use std::option::Option::{None, Some};
-    pub use std::result::Result::{Err, Ok};
-    pub use std::stringify;
+    pub use quote::{self, ToTokens, TokenStreamExt};
+    pub use std::{
+        clone::Clone,
+        cmp::{Eq, PartialEq},
+        concat,
+        default::Default,
+        fmt::{self, Debug, Formatter},
+        hash::{Hash, Hasher},
+        marker::Copy,
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+        stringify,
+    };
     pub type bool = help::Bool;
     pub type str = help::Str;
     mod help {

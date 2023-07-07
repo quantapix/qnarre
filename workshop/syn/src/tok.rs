@@ -1,10 +1,8 @@
 use super::{
-    buffer::Cursor,
     err::Result,
     lit::{Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr},
-    lookahead,
     parse::{Parse, ParseStream},
-    IntoSpans, Lifetime,
+    *,
 };
 use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};

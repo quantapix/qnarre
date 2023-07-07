@@ -1,9 +1,7 @@
 use super::{
-    buffer::Cursor,
     err::{Err, Result},
     ext::IdentExt,
     parse::{discouraged::Speculative, Parse, ParseBuffer, ParseStream, Result},
-    path,
     tok::Token,
     *,
 };

@@ -261,8 +261,8 @@ impl From<Literal> for LitInt {
     }
 }
 impl Display for LitInt {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.token.fmt(formatter)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.repr.token.fmt(f)
     }
 }
 impl LitFloat {
@@ -313,8 +313,8 @@ impl From<Literal> for LitFloat {
     }
 }
 impl Display for LitFloat {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.token.fmt(formatter)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.repr.token.fmt(f)
     }
 }
 impl LitBool {
@@ -339,91 +339,85 @@ mod debug_impls {
     use super::*;
     use std::fmt::{self, Debug};
     impl Debug for LitStr {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitStr {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
                         .field("token", &format_args!("{}", self.repr.token))
                         .finish()
                 }
             }
-            self.debug(formatter, "LitStr")
+            self.debug(f, "LitStr")
         }
     }
     impl Debug for LitByteStr {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitByteStr {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
                         .field("token", &format_args!("{}", self.repr.token))
                         .finish()
                 }
             }
-            self.debug(formatter, "LitByteStr")
+            self.debug(f, "LitByteStr")
         }
     }
     impl Debug for LitByte {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitByte {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
                         .field("token", &format_args!("{}", self.repr.token))
                         .finish()
                 }
             }
-            self.debug(formatter, "LitByte")
+            self.debug(f, "LitByte")
         }
     }
     impl Debug for LitChar {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitChar {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
                         .field("token", &format_args!("{}", self.repr.token))
                         .finish()
                 }
             }
-            self.debug(formatter, "LitChar")
+            self.debug(f, "LitChar")
         }
     }
     impl Debug for LitInt {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitInt {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
                         .field("token", &format_args!("{}", self.repr.token))
                         .finish()
                 }
             }
-            self.debug(formatter, "LitInt")
+            self.debug(f, "LitInt")
         }
     }
     impl Debug for LitFloat {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitFloat {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter
-                        .debug_struct(name)
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name)
                         .field("token", &format_args!("{}", self.repr.token))
                         .finish()
                 }
             }
-            self.debug(formatter, "LitFloat")
+            self.debug(f, "LitFloat")
         }
     }
     impl Debug for LitBool {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             impl LitBool {
-                pub(crate) fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                    formatter.debug_struct(name).field("value", &self.value).finish()
+                pub(crate) fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    f.debug_struct(name).field("value", &self.value).finish()
                 }
             }
-            self.debug(formatter, "LitBool")
+            self.debug(f, "LitBool")
         }
     }
 }

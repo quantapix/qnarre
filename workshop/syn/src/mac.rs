@@ -174,7 +174,7 @@ macro_rules! custom_keyword {
 macro_rules! impl_parse_for_custom_keyword {
     ($ident:ident) => {
         impl $crate::token::CustomToken for $ident {
-            fn peek(cursor: $crate::buffer::Cursor) -> $crate::__private::bool {
+            fn peek(cursor: $crate::Cursor) -> $crate::__private::bool {
                 if let $crate::__private::Some((ident, _rest)) = cursor.ident() {
                     ident == $crate::__private::stringify!($ident)
                 } else {
@@ -281,7 +281,7 @@ macro_rules! custom_punctuation {
 macro_rules! impl_parse_for_custom_punctuation {
     ($ident:ident, $($tt:tt)+) => {
         impl $crate::token::CustomToken for $ident {
-            fn peek(cursor: $crate::buffer::Cursor) -> bool {
+            fn peek(cursor: $crate::Cursor) -> bool {
                 $crate::__private::peek_punct(cursor, $crate::stringify_punct!($($tt)+))
             }
             fn display() -> &'static $crate::__private::str {
@@ -403,5 +403,41 @@ macro_rules! custom_punctuation_unexpected {
 macro_rules! stringify_punct {
     ($($tt:tt)+) => {
         $crate::__private::concat!($($crate::__private::stringify!($tt)),+)
+    };
+}
+
+#[macro_export]
+macro_rules! parse_quote {
+    ($($tt:tt)*) => {
+        $crate::__private::parse_quote_fn($crate::__private::quote::quote!($($tt)*))
+    };
+}
+#[macro_export]
+macro_rules! parse_quote_spanned {
+    ($span:expr=> $($tt:tt)*) => {
+        $crate::__private::parse_quote_fn($crate::__private::quote::quote_spanned!($span=> $($tt)*))
+    };
+}
+
+#[macro_export]
+macro_rules! parse_macro_input {
+    ($tokenstream:ident as $ty:ty) => {
+        match $crate::parse::<$ty>($tokenstream) {
+            $crate::__private::Ok(data) => data,
+            $crate::__private::Err(err) => {
+                return $crate::__private::TokenStream::from(err.to_compile_error());
+            },
+        }
+    };
+    ($tokenstream:ident with $parser:path) => {
+        match $crate::parse::Parser::parse($parser, $tokenstream) {
+            $crate::__private::Ok(data) => data,
+            $crate::__private::Err(err) => {
+                return $crate::__private::TokenStream::from(err.to_compile_error());
+            },
+        }
+    };
+    ($tokenstream:ident) => {
+        $crate::parse_macro_input!($tokenstream as _)
     };
 }

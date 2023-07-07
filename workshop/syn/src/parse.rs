@@ -1,3 +1,23 @@
+use super::{
+    err::{self, Err, Result},
+    lookahead::{self, Lookahead1, Peek},
+    proc_macro,
+    punctuated::Punctuated,
+    tok::Token,
+    Cursor, TokBuff,
+};
+use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
+use std::{
+    cell::Cell,
+    fmt::{self, Debug, Display},
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    mem,
+    ops::Deref,
+    rc::Rc,
+    str::FromStr,
+};
+
 pub mod discouraged {
     use super::*;
     use proc_macro2::extra::DelimSpan;
@@ -6,7 +26,7 @@ pub mod discouraged {
     }
     impl<'a> Speculative for ParseBuffer<'a> {
         fn advance_to(&self, fork: &Self) {
-            if !crate::buffer::same_scope(self.cursor(), fork.cursor()) {
+            if !crate::same_scope(self.cursor(), fork.cursor()) {
                 panic!("Fork was not derived from the advancing parse stream");
             }
             let (self_unexp, self_sp) = inner_unexpected(self);
@@ -34,7 +54,7 @@ pub mod discouraged {
         fn parse_any_delimiter(&self) -> Result<(Delimiter, DelimSpan, ParseBuffer)> {
             self.step(|cursor| {
                 if let Some((content, delimiter, span, rest)) = cursor.any_group() {
-                    let scope = crate::buffer::close_span_of_group(*cursor);
+                    let scope = crate::close_span_of_group(*cursor);
                     let nested = crate::parse::advance_step_cursor(cursor, content);
                     let unexpected = crate::parse::get_unexpected(self);
                     let content = crate::parse::new_parse_buffer(scope, nested, unexpected);
@@ -46,23 +66,7 @@ pub mod discouraged {
         }
     }
 }
-use crate::buffer::{Cursor, TokenBuffer};
-use crate::err;
-pub use crate::err::{Err, Result};
-use crate::lookahead;
-pub use crate::lookahead::{Lookahead1, Peek};
-use crate::proc_macro;
-use crate::punctuated::Punctuated;
-use crate::tok::Token;
-use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
-use std::cell::Cell;
-use std::fmt::{self, Debug, Display};
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::Deref;
-use std::rc::Rc;
-use std::str::FromStr;
+
 pub trait Parse: Sized {
     fn parse(input: ParseStream) -> Result<Self>;
 }
@@ -262,7 +266,7 @@ impl<'a> ParseBuffer<'a> {
         if cursor.eof() {
             self.scope
         } else {
-            crate::buffer::open_span_of_group(cursor)
+            super::open_span_of_group(cursor)
         }
     }
     pub fn cursor(&self) -> Cursor<'a> {
@@ -351,7 +355,7 @@ pub trait Parser: Sized {
         self.parse2(tokens)
     }
 }
-fn tokens_to_parse_buffer(tokens: &TokenBuffer) -> ParseBuffer {
+fn tokens_to_parse_buffer(tokens: &TokBuff) -> ParseBuffer {
     let scope = Span::call_site();
     let cursor = tokens.begin();
     let unexpected = Rc::new(Cell::new(Unexpected::None));
@@ -363,7 +367,7 @@ where
 {
     type Output = T;
     fn parse2(self, tokens: TokenStream) -> Result<T> {
-        let buf = TokenBuffer::new2(tokens);
+        let buf = TokBuff::new2(tokens);
         let state = tokens_to_parse_buffer(&buf);
         let node = self(&state)?;
         state.check_unexpected()?;
@@ -374,7 +378,7 @@ where
         }
     }
     fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Result<Self::Output> {
-        let buf = TokenBuffer::new2(tokens);
+        let buf = TokBuff::new2(tokens);
         let cursor = buf.begin();
         let unexpected = Rc::new(Cell::new(Unexpected::None));
         let state = new_parse_buffer(scope, cursor, unexpected);

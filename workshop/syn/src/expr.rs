@@ -446,10 +446,10 @@ impl Hash for Member {
     }
 }
 impl IdentFragment for Member {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Member::Named(m) => Display::fmt(m, formatter),
-            Member::Unnamed(m) => Display::fmt(&m.index, formatter),
+            Member::Named(x) => Display::fmt(x, f),
+            Member::Unnamed(x) => Display::fmt(&x.index, f),
         }
     }
     fn span(&self) -> Option<Span> {
@@ -486,8 +486,8 @@ impl Hash for Index {
     }
 }
 impl IdentFragment for Index {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.index, formatter)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.index, f)
     }
     fn span(&self) -> Option<Span> {
         Some(self.span)
