@@ -249,7 +249,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
 }
 fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     use syn::fold::{fold_expr, fold_generic_argument, Fold};
-    use syn::{token, BinOp, Expr, ExprParen, GenericArgument, MetaNameValue, Pat, Stmt, Type};
+    use syn::{tok, BinOp, Expr, ExprParen, GenericArgument, MetaNameValue, Pat, Stmt, Type};
     struct ParenthesizeEveryExpr;
     fn needs_paren(expr: &Expr) -> bool {
         match expr {
@@ -268,7 +268,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
                 Expr::Paren(ExprParen {
                     attrs: Vec::new(),
                     expr: Box::new(fold_expr(self, expr)),
-                    paren_token: token::Paren::default(),
+                    paren_token: tok::Paren::default(),
                 })
             } else {
                 fold_expr(self, expr)
@@ -306,7 +306,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
 fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
     use syn::fold::Fold;
     use syn::punctuated::Punctuated;
-    use syn::{token, ConstParam, Expr, ExprTuple, Pat, Path};
+    use syn::{tok, ConstParam, Expr, ExprTuple, Pat, Path};
     struct CollectExprs(Vec<Expr>);
     impl Fold for CollectExprs {
         fn fold_expr(&mut self, expr: Expr) -> Expr {
@@ -317,7 +317,7 @@ fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
             Expr::Tuple(ExprTuple {
                 attrs: vec![],
                 elems: Punctuated::new(),
-                paren_token: token::Paren::default(),
+                paren_token: tok::Paren::default(),
             })
         }
         fn fold_pat(&mut self, pat: Pat) -> Pat {

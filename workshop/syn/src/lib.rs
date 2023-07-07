@@ -46,7 +46,7 @@
 use crate::{
     lookahead,
     parse::{Parse, ParseStream, Parser, Result},
-    token::{Brace, Bracket, Paren},
+    tok::{Brace, Bracket, Paren},
 };
 use proc_macro2::{extra::DelimSpan, Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 use quote::{spanned, ToTokens};
@@ -60,18 +60,18 @@ use std::{
 
 extern crate proc_macro;
 #[macro_use]
-mod macros;
+mod mac;
 #[macro_use]
 mod group {
-    use crate::{err::Result, parse::ParseBuffer, token};
+    use crate::{err::Result, parse::ParseBuffer, tok};
     use proc_macro2::{extra::DelimSpan, Delimiter};
     pub struct Parens<'a> {
-        pub token: token::Paren,
+        pub token: tok::Paren,
         pub content: ParseBuffer<'a>,
     }
     pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
         parse_delimited(x, Delimiter::Parenthesis).map(|(span, content)| Parens {
-            token: token::Paren(span),
+            token: tok::Paren(span),
             content,
         })
     }
@@ -90,12 +90,12 @@ mod group {
         };
     }
     pub struct Braces<'a> {
-        pub token: token::Brace,
+        pub token: tok::Brace,
         pub content: ParseBuffer<'a>,
     }
     pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
         parse_delimited(x, Delimiter::Brace).map(|(span, content)| Braces {
-            token: token::Brace(span),
+            token: tok::Brace(span),
             content,
         })
     }
@@ -114,12 +114,12 @@ mod group {
         };
     }
     pub struct Brackets<'a> {
-        pub token: token::Bracket,
+        pub token: tok::Bracket,
         pub content: ParseBuffer<'a>,
     }
     pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
         parse_delimited(x, Delimiter::Bracket).map(|(span, content)| Brackets {
-            token: token::Bracket(span),
+            token: tok::Bracket(span),
             content,
         })
     }
@@ -138,12 +138,12 @@ mod group {
         };
     }
     pub struct Group<'a> {
-        pub token: token::Group,
+        pub token: tok::Group,
         pub content: ParseBuffer<'a>,
     }
     pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
         parse_delimited(x, Delimiter::None).map(|(span, content)| Group {
-            token: token::Group(span.join()),
+            token: tok::Group(span.join()),
             content,
         })
     }
@@ -168,7 +168,7 @@ mod group {
     }
 }
 #[macro_use]
-pub mod token;
+pub mod tok;
 
 mod attr {
     use super::{
@@ -187,7 +187,7 @@ mod attr {
         pub struct Attribute {
             pub pound_token: Token![#],
             pub style: AttrStyle,
-            pub bracket_token: token::Bracket,
+            pub bracket_token: tok::Bracket,
             pub meta: Meta,
         }
     }
@@ -419,7 +419,293 @@ mod attr {
     }
 }
 pub use crate::attr::{AttrStyle, Attribute, Meta, MetaList, MetaNameValue};
-pub mod buffer;
+pub mod buffer {
+    use crate::Lifetime;
+    use proc_macro2::{
+        extra::DelimSpan, Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree,
+    };
+    use std::{cmp::Ordering, marker::PhantomData};
+
+    enum Entry {
+        Group(Group, usize),
+        Ident(Ident),
+        Punct(Punct),
+        Literal(Literal),
+        End(isize),
+    }
+    pub struct TokenBuffer {
+        entries: Box<[Entry]>,
+    }
+    impl TokenBuffer {
+        fn recursive_new(ys: &mut Vec<Entry>, xs: TokenStream) {
+            for tt in xs {
+                match tt {
+                    TokenTree::Ident(x) => ys.push(Entry::Ident(x)),
+                    TokenTree::Punct(x) => ys.push(Entry::Punct(x)),
+                    TokenTree::Literal(x) => ys.push(Entry::Literal(x)),
+                    TokenTree::Group(x) => {
+                        let beg = ys.len();
+                        ys.push(Entry::End(0));
+                        Self::recursive_new(ys, x.stream());
+                        let end = ys.len();
+                        ys.push(Entry::End(-(end as isize)));
+                        let off = end - beg;
+                        ys[beg] = Entry::Group(x, off);
+                    },
+                }
+            }
+        }
+        pub fn new(x: proc_macro::TokenStream) -> Self {
+            Self::new2(x.into())
+        }
+        pub fn new2(x: TokenStream) -> Self {
+            let mut ys = Vec::new();
+            Self::recursive_new(&mut ys, x);
+            ys.push(Entry::End(-(ys.len() as isize)));
+            Self {
+                entries: ys.into_boxed_slice(),
+            }
+        }
+        pub fn begin(&self) -> Cursor {
+            let ptr = self.entries.as_ptr();
+            unsafe { Cursor::create(ptr, ptr.add(self.entries.len() - 1)) }
+        }
+    }
+    pub struct Cursor<'a> {
+        ptr: *const Entry,
+        scope: *const Entry,
+        marker: PhantomData<&'a Entry>,
+    }
+    impl<'a> Cursor<'a> {
+        pub fn empty() -> Self {
+            struct UnsafeSyncEntry(Entry);
+            unsafe impl Sync for UnsafeSyncEntry {}
+            static EMPTY_ENTRY: UnsafeSyncEntry = UnsafeSyncEntry(Entry::End(0));
+            Cursor {
+                ptr: &EMPTY_ENTRY.0,
+                scope: &EMPTY_ENTRY.0,
+                marker: PhantomData,
+            }
+        }
+        unsafe fn create(mut ptr: *const Entry, scope: *const Entry) -> Self {
+            while let Entry::End(_) = *ptr {
+                if ptr == scope {
+                    break;
+                }
+                ptr = ptr.add(1);
+            }
+            Cursor {
+                ptr,
+                scope,
+                marker: PhantomData,
+            }
+        }
+        fn entry(self) -> &'a Entry {
+            unsafe { &*self.ptr }
+        }
+        unsafe fn bump_ignore_group(self) -> Cursor<'a> {
+            Cursor::create(self.ptr.offset(1), self.scope)
+        }
+        fn ignore_none(&mut self) {
+            while let Entry::Group(x, _) = self.entry() {
+                if x.delimiter() == Delimiter::None {
+                    unsafe { *self = self.bump_ignore_group() };
+                } else {
+                    break;
+                }
+            }
+        }
+        pub fn eof(self) -> bool {
+            self.ptr == self.scope
+        }
+        pub fn group(mut self, delim: Delimiter) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
+            if delim != Delimiter::None {
+                self.ignore_none();
+            }
+            if let Entry::Group(x, end) = self.entry() {
+                if x.delimiter() == delim {
+                    let span = x.delim_span();
+                    let end_of_group = unsafe { self.ptr.add(*end) };
+                    let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
+                    let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
+                    return Some((inside_of_group, span, after_group));
+                }
+            }
+            None
+        }
+        pub(crate) fn any_group(self) -> Option<(Cursor<'a>, Delimiter, DelimSpan, Cursor<'a>)> {
+            if let Entry::Group(x, end) = self.entry() {
+                let delimiter = x.delimiter();
+                let span = x.delim_span();
+                let end_of_group = unsafe { self.ptr.add(*end) };
+                let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
+                let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
+                return Some((inside_of_group, delimiter, span, after_group));
+            }
+            None
+        }
+        pub(crate) fn any_group_token(self) -> Option<(Group, Cursor<'a>)> {
+            if let Entry::Group(x, end) = self.entry() {
+                let end_of_group = unsafe { self.ptr.add(*end) };
+                let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
+                return Some((x.clone(), after_group));
+            }
+            None
+        }
+        pub fn ident(mut self) -> Option<(Ident, Cursor<'a>)> {
+            self.ignore_none();
+            match self.entry() {
+                Entry::Ident(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+                _ => None,
+            }
+        }
+        pub fn punct(mut self) -> Option<(Punct, Cursor<'a>)> {
+            self.ignore_none();
+            match self.entry() {
+                Entry::Punct(x) if x.as_char() != '\'' => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+                _ => None,
+            }
+        }
+        pub fn literal(mut self) -> Option<(Literal, Cursor<'a>)> {
+            self.ignore_none();
+            match self.entry() {
+                Entry::Literal(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+                _ => None,
+            }
+        }
+        pub fn lifetime(mut self) -> Option<(Lifetime, Cursor<'a>)> {
+            self.ignore_none();
+            match self.entry() {
+                Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
+                    let next = unsafe { self.bump_ignore_group() };
+                    let (ident, rest) = next.ident()?;
+                    let lifetime = Lifetime {
+                        apostrophe: x.span(),
+                        ident,
+                    };
+                    Some((lifetime, rest))
+                },
+                _ => None,
+            }
+        }
+        pub fn token_stream(self) -> TokenStream {
+            let mut ys = Vec::new();
+            let mut cur = self;
+            while let Some((x, rest)) = cur.token_tree() {
+                ys.push(x);
+                cur = rest;
+            }
+            ys.into_iter().collect()
+        }
+        pub fn token_tree(self) -> Option<(TokenTree, Cursor<'a>)> {
+            let (tree, len) = match self.entry() {
+                Entry::Group(x, end) => (x.clone().into(), *end),
+                Entry::Literal(x) => (x.clone().into(), 1),
+                Entry::Ident(x) => (x.clone().into(), 1),
+                Entry::Punct(x) => (x.clone().into(), 1),
+                Entry::End(_) => return None,
+            };
+            let rest = unsafe { Cursor::create(self.ptr.add(len), self.scope) };
+            Some((tree, rest))
+        }
+        pub fn span(self) -> Span {
+            match self.entry() {
+                Entry::Group(x, _) => x.span(),
+                Entry::Literal(x) => x.span(),
+                Entry::Ident(x) => x.span(),
+                Entry::Punct(x) => x.span(),
+                Entry::End(_) => Span::call_site(),
+            }
+        }
+        pub(crate) fn prev_span(mut self) -> Span {
+            if start_of_buffer(self) < self.ptr {
+                self.ptr = unsafe { self.ptr.offset(-1) };
+                if let Entry::End(_) = self.entry() {
+                    let mut depth = 1;
+                    loop {
+                        self.ptr = unsafe { self.ptr.offset(-1) };
+                        match self.entry() {
+                            Entry::Group(x, _) => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    return x.span();
+                                }
+                            },
+                            Entry::End(_) => depth += 1,
+                            Entry::Literal(_) | Entry::Ident(_) | Entry::Punct(_) => {},
+                        }
+                    }
+                }
+            }
+            self.span()
+        }
+        pub(crate) fn skip(self) -> Option<Cursor<'a>> {
+            let y = match self.entry() {
+                Entry::End(_) => return None,
+                Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
+                    match unsafe { &*self.ptr.add(1) } {
+                        Entry::Ident(_) => 2,
+                        _ => 1,
+                    }
+                },
+                Entry::Group(_, x) => *x,
+                _ => 1,
+            };
+            Some(unsafe { Cursor::create(self.ptr.add(y), self.scope) })
+        }
+    }
+    impl<'a> Copy for Cursor<'a> {}
+    impl<'a> Clone for Cursor<'a> {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+    impl<'a> Eq for Cursor<'a> {}
+    impl<'a> PartialEq for Cursor<'a> {
+        fn eq(&self, x: &Self) -> bool {
+            self.ptr == x.ptr
+        }
+    }
+    impl<'a> PartialOrd for Cursor<'a> {
+        fn partial_cmp(&self, x: &Self) -> Option<Ordering> {
+            if same_buffer(*self, *x) {
+                Some(self.ptr.cmp(&x.ptr))
+            } else {
+                None
+            }
+        }
+    }
+    pub(crate) fn same_scope(a: Cursor, b: Cursor) -> bool {
+        a.scope == b.scope
+    }
+    pub(crate) fn same_buffer(a: Cursor, b: Cursor) -> bool {
+        start_of_buffer(a) == start_of_buffer(b)
+    }
+    fn start_of_buffer(c: Cursor) -> *const Entry {
+        unsafe {
+            match &*c.scope {
+                Entry::End(x) => c.scope.offset(*x),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    pub(crate) fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
+        a.ptr.cmp(&b.ptr)
+    }
+    pub(crate) fn open_span_of_group(c: Cursor) -> Span {
+        match c.entry() {
+            Entry::Group(x, _) => x.span_open(),
+            _ => c.span(),
+        }
+    }
+    pub(crate) fn close_span_of_group(c: Cursor) -> Span {
+        match c.entry() {
+            Entry::Group(x, _) => x.span_close(),
+            _ => c.span(),
+        }
+    }
+}
 mod expr;
 pub use crate::expr::{
     Arm, Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock, ExprBreak, ExprCall, ExprCast,
@@ -431,7 +717,312 @@ pub use crate::expr::{
 pub use crate::expr::{
     ExprConst as PatConst, ExprLit as PatLit, ExprMacro as PatMacro, ExprPath as PatPath, ExprRange as PatRange,
 };
-mod generic;
+mod generic {
+    use super::*;
+    use crate::punctuated::{Iter, IterMut, Punctuated};
+    use proc_macro2::TokenStream;
+    use std::fmt::{self, Debug};
+    use std::hash::{Hash, Hasher};
+    ast_struct! {
+        pub struct Generics {
+            pub lt_token: Option<Token![<]>,
+            pub params: Punctuated<GenericParam, Token![,]>,
+            pub gt_token: Option<Token![>]>,
+            pub where_clause: Option<WhereClause>,
+        }
+    }
+    ast_enum_of_structs! {
+        pub enum GenericParam {
+            Lifetime(LifetimeParam),
+            Type(TypeParam),
+            Const(ConstParam),
+        }
+    }
+    ast_struct! {
+        pub struct LifetimeParam {
+            pub attrs: Vec<Attribute>,
+            pub lifetime: Lifetime,
+            pub colon_token: Option<Token![:]>,
+            pub bounds: Punctuated<Lifetime, Token![+]>,
+        }
+    }
+    ast_struct! {
+        pub struct TypeParam {
+            pub attrs: Vec<Attribute>,
+            pub ident: Ident,
+            pub colon_token: Option<Token![:]>,
+            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+            pub eq_token: Option<Token![=]>,
+            pub default: Option<Type>,
+        }
+    }
+    ast_struct! {
+        pub struct ConstParam {
+            pub attrs: Vec<Attribute>,
+            pub const_token: Token![const],
+            pub ident: Ident,
+            pub colon_token: Token![:],
+            pub ty: Type,
+            pub eq_token: Option<Token![=]>,
+            pub default: Option<Expr>,
+        }
+    }
+    impl Default for Generics {
+        fn default() -> Self {
+            Generics {
+                lt_token: None,
+                params: Punctuated::new(),
+                gt_token: None,
+                where_clause: None,
+            }
+        }
+    }
+    impl Generics {
+        pub fn lifetimes(&self) -> Lifetimes {
+            Lifetimes(self.params.iter())
+        }
+        pub fn lifetimes_mut(&mut self) -> LifetimesMut {
+            LifetimesMut(self.params.iter_mut())
+        }
+        pub fn type_params(&self) -> TypeParams {
+            TypeParams(self.params.iter())
+        }
+        pub fn type_params_mut(&mut self) -> TypeParamsMut {
+            TypeParamsMut(self.params.iter_mut())
+        }
+        pub fn const_params(&self) -> ConstParams {
+            ConstParams(self.params.iter())
+        }
+        pub fn const_params_mut(&mut self) -> ConstParamsMut {
+            ConstParamsMut(self.params.iter_mut())
+        }
+        pub fn make_where_clause(&mut self) -> &mut WhereClause {
+            self.where_clause.get_or_insert_with(|| WhereClause {
+                where_token: <Token![where]>::default(),
+                predicates: Punctuated::new(),
+            })
+        }
+    }
+    pub struct Lifetimes<'a>(Iter<'a, GenericParam>);
+    impl<'a> Iterator for Lifetimes<'a> {
+        type Item = &'a LifetimeParam;
+        fn next(&mut self) -> Option<Self::Item> {
+            let next = match self.0.next() {
+                Some(item) => item,
+                None => return None,
+            };
+            if let GenericParam::Lifetime(lifetime) = next {
+                Some(lifetime)
+            } else {
+                self.next()
+            }
+        }
+    }
+    pub struct LifetimesMut<'a>(IterMut<'a, GenericParam>);
+    impl<'a> Iterator for LifetimesMut<'a> {
+        type Item = &'a mut LifetimeParam;
+        fn next(&mut self) -> Option<Self::Item> {
+            let next = match self.0.next() {
+                Some(item) => item,
+                None => return None,
+            };
+            if let GenericParam::Lifetime(lifetime) = next {
+                Some(lifetime)
+            } else {
+                self.next()
+            }
+        }
+    }
+    pub struct TypeParams<'a>(Iter<'a, GenericParam>);
+    impl<'a> Iterator for TypeParams<'a> {
+        type Item = &'a TypeParam;
+        fn next(&mut self) -> Option<Self::Item> {
+            let next = match self.0.next() {
+                Some(item) => item,
+                None => return None,
+            };
+            if let GenericParam::Type(type_param) = next {
+                Some(type_param)
+            } else {
+                self.next()
+            }
+        }
+    }
+    pub struct TypeParamsMut<'a>(IterMut<'a, GenericParam>);
+    impl<'a> Iterator for TypeParamsMut<'a> {
+        type Item = &'a mut TypeParam;
+        fn next(&mut self) -> Option<Self::Item> {
+            let next = match self.0.next() {
+                Some(item) => item,
+                None => return None,
+            };
+            if let GenericParam::Type(type_param) = next {
+                Some(type_param)
+            } else {
+                self.next()
+            }
+        }
+    }
+    pub struct ConstParams<'a>(Iter<'a, GenericParam>);
+    impl<'a> Iterator for ConstParams<'a> {
+        type Item = &'a ConstParam;
+        fn next(&mut self) -> Option<Self::Item> {
+            let next = match self.0.next() {
+                Some(item) => item,
+                None => return None,
+            };
+            if let GenericParam::Const(const_param) = next {
+                Some(const_param)
+            } else {
+                self.next()
+            }
+        }
+    }
+    pub struct ConstParamsMut<'a>(IterMut<'a, GenericParam>);
+    impl<'a> Iterator for ConstParamsMut<'a> {
+        type Item = &'a mut ConstParam;
+        fn next(&mut self) -> Option<Self::Item> {
+            let next = match self.0.next() {
+                Some(item) => item,
+                None => return None,
+            };
+            if let GenericParam::Const(const_param) = next {
+                Some(const_param)
+            } else {
+                self.next()
+            }
+        }
+    }
+    pub struct ImplGenerics<'a>(pub &'a Generics);
+    pub struct TypeGenerics<'a>(pub &'a Generics);
+    pub struct Turbofish<'a>(pub &'a Generics);
+    impl Generics {
+        pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
+            (ImplGenerics(self), TypeGenerics(self), self.where_clause.as_ref())
+        }
+    }
+    macro_rules! generics_wrapper_impls {
+        ($ty:ident) => {
+            impl<'a> Clone for $ty<'a> {
+                fn clone(&self) -> Self {
+                    $ty(self.0)
+                }
+            }
+            impl<'a> Debug for $ty<'a> {
+                fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.debug_tuple(stringify!($ty)).field(self.0).finish()
+                }
+            }
+            impl<'a> Eq for $ty<'a> {}
+            impl<'a> PartialEq for $ty<'a> {
+                fn eq(&self, other: &Self) -> bool {
+                    self.0 == other.0
+                }
+            }
+            impl<'a> Hash for $ty<'a> {
+                fn hash<H: Hasher>(&self, state: &mut H) {
+                    self.0.hash(state);
+                }
+            }
+        };
+    }
+    generics_wrapper_impls!(ImplGenerics);
+    generics_wrapper_impls!(TypeGenerics);
+    generics_wrapper_impls!(Turbofish);
+    impl<'a> TypeGenerics<'a> {
+        pub fn as_turbofish(&self) -> Turbofish {
+            Turbofish(self.0)
+        }
+    }
+    ast_struct! {
+        pub struct BoundLifetimes {
+            pub for_token: Token![for],
+            pub lt_token: Token![<],
+            pub lifetimes: Punctuated<GenericParam, Token![,]>,
+            pub gt_token: Token![>],
+        }
+    }
+    impl Default for BoundLifetimes {
+        fn default() -> Self {
+            BoundLifetimes {
+                for_token: Default::default(),
+                lt_token: Default::default(),
+                lifetimes: Punctuated::new(),
+                gt_token: Default::default(),
+            }
+        }
+    }
+    impl LifetimeParam {
+        pub fn new(lifetime: Lifetime) -> Self {
+            LifetimeParam {
+                attrs: Vec::new(),
+                lifetime,
+                colon_token: None,
+                bounds: Punctuated::new(),
+            }
+        }
+    }
+    impl From<Ident> for TypeParam {
+        fn from(ident: Ident) -> Self {
+            TypeParam {
+                attrs: vec![],
+                ident,
+                colon_token: None,
+                bounds: Punctuated::new(),
+                eq_token: None,
+                default: None,
+            }
+        }
+    }
+    ast_enum_of_structs! {
+        pub enum TypeParamBound {
+            Trait(TraitBound),
+            Lifetime(Lifetime),
+            Verbatim(TokenStream),
+        }
+    }
+    ast_struct! {
+        pub struct TraitBound {
+            pub paren_token: Option<tok::Paren>,
+            pub modifier: TraitBoundModifier,
+            pub lifetimes: Option<BoundLifetimes>,
+            pub path: Path,
+        }
+    }
+    ast_enum! {
+        pub enum TraitBoundModifier {
+            None,
+            Maybe(Token![?]),
+        }
+    }
+    ast_struct! {
+        pub struct WhereClause {
+            pub where_token: Token![where],
+            pub predicates: Punctuated<WherePredicate, Token![,]>,
+        }
+    }
+    ast_enum_of_structs! {
+        pub enum WherePredicate {
+            Lifetime(PredicateLifetime),
+            Type(PredicateType),
+        }
+    }
+    ast_struct! {
+        pub struct PredicateLifetime {
+            pub lifetime: Lifetime,
+            pub colon_token: Token![:],
+            pub bounds: Punctuated<Lifetime, Token![+]>,
+        }
+    }
+    ast_struct! {
+        pub struct PredicateType {
+            pub lifetimes: Option<BoundLifetimes>,
+            pub bounded_ty: Type,
+            pub colon_token: Token![:],
+            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        }
+    }
+}
 pub use crate::generic::{
     BoundLifetimes, ConstParam, GenericParam, Generics, ImplGenerics, LifetimeParam, PredicateLifetime, PredicateType,
     TraitBound, TraitBoundModifier, Turbofish, TypeGenerics, TypeParam, TypeParamBound, WhereClause, WherePredicate,
@@ -492,7 +1083,7 @@ mod pat {
     ast_struct! {
         pub struct PatParen {
             pub attrs: Vec<Attribute>,
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub pat: Box<Pat>,
         }
     }
@@ -513,7 +1104,7 @@ mod pat {
     ast_struct! {
         pub struct PatSlice {
             pub attrs: Vec<Attribute>,
-            pub bracket_token: token::Bracket,
+            pub bracket_token: tok::Bracket,
             pub elems: Punctuated<Pat, Token![,]>,
         }
     }
@@ -522,7 +1113,7 @@ mod pat {
             pub attrs: Vec<Attribute>,
             pub qself: Option<QSelf>,
             pub path: Path,
-            pub brace_token: token::Brace,
+            pub brace_token: tok::Brace,
             pub fields: Punctuated<FieldPat, Token![,]>,
             pub rest: Option<PatRest>,
         }
@@ -530,7 +1121,7 @@ mod pat {
     ast_struct! {
         pub struct PatTuple {
             pub attrs: Vec<Attribute>,
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub elems: Punctuated<Pat, Token![,]>,
         }
     }
@@ -539,7 +1130,7 @@ mod pat {
             pub attrs: Vec<Attribute>,
             pub qself: Option<QSelf>,
             pub path: Path,
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub elems: Punctuated<Pat, Token![,]>,
         }
     }
@@ -570,7 +1161,149 @@ pub use crate::pat::{
     FieldPat, Pat, PatIdent, PatOr, PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct,
     PatType, PatWild,
 };
-mod path;
+mod path {
+    use super::*;
+    use crate::punctuated::Punctuated;
+    ast_struct! {
+        pub struct Path {
+            pub leading_colon: Option<Token![::]>,
+            pub segments: Punctuated<PathSegment, Token![::]>,
+        }
+    }
+    impl<T> From<T> for Path
+    where
+        T: Into<PathSegment>,
+    {
+        fn from(segment: T) -> Self {
+            let mut path = Path {
+                leading_colon: None,
+                segments: Punctuated::new(),
+            };
+            path.segments.push_value(segment.into());
+            path
+        }
+    }
+    impl Path {
+        pub fn is_ident<I: ?Sized>(&self, ident: &I) -> bool
+        where
+            Ident: PartialEq<I>,
+        {
+            match self.get_ident() {
+                Some(id) => id == ident,
+                None => false,
+            }
+        }
+        pub fn get_ident(&self) -> Option<&Ident> {
+            if self.leading_colon.is_none() && self.segments.len() == 1 && self.segments[0].arguments.is_none() {
+                Some(&self.segments[0].ident)
+            } else {
+                None
+            }
+        }
+    }
+    ast_struct! {
+        pub struct PathSegment {
+            pub ident: Ident,
+            pub arguments: PathArguments,
+        }
+    }
+    impl<T> From<T> for PathSegment
+    where
+        T: Into<Ident>,
+    {
+        fn from(ident: T) -> Self {
+            PathSegment {
+                ident: ident.into(),
+                arguments: PathArguments::None,
+            }
+        }
+    }
+    ast_enum! {
+        pub enum PathArguments {
+            None,
+            AngleBracketed(AngleBracketedGenericArguments),
+            Parenthesized(ParenthesizedGenericArguments),
+        }
+    }
+    impl Default for PathArguments {
+        fn default() -> Self {
+            PathArguments::None
+        }
+    }
+    impl PathArguments {
+        pub fn is_empty(&self) -> bool {
+            match self {
+                PathArguments::None => true,
+                PathArguments::AngleBracketed(bracketed) => bracketed.args.is_empty(),
+                PathArguments::Parenthesized(_) => false,
+            }
+        }
+        pub fn is_none(&self) -> bool {
+            match self {
+                PathArguments::None => true,
+                PathArguments::AngleBracketed(_) | PathArguments::Parenthesized(_) => false,
+            }
+        }
+    }
+    ast_enum! {
+        pub enum GenericArgument {
+            Lifetime(Lifetime),
+            Type(Type),
+            Const(Expr),
+            AssocType(AssocType),
+            AssocConst(AssocConst),
+            Constraint(Constraint),
+        }
+    }
+    ast_struct! {
+        pub struct AngleBracketedGenericArguments {
+            pub colon2_token: Option<Token![::]>,
+            pub lt_token: Token![<],
+            pub args: Punctuated<GenericArgument, Token![,]>,
+            pub gt_token: Token![>],
+        }
+    }
+    ast_struct! {
+        pub struct AssocType {
+            pub ident: Ident,
+            pub generics: Option<AngleBracketedGenericArguments>,
+            pub eq_token: Token![=],
+            pub ty: Type,
+        }
+    }
+    ast_struct! {
+        pub struct AssocConst {
+            pub ident: Ident,
+            pub generics: Option<AngleBracketedGenericArguments>,
+            pub eq_token: Token![=],
+            pub value: Expr,
+        }
+    }
+    ast_struct! {
+        pub struct Constraint {
+            pub ident: Ident,
+            pub generics: Option<AngleBracketedGenericArguments>,
+            pub colon_token: Token![:],
+            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        }
+    }
+    ast_struct! {
+        pub struct ParenthesizedGenericArguments {
+            pub paren_token: tok::Paren,
+            pub inputs: Punctuated<Type, Token![,]>,
+            pub output: ReturnType,
+        }
+    }
+    ast_struct! {
+        pub struct QSelf {
+            pub lt_token: Token![<],
+            pub ty: Box<Type>,
+            pub position: usize,
+            pub as_token: Option<Token![as]>,
+            pub gt_token: Token![>],
+        }
+    }
+}
 pub use crate::path::{
     AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
     Path, PathArguments, PathSegment, QSelf,
@@ -578,7 +1311,7 @@ pub use crate::path::{
 
 ast_struct! {
     pub struct Block {
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub stmts: Vec<Stmt>,
     }
 }
@@ -639,7 +1372,7 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeArray {
-            pub bracket_token: token::Bracket,
+            pub bracket_token: tok::Bracket,
             pub elem: Box<Type>,
             pub semi_token: Token![;],
             pub len: Expr,
@@ -651,7 +1384,7 @@ mod ty {
             pub unsafety: Option<Token![unsafe]>,
             pub abi: Option<Abi>,
             pub fn_token: Token![fn],
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub inputs: Punctuated<BareFnArg, Token![,]>,
             pub variadic: Option<BareVariadic>,
             pub output: ReturnType,
@@ -659,7 +1392,7 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeGroup {
-            pub group_token: token::Group,
+            pub group_token: tok::Group,
             pub elem: Box<Type>,
         }
     }
@@ -686,7 +1419,7 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeParen {
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub elem: Box<Type>,
         }
     }
@@ -714,7 +1447,7 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeSlice {
-            pub bracket_token: token::Bracket,
+            pub bracket_token: tok::Bracket,
             pub elem: Box<Type>,
         }
     }
@@ -726,7 +1459,7 @@ mod ty {
     }
     ast_struct! {
         pub struct TypeTuple {
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub elems: Punctuated<Type, Token![,]>,
         }
     }
@@ -831,13 +1564,13 @@ ast_enum_of_structs! {
 }
 ast_struct! {
     pub struct FieldsNamed {
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub named: Punctuated<Field, Token![,]>,
     }
 }
 ast_struct! {
     pub struct FieldsUnnamed {
-        pub paren_token: token::Paren,
+        pub paren_token: tok::Paren,
         pub unnamed: Punctuated<Field, Token![,]>,
     }
 }
@@ -932,7 +1665,7 @@ ast_struct! {
 ast_struct! {
     pub struct DataEnum {
         pub enum_token: Token![enum],
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub variants: Punctuated<Variant, Token![,]>,
     }
 }
@@ -1177,7 +1910,7 @@ pub mod ext {
     use crate::parse::Peek;
     use crate::parse::{ParseStream, Result};
     use crate::sealed::lookahead;
-    use crate::token::CustomToken;
+    use crate::tok::CustomToken;
     use proc_macro2::Ident;
     pub trait IdentExt: Sized + private::Sealed {
         fn parse_any(input: ParseStream) -> Result<Self>;
@@ -1353,7 +2086,7 @@ mod lookahead {
     use crate::buffer::Cursor;
     use crate::err::{self, Err};
     use crate::sealed::lookahead::Sealed;
-    use crate::token::Token;
+    use crate::tok::Token;
     use crate::IntoSpans;
     use proc_macro2::{Delimiter, Span};
     use std::cell::RefCell;
@@ -1639,7 +2372,7 @@ mod restriction {
     ast_struct! {
         pub struct VisRestricted {
             pub pub_token: Token![pub],
-            pub paren_token: token::Paren,
+            pub paren_token: tok::Paren,
             pub in_token: Option<Token![in]>,
             pub path: Box<Path>,
         }

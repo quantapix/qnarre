@@ -53,7 +53,7 @@ use crate::lookahead;
 pub use crate::lookahead::{Lookahead1, Peek};
 use crate::proc_macro;
 use crate::punctuated::Punctuated;
-use crate::token::Token;
+use crate::tok::Token;
 use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
 use std::cell::Cell;
 use std::fmt::{self, Debug, Display};

@@ -1,6 +1,6 @@
 use super::{
     parse::{Parse, ParseStream, Result},
-    token::Token,
+    tok::Token,
 };
 use std::{
     fmt::{self, Debug},

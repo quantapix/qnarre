@@ -236,7 +236,7 @@ impl ToTokens for PredicateType {
 
 fn wrap_bare_struct(tokens: &mut TokenStream, e: &Expr) {
     if let Expr::Struct(_) = *e {
-        token::Paren::default().surround(tokens, |tokens| {
+        tok::Paren::default().surround(tokens, |tokens| {
             e.to_tokens(tokens);
         });
     } else {
@@ -398,7 +398,7 @@ impl ToTokens for ExprIf {
             else_token.to_tokens(tokens);
             match **else_ {
                 Expr::If(_) | Expr::Block(_) => else_.to_tokens(tokens),
-                _ => token::Brace::default().surround(tokens, |tokens| else_.to_tokens(tokens)),
+                _ => tok::Brace::default().surround(tokens, |tokens| else_.to_tokens(tokens)),
             }
         }
     }
@@ -1519,7 +1519,7 @@ impl ToTokens for GenericArgument {
             GenericArgument::Const(expr) => match expr {
                 Expr::Lit(_) => expr.to_tokens(tokens),
                 Expr::Block(_) => expr.to_tokens(tokens),
-                _ => token::Brace::default().surround(tokens, |tokens| {
+                _ => tok::Brace::default().surround(tokens, |tokens| {
                     expr.to_tokens(tokens);
                 }),
             },

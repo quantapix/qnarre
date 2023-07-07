@@ -43,7 +43,7 @@ ast_struct! {
         pub enum_token: Token![enum],
         pub ident: Ident,
         pub generics: Generics,
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub variants: Punctuated<Variant, Token![,]>,
     }
 }
@@ -71,7 +71,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub unsafety: Option<Token![unsafe]>,
         pub abi: Abi,
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub items: Vec<ForeignItem>,
     }
 }
@@ -84,7 +84,7 @@ ast_struct! {
         pub generics: Generics,
         pub trait_: Option<(Option<Token![!]>, Path, Token![for])>,
         pub self_ty: Box<Type>,
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub items: Vec<ImplItem>,
     }
 }
@@ -103,7 +103,7 @@ ast_struct! {
         pub unsafety: Option<Token![unsafe]>,
         pub mod_token: Token![mod],
         pub ident: Ident,
-        pub content: Option<(token::Brace, Vec<Item>)>,
+        pub content: Option<(tok::Brace, Vec<Item>)>,
         pub semi: Option<Token![;]>,
     }
 }
@@ -144,7 +144,7 @@ ast_struct! {
         pub generics: Generics,
         pub colon_token: Option<Token![:]>,
         pub supertraits: Punctuated<TypeParamBound, Token![+]>,
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub items: Vec<TraitItem>,
     }
 }
@@ -325,7 +325,7 @@ ast_struct! {
 }
 ast_struct! {
     pub struct UseGroup {
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub items: Punctuated<UseTree, Token![,]>,
     }
 }
@@ -485,7 +485,7 @@ ast_struct! {
         pub fn_token: Token![fn],
         pub ident: Ident,
         pub generics: Generics,
-        pub paren_token: token::Paren,
+        pub paren_token: tok::Paren,
         pub inputs: Punctuated<FnArg, Token![,]>,
         pub variadic: Option<Variadic>,
         pub output: ReturnType,

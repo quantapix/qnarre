@@ -4,7 +4,7 @@ use super::{
     ext::IdentExt,
     parse::{discouraged::Speculative, Parse, ParseBuffer, ParseStream, Result},
     path,
-    token::Token,
+    tok::Token,
     *,
 };
 use proc_macro2::{Ident, Punct, Spacing, Span, Span, TokenStream};
@@ -58,7 +58,7 @@ impl Parse for MetaNameValue {
 }
 
 pub(crate) fn parse_meta_after_path(path: Path, x: ParseStream) -> Result<Meta> {
-    if x.peek(token::Paren) || x.peek(token::Bracket) || x.peek(token::Brace) {
+    if x.peek(tok::Paren) || x.peek(tok::Bracket) || x.peek(tok::Brace) {
         parse_meta_list_after_path(path, x).map(Meta::List)
     } else if x.peek(Token![=]) {
         parse_meta_name_value_after_path(path, x).map(Meta::NameValue)
@@ -81,7 +81,7 @@ fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNa
     let value = if let (Some(lit), true) = (lit, ahead.is_empty()) {
         x.advance_to(&ahead);
         Expr::Lit(ExprLit { attrs: Vec::new(), lit })
-    } else if x.peek(Token![#]) && x.peek2(token::Bracket) {
+    } else if x.peek(Token![#]) && x.peek2(tok::Bracket) {
         return Err(x.error("unexpected attribute inside of attribute"));
     } else {
         x.parse()?
@@ -306,7 +306,7 @@ impl Parse for TypeParamBound {
         }
         let begin = input.fork();
         let content;
-        let (paren_token, content) = if input.peek(token::Paren) {
+        let (paren_token, content) = if input.peek(tok::Paren) {
             (Some(parenthesized!(content in input)), &content)
         } else {
             (None, input)
@@ -339,7 +339,7 @@ impl TypeParamBound {
                 || input.peek(Token![::])
                 || input.peek(Token![?])
                 || input.peek(Lifetime)
-                || input.peek(token::Paren)
+                || input.peek(tok::Paren)
                 || input.peek(Token![~]))
             {
                 break;
@@ -355,7 +355,7 @@ impl Parse for TraitBound {
         let lifetimes: Option<BoundLifetimes> = input.parse()?;
         let mut path: Path = input.parse()?;
         if path.segments.last().unwrap().arguments.is_empty()
-            && (input.peek(token::Paren) || input.peek(Token![::]) && input.peek3(token::Paren))
+            && (input.peek(tok::Paren) || input.peek(Token![::]) && input.peek3(tok::Paren))
         {
             input.parse::<Option<Token![::]>>()?;
             let args: ParenthesizedGenericArguments = input.parse()?;
@@ -409,7 +409,7 @@ impl Parse for WhereClause {
                 let mut predicates = Punctuated::new();
                 loop {
                     if input.is_empty()
-                        || input.peek(token::Brace)
+                        || input.peek(tok::Brace)
                         || input.peek(Token![,])
                         || input.peek(Token![;])
                         || input.peek(Token![:]) && !input.peek(Token![::])
@@ -449,7 +449,7 @@ impl Parse for WherePredicate {
                     let mut bounds = Punctuated::new();
                     loop {
                         if input.is_empty()
-                            || input.peek(token::Brace)
+                            || input.peek(tok::Brace)
                             || input.peek(Token![,])
                             || input.peek(Token![;])
                             || input.peek(Token![:])
@@ -477,7 +477,7 @@ impl Parse for WherePredicate {
                     let mut bounds = Punctuated::new();
                     loop {
                         if input.is_empty()
-                            || input.peek(token::Brace)
+                            || input.peek(tok::Brace)
                             || input.peek(Token![,])
                             || input.peek(Token![;])
                             || input.peek(Token![:]) && !input.peek(Token![::])
@@ -636,7 +636,7 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
                     || input.peek(Token![,])
                     || input.peek(Token![;])
                     || input.peek(Token![.]) && !input.peek(Token![..])
-                    || !allow_struct.0 && input.peek(token::Brace))
+                    || !allow_struct.0 && input.peek(tok::Brace))
             {
                 None
             } else {
@@ -695,7 +695,7 @@ fn ambiguous_expr(input: ParseStream, #[cfg(feature = "full")] allow_struct: All
 fn expr_attrs(input: ParseStream) -> Result<Vec<Attribute>> {
     let mut attrs = Vec::new();
     loop {
-        if input.peek(token::Group) {
+        if input.peek(tok::Group) {
             let ahead = input.fork();
             let group = crate::group::parse_group(&ahead)?;
             if !group.content.peek(Token![#]) || group.content.peek2(Token![!]) {
@@ -764,7 +764,7 @@ fn trailer_expr(
 }
 fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
     loop {
-        if input.peek(token::Paren) {
+        if input.peek(tok::Paren) {
             let content;
             e = Expr::Call(ExprCall {
                 attrs: Vec::new(),
@@ -802,7 +802,7 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
             } else {
                 None
             };
-            if turbofish.is_some() || input.peek(token::Paren) {
+            if turbofish.is_some() || input.peek(tok::Paren) {
                 if let Member::Named(method) = member {
                     let content;
                     e = Expr::MethodCall(ExprMethodCall {
@@ -823,7 +823,7 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
                 dot_token,
                 member,
             });
-        } else if input.peek(token::Bracket) {
+        } else if input.peek(tok::Bracket) {
             let content;
             e = Expr::Index(ExprIndex {
                 attrs: Vec::new(),
@@ -844,20 +844,20 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
     Ok(e)
 }
 fn atom_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
-    if input.peek(token::Group) && !input.peek2(Token![::]) && !input.peek2(Token![!]) && !input.peek2(token::Brace) {
+    if input.peek(tok::Group) && !input.peek2(Token![::]) && !input.peek2(Token![!]) && !input.peek2(tok::Brace) {
         input.call(expr_group).map(Expr::Group)
     } else if input.peek(Lit) {
         input.parse().map(Expr::Lit)
     } else if input.peek(Token![async])
-        && (input.peek2(token::Brace) || input.peek2(Token![move]) && input.peek3(token::Brace))
+        && (input.peek2(tok::Brace) || input.peek2(Token![move]) && input.peek3(tok::Brace))
     {
         input.parse().map(Expr::Async)
-    } else if input.peek(Token![try]) && input.peek2(token::Brace) {
+    } else if input.peek(Token![try]) && input.peek2(tok::Brace) {
         input.parse().map(Expr::TryBlock)
     } else if input.peek(Token![|])
         || input.peek(Token![move])
         || input.peek(Token![for]) && input.peek2(Token![<]) && (input.peek3(Lifetime) || input.peek3(Token![>]))
-        || input.peek(Token![const]) && !input.peek2(token::Brace)
+        || input.peek(Token![const]) && !input.peek2(tok::Brace)
         || input.peek(Token![static])
         || input.peek(Token![async]) && (input.peek2(Token![|]) || input.peek2(Token![move]))
     {
@@ -874,7 +874,7 @@ fn atom_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
         || input.peek(Token![try]) && (input.peek2(Token![!]) || input.peek2(Token![::]))
     {
         path_or_macro_or_struct(input, allow_struct)
-    } else if input.peek(token::Paren) {
+    } else if input.peek(tok::Paren) {
         paren_or_tuple(input)
     } else if input.peek(Token![break]) {
         expr_break(input, allow_struct).map(Expr::Break)
@@ -882,7 +882,7 @@ fn atom_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
         input.parse().map(Expr::Continue)
     } else if input.peek(Token![return]) {
         expr_ret(input, allow_struct).map(Expr::Return)
-    } else if input.peek(token::Bracket) {
+    } else if input.peek(tok::Bracket) {
         array_or_repeat(input)
     } else if input.peek(Token![let]) {
         input.parse().map(Expr::Let)
@@ -902,7 +902,7 @@ fn atom_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
         input.parse().map(Expr::Unsafe)
     } else if input.peek(Token![const]) {
         input.parse().map(Expr::Const)
-    } else if input.peek(token::Brace) {
+    } else if input.peek(tok::Brace) {
         input.parse().map(Expr::Block)
     } else if input.peek(Token![..]) {
         expr_range(input, allow_struct).map(Expr::Range)
@@ -916,7 +916,7 @@ fn atom_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
             Expr::ForLoop(input.parse()?)
         } else if input.peek(Token![loop]) {
             Expr::Loop(input.parse()?)
-        } else if input.peek(token::Brace) {
+        } else if input.peek(tok::Brace) {
             Expr::Block(input.parse()?)
         } else {
             return Err(input.error("expected loop or block expression"));
@@ -958,7 +958,7 @@ fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_st
             },
         }));
     }
-    if allow_struct.0 && input.peek(token::Brace) {
+    if allow_struct.0 && input.peek(tok::Brace) {
         return expr_struct_helper(input, qself, path).map(Expr::Struct);
     }
     Ok(Expr::Path(ExprPath {
@@ -1098,13 +1098,13 @@ pub(crate) fn expr_early(input: ParseStream) -> Result<Expr> {
         Expr::Loop(input.parse()?)
     } else if input.peek(Token![match]) {
         Expr::Match(input.parse()?)
-    } else if input.peek(Token![try]) && input.peek2(token::Brace) {
+    } else if input.peek(Token![try]) && input.peek2(tok::Brace) {
         Expr::TryBlock(input.parse()?)
     } else if input.peek(Token![unsafe]) {
         Expr::Unsafe(input.parse()?)
-    } else if input.peek(Token![const]) && input.peek2(token::Brace) {
+    } else if input.peek(Token![const]) && input.peek2(tok::Brace) {
         Expr::Const(input.parse()?)
-    } else if input.peek(token::Brace) {
+    } else if input.peek(tok::Brace) {
         Expr::Block(input.parse()?)
     } else {
         let allow_struct = AllowStruct(true);
@@ -1191,7 +1191,7 @@ fn else_block(input: ParseStream) -> Result<(Token![else], Box<Expr>)> {
     let lookahead = input.lookahead1();
     let else_branch = if input.peek(Token![if]) {
         input.parse().map(Expr::If)?
-    } else if input.peek(token::Brace) {
+    } else if input.peek(tok::Brace) {
         Expr::Block(ExprBlock {
             attrs: Vec::new(),
             label: None,
@@ -1534,7 +1534,7 @@ fn expr_break(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprBreak
             if input.is_empty()
                 || input.peek(Token![,])
                 || input.peek(Token![;])
-                || !allow_struct.0 && input.peek(token::Brace)
+                || !allow_struct.0 && input.peek(tok::Brace)
             {
                 None
             } else {
@@ -1663,7 +1663,7 @@ fn expr_range(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprRange
             || input.peek(Token![,])
             || input.peek(Token![;])
             || input.peek(Token![.]) && !input.peek(Token![..])
-            || !allow_struct.0 && input.peek(token::Brace))
+            || !allow_struct.0 && input.peek(tok::Brace))
     {
         None
     } else {
@@ -1812,16 +1812,16 @@ fn check_cast(input: ParseStream) -> Result<()> {
     let kind = if input.peek(Token![.]) && !input.peek(Token![..]) {
         if input.peek2(Token![await]) {
             "`.await`"
-        } else if input.peek2(Ident) && (input.peek3(token::Paren) || input.peek3(Token![::])) {
+        } else if input.peek2(Ident) && (input.peek3(tok::Paren) || input.peek3(Token![::])) {
             "a method call"
         } else {
             "a field access"
         }
     } else if input.peek(Token![?]) {
         "`?`"
-    } else if input.peek(token::Bracket) {
+    } else if input.peek(tok::Bracket) {
         "indexing"
-    } else if input.peek(token::Paren) {
+    } else if input.peek(tok::Paren) {
         "a function call"
     } else {
         return Ok(());
@@ -1855,12 +1855,12 @@ pub(crate) fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<Attribute>, 
         let lookahead = ahead.lookahead1();
         if lookahead.peek(Token![crate]) {
             input.parse().map(Item::ExternCrate)
-        } else if lookahead.peek(token::Brace) {
+        } else if lookahead.peek(tok::Brace) {
             input.parse().map(Item::ForeignMod)
         } else if lookahead.peek(LitStr) {
             ahead.parse::<LitStr>()?;
             let lookahead = ahead.lookahead1();
-            if lookahead.peek(token::Brace) {
+            if lookahead.peek(tok::Brace) {
                 input.parse().map(Item::ForeignMod)
             } else {
                 Err(lookahead.error())
@@ -2112,13 +2112,13 @@ fn parse_macro2(begin: ParseBuffer, _vis: Visibility, input: ParseStream) -> Res
     input.parse::<Token![macro]>()?;
     input.parse::<Ident>()?;
     let mut lookahead = input.lookahead1();
-    if lookahead.peek(token::Paren) {
+    if lookahead.peek(tok::Paren) {
         let paren_content;
         parenthesized!(paren_content in input);
         paren_content.parse::<TokenStream>()?;
         lookahead = input.lookahead1();
     }
-    if lookahead.peek(token::Brace) {
+    if lookahead.peek(tok::Brace) {
         let brace_content;
         braced!(brace_content in input);
         brace_content.parse::<TokenStream>()?;
@@ -2226,7 +2226,7 @@ fn parse_use_tree(input: ParseStream, allow_crate_root_in_path: bool) -> Result<
         Ok(Some(UseTree::Glob(UseGlob {
             star_token: input.parse()?,
         })))
-    } else if lookahead.peek(token::Brace) {
+    } else if lookahead.peek(tok::Brace) {
         let content;
         let brace_token = braced!(content in input);
         let mut items = Punctuated::new();
@@ -2515,7 +2515,7 @@ impl Parse for ItemMod {
                 content: None,
                 semi: Some(input.parse()?),
             })
-        } else if lookahead.peek(token::Brace) {
+        } else if lookahead.peek(tok::Brace) {
             let content;
             let brace_token = braced!(content in input);
             parse_inner(&content, &mut attrs)?;
@@ -2568,7 +2568,7 @@ impl Parse for ForeignItem {
         let mut item = if lookahead.peek(Token![fn]) || peek_signature(&ahead) {
             let vis: Visibility = input.parse()?;
             let sig: Signature = input.parse()?;
-            if input.peek(token::Brace) {
+            if input.peek(tok::Brace) {
                 let content;
                 braced!(content in input);
                 content.call(Attribute::parse_inner)?;
@@ -2825,7 +2825,7 @@ impl Parse for ItemUnion {
 fn parse_trait_or_trait_alias(input: ParseStream) -> Result<Item> {
     let (attrs, vis, trait_token, ident, generics) = parse_start_of_trait_alias(input)?;
     let lookahead = input.lookahead1();
-    if lookahead.peek(token::Brace) || lookahead.peek(Token![:]) || lookahead.peek(Token![where]) {
+    if lookahead.peek(tok::Brace) || lookahead.peek(Token![:]) || lookahead.peek(Token![where]) {
         let unsafety = None;
         let auto_token = None;
         parse_rest_of_trait(input, attrs, vis, unsafety, auto_token, trait_token, ident, generics).map(Item::Trait)
@@ -2870,11 +2870,11 @@ fn parse_rest_of_trait(
     let mut supertraits = Punctuated::new();
     if colon_token.is_some() {
         loop {
-            if input.peek(Token![where]) || input.peek(token::Brace) {
+            if input.peek(Token![where]) || input.peek(tok::Brace) {
                 break;
             }
             supertraits.push_value(input.parse()?);
-            if input.peek(Token![where]) || input.peek(token::Brace) {
+            if input.peek(Token![where]) || input.peek(tok::Brace) {
                 break;
             }
             supertraits.push_punct(input.parse()?);
@@ -3040,7 +3040,7 @@ impl Parse for TraitItemFn {
         let mut attrs = input.call(Attribute::parse_outer)?;
         let sig: Signature = input.parse()?;
         let lookahead = input.lookahead1();
-        let (brace_token, stmts, semi_token) = if lookahead.peek(token::Brace) {
+        let (brace_token, stmts, semi_token) = if lookahead.peek(tok::Brace) {
             let content;
             let brace_token = braced!(content in input);
             parse_inner(&content, &mut attrs)?;
@@ -3154,7 +3154,7 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
         input.parse::<Token![const]>()?;
     }
     let begin = input.fork();
-    let polarity = if input.peek(Token![!]) && !input.peek2(token::Brace) {
+    let polarity = if input.peek(Token![!]) && !input.peek2(tok::Brace) {
         Some(input.parse::<Token![!]>()?)
     } else {
         None

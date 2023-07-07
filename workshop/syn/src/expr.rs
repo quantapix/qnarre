@@ -51,7 +51,7 @@ ast_enum_of_structs! {
 ast_struct! {
     pub struct ExprArray #full {
         pub attrs: Vec<Attribute>,
-        pub bracket_token: token::Bracket,
+        pub bracket_token: tok::Bracket,
         pub elems: Punctuated<Expr, Token![,]>,
     }
 }
@@ -106,7 +106,7 @@ ast_struct! {
     pub struct ExprCall {
         pub attrs: Vec<Attribute>,
         pub func: Box<Expr>,
-        pub paren_token: token::Paren,
+        pub paren_token: tok::Paren,
         pub args: Punctuated<Expr, Token![,]>,
     }
 }
@@ -169,7 +169,7 @@ ast_struct! {
 ast_struct! {
     pub struct ExprGroup {
         pub attrs: Vec<Attribute>,
-        pub group_token: token::Group,
+        pub group_token: tok::Group,
         pub expr: Box<Expr>,
     }
 }
@@ -186,7 +186,7 @@ ast_struct! {
     pub struct ExprIndex {
         pub attrs: Vec<Attribute>,
         pub expr: Box<Expr>,
-        pub bracket_token: token::Bracket,
+        pub bracket_token: tok::Bracket,
         pub index: Box<Expr>,
     }
 }
@@ -230,7 +230,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub match_token: Token![match],
         pub expr: Box<Expr>,
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub arms: Vec<Arm>,
     }
 }
@@ -241,14 +241,14 @@ ast_struct! {
         pub dot_token: Token![.],
         pub method: Ident,
         pub turbofish: Option<AngleBracketedGenericArguments>,
-        pub paren_token: token::Paren,
+        pub paren_token: tok::Paren,
         pub args: Punctuated<Expr, Token![,]>,
     }
 }
 ast_struct! {
     pub struct ExprParen {
         pub attrs: Vec<Attribute>,
-        pub paren_token: token::Paren,
+        pub paren_token: tok::Paren,
         pub expr: Box<Expr>,
     }
 }
@@ -278,7 +278,7 @@ ast_struct! {
 ast_struct! {
     pub struct ExprRepeat #full {
         pub attrs: Vec<Attribute>,
-        pub bracket_token: token::Bracket,
+        pub bracket_token: tok::Bracket,
         pub expr: Box<Expr>,
         pub semi_token: Token![;],
         pub len: Box<Expr>,
@@ -296,7 +296,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub qself: Option<QSelf>,
         pub path: Path,
-        pub brace_token: token::Brace,
+        pub brace_token: tok::Brace,
         pub fields: Punctuated<FieldValue, Token![,]>,
         pub dot2_token: Option<Token![..]>,
         pub rest: Option<Box<Expr>>,
@@ -319,7 +319,7 @@ ast_struct! {
 ast_struct! {
     pub struct ExprTuple #full {
         pub attrs: Vec<Attribute>,
-        pub paren_token: token::Paren,
+        pub paren_token: tok::Paren,
         pub elems: Punctuated<Expr, Token![,]>,
     }
 }
