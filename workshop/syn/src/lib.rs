@@ -59,72 +59,65 @@ use std::{
 #[macro_use]
 mod mac;
 
-mod group {
-    use super::{
-        err::Result,
-        parse::{self, ParseBuffer},
-        tok,
-    };
-    use proc_macro2::{extra::DelimSpan, Delimiter};
-    pub struct Parens<'a> {
-        pub tok: tok::Paren,
-        pub content: ParseBuffer<'a>,
-    }
-    pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
-        parse_delimited(x, Delimiter::Parenthesis).map(|(span, content)| Parens {
-            tok: tok::Paren(span),
-            content,
-        })
-    }
-    pub struct Braces<'a> {
-        pub token: tok::Brace,
-        pub content: ParseBuffer<'a>,
-    }
-    pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
-        parse_delimited(x, Delimiter::Brace).map(|(span, content)| Braces {
-            token: tok::Brace(span),
-            content,
-        })
-    }
-    pub struct Brackets<'a> {
-        pub token: tok::Bracket,
-        pub content: ParseBuffer<'a>,
-    }
-    pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
-        parse_delimited(x, Delimiter::Bracket).map(|(span, content)| Brackets {
-            token: tok::Bracket(span),
-            content,
-        })
-    }
-    pub struct Group<'a> {
-        pub token: tok::Group,
-        pub content: ParseBuffer<'a>,
-    }
-    pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
-        parse_delimited(x, Delimiter::None).map(|(span, content)| Group {
-            token: tok::Group(span.join()),
-            content,
-        })
-    }
-    fn parse_delimited<'a>(x: &ParseBuffer<'a>, delim: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
-        x.step(|cursor| {
-            if let Some((content, span, rest)) = cursor.group(delim) {
-                let scope = super::close_span_of_group(*cursor);
-                let nested = parse::advance_step_cursor(cursor, content);
-                let unexpected = arse::get_unexpected(x);
-                let content = parse::new_parse_buffer(scope, nested, unexpected);
-                Ok(((span, content), rest))
-            } else {
-                let y = match delim {
-                    Delimiter::Parenthesis => "expected parentheses",
-                    Delimiter::Brace => "expected curly braces",
-                    Delimiter::Bracket => "expected square brackets",
-                    Delimiter::None => "expected invisible group",
-                };
-                Err(cursor.error(y))
-            }
-        })
-    }
+pub struct Parens<'a> {
+    pub tok: tok::Paren,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
+    parse_delimited(x, Delimiter::Parenthesis).map(|(span, gist)| Parens {
+        tok: tok::Paren(span),
+        gist,
+    })
+}
+pub struct Braces<'a> {
+    pub token: tok::Brace,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
+    parse_delimited(x, Delimiter::Brace).map(|(span, gist)| Braces {
+        token: tok::Brace(span),
+        gist,
+    })
+}
+pub struct Brackets<'a> {
+    pub token: tok::Bracket,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
+    parse_delimited(x, Delimiter::Bracket).map(|(span, gist)| Brackets {
+        token: tok::Bracket(span),
+        gist,
+    })
+}
+pub struct Group<'a> {
+    pub token: tok::Group,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
+    parse_delimited(x, Delimiter::None).map(|(span, gist)| Group {
+        token: tok::Group(span.join()),
+        gist,
+    })
+}
+fn parse_delimited<'a>(x: &ParseBuffer<'a>, d: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
+    x.step(|c| {
+        if let Some((gist, span, rest)) = c.group(d) {
+            let scope = close_span_of_group(*c);
+            let nested = parse::advance_step_cursor(c, gist);
+            let unexpected = parse::get_unexpected(x);
+            let gist = parse::new_parse_buffer(scope, nested, unexpected);
+            Ok(((span, gist), rest))
+        } else {
+            use Delimiter::*;
+            let y = match d {
+                Parenthesis => "expected parentheses",
+                Brace => "expected braces",
+                Bracket => "expected brackets",
+                None => "expected group",
+            };
+            Err(c.error(y))
+        }
+    })
 }
 
 ast_enum! {
@@ -151,8 +144,8 @@ impl Attribute {
     pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
         match &self.meta {
             Meta::Path(x) => Err(err::new2(
-                x.segments.first().unwrap().ident.span(),
-                x.segments.last().unwrap().ident.span(),
+                x.segs.first().unwrap().ident.span(),
+                x.segs.last().unwrap().ident.span(),
                 format!(
                     "expected attribute arguments in parentheses: {}[{}(...)]",
                     parsing::DisplayAttrStyle(&self.style),
@@ -240,8 +233,8 @@ impl Meta {
         match self {
             Meta::List(x) => Ok(x),
             Meta::Path(x) => Err(err::new2(
-                x.segments.first().unwrap().ident.span(),
-                x.segments.last().unwrap().ident.span(),
+                x.segs.first().unwrap().ident.span(),
+                x.segs.last().unwrap().ident.span(),
                 format!(
                     "expected attribute arguments in parentheses: `{}(...)`",
                     parsing::DisplayPath(x),
@@ -254,8 +247,8 @@ impl Meta {
         match self {
             Meta::NameValue(x) => Ok(x),
             Meta::Path(x) => Err(err::new2(
-                x.segments.first().unwrap().ident.span(),
-                x.segments.last().unwrap().ident.span(),
+                x.segs.first().unwrap().ident.span(),
+                x.segs.last().unwrap().ident.span(),
                 format!(
                     "expected a value for this attribute: `{} = ...`",
                     parsing::DisplayPath(x),
@@ -307,7 +300,7 @@ impl<'a> ParseNestedMeta<'a> {
         parse_nested_meta(&content, cb)
     }
     pub fn error(&self, x: impl Display) -> Err {
-        let beg = self.path.segments[0].ident.span();
+        let beg = self.path.segs[0].ident.span();
         let end = self.input.cursor().prev_span();
         err::new2(beg, end, x)
     }
@@ -337,12 +330,12 @@ pub fn parse_nested_meta(x: ParseStream, mut cb: impl FnMut(ParseNestedMeta) -> 
 }
 fn parse_meta_path(x: ParseStream) -> Result<Path> {
     Ok(Path {
-        leading_colon: x.parse()?,
-        segments: {
+        colon: x.parse()?,
+        segs: {
             let mut ys = Punctuated::new();
             if x.peek(Ident::peek_any) {
                 let y = Ident::parse_any(x)?;
-                ys.push_value(PathSegment::from(y));
+                ys.push_value(Segment::from(y));
             } else if x.is_empty() {
                 return Err(x.error("expected nested attribute"));
             } else if x.peek(lit::Lit) {
@@ -354,7 +347,7 @@ fn parse_meta_path(x: ParseStream) -> Result<Path> {
                 let y = x.parse()?;
                 ys.push_punct(y);
                 let y = Ident::parse_any(x)?;
-                ys.push_value(PathSegment::from(y));
+                ys.push_value(Segment::from(y));
             }
             ys
         },
@@ -416,12 +409,12 @@ impl<'a> Cursor<'a> {
     pub fn eof(self) -> bool {
         self.ptr == self.scope
     }
-    pub fn group(mut self, delim: Delimiter) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
-        if delim != Delimiter::None {
+    pub fn group(mut self, d: Delimiter) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
+        if d != Delimiter::None {
             self.ignore_none();
         }
         if let Entry::Group(x, end) = self.entry() {
-            if x.delimiter() == delim {
+            if x.delimiter() == d {
                 let span = x.delim_span();
                 let end_of_group = unsafe { self.ptr.add(*end) };
                 let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
@@ -969,8 +962,8 @@ pub use item::{
     ItemUnion, ItemUse, Receiver, Signature, StaticMutability, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro,
     TraitItemType, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variadic,
 };
-pub mod punctuated;
-use punctuated::Punctuated;
+pub mod punct;
+use punct::Punctuated;
 pub mod lit;
 pub mod tok;
 
@@ -1088,91 +1081,96 @@ ast_struct! {
     }
 }
 
-mod path {
-    use super::{punctuated::Punctuated, *};
+pub mod path {
+    use super::{punct::Punctuated, *};
     ast_struct! {
         pub struct Path {
-            pub leading_colon: Option<Token![::]>,
-            pub segments: Punctuated<PathSegment, Token![::]>,
-        }
-    }
-    impl<T> From<T> for Path
-    where
-        T: Into<PathSegment>,
-    {
-        fn from(segment: T) -> Self {
-            let mut path = Path {
-                leading_colon: None,
-                segments: Punctuated::new(),
-            };
-            path.segments.push_value(segment.into());
-            path
+            pub colon: Option<Token![::]>,
+            pub segs: Punctuated<Segment, Token![::]>,
         }
     }
     impl Path {
-        pub fn is_ident<I: ?Sized>(&self, ident: &I) -> bool
+        pub fn is_ident<I: ?Sized>(&self, i: &I) -> bool
         where
             Ident: PartialEq<I>,
         {
             match self.get_ident() {
-                Some(id) => id == ident,
+                Some(x) => x == i,
                 None => false,
             }
         }
         pub fn get_ident(&self) -> Option<&Ident> {
-            if self.leading_colon.is_none() && self.segments.len() == 1 && self.segments[0].arguments.is_none() {
-                Some(&self.segments[0].ident)
+            if self.colon.is_none() && self.segs.len() == 1 && self.segs[0].args.is_none() {
+                Some(&self.segs[0].ident)
             } else {
                 None
             }
         }
     }
-    ast_struct! {
-        pub struct PathSegment {
-            pub ident: Ident,
-            pub arguments: PathArguments,
+    impl<T> From<T> for Path
+    where
+        T: Into<Segment>,
+    {
+        fn from(x: T) -> Self {
+            let mut y = Path {
+                colon: None,
+                segs: Punctuated::new(),
+            };
+            y.segs.push_value(x.into());
+            y
         }
     }
-    impl<T> From<T> for PathSegment
+
+    ast_struct! {
+        pub struct Segment {
+            pub ident: Ident,
+            pub args: Args,
+        }
+    }
+    impl<T> From<T> for Segment
     where
         T: Into<Ident>,
     {
-        fn from(ident: T) -> Self {
-            PathSegment {
-                ident: ident.into(),
-                arguments: PathArguments::None,
+        fn from(x: T) -> Self {
+            Segment {
+                ident: x.into(),
+                args: Args::None,
             }
         }
     }
+
     ast_enum! {
-        pub enum PathArguments {
+        pub enum Args {
             None,
-            AngleBracketed(AngleBracketedGenericArguments),
-            Parenthesized(ParenthesizedGenericArguments),
+            Angled(AngledArgs),
+            Parenthesized(ParenthesizedArgs),
         }
     }
-    impl Default for PathArguments {
-        fn default() -> Self {
-            PathArguments::None
-        }
-    }
-    impl PathArguments {
+    impl Args {
         pub fn is_empty(&self) -> bool {
+            use Args::*;
             match self {
-                PathArguments::None => true,
-                PathArguments::AngleBracketed(bracketed) => bracketed.args.is_empty(),
-                PathArguments::Parenthesized(_) => false,
+                None => true,
+                Angled(x) => x.args.is_empty(),
+                Parenthesized(_) => false,
             }
         }
         pub fn is_none(&self) -> bool {
+            use Args::*;
             match self {
-                PathArguments::None => true,
-                PathArguments::AngleBracketed(_) | PathArguments::Parenthesized(_) => false,
+                None => true,
+                Angled(_) | Parenthesized(_) => false,
             }
         }
     }
+    impl Default for Args {
+        fn default() -> Self {
+            Args::None
+        }
+    }
+
     ast_enum! {
-        pub enum GenericArgument {
+        pub enum Arg {
             Lifetime(Lifetime),
             Type(Type),
             Const(Expr),
@@ -1182,17 +1180,17 @@ mod path {
         }
     }
     ast_struct! {
-        pub struct AngleBracketedGenericArguments {
-            pub colon2_token: Option<Token![::]>,
+        pub struct AngledArgs {
+            pub colon2: Option<Token![::]>,
             pub lt: Token![<],
-            pub args: Punctuated<GenericArgument, Token![,]>,
+            pub args: Punctuated<Arg, Token![,]>,
             pub gt: Token![>],
         }
     }
     ast_struct! {
         pub struct AssocType {
             pub ident: Ident,
-            pub generics: Option<AngleBracketedGenericArguments>,
+            pub gnrs: Option<AngledArgs>,
             pub eq: Token![=],
             pub ty: Type,
         }
@@ -1200,40 +1198,36 @@ mod path {
     ast_struct! {
         pub struct AssocConst {
             pub ident: Ident,
-            pub generics: Option<AngleBracketedGenericArguments>,
+            pub gnrs: Option<AngledArgs>,
             pub eq: Token![=],
-            pub value: Expr,
+            pub val: Expr,
         }
     }
     ast_struct! {
         pub struct Constraint {
             pub ident: Ident,
-            pub generics: Option<AngleBracketedGenericArguments>,
+            pub gnrs: Option<AngledArgs>,
             pub colon: Token![:],
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
     }
     ast_struct! {
-        pub struct ParenthesizedGenericArguments {
+        pub struct ParenthesizedArgs {
             pub paren: tok::Paren,
-            pub inputs: Punctuated<Type, Token![,]>,
-            pub output: ReturnType,
+            pub ins: Punctuated<Type, Token![,]>,
+            pub out: ReturnType,
         }
     }
     ast_struct! {
         pub struct QSelf {
             pub lt: Token![<],
             pub ty: Box<Type>,
-            pub position: usize,
+            pub pos: usize,
             pub as_: Option<Token![as]>,
             pub gt_: Token![>],
         }
     }
 }
-pub use path::{
-    AngleBracketedGenericArguments, AssocConst, AssocType, Constraint, GenericArgument, ParenthesizedGenericArguments,
-    Path, PathArguments, PathSegment, QSelf,
-};
 
 ast_struct! {
     pub struct Block {
@@ -1274,7 +1268,7 @@ ast_struct! {
 }
 
 mod ty {
-    use super::{punctuated::Punctuated, *};
+    use super::{punct::Punctuated, *};
     use proc_macro2::TokenStream;
 
     ast_enum_of_structs! {
@@ -1501,16 +1495,16 @@ ast_struct! {
     }
 }
 impl Fields {
-    pub fn iter(&self) -> punctuated::Iter<Field> {
+    pub fn iter(&self) -> punct::Iter<Field> {
         match self {
-            Fields::Unit => punctuated::empty_punctuated_iter(),
+            Fields::Unit => punct::empty_punctuated_iter(),
             Fields::Named(f) => f.named.iter(),
             Fields::Unnamed(f) => f.unnamed.iter(),
         }
     }
-    pub fn iter_mut(&mut self) -> punctuated::IterMut<Field> {
+    pub fn iter_mut(&mut self) -> punct::IterMut<Field> {
         match self {
-            Fields::Unit => punctuated::empty_punctuated_iter_mut(),
+            Fields::Unit => punct::empty_punctuated_iter_mut(),
             Fields::Named(f) => f.named.iter_mut(),
             Fields::Unnamed(f) => f.unnamed.iter_mut(),
         }
@@ -1532,7 +1526,7 @@ impl Fields {
 }
 impl IntoIterator for Fields {
     type Item = Field;
-    type IntoIter = punctuated::IntoIter<Field>;
+    type IntoIter = punct::IntoIter<Field>;
     fn into_iter(self) -> Self::IntoIter {
         match self {
             Fields::Unit => Punctuated::<Field, ()>::new().into_iter(),
@@ -1543,14 +1537,14 @@ impl IntoIterator for Fields {
 }
 impl<'a> IntoIterator for &'a Fields {
     type Item = &'a Field;
-    type IntoIter = punctuated::Iter<'a, Field>;
+    type IntoIter = punct::Iter<'a, Field>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 impl<'a> IntoIterator for &'a mut Fields {
     type Item = &'a mut Field;
-    type IntoIter = punctuated::IterMut<'a, Field>;
+    type IntoIter = punct::IterMut<'a, Field>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
@@ -2085,8 +2079,8 @@ mod lookahead {
         }
     }
 
-    pub fn is_delimiter(cursor: Cursor, delimiter: Delimiter) -> bool {
-        cursor.group(delimiter).is_some()
+    pub fn is_delimiter(x: Cursor, d: Delimiter) -> bool {
+        x.group(d).is_some()
     }
 
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
@@ -2567,7 +2561,7 @@ mod gen {
     mod hash;
     mod helper {
         pub mod fold {
-            use crate::punctuated::{Pair, Punctuated};
+            use crate::punct::{Pair, Punctuated};
             pub trait FoldHelper {
                 type Item;
                 fn lift<F>(self, f: F) -> Self

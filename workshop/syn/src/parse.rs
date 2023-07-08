@@ -2,7 +2,7 @@ use super::{
     err::{self, Err, Result},
     lookahead::{self, Lookahead1, Peek},
     proc_macro,
-    punctuated::Punctuated,
+    punct::Punctuated,
     tok::Tok,
     Cursor, TokBuff,
 };

@@ -8,10 +8,10 @@ impl Clone for Abi {
         }
     }
 }
-impl Clone for AngleBracketedGenericArguments {
+impl Clone for AngledArgs {
     fn clone(&self) -> Self {
-        AngleBracketedGenericArguments {
-            colon2_token: self.colon2_token.clone(),
+        AngledArgs {
+            colon2: self.colon2.clone(),
             lt: self.lt.clone(),
             args: self.args.clone(),
             gt: self.gt.clone(),
@@ -34,9 +34,9 @@ impl Clone for AssocConst {
     fn clone(&self) -> Self {
         AssocConst {
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
+            gnrs: self.gnrs.clone(),
             eq: self.eq.clone(),
-            value: self.value.clone(),
+            val: self.val.clone(),
         }
     }
 }
@@ -44,7 +44,7 @@ impl Clone for AssocType {
     fn clone(&self) -> Self {
         AssocType {
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
+            gnrs: self.gnrs.clone(),
             eq: self.eq.clone(),
             ty: self.ty.clone(),
         }
@@ -126,7 +126,7 @@ impl Clone for Constraint {
     fn clone(&self) -> Self {
         Constraint {
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
+            gnrs: self.gnrs.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
         }
@@ -743,15 +743,15 @@ impl Clone for ForeignItemType {
         }
     }
 }
-impl Clone for GenericArgument {
+impl Clone for Arg {
     fn clone(&self) -> Self {
         match self {
-            GenericArgument::Lifetime(v0) => GenericArgument::Lifetime(v0.clone()),
-            GenericArgument::Type(v0) => GenericArgument::Type(v0.clone()),
-            GenericArgument::Const(v0) => GenericArgument::Const(v0.clone()),
-            GenericArgument::AssocType(v0) => GenericArgument::AssocType(v0.clone()),
-            GenericArgument::AssocConst(v0) => GenericArgument::AssocConst(v0.clone()),
-            GenericArgument::Constraint(v0) => GenericArgument::Constraint(v0.clone()),
+            Arg::Lifetime(v0) => Arg::Lifetime(v0.clone()),
+            Arg::Type(v0) => Arg::Type(v0.clone()),
+            Arg::Const(v0) => Arg::Const(v0.clone()),
+            Arg::AssocType(v0) => Arg::AssocType(v0.clone()),
+            Arg::AssocConst(v0) => Arg::AssocConst(v0.clone()),
+            Arg::Constraint(v0) => Arg::Constraint(v0.clone()),
         }
     }
 }
@@ -1186,12 +1186,12 @@ impl Clone for MetaNameValue {
         }
     }
 }
-impl Clone for ParenthesizedGenericArguments {
+impl Clone for ParenthesizedArgs {
     fn clone(&self) -> Self {
-        ParenthesizedGenericArguments {
+        ParenthesizedArgs {
             paren: self.paren.clone(),
-            inputs: self.inputs.clone(),
-            output: self.output.clone(),
+            ins: self.ins.clone(),
+            out: self.out.clone(),
         }
     }
 }
@@ -1327,25 +1327,25 @@ impl Clone for PatWild {
 impl Clone for Path {
     fn clone(&self) -> Self {
         Path {
-            leading_colon: self.leading_colon.clone(),
-            segments: self.segments.clone(),
+            colon: self.colon.clone(),
+            segs: self.segs.clone(),
         }
     }
 }
-impl Clone for PathArguments {
+impl Clone for Args {
     fn clone(&self) -> Self {
         match self {
-            PathArguments::None => PathArguments::None,
-            PathArguments::AngleBracketed(v0) => PathArguments::AngleBracketed(v0.clone()),
-            PathArguments::Parenthesized(v0) => PathArguments::Parenthesized(v0.clone()),
+            Args::None => Args::None,
+            Args::Angled(v0) => Args::Angled(v0.clone()),
+            Args::Parenthesized(v0) => Args::Parenthesized(v0.clone()),
         }
     }
 }
-impl Clone for PathSegment {
+impl Clone for Segment {
     fn clone(&self) -> Self {
-        PathSegment {
+        Segment {
             ident: self.ident.clone(),
-            arguments: self.arguments.clone(),
+            args: self.args.clone(),
         }
     }
 }
@@ -1373,7 +1373,7 @@ impl Clone for QSelf {
         QSelf {
             lt: self.lt.clone(),
             ty: self.ty.clone(),
-            position: self.position.clone(),
+            pos: self.pos.clone(),
             as_: self.as_.clone(),
             gt_: self.gt_.clone(),
         }

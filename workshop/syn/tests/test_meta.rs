@@ -8,7 +8,7 @@ fn test_parse_meta_item_word() {
     snapshot!(input as Meta, @r###"
     Meta::Path {
         segments: [
-            PathSegment {
+            path::Segment {
                 ident: "hello",
             },
         ],
@@ -23,7 +23,7 @@ fn test_parse_meta_name_value() {
     MetaNameValue {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -37,7 +37,7 @@ fn test_parse_meta_name_value() {
     Meta::NameValue {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -57,7 +57,7 @@ fn test_parse_meta_item_list_lit() {
     MetaList {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -70,7 +70,7 @@ fn test_parse_meta_item_list_lit() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -89,7 +89,7 @@ fn test_parse_meta_item_multiple() {
     MetaList {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -102,7 +102,7 @@ fn test_parse_meta_item_multiple() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -120,10 +120,10 @@ fn test_parse_path() {
     Meta::Path {
         leading_colon: Some,
         segments: [
-            PathSegment {
+            path::Segment {
                 ident: "serde",
             },
-            PathSegment {
+            path::Segment {
                 ident: "Serialize",
             },
         ],

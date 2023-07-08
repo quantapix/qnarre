@@ -16,10 +16,10 @@ fn parse_interpolated_leading_component() {
     Expr::Path {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "first",
                 },
-                PathSegment {
+                path::Segment {
                     ident: "rest",
                 },
             ],
@@ -30,10 +30,10 @@ fn parse_interpolated_leading_component() {
     Type::Path {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "first",
                 },
-                PathSegment {
+                path::Segment {
                     ident: "rest",
                 },
             ],
@@ -47,45 +47,45 @@ fn print_incomplete_qpath() {
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self as A > :: Q`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self as A > ::`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self >`)
     "###);
-    assert!(ty.path.segments.pop().is_none());
+    assert!(ty.path.segs.pop().is_none());
     let mut ty: TypePath = parse_quote!(<Self>::A::B);
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self > :: A :: B`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self > :: A ::`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self > ::`)
     "###);
-    assert!(ty.path.segments.pop().is_none());
+    assert!(ty.path.segs.pop().is_none());
     let mut ty: TypePath = parse_quote!(Self::A::B);
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`Self :: A :: B`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`Self :: A ::`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`Self ::`)
     "###);
-    assert!(ty.path.segments.pop().is_some());
+    assert!(ty.path.segs.pop().is_some());
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(``)
     "###);
-    assert!(ty.path.segments.pop().is_none());
+    assert!(ty.path.segs.pop().is_none());
 }
 #[test]
 fn parse_parenthesized_path_arguments_with_disambiguator() {
@@ -98,9 +98,9 @@ fn parse_parenthesized_path_arguments_with_disambiguator() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "FnOnce",
-                            arguments: PathArguments::Parenthesized {
+                            arguments: path::Args::Parenthesized {
                                 output: ReturnType::Type(
                                     Type::Never,
                                 ),

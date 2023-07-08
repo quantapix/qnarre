@@ -13,7 +13,7 @@ fn test_by_value() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Self",
                     },
                 ],
@@ -34,7 +34,7 @@ fn test_by_mut_value() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Self",
                     },
                 ],
@@ -55,7 +55,7 @@ fn test_by_ref() {
             elem: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Self",
                         },
                     ],
@@ -76,14 +76,14 @@ fn test_by_box() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Box",
-                        arguments: PathArguments::AngleBracketed {
+                        arguments: path::Args::AngleBracketed {
                             args: [
-                                GenericArgument::Type(Type::Path {
+                                path::Arg::Type(Type::Path {
                                     path: Path {
                                         segments: [
-                                            PathSegment {
+                                            path::Segment {
                                                 ident: "Self",
                                             },
                                         ],
@@ -109,14 +109,14 @@ fn test_by_pin() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Pin",
-                        arguments: PathArguments::AngleBracketed {
+                        arguments: path::Args::AngleBracketed {
                             args: [
-                                GenericArgument::Type(Type::Path {
+                                path::Arg::Type(Type::Path {
                                     path: Path {
                                         segments: [
-                                            PathSegment {
+                                            path::Segment {
                                                 ident: "Self",
                                             },
                                         ],
@@ -142,14 +142,14 @@ fn test_explicit_type() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Pin",
-                        arguments: PathArguments::AngleBracketed {
+                        arguments: path::Args::AngleBracketed {
                             args: [
-                                GenericArgument::Type(Type::Path {
+                                path::Arg::Type(Type::Path {
                                     path: Path {
                                         segments: [
-                                            PathSegment {
+                                            path::Segment {
                                                 ident: "MyType",
                                             },
                                         ],
@@ -174,7 +174,7 @@ fn test_value_shorthand() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Self",
                     },
                 ],
@@ -194,7 +194,7 @@ fn test_mut_value_shorthand() {
         ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Self",
                     },
                 ],
@@ -215,7 +215,7 @@ fn test_ref_shorthand() {
             elem: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Self",
                         },
                     ],
@@ -242,7 +242,7 @@ fn test_ref_shorthand_with_lifetime() {
             elem: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Self",
                         },
                     ],
@@ -266,7 +266,7 @@ fn test_ref_mut_shorthand() {
             elem: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Self",
                         },
                     ],
@@ -295,7 +295,7 @@ fn test_ref_mut_shorthand_with_lifetime() {
             elem: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Self",
                         },
                     ],

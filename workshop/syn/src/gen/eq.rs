@@ -6,10 +6,10 @@ impl PartialEq for Abi {
         self.name == other.name
     }
 }
-impl Eq for AngleBracketedGenericArguments {}
-impl PartialEq for AngleBracketedGenericArguments {
+impl Eq for AngledArgs {}
+impl PartialEq for AngledArgs {
     fn eq(&self, other: &Self) -> bool {
-        self.colon2_token == other.colon2_token && self.args == other.args
+        self.colon2 == other.colon2 && self.args == other.args
     }
 }
 impl Eq for Arm {}
@@ -25,13 +25,13 @@ impl PartialEq for Arm {
 impl Eq for AssocConst {}
 impl PartialEq for AssocConst {
     fn eq(&self, other: &Self) -> bool {
-        self.ident == other.ident && self.generics == other.generics && self.value == other.value
+        self.ident == other.ident && self.gnrs == other.gnrs && self.val == other.val
     }
 }
 impl Eq for AssocType {}
 impl PartialEq for AssocType {
     fn eq(&self, other: &Self) -> bool {
-        self.ident == other.ident && self.generics == other.generics && self.ty == other.ty
+        self.ident == other.ident && self.gnrs == other.gnrs && self.ty == other.ty
     }
 }
 impl Eq for AttrStyle {}
@@ -123,7 +123,7 @@ impl PartialEq for ConstParam {
 impl Eq for Constraint {}
 impl PartialEq for Constraint {
     fn eq(&self, other: &Self) -> bool {
-        self.ident == other.ident && self.generics == other.generics && self.bounds == other.bounds
+        self.ident == other.ident && self.gnrs == other.gnrs && self.bounds == other.bounds
     }
 }
 impl Eq for Data {}
@@ -583,16 +583,16 @@ impl PartialEq for ForeignItemType {
             && self.generics == other.generics
     }
 }
-impl Eq for GenericArgument {}
-impl PartialEq for GenericArgument {
+impl Eq for Arg {}
+impl PartialEq for Arg {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (GenericArgument::Lifetime(self0), GenericArgument::Lifetime(other0)) => self0 == other0,
-            (GenericArgument::Type(self0), GenericArgument::Type(other0)) => self0 == other0,
-            (GenericArgument::Const(self0), GenericArgument::Const(other0)) => self0 == other0,
-            (GenericArgument::AssocType(self0), GenericArgument::AssocType(other0)) => self0 == other0,
-            (GenericArgument::AssocConst(self0), GenericArgument::AssocConst(other0)) => self0 == other0,
-            (GenericArgument::Constraint(self0), GenericArgument::Constraint(other0)) => self0 == other0,
+            (Arg::Lifetime(self0), Arg::Lifetime(other0)) => self0 == other0,
+            (Arg::Type(self0), Arg::Type(other0)) => self0 == other0,
+            (Arg::Const(self0), Arg::Const(other0)) => self0 == other0,
+            (Arg::AssocType(self0), Arg::AssocType(other0)) => self0 == other0,
+            (Arg::AssocConst(self0), Arg::AssocConst(other0)) => self0 == other0,
+            (Arg::Constraint(self0), Arg::Constraint(other0)) => self0 == other0,
             _ => false,
         }
     }
@@ -947,10 +947,10 @@ impl PartialEq for MetaNameValue {
         self.path == other.path && self.val == other.val
     }
 }
-impl Eq for ParenthesizedGenericArguments {}
-impl PartialEq for ParenthesizedGenericArguments {
+impl Eq for ParenthesizedArgs {}
+impl PartialEq for ParenthesizedArgs {
     fn eq(&self, other: &Self) -> bool {
-        self.inputs == other.inputs && self.output == other.output
+        self.ins == other.ins && self.out == other.out
     }
 }
 impl Eq for Pat {}
@@ -1055,24 +1055,24 @@ impl PartialEq for PatWild {
 impl Eq for Path {}
 impl PartialEq for Path {
     fn eq(&self, other: &Self) -> bool {
-        self.leading_colon == other.leading_colon && self.segments == other.segments
+        self.colon == other.colon && self.segs == other.segs
     }
 }
-impl Eq for PathArguments {}
-impl PartialEq for PathArguments {
+impl Eq for Args {}
+impl PartialEq for Args {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (PathArguments::None, PathArguments::None) => true,
-            (PathArguments::AngleBracketed(self0), PathArguments::AngleBracketed(other0)) => self0 == other0,
-            (PathArguments::Parenthesized(self0), PathArguments::Parenthesized(other0)) => self0 == other0,
+            (Args::None, Args::None) => true,
+            (Args::Angled(self0), Args::Angled(other0)) => self0 == other0,
+            (Args::Parenthesized(self0), Args::Parenthesized(other0)) => self0 == other0,
             _ => false,
         }
     }
 }
-impl Eq for PathSegment {}
-impl PartialEq for PathSegment {
+impl Eq for Segment {}
+impl PartialEq for Segment {
     fn eq(&self, other: &Self) -> bool {
-        self.ident == other.ident && self.arguments == other.arguments
+        self.ident == other.ident && self.args == other.args
     }
 }
 impl Eq for PredLifetime {}
@@ -1090,7 +1090,7 @@ impl PartialEq for PredType {
 impl Eq for QSelf {}
 impl PartialEq for QSelf {
     fn eq(&self, other: &Self) -> bool {
-        self.ty == other.ty && self.position == other.position && self.as_ == other.as_
+        self.ty == other.ty && self.pos == other.pos && self.as_ == other.as_
     }
 }
 impl Eq for RangeLimits {}

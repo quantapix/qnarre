@@ -31,7 +31,7 @@ fn test_raw_variable() {
                 expr: Expr::Path {
                     path: Path {
                         segments: [
-                            PathSegment {
+                            path::Segment {
                                 ident: "raw",
                             },
                         ],
@@ -97,7 +97,7 @@ fn test_let_else() {
         pat: Pat::TupleStruct {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Some",
                     },
                 ],
@@ -112,7 +112,7 @@ fn test_let_else() {
             expr: Expr::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "None",
                         },
                     ],
@@ -161,7 +161,7 @@ fn test_macros() {
                     mac: Macro {
                         path: Path {
                             segments: [
-                                PathSegment {
+                                path::Segment {
                                     ident: "macro_rules",
                                 },
                             ],
@@ -174,7 +174,7 @@ fn test_macros() {
                     mac: Macro {
                         path: Path {
                             segments: [
-                                PathSegment {
+                                path::Segment {
                                     ident: "thread_local",
                                 },
                             ],
@@ -187,7 +187,7 @@ fn test_macros() {
                     mac: Macro {
                         path: Path {
                             segments: [
-                                PathSegment {
+                                path::Segment {
                                     ident: "println",
                                 },
                             ],
@@ -202,7 +202,7 @@ fn test_macros() {
                         mac: Macro {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "vec",
                                     },
                                 ],

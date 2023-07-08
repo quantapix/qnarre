@@ -9,7 +9,7 @@ use proc_macro2::{Ident, Literal, TokenStream};
 use ref_cast::RefCast;
 use std::fmt::{self, Debug};
 use std::ops::Deref;
-use syn::punctuated::Punctuated;
+use syn::punct::Punctuated;
 #[derive(RefCast)]
 #[repr(transparent)]
 pub struct Lite<T: ?Sized> {

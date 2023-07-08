@@ -8,19 +8,19 @@ impl Debug for Abi {
         formatter.finish()
     }
 }
-impl Debug for AngleBracketedGenericArguments {
+impl Debug for AngledArgs {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl AngleBracketedGenericArguments {
+        impl AngledArgs {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("colon2_token", &self.colon2_token);
+                formatter.field("colon2_token", &self.colon2);
                 formatter.field("lt_token", &self.lt);
                 formatter.field("args", &self.args);
                 formatter.field("gt_token", &self.gt);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "AngleBracketedGenericArguments")
+        self.debug(formatter, "path::path::AngledArgs")
     }
 }
 impl Debug for Arm {
@@ -39,9 +39,9 @@ impl Debug for AssocConst {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("AssocConst");
         formatter.field("ident", &self.ident);
-        formatter.field("generics", &self.generics);
+        formatter.field("generics", &self.gnrs);
         formatter.field("eq_token", &self.eq);
-        formatter.field("value", &self.value);
+        formatter.field("value", &self.val);
         formatter.finish()
     }
 }
@@ -49,7 +49,7 @@ impl Debug for AssocType {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("AssocType");
         formatter.field("ident", &self.ident);
-        formatter.field("generics", &self.generics);
+        formatter.field("generics", &self.gnrs);
         formatter.field("eq_token", &self.eq);
         formatter.field("ty", &self.ty);
         formatter.finish()
@@ -279,7 +279,7 @@ impl Debug for Constraint {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Constraint");
         formatter.field("ident", &self.ident);
-        formatter.field("generics", &self.generics);
+        formatter.field("generics", &self.gnrs);
         formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
@@ -1153,36 +1153,36 @@ impl Debug for ForeignItemType {
         self.debug(formatter, "ForeignItemType")
     }
 }
-impl Debug for GenericArgument {
+impl Debug for Arg {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("GenericArgument::")?;
+        formatter.write_str("path::Arg::")?;
         match self {
-            GenericArgument::Lifetime(v0) => {
+            Arg::Lifetime(v0) => {
                 let mut formatter = formatter.debug_tuple("Lifetime");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericArgument::Type(v0) => {
+            Arg::Type(v0) => {
                 let mut formatter = formatter.debug_tuple("Type");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericArgument::Const(v0) => {
+            Arg::Const(v0) => {
                 let mut formatter = formatter.debug_tuple("Const");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericArgument::AssocType(v0) => {
+            Arg::AssocType(v0) => {
                 let mut formatter = formatter.debug_tuple("AssocType");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericArgument::AssocConst(v0) => {
+            Arg::AssocConst(v0) => {
                 let mut formatter = formatter.debug_tuple("AssocConst");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericArgument::Constraint(v0) => {
+            Arg::Constraint(v0) => {
                 let mut formatter = formatter.debug_tuple("Constraint");
                 formatter.field(v0);
                 formatter.finish()
@@ -1787,18 +1787,18 @@ impl Debug for MetaNameValue {
         self.debug(formatter, "MetaNameValue")
     }
 }
-impl Debug for ParenthesizedGenericArguments {
+impl Debug for ParenthesizedArgs {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ParenthesizedGenericArguments {
+        impl ParenthesizedArgs {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("paren_token", &self.paren);
-                formatter.field("inputs", &self.inputs);
-                formatter.field("output", &self.output);
+                formatter.field("inputs", &self.ins);
+                formatter.field("output", &self.out);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ParenthesizedGenericArguments")
+        self.debug(formatter, "path::ParenthesizedArgs")
     }
 }
 impl Debug for Pat {
@@ -1995,29 +1995,29 @@ impl Debug for Path {
         impl Path {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("leading_colon", &self.leading_colon);
-                formatter.field("segments", &self.segments);
+                formatter.field("leading_colon", &self.colon);
+                formatter.field("segments", &self.segs);
                 formatter.finish()
             }
         }
         self.debug(formatter, "Path")
     }
 }
-impl Debug for PathArguments {
+impl Debug for Args {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("PathArguments::")?;
+        formatter.write_str("path::Args::")?;
         match self {
-            PathArguments::None => formatter.write_str("None"),
-            PathArguments::AngleBracketed(v0) => v0.debug(formatter, "AngleBracketed"),
-            PathArguments::Parenthesized(v0) => v0.debug(formatter, "Parenthesized"),
+            Args::None => formatter.write_str("None"),
+            Args::Angled(v0) => v0.debug(formatter, "AngleBracketed"),
+            Args::Parenthesized(v0) => v0.debug(formatter, "Parenthesized"),
         }
     }
 }
-impl Debug for PathSegment {
+impl Debug for Segment {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("PathSegment");
+        let mut formatter = formatter.debug_struct("path::Segment");
         formatter.field("ident", &self.ident);
-        formatter.field("arguments", &self.arguments);
+        formatter.field("arguments", &self.args);
         formatter.finish()
     }
 }
@@ -2045,7 +2045,7 @@ impl Debug for QSelf {
         let mut formatter = formatter.debug_struct("QSelf");
         formatter.field("lt_token", &self.lt);
         formatter.field("ty", &self.ty);
-        formatter.field("position", &self.position);
+        formatter.field("position", &self.pos);
         formatter.field("as_token", &self.as_);
         formatter.field("gt_token", &self.gt_);
         formatter.finish()

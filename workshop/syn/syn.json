@@ -21,7 +21,7 @@
       }
     },
     {
-      "ident": "AngleBracketedGenericArguments",
+      "ident": "path::path::AngledArgs",
       "features": {
         "any": [
           "derive",
@@ -40,7 +40,7 @@
         "args": {
           "punctuated": {
             "element": {
-              "syn": "GenericArgument"
+              "syn": "path::Arg"
             },
             "punct": "Comma"
           }
@@ -109,7 +109,7 @@
         },
         "generics": {
           "option": {
-            "syn": "AngleBracketedGenericArguments"
+            "syn": "path::path::AngledArgs"
           }
         },
         "eq_token": {
@@ -134,7 +134,7 @@
         },
         "generics": {
           "option": {
-            "syn": "AngleBracketedGenericArguments"
+            "syn": "path::path::AngledArgs"
           }
         },
         "eq_token": {
@@ -502,7 +502,7 @@
         },
         "generics": {
           "option": {
-            "syn": "AngleBracketedGenericArguments"
+            "syn": "path::path::AngledArgs"
           }
         },
         "colon_token": {
@@ -1522,7 +1522,7 @@
         },
         "turbofish": {
           "option": {
-            "syn": "AngleBracketedGenericArguments"
+            "syn": "path::path::AngledArgs"
           }
         },
         "paren_token": {
@@ -2284,7 +2284,7 @@
       }
     },
     {
-      "ident": "GenericArgument",
+      "ident": "path::Arg",
       "features": {
         "any": [
           "derive",
@@ -3643,7 +3643,7 @@
       }
     },
     {
-      "ident": "ParenthesizedGenericArguments",
+      "ident": "path::ParenthesizedArgs",
       "features": {
         "any": [
           "derive",
@@ -4090,7 +4090,7 @@
         "segments": {
           "punctuated": {
             "element": {
-              "syn": "PathSegment"
+              "syn": "path::Segment"
             },
             "punct": "PathSep"
           }
@@ -4098,7 +4098,7 @@
       }
     },
     {
-      "ident": "PathArguments",
+      "ident": "path::Args",
       "features": {
         "any": [
           "derive",
@@ -4109,18 +4109,18 @@
         "None": [],
         "AngleBracketed": [
           {
-            "syn": "AngleBracketedGenericArguments"
+            "syn": "path::path::AngledArgs"
           }
         ],
         "Parenthesized": [
           {
-            "syn": "ParenthesizedGenericArguments"
+            "syn": "path::ParenthesizedArgs"
           }
         ]
       }
     },
     {
-      "ident": "PathSegment",
+      "ident": "path::Segment",
       "features": {
         "any": [
           "derive",
@@ -4132,7 +4132,7 @@
           "proc_macro2": "Ident"
         },
         "arguments": {
-          "syn": "PathArguments"
+          "syn": "path::Args"
         }
       }
     },

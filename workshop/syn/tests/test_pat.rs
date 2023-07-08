@@ -44,7 +44,7 @@ fn test_group() {
     Pat::TupleStruct {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "Some",
                 },
             ],

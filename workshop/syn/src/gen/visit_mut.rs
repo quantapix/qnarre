@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 
-use crate::punctuated::Punctuated;
+use crate::punct::Punctuated;
 use crate::*;
 use proc_macro2::Span;
 macro_rules! full {
@@ -21,7 +21,7 @@ pub trait VisitMut {
     fn visit_abi_mut(&mut self, i: &mut Abi) {
         visit_abi_mut(self, i);
     }
-    fn visit_angle_bracketed_generic_arguments_mut(&mut self, i: &mut AngleBracketedGenericArguments) {
+    fn visit_angle_bracketed_generic_arguments_mut(&mut self, i: &mut AngledArgs) {
         visit_angle_bracketed_generic_arguments_mut(self, i);
     }
     fn visit_arm_mut(&mut self, i: &mut Arm) {
@@ -234,7 +234,7 @@ pub trait VisitMut {
     fn visit_foreign_item_type_mut(&mut self, i: &mut ForeignItemType) {
         visit_foreign_item_type_mut(self, i);
     }
-    fn visit_generic_argument_mut(&mut self, i: &mut GenericArgument) {
+    fn visit_generic_argument_mut(&mut self, i: &mut Arg) {
         visit_generic_argument_mut(self, i);
     }
     fn visit_generic_param_mut(&mut self, i: &mut GenericParam) {
@@ -372,7 +372,7 @@ pub trait VisitMut {
     fn visit_meta_name_value_mut(&mut self, i: &mut MetaNameValue) {
         visit_meta_name_value_mut(self, i);
     }
-    fn visit_parenthesized_generic_arguments_mut(&mut self, i: &mut ParenthesizedGenericArguments) {
+    fn visit_parenthesized_generic_arguments_mut(&mut self, i: &mut ParenthesizedArgs) {
         visit_parenthesized_generic_arguments_mut(self, i);
     }
     fn visit_pat_mut(&mut self, i: &mut Pat) {
@@ -414,10 +414,10 @@ pub trait VisitMut {
     fn visit_path_mut(&mut self, i: &mut Path) {
         visit_path_mut(self, i);
     }
-    fn visit_path_arguments_mut(&mut self, i: &mut PathArguments) {
+    fn visit_path_arguments_mut(&mut self, i: &mut Args) {
         visit_path_arguments_mut(self, i);
     }
-    fn visit_path_segment_mut(&mut self, i: &mut PathSegment) {
+    fn visit_path_segment_mut(&mut self, i: &mut Segment) {
         visit_path_segment_mut(self, i);
     }
     fn visit_predicate_lifetime_mut(&mut self, i: &mut PredLifetime) {
@@ -574,7 +574,7 @@ where
         v.visit_lit_str_mut(it);
     }
 }
-pub fn visit_angle_bracketed_generic_arguments_mut<V>(v: &mut V, node: &mut AngleBracketedGenericArguments)
+pub fn visit_angle_bracketed_generic_arguments_mut<V>(v: &mut V, node: &mut AngledArgs)
 where
     V: VisitMut + ?Sized,
 {
@@ -607,18 +607,18 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
-    if let Some(it) = &mut node.generics {
+    if let Some(it) = &mut node.gnrs {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
     skip!(node.eq_token);
-    v.visit_expr_mut(&mut node.value);
+    v.visit_expr_mut(&mut node.val);
 }
 pub fn visit_assoc_type_mut<V>(v: &mut V, node: &mut AssocType)
 where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
-    if let Some(it) = &mut node.generics {
+    if let Some(it) = &mut node.gnrs {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
     skip!(node.eq_token);
@@ -804,7 +804,7 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
-    if let Some(it) = &mut node.generics {
+    if let Some(it) = &mut node.gnrs {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
     skip!(node.colon_token);
@@ -1640,27 +1640,27 @@ where
     v.visit_generics_mut(&mut node.generics);
     skip!(node.semi_token);
 }
-pub fn visit_generic_argument_mut<V>(v: &mut V, node: &mut GenericArgument)
+pub fn visit_generic_argument_mut<V>(v: &mut V, node: &mut Arg)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        GenericArgument::Lifetime(_binding_0) => {
+        Arg::Lifetime(_binding_0) => {
             v.visit_lifetime_mut(_binding_0);
         },
-        GenericArgument::Type(_binding_0) => {
+        Arg::Type(_binding_0) => {
             v.visit_type_mut(_binding_0);
         },
-        GenericArgument::Const(_binding_0) => {
+        Arg::Const(_binding_0) => {
             v.visit_expr_mut(_binding_0);
         },
-        GenericArgument::AssocType(_binding_0) => {
+        Arg::AssocType(_binding_0) => {
             v.visit_assoc_type_mut(_binding_0);
         },
-        GenericArgument::AssocConst(_binding_0) => {
+        Arg::AssocConst(_binding_0) => {
             v.visit_assoc_const_mut(_binding_0);
         },
-        GenericArgument::Constraint(_binding_0) => {
+        Arg::Constraint(_binding_0) => {
             v.visit_constraint_mut(_binding_0);
         },
     }
@@ -2286,16 +2286,16 @@ where
     skip!(node.eq_token);
     v.visit_expr_mut(&mut node.val);
 }
-pub fn visit_parenthesized_generic_arguments_mut<V>(v: &mut V, node: &mut ParenthesizedGenericArguments)
+pub fn visit_parenthesized_generic_arguments_mut<V>(v: &mut V, node: &mut ParenthesizedArgs)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren_token);
-    for mut el in Punctuated::pairs_mut(&mut node.inputs) {
+    for mut el in Punctuated::pairs_mut(&mut node.ins) {
         let it = el.value_mut();
         v.visit_type_mut(it);
     }
-    v.visit_return_type_mut(&mut node.output);
+    v.visit_return_type_mut(&mut node.out);
 }
 pub fn visit_pat_mut<V>(v: &mut V, node: &mut Pat)
 where
@@ -2501,31 +2501,31 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.leading_colon);
-    for mut el in Punctuated::pairs_mut(&mut node.segments) {
+    for mut el in Punctuated::pairs_mut(&mut node.segs) {
         let it = el.value_mut();
         v.visit_path_segment_mut(it);
     }
 }
-pub fn visit_path_arguments_mut<V>(v: &mut V, node: &mut PathArguments)
+pub fn visit_path_arguments_mut<V>(v: &mut V, node: &mut Args)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        PathArguments::None => {},
-        PathArguments::AngleBracketed(_binding_0) => {
+        Args::None => {},
+        Args::Angled(_binding_0) => {
             v.visit_angle_bracketed_generic_arguments_mut(_binding_0);
         },
-        PathArguments::Parenthesized(_binding_0) => {
+        Args::Parenthesized(_binding_0) => {
             v.visit_parenthesized_generic_arguments_mut(_binding_0);
         },
     }
 }
-pub fn visit_path_segment_mut<V>(v: &mut V, node: &mut PathSegment)
+pub fn visit_path_segment_mut<V>(v: &mut V, node: &mut Segment)
 where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
-    v.visit_path_arguments_mut(&mut node.arguments);
+    v.visit_path_arguments_mut(&mut node.args);
 }
 pub fn visit_predicate_lifetime_mut<V>(v: &mut V, node: &mut PredLifetime)
 where

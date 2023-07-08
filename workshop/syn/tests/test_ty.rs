@@ -25,14 +25,14 @@ fn test_macro_variable_type() {
     Type::Path {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "ty",
-                    arguments: PathArguments::AngleBracketed {
+                    arguments: path::Args::AngleBracketed {
                         args: [
-                            GenericArgument::Type(Type::Path {
+                            path::Arg::Type(Type::Path {
                                 path: Path {
                                     segments: [
-                                        PathSegment {
+                                        path::Segment {
                                             ident: "T",
                                         },
                                     ],
@@ -57,15 +57,15 @@ fn test_macro_variable_type() {
     Type::Path {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "ty",
-                    arguments: PathArguments::AngleBracketed {
+                    arguments: path::Args::AngleBracketed {
                         colon2_token: Some,
                         args: [
-                            GenericArgument::Type(Type::Path {
+                            path::Arg::Type(Type::Path {
                                 path: Path {
                                     segments: [
-                                        PathSegment {
+                                        path::Segment {
                                             ident: "T",
                                         },
                                     ],
@@ -91,22 +91,22 @@ fn test_group_angle_brackets() {
     Type::Path {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "Option",
-                    arguments: PathArguments::AngleBracketed {
+                    arguments: path::Args::AngleBracketed {
                         args: [
-                            GenericArgument::Type(Type::Group {
+                            path::Arg::Type(Type::Group {
                                 elem: Type::Path {
                                     path: Path {
                                         segments: [
-                                            PathSegment {
+                                            path::Segment {
                                                 ident: "Vec",
-                                                arguments: PathArguments::AngleBracketed {
+                                                arguments: path::Args::AngleBracketed {
                                                     args: [
-                                                        GenericArgument::Type(Type::Path {
+                                                        path::Arg::Type(Type::Path {
                                                             path: Path {
                                                                 segments: [
-                                                                    PathSegment {
+                                                                    path::Segment {
                                                                         ident: "u8",
                                                                     },
                                                                 ],
@@ -139,14 +139,14 @@ fn test_group_colons() {
     Type::Path {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "Vec",
-                    arguments: PathArguments::AngleBracketed {
+                    arguments: path::Args::AngleBracketed {
                         args: [
-                            GenericArgument::Type(Type::Path {
+                            path::Arg::Type(Type::Path {
                                 path: Path {
                                     segments: [
-                                        PathSegment {
+                                        path::Segment {
                                             ident: "u8",
                                         },
                                     ],
@@ -155,7 +155,7 @@ fn test_group_colons() {
                         ],
                     },
                 },
-                PathSegment {
+                path::Segment {
                     ident: "Item",
                 },
             ],
@@ -175,7 +175,7 @@ fn test_group_colons() {
                 elem: Type::Path {
                     path: Path {
                         segments: [
-                            PathSegment {
+                            path::Segment {
                                 ident: "T",
                             },
                         ],
@@ -187,7 +187,7 @@ fn test_group_colons() {
         path: Path {
             leading_colon: Some,
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "Element",
                 },
             ],
@@ -214,11 +214,11 @@ fn test_trait_object() {
                 }),
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Trait",
-                            arguments: PathArguments::AngleBracketed {
+                            arguments: path::Args::AngleBracketed {
                                 args: [
-                                    GenericArgument::Lifetime(Lifetime {
+                                    path::Arg::Lifetime(Lifetime {
                                         ident: "a",
                                     }),
                                 ],
@@ -244,7 +244,7 @@ fn test_trait_object() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Trait",
                         },
                     ],
@@ -266,7 +266,7 @@ fn test_trailing_plus() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Trait",
                         },
                     ],
@@ -284,7 +284,7 @@ fn test_trailing_plus() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Trait",
                         },
                     ],
@@ -301,7 +301,7 @@ fn test_trailing_plus() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Trait",
                         },
                     ],

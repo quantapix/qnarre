@@ -22,10 +22,10 @@ impl Debug for Lite<syn::Abi> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::AngleBracketedGenericArguments> {
+impl Debug for Lite<syn::AngledArgs> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("AngleBracketedGenericArguments");
-        if self.value.colon2_token.is_some() {
+        let mut formatter = formatter.debug_struct("path::path::AngledArgs");
+        if self.value.colon2.is_some() {
             formatter.field("colon2_token", &Present);
         }
         if !self.value.args.is_empty() {
@@ -66,10 +66,10 @@ impl Debug for Lite<syn::AssocConst> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("AssocConst");
         formatter.field("ident", Lite(&self.value.ident));
-        if let Some(val) = &self.value.generics {
+        if let Some(val) = &self.value.gnrs {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::AngleBracketedGenericArguments);
+            struct Print(syn::AngledArgs);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -80,7 +80,7 @@ impl Debug for Lite<syn::AssocConst> {
             }
             formatter.field("generics", Print::ref_cast(val));
         }
-        formatter.field("value", Lite(&self.value.value));
+        formatter.field("value", Lite(&self.value.val));
         formatter.finish()
     }
 }
@@ -88,10 +88,10 @@ impl Debug for Lite<syn::AssocType> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("AssocType");
         formatter.field("ident", Lite(&self.value.ident));
-        if let Some(val) = &self.value.generics {
+        if let Some(val) = &self.value.gnrs {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::AngleBracketedGenericArguments);
+            struct Print(syn::AngledArgs);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -344,10 +344,10 @@ impl Debug for Lite<syn::Constraint> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Constraint");
         formatter.field("ident", Lite(&self.value.ident));
-        if let Some(val) = &self.value.generics {
+        if let Some(val) = &self.value.gnrs {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::AngleBracketedGenericArguments);
+            struct Print(syn::AngledArgs);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -772,7 +772,7 @@ impl Debug for Lite<syn::Expr> {
                 if let Some(val) = &_val.turbofish {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print(syn::AngleBracketedGenericArguments);
+                    struct Print(syn::AngledArgs);
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;
@@ -1422,7 +1422,7 @@ impl Debug for Lite<syn::ExprMethodCall> {
         if let Some(val) = &self.value.turbofish {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::AngleBracketedGenericArguments);
+            struct Print(syn::AngledArgs);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -1972,46 +1972,46 @@ impl Debug for Lite<syn::ForeignItemType> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::GenericArgument> {
+impl Debug for Lite<syn::Arg> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::GenericArgument::Lifetime(_val) => {
-                formatter.write_str("GenericArgument::Lifetime")?;
+            syn::Arg::Lifetime(_val) => {
+                formatter.write_str("path::Arg::Lifetime")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericArgument::Type(_val) => {
-                formatter.write_str("GenericArgument::Type")?;
+            syn::Arg::Type(_val) => {
+                formatter.write_str("path::Arg::Type")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericArgument::Const(_val) => {
-                formatter.write_str("GenericArgument::Const")?;
+            syn::Arg::Const(_val) => {
+                formatter.write_str("path::Arg::Const")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericArgument::AssocType(_val) => {
-                formatter.write_str("GenericArgument::AssocType")?;
+            syn::Arg::AssocType(_val) => {
+                formatter.write_str("path::Arg::AssocType")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericArgument::AssocConst(_val) => {
-                formatter.write_str("GenericArgument::AssocConst")?;
+            syn::Arg::AssocConst(_val) => {
+                formatter.write_str("path::Arg::AssocConst")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericArgument::Constraint(_val) => {
-                formatter.write_str("GenericArgument::Constraint")?;
+            syn::Arg::Constraint(_val) => {
+                formatter.write_str("path::Arg::Constraint")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
@@ -3016,11 +3016,11 @@ impl Debug for Lite<syn::Meta> {
         match &self.value {
             syn::Meta::Path(_val) => {
                 let mut formatter = formatter.debug_struct("Meta::Path");
-                if _val.leading_colon.is_some() {
+                if _val.colon.is_some() {
                     formatter.field("leading_colon", &Present);
                 }
-                if !_val.segments.is_empty() {
-                    formatter.field("segments", Lite(&_val.segments));
+                if !_val.segs.is_empty() {
+                    formatter.field("segments", Lite(&_val.segs));
                 }
                 formatter.finish()
             },
@@ -3057,13 +3057,13 @@ impl Debug for Lite<syn::MetaNameValue> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ParenthesizedGenericArguments> {
+impl Debug for Lite<syn::ParenthesizedArgs> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ParenthesizedGenericArguments");
-        if !self.value.inputs.is_empty() {
-            formatter.field("inputs", Lite(&self.value.inputs));
+        let mut formatter = formatter.debug_struct("path::ParenthesizedArgs");
+        if !self.value.ins.is_empty() {
+            formatter.field("inputs", Lite(&self.value.ins));
         }
-        formatter.field("output", Lite(&self.value.output));
+        formatter.field("output", Lite(&self.value.out));
         formatter.finish()
     }
 }
@@ -3475,22 +3475,22 @@ impl Debug for Lite<syn::PatWild> {
 impl Debug for Lite<syn::Path> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("Path");
-        if self.value.leading_colon.is_some() {
+        if self.value.colon.is_some() {
             formatter.field("leading_colon", &Present);
         }
-        if !self.value.segments.is_empty() {
-            formatter.field("segments", Lite(&self.value.segments));
+        if !self.value.segs.is_empty() {
+            formatter.field("segments", Lite(&self.value.segs));
         }
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::PathArguments> {
+impl Debug for Lite<syn::Args> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::PathArguments::None => formatter.write_str("PathArguments::None"),
-            syn::PathArguments::AngleBracketed(_val) => {
-                let mut formatter = formatter.debug_struct("PathArguments::AngleBracketed");
-                if _val.colon2_token.is_some() {
+            syn::Args::None => formatter.write_str("path::Args::None"),
+            syn::Args::Angled(_val) => {
+                let mut formatter = formatter.debug_struct("path::Args::AngleBracketed");
+                if _val.colon2.is_some() {
                     formatter.field("colon2_token", &Present);
                 }
                 if !_val.args.is_empty() {
@@ -3498,25 +3498,25 @@ impl Debug for Lite<syn::PathArguments> {
                 }
                 formatter.finish()
             },
-            syn::PathArguments::Parenthesized(_val) => {
-                let mut formatter = formatter.debug_struct("PathArguments::Parenthesized");
-                if !_val.inputs.is_empty() {
-                    formatter.field("inputs", Lite(&_val.inputs));
+            syn::Args::Parenthesized(_val) => {
+                let mut formatter = formatter.debug_struct("path::Args::Parenthesized");
+                if !_val.ins.is_empty() {
+                    formatter.field("inputs", Lite(&_val.ins));
                 }
-                formatter.field("output", Lite(&_val.output));
+                formatter.field("output", Lite(&_val.out));
                 formatter.finish()
             },
         }
     }
 }
-impl Debug for Lite<syn::PathSegment> {
+impl Debug for Lite<syn::Segment> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("PathSegment");
+        let mut formatter = formatter.debug_struct("path::Segment");
         formatter.field("ident", Lite(&self.value.ident));
-        match self.value.arguments {
-            syn::PathArguments::None => {},
+        match self.value.args {
+            syn::Args::None => {},
             _ => {
-                formatter.field("arguments", Lite(&self.value.arguments));
+                formatter.field("arguments", Lite(&self.value.args));
             },
         }
         formatter.finish()
@@ -3560,7 +3560,7 @@ impl Debug for Lite<syn::QSelf> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("QSelf");
         formatter.field("ty", Lite(&self.value.ty));
-        formatter.field("position", Lite(&self.value.position));
+        formatter.field("position", Lite(&self.value.pos));
         if self.value.as_.is_some() {
             formatter.field("as_token", &Present);
         }

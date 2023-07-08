@@ -11,13 +11,13 @@ use std::{
     fmt::{self, Display},
 };
 
-pub(crate) fn parse_inner(x: ParseStream, ys: &mut Vec<Attribute>) -> Result<()> {
+pub fn parse_inner(x: ParseStream, ys: &mut Vec<Attribute>) -> Result<()> {
     while x.peek(Token![#]) && x.peek2(Token![!]) {
         ys.push(x.call(single_parse_inner)?);
     }
     Ok(())
 }
-pub(crate) fn single_parse_inner(x: ParseStream) -> Result<Attribute> {
+pub fn single_parse_inner(x: ParseStream) -> Result<Attribute> {
     let content;
     Ok(Attribute {
         pound: x.parse()?,
@@ -26,7 +26,7 @@ pub(crate) fn single_parse_inner(x: ParseStream) -> Result<Attribute> {
         meta: content.parse()?,
     })
 }
-pub(crate) fn single_parse_outer(x: ParseStream) -> Result<Attribute> {
+pub fn single_parse_outer(x: ParseStream) -> Result<Attribute> {
     let content;
     Ok(Attribute {
         pound: x.parse()?,
@@ -55,7 +55,7 @@ impl Parse for MetaNameValue {
     }
 }
 
-pub(crate) fn parse_meta_after_path(path: Path, x: ParseStream) -> Result<Meta> {
+pub fn parse_meta_after_path(path: Path, x: ParseStream) -> Result<Meta> {
     if x.peek(tok::Paren) || x.peek(tok::Bracket) || x.peek(tok::Brace) {
         parse_meta_list_after_path(path, x).map(Meta::List)
     } else if x.peek(Token![=]) {
@@ -104,8 +104,8 @@ impl<'a> Display for DisplayAttrStyle<'a> {
 pub(super) struct DisplayPath<'a>(pub &'a Path);
 impl<'a> Display for DisplayPath<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, x) in self.0.segments.iter().enumerate() {
-            if i > 0 || self.0.leading_colon.is_some() {
+        for (i, x) in self.0.segs.iter().enumerate() {
+            if i > 0 || self.0.colon.is_some() {
                 f.write_str("::")?;
             }
             write!(f, "{}", x.ident)?;
@@ -329,7 +329,7 @@ impl Parse for TypeParamBound {
 }
 
 impl TypeParamBound {
-    pub(crate) fn parse_multiple(input: ParseStream, allow_plus: bool) -> Result<Punctuated<Self, Token![+]>> {
+    pub fn parse_multiple(input: ParseStream, allow_plus: bool) -> Result<Punctuated<Self, Token![+]>> {
         let mut bounds = Punctuated::new();
         loop {
             bounds.push_value(input.parse()?);
@@ -356,13 +356,13 @@ impl Parse for TraitBound {
         let modifier: TraitBoundModifier = input.parse()?;
         let lifetimes: Option<BoundLifetimes> = input.parse()?;
         let mut path: Path = input.parse()?;
-        if path.segments.last().unwrap().arguments.is_empty()
+        if path.segs.last().unwrap().args.is_empty()
             && (input.peek(tok::Paren) || input.peek(Token![::]) && input.peek3(tok::Paren))
         {
             input.parse::<Option<Token![::]>>()?;
-            let args: ParenthesizedGenericArguments = input.parse()?;
-            let parenthesized = PathArguments::Parenthesized(args);
-            path.segments.last_mut().unwrap().arguments = parenthesized;
+            let args: ParenthesizedArgs = input.parse()?;
+            let parenthesized = Args::Parenthesized(args);
+            path.segs.last_mut().unwrap().args = parenthesized;
         }
         Ok(TraitBound {
             paren: None,
@@ -507,7 +507,7 @@ mod kw {
     crate::custom_keyword!(raw);
 }
 
-pub(crate) struct AllowStruct(bool);
+pub struct AllowStruct(bool);
 enum Precedence {
     Any,
     Assign,
@@ -699,12 +699,12 @@ fn expr_attrs(input: ParseStream) -> Result<Vec<Attribute>> {
     loop {
         if input.peek(tok::Group) {
             let ahead = input.fork();
-            let group = crate::group::parse_group(&ahead)?;
-            if !group.content.peek(Token![#]) || group.content.peek2(Token![!]) {
+            let group = super::parse_group(&ahead)?;
+            if !group.gist.peek(Token![#]) || group.gist.peek2(Token![!]) {
                 break;
             }
-            let attr = group.content.call(single_parse_outer)?;
-            if !group.content.is_empty() {
+            let attr = group.gist.call(single_parse_outer)?;
+            if !group.gist.is_empty() {
                 break;
             }
             attrs.push(attr);
@@ -800,7 +800,7 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
             }
             let member: Member = input.parse()?;
             let turbofish = if member.is_named() && input.peek(Token![::]) {
-                Some(AngleBracketedGenericArguments::parse_turbofish(input)?)
+                Some(AngledArgs::parse_turbofish(input)?)
             } else {
                 None
             };
@@ -1087,7 +1087,7 @@ impl Parse for ExprRepeat {
         })
     }
 }
-pub(crate) fn expr_early(input: ParseStream) -> Result<Expr> {
+pub fn expr_early(input: ParseStream) -> Result<Expr> {
     let mut attrs = input.call(expr_attrs)?;
     let mut expr = if input.peek(Token![if]) {
         Expr::If(input.parse()?)
@@ -1135,11 +1135,11 @@ impl Parse for ExprLit {
     }
 }
 fn expr_group(input: ParseStream) -> Result<ExprGroup> {
-    let group = crate::group::parse_group(input)?;
+    let group = super::parse_group(input)?;
     Ok(ExprGroup {
         attrs: Vec::new(),
         group_token: group.token,
-        expr: group.content.parse()?,
+        expr: group.gist.parse()?,
     })
 }
 impl Parse for ExprParen {
@@ -1713,7 +1713,7 @@ impl Parse for RangeLimits {
     }
 }
 impl RangeLimits {
-    pub(crate) fn parse_obsolete(input: ParseStream) -> Result<Self> {
+    pub fn parse_obsolete(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
         let dot_dot = lookahead.peek(Token![..]);
         let dot_dot_eq = dot_dot && lookahead.peek(Token![..=]);
@@ -1804,7 +1804,7 @@ fn multi_index(e: &mut Expr, dot_token: &mut Token![.], float: lit::Float) -> Re
     }
     let mut offset = 0;
     for part in float_repr.split('.') {
-        let mut index: Index = crate::parse_str(part).map_err(|err| Err::new(float_span, err))?;
+        let mut index: Index = super::parse_str(part).map_err(|err| Err::new(float_span, err))?;
         let part_end = offset + part.len();
         index.span = float_token.subspan(offset..part_end).unwrap_or(float_span);
         let base = mem::replace(e, Expr::DUMMY);
@@ -1857,7 +1857,7 @@ impl Parse for Item {
         parse_rest_of_item(begin, attrs, input)
     }
 }
-pub(crate) fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<Attribute>, input: ParseStream) -> Result<Item> {
+pub fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<Attribute>, input: ParseStream) -> Result<Item> {
     let ahead = input.fork();
     let vis: Visibility = ahead.parse()?;
     let lookahead = ahead.lookahead1();
@@ -3451,7 +3451,7 @@ impl Visibility {
     }
 }
 impl MacroDelimiter {
-    pub(crate) fn is_brace(&self) -> bool {
+    pub fn is_brace(&self) -> bool {
         match self {
             MacroDelimiter::Brace(_) => true,
             MacroDelimiter::Paren(_) | MacroDelimiter::Bracket(_) => false,
@@ -4046,7 +4046,7 @@ mod parsing {
         fn parse(input: ParseStream) -> Result<Self> {
             if input.peek(token::Group) {
                 let ahead = input.fork();
-                let group = crate::group::parse_group(&ahead)?;
+                let group = super::parse_group(&ahead)?;
                 if group.content.is_empty() {
                     input.advance_to(&ahead);
                     return Ok(Visibility::Inherited);
@@ -4100,7 +4100,7 @@ mod parsing {
     }
 }
 
-pub(crate) mod parsing {
+pub mod parsing {
     impl Parse for Lit {
         fn parse(input: ParseStream) -> Result<Self> {
             input.step(|cursor| {
@@ -4134,7 +4134,7 @@ pub(crate) mod parsing {
         span = span.join(lit.span()).unwrap_or(span);
         let mut repr = lit.to_string();
         repr.insert(0, '-');
-        if let Some((digits, suffix)) = crate::lit::parse_int(&repr) {
+        if let Some((digits, suffix)) = super::lit::parse_int(&repr) {
             let mut token: Literal = repr.parse().unwrap();
             token.set_span(span);
             return Some((
@@ -4144,7 +4144,7 @@ pub(crate) mod parsing {
                 rest,
             ));
         }
-        let (digits, suffix) = crate::lit::parse_float(&repr)?;
+        let (digits, suffix) = super::lit::parse_float(&repr)?;
         let mut token: Literal = repr.parse().unwrap();
         token.set_span(span);
         Some((
@@ -4219,7 +4219,7 @@ pub(crate) mod parsing {
     }
 }
 
-pub(crate) mod parsing {
+pub mod parsing {
     impl Pat {
         pub fn parse_single(input: ParseStream) -> Result<Self> {
             let begin = input.fork();
@@ -4631,19 +4631,19 @@ pub(crate) mod parsing {
     }
 }
 
-pub(crate) mod parsing {
+pub mod parsing {
     impl Parse for Path {
         fn parse(input: ParseStream) -> Result<Self> {
             Self::parse_helper(input, false)
         }
     }
-    impl Parse for GenericArgument {
+    impl Parse for path::Arg {
         fn parse(input: ParseStream) -> Result<Self> {
             if input.peek(Lifetime) && !input.peek2(Token![+]) {
-                return Ok(GenericArgument::Lifetime(input.parse()?));
+                return Ok(path::Arg::Lifetime(input.parse()?));
             }
             if input.peek(Lit) || input.peek(token::Brace) {
-                return const_argument(input).map(GenericArgument::Const);
+                return const_argument(input).map(path::Arg::Const);
             }
             let mut argument: Type = input.parse()?;
             match argument {
@@ -4652,27 +4652,27 @@ pub(crate) mod parsing {
                         && ty.path.leading_colon.is_none()
                         && ty.path.segments.len() == 1
                         && match &ty.path.segments[0].arguments {
-                            PathArguments::None | PathArguments::AngleBracketed(_) => true,
-                            PathArguments::Parenthesized(_) => false,
+                            path::Args::None | path::Args::AngleBracketed(_) => true,
+                            path::Args::Parenthesized(_) => false,
                         } =>
                 {
                     if let Some(eq_token) = input.parse::<Option<Token![=]>>()? {
                         let segment = ty.path.segments.pop().unwrap().into_value();
                         let ident = segment.ident;
                         let generics = match segment.arguments {
-                            PathArguments::None => None,
-                            PathArguments::AngleBracketed(arguments) => Some(arguments),
-                            PathArguments::Parenthesized(_) => unreachable!(),
+                            path::Args::None => None,
+                            path::Args::AngleBracketed(arguments) => Some(arguments),
+                            path::Args::Parenthesized(_) => unreachable!(),
                         };
                         return if input.peek(Lit) || input.peek(token::Brace) {
-                            Ok(GenericArgument::AssocConst(AssocConst {
+                            Ok(path::Arg::AssocConst(AssocConst {
                                 ident,
                                 generics,
                                 eq_token,
                                 value: const_argument(input)?,
                             }))
                         } else {
-                            Ok(GenericArgument::AssocType(AssocType {
+                            Ok(path::Arg::AssocType(AssocType {
                                 ident,
                                 generics,
                                 eq_token,
@@ -4682,12 +4682,12 @@ pub(crate) mod parsing {
                     }
                     if let Some(colon_token) = input.parse::<Option<Token![:]>>()? {
                         let segment = ty.path.segments.pop().unwrap().into_value();
-                        return Ok(GenericArgument::Constraint(Constraint {
+                        return Ok(path::Arg::Constraint(Constraint {
                             ident: segment.ident,
                             generics: match segment.arguments {
-                                PathArguments::None => None,
-                                PathArguments::AngleBracketed(arguments) => Some(arguments),
-                                PathArguments::Parenthesized(_) => unreachable!(),
+                                path::Args::None => None,
+                                path::Args::AngleBracketed(arguments) => Some(arguments),
+                                path::Args::Parenthesized(_) => unreachable!(),
                             },
                             colon_token,
                             bounds: {
@@ -4712,10 +4712,10 @@ pub(crate) mod parsing {
                 },
                 _ => {},
             }
-            Ok(GenericArgument::Type(argument))
+            Ok(path::Arg::Type(argument))
         }
     }
-    pub(crate) fn const_argument(input: ParseStream) -> Result<Expr> {
+    pub fn const_argument(input: ParseStream) -> Result<Expr> {
         let lookahead = input.lookahead1();
         if input.peek(Lit) {
             let lit = input.parse()?;
@@ -4746,13 +4746,13 @@ pub(crate) mod parsing {
         }
         Err(lookahead.error())
     }
-    impl AngleBracketedGenericArguments {
+    impl path::path::AngledArgs {
         pub fn parse_turbofish(input: ParseStream) -> Result<Self> {
             let colon2_token: Token![::] = input.parse()?;
             Self::do_parse(Some(colon2_token), input)
         }
         fn do_parse(colon2_token: Option<Token![::]>, input: ParseStream) -> Result<Self> {
-            Ok(AngleBracketedGenericArguments {
+            Ok(path::path::AngledArgs {
                 colon2_token,
                 lt_token: input.parse()?,
                 args: {
@@ -4761,7 +4761,7 @@ pub(crate) mod parsing {
                         if input.peek(Token![>]) {
                             break;
                         }
-                        let value: GenericArgument = input.parse()?;
+                        let value: path::Arg = input.parse()?;
                         args.push_value(value);
                         if input.peek(Token![>]) {
                             break;
@@ -4775,28 +4775,28 @@ pub(crate) mod parsing {
             })
         }
     }
-    impl Parse for AngleBracketedGenericArguments {
+    impl Parse for path::path::AngledArgs {
         fn parse(input: ParseStream) -> Result<Self> {
             let colon2_token: Option<Token![::]> = input.parse()?;
             Self::do_parse(colon2_token, input)
         }
     }
-    impl Parse for ParenthesizedGenericArguments {
+    impl Parse for path::ParenthesizedArgs {
         fn parse(input: ParseStream) -> Result<Self> {
             let content;
-            Ok(ParenthesizedGenericArguments {
+            Ok(path::ParenthesizedArgs {
                 paren_token: parenthesized!(content in input),
                 inputs: content.parse_terminated(Type::parse, Token![,])?,
                 output: input.call(ReturnType::without_plus)?,
             })
         }
     }
-    impl Parse for PathSegment {
+    impl Parse for path::Segment {
         fn parse(input: ParseStream) -> Result<Self> {
             Self::parse_helper(input, false)
         }
     }
-    impl PathSegment {
+    impl path::Segment {
         fn parse_helper(input: ParseStream, expr_style: bool) -> Result<Self> {
             if input.peek(Token![super])
                 || input.peek(Token![self])
@@ -4804,7 +4804,7 @@ pub(crate) mod parsing {
                 || cfg!(feature = "full") && input.peek(Token![try])
             {
                 let ident = input.call(Ident::parse_any)?;
-                return Ok(PathSegment::from(ident));
+                return Ok(path::Segment::from(ident));
             }
             let ident = if input.peek(Token![Self]) {
                 input.call(Ident::parse_any)?
@@ -4814,12 +4814,12 @@ pub(crate) mod parsing {
             if !expr_style && input.peek(Token![<]) && !input.peek(Token![<=])
                 || input.peek(Token![::]) && input.peek3(Token![<])
             {
-                Ok(PathSegment {
+                Ok(path::Segment {
                     ident,
-                    arguments: PathArguments::AngleBracketed(input.parse()?),
+                    arguments: path::Args::AngleBracketed(input.parse()?),
                 })
             } else {
-                Ok(PathSegment::from(ident))
+                Ok(path::Segment::from(ident))
             }
         }
     }
@@ -4839,7 +4839,7 @@ pub(crate) mod parsing {
                             break;
                         }
                         let ident = Ident::parse_any(input)?;
-                        segments.push_value(PathSegment::from(ident));
+                        segments.push_value(path::Segment::from(ident));
                         if !input.peek(Token![::]) {
                             break;
                         }
@@ -4855,12 +4855,12 @@ pub(crate) mod parsing {
                 },
             })
         }
-        pub(crate) fn parse_helper(input: ParseStream, expr_style: bool) -> Result<Self> {
+        pub fn parse_helper(input: ParseStream, expr_style: bool) -> Result<Self> {
             let mut path = Path {
                 leading_colon: input.parse()?,
                 segments: {
                     let mut segments = Punctuated::new();
-                    let value = PathSegment::parse_helper(input, expr_style)?;
+                    let value = path::Segment::parse_helper(input, expr_style)?;
                     segments.push_value(value);
                     segments
                 },
@@ -4868,20 +4868,20 @@ pub(crate) mod parsing {
             Path::parse_rest(input, &mut path, expr_style)?;
             Ok(path)
         }
-        pub(crate) fn parse_rest(input: ParseStream, path: &mut Self, expr_style: bool) -> Result<()> {
+        pub fn parse_rest(input: ParseStream, path: &mut Self, expr_style: bool) -> Result<()> {
             while input.peek(Token![::]) && !input.peek3(token::Paren) {
                 let punct: Token![::] = input.parse()?;
                 path.segments.push_punct(punct);
-                let value = PathSegment::parse_helper(input, expr_style)?;
+                let value = path::Segment::parse_helper(input, expr_style)?;
                 path.segments.push_value(value);
             }
             Ok(())
         }
-        pub(crate) fn is_mod_style(&self) -> bool {
+        pub fn is_mod_style(&self) -> bool {
             self.segments.iter().all(|segment| segment.arguments.is_none())
         }
     }
-    pub(crate) fn qpath(input: ParseStream, expr_style: bool) -> Result<(Option<QSelf>, Path)> {
+    pub fn qpath(input: ParseStream, expr_style: bool) -> Result<(Option<QSelf>, Path)> {
         if input.peek(Token![<]) {
             let lt_token: Token![<] = input.parse()?;
             let this: Type = input.parse()?;
@@ -4896,7 +4896,7 @@ pub(crate) mod parsing {
             let colon2_token: Token![::] = input.parse()?;
             let mut rest = Punctuated::new();
             loop {
-                let path = PathSegment::parse_helper(input, expr_style)?;
+                let path = path::Segment::parse_helper(input, expr_style)?;
                 rest.push_value(path);
                 if !input.peek(Token![::]) {
                     break;
@@ -5000,7 +5000,7 @@ pub mod parsing {
     }
 }
 
-pub(crate) mod parsing {
+pub mod parsing {
     impl Parse for Type {
         fn parse(input: ParseStream) -> Result<Self> {
             let allow_plus = true;
@@ -5015,7 +5015,7 @@ pub(crate) mod parsing {
             ambig_ty(input, allow_plus, allow_group_generic)
         }
     }
-    pub(crate) fn ambig_ty(input: ParseStream, allow_plus: bool, allow_group_generic: bool) -> Result<Type> {
+    pub fn ambig_ty(input: ParseStream, allow_plus: bool, allow_group_generic: bool) -> Result<Type> {
         let begin = input.fork();
         if input.peek(token::Group) {
             let mut group: TypeGroup = input.parse()?;
@@ -5039,7 +5039,7 @@ pub(crate) mod parsing {
                 if let Type::Path(mut ty) = *group.elem {
                     let arguments = &mut ty.path.segments.last_mut().unwrap().arguments;
                     if arguments.is_none() {
-                        *arguments = PathArguments::AngleBracketed(input.parse()?);
+                        *arguments = path::Args::AngleBracketed(input.parse()?);
                         Path::parse_rest(input, &mut ty.path, false)?;
                         return Ok(Type::Path(ty));
                     } else {
@@ -5414,7 +5414,7 @@ pub(crate) mod parsing {
             let allow_plus = false;
             Self::parse(input, allow_plus)
         }
-        pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
+        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
             if input.peek(Token![->]) {
                 let arrow = input.parse()?;
                 let allow_group_generic = true;
@@ -5442,7 +5442,7 @@ pub(crate) mod parsing {
             let allow_plus = false;
             Self::parse(input, allow_plus)
         }
-        pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
+        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
             let dyn_token: Option<Token![dyn]> = input.parse()?;
             let dyn_span = match &dyn_token {
                 Some(token) => token.span,
@@ -5488,7 +5488,7 @@ pub(crate) mod parsing {
             let allow_plus = false;
             Self::parse(input, allow_plus)
         }
-        pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
+        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
             let impl_token: Token![impl] = input.parse()?;
             let bounds = TypeParamBound::parse_multiple(input, allow_plus)?;
             let mut last_lifetime_span = None;
@@ -5513,10 +5513,10 @@ pub(crate) mod parsing {
     }
     impl Parse for TypeGroup {
         fn parse(input: ParseStream) -> Result<Self> {
-            let group = crate::group::parse_group(input)?;
+            let group = super::parse_group(input)?;
             Ok(TypeGroup {
                 group_token: group.token,
-                elem: group.content.parse()?,
+                elem: group.gist.parse()?,
             })
         }
     }

@@ -34,7 +34,7 @@ fn test_comment() {
                 meta: Meta::List {
                     path: Path {
                         segments: [
-                            PathSegment {
+                            path::Segment {
                                 ident: "allow",
                             },
                         ],

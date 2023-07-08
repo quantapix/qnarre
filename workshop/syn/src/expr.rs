@@ -1,5 +1,5 @@
 use super::*;
-use crate::punctuated::Punctuated;
+use crate::punct::Punctuated;
 use proc_macro2::{Span, TokenStream};
 use quote::IdentFragment;
 use std::fmt::{self, Display};
@@ -240,7 +240,7 @@ ast_struct! {
         pub receiver: Box<Expr>,
         pub dot_token: Token![.],
         pub method: Ident,
-        pub turbofish: Option<AngleBracketedGenericArguments>,
+        pub turbofish: Option<AngledArgs>,
         pub paren_token: tok::Paren,
         pub args: Punctuated<Expr, Token![,]>,
     }
@@ -358,8 +358,8 @@ impl Expr {
         attrs: Vec::new(),
         qself: None,
         path: Path {
-            leading_colon: None,
-            segments: Punctuated::new(),
+            colon: None,
+            segs: Punctuated::new(),
         },
     });
     pub(crate) fn replace_attrs(&mut self, new: Vec<Attribute>) -> Vec<Attribute> {

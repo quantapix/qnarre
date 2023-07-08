@@ -544,7 +544,7 @@ macro_rules! Token {
 #[macro_export]
 macro_rules! parenthesized {
     ($content:ident in $cur:expr) => {
-        match $crate::group::parse_parens(&$cur) {
+        match $crate::parse_parens(&$cur) {
             $crate::__private::Ok(x) => {
                 $content = x.content;
                 x.token
@@ -559,7 +559,7 @@ macro_rules! parenthesized {
 #[macro_export]
 macro_rules! braced {
     ($content:ident in $cur:expr) => {
-        match $crate::group::parse_braces(&$cur) {
+        match $crate::parse_braces(&$cur) {
             $crate::__private::Ok(x) => {
                 $content = x.content;
                 x.token
@@ -574,7 +574,7 @@ macro_rules! braced {
 #[macro_export]
 macro_rules! bracketed {
     ($content:ident in $cur:expr) => {
-        match $crate::group::parse_brackets(&$cur) {
+        match $crate::parse_brackets(&$cur) {
             $crate::__private::Ok(x) => {
                 $content = x.content;
                 x.token

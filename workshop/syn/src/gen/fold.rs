@@ -19,10 +19,7 @@ pub trait Fold {
     fn fold_abi(&mut self, i: Abi) -> Abi {
         fold_abi(self, i)
     }
-    fn fold_angle_bracketed_generic_arguments(
-        &mut self,
-        i: AngleBracketedGenericArguments,
-    ) -> AngleBracketedGenericArguments {
+    fn fold_angle_bracketed_generic_arguments(&mut self, i: AngledArgs) -> AngledArgs {
         fold_angle_bracketed_generic_arguments(self, i)
     }
     fn fold_arm(&mut self, i: Arm) -> Arm {
@@ -235,7 +232,7 @@ pub trait Fold {
     fn fold_foreign_item_type(&mut self, i: ForeignItemType) -> ForeignItemType {
         fold_foreign_item_type(self, i)
     }
-    fn fold_generic_argument(&mut self, i: GenericArgument) -> GenericArgument {
+    fn fold_generic_argument(&mut self, i: Arg) -> Arg {
         fold_generic_argument(self, i)
     }
     fn fold_generic_param(&mut self, i: GenericParam) -> GenericParam {
@@ -373,10 +370,7 @@ pub trait Fold {
     fn fold_meta_name_value(&mut self, i: MetaNameValue) -> MetaNameValue {
         fold_meta_name_value(self, i)
     }
-    fn fold_parenthesized_generic_arguments(
-        &mut self,
-        i: ParenthesizedGenericArguments,
-    ) -> ParenthesizedGenericArguments {
+    fn fold_parenthesized_generic_arguments(&mut self, i: ParenthesizedArgs) -> ParenthesizedArgs {
         fold_parenthesized_generic_arguments(self, i)
     }
     fn fold_pat(&mut self, i: Pat) -> Pat {
@@ -418,10 +412,10 @@ pub trait Fold {
     fn fold_path(&mut self, i: Path) -> Path {
         fold_path(self, i)
     }
-    fn fold_path_arguments(&mut self, i: PathArguments) -> PathArguments {
+    fn fold_path_arguments(&mut self, i: Args) -> Args {
         fold_path_arguments(self, i)
     }
-    fn fold_path_segment(&mut self, i: PathSegment) -> PathSegment {
+    fn fold_path_segment(&mut self, i: Segment) -> Segment {
         fold_path_segment(self, i)
     }
     fn fold_predicate_lifetime(&mut self, i: PredLifetime) -> PredLifetime {
@@ -578,15 +572,12 @@ where
         name: (node.name).map(|it| f.fold_lit_str(it)),
     }
 }
-pub fn fold_angle_bracketed_generic_arguments<F>(
-    f: &mut F,
-    node: AngleBracketedGenericArguments,
-) -> AngleBracketedGenericArguments
+pub fn fold_angle_bracketed_generic_arguments<F>(f: &mut F, node: AngledArgs) -> AngledArgs
 where
     F: Fold + ?Sized,
 {
-    AngleBracketedGenericArguments {
-        colon2_token: node.colon2_token,
+    AngledArgs {
+        colon2: node.colon2,
         lt: node.lt,
         args: FoldHelper::lift(node.args, |it| f.fold_generic_argument(it)),
         gt: node.gt,
@@ -611,9 +602,9 @@ where
 {
     AssocConst {
         ident: f.fold_ident(node.ident),
-        generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
+        gnrs: (node.gnrs).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
         eq: node.eq,
-        value: f.fold_expr(node.value),
+        val: f.fold_expr(node.val),
     }
 }
 pub fn fold_assoc_type<F>(f: &mut F, node: AssocType) -> AssocType
@@ -622,7 +613,7 @@ where
 {
     AssocType {
         ident: f.fold_ident(node.ident),
-        generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
+        gnrs: (node.gnrs).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
         eq: node.eq,
         ty: f.fold_type(node.ty),
     }
@@ -743,7 +734,7 @@ where
 {
     Constraint {
         ident: f.fold_ident(node.ident),
-        generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
+        gnrs: (node.gnrs).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
         colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
@@ -1415,17 +1406,17 @@ where
         semi_token: node.semi_token,
     }
 }
-pub fn fold_generic_argument<F>(f: &mut F, node: GenericArgument) -> GenericArgument
+pub fn fold_generic_argument<F>(f: &mut F, node: Arg) -> Arg
 where
     F: Fold + ?Sized,
 {
     match node {
-        GenericArgument::Lifetime(_binding_0) => GenericArgument::Lifetime(f.fold_lifetime(_binding_0)),
-        GenericArgument::Type(_binding_0) => GenericArgument::Type(f.fold_type(_binding_0)),
-        GenericArgument::Const(_binding_0) => GenericArgument::Const(f.fold_expr(_binding_0)),
-        GenericArgument::AssocType(_binding_0) => GenericArgument::AssocType(f.fold_assoc_type(_binding_0)),
-        GenericArgument::AssocConst(_binding_0) => GenericArgument::AssocConst(f.fold_assoc_const(_binding_0)),
-        GenericArgument::Constraint(_binding_0) => GenericArgument::Constraint(f.fold_constraint(_binding_0)),
+        Arg::Lifetime(_binding_0) => Arg::Lifetime(f.fold_lifetime(_binding_0)),
+        Arg::Type(_binding_0) => Arg::Type(f.fold_type(_binding_0)),
+        Arg::Const(_binding_0) => Arg::Const(f.fold_expr(_binding_0)),
+        Arg::AssocType(_binding_0) => Arg::AssocType(f.fold_assoc_type(_binding_0)),
+        Arg::AssocConst(_binding_0) => Arg::AssocConst(f.fold_assoc_const(_binding_0)),
+        Arg::Constraint(_binding_0) => Arg::Constraint(f.fold_constraint(_binding_0)),
     }
 }
 pub fn fold_generic_param<F>(f: &mut F, node: GenericParam) -> GenericParam
@@ -1968,17 +1959,14 @@ where
         val: f.fold_expr(node.val),
     }
 }
-pub fn fold_parenthesized_generic_arguments<F>(
-    f: &mut F,
-    node: ParenthesizedGenericArguments,
-) -> ParenthesizedGenericArguments
+pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: ParenthesizedArgs) -> ParenthesizedArgs
 where
     F: Fold + ?Sized,
 {
-    ParenthesizedGenericArguments {
+    ParenthesizedArgs {
         paren: node.paren,
-        inputs: FoldHelper::lift(node.inputs, |it| f.fold_type(it)),
-        output: f.fold_return_type(node.output),
+        ins: FoldHelper::lift(node.ins, |it| f.fold_type(it)),
+        out: f.fold_return_type(node.out),
     }
 }
 pub fn fold_pat<F>(f: &mut F, node: Pat) -> Pat
@@ -2127,31 +2115,27 @@ where
     F: Fold + ?Sized,
 {
     Path {
-        leading_colon: node.leading_colon,
-        segments: FoldHelper::lift(node.segments, |it| f.fold_path_segment(it)),
+        colon: node.colon,
+        segs: FoldHelper::lift(node.segs, |it| f.fold_path_segment(it)),
     }
 }
-pub fn fold_path_arguments<F>(f: &mut F, node: PathArguments) -> PathArguments
+pub fn fold_path_arguments<F>(f: &mut F, node: Args) -> Args
 where
     F: Fold + ?Sized,
 {
     match node {
-        PathArguments::None => PathArguments::None,
-        PathArguments::AngleBracketed(_binding_0) => {
-            PathArguments::AngleBracketed(f.fold_angle_bracketed_generic_arguments(_binding_0))
-        },
-        PathArguments::Parenthesized(_binding_0) => {
-            PathArguments::Parenthesized(f.fold_parenthesized_generic_arguments(_binding_0))
-        },
+        Args::None => Args::None,
+        Args::Angled(_binding_0) => Args::Angled(f.fold_angle_bracketed_generic_arguments(_binding_0)),
+        Args::Parenthesized(_binding_0) => Args::Parenthesized(f.fold_parenthesized_generic_arguments(_binding_0)),
     }
 }
-pub fn fold_path_segment<F>(f: &mut F, node: PathSegment) -> PathSegment
+pub fn fold_path_segment<F>(f: &mut F, node: Segment) -> Segment
 where
     F: Fold + ?Sized,
 {
-    PathSegment {
+    Segment {
         ident: f.fold_ident(node.ident),
-        arguments: f.fold_path_arguments(node.arguments),
+        args: f.fold_path_arguments(node.args),
     }
 }
 pub fn fold_predicate_lifetime<F>(f: &mut F, node: PredLifetime) -> PredLifetime
@@ -2182,7 +2166,7 @@ where
     QSelf {
         lt: node.lt,
         ty: Box::new(f.fold_type(*node.ty)),
-        position: node.position,
+        pos: node.pos,
         as_: node.as_,
         gt_: node.gt_,
     }

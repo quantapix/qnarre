@@ -42,7 +42,7 @@ fn test_struct() {
                 meta: Meta::List {
                     path: Path {
                         segments: [
-                            PathSegment {
+                            path::Segment {
                                 ident: "derive",
                             },
                         ],
@@ -65,7 +65,7 @@ fn test_struct() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "Ident",
                                     },
                                 ],
@@ -79,14 +79,14 @@ fn test_struct() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "Vec",
-                                        arguments: PathArguments::AngleBracketed {
+                                        arguments: path::Args::AngleBracketed {
                                             args: [
-                                                GenericArgument::Type(Type::Path {
+                                                path::Arg::Type(Type::Path {
                                                     path: Path {
                                                         segments: [
-                                                            PathSegment {
+                                                            path::Segment {
                                                                 ident: "Attribute",
                                                             },
                                                         ],
@@ -108,7 +108,7 @@ fn test_struct() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "derive",
                 },
             ],
@@ -155,7 +155,7 @@ fn test_union() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "T",
                                     },
                                 ],
@@ -187,7 +187,7 @@ fn test_enum() {
                 meta: Meta::NameValue {
                     path: Path {
                         segments: [
-                            PathSegment {
+                            path::Segment {
                                 ident: "doc",
                             },
                         ],
@@ -201,7 +201,7 @@ fn test_enum() {
                 style: AttrStyle::Outer,
                 meta: Meta::Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "must_use",
                         },
                     ],
@@ -233,7 +233,7 @@ fn test_enum() {
                                 ty: Type::Path {
                                     path: Path {
                                         segments: [
-                                            PathSegment {
+                                            path::Segment {
                                                 ident: "T",
                                             },
                                         ],
@@ -252,7 +252,7 @@ fn test_enum() {
                                 ty: Type::Path {
                                     path: Path {
                                         segments: [
-                                            PathSegment {
+                                            path::Segment {
                                                 ident: "E",
                                             },
                                         ],
@@ -298,7 +298,7 @@ fn test_enum() {
         Meta::NameValue {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "doc",
                     },
                 ],
@@ -309,7 +309,7 @@ fn test_enum() {
         },
         Meta::Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "must_use",
                 },
             ],
@@ -338,10 +338,10 @@ fn test_attr_with_mod_style_path_with_self() {
                 style: AttrStyle::Outer,
                 meta: Meta::Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "foo",
                         },
-                        PathSegment {
+                        path::Segment {
                             ident: "self",
                         },
                     ],
@@ -360,10 +360,10 @@ fn test_attr_with_mod_style_path_with_self() {
     snapshot!(&input.attrs[0].meta, @r###"
     Meta::Path {
         segments: [
-            PathSegment {
+            path::Segment {
                 ident: "foo",
             },
-            PathSegment {
+            path::Segment {
                 ident: "self",
             },
         ],
@@ -381,7 +381,7 @@ fn test_pub_restricted() {
             in_token: Some,
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "m",
                     },
                 ],
@@ -397,10 +397,10 @@ fn test_pub_restricted() {
                             in_token: Some,
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "m",
                                     },
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "n",
                                     },
                                 ],
@@ -409,7 +409,7 @@ fn test_pub_restricted() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "u8",
                                     },
                                 ],
@@ -433,7 +433,7 @@ fn test_pub_restricted_crate() {
         vis: Visibility::Restricted {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "crate",
                     },
                 ],
@@ -458,7 +458,7 @@ fn test_pub_restricted_super() {
         vis: Visibility::Restricted {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "super",
                     },
                 ],
@@ -484,7 +484,7 @@ fn test_pub_restricted_in_super() {
             in_token: Some,
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "super",
                     },
                 ],
@@ -544,7 +544,7 @@ fn test_fields_on_named_struct() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "i32",
                                     },
                                 ],
@@ -558,7 +558,7 @@ fn test_fields_on_named_struct() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "String",
                                     },
                                 ],
@@ -583,7 +583,7 @@ fn test_fields_on_named_struct() {
             ty: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "i32",
                         },
                     ],
@@ -597,7 +597,7 @@ fn test_fields_on_named_struct() {
             ty: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "String",
                         },
                     ],
@@ -625,7 +625,7 @@ fn test_fields_on_tuple_struct() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "i32",
                                     },
                                 ],
@@ -637,7 +637,7 @@ fn test_fields_on_tuple_struct() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "String",
                                     },
                                 ],
@@ -661,7 +661,7 @@ fn test_fields_on_tuple_struct() {
             ty: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "i32",
                         },
                     ],
@@ -673,7 +673,7 @@ fn test_fields_on_tuple_struct() {
             ty: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "String",
                         },
                     ],
@@ -701,10 +701,10 @@ fn test_ambiguous_crate() {
                         ty: Type::Path {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "crate",
                                     },
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "X",
                                     },
                                 ],

@@ -33,7 +33,7 @@ fn test_await() {
         base: Expr::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "fut",
                     },
                 ],
@@ -51,7 +51,7 @@ fn test_tuple_multi_index() {
             base: Expr::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "tuple",
                         },
                     ],
@@ -98,7 +98,7 @@ fn test_macro_variable_func() {
             expr: Expr::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "f",
                         },
                     ],
@@ -120,7 +120,7 @@ fn test_macro_variable_func() {
                 style: AttrStyle::Outer,
                 meta: Meta::Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "outside",
                         },
                     ],
@@ -134,7 +134,7 @@ fn test_macro_variable_func() {
                         style: AttrStyle::Outer,
                         meta: Meta::Path {
                             segments: [
-                                PathSegment {
+                                path::Segment {
                                     ident: "inside",
                                 },
                             ],
@@ -143,7 +143,7 @@ fn test_macro_variable_func() {
                 ],
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "f",
                         },
                     ],
@@ -165,7 +165,7 @@ fn test_macro_variable_macro() {
         mac: Macro {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "m",
                     },
                 ],
@@ -186,7 +186,7 @@ fn test_macro_variable_struct() {
     Expr::Struct {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "S",
                 },
             ],
@@ -214,7 +214,7 @@ fn test_macro_variable_match_arm() {
         expr: Expr::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "v",
                     },
                 ],
@@ -230,7 +230,7 @@ fn test_macro_variable_match_arm() {
                                 style: AttrStyle::Outer,
                                 meta: Meta::Path {
                                     segments: [
-                                        PathSegment {
+                                        path::Segment {
                                             ident: "a",
                                         },
                                     ],

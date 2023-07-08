@@ -1487,80 +1487,72 @@ impl ToTokens for FieldPat {
 
 impl ToTokens for Path {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.leading_colon.to_tokens(tokens);
-        self.segments.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
+        self.segs.to_tokens(tokens);
     }
 }
-impl ToTokens for PathSegment {
+impl ToTokens for Segment {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
-        self.arguments.to_tokens(tokens);
+        self.args.to_tokens(tokens);
     }
 }
-impl ToTokens for PathArguments {
+impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            PathArguments::None => {},
-            PathArguments::AngleBracketed(arguments) => {
+            Args::None => {},
+            Args::Angled(arguments) => {
                 arguments.to_tokens(tokens);
             },
-            PathArguments::Parenthesized(arguments) => {
+            Args::Parenthesized(arguments) => {
                 arguments.to_tokens(tokens);
             },
         }
     }
 }
-impl ToTokens for GenericArgument {
+impl ToTokens for Arg {
     #[allow(clippy::match_same_arms)]
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            GenericArgument::Lifetime(lt) => lt.to_tokens(tokens),
-            GenericArgument::Type(ty) => ty.to_tokens(tokens),
-            GenericArgument::Const(expr) => match expr {
+            Arg::Lifetime(lt) => lt.to_tokens(tokens),
+            Arg::Type(ty) => ty.to_tokens(tokens),
+            Arg::Const(expr) => match expr {
                 Expr::Lit(_) => expr.to_tokens(tokens),
                 Expr::Block(_) => expr.to_tokens(tokens),
                 _ => tok::Brace::default().surround(tokens, |tokens| {
                     expr.to_tokens(tokens);
                 }),
             },
-            GenericArgument::AssocType(assoc) => assoc.to_tokens(tokens),
-            GenericArgument::AssocConst(assoc) => assoc.to_tokens(tokens),
-            GenericArgument::Constraint(constraint) => constraint.to_tokens(tokens),
+            Arg::AssocType(assoc) => assoc.to_tokens(tokens),
+            Arg::AssocConst(assoc) => assoc.to_tokens(tokens),
+            Arg::Constraint(constraint) => constraint.to_tokens(tokens),
         }
     }
 }
-impl ToTokens for AngleBracketedGenericArguments {
+impl ToTokens for AngledArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.colon2_token.to_tokens(tokens);
+        self.colon2.to_tokens(tokens);
         self.lt.to_tokens(tokens);
         let mut trailing_or_empty = true;
         for param in self.args.pairs() {
             match param.value() {
-                GenericArgument::Lifetime(_) => {
+                Arg::Lifetime(_) => {
                     param.to_tokens(tokens);
                     trailing_or_empty = param.punct().is_some();
                 },
-                GenericArgument::Type(_)
-                | GenericArgument::Const(_)
-                | GenericArgument::AssocType(_)
-                | GenericArgument::AssocConst(_)
-                | GenericArgument::Constraint(_) => {},
+                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
             }
         }
         for param in self.args.pairs() {
             match param.value() {
-                GenericArgument::Type(_)
-                | GenericArgument::Const(_)
-                | GenericArgument::AssocType(_)
-                | GenericArgument::AssocConst(_)
-                | GenericArgument::Constraint(_) => {
+                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
                     if !trailing_or_empty {
                         <Token![,]>::default().to_tokens(tokens);
                     }
                     param.to_tokens(tokens);
                     trailing_or_empty = param.punct().is_some();
                 },
-                GenericArgument::Lifetime(_) => {},
+                Arg::Lifetime(_) => {},
             }
         }
         self.gt.to_tokens(tokens);
@@ -1569,7 +1561,7 @@ impl ToTokens for AngleBracketedGenericArguments {
 impl ToTokens for AssocType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gnrs.to_tokens(tokens);
         self.eq.to_tokens(tokens);
         self.ty.to_tokens(tokens);
     }
@@ -1577,25 +1569,25 @@ impl ToTokens for AssocType {
 impl ToTokens for AssocConst {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gnrs.to_tokens(tokens);
         self.eq.to_tokens(tokens);
-        self.value.to_tokens(tokens);
+        self.val.to_tokens(tokens);
     }
 }
 impl ToTokens for Constraint {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gnrs.to_tokens(tokens);
         self.colon.to_tokens(tokens);
         self.bounds.to_tokens(tokens);
     }
 }
-impl ToTokens for ParenthesizedGenericArguments {
+impl ToTokens for ParenthesizedArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.paren.surround(tokens, |tokens| {
-            self.inputs.to_tokens(tokens);
+            self.ins.to_tokens(tokens);
         });
-        self.output.to_tokens(tokens);
+        self.out.to_tokens(tokens);
     }
 }
 pub(crate) fn print_path(tokens: &mut TokenStream, qself: &Option<QSelf>, path: &Path) {
@@ -1608,11 +1600,11 @@ pub(crate) fn print_path(tokens: &mut TokenStream, qself: &Option<QSelf>, path: 
     };
     qself.lt.to_tokens(tokens);
     qself.ty.to_tokens(tokens);
-    let pos = cmp::min(qself.position, path.segments.len());
-    let mut segments = path.segments.pairs();
+    let pos = cmp::min(qself.pos, path.segs.len());
+    let mut segments = path.segs.pairs();
     if pos > 0 {
         TokensOrDefault(&qself.as_).to_tokens(tokens);
-        path.leading_colon.to_tokens(tokens);
+        path.colon.to_tokens(tokens);
         for (i, segment) in segments.by_ref().take(pos).enumerate() {
             if i + 1 == pos {
                 segment.value().to_tokens(tokens);
@@ -1624,7 +1616,7 @@ pub(crate) fn print_path(tokens: &mut TokenStream, qself: &Option<QSelf>, path: 
         }
     } else {
         qself.gt_.to_tokens(tokens);
-        path.leading_colon.to_tokens(tokens);
+        path.colon.to_tokens(tokens);
     }
     for segment in segments {
         segment.to_tokens(tokens);
@@ -1646,13 +1638,13 @@ pub fn punct(s: &str, spans: &[Span], tokens: &mut TokenStream) {
     op.set_span(*span);
     tokens.append(op);
 }
-pub fn keyword(s: &str, span: Span, tokens: &mut TokenStream) {
-    tokens.append(Ident::new(s, span));
+pub fn keyword(x: &str, s: Span, xs: &mut TokenStream) {
+    xs.append(Ident::new(x, s));
 }
-pub fn delim(delim: Delimiter, span: Span, tokens: &mut TokenStream, inner: TokenStream) {
-    let mut g = Group::new(delim, inner);
-    g.set_span(span);
-    tokens.append(g);
+pub fn delim(d: Delimiter, s: Span, xs: &mut TokenStream, inner: TokenStream) {
+    let mut g = Group::new(d, inner);
+    g.set_span(s);
+    xs.append(g);
 }
 
 impl ToTokens for TypeSlice {

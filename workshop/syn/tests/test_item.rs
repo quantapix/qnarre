@@ -20,7 +20,7 @@ fn test_macro_variable_attr() {
                 style: AttrStyle::Outer,
                 meta: Meta::Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "test",
                         },
                     ],
@@ -74,7 +74,7 @@ fn test_negative_impl() {
             Some,
             Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Trait",
                     },
                 ],
@@ -83,7 +83,7 @@ fn test_negative_impl() {
         self_ty: Type::Path {
             path: Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "T",
                     },
                 ],
@@ -120,7 +120,7 @@ fn test_macro_variable_impl() {
             None,
             Path {
                 segments: [
-                    PathSegment {
+                    path::Segment {
                         ident: "Trait",
                     },
                 ],
@@ -130,7 +130,7 @@ fn test_macro_variable_impl() {
             elem: Type::Path {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Type",
                         },
                     ],
@@ -179,7 +179,7 @@ fn test_supertraits() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Sized",
                         },
                     ],
@@ -202,7 +202,7 @@ fn test_supertraits() {
             TypeParamBound::Trait(TraitBound {
                 path: Path {
                     segments: [
-                        PathSegment {
+                        path::Segment {
                             ident: "Sized",
                         },
                     ],
@@ -283,7 +283,7 @@ fn test_impl_trait_trailing_plus() {
                         TypeParamBound::Trait(TraitBound {
                             path: Path {
                                 segments: [
-                                    PathSegment {
+                                    path::Segment {
                                         ident: "Sized",
                                     },
                                 ],

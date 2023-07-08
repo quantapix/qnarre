@@ -9,12 +9,12 @@ impl Hash for Abi {
         self.name.hash(state);
     }
 }
-impl Hash for AngleBracketedGenericArguments {
+impl Hash for AngledArgs {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.colon2_token.hash(state);
+        self.colon2.hash(state);
         self.args.hash(state);
     }
 }
@@ -36,8 +36,8 @@ impl Hash for AssocConst {
         H: Hasher,
     {
         self.ident.hash(state);
-        self.generics.hash(state);
-        self.value.hash(state);
+        self.gnrs.hash(state);
+        self.val.hash(state);
     }
 }
 impl Hash for AssocType {
@@ -46,7 +46,7 @@ impl Hash for AssocType {
         H: Hasher,
     {
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gnrs.hash(state);
         self.ty.hash(state);
     }
 }
@@ -221,7 +221,7 @@ impl Hash for Constraint {
         H: Hasher,
     {
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gnrs.hash(state);
         self.bounds.hash(state);
     }
 }
@@ -1013,33 +1013,33 @@ impl Hash for ForeignItemType {
         self.generics.hash(state);
     }
 }
-impl Hash for GenericArgument {
+impl Hash for Arg {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            GenericArgument::Lifetime(v0) => {
+            Arg::Lifetime(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            GenericArgument::Type(v0) => {
+            Arg::Type(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            GenericArgument::Const(v0) => {
+            Arg::Const(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            GenericArgument::AssocType(v0) => {
+            Arg::AssocType(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            GenericArgument::AssocConst(v0) => {
+            Arg::AssocConst(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            GenericArgument::Constraint(v0) => {
+            Arg::Constraint(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
@@ -1578,13 +1578,13 @@ impl Hash for MetaNameValue {
         self.val.hash(state);
     }
 }
-impl Hash for ParenthesizedGenericArguments {
+impl Hash for ParenthesizedArgs {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.inputs.hash(state);
-        self.output.hash(state);
+        self.ins.hash(state);
+        self.out.hash(state);
     }
 }
 impl Hash for Pat {
@@ -1777,37 +1777,37 @@ impl Hash for Path {
     where
         H: Hasher,
     {
-        self.leading_colon.hash(state);
-        self.segments.hash(state);
+        self.colon.hash(state);
+        self.segs.hash(state);
     }
 }
-impl Hash for PathArguments {
+impl Hash for Args {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            PathArguments::None => {
+            Args::None => {
                 state.write_u8(0u8);
             },
-            PathArguments::AngleBracketed(v0) => {
+            Args::Angled(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            PathArguments::Parenthesized(v0) => {
+            Args::Parenthesized(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
         }
     }
 }
-impl Hash for PathSegment {
+impl Hash for Segment {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.ident.hash(state);
-        self.arguments.hash(state);
+        self.args.hash(state);
     }
 }
 impl Hash for PredLifetime {
@@ -1835,7 +1835,7 @@ impl Hash for QSelf {
         H: Hasher,
     {
         self.ty.hash(state);
-        self.position.hash(state);
+        self.pos.hash(state);
         self.as_.hash(state);
     }
 }

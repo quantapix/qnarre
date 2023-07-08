@@ -9,7 +9,7 @@ fn test_meta_item_word() {
     snapshot!(meta, @r###"
     Meta::Path {
         segments: [
-            PathSegment {
+            path::Segment {
                 ident: "foo",
             },
         ],
@@ -23,7 +23,7 @@ fn test_meta_item_name_value() {
     Meta::NameValue {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -41,7 +41,7 @@ fn test_meta_item_bool_value() {
     Meta::NameValue {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -58,7 +58,7 @@ fn test_meta_item_bool_value() {
     Meta::NameValue {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -78,7 +78,7 @@ fn test_meta_item_list_lit() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -95,7 +95,7 @@ fn test_meta_item_list_word() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -112,7 +112,7 @@ fn test_meta_item_list_name_value() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -129,7 +129,7 @@ fn test_meta_item_list_bool_value() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -146,7 +146,7 @@ fn test_meta_item_multiple() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -163,7 +163,7 @@ fn test_bool_lit() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "foo",
                 },
             ],
@@ -180,7 +180,7 @@ fn test_negative_lit() {
     Meta::List {
         path: Path {
             segments: [
-                PathSegment {
+                path::Segment {
                     ident: "form",
                 },
             ],
