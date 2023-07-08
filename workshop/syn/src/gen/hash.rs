@@ -211,7 +211,7 @@ impl Hash for ConstParam {
         self.attrs.hash(state);
         self.ident.hash(state);
         self.ty.hash(state);
-        self.equal.hash(state);
+        self.eq.hash(state);
         self.default.hash(state);
     }
 }
@@ -2188,7 +2188,7 @@ impl Hash for TypeParam {
         self.ident.hash(state);
         self.colon.hash(state);
         self.bounds.hash(state);
-        self.equal.hash(state);
+        self.eq.hash(state);
         self.default.hash(state);
     }
 }

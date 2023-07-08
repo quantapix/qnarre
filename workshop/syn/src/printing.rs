@@ -23,7 +23,7 @@ impl ToTokens for MetaList {
 impl ToTokens for MetaNameValue {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
-        self.equal.to_tokens(xs);
+        self.eq.to_tokens(xs);
         self.val.to_tokens(xs);
     }
 }
@@ -171,7 +171,7 @@ impl ToTokens for TypeParam {
             self.bounds.to_tokens(tokens);
         }
         if let Some(default) = &self.default {
-            TokensOrDefault(&self.equal).to_tokens(tokens);
+            TokensOrDefault(&self.eq).to_tokens(tokens);
             default.to_tokens(tokens);
         }
     }
@@ -205,7 +205,7 @@ impl ToTokens for ConstParam {
         self.colon.to_tokens(tokens);
         self.ty.to_tokens(tokens);
         if let Some(default) = &self.default {
-            TokensOrDefault(&self.equal).to_tokens(tokens);
+            TokensOrDefault(&self.eq).to_tokens(tokens);
             default.to_tokens(tokens);
         }
     }
@@ -1150,7 +1150,7 @@ impl ToTokens for Local {
         self.let_.to_tokens(tokens);
         self.pat.to_tokens(tokens);
         if let Some(init) = &self.init {
-            init.equal.to_tokens(tokens);
+            init.eq.to_tokens(tokens);
             init.expr.to_tokens(tokens);
             if let Some((else_token, diverge)) = &init.diverge {
                 else_token.to_tokens(tokens);
@@ -1570,7 +1570,7 @@ impl ToTokens for AssocType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
         self.generics.to_tokens(tokens);
-        self.equal.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.ty.to_tokens(tokens);
     }
 }
@@ -1578,7 +1578,7 @@ impl ToTokens for AssocConst {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
         self.generics.to_tokens(tokens);
-        self.equal.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.value.to_tokens(tokens);
     }
 }

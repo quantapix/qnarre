@@ -1,7 +1,3 @@
-#[cfg_attr(
-    not(any(feature = "full", feature = "derive")),
-    allow(unknown_lints, unused_macro_rules)
-)]
 macro_rules! ast_struct {
     (
         [$($attrs_pub:tt)*]
@@ -173,7 +169,7 @@ macro_rules! custom_keyword {
 #[macro_export]
 macro_rules! impl_parse_for_custom_keyword {
     ($ident:ident) => {
-        impl $crate::token::CustomToken for $ident {
+        impl $crate::tok::CustomTok for $ident {
             fn peek(cursor: $crate::Cursor) -> $crate::__private::bool {
                 if let $crate::__private::Some((ident, _rest)) = cursor.ident() {
                     ident == $crate::__private::stringify!($ident)
@@ -280,7 +276,7 @@ macro_rules! custom_punctuation {
 #[macro_export]
 macro_rules! impl_parse_for_custom_punctuation {
     ($ident:ident, $($tt:tt)+) => {
-        impl $crate::token::CustomToken for $ident {
+        impl $crate::tok::CustomTok for $ident {
             fn peek(cursor: $crate::Cursor) -> bool {
                 $crate::__private::peek_punct(cursor, $crate::stringify_punct!($($tt)+))
             }
@@ -439,5 +435,153 @@ macro_rules! parse_macro_input {
     };
     ($tokenstream:ident) => {
         $crate::parse_macro_input!($tokenstream as _)
+    };
+}
+
+#[macro_export]
+macro_rules! Token {
+    [abstract]    => { $crate::tok::Abstract };
+    [as]          => { $crate::tok::As };
+    [async]       => { $crate::tok::Async };
+    [auto]        => { $crate::tok::Auto };
+    [await]       => { $crate::tok::Await };
+    [become]      => { $crate::tok::Become };
+    [box]         => { $crate::tok::Box };
+    [break]       => { $crate::tok::Break };
+    [const]       => { $crate::tok::Const };
+    [continue]    => { $crate::tok::Continue };
+    [crate]       => { $crate::tok::Crate };
+    [default]     => { $crate::tok::Default };
+    [do]          => { $crate::tok::Do };
+    [dyn]         => { $crate::tok::Dyn };
+    [else]        => { $crate::tok::Else };
+    [enum]        => { $crate::tok::Enum };
+    [extern]      => { $crate::tok::Extern };
+    [final]       => { $crate::tok::Final };
+    [fn]          => { $crate::tok::Fn };
+    [for]         => { $crate::tok::For };
+    [if]          => { $crate::tok::If };
+    [impl]        => { $crate::tok::Impl };
+    [in]          => { $crate::tok::In };
+    [let]         => { $crate::tok::Let };
+    [loop]        => { $crate::tok::Loop };
+    [macro]       => { $crate::tok::Macro };
+    [match]       => { $crate::tok::Match };
+    [mod]         => { $crate::tok::Mod };
+    [move]        => { $crate::tok::Move };
+    [mut]         => { $crate::tok::Mut };
+    [override]    => { $crate::tok::Override };
+    [priv]        => { $crate::tok::Priv };
+    [pub]         => { $crate::tok::Pub };
+    [ref]         => { $crate::tok::Ref };
+    [return]      => { $crate::tok::Return };
+    [Self]        => { $crate::tok::SelfType };
+    [self]        => { $crate::tok::SelfValue };
+    [static]      => { $crate::tok::Static };
+    [struct]      => { $crate::tok::Struct };
+    [super]       => { $crate::tok::Super };
+    [trait]       => { $crate::tok::Trait };
+    [try]         => { $crate::tok::Try };
+    [type]        => { $crate::tok::Type };
+    [typeof]      => { $crate::tok::Typeof };
+    [union]       => { $crate::tok::Union };
+    [unsafe]      => { $crate::tok::Unsafe };
+    [unsized]     => { $crate::tok::Unsized };
+    [use]         => { $crate::tok::Use };
+    [virtual]     => { $crate::tok::Virtual };
+    [where]       => { $crate::tok::Where };
+    [while]       => { $crate::tok::While };
+    [yield]       => { $crate::tok::Yield };
+    [&]           => { $crate::tok::And };
+    [&&]          => { $crate::tok::AndAnd };
+    [&=]          => { $crate::tok::AndEq };
+    [@]           => { $crate::tok::At };
+    [^]           => { $crate::tok::Caret };
+    [^=]          => { $crate::tok::CaretEq };
+    [:]           => { $crate::tok::Colon };
+    [,]           => { $crate::tok::Comma };
+    [$]           => { $crate::tok::Dollar };
+    [.]           => { $crate::tok::Dot };
+    [..]          => { $crate::tok::DotDot };
+    [...]         => { $crate::tok::DotDotDot };
+    [..=]         => { $crate::tok::DotDotEq };
+    [=]           => { $crate::tok::Eq };
+    [==]          => { $crate::tok::EqEq };
+    [=>]          => { $crate::tok::FatArrow };
+    [>=]          => { $crate::tok::Ge };
+    [>]           => { $crate::tok::Gt };
+    [<-]          => { $crate::tok::LArrow };
+    [<=]          => { $crate::tok::Le };
+    [<]           => { $crate::tok::Lt };
+    [-]           => { $crate::tok::Minus };
+    [-=]          => { $crate::tok::MinusEq };
+    [!=]          => { $crate::tok::Ne };
+    [!]           => { $crate::tok::Not };
+    [|]           => { $crate::tok::Or };
+    [|=]          => { $crate::tok::OrEq };
+    [||]          => { $crate::tok::OrOr };
+    [::]          => { $crate::tok::PathSep };
+    [%]           => { $crate::tok::Percent };
+    [%=]          => { $crate::tok::PercentEq };
+    [+]           => { $crate::tok::Plus };
+    [+=]          => { $crate::tok::PlusEq };
+    [#]           => { $crate::tok::Pound };
+    [?]           => { $crate::tok::Question };
+    [->]          => { $crate::tok::RArrow };
+    [;]           => { $crate::tok::Semi };
+    [<<]          => { $crate::tok::Shl };
+    [<<=]         => { $crate::tok::ShlEq };
+    [>>]          => { $crate::tok::Shr };
+    [>>=]         => { $crate::tok::ShrEq };
+    [/]           => { $crate::tok::Slash };
+    [/=]          => { $crate::tok::SlashEq };
+    [*]           => { $crate::tok::Star };
+    [*=]          => { $crate::tok::StarEq };
+    [~]           => { $crate::tok::Tilde };
+    [_]           => { $crate::tok::Underscore };
+}
+
+#[macro_export]
+macro_rules! parenthesized {
+    ($content:ident in $cur:expr) => {
+        match $crate::group::parse_parens(&$cur) {
+            $crate::__private::Ok(x) => {
+                $content = x.content;
+                x.token
+            },
+            $crate::__private::Err(x) => {
+                return $crate::__private::Err(x);
+            },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! braced {
+    ($content:ident in $cur:expr) => {
+        match $crate::group::parse_braces(&$cur) {
+            $crate::__private::Ok(x) => {
+                $content = x.content;
+                x.token
+            },
+            $crate::__private::Err(x) => {
+                return $crate::__private::Err(x);
+            },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bracketed {
+    ($content:ident in $cur:expr) => {
+        match $crate::group::parse_brackets(&$cur) {
+            $crate::__private::Ok(x) => {
+                $content = x.content;
+                x.token
+            },
+            $crate::__private::Err(x) => {
+                return $crate::__private::Err(x);
+            },
+        }
     };
 }

@@ -58,7 +58,7 @@ use std::{
 
 #[macro_use]
 mod mac;
-#[macro_use]
+
 mod group {
     use super::{
         err::Result,
@@ -67,28 +67,14 @@ mod group {
     };
     use proc_macro2::{extra::DelimSpan, Delimiter};
     pub struct Parens<'a> {
-        pub token: tok::Paren,
+        pub tok: tok::Paren,
         pub content: ParseBuffer<'a>,
     }
     pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
         parse_delimited(x, Delimiter::Parenthesis).map(|(span, content)| Parens {
-            token: tok::Paren(span),
+            tok: tok::Paren(span),
             content,
         })
-    }
-    #[macro_export]
-    macro_rules! parenthesized {
-        ($content:ident in $cur:expr) => {
-            match $crate::group::parse_parens(&$cur) {
-                $crate::__private::Ok(x) => {
-                    $content = x.content;
-                    x.token
-                },
-                $crate::__private::Err(x) => {
-                    return $crate::__private::Err(x);
-                },
-            }
-        };
     }
     pub struct Braces<'a> {
         pub token: tok::Brace,
@@ -100,20 +86,6 @@ mod group {
             content,
         })
     }
-    #[macro_export]
-    macro_rules! braced {
-        ($content:ident in $cur:expr) => {
-            match $crate::group::parse_braces(&$cur) {
-                $crate::__private::Ok(x) => {
-                    $content = x.content;
-                    x.token
-                },
-                $crate::__private::Err(x) => {
-                    return $crate::__private::Err(x);
-                },
-            }
-        };
-    }
     pub struct Brackets<'a> {
         pub token: tok::Bracket,
         pub content: ParseBuffer<'a>,
@@ -123,20 +95,6 @@ mod group {
             token: tok::Bracket(span),
             content,
         })
-    }
-    #[macro_export]
-    macro_rules! bracketed {
-        ($content:ident in $cur:expr) => {
-            match $crate::group::parse_brackets(&$cur) {
-                $crate::__private::Ok(x) => {
-                    $content = x.content;
-                    x.token
-                },
-                $crate::__private::Err(x) => {
-                    return $crate::__private::Err(x);
-                },
-            }
-        };
     }
     pub struct Group<'a> {
         pub token: tok::Group,
@@ -168,8 +126,6 @@ mod group {
         })
     }
 }
-#[macro_use]
-pub mod tok;
 
 ast_enum! {
     pub enum AttrStyle {
@@ -204,7 +160,7 @@ impl Attribute {
                 ),
             )),
             Meta::NameValue(x) => Err(Err::new(
-                x.equal.span,
+                x.eq.span,
                 format_args!(
                     "expected parentheses: {}[{}(...)]",
                     parsing::DisplayAttrStyle(&self.style),
@@ -276,7 +232,7 @@ impl Meta {
         let y = match self {
             Meta::Path(x) => return Ok(x),
             Meta::List(x) => x.delim.span().open(),
-            Meta::NameValue(x) => x.equal.span,
+            Meta::NameValue(x) => x.eq.span,
         };
         Err(Err::new(y, "unexpected token in attribute"))
     }
@@ -291,7 +247,7 @@ impl Meta {
                     parsing::DisplayPath(x),
                 ),
             )),
-            Meta::NameValue(x) => Err(Err::new(x.equal.span, "expected `(`")),
+            Meta::NameValue(x) => Err(Err::new(x.eq.span, "expected `(`")),
         }
     }
     pub fn require_name_value(&self) -> Result<&MetaNameValue> {
@@ -331,7 +287,7 @@ impl MetaList {
 ast_struct! {
     pub struct MetaNameValue {
         pub path: Path,
-        pub equal: Token![=],
+        pub eq: Token![=],
         pub val: Expr,
     }
 }
@@ -711,7 +667,7 @@ ast_struct! {
         pub ident: Ident,
         pub colon: Option<Token![:]>,
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        pub equal: Option<Token![=]>,
+        pub eq: Option<Token![=]>,
         pub default: Option<Type>,
     }
 }
@@ -722,7 +678,7 @@ ast_struct! {
         pub ident: Ident,
         pub colon: Token![:],
         pub ty: Type,
-        pub equal: Option<Token![=]>,
+        pub eq: Option<Token![=]>,
         pub default: Option<Expr>,
     }
 }
@@ -951,7 +907,7 @@ impl From<Ident> for TypeParam {
             ident,
             colon: None,
             bounds: Punctuated::new(),
-            equal: None,
+            eq: None,
             default: None,
         }
     }
@@ -1016,6 +972,7 @@ pub use item::{
 pub mod punctuated;
 use punctuated::Punctuated;
 pub mod lit;
+pub mod tok;
 
 ast_enum_of_structs! {
     pub enum Pat {
@@ -1236,7 +1193,7 @@ mod path {
         pub struct AssocType {
             pub ident: Ident,
             pub generics: Option<AngleBracketedGenericArguments>,
-            pub equal: Token![=],
+            pub eq: Token![=],
             pub ty: Type,
         }
     }
@@ -1244,7 +1201,7 @@ mod path {
         pub struct AssocConst {
             pub ident: Ident,
             pub generics: Option<AngleBracketedGenericArguments>,
-            pub equal: Token![=],
+            pub eq: Token![=],
             pub value: Expr,
         }
     }
@@ -1303,7 +1260,7 @@ ast_struct! {
 }
 ast_struct! {
     pub struct LocalInit {
-        pub equal: Token![=],
+        pub eq: Token![=],
         pub expr: Box<Expr>,
         pub diverge: Option<(Token![else], Box<Expr>)>,
     }
@@ -1879,7 +1836,7 @@ pub mod ext {
     use super::{
         parse::{ParseStream, Peek, Result},
         sealed::lookahead,
-        tok::CustomToken,
+        tok::CustomTok,
         Cursor,
     };
     use proc_macro2::Ident;
@@ -1908,7 +1865,7 @@ pub mod ext {
     impl Peek for private::PeekFn {
         type Token = private::IdentAny;
     }
-    impl CustomToken for private::IdentAny {
+    impl CustomTok for private::IdentAny {
         fn peek(cursor: Cursor) -> bool {
             cursor.ident().is_some()
         }
@@ -2057,7 +2014,7 @@ mod lookahead {
     use super::{
         err::{self, Err},
         sealed::lookahead::Sealed,
-        tok::Token,
+        tok::Tok,
         Cursor, IntoSpans,
     };
     use proc_macro2::{Delimiter, Span};
@@ -2115,9 +2072,9 @@ mod lookahead {
     }
 
     pub trait Peek: Sealed {
-        type Token: Token;
+        type Token: Tok;
     }
-    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Token> Peek for F {
+    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Peek for F {
         type Token = T;
     }
 
@@ -2132,7 +2089,7 @@ mod lookahead {
         cursor.group(delimiter).is_some()
     }
 
-    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Token> Sealed for F {}
+    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
 }
 
 ast_struct! {

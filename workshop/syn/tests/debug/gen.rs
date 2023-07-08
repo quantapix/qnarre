@@ -320,7 +320,7 @@ impl Debug for Lite<syn::ConstParam> {
         }
         formatter.field("ident", Lite(&self.value.ident));
         formatter.field("ty", Lite(&self.value.ty));
-        if self.value.equal.is_some() {
+        if self.value.eq.is_some() {
             formatter.field("eq_token", &Present);
         }
         if let Some(val) = &self.value.default {
@@ -4299,7 +4299,7 @@ impl Debug for Lite<syn::TypeParam> {
         if !self.value.bounds.is_empty() {
             formatter.field("bounds", Lite(&self.value.bounds));
         }
-        if self.value.equal.is_some() {
+        if self.value.eq.is_some() {
             formatter.field("eq_token", &Present);
         }
         if let Some(val) = &self.value.default {

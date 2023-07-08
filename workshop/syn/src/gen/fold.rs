@@ -612,7 +612,7 @@ where
     AssocConst {
         ident: f.fold_ident(node.ident),
         generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        equal: node.equal,
+        eq: node.eq,
         value: f.fold_expr(node.value),
     }
 }
@@ -623,7 +623,7 @@ where
     AssocType {
         ident: f.fold_ident(node.ident),
         generics: (node.generics).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        equal: node.equal,
+        eq: node.eq,
         ty: f.fold_type(node.ty),
     }
 }
@@ -733,7 +733,7 @@ where
         ident: f.fold_ident(node.ident),
         colon: node.colon,
         ty: f.fold_type(node.ty),
-        equal: node.equal,
+        eq: node.eq,
         default: (node.default).map(|it| f.fold_expr(it)),
     }
 }
@@ -1903,7 +1903,7 @@ where
     F: Fold + ?Sized,
 {
     LocalInit {
-        equal: node.equal,
+        eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
         diverge: (node.diverge).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
     }
@@ -1964,7 +1964,7 @@ where
 {
     MetaNameValue {
         path: f.fold_path(node.path),
-        equal: node.equal,
+        eq: node.eq,
         val: f.fold_expr(node.val),
     }
 }
@@ -2452,7 +2452,7 @@ where
         ident: f.fold_ident(node.ident),
         colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-        equal: node.equal,
+        eq: node.eq,
         default: (node.default).map(|it| f.fold_type(it)),
     }
 }

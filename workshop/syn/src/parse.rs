@@ -3,7 +3,7 @@ use super::{
     lookahead::{self, Lookahead1, Peek},
     proc_macro,
     punctuated::Punctuated,
-    tok::Token,
+    tok::Tok,
     Cursor, TokBuff,
 };
 use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
@@ -286,7 +286,7 @@ impl<T: Parse> Parse for Box<T> {
     }
 }
 
-impl<T: Parse + Token> Parse for Option<T> {
+impl<T: Parse + Tok> Parse for Option<T> {
     fn parse(input: ParseStream) -> Result<Self> {
         if T::peek(input.cursor()) {
             Ok(Some(input.parse()?))

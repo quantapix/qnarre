@@ -35,7 +35,7 @@ impl Clone for AssocConst {
         AssocConst {
             ident: self.ident.clone(),
             generics: self.generics.clone(),
-            equal: self.equal.clone(),
+            eq: self.eq.clone(),
             value: self.value.clone(),
         }
     }
@@ -45,7 +45,7 @@ impl Clone for AssocType {
         AssocType {
             ident: self.ident.clone(),
             generics: self.generics.clone(),
-            equal: self.equal.clone(),
+            eq: self.eq.clone(),
             ty: self.ty.clone(),
         }
     }
@@ -117,7 +117,7 @@ impl Clone for ConstParam {
             ident: self.ident.clone(),
             colon: self.colon.clone(),
             ty: self.ty.clone(),
-            equal: self.equal.clone(),
+            eq: self.eq.clone(),
             default: self.default.clone(),
         }
     }
@@ -1126,7 +1126,7 @@ impl Clone for Local {
 impl Clone for LocalInit {
     fn clone(&self) -> Self {
         LocalInit {
-            equal: self.equal.clone(),
+            eq: self.eq.clone(),
             expr: self.expr.clone(),
             diverge: self.diverge.clone(),
         }
@@ -1181,7 +1181,7 @@ impl Clone for MetaNameValue {
     fn clone(&self) -> Self {
         MetaNameValue {
             path: self.path.clone(),
-            equal: self.equal.clone(),
+            eq: self.eq.clone(),
             val: self.val.clone(),
         }
     }
@@ -1610,7 +1610,7 @@ impl Clone for TypeParam {
             ident: self.ident.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
-            equal: self.equal.clone(),
+            eq: self.eq.clone(),
             default: self.default.clone(),
         }
     }

@@ -1,6 +1,6 @@
 use super::{
     parse::{Parse, ParseStream, Result},
-    tok::Token,
+    tok::Tok,
 };
 use std::{
     fmt::{self, Debug},
@@ -167,14 +167,14 @@ impl<T, P> Punctuated<T, P> {
     pub fn parse_separated_nonempty(input: ParseStream) -> Result<Self>
     where
         T: Parse,
-        P: Token + Parse,
+        P: Tok + Parse,
     {
         Self::parse_separated_nonempty_with(input, T::parse)
     }
 
     pub fn parse_separated_nonempty_with(input: ParseStream, parser: fn(ParseStream) -> Result<T>) -> Result<Self>
     where
-        P: Token + Parse,
+        P: Tok + Parse,
     {
         let mut punctuated = Punctuated::new();
         loop {

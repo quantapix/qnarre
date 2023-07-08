@@ -40,7 +40,7 @@ impl Debug for AssocConst {
         let mut formatter = formatter.debug_struct("AssocConst");
         formatter.field("ident", &self.ident);
         formatter.field("generics", &self.generics);
-        formatter.field("eq_token", &self.equal);
+        formatter.field("eq_token", &self.eq);
         formatter.field("value", &self.value);
         formatter.finish()
     }
@@ -50,7 +50,7 @@ impl Debug for AssocType {
         let mut formatter = formatter.debug_struct("AssocType");
         formatter.field("ident", &self.ident);
         formatter.field("generics", &self.generics);
-        formatter.field("eq_token", &self.equal);
+        formatter.field("eq_token", &self.eq);
         formatter.field("ty", &self.ty);
         formatter.finish()
     }
@@ -270,7 +270,7 @@ impl Debug for ConstParam {
         formatter.field("ident", &self.ident);
         formatter.field("colon_token", &self.colon);
         formatter.field("ty", &self.ty);
-        formatter.field("eq_token", &self.equal);
+        formatter.field("eq_token", &self.eq);
         formatter.field("default", &self.default);
         formatter.finish()
     }
@@ -1694,7 +1694,7 @@ impl Debug for Local {
 impl Debug for LocalInit {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("LocalInit");
-        formatter.field("eq_token", &self.equal);
+        formatter.field("eq_token", &self.eq);
         formatter.field("expr", &self.expr);
         formatter.field("diverge", &self.diverge);
         formatter.finish()
@@ -1779,7 +1779,7 @@ impl Debug for MetaNameValue {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("path", &self.path);
-                formatter.field("eq_token", &self.equal);
+                formatter.field("eq_token", &self.eq);
                 formatter.field("value", &self.val);
                 formatter.finish()
             }
@@ -2393,7 +2393,7 @@ impl Debug for TypeParam {
         formatter.field("ident", &self.ident);
         formatter.field("colon_token", &self.colon);
         formatter.field("bounds", &self.bounds);
-        formatter.field("eq_token", &self.equal);
+        formatter.field("eq_token", &self.eq);
         formatter.field("default", &self.default);
         formatter.finish()
     }

@@ -2,7 +2,7 @@ use super::{
     err::{Err, Result},
     ext::IdentExt,
     parse::{discouraged::Speculative, Parse, ParseBuffer, ParseStream, Result},
-    tok::Token,
+    tok::Tok,
     *,
 };
 use proc_macro2::{Ident, Punct, Spacing, Span, Span, TokenStream};
@@ -86,7 +86,7 @@ fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNa
     };
     Ok(MetaNameValue {
         path,
-        equal: eq_token,
+        eq: eq_token,
         val: value,
     })
 }
@@ -148,7 +148,7 @@ impl Parse for Generics {
                     ident: input.call(Ident::parse_any)?,
                     colon: None,
                     bounds: Punctuated::new(),
-                    equal: None,
+                    eq: None,
                     default: None,
                 }));
             } else {
@@ -296,7 +296,7 @@ impl Parse for TypeParam {
             ident,
             colon: colon_token,
             bounds,
-            equal: eq_token,
+            eq: eq_token,
             default,
         })
     }
@@ -390,7 +390,7 @@ impl Parse for ConstParam {
             ident: input.parse()?,
             colon: input.parse()?,
             ty: input.parse()?,
-            equal: {
+            eq: {
                 if input.peek(Token![=]) {
                     let eq_token = input.parse()?;
                     default = Some(const_argument(input)?);

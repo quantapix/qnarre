@@ -116,7 +116,7 @@ impl PartialEq for ConstParam {
         self.attrs == other.attrs
             && self.ident == other.ident
             && self.ty == other.ty
-            && self.equal == other.equal
+            && self.eq == other.eq
             && self.default == other.default
     }
 }
@@ -1312,7 +1312,7 @@ impl PartialEq for TypeParam {
             && self.ident == other.ident
             && self.colon == other.colon
             && self.bounds == other.bounds
-            && self.equal == other.equal
+            && self.eq == other.eq
             && self.default == other.default
     }
 }
