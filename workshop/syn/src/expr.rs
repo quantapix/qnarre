@@ -115,7 +115,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub expr: Box<Expr>,
         pub as_token: Token![as],
-        pub ty: Box<Type>,
+        pub ty: Box<Ty>,
     }
 }
 ast_struct! {

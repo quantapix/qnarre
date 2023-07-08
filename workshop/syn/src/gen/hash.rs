@@ -2050,69 +2050,69 @@ impl Hash for TraitItemType {
         self.default.hash(state);
     }
 }
-impl Hash for Type {
+impl Hash for Ty {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Type::Array(v0) => {
+            Ty::Array(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            Type::BareFn(v0) => {
+            Ty::BareFn(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Type::Group(v0) => {
+            Ty::Group(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            Type::ImplTrait(v0) => {
+            Ty::ImplTrait(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            Type::Infer(v0) => {
+            Ty::Infer(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            Type::Macro(v0) => {
+            Ty::Macro(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
-            Type::Never(v0) => {
+            Ty::Never(v0) => {
                 state.write_u8(6u8);
                 v0.hash(state);
             },
-            Type::Paren(v0) => {
+            Ty::Paren(v0) => {
                 state.write_u8(7u8);
                 v0.hash(state);
             },
-            Type::Path(v0) => {
+            Ty::Path(v0) => {
                 state.write_u8(8u8);
                 v0.hash(state);
             },
-            Type::Ptr(v0) => {
+            Ty::Ptr(v0) => {
                 state.write_u8(9u8);
                 v0.hash(state);
             },
-            Type::Reference(v0) => {
+            Ty::Reference(v0) => {
                 state.write_u8(10u8);
                 v0.hash(state);
             },
-            Type::Slice(v0) => {
+            Ty::Slice(v0) => {
                 state.write_u8(11u8);
                 v0.hash(state);
             },
-            Type::TraitObject(v0) => {
+            Ty::TraitObject(v0) => {
                 state.write_u8(12u8);
                 v0.hash(state);
             },
-            Type::Tuple(v0) => {
+            Ty::Tuple(v0) => {
                 state.write_u8(13u8);
                 v0.hash(state);
             },
-            Type::Verbatim(v0) => {
+            Ty::Verbatim(v0) => {
                 state.write_u8(14u8);
                 TokenStreamHelper(v0).hash(state);
             },

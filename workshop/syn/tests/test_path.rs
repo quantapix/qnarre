@@ -3,7 +3,7 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use syn::{parse_quote, Expr, Type, TypePath};
+use syn::{parse_quote, Expr, Ty, TypePath};
 #[test]
 fn parse_interpolated_leading_component() {
     let tokens = TokenStream::from_iter(vec![
@@ -26,7 +26,7 @@ fn parse_interpolated_leading_component() {
         },
     }
     "###);
-    snapshot!(tokens as Type, @r###"
+    snapshot!(tokens as Ty, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -91,7 +91,7 @@ fn print_incomplete_qpath() {
 fn parse_parenthesized_path_arguments_with_disambiguator() {
     #[rustfmt::skip]
     let tokens = quote!(dyn FnOnce::() -> !);
-    snapshot!(tokens as Type, @r###"
+    snapshot!(tokens as Ty, @r###"
     Type::TraitObject {
         dyn_token: Some,
         bounds: [

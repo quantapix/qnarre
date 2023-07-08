@@ -474,7 +474,7 @@ pub trait Visit<'ast> {
     fn visit_trait_item_type(&mut self, i: &'ast TraitItemType) {
         visit_trait_item_type(self, i);
     }
-    fn visit_type(&mut self, i: &'ast Type) {
+    fn visit_type(&mut self, i: &'ast Ty) {
         visit_type(self, i);
     }
     fn visit_type_array(&mut self, i: &'ast TypeArray) {
@@ -2778,54 +2778,54 @@ where
     }
     skip!(node.semi_token);
 }
-pub fn visit_type<'ast, V>(v: &mut V, node: &'ast Type)
+pub fn visit_type<'ast, V>(v: &mut V, node: &'ast Ty)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        Type::Array(_binding_0) => {
+        Ty::Array(_binding_0) => {
             v.visit_type_array(_binding_0);
         },
-        Type::BareFn(_binding_0) => {
+        Ty::BareFn(_binding_0) => {
             v.visit_type_bare_fn(_binding_0);
         },
-        Type::Group(_binding_0) => {
+        Ty::Group(_binding_0) => {
             v.visit_type_group(_binding_0);
         },
-        Type::ImplTrait(_binding_0) => {
+        Ty::ImplTrait(_binding_0) => {
             v.visit_type_impl_trait(_binding_0);
         },
-        Type::Infer(_binding_0) => {
+        Ty::Infer(_binding_0) => {
             v.visit_type_infer(_binding_0);
         },
-        Type::Macro(_binding_0) => {
+        Ty::Macro(_binding_0) => {
             v.visit_type_macro(_binding_0);
         },
-        Type::Never(_binding_0) => {
+        Ty::Never(_binding_0) => {
             v.visit_type_never(_binding_0);
         },
-        Type::Paren(_binding_0) => {
+        Ty::Paren(_binding_0) => {
             v.visit_type_paren(_binding_0);
         },
-        Type::Path(_binding_0) => {
+        Ty::Path(_binding_0) => {
             v.visit_type_path(_binding_0);
         },
-        Type::Ptr(_binding_0) => {
+        Ty::Ptr(_binding_0) => {
             v.visit_type_ptr(_binding_0);
         },
-        Type::Reference(_binding_0) => {
+        Ty::Reference(_binding_0) => {
             v.visit_type_reference(_binding_0);
         },
-        Type::Slice(_binding_0) => {
+        Ty::Slice(_binding_0) => {
             v.visit_type_slice(_binding_0);
         },
-        Type::TraitObject(_binding_0) => {
+        Ty::TraitObject(_binding_0) => {
             v.visit_type_trait_object(_binding_0);
         },
-        Type::Tuple(_binding_0) => {
+        Ty::Tuple(_binding_0) => {
             v.visit_type_tuple(_binding_0);
         },
-        Type::Verbatim(_binding_0) => {
+        Ty::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }

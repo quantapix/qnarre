@@ -31,7 +31,7 @@ ast_struct! {
         pub ident: Ident,
         pub generics: Generics,
         pub colon_token: Token![:],
-        pub ty: Box<Type>,
+        pub ty: Box<Ty>,
         pub eq_token: Token![=],
         pub expr: Box<Expr>,
         pub semi_token: Token![;],
@@ -84,7 +84,7 @@ ast_struct! {
         pub impl_token: Token![impl],
         pub generics: Generics,
         pub trait_: Option<(Option<Token![!]>, Path, Token![for])>,
-        pub self_ty: Box<Type>,
+        pub self_ty: Box<Ty>,
         pub brace_token: tok::Brace,
         pub items: Vec<ImplItem>,
     }
@@ -116,7 +116,7 @@ ast_struct! {
         pub mutability: StaticMutability,
         pub ident: Ident,
         pub colon_token: Token![:],
-        pub ty: Box<Type>,
+        pub ty: Box<Ty>,
         pub eq_token: Token![=],
         pub expr: Box<Expr>,
         pub semi_token: Token![;],
@@ -169,7 +169,7 @@ ast_struct! {
         pub ident: Ident,
         pub generics: Generics,
         pub eq_token: Token![=],
-        pub ty: Box<Type>,
+        pub ty: Box<Ty>,
         pub semi_token: Token![;],
     }
 }
@@ -355,7 +355,7 @@ ast_struct! {
         pub mutability: StaticMutability,
         pub ident: Ident,
         pub colon_token: Token![:],
-        pub ty: Box<Type>,
+        pub ty: Box<Ty>,
         pub semi_token: Token![;],
     }
 }
@@ -392,7 +392,7 @@ ast_struct! {
         pub ident: Ident,
         pub generics: Generics,
         pub colon_token: Token![:],
-        pub ty: Type,
+        pub ty: Ty,
         pub default: Option<(Token![=], Expr)>,
         pub semi_token: Token![;],
     }
@@ -413,7 +413,7 @@ ast_struct! {
         pub generics: Generics,
         pub colon_token: Option<Token![:]>,
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        pub default: Option<(Token![=], Type)>,
+        pub default: Option<(Token![=], Ty)>,
         pub semi_token: Token![;],
     }
 }
@@ -442,7 +442,7 @@ ast_struct! {
         pub ident: Ident,
         pub generics: Generics,
         pub colon_token: Token![:],
-        pub ty: Type,
+        pub ty: Ty,
         pub eq_token: Token![=],
         pub expr: Expr,
         pub semi_token: Token![;],
@@ -466,7 +466,7 @@ ast_struct! {
         pub ident: Ident,
         pub generics: Generics,
         pub eq_token: Token![=],
-        pub ty: Type,
+        pub ty: Ty,
         pub semi_token: Token![;],
     }
 }
@@ -514,7 +514,7 @@ ast_struct! {
         pub mutability: Option<Token![mut]>,
         pub self_token: Token![self],
         pub colon_token: Option<Token![:]>,
-        pub ty: Box<Type>,
+        pub ty: Box<Ty>,
     }
 }
 impl Receiver {

@@ -249,7 +249,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
 }
 fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     use syn::fold::{fold_expr, fold_generic_argument, Fold};
-    use syn::{tok, Arg, BinOp, Expr, ExprParen, MetaNameValue, Pat, Stmt, Type};
+    use syn::{tok, Arg, BinOp, Expr, ExprParen, MetaNameValue, Pat, Stmt, Ty};
     struct ParenthesizeEveryExpr;
     fn needs_paren(expr: &Expr) -> bool {
         match expr {
@@ -296,7 +296,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
         fn fold_pat(&mut self, pat: Pat) -> Pat {
             pat
         }
-        fn fold_type(&mut self, ty: Type) -> Type {
+        fn fold_type(&mut self, ty: Ty) -> Ty {
             ty
         }
     }

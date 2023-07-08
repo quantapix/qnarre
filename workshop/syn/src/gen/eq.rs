@@ -1235,25 +1235,25 @@ impl PartialEq for TraitItemType {
             && self.default == other.default
     }
 }
-impl Eq for Type {}
-impl PartialEq for Type {
+impl Eq for Ty {}
+impl PartialEq for Ty {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Type::Array(self0), Type::Array(other0)) => self0 == other0,
-            (Type::BareFn(self0), Type::BareFn(other0)) => self0 == other0,
-            (Type::Group(self0), Type::Group(other0)) => self0 == other0,
-            (Type::ImplTrait(self0), Type::ImplTrait(other0)) => self0 == other0,
-            (Type::Infer(self0), Type::Infer(other0)) => self0 == other0,
-            (Type::Macro(self0), Type::Macro(other0)) => self0 == other0,
-            (Type::Never(self0), Type::Never(other0)) => self0 == other0,
-            (Type::Paren(self0), Type::Paren(other0)) => self0 == other0,
-            (Type::Path(self0), Type::Path(other0)) => self0 == other0,
-            (Type::Ptr(self0), Type::Ptr(other0)) => self0 == other0,
-            (Type::Reference(self0), Type::Reference(other0)) => self0 == other0,
-            (Type::Slice(self0), Type::Slice(other0)) => self0 == other0,
-            (Type::TraitObject(self0), Type::TraitObject(other0)) => self0 == other0,
-            (Type::Tuple(self0), Type::Tuple(other0)) => self0 == other0,
-            (Type::Verbatim(self0), Type::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
+            (Ty::Array(self0), Ty::Array(other0)) => self0 == other0,
+            (Ty::BareFn(self0), Ty::BareFn(other0)) => self0 == other0,
+            (Ty::Group(self0), Ty::Group(other0)) => self0 == other0,
+            (Ty::ImplTrait(self0), Ty::ImplTrait(other0)) => self0 == other0,
+            (Ty::Infer(self0), Ty::Infer(other0)) => self0 == other0,
+            (Ty::Macro(self0), Ty::Macro(other0)) => self0 == other0,
+            (Ty::Never(self0), Ty::Never(other0)) => self0 == other0,
+            (Ty::Paren(self0), Ty::Paren(other0)) => self0 == other0,
+            (Ty::Path(self0), Ty::Path(other0)) => self0 == other0,
+            (Ty::Ptr(self0), Ty::Ptr(other0)) => self0 == other0,
+            (Ty::Reference(self0), Ty::Reference(other0)) => self0 == other0,
+            (Ty::Slice(self0), Ty::Slice(other0)) => self0 == other0,
+            (Ty::TraitObject(self0), Ty::TraitObject(other0)) => self0 == other0,
+            (Ty::Tuple(self0), Ty::Tuple(other0)) => self0 == other0,
+            (Ty::Verbatim(self0), Ty::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
             _ => false,
         }
     }

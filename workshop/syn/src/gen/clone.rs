@@ -1523,31 +1523,31 @@ impl Clone for TraitItemType {
         }
     }
 }
-impl Clone for Type {
+impl Clone for Ty {
     fn clone(&self) -> Self {
         match self {
-            Type::Array(v0) => Type::Array(v0.clone()),
-            Type::BareFn(v0) => Type::BareFn(v0.clone()),
-            Type::Group(v0) => Type::Group(v0.clone()),
-            Type::ImplTrait(v0) => Type::ImplTrait(v0.clone()),
-            Type::Infer(v0) => Type::Infer(v0.clone()),
-            Type::Macro(v0) => Type::Macro(v0.clone()),
-            Type::Never(v0) => Type::Never(v0.clone()),
-            Type::Paren(v0) => Type::Paren(v0.clone()),
-            Type::Path(v0) => Type::Path(v0.clone()),
-            Type::Ptr(v0) => Type::Ptr(v0.clone()),
-            Type::Reference(v0) => Type::Reference(v0.clone()),
-            Type::Slice(v0) => Type::Slice(v0.clone()),
-            Type::TraitObject(v0) => Type::TraitObject(v0.clone()),
-            Type::Tuple(v0) => Type::Tuple(v0.clone()),
-            Type::Verbatim(v0) => Type::Verbatim(v0.clone()),
+            Ty::Array(v0) => Ty::Array(v0.clone()),
+            Ty::BareFn(v0) => Ty::BareFn(v0.clone()),
+            Ty::Group(v0) => Ty::Group(v0.clone()),
+            Ty::ImplTrait(v0) => Ty::ImplTrait(v0.clone()),
+            Ty::Infer(v0) => Ty::Infer(v0.clone()),
+            Ty::Macro(v0) => Ty::Macro(v0.clone()),
+            Ty::Never(v0) => Ty::Never(v0.clone()),
+            Ty::Paren(v0) => Ty::Paren(v0.clone()),
+            Ty::Path(v0) => Ty::Path(v0.clone()),
+            Ty::Ptr(v0) => Ty::Ptr(v0.clone()),
+            Ty::Reference(v0) => Ty::Reference(v0.clone()),
+            Ty::Slice(v0) => Ty::Slice(v0.clone()),
+            Ty::TraitObject(v0) => Ty::TraitObject(v0.clone()),
+            Ty::Tuple(v0) => Ty::Tuple(v0.clone()),
+            Ty::Verbatim(v0) => Ty::Verbatim(v0.clone()),
         }
     }
 }
 impl Clone for TypeArray {
     fn clone(&self) -> Self {
         TypeArray {
-            bracket_token: self.bracket_token.clone(),
+            bracket: self.bracket.clone(),
             elem: self.elem.clone(),
             semi: self.semi.clone(),
             len: self.len.clone(),

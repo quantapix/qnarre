@@ -2264,25 +2264,25 @@ impl Debug for TraitItemType {
         self.debug(formatter, "TraitItemType")
     }
 }
-impl Debug for Type {
+impl Debug for Ty {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("Type::")?;
         match self {
-            Type::Array(v0) => v0.debug(formatter, "Array"),
-            Type::BareFn(v0) => v0.debug(formatter, "BareFn"),
-            Type::Group(v0) => v0.debug(formatter, "Group"),
-            Type::ImplTrait(v0) => v0.debug(formatter, "ImplTrait"),
-            Type::Infer(v0) => v0.debug(formatter, "Infer"),
-            Type::Macro(v0) => v0.debug(formatter, "Macro"),
-            Type::Never(v0) => v0.debug(formatter, "Never"),
-            Type::Paren(v0) => v0.debug(formatter, "Paren"),
-            Type::Path(v0) => v0.debug(formatter, "Path"),
-            Type::Ptr(v0) => v0.debug(formatter, "Ptr"),
-            Type::Reference(v0) => v0.debug(formatter, "Reference"),
-            Type::Slice(v0) => v0.debug(formatter, "Slice"),
-            Type::TraitObject(v0) => v0.debug(formatter, "TraitObject"),
-            Type::Tuple(v0) => v0.debug(formatter, "Tuple"),
-            Type::Verbatim(v0) => {
+            Ty::Array(v0) => v0.debug(formatter, "Array"),
+            Ty::BareFn(v0) => v0.debug(formatter, "BareFn"),
+            Ty::Group(v0) => v0.debug(formatter, "Group"),
+            Ty::ImplTrait(v0) => v0.debug(formatter, "ImplTrait"),
+            Ty::Infer(v0) => v0.debug(formatter, "Infer"),
+            Ty::Macro(v0) => v0.debug(formatter, "Macro"),
+            Ty::Never(v0) => v0.debug(formatter, "Never"),
+            Ty::Paren(v0) => v0.debug(formatter, "Paren"),
+            Ty::Path(v0) => v0.debug(formatter, "Path"),
+            Ty::Ptr(v0) => v0.debug(formatter, "Ptr"),
+            Ty::Reference(v0) => v0.debug(formatter, "Reference"),
+            Ty::Slice(v0) => v0.debug(formatter, "Slice"),
+            Ty::TraitObject(v0) => v0.debug(formatter, "TraitObject"),
+            Ty::Tuple(v0) => v0.debug(formatter, "Tuple"),
+            Ty::Verbatim(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
                 formatter.finish()
@@ -2295,7 +2295,7 @@ impl Debug for TypeArray {
         impl TypeArray {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("bracket_token", &self.bracket_token);
+                formatter.field("bracket_token", &self.bracket);
                 formatter.field("elem", &self.elem);
                 formatter.field("semi_token", &self.semi);
                 formatter.field("len", &self.len);

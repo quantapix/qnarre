@@ -3879,7 +3879,7 @@ impl Debug for Lite<syn::TraitItem> {
                 if let Some(val) = &_val.default {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print((syn::tok::Eq, syn::Type));
+                    struct Print((syn::tok::Eq, syn::Ty));
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;
@@ -3997,7 +3997,7 @@ impl Debug for Lite<syn::TraitItemType> {
         if let Some(val) = &self.value.default {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print((syn::tok::Eq, syn::Type));
+            struct Print((syn::tok::Eq, syn::Ty));
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -4011,16 +4011,16 @@ impl Debug for Lite<syn::TraitItemType> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::Type> {
+impl Debug for Lite<syn::Ty> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::Type::Array(_val) => {
+            syn::Ty::Array(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Array");
                 formatter.field("elem", Lite(&_val.elem));
                 formatter.field("len", Lite(&_val.len));
                 formatter.finish()
             },
-            syn::Type::BareFn(_val) => {
+            syn::Ty::BareFn(_val) => {
                 let mut formatter = formatter.debug_struct("Type::BareFn");
                 if let Some(val) = &_val.lifetimes {
                     #[derive(RefCast)]
@@ -4073,37 +4073,37 @@ impl Debug for Lite<syn::Type> {
                 formatter.field("output", Lite(&_val.output));
                 formatter.finish()
             },
-            syn::Type::Group(_val) => {
+            syn::Ty::Group(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Group");
                 formatter.field("elem", Lite(&_val.elem));
                 formatter.finish()
             },
-            syn::Type::ImplTrait(_val) => {
+            syn::Ty::ImplTrait(_val) => {
                 let mut formatter = formatter.debug_struct("Type::ImplTrait");
                 if !_val.bounds.is_empty() {
                     formatter.field("bounds", Lite(&_val.bounds));
                 }
                 formatter.finish()
             },
-            syn::Type::Infer(_val) => {
+            syn::Ty::Infer(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Infer");
                 formatter.finish()
             },
-            syn::Type::Macro(_val) => {
+            syn::Ty::Macro(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Macro");
                 formatter.field("mac", Lite(&_val.mac));
                 formatter.finish()
             },
-            syn::Type::Never(_val) => {
+            syn::Ty::Never(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Never");
                 formatter.finish()
             },
-            syn::Type::Paren(_val) => {
+            syn::Ty::Paren(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Paren");
                 formatter.field("elem", Lite(&_val.elem));
                 formatter.finish()
             },
-            syn::Type::Path(_val) => {
+            syn::Ty::Path(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Path");
                 if let Some(val) = &_val.qself {
                     #[derive(RefCast)]
@@ -4122,7 +4122,7 @@ impl Debug for Lite<syn::Type> {
                 formatter.field("path", Lite(&_val.path));
                 formatter.finish()
             },
-            syn::Type::Ptr(_val) => {
+            syn::Ty::Ptr(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Ptr");
                 if _val.const_.is_some() {
                     formatter.field("const_token", &Present);
@@ -4133,7 +4133,7 @@ impl Debug for Lite<syn::Type> {
                 formatter.field("elem", Lite(&_val.elem));
                 formatter.finish()
             },
-            syn::Type::Reference(_val) => {
+            syn::Ty::Reference(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Reference");
                 if let Some(val) = &_val.lifetime {
                     #[derive(RefCast)]
@@ -4155,12 +4155,12 @@ impl Debug for Lite<syn::Type> {
                 formatter.field("elem", Lite(&_val.elem));
                 formatter.finish()
             },
-            syn::Type::Slice(_val) => {
+            syn::Ty::Slice(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Slice");
                 formatter.field("elem", Lite(&_val.elem));
                 formatter.finish()
             },
-            syn::Type::TraitObject(_val) => {
+            syn::Ty::TraitObject(_val) => {
                 let mut formatter = formatter.debug_struct("Type::TraitObject");
                 if _val.dyn_.is_some() {
                     formatter.field("dyn_token", &Present);
@@ -4170,14 +4170,14 @@ impl Debug for Lite<syn::Type> {
                 }
                 formatter.finish()
             },
-            syn::Type::Tuple(_val) => {
+            syn::Ty::Tuple(_val) => {
                 let mut formatter = formatter.debug_struct("Type::Tuple");
                 if !_val.elems.is_empty() {
                     formatter.field("elems", Lite(&_val.elems));
                 }
                 formatter.finish()
             },
-            syn::Type::Verbatim(_val) => {
+            syn::Ty::Verbatim(_val) => {
                 formatter.write_str("Type::Verbatim")?;
                 formatter.write_str("(`")?;
                 Display::fmt(_val, formatter)?;
@@ -4305,7 +4305,7 @@ impl Debug for Lite<syn::TypeParam> {
         if let Some(val) = &self.value.default {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::Type);
+            struct Print(syn::Ty);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;

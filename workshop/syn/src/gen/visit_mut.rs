@@ -474,7 +474,7 @@ pub trait VisitMut {
     fn visit_trait_item_type_mut(&mut self, i: &mut TraitItemType) {
         visit_trait_item_type_mut(self, i);
     }
-    fn visit_type_mut(&mut self, i: &mut Type) {
+    fn visit_type_mut(&mut self, i: &mut Ty) {
         visit_type_mut(self, i);
     }
     fn visit_type_array_mut(&mut self, i: &mut TypeArray) {
@@ -2780,54 +2780,54 @@ where
     }
     skip!(node.semi_token);
 }
-pub fn visit_type_mut<V>(v: &mut V, node: &mut Type)
+pub fn visit_type_mut<V>(v: &mut V, node: &mut Ty)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        Type::Array(_binding_0) => {
+        Ty::Array(_binding_0) => {
             v.visit_type_array_mut(_binding_0);
         },
-        Type::BareFn(_binding_0) => {
+        Ty::BareFn(_binding_0) => {
             v.visit_type_bare_fn_mut(_binding_0);
         },
-        Type::Group(_binding_0) => {
+        Ty::Group(_binding_0) => {
             v.visit_type_group_mut(_binding_0);
         },
-        Type::ImplTrait(_binding_0) => {
+        Ty::ImplTrait(_binding_0) => {
             v.visit_type_impl_trait_mut(_binding_0);
         },
-        Type::Infer(_binding_0) => {
+        Ty::Infer(_binding_0) => {
             v.visit_type_infer_mut(_binding_0);
         },
-        Type::Macro(_binding_0) => {
+        Ty::Macro(_binding_0) => {
             v.visit_type_macro_mut(_binding_0);
         },
-        Type::Never(_binding_0) => {
+        Ty::Never(_binding_0) => {
             v.visit_type_never_mut(_binding_0);
         },
-        Type::Paren(_binding_0) => {
+        Ty::Paren(_binding_0) => {
             v.visit_type_paren_mut(_binding_0);
         },
-        Type::Path(_binding_0) => {
+        Ty::Path(_binding_0) => {
             v.visit_type_path_mut(_binding_0);
         },
-        Type::Ptr(_binding_0) => {
+        Ty::Ptr(_binding_0) => {
             v.visit_type_ptr_mut(_binding_0);
         },
-        Type::Reference(_binding_0) => {
+        Ty::Reference(_binding_0) => {
             v.visit_type_reference_mut(_binding_0);
         },
-        Type::Slice(_binding_0) => {
+        Ty::Slice(_binding_0) => {
             v.visit_type_slice_mut(_binding_0);
         },
-        Type::TraitObject(_binding_0) => {
+        Ty::TraitObject(_binding_0) => {
             v.visit_type_trait_object_mut(_binding_0);
         },
-        Type::Tuple(_binding_0) => {
+        Ty::Tuple(_binding_0) => {
             v.visit_type_tuple_mut(_binding_0);
         },
-        Type::Verbatim(_binding_0) => {
+        Ty::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }

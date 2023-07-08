@@ -1087,14 +1087,14 @@ impl ToTokens for Receiver {
             self.ty.to_tokens(tokens);
         } else {
             let consistent = match (&self.reference, &self.mutability, &*self.ty) {
-                (Some(_), mutability, Type::Reference(ty)) => {
+                (Some(_), mutability, Ty::Reference(ty)) => {
                     mutability.is_some() == ty.mut_.is_some()
                         && match &*ty.elem {
-                            Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                            Ty::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
                             _ => false,
                         }
                 },
-                (None, _, Type::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                (None, _, Ty::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
                 _ => false,
             };
             if !consistent {
@@ -1485,141 +1485,144 @@ impl ToTokens for FieldPat {
     }
 }
 
-impl ToTokens for Path {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.colon.to_tokens(tokens);
-        self.segs.to_tokens(tokens);
-    }
-}
-impl ToTokens for Segment {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.ident.to_tokens(tokens);
-        self.args.to_tokens(tokens);
-    }
-}
-impl ToTokens for Args {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Args::None => {},
-            Args::Angled(arguments) => {
-                arguments.to_tokens(tokens);
-            },
-            Args::Parenthesized(arguments) => {
-                arguments.to_tokens(tokens);
-            },
+mod path {
+    use crate::path::*;
+    impl ToTokens for Path {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.colon.to_tokens(ts);
+            self.segs.to_tokens(ts);
         }
     }
-}
-impl ToTokens for Arg {
-    #[allow(clippy::match_same_arms)]
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Arg::Lifetime(lt) => lt.to_tokens(tokens),
-            Arg::Type(ty) => ty.to_tokens(tokens),
-            Arg::Const(expr) => match expr {
-                Expr::Lit(_) => expr.to_tokens(tokens),
-                Expr::Block(_) => expr.to_tokens(tokens),
-                _ => tok::Brace::default().surround(tokens, |tokens| {
-                    expr.to_tokens(tokens);
-                }),
-            },
-            Arg::AssocType(assoc) => assoc.to_tokens(tokens),
-            Arg::AssocConst(assoc) => assoc.to_tokens(tokens),
-            Arg::Constraint(constraint) => constraint.to_tokens(tokens),
+    impl ToTokens for Segment {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.ident.to_tokens(ts);
+            self.args.to_tokens(ts);
         }
     }
-}
-impl ToTokens for AngledArgs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.colon2.to_tokens(tokens);
-        self.lt.to_tokens(tokens);
-        let mut trailing_or_empty = true;
-        for param in self.args.pairs() {
-            match param.value() {
-                Arg::Lifetime(_) => {
-                    param.to_tokens(tokens);
-                    trailing_or_empty = param.punct().is_some();
+    impl ToTokens for Args {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            match self {
+                Args::None => {},
+                Args::Angled(args) => {
+                    args.to_tokens(ts);
                 },
-                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
-            }
-        }
-        for param in self.args.pairs() {
-            match param.value() {
-                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
-                    if !trailing_or_empty {
-                        <Token![,]>::default().to_tokens(tokens);
-                    }
-                    param.to_tokens(tokens);
-                    trailing_or_empty = param.punct().is_some();
+                Args::Parenthesized(args) => {
+                    args.to_tokens(ts);
                 },
-                Arg::Lifetime(_) => {},
             }
         }
-        self.gt.to_tokens(tokens);
     }
-}
-impl ToTokens for AssocType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.ident.to_tokens(tokens);
-        self.gnrs.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.ty.to_tokens(tokens);
-    }
-}
-impl ToTokens for AssocConst {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.ident.to_tokens(tokens);
-        self.gnrs.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.val.to_tokens(tokens);
-    }
-}
-impl ToTokens for Constraint {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.ident.to_tokens(tokens);
-        self.gnrs.to_tokens(tokens);
-        self.colon.to_tokens(tokens);
-        self.bounds.to_tokens(tokens);
-    }
-}
-impl ToTokens for ParenthesizedArgs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.paren.surround(tokens, |tokens| {
-            self.ins.to_tokens(tokens);
-        });
-        self.out.to_tokens(tokens);
-    }
-}
-pub(crate) fn print_path(tokens: &mut TokenStream, qself: &Option<QSelf>, path: &Path) {
-    let qself = match qself {
-        Some(qself) => qself,
-        None => {
-            path.to_tokens(tokens);
-            return;
-        },
-    };
-    qself.lt.to_tokens(tokens);
-    qself.ty.to_tokens(tokens);
-    let pos = cmp::min(qself.pos, path.segs.len());
-    let mut segments = path.segs.pairs();
-    if pos > 0 {
-        TokensOrDefault(&qself.as_).to_tokens(tokens);
-        path.colon.to_tokens(tokens);
-        for (i, segment) in segments.by_ref().take(pos).enumerate() {
-            if i + 1 == pos {
-                segment.value().to_tokens(tokens);
-                qself.gt_.to_tokens(tokens);
-                segment.punct().to_tokens(tokens);
-            } else {
-                segment.to_tokens(tokens);
+    impl ToTokens for Arg {
+        #[allow(clippy::match_same_arms)]
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            match self {
+                Arg::Lifetime(x) => x.to_tokens(ts),
+                Arg::Type(x) => x.to_tokens(ts),
+                Arg::Const(x) => match x {
+                    Expr::Lit(_) => x.to_tokens(ts),
+                    Expr::Block(_) => x.to_tokens(ts),
+                    _ => tok::Brace::default().surround(ts, |xs| {
+                        x.to_tokens(xs);
+                    }),
+                },
+                Arg::AssocType(x) => x.to_tokens(ts),
+                Arg::AssocConst(x) => x.to_tokens(ts),
+                Arg::Constraint(x) => x.to_tokens(ts),
             }
         }
-    } else {
-        qself.gt_.to_tokens(tokens);
-        path.colon.to_tokens(tokens);
     }
-    for segment in segments {
-        segment.to_tokens(tokens);
+    impl ToTokens for AngledArgs {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.colon2.to_tokens(ts);
+            self.lt.to_tokens(ts);
+            let mut trailing_or_empty = true;
+            for x in self.args.pairs() {
+                match x.value() {
+                    Arg::Lifetime(_) => {
+                        x.to_tokens(ts);
+                        trailing_or_empty = x.punct().is_some();
+                    },
+                    Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
+                }
+            }
+            for x in self.args.pairs() {
+                match x.value() {
+                    Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
+                        if !trailing_or_empty {
+                            <Token![,]>::default().to_tokens(ts);
+                        }
+                        x.to_tokens(ts);
+                        trailing_or_empty = x.punct().is_some();
+                    },
+                    Arg::Lifetime(_) => {},
+                }
+            }
+            self.gt.to_tokens(ts);
+        }
+    }
+    impl ToTokens for AssocType {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.ident.to_tokens(ts);
+            self.gnrs.to_tokens(ts);
+            self.eq.to_tokens(ts);
+            self.ty.to_tokens(ts);
+        }
+    }
+    impl ToTokens for AssocConst {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.ident.to_tokens(ts);
+            self.gnrs.to_tokens(ts);
+            self.eq.to_tokens(ts);
+            self.val.to_tokens(ts);
+        }
+    }
+    impl ToTokens for Constraint {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.ident.to_tokens(ts);
+            self.gnrs.to_tokens(ts);
+            self.colon.to_tokens(ts);
+            self.bounds.to_tokens(ts);
+        }
+    }
+    impl ToTokens for ParenthesizedArgs {
+        fn to_tokens(&self, ts: &mut TokenStream) {
+            self.paren.surround(ts, |xs| {
+                self.args.to_tokens(xs);
+            });
+            self.out.to_tokens(ts);
+        }
+    }
+    pub(crate) fn print_path(ts: &mut TokenStream, qself: &Option<QSelf>, path: &Path) {
+        let qself = match qself {
+            Some(qself) => qself,
+            None => {
+                path.to_tokens(ts);
+                return;
+            },
+        };
+        qself.lt.to_tokens(ts);
+        qself.ty.to_tokens(ts);
+        let pos = cmp::min(qself.pos, path.segs.len());
+        let mut segments = path.segs.pairs();
+        if pos > 0 {
+            TokensOrDefault(&qself.as_).to_tokens(ts);
+            path.colon.to_tokens(ts);
+            for (i, segment) in segments.by_ref().take(pos).enumerate() {
+                if i + 1 == pos {
+                    segment.value().to_tokens(ts);
+                    qself.gt.to_tokens(ts);
+                    segment.punct().to_tokens(ts);
+                } else {
+                    segment.to_tokens(ts);
+                }
+            }
+        } else {
+            qself.gt.to_tokens(ts);
+            path.colon.to_tokens(ts);
+        }
+        for segment in segments {
+            segment.to_tokens(ts);
+        }
     }
 }
 
@@ -1647,152 +1650,155 @@ pub fn delim(d: Delimiter, s: Span, xs: &mut TokenStream, inner: TokenStream) {
     xs.append(g);
 }
 
-impl ToTokens for TypeSlice {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.bracket.surround(tokens, |tokens| {
-            self.elem.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for TypeArray {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.bracket_token.surround(tokens, |tokens| {
-            self.elem.to_tokens(tokens);
-            self.semi.to_tokens(tokens);
-            self.len.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for TypePtr {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.star.to_tokens(tokens);
-        match &self.mut_ {
-            Some(tok) => tok.to_tokens(tokens),
-            None => {
-                TokensOrDefault(&self.const_).to_tokens(tokens);
-            },
+mod ty {
+    use crate::ty::*;
+    impl ToTokens for TypeSlice {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.bracket.surround(tokens, |tokens| {
+                self.elem.to_tokens(tokens);
+            });
         }
-        self.elem.to_tokens(tokens);
     }
-}
-impl ToTokens for TypeReference {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.and_.to_tokens(tokens);
-        self.lifetime.to_tokens(tokens);
-        self.mut_.to_tokens(tokens);
-        self.elem.to_tokens(tokens);
+    impl ToTokens for TypeArray {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.bracket.surround(tokens, |tokens| {
+                self.elem.to_tokens(tokens);
+                self.semi.to_tokens(tokens);
+                self.len.to_tokens(tokens);
+            });
+        }
     }
-}
-impl ToTokens for TypeBareFn {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.lifetimes.to_tokens(tokens);
-        self.unsafe_.to_tokens(tokens);
-        self.abi.to_tokens(tokens);
-        self.fn_.to_tokens(tokens);
-        self.paren.surround(tokens, |tokens| {
-            self.inputs.to_tokens(tokens);
-            if let Some(variadic) = &self.variadic {
-                if !self.inputs.empty_or_trailing() {
-                    let span = variadic.dots.spans[0];
-                    Token![,](span).to_tokens(tokens);
+    impl ToTokens for TypePtr {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.star.to_tokens(tokens);
+            match &self.mut_ {
+                Some(tok) => tok.to_tokens(tokens),
+                None => {
+                    TokensOrDefault(&self.const_).to_tokens(tokens);
+                },
+            }
+            self.elem.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeReference {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.and_.to_tokens(tokens);
+            self.lifetime.to_tokens(tokens);
+            self.mut_.to_tokens(tokens);
+            self.elem.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeBareFn {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.lifetimes.to_tokens(tokens);
+            self.unsafe_.to_tokens(tokens);
+            self.abi.to_tokens(tokens);
+            self.fn_.to_tokens(tokens);
+            self.paren.surround(tokens, |tokens| {
+                self.inputs.to_tokens(tokens);
+                if let Some(variadic) = &self.variadic {
+                    if !self.inputs.empty_or_trailing() {
+                        let span = variadic.dots.spans[0];
+                        Token![,](span).to_tokens(tokens);
+                    }
+                    variadic.to_tokens(tokens);
                 }
-                variadic.to_tokens(tokens);
+            });
+            self.output.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeNever {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.bang.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeTuple {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.paren.surround(tokens, |tokens| {
+                self.elems.to_tokens(tokens);
+                if self.elems.len() == 1 && !self.elems.trailing_punct() {
+                    <Token![,]>::default().to_tokens(tokens);
+                }
+            });
+        }
+    }
+    impl ToTokens for TypePath {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            print_path(tokens, &self.qself, &self.path);
+        }
+    }
+    impl ToTokens for TypeTraitObject {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.dyn_.to_tokens(tokens);
+            self.bounds.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeImplTrait {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.impl_.to_tokens(tokens);
+            self.bounds.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeGroup {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.group.surround(tokens, |tokens| {
+                self.elem.to_tokens(tokens);
+            });
+        }
+    }
+    impl ToTokens for TypeParen {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.paren_token.surround(tokens, |tokens| {
+                self.elem.to_tokens(tokens);
+            });
+        }
+    }
+    impl ToTokens for TypeInfer {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.underscore.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for TypeMacro {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.mac.to_tokens(tokens);
+        }
+    }
+    impl ToTokens for ReturnType {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                ReturnType::Default => {},
+                ReturnType::Type(arrow, ty) => {
+                    arrow.to_tokens(tokens);
+                    ty.to_tokens(tokens);
+                },
             }
-        });
-        self.output.to_tokens(tokens);
+        }
     }
-}
-impl ToTokens for TypeNever {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.bang.to_tokens(tokens);
-    }
-}
-impl ToTokens for TypeTuple {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.paren.surround(tokens, |tokens| {
-            self.elems.to_tokens(tokens);
-            if self.elems.len() == 1 && !self.elems.trailing_punct() {
-                <Token![,]>::default().to_tokens(tokens);
+    impl ToTokens for BareFnArg {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
+            if let Some((name, colon)) = &self.name {
+                name.to_tokens(tokens);
+                colon.to_tokens(tokens);
             }
-        });
-    }
-}
-impl ToTokens for TypePath {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        print_path(tokens, &self.qself, &self.path);
-    }
-}
-impl ToTokens for TypeTraitObject {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.dyn_.to_tokens(tokens);
-        self.bounds.to_tokens(tokens);
-    }
-}
-impl ToTokens for TypeImplTrait {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.impl_.to_tokens(tokens);
-        self.bounds.to_tokens(tokens);
-    }
-}
-impl ToTokens for TypeGroup {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.group.surround(tokens, |tokens| {
-            self.elem.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for TypeParen {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.paren_token.surround(tokens, |tokens| {
-            self.elem.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for TypeInfer {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.underscore.to_tokens(tokens);
-    }
-}
-impl ToTokens for TypeMacro {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.mac.to_tokens(tokens);
-    }
-}
-impl ToTokens for ReturnType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            ReturnType::Default => {},
-            ReturnType::Type(arrow, ty) => {
-                arrow.to_tokens(tokens);
-                ty.to_tokens(tokens);
-            },
+            self.ty.to_tokens(tokens);
         }
     }
-}
-impl ToTokens for BareFnArg {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append_all(self.attrs.outer());
-        if let Some((name, colon)) = &self.name {
-            name.to_tokens(tokens);
-            colon.to_tokens(tokens);
+    impl ToTokens for BareVariadic {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
+            if let Some((name, colon)) = &self.name {
+                name.to_tokens(tokens);
+                colon.to_tokens(tokens);
+            }
+            self.dots.to_tokens(tokens);
+            self.comma.to_tokens(tokens);
         }
-        self.ty.to_tokens(tokens);
     }
-}
-impl ToTokens for BareVariadic {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append_all(self.attrs.outer());
-        if let Some((name, colon)) = &self.name {
-            name.to_tokens(tokens);
-            colon.to_tokens(tokens);
+    impl ToTokens for Abi {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            self.extern_.to_tokens(tokens);
+            self.name.to_tokens(tokens);
         }
-        self.dots.to_tokens(tokens);
-        self.comma.to_tokens(tokens);
-    }
-}
-impl ToTokens for Abi {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.extern_.to_tokens(tokens);
-        self.name.to_tokens(tokens);
     }
 }

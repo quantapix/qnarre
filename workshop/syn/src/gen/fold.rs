@@ -472,7 +472,7 @@ pub trait Fold {
     fn fold_trait_item_type(&mut self, i: TraitItemType) -> TraitItemType {
         fold_trait_item_type(self, i)
     }
-    fn fold_type(&mut self, i: Type) -> Type {
+    fn fold_type(&mut self, i: Ty) -> Ty {
         fold_type(self, i)
     }
     fn fold_type_array(&mut self, i: TypeArray) -> TypeArray {
@@ -2339,26 +2339,26 @@ where
         semi_token: node.semi_token,
     }
 }
-pub fn fold_type<F>(f: &mut F, node: Type) -> Type
+pub fn fold_type<F>(f: &mut F, node: Ty) -> Ty
 where
     F: Fold + ?Sized,
 {
     match node {
-        Type::Array(_binding_0) => Type::Array(f.fold_type_array(_binding_0)),
-        Type::BareFn(_binding_0) => Type::BareFn(f.fold_type_bare_fn(_binding_0)),
-        Type::Group(_binding_0) => Type::Group(f.fold_type_group(_binding_0)),
-        Type::ImplTrait(_binding_0) => Type::ImplTrait(f.fold_type_impl_trait(_binding_0)),
-        Type::Infer(_binding_0) => Type::Infer(f.fold_type_infer(_binding_0)),
-        Type::Macro(_binding_0) => Type::Macro(f.fold_type_macro(_binding_0)),
-        Type::Never(_binding_0) => Type::Never(f.fold_type_never(_binding_0)),
-        Type::Paren(_binding_0) => Type::Paren(f.fold_type_paren(_binding_0)),
-        Type::Path(_binding_0) => Type::Path(f.fold_type_path(_binding_0)),
-        Type::Ptr(_binding_0) => Type::Ptr(f.fold_type_ptr(_binding_0)),
-        Type::Reference(_binding_0) => Type::Reference(f.fold_type_reference(_binding_0)),
-        Type::Slice(_binding_0) => Type::Slice(f.fold_type_slice(_binding_0)),
-        Type::TraitObject(_binding_0) => Type::TraitObject(f.fold_type_trait_object(_binding_0)),
-        Type::Tuple(_binding_0) => Type::Tuple(f.fold_type_tuple(_binding_0)),
-        Type::Verbatim(_binding_0) => Type::Verbatim(_binding_0),
+        Ty::Array(_binding_0) => Ty::Array(f.fold_type_array(_binding_0)),
+        Ty::BareFn(_binding_0) => Ty::BareFn(f.fold_type_bare_fn(_binding_0)),
+        Ty::Group(_binding_0) => Ty::Group(f.fold_type_group(_binding_0)),
+        Ty::ImplTrait(_binding_0) => Ty::ImplTrait(f.fold_type_impl_trait(_binding_0)),
+        Ty::Infer(_binding_0) => Ty::Infer(f.fold_type_infer(_binding_0)),
+        Ty::Macro(_binding_0) => Ty::Macro(f.fold_type_macro(_binding_0)),
+        Ty::Never(_binding_0) => Ty::Never(f.fold_type_never(_binding_0)),
+        Ty::Paren(_binding_0) => Ty::Paren(f.fold_type_paren(_binding_0)),
+        Ty::Path(_binding_0) => Ty::Path(f.fold_type_path(_binding_0)),
+        Ty::Ptr(_binding_0) => Ty::Ptr(f.fold_type_ptr(_binding_0)),
+        Ty::Reference(_binding_0) => Ty::Reference(f.fold_type_reference(_binding_0)),
+        Ty::Slice(_binding_0) => Ty::Slice(f.fold_type_slice(_binding_0)),
+        Ty::TraitObject(_binding_0) => Ty::TraitObject(f.fold_type_trait_object(_binding_0)),
+        Ty::Tuple(_binding_0) => Ty::Tuple(f.fold_type_tuple(_binding_0)),
+        Ty::Verbatim(_binding_0) => Ty::Verbatim(_binding_0),
     }
 }
 pub fn fold_type_array<F>(f: &mut F, node: TypeArray) -> TypeArray
@@ -2366,7 +2366,7 @@ where
     F: Fold + ?Sized,
 {
     TypeArray {
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         elem: Box::new(f.fold_type(*node.elem)),
         semi: node.semi,
         len: f.fold_expr(node.len),
