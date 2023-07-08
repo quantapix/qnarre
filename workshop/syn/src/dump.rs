@@ -109,7 +109,7 @@ impl<'a> ToTokens for TypeGenerics<'a> {
         let mut trailing_or_empty = true;
         for param in self.0.params.pairs() {
             if let GenericParam::Lifetime(def) = *param.value() {
-                def.lifetime.to_tokens(tokens);
+                def.life.to_tokens(tokens);
                 param.punct().to_tokens(tokens);
                 trailing_or_empty = param.punct().is_some();
             }
@@ -148,14 +148,14 @@ impl ToTokens for BoundLifetimes {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.for_.to_tokens(tokens);
         self.lt.to_tokens(tokens);
-        self.lifetimes.to_tokens(tokens);
+        self.lifes.to_tokens(tokens);
         self.gt.to_tokens(tokens);
     }
 }
 impl ToTokens for LifetimeParam {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        self.lifetime.to_tokens(tokens);
+        self.life.to_tokens(tokens);
         if !self.bounds.is_empty() {
             TokensOrDefault(&self.colon).to_tokens(tokens);
             self.bounds.to_tokens(tokens);
@@ -180,7 +180,7 @@ impl ToTokens for TraitBound {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let to_tokens = |tokens: &mut TokenStream| {
             self.modifier.to_tokens(tokens);
-            self.lifetimes.to_tokens(tokens);
+            self.lifes.to_tokens(tokens);
             self.path.to_tokens(tokens);
         };
         match &self.paren {
@@ -220,15 +220,15 @@ impl ToTokens for WhereClause {
 }
 impl ToTokens for PredLifetime {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.lifetime.to_tokens(tokens);
+        self.life.to_tokens(tokens);
         self.colon.to_tokens(tokens);
         self.bounds.to_tokens(tokens);
     }
 }
 impl ToTokens for PredType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.lifetimes.to_tokens(tokens);
-        self.bounded_ty.to_tokens(tokens);
+        self.lifes.to_tokens(tokens);
+        self.bounded.to_tokens(tokens);
         self.colon.to_tokens(tokens);
         self.bounds.to_tokens(tokens);
     }
@@ -254,7 +254,7 @@ pub(crate) fn outer_attrs_to_tokens(_attrs: &[Attribute], _tokens: &mut TokenStr
 impl ToTokens for ExprArray {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.bracket_token.surround(tokens, |tokens| {
+        self.bracket.surround(tokens, |tokens| {
             self.elems.to_tokens(tokens);
         });
     }
@@ -263,14 +263,14 @@ impl ToTokens for ExprAssign {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.left.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.right.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprAsync {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.async_token.to_tokens(tokens);
+        self.async_.to_tokens(tokens);
         self.capture.to_tokens(tokens);
         self.block.to_tokens(tokens);
     }
@@ -279,8 +279,8 @@ impl ToTokens for ExprAwait {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.base.to_tokens(tokens);
-        self.dot_token.to_tokens(tokens);
-        self.await_token.to_tokens(tokens);
+        self.dot.to_tokens(tokens);
+        self.await_.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprBinary {
@@ -304,7 +304,7 @@ impl ToTokens for ExprBlock {
 impl ToTokens for ExprBreak {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.break_token.to_tokens(tokens);
+        self.break_.to_tokens(tokens);
         self.label.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
@@ -313,7 +313,7 @@ impl ToTokens for ExprCall {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.func.to_tokens(tokens);
-        self.paren_token.surround(tokens, |tokens| {
+        self.paren.surround(tokens, |tokens| {
             self.args.to_tokens(tokens);
         });
     }
@@ -322,29 +322,29 @@ impl ToTokens for ExprCast {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
-        self.as_token.to_tokens(tokens);
+        self.as_.to_tokens(tokens);
         self.ty.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprClosure {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.lifetimes.to_tokens(tokens);
-        self.constness.to_tokens(tokens);
-        self.movability.to_tokens(tokens);
-        self.asyncness.to_tokens(tokens);
-        self.capture.to_tokens(tokens);
-        self.or1_token.to_tokens(tokens);
+        self.lifes.to_tokens(tokens);
+        self.const_.to_tokens(tokens);
+        self.static_.to_tokens(tokens);
+        self.async_.to_tokens(tokens);
+        self.move_.to_tokens(tokens);
+        self.or1.to_tokens(tokens);
         self.inputs.to_tokens(tokens);
-        self.or2_token.to_tokens(tokens);
-        self.output.to_tokens(tokens);
+        self.or2.to_tokens(tokens);
+        self.ret.to_tokens(tokens);
         self.body.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprConst {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.const_token.to_tokens(tokens);
+        self.const_.to_tokens(tokens);
         self.block.brace.surround(tokens, |tokens| {
             inner_attrs_to_tokens(&self.attrs, tokens);
             tokens.append_all(&self.block.stmts);
@@ -354,7 +354,7 @@ impl ToTokens for ExprConst {
 impl ToTokens for ExprContinue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.continue_token.to_tokens(tokens);
+        self.continue_.to_tokens(tokens);
         self.label.to_tokens(tokens);
     }
 }
@@ -362,7 +362,7 @@ impl ToTokens for ExprField {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.base.to_tokens(tokens);
-        self.dot_token.to_tokens(tokens);
+        self.dot.to_tokens(tokens);
         self.member.to_tokens(tokens);
     }
 }
@@ -370,9 +370,9 @@ impl ToTokens for ExprForLoop {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
-        self.for_token.to_tokens(tokens);
+        self.for_.to_tokens(tokens);
         self.pat.to_tokens(tokens);
-        self.in_token.to_tokens(tokens);
+        self.in_.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.expr);
         self.body.brace.surround(tokens, |tokens| {
             inner_attrs_to_tokens(&self.attrs, tokens);
@@ -383,7 +383,7 @@ impl ToTokens for ExprForLoop {
 impl ToTokens for ExprGroup {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.group_token.surround(tokens, |tokens| {
+        self.group.surround(tokens, |tokens| {
             self.expr.to_tokens(tokens);
         });
     }
@@ -391,7 +391,7 @@ impl ToTokens for ExprGroup {
 impl ToTokens for ExprIf {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.if_token.to_tokens(tokens);
+        self.if_.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.cond);
         self.then_branch.to_tokens(tokens);
         if let Some((else_token, else_)) = &self.else_branch {
@@ -407,7 +407,7 @@ impl ToTokens for ExprIndex {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
-        self.bracket_token.surround(tokens, |tokens| {
+        self.bracket.surround(tokens, |tokens| {
             self.index.to_tokens(tokens);
         });
     }
@@ -415,15 +415,15 @@ impl ToTokens for ExprIndex {
 impl ToTokens for ExprInfer {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.underscore_token.to_tokens(tokens);
+        self.underscore.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprLet {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.let_token.to_tokens(tokens);
+        self.let_.to_tokens(tokens);
         self.pat.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.expr);
     }
 }
@@ -437,7 +437,7 @@ impl ToTokens for ExprLoop {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
-        self.loop_token.to_tokens(tokens);
+        self.loop_.to_tokens(tokens);
         self.body.brace.surround(tokens, |tokens| {
             inner_attrs_to_tokens(&self.attrs, tokens);
             tokens.append_all(&self.body.stmts);
@@ -453,9 +453,9 @@ impl ToTokens for ExprMacro {
 impl ToTokens for ExprMatch {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.match_token.to_tokens(tokens);
+        self.match_.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.expr);
-        self.brace_token.surround(tokens, |tokens| {
+        self.brace.surround(tokens, |tokens| {
             inner_attrs_to_tokens(&self.attrs, tokens);
             for (i, arm) in self.arms.iter().enumerate() {
                 arm.to_tokens(tokens);
@@ -471,10 +471,10 @@ impl ToTokens for ExprMethodCall {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.receiver.to_tokens(tokens);
-        self.dot_token.to_tokens(tokens);
+        self.dot.to_tokens(tokens);
         self.method.to_tokens(tokens);
         self.turbofish.to_tokens(tokens);
-        self.paren_token.surround(tokens, |tokens| {
+        self.paren.surround(tokens, |tokens| {
             self.args.to_tokens(tokens);
         });
     }
@@ -482,7 +482,7 @@ impl ToTokens for ExprMethodCall {
 impl ToTokens for ExprParen {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.paren_token.surround(tokens, |tokens| {
+        self.paren.surround(tokens, |tokens| {
             self.expr.to_tokens(tokens);
         });
     }
@@ -504,17 +504,17 @@ impl ToTokens for ExprRange {
 impl ToTokens for ExprReference {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.and_token.to_tokens(tokens);
-        self.mutability.to_tokens(tokens);
+        self.and.to_tokens(tokens);
+        self.mut_.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprRepeat {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.bracket_token.surround(tokens, |tokens| {
+        self.bracket.surround(tokens, |tokens| {
             self.expr.to_tokens(tokens);
-            self.semi_token.to_tokens(tokens);
+            self.semi.to_tokens(tokens);
             self.len.to_tokens(tokens);
         });
     }
@@ -522,7 +522,7 @@ impl ToTokens for ExprRepeat {
 impl ToTokens for ExprReturn {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.return_token.to_tokens(tokens);
+        self.return_.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
 }
@@ -530,10 +530,10 @@ impl ToTokens for ExprStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         print_path(tokens, &self.qself, &self.path);
-        self.brace_token.surround(tokens, |tokens| {
+        self.brace.surround(tokens, |tokens| {
             self.fields.to_tokens(tokens);
-            if let Some(dot2_token) = &self.dot2_token {
-                dot2_token.to_tokens(tokens);
+            if let Some(dot2) = &self.dot2 {
+                dot2.to_tokens(tokens);
             } else if self.rest.is_some() {
                 Token![..](Span::call_site()).to_tokens(tokens);
             }
@@ -545,20 +545,20 @@ impl ToTokens for ExprTry {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
-        self.question_token.to_tokens(tokens);
+        self.question.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprTryBlock {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.try_token.to_tokens(tokens);
+        self.try_.to_tokens(tokens);
         self.block.to_tokens(tokens);
     }
 }
 impl ToTokens for ExprTuple {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.paren_token.surround(tokens, |tokens| {
+        self.paren.surround(tokens, |tokens| {
             self.elems.to_tokens(tokens);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
                 <Token![,]>::default().to_tokens(tokens);
@@ -576,7 +576,7 @@ impl ToTokens for ExprUnary {
 impl ToTokens for ExprUnsafe {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.unsafe_token.to_tokens(tokens);
+        self.unsafe_.to_tokens(tokens);
         self.block.brace.surround(tokens, |tokens| {
             inner_attrs_to_tokens(&self.attrs, tokens);
             tokens.append_all(&self.block.stmts);
@@ -587,7 +587,7 @@ impl ToTokens for ExprWhile {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
-        self.while_token.to_tokens(tokens);
+        self.while_.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.cond);
         self.body.brace.surround(tokens, |tokens| {
             inner_attrs_to_tokens(&self.attrs, tokens);
@@ -598,7 +598,7 @@ impl ToTokens for ExprWhile {
 impl ToTokens for ExprYield {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
-        self.yield_token.to_tokens(tokens);
+        self.yield_.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
 }
@@ -606,11 +606,11 @@ impl ToTokens for Arm {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(&self.attrs);
         self.pat.to_tokens(tokens);
-        if let Some((if_token, guard)) = &self.guard {
-            if_token.to_tokens(tokens);
+        if let Some((if_, guard)) = &self.guard {
+            if_.to_tokens(tokens);
             guard.to_tokens(tokens);
         }
-        self.fat_arrow_token.to_tokens(tokens);
+        self.fat_arrow.to_tokens(tokens);
         self.body.to_tokens(tokens);
         self.comma.to_tokens(tokens);
     }
@@ -619,8 +619,8 @@ impl ToTokens for FieldValue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.member.to_tokens(tokens);
-        if let Some(colon_token) = &self.colon_token {
-            colon_token.to_tokens(tokens);
+        if let Some(colon) = &self.colon {
+            colon.to_tokens(tokens);
             self.expr.to_tokens(tokens);
         }
     }
@@ -635,7 +635,7 @@ impl ToTokens for Index {
 impl ToTokens for Label {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.name.to_tokens(tokens);
-        self.colon_token.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
     }
 }
 impl ToTokens for Member {
@@ -659,51 +659,51 @@ impl ToTokens for ItemExternCrate {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.extern_token.to_tokens(tokens);
-        self.crate_token.to_tokens(tokens);
+        self.extern_.to_tokens(tokens);
+        self.crate_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        if let Some((as_token, rename)) = &self.rename {
-            as_token.to_tokens(tokens);
+        if let Some((as_, rename)) = &self.rename {
+            as_.to_tokens(tokens);
             rename.to_tokens(tokens);
         }
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ItemUse {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.use_token.to_tokens(tokens);
+        self.use_.to_tokens(tokens);
         self.leading_colon.to_tokens(tokens);
         self.tree.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ItemStatic {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.static_token.to_tokens(tokens);
-        self.mutability.to_tokens(tokens);
+        self.static_.to_tokens(tokens);
+        self.mut_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.colon_token.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.expr.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ItemConst {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.const_token.to_tokens(tokens);
+        self.const_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.colon_token.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.expr.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ItemFn {
@@ -721,10 +721,10 @@ impl ToTokens for ItemMod {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.unsafety.to_tokens(tokens);
-        self.mod_token.to_tokens(tokens);
+        self.unsafe_.to_tokens(tokens);
+        self.mod_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        if let Some((brace, items)) = &self.content {
+        if let Some((brace, items)) = &self.gist {
             brace.surround(tokens, |tokens| {
                 tokens.append_all(self.attrs.inner());
                 tokens.append_all(items);
@@ -737,9 +737,9 @@ impl ToTokens for ItemMod {
 impl ToTokens for ItemForeignMod {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        self.unsafety.to_tokens(tokens);
+        self.unsafe_.to_tokens(tokens);
         self.abi.to_tokens(tokens);
-        self.brace_token.surround(tokens, |tokens| {
+        self.brace.surround(tokens, |tokens| {
             tokens.append_all(self.attrs.inner());
             tokens.append_all(&self.items);
         });
@@ -749,24 +749,24 @@ impl ToTokens for ItemType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.type_token.to_tokens(tokens);
+        self.type.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ItemEnum {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.enum_token.to_tokens(tokens);
+        self.enum_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
-        self.brace_token.surround(tokens, |tokens| {
+        self.gens.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
+        self.brace.surround(tokens, |tokens| {
             self.variants.to_tokens(tokens);
         });
     }
@@ -775,22 +775,22 @@ impl ToTokens for ItemStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.struct_token.to_tokens(tokens);
+        self.struct_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
         match &self.fields {
             Fields::Named(fields) => {
-                self.generics.clause.to_tokens(tokens);
+                self.gens.clause.to_tokens(tokens);
                 fields.to_tokens(tokens);
             },
             Fields::Unnamed(fields) => {
                 fields.to_tokens(tokens);
-                self.generics.clause.to_tokens(tokens);
-                TokensOrDefault(&self.semi_token).to_tokens(tokens);
+                self.gens.clause.to_tokens(tokens);
+                TokensOrDefault(&self.semi).to_tokens(tokens);
             },
             Fields::Unit => {
-                self.generics.clause.to_tokens(tokens);
-                TokensOrDefault(&self.semi_token).to_tokens(tokens);
+                self.gens.clause.to_tokens(tokens);
+                TokensOrDefault(&self.semi).to_tokens(tokens);
             },
         }
     }
@@ -799,10 +799,10 @@ impl ToTokens for ItemUnion {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.union_token.to_tokens(tokens);
+        self.union_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
         self.fields.to_tokens(tokens);
     }
 }
@@ -810,17 +810,17 @@ impl ToTokens for ItemTrait {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.unsafety.to_tokens(tokens);
-        self.auto_token.to_tokens(tokens);
-        self.trait_token.to_tokens(tokens);
+        self.unsafe_.to_tokens(tokens);
+        self.auto_.to_tokens(tokens);
+        self.trait_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
         if !self.supertraits.is_empty() {
-            TokensOrDefault(&self.colon_token).to_tokens(tokens);
+            TokensOrDefault(&self.colon).to_tokens(tokens);
             self.supertraits.to_tokens(tokens);
         }
-        self.generics.clause.to_tokens(tokens);
-        self.brace_token.surround(tokens, |tokens| {
+        self.gens.clause.to_tokens(tokens);
+        self.brace.surround(tokens, |tokens| {
             tokens.append_all(self.attrs.inner());
             tokens.append_all(&self.items);
         });
@@ -830,30 +830,30 @@ impl ToTokens for ItemTraitAlias {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.trait_token.to_tokens(tokens);
+        self.trait_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.bounds.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ItemImpl {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        self.defaultness.to_tokens(tokens);
-        self.unsafety.to_tokens(tokens);
-        self.impl_token.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        if let Some((polarity, path, for_token)) = &self.trait_ {
+        self.default_.to_tokens(tokens);
+        self.unsafe_.to_tokens(tokens);
+        self.impl_.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
+        if let Some((polarity, path, for_)) = &self.trait_ {
             polarity.to_tokens(tokens);
             path.to_tokens(tokens);
-            for_token.to_tokens(tokens);
+            for_.to_tokens(tokens);
         }
         self.self_ty.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
-        self.brace_token.surround(tokens, |tokens| {
+        self.gens.clause.to_tokens(tokens);
+        self.brace.surround(tokens, |tokens| {
             tokens.append_all(self.attrs.inner());
             tokens.append_all(&self.items);
         });
@@ -876,13 +876,13 @@ impl ToTokens for ItemMacro {
                 bracket.surround(tokens, |tokens| self.mac.toks.to_tokens(tokens));
             },
         }
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for UsePath {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
-        self.colon2_token.to_tokens(tokens);
+        self.colon2.to_tokens(tokens);
         self.tree.to_tokens(tokens);
     }
 }
@@ -894,18 +894,18 @@ impl ToTokens for UseName {
 impl ToTokens for UseRename {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.ident.to_tokens(tokens);
-        self.as_token.to_tokens(tokens);
+        self.as_.to_tokens(tokens);
         self.rename.to_tokens(tokens);
     }
 }
 impl ToTokens for UseGlob {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.star_token.to_tokens(tokens);
+        self.star.to_tokens(tokens);
     }
 }
 impl ToTokens for UseGroup {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.brace_token.surround(tokens, |tokens| {
+        self.brace.surround(tokens, |tokens| {
             self.items.to_tokens(tokens);
         });
     }
@@ -913,15 +913,15 @@ impl ToTokens for UseGroup {
 impl ToTokens for TraitItemConst {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        self.const_token.to_tokens(tokens);
+        self.const_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.colon_token.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        if let Some((eq_token, default)) = &self.default {
-            eq_token.to_tokens(tokens);
+        if let Some((eq, default)) = &self.default {
+            eq.to_tokens(tokens);
             default.to_tokens(tokens);
         }
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for TraitItemFn {
@@ -936,7 +936,7 @@ impl ToTokens for TraitItemFn {
                 });
             },
             None => {
-                TokensOrDefault(&self.semi_token).to_tokens(tokens);
+                TokensOrDefault(&self.semi).to_tokens(tokens);
             },
         }
     }
@@ -944,47 +944,47 @@ impl ToTokens for TraitItemFn {
 impl ToTokens for TraitItemType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        self.type_token.to_tokens(tokens);
+        self.type.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
         if !self.bounds.is_empty() {
-            TokensOrDefault(&self.colon_token).to_tokens(tokens);
+            TokensOrDefault(&self.colon).to_tokens(tokens);
             self.bounds.to_tokens(tokens);
         }
-        if let Some((eq_token, default)) = &self.default {
-            eq_token.to_tokens(tokens);
+        if let Some((eq, default)) = &self.default {
+            eq.to_tokens(tokens);
             default.to_tokens(tokens);
         }
-        self.generics.clause.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for TraitItemMacro {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.mac.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ImplItemConst {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.defaultness.to_tokens(tokens);
-        self.const_token.to_tokens(tokens);
+        self.default_.to_tokens(tokens);
+        self.const_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.colon_token.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.expr.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ImplItemFn {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.defaultness.to_tokens(tokens);
+        self.default_.to_tokens(tokens);
         self.sig.to_tokens(tokens);
         self.block.brace.surround(tokens, |tokens| {
             tokens.append_all(self.attrs.inner());
@@ -996,21 +996,21 @@ impl ToTokens for ImplItemType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.defaultness.to_tokens(tokens);
-        self.type_token.to_tokens(tokens);
+        self.default_.to_tokens(tokens);
+        self.type.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.eq_token.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ImplItemMacro {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.mac.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ForeignItemFn {
@@ -1018,59 +1018,59 @@ impl ToTokens for ForeignItemFn {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.sig.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ForeignItemStatic {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.static_token.to_tokens(tokens);
-        self.mutability.to_tokens(tokens);
+        self.static_.to_tokens(tokens);
+        self.mut_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.colon_token.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ForeignItemType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
-        self.type_token.to_tokens(tokens);
+        self.type.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for ForeignItemMacro {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.mac.to_tokens(tokens);
-        self.semi_token.to_tokens(tokens);
+        self.semi.to_tokens(tokens);
     }
 }
 impl ToTokens for Signature {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.constness.to_tokens(tokens);
-        self.asyncness.to_tokens(tokens);
-        self.unsafety.to_tokens(tokens);
+        self.async_.to_tokens(tokens);
+        self.unsafe_.to_tokens(tokens);
         self.abi.to_tokens(tokens);
-        self.fn_token.to_tokens(tokens);
+        self.fn_.to_tokens(tokens);
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        self.paren_token.surround(tokens, |tokens| {
-            self.inputs.to_tokens(tokens);
-            if let Some(variadic) = &self.variadic {
-                if !self.inputs.empty_or_trailing() {
+        self.gens.to_tokens(tokens);
+        self.paren.surround(tokens, |tokens| {
+            self.args.to_tokens(tokens);
+            if let Some(vari) = &self.vari {
+                if !self.args.empty_or_trailing() {
                     <Token![,]>::default().to_tokens(tokens);
                 }
-                variadic.to_tokens(tokens);
+                vari.to_tokens(tokens);
             }
         });
-        self.output.to_tokens(tokens);
-        self.generics.clause.to_tokens(tokens);
+        self.ret.to_tokens(tokens);
+        self.gens.clause.to_tokens(tokens);
     }
 }
 impl ToTokens for Receiver {
@@ -1080,14 +1080,14 @@ impl ToTokens for Receiver {
             ampersand.to_tokens(tokens);
             lifetime.to_tokens(tokens);
         }
-        self.mutability.to_tokens(tokens);
-        self.self_token.to_tokens(tokens);
-        if let Some(colon_token) = &self.colon_token {
-            colon_token.to_tokens(tokens);
+        self.mut_.to_tokens(tokens);
+        self.self_.to_tokens(tokens);
+        if let Some(colon) = &self.colon {
+            colon.to_tokens(tokens);
             self.ty.to_tokens(tokens);
         } else {
-            let consistent = match (&self.reference, &self.mutability, &*self.ty) {
-                (Some(_), mutability, Ty::Reference(ty)) => {
+            let consistent = match (&self.reference, &self.mut_, &*self.ty) {
+                (Some(_), mutability, Ty::Ref(ty)) => {
                     mutability.is_some() == ty.mut_.is_some()
                         && match &*ty.elem {
                             Ty::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
@@ -1115,11 +1115,11 @@ impl ToTokens for Variadic {
         self.comma.to_tokens(tokens);
     }
 }
-impl ToTokens for StaticMutability {
+impl ToTokens for StaticMut {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            StaticMutability::None => {},
-            StaticMutability::Mut(mut_token) => mut_token.to_tokens(tokens),
+            StaticMut::None => {},
+            StaticMut::Mut(mut_token) => mut_token.to_tokens(tokens),
         }
     }
 }
@@ -1173,22 +1173,22 @@ impl ToTokens for Variant {
         tokens.append_all(&self.attrs);
         self.ident.to_tokens(tokens);
         self.fields.to_tokens(tokens);
-        if let Some((eq_token, disc)) = &self.discriminant {
-            eq_token.to_tokens(tokens);
+        if let Some((eq, disc)) = &self.discriminant {
+            eq.to_tokens(tokens);
             disc.to_tokens(tokens);
         }
     }
 }
 impl ToTokens for FieldsNamed {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.brace_token.surround(tokens, |tokens| {
+        self.brace.surround(tokens, |tokens| {
             self.named.to_tokens(tokens);
         });
     }
 }
 impl ToTokens for FieldsUnnamed {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.paren_token.surround(tokens, |tokens| {
+        self.paren.surround(tokens, |tokens| {
             self.unnamed.to_tokens(tokens);
         });
     }
@@ -1199,7 +1199,7 @@ impl ToTokens for Field {
         self.vis.to_tokens(tokens);
         if let Some(ident) = &self.ident {
             ident.to_tokens(tokens);
-            TokensOrDefault(&self.colon_token).to_tokens(tokens);
+            TokensOrDefault(&self.colon).to_tokens(tokens);
         }
         self.ty.to_tokens(tokens);
     }
@@ -1217,31 +1217,31 @@ impl ToTokens for DeriveInput {
             Data::Union(d) => d.union_.to_tokens(tokens),
         }
         self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
+        self.gens.to_tokens(tokens);
         match &self.data {
             Data::Struct(data) => match &data.fields {
                 Fields::Named(fields) => {
-                    self.generics.clause.to_tokens(tokens);
+                    self.gens.clause.to_tokens(tokens);
                     fields.to_tokens(tokens);
                 },
                 Fields::Unnamed(fields) => {
                     fields.to_tokens(tokens);
-                    self.generics.clause.to_tokens(tokens);
+                    self.gens.clause.to_tokens(tokens);
                     TokensOrDefault(&data.semi).to_tokens(tokens);
                 },
                 Fields::Unit => {
-                    self.generics.clause.to_tokens(tokens);
+                    self.gens.clause.to_tokens(tokens);
                     TokensOrDefault(&data.semi).to_tokens(tokens);
                 },
             },
             Data::Enum(data) => {
-                self.generics.clause.to_tokens(tokens);
+                self.gens.clause.to_tokens(tokens);
                 data.brace.surround(tokens, |tokens| {
                     data.variants.to_tokens(tokens);
                 });
             },
             Data::Union(data) => {
-                self.generics.clause.to_tokens(tokens);
+                self.gens.clause.to_tokens(tokens);
                 data.fields.to_tokens(tokens);
             },
         }
@@ -1329,7 +1329,7 @@ impl ToTokens for UnOp {
 impl ToTokens for Visibility {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Visibility::Public(pub_token) => pub_token.to_tokens(tokens),
+            Visibility::Public(pub_) => pub_.to_tokens(tokens),
             Visibility::Restricted(vis_restricted) => vis_restricted.to_tokens(tokens),
             Visibility::Inherited => {},
         }
@@ -1477,9 +1477,9 @@ impl ToTokens for PatWild {
 impl ToTokens for FieldPat {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
-        if let Some(colon_token) = &self.colon {
+        if let Some(colon) = &self.colon {
             self.member.to_tokens(tokens);
-            colon_token.to_tokens(tokens);
+            colon.to_tokens(tokens);
         }
         self.pat.to_tokens(tokens);
     }
@@ -1563,7 +1563,7 @@ mod path {
     impl ToTokens for AssocType {
         fn to_tokens(&self, ts: &mut TokenStream) {
             self.ident.to_tokens(ts);
-            self.gnrs.to_tokens(ts);
+            self.args.to_tokens(ts);
             self.eq.to_tokens(ts);
             self.ty.to_tokens(ts);
         }
@@ -1571,7 +1571,7 @@ mod path {
     impl ToTokens for AssocConst {
         fn to_tokens(&self, ts: &mut TokenStream) {
             self.ident.to_tokens(ts);
-            self.gnrs.to_tokens(ts);
+            self.args.to_tokens(ts);
             self.eq.to_tokens(ts);
             self.val.to_tokens(ts);
         }
@@ -1579,7 +1579,7 @@ mod path {
     impl ToTokens for Constraint {
         fn to_tokens(&self, ts: &mut TokenStream) {
             self.ident.to_tokens(ts);
-            self.gnrs.to_tokens(ts);
+            self.args.to_tokens(ts);
             self.colon.to_tokens(ts);
             self.bounds.to_tokens(ts);
         }
@@ -1589,7 +1589,7 @@ mod path {
             self.paren.surround(ts, |xs| {
                 self.args.to_tokens(xs);
             });
-            self.out.to_tokens(ts);
+            self.ret.to_tokens(ts);
         }
     }
     pub(crate) fn print_path(ts: &mut TokenStream, qself: &Option<QSelf>, path: &Path) {
@@ -1652,14 +1652,14 @@ pub fn delim(d: Delimiter, s: Span, xs: &mut TokenStream, inner: TokenStream) {
 
 mod ty {
     use crate::ty::*;
-    impl ToTokens for TypeSlice {
+    impl ToTokens for ty::Slice {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.bracket.surround(tokens, |tokens| {
                 self.elem.to_tokens(tokens);
             });
         }
     }
-    impl ToTokens for TypeArray {
+    impl ToTokens for Array {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.bracket.surround(tokens, |tokens| {
                 self.elem.to_tokens(tokens);
@@ -1668,7 +1668,7 @@ mod ty {
             });
         }
     }
-    impl ToTokens for TypePtr {
+    impl ToTokens for ty::Ptr {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.star.to_tokens(tokens);
             match &self.mut_ {
@@ -1680,7 +1680,7 @@ mod ty {
             self.elem.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeReference {
+    impl ToTokens for ty::Ref {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.and_.to_tokens(tokens);
             self.lifetime.to_tokens(tokens);
@@ -1688,7 +1688,7 @@ mod ty {
             self.elem.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeBareFn {
+    impl ToTokens for ty::BareFn {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.lifetimes.to_tokens(tokens);
             self.unsafe_.to_tokens(tokens);
@@ -1696,23 +1696,23 @@ mod ty {
             self.fn_.to_tokens(tokens);
             self.paren.surround(tokens, |tokens| {
                 self.inputs.to_tokens(tokens);
-                if let Some(variadic) = &self.variadic {
+                if let Some(vari) = &self.vari {
                     if !self.inputs.empty_or_trailing() {
-                        let span = variadic.dots.spans[0];
+                        let span = vari.dots.spans[0];
                         Token![,](span).to_tokens(tokens);
                     }
-                    variadic.to_tokens(tokens);
+                    vari.to_tokens(tokens);
                 }
             });
             self.output.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeNever {
+    impl ToTokens for ty::Never {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.bang.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeTuple {
+    impl ToTokens for ty::Tuple {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.paren.surround(tokens, |tokens| {
                 self.elems.to_tokens(tokens);
@@ -1722,59 +1722,59 @@ mod ty {
             });
         }
     }
-    impl ToTokens for TypePath {
+    impl ToTokens for ty::Path {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             print_path(tokens, &self.qself, &self.path);
         }
     }
-    impl ToTokens for TypeTraitObject {
+    impl ToTokens for ty::TraitObj {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.dyn_.to_tokens(tokens);
             self.bounds.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeImplTrait {
+    impl ToTokens for ty::Impl {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.impl_.to_tokens(tokens);
             self.bounds.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeGroup {
+    impl ToTokens for ty::Group {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.group.surround(tokens, |tokens| {
                 self.elem.to_tokens(tokens);
             });
         }
     }
-    impl ToTokens for TypeParen {
+    impl ToTokens for ty::Paren {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            self.paren_token.surround(tokens, |tokens| {
+            self.paren.surround(tokens, |tokens| {
                 self.elem.to_tokens(tokens);
             });
         }
     }
-    impl ToTokens for TypeInfer {
+    impl ToTokens for ty::Infer {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.underscore.to_tokens(tokens);
         }
     }
-    impl ToTokens for TypeMacro {
+    impl ToTokens for ty::Mac {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             self.mac.to_tokens(tokens);
         }
     }
-    impl ToTokens for ReturnType {
+    impl ToTokens for ty::Ret {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match self {
-                ReturnType::Default => {},
-                ReturnType::Type(arrow, ty) => {
+                ty::Ret::Default => {},
+                ty::Ret::Type(arrow, ty) => {
                     arrow.to_tokens(tokens);
                     ty.to_tokens(tokens);
                 },
             }
         }
     }
-    impl ToTokens for BareFnArg {
+    impl ToTokens for ty::BareFnArg {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
             if let Some((name, colon)) = &self.name {
@@ -1784,7 +1784,7 @@ mod ty {
             self.ty.to_tokens(tokens);
         }
     }
-    impl ToTokens for BareVariadic {
+    impl ToTokens for ty::BareVari {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append_all(self.attrs.outer());
             if let Some((name, colon)) = &self.name {

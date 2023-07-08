@@ -30,8 +30,8 @@ fn test_macro_variable_attr() {
         vis: Visibility::Inherited,
         sig: Signature {
             ident: "f",
-            generics: Generics,
-            output: ReturnType::Default,
+            gens: Generics,
+            ret: ty::Ret::Default,
         },
         block: Block,
     }
@@ -46,7 +46,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        generics: Generics,
+        gens: Generics,
         self_ty: Type::Never,
     }
     "###);
@@ -58,7 +58,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        generics: Generics,
+        gens: Generics,
         self_ty: Type::Verbatim(`! Trait`),
     }
     "###);
@@ -69,7 +69,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        generics: Generics,
+        gens: Generics,
         trait_: Some((
             Some,
             Path {
@@ -99,7 +99,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        generics: Generics,
+        gens: Generics,
         self_ty: Type::Verbatim(`! !`),
     }
     "###);
@@ -115,7 +115,7 @@ fn test_macro_variable_impl() {
     ]);
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        generics: Generics,
+        gens: Generics,
         trait_: Some((
             None,
             Path {
@@ -148,7 +148,7 @@ fn test_supertraits() {
     ItemTrait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        generics: Generics {
+        gens: Generics {
             where_clause: Some(WhereClause),
         },
     }
@@ -159,10 +159,10 @@ fn test_supertraits() {
     ItemTrait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        generics: Generics {
+        gens: Generics {
             where_clause: Some(WhereClause),
         },
-        colon_token: Some,
+        colon: Some,
     }
     "###);
     #[rustfmt::skip]
@@ -171,10 +171,10 @@ fn test_supertraits() {
     ItemTrait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        generics: Generics {
+        gens: Generics {
             where_clause: Some(WhereClause),
         },
-        colon_token: Some,
+        colon: Some,
         supertraits: [
             TypeParamBound::Trait(TraitBound {
                 path: Path {
@@ -194,10 +194,10 @@ fn test_supertraits() {
     ItemTrait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        generics: Generics {
+        gens: Generics {
             where_clause: Some(WhereClause),
         },
-        colon_token: Some,
+        colon: Some,
         supertraits: [
             TypeParamBound::Trait(TraitBound {
                 path: Path {
@@ -224,12 +224,12 @@ fn test_type_empty_bounds() {
     ItemTrait {
         vis: Visibility::Inherited,
         ident: "Foo",
-        generics: Generics,
+        gens: Generics,
         items: [
             TraitItem::Type {
                 ident: "Bar",
-                generics: Generics,
-                colon_token: Some,
+                gens: Generics,
+                colon: Some,
             },
         ],
     }
@@ -251,16 +251,16 @@ fn test_impl_type_parameter_defaults() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        generics: Generics {
-            lt_token: Some,
+        gens: Generics {
+            lt: Some,
             params: [
                 GenericParam::Type(TypeParam {
                     ident: "T",
-                    eq_token: Some,
+                    eq: Some,
                     default: Some(Type::Tuple),
                 }),
             ],
-            gt_token: Some,
+            gt: Some,
         },
         self_ty: Type::Tuple,
     }
@@ -276,8 +276,8 @@ fn test_impl_trait_trailing_plus() {
         vis: Visibility::Inherited,
         sig: Signature {
             ident: "f",
-            generics: Generics,
-            output: ReturnType::Type(
+            gens: Generics,
+            ret: ty::Ret::Type(
                 Type::ImplTrait {
                     bounds: [
                         TypeParamBound::Trait(TraitBound {

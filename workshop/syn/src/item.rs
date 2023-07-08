@@ -27,24 +27,24 @@ ast_struct! {
     pub struct ItemConst {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub const_token: Token![const],
+        pub const_: Token![const],
         pub ident: Ident,
-        pub generics: Generics,
-        pub colon_token: Token![:],
+        pub gens: Generics,
+        pub colon: Token![:],
         pub ty: Box<Ty>,
-        pub eq_token: Token![=],
+        pub eq: Token![=],
         pub expr: Box<Expr>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ItemEnum {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub enum_token: Token![enum],
+        pub enum_: Token![enum],
         pub ident: Ident,
-        pub generics: Generics,
-        pub brace_token: tok::Brace,
+        pub gens: Generics,
+        pub brace: tok::Brace,
         pub variants: Punctuated<Variant, Token![,]>,
     }
 }
@@ -52,11 +52,11 @@ ast_struct! {
     pub struct ItemExternCrate {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub extern_token: Token![extern],
-        pub crate_token: Token![crate],
+        pub extern_: Token![extern],
+        pub crate_: Token![crate],
         pub ident: Ident,
         pub rename: Option<(Token![as], Ident)>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
@@ -70,22 +70,22 @@ ast_struct! {
 ast_struct! {
     pub struct ItemForeignMod {
         pub attrs: Vec<Attribute>,
-        pub unsafety: Option<Token![unsafe]>,
+        pub unsafe_: Option<Token![unsafe]>,
         pub abi: Abi,
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub items: Vec<ForeignItem>,
     }
 }
 ast_struct! {
     pub struct ItemImpl {
         pub attrs: Vec<Attribute>,
-        pub defaultness: Option<Token![default]>,
-        pub unsafety: Option<Token![unsafe]>,
-        pub impl_token: Token![impl],
-        pub generics: Generics,
+        pub default_: Option<Token![default]>,
+        pub unsafe_: Option<Token![unsafe]>,
+        pub impl_: Token![impl],
+        pub gens: Generics,
         pub trait_: Option<(Option<Token![!]>, Path, Token![for])>,
         pub self_ty: Box<Ty>,
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub items: Vec<ImplItem>,
     }
 }
@@ -94,17 +94,17 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub ident: Option<Ident>,
         pub mac: Macro,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_struct! {
     pub struct ItemMod {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub unsafety: Option<Token![unsafe]>,
-        pub mod_token: Token![mod],
+        pub unsafe_: Option<Token![unsafe]>,
+        pub mod_: Token![mod],
         pub ident: Ident,
-        pub content: Option<(tok::Brace, Vec<Item>)>,
+        pub gist: Option<(tok::Brace, Vec<Item>)>,
         pub semi: Option<Token![;]>,
     }
 }
@@ -112,40 +112,40 @@ ast_struct! {
     pub struct ItemStatic {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub static_token: Token![static],
-        pub mutability: StaticMutability,
+        pub static_: Token![static],
+        pub mut_: StaticMut,
         pub ident: Ident,
-        pub colon_token: Token![:],
+        pub colon: Token![:],
         pub ty: Box<Ty>,
-        pub eq_token: Token![=],
+        pub eq: Token![=],
         pub expr: Box<Expr>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ItemStruct {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub struct_token: Token![struct],
+        pub struct_: Token![struct],
         pub ident: Ident,
-        pub generics: Generics,
+        pub gens: Generics,
         pub fields: Fields,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_struct! {
     pub struct ItemTrait {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub unsafety: Option<Token![unsafe]>,
-        pub auto_token: Option<Token![auto]>,
+        pub unsafe_: Option<Token![unsafe]>,
+        pub auto_: Option<Token![auto]>,
         pub restriction: Option<ImplRestriction>,
-        pub trait_token: Token![trait],
+        pub trait_: Token![trait],
         pub ident: Ident,
-        pub generics: Generics,
-        pub colon_token: Option<Token![:]>,
+        pub gens: Generics,
+        pub colon: Option<Token![:]>,
         pub supertraits: Punctuated<TypeParamBound, Token![+]>,
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub items: Vec<TraitItem>,
     }
 }
@@ -153,33 +153,33 @@ ast_struct! {
     pub struct ItemTraitAlias {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub trait_token: Token![trait],
+        pub trait_: Token![trait],
         pub ident: Ident,
-        pub generics: Generics,
-        pub eq_token: Token![=],
+        pub gens: Generics,
+        pub eq: Token![=],
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ItemType {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub type_token: Token![type],
+        pub type_: Token![type],
         pub ident: Ident,
-        pub generics: Generics,
-        pub eq_token: Token![=],
+        pub gens: Generics,
+        pub eq: Token![=],
         pub ty: Box<Ty>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ItemUnion {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub union_token: Token![union],
+        pub union_: Token![union],
         pub ident: Ident,
-        pub generics: Generics,
+        pub gens: Generics,
         pub fields: FieldsNamed,
     }
 }
@@ -187,10 +187,10 @@ ast_struct! {
     pub struct ItemUse {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub use_token: Token![use],
+        pub use_: Token![use],
         pub leading_colon: Option<Token![::]>,
         pub tree: UseTree,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 impl Item {
@@ -216,77 +216,77 @@ impl Item {
     }
 }
 impl From<DeriveInput> for Item {
-    fn from(input: DeriveInput) -> Item {
-        match input.data {
-            Data::Struct(data) => Item::Struct(ItemStruct {
-                attrs: input.attrs,
-                vis: input.vis,
-                struct_token: data.struct_,
-                ident: input.ident,
-                generics: input.generics,
-                fields: data.fields,
-                semi_token: data.semi,
+    fn from(x: DeriveInput) -> Item {
+        match x.data {
+            Data::Struct(y) => Item::Struct(ItemStruct {
+                attrs: x.attrs,
+                vis: x.vis,
+                struct_: y.struct_,
+                ident: x.ident,
+                gens: x.gens,
+                fields: y.fields,
+                semi: y.semi,
             }),
-            Data::Enum(data) => Item::Enum(ItemEnum {
-                attrs: input.attrs,
-                vis: input.vis,
-                enum_token: data.enum_,
-                ident: input.ident,
-                generics: input.generics,
-                brace_token: data.brace,
-                variants: data.variants,
+            Data::Enum(y) => Item::Enum(ItemEnum {
+                attrs: x.attrs,
+                vis: x.vis,
+                enum_: y.enum_,
+                ident: x.ident,
+                gens: x.gens,
+                brace: y.brace,
+                variants: y.variants,
             }),
-            Data::Union(data) => Item::Union(ItemUnion {
-                attrs: input.attrs,
-                vis: input.vis,
-                union_token: data.union_,
-                ident: input.ident,
-                generics: input.generics,
-                fields: data.fields,
+            Data::Union(y) => Item::Union(ItemUnion {
+                attrs: x.attrs,
+                vis: x.vis,
+                union_: y.union_,
+                ident: x.ident,
+                gens: x.gens,
+                fields: y.fields,
             }),
         }
     }
 }
 impl From<ItemStruct> for DeriveInput {
-    fn from(input: ItemStruct) -> DeriveInput {
+    fn from(x: ItemStruct) -> DeriveInput {
         DeriveInput {
-            attrs: input.attrs,
-            vis: input.vis,
-            ident: input.ident,
-            generics: input.generics,
+            attrs: x.attrs,
+            vis: x.vis,
+            ident: x.ident,
+            gens: x.gens,
             data: Data::Struct(DataStruct {
-                struct_: input.struct_token,
-                fields: input.fields,
-                semi: input.semi_token,
+                struct_: x.struct_,
+                fields: x.fields,
+                semi: x.semi,
             }),
         }
     }
 }
 impl From<ItemEnum> for DeriveInput {
-    fn from(input: ItemEnum) -> DeriveInput {
+    fn from(x: ItemEnum) -> DeriveInput {
         DeriveInput {
-            attrs: input.attrs,
-            vis: input.vis,
-            ident: input.ident,
-            generics: input.generics,
+            attrs: x.attrs,
+            vis: x.vis,
+            ident: x.ident,
+            gens: x.gens,
             data: Data::Enum(DataEnum {
-                enum_: input.enum_token,
-                brace: input.brace_token,
-                variants: input.variants,
+                enum_: x.enum_,
+                brace: x.brace,
+                variants: x.variants,
             }),
         }
     }
 }
 impl From<ItemUnion> for DeriveInput {
-    fn from(input: ItemUnion) -> DeriveInput {
+    fn from(x: ItemUnion) -> DeriveInput {
         DeriveInput {
-            attrs: input.attrs,
-            vis: input.vis,
-            ident: input.ident,
-            generics: input.generics,
+            attrs: x.attrs,
+            vis: x.vis,
+            ident: x.ident,
+            gens: x.gens,
             data: Data::Union(DataUnion {
-                union_: input.union_token,
-                fields: input.fields,
+                union_: x.union_,
+                fields: x.fields,
             }),
         }
     }
@@ -303,7 +303,7 @@ ast_enum_of_structs! {
 ast_struct! {
     pub struct UsePath {
         pub ident: Ident,
-        pub colon2_token: Token![::],
+        pub colon2: Token![::],
         pub tree: Box<UseTree>,
     }
 }
@@ -315,18 +315,18 @@ ast_struct! {
 ast_struct! {
     pub struct UseRename {
         pub ident: Ident,
-        pub as_token: Token![as],
+        pub as_: Token![as],
         pub rename: Ident,
     }
 }
 ast_struct! {
     pub struct UseGlob {
-        pub star_token: Token![*],
+        pub star: Token![*],
     }
 }
 ast_struct! {
     pub struct UseGroup {
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub items: Punctuated<UseTree, Token![,]>,
     }
 }
@@ -344,36 +344,36 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
         pub sig: Signature,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ForeignItemStatic {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub static_token: Token![static],
-        pub mutability: StaticMutability,
+        pub static_: Token![static],
+        pub mut_: StaticMut,
         pub ident: Ident,
-        pub colon_token: Token![:],
+        pub colon: Token![:],
         pub ty: Box<Ty>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ForeignItemType {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub type_token: Token![type],
+        pub type_: Token![type],
         pub ident: Ident,
-        pub generics: Generics,
-        pub semi_token: Token![;],
+        pub gens: Generics,
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ForeignItemMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_enum_of_structs! {
@@ -388,13 +388,13 @@ ast_enum_of_structs! {
 ast_struct! {
     pub struct TraitItemConst {
         pub attrs: Vec<Attribute>,
-        pub const_token: Token![const],
+        pub const_: Token![const],
         pub ident: Ident,
-        pub generics: Generics,
-        pub colon_token: Token![:],
+        pub gens: Generics,
+        pub colon: Token![:],
         pub ty: Ty,
         pub default: Option<(Token![=], Expr)>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
@@ -402,26 +402,26 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub sig: Signature,
         pub default: Option<Block>,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_struct! {
     pub struct TraitItemType {
         pub attrs: Vec<Attribute>,
-        pub type_token: Token![type],
+        pub type_: Token![type],
         pub ident: Ident,
-        pub generics: Generics,
-        pub colon_token: Option<Token![:]>,
+        pub gens: Generics,
+        pub colon: Option<Token![:]>,
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
         pub default: Option<(Token![=], Ty)>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct TraitItemMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_enum_of_structs! {
@@ -437,22 +437,22 @@ ast_struct! {
     pub struct ImplItemConst {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub defaultness: Option<Token![default]>,
-        pub const_token: Token![const],
+        pub default_: Option<Token![default]>,
+        pub const_: Token![const],
         pub ident: Ident,
-        pub generics: Generics,
-        pub colon_token: Token![:],
+        pub gens: Generics,
+        pub colon: Token![:],
         pub ty: Ty,
-        pub eq_token: Token![=],
+        pub eq: Token![=],
         pub expr: Expr,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ImplItemFn {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub defaultness: Option<Token![default]>,
+        pub default_: Option<Token![default]>,
         pub sig: Signature,
         pub block: Block,
     }
@@ -461,40 +461,40 @@ ast_struct! {
     pub struct ImplItemType {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
-        pub defaultness: Option<Token![default]>,
-        pub type_token: Token![type],
+        pub default_: Option<Token![default]>,
+        pub type_: Token![type],
         pub ident: Ident,
-        pub generics: Generics,
-        pub eq_token: Token![=],
+        pub gens: Generics,
+        pub eq: Token![=],
         pub ty: Ty,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
     }
 }
 ast_struct! {
     pub struct ImplItemMacro {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
-        pub semi_token: Option<Token![;]>,
+        pub semi: Option<Token![;]>,
     }
 }
 ast_struct! {
     pub struct Signature {
         pub constness: Option<Token![const]>,
-        pub asyncness: Option<Token![async]>,
-        pub unsafety: Option<Token![unsafe]>,
+        pub async_: Option<Token![async]>,
+        pub unsafe_: Option<Token![unsafe]>,
         pub abi: Option<Abi>,
-        pub fn_token: Token![fn],
+        pub fn_: Token![fn],
         pub ident: Ident,
-        pub generics: Generics,
-        pub paren_token: tok::Paren,
-        pub inputs: Punctuated<FnArg, Token![,]>,
-        pub variadic: Option<Variadic>,
-        pub output: ReturnType,
+        pub gens: Generics,
+        pub paren: tok::Paren,
+        pub args: Punctuated<FnArg, Token![,]>,
+        pub vari: Option<Variadic>,
+        pub ret: ty::Ret,
     }
 }
 impl Signature {
     pub fn receiver(&self) -> Option<&Receiver> {
-        let arg = self.inputs.first()?;
+        let arg = self.args.first()?;
         match arg {
             FnArg::Receiver(receiver) => Some(receiver),
             FnArg::Typed(_) => None,
@@ -511,9 +511,9 @@ ast_struct! {
     pub struct Receiver {
         pub attrs: Vec<Attribute>,
         pub reference: Option<(Token![&], Option<Lifetime>)>,
-        pub mutability: Option<Token![mut]>,
-        pub self_token: Token![self],
-        pub colon_token: Option<Token![:]>,
+        pub mut_: Option<Token![mut]>,
+        pub self_: Token![self],
+        pub colon: Option<Token![:]>,
         pub ty: Box<Ty>,
     }
 }
@@ -531,7 +531,7 @@ ast_struct! {
     }
 }
 ast_enum! {
-    pub enum StaticMutability {
+    pub enum StaticMut {
         Mut(Token![mut]),
         None,
     }

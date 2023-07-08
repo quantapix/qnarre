@@ -24,7 +24,7 @@ impl Clone for Arm {
             attrs: self.attrs.clone(),
             pat: self.pat.clone(),
             guard: self.guard.clone(),
-            fat_arrow_token: self.fat_arrow_token.clone(),
+            fat_arrow: self.fat_arrow.clone(),
             body: self.body.clone(),
             comma: self.comma.clone(),
         }
@@ -66,18 +66,18 @@ impl Clone for Attribute {
         }
     }
 }
-impl Clone for BareFnArg {
+impl Clone for ty::BareFnArg {
     fn clone(&self) -> Self {
-        BareFnArg {
+        ty::BareFnArg {
             attrs: self.attrs.clone(),
             name: self.name.clone(),
             ty: self.ty.clone(),
         }
     }
 }
-impl Clone for BareVariadic {
+impl Clone for ty::BareVari {
     fn clone(&self) -> Self {
-        BareVariadic {
+        ty::BareVari {
             attrs: self.attrs.clone(),
             name: self.name.clone(),
             dots: self.dots.clone(),
@@ -104,7 +104,7 @@ impl Clone for BoundLifetimes {
         BoundLifetimes {
             for_: self.for_.clone(),
             lt: self.lt.clone(),
-            lifetimes: self.lifetimes.clone(),
+            lifes: self.lifes.clone(),
             gt: self.gt.clone(),
         }
     }
@@ -173,7 +173,7 @@ impl Clone for DeriveInput {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
+            gens: self.gens.clone(),
             data: self.data.clone(),
         }
     }
@@ -229,7 +229,7 @@ impl Clone for ExprArray {
     fn clone(&self) -> Self {
         ExprArray {
             attrs: self.attrs.clone(),
-            bracket_token: self.bracket_token.clone(),
+            bracket: self.bracket.clone(),
             elems: self.elems.clone(),
         }
     }
@@ -239,7 +239,7 @@ impl Clone for ExprAssign {
         ExprAssign {
             attrs: self.attrs.clone(),
             left: self.left.clone(),
-            eq_token: self.eq_token.clone(),
+            eq: self.eq.clone(),
             right: self.right.clone(),
         }
     }
@@ -248,7 +248,7 @@ impl Clone for ExprAsync {
     fn clone(&self) -> Self {
         ExprAsync {
             attrs: self.attrs.clone(),
-            async_token: self.async_token.clone(),
+            async_: self.async_.clone(),
             capture: self.capture.clone(),
             block: self.block.clone(),
         }
@@ -259,8 +259,8 @@ impl Clone for ExprAwait {
         ExprAwait {
             attrs: self.attrs.clone(),
             base: self.base.clone(),
-            dot_token: self.dot_token.clone(),
-            await_token: self.await_token.clone(),
+            dot: self.dot.clone(),
+            await_: self.await_.clone(),
         }
     }
 }
@@ -287,7 +287,7 @@ impl Clone for ExprBreak {
     fn clone(&self) -> Self {
         ExprBreak {
             attrs: self.attrs.clone(),
-            break_token: self.break_token.clone(),
+            break_: self.break_.clone(),
             label: self.label.clone(),
             expr: self.expr.clone(),
         }
@@ -298,7 +298,7 @@ impl Clone for ExprCall {
         ExprCall {
             attrs: self.attrs.clone(),
             func: self.func.clone(),
-            paren_token: self.paren_token.clone(),
+            paren: self.paren.clone(),
             args: self.args.clone(),
         }
     }
@@ -308,7 +308,7 @@ impl Clone for ExprCast {
         ExprCast {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
-            as_token: self.as_token.clone(),
+            as_: self.as_.clone(),
             ty: self.ty.clone(),
         }
     }
@@ -317,15 +317,15 @@ impl Clone for ExprClosure {
     fn clone(&self) -> Self {
         ExprClosure {
             attrs: self.attrs.clone(),
-            lifetimes: self.lifetimes.clone(),
-            constness: self.constness.clone(),
-            movability: self.movability.clone(),
-            asyncness: self.asyncness.clone(),
-            capture: self.capture.clone(),
-            or1_token: self.or1_token.clone(),
+            lifes: self.lifes.clone(),
+            const_: self.const_.clone(),
+            static_: self.static_.clone(),
+            async_: self.async_.clone(),
+            move_: self.move_.clone(),
+            or1: self.or1.clone(),
             inputs: self.inputs.clone(),
-            or2_token: self.or2_token.clone(),
-            output: self.output.clone(),
+            or2: self.or2.clone(),
+            ret: self.ret.clone(),
             body: self.body.clone(),
         }
     }
@@ -334,7 +334,7 @@ impl Clone for ExprConst {
     fn clone(&self) -> Self {
         ExprConst {
             attrs: self.attrs.clone(),
-            const_token: self.const_token.clone(),
+            const_: self.const_.clone(),
             block: self.block.clone(),
         }
     }
@@ -343,7 +343,7 @@ impl Clone for ExprContinue {
     fn clone(&self) -> Self {
         ExprContinue {
             attrs: self.attrs.clone(),
-            continue_token: self.continue_token.clone(),
+            continue_: self.continue_.clone(),
             label: self.label.clone(),
         }
     }
@@ -353,7 +353,7 @@ impl Clone for ExprField {
         ExprField {
             attrs: self.attrs.clone(),
             base: self.base.clone(),
-            dot_token: self.dot_token.clone(),
+            dot: self.dot.clone(),
             member: self.member.clone(),
         }
     }
@@ -363,9 +363,9 @@ impl Clone for ExprForLoop {
         ExprForLoop {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
-            for_token: self.for_token.clone(),
+            for_: self.for_.clone(),
             pat: self.pat.clone(),
-            in_token: self.in_token.clone(),
+            in_: self.in_.clone(),
             expr: self.expr.clone(),
             body: self.body.clone(),
         }
@@ -375,7 +375,7 @@ impl Clone for ExprGroup {
     fn clone(&self) -> Self {
         ExprGroup {
             attrs: self.attrs.clone(),
-            group_token: self.group_token.clone(),
+            group: self.group.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -384,7 +384,7 @@ impl Clone for ExprIf {
     fn clone(&self) -> Self {
         ExprIf {
             attrs: self.attrs.clone(),
-            if_token: self.if_token.clone(),
+            if_: self.if_.clone(),
             cond: self.cond.clone(),
             then_branch: self.then_branch.clone(),
             else_branch: self.else_branch.clone(),
@@ -396,7 +396,7 @@ impl Clone for ExprIndex {
         ExprIndex {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
-            bracket_token: self.bracket_token.clone(),
+            bracket: self.bracket.clone(),
             index: self.index.clone(),
         }
     }
@@ -405,7 +405,7 @@ impl Clone for ExprInfer {
     fn clone(&self) -> Self {
         ExprInfer {
             attrs: self.attrs.clone(),
-            underscore_token: self.underscore_token.clone(),
+            underscore: self.underscore.clone(),
         }
     }
 }
@@ -413,9 +413,9 @@ impl Clone for ExprLet {
     fn clone(&self) -> Self {
         ExprLet {
             attrs: self.attrs.clone(),
-            let_token: self.let_token.clone(),
+            let_: self.let_.clone(),
             pat: self.pat.clone(),
-            eq_token: self.eq_token.clone(),
+            eq: self.eq.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -433,7 +433,7 @@ impl Clone for ExprLoop {
         ExprLoop {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
-            loop_token: self.loop_token.clone(),
+            loop_: self.loop_.clone(),
             body: self.body.clone(),
         }
     }
@@ -450,9 +450,9 @@ impl Clone for ExprMatch {
     fn clone(&self) -> Self {
         ExprMatch {
             attrs: self.attrs.clone(),
-            match_token: self.match_token.clone(),
+            match_: self.match_.clone(),
             expr: self.expr.clone(),
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             arms: self.arms.clone(),
         }
     }
@@ -462,10 +462,10 @@ impl Clone for ExprMethodCall {
         ExprMethodCall {
             attrs: self.attrs.clone(),
             receiver: self.receiver.clone(),
-            dot_token: self.dot_token.clone(),
+            dot: self.dot.clone(),
             method: self.method.clone(),
             turbofish: self.turbofish.clone(),
-            paren_token: self.paren_token.clone(),
+            paren: self.paren.clone(),
             args: self.args.clone(),
         }
     }
@@ -474,7 +474,7 @@ impl Clone for ExprParen {
     fn clone(&self) -> Self {
         ExprParen {
             attrs: self.attrs.clone(),
-            paren_token: self.paren_token.clone(),
+            paren: self.paren.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -502,8 +502,8 @@ impl Clone for ExprReference {
     fn clone(&self) -> Self {
         ExprReference {
             attrs: self.attrs.clone(),
-            and_token: self.and_token.clone(),
-            mutability: self.mutability.clone(),
+            and: self.and.clone(),
+            mut_: self.mut_.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -512,9 +512,9 @@ impl Clone for ExprRepeat {
     fn clone(&self) -> Self {
         ExprRepeat {
             attrs: self.attrs.clone(),
-            bracket_token: self.bracket_token.clone(),
+            bracket: self.bracket.clone(),
             expr: self.expr.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
             len: self.len.clone(),
         }
     }
@@ -523,7 +523,7 @@ impl Clone for ExprReturn {
     fn clone(&self) -> Self {
         ExprReturn {
             attrs: self.attrs.clone(),
-            return_token: self.return_token.clone(),
+            return_: self.return_.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -534,9 +534,9 @@ impl Clone for ExprStruct {
             attrs: self.attrs.clone(),
             qself: self.qself.clone(),
             path: self.path.clone(),
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             fields: self.fields.clone(),
-            dot2_token: self.dot2_token.clone(),
+            dot2: self.dot2.clone(),
             rest: self.rest.clone(),
         }
     }
@@ -546,7 +546,7 @@ impl Clone for ExprTry {
         ExprTry {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
-            question_token: self.question_token.clone(),
+            question: self.question.clone(),
         }
     }
 }
@@ -554,7 +554,7 @@ impl Clone for ExprTryBlock {
     fn clone(&self) -> Self {
         ExprTryBlock {
             attrs: self.attrs.clone(),
-            try_token: self.try_token.clone(),
+            try_: self.try_.clone(),
             block: self.block.clone(),
         }
     }
@@ -563,7 +563,7 @@ impl Clone for ExprTuple {
     fn clone(&self) -> Self {
         ExprTuple {
             attrs: self.attrs.clone(),
-            paren_token: self.paren_token.clone(),
+            paren: self.paren.clone(),
             elems: self.elems.clone(),
         }
     }
@@ -581,7 +581,7 @@ impl Clone for ExprUnsafe {
     fn clone(&self) -> Self {
         ExprUnsafe {
             attrs: self.attrs.clone(),
-            unsafe_token: self.unsafe_token.clone(),
+            unsafe_: self.unsafe_.clone(),
             block: self.block.clone(),
         }
     }
@@ -591,7 +591,7 @@ impl Clone for ExprWhile {
         ExprWhile {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
-            while_token: self.while_token.clone(),
+            while_: self.while_.clone(),
             cond: self.cond.clone(),
             body: self.body.clone(),
         }
@@ -601,7 +601,7 @@ impl Clone for ExprYield {
     fn clone(&self) -> Self {
         ExprYield {
             attrs: self.attrs.clone(),
-            yield_token: self.yield_token.clone(),
+            yield_: self.yield_.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -613,7 +613,7 @@ impl Clone for Field {
             vis: self.vis.clone(),
             mutability: self.mutability.clone(),
             ident: self.ident.clone(),
-            colon_token: self.colon_token.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
         }
     }
@@ -640,7 +640,7 @@ impl Clone for FieldValue {
         FieldValue {
             attrs: self.attrs.clone(),
             member: self.member.clone(),
-            colon_token: self.colon_token.clone(),
+            colon: self.colon.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -657,7 +657,7 @@ impl Clone for Fields {
 impl Clone for FieldsNamed {
     fn clone(&self) -> Self {
         FieldsNamed {
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             named: self.named.clone(),
         }
     }
@@ -665,7 +665,7 @@ impl Clone for FieldsNamed {
 impl Clone for FieldsUnnamed {
     fn clone(&self) -> Self {
         FieldsUnnamed {
-            paren_token: self.paren_token.clone(),
+            paren: self.paren.clone(),
             unnamed: self.unnamed.clone(),
         }
     }
@@ -704,7 +704,7 @@ impl Clone for ForeignItemFn {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             sig: self.sig.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -713,7 +713,7 @@ impl Clone for ForeignItemMacro {
         ForeignItemMacro {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -722,12 +722,12 @@ impl Clone for ForeignItemStatic {
         ForeignItemStatic {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            static_token: self.static_token.clone(),
-            mutability: self.mutability.clone(),
+            static_: self.static_.clone(),
+            mut_: self.mut_.clone(),
             ident: self.ident.clone(),
-            colon_token: self.colon_token.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -736,10 +736,10 @@ impl Clone for ForeignItemType {
         ForeignItemType {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            type_token: self.type_token.clone(),
+            type: self.type.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            semi_token: self.semi_token.clone(),
+            gens: self.gens.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -790,15 +790,15 @@ impl Clone for ImplItemConst {
         ImplItemConst {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            defaultness: self.defaultness.clone(),
-            const_token: self.const_token.clone(),
+            default_: self.default_.clone(),
+            const_: self.const_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            colon_token: self.colon_token.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
-            eq_token: self.eq_token.clone(),
+            eq: self.eq.clone(),
             expr: self.expr.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -807,7 +807,7 @@ impl Clone for ImplItemFn {
         ImplItemFn {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            defaultness: self.defaultness.clone(),
+            default_: self.default_.clone(),
             sig: self.sig.clone(),
             block: self.block.clone(),
         }
@@ -818,7 +818,7 @@ impl Clone for ImplItemMacro {
         ImplItemMacro {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -827,13 +827,13 @@ impl Clone for ImplItemType {
         ImplItemType {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            defaultness: self.defaultness.clone(),
-            type_token: self.type_token.clone(),
+            default_: self.default_.clone(),
+            type: self.type.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            eq_token: self.eq_token.clone(),
+            gens: self.gens.clone(),
+            eq: self.eq.clone(),
             ty: self.ty.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -877,14 +877,14 @@ impl Clone for ItemConst {
         ItemConst {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            const_token: self.const_token.clone(),
+            const_: self.const_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            colon_token: self.colon_token.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
-            eq_token: self.eq_token.clone(),
+            eq: self.eq.clone(),
             expr: self.expr.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -893,10 +893,10 @@ impl Clone for ItemEnum {
         ItemEnum {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            enum_token: self.enum_token.clone(),
+            enum_: self.enum_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            brace_token: self.brace_token.clone(),
+            gens: self.gens.clone(),
+            brace: self.brace.clone(),
             variants: self.variants.clone(),
         }
     }
@@ -906,11 +906,11 @@ impl Clone for ItemExternCrate {
         ItemExternCrate {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            extern_token: self.extern_token.clone(),
-            crate_token: self.crate_token.clone(),
+            extern_: self.extern_.clone(),
+            crate_: self.crate_.clone(),
             ident: self.ident.clone(),
             rename: self.rename.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -928,9 +928,9 @@ impl Clone for ItemForeignMod {
     fn clone(&self) -> Self {
         ItemForeignMod {
             attrs: self.attrs.clone(),
-            unsafety: self.unsafety.clone(),
+            unsafe_: self.unsafe_.clone(),
             abi: self.abi.clone(),
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             items: self.items.clone(),
         }
     }
@@ -939,13 +939,13 @@ impl Clone for ItemImpl {
     fn clone(&self) -> Self {
         ItemImpl {
             attrs: self.attrs.clone(),
-            defaultness: self.defaultness.clone(),
-            unsafety: self.unsafety.clone(),
-            impl_token: self.impl_token.clone(),
-            generics: self.generics.clone(),
+            default_: self.default_.clone(),
+            unsafe_: self.unsafe_.clone(),
+            impl_: self.impl_.clone(),
+            gens: self.gens.clone(),
             trait_: self.trait_.clone(),
             self_ty: self.self_ty.clone(),
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             items: self.items.clone(),
         }
     }
@@ -956,7 +956,7 @@ impl Clone for ItemMacro {
             attrs: self.attrs.clone(),
             ident: self.ident.clone(),
             mac: self.mac.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -965,10 +965,10 @@ impl Clone for ItemMod {
         ItemMod {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            unsafety: self.unsafety.clone(),
-            mod_token: self.mod_token.clone(),
+            unsafe_: self.unsafe_.clone(),
+            mod_: self.mod_.clone(),
             ident: self.ident.clone(),
-            content: self.content.clone(),
+            gist: self.gist.clone(),
             semi: self.semi.clone(),
         }
     }
@@ -978,14 +978,14 @@ impl Clone for ItemStatic {
         ItemStatic {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            static_token: self.static_token.clone(),
-            mutability: self.mutability.clone(),
+            static_: self.static_.clone(),
+            mut_: self.mut_.clone(),
             ident: self.ident.clone(),
-            colon_token: self.colon_token.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
-            eq_token: self.eq_token.clone(),
+            eq: self.eq.clone(),
             expr: self.expr.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -994,11 +994,11 @@ impl Clone for ItemStruct {
         ItemStruct {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            struct_token: self.struct_token.clone(),
+            struct_: self.struct_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
+            gens: self.gens.clone(),
             fields: self.fields.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1007,15 +1007,15 @@ impl Clone for ItemTrait {
         ItemTrait {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            unsafety: self.unsafety.clone(),
-            auto_token: self.auto_token.clone(),
+            unsafe_: self.unsafe_.clone(),
+            auto_: self.auto_.clone(),
             restriction: self.restriction.clone(),
-            trait_token: self.trait_token.clone(),
+            trait_: self.trait_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            colon_token: self.colon_token.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
             supertraits: self.supertraits.clone(),
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             items: self.items.clone(),
         }
     }
@@ -1025,12 +1025,12 @@ impl Clone for ItemTraitAlias {
         ItemTraitAlias {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            trait_token: self.trait_token.clone(),
+            trait_: self.trait_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            eq_token: self.eq_token.clone(),
+            gens: self.gens.clone(),
+            eq: self.eq.clone(),
             bounds: self.bounds.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1039,12 +1039,12 @@ impl Clone for ItemType {
         ItemType {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            type_token: self.type_token.clone(),
+            type: self.type.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            eq_token: self.eq_token.clone(),
+            gens: self.gens.clone(),
+            eq: self.eq.clone(),
             ty: self.ty.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1053,9 +1053,9 @@ impl Clone for ItemUnion {
         ItemUnion {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            union_token: self.union_token.clone(),
+            union_: self.union_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
+            gens: self.gens.clone(),
             fields: self.fields.clone(),
         }
     }
@@ -1065,10 +1065,10 @@ impl Clone for ItemUse {
         ItemUse {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            use_token: self.use_token.clone(),
+            use_: self.use_.clone(),
             leading_colon: self.leading_colon.clone(),
             tree: self.tree.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1076,7 +1076,7 @@ impl Clone for Label {
     fn clone(&self) -> Self {
         Label {
             name: self.name.clone(),
-            colon_token: self.colon_token.clone(),
+            colon: self.colon.clone(),
         }
     }
 }
@@ -1084,7 +1084,7 @@ impl Clone for LifetimeParam {
     fn clone(&self) -> Self {
         LifetimeParam {
             attrs: self.attrs.clone(),
-            lifetime: self.lifetime.clone(),
+            life: self.life.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
         }
@@ -1352,7 +1352,7 @@ impl Clone for Segment {
 impl Clone for PredLifetime {
     fn clone(&self) -> Self {
         PredLifetime {
-            lifetime: self.lifetime.clone(),
+            life: self.life.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
         }
@@ -1361,8 +1361,8 @@ impl Clone for PredLifetime {
 impl Clone for PredType {
     fn clone(&self) -> Self {
         PredType {
-            lifetimes: self.lifetimes.clone(),
-            bounded_ty: self.bounded_ty.clone(),
+            lifes: self.lifes.clone(),
+            bounded: self.bounded.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
         }
@@ -1390,18 +1390,18 @@ impl Clone for Receiver {
         Receiver {
             attrs: self.attrs.clone(),
             reference: self.reference.clone(),
-            mutability: self.mutability.clone(),
-            self_token: self.self_token.clone(),
-            colon_token: self.colon_token.clone(),
+            mut_: self.mut_.clone(),
+            self_: self.self_.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
         }
     }
 }
-impl Clone for ReturnType {
+impl Clone for ty::Ret {
     fn clone(&self) -> Self {
         match self {
-            ReturnType::Default => ReturnType::Default,
-            ReturnType::Type(v0, v1) => ReturnType::Type(v0.clone(), v1.clone()),
+            ty::Ret::Default => ty::Ret::Default,
+            ty::Ret::Type(v0, v1) => ty::Ret::Type(v0.clone(), v1.clone()),
         }
     }
 }
@@ -1409,24 +1409,24 @@ impl Clone for Signature {
     fn clone(&self) -> Self {
         Signature {
             constness: self.constness.clone(),
-            asyncness: self.asyncness.clone(),
-            unsafety: self.unsafety.clone(),
+            async_: self.async_.clone(),
+            unsafe_: self.unsafe_.clone(),
             abi: self.abi.clone(),
-            fn_token: self.fn_token.clone(),
+            fn_: self.fn_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            paren_token: self.paren_token.clone(),
-            inputs: self.inputs.clone(),
-            variadic: self.variadic.clone(),
-            output: self.output.clone(),
+            gens: self.gens.clone(),
+            paren: self.paren.clone(),
+            args: self.args.clone(),
+            vari: self.vari.clone(),
+            ret: self.ret.clone(),
         }
     }
 }
-impl Clone for StaticMutability {
+impl Clone for StaticMut {
     fn clone(&self) -> Self {
         match self {
-            StaticMutability::Mut(v0) => StaticMutability::Mut(v0.clone()),
-            StaticMutability::None => StaticMutability::None,
+            StaticMut::Mut(v0) => StaticMut::Mut(v0.clone()),
+            StaticMut::None => StaticMut::None,
         }
     }
 }
@@ -1454,7 +1454,7 @@ impl Clone for TraitBound {
         TraitBound {
             paren: self.paren.clone(),
             modifier: self.modifier.clone(),
-            lifetimes: self.lifetimes.clone(),
+            lifes: self.lifes.clone(),
             path: self.path.clone(),
         }
     }
@@ -1480,13 +1480,13 @@ impl Clone for TraitItemConst {
     fn clone(&self) -> Self {
         TraitItemConst {
             attrs: self.attrs.clone(),
-            const_token: self.const_token.clone(),
+            const_: self.const_.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            colon_token: self.colon_token.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
             ty: self.ty.clone(),
             default: self.default.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1496,7 +1496,7 @@ impl Clone for TraitItemFn {
             attrs: self.attrs.clone(),
             sig: self.sig.clone(),
             default: self.default.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1505,7 +1505,7 @@ impl Clone for TraitItemMacro {
         TraitItemMacro {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1513,13 +1513,13 @@ impl Clone for TraitItemType {
     fn clone(&self) -> Self {
         TraitItemType {
             attrs: self.attrs.clone(),
-            type_token: self.type_token.clone(),
+            type: self.type.clone(),
             ident: self.ident.clone(),
-            generics: self.generics.clone(),
-            colon_token: self.colon_token.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
             bounds: self.bounds.clone(),
             default: self.default.clone(),
-            semi_token: self.semi_token.clone(),
+            semi: self.semi.clone(),
         }
     }
 }
@@ -1529,24 +1529,24 @@ impl Clone for Ty {
             Ty::Array(v0) => Ty::Array(v0.clone()),
             Ty::BareFn(v0) => Ty::BareFn(v0.clone()),
             Ty::Group(v0) => Ty::Group(v0.clone()),
-            Ty::ImplTrait(v0) => Ty::ImplTrait(v0.clone()),
+            Ty::Impl(v0) => Ty::Impl(v0.clone()),
             Ty::Infer(v0) => Ty::Infer(v0.clone()),
-            Ty::Macro(v0) => Ty::Macro(v0.clone()),
+            Ty::Mac(v0) => Ty::Mac(v0.clone()),
             Ty::Never(v0) => Ty::Never(v0.clone()),
             Ty::Paren(v0) => Ty::Paren(v0.clone()),
             Ty::Path(v0) => Ty::Path(v0.clone()),
             Ty::Ptr(v0) => Ty::Ptr(v0.clone()),
-            Ty::Reference(v0) => Ty::Reference(v0.clone()),
+            Ty::Ref(v0) => Ty::Ref(v0.clone()),
             Ty::Slice(v0) => Ty::Slice(v0.clone()),
-            Ty::TraitObject(v0) => Ty::TraitObject(v0.clone()),
+            Ty::TraitObj(v0) => Ty::TraitObj(v0.clone()),
             Ty::Tuple(v0) => Ty::Tuple(v0.clone()),
             Ty::Verbatim(v0) => Ty::Verbatim(v0.clone()),
         }
     }
 }
-impl Clone for TypeArray {
+impl Clone for ty::Array {
     fn clone(&self) -> Self {
-        TypeArray {
+        ty::Array {
             bracket: self.bracket.clone(),
             elem: self.elem.clone(),
             semi: self.semi.clone(),
@@ -1554,51 +1554,51 @@ impl Clone for TypeArray {
         }
     }
 }
-impl Clone for TypeBareFn {
+impl Clone for ty::BareFn {
     fn clone(&self) -> Self {
-        TypeBareFn {
-            lifetimes: self.lifetimes.clone(),
+        ty::BareFn {
+            lifes: self.lifes.clone(),
             unsafe_: self.unsafe_.clone(),
             abi: self.abi.clone(),
             fn_: self.fn_.clone(),
             paren: self.paren.clone(),
-            inputs: self.inputs.clone(),
-            variadic: self.variadic.clone(),
-            output: self.output.clone(),
+            args: self.args.clone(),
+            vari: self.vari.clone(),
+            ret: self.ret.clone(),
         }
     }
 }
-impl Clone for TypeGroup {
+impl Clone for ty::Group {
     fn clone(&self) -> Self {
-        TypeGroup {
+        ty::Group {
             group: self.group.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for TypeImplTrait {
+impl Clone for ty::Impl {
     fn clone(&self) -> Self {
-        TypeImplTrait {
+        ty::Impl {
             impl_: self.impl_.clone(),
             bounds: self.bounds.clone(),
         }
     }
 }
-impl Clone for TypeInfer {
+impl Clone for ty::Infer {
     fn clone(&self) -> Self {
-        TypeInfer {
+        ty::Infer {
             underscore: self.underscore.clone(),
         }
     }
 }
-impl Clone for TypeMacro {
+impl Clone for ty::Mac {
     fn clone(&self) -> Self {
-        TypeMacro { mac: self.mac.clone() }
+        ty::Mac { mac: self.mac.clone() }
     }
 }
-impl Clone for TypeNever {
+impl Clone for ty::Never {
     fn clone(&self) -> Self {
-        TypeNever {
+        ty::Never {
             bang: self.bang.clone(),
         }
     }
@@ -1624,25 +1624,25 @@ impl Clone for TypeParamBound {
         }
     }
 }
-impl Clone for TypeParen {
+impl Clone for ty::Paren {
     fn clone(&self) -> Self {
-        TypeParen {
-            paren_token: self.paren_token.clone(),
+        ty::Paren {
+            paren: self.paren.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for TypePath {
+impl Clone for ty::Path {
     fn clone(&self) -> Self {
-        TypePath {
+        ty::Path {
             qself: self.qself.clone(),
             path: self.path.clone(),
         }
     }
 }
-impl Clone for TypePtr {
+impl Clone for ty::Ptr {
     fn clone(&self) -> Self {
-        TypePtr {
+        ty::Ptr {
             star: self.star.clone(),
             const_: self.const_.clone(),
             mut_: self.mut_.clone(),
@@ -1650,35 +1650,35 @@ impl Clone for TypePtr {
         }
     }
 }
-impl Clone for TypeReference {
+impl Clone for ty::Ref {
     fn clone(&self) -> Self {
-        TypeReference {
-            and_: self.and_.clone(),
-            lifetime: self.lifetime.clone(),
+        ty::Ref {
+            and: self.and.clone(),
+            life: self.life.clone(),
             mut_: self.mut_.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for TypeSlice {
+impl Clone for ty::Slice {
     fn clone(&self) -> Self {
-        TypeSlice {
+        ty::Slice {
             bracket: self.bracket.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for TypeTraitObject {
+impl Clone for ty::TraitObj {
     fn clone(&self) -> Self {
-        TypeTraitObject {
+        ty::TraitObj {
             dyn_: self.dyn_.clone(),
             bounds: self.bounds.clone(),
         }
     }
 }
-impl Clone for TypeTuple {
+impl Clone for ty::Tuple {
     fn clone(&self) -> Self {
-        TypeTuple {
+        ty::Tuple {
             paren: self.paren.clone(),
             elems: self.elems.clone(),
         }
@@ -1693,14 +1693,14 @@ impl Clone for UnOp {
 impl Clone for UseGlob {
     fn clone(&self) -> Self {
         UseGlob {
-            star_token: self.star_token.clone(),
+            star: self.star.clone(),
         }
     }
 }
 impl Clone for UseGroup {
     fn clone(&self) -> Self {
         UseGroup {
-            brace_token: self.brace_token.clone(),
+            brace: self.brace.clone(),
             items: self.items.clone(),
         }
     }
@@ -1716,7 +1716,7 @@ impl Clone for UsePath {
     fn clone(&self) -> Self {
         UsePath {
             ident: self.ident.clone(),
-            colon2_token: self.colon2_token.clone(),
+            colon2: self.colon2.clone(),
             tree: self.tree.clone(),
         }
     }
@@ -1725,7 +1725,7 @@ impl Clone for UseRename {
     fn clone(&self) -> Self {
         UseRename {
             ident: self.ident.clone(),
-            as_token: self.as_token.clone(),
+            as_: self.as_.clone(),
             rename: self.rename.clone(),
         }
     }

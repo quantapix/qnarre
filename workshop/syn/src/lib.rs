@@ -649,7 +649,7 @@ pub use expr::{
 ast_struct! {
     pub struct LifetimeParam {
         pub attrs: Vec<Attribute>,
-        pub lifetime: Lifetime,
+        pub life: Lifetime,
         pub colon: Option<Token![:]>,
         pub bounds: Punctuated<Lifetime, Token![+]>,
     }
@@ -869,7 +869,7 @@ ast_struct! {
     pub struct BoundLifetimes {
         pub for_: Token![for],
         pub lt: Token![<],
-        pub lifetimes: Punctuated<GenericParam, Token![,]>,
+        pub lifes: Punctuated<GenericParam, Token![,]>,
         pub gt: Token![>],
     }
 }
@@ -878,7 +878,7 @@ impl Default for BoundLifetimes {
         BoundLifetimes {
             for_: Default::default(),
             lt: Default::default(),
-            lifetimes: Punctuated::new(),
+            lifes: Punctuated::new(),
             gt: Default::default(),
         }
     }
@@ -887,7 +887,7 @@ impl LifetimeParam {
     pub fn new(lifetime: Lifetime) -> Self {
         LifetimeParam {
             attrs: Vec::new(),
-            lifetime,
+            life: lifetime,
             colon: None,
             bounds: Punctuated::new(),
         }
@@ -916,7 +916,7 @@ ast_struct! {
     pub struct TraitBound {
         pub paren: Option<tok::Paren>,
         pub modifier: TraitBoundModifier,
-        pub lifetimes: Option<BoundLifetimes>,
+        pub lifes: Option<BoundLifetimes>,
         pub path: Path,
     }
 }
@@ -940,15 +940,15 @@ ast_enum_of_structs! {
 }
 ast_struct! {
     pub struct PredLifetime {
-        pub lifetime: Lifetime,
+        pub life: Lifetime,
         pub colon: Token![:],
         pub bounds: Punctuated<Lifetime, Token![+]>,
     }
 }
 ast_struct! {
     pub struct PredType {
-        pub lifetimes: Option<BoundLifetimes>,
-        pub bounded_ty: Ty,
+        pub lifes: Option<BoundLifetimes>,
+        pub bounded: Ty,
         pub colon: Token![:],
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
     }
@@ -959,7 +959,7 @@ pub use item::{
     FnArg, ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, ImplItem, ImplItemConst,
     ImplItemFn, ImplItemMacro, ImplItemType, ImplRestriction, Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn,
     ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait, ItemTraitAlias, ItemType,
-    ItemUnion, ItemUse, Receiver, Signature, StaticMutability, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro,
+    ItemUnion, ItemUse, Receiver, Signature, StaticMut, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro,
     TraitItemType, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variadic,
 };
 pub mod punct;
@@ -1190,7 +1190,7 @@ pub mod path {
     ast_struct! {
         pub struct AssocType {
             pub ident: Ident,
-            pub gnrs: Option<AngledArgs>,
+            pub args: Option<AngledArgs>,
             pub eq: Token![=],
             pub ty: Ty,
         }
@@ -1198,7 +1198,7 @@ pub mod path {
     ast_struct! {
         pub struct AssocConst {
             pub ident: Ident,
-            pub gnrs: Option<AngledArgs>,
+            pub args: Option<AngledArgs>,
             pub eq: Token![=],
             pub val: Expr,
         }
@@ -1206,7 +1206,7 @@ pub mod path {
     ast_struct! {
         pub struct Constraint {
             pub ident: Ident,
-            pub gnrs: Option<AngledArgs>,
+            pub args: Option<AngledArgs>,
             pub colon: Token![:],
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
@@ -1215,7 +1215,7 @@ pub mod path {
         pub struct ParenthesizedArgs {
             pub paren: tok::Paren,
             pub args: Punctuated<Ty, Token![,]>,
-            pub out: ReturnType,
+            pub ret: Ret,
         }
     }
     ast_struct! {
@@ -1273,25 +1273,25 @@ mod ty {
 
     ast_enum_of_structs! {
         pub enum Ty {
-            Array(TypeArray),
-            BareFn(TypeBareFn),
-            Group(TypeGroup),
-            ImplTrait(TypeImplTrait),
-            Infer(TypeInfer),
-            Macro(TypeMacro),
-            Never(TypeNever),
-            Paren(TypeParen),
-            Path(TypePath),
-            Ptr(TypePtr),
-            Reference(TypeReference),
-            Slice(TypeSlice),
-            TraitObject(TypeTraitObject),
-            Tuple(TypeTuple),
+            Array(Array),
+            BareFn(BareFn),
+            Group(Group),
+            Impl(Impl),
+            Infer(Infer),
+            Mac(Mac),
+            Never(Never),
+            Paren(Paren),
+            Path(Path),
+            Ptr(Ptr),
+            Ref(Ref),
+            Slice(Slice),
+            TraitObj(TraitObj),
+            Tuple(Tuple),
             Verbatim(TokenStream),
         }
     }
     ast_struct! {
-        pub struct TypeArray {
+        pub struct Array {
             pub bracket: tok::Bracket,
             pub elem: Box<Ty>,
             pub semi: Token![;],
@@ -1299,58 +1299,58 @@ mod ty {
         }
     }
     ast_struct! {
-        pub struct TypeBareFn {
-            pub lifetimes: Option<BoundLifetimes>,
+        pub struct BareFn {
+            pub lifes: Option<BoundLifetimes>,
             pub unsafe_: Option<Token![unsafe]>,
             pub abi: Option<Abi>,
             pub fn_: Token![fn],
             pub paren: tok::Paren,
-            pub inputs: Punctuated<BareFnArg, Token![,]>,
-            pub variadic: Option<BareVariadic>,
-            pub output: ReturnType,
+            pub args: Punctuated<BareFnArg, Token![,]>,
+            pub vari: Option<BareVari>,
+            pub ret: Ret,
         }
     }
     ast_struct! {
-        pub struct TypeGroup {
+        pub struct Group {
             pub group: tok::Group,
             pub elem: Box<Ty>,
         }
     }
     ast_struct! {
-        pub struct TypeImplTrait {
+        pub struct Impl {
             pub impl_: Token![impl],
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
     }
     ast_struct! {
-        pub struct TypeInfer {
+        pub struct Infer {
             pub underscore: Token![_],
         }
     }
     ast_struct! {
-        pub struct TypeMacro {
+        pub struct Mac {
             pub mac: Macro,
         }
     }
     ast_struct! {
-        pub struct TypeNever {
+        pub struct Never {
             pub bang: Token![!],
         }
     }
     ast_struct! {
-        pub struct TypeParen {
-            pub paren_token: tok::Paren,
+        pub struct Paren {
+            pub paren: tok::Paren,
             pub elem: Box<Ty>,
         }
     }
     ast_struct! {
-        pub struct TypePath {
+        pub struct Path {
             pub qself: Option<QSelf>,
             pub path: Path,
         }
     }
     ast_struct! {
-        pub struct TypePtr {
+        pub struct Ptr {
             pub star: Token![*],
             pub const_: Option<Token![const]>,
             pub mut_: Option<Token![mut]>,
@@ -1358,27 +1358,27 @@ mod ty {
         }
     }
     ast_struct! {
-        pub struct TypeReference {
-            pub and_: Token![&],
-            pub lifetime: Option<Lifetime>,
+        pub struct Ref {
+            pub and: Token![&],
+            pub life: Option<Lifetime>,
             pub mut_: Option<Token![mut]>,
             pub elem: Box<Ty>,
         }
     }
     ast_struct! {
-        pub struct TypeSlice {
+        pub struct Slice {
             pub bracket: tok::Bracket,
             pub elem: Box<Ty>,
         }
     }
     ast_struct! {
-        pub struct TypeTraitObject {
+        pub struct TraitObj {
             pub dyn_: Option<Token![dyn]>,
             pub bounds: Punctuated<TypeParamBound, Token![+]>,
         }
     }
     ast_struct! {
-        pub struct TypeTuple {
+        pub struct Tuple {
             pub paren: tok::Paren,
             pub elems: Punctuated<Ty, Token![,]>,
         }
@@ -1397,7 +1397,7 @@ mod ty {
         }
     }
     ast_struct! {
-        pub struct BareVariadic {
+        pub struct BareVari {
             pub attrs: Vec<Attribute>,
             pub name: Option<(Ident, Token![:])>,
             pub dots: Token![...],
@@ -1405,16 +1405,12 @@ mod ty {
         }
     }
     ast_enum! {
-        pub enum ReturnType {
+        pub enum Ret {
             Default,
             Type(Token![->], Box<Ty>),
         }
     }
 }
-pub use ty::{
-    Abi, BareFnArg, BareVariadic, ReturnType, Ty, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer,
-    TypeMacro, TypeNever, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple,
-};
 
 pub struct BigInt {
     digits: Vec<u8>,
@@ -1484,13 +1480,13 @@ ast_enum_of_structs! {
 }
 ast_struct! {
     pub struct FieldsNamed {
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub named: Punctuated<Field, Token![,]>,
     }
 }
 ast_struct! {
     pub struct FieldsUnnamed {
-        pub paren_token: tok::Paren,
+        pub paren: tok::Paren,
         pub unnamed: Punctuated<Field, Token![,]>,
     }
 }
@@ -1555,7 +1551,7 @@ ast_struct! {
         pub vis: Visibility,
         pub mutability: FieldMut,
         pub ident: Option<Ident>,
-        pub colon_token: Option<Token![:]>,
+        pub colon: Option<Token![:]>,
         pub ty: Ty,
     }
 }
@@ -1564,7 +1560,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub vis: Visibility,
         pub ident: Ident,
-        pub generics: Generics,
+        pub gens: Generics,
         pub data: Data,
     }
 }

@@ -50,14 +50,14 @@ impl PartialEq for Attribute {
         self.style == other.style && self.meta == other.meta
     }
 }
-impl Eq for BareFnArg {}
-impl PartialEq for BareFnArg {
+impl Eq for ty::BareFnArg {}
+impl PartialEq for ty::BareFnArg {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.name == other.name && self.ty == other.ty
     }
 }
-impl Eq for BareVariadic {}
-impl PartialEq for BareVariadic {
+impl Eq for ty::BareVari {}
+impl PartialEq for ty::BareVari {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.name == other.name && self.comma == other.comma
     }
@@ -107,7 +107,7 @@ impl PartialEq for Block {
 impl Eq for BoundLifetimes {}
 impl PartialEq for BoundLifetimes {
     fn eq(&self, other: &Self) -> bool {
-        self.lifetimes == other.lifetimes
+        self.lifes == other.lifes
     }
 }
 impl Eq for ConstParam {}
@@ -161,7 +161,7 @@ impl PartialEq for DeriveInput {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.data == other.data
     }
 }
@@ -270,13 +270,13 @@ impl Eq for ExprClosure {}
 impl PartialEq for ExprClosure {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
-            && self.lifetimes == other.lifetimes
-            && self.constness == other.constness
-            && self.movability == other.movability
-            && self.asyncness == other.asyncness
-            && self.capture == other.capture
+            && self.lifes == other.lifes
+            && self.const_ == other.const_
+            && self.static_ == other.static_
+            && self.async_ == other.async_
+            && self.move_ == other.move_
             && self.inputs == other.inputs
-            && self.output == other.output
+            && self.ret == other.ret
             && self.body == other.body
     }
 }
@@ -396,7 +396,7 @@ impl PartialEq for ExprRange {
 impl Eq for ExprReference {}
 impl PartialEq for ExprReference {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.mutability == other.mutability && self.expr == other.expr
+        self.attrs == other.attrs && self.mut_ == other.mut_ && self.expr == other.expr
     }
 }
 impl Eq for ExprRepeat {}
@@ -418,7 +418,7 @@ impl PartialEq for ExprStruct {
             && self.qself == other.qself
             && self.path == other.path
             && self.fields == other.fields
-            && self.dot2_token == other.dot2_token
+            && self.dot2 == other.dot2
             && self.rest == other.rest
     }
 }
@@ -471,7 +471,7 @@ impl PartialEq for Field {
             && self.vis == other.vis
             && self.mutability == other.mutability
             && self.ident == other.ident
-            && self.colon_token == other.colon_token
+            && self.colon == other.colon
             && self.ty == other.ty
     }
 }
@@ -492,10 +492,7 @@ impl PartialEq for FieldPat {
 impl Eq for FieldValue {}
 impl PartialEq for FieldValue {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs
-            && self.member == other.member
-            && self.colon_token == other.colon_token
-            && self.expr == other.expr
+        self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.expr == other.expr
     }
 }
 impl Eq for Fields {}
@@ -561,7 +558,7 @@ impl PartialEq for ForeignItemFn {
 impl Eq for ForeignItemMacro {}
 impl PartialEq for ForeignItemMacro {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.mac == other.mac && self.semi_token == other.semi_token
+        self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
 impl Eq for ForeignItemStatic {}
@@ -569,7 +566,7 @@ impl PartialEq for ForeignItemStatic {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.mutability == other.mutability
+            && self.mut_ == other.mut_
             && self.ident == other.ident
             && self.ty == other.ty
     }
@@ -577,10 +574,7 @@ impl PartialEq for ForeignItemStatic {
 impl Eq for ForeignItemType {}
 impl PartialEq for ForeignItemType {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs
-            && self.vis == other.vis
-            && self.ident == other.ident
-            && self.generics == other.generics
+        self.attrs == other.attrs && self.vis == other.vis && self.ident == other.ident && self.gens == other.gens
     }
 }
 impl Eq for Arg {}
@@ -634,9 +628,9 @@ impl PartialEq for ImplItemConst {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.defaultness == other.defaultness
+            && self.default_ == other.default_
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.ty == other.ty
             && self.expr == other.expr
     }
@@ -646,7 +640,7 @@ impl PartialEq for ImplItemFn {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.defaultness == other.defaultness
+            && self.default_ == other.default_
             && self.sig == other.sig
             && self.block == other.block
     }
@@ -654,7 +648,7 @@ impl PartialEq for ImplItemFn {
 impl Eq for ImplItemMacro {}
 impl PartialEq for ImplItemMacro {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.mac == other.mac && self.semi_token == other.semi_token
+        self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
 impl Eq for ImplItemType {}
@@ -662,9 +656,9 @@ impl PartialEq for ImplItemType {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.defaultness == other.defaultness
+            && self.default_ == other.default_
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.ty == other.ty
     }
 }
@@ -704,7 +698,7 @@ impl PartialEq for ItemConst {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.ty == other.ty
             && self.expr == other.expr
     }
@@ -715,7 +709,7 @@ impl PartialEq for ItemEnum {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.variants == other.variants
     }
 }
@@ -734,19 +728,16 @@ impl PartialEq for ItemFn {
 impl Eq for ItemForeignMod {}
 impl PartialEq for ItemForeignMod {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs
-            && self.unsafety == other.unsafety
-            && self.abi == other.abi
-            && self.items == other.items
+        self.attrs == other.attrs && self.unsafe_ == other.unsafe_ && self.abi == other.abi && self.items == other.items
     }
 }
 impl Eq for ItemImpl {}
 impl PartialEq for ItemImpl {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
-            && self.defaultness == other.defaultness
-            && self.unsafety == other.unsafety
-            && self.generics == other.generics
+            && self.default_ == other.default_
+            && self.unsafe_ == other.unsafe_
+            && self.gens == other.gens
             && self.trait_ == other.trait_
             && self.self_ty == other.self_ty
             && self.items == other.items
@@ -755,10 +746,7 @@ impl PartialEq for ItemImpl {
 impl Eq for ItemMacro {}
 impl PartialEq for ItemMacro {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs
-            && self.ident == other.ident
-            && self.mac == other.mac
-            && self.semi_token == other.semi_token
+        self.attrs == other.attrs && self.ident == other.ident && self.mac == other.mac && self.semi == other.semi
     }
 }
 impl Eq for ItemMod {}
@@ -766,9 +754,9 @@ impl PartialEq for ItemMod {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.unsafety == other.unsafety
+            && self.unsafe_ == other.unsafe_
             && self.ident == other.ident
-            && self.content == other.content
+            && self.gist == other.gist
             && self.semi == other.semi
     }
 }
@@ -777,7 +765,7 @@ impl PartialEq for ItemStatic {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.mutability == other.mutability
+            && self.mut_ == other.mut_
             && self.ident == other.ident
             && self.ty == other.ty
             && self.expr == other.expr
@@ -789,9 +777,9 @@ impl PartialEq for ItemStruct {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.fields == other.fields
-            && self.semi_token == other.semi_token
+            && self.semi == other.semi
     }
 }
 impl Eq for ItemTrait {}
@@ -799,12 +787,12 @@ impl PartialEq for ItemTrait {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.unsafety == other.unsafety
-            && self.auto_token == other.auto_token
+            && self.unsafe_ == other.unsafe_
+            && self.auto_ == other.auto_
             && self.restriction == other.restriction
             && self.ident == other.ident
-            && self.generics == other.generics
-            && self.colon_token == other.colon_token
+            && self.gens == other.gens
+            && self.colon == other.colon
             && self.supertraits == other.supertraits
             && self.items == other.items
     }
@@ -815,7 +803,7 @@ impl PartialEq for ItemTraitAlias {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.bounds == other.bounds
     }
 }
@@ -825,7 +813,7 @@ impl PartialEq for ItemType {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.ty == other.ty
     }
 }
@@ -835,7 +823,7 @@ impl PartialEq for ItemUnion {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.fields == other.fields
     }
 }
@@ -857,10 +845,7 @@ impl PartialEq for Label {
 impl Eq for LifetimeParam {}
 impl PartialEq for LifetimeParam {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs
-            && self.lifetime == other.lifetime
-            && self.colon == other.colon
-            && self.bounds == other.bounds
+        self.attrs == other.attrs && self.life == other.life && self.colon == other.colon && self.bounds == other.bounds
     }
 }
 impl Eq for Lit {}
@@ -1078,13 +1063,13 @@ impl PartialEq for Segment {
 impl Eq for PredLifetime {}
 impl PartialEq for PredLifetime {
     fn eq(&self, other: &Self) -> bool {
-        self.lifetime == other.lifetime && self.bounds == other.bounds
+        self.life == other.life && self.bounds == other.bounds
     }
 }
 impl Eq for PredType {}
 impl PartialEq for PredType {
     fn eq(&self, other: &Self) -> bool {
-        self.lifetimes == other.lifetimes && self.bounded_ty == other.bounded_ty && self.bounds == other.bounds
+        self.lifes == other.lifes && self.bounded == other.bounded && self.bounds == other.bounds
     }
 }
 impl Eq for QSelf {}
@@ -1108,17 +1093,17 @@ impl PartialEq for Receiver {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.reference == other.reference
-            && self.mutability == other.mutability
-            && self.colon_token == other.colon_token
+            && self.mut_ == other.mut_
+            && self.colon == other.colon
             && self.ty == other.ty
     }
 }
-impl Eq for ReturnType {}
-impl PartialEq for ReturnType {
+impl Eq for ty::Ret {}
+impl PartialEq for ty::Ret {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ReturnType::Default, ReturnType::Default) => true,
-            (ReturnType::Type(_, self1), ReturnType::Type(_, other1)) => self1 == other1,
+            (ty::Ret::Default, ty::Ret::Default) => true,
+            (ty::Ret::Type(_, self1), ty::Ret::Type(_, other1)) => self1 == other1,
             _ => false,
         }
     }
@@ -1127,22 +1112,22 @@ impl Eq for Signature {}
 impl PartialEq for Signature {
     fn eq(&self, other: &Self) -> bool {
         self.constness == other.constness
-            && self.asyncness == other.asyncness
-            && self.unsafety == other.unsafety
+            && self.async_ == other.async_
+            && self.unsafe_ == other.unsafe_
             && self.abi == other.abi
             && self.ident == other.ident
-            && self.generics == other.generics
-            && self.inputs == other.inputs
-            && self.variadic == other.variadic
-            && self.output == other.output
+            && self.gens == other.gens
+            && self.args == other.args
+            && self.vari == other.vari
+            && self.ret == other.ret
     }
 }
-impl Eq for StaticMutability {}
-impl PartialEq for StaticMutability {
+impl Eq for StaticMut {}
+impl PartialEq for StaticMut {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (StaticMutability::Mut(_), StaticMutability::Mut(_)) => true,
-            (StaticMutability::None, StaticMutability::None) => true,
+            (StaticMut::Mut(_), StaticMut::Mut(_)) => true,
+            (StaticMut::None, StaticMut::None) => true,
             _ => false,
         }
     }
@@ -1170,7 +1155,7 @@ impl PartialEq for TraitBound {
     fn eq(&self, other: &Self) -> bool {
         self.paren == other.paren
             && self.modifier == other.modifier
-            && self.lifetimes == other.lifetimes
+            && self.lifes == other.lifes
             && self.path == other.path
     }
 }
@@ -1204,7 +1189,7 @@ impl PartialEq for TraitItemConst {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident
-            && self.generics == other.generics
+            && self.gens == other.gens
             && self.ty == other.ty
             && self.default == other.default
     }
@@ -1212,16 +1197,13 @@ impl PartialEq for TraitItemConst {
 impl Eq for TraitItemFn {}
 impl PartialEq for TraitItemFn {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs
-            && self.sig == other.sig
-            && self.default == other.default
-            && self.semi_token == other.semi_token
+        self.attrs == other.attrs && self.sig == other.sig && self.default == other.default && self.semi == other.semi
     }
 }
 impl Eq for TraitItemMacro {}
 impl PartialEq for TraitItemMacro {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.mac == other.mac && self.semi_token == other.semi_token
+        self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
 impl Eq for TraitItemType {}
@@ -1229,8 +1211,8 @@ impl PartialEq for TraitItemType {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident
-            && self.generics == other.generics
-            && self.colon_token == other.colon_token
+            && self.gens == other.gens
+            && self.colon == other.colon
             && self.bounds == other.bounds
             && self.default == other.default
     }
@@ -1242,65 +1224,65 @@ impl PartialEq for Ty {
             (Ty::Array(self0), Ty::Array(other0)) => self0 == other0,
             (Ty::BareFn(self0), Ty::BareFn(other0)) => self0 == other0,
             (Ty::Group(self0), Ty::Group(other0)) => self0 == other0,
-            (Ty::ImplTrait(self0), Ty::ImplTrait(other0)) => self0 == other0,
+            (Ty::Impl(self0), Ty::Impl(other0)) => self0 == other0,
             (Ty::Infer(self0), Ty::Infer(other0)) => self0 == other0,
-            (Ty::Macro(self0), Ty::Macro(other0)) => self0 == other0,
+            (Ty::Mac(self0), Ty::Mac(other0)) => self0 == other0,
             (Ty::Never(self0), Ty::Never(other0)) => self0 == other0,
             (Ty::Paren(self0), Ty::Paren(other0)) => self0 == other0,
             (Ty::Path(self0), Ty::Path(other0)) => self0 == other0,
             (Ty::Ptr(self0), Ty::Ptr(other0)) => self0 == other0,
-            (Ty::Reference(self0), Ty::Reference(other0)) => self0 == other0,
+            (Ty::Ref(self0), Ty::Ref(other0)) => self0 == other0,
             (Ty::Slice(self0), Ty::Slice(other0)) => self0 == other0,
-            (Ty::TraitObject(self0), Ty::TraitObject(other0)) => self0 == other0,
+            (Ty::TraitObj(self0), Ty::TraitObj(other0)) => self0 == other0,
             (Ty::Tuple(self0), Ty::Tuple(other0)) => self0 == other0,
             (Ty::Verbatim(self0), Ty::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
             _ => false,
         }
     }
 }
-impl Eq for TypeArray {}
-impl PartialEq for TypeArray {
+impl Eq for ty::Array {}
+impl PartialEq for ty::Array {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem && self.len == other.len
     }
 }
-impl Eq for TypeBareFn {}
-impl PartialEq for TypeBareFn {
+impl Eq for ty::BareFn {}
+impl PartialEq for ty::BareFn {
     fn eq(&self, other: &Self) -> bool {
-        self.lifetimes == other.lifetimes
+        self.lifes == other.lifes
             && self.unsafe_ == other.unsafe_
             && self.abi == other.abi
-            && self.inputs == other.inputs
-            && self.variadic == other.variadic
-            && self.output == other.output
+            && self.args == other.args
+            && self.vari == other.vari
+            && self.ret == other.ret
     }
 }
-impl Eq for TypeGroup {}
-impl PartialEq for TypeGroup {
+impl Eq for ty::Group {}
+impl PartialEq for ty::Group {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem
     }
 }
-impl Eq for TypeImplTrait {}
-impl PartialEq for TypeImplTrait {
+impl Eq for ty::Impl {}
+impl PartialEq for ty::Impl {
     fn eq(&self, other: &Self) -> bool {
         self.bounds == other.bounds
     }
 }
-impl Eq for TypeInfer {}
-impl PartialEq for TypeInfer {
+impl Eq for ty::Infer {}
+impl PartialEq for ty::Infer {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
-impl Eq for TypeMacro {}
-impl PartialEq for TypeMacro {
+impl Eq for ty::Mac {}
+impl PartialEq for ty::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.mac == other.mac
     }
 }
-impl Eq for TypeNever {}
-impl PartialEq for TypeNever {
+impl Eq for ty::Never {}
+impl PartialEq for ty::Never {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
@@ -1329,44 +1311,44 @@ impl PartialEq for TypeParamBound {
         }
     }
 }
-impl Eq for TypeParen {}
-impl PartialEq for TypeParen {
+impl Eq for ty::Paren {}
+impl PartialEq for ty::Paren {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem
     }
 }
-impl Eq for TypePath {}
-impl PartialEq for TypePath {
+impl Eq for ty::Path {}
+impl PartialEq for ty::Path {
     fn eq(&self, other: &Self) -> bool {
         self.qself == other.qself && self.path == other.path
     }
 }
-impl Eq for TypePtr {}
-impl PartialEq for TypePtr {
+impl Eq for ty::Ptr {}
+impl PartialEq for ty::Ptr {
     fn eq(&self, other: &Self) -> bool {
         self.const_ == other.const_ && self.mut_ == other.mut_ && self.elem == other.elem
     }
 }
-impl Eq for TypeReference {}
-impl PartialEq for TypeReference {
+impl Eq for ty::Ref {}
+impl PartialEq for ty::Ref {
     fn eq(&self, other: &Self) -> bool {
-        self.lifetime == other.lifetime && self.mut_ == other.mut_ && self.elem == other.elem
+        self.life == other.life && self.mut_ == other.mut_ && self.elem == other.elem
     }
 }
-impl Eq for TypeSlice {}
-impl PartialEq for TypeSlice {
+impl Eq for ty::Slice {}
+impl PartialEq for ty::Slice {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem
     }
 }
-impl Eq for TypeTraitObject {}
-impl PartialEq for TypeTraitObject {
+impl Eq for ty::TraitObj {}
+impl PartialEq for ty::TraitObj {
     fn eq(&self, other: &Self) -> bool {
         self.dyn_ == other.dyn_ && self.bounds == other.bounds
     }
 }
-impl Eq for TypeTuple {}
-impl PartialEq for TypeTuple {
+impl Eq for ty::Tuple {}
+impl PartialEq for ty::Tuple {
     fn eq(&self, other: &Self) -> bool {
         self.elems == other.elems
     }

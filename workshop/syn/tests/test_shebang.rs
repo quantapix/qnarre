@@ -13,8 +13,8 @@ fn test_basic() {
                 vis: Visibility::Inherited,
                 sig: Signature {
                     ident: "main",
-                    generics: Generics,
-                    output: ReturnType::Default,
+                    gens: Generics,
+                    ret: ty::Ret::Default,
                 },
                 block: Block,
             },
@@ -49,8 +49,8 @@ fn test_comment() {
                 vis: Visibility::Inherited,
                 sig: Signature {
                     ident: "main",
-                    generics: Generics,
-                    output: ReturnType::Default,
+                    gens: Generics,
+                    ret: ty::Ret::Default,
                 },
                 block: Block,
             },

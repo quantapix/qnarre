@@ -10,7 +10,7 @@
         ]
       },
       "fields": {
-        "extern_token": {
+        "extern_": {
           "token": "Extern"
         },
         "name": {
@@ -29,12 +29,12 @@
         ]
       },
       "fields": {
-        "colon2_token": {
+        "colon2": {
           "option": {
             "token": "PathSep"
           }
         },
-        "lt_token": {
+        "lt": {
           "token": "Lt"
         },
         "args": {
@@ -45,7 +45,7 @@
             "punct": "Comma"
           }
         },
-        "gt_token": {
+        "gt": {
           "token": "Gt"
         }
       }
@@ -80,7 +80,7 @@
             ]
           }
         },
-        "fat_arrow_token": {
+        "fat_arrow": {
           "token": "FatArrow"
         },
         "body": {
@@ -107,12 +107,12 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "option": {
             "syn": "path::path::AngledArgs"
           }
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "value": {
@@ -132,12 +132,12 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "option": {
             "syn": "path::path::AngledArgs"
           }
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "ty": {
@@ -171,13 +171,13 @@
         ]
       },
       "fields": {
-        "pound_token": {
+        "pound": {
           "token": "Pound"
         },
         "style": {
           "syn": "AttrStyle"
         },
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "meta": {
@@ -186,7 +186,7 @@
       }
     },
     {
-      "ident": "BareFnArg",
+      "ident": "ty::BareFnArg",
       "features": {
         "any": [
           "derive",
@@ -217,7 +217,7 @@
       }
     },
     {
-      "ident": "BareVariadic",
+      "ident": "ty::BareVari",
       "features": {
         "any": [
           "derive",
@@ -412,7 +412,7 @@
         ]
       },
       "fields": {
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "stmts": {
@@ -431,10 +431,10 @@
         ]
       },
       "fields": {
-        "for_token": {
+        "for_": {
           "token": "For"
         },
-        "lt_token": {
+        "lt": {
           "token": "Lt"
         },
         "lifetimes": {
@@ -445,7 +445,7 @@
             "punct": "Comma"
           }
         },
-        "gt_token": {
+        "gt": {
           "token": "Gt"
         }
       }
@@ -464,19 +464,19 @@
             "syn": "Attribute"
           }
         },
-        "const_token": {
+        "const_": {
           "token": "Const"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
           "syn": "Type"
         },
-        "eq_token": {
+        "eq": {
           "option": {
             "token": "Eq"
           }
@@ -500,12 +500,12 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "option": {
             "syn": "path::path::AngledArgs"
           }
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "bounds": {
@@ -551,10 +551,10 @@
         ]
       },
       "fields": {
-        "enum_token": {
+        "enum_": {
           "token": "Enum"
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "variants": {
@@ -575,13 +575,13 @@
         ]
       },
       "fields": {
-        "struct_token": {
+        "struct_": {
           "token": "Struct"
         },
         "fields": {
           "syn": "Fields"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -596,7 +596,7 @@
         ]
       },
       "fields": {
-        "union_token": {
+        "union_": {
           "token": "Union"
         },
         "fields": {
@@ -623,7 +623,7 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
         "data": {
@@ -851,7 +851,7 @@
             "syn": "Attribute"
           }
         },
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "elems": {
@@ -882,7 +882,7 @@
             "syn": "Expr"
           }
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "right": {
@@ -905,7 +905,7 @@
             "syn": "Attribute"
           }
         },
-        "async_token": {
+        "async_": {
           "token": "Async"
         },
         "capture": {
@@ -936,10 +936,10 @@
             "syn": "Expr"
           }
         },
-        "dot_token": {
+        "dot": {
           "token": "Dot"
         },
-        "await_token": {
+        "await_": {
           "token": "Await"
         }
       }
@@ -1009,7 +1009,7 @@
             "syn": "Attribute"
           }
         },
-        "break_token": {
+        "break_": {
           "token": "Break"
         },
         "label": {
@@ -1045,7 +1045,7 @@
             "syn": "Expr"
           }
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "args": {
@@ -1077,7 +1077,7 @@
             "syn": "Expr"
           }
         },
-        "as_token": {
+        "as_": {
           "token": "As"
         },
         "ty": {
@@ -1125,7 +1125,7 @@
             "token": "Move"
           }
         },
-        "or1_token": {
+        "or1": {
           "token": "Or"
         },
         "inputs": {
@@ -1136,11 +1136,11 @@
             "punct": "Comma"
           }
         },
-        "or2_token": {
+        "or2": {
           "token": "Or"
         },
         "output": {
-          "syn": "ReturnType"
+          "syn": "ty::Ret"
         },
         "body": {
           "box": {
@@ -1162,7 +1162,7 @@
             "syn": "Attribute"
           }
         },
-        "const_token": {
+        "const_": {
           "token": "Const"
         },
         "block": {
@@ -1183,7 +1183,7 @@
             "syn": "Attribute"
           }
         },
-        "continue_token": {
+        "continue_": {
           "token": "Continue"
         },
         "label": {
@@ -1212,7 +1212,7 @@
             "syn": "Expr"
           }
         },
-        "dot_token": {
+        "dot": {
           "token": "Dot"
         },
         "member": {
@@ -1238,7 +1238,7 @@
             "syn": "Label"
           }
         },
-        "for_token": {
+        "for_": {
           "token": "For"
         },
         "pat": {
@@ -1246,7 +1246,7 @@
             "syn": "Pat"
           }
         },
-        "in_token": {
+        "in_": {
           "token": "In"
         },
         "expr": {
@@ -1273,7 +1273,7 @@
             "syn": "Attribute"
           }
         },
-        "group_token": {
+        "group": {
           "group": "Group"
         },
         "expr": {
@@ -1296,7 +1296,7 @@
             "syn": "Attribute"
           }
         },
-        "if_token": {
+        "if_": {
           "token": "If"
         },
         "cond": {
@@ -1342,7 +1342,7 @@
             "syn": "Expr"
           }
         },
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "index": {
@@ -1365,7 +1365,7 @@
             "syn": "Attribute"
           }
         },
-        "underscore_token": {
+        "underscore": {
           "token": "Underscore"
         }
       }
@@ -1383,7 +1383,7 @@
             "syn": "Attribute"
           }
         },
-        "let_token": {
+        "let_": {
           "token": "Let"
         },
         "pat": {
@@ -1391,7 +1391,7 @@
             "syn": "Pat"
           }
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "expr": {
@@ -1438,7 +1438,7 @@
             "syn": "Label"
           }
         },
-        "loop_token": {
+        "loop_": {
           "token": "Loop"
         },
         "body": {
@@ -1478,7 +1478,7 @@
             "syn": "Attribute"
           }
         },
-        "match_token": {
+        "match_": {
           "token": "Match"
         },
         "expr": {
@@ -1486,7 +1486,7 @@
             "syn": "Expr"
           }
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "arms": {
@@ -1514,7 +1514,7 @@
             "syn": "Expr"
           }
         },
-        "dot_token": {
+        "dot": {
           "token": "Dot"
         },
         "method": {
@@ -1525,7 +1525,7 @@
             "syn": "path::path::AngledArgs"
           }
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "args": {
@@ -1552,7 +1552,7 @@
             "syn": "Attribute"
           }
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "expr": {
@@ -1631,7 +1631,7 @@
             "syn": "Attribute"
           }
         },
-        "and_token": {
+        "and": {
           "token": "And"
         },
         "mutability": {
@@ -1659,7 +1659,7 @@
             "syn": "Attribute"
           }
         },
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "expr": {
@@ -1667,7 +1667,7 @@
             "syn": "Expr"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         },
         "len": {
@@ -1690,7 +1690,7 @@
             "syn": "Attribute"
           }
         },
-        "return_token": {
+        "return_": {
           "token": "Return"
         },
         "expr": {
@@ -1723,7 +1723,7 @@
         "path": {
           "syn": "Path"
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "fields": {
@@ -1734,7 +1734,7 @@
             "punct": "Comma"
           }
         },
-        "dot2_token": {
+        "dot2": {
           "option": {
             "token": "DotDot"
           }
@@ -1766,7 +1766,7 @@
             "syn": "Expr"
           }
         },
-        "question_token": {
+        "question": {
           "token": "Question"
         }
       }
@@ -1784,7 +1784,7 @@
             "syn": "Attribute"
           }
         },
-        "try_token": {
+        "try_": {
           "token": "Try"
         },
         "block": {
@@ -1805,7 +1805,7 @@
             "syn": "Attribute"
           }
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "elems": {
@@ -1855,7 +1855,7 @@
             "syn": "Attribute"
           }
         },
-        "unsafe_token": {
+        "unsafe_": {
           "token": "Unsafe"
         },
         "block": {
@@ -1881,7 +1881,7 @@
             "syn": "Label"
           }
         },
-        "while_token": {
+        "while_": {
           "token": "While"
         },
         "cond": {
@@ -1907,7 +1907,7 @@
             "syn": "Attribute"
           }
         },
-        "yield_token": {
+        "yield_": {
           "token": "Yield"
         },
         "expr": {
@@ -1944,7 +1944,7 @@
             "proc_macro2": "Ident"
           }
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -1983,7 +1983,7 @@
         "member": {
           "syn": "Member"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -2011,7 +2011,7 @@
         "member": {
           "syn": "Member"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -2052,7 +2052,7 @@
         ]
       },
       "fields": {
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "named": {
@@ -2074,7 +2074,7 @@
         ]
       },
       "fields": {
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "unnamed": {
@@ -2187,7 +2187,7 @@
         "sig": {
           "syn": "Signature"
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2208,7 +2208,7 @@
         "mac": {
           "syn": "Macro"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -2231,7 +2231,7 @@
         "vis": {
           "syn": "Visibility"
         },
-        "static_token": {
+        "static_": {
           "token": "Static"
         },
         "mutability": {
@@ -2240,7 +2240,7 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
@@ -2248,7 +2248,7 @@
             "syn": "Type"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2269,16 +2269,16 @@
         "vis": {
           "syn": "Visibility"
         },
-        "type_token": {
+        "type": {
           "token": "Type"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2360,7 +2360,7 @@
         ]
       },
       "fields": {
-        "lt_token": {
+        "lt": {
           "option": {
             "token": "Lt"
           }
@@ -2373,7 +2373,7 @@
             "punct": "Comma"
           }
         },
-        "gt_token": {
+        "gt": {
           "option": {
             "token": "Gt"
           }
@@ -2442,28 +2442,28 @@
             "token": "Default"
           }
         },
-        "const_token": {
+        "const_": {
           "token": "Const"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
           "syn": "Type"
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "expr": {
           "syn": "Expr"
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2513,7 +2513,7 @@
         "mac": {
           "syn": "Macro"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -2541,22 +2541,22 @@
             "token": "Default"
           }
         },
-        "type_token": {
+        "type": {
           "token": "Type"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "ty": {
           "syn": "Type"
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2695,16 +2695,16 @@
         "vis": {
           "syn": "Visibility"
         },
-        "const_token": {
+        "const_": {
           "token": "Const"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
@@ -2712,7 +2712,7 @@
             "syn": "Type"
           }
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "expr": {
@@ -2720,7 +2720,7 @@
             "syn": "Expr"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2741,16 +2741,16 @@
         "vis": {
           "syn": "Visibility"
         },
-        "enum_token": {
+        "enum_": {
           "token": "Enum"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "variants": {
@@ -2779,10 +2779,10 @@
         "vis": {
           "syn": "Visibility"
         },
-        "extern_token": {
+        "extern_": {
           "token": "Extern"
         },
-        "crate_token": {
+        "crate_": {
           "token": "Crate"
         },
         "ident": {
@@ -2800,7 +2800,7 @@
             ]
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -2852,7 +2852,7 @@
         "abi": {
           "syn": "Abi"
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "items": {
@@ -2885,10 +2885,10 @@
             "token": "Unsafe"
           }
         },
-        "impl_token": {
+        "impl_": {
           "token": "Impl"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
         "trait_": {
@@ -2913,7 +2913,7 @@
             "syn": "Type"
           }
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "items": {
@@ -2944,7 +2944,7 @@
         "mac": {
           "syn": "Macro"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -2972,7 +2972,7 @@
             "token": "Unsafe"
           }
         },
-        "mod_token": {
+        "mod_": {
           "token": "Mod"
         },
         "ident": {
@@ -3015,7 +3015,7 @@
         "vis": {
           "syn": "Visibility"
         },
-        "static_token": {
+        "static_": {
           "token": "Static"
         },
         "mutability": {
@@ -3024,7 +3024,7 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
@@ -3032,7 +3032,7 @@
             "syn": "Type"
           }
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "expr": {
@@ -3040,7 +3040,7 @@
             "syn": "Expr"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -3061,19 +3061,19 @@
         "vis": {
           "syn": "Visibility"
         },
-        "struct_token": {
+        "struct_": {
           "token": "Struct"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
         "fields": {
           "syn": "Fields"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -3101,7 +3101,7 @@
             "token": "Unsafe"
           }
         },
-        "auto_token": {
+        "auto_": {
           "option": {
             "token": "Auto"
           }
@@ -3111,16 +3111,16 @@
             "syn": "ImplRestriction"
           }
         },
-        "trait_token": {
+        "trait_": {
           "token": "Trait"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -3133,7 +3133,7 @@
             "punct": "Plus"
           }
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "items": {
@@ -3159,16 +3159,16 @@
         "vis": {
           "syn": "Visibility"
         },
-        "trait_token": {
+        "trait_": {
           "token": "Trait"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "bounds": {
@@ -3179,7 +3179,7 @@
             "punct": "Plus"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -3200,16 +3200,16 @@
         "vis": {
           "syn": "Visibility"
         },
-        "type_token": {
+        "type": {
           "token": "Type"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "ty": {
@@ -3217,7 +3217,7 @@
             "syn": "Type"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -3238,13 +3238,13 @@
         "vis": {
           "syn": "Visibility"
         },
-        "union_token": {
+        "union_": {
           "token": "Union"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
         "fields": {
@@ -3268,7 +3268,7 @@
         "vis": {
           "syn": "Visibility"
         },
-        "use_token": {
+        "use_": {
           "token": "Use"
         },
         "leading_colon": {
@@ -3279,7 +3279,7 @@
         "tree": {
           "syn": "UseTree"
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -3295,7 +3295,7 @@
         "name": {
           "syn": "Lifetime"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         }
       }
@@ -3331,7 +3331,7 @@
         "lifetime": {
           "syn": "Lifetime"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -3458,7 +3458,7 @@
             "syn": "Attribute"
           }
         },
-        "let_token": {
+        "let_": {
           "token": "Let"
         },
         "pat": {
@@ -3469,7 +3469,7 @@
             "syn": "LocalInit"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -3482,7 +3482,7 @@
         ]
       },
       "fields": {
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "expr": {
@@ -3518,7 +3518,7 @@
         "path": {
           "syn": "Path"
         },
-        "bang_token": {
+        "bang": {
           "token": "Not"
         },
         "delimiter": {
@@ -3634,7 +3634,7 @@
         "path": {
           "syn": "Path"
         },
-        "eq_token": {
+        "eq": {
           "token": "Eq"
         },
         "value": {
@@ -3651,7 +3651,7 @@
         ]
       },
       "fields": {
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "inputs": {
@@ -3663,7 +3663,7 @@
           }
         },
         "output": {
-          "syn": "ReturnType"
+          "syn": "ty::Ret"
         }
       }
     },
@@ -3846,7 +3846,7 @@
             "syn": "Attribute"
           }
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "pat": {
@@ -3869,7 +3869,7 @@
             "syn": "Attribute"
           }
         },
-        "and_token": {
+        "and": {
           "token": "And"
         },
         "mutability": {
@@ -3897,7 +3897,7 @@
             "syn": "Attribute"
           }
         },
-        "dot2_token": {
+        "dot2": {
           "token": "DotDot"
         }
       }
@@ -3915,7 +3915,7 @@
             "syn": "Attribute"
           }
         },
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "elems": {
@@ -3949,7 +3949,7 @@
         "path": {
           "syn": "Path"
         },
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "fields": {
@@ -3980,7 +3980,7 @@
             "syn": "Attribute"
           }
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "elems": {
@@ -4014,7 +4014,7 @@
         "path": {
           "syn": "Path"
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "elems": {
@@ -4045,7 +4045,7 @@
             "syn": "Pat"
           }
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
@@ -4068,7 +4068,7 @@
             "syn": "Attribute"
           }
         },
-        "underscore_token": {
+        "underscore": {
           "token": "Underscore"
         }
       }
@@ -4148,7 +4148,7 @@
         "lifetime": {
           "syn": "Lifetime"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "bounds": {
@@ -4178,7 +4178,7 @@
         "bounded_ty": {
           "syn": "Type"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "bounds": {
@@ -4200,7 +4200,7 @@
         ]
       },
       "fields": {
-        "lt_token": {
+        "lt": {
           "token": "Lt"
         },
         "ty": {
@@ -4211,12 +4211,12 @@
         "position": {
           "std": "usize"
         },
-        "as_token": {
+        "as_": {
           "option": {
             "token": "As"
           }
         },
-        "gt_token": {
+        "gt": {
           "token": "Gt"
         }
       }
@@ -4273,10 +4273,10 @@
             "token": "Mut"
           }
         },
-        "self_token": {
+        "self_": {
           "token": "SelfValue"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -4289,7 +4289,7 @@
       }
     },
     {
-      "ident": "ReturnType",
+      "ident": "ty::Ret",
       "features": {
         "any": [
           "derive",
@@ -4338,16 +4338,16 @@
             "syn": "Abi"
           }
         },
-        "fn_token": {
+        "fn_": {
           "token": "Fn"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "inputs": {
@@ -4358,13 +4358,13 @@
             "punct": "Comma"
           }
         },
-        "variadic": {
+        "vari": {
           "option": {
             "syn": "Variadic"
           }
         },
         "output": {
-          "syn": "ReturnType"
+          "syn": "ty::Ret"
         }
       }
     },
@@ -4436,7 +4436,7 @@
         "mac": {
           "syn": "Macro"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -4452,7 +4452,7 @@
         ]
       },
       "fields": {
-        "paren_token": {
+        "paren": {
           "option": {
             "group": "Paren"
           }
@@ -4536,16 +4536,16 @@
             "syn": "Attribute"
           }
         },
-        "const_token": {
+        "const_": {
           "token": "Const"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "colon_token": {
+        "colon": {
           "token": "Colon"
         },
         "ty": {
@@ -4563,7 +4563,7 @@
             ]
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -4589,7 +4589,7 @@
             "syn": "Block"
           }
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -4612,7 +4612,7 @@
         "mac": {
           "syn": "Macro"
         },
-        "semi_token": {
+        "semi": {
           "option": {
             "token": "Semi"
           }
@@ -4632,16 +4632,16 @@
             "syn": "Attribute"
           }
         },
-        "type_token": {
+        "type": {
           "token": "Type"
         },
         "ident": {
           "proc_macro2": "Ident"
         },
-        "generics": {
+        "gens": {
           "syn": "Generics"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -4666,7 +4666,7 @@
             ]
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         }
       }
@@ -4682,72 +4682,72 @@
       "variants": {
         "Array": [
           {
-            "syn": "TypeArray"
+            "syn": "ty::Array"
           }
         ],
         "BareFn": [
           {
-            "syn": "TypeBareFn"
+            "syn": "ty::BareFn"
           }
         ],
         "Group": [
           {
-            "syn": "TypeGroup"
+            "syn": "ty::Group"
           }
         ],
         "ImplTrait": [
           {
-            "syn": "TypeImplTrait"
+            "syn": "ty::Impl"
           }
         ],
         "Infer": [
           {
-            "syn": "TypeInfer"
+            "syn": "ty::Infer"
           }
         ],
         "Macro": [
           {
-            "syn": "TypeMacro"
+            "syn": "ty::Mac"
           }
         ],
         "Never": [
           {
-            "syn": "TypeNever"
+            "syn": "ty::Never"
           }
         ],
         "Paren": [
           {
-            "syn": "TypeParen"
+            "syn": "ty::Paren"
           }
         ],
         "Path": [
           {
-            "syn": "TypePath"
+            "syn": "ty::Path"
           }
         ],
         "Ptr": [
           {
-            "syn": "TypePtr"
+            "syn": "ty::Ptr"
           }
         ],
         "Reference": [
           {
-            "syn": "TypeReference"
+            "syn": "ty::Ref"
           }
         ],
         "Slice": [
           {
-            "syn": "TypeSlice"
+            "syn": "ty::Slice"
           }
         ],
         "TraitObject": [
           {
-            "syn": "TypeTraitObject"
+            "syn": "ty::TraitObj"
           }
         ],
         "Tuple": [
           {
-            "syn": "TypeTuple"
+            "syn": "ty::Tuple"
           }
         ],
         "Verbatim": [
@@ -4759,7 +4759,7 @@
       "exhaustive": false
     },
     {
-      "ident": "TypeArray",
+      "ident": "ty::Array",
       "features": {
         "any": [
           "derive",
@@ -4767,7 +4767,7 @@
         ]
       },
       "fields": {
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "elem": {
@@ -4775,7 +4775,7 @@
             "syn": "Type"
           }
         },
-        "semi_token": {
+        "semi": {
           "token": "Semi"
         },
         "len": {
@@ -4784,7 +4784,7 @@
       }
     },
     {
-      "ident": "TypeBareFn",
+      "ident": "ty::BareFn",
       "features": {
         "any": [
           "derive",
@@ -4807,32 +4807,32 @@
             "syn": "Abi"
           }
         },
-        "fn_token": {
+        "fn_": {
           "token": "Fn"
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "inputs": {
           "punctuated": {
             "element": {
-              "syn": "BareFnArg"
+              "syn": "ty::BareFnArg"
             },
             "punct": "Comma"
           }
         },
-        "variadic": {
+        "vari": {
           "option": {
-            "syn": "BareVariadic"
+            "syn": "ty::BareVari"
           }
         },
         "output": {
-          "syn": "ReturnType"
+          "syn": "ty::Ret"
         }
       }
     },
     {
-      "ident": "TypeGroup",
+      "ident": "ty::Group",
       "features": {
         "any": [
           "derive",
@@ -4840,7 +4840,7 @@
         ]
       },
       "fields": {
-        "group_token": {
+        "group": {
           "group": "Group"
         },
         "elem": {
@@ -4851,7 +4851,7 @@
       }
     },
     {
-      "ident": "TypeImplTrait",
+      "ident": "ty::Impl",
       "features": {
         "any": [
           "derive",
@@ -4859,7 +4859,7 @@
         ]
       },
       "fields": {
-        "impl_token": {
+        "impl_": {
           "token": "Impl"
         },
         "bounds": {
@@ -4873,7 +4873,7 @@
       }
     },
     {
-      "ident": "TypeInfer",
+      "ident": "ty::Infer",
       "features": {
         "any": [
           "derive",
@@ -4881,13 +4881,13 @@
         ]
       },
       "fields": {
-        "underscore_token": {
+        "underscore": {
           "token": "Underscore"
         }
       }
     },
     {
-      "ident": "TypeMacro",
+      "ident": "ty::Mac",
       "features": {
         "any": [
           "derive",
@@ -4901,7 +4901,7 @@
       }
     },
     {
-      "ident": "TypeNever",
+      "ident": "ty::Never",
       "features": {
         "any": [
           "derive",
@@ -4909,7 +4909,7 @@
         ]
       },
       "fields": {
-        "bang_token": {
+        "bang": {
           "token": "Not"
         }
       }
@@ -4931,7 +4931,7 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "colon_token": {
+        "colon": {
           "option": {
             "token": "Colon"
           }
@@ -4944,7 +4944,7 @@
             "punct": "Plus"
           }
         },
-        "eq_token": {
+        "eq": {
           "option": {
             "token": "Eq"
           }
@@ -4984,7 +4984,7 @@
       "exhaustive": false
     },
     {
-      "ident": "TypeParen",
+      "ident": "ty::Paren",
       "features": {
         "any": [
           "derive",
@@ -4992,7 +4992,7 @@
         ]
       },
       "fields": {
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "elem": {
@@ -5003,7 +5003,7 @@
       }
     },
     {
-      "ident": "TypePath",
+      "ident": "ty::Path",
       "features": {
         "any": [
           "derive",
@@ -5022,7 +5022,7 @@
       }
     },
     {
-      "ident": "TypePtr",
+      "ident": "ty::Ptr",
       "features": {
         "any": [
           "derive",
@@ -5030,10 +5030,10 @@
         ]
       },
       "fields": {
-        "star_token": {
+        "star": {
           "token": "Star"
         },
-        "const_token": {
+        "const_": {
           "option": {
             "token": "Const"
           }
@@ -5051,7 +5051,7 @@
       }
     },
     {
-      "ident": "TypeReference",
+      "ident": "ty::Ref",
       "features": {
         "any": [
           "derive",
@@ -5059,7 +5059,7 @@
         ]
       },
       "fields": {
-        "and_token": {
+        "and": {
           "token": "And"
         },
         "lifetime": {
@@ -5080,7 +5080,7 @@
       }
     },
     {
-      "ident": "TypeSlice",
+      "ident": "ty::Slice",
       "features": {
         "any": [
           "derive",
@@ -5088,7 +5088,7 @@
         ]
       },
       "fields": {
-        "bracket_token": {
+        "bracket": {
           "group": "Bracket"
         },
         "elem": {
@@ -5099,7 +5099,7 @@
       }
     },
     {
-      "ident": "TypeTraitObject",
+      "ident": "ty::TraitObj",
       "features": {
         "any": [
           "derive",
@@ -5107,7 +5107,7 @@
         ]
       },
       "fields": {
-        "dyn_token": {
+        "dyn_": {
           "option": {
             "token": "Dyn"
           }
@@ -5123,7 +5123,7 @@
       }
     },
     {
-      "ident": "TypeTuple",
+      "ident": "ty::Tuple",
       "features": {
         "any": [
           "derive",
@@ -5131,7 +5131,7 @@
         ]
       },
       "fields": {
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
         "elems": {
@@ -5179,7 +5179,7 @@
         ]
       },
       "fields": {
-        "star_token": {
+        "star": {
           "token": "Star"
         }
       }
@@ -5192,7 +5192,7 @@
         ]
       },
       "fields": {
-        "brace_token": {
+        "brace": {
           "group": "Brace"
         },
         "items": {
@@ -5229,7 +5229,7 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "colon2_token": {
+        "colon2": {
           "token": "PathSep"
         },
         "tree": {
@@ -5250,7 +5250,7 @@
         "ident": {
           "proc_macro2": "Ident"
         },
-        "as_token": {
+        "as_": {
           "token": "As"
         },
         "rename": {
@@ -5373,13 +5373,13 @@
         ]
       },
       "fields": {
-        "pub_token": {
+        "pub_": {
           "token": "Pub"
         },
-        "paren_token": {
+        "paren": {
           "group": "Paren"
         },
-        "in_token": {
+        "in_": {
           "option": {
             "token": "In"
           }
@@ -5422,7 +5422,7 @@
         ]
       },
       "fields": {
-        "where_token": {
+        "where_": {
           "token": "Where"
         },
         "predicates": {

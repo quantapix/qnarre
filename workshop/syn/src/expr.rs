@@ -51,7 +51,7 @@ ast_enum_of_structs! {
 ast_struct! {
     pub struct ExprArray #full {
         pub attrs: Vec<Attribute>,
-        pub bracket_token: tok::Bracket,
+        pub bracket: tok::Bracket,
         pub elems: Punctuated<Expr, Token![,]>,
     }
 }
@@ -59,14 +59,14 @@ ast_struct! {
     pub struct ExprAssign #full {
         pub attrs: Vec<Attribute>,
         pub left: Box<Expr>,
-        pub eq_token: Token![=],
+        pub eq: Token![=],
         pub right: Box<Expr>,
     }
 }
 ast_struct! {
     pub struct ExprAsync #full {
         pub attrs: Vec<Attribute>,
-        pub async_token: Token![async],
+        pub async_: Token![async],
         pub capture: Option<Token![move]>,
         pub block: Block,
     }
@@ -75,8 +75,8 @@ ast_struct! {
     pub struct ExprAwait #full {
         pub attrs: Vec<Attribute>,
         pub base: Box<Expr>,
-        pub dot_token: Token![.],
-        pub await_token: Token![await],
+        pub dot: Token![.],
+        pub await_: Token![await],
     }
 }
 ast_struct! {
@@ -97,7 +97,7 @@ ast_struct! {
 ast_struct! {
     pub struct ExprBreak #full {
         pub attrs: Vec<Attribute>,
-        pub break_token: Token![break],
+        pub break_: Token![break],
         pub label: Option<Lifetime>,
         pub expr: Option<Box<Expr>>,
     }
@@ -106,7 +106,7 @@ ast_struct! {
     pub struct ExprCall {
         pub attrs: Vec<Attribute>,
         pub func: Box<Expr>,
-        pub paren_token: tok::Paren,
+        pub paren: tok::Paren,
         pub args: Punctuated<Expr, Token![,]>,
     }
 }
@@ -114,36 +114,36 @@ ast_struct! {
     pub struct ExprCast {
         pub attrs: Vec<Attribute>,
         pub expr: Box<Expr>,
-        pub as_token: Token![as],
+        pub as_: Token![as],
         pub ty: Box<Ty>,
     }
 }
 ast_struct! {
     pub struct ExprClosure #full {
         pub attrs: Vec<Attribute>,
-        pub lifetimes: Option<BoundLifetimes>,
-        pub constness: Option<Token![const]>,
-        pub movability: Option<Token![static]>,
-        pub asyncness: Option<Token![async]>,
-        pub capture: Option<Token![move]>,
-        pub or1_token: Token![|],
+        pub lifes: Option<BoundLifetimes>,
+        pub const_: Option<Token![const]>,
+        pub static_: Option<Token![static]>,
+        pub async_: Option<Token![async]>,
+        pub move_: Option<Token![move]>,
+        pub or1: Token![|],
         pub inputs: Punctuated<Pat, Token![,]>,
-        pub or2_token: Token![|],
-        pub output: ReturnType,
+        pub or2: Token![|],
+        pub ret: ty::Ret,
         pub body: Box<Expr>,
     }
 }
 ast_struct! {
     pub struct ExprConst #full {
         pub attrs: Vec<Attribute>,
-        pub const_token: Token![const],
+        pub const_: Token![const],
         pub block: Block,
     }
 }
 ast_struct! {
     pub struct ExprContinue #full {
         pub attrs: Vec<Attribute>,
-        pub continue_token: Token![continue],
+        pub continue_: Token![continue],
         pub label: Option<Lifetime>,
     }
 }
@@ -151,7 +151,7 @@ ast_struct! {
     pub struct ExprField {
         pub attrs: Vec<Attribute>,
         pub base: Box<Expr>,
-        pub dot_token: Token![.],
+        pub dot: Token![.],
         pub member: Member,
     }
 }
@@ -159,9 +159,9 @@ ast_struct! {
     pub struct ExprForLoop #full {
         pub attrs: Vec<Attribute>,
         pub label: Option<Label>,
-        pub for_token: Token![for],
+        pub for_: Token![for],
         pub pat: Box<Pat>,
-        pub in_token: Token![in],
+        pub in_: Token![in],
         pub expr: Box<Expr>,
         pub body: Block,
     }
@@ -169,14 +169,14 @@ ast_struct! {
 ast_struct! {
     pub struct ExprGroup {
         pub attrs: Vec<Attribute>,
-        pub group_token: tok::Group,
+        pub group: tok::Group,
         pub expr: Box<Expr>,
     }
 }
 ast_struct! {
     pub struct ExprIf #full {
         pub attrs: Vec<Attribute>,
-        pub if_token: Token![if],
+        pub if_: Token![if],
         pub cond: Box<Expr>,
         pub then_branch: Block,
         pub else_branch: Option<(Token![else], Box<Expr>)>,
@@ -186,22 +186,22 @@ ast_struct! {
     pub struct ExprIndex {
         pub attrs: Vec<Attribute>,
         pub expr: Box<Expr>,
-        pub bracket_token: tok::Bracket,
+        pub bracket: tok::Bracket,
         pub index: Box<Expr>,
     }
 }
 ast_struct! {
     pub struct ExprInfer #full {
         pub attrs: Vec<Attribute>,
-        pub underscore_token: Token![_],
+        pub underscore: Token![_],
     }
 }
 ast_struct! {
     pub struct ExprLet #full {
         pub attrs: Vec<Attribute>,
-        pub let_token: Token![let],
+        pub let_: Token![let],
         pub pat: Box<Pat>,
-        pub eq_token: Token![=],
+        pub eq: Token![=],
         pub expr: Box<Expr>,
     }
 }
@@ -215,7 +215,7 @@ ast_struct! {
     pub struct ExprLoop #full {
         pub attrs: Vec<Attribute>,
         pub label: Option<Label>,
-        pub loop_token: Token![loop],
+        pub loop_: Token![loop],
         pub body: Block,
     }
 }
@@ -228,9 +228,9 @@ ast_struct! {
 ast_struct! {
     pub struct ExprMatch #full {
         pub attrs: Vec<Attribute>,
-        pub match_token: Token![match],
+        pub match_: Token![match],
         pub expr: Box<Expr>,
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub arms: Vec<Arm>,
     }
 }
@@ -238,17 +238,17 @@ ast_struct! {
     pub struct ExprMethodCall #full {
         pub attrs: Vec<Attribute>,
         pub receiver: Box<Expr>,
-        pub dot_token: Token![.],
+        pub dot: Token![.],
         pub method: Ident,
         pub turbofish: Option<AngledArgs>,
-        pub paren_token: tok::Paren,
+        pub paren: tok::Paren,
         pub args: Punctuated<Expr, Token![,]>,
     }
 }
 ast_struct! {
     pub struct ExprParen {
         pub attrs: Vec<Attribute>,
-        pub paren_token: tok::Paren,
+        pub paren: tok::Paren,
         pub expr: Box<Expr>,
     }
 }
@@ -270,24 +270,24 @@ ast_struct! {
 ast_struct! {
     pub struct ExprReference #full {
         pub attrs: Vec<Attribute>,
-        pub and_token: Token![&],
-        pub mutability: Option<Token![mut]>,
+        pub and: Token![&],
+        pub mut_: Option<Token![mut]>,
         pub expr: Box<Expr>,
     }
 }
 ast_struct! {
     pub struct ExprRepeat #full {
         pub attrs: Vec<Attribute>,
-        pub bracket_token: tok::Bracket,
+        pub bracket: tok::Bracket,
         pub expr: Box<Expr>,
-        pub semi_token: Token![;],
+        pub semi: Token![;],
         pub len: Box<Expr>,
     }
 }
 ast_struct! {
     pub struct ExprReturn #full {
         pub attrs: Vec<Attribute>,
-        pub return_token: Token![return],
+        pub return_: Token![return],
         pub expr: Option<Box<Expr>>,
     }
 }
@@ -296,9 +296,9 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub qself: Option<QSelf>,
         pub path: Path,
-        pub brace_token: tok::Brace,
+        pub brace: tok::Brace,
         pub fields: Punctuated<FieldValue, Token![,]>,
-        pub dot2_token: Option<Token![..]>,
+        pub dot2: Option<Token![..]>,
         pub rest: Option<Box<Expr>>,
     }
 }
@@ -306,20 +306,20 @@ ast_struct! {
     pub struct ExprTry #full {
         pub attrs: Vec<Attribute>,
         pub expr: Box<Expr>,
-        pub question_token: Token![?],
+        pub question: Token![?],
     }
 }
 ast_struct! {
     pub struct ExprTryBlock #full {
         pub attrs: Vec<Attribute>,
-        pub try_token: Token![try],
+        pub try_: Token![try],
         pub block: Block,
     }
 }
 ast_struct! {
     pub struct ExprTuple #full {
         pub attrs: Vec<Attribute>,
-        pub paren_token: tok::Paren,
+        pub paren: tok::Paren,
         pub elems: Punctuated<Expr, Token![,]>,
     }
 }
@@ -333,7 +333,7 @@ ast_struct! {
 ast_struct! {
     pub struct ExprUnsafe #full {
         pub attrs: Vec<Attribute>,
-        pub unsafe_token: Token![unsafe],
+        pub unsafe_: Token![unsafe],
         pub block: Block,
     }
 }
@@ -341,7 +341,7 @@ ast_struct! {
     pub struct ExprWhile #full {
         pub attrs: Vec<Attribute>,
         pub label: Option<Label>,
-        pub while_token: Token![while],
+        pub while_: Token![while],
         pub cond: Box<Expr>,
         pub body: Block,
     }
@@ -349,7 +349,7 @@ ast_struct! {
 ast_struct! {
     pub struct ExprYield #full {
         pub attrs: Vec<Attribute>,
-        pub yield_token: Token![yield],
+        pub yield_: Token![yield],
         pub expr: Option<Box<Expr>>,
     }
 }
@@ -413,26 +413,26 @@ ast_enum! {
     }
 }
 impl From<Ident> for Member {
-    fn from(ident: Ident) -> Member {
-        Member::Named(ident)
+    fn from(x: Ident) -> Member {
+        Member::Named(x)
     }
 }
 impl From<Index> for Member {
-    fn from(index: Index) -> Member {
-        Member::Unnamed(index)
+    fn from(x: Index) -> Member {
+        Member::Unnamed(x)
     }
 }
 impl From<usize> for Member {
-    fn from(index: usize) -> Member {
-        Member::Unnamed(Index::from(index))
+    fn from(x: usize) -> Member {
+        Member::Unnamed(Index::from(x))
     }
 }
 impl Eq for Member {}
 impl PartialEq for Member {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Member::Named(this), Member::Named(other)) => this == other,
-            (Member::Unnamed(this), Member::Unnamed(other)) => this == other,
+            (Member::Named(x), Member::Named(other)) => x == other,
+            (Member::Unnamed(x), Member::Unnamed(other)) => x == other,
             _ => false,
         }
     }
@@ -440,8 +440,8 @@ impl PartialEq for Member {
 impl Hash for Member {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            Member::Named(m) => m.hash(state),
-            Member::Unnamed(m) => m.hash(state),
+            Member::Named(x) => x.hash(state),
+            Member::Unnamed(x) => x.hash(state),
         }
     }
 }
@@ -497,14 +497,14 @@ ast_struct! {
     pub struct FieldValue {
         pub attrs: Vec<Attribute>,
         pub member: Member,
-        pub colon_token: Option<Token![:]>,
+        pub colon: Option<Token![:]>,
         pub expr: Expr,
     }
 }
 ast_struct! {
     pub struct Label {
         pub name: Lifetime,
-        pub colon_token: Token![:],
+        pub colon: Token![:],
     }
 }
 ast_struct! {
@@ -512,7 +512,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub pat: Pat,
         pub guard: Option<(Token![if], Box<Expr>)>,
-        pub fat_arrow_token: Token![=>],
+        pub fat_arrow: Token![=>],
         pub body: Box<Expr>,
         pub comma: Option<Token![,]>,
     }

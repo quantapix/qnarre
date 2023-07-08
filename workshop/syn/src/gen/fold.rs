@@ -37,10 +37,10 @@ pub trait Fold {
     fn fold_attribute(&mut self, i: Attribute) -> Attribute {
         fold_attribute(self, i)
     }
-    fn fold_bare_fn_arg(&mut self, i: BareFnArg) -> BareFnArg {
+    fn fold_bare_fn_arg(&mut self, i: ty::BareFnArg) -> ty::BareFnArg {
         fold_bare_fn_arg(self, i)
     }
-    fn fold_bare_variadic(&mut self, i: BareVariadic) -> BareVariadic {
+    fn fold_bare_variadic(&mut self, i: ty::BareVari) -> ty::BareVari {
         fold_bare_variadic(self, i)
     }
     fn fold_bin_op(&mut self, i: BinOp) -> BinOp {
@@ -433,7 +433,7 @@ pub trait Fold {
     fn fold_receiver(&mut self, i: Receiver) -> Receiver {
         fold_receiver(self, i)
     }
-    fn fold_return_type(&mut self, i: ReturnType) -> ReturnType {
+    fn fold_return_type(&mut self, i: ty::Ret) -> ty::Ret {
         fold_return_type(self, i)
     }
     fn fold_signature(&mut self, i: Signature) -> Signature {
@@ -442,7 +442,7 @@ pub trait Fold {
     fn fold_span(&mut self, i: Span) -> Span {
         fold_span(self, i)
     }
-    fn fold_static_mutability(&mut self, i: StaticMutability) -> StaticMutability {
+    fn fold_static_mutability(&mut self, i: StaticMut) -> StaticMut {
         fold_static_mutability(self, i)
     }
     fn fold_stmt(&mut self, i: Stmt) -> Stmt {
@@ -475,25 +475,25 @@ pub trait Fold {
     fn fold_type(&mut self, i: Ty) -> Ty {
         fold_type(self, i)
     }
-    fn fold_type_array(&mut self, i: TypeArray) -> TypeArray {
+    fn fold_type_array(&mut self, i: ty::Array) -> ty::Array {
         fold_type_array(self, i)
     }
-    fn fold_type_bare_fn(&mut self, i: TypeBareFn) -> TypeBareFn {
+    fn fold_type_bare_fn(&mut self, i: ty::BareFn) -> ty::BareFn {
         fold_type_bare_fn(self, i)
     }
-    fn fold_type_group(&mut self, i: TypeGroup) -> TypeGroup {
+    fn fold_type_group(&mut self, i: ty::Group) -> ty::Group {
         fold_type_group(self, i)
     }
-    fn fold_type_impl_trait(&mut self, i: TypeImplTrait) -> TypeImplTrait {
+    fn fold_type_impl_trait(&mut self, i: ty::Impl) -> ty::Impl {
         fold_type_impl_trait(self, i)
     }
-    fn fold_type_infer(&mut self, i: TypeInfer) -> TypeInfer {
+    fn fold_type_infer(&mut self, i: ty::Infer) -> ty::Infer {
         fold_type_infer(self, i)
     }
-    fn fold_type_macro(&mut self, i: TypeMacro) -> TypeMacro {
+    fn fold_type_macro(&mut self, i: ty::Mac) -> ty::Mac {
         fold_type_macro(self, i)
     }
-    fn fold_type_never(&mut self, i: TypeNever) -> TypeNever {
+    fn fold_type_never(&mut self, i: ty::Never) -> ty::Never {
         fold_type_never(self, i)
     }
     fn fold_type_param(&mut self, i: TypeParam) -> TypeParam {
@@ -502,25 +502,25 @@ pub trait Fold {
     fn fold_type_param_bound(&mut self, i: TypeParamBound) -> TypeParamBound {
         fold_type_param_bound(self, i)
     }
-    fn fold_type_paren(&mut self, i: TypeParen) -> TypeParen {
+    fn fold_type_paren(&mut self, i: ty::Paren) -> ty::Paren {
         fold_type_paren(self, i)
     }
-    fn fold_type_path(&mut self, i: TypePath) -> TypePath {
+    fn fold_type_path(&mut self, i: ty::Path) -> ty::Path {
         fold_type_path(self, i)
     }
-    fn fold_type_ptr(&mut self, i: TypePtr) -> TypePtr {
+    fn fold_type_ptr(&mut self, i: ty::Ptr) -> ty::Ptr {
         fold_type_ptr(self, i)
     }
-    fn fold_type_reference(&mut self, i: TypeReference) -> TypeReference {
+    fn fold_type_reference(&mut self, i: ty::Ref) -> ty::Ref {
         fold_type_reference(self, i)
     }
-    fn fold_type_slice(&mut self, i: TypeSlice) -> TypeSlice {
+    fn fold_type_slice(&mut self, i: ty::Slice) -> ty::Slice {
         fold_type_slice(self, i)
     }
-    fn fold_type_trait_object(&mut self, i: TypeTraitObject) -> TypeTraitObject {
+    fn fold_type_trait_object(&mut self, i: ty::TraitObj) -> ty::TraitObj {
         fold_type_trait_object(self, i)
     }
-    fn fold_type_tuple(&mut self, i: TypeTuple) -> TypeTuple {
+    fn fold_type_tuple(&mut self, i: ty::Tuple) -> ty::Tuple {
         fold_type_tuple(self, i)
     }
     fn fold_un_op(&mut self, i: UnOp) -> UnOp {
@@ -591,7 +591,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         pat: f.fold_pat(node.pat),
         guard: (node.guard).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
-        fat_arrow_token: node.fat_arrow_token,
+        fat_arrow: node.fat_arrow,
         body: Box::new(f.fold_expr(*node.body)),
         comma: node.comma,
     }
@@ -638,21 +638,21 @@ where
         meta: f.fold_meta(node.meta),
     }
 }
-pub fn fold_bare_fn_arg<F>(f: &mut F, node: BareFnArg) -> BareFnArg
+pub fn fold_bare_fn_arg<F>(f: &mut F, node: ty::BareFnArg) -> ty::BareFnArg
 where
     F: Fold + ?Sized,
 {
-    BareFnArg {
+    ty::BareFnArg {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
         ty: f.fold_type(node.ty),
     }
 }
-pub fn fold_bare_variadic<F>(f: &mut F, node: BareVariadic) -> BareVariadic
+pub fn fold_bare_variadic<F>(f: &mut F, node: ty::BareVari) -> ty::BareVari
 where
     F: Fold + ?Sized,
 {
-    BareVariadic {
+    ty::BareVari {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
         dots: node.dots,
@@ -710,7 +710,7 @@ where
     BoundLifetimes {
         for_: node.for_,
         lt: node.lt,
-        lifetimes: FoldHelper::lift(node.lifetimes, |it| f.fold_generic_param(it)),
+        lifes: FoldHelper::lift(node.lifes, |it| f.fold_generic_param(it)),
         gt: node.gt,
     }
 }
@@ -786,7 +786,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
+        gens: f.fold_generics(node.gens),
         data: f.fold_data(node.data),
     }
 }
@@ -842,7 +842,7 @@ where
 {
     ExprArray {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
     }
 }
@@ -853,7 +853,7 @@ where
     ExprAssign {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         left: Box::new(f.fold_expr(*node.left)),
-        eq_token: node.eq_token,
+        eq: node.eq,
         right: Box::new(f.fold_expr(*node.right)),
     }
 }
@@ -863,7 +863,7 @@ where
 {
     ExprAsync {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        async_token: node.async_token,
+        async_: node.async_,
         capture: node.capture,
         block: f.fold_block(node.block),
     }
@@ -875,8 +875,8 @@ where
     ExprAwait {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         base: Box::new(f.fold_expr(*node.base)),
-        dot_token: node.dot_token,
-        await_token: node.await_token,
+        dot: node.dot,
+        await_: node.await_,
     }
 }
 pub fn fold_expr_binary<F>(f: &mut F, node: ExprBinary) -> ExprBinary
@@ -906,7 +906,7 @@ where
 {
     ExprBreak {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        break_token: node.break_token,
+        break_: node.break_,
         label: (node.label).map(|it| f.fold_lifetime(it)),
         expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
     }
@@ -918,7 +918,7 @@ where
     ExprCall {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         func: Box::new(f.fold_expr(*node.func)),
-        paren_token: node.paren_token,
+        paren: node.paren,
         args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
     }
 }
@@ -929,7 +929,7 @@ where
     ExprCast {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
-        as_token: node.as_token,
+        as_: node.as_,
         ty: Box::new(f.fold_type(*node.ty)),
     }
 }
@@ -939,15 +939,15 @@ where
 {
     ExprClosure {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
-        constness: node.constness,
-        movability: node.movability,
-        asyncness: node.asyncness,
-        capture: node.capture,
-        or1_token: node.or1_token,
+        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
+        const_: node.const_,
+        static_: node.static_,
+        async_: node.async_,
+        move_: node.move_,
+        or1: node.or1,
         inputs: FoldHelper::lift(node.inputs, |it| f.fold_pat(it)),
-        or2_token: node.or2_token,
-        output: f.fold_return_type(node.output),
+        or2: node.or2,
+        ret: f.fold_return_type(node.ret),
         body: Box::new(f.fold_expr(*node.body)),
     }
 }
@@ -957,7 +957,7 @@ where
 {
     ExprConst {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        const_token: node.const_token,
+        const_: node.const_,
         block: f.fold_block(node.block),
     }
 }
@@ -967,7 +967,7 @@ where
 {
     ExprContinue {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        continue_token: node.continue_token,
+        continue_: node.continue_,
         label: (node.label).map(|it| f.fold_lifetime(it)),
     }
 }
@@ -978,7 +978,7 @@ where
     ExprField {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         base: Box::new(f.fold_expr(*node.base)),
-        dot_token: node.dot_token,
+        dot: node.dot,
         member: f.fold_member(node.member),
     }
 }
@@ -989,9 +989,9 @@ where
     ExprForLoop {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
-        for_token: node.for_token,
+        for_: node.for_,
         pat: Box::new(f.fold_pat(*node.pat)),
-        in_token: node.in_token,
+        in_: node.in_,
         expr: Box::new(f.fold_expr(*node.expr)),
         body: f.fold_block(node.body),
     }
@@ -1002,7 +1002,7 @@ where
 {
     ExprGroup {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        group_token: node.group_token,
+        group: node.group,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
@@ -1012,7 +1012,7 @@ where
 {
     ExprIf {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        if_token: node.if_token,
+        if_: node.if_,
         cond: Box::new(f.fold_expr(*node.cond)),
         then_branch: f.fold_block(node.then_branch),
         else_branch: (node.else_branch).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
@@ -1025,7 +1025,7 @@ where
     ExprIndex {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         index: Box::new(f.fold_expr(*node.index)),
     }
 }
@@ -1035,7 +1035,7 @@ where
 {
     ExprInfer {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        underscore_token: node.underscore_token,
+        underscore: node.underscore,
     }
 }
 pub fn fold_expr_let<F>(f: &mut F, node: ExprLet) -> ExprLet
@@ -1044,9 +1044,9 @@ where
 {
     ExprLet {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        let_token: node.let_token,
+        let_: node.let_,
         pat: Box::new(f.fold_pat(*node.pat)),
-        eq_token: node.eq_token,
+        eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
@@ -1066,7 +1066,7 @@ where
     ExprLoop {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
-        loop_token: node.loop_token,
+        loop_: node.loop_,
         body: f.fold_block(node.body),
     }
 }
@@ -1085,9 +1085,9 @@ where
 {
     ExprMatch {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        match_token: node.match_token,
+        match_: node.match_,
         expr: Box::new(f.fold_expr(*node.expr)),
-        brace_token: node.brace_token,
+        brace: node.brace,
         arms: FoldHelper::lift(node.arms, |it| f.fold_arm(it)),
     }
 }
@@ -1098,10 +1098,10 @@ where
     ExprMethodCall {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         receiver: Box::new(f.fold_expr(*node.receiver)),
-        dot_token: node.dot_token,
+        dot: node.dot,
         method: f.fold_ident(node.method),
         turbofish: (node.turbofish).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        paren_token: node.paren_token,
+        paren: node.paren,
         args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
     }
 }
@@ -1111,7 +1111,7 @@ where
 {
     ExprParen {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren_token: node.paren_token,
+        paren: node.paren,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
@@ -1142,8 +1142,8 @@ where
 {
     ExprReference {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        and_token: node.and_token,
-        mutability: node.mutability,
+        and: node.and,
+        mut_: node.mut_,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
@@ -1153,9 +1153,9 @@ where
 {
     ExprRepeat {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        bracket_token: node.bracket_token,
+        bracket: node.bracket,
         expr: Box::new(f.fold_expr(*node.expr)),
-        semi_token: node.semi_token,
+        semi: node.semi,
         len: Box::new(f.fold_expr(*node.len)),
     }
 }
@@ -1165,7 +1165,7 @@ where
 {
     ExprReturn {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        return_token: node.return_token,
+        return_: node.return_,
         expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
@@ -1177,9 +1177,9 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
-        brace_token: node.brace_token,
+        brace: node.brace,
         fields: FoldHelper::lift(node.fields, |it| f.fold_field_value(it)),
-        dot2_token: node.dot2_token,
+        dot2: node.dot2,
         rest: (node.rest).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
@@ -1190,7 +1190,7 @@ where
     ExprTry {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
-        question_token: node.question_token,
+        question: node.question,
     }
 }
 pub fn fold_expr_try_block<F>(f: &mut F, node: ExprTryBlock) -> ExprTryBlock
@@ -1199,7 +1199,7 @@ where
 {
     ExprTryBlock {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        try_token: node.try_token,
+        try_: node.try_,
         block: f.fold_block(node.block),
     }
 }
@@ -1209,7 +1209,7 @@ where
 {
     ExprTuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren_token: node.paren_token,
+        paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
     }
 }
@@ -1229,7 +1229,7 @@ where
 {
     ExprUnsafe {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        unsafe_token: node.unsafe_token,
+        unsafe_: node.unsafe_,
         block: f.fold_block(node.block),
     }
 }
@@ -1240,7 +1240,7 @@ where
     ExprWhile {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
-        while_token: node.while_token,
+        while_: node.while_,
         cond: Box::new(f.fold_expr(*node.cond)),
         body: f.fold_block(node.body),
     }
@@ -1251,7 +1251,7 @@ where
 {
     ExprYield {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        yield_token: node.yield_token,
+        yield_: node.yield_,
         expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
@@ -1264,7 +1264,7 @@ where
         vis: f.fold_visibility(node.vis),
         mutability: f.fold_field_mutability(node.mutability),
         ident: (node.ident).map(|it| f.fold_ident(it)),
-        colon_token: node.colon_token,
+        colon: node.colon,
         ty: f.fold_type(node.ty),
     }
 }
@@ -1294,7 +1294,7 @@ where
     FieldValue {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         member: f.fold_member(node.member),
-        colon_token: node.colon_token,
+        colon: node.colon,
         expr: f.fold_expr(node.expr),
     }
 }
@@ -1313,7 +1313,7 @@ where
     F: Fold + ?Sized,
 {
     FieldsNamed {
-        brace_token: node.brace_token,
+        brace: node.brace,
         named: FoldHelper::lift(node.named, |it| f.fold_field(it)),
     }
 }
@@ -1322,7 +1322,7 @@ where
     F: Fold + ?Sized,
 {
     FieldsUnnamed {
-        paren_token: node.paren_token,
+        paren: node.paren,
         unnamed: FoldHelper::lift(node.unnamed, |it| f.fold_field(it)),
     }
 }
@@ -1365,7 +1365,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
         sig: f.fold_signature(node.sig),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_foreign_item_macro<F>(f: &mut F, node: ForeignItemMacro) -> ForeignItemMacro
@@ -1375,7 +1375,7 @@ where
     ForeignItemMacro {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         mac: f.fold_macro(node.mac),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_foreign_item_static<F>(f: &mut F, node: ForeignItemStatic) -> ForeignItemStatic
@@ -1385,12 +1385,12 @@ where
     ForeignItemStatic {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        static_token: node.static_token,
-        mutability: f.fold_static_mutability(node.mutability),
+        static_: node.static_,
+        mut_: f.fold_static_mutability(node.mut_),
         ident: f.fold_ident(node.ident),
-        colon_token: node.colon_token,
+        colon: node.colon,
         ty: Box::new(f.fold_type(*node.ty)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_foreign_item_type<F>(f: &mut F, node: ForeignItemType) -> ForeignItemType
@@ -1400,10 +1400,10 @@ where
     ForeignItemType {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        type_token: node.type_token,
+        type: node.type,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        semi_token: node.semi_token,
+        gens: f.fold_generics(node.gens),
+        semi: node.semi,
     }
 }
 pub fn fold_generic_argument<F>(f: &mut F, node: Arg) -> Arg
@@ -1468,15 +1468,15 @@ where
     ImplItemConst {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        defaultness: node.defaultness,
-        const_token: node.const_token,
+        default_: node.default_,
+        const_: node.const_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        colon_token: node.colon_token,
+        gens: f.fold_generics(node.gens),
+        colon: node.colon,
         ty: f.fold_type(node.ty),
-        eq_token: node.eq_token,
+        eq: node.eq,
         expr: f.fold_expr(node.expr),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_impl_item_fn<F>(f: &mut F, node: ImplItemFn) -> ImplItemFn
@@ -1486,7 +1486,7 @@ where
     ImplItemFn {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        defaultness: node.defaultness,
+        default_: node.default_,
         sig: f.fold_signature(node.sig),
         block: f.fold_block(node.block),
     }
@@ -1498,7 +1498,7 @@ where
     ImplItemMacro {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         mac: f.fold_macro(node.mac),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_impl_item_type<F>(f: &mut F, node: ImplItemType) -> ImplItemType
@@ -1508,13 +1508,13 @@ where
     ImplItemType {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        defaultness: node.defaultness,
-        type_token: node.type_token,
+        default_: node.default_,
+        type: node.type,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        eq_token: node.eq_token,
+        gens: f.fold_generics(node.gens),
+        eq: node.eq,
         ty: f.fold_type(node.ty),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_impl_restriction<F>(f: &mut F, node: ImplRestriction) -> ImplRestriction
@@ -1562,14 +1562,14 @@ where
     ItemConst {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        const_token: node.const_token,
+        const_: node.const_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        colon_token: node.colon_token,
+        gens: f.fold_generics(node.gens),
+        colon: node.colon,
         ty: Box::new(f.fold_type(*node.ty)),
-        eq_token: node.eq_token,
+        eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_enum<F>(f: &mut F, node: ItemEnum) -> ItemEnum
@@ -1579,10 +1579,10 @@ where
     ItemEnum {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        enum_token: node.enum_token,
+        enum_: node.enum_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        brace_token: node.brace_token,
+        gens: f.fold_generics(node.gens),
+        brace: node.brace,
         variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
     }
 }
@@ -1593,11 +1593,11 @@ where
     ItemExternCrate {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        extern_token: node.extern_token,
-        crate_token: node.crate_token,
+        extern_: node.extern_,
+        crate_: node.crate_,
         ident: f.fold_ident(node.ident),
         rename: (node.rename).map(|it| ((it).0, f.fold_ident((it).1))),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_fn<F>(f: &mut F, node: ItemFn) -> ItemFn
@@ -1617,9 +1617,9 @@ where
 {
     ItemForeignMod {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        unsafety: node.unsafety,
+        unsafe_: node.unsafe_,
         abi: f.fold_abi(node.abi),
-        brace_token: node.brace_token,
+        brace: node.brace,
         items: FoldHelper::lift(node.items, |it| f.fold_foreign_item(it)),
     }
 }
@@ -1629,13 +1629,13 @@ where
 {
     ItemImpl {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        defaultness: node.defaultness,
-        unsafety: node.unsafety,
-        impl_token: node.impl_token,
-        generics: f.fold_generics(node.generics),
+        default_: node.default_,
+        unsafe_: node.unsafe_,
+        impl_: node.impl_,
+        gens: f.fold_generics(node.gens),
         trait_: (node.trait_).map(|it| ((it).0, f.fold_path((it).1), (it).2)),
         self_ty: Box::new(f.fold_type(*node.self_ty)),
-        brace_token: node.brace_token,
+        brace: node.brace,
         items: FoldHelper::lift(node.items, |it| f.fold_impl_item(it)),
     }
 }
@@ -1647,7 +1647,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         ident: (node.ident).map(|it| f.fold_ident(it)),
         mac: f.fold_macro(node.mac),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_mod<F>(f: &mut F, node: ItemMod) -> ItemMod
@@ -1657,10 +1657,10 @@ where
     ItemMod {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        unsafety: node.unsafety,
-        mod_token: node.mod_token,
+        unsafe_: node.unsafe_,
+        mod_: node.mod_,
         ident: f.fold_ident(node.ident),
-        content: (node.content).map(|it| ((it).0, FoldHelper::lift((it).1, |it| f.fold_item(it)))),
+        gist: (node.gist).map(|it| ((it).0, FoldHelper::lift((it).1, |it| f.fold_item(it)))),
         semi: node.semi,
     }
 }
@@ -1671,14 +1671,14 @@ where
     ItemStatic {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        static_token: node.static_token,
-        mutability: f.fold_static_mutability(node.mutability),
+        static_: node.static_,
+        mut_: f.fold_static_mutability(node.mut_),
         ident: f.fold_ident(node.ident),
-        colon_token: node.colon_token,
+        colon: node.colon,
         ty: Box::new(f.fold_type(*node.ty)),
-        eq_token: node.eq_token,
+        eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_struct<F>(f: &mut F, node: ItemStruct) -> ItemStruct
@@ -1688,11 +1688,11 @@ where
     ItemStruct {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        struct_token: node.struct_token,
+        struct_: node.struct_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
+        gens: f.fold_generics(node.gens),
         fields: f.fold_fields(node.fields),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_trait<F>(f: &mut F, node: ItemTrait) -> ItemTrait
@@ -1702,15 +1702,15 @@ where
     ItemTrait {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        unsafety: node.unsafety,
-        auto_token: node.auto_token,
+        unsafe_: node.unsafe_,
+        auto_: node.auto_,
         restriction: (node.restriction).map(|it| f.fold_impl_restriction(it)),
-        trait_token: node.trait_token,
+        trait_: node.trait_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        colon_token: node.colon_token,
+        gens: f.fold_generics(node.gens),
+        colon: node.colon,
         supertraits: FoldHelper::lift(node.supertraits, |it| f.fold_type_param_bound(it)),
-        brace_token: node.brace_token,
+        brace: node.brace,
         items: FoldHelper::lift(node.items, |it| f.fold_trait_item(it)),
     }
 }
@@ -1721,12 +1721,12 @@ where
     ItemTraitAlias {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        trait_token: node.trait_token,
+        trait_: node.trait_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        eq_token: node.eq_token,
+        gens: f.fold_generics(node.gens),
+        eq: node.eq,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_type<F>(f: &mut F, node: ItemType) -> ItemType
@@ -1736,12 +1736,12 @@ where
     ItemType {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        type_token: node.type_token,
+        type: node.type,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        eq_token: node.eq_token,
+        gens: f.fold_generics(node.gens),
+        eq: node.eq,
         ty: Box::new(f.fold_type(*node.ty)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_item_union<F>(f: &mut F, node: ItemUnion) -> ItemUnion
@@ -1751,9 +1751,9 @@ where
     ItemUnion {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        union_token: node.union_token,
+        union_: node.union_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
+        gens: f.fold_generics(node.gens),
         fields: f.fold_fields_named(node.fields),
     }
 }
@@ -1764,10 +1764,10 @@ where
     ItemUse {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        use_token: node.use_token,
+        use_: node.use_,
         leading_colon: node.leading_colon,
         tree: f.fold_use_tree(node.tree),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_label<F>(f: &mut F, node: Label) -> Label
@@ -1776,7 +1776,7 @@ where
 {
     Label {
         name: f.fold_lifetime(node.name),
-        colon_token: node.colon_token,
+        colon: node.colon,
     }
 }
 pub fn fold_lifetime<F>(f: &mut F, node: Lifetime) -> Lifetime
@@ -1794,7 +1794,7 @@ where
 {
     LifetimeParam {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        lifetime: f.fold_lifetime(node.lifetime),
+        life: f.fold_lifetime(node.life),
         colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
     }
@@ -2143,7 +2143,7 @@ where
     F: Fold + ?Sized,
 {
     PredLifetime {
-        lifetime: f.fold_lifetime(node.lifetime),
+        life: f.fold_lifetime(node.life),
         colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
     }
@@ -2153,8 +2153,8 @@ where
     F: Fold + ?Sized,
 {
     PredType {
-        lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
-        bounded_ty: f.fold_type(node.bounded_ty),
+        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
+        bounded: f.fold_type(node.bounded),
         colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
@@ -2187,19 +2187,19 @@ where
     Receiver {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         reference: (node.reference).map(|it| ((it).0, ((it).1).map(|it| f.fold_lifetime(it)))),
-        mutability: node.mutability,
-        self_token: node.self_token,
-        colon_token: node.colon_token,
+        mut_: node.mut_,
+        self_: node.self_,
+        colon: node.colon,
         ty: Box::new(f.fold_type(*node.ty)),
     }
 }
-pub fn fold_return_type<F>(f: &mut F, node: ReturnType) -> ReturnType
+pub fn fold_return_type<F>(f: &mut F, node: ty::Ret) -> ty::Ret
 where
     F: Fold + ?Sized,
 {
     match node {
-        ReturnType::Default => ReturnType::Default,
-        ReturnType::Type(_binding_0, _binding_1) => ReturnType::Type(_binding_0, Box::new(f.fold_type(*_binding_1))),
+        ty::Ret::Default => ty::Ret::Default,
+        ty::Ret::Type(_binding_0, _binding_1) => ty::Ret::Type(_binding_0, Box::new(f.fold_type(*_binding_1))),
     }
 }
 pub fn fold_signature<F>(f: &mut F, node: Signature) -> Signature
@@ -2208,16 +2208,16 @@ where
 {
     Signature {
         constness: node.constness,
-        asyncness: node.asyncness,
-        unsafety: node.unsafety,
+        async_: node.async_,
+        unsafe_: node.unsafe_,
         abi: (node.abi).map(|it| f.fold_abi(it)),
-        fn_token: node.fn_token,
+        fn_: node.fn_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        paren_token: node.paren_token,
-        inputs: FoldHelper::lift(node.inputs, |it| f.fold_fn_arg(it)),
-        variadic: (node.variadic).map(|it| f.fold_variadic(it)),
-        output: f.fold_return_type(node.output),
+        gens: f.fold_generics(node.gens),
+        paren: node.paren,
+        args: FoldHelper::lift(node.args, |it| f.fold_fn_arg(it)),
+        vari: (node.vari).map(|it| f.fold_variadic(it)),
+        ret: f.fold_return_type(node.ret),
     }
 }
 pub fn fold_span<F>(f: &mut F, node: Span) -> Span
@@ -2226,13 +2226,13 @@ where
 {
     node
 }
-pub fn fold_static_mutability<F>(f: &mut F, node: StaticMutability) -> StaticMutability
+pub fn fold_static_mutability<F>(f: &mut F, node: StaticMut) -> StaticMut
 where
     F: Fold + ?Sized,
 {
     match node {
-        StaticMutability::Mut(_binding_0) => StaticMutability::Mut(_binding_0),
-        StaticMutability::None => StaticMutability::None,
+        StaticMut::Mut(_binding_0) => StaticMut::Mut(_binding_0),
+        StaticMut::None => StaticMut::None,
     }
 }
 pub fn fold_stmt<F>(f: &mut F, node: Stmt) -> Stmt
@@ -2263,7 +2263,7 @@ where
     TraitBound {
         paren: node.paren,
         modifier: f.fold_trait_bound_modifier(node.modifier),
-        lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
+        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         path: f.fold_path(node.path),
     }
 }
@@ -2294,13 +2294,13 @@ where
 {
     TraitItemConst {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        const_token: node.const_token,
+        const_: node.const_,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        colon_token: node.colon_token,
+        gens: f.fold_generics(node.gens),
+        colon: node.colon,
         ty: f.fold_type(node.ty),
         default: (node.default).map(|it| ((it).0, f.fold_expr((it).1))),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_trait_item_fn<F>(f: &mut F, node: TraitItemFn) -> TraitItemFn
@@ -2311,7 +2311,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         sig: f.fold_signature(node.sig),
         default: (node.default).map(|it| f.fold_block(it)),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_trait_item_macro<F>(f: &mut F, node: TraitItemMacro) -> TraitItemMacro
@@ -2321,7 +2321,7 @@ where
     TraitItemMacro {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         mac: f.fold_macro(node.mac),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_trait_item_type<F>(f: &mut F, node: TraitItemType) -> TraitItemType
@@ -2330,13 +2330,13 @@ where
 {
     TraitItemType {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        type_token: node.type_token,
+        type: node.type,
         ident: f.fold_ident(node.ident),
-        generics: f.fold_generics(node.generics),
-        colon_token: node.colon_token,
+        gens: f.fold_generics(node.gens),
+        colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
         default: (node.default).map(|it| ((it).0, f.fold_type((it).1))),
-        semi_token: node.semi_token,
+        semi: node.semi,
     }
 }
 pub fn fold_type<F>(f: &mut F, node: Ty) -> Ty
@@ -2347,85 +2347,85 @@ where
         Ty::Array(_binding_0) => Ty::Array(f.fold_type_array(_binding_0)),
         Ty::BareFn(_binding_0) => Ty::BareFn(f.fold_type_bare_fn(_binding_0)),
         Ty::Group(_binding_0) => Ty::Group(f.fold_type_group(_binding_0)),
-        Ty::ImplTrait(_binding_0) => Ty::ImplTrait(f.fold_type_impl_trait(_binding_0)),
+        Ty::Impl(_binding_0) => Ty::Impl(f.fold_type_impl_trait(_binding_0)),
         Ty::Infer(_binding_0) => Ty::Infer(f.fold_type_infer(_binding_0)),
-        Ty::Macro(_binding_0) => Ty::Macro(f.fold_type_macro(_binding_0)),
+        Ty::Mac(_binding_0) => Ty::Mac(f.fold_type_macro(_binding_0)),
         Ty::Never(_binding_0) => Ty::Never(f.fold_type_never(_binding_0)),
         Ty::Paren(_binding_0) => Ty::Paren(f.fold_type_paren(_binding_0)),
         Ty::Path(_binding_0) => Ty::Path(f.fold_type_path(_binding_0)),
         Ty::Ptr(_binding_0) => Ty::Ptr(f.fold_type_ptr(_binding_0)),
-        Ty::Reference(_binding_0) => Ty::Reference(f.fold_type_reference(_binding_0)),
+        Ty::Ref(_binding_0) => Ty::Ref(f.fold_type_reference(_binding_0)),
         Ty::Slice(_binding_0) => Ty::Slice(f.fold_type_slice(_binding_0)),
-        Ty::TraitObject(_binding_0) => Ty::TraitObject(f.fold_type_trait_object(_binding_0)),
+        Ty::TraitObj(_binding_0) => Ty::TraitObj(f.fold_type_trait_object(_binding_0)),
         Ty::Tuple(_binding_0) => Ty::Tuple(f.fold_type_tuple(_binding_0)),
         Ty::Verbatim(_binding_0) => Ty::Verbatim(_binding_0),
     }
 }
-pub fn fold_type_array<F>(f: &mut F, node: TypeArray) -> TypeArray
+pub fn fold_type_array<F>(f: &mut F, node: ty::Array) -> ty::Array
 where
     F: Fold + ?Sized,
 {
-    TypeArray {
+    ty::Array {
         bracket: node.bracket,
         elem: Box::new(f.fold_type(*node.elem)),
         semi: node.semi,
         len: f.fold_expr(node.len),
     }
 }
-pub fn fold_type_bare_fn<F>(f: &mut F, node: TypeBareFn) -> TypeBareFn
+pub fn fold_type_bare_fn<F>(f: &mut F, node: ty::BareFn) -> ty::BareFn
 where
     F: Fold + ?Sized,
 {
-    TypeBareFn {
-        lifetimes: (node.lifetimes).map(|it| f.fold_bound_lifetimes(it)),
+    ty::BareFn {
+        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         unsafe_: node.unsafe_,
         abi: (node.abi).map(|it| f.fold_abi(it)),
         fn_: node.fn_,
         paren: node.paren,
-        inputs: FoldHelper::lift(node.inputs, |it| f.fold_bare_fn_arg(it)),
-        variadic: (node.variadic).map(|it| f.fold_bare_variadic(it)),
-        output: f.fold_return_type(node.output),
+        args: FoldHelper::lift(node.args, |it| f.fold_bare_fn_arg(it)),
+        vari: (node.vari).map(|it| f.fold_bare_variadic(it)),
+        ret: f.fold_return_type(node.ret),
     }
 }
-pub fn fold_type_group<F>(f: &mut F, node: TypeGroup) -> TypeGroup
+pub fn fold_type_group<F>(f: &mut F, node: ty::Group) -> ty::Group
 where
     F: Fold + ?Sized,
 {
-    TypeGroup {
+    ty::Group {
         group: node.group,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_impl_trait<F>(f: &mut F, node: TypeImplTrait) -> TypeImplTrait
+pub fn fold_type_impl_trait<F>(f: &mut F, node: ty::Impl) -> ty::Impl
 where
     F: Fold + ?Sized,
 {
-    TypeImplTrait {
+    ty::Impl {
         impl_: node.impl_,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
-pub fn fold_type_infer<F>(f: &mut F, node: TypeInfer) -> TypeInfer
+pub fn fold_type_infer<F>(f: &mut F, node: ty::Infer) -> ty::Infer
 where
     F: Fold + ?Sized,
 {
-    TypeInfer {
+    ty::Infer {
         underscore: node.underscore,
     }
 }
-pub fn fold_type_macro<F>(f: &mut F, node: TypeMacro) -> TypeMacro
+pub fn fold_type_macro<F>(f: &mut F, node: ty::Mac) -> ty::Mac
 where
     F: Fold + ?Sized,
 {
-    TypeMacro {
+    ty::Mac {
         mac: f.fold_macro(node.mac),
     }
 }
-pub fn fold_type_never<F>(f: &mut F, node: TypeNever) -> TypeNever
+pub fn fold_type_never<F>(f: &mut F, node: ty::Never) -> ty::Never
 where
     F: Fold + ?Sized,
 {
-    TypeNever { bang: node.bang }
+    ty::Never { bang: node.bang }
 }
 pub fn fold_type_param<F>(f: &mut F, node: TypeParam) -> TypeParam
 where
@@ -2450,69 +2450,69 @@ where
         TypeParamBound::Verbatim(_binding_0) => TypeParamBound::Verbatim(_binding_0),
     }
 }
-pub fn fold_type_paren<F>(f: &mut F, node: TypeParen) -> TypeParen
+pub fn fold_type_paren<F>(f: &mut F, node: ty::Paren) -> ty::Paren
 where
     F: Fold + ?Sized,
 {
-    TypeParen {
-        paren_token: node.paren_token,
+    ty::Paren {
+        paren: node.paren,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_path<F>(f: &mut F, node: TypePath) -> TypePath
+pub fn fold_type_path<F>(f: &mut F, node: ty::Path) -> ty::Path
 where
     F: Fold + ?Sized,
 {
-    TypePath {
+    ty::Path {
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
     }
 }
-pub fn fold_type_ptr<F>(f: &mut F, node: TypePtr) -> TypePtr
+pub fn fold_type_ptr<F>(f: &mut F, node: ty::Ptr) -> ty::Ptr
 where
     F: Fold + ?Sized,
 {
-    TypePtr {
+    ty::Ptr {
         star: node.star,
         const_: node.const_,
         mut_: node.mut_,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_reference<F>(f: &mut F, node: TypeReference) -> TypeReference
+pub fn fold_type_reference<F>(f: &mut F, node: ty::Ref) -> ty::Ref
 where
     F: Fold + ?Sized,
 {
-    TypeReference {
-        and_: node.and_,
-        lifetime: (node.lifetime).map(|it| f.fold_lifetime(it)),
+    ty::Ref {
+        and: node.and,
+        life: (node.life).map(|it| f.fold_lifetime(it)),
         mut_: node.mut_,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_slice<F>(f: &mut F, node: TypeSlice) -> TypeSlice
+pub fn fold_type_slice<F>(f: &mut F, node: ty::Slice) -> ty::Slice
 where
     F: Fold + ?Sized,
 {
-    TypeSlice {
+    ty::Slice {
         bracket: node.bracket,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_trait_object<F>(f: &mut F, node: TypeTraitObject) -> TypeTraitObject
+pub fn fold_type_trait_object<F>(f: &mut F, node: ty::TraitObj) -> ty::TraitObj
 where
     F: Fold + ?Sized,
 {
-    TypeTraitObject {
+    ty::TraitObj {
         dyn_: node.dyn_,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
-pub fn fold_type_tuple<F>(f: &mut F, node: TypeTuple) -> TypeTuple
+pub fn fold_type_tuple<F>(f: &mut F, node: ty::Tuple) -> ty::Tuple
 where
     F: Fold + ?Sized,
 {
-    TypeTuple {
+    ty::Tuple {
         paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_type(it)),
     }
@@ -2532,7 +2532,7 @@ where
     F: Fold + ?Sized,
 {
     UseGlob {
-        star_token: node.star_token,
+        star: node.star,
     }
 }
 pub fn fold_use_group<F>(f: &mut F, node: UseGroup) -> UseGroup
@@ -2540,7 +2540,7 @@ where
     F: Fold + ?Sized,
 {
     UseGroup {
-        brace_token: node.brace_token,
+        brace: node.brace,
         items: FoldHelper::lift(node.items, |it| f.fold_use_tree(it)),
     }
 }
@@ -2558,7 +2558,7 @@ where
 {
     UsePath {
         ident: f.fold_ident(node.ident),
-        colon2_token: node.colon2_token,
+        colon2: node.colon2,
         tree: Box::new(f.fold_use_tree(*node.tree)),
     }
 }
@@ -2568,7 +2568,7 @@ where
 {
     UseRename {
         ident: f.fold_ident(node.ident),
-        as_token: node.as_token,
+        as_: node.as_,
         rename: f.fold_ident(node.rename),
     }
 }

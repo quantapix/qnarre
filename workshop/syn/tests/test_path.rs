@@ -3,7 +3,7 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use syn::{parse_quote, Expr, Ty, TypePath};
+use syn::{parse_quote, ty::Path, Expr, Ty};
 #[test]
 fn parse_interpolated_leading_component() {
     let tokens = TokenStream::from_iter(vec![
@@ -43,7 +43,7 @@ fn parse_interpolated_leading_component() {
 }
 #[test]
 fn print_incomplete_qpath() {
-    let mut ty: TypePath = parse_quote!(<Self as A>::Q);
+    let mut ty: ty::Path = parse_quote!(<Self as A>::Q);
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self as A > :: Q`)
     "###);
@@ -56,7 +56,7 @@ fn print_incomplete_qpath() {
     TokenStream(`< Self >`)
     "###);
     assert!(ty.path.segs.pop().is_none());
-    let mut ty: TypePath = parse_quote!(<Self>::A::B);
+    let mut ty: ty::Path = parse_quote!(<Self>::A::B);
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`< Self > :: A :: B`)
     "###);
@@ -69,7 +69,7 @@ fn print_incomplete_qpath() {
     TokenStream(`< Self > ::`)
     "###);
     assert!(ty.path.segs.pop().is_none());
-    let mut ty: TypePath = parse_quote!(Self::A::B);
+    let mut ty: ty::Path = parse_quote!(Self::A::B);
     snapshot!(ty.to_token_stream(), @r###"
     TokenStream(`Self :: A :: B`)
     "###);
@@ -93,7 +93,7 @@ fn parse_parenthesized_path_arguments_with_disambiguator() {
     let tokens = quote!(dyn FnOnce::() -> !);
     snapshot!(tokens as Ty, @r###"
     Type::TraitObject {
-        dyn_token: Some,
+        dyn_: Some,
         bounds: [
             TypeParamBound::Trait(TraitBound {
                 path: Path {
@@ -101,7 +101,7 @@ fn parse_parenthesized_path_arguments_with_disambiguator() {
                         path::Segment {
                             ident: "FnOnce",
                             arguments: path::Args::Parenthesized {
-                                output: ReturnType::Type(
+                                ret: ty::Ret::Type(
                                     Type::Never,
                                 ),
                             },

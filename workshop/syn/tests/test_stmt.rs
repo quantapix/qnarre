@@ -64,8 +64,8 @@ fn test_none_group() {
         sig: Signature {
             asyncness: Some,
             ident: "f",
-            generics: Generics,
-            output: ReturnType::Default,
+            gens: Generics,
+            ret: ty::Ret::Default,
         },
         block: Block,
     })
@@ -151,8 +151,8 @@ fn test_macros() {
         vis: Visibility::Inherited,
         sig: Signature {
             ident: "main",
-            generics: Generics,
-            output: ReturnType::Default,
+            gens: Generics,
+            ret: ty::Ret::Default,
         },
         block: Block {
             stmts: [
@@ -195,7 +195,7 @@ fn test_macros() {
                         delimiter: MacroDelimiter::Paren,
                         tokens: TokenStream(`""`),
                     },
-                    semi_token: Some,
+                    semi: Some,
                 },
                 Stmt::Expr(
                     Expr::Macro {

@@ -268,7 +268,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
                 Expr::Paren(ExprParen {
                     attrs: Vec::new(),
                     expr: Box::new(fold_expr(self, expr)),
-                    paren_token: tok::Paren::default(),
+                    paren: tok::Paren::default(),
                 })
             } else {
                 fold_expr(self, expr)
@@ -317,7 +317,7 @@ fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
             Expr::Tuple(ExprTuple {
                 attrs: vec![],
                 elems: Punctuated::new(),
-                paren_token: tok::Paren::default(),
+                paren: tok::Paren::default(),
             })
         }
         fn fold_pat(&mut self, pat: Pat) -> Pat {

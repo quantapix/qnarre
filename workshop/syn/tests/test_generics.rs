@@ -12,8 +12,8 @@ fn test_split_for_impl() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics {
-            lt_token: Some,
+        gens: Generics {
+            lt: Some,
             params: [
                 GenericParam::Lifetime(LifetimeParam {
                     lifetime: Lifetime {
@@ -24,7 +24,7 @@ fn test_split_for_impl() {
                     lifetime: Lifetime {
                         ident: "b",
                     },
-                    colon_token: Some,
+                    colon: Some,
                     bounds: [
                         Lifetime {
                             ident: "a",
@@ -45,21 +45,21 @@ fn test_split_for_impl() {
                         },
                     ],
                     ident: "T",
-                    colon_token: Some,
+                    colon: Some,
                     bounds: [
                         TypeParamBound::Lifetime {
                             ident: "a",
                         },
                     ],
-                    eq_token: Some,
+                    eq: Some,
                     default: Some(Type::Tuple),
                 }),
             ],
-            gt_token: Some,
+            gt: Some,
             where_clause: Some(WhereClause {
                 predicates: [
                     WherePredicate::Type(PredicateType {
-                        bounded_ty: Type::Path {
+                        bounded: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -85,12 +85,12 @@ fn test_split_for_impl() {
         },
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let gens = input.gens;
+    let (impl_generics, ty_generics, where_clause) = gens.split_for_impl();
     let generated = quote! {
         impl #impl_generics MyTrait for Test #ty_generics #where_clause {}
     };
@@ -165,18 +165,18 @@ fn test_fn_precedence_in_where_clause() {
         vis: Visibility::Inherited,
         sig: Signature {
             ident: "f",
-            generics: Generics {
-                lt_token: Some,
+            gens: Generics {
+                lt: Some,
                 params: [
                     GenericParam::Type(TypeParam {
                         ident: "G",
                     }),
                 ],
-                gt_token: Some,
+                gt: Some,
                 where_clause: Some(WhereClause {
                     predicates: [
                         WherePredicate::Type(PredicateType {
-                            bounded_ty: Type::Path {
+                            bounded: Type::Path {
                                 path: Path {
                                     segments: [
                                         path::Segment {
@@ -192,7 +192,7 @@ fn test_fn_precedence_in_where_clause() {
                                             path::Segment {
                                                 ident: "FnOnce",
                                                 arguments: path::Args::Parenthesized {
-                                                    output: ReturnType::Type(
+                                                    ret: ty::Ret::Type(
                                                         Type::Path {
                                                             path: Path {
                                                                 segments: [
@@ -222,12 +222,12 @@ fn test_fn_precedence_in_where_clause() {
                     ],
                 }),
             },
-            output: ReturnType::Default,
+            ret: ty::Ret::Default,
         },
         block: Block,
     }
     "###);
-    let where_clause = input.sig.generics.where_clause.as_ref().unwrap();
+    let where_clause = input.sig.gens.where_clause.as_ref().unwrap();
     assert_eq!(where_clause.predicates.len(), 1);
     let predicate = match &where_clause.predicates[0] {
         WherePred::Type(pred) => pred,

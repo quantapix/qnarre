@@ -9,10 +9,10 @@ fn test_async_fn() {
     Item::Fn {
         vis: Visibility::Inherited,
         sig: Signature {
-            asyncness: Some,
+            async_: Some,
             ident: "process",
-            generics: Generics,
-            output: ReturnType::Default,
+            gens: Generics,
+            ret: ty::Ret::Default,
         },
         block: Block,
     }
@@ -23,8 +23,8 @@ fn test_async_closure() {
     let input = "async || {}";
     snapshot!(input as Expr, @r###"
     Expr::Closure {
-        asyncness: Some,
-        output: ReturnType::Default,
+        async_: Some,
+        ret: ty::Ret::Default,
         body: Expr::Block {
             block: Block,
         },

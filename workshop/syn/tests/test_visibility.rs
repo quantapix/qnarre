@@ -99,14 +99,14 @@ fn test_empty_group_vis() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Named {
                 named: [
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("f"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Tuple,
                     },
                 ],

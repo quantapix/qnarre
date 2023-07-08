@@ -60,7 +60,7 @@ fn test_macro_variable_type() {
                 path::Segment {
                     ident: "ty",
                     arguments: path::Args::AngleBracketed {
-                        colon2_token: Some,
+                        colon2: Some,
                         args: [
                             path::Arg::Type(Type::Path {
                                 path: Path {
@@ -200,7 +200,7 @@ fn test_trait_object() {
     let tokens = quote!(dyn for<'a> Trait<'a> + 'static);
     snapshot!(tokens as Ty, @r###"
     Type::TraitObject {
-        dyn_token: Some,
+        dyn_: Some,
         bounds: [
             TypeParamBound::Trait(TraitBound {
                 lifetimes: Some(BoundLifetimes {
@@ -236,7 +236,7 @@ fn test_trait_object() {
     let tokens = quote!(dyn 'a + Trait);
     snapshot!(tokens as Ty, @r###"
     Type::TraitObject {
-        dyn_token: Some,
+        dyn_: Some,
         bounds: [
             TypeParamBound::Lifetime {
                 ident: "a",
@@ -279,7 +279,7 @@ fn test_trailing_plus() {
     let tokens = quote!(dyn Trait +);
     snapshot!(tokens as Ty, @r###"
     Type::TraitObject {
-        dyn_token: Some,
+        dyn_: Some,
         bounds: [
             TypeParamBound::Trait(TraitBound {
                 path: Path {

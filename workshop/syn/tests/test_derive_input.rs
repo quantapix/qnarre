@@ -17,10 +17,10 @@ fn test_unit() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "Unit",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -54,14 +54,14 @@ fn test_struct() {
         ],
         vis: Visibility::Public,
         ident: "Item",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Named {
                 named: [
                     Field {
                         vis: Visibility::Public,
                         ident: Some("ident"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -75,7 +75,7 @@ fn test_struct() {
                     Field {
                         vis: Visibility::Public,
                         ident: Some("attrs"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -130,14 +130,14 @@ fn test_union() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "MaybeUninit",
-        generics: Generics {
-            lt_token: Some,
+        gens: Generics {
+            lt: Some,
             params: [
                 GenericParam::Type(TypeParam {
                     ident: "T",
                 }),
             ],
-            gt_token: Some,
+            gt: Some,
         },
         data: Data::Union {
             fields: FieldsNamed {
@@ -145,13 +145,13 @@ fn test_union() {
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("uninit"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Tuple,
                     },
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("value"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -210,8 +210,8 @@ fn test_enum() {
         ],
         vis: Visibility::Public,
         ident: "Result",
-        generics: Generics {
-            lt_token: Some,
+        gens: Generics {
+            lt: Some,
             params: [
                 GenericParam::Type(TypeParam {
                     ident: "T",
@@ -220,7 +220,7 @@ fn test_enum() {
                     ident: "E",
                 }),
             ],
-            gt_token: Some,
+            gt: Some,
         },
         data: Data::Enum {
             variants: [
@@ -350,10 +350,10 @@ fn test_attr_with_mod_style_path_with_self() {
         ],
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -378,7 +378,7 @@ fn test_pub_restricted() {
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
         vis: Visibility::Restricted {
-            in_token: Some,
+            in_: Some,
             path: Path {
                 segments: [
                     path::Segment {
@@ -388,13 +388,13 @@ fn test_pub_restricted() {
             },
         },
         ident: "Z",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 unnamed: [
                     Field {
                         vis: Visibility::Restricted {
-                            in_token: Some,
+                            in_: Some,
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -418,7 +418,7 @@ fn test_pub_restricted() {
                     },
                 ],
             },
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -440,10 +440,10 @@ fn test_pub_restricted_crate() {
             },
         },
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -465,10 +465,10 @@ fn test_pub_restricted_super() {
             },
         },
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -481,7 +481,7 @@ fn test_pub_restricted_in_super() {
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
         vis: Visibility::Restricted {
-            in_token: Some,
+            in_: Some,
             path: Path {
                 segments: [
                     path::Segment {
@@ -491,10 +491,10 @@ fn test_pub_restricted_in_super() {
             },
         },
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -508,10 +508,10 @@ fn test_fields_on_unit_struct() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unit,
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -533,14 +533,14 @@ fn test_fields_on_named_struct() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Named {
                 named: [
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("foo"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -554,7 +554,7 @@ fn test_fields_on_named_struct() {
                     Field {
                         vis: Visibility::Public,
                         ident: Some("bar"),
-                        colon_token: Some,
+                        colon: Some,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -579,7 +579,7 @@ fn test_fields_on_named_struct() {
         Field {
             vis: Visibility::Inherited,
             ident: Some("foo"),
-            colon_token: Some,
+            colon: Some,
             ty: Type::Path {
                 path: Path {
                     segments: [
@@ -593,7 +593,7 @@ fn test_fields_on_named_struct() {
         Field {
             vis: Visibility::Public,
             ident: Some("bar"),
-            colon_token: Some,
+            colon: Some,
             ty: Type::Path {
                 path: Path {
                     segments: [
@@ -616,7 +616,7 @@ fn test_fields_on_tuple_struct() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 unnamed: [
@@ -646,7 +646,7 @@ fn test_fields_on_tuple_struct() {
                     },
                 ],
             },
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);
@@ -692,7 +692,7 @@ fn test_ambiguous_crate() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        generics: Generics,
+        gens: Generics,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 unnamed: [
@@ -713,7 +713,7 @@ fn test_ambiguous_crate() {
                     },
                 ],
             },
-            semi_token: Some,
+            semi: Some,
         },
     }
     "###);

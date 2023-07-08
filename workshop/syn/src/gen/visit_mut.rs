@@ -39,10 +39,10 @@ pub trait VisitMut {
     fn visit_attribute_mut(&mut self, i: &mut Attribute) {
         visit_attribute_mut(self, i);
     }
-    fn visit_bare_fn_arg_mut(&mut self, i: &mut BareFnArg) {
+    fn visit_bare_fn_arg_mut(&mut self, i: &mut ty::BareFnArg) {
         visit_bare_fn_arg_mut(self, i);
     }
-    fn visit_bare_variadic_mut(&mut self, i: &mut BareVariadic) {
+    fn visit_bare_variadic_mut(&mut self, i: &mut ty::BareVari) {
         visit_bare_variadic_mut(self, i);
     }
     fn visit_bin_op_mut(&mut self, i: &mut BinOp) {
@@ -435,7 +435,7 @@ pub trait VisitMut {
     fn visit_receiver_mut(&mut self, i: &mut Receiver) {
         visit_receiver_mut(self, i);
     }
-    fn visit_return_type_mut(&mut self, i: &mut ReturnType) {
+    fn visit_return_type_mut(&mut self, i: &mut ty::Ret) {
         visit_return_type_mut(self, i);
     }
     fn visit_signature_mut(&mut self, i: &mut Signature) {
@@ -444,7 +444,7 @@ pub trait VisitMut {
     fn visit_span_mut(&mut self, i: &mut Span) {
         visit_span_mut(self, i);
     }
-    fn visit_static_mutability_mut(&mut self, i: &mut StaticMutability) {
+    fn visit_static_mutability_mut(&mut self, i: &mut StaticMut) {
         visit_static_mutability_mut(self, i);
     }
     fn visit_stmt_mut(&mut self, i: &mut Stmt) {
@@ -477,25 +477,25 @@ pub trait VisitMut {
     fn visit_type_mut(&mut self, i: &mut Ty) {
         visit_type_mut(self, i);
     }
-    fn visit_type_array_mut(&mut self, i: &mut TypeArray) {
+    fn visit_type_array_mut(&mut self, i: &mut ty::Array) {
         visit_type_array_mut(self, i);
     }
-    fn visit_type_bare_fn_mut(&mut self, i: &mut TypeBareFn) {
+    fn visit_type_bare_fn_mut(&mut self, i: &mut ty::BareFn) {
         visit_type_bare_fn_mut(self, i);
     }
-    fn visit_type_group_mut(&mut self, i: &mut TypeGroup) {
+    fn visit_type_group_mut(&mut self, i: &mut ty::Group) {
         visit_type_group_mut(self, i);
     }
-    fn visit_type_impl_trait_mut(&mut self, i: &mut TypeImplTrait) {
+    fn visit_type_impl_trait_mut(&mut self, i: &mut ty::Impl) {
         visit_type_impl_trait_mut(self, i);
     }
-    fn visit_type_infer_mut(&mut self, i: &mut TypeInfer) {
+    fn visit_type_infer_mut(&mut self, i: &mut ty::Infer) {
         visit_type_infer_mut(self, i);
     }
-    fn visit_type_macro_mut(&mut self, i: &mut TypeMacro) {
+    fn visit_type_macro_mut(&mut self, i: &mut ty::Mac) {
         visit_type_macro_mut(self, i);
     }
-    fn visit_type_never_mut(&mut self, i: &mut TypeNever) {
+    fn visit_type_never_mut(&mut self, i: &mut ty::Never) {
         visit_type_never_mut(self, i);
     }
     fn visit_type_param_mut(&mut self, i: &mut TypeParam) {
@@ -504,25 +504,25 @@ pub trait VisitMut {
     fn visit_type_param_bound_mut(&mut self, i: &mut TypeParamBound) {
         visit_type_param_bound_mut(self, i);
     }
-    fn visit_type_paren_mut(&mut self, i: &mut TypeParen) {
+    fn visit_type_paren_mut(&mut self, i: &mut ty::Paren) {
         visit_type_paren_mut(self, i);
     }
-    fn visit_type_path_mut(&mut self, i: &mut TypePath) {
+    fn visit_type_path_mut(&mut self, i: &mut ty::Path) {
         visit_type_path_mut(self, i);
     }
-    fn visit_type_ptr_mut(&mut self, i: &mut TypePtr) {
+    fn visit_type_ptr_mut(&mut self, i: &mut ty::Ptr) {
         visit_type_ptr_mut(self, i);
     }
-    fn visit_type_reference_mut(&mut self, i: &mut TypeReference) {
+    fn visit_type_reference_mut(&mut self, i: &mut ty::Ref) {
         visit_type_reference_mut(self, i);
     }
-    fn visit_type_slice_mut(&mut self, i: &mut TypeSlice) {
+    fn visit_type_slice_mut(&mut self, i: &mut ty::Slice) {
         visit_type_slice_mut(self, i);
     }
-    fn visit_type_trait_object_mut(&mut self, i: &mut TypeTraitObject) {
+    fn visit_type_trait_object_mut(&mut self, i: &mut ty::TraitObj) {
         visit_type_trait_object_mut(self, i);
     }
-    fn visit_type_tuple_mut(&mut self, i: &mut TypeTuple) {
+    fn visit_type_tuple_mut(&mut self, i: &mut ty::Tuple) {
         visit_type_tuple_mut(self, i);
     }
     fn visit_un_op_mut(&mut self, i: &mut UnOp) {
@@ -569,7 +569,7 @@ pub fn visit_abi_mut<V>(v: &mut V, node: &mut Abi)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.extern_token);
+    skip!(node.extern_);
     if let Some(it) = &mut node.name {
         v.visit_lit_str_mut(it);
     }
@@ -578,13 +578,13 @@ pub fn visit_angle_bracketed_generic_arguments_mut<V>(v: &mut V, node: &mut Angl
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.colon2_token);
-    skip!(node.lt_token);
+    skip!(node.colon2);
+    skip!(node.lt);
     for mut el in Punctuated::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_generic_argument_mut(it);
     }
-    skip!(node.gt_token);
+    skip!(node.gt);
 }
 pub fn visit_arm_mut<V>(v: &mut V, node: &mut Arm)
 where
@@ -598,7 +598,7 @@ where
         skip!((it).0);
         v.visit_expr_mut(&mut *(it).1);
     }
-    skip!(node.fat_arrow_token);
+    skip!(node.fat_arrow);
     v.visit_expr_mut(&mut *node.body);
     skip!(node.comma);
 }
@@ -610,7 +610,7 @@ where
     if let Some(it) = &mut node.gnrs {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut node.val);
 }
 pub fn visit_assoc_type_mut<V>(v: &mut V, node: &mut AssocType)
@@ -621,7 +621,7 @@ where
     if let Some(it) = &mut node.gnrs {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_type_mut(&mut node.ty);
 }
 pub fn visit_attr_style_mut<V>(v: &mut V, node: &mut AttrStyle)
@@ -639,12 +639,12 @@ pub fn visit_attribute_mut<V>(v: &mut V, node: &mut Attribute)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.pound_token);
+    skip!(node.pound);
     v.visit_attr_style_mut(&mut node.style);
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     v.visit_meta_mut(&mut node.meta);
 }
-pub fn visit_bare_fn_arg_mut<V>(v: &mut V, node: &mut BareFnArg)
+pub fn visit_bare_fn_arg_mut<V>(v: &mut V, node: &mut ty::BareFnArg)
 where
     V: VisitMut + ?Sized,
 {
@@ -657,7 +657,7 @@ where
     }
     v.visit_type_mut(&mut node.ty);
 }
-pub fn visit_bare_variadic_mut<V>(v: &mut V, node: &mut BareVariadic)
+pub fn visit_bare_variadic_mut<V>(v: &mut V, node: &mut ty::BareVari)
 where
     V: VisitMut + ?Sized,
 {
@@ -766,7 +766,7 @@ pub fn visit_block_mut<V>(v: &mut V, node: &mut Block)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.brace_token);
+    skip!(node.brace);
     for it in &mut node.stmts {
         v.visit_stmt_mut(it);
     }
@@ -775,13 +775,13 @@ pub fn visit_bound_lifetimes_mut<V>(v: &mut V, node: &mut BoundLifetimes)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.for_token);
-    skip!(node.lt_token);
-    for mut el in Punctuated::pairs_mut(&mut node.lifetimes) {
+    skip!(node.for_);
+    skip!(node.lt);
+    for mut el in Punctuated::pairs_mut(&mut node.lifes) {
         let it = el.value_mut();
         v.visit_generic_param_mut(it);
     }
-    skip!(node.gt_token);
+    skip!(node.gt);
 }
 pub fn visit_const_param_mut<V>(v: &mut V, node: &mut ConstParam)
 where
@@ -790,11 +790,11 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.const_token);
+    skip!(node.const_);
     v.visit_ident_mut(&mut node.ident);
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_type_mut(&mut node.ty);
-    skip!(node.eq_token);
+    skip!(node.eq);
     if let Some(it) = &mut node.default {
         v.visit_expr_mut(it);
     }
@@ -807,7 +807,7 @@ where
     if let Some(it) = &mut node.gnrs {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
-    skip!(node.colon_token);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
@@ -833,8 +833,8 @@ pub fn visit_data_enum_mut<V>(v: &mut V, node: &mut DataEnum)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.enum_token);
-    skip!(node.brace_token);
+    skip!(node.enum_);
+    skip!(node.brace);
     for mut el in Punctuated::pairs_mut(&mut node.variants) {
         let it = el.value_mut();
         v.visit_variant_mut(it);
@@ -844,15 +844,15 @@ pub fn visit_data_struct_mut<V>(v: &mut V, node: &mut DataStruct)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.struct_token);
+    skip!(node.struct_);
     v.visit_fields_mut(&mut node.fields);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_data_union_mut<V>(v: &mut V, node: &mut DataUnion)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.union_token);
+    skip!(node.union_);
     v.visit_fields_named_mut(&mut node.fields);
 }
 pub fn visit_derive_input_mut<V>(v: &mut V, node: &mut DeriveInput)
@@ -864,7 +864,7 @@ where
     }
     v.visit_visibility_mut(&mut node.vis);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
+    v.visit_generics_mut(&mut node.gens);
     v.visit_data_mut(&mut node.data);
 }
 pub fn visit_expr_mut<V>(v: &mut V, node: &mut Expr)
@@ -998,7 +998,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
@@ -1012,7 +1012,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.left);
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut *node.right);
 }
 pub fn visit_expr_async_mut<V>(v: &mut V, node: &mut ExprAsync)
@@ -1022,7 +1022,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.async_token);
+    skip!(node.async_);
     skip!(node.capture);
     v.visit_block_mut(&mut node.block);
 }
@@ -1034,8 +1034,8 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.base);
-    skip!(node.dot_token);
-    skip!(node.await_token);
+    skip!(node.dot);
+    skip!(node.await_);
 }
 pub fn visit_expr_binary_mut<V>(v: &mut V, node: &mut ExprBinary)
 where
@@ -1067,7 +1067,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.break_token);
+    skip!(node.break_);
     if let Some(it) = &mut node.label {
         v.visit_lifetime_mut(it);
     }
@@ -1083,7 +1083,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.func);
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
@@ -1097,7 +1097,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.as_token);
+    skip!(node.as_);
     v.visit_type_mut(&mut *node.ty);
 }
 pub fn visit_expr_closure_mut<V>(v: &mut V, node: &mut ExprClosure)
@@ -1107,20 +1107,20 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    if let Some(it) = &mut node.lifetimes {
+    if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }
     skip!(node.constness);
     skip!(node.movability);
     skip!(node.asyncness);
     skip!(node.capture);
-    skip!(node.or1_token);
+    skip!(node.or1);
     for mut el in Punctuated::pairs_mut(&mut node.inputs) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
-    skip!(node.or2_token);
-    v.visit_return_type_mut(&mut node.output);
+    skip!(node.or2);
+    v.visit_return_type_mut(&mut node.ret);
     v.visit_expr_mut(&mut *node.body);
 }
 pub fn visit_expr_const_mut<V>(v: &mut V, node: &mut ExprConst)
@@ -1130,7 +1130,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.const_token);
+    skip!(node.const_);
     v.visit_block_mut(&mut node.block);
 }
 pub fn visit_expr_continue_mut<V>(v: &mut V, node: &mut ExprContinue)
@@ -1140,7 +1140,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.continue_token);
+    skip!(node.continue_);
     if let Some(it) = &mut node.label {
         v.visit_lifetime_mut(it);
     }
@@ -1153,7 +1153,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.base);
-    skip!(node.dot_token);
+    skip!(node.dot);
     v.visit_member_mut(&mut node.member);
 }
 pub fn visit_expr_for_loop_mut<V>(v: &mut V, node: &mut ExprForLoop)
@@ -1166,9 +1166,9 @@ where
     if let Some(it) = &mut node.label {
         v.visit_label_mut(it);
     }
-    skip!(node.for_token);
+    skip!(node.for_);
     v.visit_pat_mut(&mut *node.pat);
-    skip!(node.in_token);
+    skip!(node.in_);
     v.visit_expr_mut(&mut *node.expr);
     v.visit_block_mut(&mut node.body);
 }
@@ -1179,7 +1179,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.group_token);
+    skip!(node.group);
     v.visit_expr_mut(&mut *node.expr);
 }
 pub fn visit_expr_if_mut<V>(v: &mut V, node: &mut ExprIf)
@@ -1189,7 +1189,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.if_token);
+    skip!(node.if_);
     v.visit_expr_mut(&mut *node.cond);
     v.visit_block_mut(&mut node.then_branch);
     if let Some(it) = &mut node.else_branch {
@@ -1205,7 +1205,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     v.visit_expr_mut(&mut *node.index);
 }
 pub fn visit_expr_infer_mut<V>(v: &mut V, node: &mut ExprInfer)
@@ -1215,7 +1215,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.underscore_token);
+    skip!(node.underscore);
 }
 pub fn visit_expr_let_mut<V>(v: &mut V, node: &mut ExprLet)
 where
@@ -1224,9 +1224,9 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.let_token);
+    skip!(node.let_);
     v.visit_pat_mut(&mut *node.pat);
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut *node.expr);
 }
 pub fn visit_expr_lit_mut<V>(v: &mut V, node: &mut ExprLit)
@@ -1248,7 +1248,7 @@ where
     if let Some(it) = &mut node.label {
         v.visit_label_mut(it);
     }
-    skip!(node.loop_token);
+    skip!(node.loop_);
     v.visit_block_mut(&mut node.body);
 }
 pub fn visit_expr_macro_mut<V>(v: &mut V, node: &mut ExprMacro)
@@ -1267,9 +1267,9 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.match_token);
+    skip!(node.match_);
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.brace_token);
+    skip!(node.brace);
     for it in &mut node.arms {
         v.visit_arm_mut(it);
     }
@@ -1282,12 +1282,12 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.receiver);
-    skip!(node.dot_token);
+    skip!(node.dot);
     v.visit_ident_mut(&mut node.method);
     if let Some(it) = &mut node.turbofish {
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
@@ -1300,7 +1300,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.paren_token);
+    skip!(node.paren);
     v.visit_expr_mut(&mut *node.expr);
 }
 pub fn visit_expr_path_mut<V>(v: &mut V, node: &mut ExprPath)
@@ -1337,7 +1337,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.and_token);
+    skip!(node.and);
     skip!(node.mutability);
     v.visit_expr_mut(&mut *node.expr);
 }
@@ -1348,9 +1348,9 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.semi_token);
+    skip!(node.semi);
     v.visit_expr_mut(&mut *node.len);
 }
 pub fn visit_expr_return_mut<V>(v: &mut V, node: &mut ExprReturn)
@@ -1360,7 +1360,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.return_token);
+    skip!(node.return_);
     if let Some(it) = &mut node.expr {
         v.visit_expr_mut(&mut **it);
     }
@@ -1376,12 +1376,12 @@ where
         v.visit_qself_mut(it);
     }
     v.visit_path_mut(&mut node.path);
-    skip!(node.brace_token);
+    skip!(node.brace);
     for mut el in Punctuated::pairs_mut(&mut node.fields) {
         let it = el.value_mut();
         v.visit_field_value_mut(it);
     }
-    skip!(node.dot2_token);
+    skip!(node.dot2);
     if let Some(it) = &mut node.rest {
         v.visit_expr_mut(&mut **it);
     }
@@ -1394,7 +1394,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.question_token);
+    skip!(node.question);
 }
 pub fn visit_expr_try_block_mut<V>(v: &mut V, node: &mut ExprTryBlock)
 where
@@ -1403,7 +1403,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.try_token);
+    skip!(node.try_);
     v.visit_block_mut(&mut node.block);
 }
 pub fn visit_expr_tuple_mut<V>(v: &mut V, node: &mut ExprTuple)
@@ -1413,7 +1413,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
@@ -1436,7 +1436,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.unsafe_token);
+    skip!(node.unsafe_);
     v.visit_block_mut(&mut node.block);
 }
 pub fn visit_expr_while_mut<V>(v: &mut V, node: &mut ExprWhile)
@@ -1449,7 +1449,7 @@ where
     if let Some(it) = &mut node.label {
         v.visit_label_mut(it);
     }
-    skip!(node.while_token);
+    skip!(node.while_);
     v.visit_expr_mut(&mut *node.cond);
     v.visit_block_mut(&mut node.body);
 }
@@ -1460,7 +1460,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.yield_token);
+    skip!(node.yield_);
     if let Some(it) = &mut node.expr {
         v.visit_expr_mut(&mut **it);
     }
@@ -1477,7 +1477,7 @@ where
     if let Some(it) = &mut node.ident {
         v.visit_ident_mut(it);
     }
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_type_mut(&mut node.ty);
 }
 pub fn visit_field_mutability_mut<V>(v: &mut V, node: &mut FieldMut)
@@ -1496,7 +1496,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_member_mut(&mut node.member);
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_pat_mut(&mut *node.pat);
 }
 pub fn visit_field_value_mut<V>(v: &mut V, node: &mut FieldValue)
@@ -1507,7 +1507,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_member_mut(&mut node.member);
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_expr_mut(&mut node.expr);
 }
 pub fn visit_fields_mut<V>(v: &mut V, node: &mut Fields)
@@ -1528,7 +1528,7 @@ pub fn visit_fields_named_mut<V>(v: &mut V, node: &mut FieldsNamed)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.brace_token);
+    skip!(node.brace);
     for mut el in Punctuated::pairs_mut(&mut node.named) {
         let it = el.value_mut();
         v.visit_field_mut(it);
@@ -1538,7 +1538,7 @@ pub fn visit_fields_unnamed_mut<V>(v: &mut V, node: &mut FieldsUnnamed)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.unnamed) {
         let it = el.value_mut();
         v.visit_field_mut(it);
@@ -1600,7 +1600,7 @@ where
     }
     v.visit_visibility_mut(&mut node.vis);
     v.visit_signature_mut(&mut node.sig);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_foreign_item_macro_mut<V>(v: &mut V, node: &mut ForeignItemMacro)
 where
@@ -1610,7 +1610,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_macro_mut(&mut node.mac);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_foreign_item_static_mut<V>(v: &mut V, node: &mut ForeignItemStatic)
 where
@@ -1620,12 +1620,12 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.static_token);
-    v.visit_static_mutability_mut(&mut node.mutability);
+    skip!(node.static_);
+    v.visit_static_mutability_mut(&mut node.mut_);
     v.visit_ident_mut(&mut node.ident);
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_type_mut(&mut *node.ty);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_foreign_item_type_mut<V>(v: &mut V, node: &mut ForeignItemType)
 where
@@ -1635,10 +1635,10 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.type_token);
+    skip!(node.type);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.semi_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.semi);
 }
 pub fn visit_generic_argument_mut<V>(v: &mut V, node: &mut Arg)
 where
@@ -1685,12 +1685,12 @@ pub fn visit_generics_mut<V>(v: &mut V, node: &mut Generics)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.lt_token);
+    skip!(node.lt);
     for mut el in Punctuated::pairs_mut(&mut node.params) {
         let it = el.value_mut();
         v.visit_generic_param_mut(it);
     }
-    skip!(node.gt_token);
+    skip!(node.gt);
     if let Some(it) = &mut node.clause {
         v.visit_where_clause_mut(it);
     }
@@ -1734,14 +1734,14 @@ where
     }
     v.visit_visibility_mut(&mut node.vis);
     skip!(node.defaultness);
-    skip!(node.const_token);
+    skip!(node.const_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.colon_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.colon);
     v.visit_type_mut(&mut node.ty);
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut node.expr);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_impl_item_fn_mut<V>(v: &mut V, node: &mut ImplItemFn)
 where
@@ -1763,7 +1763,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_macro_mut(&mut node.mac);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_impl_item_type_mut<V>(v: &mut V, node: &mut ImplItemType)
 where
@@ -1774,12 +1774,12 @@ where
     }
     v.visit_visibility_mut(&mut node.vis);
     skip!(node.defaultness);
-    skip!(node.type_token);
+    skip!(node.type);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.eq_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.eq);
     v.visit_type_mut(&mut node.ty);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_impl_restriction_mut<V>(v: &mut V, node: &mut ImplRestriction)
 where
@@ -1857,14 +1857,14 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.const_token);
+    skip!(node.const_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.colon_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.colon);
     v.visit_type_mut(&mut *node.ty);
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_enum_mut<V>(v: &mut V, node: &mut ItemEnum)
 where
@@ -1874,10 +1874,10 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.enum_token);
+    skip!(node.enum_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.brace_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.brace);
     for mut el in Punctuated::pairs_mut(&mut node.variants) {
         let it = el.value_mut();
         v.visit_variant_mut(it);
@@ -1891,14 +1891,14 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.extern_token);
-    skip!(node.crate_token);
+    skip!(node.extern_);
+    skip!(node.crate_);
     v.visit_ident_mut(&mut node.ident);
     if let Some(it) = &mut node.rename {
         skip!((it).0);
         v.visit_ident_mut(&mut (it).1);
     }
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_fn_mut<V>(v: &mut V, node: &mut ItemFn)
 where
@@ -1920,7 +1920,7 @@ where
     }
     skip!(node.unsafety);
     v.visit_abi_mut(&mut node.abi);
-    skip!(node.brace_token);
+    skip!(node.brace);
     for it in &mut node.items {
         v.visit_foreign_item_mut(it);
     }
@@ -1934,15 +1934,15 @@ where
     }
     skip!(node.defaultness);
     skip!(node.unsafety);
-    skip!(node.impl_token);
-    v.visit_generics_mut(&mut node.generics);
+    skip!(node.impl_);
+    v.visit_generics_mut(&mut node.gens);
     if let Some(it) = &mut node.trait_ {
         skip!((it).0);
         v.visit_path_mut(&mut (it).1);
         skip!((it).2);
     }
     v.visit_type_mut(&mut *node.self_ty);
-    skip!(node.brace_token);
+    skip!(node.brace);
     for it in &mut node.items {
         v.visit_impl_item_mut(it);
     }
@@ -1958,7 +1958,7 @@ where
         v.visit_ident_mut(it);
     }
     v.visit_macro_mut(&mut node.mac);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_mod_mut<V>(v: &mut V, node: &mut ItemMod)
 where
@@ -1969,9 +1969,9 @@ where
     }
     v.visit_visibility_mut(&mut node.vis);
     skip!(node.unsafety);
-    skip!(node.mod_token);
+    skip!(node.mod_);
     v.visit_ident_mut(&mut node.ident);
-    if let Some(it) = &mut node.content {
+    if let Some(it) = &mut node.gist {
         skip!((it).0);
         for it in &mut (it).1 {
             v.visit_item_mut(it);
@@ -1987,14 +1987,14 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.static_token);
-    v.visit_static_mutability_mut(&mut node.mutability);
+    skip!(node.static_);
+    v.visit_static_mutability_mut(&mut node.mut_);
     v.visit_ident_mut(&mut node.ident);
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_type_mut(&mut *node.ty);
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut *node.expr);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_struct_mut<V>(v: &mut V, node: &mut ItemStruct)
 where
@@ -2004,11 +2004,11 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.struct_token);
+    skip!(node.struct_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
+    v.visit_generics_mut(&mut node.gens);
     v.visit_fields_mut(&mut node.fields);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_trait_mut<V>(v: &mut V, node: &mut ItemTrait)
 where
@@ -2019,19 +2019,19 @@ where
     }
     v.visit_visibility_mut(&mut node.vis);
     skip!(node.unsafety);
-    skip!(node.auto_token);
+    skip!(node.auto_);
     if let Some(it) = &mut node.restriction {
         v.visit_impl_restriction_mut(it);
     }
-    skip!(node.trait_token);
+    skip!(node.trait_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.colon_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.supertraits) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
-    skip!(node.brace_token);
+    skip!(node.brace);
     for it in &mut node.items {
         v.visit_trait_item_mut(it);
     }
@@ -2044,15 +2044,15 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.trait_token);
+    skip!(node.trait_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.eq_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.eq);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_type_mut<V>(v: &mut V, node: &mut ItemType)
 where
@@ -2062,12 +2062,12 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.type_token);
+    skip!(node.type);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.eq_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.eq);
     v.visit_type_mut(&mut *node.ty);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_item_union_mut<V>(v: &mut V, node: &mut ItemUnion)
 where
@@ -2077,9 +2077,9 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.union_token);
+    skip!(node.union_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
+    v.visit_generics_mut(&mut node.gens);
     v.visit_fields_named_mut(&mut node.fields);
 }
 pub fn visit_item_use_mut<V>(v: &mut V, node: &mut ItemUse)
@@ -2090,17 +2090,17 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.use_token);
+    skip!(node.use_);
     skip!(node.leading_colon);
     v.visit_use_tree_mut(&mut node.tree);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_label_mut<V>(v: &mut V, node: &mut Label)
 where
     V: VisitMut + ?Sized,
 {
     v.visit_lifetime_mut(&mut node.name);
-    skip!(node.colon_token);
+    skip!(node.colon);
 }
 pub fn visit_lifetime_mut<V>(v: &mut V, node: &mut Lifetime)
 where
@@ -2116,8 +2116,8 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    v.visit_lifetime_mut(&mut node.lifetime);
-    skip!(node.colon_token);
+    v.visit_lifetime_mut(&mut node.life);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_lifetime_mut(it);
@@ -2198,18 +2198,18 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.let_token);
+    skip!(node.let_);
     v.visit_pat_mut(&mut node.pat);
     if let Some(it) = &mut node.init {
         v.visit_local_init_mut(it);
     }
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_local_init_mut<V>(v: &mut V, node: &mut LocalInit)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut *node.expr);
     if let Some(it) = &mut node.diverge {
         skip!((it).0);
@@ -2221,7 +2221,7 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_path_mut(&mut node.path);
-    skip!(node.bang_token);
+    skip!(node.bang);
     v.visit_macro_delimiter_mut(&mut node.delim);
     skip!(node.tokens);
 }
@@ -2283,14 +2283,14 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_path_mut(&mut node.path);
-    skip!(node.eq_token);
+    skip!(node.eq);
     v.visit_expr_mut(&mut node.val);
 }
 pub fn visit_parenthesized_generic_arguments_mut<V>(v: &mut V, node: &mut ParenthesizedArgs)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.ins) {
         let it = el.value_mut();
         v.visit_type_mut(it);
@@ -2390,7 +2390,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.paren_token);
+    skip!(node.paren);
     v.visit_pat_mut(&mut *node.pat);
 }
 pub fn visit_pat_reference_mut<V>(v: &mut V, node: &mut PatReference)
@@ -2400,7 +2400,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.and_token);
+    skip!(node.and);
     skip!(node.mutability);
     v.visit_pat_mut(&mut *node.pat);
 }
@@ -2411,7 +2411,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.dot2_token);
+    skip!(node.dot2);
 }
 pub fn visit_pat_slice_mut<V>(v: &mut V, node: &mut PatSlice)
 where
@@ -2420,7 +2420,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
@@ -2437,7 +2437,7 @@ where
         v.visit_qself_mut(it);
     }
     v.visit_path_mut(&mut node.path);
-    skip!(node.brace_token);
+    skip!(node.brace);
     for mut el in Punctuated::pairs_mut(&mut node.fields) {
         let it = el.value_mut();
         v.visit_field_pat_mut(it);
@@ -2453,7 +2453,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
@@ -2470,7 +2470,7 @@ where
         v.visit_qself_mut(it);
     }
     v.visit_path_mut(&mut node.path);
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
@@ -2484,7 +2484,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_pat_mut(&mut *node.pat);
-    skip!(node.colon_token);
+    skip!(node.colon);
     v.visit_type_mut(&mut *node.ty);
 }
 pub fn visit_pat_wild_mut<V>(v: &mut V, node: &mut PatWild)
@@ -2494,7 +2494,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.underscore_token);
+    skip!(node.underscore);
 }
 pub fn visit_path_mut<V>(v: &mut V, node: &mut Path)
 where
@@ -2531,8 +2531,8 @@ pub fn visit_predicate_lifetime_mut<V>(v: &mut V, node: &mut PredLifetime)
 where
     V: VisitMut + ?Sized,
 {
-    v.visit_lifetime_mut(&mut node.lifetime);
-    skip!(node.colon_token);
+    v.visit_lifetime_mut(&mut node.life);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_lifetime_mut(it);
@@ -2542,11 +2542,11 @@ pub fn visit_predicate_type_mut<V>(v: &mut V, node: &mut PredType)
 where
     V: VisitMut + ?Sized,
 {
-    if let Some(it) = &mut node.lifetimes {
+    if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }
-    v.visit_type_mut(&mut node.bounded_ty);
-    skip!(node.colon_token);
+    v.visit_type_mut(&mut node.bounded);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
@@ -2556,11 +2556,11 @@ pub fn visit_qself_mut<V>(v: &mut V, node: &mut QSelf)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.lt_token);
+    skip!(node.lt);
     v.visit_type_mut(&mut *node.ty);
     skip!(node.position);
-    skip!(node.as_token);
-    skip!(node.gt_token);
+    skip!(node.as_);
+    skip!(node.gt);
 }
 pub fn visit_range_limits_mut<V>(v: &mut V, node: &mut RangeLimits)
 where
@@ -2589,17 +2589,17 @@ where
         }
     }
     skip!(node.mutability);
-    skip!(node.self_token);
-    skip!(node.colon_token);
+    skip!(node.self_);
+    skip!(node.colon);
     v.visit_type_mut(&mut *node.ty);
 }
-pub fn visit_return_type_mut<V>(v: &mut V, node: &mut ReturnType)
+pub fn visit_return_type_mut<V>(v: &mut V, node: &mut ty::Ret)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        ReturnType::Default => {},
-        ReturnType::Type(_binding_0, _binding_1) => {
+        ty::Ret::Default => {},
+        ty::Ret::Type(_binding_0, _binding_1) => {
             skip!(_binding_0);
             v.visit_type_mut(&mut **_binding_1);
         },
@@ -2615,33 +2615,33 @@ where
     if let Some(it) = &mut node.abi {
         v.visit_abi_mut(it);
     }
-    skip!(node.fn_token);
+    skip!(node.fn_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.paren_token);
-    for mut el in Punctuated::pairs_mut(&mut node.inputs) {
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.paren);
+    for mut el in Punctuated::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_fn_arg_mut(it);
     }
-    if let Some(it) = &mut node.variadic {
+    if let Some(it) = &mut node.vari {
         v.visit_variadic_mut(it);
     }
-    v.visit_return_type_mut(&mut node.output);
+    v.visit_return_type_mut(&mut node.ret);
 }
 pub fn visit_span_mut<V>(v: &mut V, node: &mut Span)
 where
     V: VisitMut + ?Sized,
 {
 }
-pub fn visit_static_mutability_mut<V>(v: &mut V, node: &mut StaticMutability)
+pub fn visit_static_mutability_mut<V>(v: &mut V, node: &mut StaticMut)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        StaticMutability::Mut(_binding_0) => {
+        StaticMut::Mut(_binding_0) => {
             skip!(_binding_0);
         },
-        StaticMutability::None => {},
+        StaticMut::None => {},
     }
 }
 pub fn visit_stmt_mut<V>(v: &mut V, node: &mut Stmt)
@@ -2672,15 +2672,15 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_macro_mut(&mut node.mac);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_trait_bound_mut<V>(v: &mut V, node: &mut TraitBound)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.paren_token);
+    skip!(node.paren);
     v.visit_trait_bound_modifier_mut(&mut node.modifier);
-    if let Some(it) = &mut node.lifetimes {
+    if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }
     v.visit_path_mut(&mut node.path);
@@ -2725,16 +2725,16 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.const_token);
+    skip!(node.const_);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.colon_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.colon);
     v.visit_type_mut(&mut node.ty);
     if let Some(it) = &mut node.default {
         skip!((it).0);
         v.visit_expr_mut(&mut (it).1);
     }
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_trait_item_fn_mut<V>(v: &mut V, node: &mut TraitItemFn)
 where
@@ -2747,7 +2747,7 @@ where
     if let Some(it) = &mut node.default {
         v.visit_block_mut(it);
     }
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_trait_item_macro_mut<V>(v: &mut V, node: &mut TraitItemMacro)
 where
@@ -2757,7 +2757,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_macro_mut(&mut node.mac);
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_trait_item_type_mut<V>(v: &mut V, node: &mut TraitItemType)
 where
@@ -2766,10 +2766,10 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.type_token);
+    skip!(node.type);
     v.visit_ident_mut(&mut node.ident);
-    v.visit_generics_mut(&mut node.generics);
-    skip!(node.colon_token);
+    v.visit_generics_mut(&mut node.gens);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
@@ -2778,7 +2778,7 @@ where
         skip!((it).0);
         v.visit_type_mut(&mut (it).1);
     }
-    skip!(node.semi_token);
+    skip!(node.semi);
 }
 pub fn visit_type_mut<V>(v: &mut V, node: &mut Ty)
 where
@@ -2794,13 +2794,13 @@ where
         Ty::Group(_binding_0) => {
             v.visit_type_group_mut(_binding_0);
         },
-        Ty::ImplTrait(_binding_0) => {
+        Ty::Impl(_binding_0) => {
             v.visit_type_impl_trait_mut(_binding_0);
         },
         Ty::Infer(_binding_0) => {
             v.visit_type_infer_mut(_binding_0);
         },
-        Ty::Macro(_binding_0) => {
+        Ty::Mac(_binding_0) => {
             v.visit_type_macro_mut(_binding_0);
         },
         Ty::Never(_binding_0) => {
@@ -2815,13 +2815,13 @@ where
         Ty::Ptr(_binding_0) => {
             v.visit_type_ptr_mut(_binding_0);
         },
-        Ty::Reference(_binding_0) => {
+        Ty::Ref(_binding_0) => {
             v.visit_type_reference_mut(_binding_0);
         },
         Ty::Slice(_binding_0) => {
             v.visit_type_slice_mut(_binding_0);
         },
-        Ty::TraitObject(_binding_0) => {
+        Ty::TraitObj(_binding_0) => {
             v.visit_type_trait_object_mut(_binding_0);
         },
         Ty::Tuple(_binding_0) => {
@@ -2832,71 +2832,71 @@ where
         },
     }
 }
-pub fn visit_type_array_mut<V>(v: &mut V, node: &mut TypeArray)
+pub fn visit_type_array_mut<V>(v: &mut V, node: &mut ty::Array)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     v.visit_type_mut(&mut *node.elem);
-    skip!(node.semi_token);
+    skip!(node.semi);
     v.visit_expr_mut(&mut node.len);
 }
-pub fn visit_type_bare_fn_mut<V>(v: &mut V, node: &mut TypeBareFn)
+pub fn visit_type_bare_fn_mut<V>(v: &mut V, node: &mut ty::BareFn)
 where
     V: VisitMut + ?Sized,
 {
-    if let Some(it) = &mut node.lifetimes {
+    if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }
     skip!(node.unsafety);
     if let Some(it) = &mut node.abi {
         v.visit_abi_mut(it);
     }
-    skip!(node.fn_token);
-    skip!(node.paren_token);
-    for mut el in Punctuated::pairs_mut(&mut node.inputs) {
+    skip!(node.fn_);
+    skip!(node.paren);
+    for mut el in Punctuated::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_bare_fn_arg_mut(it);
     }
-    if let Some(it) = &mut node.variadic {
+    if let Some(it) = &mut node.vari {
         v.visit_bare_variadic_mut(it);
     }
-    v.visit_return_type_mut(&mut node.output);
+    v.visit_return_type_mut(&mut node.ret);
 }
-pub fn visit_type_group_mut<V>(v: &mut V, node: &mut TypeGroup)
+pub fn visit_type_group_mut<V>(v: &mut V, node: &mut ty::Group)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.group_token);
+    skip!(node.group);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_impl_trait_mut<V>(v: &mut V, node: &mut TypeImplTrait)
+pub fn visit_type_impl_trait_mut<V>(v: &mut V, node: &mut ty::Impl)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.impl_token);
+    skip!(node.impl_);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
 }
-pub fn visit_type_infer_mut<V>(v: &mut V, node: &mut TypeInfer)
+pub fn visit_type_infer_mut<V>(v: &mut V, node: &mut ty::Infer)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.underscore_token);
+    skip!(node.underscore);
 }
-pub fn visit_type_macro_mut<V>(v: &mut V, node: &mut TypeMacro)
+pub fn visit_type_macro_mut<V>(v: &mut V, node: &mut ty::Mac)
 where
     V: VisitMut + ?Sized,
 {
     v.visit_macro_mut(&mut node.mac);
 }
-pub fn visit_type_never_mut<V>(v: &mut V, node: &mut TypeNever)
+pub fn visit_type_never_mut<V>(v: &mut V, node: &mut ty::Never)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.bang_token);
+    skip!(node.bang);
 }
 pub fn visit_type_param_mut<V>(v: &mut V, node: &mut TypeParam)
 where
@@ -2906,12 +2906,12 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_ident_mut(&mut node.ident);
-    skip!(node.colon_token);
+    skip!(node.colon);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
-    skip!(node.eq_token);
+    skip!(node.eq);
     if let Some(it) = &mut node.default {
         v.visit_type_mut(it);
     }
@@ -2932,14 +2932,14 @@ where
         },
     }
 }
-pub fn visit_type_paren_mut<V>(v: &mut V, node: &mut TypeParen)
+pub fn visit_type_paren_mut<V>(v: &mut V, node: &mut ty::Paren)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.paren_token);
+    skip!(node.paren);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_path_mut<V>(v: &mut V, node: &mut TypePath)
+pub fn visit_type_path_mut<V>(v: &mut V, node: &mut ty::Path)
 where
     V: VisitMut + ?Sized,
 {
@@ -2948,48 +2948,48 @@ where
     }
     v.visit_path_mut(&mut node.path);
 }
-pub fn visit_type_ptr_mut<V>(v: &mut V, node: &mut TypePtr)
+pub fn visit_type_ptr_mut<V>(v: &mut V, node: &mut ty::Ptr)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.star_token);
-    skip!(node.const_token);
+    skip!(node.star);
+    skip!(node.const_);
     skip!(node.mutability);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_reference_mut<V>(v: &mut V, node: &mut TypeReference)
+pub fn visit_type_reference_mut<V>(v: &mut V, node: &mut ty::Ref)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.and_token);
-    if let Some(it) = &mut node.lifetime {
+    skip!(node.and);
+    if let Some(it) = &mut node.life {
         v.visit_lifetime_mut(it);
     }
     skip!(node.mutability);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_slice_mut<V>(v: &mut V, node: &mut TypeSlice)
+pub fn visit_type_slice_mut<V>(v: &mut V, node: &mut ty::Slice)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.bracket_token);
+    skip!(node.bracket);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_trait_object_mut<V>(v: &mut V, node: &mut TypeTraitObject)
+pub fn visit_type_trait_object_mut<V>(v: &mut V, node: &mut ty::TraitObj)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.dyn_token);
+    skip!(node.dyn_);
     for mut el in Punctuated::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
 }
-pub fn visit_type_tuple_mut<V>(v: &mut V, node: &mut TypeTuple)
+pub fn visit_type_tuple_mut<V>(v: &mut V, node: &mut ty::Tuple)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.paren_token);
+    skip!(node.paren);
     for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_type_mut(it);
@@ -3015,13 +3015,13 @@ pub fn visit_use_glob_mut<V>(v: &mut V, node: &mut UseGlob)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.star_token);
+    skip!(node.star);
 }
 pub fn visit_use_group_mut<V>(v: &mut V, node: &mut UseGroup)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.brace_token);
+    skip!(node.brace);
     for mut el in Punctuated::pairs_mut(&mut node.items) {
         let it = el.value_mut();
         v.visit_use_tree_mut(it);
@@ -3038,7 +3038,7 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
-    skip!(node.colon2_token);
+    skip!(node.colon2);
     v.visit_use_tree_mut(&mut *node.tree);
 }
 pub fn visit_use_rename_mut<V>(v: &mut V, node: &mut UseRename)
@@ -3046,7 +3046,7 @@ where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
-    skip!(node.as_token);
+    skip!(node.as_);
     v.visit_ident_mut(&mut node.rename);
 }
 pub fn visit_use_tree_mut<V>(v: &mut V, node: &mut UseTree)
@@ -3103,9 +3103,9 @@ pub fn visit_vis_restricted_mut<V>(v: &mut V, node: &mut VisRestricted)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.pub_token);
-    skip!(node.paren_token);
-    skip!(node.in_token);
+    skip!(node.pub_);
+    skip!(node.paren);
+    skip!(node.in_);
     v.visit_path_mut(&mut *node.path);
 }
 pub fn visit_visibility_mut<V>(v: &mut V, node: &mut Visibility)
@@ -3126,7 +3126,7 @@ pub fn visit_where_clause_mut<V>(v: &mut V, node: &mut WhereClause)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.where_token);
+    skip!(node.where_);
     for mut el in Punctuated::pairs_mut(&mut node.preds) {
         let it = el.value_mut();
         v.visit_where_predicate_mut(it);

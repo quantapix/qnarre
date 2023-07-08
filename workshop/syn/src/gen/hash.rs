@@ -74,7 +74,7 @@ impl Hash for Attribute {
         self.meta.hash(state);
     }
 }
-impl Hash for BareFnArg {
+impl Hash for ty::BareFnArg {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -84,7 +84,7 @@ impl Hash for BareFnArg {
         self.ty.hash(state);
     }
 }
-impl Hash for BareVariadic {
+impl Hash for ty::BareVari {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -200,7 +200,7 @@ impl Hash for BoundLifetimes {
     where
         H: Hasher,
     {
-        self.lifetimes.hash(state);
+        self.lifes.hash(state);
     }
 }
 impl Hash for ConstParam {
@@ -279,7 +279,7 @@ impl Hash for DeriveInput {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.data.hash(state);
     }
 }
@@ -545,13 +545,13 @@ impl Hash for ExprClosure {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.lifetimes.hash(state);
-        self.constness.hash(state);
-        self.movability.hash(state);
-        self.asyncness.hash(state);
-        self.capture.hash(state);
+        self.lifes.hash(state);
+        self.const_.hash(state);
+        self.static_.hash(state);
+        self.async_.hash(state);
+        self.move_.hash(state);
         self.inputs.hash(state);
-        self.output.hash(state);
+        self.ret.hash(state);
         self.body.hash(state);
     }
 }
@@ -729,7 +729,7 @@ impl Hash for ExprReference {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.mutability.hash(state);
+        self.mut_.hash(state);
         self.expr.hash(state);
     }
 }
@@ -761,7 +761,7 @@ impl Hash for ExprStruct {
         self.qself.hash(state);
         self.path.hash(state);
         self.fields.hash(state);
-        self.dot2_token.hash(state);
+        self.dot2.hash(state);
         self.rest.hash(state);
     }
 }
@@ -840,7 +840,7 @@ impl Hash for Field {
         self.vis.hash(state);
         self.mutability.hash(state);
         self.ident.hash(state);
-        self.colon_token.hash(state);
+        self.colon.hash(state);
         self.ty.hash(state);
     }
 }
@@ -874,7 +874,7 @@ impl Hash for FieldValue {
     {
         self.attrs.hash(state);
         self.member.hash(state);
-        self.colon_token.hash(state);
+        self.colon.hash(state);
         self.expr.hash(state);
     }
 }
@@ -987,7 +987,7 @@ impl Hash for ForeignItemMacro {
     {
         self.attrs.hash(state);
         self.mac.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for ForeignItemStatic {
@@ -997,7 +997,7 @@ impl Hash for ForeignItemStatic {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.mutability.hash(state);
+        self.mut_.hash(state);
         self.ident.hash(state);
         self.ty.hash(state);
     }
@@ -1010,7 +1010,7 @@ impl Hash for ForeignItemType {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
     }
 }
 impl Hash for Arg {
@@ -1114,9 +1114,9 @@ impl Hash for ImplItemConst {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.defaultness.hash(state);
+        self.default_.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.ty.hash(state);
         self.expr.hash(state);
     }
@@ -1128,7 +1128,7 @@ impl Hash for ImplItemFn {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.defaultness.hash(state);
+        self.default_.hash(state);
         self.sig.hash(state);
         self.block.hash(state);
     }
@@ -1140,7 +1140,7 @@ impl Hash for ImplItemMacro {
     {
         self.attrs.hash(state);
         self.mac.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for ImplItemType {
@@ -1150,9 +1150,9 @@ impl Hash for ImplItemType {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.defaultness.hash(state);
+        self.default_.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.ty.hash(state);
     }
 }
@@ -1245,7 +1245,7 @@ impl Hash for ItemConst {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.ty.hash(state);
         self.expr.hash(state);
     }
@@ -1258,7 +1258,7 @@ impl Hash for ItemEnum {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.variants.hash(state);
     }
 }
@@ -1290,7 +1290,7 @@ impl Hash for ItemForeignMod {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.unsafety.hash(state);
+        self.unsafe_.hash(state);
         self.abi.hash(state);
         self.items.hash(state);
     }
@@ -1301,9 +1301,9 @@ impl Hash for ItemImpl {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.defaultness.hash(state);
-        self.unsafety.hash(state);
-        self.generics.hash(state);
+        self.default_.hash(state);
+        self.unsafe_.hash(state);
+        self.gens.hash(state);
         self.trait_.hash(state);
         self.self_ty.hash(state);
         self.items.hash(state);
@@ -1317,7 +1317,7 @@ impl Hash for ItemMacro {
         self.attrs.hash(state);
         self.ident.hash(state);
         self.mac.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for ItemMod {
@@ -1327,9 +1327,9 @@ impl Hash for ItemMod {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.unsafety.hash(state);
+        self.unsafe_.hash(state);
         self.ident.hash(state);
-        self.content.hash(state);
+        self.gist.hash(state);
         self.semi.hash(state);
     }
 }
@@ -1340,7 +1340,7 @@ impl Hash for ItemStatic {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.mutability.hash(state);
+        self.mut_.hash(state);
         self.ident.hash(state);
         self.ty.hash(state);
         self.expr.hash(state);
@@ -1354,9 +1354,9 @@ impl Hash for ItemStruct {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.fields.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for ItemTrait {
@@ -1366,12 +1366,12 @@ impl Hash for ItemTrait {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.unsafety.hash(state);
-        self.auto_token.hash(state);
+        self.unsafe_.hash(state);
+        self.auto_.hash(state);
         self.restriction.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
-        self.colon_token.hash(state);
+        self.gens.hash(state);
+        self.colon.hash(state);
         self.supertraits.hash(state);
         self.items.hash(state);
     }
@@ -1384,7 +1384,7 @@ impl Hash for ItemTraitAlias {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.bounds.hash(state);
     }
 }
@@ -1396,7 +1396,7 @@ impl Hash for ItemType {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.ty.hash(state);
     }
 }
@@ -1408,7 +1408,7 @@ impl Hash for ItemUnion {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.fields.hash(state);
     }
 }
@@ -1437,7 +1437,7 @@ impl Hash for LifetimeParam {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.lifetime.hash(state);
+        self.life.hash(state);
         self.colon.hash(state);
         self.bounds.hash(state);
     }
@@ -1815,7 +1815,7 @@ impl Hash for PredLifetime {
     where
         H: Hasher,
     {
-        self.lifetime.hash(state);
+        self.life.hash(state);
         self.bounds.hash(state);
     }
 }
@@ -1824,8 +1824,8 @@ impl Hash for PredType {
     where
         H: Hasher,
     {
-        self.lifetimes.hash(state);
-        self.bounded_ty.hash(state);
+        self.lifes.hash(state);
+        self.bounded.hash(state);
         self.bounds.hash(state);
     }
 }
@@ -1861,21 +1861,21 @@ impl Hash for Receiver {
     {
         self.attrs.hash(state);
         self.reference.hash(state);
-        self.mutability.hash(state);
-        self.colon_token.hash(state);
+        self.mut_.hash(state);
+        self.colon.hash(state);
         self.ty.hash(state);
     }
 }
-impl Hash for ReturnType {
+impl Hash for ty::Ret {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            ReturnType::Default => {
+            ty::Ret::Default => {
                 state.write_u8(0u8);
             },
-            ReturnType::Type(_, v1) => {
+            ty::Ret::Type(_, v1) => {
                 state.write_u8(1u8);
                 v1.hash(state);
             },
@@ -1888,26 +1888,26 @@ impl Hash for Signature {
         H: Hasher,
     {
         self.constness.hash(state);
-        self.asyncness.hash(state);
-        self.unsafety.hash(state);
+        self.async_.hash(state);
+        self.unsafe_.hash(state);
         self.abi.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
-        self.inputs.hash(state);
-        self.variadic.hash(state);
-        self.output.hash(state);
+        self.gens.hash(state);
+        self.args.hash(state);
+        self.vari.hash(state);
+        self.ret.hash(state);
     }
 }
-impl Hash for StaticMutability {
+impl Hash for StaticMut {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            StaticMutability::Mut(_) => {
+            StaticMut::Mut(_) => {
                 state.write_u8(0u8);
             },
-            StaticMutability::None => {
+            StaticMut::None => {
                 state.write_u8(1u8);
             },
         }
@@ -1956,7 +1956,7 @@ impl Hash for TraitBound {
     {
         self.paren.hash(state);
         self.modifier.hash(state);
-        self.lifetimes.hash(state);
+        self.lifes.hash(state);
         self.path.hash(state);
     }
 }
@@ -2011,7 +2011,7 @@ impl Hash for TraitItemConst {
     {
         self.attrs.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
+        self.gens.hash(state);
         self.ty.hash(state);
         self.default.hash(state);
     }
@@ -2024,7 +2024,7 @@ impl Hash for TraitItemFn {
         self.attrs.hash(state);
         self.sig.hash(state);
         self.default.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for TraitItemMacro {
@@ -2034,7 +2034,7 @@ impl Hash for TraitItemMacro {
     {
         self.attrs.hash(state);
         self.mac.hash(state);
-        self.semi_token.hash(state);
+        self.semi.hash(state);
     }
 }
 impl Hash for TraitItemType {
@@ -2044,8 +2044,8 @@ impl Hash for TraitItemType {
     {
         self.attrs.hash(state);
         self.ident.hash(state);
-        self.generics.hash(state);
-        self.colon_token.hash(state);
+        self.gens.hash(state);
+        self.colon.hash(state);
         self.bounds.hash(state);
         self.default.hash(state);
     }
@@ -2068,7 +2068,7 @@ impl Hash for Ty {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            Ty::ImplTrait(v0) => {
+            Ty::Impl(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
@@ -2076,7 +2076,7 @@ impl Hash for Ty {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            Ty::Macro(v0) => {
+            Ty::Mac(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
@@ -2096,7 +2096,7 @@ impl Hash for Ty {
                 state.write_u8(9u8);
                 v0.hash(state);
             },
-            Ty::Reference(v0) => {
+            Ty::Ref(v0) => {
                 state.write_u8(10u8);
                 v0.hash(state);
             },
@@ -2104,7 +2104,7 @@ impl Hash for Ty {
                 state.write_u8(11u8);
                 v0.hash(state);
             },
-            Ty::TraitObject(v0) => {
+            Ty::TraitObj(v0) => {
                 state.write_u8(12u8);
                 v0.hash(state);
             },
@@ -2119,7 +2119,7 @@ impl Hash for Ty {
         }
     }
 }
-impl Hash for TypeArray {
+impl Hash for ty::Array {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2128,20 +2128,20 @@ impl Hash for TypeArray {
         self.len.hash(state);
     }
 }
-impl Hash for TypeBareFn {
+impl Hash for ty::BareFn {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.lifetimes.hash(state);
+        self.lifes.hash(state);
         self.unsafe_.hash(state);
         self.abi.hash(state);
-        self.inputs.hash(state);
-        self.variadic.hash(state);
-        self.output.hash(state);
+        self.args.hash(state);
+        self.vari.hash(state);
+        self.ret.hash(state);
     }
 }
-impl Hash for TypeGroup {
+impl Hash for ty::Group {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2149,7 +2149,7 @@ impl Hash for TypeGroup {
         self.elem.hash(state);
     }
 }
-impl Hash for TypeImplTrait {
+impl Hash for ty::Impl {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2157,14 +2157,14 @@ impl Hash for TypeImplTrait {
         self.bounds.hash(state);
     }
 }
-impl Hash for TypeInfer {
+impl Hash for ty::Infer {
     fn hash<H>(&self, _state: &mut H)
     where
         H: Hasher,
     {
     }
 }
-impl Hash for TypeMacro {
+impl Hash for ty::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2172,7 +2172,7 @@ impl Hash for TypeMacro {
         self.mac.hash(state);
     }
 }
-impl Hash for TypeNever {
+impl Hash for ty::Never {
     fn hash<H>(&self, _state: &mut H)
     where
         H: Hasher,
@@ -2213,7 +2213,7 @@ impl Hash for TypeParamBound {
         }
     }
 }
-impl Hash for TypeParen {
+impl Hash for ty::Paren {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2221,7 +2221,7 @@ impl Hash for TypeParen {
         self.elem.hash(state);
     }
 }
-impl Hash for TypePath {
+impl Hash for ty::Path {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2230,7 +2230,7 @@ impl Hash for TypePath {
         self.path.hash(state);
     }
 }
-impl Hash for TypePtr {
+impl Hash for ty::Ptr {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2240,17 +2240,17 @@ impl Hash for TypePtr {
         self.elem.hash(state);
     }
 }
-impl Hash for TypeReference {
+impl Hash for ty::Ref {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.lifetime.hash(state);
+        self.life.hash(state);
         self.mut_.hash(state);
         self.elem.hash(state);
     }
 }
-impl Hash for TypeSlice {
+impl Hash for ty::Slice {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2258,7 +2258,7 @@ impl Hash for TypeSlice {
         self.elem.hash(state);
     }
 }
-impl Hash for TypeTraitObject {
+impl Hash for ty::TraitObj {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2267,7 +2267,7 @@ impl Hash for TypeTraitObject {
         self.bounds.hash(state);
     }
 }
-impl Hash for TypeTuple {
+impl Hash for ty::Tuple {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

@@ -251,7 +251,7 @@ fn test_closure_vs_rangefull() {
     snapshot!(tokens as Expr, @r###"
     Expr::MethodCall {
         receiver: Expr::Closure {
-            output: ReturnType::Default,
+            ret: ty::Ret::Default,
             body: Expr::Range {
                 limits: RangeLimits::HalfOpen,
             },
