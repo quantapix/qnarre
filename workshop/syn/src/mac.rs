@@ -3,17 +3,7 @@ macro_rules! ast_struct {
         [$($attrs_pub:tt)*]
         struct $name:ident #full $($rest:tt)*
     ) => {
-                $($attrs_pub)* struct $name $($rest)*
-        #[cfg(not(feature = "full"))]
-        $($attrs_pub)* struct $name {
-            _noconstruct: ::std::marker::PhantomData<::proc_macro2::Span>,
-        }
-        #[cfg(all(not(feature = "full"), feature = "printing"))]
-        impl ::quote::ToTokens for $name {
-            fn to_tokens(&self, _: &mut ::proc_macro2::TokenStream) {
-                unreachable!()
-            }
-        }
+        $($attrs_pub)* struct $name $($rest)*
     };
     (
         [$($attrs_pub:tt)*]

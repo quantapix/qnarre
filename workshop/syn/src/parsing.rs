@@ -3185,8 +3185,6 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
     } else {
         None
     };
-    #[cfg(not(feature = "printing"))]
-    let first_ty_span = input.span();
     let mut first_ty: Ty = input.parse()?;
     let self_ty: Ty;
     let trait_;
@@ -3208,8 +3206,6 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
             }
         } else if !allow_verbatim_impl {
             return Err(Err::new_spanned(first_ty_ref, "expected trait path"));
-            #[cfg(not(feature = "printing"))]
-            return Err(Err::new(first_ty_span, "expected trait path"));
         } else {
             trait_ = None;
         }

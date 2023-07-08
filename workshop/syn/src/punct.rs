@@ -766,33 +766,3 @@ fn test_needs_drop() {
     assert!(!needs_drop::<option::IntoIter<&NeedsDrop>>());
     assert!(!needs_drop::<option::IntoIter<&mut NeedsDrop>>());
 }
-
-mod printing {
-    use super::*;
-    use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt};
-    impl<T, P> ToTokens for Punctuated<T, P>
-    where
-        T: ToTokens,
-        P: ToTokens,
-    {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.append_all(self.pairs());
-        }
-    }
-    impl<T, P> ToTokens for Pair<T, P>
-    where
-        T: ToTokens,
-        P: ToTokens,
-    {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            match self {
-                Pair::Punctuated(a, b) => {
-                    a.to_tokens(tokens);
-                    b.to_tokens(tokens);
-                },
-                Pair::End(a) => a.to_tokens(tokens),
-            }
-        }
-    }
-}

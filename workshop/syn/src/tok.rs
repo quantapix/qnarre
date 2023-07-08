@@ -125,7 +125,7 @@ macro_rules! def_keywords {
             }
             impl ToTokens for $n {
                 fn to_tokens(&self, toks: &mut TokenStream) {
-                    printing::keyword($t, self.span, toks);
+                    crate::dump::keyword($t, self.span, toks);
                 }
             }
             impl Parse for $n {
@@ -311,7 +311,7 @@ macro_rules! def_punct {
             }
             impl ToTokens for $n {
                 fn to_tokens(&self, ts: &mut TokenStream) {
-                    printing::punct($t, &self.spans, ts);
+                    crate::dump::punct($t, &self.spans, ts);
                 }
             }
             impl Parse for $n {
@@ -426,7 +426,7 @@ macro_rules! def_delims {
                 {
                     let mut inner = TokenStream::new();
                     f(&mut inner);
-                    printing::delim(Delimiter::$d, self.span.join(), ts, inner);
+                    crate::dump::delim(Delimiter::$d, self.span.join(), ts, inner);
                 }
             }
             impl private::Sealed for $n {}
@@ -473,7 +473,7 @@ impl Group {
     {
         let mut inner = TokenStream::new();
         f(&mut inner);
-        printing::delim(Delimiter::None, self.span, ts, inner);
+        dump::delim(Delimiter::None, self.span, ts, inner);
     }
 }
 impl std::default::Default for Group {
