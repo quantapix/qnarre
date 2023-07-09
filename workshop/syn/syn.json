@@ -417,7 +417,7 @@
         },
         "stmts": {
           "vec": {
-            "syn": "Stmt"
+            "syn": "stmt::Stmt"
           }
         }
       }
@@ -642,182 +642,182 @@
       "variants": {
         "Array": [
           {
-            "syn": "ExprArray"
+            "syn": "expr::Array"
           }
         ],
         "Assign": [
           {
-            "syn": "ExprAssign"
+            "syn": "expr::Assign"
           }
         ],
         "Async": [
           {
-            "syn": "ExprAsync"
+            "syn": "expr::Async"
           }
         ],
         "Await": [
           {
-            "syn": "ExprAwait"
+            "syn": "expr::Await"
           }
         ],
         "Binary": [
           {
-            "syn": "ExprBinary"
+            "syn": "expr::Binary"
           }
         ],
         "Block": [
           {
-            "syn": "ExprBlock"
+            "syn": "expr::Block"
           }
         ],
         "Break": [
           {
-            "syn": "ExprBreak"
+            "syn": "expr::Break"
           }
         ],
         "Call": [
           {
-            "syn": "ExprCall"
+            "syn": "expr::Call"
           }
         ],
         "Cast": [
           {
-            "syn": "ExprCast"
+            "syn": "expr::Cast"
           }
         ],
         "Closure": [
           {
-            "syn": "ExprClosure"
+            "syn": "expr::Closure"
           }
         ],
         "Const": [
           {
-            "syn": "ExprConst"
+            "syn": "expr::Const"
           }
         ],
         "Continue": [
           {
-            "syn": "ExprContinue"
+            "syn": "expr::Continue"
           }
         ],
         "Field": [
           {
-            "syn": "ExprField"
+            "syn": "expr::Field"
           }
         ],
         "ForLoop": [
           {
-            "syn": "ExprForLoop"
+            "syn": "expr::ForLoop"
           }
         ],
         "Group": [
           {
-            "syn": "ExprGroup"
+            "syn": "expr::Group"
           }
         ],
         "If": [
           {
-            "syn": "ExprIf"
+            "syn": "expr::If"
           }
         ],
         "Index": [
           {
-            "syn": "ExprIndex"
+            "syn": "expr::Index"
           }
         ],
         "Infer": [
           {
-            "syn": "ExprInfer"
+            "syn": "expr::Infer"
           }
         ],
         "Let": [
           {
-            "syn": "ExprLet"
+            "syn": "expr::Let"
           }
         ],
         "Lit": [
           {
-            "syn": "ExprLit"
+            "syn": "expr::Lit"
           }
         ],
         "Loop": [
           {
-            "syn": "ExprLoop"
+            "syn": "expr::Loop"
           }
         ],
         "Macro": [
           {
-            "syn": "ExprMacro"
+            "syn": "expr::Mac"
           }
         ],
         "Match": [
           {
-            "syn": "ExprMatch"
+            "syn": "expr::Match"
           }
         ],
         "MethodCall": [
           {
-            "syn": "ExprMethodCall"
+            "syn": "expr::MethodCall"
           }
         ],
         "Paren": [
           {
-            "syn": "ExprParen"
+            "syn": "expr::Paren"
           }
         ],
         "Path": [
           {
-            "syn": "ExprPath"
+            "syn": "expr::Path"
           }
         ],
         "Range": [
           {
-            "syn": "ExprRange"
+            "syn": "expr::Range"
           }
         ],
         "Reference": [
           {
-            "syn": "ExprReference"
+            "syn": "expr::Ref"
           }
         ],
         "Repeat": [
           {
-            "syn": "ExprRepeat"
+            "syn": "expr::Repeat"
           }
         ],
         "Return": [
           {
-            "syn": "ExprReturn"
+            "syn": "expr::Return"
           }
         ],
         "Struct": [
           {
-            "syn": "ExprStruct"
+            "syn": "expr::ExprStruct"
           }
         ],
         "Try": [
           {
-            "syn": "ExprTry"
+            "syn": "expr::Try"
           }
         ],
         "TryBlock": [
           {
-            "syn": "ExprTryBlock"
+            "syn": "expr::TryBlock"
           }
         ],
         "Tuple": [
           {
-            "syn": "ExprTuple"
+            "syn": "expr::Tuple"
           }
         ],
         "Unary": [
           {
-            "syn": "ExprUnary"
+            "syn": "expr::Unary"
           }
         ],
         "Unsafe": [
           {
-            "syn": "ExprUnsafe"
+            "syn": "expr::Unsafe"
           }
         ],
         "Verbatim": [
@@ -827,19 +827,19 @@
         ],
         "While": [
           {
-            "syn": "ExprWhile"
+            "syn": "expr::While"
           }
         ],
         "Yield": [
           {
-            "syn": "ExprYield"
+            "syn": "expr::Yield"
           }
         ]
       },
       "exhaustive": false
     },
     {
-      "ident": "ExprArray",
+      "ident": "expr::Array",
       "features": {
         "any": [
           "full"
@@ -865,7 +865,7 @@
       }
     },
     {
-      "ident": "ExprAssign",
+      "ident": "expr::Assign",
       "features": {
         "any": [
           "full"
@@ -893,7 +893,7 @@
       }
     },
     {
-      "ident": "ExprAsync",
+      "ident": "expr::Async",
       "features": {
         "any": [
           "full"
@@ -919,7 +919,7 @@
       }
     },
     {
-      "ident": "ExprAwait",
+      "ident": "expr::Await",
       "features": {
         "any": [
           "full"
@@ -945,7 +945,7 @@
       }
     },
     {
-      "ident": "ExprBinary",
+      "ident": "expr::Binary",
       "features": {
         "any": [
           "derive",
@@ -974,7 +974,7 @@
       }
     },
     {
-      "ident": "ExprBlock",
+      "ident": "expr::Block",
       "features": {
         "any": [
           "full"
@@ -997,7 +997,7 @@
       }
     },
     {
-      "ident": "ExprBreak",
+      "ident": "expr::Break",
       "features": {
         "any": [
           "full"
@@ -1027,7 +1027,7 @@
       }
     },
     {
-      "ident": "ExprCall",
+      "ident": "expr::Call",
       "features": {
         "any": [
           "derive",
@@ -1059,7 +1059,7 @@
       }
     },
     {
-      "ident": "ExprCast",
+      "ident": "expr::Cast",
       "features": {
         "any": [
           "derive",
@@ -1088,7 +1088,7 @@
       }
     },
     {
-      "ident": "ExprClosure",
+      "ident": "expr::Closure",
       "features": {
         "any": [
           "full"
@@ -1150,7 +1150,7 @@
       }
     },
     {
-      "ident": "ExprConst",
+      "ident": "expr::Const",
       "features": {
         "any": [
           "full"
@@ -1171,7 +1171,7 @@
       }
     },
     {
-      "ident": "ExprContinue",
+      "ident": "expr::Continue",
       "features": {
         "any": [
           "full"
@@ -1194,7 +1194,7 @@
       }
     },
     {
-      "ident": "ExprField",
+      "ident": "expr::Field",
       "features": {
         "any": [
           "derive",
@@ -1221,7 +1221,7 @@
       }
     },
     {
-      "ident": "ExprForLoop",
+      "ident": "expr::ForLoop",
       "features": {
         "any": [
           "full"
@@ -1260,7 +1260,7 @@
       }
     },
     {
-      "ident": "ExprGroup",
+      "ident": "expr::Group",
       "features": {
         "any": [
           "derive",
@@ -1284,7 +1284,7 @@
       }
     },
     {
-      "ident": "ExprIf",
+      "ident": "expr::If",
       "features": {
         "any": [
           "full"
@@ -1324,7 +1324,7 @@
       }
     },
     {
-      "ident": "ExprIndex",
+      "ident": "expr::Index",
       "features": {
         "any": [
           "derive",
@@ -1353,7 +1353,7 @@
       }
     },
     {
-      "ident": "ExprInfer",
+      "ident": "expr::Infer",
       "features": {
         "any": [
           "full"
@@ -1371,7 +1371,7 @@
       }
     },
     {
-      "ident": "ExprLet",
+      "ident": "expr::Let",
       "features": {
         "any": [
           "full"
@@ -1402,7 +1402,7 @@
       }
     },
     {
-      "ident": "ExprLit",
+      "ident": "expr::Lit",
       "features": {
         "any": [
           "derive",
@@ -1421,7 +1421,7 @@
       }
     },
     {
-      "ident": "ExprLoop",
+      "ident": "expr::Loop",
       "features": {
         "any": [
           "full"
@@ -1447,7 +1447,7 @@
       }
     },
     {
-      "ident": "ExprMacro",
+      "ident": "expr::Mac",
       "features": {
         "any": [
           "derive",
@@ -1466,7 +1466,7 @@
       }
     },
     {
-      "ident": "ExprMatch",
+      "ident": "expr::Match",
       "features": {
         "any": [
           "full"
@@ -1497,7 +1497,7 @@
       }
     },
     {
-      "ident": "ExprMethodCall",
+      "ident": "expr::MethodCall",
       "features": {
         "any": [
           "full"
@@ -1539,7 +1539,7 @@
       }
     },
     {
-      "ident": "ExprParen",
+      "ident": "expr::Paren",
       "features": {
         "any": [
           "derive",
@@ -1563,7 +1563,7 @@
       }
     },
     {
-      "ident": "ExprPath",
+      "ident": "expr::Path",
       "features": {
         "any": [
           "derive",
@@ -1587,7 +1587,7 @@
       }
     },
     {
-      "ident": "ExprRange",
+      "ident": "expr::Range",
       "features": {
         "any": [
           "full"
@@ -1619,7 +1619,7 @@
       }
     },
     {
-      "ident": "ExprReference",
+      "ident": "expr::Ref",
       "features": {
         "any": [
           "full"
@@ -1647,7 +1647,7 @@
       }
     },
     {
-      "ident": "ExprRepeat",
+      "ident": "expr::Repeat",
       "features": {
         "any": [
           "full"
@@ -1678,7 +1678,7 @@
       }
     },
     {
-      "ident": "ExprReturn",
+      "ident": "expr::Return",
       "features": {
         "any": [
           "full"
@@ -1703,7 +1703,7 @@
       }
     },
     {
-      "ident": "ExprStruct",
+      "ident": "expr::ExprStruct",
       "features": {
         "any": [
           "full"
@@ -1749,7 +1749,7 @@
       }
     },
     {
-      "ident": "ExprTry",
+      "ident": "expr::Try",
       "features": {
         "any": [
           "full"
@@ -1772,7 +1772,7 @@
       }
     },
     {
-      "ident": "ExprTryBlock",
+      "ident": "expr::TryBlock",
       "features": {
         "any": [
           "full"
@@ -1793,7 +1793,7 @@
       }
     },
     {
-      "ident": "ExprTuple",
+      "ident": "expr::Tuple",
       "features": {
         "any": [
           "full"
@@ -1819,7 +1819,7 @@
       }
     },
     {
-      "ident": "ExprUnary",
+      "ident": "expr::Unary",
       "features": {
         "any": [
           "derive",
@@ -1843,7 +1843,7 @@
       }
     },
     {
-      "ident": "ExprUnsafe",
+      "ident": "expr::Unsafe",
       "features": {
         "any": [
           "full"
@@ -1864,7 +1864,7 @@
       }
     },
     {
-      "ident": "ExprWhile",
+      "ident": "expr::While",
       "features": {
         "any": [
           "full"
@@ -1895,7 +1895,7 @@
       }
     },
     {
-      "ident": "ExprYield",
+      "ident": "expr::Yield",
       "features": {
         "any": [
           "full"
@@ -3446,7 +3446,7 @@
       }
     },
     {
-      "ident": "Local",
+      "ident": "stmt::Local",
       "features": {
         "any": [
           "full"
@@ -3466,7 +3466,7 @@
         },
         "init": {
           "option": {
-            "syn": "LocalInit"
+            "syn": "stmt::LocalInit"
           }
         },
         "semi": {
@@ -3475,7 +3475,7 @@
       }
     },
     {
-      "ident": "LocalInit",
+      "ident": "stmt::LocalInit",
       "features": {
         "any": [
           "full"
@@ -3677,7 +3677,7 @@
       "variants": {
         "Const": [
           {
-            "syn": "ExprConst"
+            "syn": "expr::Const"
           }
         ],
         "Ident": [
@@ -3687,12 +3687,12 @@
         ],
         "Lit": [
           {
-            "syn": "ExprLit"
+            "syn": "expr::Lit"
           }
         ],
         "Macro": [
           {
-            "syn": "ExprMacro"
+            "syn": "expr::Mac"
           }
         ],
         "Or": [
@@ -3707,12 +3707,12 @@
         ],
         "Path": [
           {
-            "syn": "ExprPath"
+            "syn": "expr::Path"
           }
         ],
         "Range": [
           {
-            "syn": "ExprRange"
+            "syn": "expr::Range"
           }
         ],
         "Reference": [
@@ -4386,16 +4386,16 @@
       "exhaustive": false
     },
     {
-      "ident": "Stmt",
+      "ident": "stmt::Stmt",
       "features": {
         "any": [
           "full"
         ]
       },
       "variants": {
-        "Local": [
+        "stmt::Local": [
           {
-            "syn": "Local"
+            "syn": "stmt::Local"
           }
         ],
         "Item": [
@@ -4415,13 +4415,13 @@
         ],
         "Macro": [
           {
-            "syn": "StmtMacro"
+            "syn": "stmt::Mac"
           }
         ]
       }
     },
     {
-      "ident": "StmtMacro",
+      "ident": "stmt::Mac",
       "features": {
         "any": [
           "full"

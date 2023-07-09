@@ -78,118 +78,118 @@ pub trait Visit<'ast> {
     fn visit_expr(&mut self, i: &'ast Expr) {
         visit_expr(self, i);
     }
-    fn visit_expr_array(&mut self, i: &'ast ExprArray) {
+    fn visit_expr_array(&mut self, i: &'ast expr::Array) {
         visit_expr_array(self, i);
     }
-    fn visit_expr_assign(&mut self, i: &'ast ExprAssign) {
+    fn visit_expr_assign(&mut self, i: &'ast expr::Assign) {
         visit_expr_assign(self, i);
     }
-    fn visit_expr_async(&mut self, i: &'ast ExprAsync) {
+    fn visit_expr_async(&mut self, i: &'ast expr::Async) {
         visit_expr_async(self, i);
     }
-    fn visit_expr_await(&mut self, i: &'ast ExprAwait) {
+    fn visit_expr_await(&mut self, i: &'ast expr::Await) {
         visit_expr_await(self, i);
     }
-    fn visit_expr_binary(&mut self, i: &'ast ExprBinary) {
+    fn visit_expr_binary(&mut self, i: &'ast expr::Binary) {
         visit_expr_binary(self, i);
     }
-    fn visit_expr_block(&mut self, i: &'ast ExprBlock) {
+    fn visit_expr_block(&mut self, i: &'ast expr::Block) {
         visit_expr_block(self, i);
     }
-    fn visit_expr_break(&mut self, i: &'ast ExprBreak) {
+    fn visit_expr_break(&mut self, i: &'ast expr::Break) {
         visit_expr_break(self, i);
     }
-    fn visit_expr_call(&mut self, i: &'ast ExprCall) {
+    fn visit_expr_call(&mut self, i: &'ast expr::Call) {
         visit_expr_call(self, i);
     }
-    fn visit_expr_cast(&mut self, i: &'ast ExprCast) {
+    fn visit_expr_cast(&mut self, i: &'ast expr::Cast) {
         visit_expr_cast(self, i);
     }
-    fn visit_expr_closure(&mut self, i: &'ast ExprClosure) {
+    fn visit_expr_closure(&mut self, i: &'ast expr::Closure) {
         visit_expr_closure(self, i);
     }
-    fn visit_expr_const(&mut self, i: &'ast ExprConst) {
+    fn visit_expr_const(&mut self, i: &'ast expr::Const) {
         visit_expr_const(self, i);
     }
-    fn visit_expr_continue(&mut self, i: &'ast ExprContinue) {
+    fn visit_expr_continue(&mut self, i: &'ast expr::Continue) {
         visit_expr_continue(self, i);
     }
-    fn visit_expr_field(&mut self, i: &'ast ExprField) {
+    fn visit_expr_field(&mut self, i: &'ast expr::Field) {
         visit_expr_field(self, i);
     }
-    fn visit_expr_for_loop(&mut self, i: &'ast ExprForLoop) {
+    fn visit_expr_for_loop(&mut self, i: &'ast expr::ForLoop) {
         visit_expr_for_loop(self, i);
     }
-    fn visit_expr_group(&mut self, i: &'ast ExprGroup) {
+    fn visit_expr_group(&mut self, i: &'ast expr::Group) {
         visit_expr_group(self, i);
     }
-    fn visit_expr_if(&mut self, i: &'ast ExprIf) {
+    fn visit_expr_if(&mut self, i: &'ast expr::If) {
         visit_expr_if(self, i);
     }
-    fn visit_expr_index(&mut self, i: &'ast ExprIndex) {
+    fn visit_expr_index(&mut self, i: &'ast expr::Index) {
         visit_expr_index(self, i);
     }
-    fn visit_expr_infer(&mut self, i: &'ast ExprInfer) {
+    fn visit_expr_infer(&mut self, i: &'ast expr::Infer) {
         visit_expr_infer(self, i);
     }
-    fn visit_expr_let(&mut self, i: &'ast ExprLet) {
+    fn visit_expr_let(&mut self, i: &'ast expr::Let) {
         visit_expr_let(self, i);
     }
-    fn visit_expr_lit(&mut self, i: &'ast ExprLit) {
+    fn visit_expr_lit(&mut self, i: &'ast expr::Lit) {
         visit_expr_lit(self, i);
     }
-    fn visit_expr_loop(&mut self, i: &'ast ExprLoop) {
+    fn visit_expr_loop(&mut self, i: &'ast expr::Loopop) {
         visit_expr_loop(self, i);
     }
-    fn visit_expr_macro(&mut self, i: &'ast ExprMacro) {
+    fn visit_expr_macro(&mut self, i: &'ast expr::Mac) {
         visit_expr_macro(self, i);
     }
-    fn visit_expr_match(&mut self, i: &'ast ExprMatch) {
+    fn visit_expr_match(&mut self, i: &'ast expr::Match) {
         visit_expr_match(self, i);
     }
-    fn visit_expr_method_call(&mut self, i: &'ast ExprMethodCall) {
+    fn visit_expr_method_call(&mut self, i: &'ast expr::MethodCall) {
         visit_expr_method_call(self, i);
     }
-    fn visit_expr_paren(&mut self, i: &'ast ExprParen) {
+    fn visit_expr_paren(&mut self, i: &'ast expr::Paren) {
         visit_expr_paren(self, i);
     }
-    fn visit_expr_path(&mut self, i: &'ast ExprPath) {
+    fn visit_expr_path(&mut self, i: &'ast expr::Path) {
         visit_expr_path(self, i);
     }
-    fn visit_expr_range(&mut self, i: &'ast ExprRange) {
+    fn visit_expr_range(&mut self, i: &'ast expr::Range) {
         visit_expr_range(self, i);
     }
-    fn visit_expr_reference(&mut self, i: &'ast ExprReference) {
+    fn visit_expr_reference(&mut self, i: &'ast expr::Ref) {
         visit_expr_reference(self, i);
     }
-    fn visit_expr_repeat(&mut self, i: &'ast ExprRepeat) {
+    fn visit_expr_repeat(&mut self, i: &'ast expr::Repeat) {
         visit_expr_repeat(self, i);
     }
-    fn visit_expr_return(&mut self, i: &'ast ExprReturn) {
+    fn visit_expr_return(&mut self, i: &'ast expr::Return) {
         visit_expr_return(self, i);
     }
-    fn visit_expr_struct(&mut self, i: &'ast ExprStruct) {
+    fn visit_expr_struct(&mut self, i: &'ast expr::ExprStructStruct) {
         visit_expr_struct(self, i);
     }
-    fn visit_expr_try(&mut self, i: &'ast ExprTry) {
+    fn visit_expr_try(&mut self, i: &'ast expr::Try) {
         visit_expr_try(self, i);
     }
-    fn visit_expr_try_block(&mut self, i: &'ast ExprTryBlock) {
+    fn visit_expr_try_block(&mut self, i: &'ast expr::TryBlock) {
         visit_expr_try_block(self, i);
     }
-    fn visit_expr_tuple(&mut self, i: &'ast ExprTuple) {
+    fn visit_expr_tuple(&mut self, i: &'ast expr::Tuple) {
         visit_expr_tuple(self, i);
     }
-    fn visit_expr_unary(&mut self, i: &'ast ExprUnary) {
+    fn visit_expr_unary(&mut self, i: &'ast expr::Unary) {
         visit_expr_unary(self, i);
     }
-    fn visit_expr_unsafe(&mut self, i: &'ast ExprUnsafe) {
+    fn visit_expr_unsafe(&mut self, i: &'ast expr::Unsafe) {
         visit_expr_unsafe(self, i);
     }
-    fn visit_expr_while(&mut self, i: &'ast ExprWhile) {
+    fn visit_expr_while(&mut self, i: &'ast expr::While) {
         visit_expr_while(self, i);
     }
-    fn visit_expr_yield(&mut self, i: &'ast ExprYield) {
+    fn visit_expr_yield(&mut self, i: &'ast expr::Yield) {
         visit_expr_yield(self, i);
     }
     fn visit_field(&mut self, i: &'ast Field) {
@@ -348,10 +348,10 @@ pub trait Visit<'ast> {
     fn visit_lit_str(&mut self, i: &'ast lit::Str) {
         visit_lit_str(self, i);
     }
-    fn visit_local(&mut self, i: &'ast Local) {
+    fn visit_local(&mut self, i: &'ast stmt::Local) {
         visit_local(self, i);
     }
-    fn visit_local_init(&mut self, i: &'ast LocalInit) {
+    fn visit_local_init(&mut self, i: &'ast stmt::LocalInit) {
         visit_local_init(self, i);
     }
     fn visit_macro(&mut self, i: &'ast Macro) {
@@ -447,10 +447,10 @@ pub trait Visit<'ast> {
     fn visit_static_mutability(&mut self, i: &'ast StaticMut) {
         visit_static_mutability(self, i);
     }
-    fn visit_stmt(&mut self, i: &'ast Stmt) {
+    fn visit_stmt(&mut self, i: &'ast stmt::Stmt) {
         visit_stmt(self, i);
     }
-    fn visit_stmt_macro(&mut self, i: &'ast StmtMacro) {
+    fn visit_stmt_macro(&mut self, i: &'ast stmt::Mac) {
         visit_stmt_macro(self, i);
     }
     fn visit_trait_bound(&mut self, i: &'ast TraitBound) {
@@ -991,7 +991,7 @@ where
         },
     }
 }
-pub fn visit_expr_array<'ast, V>(v: &mut V, node: &'ast ExprArray)
+pub fn visit_expr_array<'ast, V>(v: &mut V, node: &'ast expr::Array)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1004,7 +1004,7 @@ where
         v.visit_expr(it);
     }
 }
-pub fn visit_expr_assign<'ast, V>(v: &mut V, node: &'ast ExprAssign)
+pub fn visit_expr_assign<'ast, V>(v: &mut V, node: &'ast expr::Assign)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1015,7 +1015,7 @@ where
     skip!(node.eq);
     v.visit_expr(&*node.right);
 }
-pub fn visit_expr_async<'ast, V>(v: &mut V, node: &'ast ExprAsync)
+pub fn visit_expr_async<'ast, V>(v: &mut V, node: &'ast expr::Async)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1026,18 +1026,18 @@ where
     skip!(node.capture);
     v.visit_block(&node.block);
 }
-pub fn visit_expr_await<'ast, V>(v: &mut V, node: &'ast ExprAwait)
+pub fn visit_expr_await<'ast, V>(v: &mut V, node: &'ast expr::Await)
 where
     V: Visit<'ast> + ?Sized,
 {
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    v.visit_expr(&*node.base);
+    v.visit_expr(&*node.expr);
     skip!(node.dot);
     skip!(node.await_);
 }
-pub fn visit_expr_binary<'ast, V>(v: &mut V, node: &'ast ExprBinary)
+pub fn visit_expr_binary<'ast, V>(v: &mut V, node: &'ast expr::Binary)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1048,7 +1048,7 @@ where
     v.visit_bin_op(&node.op);
     v.visit_expr(&*node.right);
 }
-pub fn visit_expr_block<'ast, V>(v: &mut V, node: &'ast ExprBlock)
+pub fn visit_expr_block<'ast, V>(v: &mut V, node: &'ast expr::Block)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1060,7 +1060,7 @@ where
     }
     v.visit_block(&node.block);
 }
-pub fn visit_expr_break<'ast, V>(v: &mut V, node: &'ast ExprBreak)
+pub fn visit_expr_break<'ast, V>(v: &mut V, node: &'ast expr::Break)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1075,7 +1075,7 @@ where
         v.visit_expr(&**it);
     }
 }
-pub fn visit_expr_call<'ast, V>(v: &mut V, node: &'ast ExprCall)
+pub fn visit_expr_call<'ast, V>(v: &mut V, node: &'ast expr::Call)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1089,7 +1089,7 @@ where
         v.visit_expr(it);
     }
 }
-pub fn visit_expr_cast<'ast, V>(v: &mut V, node: &'ast ExprCast)
+pub fn visit_expr_cast<'ast, V>(v: &mut V, node: &'ast expr::Cast)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1100,7 +1100,7 @@ where
     skip!(node.as_);
     v.visit_type(&*node.typ);
 }
-pub fn visit_expr_closure<'ast, V>(v: &mut V, node: &'ast ExprClosure)
+pub fn visit_expr_closure<'ast, V>(v: &mut V, node: &'ast expr::Closure)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1123,7 +1123,7 @@ where
     v.visit_return_type(&node.ret);
     v.visit_expr(&*node.body);
 }
-pub fn visit_expr_const<'ast, V>(v: &mut V, node: &'ast ExprConst)
+pub fn visit_expr_const<'ast, V>(v: &mut V, node: &'ast expr::Const)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1133,7 +1133,7 @@ where
     skip!(node.const_);
     v.visit_block(&node.block);
 }
-pub fn visit_expr_continue<'ast, V>(v: &mut V, node: &'ast ExprContinue)
+pub fn visit_expr_continue<'ast, V>(v: &mut V, node: &'ast expr::Continue)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1145,7 +1145,7 @@ where
         v.visit_lifetime(it);
     }
 }
-pub fn visit_expr_field<'ast, V>(v: &mut V, node: &'ast ExprField)
+pub fn visit_expr_field<'ast, V>(v: &mut V, node: &'ast expr::Field)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1154,9 +1154,9 @@ where
     }
     v.visit_expr(&*node.base);
     skip!(node.dot);
-    v.visit_member(&node.member);
+    v.visit_member(&node.memb);
 }
-pub fn visit_expr_for_loop<'ast, V>(v: &mut V, node: &'ast ExprForLoop)
+pub fn visit_expr_for_loop<'ast, V>(v: &mut V, node: &'ast expr::ForLoop)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1172,7 +1172,7 @@ where
     v.visit_expr(&*node.expr);
     v.visit_block(&node.body);
 }
-pub fn visit_expr_group<'ast, V>(v: &mut V, node: &'ast ExprGroup)
+pub fn visit_expr_group<'ast, V>(v: &mut V, node: &'ast expr::Group)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1182,7 +1182,7 @@ where
     skip!(node.group);
     v.visit_expr(&*node.expr);
 }
-pub fn visit_expr_if<'ast, V>(v: &mut V, node: &'ast ExprIf)
+pub fn visit_expr_if<'ast, V>(v: &mut V, node: &'ast expr::If)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1197,7 +1197,7 @@ where
         v.visit_expr(&*(it).1);
     }
 }
-pub fn visit_expr_index<'ast, V>(v: &mut V, node: &'ast ExprIndex)
+pub fn visit_expr_index<'ast, V>(v: &mut V, node: &'ast expr::Index)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1208,7 +1208,7 @@ where
     skip!(node.bracket);
     v.visit_expr(&*node.index);
 }
-pub fn visit_expr_infer<'ast, V>(v: &mut V, node: &'ast ExprInfer)
+pub fn visit_expr_infer<'ast, V>(v: &mut V, node: &'ast expr::Infer)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1217,7 +1217,7 @@ where
     }
     skip!(node.underscore);
 }
-pub fn visit_expr_let<'ast, V>(v: &mut V, node: &'ast ExprLet)
+pub fn visit_expr_let<'ast, V>(v: &mut V, node: &'ast expr::Let)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1229,7 +1229,7 @@ where
     skip!(node.eq);
     v.visit_expr(&*node.expr);
 }
-pub fn visit_expr_lit<'ast, V>(v: &mut V, node: &'ast ExprLit)
+pub fn visit_expr_lit<'ast, V>(v: &mut V, node: &'ast expr::Lit)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1238,7 +1238,7 @@ where
     }
     v.visit_lit(&node.lit);
 }
-pub fn visit_expr_loop<'ast, V>(v: &mut V, node: &'ast ExprLoop)
+pub fn visit_expr_loop<'ast, V>(v: &mut V, node: &'ast expr::Loopop)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1251,7 +1251,7 @@ where
     skip!(node.loop_);
     v.visit_block(&node.body);
 }
-pub fn visit_expr_macro<'ast, V>(v: &mut V, node: &'ast ExprMacro)
+pub fn visit_expr_macro<'ast, V>(v: &mut V, node: &'ast expr::Mac)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1260,7 +1260,7 @@ where
     }
     v.visit_macro(&node.mac);
 }
-pub fn visit_expr_match<'ast, V>(v: &mut V, node: &'ast ExprMatch)
+pub fn visit_expr_match<'ast, V>(v: &mut V, node: &'ast expr::Match)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1274,14 +1274,14 @@ where
         v.visit_arm(it);
     }
 }
-pub fn visit_expr_method_call<'ast, V>(v: &mut V, node: &'ast ExprMethodCall)
+pub fn visit_expr_method_call<'ast, V>(v: &mut V, node: &'ast expr::MethodCall)
 where
     V: Visit<'ast> + ?Sized,
 {
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    v.visit_expr(&*node.receiver);
+    v.visit_expr(&*node.expr);
     skip!(node.dot);
     v.visit_ident(&node.method);
     if let Some(it) = &node.turbofish {
@@ -1293,7 +1293,7 @@ where
         v.visit_expr(it);
     }
 }
-pub fn visit_expr_paren<'ast, V>(v: &mut V, node: &'ast ExprParen)
+pub fn visit_expr_paren<'ast, V>(v: &mut V, node: &'ast expr::Paren)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1303,7 +1303,7 @@ where
     skip!(node.paren);
     v.visit_expr(&*node.expr);
 }
-pub fn visit_expr_path<'ast, V>(v: &mut V, node: &'ast ExprPath)
+pub fn visit_expr_path<'ast, V>(v: &mut V, node: &'ast expr::Path)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1315,14 +1315,14 @@ where
     }
     v.visit_path(&node.path);
 }
-pub fn visit_expr_range<'ast, V>(v: &mut V, node: &'ast ExprRange)
+pub fn visit_expr_range<'ast, V>(v: &mut V, node: &'ast expr::Range)
 where
     V: Visit<'ast> + ?Sized,
 {
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    if let Some(it) = &node.start {
+    if let Some(it) = &node.beg {
         v.visit_expr(&**it);
     }
     v.visit_range_limits(&node.limits);
@@ -1330,7 +1330,7 @@ where
         v.visit_expr(&**it);
     }
 }
-pub fn visit_expr_reference<'ast, V>(v: &mut V, node: &'ast ExprReference)
+pub fn visit_expr_reference<'ast, V>(v: &mut V, node: &'ast expr::Ref)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1341,7 +1341,7 @@ where
     skip!(node.mutability);
     v.visit_expr(&*node.expr);
 }
-pub fn visit_expr_repeat<'ast, V>(v: &mut V, node: &'ast ExprRepeat)
+pub fn visit_expr_repeat<'ast, V>(v: &mut V, node: &'ast expr::Repeat)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1353,7 +1353,7 @@ where
     skip!(node.semi);
     v.visit_expr(&*node.len);
 }
-pub fn visit_expr_return<'ast, V>(v: &mut V, node: &'ast ExprReturn)
+pub fn visit_expr_return<'ast, V>(v: &mut V, node: &'ast expr::Return)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1365,7 +1365,7 @@ where
         v.visit_expr(&**it);
     }
 }
-pub fn visit_expr_struct<'ast, V>(v: &mut V, node: &'ast ExprStruct)
+pub fn visit_expr_struct<'ast, V>(v: &mut V, node: &'ast expr::ExprStructStruct)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1386,7 +1386,7 @@ where
         v.visit_expr(&**it);
     }
 }
-pub fn visit_expr_try<'ast, V>(v: &mut V, node: &'ast ExprTry)
+pub fn visit_expr_try<'ast, V>(v: &mut V, node: &'ast expr::Try)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1396,7 +1396,7 @@ where
     v.visit_expr(&*node.expr);
     skip!(node.question);
 }
-pub fn visit_expr_try_block<'ast, V>(v: &mut V, node: &'ast ExprTryBlock)
+pub fn visit_expr_try_block<'ast, V>(v: &mut V, node: &'ast expr::TryBlock)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1406,7 +1406,7 @@ where
     skip!(node.try_);
     v.visit_block(&node.block);
 }
-pub fn visit_expr_tuple<'ast, V>(v: &mut V, node: &'ast ExprTuple)
+pub fn visit_expr_tuple<'ast, V>(v: &mut V, node: &'ast expr::Tuple)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1419,7 +1419,7 @@ where
         v.visit_expr(it);
     }
 }
-pub fn visit_expr_unary<'ast, V>(v: &mut V, node: &'ast ExprUnary)
+pub fn visit_expr_unary<'ast, V>(v: &mut V, node: &'ast expr::Unary)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1429,7 +1429,7 @@ where
     v.visit_un_op(&node.op);
     v.visit_expr(&*node.expr);
 }
-pub fn visit_expr_unsafe<'ast, V>(v: &mut V, node: &'ast ExprUnsafe)
+pub fn visit_expr_unsafe<'ast, V>(v: &mut V, node: &'ast expr::Unsafe)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1439,7 +1439,7 @@ where
     skip!(node.unsafe_);
     v.visit_block(&node.block);
 }
-pub fn visit_expr_while<'ast, V>(v: &mut V, node: &'ast ExprWhile)
+pub fn visit_expr_while<'ast, V>(v: &mut V, node: &'ast expr::While)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1453,7 +1453,7 @@ where
     v.visit_expr(&*node.cond);
     v.visit_block(&node.body);
 }
-pub fn visit_expr_yield<'ast, V>(v: &mut V, node: &'ast ExprYield)
+pub fn visit_expr_yield<'ast, V>(v: &mut V, node: &'ast expr::Yield)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2189,7 +2189,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
 }
-pub fn visit_local<'ast, V>(v: &mut V, node: &'ast Local)
+pub fn visit_local<'ast, V>(v: &mut V, node: &'ast stmt::Local)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2203,7 +2203,7 @@ where
     }
     skip!(node.semi);
 }
-pub fn visit_local_init<'ast, V>(v: &mut V, node: &'ast LocalInit)
+pub fn visit_local_init<'ast, V>(v: &mut V, node: &'ast stmt::LocalInit)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2419,7 +2419,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.bracket);
-    for el in Punctuated::pairs(&node.patts) {
+    for el in Punctuated::pairs(&node.elems) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2452,7 +2452,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.patts) {
+    for el in Punctuated::pairs(&node.elems) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2469,7 +2469,7 @@ where
     }
     v.visit_path(&node.path);
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.patts) {
+    for el in Punctuated::pairs(&node.elems) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2642,27 +2642,27 @@ where
         StaticMut::None => {},
     }
 }
-pub fn visit_stmt<'ast, V>(v: &mut V, node: &'ast Stmt)
+pub fn visit_stmt<'ast, V>(v: &mut V, node: &'ast stmt::Stmt)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        Stmt::Local(_binding_0) => {
+        stmt::Stmt::stmt::Local(_binding_0) => {
             v.visit_local(_binding_0);
         },
-        Stmt::Item(_binding_0) => {
+        stmt::Stmt::Item(_binding_0) => {
             v.visit_item(_binding_0);
         },
-        Stmt::Expr(_binding_0, _binding_1) => {
+        stmt::Stmt::Expr(_binding_0, _binding_1) => {
             v.visit_expr(_binding_0);
             skip!(_binding_1);
         },
-        Stmt::Macro(_binding_0) => {
+        stmt::Stmt::Mac(_binding_0) => {
             v.visit_stmt_macro(_binding_0);
         },
     }
 }
-pub fn visit_stmt_macro<'ast, V>(v: &mut V, node: &'ast StmtMacro)
+pub fn visit_stmt_macro<'ast, V>(v: &mut V, node: &'ast stmt::Mac)
 where
     V: Visit<'ast> + ?Sized,
 {

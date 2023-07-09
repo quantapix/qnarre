@@ -399,9 +399,9 @@ impl Debug for Expr {
         }
     }
 }
-impl Debug for ExprArray {
+impl Debug for expr::Array {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprArray {
+        impl expr::Array {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -410,12 +410,12 @@ impl Debug for ExprArray {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprArray")
+        self.debug(formatter, "expr::Array")
     }
 }
-impl Debug for ExprAssign {
+impl Debug for expr::Assign {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprAssign {
+        impl expr::Assign {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -425,42 +425,42 @@ impl Debug for ExprAssign {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprAssign")
+        self.debug(formatter, "expr::Assign")
     }
 }
-impl Debug for ExprAsync {
+impl Debug for expr::Async {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprAsync {
+        impl expr::Async {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("async_", &self.async_);
-                formatter.field("capture", &self.capture);
+                formatter.field("capture", &self.move_);
                 formatter.field("block", &self.block);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprAsync")
+        self.debug(formatter, "expr::Async")
     }
 }
-impl Debug for ExprAwait {
+impl Debug for expr::Await {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprAwait {
+        impl expr::Await {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("base", &self.base);
+                formatter.field("base", &self.expr);
                 formatter.field("dot", &self.dot);
                 formatter.field("await_", &self.await_);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprAwait")
+        self.debug(formatter, "expr::Await")
     }
 }
-impl Debug for ExprBinary {
+impl Debug for expr::Binary {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprBinary {
+        impl expr::Binary {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -470,12 +470,12 @@ impl Debug for ExprBinary {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprBinary")
+        self.debug(formatter, "expr::Binary")
     }
 }
-impl Debug for ExprBlock {
+impl Debug for expr::Block {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprBlock {
+        impl expr::Block {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -484,12 +484,12 @@ impl Debug for ExprBlock {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprBlock")
+        self.debug(formatter, "expr::Block")
     }
 }
-impl Debug for ExprBreak {
+impl Debug for expr::Break {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprBreak {
+        impl expr::Break {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -499,12 +499,12 @@ impl Debug for ExprBreak {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprBreak")
+        self.debug(formatter, "expr::Break")
     }
 }
-impl Debug for ExprCall {
+impl Debug for expr::Call {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprCall {
+        impl expr::Call {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -514,12 +514,12 @@ impl Debug for ExprCall {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprCall")
+        self.debug(formatter, "expr::Call")
     }
 }
-impl Debug for ExprCast {
+impl Debug for expr::Cast {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprCast {
+        impl expr::Cast {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -529,12 +529,12 @@ impl Debug for ExprCast {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprCast")
+        self.debug(formatter, "expr::Cast")
     }
 }
-impl Debug for ExprClosure {
+impl Debug for expr::Closure {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprClosure {
+        impl expr::Closure {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -551,12 +551,12 @@ impl Debug for ExprClosure {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprClosure")
+        self.debug(formatter, "expr::Closure")
     }
 }
-impl Debug for ExprConst {
+impl Debug for expr::Const {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprConst {
+        impl expr::Const {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -565,12 +565,12 @@ impl Debug for ExprConst {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprConst")
+        self.debug(formatter, "expr::Const")
     }
 }
-impl Debug for ExprContinue {
+impl Debug for expr::Continue {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprContinue {
+        impl expr::Continue {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -579,27 +579,27 @@ impl Debug for ExprContinue {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprContinue")
+        self.debug(formatter, "expr::Continue")
     }
 }
-impl Debug for ExprField {
+impl Debug for expr::Field {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprField {
+        impl expr::Field {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("base", &self.base);
                 formatter.field("dot", &self.dot);
-                formatter.field("member", &self.member);
+                formatter.field("member", &self.memb);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprField")
+        self.debug(formatter, "expr::Field")
     }
 }
-impl Debug for ExprForLoop {
+impl Debug for expr::ForLoop {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprForLoop {
+        impl expr::ForLoop {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -612,12 +612,12 @@ impl Debug for ExprForLoop {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprForLoop")
+        self.debug(formatter, "expr::ForLoop")
     }
 }
-impl Debug for ExprGroup {
+impl Debug for expr::Group {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprGroup {
+        impl expr::Group {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -626,12 +626,12 @@ impl Debug for ExprGroup {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprGroup")
+        self.debug(formatter, "expr::Group")
     }
 }
-impl Debug for ExprIf {
+impl Debug for expr::If {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprIf {
+        impl expr::If {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -642,12 +642,12 @@ impl Debug for ExprIf {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprIf")
+        self.debug(formatter, "expr::If")
     }
 }
-impl Debug for ExprIndex {
+impl Debug for expr::Index {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprIndex {
+        impl expr::Index {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -657,12 +657,12 @@ impl Debug for ExprIndex {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprIndex")
+        self.debug(formatter, "expr::Index")
     }
 }
-impl Debug for ExprInfer {
+impl Debug for expr::Infer {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprInfer {
+        impl expr::Infer {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -670,12 +670,12 @@ impl Debug for ExprInfer {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprInfer")
+        self.debug(formatter, "expr::Infer")
     }
 }
-impl Debug for ExprLet {
+impl Debug for expr::Let {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprLet {
+        impl expr::Let {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -686,12 +686,12 @@ impl Debug for ExprLet {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprLet")
+        self.debug(formatter, "expr::Let")
     }
 }
-impl Debug for ExprLit {
+impl Debug for expr::Lit {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprLit {
+        impl expr::Lit {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -699,12 +699,12 @@ impl Debug for ExprLit {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprLit")
+        self.debug(formatter, "expr::Lit")
     }
 }
-impl Debug for ExprLoop {
+impl Debug for expr::Loop {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprLoop {
+        impl expr::Loop {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -714,12 +714,12 @@ impl Debug for ExprLoop {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprLoop")
+        self.debug(formatter, "expr::Loop")
     }
 }
-impl Debug for ExprMacro {
+impl Debug for expr::Mac {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprMacro {
+        impl expr::Mac {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -727,12 +727,12 @@ impl Debug for ExprMacro {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprMacro")
+        self.debug(formatter, "expr::Mac")
     }
 }
-impl Debug for ExprMatch {
+impl Debug for expr::Match {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprMatch {
+        impl expr::Match {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -743,16 +743,16 @@ impl Debug for ExprMatch {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprMatch")
+        self.debug(formatter, "expr::Match")
     }
 }
-impl Debug for ExprMethodCall {
+impl Debug for expr::MethodCall {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprMethodCall {
+        impl expr::MethodCall {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("receiver", &self.receiver);
+                formatter.field("receiver", &self.expr);
                 formatter.field("dot", &self.dot);
                 formatter.field("method", &self.method);
                 formatter.field("turbofish", &self.turbofish);
@@ -761,12 +761,12 @@ impl Debug for ExprMethodCall {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprMethodCall")
+        self.debug(formatter, "expr::MethodCall")
     }
 }
-impl Debug for ExprParen {
+impl Debug for expr::Paren {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprParen {
+        impl expr::Paren {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -775,12 +775,12 @@ impl Debug for ExprParen {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprParen")
+        self.debug(formatter, "expr::Paren")
     }
 }
-impl Debug for ExprPath {
+impl Debug for expr::Pathth {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprPath {
+        impl expr::Pathth {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -789,27 +789,27 @@ impl Debug for ExprPath {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprPath")
+        self.debug(formatter, "expr::Pathth")
     }
 }
-impl Debug for ExprRange {
+impl Debug for expr::Range {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprRange {
+        impl expr::Range {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("start", &self.start);
+                formatter.field("start", &self.beg);
                 formatter.field("limits", &self.limits);
                 formatter.field("end", &self.end);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprRange")
+        self.debug(formatter, "expr::Range")
     }
 }
-impl Debug for ExprReference {
+impl Debug for expr::Ref {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprReference {
+        impl expr::Ref {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -819,12 +819,12 @@ impl Debug for ExprReference {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprReference")
+        self.debug(formatter, "expr::Ref")
     }
 }
-impl Debug for ExprRepeat {
+impl Debug for expr::Repeat {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprRepeat {
+        impl expr::Repeat {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -835,12 +835,12 @@ impl Debug for ExprRepeat {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprRepeat")
+        self.debug(formatter, "expr::Repeat")
     }
 }
-impl Debug for ExprReturn {
+impl Debug for expr::Return {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprReturn {
+        impl expr::Return {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -849,12 +849,12 @@ impl Debug for ExprReturn {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprReturn")
+        self.debug(formatter, "expr::Return")
     }
 }
-impl Debug for ExprStruct {
+impl Debug for expr::Struct {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprStruct {
+        impl expr::Struct {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -867,12 +867,12 @@ impl Debug for ExprStruct {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprStruct")
+        self.debug(formatter, "expr::ExprStruct")
     }
 }
-impl Debug for ExprTry {
+impl Debug for expr::Try {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprTry {
+        impl expr::Try {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -881,12 +881,12 @@ impl Debug for ExprTry {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprTry")
+        self.debug(formatter, "expr::Try")
     }
 }
-impl Debug for ExprTryBlock {
+impl Debug for expr::TryBlock {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprTryBlock {
+        impl expr::TryBlock {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -895,12 +895,12 @@ impl Debug for ExprTryBlock {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprTryBlock")
+        self.debug(formatter, "expr::TryBlock")
     }
 }
-impl Debug for ExprTuple {
+impl Debug for expr::Tuple {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprTuple {
+        impl expr::Tuple {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -909,12 +909,12 @@ impl Debug for ExprTuple {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprTuple")
+        self.debug(formatter, "expr::Tuple")
     }
 }
-impl Debug for ExprUnary {
+impl Debug for expr::Unary {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprUnary {
+        impl expr::Unary {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -923,12 +923,12 @@ impl Debug for ExprUnary {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprUnary")
+        self.debug(formatter, "expr::Unary")
     }
 }
-impl Debug for ExprUnsafe {
+impl Debug for expr::Unsafe {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprUnsafe {
+        impl expr::Unsafe {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -937,12 +937,12 @@ impl Debug for ExprUnsafe {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprUnsafe")
+        self.debug(formatter, "expr::Unsafe")
     }
 }
-impl Debug for ExprWhile {
+impl Debug for expr::While {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprWhile {
+        impl expr::While {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -953,12 +953,12 @@ impl Debug for ExprWhile {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprWhile")
+        self.debug(formatter, "expr::While")
     }
 }
-impl Debug for ExprYield {
+impl Debug for expr::Yield {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ExprYield {
+        impl expr::Yield {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -967,7 +967,7 @@ impl Debug for ExprYield {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ExprYield")
+        self.debug(formatter, "expr::Yield")
     }
 }
 impl Debug for Field {
@@ -1675,9 +1675,9 @@ impl Debug for Lit {
         }
     }
 }
-impl Debug for Local {
+impl Debug for stmt::Local {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl Local {
+        impl stmt::Local {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1688,12 +1688,12 @@ impl Debug for Local {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "Local")
+        self.debug(formatter, "stmt::Local")
     }
 }
-impl Debug for LocalInit {
+impl Debug for stmt::LocalInit {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("LocalInit");
+        let mut formatter = formatter.debug_struct("stmt::LocalInit");
         formatter.field("eq", &self.eq);
         formatter.field("expr", &self.expr);
         formatter.field("diverge", &self.diverge);
@@ -1908,7 +1908,7 @@ impl Debug for patt::Slice {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("bracket", &self.bracket);
-                formatter.field("elems", &self.patts);
+                formatter.field("elems", &self.elems);
                 formatter.finish()
             }
         }
@@ -1939,7 +1939,7 @@ impl Debug for patt::Tuple {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("paren", &self.paren);
-                formatter.field("elems", &self.patts);
+                formatter.field("elems", &self.elems);
                 formatter.finish()
             }
         }
@@ -2124,29 +2124,29 @@ impl Debug for StaticMut {
         }
     }
 }
-impl Debug for Stmt {
+impl Debug for stmt::Stmt {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Stmt::")?;
+        formatter.write_str("stmt::Stmt::")?;
         match self {
-            Stmt::Local(v0) => v0.debug(formatter, "Local"),
-            Stmt::Item(v0) => {
+            stmt::Stmt::stmt::Local(v0) => v0.debug(formatter, "stmt::Local"),
+            stmt::Stmt::Item(v0) => {
                 let mut formatter = formatter.debug_tuple("Item");
                 formatter.field(v0);
                 formatter.finish()
             },
-            Stmt::Expr(v0, v1) => {
+            stmt::Stmt::Expr(v0, v1) => {
                 let mut formatter = formatter.debug_tuple("Expr");
                 formatter.field(v0);
                 formatter.field(v1);
                 formatter.finish()
             },
-            Stmt::Macro(v0) => v0.debug(formatter, "Macro"),
+            stmt::Stmt::Mac(v0) => v0.debug(formatter, "Macro"),
         }
     }
 }
-impl Debug for StmtMacro {
+impl Debug for stmt::Mac {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl StmtMacro {
+        impl stmt::Mac {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -2155,7 +2155,7 @@ impl Debug for StmtMacro {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "StmtMacro")
+        self.debug(formatter, "stmt::Mac")
     }
 }
 impl Debug for TraitBound {

@@ -78,7 +78,7 @@ fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNa
     let lit: Option<Lit> = ahead.parse()?;
     let value = if let (Some(lit), true) = (lit, ahead.is_empty()) {
         x.advance_to(&ahead);
-        Expr::Lit(ExprLit { attrs: Vec::new(), lit })
+        Expr::Lit(expr::Lit { attrs: Vec::new(), lit })
     } else if x.peek(Token![#]) && x.peek2(tok::Bracket) {
         return Err(x.error("unexpected attribute inside of attribute"));
     } else {
@@ -600,7 +600,7 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
                     break;
                 }
             }
-            lhs = Expr::Binary(ExprBinary {
+            lhs = Expr::Binary(expr::Binary {
                 attrs: Vec::new(),
                 left: Box::new(lhs),
                 op,
@@ -621,7 +621,7 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
                     break;
                 }
             }
-            lhs = Expr::Assign(ExprAssign {
+            lhs = Expr::Assign(expr::Assign {
                 attrs: Vec::new(),
                 left: Box::new(lhs),
                 eq,
@@ -649,9 +649,9 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
                 }
                 Some(rhs)
             };
-            lhs = Expr::Range(ExprRange {
+            lhs = Expr::Range(expr::Range {
                 attrs: Vec::new(),
-                start: Some(Box::new(lhs)),
+                beg: Some(Box::new(lhs)),
                 limits,
                 end: rhs.map(Box::new),
             });
@@ -661,7 +661,7 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
             let group_gen = false;
             let ty = ambig_ty(input, allow_plus, group_gen)?;
             check_cast(input)?;
-            lhs = Expr::Cast(ExprCast {
+            lhs = Expr::Cast(expr::Cast {
                 attrs: Vec::new(),
                 expr: Box::new(lhs),
                 as_,
@@ -730,7 +730,7 @@ fn unary_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
         if raw.is_some() {
             Ok(Expr::Verbatim(verbatim_between(&begin, input)))
         } else {
-            Ok(Expr::Reference(ExprReference {
+            Ok(Expr::Reference(expr::Ref {
                 attrs,
                 and,
                 mut_: mutability,
@@ -764,7 +764,7 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
     loop {
         if input.peek(tok::Paren) {
             let content;
-            e = Expr::Call(ExprCall {
+            e = Expr::Call(expr::Call {
                 attrs: Vec::new(),
                 func: Box::new(e),
                 paren: parenthesized!(content in input),
@@ -786,9 +786,9 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
             }
             let await_: Option<Token![await]> = input.parse()?;
             if let Some(await_) = await_ {
-                e = Expr::Await(ExprAwait {
+                e = Expr::Await(expr::Await {
                     attrs: Vec::new(),
-                    base: Box::new(e),
+                    expr: Box::new(e),
                     dot,
                     await_,
                 });
@@ -803,9 +803,9 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
             if turbofish.is_some() || input.peek(tok::Paren) {
                 if let Member::Named(method) = member {
                     let content;
-                    e = Expr::MethodCall(ExprMethodCall {
+                    e = Expr::MethodCall(expr::MethodCall {
                         attrs: Vec::new(),
-                        receiver: Box::new(e),
+                        expr: Box::new(e),
                         dot,
                         method,
                         turbofish,
@@ -815,22 +815,22 @@ fn trailer_helper(input: ParseStream, mut e: Expr) -> Result<Expr> {
                     continue;
                 }
             }
-            e = Expr::Field(ExprField {
+            e = Expr::Field(expr::Field {
                 attrs: Vec::new(),
                 base: Box::new(e),
                 dot,
-                member,
+                memb: member,
             });
         } else if input.peek(tok::Bracket) {
             let content;
-            e = Expr::Index(ExprIndex {
+            e = Expr::Index(expr::Index {
                 attrs: Vec::new(),
                 expr: Box::new(e),
                 bracket: bracketed!(content in input),
                 index: content.parse()?,
             });
         } else if input.peek(Token![?]) {
-            e = Expr::Try(ExprTry {
+            e = Expr::Try(expr::Try {
                 attrs: Vec::new(),
                 expr: Box::new(e),
                 question: input.parse()?,
@@ -920,10 +920,10 @@ fn atom_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
             return Err(input.error("expected loop or block expression"));
         };
         match &mut expr {
-            Expr::While(ExprWhile { label, .. })
-            | Expr::ForLoop(ExprForLoop { label, .. })
-            | Expr::Loop(ExprLoop { label, .. })
-            | Expr::Block(ExprBlock { label, .. }) => *label = Some(the_label),
+            Expr::While(expr::While { label, .. })
+            | Expr::ForLoop(expr::ForLoop { label, .. })
+            | Expr::Loop(expr::Loop { label, .. })
+            | Expr::Block(expr::Block { label, .. }) => *label = Some(the_label),
             _ => unreachable!(),
         }
         Ok(expr)
@@ -946,7 +946,7 @@ fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_st
     if qself.is_none() && input.peek(Token![!]) && !input.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = input.parse()?;
         let (delimiter, tokens) = mac_parse_delimiter(input)?;
-        return Ok(Expr::Macro(ExprMacro {
+        return Ok(Expr::Macro(expr::Mac {
             attrs: Vec::new(),
             mac: Macro {
                 path,
@@ -959,15 +959,15 @@ fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_st
     if allow_struct.0 && input.peek(tok::Brace) {
         return expr_struct_helper(input, qself, path).map(Expr::Struct);
     }
-    Ok(Expr::Path(ExprPath {
+    Ok(Expr::Path(expr::Path {
         attrs: Vec::new(),
         qself,
         path,
     }))
 }
-impl Parse for ExprMacro {
+impl Parse for expr::Mac {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprMacro {
+        Ok(expr::Mac {
             attrs: Vec::new(),
             mac: input.parse()?,
         })
@@ -977,7 +977,7 @@ fn paren_or_tuple(input: ParseStream) -> Result<Expr> {
     let content;
     let paren = parenthesized!(content in input);
     if content.is_empty() {
-        return Ok(Expr::Tuple(ExprTuple {
+        return Ok(Expr::Tuple(expr::Tuple {
             attrs: Vec::new(),
             paren,
             elems: Punctuated::new(),
@@ -985,7 +985,7 @@ fn paren_or_tuple(input: ParseStream) -> Result<Expr> {
     }
     let first: Expr = content.parse()?;
     if content.is_empty() {
-        return Ok(Expr::Paren(ExprParen {
+        return Ok(Expr::Paren(expr::Paren {
             attrs: Vec::new(),
             paren,
             expr: Box::new(first),
@@ -1002,7 +1002,7 @@ fn paren_or_tuple(input: ParseStream) -> Result<Expr> {
         let value = content.parse()?;
         elems.push_value(value);
     }
-    Ok(Expr::Tuple(ExprTuple {
+    Ok(Expr::Tuple(expr::Tuple {
         attrs: Vec::new(),
         paren,
         elems,
@@ -1012,7 +1012,7 @@ fn array_or_repeat(input: ParseStream) -> Result<Expr> {
     let content;
     let bracket = bracketed!(content in input);
     if content.is_empty() {
-        return Ok(Expr::Array(ExprArray {
+        return Ok(Expr::Array(expr::Array {
             attrs: Vec::new(),
             bracket,
             elems: Punctuated::new(),
@@ -1031,7 +1031,7 @@ fn array_or_repeat(input: ParseStream) -> Result<Expr> {
             let value = content.parse()?;
             elems.push_value(value);
         }
-        Ok(Expr::Array(ExprArray {
+        Ok(Expr::Array(expr::Array {
             attrs: Vec::new(),
             bracket,
             elems,
@@ -1039,7 +1039,7 @@ fn array_or_repeat(input: ParseStream) -> Result<Expr> {
     } else if content.peek(Token![;]) {
         let semi: Token![;] = content.parse()?;
         let len: Expr = content.parse()?;
-        Ok(Expr::Repeat(ExprRepeat {
+        Ok(Expr::Repeat(expr::Repeat {
             attrs: Vec::new(),
             bracket,
             expr: Box::new(first),
@@ -1050,7 +1050,7 @@ fn array_or_repeat(input: ParseStream) -> Result<Expr> {
         Err(content.error("expected `,` or `;`"))
     }
 }
-impl Parse for ExprArray {
+impl Parse for expr::Array {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
         let bracket = bracketed!(content in input);
@@ -1064,17 +1064,17 @@ impl Parse for ExprArray {
             let punct = content.parse()?;
             elems.push_punct(punct);
         }
-        Ok(ExprArray {
+        Ok(expr::Array {
             attrs: Vec::new(),
             bracket,
             elems,
         })
     }
 }
-impl Parse for ExprRepeat {
+impl Parse for expr::Repeat {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
-        Ok(ExprRepeat {
+        Ok(expr::Repeat {
             bracket: bracketed!(content in input),
             attrs: Vec::new(),
             expr: content.parse()?,
@@ -1122,38 +1122,38 @@ pub fn expr_early(input: ParseStream) -> Result<Expr> {
     expr.replace_attrs(attrs);
     Ok(expr)
 }
-impl Parse for ExprLit {
+impl Parse for expr::Lit {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprLit {
+        Ok(expr::Lit {
             attrs: Vec::new(),
             lit: input.parse()?,
         })
     }
 }
-fn expr_group(input: ParseStream) -> Result<ExprGroup> {
+fn expr_group(input: ParseStream) -> Result<expr::Group> {
     let group = super::parse_group(input)?;
-    Ok(ExprGroup {
+    Ok(expr::Group {
         attrs: Vec::new(),
         group: group.token,
         expr: group.gist.parse()?,
     })
 }
-impl Parse for ExprParen {
+impl Parse for expr::Paren {
     fn parse(input: ParseStream) -> Result<Self> {
         expr_paren(input)
     }
 }
-fn expr_paren(input: ParseStream) -> Result<ExprParen> {
+fn expr_paren(input: ParseStream) -> Result<expr::Paren> {
     let content;
-    Ok(ExprParen {
+    Ok(expr::Paren {
         attrs: Vec::new(),
         paren: parenthesized!(content in input),
         expr: content.parse()?,
     })
 }
-impl Parse for ExprLet {
+impl Parse for expr::Let {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprLet {
+        Ok(expr::Let {
             attrs: Vec::new(),
             let_: input.parse()?,
             pat: Box::new(patt::Patt::parse_multi(input)?),
@@ -1166,10 +1166,10 @@ impl Parse for ExprLet {
         })
     }
 }
-impl Parse for ExprIf {
+impl Parse for expr::If {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
-        Ok(ExprIf {
+        Ok(expr::If {
             attrs,
             if_: input.parse()?,
             cond: Box::new(input.call(Expr::parse_without_eager_brace)?),
@@ -1190,7 +1190,7 @@ fn else_block(input: ParseStream) -> Result<(Token![else], Box<Expr>)> {
     let else_branch = if input.peek(Token![if]) {
         input.parse().map(Expr::If)?
     } else if input.peek(tok::Brace) {
-        Expr::Block(ExprBlock {
+        Expr::Block(expr::Block {
             attrs: Vec::new(),
             label: None,
             block: input.parse()?,
@@ -1200,15 +1200,15 @@ fn else_block(input: ParseStream) -> Result<(Token![else], Box<Expr>)> {
     };
     Ok((else_token, Box::new(else_branch)))
 }
-impl Parse for ExprInfer {
+impl Parse for expr::Infer {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprInfer {
+        Ok(expr::Infer {
             attrs: input.call(Attribute::parse_outer)?,
             underscore: input.parse()?,
         })
     }
 }
-impl Parse for ExprForLoop {
+impl Parse for expr::ForLoop {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = input.call(Attribute::parse_outer)?;
         let label: Option<Label> = input.parse()?;
@@ -1220,7 +1220,7 @@ impl Parse for ExprForLoop {
         let brace = braced!(content in input);
         parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
-        Ok(ExprForLoop {
+        Ok(expr::ForLoop {
             attrs,
             label,
             for_,
@@ -1231,7 +1231,7 @@ impl Parse for ExprForLoop {
         })
     }
 }
-impl Parse for ExprLoop {
+impl Parse for expr::Loop {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = input.call(Attribute::parse_outer)?;
         let label: Option<Label> = input.parse()?;
@@ -1240,7 +1240,7 @@ impl Parse for ExprLoop {
         let brace = braced!(content in input);
         parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
-        Ok(ExprLoop {
+        Ok(expr::Loop {
             attrs,
             label,
             loop_,
@@ -1248,7 +1248,7 @@ impl Parse for ExprLoop {
         })
     }
 }
-impl Parse for ExprMatch {
+impl Parse for expr::Match {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = input.call(Attribute::parse_outer)?;
         let match_: Token![match] = input.parse()?;
@@ -1260,7 +1260,7 @@ impl Parse for ExprMatch {
         while !content.is_empty() {
             arms.push(content.call(Arm::parse)?);
         }
-        Ok(ExprMatch {
+        Ok(expr::Match {
             attrs,
             match_,
             expr: Box::new(expr),
@@ -1292,42 +1292,42 @@ macro_rules! impl_by_parsing_expr {
         };
     }
 impl_by_parsing_expr! {
-    ExprAssign, Assign, "expected assignment expression",
-    ExprAwait, Await, "expected await expression",
-    ExprBinary, Binary, "expected binary operation",
-    ExprCall, Call, "expected function call expression",
-    ExprCast, Cast, "expected cast expression",
-    ExprField, Field, "expected struct field access",
-    ExprIndex, Index, "expected indexing expression",
-    ExprMethodCall, MethodCall, "expected method call expression",
-    ExprRange, Range, "expected range expression",
-    ExprTry, Try, "expected try expression",
-    ExprTuple, Tuple, "expected tuple expression",
+    expr::Assign, Assign, "expected assignment expression",
+    expr::Await, Await, "expected await expression",
+    expr::Binary, Binary, "expected binary operation",
+    expr::Call, Call, "expected function call expression",
+    expr::Cast, Cast, "expected cast expression",
+    expr::Field, Field, "expected struct field access",
+    expr::Index, Index, "expected indexing expression",
+    expr::MethodCall, MethodCall, "expected method call expression",
+    expr::Range, Range, "expected range expression",
+    expr::Try, Try, "expected try expression",
+    expr::Tuple, Tuple, "expected tuple expression",
 }
-impl Parse for ExprUnary {
+impl Parse for expr::Unary {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = Vec::new();
         let allow_struct = AllowStruct(true);
         expr_unary(input, attrs, allow_struct)
     }
 }
-fn expr_unary(input: ParseStream, attrs: Vec<Attribute>, allow_struct: AllowStruct) -> Result<ExprUnary> {
-    Ok(ExprUnary {
+fn expr_unary(input: ParseStream, attrs: Vec<Attribute>, allow_struct: AllowStruct) -> Result<expr::Unary> {
+    Ok(expr::Unary {
         attrs,
         op: input.parse()?,
         expr: Box::new(unary_expr(input, allow_struct)?),
     })
 }
-impl Parse for ExprClosure {
+impl Parse for expr::Closure {
     fn parse(input: ParseStream) -> Result<Self> {
         let allow_struct = AllowStruct(true);
         expr_closure(input, allow_struct)
     }
 }
-impl Parse for ExprReference {
+impl Parse for expr::Ref {
     fn parse(input: ParseStream) -> Result<Self> {
         let allow_struct = AllowStruct(true);
-        Ok(ExprReference {
+        Ok(expr::Ref {
             attrs: Vec::new(),
             and: input.parse()?,
             mut_: input.parse()?,
@@ -1335,30 +1335,30 @@ impl Parse for ExprReference {
         })
     }
 }
-impl Parse for ExprBreak {
+impl Parse for expr::Break {
     fn parse(input: ParseStream) -> Result<Self> {
         let allow_struct = AllowStruct(true);
         expr_break(input, allow_struct)
     }
 }
-impl Parse for ExprReturn {
+impl Parse for expr::Return {
     fn parse(input: ParseStream) -> Result<Self> {
         let allow_struct = AllowStruct(true);
         expr_ret(input, allow_struct)
     }
 }
-impl Parse for ExprTryBlock {
+impl Parse for expr::TryBlock {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprTryBlock {
+        Ok(expr::TryBlock {
             attrs: Vec::new(),
             try_: input.parse()?,
             block: input.parse()?,
         })
     }
 }
-impl Parse for ExprYield {
+impl Parse for expr::Yield {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprYield {
+        Ok(expr::Yield {
             attrs: Vec::new(),
             yield_: input.parse()?,
             expr: {
@@ -1371,7 +1371,7 @@ impl Parse for ExprYield {
         })
     }
 }
-fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprClosure> {
+fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<expr::Closure> {
     let lifetimes: Option<BoundLifetimes> = input.parse()?;
     let constness: Option<Token![const]> = input.parse()?;
     let movability: Option<Token![static]> = input.parse()?;
@@ -1397,7 +1397,7 @@ fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprClo
         let typ: ty::Type = input.parse()?;
         let body: Block = input.parse()?;
         let output = ty::Ret::Type(arrow, Box::new(typ));
-        let block = Expr::Block(ExprBlock {
+        let block = Expr::Block(expr::Block {
             attrs: Vec::new(),
             label: None,
             block: body,
@@ -1407,7 +1407,7 @@ fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprClo
         let body = ambiguous_expr(input, allow_struct)?;
         (ty::Ret::Default, body)
     };
-    Ok(ExprClosure {
+    Ok(expr::Closure {
         attrs: Vec::new(),
         lifes: lifetimes,
         const_: constness,
@@ -1421,12 +1421,12 @@ fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprClo
         body: Box::new(body),
     })
 }
-impl Parse for ExprAsync {
+impl Parse for expr::Async {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprAsync {
+        Ok(expr::Async {
             attrs: Vec::new(),
             async_: input.parse()?,
-            capture: input.parse()?,
+            move_: input.parse()?,
             block: input.parse()?,
         })
     }
@@ -1464,7 +1464,7 @@ fn closure_arg(input: ParseStream) -> Result<patt::Patt> {
         Ok(pat)
     }
 }
-impl Parse for ExprWhile {
+impl Parse for expr::While {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = input.call(Attribute::parse_outer)?;
         let label: Option<Label> = input.parse()?;
@@ -1474,7 +1474,7 @@ impl Parse for ExprWhile {
         let brace = braced!(content in input);
         parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
-        Ok(ExprWhile {
+        Ok(expr::While {
             attrs,
             label,
             while_,
@@ -1483,14 +1483,14 @@ impl Parse for ExprWhile {
         })
     }
 }
-impl Parse for ExprConst {
+impl Parse for expr::Const {
     fn parse(input: ParseStream) -> Result<Self> {
         let const_: Token![const] = input.parse()?;
         let content;
         let brace = braced!(content in input);
         let inner_attrs = content.call(Attribute::parse_inner)?;
         let stmts = content.call(Block::parse_within)?;
-        Ok(ExprConst {
+        Ok(expr::Const {
             attrs: inner_attrs,
             const_,
             block: Block { brace, stmts },
@@ -1514,17 +1514,17 @@ impl Parse for Option<Label> {
         }
     }
 }
-impl Parse for ExprContinue {
+impl Parse for expr::Continue {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ExprContinue {
+        Ok(expr::Continue {
             attrs: Vec::new(),
             continue_: input.parse()?,
             label: input.parse()?,
         })
     }
 }
-fn expr_break(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprBreak> {
-    Ok(ExprBreak {
+fn expr_break(input: ParseStream, allow_struct: AllowStruct) -> Result<expr::Break> {
+    Ok(expr::Break {
         attrs: Vec::new(),
         break_: input.parse()?,
         label: input.parse()?,
@@ -1542,8 +1542,8 @@ fn expr_break(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprBreak
         },
     })
 }
-fn expr_ret(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprReturn> {
-    Ok(ExprReturn {
+fn expr_ret(input: ParseStream, allow_struct: AllowStruct) -> Result<expr::Return> {
+    Ok(expr::Return {
         attrs: Vec::new(),
         return_: input.parse()?,
         expr: {
@@ -1565,7 +1565,7 @@ impl Parse for FieldValue {
             let value: Expr = input.parse()?;
             (Some(colon), value)
         } else if let Member::Named(ident) = &member {
-            let value = Expr::Path(ExprPath {
+            let value = Expr::Path(expr::Path {
                 attrs: Vec::new(),
                 qself: None,
                 path: Path::from(ident.clone()),
@@ -1582,19 +1582,19 @@ impl Parse for FieldValue {
         })
     }
 }
-impl Parse for ExprStruct {
+impl Parse for expr::Struct {
     fn parse(input: ParseStream) -> Result<Self> {
         let (qself, path) = qpath(input, true)?;
         expr_struct_helper(input, qself, path)
     }
 }
-fn expr_struct_helper(input: ParseStream, qself: Option<QSelf>, path: Path) -> Result<ExprStruct> {
+fn expr_struct_helper(input: ParseStream, qself: Option<QSelf>, path: Path) -> Result<expr::Struct> {
     let content;
     let brace = braced!(content in input);
     let mut fields = Punctuated::new();
     while !content.is_empty() {
         if content.peek(Token![..]) {
-            return Ok(ExprStruct {
+            return Ok(expr::Struct {
                 attrs: Vec::new(),
                 qself,
                 path,
@@ -1615,7 +1615,7 @@ fn expr_struct_helper(input: ParseStream, qself: Option<QSelf>, path: Path) -> R
         let punct: Token![,] = content.parse()?;
         fields.push_punct(punct);
     }
-    Ok(ExprStruct {
+    Ok(expr::Struct {
         attrs: Vec::new(),
         qself,
         path,
@@ -1625,21 +1625,21 @@ fn expr_struct_helper(input: ParseStream, qself: Option<QSelf>, path: Path) -> R
         rest: None,
     })
 }
-impl Parse for ExprUnsafe {
+impl Parse for expr::Unsafe {
     fn parse(input: ParseStream) -> Result<Self> {
         let unsafe_: Token![unsafe] = input.parse()?;
         let content;
         let brace = braced!(content in input);
         let inner_attrs = content.call(Attribute::parse_inner)?;
         let stmts = content.call(Block::parse_within)?;
-        Ok(ExprUnsafe {
+        Ok(expr::Unsafe {
             attrs: inner_attrs,
             unsafe_,
             block: Block { brace, stmts },
         })
     }
 }
-impl Parse for ExprBlock {
+impl Parse for expr::Block {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = input.call(Attribute::parse_outer)?;
         let label: Option<Label> = input.parse()?;
@@ -1647,14 +1647,14 @@ impl Parse for ExprBlock {
         let brace = braced!(content in input);
         parse_inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
-        Ok(ExprBlock {
+        Ok(expr::Block {
             attrs,
             label,
             block: Block { brace, stmts },
         })
     }
 }
-fn expr_range(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprRange> {
+fn expr_range(input: ParseStream, allow_struct: AllowStruct) -> Result<expr::Range> {
     let limits: RangeLimits = input.parse()?;
     let end = if matches!(limits, RangeLimits::HalfOpen(_))
         && (input.is_empty()
@@ -1668,9 +1668,9 @@ fn expr_range(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprRange
         let to = ambiguous_expr(input, allow_struct)?;
         Some(Box::new(to))
     };
-    Ok(ExprRange {
+    Ok(expr::Range {
         attrs: Vec::new(),
-        start: None,
+        beg: None,
         limits,
         end,
     })
@@ -1708,13 +1708,13 @@ impl RangeLimits {
         }
     }
 }
-impl Parse for ExprPath {
+impl Parse for expr::Path {
     fn parse(input: ParseStream) -> Result<Self> {
         #[cfg(not(feature = "full"))]
         let attrs = Vec::new();
         let attrs = input.call(Attribute::parse_outer)?;
         let (qself, path) = qpath(input, true)?;
-        Ok(ExprPath { attrs, qself, path })
+        Ok(expr::Path { attrs, qself, path })
     }
 }
 impl Parse for Member {
@@ -1786,11 +1786,11 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Result<b
         let part_end = offset + part.len();
         index.span = float_token.subspan(offset..part_end).unwrap_or(float_span);
         let base = mem::replace(e, Expr::DUMMY);
-        *e = Expr::Field(ExprField {
+        *e = Expr::Field(expr::Field {
             attrs: Vec::new(),
             base: Box::new(base),
             dot: Token![.](dot.span),
-            member: Member::Unnamed(index),
+            memb: Member::Unnamed(index),
         });
         let dot_span = float_token.subspan(part_end..part_end + 1).unwrap_or(float_span);
         *dot = Token![.](dot_span);
@@ -3420,20 +3420,20 @@ impl Parse for StaticMut {
 mod parsing {
     struct AllowNoSemi(bool);
     impl Block {
-        pub fn parse_within(x: ParseStream) -> Result<Vec<Stmt>> {
+        pub fn parse_within(x: ParseStream) -> Result<Vec<stmt::Stmt>> {
             let mut ys = Vec::new();
             loop {
                 while let semi @ Some(_) = x.parse()? {
-                    ys.push(Stmt::Expr(Expr::Verbatim(TokenStream::new()), semi));
+                    ys.push(stmt::Stmt::Expr(Expr::Verbatim(TokenStream::new()), semi));
                 }
                 if x.is_empty() {
                     break;
                 }
                 let stmt = parse_stmt(x, AllowNoSemi(true))?;
                 let requires_semicolon = match &stmt {
-                    Stmt::Expr(x, None) => expr::requires_terminator(x),
-                    Stmt::Macro(x) => x.semi.is_none() && !x.mac.delimiter.is_brace(),
-                    Stmt::Local(_) | Stmt::Item(_) | Stmt::Expr(_, Some(_)) => false,
+                    stmt::Stmt::Expr(x, None) => expr::requires_terminator(x),
+                    stmt::Stmt::Macro(x) => x.semi.is_none() && !x.mac.delimiter.is_brace(),
+                    stmt::Stmt::stmt::Local(_) | stmt::Stmt::Item(_) | stmt::Stmt::Expr(_, Some(_)) => false,
                 };
                 ys.push(stmt);
                 if x.is_empty() {
@@ -3454,13 +3454,13 @@ mod parsing {
             })
         }
     }
-    impl Parse for Stmt {
+    impl Parse for stmt::Stmt {
         fn parse(x: ParseStream) -> Result<Self> {
             let allow_nosemi = AllowNoSemi(false);
             parse_stmt(x, allow_nosemi)
         }
     }
-    fn parse_stmt(x: ParseStream, allow_nosemi: AllowNoSemi) -> Result<Stmt> {
+    fn parse_stmt(x: ParseStream, allow_nosemi: AllowNoSemi) -> Result<stmt::Stmt> {
         let begin = x.fork();
         let attrs = x.call(Attribute::parse_outer)?;
         let ahead = x.fork();
@@ -3471,12 +3471,12 @@ mod parsing {
                     is_item_macro = true;
                 } else if ahead.peek2(tok::Brace) && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?])) {
                     x.advance_to(&ahead);
-                    return stmt_mac(x, attrs, path).map(Stmt::Macro);
+                    return stmt_mac(x, attrs, path).map(stmt::Stmt::Macro);
                 }
             }
         }
         if x.peek(Token![let]) {
-            stmt_local(x, attrs).map(Stmt::Local)
+            stmt_local(x, attrs).map(stmt::Stmt::stmt::Local)
         } else if x.peek(Token![pub])
             || x.peek(Token![crate]) && !x.peek2(Token![::])
             || x.peek(Token![extern])
@@ -3507,16 +3507,16 @@ mod parsing {
             || is_item_macro
         {
             let item = parse_rest_of_item(begin, attrs, x)?;
-            Ok(Stmt::Item(item))
+            Ok(stmt::Stmt::Item(item))
         } else {
             stmt_expr(x, allow_nosemi, attrs)
         }
     }
-    fn stmt_mac(x: ParseStream, attrs: Vec<Attribute>, path: Path) -> Result<StmtMacro> {
+    fn stmt_mac(x: ParseStream, attrs: Vec<Attribute>, path: Path) -> Result<stmt::Mac> {
         let bang: Token![!] = x.parse()?;
         let (delimiter, tokens) = mac_parse_delimiter(x)?;
         let semi: Option<Token![;]> = x.parse()?;
-        Ok(StmtMacro {
+        Ok(stmt::Mac {
             attrs,
             mac: Macro {
                 path,
@@ -3527,7 +3527,7 @@ mod parsing {
             semi,
         })
     }
-    fn stmt_local(x: ParseStream, attrs: Vec<Attribute>) -> Result<Local> {
+    fn stmt_local(x: ParseStream, attrs: Vec<Attribute>) -> Result<stmt::Local> {
         let let_: Token![let] = x.parse()?;
         let mut pat = patt::Patt::parse_single(x)?;
         if x.peek(Token![:]) {
@@ -3545,7 +3545,7 @@ mod parsing {
             let expr: Expr = x.parse()?;
             let diverge = if let Some(else_token) = x.parse()? {
                 let else_token: Token![else] = else_token;
-                let diverge = ExprBlock {
+                let diverge = expr::Block {
                     attrs: Vec::new(),
                     label: None,
                     block: x.parse()?,
@@ -3554,7 +3554,7 @@ mod parsing {
             } else {
                 None
             };
-            Some(LocalInit {
+            Some(stmt::LocalInit {
                 eq,
                 expr: Box::new(expr),
                 diverge,
@@ -3563,7 +3563,7 @@ mod parsing {
             None
         };
         let semi: Token![;] = x.parse()?;
-        Ok(Local {
+        Ok(stmt::Local {
             attrs,
             let_,
             pat,
@@ -3571,7 +3571,7 @@ mod parsing {
             semi,
         })
     }
-    fn stmt_expr(x: ParseStream, allow_nosemi: AllowNoSemi, mut attrs: Vec<Attribute>) -> Result<Stmt> {
+    fn stmt_expr(x: ParseStream, allow_nosemi: AllowNoSemi, mut attrs: Vec<Attribute>) -> Result<stmt::Stmt> {
         let mut e = expr_early(x)?;
         let mut attr_target = &mut e;
         loop {
@@ -3621,15 +3621,15 @@ mod parsing {
         attr_target.replace_attrs(attrs);
         let semi: Option<Token![;]> = x.parse()?;
         match e {
-            Expr::Macro(ExprMacro { attrs, mac }) if semi.is_some() || mac.delimiter.is_brace() => {
-                return Ok(Stmt::Macro(StmtMacro { attrs, mac, semi }));
+            Expr::Macro(expr::Mac { attrs, mac }) if semi.is_some() || mac.delimiter.is_brace() => {
+                return Ok(stmt::Stmt::Macro(stmt::Mac { attrs, mac, semi }));
             },
             _ => {},
         }
         if semi.is_some() {
-            Ok(Stmt::Expr(e, semi))
+            Ok(stmt::Stmt::Expr(e, semi))
         } else if allow_nosemi.0 || !expr::requires_terminator(&e) {
-            Ok(Stmt::Expr(e, None))
+            Ok(stmt::Stmt::Expr(e, None))
         } else {
             Err(x.error("expected semicolon"))
         }
@@ -4227,7 +4227,7 @@ pub mod patt {
         if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
             let bang: Token![!] = x.parse()?;
             let (delimiter, tokens) = mac_parse_delimiter(x)?;
-            return Ok(Patt::Macro(ExprMacro {
+            return Ok(Patt::Macro(expr::Mac {
                 attrs: Vec::new(),
                 mac: Macro {
                     path,
@@ -4244,7 +4244,7 @@ pub mod patt {
         } else if x.peek(Token![..]) {
             range(x, qself, path)
         } else {
-            Ok(Patt::Path(ExprPath {
+            Ok(Patt::Path(expr::Path {
                 attrs: Vec::new(),
                 qself,
                 path,
@@ -4297,7 +4297,7 @@ pub mod patt {
             qself,
             path,
             paren,
-            patts,
+            elems: patts,
         })
     }
     fn struct_(x: ParseStream, qself: Option<QSelf>, path: Path) -> Result<Struct> {
@@ -4386,9 +4386,9 @@ pub mod patt {
         if let (RangeLimits::Closed(_), None) = (&limits, &end) {
             return Err(x.error("expected range upper bound"));
         }
-        Ok(Patt::Range(ExprRange {
+        Ok(Patt::Range(expr::Range {
             attrs: Vec::new(),
-            start: Some(Box::new(Expr::Path(ExprPath {
+            start: Some(Box::new(Expr::Path(expr::Path {
                 attrs: Vec::new(),
                 qself,
                 path,
@@ -4401,7 +4401,7 @@ pub mod patt {
         let limits: RangeLimits = x.parse()?;
         let end = x.call(range_bound)?;
         if end.is_some() {
-            Ok(Patt::Range(ExprRange {
+            Ok(Patt::Range(expr::Range {
                 attrs: Vec::new(),
                 start: None,
                 limits,
@@ -4441,7 +4441,7 @@ pub mod patt {
         Ok(Patt::Tuple(Tuple {
             attrs: Vec::new(),
             paren,
-            patts,
+            elems: patts,
         }))
     }
     fn ref_(x: ParseStream) -> Result<Ref> {
@@ -4460,7 +4460,7 @@ pub mod patt {
             if let (RangeLimits::Closed(_), None) = (&limits, &end) {
                 return Err(x.error("expected range upper bound"));
             }
-            Ok(Patt::Range(ExprRange {
+            Ok(Patt::Range(expr::Range {
                 attrs: Vec::new(),
                 start: Some(beg.into_expr()),
                 limits,
@@ -4471,9 +4471,9 @@ pub mod patt {
         }
     }
     enum RangeBound {
-        Const(ExprConst),
-        Lit(ExprLit),
-        Path(ExprPath),
+        Const(expr::Const),
+        Lit(expr::Lit),
+        Path(expr::Path),
     }
     impl RangeBound {
         fn into_expr(self) -> Box<Expr> {
@@ -4528,7 +4528,7 @@ pub mod patt {
         while !gist.is_empty() {
             let y = Patt::parse_multi(&gist)?;
             match y {
-                Patt::Range(x) if x.start.is_none() || x.end.is_none() => {
+                Patt::Range(x) if x.beg.is_none() || x.end.is_none() => {
                     let (start, end) = match x.limits {
                         RangeLimits::HalfOpen(x) => (x.spans[0], x.spans[1]),
                         RangeLimits::Closed(x) => (x.spans[0], x.spans[2]),
@@ -4548,7 +4548,7 @@ pub mod patt {
         Ok(Slice {
             attrs: Vec::new(),
             bracket,
-            patts,
+            elems: patts,
         })
     }
     fn const_(x: ParseStream) -> Result<TokenStream> {
@@ -4788,14 +4788,14 @@ pub mod path {
         }
         if x.peek(Ident) {
             let y: Ident = x.parse()?;
-            return Ok(Expr::Path(ExprPath {
+            return Ok(Expr::Path(expr::Path {
                 attrs: Vec::new(),
                 qself: None,
                 path: Path::from(y),
             }));
         }
         if x.peek(tok::Brace) {
-            let y: ExprBlock = x.parse()?;
+            let y: expr::Block = x.parse()?;
             return Ok(Expr::Block(y));
         }
         Err(y.error())

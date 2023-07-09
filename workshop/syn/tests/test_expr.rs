@@ -3,7 +3,7 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::quote;
-use syn::{Expr, ExprRange};
+use syn::{expr::Range, Expr};
 #[test]
 fn test_expr_parse() {
     let tokens = quote!(..100u32);
@@ -16,8 +16,8 @@ fn test_expr_parse() {
     }
     "###);
     let tokens = quote!(..100u32);
-    snapshot!(tokens as ExprRange, @r###"
-    ExprRange {
+    snapshot!(tokens as expr::Range, @r###"
+    expr::Range {
         limits: RangeLimits::HalfOpen,
         end: Some(Expr::Lit {
             lit: 100u32,

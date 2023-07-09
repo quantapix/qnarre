@@ -225,18 +225,18 @@ impl Clone for Expr {
         }
     }
 }
-impl Clone for ExprArray {
+impl Clone for expr::Array {
     fn clone(&self) -> Self {
-        ExprArray {
+        expr::Array {
             attrs: self.attrs.clone(),
             bracket: self.bracket.clone(),
             elems: self.elems.clone(),
         }
     }
 }
-impl Clone for ExprAssign {
+impl Clone for expr::Assign {
     fn clone(&self) -> Self {
-        ExprAssign {
+        expr::Assign {
             attrs: self.attrs.clone(),
             left: self.left.clone(),
             eq: self.eq.clone(),
@@ -244,29 +244,29 @@ impl Clone for ExprAssign {
         }
     }
 }
-impl Clone for ExprAsync {
+impl Clone for expr::Async {
     fn clone(&self) -> Self {
-        ExprAsync {
+        expr::Async {
             attrs: self.attrs.clone(),
             async_: self.async_.clone(),
-            capture: self.capture.clone(),
+            move_: self.move_.clone(),
             block: self.block.clone(),
         }
     }
 }
-impl Clone for ExprAwait {
+impl Clone for expr::Await {
     fn clone(&self) -> Self {
-        ExprAwait {
+        expr::Await {
             attrs: self.attrs.clone(),
-            base: self.base.clone(),
+            expr: self.expr.clone(),
             dot: self.dot.clone(),
             await_: self.await_.clone(),
         }
     }
 }
-impl Clone for ExprBinary {
+impl Clone for expr::Binary {
     fn clone(&self) -> Self {
-        ExprBinary {
+        expr::Binary {
             attrs: self.attrs.clone(),
             left: self.left.clone(),
             op: self.op.clone(),
@@ -274,18 +274,18 @@ impl Clone for ExprBinary {
         }
     }
 }
-impl Clone for ExprBlock {
+impl Clone for expr::Block {
     fn clone(&self) -> Self {
-        ExprBlock {
+        expr::Block {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
             block: self.block.clone(),
         }
     }
 }
-impl Clone for ExprBreak {
+impl Clone for expr::Break {
     fn clone(&self) -> Self {
-        ExprBreak {
+        expr::Break {
             attrs: self.attrs.clone(),
             break_: self.break_.clone(),
             label: self.label.clone(),
@@ -293,9 +293,9 @@ impl Clone for ExprBreak {
         }
     }
 }
-impl Clone for ExprCall {
+impl Clone for expr::Call {
     fn clone(&self) -> Self {
-        ExprCall {
+        expr::Call {
             attrs: self.attrs.clone(),
             func: self.func.clone(),
             paren: self.paren.clone(),
@@ -303,9 +303,9 @@ impl Clone for ExprCall {
         }
     }
 }
-impl Clone for ExprCast {
+impl Clone for expr::Cast {
     fn clone(&self) -> Self {
-        ExprCast {
+        expr::Cast {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
             as_: self.as_.clone(),
@@ -313,9 +313,9 @@ impl Clone for ExprCast {
         }
     }
 }
-impl Clone for ExprClosure {
+impl Clone for expr::Closure {
     fn clone(&self) -> Self {
-        ExprClosure {
+        expr::Closure {
             attrs: self.attrs.clone(),
             lifes: self.lifes.clone(),
             const_: self.const_.clone(),
@@ -330,37 +330,37 @@ impl Clone for ExprClosure {
         }
     }
 }
-impl Clone for ExprConst {
+impl Clone for expr::Const {
     fn clone(&self) -> Self {
-        ExprConst {
+        expr::Const {
             attrs: self.attrs.clone(),
             const_: self.const_.clone(),
             block: self.block.clone(),
         }
     }
 }
-impl Clone for ExprContinue {
+impl Clone for expr::Continue {
     fn clone(&self) -> Self {
-        ExprContinue {
+        expr::Continue {
             attrs: self.attrs.clone(),
             continue_: self.continue_.clone(),
             label: self.label.clone(),
         }
     }
 }
-impl Clone for ExprField {
+impl Clone for expr::Field {
     fn clone(&self) -> Self {
-        ExprField {
+        expr::Field {
             attrs: self.attrs.clone(),
             base: self.base.clone(),
             dot: self.dot.clone(),
-            member: self.member.clone(),
+            memb: self.memb.clone(),
         }
     }
 }
-impl Clone for ExprForLoop {
+impl Clone for expr::ForLoop {
     fn clone(&self) -> Self {
-        ExprForLoop {
+        expr::ForLoop {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
             for_: self.for_.clone(),
@@ -371,18 +371,18 @@ impl Clone for ExprForLoop {
         }
     }
 }
-impl Clone for ExprGroup {
+impl Clone for expr::Group {
     fn clone(&self) -> Self {
-        ExprGroup {
+        expr::Group {
             attrs: self.attrs.clone(),
             group: self.group.clone(),
             expr: self.expr.clone(),
         }
     }
 }
-impl Clone for ExprIf {
+impl Clone for expr::If {
     fn clone(&self) -> Self {
-        ExprIf {
+        expr::If {
             attrs: self.attrs.clone(),
             if_: self.if_.clone(),
             cond: self.cond.clone(),
@@ -391,9 +391,9 @@ impl Clone for ExprIf {
         }
     }
 }
-impl Clone for ExprIndex {
+impl Clone for expr::Index {
     fn clone(&self) -> Self {
-        ExprIndex {
+        expr::Index {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
             bracket: self.bracket.clone(),
@@ -401,17 +401,17 @@ impl Clone for ExprIndex {
         }
     }
 }
-impl Clone for ExprInfer {
+impl Clone for expr::Infer {
     fn clone(&self) -> Self {
-        ExprInfer {
+        expr::Infer {
             attrs: self.attrs.clone(),
             underscore: self.underscore.clone(),
         }
     }
 }
-impl Clone for ExprLet {
+impl Clone for expr::Let {
     fn clone(&self) -> Self {
-        ExprLet {
+        expr::Let {
             attrs: self.attrs.clone(),
             let_: self.let_.clone(),
             pat: self.pat.clone(),
@@ -420,17 +420,17 @@ impl Clone for ExprLet {
         }
     }
 }
-impl Clone for ExprLit {
+impl Clone for expr::Lit {
     fn clone(&self) -> Self {
-        ExprLit {
+        expr::Lit {
             attrs: self.attrs.clone(),
             lit: self.lit.clone(),
         }
     }
 }
-impl Clone for ExprLoop {
+impl Clone for expr::Loop {
     fn clone(&self) -> Self {
-        ExprLoop {
+        expr::Loop {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
             loop_: self.loop_.clone(),
@@ -438,17 +438,17 @@ impl Clone for ExprLoop {
         }
     }
 }
-impl Clone for ExprMacro {
+impl Clone for expr::Mac {
     fn clone(&self) -> Self {
-        ExprMacro {
+        expr::Mac {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
         }
     }
 }
-impl Clone for ExprMatch {
+impl Clone for expr::Match {
     fn clone(&self) -> Self {
-        ExprMatch {
+        expr::Match {
             attrs: self.attrs.clone(),
             match_: self.match_.clone(),
             expr: self.expr.clone(),
@@ -457,11 +457,11 @@ impl Clone for ExprMatch {
         }
     }
 }
-impl Clone for ExprMethodCall {
+impl Clone for expr::MethodCall {
     fn clone(&self) -> Self {
-        ExprMethodCall {
+        expr::MethodCall {
             attrs: self.attrs.clone(),
-            receiver: self.receiver.clone(),
+            expr: self.expr.clone(),
             dot: self.dot.clone(),
             method: self.method.clone(),
             turbofish: self.turbofish.clone(),
@@ -470,37 +470,37 @@ impl Clone for ExprMethodCall {
         }
     }
 }
-impl Clone for ExprParen {
+impl Clone for expr::Paren {
     fn clone(&self) -> Self {
-        ExprParen {
+        expr::Paren {
             attrs: self.attrs.clone(),
             paren: self.paren.clone(),
             expr: self.expr.clone(),
         }
     }
 }
-impl Clone for ExprPath {
+impl Clone for expr::Path {
     fn clone(&self) -> Self {
-        ExprPath {
+        expr::Path {
             attrs: self.attrs.clone(),
             qself: self.qself.clone(),
             path: self.path.clone(),
         }
     }
 }
-impl Clone for ExprRange {
+impl Clone for expr::Range {
     fn clone(&self) -> Self {
-        ExprRange {
+        expr::Range {
             attrs: self.attrs.clone(),
-            start: self.start.clone(),
+            beg: self.beg.clone(),
             limits: self.limits.clone(),
             end: self.end.clone(),
         }
     }
 }
-impl Clone for ExprReference {
+impl Clone for expr::Ref {
     fn clone(&self) -> Self {
-        ExprReference {
+        expr::Ref {
             attrs: self.attrs.clone(),
             and: self.and.clone(),
             mut_: self.mut_.clone(),
@@ -508,9 +508,9 @@ impl Clone for ExprReference {
         }
     }
 }
-impl Clone for ExprRepeat {
+impl Clone for expr::Repeat {
     fn clone(&self) -> Self {
-        ExprRepeat {
+        expr::Repeat {
             attrs: self.attrs.clone(),
             bracket: self.bracket.clone(),
             expr: self.expr.clone(),
@@ -519,18 +519,18 @@ impl Clone for ExprRepeat {
         }
     }
 }
-impl Clone for ExprReturn {
+impl Clone for expr::Return {
     fn clone(&self) -> Self {
-        ExprReturn {
+        expr::Return {
             attrs: self.attrs.clone(),
             return_: self.return_.clone(),
             expr: self.expr.clone(),
         }
     }
 }
-impl Clone for ExprStruct {
+impl Clone for expr::Struct {
     fn clone(&self) -> Self {
-        ExprStruct {
+        expr::Struct {
             attrs: self.attrs.clone(),
             qself: self.qself.clone(),
             path: self.path.clone(),
@@ -541,54 +541,54 @@ impl Clone for ExprStruct {
         }
     }
 }
-impl Clone for ExprTry {
+impl Clone for expr::Try {
     fn clone(&self) -> Self {
-        ExprTry {
+        expr::Try {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
             question: self.question.clone(),
         }
     }
 }
-impl Clone for ExprTryBlock {
+impl Clone for expr::TryBlock {
     fn clone(&self) -> Self {
-        ExprTryBlock {
+        expr::TryBlock {
             attrs: self.attrs.clone(),
             try_: self.try_.clone(),
             block: self.block.clone(),
         }
     }
 }
-impl Clone for ExprTuple {
+impl Clone for expr::Tuple {
     fn clone(&self) -> Self {
-        ExprTuple {
+        expr::Tuple {
             attrs: self.attrs.clone(),
             paren: self.paren.clone(),
             elems: self.elems.clone(),
         }
     }
 }
-impl Clone for ExprUnary {
+impl Clone for expr::Unary {
     fn clone(&self) -> Self {
-        ExprUnary {
+        expr::Unary {
             attrs: self.attrs.clone(),
             op: self.op.clone(),
             expr: self.expr.clone(),
         }
     }
 }
-impl Clone for ExprUnsafe {
+impl Clone for expr::Unsafe {
     fn clone(&self) -> Self {
-        ExprUnsafe {
+        expr::Unsafe {
             attrs: self.attrs.clone(),
             unsafe_: self.unsafe_.clone(),
             block: self.block.clone(),
         }
     }
 }
-impl Clone for ExprWhile {
+impl Clone for expr::While {
     fn clone(&self) -> Self {
-        ExprWhile {
+        expr::While {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
             while_: self.while_.clone(),
@@ -597,9 +597,9 @@ impl Clone for ExprWhile {
         }
     }
 }
-impl Clone for ExprYield {
+impl Clone for expr::Yield {
     fn clone(&self) -> Self {
-        ExprYield {
+        expr::Yield {
             attrs: self.attrs.clone(),
             yield_: self.yield_.clone(),
             expr: self.expr.clone(),
@@ -1112,9 +1112,9 @@ impl Clone for lit::Bool {
         }
     }
 }
-impl Clone for Local {
+impl Clone for stmt::Local {
     fn clone(&self) -> Self {
-        Local {
+        stmt::Local {
             attrs: self.attrs.clone(),
             let_: self.let_.clone(),
             pat: self.pat.clone(),
@@ -1123,9 +1123,9 @@ impl Clone for Local {
         }
     }
 }
-impl Clone for LocalInit {
+impl Clone for stmt::LocalInit {
     fn clone(&self) -> Self {
-        LocalInit {
+        stmt::LocalInit {
             eq: self.eq.clone(),
             expr: self.expr.clone(),
             diverge: self.diverge.clone(),
@@ -1270,7 +1270,7 @@ impl Clone for patt::Slice {
         patt::Slice {
             attrs: self.attrs.clone(),
             bracket: self.bracket.clone(),
-            patts: self.patts.clone(),
+            elems: self.elems.clone(),
         }
     }
 }
@@ -1291,7 +1291,7 @@ impl Clone for patt::Tuple {
         patt::Tuple {
             attrs: self.attrs.clone(),
             paren: self.paren.clone(),
-            patts: self.patts.clone(),
+            elems: self.elems.clone(),
         }
     }
 }
@@ -1302,7 +1302,7 @@ impl Clone for patt::TupleStruct {
             qself: self.qself.clone(),
             path: self.path.clone(),
             paren: self.paren.clone(),
-            patts: self.patts.clone(),
+            elems: self.elems.clone(),
         }
     }
 }
@@ -1430,19 +1430,19 @@ impl Clone for StaticMut {
         }
     }
 }
-impl Clone for Stmt {
+impl Clone for stmt::Stmt {
     fn clone(&self) -> Self {
         match self {
-            Stmt::Local(v0) => Stmt::Local(v0.clone()),
-            Stmt::Item(v0) => Stmt::Item(v0.clone()),
-            Stmt::Expr(v0, v1) => Stmt::Expr(v0.clone(), v1.clone()),
-            Stmt::Macro(v0) => Stmt::Macro(v0.clone()),
+            stmt::Stmt::stmt::Local(v0) => stmt::Stmt::stmt::Local(v0.clone()),
+            stmt::Stmt::Item(v0) => stmt::Stmt::Item(v0.clone()),
+            stmt::Stmt::Expr(v0, v1) => stmt::Stmt::Expr(v0.clone(), v1.clone()),
+            stmt::Stmt::Mac(v0) => stmt::Stmt::Mac(v0.clone()),
         }
     }
 }
-impl Clone for StmtMacro {
+impl Clone for stmt::Mac {
     fn clone(&self) -> Self {
-        StmtMacro {
+        stmt::Mac {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
             semi: self.semi.clone(),

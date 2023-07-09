@@ -76,118 +76,118 @@ pub trait Fold {
     fn fold_expr(&mut self, i: Expr) -> Expr {
         fold_expr(self, i)
     }
-    fn fold_expr_array(&mut self, i: ExprArray) -> ExprArray {
+    fn fold_expr_array(&mut self, i: expr::Array) -> expr::Array {
         fold_expr_array(self, i)
     }
-    fn fold_expr_assign(&mut self, i: ExprAssign) -> ExprAssign {
+    fn fold_expr_assign(&mut self, i: expr::Assign) -> expr::Assign {
         fold_expr_assign(self, i)
     }
-    fn fold_expr_async(&mut self, i: ExprAsync) -> ExprAsync {
+    fn fold_expr_async(&mut self, i: expr::Async) -> expr::Async {
         fold_expr_async(self, i)
     }
-    fn fold_expr_await(&mut self, i: ExprAwait) -> ExprAwait {
+    fn fold_expr_await(&mut self, i: expr::Await) -> expr::Await {
         fold_expr_await(self, i)
     }
-    fn fold_expr_binary(&mut self, i: ExprBinary) -> ExprBinary {
+    fn fold_expr_binary(&mut self, i: expr::Binary) -> expr::Binary {
         fold_expr_binary(self, i)
     }
-    fn fold_expr_block(&mut self, i: ExprBlock) -> ExprBlock {
+    fn fold_expr_block(&mut self, i: expr::Block) -> expr::Block {
         fold_expr_block(self, i)
     }
-    fn fold_expr_break(&mut self, i: ExprBreak) -> ExprBreak {
+    fn fold_expr_break(&mut self, i: expr::Break) -> expr::Break {
         fold_expr_break(self, i)
     }
-    fn fold_expr_call(&mut self, i: ExprCall) -> ExprCall {
+    fn fold_expr_call(&mut self, i: expr::Call) -> expr::Call {
         fold_expr_call(self, i)
     }
-    fn fold_expr_cast(&mut self, i: ExprCast) -> ExprCast {
+    fn fold_expr_cast(&mut self, i: expr::Cast) -> expr::Cast {
         fold_expr_cast(self, i)
     }
-    fn fold_expr_closure(&mut self, i: ExprClosure) -> ExprClosure {
+    fn fold_expr_closure(&mut self, i: expr::Closure) -> expr::Closure {
         fold_expr_closure(self, i)
     }
-    fn fold_expr_const(&mut self, i: ExprConst) -> ExprConst {
+    fn fold_expr_const(&mut self, i: expr::Const) -> expr::Const {
         fold_expr_const(self, i)
     }
-    fn fold_expr_continue(&mut self, i: ExprContinue) -> ExprContinue {
+    fn fold_expr_continue(&mut self, i: expr::Continue) -> expr::Continue {
         fold_expr_continue(self, i)
     }
-    fn fold_expr_field(&mut self, i: ExprField) -> ExprField {
+    fn fold_expr_field(&mut self, i: expr::Field) -> expr::Field {
         fold_expr_field(self, i)
     }
-    fn fold_expr_for_loop(&mut self, i: ExprForLoop) -> ExprForLoop {
+    fn fold_expr_for_loop(&mut self, i: expr::ForLoop) -> expr::ForLoop {
         fold_expr_for_loop(self, i)
     }
-    fn fold_expr_group(&mut self, i: ExprGroup) -> ExprGroup {
+    fn fold_expr_group(&mut self, i: expr::Group) -> expr::Group {
         fold_expr_group(self, i)
     }
-    fn fold_expr_if(&mut self, i: ExprIf) -> ExprIf {
+    fn fold_expr_if(&mut self, i: expr::If) -> expr::If {
         fold_expr_if(self, i)
     }
-    fn fold_expr_index(&mut self, i: ExprIndex) -> ExprIndex {
+    fn fold_expr_index(&mut self, i: expr::Index) -> expr::Index {
         fold_expr_index(self, i)
     }
-    fn fold_expr_infer(&mut self, i: ExprInfer) -> ExprInfer {
+    fn fold_expr_infer(&mut self, i: expr::Infer) -> expr::Infer {
         fold_expr_infer(self, i)
     }
-    fn fold_expr_let(&mut self, i: ExprLet) -> ExprLet {
+    fn fold_expr_let(&mut self, i: expr::Let) -> expr::Let {
         fold_expr_let(self, i)
     }
-    fn fold_expr_lit(&mut self, i: ExprLit) -> ExprLit {
+    fn fold_expr_lit(&mut self, i: expr::Lit) -> expr::Lit {
         fold_expr_lit(self, i)
     }
-    fn fold_expr_loop(&mut self, i: ExprLoop) -> ExprLoop {
+    fn fold_expr_loop(&mut self, i: expr::Loop) -> expr::Loop {
         fold_expr_loop(self, i)
     }
-    fn fold_expr_macro(&mut self, i: ExprMacro) -> ExprMacro {
+    fn fold_expr_macro(&mut self, i: expr::Mac) -> expr::Mac {
         fold_expr_macro(self, i)
     }
-    fn fold_expr_match(&mut self, i: ExprMatch) -> ExprMatch {
+    fn fold_expr_match(&mut self, i: expr::Match) -> expr::Match {
         fold_expr_match(self, i)
     }
-    fn fold_expr_method_call(&mut self, i: ExprMethodCall) -> ExprMethodCall {
+    fn fold_expr_method_call(&mut self, i: expr::MethodCall) -> expr::MethodCall {
         fold_expr_method_call(self, i)
     }
-    fn fold_expr_paren(&mut self, i: ExprParen) -> ExprParen {
+    fn fold_expr_paren(&mut self, i: expr::Paren) -> expr::Paren {
         fold_expr_paren(self, i)
     }
-    fn fold_expr_path(&mut self, i: ExprPath) -> ExprPath {
+    fn fold_expr_path(&mut self, i: expr::Path) -> expr::Path {
         fold_expr_path(self, i)
     }
-    fn fold_expr_range(&mut self, i: ExprRange) -> ExprRange {
+    fn fold_expr_range(&mut self, i: expr::Range) -> expr::Range {
         fold_expr_range(self, i)
     }
-    fn fold_expr_reference(&mut self, i: ExprReference) -> ExprReference {
+    fn fold_expr_reference(&mut self, i: expr::Ref) -> expr::Ref {
         fold_expr_reference(self, i)
     }
-    fn fold_expr_repeat(&mut self, i: ExprRepeat) -> ExprRepeat {
+    fn fold_expr_repeat(&mut self, i: expr::Repeat) -> expr::Repeat {
         fold_expr_repeat(self, i)
     }
-    fn fold_expr_return(&mut self, i: ExprReturn) -> ExprReturn {
+    fn fold_expr_return(&mut self, i: expr::Return) -> expr::Return {
         fold_expr_return(self, i)
     }
-    fn fold_expr_struct(&mut self, i: ExprStruct) -> ExprStruct {
+    fn fold_expr_struct(&mut self, i: expr::Struct) -> expr::Struct {
         fold_expr_struct(self, i)
     }
-    fn fold_expr_try(&mut self, i: ExprTry) -> ExprTry {
+    fn fold_expr_try(&mut self, i: expr::Try) -> expr::Try {
         fold_expr_try(self, i)
     }
-    fn fold_expr_try_block(&mut self, i: ExprTryBlock) -> ExprTryBlock {
+    fn fold_expr_try_block(&mut self, i: expr::TryBlock) -> expr::TryBlock {
         fold_expr_try_block(self, i)
     }
-    fn fold_expr_tuple(&mut self, i: ExprTuple) -> ExprTuple {
+    fn fold_expr_tuple(&mut self, i: expr::Tuple) -> expr::Tuple {
         fold_expr_tuple(self, i)
     }
-    fn fold_expr_unary(&mut self, i: ExprUnary) -> ExprUnary {
+    fn fold_expr_unary(&mut self, i: expr::Unary) -> expr::Unary {
         fold_expr_unary(self, i)
     }
-    fn fold_expr_unsafe(&mut self, i: ExprUnsafe) -> ExprUnsafe {
+    fn fold_expr_unsafe(&mut self, i: expr::Unsafe) -> expr::Unsafe {
         fold_expr_unsafe(self, i)
     }
-    fn fold_expr_while(&mut self, i: ExprWhile) -> ExprWhile {
+    fn fold_expr_while(&mut self, i: expr::While) -> expr::While {
         fold_expr_while(self, i)
     }
-    fn fold_expr_yield(&mut self, i: ExprYield) -> ExprYield {
+    fn fold_expr_yield(&mut self, i: expr::Yield) -> expr::Yield {
         fold_expr_yield(self, i)
     }
     fn fold_field(&mut self, i: Field) -> Field {
@@ -346,10 +346,10 @@ pub trait Fold {
     fn fold_lit_str(&mut self, i: lit::Str) -> lit::Str {
         fold_lit_str(self, i)
     }
-    fn fold_local(&mut self, i: Local) -> Local {
+    fn fold_local(&mut self, i: stmt::Local) -> stmt::Local {
         fold_local(self, i)
     }
-    fn fold_local_init(&mut self, i: LocalInit) -> LocalInit {
+    fn fold_local_init(&mut self, i: stmt::LocalInit) -> stmt::LocalInit {
         fold_local_init(self, i)
     }
     fn fold_macro(&mut self, i: Macro) -> Macro {
@@ -445,10 +445,10 @@ pub trait Fold {
     fn fold_static_mutability(&mut self, i: StaticMut) -> StaticMut {
         fold_static_mutability(self, i)
     }
-    fn fold_stmt(&mut self, i: Stmt) -> Stmt {
+    fn fold_stmt(&mut self, i: stmt::Stmt) -> stmt::Stmt {
         fold_stmt(self, i)
     }
-    fn fold_stmt_macro(&mut self, i: StmtMacro) -> StmtMacro {
+    fn fold_stmt_macro(&mut self, i: stmt::Mac) -> stmt::Mac {
         fold_stmt_macro(self, i)
     }
     fn fold_trait_bound(&mut self, i: TraitBound) -> TraitBound {
@@ -836,108 +836,108 @@ where
         Expr::Yield(_binding_0) => Expr::Yield(full!(f.fold_expr_yield(_binding_0))),
     }
 }
-pub fn fold_expr_array<F>(f: &mut F, node: ExprArray) -> ExprArray
+pub fn fold_expr_array<F>(f: &mut F, node: expr::Array) -> expr::Array
 where
     F: Fold + ?Sized,
 {
-    ExprArray {
+    expr::Array {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         bracket: node.bracket,
         elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
     }
 }
-pub fn fold_expr_assign<F>(f: &mut F, node: ExprAssign) -> ExprAssign
+pub fn fold_expr_assign<F>(f: &mut F, node: expr::Assign) -> expr::Assign
 where
     F: Fold + ?Sized,
 {
-    ExprAssign {
+    expr::Assign {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         left: Box::new(f.fold_expr(*node.left)),
         eq: node.eq,
         right: Box::new(f.fold_expr(*node.right)),
     }
 }
-pub fn fold_expr_async<F>(f: &mut F, node: ExprAsync) -> ExprAsync
+pub fn fold_expr_async<F>(f: &mut F, node: expr::Async) -> expr::Async
 where
     F: Fold + ?Sized,
 {
-    ExprAsync {
+    expr::Async {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         async_: node.async_,
-        capture: node.capture,
+        move_: node.move_,
         block: f.fold_block(node.block),
     }
 }
-pub fn fold_expr_await<F>(f: &mut F, node: ExprAwait) -> ExprAwait
+pub fn fold_expr_await<F>(f: &mut F, node: expr::Await) -> expr::Await
 where
     F: Fold + ?Sized,
 {
-    ExprAwait {
+    expr::Await {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        base: Box::new(f.fold_expr(*node.base)),
+        expr: Box::new(f.fold_expr(*node.expr)),
         dot: node.dot,
         await_: node.await_,
     }
 }
-pub fn fold_expr_binary<F>(f: &mut F, node: ExprBinary) -> ExprBinary
+pub fn fold_expr_binary<F>(f: &mut F, node: expr::Binary) -> expr::Binary
 where
     F: Fold + ?Sized,
 {
-    ExprBinary {
+    expr::Binary {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         left: Box::new(f.fold_expr(*node.left)),
         op: f.fold_bin_op(node.op),
         right: Box::new(f.fold_expr(*node.right)),
     }
 }
-pub fn fold_expr_block<F>(f: &mut F, node: ExprBlock) -> ExprBlock
+pub fn fold_expr_block<F>(f: &mut F, node: expr::Block) -> expr::Block
 where
     F: Fold + ?Sized,
 {
-    ExprBlock {
+    expr::Block {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
         block: f.fold_block(node.block),
     }
 }
-pub fn fold_expr_break<F>(f: &mut F, node: ExprBreak) -> ExprBreak
+pub fn fold_expr_break<F>(f: &mut F, node: expr::Break) -> expr::Break
 where
     F: Fold + ?Sized,
 {
-    ExprBreak {
+    expr::Break {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         break_: node.break_,
         label: (node.label).map(|it| f.fold_lifetime(it)),
         expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
-pub fn fold_expr_call<F>(f: &mut F, node: ExprCall) -> ExprCall
+pub fn fold_expr_call<F>(f: &mut F, node: expr::Call) -> expr::Call
 where
     F: Fold + ?Sized,
 {
-    ExprCall {
+    expr::Call {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         func: Box::new(f.fold_expr(*node.func)),
         paren: node.paren,
         args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
     }
 }
-pub fn fold_expr_cast<F>(f: &mut F, node: ExprCast) -> ExprCast
+pub fn fold_expr_cast<F>(f: &mut F, node: expr::Cast) -> expr::Cast
 where
     F: Fold + ?Sized,
 {
-    ExprCast {
+    expr::Cast {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
         as_: node.as_,
         typ: Box::new(f.fold_type(*node.typ)),
     }
 }
-pub fn fold_expr_closure<F>(f: &mut F, node: ExprClosure) -> ExprClosure
+pub fn fold_expr_closure<F>(f: &mut F, node: expr::Closure) -> expr::Closure
 where
     F: Fold + ?Sized,
 {
-    ExprClosure {
+    expr::Closure {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         const_: node.const_,
@@ -951,42 +951,42 @@ where
         body: Box::new(f.fold_expr(*node.body)),
     }
 }
-pub fn fold_expr_const<F>(f: &mut F, node: ExprConst) -> ExprConst
+pub fn fold_expr_const<F>(f: &mut F, node: expr::Const) -> expr::Const
 where
     F: Fold + ?Sized,
 {
-    ExprConst {
+    expr::Const {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         const_: node.const_,
         block: f.fold_block(node.block),
     }
 }
-pub fn fold_expr_continue<F>(f: &mut F, node: ExprContinue) -> ExprContinue
+pub fn fold_expr_continue<F>(f: &mut F, node: expr::Continue) -> expr::Continue
 where
     F: Fold + ?Sized,
 {
-    ExprContinue {
+    expr::Continue {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         continue_: node.continue_,
         label: (node.label).map(|it| f.fold_lifetime(it)),
     }
 }
-pub fn fold_expr_field<F>(f: &mut F, node: ExprField) -> ExprField
+pub fn fold_expr_field<F>(f: &mut F, node: expr::Field) -> expr::Field
 where
     F: Fold + ?Sized,
 {
-    ExprField {
+    expr::Field {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         base: Box::new(f.fold_expr(*node.base)),
         dot: node.dot,
-        member: f.fold_member(node.member),
+        memb: f.fold_member(node.memb),
     }
 }
-pub fn fold_expr_for_loop<F>(f: &mut F, node: ExprForLoop) -> ExprForLoop
+pub fn fold_expr_for_loop<F>(f: &mut F, node: expr::ForLoop) -> expr::ForLoop
 where
     F: Fold + ?Sized,
 {
-    ExprForLoop {
+    expr::ForLoop {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
         for_: node.for_,
@@ -996,21 +996,21 @@ where
         body: f.fold_block(node.body),
     }
 }
-pub fn fold_expr_group<F>(f: &mut F, node: ExprGroup) -> ExprGroup
+pub fn fold_expr_group<F>(f: &mut F, node: expr::Group) -> expr::Group
 where
     F: Fold + ?Sized,
 {
-    ExprGroup {
+    expr::Group {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         group: node.group,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
-pub fn fold_expr_if<F>(f: &mut F, node: ExprIf) -> ExprIf
+pub fn fold_expr_if<F>(f: &mut F, node: expr::If) -> expr::If
 where
     F: Fold + ?Sized,
 {
-    ExprIf {
+    expr::If {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         if_: node.if_,
         cond: Box::new(f.fold_expr(*node.cond)),
@@ -1018,31 +1018,31 @@ where
         else_branch: (node.else_branch).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
     }
 }
-pub fn fold_expr_index<F>(f: &mut F, node: ExprIndex) -> ExprIndex
+pub fn fold_expr_index<F>(f: &mut F, node: expr::Index) -> expr::Index
 where
     F: Fold + ?Sized,
 {
-    ExprIndex {
+    expr::Index {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
         bracket: node.bracket,
         index: Box::new(f.fold_expr(*node.index)),
     }
 }
-pub fn fold_expr_infer<F>(f: &mut F, node: ExprInfer) -> ExprInfer
+pub fn fold_expr_infer<F>(f: &mut F, node: expr::Infer) -> expr::Infer
 where
     F: Fold + ?Sized,
 {
-    ExprInfer {
+    expr::Infer {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         underscore: node.underscore,
     }
 }
-pub fn fold_expr_let<F>(f: &mut F, node: ExprLet) -> ExprLet
+pub fn fold_expr_let<F>(f: &mut F, node: expr::Let) -> expr::Let
 where
     F: Fold + ?Sized,
 {
-    ExprLet {
+    expr::Let {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         let_: node.let_,
         pat: Box::new(f.fold_pat(*node.pat)),
@@ -1050,40 +1050,40 @@ where
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
-pub fn fold_expr_lit<F>(f: &mut F, node: ExprLit) -> ExprLit
+pub fn fold_expr_lit<F>(f: &mut F, node: expr::Lit) -> expr::Lit
 where
     F: Fold + ?Sized,
 {
-    ExprLit {
+    expr::Lit {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         lit: f.fold_lit(node.lit),
     }
 }
-pub fn fold_expr_loop<F>(f: &mut F, node: ExprLoop) -> ExprLoop
+pub fn fold_expr_loop<F>(f: &mut F, node: expr::Loop) -> expr::Loop
 where
     F: Fold + ?Sized,
 {
-    ExprLoop {
+    expr::Loop {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
         loop_: node.loop_,
         body: f.fold_block(node.body),
     }
 }
-pub fn fold_expr_macro<F>(f: &mut F, node: ExprMacro) -> ExprMacro
+pub fn fold_expr_macro<F>(f: &mut F, node: expr::Mac) -> expr::Mac
 where
     F: Fold + ?Sized,
 {
-    ExprMacro {
+    expr::Mac {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         mac: f.fold_macro(node.mac),
     }
 }
-pub fn fold_expr_match<F>(f: &mut F, node: ExprMatch) -> ExprMatch
+pub fn fold_expr_match<F>(f: &mut F, node: expr::Match) -> expr::Match
 where
     F: Fold + ?Sized,
 {
-    ExprMatch {
+    expr::Match {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         match_: node.match_,
         expr: Box::new(f.fold_expr(*node.expr)),
@@ -1091,13 +1091,13 @@ where
         arms: FoldHelper::lift(node.arms, |it| f.fold_arm(it)),
     }
 }
-pub fn fold_expr_method_call<F>(f: &mut F, node: ExprMethodCall) -> ExprMethodCall
+pub fn fold_expr_method_call<F>(f: &mut F, node: expr::MethodCall) -> expr::MethodCall
 where
     F: Fold + ?Sized,
 {
-    ExprMethodCall {
+    expr::MethodCall {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        receiver: Box::new(f.fold_expr(*node.receiver)),
+        expr: Box::new(f.fold_expr(*node.expr)),
         dot: node.dot,
         method: f.fold_ident(node.method),
         turbofish: (node.turbofish).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
@@ -1105,53 +1105,53 @@ where
         args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
     }
 }
-pub fn fold_expr_paren<F>(f: &mut F, node: ExprParen) -> ExprParen
+pub fn fold_expr_paren<F>(f: &mut F, node: expr::Paren) -> expr::Paren
 where
     F: Fold + ?Sized,
 {
-    ExprParen {
+    expr::Paren {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         paren: node.paren,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
-pub fn fold_expr_path<F>(f: &mut F, node: ExprPath) -> ExprPath
+pub fn fold_expr_path<F>(f: &mut F, node: expr::Path) -> expr::Path
 where
     F: Fold + ?Sized,
 {
-    ExprPath {
+    expr::Path {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
     }
 }
-pub fn fold_expr_range<F>(f: &mut F, node: ExprRange) -> ExprRange
+pub fn fold_expr_range<F>(f: &mut F, node: expr::Range) -> expr::Range
 where
     F: Fold + ?Sized,
 {
-    ExprRange {
+    expr::Range {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        start: (node.start).map(|it| Box::new(f.fold_expr(*it))),
+        beg: (node.beg).map(|it| Box::new(f.fold_expr(*it))),
         limits: f.fold_range_limits(node.limits),
         end: (node.end).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
-pub fn fold_expr_reference<F>(f: &mut F, node: ExprReference) -> ExprReference
+pub fn fold_expr_reference<F>(f: &mut F, node: expr::Ref) -> expr::Ref
 where
     F: Fold + ?Sized,
 {
-    ExprReference {
+    expr::Ref {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         and: node.and,
         mut_: node.mut_,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
-pub fn fold_expr_repeat<F>(f: &mut F, node: ExprRepeat) -> ExprRepeat
+pub fn fold_expr_repeat<F>(f: &mut F, node: expr::Repeat) -> expr::Repeat
 where
     F: Fold + ?Sized,
 {
-    ExprRepeat {
+    expr::Repeat {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         bracket: node.bracket,
         expr: Box::new(f.fold_expr(*node.expr)),
@@ -1159,21 +1159,21 @@ where
         len: Box::new(f.fold_expr(*node.len)),
     }
 }
-pub fn fold_expr_return<F>(f: &mut F, node: ExprReturn) -> ExprReturn
+pub fn fold_expr_return<F>(f: &mut F, node: expr::Return) -> expr::Return
 where
     F: Fold + ?Sized,
 {
-    ExprReturn {
+    expr::Return {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         return_: node.return_,
         expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
-pub fn fold_expr_struct<F>(f: &mut F, node: ExprStruct) -> ExprStruct
+pub fn fold_expr_struct<F>(f: &mut F, node: expr::Struct) -> expr::Struct
 where
     F: Fold + ?Sized,
 {
-    ExprStruct {
+    expr::Struct {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
@@ -1183,61 +1183,61 @@ where
         rest: (node.rest).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
-pub fn fold_expr_try<F>(f: &mut F, node: ExprTry) -> ExprTry
+pub fn fold_expr_try<F>(f: &mut F, node: expr::Try) -> expr::Try
 where
     F: Fold + ?Sized,
 {
-    ExprTry {
+    expr::Try {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
         question: node.question,
     }
 }
-pub fn fold_expr_try_block<F>(f: &mut F, node: ExprTryBlock) -> ExprTryBlock
+pub fn fold_expr_try_block<F>(f: &mut F, node: expr::TryBlock) -> expr::TryBlock
 where
     F: Fold + ?Sized,
 {
-    ExprTryBlock {
+    expr::TryBlock {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         try_: node.try_,
         block: f.fold_block(node.block),
     }
 }
-pub fn fold_expr_tuple<F>(f: &mut F, node: ExprTuple) -> ExprTuple
+pub fn fold_expr_tuple<F>(f: &mut F, node: expr::Tuple) -> expr::Tuple
 where
     F: Fold + ?Sized,
 {
-    ExprTuple {
+    expr::Tuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
     }
 }
-pub fn fold_expr_unary<F>(f: &mut F, node: ExprUnary) -> ExprUnary
+pub fn fold_expr_unary<F>(f: &mut F, node: expr::Unary) -> expr::Unary
 where
     F: Fold + ?Sized,
 {
-    ExprUnary {
+    expr::Unary {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         op: f.fold_un_op(node.op),
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
-pub fn fold_expr_unsafe<F>(f: &mut F, node: ExprUnsafe) -> ExprUnsafe
+pub fn fold_expr_unsafe<F>(f: &mut F, node: expr::Unsafe) -> expr::Unsafe
 where
     F: Fold + ?Sized,
 {
-    ExprUnsafe {
+    expr::Unsafe {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         unsafe_: node.unsafe_,
         block: f.fold_block(node.block),
     }
 }
-pub fn fold_expr_while<F>(f: &mut F, node: ExprWhile) -> ExprWhile
+pub fn fold_expr_while<F>(f: &mut F, node: expr::While) -> expr::While
 where
     F: Fold + ?Sized,
 {
-    ExprWhile {
+    expr::While {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
         while_: node.while_,
@@ -1245,11 +1245,11 @@ where
         body: f.fold_block(node.body),
     }
 }
-pub fn fold_expr_yield<F>(f: &mut F, node: ExprYield) -> ExprYield
+pub fn fold_expr_yield<F>(f: &mut F, node: expr::Yield) -> expr::Yield
 where
     F: Fold + ?Sized,
 {
-    ExprYield {
+    expr::Yield {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         yield_: node.yield_,
         expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
@@ -1877,11 +1877,11 @@ where
     node.set_span(span);
     node
 }
-pub fn fold_local<F>(f: &mut F, node: Local) -> Local
+pub fn fold_local<F>(f: &mut F, node: stmt::Local) -> stmt::Local
 where
     F: Fold + ?Sized,
 {
-    Local {
+    stmt::Local {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         let_: node.let_,
         pat: f.fold_pat(node.pat),
@@ -1889,11 +1889,11 @@ where
         semi: node.semi,
     }
 }
-pub fn fold_local_init<F>(f: &mut F, node: LocalInit) -> LocalInit
+pub fn fold_local_init<F>(f: &mut F, node: stmt::LocalInit) -> stmt::LocalInit
 where
     F: Fold + ?Sized,
 {
-    LocalInit {
+    stmt::LocalInit {
         eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
         diverge: (node.diverge).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
@@ -2052,7 +2052,7 @@ where
     patt::Slice {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         bracket: node.bracket,
-        patts: FoldHelper::lift(node.patts, |it| f.fold_pat(it)),
+        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
 pub fn fold_pat_struct<F>(f: &mut F, node: patt::Struct) -> patt::Struct
@@ -2075,7 +2075,7 @@ where
     patt::Tuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         paren: node.paren,
-        patts: FoldHelper::lift(node.patts, |it| f.fold_pat(it)),
+        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
 pub fn fold_pat_tuple_struct<F>(f: &mut F, node: patt::TupleStructuct) patt::TupleStructStruct
@@ -2235,22 +2235,22 @@ where
         StaticMut::None => StaticMut::None,
     }
 }
-pub fn fold_stmt<F>(f: &mut F, node: Stmt) -> Stmt
+pub fn fold_stmt<F>(f: &mut F, node: stmt::Stmt) -> stmt::Stmt
 where
     F: Fold + ?Sized,
 {
     match node {
-        Stmt::Local(_binding_0) => Stmt::Local(f.fold_local(_binding_0)),
-        Stmt::Item(_binding_0) => Stmt::Item(f.fold_item(_binding_0)),
-        Stmt::Expr(_binding_0, _binding_1) => Stmt::Expr(f.fold_expr(_binding_0), _binding_1),
-        Stmt::Macro(_binding_0) => Stmt::Macro(f.fold_stmt_macro(_binding_0)),
+        stmt::Stmt::stmt::Local(_binding_0) => stmt::Stmt::stmt::Local(f.fold_local(_binding_0)),
+        stmt::Stmt::Item(_binding_0) => stmt::Stmt::Item(f.fold_item(_binding_0)),
+        stmt::Stmt::Expr(_binding_0, _binding_1) => stmt::Stmt::Expr(f.fold_expr(_binding_0), _binding_1),
+        stmt::Stmt::Mac(_binding_0) => stmt::Stmt::Mac(f.fold_stmt_macro(_binding_0)),
     }
 }
-pub fn fold_stmt_macro<F>(f: &mut F, node: StmtMacro) -> StmtMacro
+pub fn fold_stmt_macro<F>(f: &mut F, node: stmt::Mac) -> stmt::Mac
 where
     F: Fold + ?Sized,
 {
-    StmtMacro {
+    stmt::Mac {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         mac: f.fold_macro(node.mac),
         semi: node.semi,

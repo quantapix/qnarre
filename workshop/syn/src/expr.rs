@@ -1,530 +1,457 @@
-use super::*;
-use crate::punct::Punctuated;
+use super::{punct::Punctuated, *};
 use proc_macro2::{Span, TokenStream};
 use quote::IdentFragment;
-use std::fmt::{self, Display};
-use std::hash::{Hash, Hasher};
-use std::mem;
+use std::{
+    fmt::{self, Display},
+    hash::{Hash, Hasher},
+    mem,
+};
+
 ast_enum_of_structs! {
     pub enum Expr {
-        Array(ExprArray),
-        Assign(ExprAssign),
-        Async(ExprAsync),
-        Await(ExprAwait),
-        Binary(ExprBinary),
-        Block(ExprBlock),
-        Break(ExprBreak),
-        Call(ExprCall),
-        Cast(ExprCast),
-        Closure(ExprClosure),
-        Const(ExprConst),
-        Continue(ExprContinue),
-        Field(ExprField),
-        ForLoop(ExprForLoop),
-        Group(ExprGroup),
-        If(ExprIf),
-        Index(ExprIndex),
-        Infer(ExprInfer),
-        Let(ExprLet),
-        Lit(ExprLit),
-        Loop(ExprLoop),
-        Macro(ExprMacro),
-        Match(ExprMatch),
-        MethodCall(ExprMethodCall),
-        Paren(ExprParen),
-        Path(ExprPath),
-        Range(ExprRange),
-        Reference(ExprReference),
-        Repeat(ExprRepeat),
-        Return(ExprReturn),
-        Struct(ExprStruct),
-        Try(ExprTry),
-        TryBlock(ExprTryBlock),
-        Tuple(ExprTuple),
-        Unary(ExprUnary),
-        Unsafe(ExprUnsafe),
+        Array(Array),
+        Assign(Assign),
+        Async(Async),
+        Await(Await),
+        Binary(Binary),
+        Block(Block),
+        Break(Break),
+        Call(Call),
+        Cast(Cast),
+        Closure(Closure),
+        Const(Const),
+        Continue(Continue),
+        Field(Field),
+        ForLoop(ForLoop),
+        Group(Group),
+        If(If),
+        Index(Index),
+        Infer(Infer),
+        Let(Let),
+        Lit(Lit),
+        Loop(Loop),
+        Mac(Mac),
+        Match(Match),
+        MethodCall(MethodCall),
+        Paren(Paren),
+        Path(Path),
+        Range(Range),
+        Ref(Ref),
+        Repeat(Repeat),
+        Return(Return),
+        Struct(Struct),
+        Try(Try),
+        TryBlock(TryBlock),
+        Tuple(Tuple),
+        Unary(Unary),
+        Unsafe(Unsafe),
         Verbatim(TokenStream),
-        While(ExprWhile),
-        Yield(ExprYield),
+        While(While),
+        Yield(Yield),
     }
 }
-ast_struct! {
-    pub struct ExprArray #full {
-        pub attrs: Vec<Attribute>,
-        pub bracket: tok::Bracket,
-        pub elems: Punctuated<Expr, Token![,]>,
-    }
+
+pub struct Array {
+    pub attrs: Vec<Attribute>,
+    pub bracket: tok::Bracket,
+    pub elems: Punctuated<Expr, Token![,]>,
 }
-ast_struct! {
-    pub struct ExprAssign #full {
-        pub attrs: Vec<Attribute>,
-        pub left: Box<Expr>,
-        pub eq: Token![=],
-        pub right: Box<Expr>,
-    }
+
+pub struct Assign {
+    pub attrs: Vec<Attribute>,
+    pub left: Box<Expr>,
+    pub eq: Token![=],
+    pub right: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprAsync #full {
-        pub attrs: Vec<Attribute>,
-        pub async_: Token![async],
-        pub capture: Option<Token![move]>,
-        pub block: Block,
-    }
+pub struct Async {
+    pub attrs: Vec<Attribute>,
+    pub async_: Token![async],
+    pub move_: Option<Token![move]>,
+    pub block: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprAwait #full {
-        pub attrs: Vec<Attribute>,
-        pub base: Box<Expr>,
-        pub dot: Token![.],
-        pub await_: Token![await],
-    }
+pub struct Await {
+    pub attrs: Vec<Attribute>,
+    pub expr: Box<Expr>,
+    pub dot: Token![.],
+    pub await_: Token![await],
 }
-ast_struct! {
-    pub struct ExprBinary {
-        pub attrs: Vec<Attribute>,
-        pub left: Box<Expr>,
-        pub op: BinOp,
-        pub right: Box<Expr>,
-    }
+pub struct Binary {
+    pub attrs: Vec<Attribute>,
+    pub left: Box<Expr>,
+    pub op: BinOp,
+    pub right: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprBlock #full {
-        pub attrs: Vec<Attribute>,
-        pub label: Option<Label>,
-        pub block: Block,
-    }
+pub struct Block {
+    pub attrs: Vec<Attribute>,
+    pub label: Option<Label>,
+    pub block: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprBreak #full {
-        pub attrs: Vec<Attribute>,
-        pub break_: Token![break],
-        pub label: Option<Lifetime>,
-        pub expr: Option<Box<Expr>>,
-    }
+pub struct Break {
+    pub attrs: Vec<Attribute>,
+    pub break_: Token![break],
+    pub label: Option<Lifetime>,
+    pub expr: Option<Box<Expr>>,
 }
-ast_struct! {
-    pub struct ExprCall {
-        pub attrs: Vec<Attribute>,
-        pub func: Box<Expr>,
-        pub paren: tok::Paren,
-        pub args: Punctuated<Expr, Token![,]>,
-    }
+pub struct Call {
+    pub attrs: Vec<Attribute>,
+    pub func: Box<Expr>,
+    pub paren: tok::Paren,
+    pub args: Punctuated<Expr, Token![,]>,
 }
-ast_struct! {
-    pub struct ExprCast {
-        pub attrs: Vec<Attribute>,
-        pub expr: Box<Expr>,
-        pub as_: Token![as],
-        pub typ: Box<ty::Type>,
-    }
+pub struct Cast {
+    pub attrs: Vec<Attribute>,
+    pub expr: Box<Expr>,
+    pub as_: Token![as],
+    pub typ: Box<ty::Type>,
 }
-ast_struct! {
-    pub struct ExprClosure #full {
-        pub attrs: Vec<Attribute>,
-        pub lifes: Option<BoundLifetimes>,
-        pub const_: Option<Token![const]>,
-        pub static_: Option<Token![static]>,
-        pub async_: Option<Token![async]>,
-        pub move_: Option<Token![move]>,
-        pub or1: Token![|],
-        pub inputs: Punctuated<patt::Patt, Token![,]>,
-        pub or2: Token![|],
-        pub ret: ty::Ret,
-        pub body: Box<Expr>,
-    }
+pub struct Closure {
+    pub attrs: Vec<Attribute>,
+    pub lifes: Option<BoundLifetimes>,
+    pub const_: Option<Token![const]>,
+    pub static_: Option<Token![static]>,
+    pub async_: Option<Token![async]>,
+    pub move_: Option<Token![move]>,
+    pub or1: Token![|],
+    pub ins: Punctuated<patt::Patt, Token![,]>,
+    pub or2: Token![|],
+    pub ret: ty::Ret,
+    pub body: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprConst #full {
-        pub attrs: Vec<Attribute>,
-        pub const_: Token![const],
-        pub block: Block,
-    }
+pub struct Const {
+    pub attrs: Vec<Attribute>,
+    pub const_: Token![const],
+    pub block: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprContinue #full {
-        pub attrs: Vec<Attribute>,
-        pub continue_: Token![continue],
-        pub label: Option<Lifetime>,
-    }
+pub struct Continue {
+    pub attrs: Vec<Attribute>,
+    pub continue_: Token![continue],
+    pub label: Option<Lifetime>,
 }
-ast_struct! {
-    pub struct ExprField {
-        pub attrs: Vec<Attribute>,
-        pub base: Box<Expr>,
-        pub dot: Token![.],
-        pub member: Member,
-    }
+pub struct Field {
+    pub attrs: Vec<Attribute>,
+    pub expr: Box<Expr>,
+    pub dot: Token![.],
+    pub memb: Member,
 }
-ast_struct! {
-    pub struct ExprForLoop #full {
-        pub attrs: Vec<Attribute>,
-        pub label: Option<Label>,
-        pub for_: Token![for],
-        pub pat: Box<patt::Patt>,
-        pub in_: Token![in],
-        pub expr: Box<Expr>,
-        pub body: Block,
-    }
+pub struct ForLoop {
+    pub attrs: Vec<Attribute>,
+    pub label: Option<Label>,
+    pub for_: Token![for],
+    pub patt: Box<patt::Patt>,
+    pub in_: Token![in],
+    pub expr: Box<Expr>,
+    pub body: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprGroup {
-        pub attrs: Vec<Attribute>,
-        pub group: tok::Group,
-        pub expr: Box<Expr>,
-    }
+pub struct Group {
+    pub attrs: Vec<Attribute>,
+    pub group: tok::Group,
+    pub expr: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprIf #full {
-        pub attrs: Vec<Attribute>,
-        pub if_: Token![if],
-        pub cond: Box<Expr>,
-        pub then_branch: Block,
-        pub else_branch: Option<(Token![else], Box<Expr>)>,
-    }
+pub struct If {
+    pub attrs: Vec<Attribute>,
+    pub if_: Token![if],
+    pub cond: Box<Expr>,
+    pub then_: stmt::Block,
+    pub else_: Option<(Token![else], Box<Expr>)>,
 }
-ast_struct! {
-    pub struct ExprIndex {
-        pub attrs: Vec<Attribute>,
-        pub expr: Box<Expr>,
-        pub bracket: tok::Bracket,
-        pub index: Box<Expr>,
-    }
+pub struct Index {
+    pub attrs: Vec<Attribute>,
+    pub expr: Box<Expr>,
+    pub bracket: tok::Bracket,
+    pub idx: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprInfer #full {
-        pub attrs: Vec<Attribute>,
-        pub underscore: Token![_],
-    }
+pub struct Infer {
+    pub attrs: Vec<Attribute>,
+    pub underscore: Token![_],
 }
-ast_struct! {
-    pub struct ExprLet #full {
-        pub attrs: Vec<Attribute>,
-        pub let_: Token![let],
-        pub pat: Box<patt::Patt>,
-        pub eq: Token![=],
-        pub expr: Box<Expr>,
-    }
+pub struct Let {
+    pub attrs: Vec<Attribute>,
+    pub let_: Token![let],
+    pub patt: Box<patt::Patt>,
+    pub eq: Token![=],
+    pub expr: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprLit {
-        pub attrs: Vec<Attribute>,
-        pub lit: Lit,
-    }
+pub struct Lit {
+    pub attrs: Vec<Attribute>,
+    pub lit: lit::Lit,
 }
-ast_struct! {
-    pub struct ExprLoop #full {
-        pub attrs: Vec<Attribute>,
-        pub label: Option<Label>,
-        pub loop_: Token![loop],
-        pub body: Block,
-    }
+pub struct Loop {
+    pub attrs: Vec<Attribute>,
+    pub label: Option<Label>,
+    pub loop_: Token![loop],
+    pub body: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprMacro {
-        pub attrs: Vec<Attribute>,
-        pub mac: Macro,
-    }
+pub struct Mac {
+    pub attrs: Vec<Attribute>,
+    pub mac: Macro,
 }
-ast_struct! {
-    pub struct ExprMatch #full {
-        pub attrs: Vec<Attribute>,
-        pub match_: Token![match],
-        pub expr: Box<Expr>,
-        pub brace: tok::Brace,
-        pub arms: Vec<Arm>,
-    }
+pub struct Match {
+    pub attrs: Vec<Attribute>,
+    pub match_: Token![match],
+    pub expr: Box<Expr>,
+    pub brace: tok::Brace,
+    pub arms: Vec<Arm>,
 }
-ast_struct! {
-    pub struct ExprMethodCall #full {
-        pub attrs: Vec<Attribute>,
-        pub receiver: Box<Expr>,
-        pub dot: Token![.],
-        pub method: Ident,
-        pub turbofish: Option<AngledArgs>,
-        pub paren: tok::Paren,
-        pub args: Punctuated<Expr, Token![,]>,
-    }
+pub struct MethodCall {
+    pub attrs: Vec<Attribute>,
+    pub expr: Box<Expr>,
+    pub dot: Token![.],
+    pub method: Ident,
+    pub turbofish: Option<AngledArgs>,
+    pub paren: tok::Paren,
+    pub args: Punctuated<Expr, Token![,]>,
 }
-ast_struct! {
-    pub struct ExprParen {
-        pub attrs: Vec<Attribute>,
-        pub paren: tok::Paren,
-        pub expr: Box<Expr>,
-    }
+pub struct Paren {
+    pub attrs: Vec<Attribute>,
+    pub paren: tok::Paren,
+    pub expr: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprPath {
-        pub attrs: Vec<Attribute>,
-        pub qself: Option<QSelf>,
-        pub path: Path,
-    }
+pub struct Path {
+    pub attrs: Vec<Attribute>,
+    pub qself: Option<QSelf>,
+    pub path: path::Path,
 }
-ast_struct! {
-    pub struct ExprRange #full {
-        pub attrs: Vec<Attribute>,
-        pub start: Option<Box<Expr>>,
-        pub limits: RangeLimits,
-        pub end: Option<Box<Expr>>,
-    }
+pub struct Range {
+    pub attrs: Vec<Attribute>,
+    pub beg: Option<Box<Expr>>,
+    pub limits: RangeLimits,
+    pub end: Option<Box<Expr>>,
 }
-ast_struct! {
-    pub struct ExprReference #full {
-        pub attrs: Vec<Attribute>,
-        pub and: Token![&],
-        pub mut_: Option<Token![mut]>,
-        pub expr: Box<Expr>,
-    }
+pub struct Ref {
+    pub attrs: Vec<Attribute>,
+    pub and: Token![&],
+    pub mut_: Option<Token![mut]>,
+    pub expr: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprRepeat #full {
-        pub attrs: Vec<Attribute>,
-        pub bracket: tok::Bracket,
-        pub expr: Box<Expr>,
-        pub semi: Token![;],
-        pub len: Box<Expr>,
-    }
+pub struct Repeat {
+    pub attrs: Vec<Attribute>,
+    pub bracket: tok::Bracket,
+    pub expr: Box<Expr>,
+    pub semi: Token![;],
+    pub len: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprReturn #full {
-        pub attrs: Vec<Attribute>,
-        pub return_: Token![return],
-        pub expr: Option<Box<Expr>>,
-    }
+pub struct Return {
+    pub attrs: Vec<Attribute>,
+    pub return_: Token![return],
+    pub expr: Option<Box<Expr>>,
 }
-ast_struct! {
-    pub struct ExprStruct #full {
-        pub attrs: Vec<Attribute>,
-        pub qself: Option<QSelf>,
-        pub path: Path,
-        pub brace: tok::Brace,
-        pub fields: Punctuated<FieldValue, Token![,]>,
-        pub dot2: Option<Token![..]>,
-        pub rest: Option<Box<Expr>>,
-    }
+pub struct Struct {
+    pub attrs: Vec<Attribute>,
+    pub qself: Option<QSelf>,
+    pub path: path::Path,
+    pub brace: tok::Brace,
+    pub fields: Punctuated<FieldValue, Token![,]>,
+    pub dot2: Option<Token![..]>,
+    pub rest: Option<Box<Expr>>,
 }
-ast_struct! {
-    pub struct ExprTry #full {
-        pub attrs: Vec<Attribute>,
-        pub expr: Box<Expr>,
-        pub question: Token![?],
-    }
+pub struct Try {
+    pub attrs: Vec<Attribute>,
+    pub expr: Box<Expr>,
+    pub question: Token![?],
 }
-ast_struct! {
-    pub struct ExprTryBlock #full {
-        pub attrs: Vec<Attribute>,
-        pub try_: Token![try],
-        pub block: Block,
-    }
+pub struct TryBlock {
+    pub attrs: Vec<Attribute>,
+    pub try_: Token![try],
+    pub block: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprTuple #full {
-        pub attrs: Vec<Attribute>,
-        pub paren: tok::Paren,
-        pub elems: Punctuated<Expr, Token![,]>,
-    }
+pub struct Tuple {
+    pub attrs: Vec<Attribute>,
+    pub paren: tok::Paren,
+    pub elems: Punctuated<Expr, Token![,]>,
 }
-ast_struct! {
-    pub struct ExprUnary {
-        pub attrs: Vec<Attribute>,
-        pub op: UnOp,
-        pub expr: Box<Expr>,
-    }
+pub struct Unary {
+    pub attrs: Vec<Attribute>,
+    pub op: UnOp,
+    pub expr: Box<Expr>,
 }
-ast_struct! {
-    pub struct ExprUnsafe #full {
-        pub attrs: Vec<Attribute>,
-        pub unsafe_: Token![unsafe],
-        pub block: Block,
-    }
+pub struct Unsafe {
+    pub attrs: Vec<Attribute>,
+    pub unsafe_: Token![unsafe],
+    pub block: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprWhile #full {
-        pub attrs: Vec<Attribute>,
-        pub label: Option<Label>,
-        pub while_: Token![while],
-        pub cond: Box<Expr>,
-        pub body: Block,
-    }
+pub struct While {
+    pub attrs: Vec<Attribute>,
+    pub label: Option<Label>,
+    pub while_: Token![while],
+    pub cond: Box<Expr>,
+    pub block: stmt::Block,
 }
-ast_struct! {
-    pub struct ExprYield #full {
-        pub attrs: Vec<Attribute>,
-        pub yield_: Token![yield],
-        pub expr: Option<Box<Expr>>,
-    }
+pub struct Yield {
+    pub attrs: Vec<Attribute>,
+    pub yield_: Token![yield],
+    pub expr: Option<Box<Expr>>,
 }
+
 impl Expr {
-    pub const DUMMY: Self = Expr::Path(ExprPath {
+    pub const DUMMY: Self = Expr::Path(Path {
         attrs: Vec::new(),
         qself: None,
-        path: Path {
+        path: path::Path {
             colon: None,
             segs: Punctuated::new(),
         },
     });
-    pub(crate) fn replace_attrs(&mut self, new: Vec<Attribute>) -> Vec<Attribute> {
+    pub fn replace_attrs(&mut self, y: Vec<Attribute>) -> Vec<Attribute> {
+        use Expr::*;
         match self {
-            Expr::Array(ExprArray { attrs, .. })
-            | Expr::Assign(ExprAssign { attrs, .. })
-            | Expr::Async(ExprAsync { attrs, .. })
-            | Expr::Await(ExprAwait { attrs, .. })
-            | Expr::Binary(ExprBinary { attrs, .. })
-            | Expr::Block(ExprBlock { attrs, .. })
-            | Expr::Break(ExprBreak { attrs, .. })
-            | Expr::Call(ExprCall { attrs, .. })
-            | Expr::Cast(ExprCast { attrs, .. })
-            | Expr::Closure(ExprClosure { attrs, .. })
-            | Expr::Const(ExprConst { attrs, .. })
-            | Expr::Continue(ExprContinue { attrs, .. })
-            | Expr::Field(ExprField { attrs, .. })
-            | Expr::ForLoop(ExprForLoop { attrs, .. })
-            | Expr::Group(ExprGroup { attrs, .. })
-            | Expr::If(ExprIf { attrs, .. })
-            | Expr::Index(ExprIndex { attrs, .. })
-            | Expr::Infer(ExprInfer { attrs, .. })
-            | Expr::Let(ExprLet { attrs, .. })
-            | Expr::Lit(ExprLit { attrs, .. })
-            | Expr::Loop(ExprLoop { attrs, .. })
-            | Expr::Macro(ExprMacro { attrs, .. })
-            | Expr::Match(ExprMatch { attrs, .. })
-            | Expr::MethodCall(ExprMethodCall { attrs, .. })
-            | Expr::Paren(ExprParen { attrs, .. })
-            | Expr::Path(ExprPath { attrs, .. })
-            | Expr::Range(ExprRange { attrs, .. })
-            | Expr::Reference(ExprReference { attrs, .. })
-            | Expr::Repeat(ExprRepeat { attrs, .. })
-            | Expr::Return(ExprReturn { attrs, .. })
-            | Expr::Struct(ExprStruct { attrs, .. })
-            | Expr::Try(ExprTry { attrs, .. })
-            | Expr::TryBlock(ExprTryBlock { attrs, .. })
-            | Expr::Tuple(ExprTuple { attrs, .. })
-            | Expr::Unary(ExprUnary { attrs, .. })
-            | Expr::Unsafe(ExprUnsafe { attrs, .. })
-            | Expr::While(ExprWhile { attrs, .. })
-            | Expr::Yield(ExprYield { attrs, .. }) => mem::replace(attrs, new),
-            Expr::Verbatim(_) => Vec::new(),
+            Array(Array { attrs, .. })
+            | Assign(Assign { attrs, .. })
+            | Async(Async { attrs, .. })
+            | Await(Await { attrs, .. })
+            | Binary(Binary { attrs, .. })
+            | Block(Block { attrs, .. })
+            | Break(Break { attrs, .. })
+            | Call(Call { attrs, .. })
+            | Cast(Cast { attrs, .. })
+            | Closure(Closure { attrs, .. })
+            | Const(Const { attrs, .. })
+            | Continue(Continue { attrs, .. })
+            | Field(Field { attrs, .. })
+            | ForLoop(ForLoop { attrs, .. })
+            | Group(Group { attrs, .. })
+            | If(If { attrs, .. })
+            | Index(Index { attrs, .. })
+            | Infer(Infer { attrs, .. })
+            | Let(Let { attrs, .. })
+            | Lit(Lit { attrs, .. })
+            | Loop(Loop { attrs, .. })
+            | Mac(Mac { attrs, .. })
+            | Match(Match { attrs, .. })
+            | MethodCall(MethodCall { attrs, .. })
+            | Paren(Paren { attrs, .. })
+            | Path(Path { attrs, .. })
+            | Range(Range { attrs, .. })
+            | Ref(Ref { attrs, .. })
+            | Repeat(Repeat { attrs, .. })
+            | Return(Return { attrs, .. })
+            | Struct(Struct { attrs, .. })
+            | Try(Try { attrs, .. })
+            | TryBlock(TryBlock { attrs, .. })
+            | Tuple(Tuple { attrs, .. })
+            | Unary(Unary { attrs, .. })
+            | Unsafe(Unsafe { attrs, .. })
+            | While(While { attrs, .. })
+            | Yield(Yield { attrs, .. }) => mem::replace(attrs, y),
+            Verbatim(_) => Vec::new(),
         }
     }
 }
-ast_enum! {
-    pub enum Member {
-        Named(Ident),
-        Unnamed(Index),
-    }
+
+pub enum Member {
+    Named(Ident),
+    Unnamed(Idx),
 }
 impl From<Ident> for Member {
     fn from(x: Ident) -> Member {
         Member::Named(x)
     }
 }
-impl From<Index> for Member {
-    fn from(x: Index) -> Member {
+impl From<Idx> for Member {
+    fn from(x: Idx) -> Member {
         Member::Unnamed(x)
     }
 }
 impl From<usize> for Member {
     fn from(x: usize) -> Member {
-        Member::Unnamed(Index::from(x))
+        Member::Unnamed(Idx::from(x))
     }
 }
 impl Eq for Member {}
 impl PartialEq for Member {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Member::Named(x), Member::Named(other)) => x == other,
-            (Member::Unnamed(x), Member::Unnamed(other)) => x == other,
+    fn eq(&self, y: &Self) -> bool {
+        use Member::*;
+        match (self, y) {
+            (Named(x), Named(y)) => x == y,
+            (Unnamed(x), Unnamed(y)) => x == y,
             _ => false,
         }
     }
 }
 impl Hash for Member {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, y: &mut H) {
+        use Member::*;
         match self {
-            Member::Named(x) => x.hash(state),
-            Member::Unnamed(x) => x.hash(state),
+            Named(x) => x.hash(y),
+            Unnamed(x) => x.hash(y),
         }
     }
 }
 impl IdentFragment for Member {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Member::*;
         match self {
-            Member::Named(x) => Display::fmt(x, f),
-            Member::Unnamed(x) => Display::fmt(&x.index, f),
+            Named(x) => Display::fmt(x, f),
+            Unnamed(x) => Display::fmt(&x.idx, f),
         }
     }
     fn span(&self) -> Option<Span> {
+        use Member::*;
         match self {
-            Member::Named(m) => Some(m.span()),
-            Member::Unnamed(m) => Some(m.span),
+            Named(x) => Some(x.span()),
+            Unnamed(x) => Some(x.span),
         }
     }
 }
-ast_struct! {
-    pub struct Index {
-        pub index: u32,
-        pub span: Span,
-    }
+
+pub struct Idx {
+    pub idx: u32,
+    pub span: Span,
 }
-impl From<usize> for Index {
-    fn from(index: usize) -> Index {
-        assert!(index < u32::max_value() as usize);
-        Index {
-            index: index as u32,
+impl From<usize> for Idx {
+    fn from(x: usize) -> Idx {
+        assert!(x < u32::max_value() as usize);
+        Idx {
+            idx: x as u32,
             span: Span::call_site(),
         }
     }
 }
-impl Eq for Index {}
-impl PartialEq for Index {
-    fn eq(&self, other: &Self) -> bool {
-        self.index == other.index
+impl Eq for Idx {}
+impl PartialEq for Idx {
+    fn eq(&self, x: &Self) -> bool {
+        self.idx == x.idx
     }
 }
-impl Hash for Index {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.index.hash(state);
+impl Hash for Idx {
+    fn hash<H: Hasher>(&self, y: &mut H) {
+        self.idx.hash(y);
     }
 }
-impl IdentFragment for Index {
+impl IdentFragment for Idx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.index, f)
+        Display::fmt(&self.idx, f)
     }
     fn span(&self) -> Option<Span> {
         Some(self.span)
     }
 }
-ast_struct! {
-    pub struct FieldValue {
-        pub attrs: Vec<Attribute>,
-        pub member: Member,
-        pub colon: Option<Token![:]>,
-        pub expr: Expr,
-    }
+
+pub struct FieldValue {
+    pub attrs: Vec<Attribute>,
+    pub memb: Member,
+    pub colon: Option<Token![:]>,
+    pub expr: Expr,
 }
-ast_struct! {
-    pub struct Label {
-        pub name: Lifetime,
-        pub colon: Token![:],
-    }
+pub struct Label {
+    pub name: Lifetime,
+    pub colon: Token![:],
 }
-ast_struct! {
-    pub struct Arm {
-        pub attrs: Vec<Attribute>,
-        pub pat: patt::Patt,
-        pub guard: Option<(Token![if], Box<Expr>)>,
-        pub fat_arrow: Token![=>],
-        pub body: Box<Expr>,
-        pub comma: Option<Token![,]>,
-    }
+pub struct Arm {
+    pub attrs: Vec<Attribute>,
+    pub patt: patt::Patt,
+    pub guard: Option<(Token![if], Box<Expr>)>,
+    pub fat_arrow: Token![=>],
+    pub body: Box<Expr>,
+    pub comma: Option<Token![,]>,
 }
-ast_enum! {
-    pub enum RangeLimits {
-        HalfOpen(Token![..]),
-        Closed(Token![..=]),
-    }
+
+pub enum RangeLimits {
+    HalfOpen(Token![..]),
+    Closed(Token![..=]),
 }
-pub(crate) fn requires_terminator(expr: &Expr) -> bool {
-    match expr {
+
+pub fn requires_terminator(x: &Expr) -> bool {
+    match x {
         Expr::If(_)
         | Expr::Match(_)
         | Expr::Block(_) | Expr::Unsafe(_) // both under ExprKind::Block in rustc
@@ -549,12 +476,12 @@ pub(crate) fn requires_terminator(expr: &Expr) -> bool {
         | Expr::Infer(_)
         | Expr::Let(_)
         | Expr::Lit(_)
-        | Expr::Macro(_)
+        | Expr::Mac(_)
         | Expr::MethodCall(_)
         | Expr::Paren(_)
         | Expr::Path(_)
         | Expr::Range(_)
-        | Expr::Reference(_)
+        | Expr::Ref(_)
         | Expr::Repeat(_)
         | Expr::Return(_)
         | Expr::Struct(_)

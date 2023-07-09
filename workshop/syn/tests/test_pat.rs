@@ -4,7 +4,7 @@ mod macros;
 use proc_macro2::{Delimiter, Group, TokenStream, TokenTree};
 use quote::quote;
 use syn::parse::Parser;
-use syn::{patt::Patt, Item, Stmt};
+use syn::{patt::Patt, stmt::Stmt, Item};
 #[test]
 fn test_pat_ident() {
     match patt::Patt::parse_single.parse2(quote!(self)).unwrap() {
@@ -24,16 +24,16 @@ fn test_leading_vert() {
     syn::parse_str::<Item>("fn f() {}").unwrap();
     syn::parse_str::<Item>("fn fun1(| A: E) {}").unwrap_err();
     syn::parse_str::<Item>("fn fun2(|| A: E) {}").unwrap_err();
-    syn::parse_str::<Stmt>("let | () = ();").unwrap_err();
-    syn::parse_str::<Stmt>("let (| A): E;").unwrap();
-    syn::parse_str::<Stmt>("let (|| A): (E);").unwrap_err();
-    syn::parse_str::<Stmt>("let (| A,): (E,);").unwrap();
-    syn::parse_str::<Stmt>("let [| A]: [E; 1];").unwrap();
-    syn::parse_str::<Stmt>("let [|| A]: [E; 1];").unwrap_err();
-    syn::parse_str::<Stmt>("let TS(| A): TS;").unwrap();
-    syn::parse_str::<Stmt>("let TS(|| A): TS;").unwrap_err();
-    syn::parse_str::<Stmt>("let NS { f: | A }: NS;").unwrap();
-    syn::parse_str::<Stmt>("let NS { f: || A }: NS;").unwrap_err();
+    syn::parse_str::<stmt::Stmt>("let | () = ();").unwrap_err();
+    syn::parse_str::<stmt::Stmt>("let (| A): E;").unwrap();
+    syn::parse_str::<stmt::Stmt>("let (|| A): (E);").unwrap_err();
+    syn::parse_str::<stmt::Stmt>("let (| A,): (E,);").unwrap();
+    syn::parse_str::<stmt::Stmt>("let [| A]: [E; 1];").unwrap();
+    syn::parse_str::<stmt::Stmt>("let [|| A]: [E; 1];").unwrap_err();
+    syn::parse_str::<stmt::Stmt>("let TS(| A): TS;").unwrap();
+    syn::parse_str::<stmt::Stmt>("let TS(|| A): TS;").unwrap_err();
+    syn::parse_str::<stmt::Stmt>("let NS { f: | A }: NS;").unwrap();
+    syn::parse_str::<stmt::Stmt>("let NS { f: || A }: NS;").unwrap_err();
 }
 #[test]
 fn test_group() {

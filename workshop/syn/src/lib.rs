@@ -637,13 +637,6 @@ impl TokBuff {
 }
 
 mod expr;
-pub use expr::{
-    Arm, Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock, ExprBreak, ExprCall, ExprCast,
-    ExprClosure, ExprConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf, ExprIndex, ExprInfer, ExprLet,
-    ExprLit, ExprLoop, ExprMacro, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprRange, ExprReference, ExprRepeat,
-    ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, FieldValue,
-    Index, Label, Member, RangeLimits,
-};
 
 ast_struct! {
     pub struct LifetimeParam {
@@ -966,7 +959,7 @@ use punct::Punctuated;
 pub mod lit;
 pub mod tok;
 
-pub mod patt {
+mod patt {
     use super::{punct::Punctuated, *};
 
     ast_enum_of_structs! {
@@ -1036,7 +1029,7 @@ pub mod patt {
         pub struct Slice {
             pub attrs: Vec<Attribute>,
             pub bracket: tok::Bracket,
-            pub patts: Punctuated<Patt, Token![,]>,
+            pub elems: Punctuated<Patt, Token![,]>,
         }
     }
     ast_struct! {
@@ -1053,7 +1046,7 @@ pub mod patt {
         pub struct Tuple {
             pub attrs: Vec<Attribute>,
             pub paren: tok::Paren,
-            pub patts: Punctuated<Patt, Token![,]>,
+            pub elems: Punctuated<Patt, Token![,]>,
         }
     }
     ast_struct! {
@@ -1062,7 +1055,7 @@ pub mod patt {
             pub qself: Option<QSelf>,
             pub path: Path,
             pub paren: tok::Paren,
-            pub patts: Punctuated<Patt, Token![,]>,
+            pub elems: Punctuated<Patt, Token![,]>,
         }
     }
     ast_struct! {
@@ -1088,7 +1081,7 @@ pub mod patt {
         }
     }
 }
-pub mod path {
+mod path {
     use super::{punct::Punctuated, *};
     ast_struct! {
         pub struct Path {
@@ -1235,22 +1228,17 @@ pub mod path {
         }
     }
 }
-
-ast_struct! {
+mod stmt {
     pub struct Block {
         pub brace: tok::Brace,
         pub stmts: Vec<Stmt>,
     }
-}
-ast_enum! {
     pub enum Stmt {
         Local(Local),
         Item(Item),
         Expr(Expr, Option<Token![;]>),
-        Macro(StmtMacro),
+        Mac(Mac),
     }
-}
-ast_struct! {
     pub struct Local {
         pub attrs: Vec<Attribute>,
         pub let_: Token![let],
@@ -1258,22 +1246,17 @@ ast_struct! {
         pub init: Option<LocalInit>,
         pub semi: Token![;],
     }
-}
-ast_struct! {
     pub struct LocalInit {
         pub eq: Token![=],
         pub expr: Box<Expr>,
         pub diverge: Option<(Token![else], Box<Expr>)>,
     }
-}
-ast_struct! {
-    pub struct StmtMacro {
+    pub struct Mac {
         pub attrs: Vec<Attribute>,
         pub mac: Macro,
         pub semi: Option<Token![;]>,
     }
 }
-
 mod ty {
     use super::{punct::Punctuated, *};
     use proc_macro2::TokenStream;

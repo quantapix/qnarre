@@ -450,7 +450,7 @@ impl Hash for Expr {
         }
     }
 }
-impl Hash for ExprArray {
+impl Hash for expr::Array {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -459,7 +459,7 @@ impl Hash for ExprArray {
         self.elems.hash(state);
     }
 }
-impl Hash for ExprAssign {
+impl Hash for expr::Assign {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -469,26 +469,26 @@ impl Hash for ExprAssign {
         self.right.hash(state);
     }
 }
-impl Hash for ExprAsync {
+impl Hash for expr::Async {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.capture.hash(state);
+        self.move_.hash(state);
         self.block.hash(state);
     }
 }
-impl Hash for ExprAwait {
+impl Hash for expr::Await {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.base.hash(state);
+        self.expr.hash(state);
     }
 }
-impl Hash for ExprBinary {
+impl Hash for expr::Binary {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -499,7 +499,7 @@ impl Hash for ExprBinary {
         self.right.hash(state);
     }
 }
-impl Hash for ExprBlock {
+impl Hash for expr::Block {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -509,7 +509,7 @@ impl Hash for ExprBlock {
         self.block.hash(state);
     }
 }
-impl Hash for ExprBreak {
+impl Hash for expr::Break {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -519,7 +519,7 @@ impl Hash for ExprBreak {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprCall {
+impl Hash for expr::Call {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -529,7 +529,7 @@ impl Hash for ExprCall {
         self.args.hash(state);
     }
 }
-impl Hash for ExprCast {
+impl Hash for expr::Cast {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -539,7 +539,7 @@ impl Hash for ExprCast {
         self.typ.hash(state);
     }
 }
-impl Hash for ExprClosure {
+impl Hash for expr::Closure {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -555,7 +555,7 @@ impl Hash for ExprClosure {
         self.body.hash(state);
     }
 }
-impl Hash for ExprConst {
+impl Hash for expr::Const {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -564,7 +564,7 @@ impl Hash for ExprConst {
         self.block.hash(state);
     }
 }
-impl Hash for ExprContinue {
+impl Hash for expr::Continue {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -573,17 +573,17 @@ impl Hash for ExprContinue {
         self.label.hash(state);
     }
 }
-impl Hash for ExprField {
+impl Hash for expr::Field {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
         self.base.hash(state);
-        self.member.hash(state);
+        self.memb.hash(state);
     }
 }
-impl Hash for ExprForLoop {
+impl Hash for expr::ForLoop {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -595,7 +595,7 @@ impl Hash for ExprForLoop {
         self.body.hash(state);
     }
 }
-impl Hash for ExprGroup {
+impl Hash for expr::Group {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -604,7 +604,7 @@ impl Hash for ExprGroup {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprIf {
+impl Hash for expr::If {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -615,7 +615,7 @@ impl Hash for ExprIf {
         self.else_branch.hash(state);
     }
 }
-impl Hash for ExprIndex {
+impl Hash for expr::Index {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -625,7 +625,7 @@ impl Hash for ExprIndex {
         self.index.hash(state);
     }
 }
-impl Hash for ExprInfer {
+impl Hash for expr::Infer {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -633,7 +633,7 @@ impl Hash for ExprInfer {
         self.attrs.hash(state);
     }
 }
-impl Hash for ExprLet {
+impl Hash for expr::Let {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -643,7 +643,7 @@ impl Hash for ExprLet {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprLit {
+impl Hash for expr::Lit {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -652,7 +652,7 @@ impl Hash for ExprLit {
         self.lit.hash(state);
     }
 }
-impl Hash for ExprLoop {
+impl Hash for expr::Loop {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -662,7 +662,7 @@ impl Hash for ExprLoop {
         self.body.hash(state);
     }
 }
-impl Hash for ExprMacro {
+impl Hash for expr::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -671,7 +671,7 @@ impl Hash for ExprMacro {
         self.mac.hash(state);
     }
 }
-impl Hash for ExprMatch {
+impl Hash for expr::Match {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -681,19 +681,19 @@ impl Hash for ExprMatch {
         self.arms.hash(state);
     }
 }
-impl Hash for ExprMethodCall {
+impl Hash for expr::MethodCall {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.receiver.hash(state);
+        self.expr.hash(state);
         self.method.hash(state);
         self.turbofish.hash(state);
         self.args.hash(state);
     }
 }
-impl Hash for ExprParen {
+impl Hash for expr::Paren {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -702,7 +702,7 @@ impl Hash for ExprParen {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprPath {
+impl Hash for expr::Path {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -712,18 +712,18 @@ impl Hash for ExprPath {
         self.path.hash(state);
     }
 }
-impl Hash for ExprRange {
+impl Hash for expr::Range {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.start.hash(state);
+        self.beg.hash(state);
         self.limits.hash(state);
         self.end.hash(state);
     }
 }
-impl Hash for ExprReference {
+impl Hash for expr::Ref {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -733,7 +733,7 @@ impl Hash for ExprReference {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprRepeat {
+impl Hash for expr::Repeat {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -743,7 +743,7 @@ impl Hash for ExprRepeat {
         self.len.hash(state);
     }
 }
-impl Hash for ExprReturn {
+impl Hash for expr::Return {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -752,7 +752,7 @@ impl Hash for ExprReturn {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprStruct {
+impl Hash for expr::Struct {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -765,7 +765,7 @@ impl Hash for ExprStruct {
         self.rest.hash(state);
     }
 }
-impl Hash for ExprTry {
+impl Hash for expr::Try {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -774,7 +774,7 @@ impl Hash for ExprTry {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprTryBlock {
+impl Hash for expr::TryBlock {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -783,7 +783,7 @@ impl Hash for ExprTryBlock {
         self.block.hash(state);
     }
 }
-impl Hash for ExprTuple {
+impl Hash for expr::Tuple {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -792,7 +792,7 @@ impl Hash for ExprTuple {
         self.elems.hash(state);
     }
 }
-impl Hash for ExprUnary {
+impl Hash for expr::Unary {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -802,7 +802,7 @@ impl Hash for ExprUnary {
         self.expr.hash(state);
     }
 }
-impl Hash for ExprUnsafe {
+impl Hash for expr::Unsafe {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -811,7 +811,7 @@ impl Hash for ExprUnsafe {
         self.block.hash(state);
     }
 }
-impl Hash for ExprWhile {
+impl Hash for expr::While {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -822,7 +822,7 @@ impl Hash for ExprWhile {
         self.body.hash(state);
     }
 }
-impl Hash for ExprYield {
+impl Hash for expr::Yield {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1491,7 +1491,7 @@ impl Hash for lit::Bool {
         self.val.hash(state);
     }
 }
-impl Hash for Local {
+impl Hash for stmt::Local {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1501,7 +1501,7 @@ impl Hash for Local {
         self.init.hash(state);
     }
 }
-impl Hash for LocalInit {
+impl Hash for stmt::LocalInit {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1719,7 +1719,7 @@ impl Hash for patt::Slice {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.patts.hash(state);
+        self.elems.hash(state);
     }
 }
 impl Hash for patt::Struct {
@@ -1740,7 +1740,7 @@ impl Hash for patt::Tuple {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.patts.hash(state);
+        self.elems.hash(state);
     }
 }
 impl Hash for patt::TupleStruct {
@@ -1751,7 +1751,7 @@ impl Hash for patt::TupleStruct {
         self.attrs.hash(state);
         self.qself.hash(state);
         self.path.hash(state);
-        self.patts.hash(state);
+        self.elems.hash(state);
     }
 }
 impl Hash for patt::Type {
@@ -1913,33 +1913,33 @@ impl Hash for StaticMut {
         }
     }
 }
-impl Hash for Stmt {
+impl Hash for stmt::Stmt {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Stmt::Local(v0) => {
+            stmt::Stmt::stmt::Local(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            Stmt::Item(v0) => {
+            stmt::Stmt::Item(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Stmt::Expr(v0, v1) => {
+            stmt::Stmt::Expr(v0, v1) => {
                 state.write_u8(2u8);
                 v0.hash(state);
                 v1.hash(state);
             },
-            Stmt::Macro(v0) => {
+            stmt::Stmt::Mac(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
         }
     }
 }
-impl Hash for StmtMacro {
+impl Hash for stmt::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

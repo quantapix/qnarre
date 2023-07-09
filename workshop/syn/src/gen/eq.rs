@@ -212,62 +212,62 @@ impl PartialEq for Expr {
         }
     }
 }
-impl Eq for ExprArray {}
-impl PartialEq for ExprArray {
+impl Eq for expr::Array {}
+impl PartialEq for expr::Array {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.elems == other.elems
     }
 }
-impl Eq for ExprAssign {}
-impl PartialEq for ExprAssign {
+impl Eq for expr::Assign {}
+impl PartialEq for expr::Assign {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.left == other.left && self.right == other.right
     }
 }
-impl Eq for ExprAsync {}
-impl PartialEq for ExprAsync {
+impl Eq for expr::Async {}
+impl PartialEq for expr::Async {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.capture == other.capture && self.block == other.block
+        self.attrs == other.attrs && self.move_ == other.move_ && self.block == other.block
     }
 }
-impl Eq for ExprAwait {}
-impl PartialEq for ExprAwait {
+impl Eq for expr::Await {}
+impl PartialEq for expr::Await {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.base == other.base
+        self.attrs == other.attrs && self.expr == other.expr
     }
 }
-impl Eq for ExprBinary {}
-impl PartialEq for ExprBinary {
+impl Eq for expr::Binary {}
+impl PartialEq for expr::Binary {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.left == other.left && self.op == other.op && self.right == other.right
     }
 }
-impl Eq for ExprBlock {}
-impl PartialEq for ExprBlock {
+impl Eq for expr::Block {}
+impl PartialEq for expr::Block {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.label == other.label && self.block == other.block
     }
 }
-impl Eq for ExprBreak {}
-impl PartialEq for ExprBreak {
+impl Eq for expr::Break {}
+impl PartialEq for expr::Break {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.label == other.label && self.expr == other.expr
     }
 }
-impl Eq for ExprCall {}
-impl PartialEq for ExprCall {
+impl Eq for expr::Call {}
+impl PartialEq for expr::Call {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.func == other.func && self.args == other.args
     }
 }
-impl Eq for ExprCast {}
-impl PartialEq for ExprCast {
+impl Eq for expr::Cast {}
+impl PartialEq for expr::Cast {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr && self.typ == other.typ
     }
 }
-impl Eq for ExprClosure {}
-impl PartialEq for ExprClosure {
+impl Eq for expr::Closure {}
+impl PartialEq for expr::Closure {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.lifes == other.lifes
@@ -280,26 +280,26 @@ impl PartialEq for ExprClosure {
             && self.body == other.body
     }
 }
-impl Eq for ExprConst {}
-impl PartialEq for ExprConst {
+impl Eq for expr::Const {}
+impl PartialEq for expr::Const {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.block == other.block
     }
 }
-impl Eq for ExprContinue {}
-impl PartialEq for ExprContinue {
+impl Eq for expr::Continue {}
+impl PartialEq for expr::Continue {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.label == other.label
     }
 }
-impl Eq for ExprField {}
-impl PartialEq for ExprField {
+impl Eq for expr::Field {}
+impl PartialEq for expr::Field {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.base == other.base && self.member == other.member
+        self.attrs == other.attrs && self.base == other.base && self.memb == other.memb
     }
 }
-impl Eq for ExprForLoop {}
-impl PartialEq for ExprForLoop {
+impl Eq for expr::ForLoop {}
+impl PartialEq for expr::ForLoop {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.label == other.label
@@ -308,14 +308,14 @@ impl PartialEq for ExprForLoop {
             && self.body == other.body
     }
 }
-impl Eq for ExprGroup {}
-impl PartialEq for ExprGroup {
+impl Eq for expr::Groupup {}
+impl PartialEq for expr::Groupup {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr
     }
 }
-impl Eq for ExprIf {}
-impl PartialEq for ExprIf {
+impl Eq for expr::If {}
+impl PartialEq for expr::If {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.cond == other.cond
@@ -323,96 +323,96 @@ impl PartialEq for ExprIf {
             && self.else_branch == other.else_branch
     }
 }
-impl Eq for ExprIndex {}
-impl PartialEq for ExprIndex {
+impl Eq for expr::Index {}
+impl PartialEq for expr::Index {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr && self.index == other.index
     }
 }
-impl Eq for ExprInfer {}
-impl PartialEq for ExprInfer {
+impl Eq for expr::Infer {}
+impl PartialEq for expr::Infer {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
     }
 }
-impl Eq for ExprLet {}
-impl PartialEq for ExprLet {
+impl Eq for expr::Let {}
+impl PartialEq for expr::Let {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.pat == other.pat && self.expr == other.expr
     }
 }
-impl Eq for ExprLit {}
-impl PartialEq for ExprLit {
+impl Eq for expr::Lit {}
+impl PartialEq for expr::Lit {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.lit == other.lit
     }
 }
-impl Eq for ExprLoop {}
-impl PartialEq for ExprLoop {
+impl Eq for expr::Loop {}
+impl PartialEq for expr::Loop {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.label == other.label && self.body == other.body
     }
 }
-impl Eq for ExprMacro {}
-impl PartialEq for ExprMacro {
+impl Eq for expr::Mac {}
+impl PartialEq for expr::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.mac == other.mac
     }
 }
-impl Eq for ExprMatch {}
-impl PartialEq for ExprMatch {
+impl Eq for expr::Match {}
+impl PartialEq for expr::Match {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr && self.arms == other.arms
     }
 }
-impl Eq for ExprMethodCall {}
-impl PartialEq for ExprMethodCall {
+impl Eq for expr::MethodCall {}
+impl PartialEq for expr::MethodCall {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
-            && self.receiver == other.receiver
+            && self.expr == other.expr
             && self.method == other.method
             && self.turbofish == other.turbofish
             && self.args == other.args
     }
 }
-impl Eq for ExprParen {}
-impl PartialEq for ExprParen {
+impl Eq for expr::Paren {}
+impl PartialEq for expr::Paren {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr
     }
 }
-impl Eq for ExprPath {}
-impl PartialEq for ExprPath {
+impl Eq for expr::Path {}
+impl PartialEq for expr::Path {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.qself == other.qself && self.path == other.path
     }
 }
-impl Eq for ExprRange {}
-impl PartialEq for ExprRange {
+impl Eq for expr::Range {}
+impl PartialEq for expr::Range {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.start == other.start && self.limits == other.limits && self.end == other.end
+        self.attrs == other.attrs && self.beg == other.beg && self.limits == other.limits && self.end == other.end
     }
 }
-impl Eq for ExprReference {}
-impl PartialEq for ExprReference {
+impl Eq for expr::Ref {}
+impl PartialEq for expr::Ref {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.mut_ == other.mut_ && self.expr == other.expr
     }
 }
-impl Eq for ExprRepeat {}
-impl PartialEq for ExprRepeat {
+impl Eq for expr::Repeat {}
+impl PartialEq for expr::Repeat {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr && self.len == other.len
     }
 }
-impl Eq for ExprReturn {}
-impl PartialEq for ExprReturn {
+impl Eq for expr::Returnrn {}
+impl PartialEq for expr::Returnrn {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr
     }
 }
-impl Eq for ExprStruct {}
-impl PartialEq for ExprStruct {
+impl Eq for expr::Struct {}
+impl PartialEq for expr::Struct {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.qself == other.qself
@@ -422,44 +422,44 @@ impl PartialEq for ExprStruct {
             && self.rest == other.rest
     }
 }
-impl Eq for ExprTry {}
-impl PartialEq for ExprTry {
+impl Eq for expr::Try {}
+impl PartialEq for expr::Try {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr
     }
 }
-impl Eq for ExprTryBlock {}
-impl PartialEq for ExprTryBlock {
+impl Eq for expr::TryBlock {}
+impl PartialEq for expr::TryBlock {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.block == other.block
     }
 }
-impl Eq for ExprTuple {}
-impl PartialEq for ExprTuple {
+impl Eq for expr::Tuple {}
+impl PartialEq for expr::Tuple {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.elems == other.elems
     }
 }
-impl Eq for ExprUnary {}
-impl PartialEq for ExprUnary {
+impl Eq for expr::Unary {}
+impl PartialEq for expr::Unary {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.op == other.op && self.expr == other.expr
     }
 }
-impl Eq for ExprUnsafe {}
-impl PartialEq for ExprUnsafe {
+impl Eq for expr::Unsafe {}
+impl PartialEq for expr::Unsafe {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.block == other.block
     }
 }
-impl Eq for ExprWhile {}
-impl PartialEq for ExprWhile {
+impl Eq for expr::While {}
+impl PartialEq for expr::While {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.label == other.label && self.cond == other.cond && self.body == other.body
     }
 }
-impl Eq for ExprYield {}
-impl PartialEq for ExprYield {
+impl Eq for expr::Yield {}
+impl PartialEq for expr::Yield {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.expr == other.expr
     }
@@ -876,14 +876,14 @@ impl Eq for lit::Char {}
 impl Eq for lit::Float {}
 impl Eq for lit::Int {}
 impl Eq for lit::Str {}
-impl Eq for Local {}
-impl PartialEq for Local {
+impl Eq for stmt::Local {}
+impl PartialEq for stmt::Local {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.pat == other.pat && self.init == other.init
     }
 }
-impl Eq for LocalInit {}
-impl PartialEq for LocalInit {
+impl Eq for stmt::LocalInit {}
+impl PartialEq for stmt::LocalInit {
     fn eq(&self, other: &Self) -> bool {
         self.expr == other.expr && self.diverge == other.diverge
     }
@@ -1002,7 +1002,7 @@ impl PartialEq for patt::Rest {
 impl Eq for patt::Slice {}
 impl PartialEq for patt::Slice {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.patts == other.patts
+        self.attrs == other.attrs && self.elems == other.elems
     }
 }
 impl Eq for patt::Struct {}
@@ -1018,13 +1018,13 @@ impl PartialEq for patt::Struct {
 impl Eq for patt::Tuple {}
 impl PartialEq for patt::Tuple {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.patts == other.patts
+        self.attrs == other.attrs && self.elems == other.elems
     }
 }
 impl Eq for patt::TupleStruct {}
 impl PartialEq for patt::TupleStruct {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.patts == other.patts
+        self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.elems == other.elems
     }
 }
 impl Eq for patt::Type {}
@@ -1134,20 +1134,20 @@ impl PartialEq for StaticMut {
         }
     }
 }
-impl Eq for Stmt {}
-impl PartialEq for Stmt {
+impl Eq for stmt::Stmt {}
+impl PartialEq for stmt::Stmt {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Stmt::Local(self0), Stmt::Local(other0)) => self0 == other0,
-            (Stmt::Item(self0), Stmt::Item(other0)) => self0 == other0,
-            (Stmt::Expr(self0, self1), Stmt::Expr(other0, other1)) => self0 == other0 && self1 == other1,
-            (Stmt::Macro(self0), Stmt::Macro(other0)) => self0 == other0,
+            (stmt::Stmt::stmt::Local(self0), stmt::Stmt::stmt::Local(other0)) => self0 == other0,
+            (stmt::Stmt::Item(self0), stmt::Stmt::Item(other0)) => self0 == other0,
+            (stmt::Stmt::Expr(self0, self1), stmt::Stmt::Expr(other0, other1)) => self0 == other0 && self1 == other1,
+            (stmt::Stmt::Mac(self0), stmt::Stmt::Mac(other0)) => self0 == other0,
             _ => false,
         }
     }
 }
-impl Eq for StmtMacro {}
-impl PartialEq for StmtMacro {
+impl Eq for stmt::Mac {}
+impl PartialEq for stmt::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
