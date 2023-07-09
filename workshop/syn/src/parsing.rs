@@ -946,7 +946,7 @@ fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_st
             attrs: Vec::new(),
             mac: Macro {
                 path,
-                bang: bang,
+                bang,
                 delim: delimiter,
                 toks: tokens,
             },
@@ -1223,10 +1223,7 @@ impl Parse for ExprForLoop {
             pat: Box::new(pat),
             in_,
             expr: Box::new(expr),
-            body: Block {
-                brace: brace,
-                stmts,
-            },
+            body: Block { brace, stmts },
         })
     }
 }
@@ -1243,10 +1240,7 @@ impl Parse for ExprLoop {
             attrs,
             label,
             loop_,
-            body: Block {
-                brace: brace,
-                stmts,
-            },
+            body: Block { brace, stmts },
         })
     }
 }
@@ -1416,9 +1410,9 @@ fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<ExprClo
         static_: movability,
         async_: asyncness,
         move_: capture,
-        or1: or1,
+        or1,
         inputs,
-        or2: or2,
+        or2,
         ret: output,
         body: Box::new(body),
     })
@@ -1481,10 +1475,7 @@ impl Parse for ExprWhile {
             label,
             while_,
             cond: Box::new(cond),
-            body: Block {
-                brace: brace,
-                stmts,
-            },
+            body: Block { brace, stmts },
         })
     }
 }
@@ -1498,10 +1489,7 @@ impl Parse for ExprConst {
         Ok(ExprConst {
             attrs: inner_attrs,
             const_,
-            block: Block {
-                brace: brace,
-                stmts,
-            },
+            block: Block { brace, stmts },
         })
     }
 }
@@ -1643,10 +1631,7 @@ impl Parse for ExprUnsafe {
         Ok(ExprUnsafe {
             attrs: inner_attrs,
             unsafe_,
-            block: Block {
-                brace: brace,
-                stmts,
-            },
+            block: Block { brace, stmts },
         })
     }
 }
@@ -1661,10 +1646,7 @@ impl Parse for ExprBlock {
         Ok(ExprBlock {
             attrs,
             label,
-            block: Block {
-                brace: brace,
-                stmts,
-            },
+            block: Block { brace, stmts },
         })
     }
 }
@@ -2005,8 +1987,8 @@ pub fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<Attribute>, input: 
 }
 struct FlexibleItemType {
     vis: Visibility,
-    defaultness: Option<Token![default]>,
-    type: Token![type],
+    default_: Option<Token![default]>,
+    type_: Token![type],
     ident: Ident,
     gens: Generics,
     colon: Option<Token![:]>,
@@ -2030,11 +2012,11 @@ impl FlexibleItemType {
         where_clause_location: WhereClauseLocation,
     ) -> Result<Self> {
         let vis: Visibility = input.parse()?;
-        let defaultness: Option<Token![default]> = match allow_defaultness {
+        let default_: Option<Token![default]> = match allow_defaultness {
             TypeDefaultness::Optional => input.parse()?,
             TypeDefaultness::Disallowed => None,
         };
-        let type: Token![type] = input.parse()?;
+        let type_: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
         let mut gens: Generics = input.parse()?;
         let (colon, bounds) = Self::parse_optional_bounds(input)?;
@@ -2054,8 +2036,8 @@ impl FlexibleItemType {
         let semi: Token![;] = input.parse()?;
         Ok(FlexibleItemType {
             vis,
-            defaultness,
-            type,
+            default_,
+            type_,
             ident,
             gens,
             colon,
@@ -2112,7 +2094,7 @@ impl Parse for ItemMacro {
             ident,
             mac: Macro {
                 path,
-                bang: bang,
+                bang,
                 delim: delimiter,
                 toks: tokens,
             },
@@ -2235,9 +2217,7 @@ fn parse_use_tree(input: ParseStream, allow_crate_root_in_path: bool) -> Result<
             Ok(Some(UseTree::Name(UseName { ident })))
         }
     } else if lookahead.peek(Token![*]) {
-        Ok(Some(UseTree::Glob(UseGlob {
-            star: input.parse()?,
-        })))
+        Ok(Some(UseTree::Glob(UseGlob { star: input.parse()? })))
     } else if lookahead.peek(tok::Brace) {
         let content;
         let brace = braced!(content in input);
@@ -2362,10 +2342,7 @@ fn parse_rest_of_fn(input: ParseStream, mut attrs: Vec<Attribute>, vis: Visibili
         attrs,
         vis,
         sig,
-        block: Box::new(Block {
-            brace: brace,
-            stmts,
-        }),
+        block: Box::new(Block { brace, stmts }),
     })
 }
 impl Parse for FnArg {
@@ -2674,7 +2651,7 @@ impl Parse for ForeignItemType {
         Ok(ForeignItemType {
             attrs: input.call(Attribute::parse_outer)?,
             vis: input.parse()?,
-            type: input.parse()?,
+            type_: input.parse()?,
             ident: input.parse()?,
             gens: {
                 let mut gens: Generics = input.parse()?;
@@ -2688,8 +2665,8 @@ impl Parse for ForeignItemType {
 fn parse_foreign_item_type(begin: ParseBuffer, input: ParseStream) -> Result<ForeignItem> {
     let FlexibleItemType {
         vis,
-        defaultness: _,
-        type,
+        default_: _,
+        type_,
         ident,
         gens,
         colon,
@@ -2703,7 +2680,7 @@ fn parse_foreign_item_type(begin: ParseBuffer, input: ParseStream) -> Result<For
         Ok(ForeignItem::Type(ForeignItemType {
             attrs: Vec::new(),
             vis,
-            type,
+            type_,
             ident,
             gens,
             semi,
@@ -2727,7 +2704,7 @@ impl Parse for ItemType {
         Ok(ItemType {
             attrs: input.call(Attribute::parse_outer)?,
             vis: input.parse()?,
-            type: input.parse()?,
+            type_: input.parse()?,
             ident: input.parse()?,
             gens: {
                 let mut gens: Generics = input.parse()?;
@@ -2743,8 +2720,8 @@ impl Parse for ItemType {
 fn parse_item_type(begin: ParseBuffer, input: ParseStream) -> Result<Item> {
     let FlexibleItemType {
         vis,
-        defaultness: _,
-        type,
+        default_: _,
+        type_,
         ident,
         gens,
         colon,
@@ -2759,7 +2736,7 @@ fn parse_item_type(begin: ParseBuffer, input: ParseStream) -> Result<Item> {
     Ok(Item::Type(ItemType {
         attrs: Vec::new(),
         vis,
-        type,
+        type_,
         ident,
         gens,
         eq,
@@ -2958,7 +2935,7 @@ impl Parse for TraitItem {
         let begin = input.fork();
         let mut attrs = input.call(Attribute::parse_outer)?;
         let vis: Visibility = input.parse()?;
-        let defaultness: Option<Token![default]> = input.parse()?;
+        let default_: Option<Token![default]> = input.parse()?;
         let ahead = input.fork();
         let lookahead = ahead.lookahead1();
         let mut item = if lookahead.peek(Token![fn]) || peek_signature(&ahead) {
@@ -2980,7 +2957,7 @@ impl Parse for TraitItem {
         } else if lookahead.peek(Token![type]) {
             parse_trait_item_type(begin.fork(), input)
         } else if vis.is_inherited()
-            && defaultness.is_none()
+            && default_.is_none()
             && (lookahead.peek(Ident)
                 || lookahead.peek(Token![self])
                 || lookahead.peek(Token![super])
@@ -2991,7 +2968,7 @@ impl Parse for TraitItem {
         } else {
             Err(lookahead.error())
         }?;
-        match (vis, defaultness) {
+        match (vis, default_) {
             (Visibility::Inherited, None) => {},
             _ => return Ok(TraitItem::Verbatim(verbatim_between(&begin, input))),
         }
@@ -3056,10 +3033,7 @@ impl Parse for TraitItemFn {
         Ok(TraitItemFn {
             attrs,
             sig,
-            default: brace.map(|brace| Block {
-                brace: brace,
-                stmts,
-            }),
+            default: brace.map(|brace| Block { brace, stmts }),
             semi,
         })
     }
@@ -3067,7 +3041,7 @@ impl Parse for TraitItemFn {
 impl Parse for TraitItemType {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
-        let type: Token![type] = input.parse()?;
+        let type_: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
         let mut gens: Generics = input.parse()?;
         let (colon, bounds) = FlexibleItemTy::parse_optional_bounds(input)?;
@@ -3076,7 +3050,7 @@ impl Parse for TraitItemType {
         let semi: Token![;] = input.parse()?;
         Ok(TraitItemType {
             attrs,
-            type,
+            type_,
             ident,
             gens,
             colon,
@@ -3089,8 +3063,8 @@ impl Parse for TraitItemType {
 fn parse_trait_item_type(begin: ParseBuffer, input: ParseStream) -> Result<TraitItem> {
     let FlexibleItemType {
         vis,
-        defaultness: _,
-        type,
+        default_: _,
+        type_,
         ident,
         gens,
         colon,
@@ -3103,7 +3077,7 @@ fn parse_trait_item_type(begin: ParseBuffer, input: ParseStream) -> Result<Trait
     } else {
         Ok(TraitItem::Type(TraitItemType {
             attrs: Vec::new(),
-            type,
+            type_,
             ident,
             gens,
             colon,
@@ -3134,7 +3108,7 @@ impl Parse for ItemImpl {
 fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<ItemImpl>> {
     let mut attrs = input.call(Attribute::parse_outer)?;
     let has_visibility = allow_verbatim_impl && input.parse::<Visibility>()?.is_some();
-    let defaultness: Option<Token![default]> = input.parse()?;
+    let default_: Option<Token![default]> = input.parse()?;
     let unsafety: Option<Token![unsafe]> = input.parse()?;
     let impl_: Token![impl] = input.parse()?;
     let has_generics = input.peek(Token![<])
@@ -3209,7 +3183,7 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
     } else {
         Ok(Some(ItemImpl {
             attrs,
-            default_: defaultness,
+            default_,
             unsafe_: unsafety,
             impl_,
             gens,
@@ -3227,10 +3201,10 @@ impl Parse for ImplItem {
         let ahead = input.fork();
         let vis: Visibility = ahead.parse()?;
         let mut lookahead = ahead.lookahead1();
-        let defaultness = if lookahead.peek(Token![default]) && !ahead.peek2(Token![!]) {
-            let defaultness: Token![default] = ahead.parse()?;
+        let default_ = if lookahead.peek(Token![default]) && !ahead.peek2(Token![!]) {
+            let default_: Token![default] = ahead.parse()?;
             lookahead = ahead.lookahead1();
-            Some(defaultness)
+            Some(default_)
         } else {
             None
         };
@@ -3256,7 +3230,7 @@ impl Parse for ImplItem {
                 return Ok(ImplItem::Const(ImplItemConst {
                     attrs,
                     vis,
-                    default_: defaultness,
+                    default_,
                     const_,
                     ident,
                     gens: Generics::default(),
@@ -3273,7 +3247,7 @@ impl Parse for ImplItem {
         } else if lookahead.peek(Token![type]) {
             parse_impl_item_type(begin, input)
         } else if vis.is_inherited()
-            && defaultness.is_none()
+            && default_.is_none()
             && (lookahead.peek(Ident)
                 || lookahead.peek(Token![self])
                 || lookahead.peek(Token![super])
@@ -3331,7 +3305,7 @@ impl Parse for ImplItemFn {
 fn parse_impl_item_fn(input: ParseStream, allow_omitted_body: bool) -> Result<Option<ImplItemFn>> {
     let mut attrs = input.call(Attribute::parse_outer)?;
     let vis: Visibility = input.parse()?;
-    let defaultness: Option<Token![default]> = input.parse()?;
+    let default_: Option<Token![default]> = input.parse()?;
     let sig: Signature = input.parse()?;
     if allow_omitted_body && input.parse::<Option<Token![;]>>()?.is_some() {
         return Ok(None);
@@ -3340,13 +3314,13 @@ fn parse_impl_item_fn(input: ParseStream, allow_omitted_body: bool) -> Result<Op
     let brace = braced!(content in input);
     attrs.extend(content.call(Attribute::parse_inner)?);
     let block = Block {
-        brace: brace,
+        brace,
         stmts: content.call(Block::parse_within)?,
     };
     Ok(Some(ImplItemFn {
         attrs,
         vis,
-        default_: defaultness,
+        default_,
         sig,
         block,
     }))
@@ -3355,8 +3329,8 @@ impl Parse for ImplItemType {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis: Visibility = input.parse()?;
-        let defaultness: Option<Token![default]> = input.parse()?;
-        let type: Token![type] = input.parse()?;
+        let default_: Option<Token![default]> = input.parse()?;
+        let type_: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
         let mut gens: Generics = input.parse()?;
         let eq: Token![=] = input.parse()?;
@@ -3366,8 +3340,8 @@ impl Parse for ImplItemType {
         Ok(ImplItemType {
             attrs,
             vis,
-            default_: defaultness,
-            type,
+            default_,
+            type_,
             ident,
             gens,
             eq,
@@ -3379,8 +3353,8 @@ impl Parse for ImplItemType {
 fn parse_impl_item_type(begin: ParseBuffer, input: ParseStream) -> Result<ImplItem> {
     let FlexibleItemType {
         vis,
-        defaultness,
-        type,
+        default_,
+        type_,
         ident,
         gens,
         colon,
@@ -3395,8 +3369,8 @@ fn parse_impl_item_type(begin: ParseBuffer, input: ParseStream) -> Result<ImplIt
     Ok(ImplItem::Type(ImplItemType {
         attrs: Vec::new(),
         vis,
-        default_: defaultness,
-        type,
+        default_,
+        type_,
         ident,
         gens,
         eq,
@@ -3748,11 +3722,7 @@ mod parsing {
                     vis,
                     ident,
                     gens: Generics { where_clause, ..gens },
-                    data: Data::Struct(DataStruct {
-                        struct_,
-                        fields,
-                        semi,
-                    }),
+                    data: Data::Struct(DataStruct { struct_, fields, semi }),
                 })
             } else if lookahead.peek(Token![enum]) {
                 let enum_ = input.parse::<Token![enum]>()?;
@@ -3764,11 +3734,7 @@ mod parsing {
                     vis,
                     ident,
                     gens: Generics { where_clause, ..gens },
-                    data: Data::Enum(DataEnum {
-                        enum_,
-                        brace: brace,
-                        variants,
-                    }),
+                    data: Data::Enum(DataEnum { enum_, brace, variants }),
                 })
             } else if lookahead.peek(Token![union]) {
                 let union_ = input.parse::<Token![union]>()?;
@@ -3817,9 +3783,7 @@ mod parsing {
             Err(lookahead.error())
         }
     }
-    pub fn data_enum(
-        input: ParseStream,
-    ) -> Result<(Option<WhereClause>, tok::Brace, Punctuated<Variant, Token![,]>)> {
+    pub fn data_enum(input: ParseStream) -> Result<(Option<WhereClause>, tok::Brace, Punctuated<Variant, Token![,]>)> {
         let where_clause = input.parse()?;
         let content;
         let brace = braced!(content in input);
@@ -4955,7 +4919,7 @@ pub mod parsing {
 }
 
 pub mod ty {
-    use crate::{ty::*, tok};
+    use crate::{tok, ty::*};
     impl Parse for Ty {
         fn parse(x: ParseStream) -> Result<Self> {
             let plus = true;
@@ -5082,15 +5046,9 @@ pub mod ty {
                             lifetimes: None,
                             path,
                         }),
-                        Ty::TraitObject(TraitObj {
-                            dyn_: None,
-                            bounds,
-                        }) => {
+                        Ty::TraitObject(TraitObj { dyn_: None, bounds }) => {
                             if bounds.len() > 1 || bounds.trailing_punct() {
-                                first = Ty::TraitObject(TraitObj {
-                                    dyn_: None,
-                                    bounds,
-                                });
+                                first = Ty::TraitObject(TraitObj { dyn_: None, bounds });
                                 break;
                             }
                             match bounds.into_iter().next().unwrap() {
@@ -5171,10 +5129,7 @@ pub mod ty {
                         bounds.push_value(x.parse()?);
                     }
                 }
-                return Ok(Ty::TraitObject(TraitObj {
-                    dyn_: None,
-                    bounds,
-                }));
+                return Ok(Ty::TraitObject(TraitObj { dyn_: None, bounds }));
             }
             Ok(Ty::Path(ty))
         } else if look.peek(Token![dyn]) {
@@ -5311,16 +5266,12 @@ pub mod ty {
     }
     impl Parse for Never {
         fn parse(x: ParseStream) -> Result<Self> {
-            Ok(Never {
-                bang: x.parse()?,
-            })
+            Ok(Never { bang: x.parse()? })
         }
     }
     impl Parse for Infer {
         fn parse(x: ParseStream) -> Result<Self> {
-            Ok(Infer {
-                underscore: x.parse()?,
-            })
+            Ok(Infer { underscore: x.parse()? })
         }
     }
     impl Parse for Tuple {
@@ -5406,11 +5357,7 @@ pub mod ty {
             let bounds = Self::parse_bounds(span, x, plus)?;
             Ok(TraitObj { dyn_, bounds })
         }
-        fn parse_bounds(
-            s: Span,
-            x: ParseStream,
-            plus: bool,
-        ) -> Result<Punctuated<TypeParamBound, Token![+]>> {
+        fn parse_bounds(s: Span, x: ParseStream, plus: bool) -> Result<Punctuated<TypeParamBound, Token![+]>> {
             let ys = TypeParamBound::parse_multiple(x, plus)?;
             let mut last = None;
             let mut one = false;
