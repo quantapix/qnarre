@@ -1691,7 +1691,7 @@ where
         v.visit_generic_param(it);
     }
     skip!(node.gt);
-    if let Some(it) = &node.clause {
+    if let Some(it) = &node.where_ {
         v.visit_where_clause(it);
     }
 }
@@ -2282,7 +2282,7 @@ where
 {
     v.visit_path(&node.path);
     skip!(node.eq);
-    v.visit_expr(&node.val);
+    v.visit_expr(&node.expr);
 }
 pub fn visit_parenthesized_generic_arguments<'ast, V>(v: &mut V, node: &'ast ParenthesizedArgs)
 where

@@ -24,7 +24,7 @@ impl ToTokens for MetaNameValue {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
         self.eq.to_tokens(xs);
-        self.val.to_tokens(xs);
+        self.expr.to_tokens(xs);
     }
 }
 
@@ -752,7 +752,7 @@ impl ToTokens for ItemType {
         self.type_.to_tokens(xs);
         self.ident.to_tokens(xs);
         self.gens.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.eq.to_tokens(xs);
         self.typ.to_tokens(xs);
         self.semi.to_tokens(xs);
@@ -765,7 +765,7 @@ impl ToTokens for ItemEnum {
         self.enum_.to_tokens(xs);
         self.ident.to_tokens(xs);
         self.gens.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.brace.surround(xs, |ys| {
             self.variants.to_tokens(ys);
         });
@@ -780,16 +780,16 @@ impl ToTokens for ItemStruct {
         self.gens.to_tokens(xs);
         match &self.fields {
             Fields::Named(fields) => {
-                self.gens.clause.to_tokens(xs);
+                self.gens.where_.to_tokens(xs);
                 fields.to_tokens(xs);
             },
             Fields::Unnamed(fields) => {
                 fields.to_tokens(xs);
-                self.gens.clause.to_tokens(xs);
+                self.gens.where_.to_tokens(xs);
                 TokensOrDefault(&self.semi).to_tokens(xs);
             },
             Fields::Unit => {
-                self.gens.clause.to_tokens(xs);
+                self.gens.where_.to_tokens(xs);
                 TokensOrDefault(&self.semi).to_tokens(xs);
             },
         }
@@ -802,7 +802,7 @@ impl ToTokens for ItemUnion {
         self.union_.to_tokens(xs);
         self.ident.to_tokens(xs);
         self.gens.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.fields.to_tokens(xs);
     }
 }
@@ -819,7 +819,7 @@ impl ToTokens for ItemTrait {
             TokensOrDefault(&self.colon).to_tokens(xs);
             self.supertraits.to_tokens(xs);
         }
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.brace.surround(xs, |ys| {
             ys.append_all(self.attrs.inner());
             ys.append_all(&self.items);
@@ -835,7 +835,7 @@ impl ToTokens for ItemTraitAlias {
         self.gens.to_tokens(xs);
         self.eq.to_tokens(xs);
         self.bounds.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
@@ -852,7 +852,7 @@ impl ToTokens for ItemImpl {
             for_.to_tokens(xs);
         }
         self.typ.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.brace.surround(xs, |ys| {
             ys.append_all(self.attrs.inner());
             ys.append_all(&self.items);
@@ -955,7 +955,7 @@ impl ToTokens for TraitItemType {
             eq.to_tokens(xs);
             default.to_tokens(xs);
         }
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
@@ -1002,7 +1002,7 @@ impl ToTokens for ImplItemType {
         self.gens.to_tokens(xs);
         self.eq.to_tokens(xs);
         self.typ.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
@@ -1040,7 +1040,7 @@ impl ToTokens for ForeignItemType {
         self.type_.to_tokens(xs);
         self.ident.to_tokens(xs);
         self.gens.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
@@ -1070,7 +1070,7 @@ impl ToTokens for Signature {
             }
         });
         self.ret.to_tokens(xs);
-        self.gens.clause.to_tokens(xs);
+        self.gens.where_.to_tokens(xs);
     }
 }
 impl ToTokens for Receiver {
@@ -1221,27 +1221,27 @@ impl ToTokens for DeriveInput {
         match &self.data {
             Data::Struct(data) => match &data.fields {
                 Fields::Named(x) => {
-                    self.gens.clause.to_tokens(xs);
+                    self.gens.where_.to_tokens(xs);
                     x.to_tokens(xs);
                 },
                 Fields::Unnamed(x) => {
                     x.to_tokens(xs);
-                    self.gens.clause.to_tokens(xs);
+                    self.gens.where_.to_tokens(xs);
                     TokensOrDefault(&data.semi).to_tokens(xs);
                 },
                 Fields::Unit => {
-                    self.gens.clause.to_tokens(xs);
+                    self.gens.where_.to_tokens(xs);
                     TokensOrDefault(&data.semi).to_tokens(xs);
                 },
             },
             Data::Enum(x) => {
-                self.gens.clause.to_tokens(xs);
+                self.gens.where_.to_tokens(xs);
                 x.brace.surround(xs, |tokens| {
                     x.variants.to_tokens(tokens);
                 });
             },
             Data::Union(x) => {
-                self.gens.clause.to_tokens(xs);
+                self.gens.where_.to_tokens(xs);
                 x.fields.to_tokens(xs);
             },
         }

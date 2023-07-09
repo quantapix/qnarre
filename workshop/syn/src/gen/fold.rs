@@ -1437,7 +1437,7 @@ where
         lt: node.lt,
         params: FoldHelper::lift(node.params, |it| f.fold_generic_param(it)),
         gt: node.gt,
-        clause: (node.clause).map(|it| f.fold_where_clause(it)),
+        where_: (node.where_).map(|it| f.fold_where_clause(it)),
     }
 }
 pub fn fold_ident<F>(f: &mut F, node: Ident) -> Ident
@@ -1956,7 +1956,7 @@ where
     MetaNameValue {
         path: f.fold_path(node.path),
         eq: node.eq,
-        val: f.fold_expr(node.val),
+        expr: f.fold_expr(node.expr),
     }
 }
 pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: ParenthesizedArgs) -> ParenthesizedArgs

@@ -770,7 +770,7 @@ impl Clone for Generics {
             lt: self.lt.clone(),
             params: self.params.clone(),
             gt: self.gt.clone(),
-            clause: self.clause.clone(),
+            where_: self.where_.clone(),
         }
     }
 }
@@ -1182,7 +1182,7 @@ impl Clone for MetaNameValue {
         MetaNameValue {
             path: self.path.clone(),
             eq: self.eq.clone(),
-            val: self.val.clone(),
+            expr: self.expr.clone(),
         }
     }
 }

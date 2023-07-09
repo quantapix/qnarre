@@ -84,7 +84,7 @@ fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNa
     } else {
         x.parse()?
     };
-    Ok(MetaNameValue { path, eq, val: value })
+    Ok(MetaNameValue { path, eq, expr: value })
 }
 
 pub(super) struct DisplayAttrStyle<'a>(pub &'a AttrStyle);
@@ -161,7 +161,7 @@ impl Parse for Generics {
             lt: Some(lt),
             params,
             gt: Some(gt),
-            clause: None,
+            where_: None,
         })
     }
 }
@@ -2026,14 +2026,14 @@ impl FlexibleItemType {
         let (colon, bounds) = Self::parse_optional_bounds(input)?;
         match where_clause_location {
             WhereClauseLocation::BeforeEq | WhereClauseLocation::Both => {
-                gens.clause = input.parse()?;
+                gens.where_ = input.parse()?;
             },
             WhereClauseLocation::AfterEq => {},
         }
         let ty = Self::parse_optional_definition(input)?;
         match where_clause_location {
-            WhereClauseLocation::AfterEq | WhereClauseLocation::Both if gens.clause.is_none() => {
-                gens.clause = input.parse()?;
+            WhereClauseLocation::AfterEq | WhereClauseLocation::Both if gens.where_.is_none() => {
+                gens.where_ = input.parse()?;
             },
             _ => {},
         }
@@ -2313,7 +2313,7 @@ impl Parse for Signature {
         let paren = parenthesized!(gist in x);
         let (args, vari) = parse_fn_args(&gist)?;
         let ret: ty::Ret = x.parse()?;
-        gens.clause = x.parse()?;
+        gens.where_ = x.parse()?;
         Ok(Signature {
             constness: const_,
             async_,
@@ -2659,7 +2659,7 @@ impl Parse for ForeignItemType {
             ident: input.parse()?,
             gens: {
                 let mut gens: Generics = input.parse()?;
-                gens.clause = input.parse()?;
+                gens.where_ = input.parse()?;
                 gens
             },
             semi: input.parse()?,
@@ -2712,7 +2712,7 @@ impl Parse for ItemType {
             ident: input.parse()?,
             gens: {
                 let mut gens: Generics = input.parse()?;
-                gens.clause = input.parse()?;
+                gens.where_ = input.parse()?;
                 gens
             },
             eq: input.parse()?,
@@ -2762,7 +2762,7 @@ impl Parse for ItemStruct {
             struct_,
             ident,
             gens: Generics {
-                clause: where_clause,
+                where_: where_clause,
                 ..gens
             },
             fields,
@@ -2784,7 +2784,7 @@ impl Parse for ItemEnum {
             enum_,
             ident,
             gens: Generics {
-                clause: where_clause,
+                where_: where_clause,
                 ..gens
             },
             brace,
@@ -2806,7 +2806,7 @@ impl Parse for ItemUnion {
             union_,
             ident,
             gens: Generics {
-                clause: where_clause,
+                where_: where_clause,
                 ..gens
             },
             fields,
@@ -2862,7 +2862,7 @@ fn parse_rest_of_trait(
             supertraits.push_punct(input.parse()?);
         }
     }
-    gens.clause = input.parse()?;
+    gens.where_ = input.parse()?;
     let content;
     let brace = braced!(content in input);
     parse_inner(&content, &mut attrs)?;
@@ -2921,7 +2921,7 @@ fn parse_rest_of_trait_alias(
         }
         bounds.push_punct(input.parse()?);
     }
-    gens.clause = input.parse()?;
+    gens.where_ = input.parse()?;
     let semi: Token![;] = input.parse()?;
     Ok(ItemTraitAlias {
         attrs,
@@ -3050,7 +3050,7 @@ impl Parse for TraitItemType {
         let mut gens: Generics = input.parse()?;
         let (colon, bounds) = FlexibleItemTy::parse_optional_bounds(input)?;
         let default = FlexibleItemTy::parse_optional_definition(input)?;
-        gens.clause = input.parse()?;
+        gens.where_ = input.parse()?;
         let semi: Token![;] = input.parse()?;
         Ok(TraitItemType {
             attrs,
@@ -3174,7 +3174,7 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<It
             ty::Type::Verbatim(verbatim_between(&begin, input))
         };
     }
-    gens.clause = input.parse()?;
+    gens.where_ = input.parse()?;
     let content;
     let brace = braced!(content in input);
     parse_inner(&content, &mut attrs)?;
@@ -3339,7 +3339,7 @@ impl Parse for ImplItemType {
         let mut gens: Generics = x.parse()?;
         let eq: Token![=] = x.parse()?;
         let typ: ty::Type = x.parse()?;
-        gens.clause = x.parse()?;
+        gens.where_ = x.parse()?;
         let semi: Token![;] = x.parse()?;
         Ok(ImplItemType {
             attrs,

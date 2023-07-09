@@ -1,37 +1,3 @@
-macro_rules! ast_struct {
-    (
-        [$($attrs_pub:tt)*]
-        struct $name:ident #full $($rest:tt)*
-    ) => {
-        $($attrs_pub)* struct $name $($rest)*
-    };
-    (
-        [$($attrs_pub:tt)*]
-        struct $name:ident $($rest:tt)*
-    ) => {
-        $($attrs_pub)* struct $name $($rest)*
-    };
-    ($($t:tt)*) => {
-        strip_attrs_pub!(ast_struct!($($t)*));
-    };
-}
-macro_rules! ast_enum {
-    (
-        [$($attrs_pub:tt)*]
-        enum $name:ident #no_visit $($rest:tt)*
-    ) => (
-        ast_enum!([$($attrs_pub)*] enum $name $($rest)*);
-    );
-    (
-        [$($attrs_pub:tt)*]
-        enum $name:ident $($rest:tt)*
-    ) => (
-        $($attrs_pub)* enum $name $($rest)*
-    );
-    ($($t:tt)*) => {
-        strip_attrs_pub!(ast_enum!($($t)*));
-    };
-}
 macro_rules! ast_enum_of_structs {
     (
         $(#[$enum_attr:meta])*

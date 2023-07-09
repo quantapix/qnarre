@@ -2060,7 +2060,7 @@ impl Debug for Lite<syn::Generics> {
         if self.value.gt.is_some() {
             formatter.field("gt", &Present);
         }
-        if let Some(val) = &self.value.clause {
+        if let Some(val) = &self.value.where_ {
             #[derive(RefCast)]
             #[repr(transparent)]
             struct Print(syn::WhereClause);
@@ -3034,7 +3034,7 @@ impl Debug for Lite<syn::Meta> {
             syn::Meta::NameValue(_val) => {
                 let mut formatter = formatter.debug_struct("Meta::NameValue");
                 formatter.field("path", Lite(&_val.path));
-                formatter.field("value", Lite(&_val.val));
+                formatter.field("value", Lite(&_val.expr));
                 formatter.finish()
             },
         }
@@ -3053,7 +3053,7 @@ impl Debug for Lite<syn::MetaNameValue> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("MetaNameValue");
         formatter.field("path", Lite(&self.value.path));
-        formatter.field("value", Lite(&self.value.val));
+        formatter.field("value", Lite(&self.value.expr));
         formatter.finish()
     }
 }

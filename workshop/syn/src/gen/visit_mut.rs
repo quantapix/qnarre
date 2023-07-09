@@ -1691,7 +1691,7 @@ where
         v.visit_generic_param_mut(it);
     }
     skip!(node.gt);
-    if let Some(it) = &mut node.clause {
+    if let Some(it) = &mut node.where_ {
         v.visit_where_clause_mut(it);
     }
 }
@@ -2284,7 +2284,7 @@ where
 {
     v.visit_path_mut(&mut node.path);
     skip!(node.eq);
-    v.visit_expr_mut(&mut node.val);
+    v.visit_expr_mut(&mut node.expr);
 }
 pub fn visit_parenthesized_generic_arguments_mut<V>(v: &mut V, node: &mut ParenthesizedArgs)
 where

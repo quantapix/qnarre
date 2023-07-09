@@ -1218,7 +1218,7 @@ impl Debug for Generics {
         formatter.field("lt", &self.lt);
         formatter.field("params", &self.params);
         formatter.field("gt", &self.gt);
-        formatter.field("where_clause", &self.clause);
+        formatter.field("where_clause", &self.where_);
         formatter.finish()
     }
 }
@@ -1780,7 +1780,7 @@ impl Debug for MetaNameValue {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("path", &self.path);
                 formatter.field("eq", &self.eq);
-                formatter.field("value", &self.val);
+                formatter.field("value", &self.expr);
                 formatter.finish()
             }
         }

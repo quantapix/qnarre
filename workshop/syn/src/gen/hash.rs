@@ -1075,7 +1075,7 @@ impl Hash for Generics {
         self.lt.hash(state);
         self.params.hash(state);
         self.gt.hash(state);
-        self.clause.hash(state);
+        self.where_.hash(state);
     }
 }
 impl Hash for ImplItem {
@@ -1575,7 +1575,7 @@ impl Hash for MetaNameValue {
         H: Hasher,
     {
         self.path.hash(state);
-        self.val.hash(state);
+        self.expr.hash(state);
     }
 }
 impl Hash for ParenthesizedArgs {

@@ -605,7 +605,7 @@ impl PartialEq for GenericParam {
 impl Eq for Generics {}
 impl PartialEq for Generics {
     fn eq(&self, other: &Self) -> bool {
-        self.lt == other.lt && self.params == other.params && self.gt == other.gt && self.clause == other.clause
+        self.lt == other.lt && self.params == other.params && self.gt == other.gt && self.where_ == other.where_
     }
 }
 impl Eq for ImplItem {}
@@ -929,7 +929,7 @@ impl PartialEq for MetaList {
 impl Eq for MetaNameValue {}
 impl PartialEq for MetaNameValue {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.val == other.val
+        self.path == other.path && self.expr == other.expr
     }
 }
 impl Eq for ParenthesizedArgs {}

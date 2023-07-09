@@ -120,20 +120,18 @@ fn parse_delimited<'a>(x: &ParseBuffer<'a>, d: Delimiter) -> Result<(DelimSpan, 
     })
 }
 
-ast_enum! {
-    pub enum AttrStyle {
-        Outer,
-        Inner(Token![!]),
-    }
+pub enum AttrStyle {
+    Outer,
+    Inner(Token![!]),
 }
-ast_struct! {
-    pub struct Attribute {
-        pub pound: Token![#],
-        pub style: AttrStyle,
-        pub bracket: tok::Bracket,
-        pub meta: Meta,
-    }
+
+pub struct Attribute {
+    pub pound: Token![#],
+    pub style: AttrStyle,
+    pub bracket: tok::Bracket,
+    pub meta: Meta,
 }
+
 impl Attribute {
     pub fn path(&self) -> &Path {
         self.meta.path()
@@ -258,13 +256,12 @@ impl Meta {
         }
     }
 }
-ast_struct! {
-    pub struct MetaList {
-        pub path: Path,
-        pub delim: MacroDelim,
-        pub toks: TokenStream,
-    }
+pub struct MetaList {
+    pub path: Path,
+    pub delim: MacroDelim,
+    pub toks: TokenStream,
 }
+
 impl MetaList {
     pub fn parse_args<T: Parse>(&self) -> Result<T> {
         self.parse_args_with(T::parse)
@@ -277,31 +274,30 @@ impl MetaList {
         self.parse_args_with(meta_parser(x))
     }
 }
-ast_struct! {
-    pub struct MetaNameValue {
-        pub path: Path,
-        pub eq: Token![=],
-        pub val: Expr,
-    }
+
+pub struct MetaNameValue {
+    pub path: Path,
+    pub eq: Token![=],
+    pub expr: Expr,
 }
 
 pub struct ParseNestedMeta<'a> {
     pub path: Path,
-    pub input: ParseStream<'a>,
+    pub ins: ParseStream<'a>,
 }
 impl<'a> ParseNestedMeta<'a> {
     pub fn value(&self) -> Result<ParseStream<'a>> {
-        self.input.parse::<Token![=]>()?;
-        Ok(self.input)
+        self.ins.parse::<Token![=]>()?;
+        Ok(self.ins)
     }
     pub fn parse_nested_meta(&self, cb: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
-        let content;
-        parenthesized!(content in self.input);
-        parse_nested_meta(&content, cb)
+        let gist;
+        parenthesized!(gist in self.ins);
+        parse_nested_meta(&gist, cb)
     }
     pub fn error(&self, x: impl Display) -> Err {
         let beg = self.path.segs[0].ident.span();
-        let end = self.input.cursor().prev_span();
+        let end = self.ins.cursor().prev_span();
         err::new2(beg, end, x)
     }
 }
@@ -318,7 +314,7 @@ pub fn meta_parser(cb: impl FnMut(ParseNestedMeta) -> Result<()>) -> impl Parser
 pub fn parse_nested_meta(x: ParseStream, mut cb: impl FnMut(ParseNestedMeta) -> Result<()>) -> Result<()> {
     loop {
         let path = x.call(parse_meta_path)?;
-        cb(ParseNestedMeta { path, input: x })?;
+        cb(ParseNestedMeta { path, ins: x })?;
         if x.is_empty() {
             return Ok(());
         }
@@ -638,35 +634,30 @@ impl TokBuff {
 
 mod expr;
 
-ast_struct! {
-    pub struct LifetimeParam {
-        pub attrs: Vec<Attribute>,
-        pub life: Lifetime,
-        pub colon: Option<Token![:]>,
-        pub bounds: Punctuated<Lifetime, Token![+]>,
-    }
+pub struct LifetimeParam {
+    pub attrs: Vec<Attribute>,
+    pub life: Lifetime,
+    pub colon: Option<Token![:]>,
+    pub bounds: Punctuated<Lifetime, Token![+]>,
 }
-ast_struct! {
-    pub struct TypeParam {
-        pub attrs: Vec<Attribute>,
-        pub ident: Ident,
-        pub colon: Option<Token![:]>,
-        pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        pub eq: Option<Token![=]>,
-        pub default: Option<ty::Type>,
-    }
+pub struct TypeParam {
+    pub attrs: Vec<Attribute>,
+    pub ident: Ident,
+    pub colon: Option<Token![:]>,
+    pub bounds: Punctuated<TypeParamBound, Token![+]>,
+    pub eq: Option<Token![=]>,
+    pub default: Option<ty::Type>,
 }
-ast_struct! {
-    pub struct ConstParam {
-        pub attrs: Vec<Attribute>,
-        pub const_: Token![const],
-        pub ident: Ident,
-        pub colon: Token![:],
-        pub typ: ty::Type,
-        pub eq: Option<Token![=]>,
-        pub default: Option<Expr>,
-    }
+pub struct ConstParam {
+    pub attrs: Vec<Attribute>,
+    pub const_: Token![const],
+    pub ident: Ident,
+    pub colon: Token![:],
+    pub typ: ty::Type,
+    pub eq: Option<Token![=]>,
+    pub default: Option<Expr>,
 }
+
 ast_enum_of_structs! {
     pub enum GenericParam {
         Lifetime(LifetimeParam),
@@ -674,14 +665,14 @@ ast_enum_of_structs! {
         Const(ConstParam),
     }
 }
-ast_struct! {
-    pub struct Generics {
-        pub lt: Option<Token![<]>,
-        pub params: Punctuated<GenericParam, Token![,]>,
-        pub gt: Option<Token![>]>,
-        pub clause: Option<WhereClause>,
-    }
+
+pub struct Generics {
+    pub lt: Option<Token![<]>,
+    pub params: Punctuated<GenericParam, Token![,]>,
+    pub gt: Option<Token![>]>,
+    pub where_: Option<WhereClause>,
 }
+
 impl Generics {
     pub fn lifetimes(&self) -> Lifetimes {
         Lifetimes(self.params.iter())
@@ -702,13 +693,13 @@ impl Generics {
         ConstParamsMut(self.params.iter_mut())
     }
     pub fn make_where_clause(&mut self) -> &mut WhereClause {
-        self.clause.get_or_insert_with(|| WhereClause {
+        self.where_.get_or_insert_with(|| WhereClause {
             where_: <Token![where]>::default(),
             preds: Punctuated::new(),
         })
     }
     pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
-        (ImplGenerics(self), TypeGenerics(self), self.clause.as_ref())
+        (ImplGenerics(self), TypeGenerics(self), self.where_.as_ref())
     }
 }
 impl Default for Generics {
@@ -717,7 +708,7 @@ impl Default for Generics {
             lt: None,
             params: Punctuated::new(),
             gt: None,
-            clause: None,
+            where_: None,
         }
     }
 }
@@ -726,12 +717,12 @@ pub struct Lifetimes<'a>(Iter<'a, GenericParam>);
 impl<'a> Iterator for Lifetimes<'a> {
     type Item = &'a LifetimeParam;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = match self.0.next() {
+        let y = match self.0.next() {
             Some(x) => x,
             None => return None,
         };
-        if let GenericParam::Lifetime(lifetime) = next {
-            Some(lifetime)
+        if let GenericParam::Lifetime(x) = y {
+            Some(x)
         } else {
             self.next()
         }
@@ -742,12 +733,12 @@ pub struct LifetimesMut<'a>(IterMut<'a, GenericParam>);
 impl<'a> Iterator for LifetimesMut<'a> {
     type Item = &'a mut LifetimeParam;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = match self.0.next() {
+        let y = match self.0.next() {
             Some(x) => x,
             None => return None,
         };
-        if let GenericParam::Lifetime(lifetime) = next {
-            Some(lifetime)
+        if let GenericParam::Lifetime(x) = y {
+            Some(x)
         } else {
             self.next()
         }
@@ -758,12 +749,12 @@ pub struct TypeParams<'a>(Iter<'a, GenericParam>);
 impl<'a> Iterator for TypeParams<'a> {
     type Item = &'a TypeParam;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = match self.0.next() {
+        let y = match self.0.next() {
             Some(x) => x,
             None => return None,
         };
-        if let GenericParam::Type(type_param) = next {
-            Some(type_param)
+        if let GenericParam::Type(x) = y {
+            Some(x)
         } else {
             self.next()
         }
@@ -774,12 +765,12 @@ pub struct TypeParamsMut<'a>(IterMut<'a, GenericParam>);
 impl<'a> Iterator for TypeParamsMut<'a> {
     type Item = &'a mut TypeParam;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = match self.0.next() {
+        let y = match self.0.next() {
             Some(x) => x,
             None => return None,
         };
-        if let GenericParam::Type(type_param) = next {
-            Some(type_param)
+        if let GenericParam::Type(x) = y {
+            Some(x)
         } else {
             self.next()
         }
@@ -790,12 +781,12 @@ pub struct ConstParams<'a>(Iter<'a, GenericParam>);
 impl<'a> Iterator for ConstParams<'a> {
     type Item = &'a ConstParam;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = match self.0.next() {
+        let y = match self.0.next() {
             Some(x) => x,
             None => return None,
         };
-        if let GenericParam::Const(const_param) = next {
-            Some(const_param)
+        if let GenericParam::Const(x) = y {
+            Some(x)
         } else {
             self.next()
         }
@@ -806,12 +797,12 @@ pub struct ConstParamsMut<'a>(IterMut<'a, GenericParam>);
 impl<'a> Iterator for ConstParamsMut<'a> {
     type Item = &'a mut ConstParam;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = match self.0.next() {
+        let y = match self.0.next() {
             Some(x) => x,
             None => return None,
         };
-        if let GenericParam::Const(const_param) = next {
-            Some(const_param)
+        if let GenericParam::Const(x) = y {
+            Some(x)
         } else {
             self.next()
         }
@@ -857,14 +848,13 @@ impl<'a> TypeGenerics<'a> {
     }
 }
 
-ast_struct! {
-    pub struct BoundLifetimes {
-        pub for_: Token![for],
-        pub lt: Token![<],
-        pub lifes: Punctuated<GenericParam, Token![,]>,
-        pub gt: Token![>],
-    }
+pub struct BoundLifetimes {
+    pub for_: Token![for],
+    pub lt: Token![<],
+    pub lifes: Punctuated<GenericParam, Token![,]>,
+    pub gt: Token![>],
 }
+
 impl Default for BoundLifetimes {
     fn default() -> Self {
         BoundLifetimes {
@@ -904,56 +894,44 @@ ast_enum_of_structs! {
         Verbatim(TokenStream),
     }
 }
-ast_struct! {
-    pub struct TraitBound {
-        pub paren: Option<tok::Paren>,
-        pub modifier: TraitBoundModifier,
-        pub lifes: Option<BoundLifetimes>,
-        pub path: Path,
-    }
+
+pub struct TraitBound {
+    pub paren: Option<tok::Paren>,
+    pub modifier: TraitBoundModifier,
+    pub lifes: Option<BoundLifetimes>,
+    pub path: path::Path,
 }
-ast_enum! {
-    pub enum TraitBoundModifier {
-        None,
-        Maybe(Token![?]),
-    }
+
+pub enum TraitBoundModifier {
+    None,
+    Maybe(Token![?]),
 }
-ast_struct! {
-    pub struct WhereClause {
-        pub where_: Token![where],
-        pub preds: Punctuated<WherePred, Token![,]>,
-    }
+
+pub struct WhereClause {
+    pub where_: Token![where],
+    pub preds: Punctuated<WherePred, Token![,]>,
 }
+
 ast_enum_of_structs! {
     pub enum WherePred {
         Lifetime(PredLifetime),
         Type(PredType),
     }
 }
-ast_struct! {
-    pub struct PredLifetime {
-        pub life: Lifetime,
-        pub colon: Token![:],
-        pub bounds: Punctuated<Lifetime, Token![+]>,
-    }
+
+pub struct PredLifetime {
+    pub life: Lifetime,
+    pub colon: Token![:],
+    pub bounds: Punctuated<Lifetime, Token![+]>,
 }
-ast_struct! {
-    pub struct PredType {
-        pub lifes: Option<BoundLifetimes>,
-        pub bounded: ty::Type,
-        pub colon: Token![:],
-        pub bounds: Punctuated<TypeParamBound, Token![+]>,
-    }
+pub struct PredType {
+    pub lifes: Option<BoundLifetimes>,
+    pub bounded: ty::Type,
+    pub colon: Token![:],
+    pub bounds: Punctuated<TypeParamBound, Token![+]>,
 }
 
 mod item;
-pub use item::{
-    FnArg, ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, ImplItem, ImplItemConst,
-    ImplItemFn, ImplItemMacro, ImplItemType, ImplRestriction, Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn,
-    ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait, ItemTraitAlias, ItemType,
-    ItemUnion, ItemUse, Receiver, Signature, StaticMut, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro,
-    TraitItemType, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variadic,
-};
 pub mod punct;
 use punct::Punctuated;
 pub mod lit;
@@ -984,110 +962,84 @@ mod patt {
         }
     }
     use expr::Const;
-    ast_struct! {
-        pub struct Ident {
-            pub attrs: Vec<Attribute>,
-            pub ref_: Option<Token![ref]>,
-            pub mut_: Option<Token![mut]>,
-            pub ident: Ident,
-            pub sub: Option<(Token![@], Box<Patt>)>,
-        }
+    pub struct Ident {
+        pub attrs: Vec<Attribute>,
+        pub ref_: Option<Token![ref]>,
+        pub mut_: Option<Token![mut]>,
+        pub ident: Ident,
+        pub sub: Option<(Token![@], Box<Patt>)>,
     }
     use expr::Lit;
     use expr::Macro as Mac;
-    ast_struct! {
-        pub struct Or {
-            pub attrs: Vec<Attribute>,
-            pub vert: Option<Token![|]>,
-            pub cases: Punctuated<Patt, Token![|]>,
-        }
+    pub struct Or {
+        pub attrs: Vec<Attribute>,
+        pub vert: Option<Token![|]>,
+        pub cases: Punctuated<Patt, Token![|]>,
     }
-    ast_struct! {
-        pub struct Paren {
-            pub attrs: Vec<Attribute>,
-            pub paren: tok::Paren,
-            pub patt: Box<Patt>,
-        }
+    pub struct Paren {
+        pub attrs: Vec<Attribute>,
+        pub paren: tok::Paren,
+        pub patt: Box<Patt>,
     }
     use expr::Path;
     use expr::Range;
-    ast_struct! {
-        pub struct Ref {
-            pub attrs: Vec<Attribute>,
-            pub and: Token![&],
-            pub mut_: Option<Token![mut]>,
-            pub patt: Box<Patt>,
-        }
+    pub struct Ref {
+        pub attrs: Vec<Attribute>,
+        pub and: Token![&],
+        pub mut_: Option<Token![mut]>,
+        pub patt: Box<Patt>,
     }
-    ast_struct! {
-        pub struct Rest {
-            pub attrs: Vec<Attribute>,
-            pub dot2: Token![..],
-        }
+    pub struct Rest {
+        pub attrs: Vec<Attribute>,
+        pub dot2: Token![..],
     }
-    ast_struct! {
-        pub struct Slice {
-            pub attrs: Vec<Attribute>,
-            pub bracket: tok::Bracket,
-            pub elems: Punctuated<Patt, Token![,]>,
-        }
+    pub struct Slice {
+        pub attrs: Vec<Attribute>,
+        pub bracket: tok::Bracket,
+        pub elems: Punctuated<Patt, Token![,]>,
     }
-    ast_struct! {
-        pub struct Struct {
-            pub attrs: Vec<Attribute>,
-            pub qself: Option<QSelf>,
-            pub path: Path,
-            pub brace: tok::Brace,
-            pub fields: Punctuated<Field, Token![,]>,
-            pub rest: Option<Rest>,
-        }
+    pub struct Struct {
+        pub attrs: Vec<Attribute>,
+        pub qself: Option<QSelf>,
+        pub path: Path,
+        pub brace: tok::Brace,
+        pub fields: Punctuated<Field, Token![,]>,
+        pub rest: Option<Rest>,
     }
-    ast_struct! {
-        pub struct Tuple {
-            pub attrs: Vec<Attribute>,
-            pub paren: tok::Paren,
-            pub elems: Punctuated<Patt, Token![,]>,
-        }
+    pub struct Tuple {
+        pub attrs: Vec<Attribute>,
+        pub paren: tok::Paren,
+        pub elems: Punctuated<Patt, Token![,]>,
     }
-    ast_struct! {
-        pub struct TupleStruct {
-            pub attrs: Vec<Attribute>,
-            pub qself: Option<QSelf>,
-            pub path: Path,
-            pub paren: tok::Paren,
-            pub elems: Punctuated<Patt, Token![,]>,
-        }
+    pub struct TupleStruct {
+        pub attrs: Vec<Attribute>,
+        pub qself: Option<QSelf>,
+        pub path: Path,
+        pub paren: tok::Paren,
+        pub elems: Punctuated<Patt, Token![,]>,
     }
-    ast_struct! {
-        pub struct Type {
-            pub attrs: Vec<Attribute>,
-            pub patt: Box<Patt>,
-            pub colon: Token![:],
-            pub typ: Box<ty::Type>,
-        }
+    pub struct Type {
+        pub attrs: Vec<Attribute>,
+        pub patt: Box<Patt>,
+        pub colon: Token![:],
+        pub typ: Box<ty::Type>,
     }
-    ast_struct! {
-        pub struct Wild {
-            pub attrs: Vec<Attribute>,
-            pub underscore: Token![_],
-        }
+    pub struct Wild {
+        pub attrs: Vec<Attribute>,
+        pub underscore: Token![_],
     }
-    ast_struct! {
-        pub struct Field {
-            pub attrs: Vec<Attribute>,
-            pub member: Member,
-            pub colon: Option<Token![:]>,
-            pub patt: Box<Patt>,
-        }
+    pub struct Field {
+        pub attrs: Vec<Attribute>,
+        pub member: Member,
+        pub colon: Option<Token![:]>,
+        pub patt: Box<Patt>,
     }
 }
 mod path {
     use super::{punct::Punctuated, *};
-    ast_struct! {
-        pub struct Path {
-            pub colon: Option<Token![::]>,
-            pub segs: Punctuated<Segment, Token![::]>,
-        }
+    pub struct Path {
+        pub colon: Option<Token![::]>,
+        pub segs: Punctuated<Segment, Token![::]>,
     }
     impl Path {
         pub fn is_ident<I: ?Sized>(&self, i: &I) -> bool
@@ -1121,11 +1073,9 @@ mod path {
         }
     }
 
-    ast_struct! {
-        pub struct Segment {
-            pub ident: Ident,
-            pub args: Args,
-        }
+    pub struct Segment {
+        pub ident: Ident,
+        pub args: Args,
     }
     impl<T> From<T> for Segment
     where
@@ -1139,12 +1089,10 @@ mod path {
         }
     }
 
-    ast_enum! {
-        pub enum Args {
-            None,
-            Angled(AngledArgs),
-            Parenthesized(ParenthesizedArgs),
-        }
+    pub enum Args {
+        None,
+        Angled(AngledArgs),
+        Parenthesized(ParenthesizedArgs),
     }
     impl Args {
         pub fn is_empty(&self) -> bool {
@@ -1169,63 +1117,50 @@ mod path {
         }
     }
 
-    ast_enum! {
-        pub enum Arg {
-            Lifetime(Lifetime),
-            Type(ty::Type),
-            Const(Expr),
-            AssocType(AssocType),
-            AssocConst(AssocConst),
-            Constraint(Constraint),
-        }
+    pub enum Arg {
+        Lifetime(Lifetime),
+        Type(ty::Type),
+        Const(Expr),
+        AssocType(AssocType),
+        AssocConst(AssocConst),
+        Constraint(Constraint),
     }
-    ast_struct! {
-        pub struct AngledArgs {
-            pub colon2: Option<Token![::]>,
-            pub lt: Token![<],
-            pub args: Punctuated<Arg, Token![,]>,
-            pub gt: Token![>],
-        }
+
+    pub struct AngledArgs {
+        pub colon2: Option<Token![::]>,
+        pub lt: Token![<],
+        pub args: Punctuated<Arg, Token![,]>,
+        pub gt: Token![>],
     }
-    ast_struct! {
-        pub struct AssocType {
-            pub ident: Ident,
-            pub args: Option<AngledArgs>,
-            pub eq: Token![=],
-            pub typ: ty::Type,
-        }
+    pub struct AssocType {
+        pub ident: Ident,
+        pub args: Option<AngledArgs>,
+        pub eq: Token![=],
+        pub typ: ty::Type,
     }
-    ast_struct! {
-        pub struct AssocConst {
-            pub ident: Ident,
-            pub args: Option<AngledArgs>,
-            pub eq: Token![=],
-            pub val: Expr,
-        }
+    pub struct AssocConst {
+        pub ident: Ident,
+        pub args: Option<AngledArgs>,
+        pub eq: Token![=],
+        pub val: Expr,
     }
-    ast_struct! {
-        pub struct Constraint {
-            pub ident: Ident,
-            pub args: Option<AngledArgs>,
-            pub colon: Token![:],
-            pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        }
+    pub struct Constraint {
+        pub ident: Ident,
+        pub args: Option<AngledArgs>,
+        pub colon: Token![:],
+        pub bounds: Punctuated<TypeParamBound, Token![+]>,
     }
-    ast_struct! {
-        pub struct ParenthesizedArgs {
-            pub paren: tok::Paren,
-            pub args: Punctuated<ty::Type, Token![,]>,
-            pub ret: Ret,
-        }
+    pub struct ParenthesizedArgs {
+        pub paren: tok::Paren,
+        pub args: Punctuated<ty::Type, Token![,]>,
+        pub ret: Ret,
     }
-    ast_struct! {
-        pub struct QSelf {
-            pub lt: Token![<],
-            pub typ: Box<ty::Type>,
-            pub pos: usize,
-            pub as_: Option<Token![as]>,
-            pub gt: Token![>],
-        }
+    pub struct QSelf {
+        pub lt: Token![<],
+        pub typ: Box<ty::Type>,
+        pub pos: usize,
+        pub as_: Option<Token![as]>,
+        pub gt: Token![>],
     }
 }
 mod stmt {
@@ -1280,125 +1215,89 @@ mod ty {
             Verbatim(TokenStream),
         }
     }
-    ast_struct! {
-        pub struct Array {
-            pub bracket: tok::Bracket,
-            pub elem: Box<Type>,
-            pub semi: Token![;],
-            pub len: Expr,
-        }
+    pub struct Array {
+        pub bracket: tok::Bracket,
+        pub elem: Box<Type>,
+        pub semi: Token![;],
+        pub len: Expr,
     }
-    ast_struct! {
-        pub struct BareFn {
-            pub lifes: Option<BoundLifetimes>,
-            pub unsafe_: Option<Token![unsafe]>,
-            pub abi: Option<Abi>,
-            pub fn_: Token![fn],
-            pub paren: tok::Paren,
-            pub args: Punctuated<BareFnArg, Token![,]>,
-            pub vari: Option<BareVari>,
-            pub ret: Ret,
-        }
+    pub struct BareFn {
+        pub lifes: Option<BoundLifetimes>,
+        pub unsafe_: Option<Token![unsafe]>,
+        pub abi: Option<Abi>,
+        pub fn_: Token![fn],
+        pub paren: tok::Paren,
+        pub args: Punctuated<BareFnArg, Token![,]>,
+        pub vari: Option<BareVari>,
+        pub ret: Ret,
     }
-    ast_struct! {
-        pub struct Group {
-            pub group: tok::Group,
-            pub elem: Box<Type>,
-        }
+    pub struct Group {
+        pub group: tok::Group,
+        pub elem: Box<Type>,
     }
-    ast_struct! {
-        pub struct Impl {
-            pub impl_: Token![impl],
-            pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        }
+    pub struct Impl {
+        pub impl_: Token![impl],
+        pub bounds: Punctuated<TypeParamBound, Token![+]>,
     }
-    ast_struct! {
-        pub struct Infer {
-            pub underscore: Token![_],
-        }
+    pub struct Infer {
+        pub underscore: Token![_],
     }
-    ast_struct! {
-        pub struct Mac {
-            pub mac: Macro,
-        }
+    pub struct Mac {
+        pub mac: Macro,
     }
-    ast_struct! {
-        pub struct Never {
-            pub bang: Token![!],
-        }
+    pub struct Never {
+        pub bang: Token![!],
     }
-    ast_struct! {
-        pub struct Paren {
-            pub paren: tok::Paren,
-            pub elem: Box<Type>,
-        }
+    pub struct Paren {
+        pub paren: tok::Paren,
+        pub elem: Box<Type>,
     }
-    ast_struct! {
-        pub struct Path {
-            pub qself: Option<QSelf>,
-            pub path: Path,
-        }
+    pub struct Path {
+        pub qself: Option<QSelf>,
+        pub path: Path,
     }
-    ast_struct! {
-        pub struct Ptr {
-            pub star: Token![*],
-            pub const_: Option<Token![const]>,
-            pub mut_: Option<Token![mut]>,
-            pub elem: Box<Type>,
-        }
+    pub struct Ptr {
+        pub star: Token![*],
+        pub const_: Option<Token![const]>,
+        pub mut_: Option<Token![mut]>,
+        pub elem: Box<Type>,
     }
-    ast_struct! {
-        pub struct Ref {
-            pub and: Token![&],
-            pub life: Option<Lifetime>,
-            pub mut_: Option<Token![mut]>,
-            pub elem: Box<Type>,
-        }
+    pub struct Ref {
+        pub and: Token![&],
+        pub life: Option<Lifetime>,
+        pub mut_: Option<Token![mut]>,
+        pub elem: Box<Type>,
     }
-    ast_struct! {
-        pub struct Slice {
-            pub bracket: tok::Bracket,
-            pub elem: Box<Type>,
-        }
+    pub struct Slice {
+        pub bracket: tok::Bracket,
+        pub elem: Box<Type>,
     }
-    ast_struct! {
-        pub struct TraitObj {
-            pub dyn_: Option<Token![dyn]>,
-            pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        }
+    pub struct TraitObj {
+        pub dyn_: Option<Token![dyn]>,
+        pub bounds: Punctuated<TypeParamBound, Token![+]>,
     }
-    ast_struct! {
-        pub struct Tuple {
-            pub paren: tok::Paren,
-            pub elems: Punctuated<Type, Token![,]>,
-        }
+    pub struct Tuple {
+        pub paren: tok::Paren,
+        pub elems: Punctuated<Type, Token![,]>,
     }
-    ast_struct! {
-        pub struct Abi {
-            pub extern_: Token![extern],
-            pub name: Option<lit::Str>,
-        }
+    pub struct Abi {
+        pub extern_: Token![extern],
+        pub name: Option<lit::Str>,
     }
-    ast_struct! {
-        pub struct BareFnArg {
-            pub attrs: Vec<Attribute>,
-            pub name: Option<(Ident, Token![:])>,
-            pub ty: Type,
-        }
+    pub struct BareFnArg {
+        pub attrs: Vec<Attribute>,
+        pub name: Option<(Ident, Token![:])>,
+        pub ty: Type,
     }
-    ast_struct! {
-        pub struct BareVari {
-            pub attrs: Vec<Attribute>,
-            pub name: Option<(Ident, Token![:])>,
-            pub dots: Token![...],
-            pub comma: Option<Token![,]>,
-        }
+    pub struct BareVari {
+        pub attrs: Vec<Attribute>,
+        pub name: Option<(Ident, Token![:])>,
+        pub dots: Token![...],
+        pub comma: Option<Token![,]>,
     }
-    ast_enum! {
-        pub enum Ret {
-            Default,
-            Type(Token![->], Box<Type>),
-        }
+    pub enum Ret {
+        Default,
+        Type(Token![->], Box<Type>),
     }
 }
 
@@ -1453,14 +1352,13 @@ impl ops::MulAssign<u8> for BigInt {
     }
 }
 
-ast_struct! {
-    pub struct Variant {
-        pub attrs: Vec<Attribute>,
-        pub ident: Ident,
-        pub fields: Fields,
-        pub discriminant: Option<(Token![=], Expr)>,
-    }
+pub struct Variant {
+    pub attrs: Vec<Attribute>,
+    pub ident: Ident,
+    pub fields: Fields,
+    pub discriminant: Option<(Token![=], Expr)>,
 }
+
 ast_enum_of_structs! {
     pub enum Fields {
         Named(FieldsNamed),
@@ -1468,17 +1366,13 @@ ast_enum_of_structs! {
         Unit,
     }
 }
-ast_struct! {
-    pub struct FieldsNamed {
-        pub brace: tok::Brace,
-        pub named: Punctuated<Field, Token![,]>,
-    }
+pub struct FieldsNamed {
+    pub brace: tok::Brace,
+    pub named: Punctuated<Field, Token![,]>,
 }
-ast_struct! {
-    pub struct FieldsUnnamed {
-        pub paren: tok::Paren,
-        pub unnamed: Punctuated<Field, Token![,]>,
-    }
+pub struct FieldsUnnamed {
+    pub paren: tok::Paren,
+    pub unnamed: Punctuated<Field, Token![,]>,
 }
 impl Fields {
     pub fn iter(&self) -> punct::Iter<Field> {
@@ -1535,51 +1429,41 @@ impl<'a> IntoIterator for &'a mut Fields {
         self.iter_mut()
     }
 }
-ast_struct! {
-    pub struct Field {
-        pub attrs: Vec<Attribute>,
-        pub vis: Visibility,
-        pub mutability: FieldMut,
-        pub ident: Option<Ident>,
-        pub colon: Option<Token![:]>,
-        pub typ: ty::Type,
-    }
+pub struct Field {
+    pub attrs: Vec<Attribute>,
+    pub vis: Visibility,
+    pub mutability: FieldMut,
+    pub ident: Option<Ident>,
+    pub colon: Option<Token![:]>,
+    pub typ: ty::Type,
 }
-ast_struct! {
-    pub struct DeriveInput {
-        pub attrs: Vec<Attribute>,
-        pub vis: Visibility,
-        pub ident: Ident,
-        pub gens: Generics,
-        pub data: Data,
-    }
+pub struct DeriveInput {
+    pub attrs: Vec<Attribute>,
+    pub vis: Visibility,
+    pub ident: Ident,
+    pub gens: Generics,
+    pub data: Data,
 }
-ast_enum! {
-    pub enum Data {
-        Struct(DataStruct),
-        Enum(DataEnum),
-        Union(DataUnion),
-    }
+
+pub enum Data {
+    Struct(DataStruct),
+    Enum(DataEnum),
+    Union(DataUnion),
 }
-ast_struct! {
-    pub struct DataStruct {
-        pub struct_: Token![struct],
-        pub fields: Fields,
-        pub semi: Option<Token![;]>,
-    }
+
+pub struct DataStruct {
+    pub struct_: Token![struct],
+    pub fields: Fields,
+    pub semi: Option<Token![;]>,
 }
-ast_struct! {
-    pub struct DataEnum {
-        pub enum_: Token![enum],
-        pub brace: tok::Brace,
-        pub variants: Punctuated<Variant, Token![,]>,
-    }
+pub struct DataEnum {
+    pub enum_: Token![enum],
+    pub brace: tok::Brace,
+    pub variants: Punctuated<Variant, Token![,]>,
 }
-ast_struct! {
-    pub struct DataUnion {
-        pub union_: Token![union],
-        pub fields: FieldsNamed,
-    }
+pub struct DataUnion {
+    pub union_: Token![union],
+    pub fields: FieldsNamed,
 }
 
 mod err {
@@ -1869,12 +1753,10 @@ pub mod ext {
     }
 }
 
-ast_struct! {
-    pub struct File {
-        pub shebang: Option<String>,
-        pub attrs: Vec<Attribute>,
-        pub items: Vec<Item>,
-    }
+pub struct File {
+    pub shebang: Option<String>,
+    pub attrs: Vec<Attribute>,
+    pub items: Vec<Item>,
 }
 
 mod ident {
@@ -2072,13 +1954,12 @@ mod lookahead {
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
 }
 
-ast_enum! {
-    pub enum MacroDelim {
-        Paren(tok::Paren),
-        Brace(tok::Brace),
-        Bracket(tok::Bracket),
-    }
+pub enum MacroDelim {
+    Paren(tok::Paren),
+    Brace(tok::Brace),
+    Bracket(tok::Bracket),
 }
+
 impl MacroDelim {
     pub fn span(&self) -> &DelimSpan {
         use MacroDelim::*;
@@ -2090,14 +1971,13 @@ impl MacroDelim {
     }
 }
 
-ast_struct! {
-    pub struct Macro {
-        pub path: Path,
-        pub bang: Token![!],
-        pub delim: MacroDelim,
-        pub toks: TokenStream,
-    }
+pub struct Macro {
+    pub path: Path,
+    pub bang: Token![!],
+    pub delim: MacroDelim,
+    pub toks: TokenStream,
 }
+
 impl Macro {
     pub fn parse_body<T: Parse>(&self) -> Result<T> {
         self.parse_body_with(T::parse)
@@ -2126,44 +2006,40 @@ fn mac_parse_delimiter(x: ParseStream) -> Result<(MacroDelim, TokenStream)> {
     })
 }
 
-ast_enum! {
-    pub enum BinOp {
-        Add(Token![+]),
-        Sub(Token![-]),
-        Mul(Token![*]),
-        Div(Token![/]),
-        Rem(Token![%]),
-        And(Token![&&]),
-        Or(Token![||]),
-        BitXor(Token![^]),
-        BitAnd(Token![&]),
-        BitOr(Token![|]),
-        Shl(Token![<<]),
-        Shr(Token![>>]),
-        Eq(Token![==]),
-        Lt(Token![<]),
-        Le(Token![<=]),
-        Ne(Token![!=]),
-        Ge(Token![>=]),
-        Gt(Token![>]),
-        AddAssign(Token![+=]),
-        SubAssign(Token![-=]),
-        MulAssign(Token![*=]),
-        DivAssign(Token![/=]),
-        RemAssign(Token![%=]),
-        BitXorAssign(Token![^=]),
-        BitAndAssign(Token![&=]),
-        BitOrAssign(Token![|=]),
-        ShlAssign(Token![<<=]),
-        ShrAssign(Token![>>=]),
-    }
+pub enum BinOp {
+    Add(Token![+]),
+    Sub(Token![-]),
+    Mul(Token![*]),
+    Div(Token![/]),
+    Rem(Token![%]),
+    And(Token![&&]),
+    Or(Token![||]),
+    BitXor(Token![^]),
+    BitAnd(Token![&]),
+    BitOr(Token![|]),
+    Shl(Token![<<]),
+    Shr(Token![>>]),
+    Eq(Token![==]),
+    Lt(Token![<]),
+    Le(Token![<=]),
+    Ne(Token![!=]),
+    Ge(Token![>=]),
+    Gt(Token![>]),
+    AddAssign(Token![+=]),
+    SubAssign(Token![-=]),
+    MulAssign(Token![*=]),
+    DivAssign(Token![/=]),
+    RemAssign(Token![%=]),
+    BitXorAssign(Token![^=]),
+    BitAndAssign(Token![&=]),
+    BitOrAssign(Token![|=]),
+    ShlAssign(Token![<<=]),
+    ShrAssign(Token![>>=]),
 }
-ast_enum! {
-    pub enum UnOp {
-        Deref(Token![*]),
-        Not(Token![!]),
-        Neg(Token![-]),
-    }
+pub enum UnOp {
+    Deref(Token![*]),
+    Not(Token![!]),
+    Neg(Token![-]),
 }
 
 pub mod parse {
@@ -2645,25 +2521,21 @@ where
     }
 }
 
-ast_enum! {
-    pub enum Visibility {
-        Public(Token![pub]),
-        Restricted(VisRestricted),
-        Inherited,
-    }
+pub enum Visibility {
+    Public(Token![pub]),
+    Restricted(VisRestricted),
+    Inherited,
 }
-ast_struct! {
-    pub struct VisRestricted {
-        pub pub_: Token![pub],
-        pub paren: tok::Paren,
-        pub in_: Option<Token![in]>,
-        pub path: Box<Path>,
-    }
+
+pub struct VisRestricted {
+    pub pub_: Token![pub],
+    pub paren: tok::Paren,
+    pub in_: Option<Token![in]>,
+    pub path: Box<Path>,
 }
-ast_enum! {
-    pub enum FieldMut {
-        None,
-    }
+
+pub enum FieldMut {
+    None,
 }
 
 mod sealed {
