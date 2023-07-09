@@ -1142,12 +1142,12 @@ impl Clone for Macro {
         }
     }
 }
-impl Clone for MacroDelimiter {
+impl Clone for MacroDelim {
     fn clone(&self) -> Self {
         match self {
-            MacroDelimiter::Paren(v0) => MacroDelimiter::Paren(v0.clone()),
-            MacroDelimiter::Brace(v0) => MacroDelimiter::Brace(v0.clone()),
-            MacroDelimiter::Bracket(v0) => MacroDelimiter::Bracket(v0.clone()),
+            MacroDelim::Paren(v0) => MacroDelim::Paren(v0.clone()),
+            MacroDelim::Brace(v0) => MacroDelim::Brace(v0.clone()),
+            MacroDelim::Bracket(v0) => MacroDelim::Bracket(v0.clone()),
         }
     }
 }
@@ -1251,7 +1251,7 @@ impl Clone for PatReference {
     fn clone(&self) -> Self {
         PatReference {
             attrs: self.attrs.clone(),
-            and_: self.and_.clone(),
+            and: self.and.clone(),
             mutability: self.mutability.clone(),
             pat: self.pat.clone(),
         }

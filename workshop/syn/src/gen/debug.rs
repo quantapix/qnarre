@@ -1710,21 +1710,21 @@ impl Debug for Macro {
         formatter.finish()
     }
 }
-impl Debug for MacroDelimiter {
+impl Debug for MacroDelim {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("MacroDelimiter::")?;
         match self {
-            MacroDelimiter::Paren(v0) => {
+            MacroDelim::Paren(v0) => {
                 let mut formatter = formatter.debug_tuple("Paren");
                 formatter.field(v0);
                 formatter.finish()
             },
-            MacroDelimiter::Brace(v0) => {
+            MacroDelim::Brace(v0) => {
                 let mut formatter = formatter.debug_tuple("Brace");
                 formatter.field(v0);
                 formatter.finish()
             },
-            MacroDelimiter::Bracket(v0) => {
+            MacroDelim::Bracket(v0) => {
                 let mut formatter = formatter.debug_tuple("Bracket");
                 formatter.field(v0);
                 formatter.finish()
@@ -1879,7 +1879,7 @@ impl Debug for PatReference {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("and", &self.and_);
+                formatter.field("and", &self.and);
                 formatter.field("mutability", &self.mutability);
                 formatter.field("pat", &self.pat);
                 formatter.finish()

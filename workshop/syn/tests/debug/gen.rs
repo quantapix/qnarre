@@ -2973,18 +2973,18 @@ impl Debug for Lite<syn::Macro> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::MacroDelimiter> {
+impl Debug for Lite<syn::MacroDelim> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::MacroDelimiter::Paren(_val) => {
+            syn::MacroDelim::Paren(_val) => {
                 formatter.write_str("MacroDelimiter::Paren")?;
                 Ok(())
             },
-            syn::MacroDelimiter::Brace(_val) => {
+            syn::MacroDelim::Brace(_val) => {
                 formatter.write_str("MacroDelimiter::Brace")?;
                 Ok(())
             },
-            syn::MacroDelimiter::Bracket(_val) => {
+            syn::MacroDelim::Bracket(_val) => {
                 formatter.write_str("MacroDelimiter::Bracket")?;
                 Ok(())
             },

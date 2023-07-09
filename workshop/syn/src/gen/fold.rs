@@ -355,7 +355,7 @@ pub trait Fold {
     fn fold_macro(&mut self, i: Macro) -> Macro {
         fold_macro(self, i)
     }
-    fn fold_macro_delimiter(&mut self, i: MacroDelimiter) -> MacroDelimiter {
+    fn fold_macro_delimiter(&mut self, i: MacroDelim) -> MacroDelim {
         fold_macro_delimiter(self, i)
     }
     fn fold_member(&mut self, i: Member) -> Member {
@@ -1910,14 +1910,14 @@ where
         toks: node.toks,
     }
 }
-pub fn fold_macro_delimiter<F>(f: &mut F, node: MacroDelimiter) -> MacroDelimiter
+pub fn fold_macro_delimiter<F>(f: &mut F, node: MacroDelim) -> MacroDelim
 where
     F: Fold + ?Sized,
 {
     match node {
-        MacroDelimiter::Paren(_binding_0) => MacroDelimiter::Paren(_binding_0),
-        MacroDelimiter::Brace(_binding_0) => MacroDelimiter::Brace(_binding_0),
-        MacroDelimiter::Bracket(_binding_0) => MacroDelimiter::Bracket(_binding_0),
+        MacroDelim::Paren(_binding_0) => MacroDelim::Paren(_binding_0),
+        MacroDelim::Brace(_binding_0) => MacroDelim::Brace(_binding_0),
+        MacroDelim::Bracket(_binding_0) => MacroDelim::Bracket(_binding_0),
     }
 }
 pub fn fold_member<F>(f: &mut F, node: Member) -> Member
@@ -2031,7 +2031,7 @@ where
 {
     PatReference {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        and_: node.and_,
+        and: node.and,
         mutability: node.mutability,
         pat: Box::new(f.fold_pat(*node.pat)),
     }

@@ -654,8 +654,8 @@ fn parse_expr(input: ParseStream, mut lhs: Expr, allow_struct: AllowStruct, base
         } else if Precedence::Cast >= base && input.peek(Token![as]) {
             let as_: Token![as] = input.parse()?;
             let allow_plus = false;
-            let allow_group_generic = false;
-            let ty = ambig_ty(input, allow_plus, allow_group_generic)?;
+            let group_gen = false;
+            let ty = ambig_ty(input, allow_plus, group_gen)?;
             check_cast(input)?;
             lhs = Expr::Cast(ExprCast {
                 attrs: Vec::new(),
@@ -2445,7 +2445,7 @@ impl Parse for Receiver {
             });
             if let Some((ampersand, lifetime)) = reference.as_ref() {
                 ty = Ty::Ref(ty::Ref {
-                    and_: Token![&](ampersand.span),
+                    and: Token![&](ampersand.span),
                     lifetime: lifetime.clone(),
                     mut_: mutability.as_ref().map(|m| Token![mut](m.span)),
                     elem: Box::new(ty),
@@ -2696,7 +2696,7 @@ fn parse_foreign_item_type(begin: ParseBuffer, input: ParseStream) -> Result<For
         bounds: _,
         ty,
         semi,
-    } = FlexibleItemType::parse(input, TypeDefaultness::Disallowed, WhereClauseLocation::Both)?;
+    } = FlexibleItemTy::parse(input, TypeDefaultness::Disallowed, WhereClauseLocation::Both)?;
     if colon.is_some() || ty.is_some() {
         Ok(ForeignItem::Verbatim(verbatim_between(&begin, input)))
     } else {
@@ -2751,7 +2751,7 @@ fn parse_item_type(begin: ParseBuffer, input: ParseStream) -> Result<Item> {
         bounds: _,
         ty,
         semi,
-    } = FlexibleItemType::parse(input, TypeDefaultness::Disallowed, WhereClauseLocation::BeforeEq)?;
+    } = FlexibleItemTy::parse(input, TypeDefaultness::Disallowed, WhereClauseLocation::BeforeEq)?;
     let (eq, ty) = match ty {
         Some(ty) if colon.is_none() => ty,
         _ => return Ok(Item::Verbatim(verbatim_between(&begin, input))),
@@ -3070,8 +3070,8 @@ impl Parse for TraitItemType {
         let type: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
         let mut gens: Generics = input.parse()?;
-        let (colon, bounds) = FlexibleItemType::parse_optional_bounds(input)?;
-        let default = FlexibleItemType::parse_optional_definition(input)?;
+        let (colon, bounds) = FlexibleItemTy::parse_optional_bounds(input)?;
+        let default = FlexibleItemTy::parse_optional_definition(input)?;
         gens.clause = input.parse()?;
         let semi: Token![;] = input.parse()?;
         Ok(TraitItemType {
@@ -3097,7 +3097,7 @@ fn parse_trait_item_type(begin: ParseBuffer, input: ParseStream) -> Result<Trait
         bounds,
         ty,
         semi,
-    } = FlexibleItemType::parse(input, TypeDefaultness::Disallowed, WhereClauseLocation::AfterEq)?;
+    } = FlexibleItemTy::parse(input, TypeDefaultness::Disallowed, WhereClauseLocation::AfterEq)?;
     if vis.is_some() {
         Ok(TraitItem::Verbatim(verbatim_between(&begin, input)))
     } else {
@@ -3387,7 +3387,7 @@ fn parse_impl_item_type(begin: ParseBuffer, input: ParseStream) -> Result<ImplIt
         bounds: _,
         ty,
         semi,
-    } = FlexibleItemType::parse(input, TypeDefaultness::Optional, WhereClauseLocation::AfterEq)?;
+    } = FlexibleItemTy::parse(input, TypeDefaultness::Optional, WhereClauseLocation::AfterEq)?;
     let (eq, ty) = match ty {
         Some(ty) if colon.is_none() => ty,
         _ => return Ok(ImplItem::Verbatim(verbatim_between(&begin, input))),
@@ -3424,11 +3424,11 @@ impl Visibility {
         }
     }
 }
-impl MacroDelimiter {
+impl MacroDelim {
     pub fn is_brace(&self) -> bool {
         match self {
-            MacroDelimiter::Brace(_) => true,
-            MacroDelimiter::Paren(_) | MacroDelimiter::Bracket(_) => false,
+            MacroDelim::Brace(_) => true,
+            MacroDelim::Paren(_) | MacroDelim::Bracket(_) => false,
         }
     }
 }
@@ -3491,7 +3491,7 @@ mod parsing {
             if ahead.peek(Token![!]) {
                 if ahead.peek2(Ident) || ahead.peek2(Token![try]) {
                     is_item_macro = true;
-                } else if ahead.peek2(token::Brace) && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?])) {
+                } else if ahead.peek2(tok::Brace) && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?])) {
                     x.advance_to(&ahead);
                     return stmt_mac(x, attrs, path).map(Stmt::Macro);
                 }
@@ -3507,13 +3507,13 @@ mod parsing {
                 && (x.peek2(Token![mut])
                     || x.peek2(Ident) && !(x.peek2(Token![async]) && (x.peek3(Token![move]) || x.peek3(Token![|]))))
             || x.peek(Token![const])
-                && !(x.peek2(token::Brace)
+                && !(x.peek2(tok::Brace)
                     || x.peek2(Token![static])
                     || x.peek2(Token![async])
                         && !(x.peek3(Token![unsafe]) || x.peek3(Token![extern]) || x.peek3(Token![fn]))
                     || x.peek2(Token![move])
                     || x.peek2(Token![|]))
-            || x.peek(Token![unsafe]) && !x.peek2(token::Brace)
+            || x.peek(Token![unsafe]) && !x.peek2(tok::Brace)
             || x.peek(Token![async]) && (x.peek2(Token![unsafe]) || x.peek2(Token![extern]) || x.peek2(Token![fn]))
             || x.peek(Token![fn])
             || x.peek(Token![mod])
@@ -3664,9 +3664,9 @@ mod parsing {
             let attrs = input.call(Attribute::parse_outer)?;
             let _visibility: Visibility = input.parse()?;
             let ident: Ident = input.parse()?;
-            let fields = if input.peek(token::Brace) {
+            let fields = if input.peek(tok::Brace) {
                 Fields::Named(input.parse()?)
-            } else if input.peek(token::Paren) {
+            } else if input.peek(tok::Paren) {
                 Fields::Unnamed(input.parse()?)
             } else {
                 Fields::Unit
@@ -3794,7 +3794,7 @@ mod parsing {
             where_clause = Some(input.parse()?);
             lookahead = input.lookahead1();
         }
-        if where_clause.is_none() && lookahead.peek(token::Paren) {
+        if where_clause.is_none() && lookahead.peek(tok::Paren) {
             let fields = input.parse()?;
             lookahead = input.lookahead1();
             if lookahead.peek(Token![where]) {
@@ -3807,7 +3807,7 @@ mod parsing {
             } else {
                 Err(lookahead.error())
             }
-        } else if lookahead.peek(token::Brace) {
+        } else if lookahead.peek(tok::Brace) {
             let fields = input.parse()?;
             Ok((where_clause, Fields::Named(fields), None))
         } else if lookahead.peek(Token![;]) {
@@ -3819,7 +3819,7 @@ mod parsing {
     }
     pub fn data_enum(
         input: ParseStream,
-    ) -> Result<(Option<WhereClause>, token::Brace, Punctuated<Variant, Token![,]>)> {
+    ) -> Result<(Option<WhereClause>, tok::Brace, Punctuated<Variant, Token![,]>)> {
         let where_clause = input.parse()?;
         let content;
         let brace = braced!(content in input);
@@ -4009,7 +4009,7 @@ mod parsing {
 mod parsing {
     impl Parse for Visibility {
         fn parse(input: ParseStream) -> Result<Self> {
-            if input.peek(token::Group) {
+            if input.peek(tok::Group) {
                 let ahead = input.fork();
                 let group = super::parse_group(&ahead)?;
                 if group.content.is_empty() {
@@ -4027,7 +4027,7 @@ mod parsing {
     impl Visibility {
         fn parse_pub(input: ParseStream) -> Result<Self> {
             let pub_ = input.parse::<Token![pub]>()?;
-            if input.peek(token::Paren) {
+            if input.peek(tok::Paren) {
                 let ahead = input.fork();
                 let content;
                 let paren = parenthesized!(content in ahead);
@@ -4193,8 +4193,8 @@ pub mod parsing {
             if lookahead.peek(Ident)
                 && (input.peek2(Token![::])
                     || input.peek2(Token![!])
-                    || input.peek2(token::Brace)
-                    || input.peek2(token::Paren)
+                    || input.peek2(tok::Brace)
+                    || input.peek2(tok::Paren)
                     || input.peek2(Token![..]))
                 || input.peek(Token![self]) && input.peek2(Token![::])
                 || lookahead.peek(Token![::])
@@ -4218,9 +4218,9 @@ pub mod parsing {
                 input.call(pat_ident).map(Pat::Ident)
             } else if lookahead.peek(Token![&]) {
                 input.call(pat_reference).map(Pat::Reference)
-            } else if lookahead.peek(token::Paren) {
+            } else if lookahead.peek(tok::Paren) {
                 input.call(pat_paren_or_tuple)
-            } else if lookahead.peek(token::Bracket) {
+            } else if lookahead.peek(tok::Bracket) {
                 input.call(pat_slice).map(Pat::Slice)
             } else if lookahead.peek(Token![..]) && !input.peek(Token![...]) {
                 pat_range_half_open(input)
@@ -4272,9 +4272,9 @@ pub mod parsing {
                 },
             }));
         }
-        if input.peek(token::Brace) {
+        if input.peek(tok::Brace) {
             pat_struct(input, qself, path).map(Pat::Struct)
-        } else if input.peek(token::Paren) {
+        } else if input.peek(tok::Paren) {
             pat_tuple_struct(input, qself, path).map(Pat::TupleStruct)
         } else if input.peek(Token![..]) {
             pat_range(input, qself, path)
@@ -4645,7 +4645,7 @@ pub mod path {
             Ok(path)
         }
         pub fn parse_rest(x: ParseStream, path: &mut Self, expr_style: bool) -> Result<()> {
-            while x.peek(Token![::]) && !x.peek3(token::Paren) {
+            while x.peek(Token![::]) && !x.peek3(tok::Paren) {
                 let punct: Token![::] = x.parse()?;
                 path.segs.push_punct(punct);
                 let value = Segment::parse_helper(x, expr_style)?;
@@ -4732,7 +4732,7 @@ pub mod path {
             let gist;
             Ok(ParenthesizedArgs {
                 paren: parenthesized!(gist in x),
-                args: gist.parse_terminated(Type::parse, Token![,])?,
+                args: gist.parse_terminated(Ty::parse, Token![,])?,
                 ret: x.call(ty::Ret::without_plus)?,
             })
         }
@@ -4742,12 +4742,12 @@ pub mod path {
             if x.peek(Lifetime) && !x.peek2(Token![+]) {
                 return Ok(Arg::Lifetime(x.parse()?));
             }
-            if x.peek(Lit) || x.peek(token::Brace) {
+            if x.peek(Lit) || x.peek(tok::Brace) {
                 return const_argument(x).map(Arg::Const);
             }
             let mut y: Type = x.parse()?;
             match y {
-                Type::Path(mut ty)
+                Ty::Path(mut ty)
                     if ty.qself.is_none()
                         && ty.path.colon.is_none()
                         && ty.path.segs.len() == 1
@@ -4764,7 +4764,7 @@ pub mod path {
                             Args::Angled(x) => Some(x),
                             Args::Parenthesized(_) => unreachable!(),
                         };
-                        return if x.peek(Lit) || x.peek(token::Brace) {
+                        return if x.peek(Lit) || x.peek(tok::Brace) {
                             Ok(Arg::AssocConst(AssocConst {
                                 ident,
                                 args: gnrs,
@@ -4808,7 +4808,7 @@ pub mod path {
                             },
                         }));
                     }
-                    y = Type::Path(ty);
+                    y = Ty::Path(ty);
                 },
                 _ => {},
             }
@@ -4829,7 +4829,7 @@ pub mod path {
                 path: Path::from(y),
             }));
         }
-        if x.peek(token::Brace) {
+        if x.peek(tok::Brace) {
             let y: ExprBlock = x.parse()?;
             return Ok(Expr::Block(y));
         }
@@ -4955,139 +4955,139 @@ pub mod parsing {
 }
 
 pub mod ty {
-    use crate::ty::*;
-    impl Parse for Type {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let allow_plus = true;
-            let allow_group_generic = true;
-            ambig_ty(input, allow_plus, allow_group_generic)
+    use crate::{ty::*, tok};
+    impl Parse for Ty {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let plus = true;
+            let group_gen = true;
+            ambig_ty(x, plus, group_gen)
         }
     }
-    impl Type {
-        pub fn without_plus(input: ParseStream) -> Result<Self> {
-            let allow_plus = false;
-            let allow_group_generic = true;
-            ambig_ty(input, allow_plus, allow_group_generic)
+    impl Ty {
+        pub fn without_plus(x: ParseStream) -> Result<Self> {
+            let plus = false;
+            let group_gen = true;
+            ambig_ty(x, plus, group_gen)
         }
     }
-    pub fn ambig_ty(input: ParseStream, allow_plus: bool, allow_group_generic: bool) -> Result<Type> {
-        let begin = input.fork();
-        if input.peek(token::Group) {
-            let mut group: ty::Group = input.parse()?;
-            if input.peek(Token![::]) && input.peek3(Ident::peek_any) {
-                if let Type::Path(mut ty) = *group.elem {
-                    Path::parse_rest(input, &mut ty.path, false)?;
-                    return Ok(Type::Path(ty));
+    pub fn ambig_ty(x: ParseStream, allow_plus: bool, group_gen: bool) -> Result<Ty> {
+        let begin = x.fork();
+        if x.peek(tok::Group) {
+            let mut y: Group = x.parse()?;
+            if x.peek(Token![::]) && x.peek3(Ident::peek_any) {
+                if let Ty::Path(mut ty) = *y.elem {
+                    Path::parse_rest(x, &mut ty.path, false)?;
+                    return Ok(Ty::Path(ty));
                 } else {
-                    return Ok(Type::Path(ty::Path {
+                    return Ok(Ty::Path(Path {
                         qself: Some(QSelf {
-                            lt: Token![<](group.group.span),
+                            lt: Token![<](y.group.span),
                             position: 0,
                             as_: None,
-                            gt: Token![>](group.group.span),
-                            ty: group.elem,
+                            gt: Token![>](y.group.span),
+                            ty: y.elem,
                         }),
-                        path: Path::parse_helper(input, false)?,
+                        path: Path::parse_helper(x, false)?,
                     }));
                 }
-            } else if input.peek(Token![<]) && allow_group_generic || input.peek(Token![::]) && input.peek3(Token![<]) {
-                if let Type::Path(mut ty) = *group.elem {
-                    let arguments = &mut ty.path.segments.last_mut().unwrap().arguments;
-                    if arguments.is_none() {
-                        *arguments = path::Args::Angled(input.parse()?);
-                        Path::parse_rest(input, &mut ty.path, false)?;
-                        return Ok(Type::Path(ty));
+            } else if x.peek(Token![<]) && group_gen || x.peek(Token![::]) && x.peek3(Token![<]) {
+                if let Ty::Path(mut ty) = *y.elem {
+                    let args = &mut ty.path.segs.last_mut().unwrap().args;
+                    if args.is_none() {
+                        *args = path::Args::Angled(x.parse()?);
+                        Path::parse_rest(x, &mut ty.path, false)?;
+                        return Ok(Ty::Path(ty));
                     } else {
-                        group.elem = Box::new(Type::Path(ty));
+                        y.elem = Box::new(Ty::Path(ty));
                     }
                 }
             }
-            return Ok(Type::Group(group));
+            return Ok(Ty::Group(y));
         }
-        let mut lifetimes = None::<BoundLifetimes>;
-        let mut lookahead = input.lookahead1();
-        if lookahead.peek(Token![for]) {
-            lifetimes = input.parse()?;
-            lookahead = input.lookahead1();
-            if !lookahead.peek(Ident)
-                && !lookahead.peek(Token![fn])
-                && !lookahead.peek(Token![unsafe])
-                && !lookahead.peek(Token![extern])
-                && !lookahead.peek(Token![super])
-                && !lookahead.peek(Token![self])
-                && !lookahead.peek(Token![Self])
-                && !lookahead.peek(Token![crate])
-                || input.peek(Token![dyn])
+        let mut lifes = None::<BoundLifetimes>;
+        let mut look = x.lookahead1();
+        if look.peek(Token![for]) {
+            lifes = x.parse()?;
+            look = x.lookahead1();
+            if !look.peek(Ident)
+                && !look.peek(Token![fn])
+                && !look.peek(Token![unsafe])
+                && !look.peek(Token![extern])
+                && !look.peek(Token![super])
+                && !look.peek(Token![self])
+                && !look.peek(Token![Self])
+                && !look.peek(Token![crate])
+                || x.peek(Token![dyn])
             {
-                return Err(lookahead.error());
+                return Err(look.error());
             }
         }
-        if lookahead.peek(token::Paren) {
-            let content;
-            let paren = parenthesized!(content in input);
-            if content.is_empty() {
-                return Ok(Type::Tuple(ty::Tuple {
+        if look.peek(tok::Paren) {
+            let gist;
+            let paren = parenthesized!(gist in x);
+            if gist.is_empty() {
+                return Ok(Ty::Tuple(Tuple {
                     paren,
                     elems: Punctuated::new(),
                 }));
             }
-            if content.peek(Lifetime) {
-                return Ok(Type::Paren(ty::Paren {
+            if gist.peek(Lifetime) {
+                return Ok(Ty::Paren(Paren {
                     paren,
-                    elem: Box::new(Type::TraitObject(content.parse()?)),
+                    elem: Box::new(Ty::TraitObject(gist.parse()?)),
                 }));
             }
-            if content.peek(Token![?]) {
-                return Ok(Type::TraitObject(ty::TraitObj {
+            if gist.peek(Token![?]) {
+                return Ok(Ty::TraitObject(TraitObj {
                     dyn_: None,
                     bounds: {
-                        let mut bounds = Punctuated::new();
-                        bounds.push_value(TypeParamBound::Trait(TraitBound {
+                        let mut ys = Punctuated::new();
+                        ys.push_value(TypeParamBound::Trait(TraitBound {
                             paren: Some(paren),
-                            ..content.parse()?
+                            ..gist.parse()?
                         }));
-                        while let Some(plus) = input.parse()? {
-                            bounds.push_punct(plus);
-                            bounds.push_value(input.parse()?);
+                        while let Some(plus) = x.parse()? {
+                            ys.push_punct(plus);
+                            ys.push_value(x.parse()?);
                         }
-                        bounds
+                        ys
                     },
                 }));
             }
-            let mut first: Type = content.parse()?;
-            if content.peek(Token![,]) {
-                return Ok(Type::Tuple(ty::Tuple {
+            let mut first: Type = gist.parse()?;
+            if gist.peek(Token![,]) {
+                return Ok(Ty::Tuple(Tuple {
                     paren,
                     elems: {
-                        let mut elems = Punctuated::new();
-                        elems.push_value(first);
-                        elems.push_punct(content.parse()?);
-                        while !content.is_empty() {
-                            elems.push_value(content.parse()?);
-                            if content.is_empty() {
+                        let mut ys = Punctuated::new();
+                        ys.push_value(first);
+                        ys.push_punct(gist.parse()?);
+                        while !gist.is_empty() {
+                            ys.push_value(gist.parse()?);
+                            if gist.is_empty() {
                                 break;
                             }
-                            elems.push_punct(content.parse()?);
+                            ys.push_punct(gist.parse()?);
                         }
-                        elems
+                        ys
                     },
                 }));
             }
-            if allow_plus && input.peek(Token![+]) {
+            if allow_plus && x.peek(Token![+]) {
                 loop {
                     let first = match first {
-                        Type::Path(ty::Path { qself: None, path }) => TypeParamBound::Trait(TraitBound {
+                        Ty::Path(Path { qself: None, path }) => TypeParamBound::Trait(TraitBound {
                             paren: Some(paren),
                             modifier: TraitBoundModifier::None,
                             lifetimes: None,
                             path,
                         }),
-                        Type::TraitObject(ty::TraitObj {
+                        Ty::TraitObject(TraitObj {
                             dyn_: None,
                             bounds,
                         }) => {
                             if bounds.len() > 1 || bounds.trailing_punct() {
-                                first = Type::TraitObject(ty::TraitObj {
+                                first = Ty::TraitObject(TraitObj {
                                     dyn_: None,
                                     bounds,
                                 });
@@ -5103,44 +5103,44 @@ pub mod ty {
                         },
                         _ => break,
                     };
-                    return Ok(Type::TraitObject(ty::TraitObj {
+                    return Ok(Ty::TraitObject(TraitObj {
                         dyn_: None,
                         bounds: {
-                            let mut bounds = Punctuated::new();
-                            bounds.push_value(first);
-                            while let Some(plus) = input.parse()? {
-                                bounds.push_punct(plus);
-                                bounds.push_value(input.parse()?);
+                            let mut ys = Punctuated::new();
+                            ys.push_value(first);
+                            while let Some(plus) = x.parse()? {
+                                ys.push_punct(plus);
+                                ys.push_value(x.parse()?);
                             }
-                            bounds
+                            ys
                         },
                     }));
                 }
             }
-            Ok(Type::Paren(ty::Paren {
+            Ok(Ty::Paren(Paren {
                 paren,
                 elem: Box::new(first),
             }))
-        } else if lookahead.peek(Token![fn]) || lookahead.peek(Token![unsafe]) || lookahead.peek(Token![extern]) {
-            let mut bare_fn: ty::BareFn = input.parse()?;
-            bare_fn.lifetimes = lifetimes;
-            Ok(Type::BareFn(bare_fn))
-        } else if lookahead.peek(Ident)
-            || input.peek(Token![super])
-            || input.peek(Token![self])
-            || input.peek(Token![Self])
-            || input.peek(Token![crate])
-            || lookahead.peek(Token![::])
-            || lookahead.peek(Token![<])
+        } else if look.peek(Token![fn]) || look.peek(Token![unsafe]) || look.peek(Token![extern]) {
+            let mut bare_fn: BareFn = x.parse()?;
+            bare_fn.lifes = lifes;
+            Ok(Ty::BareFn(bare_fn))
+        } else if look.peek(Ident)
+            || x.peek(Token![super])
+            || x.peek(Token![self])
+            || x.peek(Token![Self])
+            || x.peek(Token![crate])
+            || look.peek(Token![::])
+            || look.peek(Token![<])
         {
-            let ty: ty::Path = input.parse()?;
+            let ty: Path = x.parse()?;
             if ty.qself.is_some() {
-                return Ok(Type::Path(ty));
+                return Ok(Ty::Path(ty));
             }
-            if input.peek(Token![!]) && !input.peek(Token![!=]) && ty.path.is_mod_style() {
-                let bang: Token![!] = input.parse()?;
-                let (delimiter, tokens) = mac_parse_delimiter(input)?;
-                return Ok(Type::Macro(ty::Mac {
+            if x.peek(Token![!]) && !x.peek(Token![!=]) && ty.path.is_mod_style() {
+                let bang: Token![!] = x.parse()?;
+                let (delimiter, tokens) = mac_parse_delimiter(x)?;
+                return Ok(Ty::Mac(Mac {
                     mac: Macro {
                         path: ty.path,
                         bang,
@@ -5149,422 +5149,422 @@ pub mod ty {
                     },
                 }));
             }
-            if lifetimes.is_some() || allow_plus && input.peek(Token![+]) {
+            if lifes.is_some() || allow_plus && x.peek(Token![+]) {
                 let mut bounds = Punctuated::new();
                 bounds.push_value(TypeParamBound::Trait(TraitBound {
                     paren: None,
                     modifier: TraitBoundModifier::None,
-                    lifetimes,
+                    lifetimes: lifes,
                     path: ty.path,
                 }));
                 if allow_plus {
-                    while input.peek(Token![+]) {
-                        bounds.push_punct(input.parse()?);
-                        if !(input.peek(Ident::peek_any)
-                            || input.peek(Token![::])
-                            || input.peek(Token![?])
-                            || input.peek(Lifetime)
-                            || input.peek(token::Paren))
+                    while x.peek(Token![+]) {
+                        bounds.push_punct(x.parse()?);
+                        if !(x.peek(Ident::peek_any)
+                            || x.peek(Token![::])
+                            || x.peek(Token![?])
+                            || x.peek(Lifetime)
+                            || x.peek(tok::Paren))
                         {
                             break;
                         }
-                        bounds.push_value(input.parse()?);
+                        bounds.push_value(x.parse()?);
                     }
                 }
-                return Ok(Type::TraitObject(ty::TraitObj {
+                return Ok(Ty::TraitObject(TraitObj {
                     dyn_: None,
                     bounds,
                 }));
             }
-            Ok(Type::Path(ty))
-        } else if lookahead.peek(Token![dyn]) {
-            let dyn_: Token![dyn] = input.parse()?;
+            Ok(Ty::Path(ty))
+        } else if look.peek(Token![dyn]) {
+            let dyn_: Token![dyn] = x.parse()?;
             let dyn_span = dyn_.span;
-            let star: Option<Token![*]> = input.parse()?;
-            let bounds = ty::TraitObj::parse_bounds(dyn_span, input, allow_plus)?;
+            let star: Option<Token![*]> = x.parse()?;
+            let bounds = TraitObj::parse_bounds(dyn_span, x, allow_plus)?;
             return Ok(if star.is_some() {
-                Type::Verbatim(verbatim_between(&begin, input))
+                Ty::Verbatim(verbatim_between(&begin, x))
             } else {
-                Type::TraitObject(ty::TraitObj {
+                Ty::TraitObject(TraitObj {
                     dyn_: Some(dyn_),
                     bounds,
                 })
             });
-        } else if lookahead.peek(token::Bracket) {
-            let content;
-            let bracket = bracketed!(content in input);
-            let elem: Type = content.parse()?;
-            if content.peek(Token![;]) {
-                Ok(Type::Array(ty::Array {
+        } else if look.peek(tok::Bracket) {
+            let gist;
+            let bracket = bracketed!(gist in x);
+            let elem: Type = gist.parse()?;
+            if gist.peek(Token![;]) {
+                Ok(Ty::Array(Array {
                     bracket,
                     elem: Box::new(elem),
-                    semi: content.parse()?,
-                    len: content.parse()?,
+                    semi: gist.parse()?,
+                    len: gist.parse()?,
                 }))
             } else {
-                Ok(Type::Slice(ty::Slice {
+                Ok(Ty::Slice(Slice {
                     bracket,
                     elem: Box::new(elem),
                 }))
             }
-        } else if lookahead.peek(Token![*]) {
-            input.parse().map(Type::Ptr)
-        } else if lookahead.peek(Token![&]) {
-            input.parse().map(Type::Reference)
-        } else if lookahead.peek(Token![!]) && !input.peek(Token![=]) {
-            input.parse().map(Type::Never)
-        } else if lookahead.peek(Token![impl]) {
-            ty::Impl::parse(input, allow_plus).map(Type::ImplTrait)
-        } else if lookahead.peek(Token![_]) {
-            input.parse().map(Type::Infer)
-        } else if lookahead.peek(Lifetime) {
-            input.parse().map(Type::TraitObject)
+        } else if look.peek(Token![*]) {
+            x.parse().map(Ty::Ptr)
+        } else if look.peek(Token![&]) {
+            x.parse().map(Ty::Reference)
+        } else if look.peek(Token![!]) && !x.peek(Token![=]) {
+            x.parse().map(Ty::Never)
+        } else if look.peek(Token![impl]) {
+            Impl::parse(x, allow_plus).map(Ty::ImplTrait)
+        } else if look.peek(Token![_]) {
+            x.parse().map(Ty::Infer)
+        } else if look.peek(Lifetime) {
+            x.parse().map(Ty::TraitObject)
         } else {
-            Err(lookahead.error())
+            Err(look.error())
         }
     }
-    impl Parse for ty::Slice {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let content;
-            Ok(ty::Slice {
-                bracket: bracketed!(content in input),
-                elem: content.parse()?,
+    impl Parse for Slice {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let gist;
+            Ok(Slice {
+                bracket: bracketed!(gist in x),
+                elem: gist.parse()?,
             })
         }
     }
-    impl Parse for ty::Array {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let content;
-            Ok(ty::Array {
-                bracket: bracketed!(content in input),
-                elem: content.parse()?,
-                semi: content.parse()?,
-                len: content.parse()?,
+    impl Parse for Array {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let gist;
+            Ok(Array {
+                bracket: bracketed!(gist in x),
+                elem: gist.parse()?,
+                semi: gist.parse()?,
+                len: gist.parse()?,
             })
         }
     }
-    impl Parse for ty::Ptr {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let star: Token![*] = input.parse()?;
-            let lookahead = input.lookahead1();
-            let (const_, mutability) = if lookahead.peek(Token![const]) {
-                (Some(input.parse()?), None)
-            } else if lookahead.peek(Token![mut]) {
-                (None, Some(input.parse()?))
+    impl Parse for Ptr {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let star: Token![*] = x.parse()?;
+            let look = x.lookahead1();
+            let (const_, mut_) = if look.peek(Token![const]) {
+                (Some(x.parse()?), None)
+            } else if look.peek(Token![mut]) {
+                (None, Some(x.parse()?))
             } else {
-                return Err(lookahead.error());
+                return Err(look.error());
             };
-            Ok(ty::Ptr {
+            Ok(Ptr {
                 star,
                 const_,
-                mutability,
-                elem: Box::new(input.call(Type::without_plus)?),
+                mut_,
+                elem: Box::new(x.call(Ty::without_plus)?),
             })
         }
     }
-    impl Parse for ty::Ref {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Ok(ty::Ref {
-                and: input.parse()?,
-                lifetime: input.parse()?,
-                mutability: input.parse()?,
-                elem: Box::new(input.call(Type::without_plus)?),
+    impl Parse for Ref {
+        fn parse(x: ParseStream) -> Result<Self> {
+            Ok(Ref {
+                and: x.parse()?,
+                life: x.parse()?,
+                mut_: x.parse()?,
+                elem: Box::new(x.call(Ty::without_plus)?),
             })
         }
     }
-    impl Parse for ty::BareFn {
-        fn parse(input: ParseStream) -> Result<Self> {
+    impl Parse for BareFn {
+        fn parse(x: ParseStream) -> Result<Self> {
             let args;
             let mut vari = None;
-            Ok(ty::BareFn {
-                lifetimes: input.parse()?,
-                unsafety: input.parse()?,
-                abi: input.parse()?,
-                fn_: input.parse()?,
-                paren: parenthesized!(args in input),
-                inputs: {
-                    let mut inputs = Punctuated::new();
+            Ok(BareFn {
+                lifes: x.parse()?,
+                unsafe_: x.parse()?,
+                abi: x.parse()?,
+                fn_: x.parse()?,
+                paren: parenthesized!(args in x),
+                args: {
+                    let mut ys = Punctuated::new();
                     while !args.is_empty() {
                         let attrs = args.call(Attribute::parse_outer)?;
-                        if inputs.empty_or_trailing()
+                        if ys.empty_or_trailing()
                             && (args.peek(Token![...])
                                 || args.peek(Ident) && args.peek2(Token![:]) && args.peek3(Token![...]))
                         {
                             vari = Some(parse_bare_variadic(&args, attrs)?);
                             break;
                         }
-                        let allow_self = inputs.is_empty();
+                        let allow_self = ys.is_empty();
                         let arg = parse_bare_fn_arg(&args, allow_self)?;
-                        inputs.push_value(ty::BareFnArg { attrs, ..arg });
+                        ys.push_value(BareFnArg { attrs, ..arg });
                         if args.is_empty() {
                             break;
                         }
                         let comma = args.parse()?;
-                        inputs.push_punct(comma);
+                        ys.push_punct(comma);
                     }
-                    inputs
+                    ys
                 },
                 vari,
-                output: input.call(ty::Ret::without_plus)?,
+                ret: x.call(Ret::without_plus)?,
             })
         }
     }
-    impl Parse for ty::Never {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Ok(ty::Never {
-                bang: input.parse()?,
+    impl Parse for Never {
+        fn parse(x: ParseStream) -> Result<Self> {
+            Ok(Never {
+                bang: x.parse()?,
             })
         }
     }
-    impl Parse for ty::Infer {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Ok(ty::Infer {
-                underscore: input.parse()?,
+    impl Parse for Infer {
+        fn parse(x: ParseStream) -> Result<Self> {
+            Ok(Infer {
+                underscore: x.parse()?,
             })
         }
     }
-    impl Parse for ty::Tuple {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let content;
-            let paren = parenthesized!(content in input);
-            if content.is_empty() {
-                return Ok(ty::Tuple {
+    impl Parse for Tuple {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let gist;
+            let paren = parenthesized!(gist in x);
+            if gist.is_empty() {
+                return Ok(Tuple {
                     paren,
                     elems: Punctuated::new(),
                 });
             }
-            let first: Type = content.parse()?;
-            Ok(ty::Tuple {
+            let first: Type = gist.parse()?;
+            Ok(Tuple {
                 paren,
                 elems: {
-                    let mut elems = Punctuated::new();
-                    elems.push_value(first);
-                    elems.push_punct(content.parse()?);
-                    while !content.is_empty() {
-                        elems.push_value(content.parse()?);
-                        if content.is_empty() {
+                    let mut ys = Punctuated::new();
+                    ys.push_value(first);
+                    ys.push_punct(gist.parse()?);
+                    while !gist.is_empty() {
+                        ys.push_value(gist.parse()?);
+                        if gist.is_empty() {
                             break;
                         }
-                        elems.push_punct(content.parse()?);
+                        ys.push_punct(gist.parse()?);
                     }
-                    elems
+                    ys
                 },
             })
         }
     }
-    impl Parse for ty::Mac {
-        fn parse(input: ParseStream) -> Result<Self> {
-            Ok(ty::Mac { mac: input.parse()? })
+    impl Parse for Mac {
+        fn parse(x: ParseStream) -> Result<Self> {
+            Ok(Mac { mac: x.parse()? })
         }
     }
-    impl Parse for ty::Path {
-        fn parse(input: ParseStream) -> Result<Self> {
+    impl Parse for Path {
+        fn parse(x: ParseStream) -> Result<Self> {
             let expr_style = false;
-            let (qself, path) = qpath(input, expr_style)?;
-            Ok(ty::Path { qself, path })
+            let (qself, path) = qpath(x, expr_style)?;
+            Ok(Path { qself, path })
         }
     }
-    impl ty::Ret {
-        pub fn without_plus(input: ParseStream) -> Result<Self> {
-            let allow_plus = false;
-            Self::parse(input, allow_plus)
+    impl Ret {
+        pub fn without_plus(x: ParseStream) -> Result<Self> {
+            let plus = false;
+            Self::parse(x, plus)
         }
-        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
-            if input.peek(Token![->]) {
-                let arrow = input.parse()?;
-                let allow_group_generic = true;
-                let ty = ambig_ty(input, allow_plus, allow_group_generic)?;
-                Ok(ty::Ret::Type(arrow, Box::new(ty)))
+        pub fn parse(x: ParseStream, plus: bool) -> Result<Self> {
+            if x.peek(Token![->]) {
+                let arrow = x.parse()?;
+                let group_gen = true;
+                let ty = ambig_ty(x, plus, group_gen)?;
+                Ok(Ret::Type(arrow, Box::new(ty)))
             } else {
-                Ok(ty::Ret::Default)
+                Ok(Ret::Default)
             }
         }
     }
-    impl Parse for ty::Ret {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let allow_plus = true;
-            Self::parse(input, allow_plus)
+    impl Parse for Ret {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let plus = true;
+            Self::parse(x, plus)
         }
     }
-    impl Parse for ty::TraitObj {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let allow_plus = true;
-            Self::parse(input, allow_plus)
+    impl Parse for TraitObj {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let plus = true;
+            Self::parse(x, plus)
         }
     }
-    impl ty::TraitObj {
-        pub fn without_plus(input: ParseStream) -> Result<Self> {
-            let allow_plus = false;
-            Self::parse(input, allow_plus)
+    impl TraitObj {
+        pub fn without_plus(x: ParseStream) -> Result<Self> {
+            let plus = false;
+            Self::parse(x, plus)
         }
-        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
-            let dyn_: Option<Token![dyn]> = input.parse()?;
-            let dyn_span = match &dyn_ {
-                Some(token) => token.span,
-                None => input.span(),
+        pub fn parse(x: ParseStream, plus: bool) -> Result<Self> {
+            let dyn_: Option<Token![dyn]> = x.parse()?;
+            let span = match &dyn_ {
+                Some(x) => x.span,
+                None => x.span(),
             };
-            let bounds = Self::parse_bounds(dyn_span, input, allow_plus)?;
-            Ok(ty::TraitObj { dyn_, bounds })
+            let bounds = Self::parse_bounds(span, x, plus)?;
+            Ok(TraitObj { dyn_, bounds })
         }
         fn parse_bounds(
-            dyn_span: Span,
-            input: ParseStream,
-            allow_plus: bool,
+            s: Span,
+            x: ParseStream,
+            plus: bool,
         ) -> Result<Punctuated<TypeParamBound, Token![+]>> {
-            let bounds = TypeParamBound::parse_multiple(input, allow_plus)?;
-            let mut last_lifetime_span = None;
-            let mut at_least_one_trait = false;
-            for bound in &bounds {
-                match bound {
+            let ys = TypeParamBound::parse_multiple(x, plus)?;
+            let mut last = None;
+            let mut one = false;
+            for y in &ys {
+                match y {
                     TypeParamBound::Trait(_) | TypeParamBound::Verbatim(_) => {
-                        at_least_one_trait = true;
+                        one = true;
                         break;
                     },
-                    TypeParamBound::Lifetime(lifetime) => {
-                        last_lifetime_span = Some(lifetime.ident.span());
+                    TypeParamBound::Lifetime(x) => {
+                        last = Some(x.ident.span());
                     },
                 }
             }
-            if !at_least_one_trait {
+            if !one {
                 let msg = "at least one trait is required for an object type";
-                return Err(err::new2(dyn_span, last_lifetime_span.unwrap(), msg));
+                return Err(err::new2(s, last.unwrap(), msg));
             }
-            Ok(bounds)
+            Ok(ys)
         }
     }
-    impl Parse for ty::Impl {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let allow_plus = true;
-            Self::parse(input, allow_plus)
+    impl Parse for Impl {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let plus = true;
+            Self::parse(x, plus)
         }
     }
-    impl ty::Impl {
-        pub fn without_plus(input: ParseStream) -> Result<Self> {
-            let allow_plus = false;
-            Self::parse(input, allow_plus)
+    impl Impl {
+        pub fn without_plus(x: ParseStream) -> Result<Self> {
+            let plus = false;
+            Self::parse(x, plus)
         }
-        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
-            let impl_: Token![impl] = input.parse()?;
-            let bounds = TypeParamBound::parse_multiple(input, allow_plus)?;
-            let mut last_lifetime_span = None;
-            let mut at_least_one_trait = false;
-            for bound in &bounds {
-                match bound {
+        pub fn parse(x: ParseStream, plus: bool) -> Result<Self> {
+            let impl_: Token![impl] = x.parse()?;
+            let bounds = TypeParamBound::parse_multiple(x, plus)?;
+            let mut last = None;
+            let mut one = false;
+            for x in &bounds {
+                match x {
                     TypeParamBound::Trait(_) | TypeParamBound::Verbatim(_) => {
-                        at_least_one_trait = true;
+                        one = true;
                         break;
                     },
-                    TypeParamBound::Lifetime(lifetime) => {
-                        last_lifetime_span = Some(lifetime.ident.span());
+                    TypeParamBound::Lifetime(x) => {
+                        last = Some(x.ident.span());
                     },
                 }
             }
-            if !at_least_one_trait {
+            if !one {
                 let msg = "at least one trait must be specified";
-                return Err(err::new2(impl_.span, last_lifetime_span.unwrap(), msg));
+                return Err(err::new2(impl_.span, last.unwrap(), msg));
             }
-            Ok(ty::Impl { impl_, bounds })
+            Ok(Impl { impl_, bounds })
         }
     }
-    impl Parse for ty::Group {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let group = super::parse_group(input)?;
-            Ok(ty::Group {
-                group: group.token,
-                elem: group.gist.parse()?,
+    impl Parse for Group {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let y = super::parse_group(x)?;
+            Ok(Group {
+                group: y.token,
+                elem: y.gist.parse()?,
             })
         }
     }
-    impl Parse for ty::Paren {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let allow_plus = false;
-            Self::parse(input, allow_plus)
+    impl Parse for Paren {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let plus = false;
+            Self::parse(x, plus)
         }
     }
-    impl ty::Paren {
-        fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
-            let content;
-            Ok(ty::Paren {
-                paren: parenthesized!(content in input),
+    impl Paren {
+        fn parse(x: ParseStream, plus: bool) -> Result<Self> {
+            let gist;
+            Ok(Paren {
+                paren: parenthesized!(gist in x),
                 elem: Box::new({
-                    let allow_group_generic = true;
-                    ambig_ty(&content, allow_plus, allow_group_generic)?
+                    let group_gen = true;
+                    ambig_ty(&gist, plus, group_gen)?
                 }),
             })
         }
     }
-    impl Parse for ty::BareFnArg {
-        fn parse(input: ParseStream) -> Result<Self> {
-            let allow_self = false;
-            parse_bare_fn_arg(input, allow_self)
+    impl Parse for BareFnArg {
+        fn parse(x: ParseStream) -> Result<Self> {
+            let self_ = false;
+            parse_bare_fn_arg(x, self_)
         }
     }
-    fn parse_bare_fn_arg(input: ParseStream, allow_self: bool) -> Result<ty::BareFnArg> {
-        let attrs = input.call(Attribute::parse_outer)?;
-        let begin = input.fork();
-        let has_mut_self = allow_self && input.peek(Token![mut]) && input.peek2(Token![self]);
+    fn parse_bare_fn_arg(x: ParseStream, self_: bool) -> Result<BareFnArg> {
+        let attrs = x.call(Attribute::parse_outer)?;
+        let beg = x.fork();
+        let has_mut_self = self_ && x.peek(Token![mut]) && x.peek2(Token![self]);
         if has_mut_self {
-            input.parse::<Token![mut]>()?;
+            x.parse::<Token![mut]>()?;
         }
         let mut has_self = false;
-        let mut name = if (input.peek(Ident) || input.peek(Token![_]) || {
-            has_self = allow_self && input.peek(Token![self]);
+        let mut name = if (x.peek(Ident) || x.peek(Token![_]) || {
+            has_self = self_ && x.peek(Token![self]);
             has_self
-        }) && input.peek2(Token![:])
-            && !input.peek2(Token![::])
+        }) && x.peek2(Token![:])
+            && !x.peek2(Token![::])
         {
-            let name = input.call(Ident::parse_any)?;
-            let colon: Token![:] = input.parse()?;
+            let name = x.call(Ident::parse_any)?;
+            let colon: Token![:] = x.parse()?;
             Some((name, colon))
         } else {
             has_self = false;
             None
         };
-        let ty = if allow_self && !has_self && input.peek(Token![mut]) && input.peek2(Token![self]) {
-            input.parse::<Token![mut]>()?;
-            input.parse::<Token![self]>()?;
+        let ty = if self_ && !has_self && x.peek(Token![mut]) && x.peek2(Token![self]) {
+            x.parse::<Token![mut]>()?;
+            x.parse::<Token![self]>()?;
             None
         } else if has_mut_self && name.is_none() {
-            input.parse::<Token![self]>()?;
+            x.parse::<Token![self]>()?;
             None
         } else {
-            Some(input.parse()?)
+            Some(x.parse()?)
         };
         let ty = match ty {
             Some(ty) if !has_mut_self => ty,
             _ => {
                 name = None;
-                Type::Verbatim(verbatim_between(&begin, input))
+                Ty::Verbatim(verbatim_between(&beg, x))
             },
         };
-        Ok(ty::BareFnArg { attrs, name, ty })
+        Ok(BareFnArg { attrs, name, ty })
     }
-    fn parse_bare_variadic(input: ParseStream, attrs: Vec<Attribute>) -> Result<ty::BareVari> {
-        Ok(ty::BareVari {
+    fn parse_bare_variadic(x: ParseStream, attrs: Vec<Attribute>) -> Result<BareVari> {
+        Ok(BareVari {
             attrs,
-            name: if input.peek(Ident) || input.peek(Token![_]) {
-                let name = input.call(Ident::parse_any)?;
-                let colon: Token![:] = input.parse()?;
+            name: if x.peek(Ident) || x.peek(Token![_]) {
+                let name = x.call(Ident::parse_any)?;
+                let colon: Token![:] = x.parse()?;
                 Some((name, colon))
             } else {
                 None
             },
-            dots: input.parse()?,
-            comma: input.parse()?,
+            dots: x.parse()?,
+            comma: x.parse()?,
         })
     }
     impl Parse for Abi {
-        fn parse(input: ParseStream) -> Result<Self> {
+        fn parse(x: ParseStream) -> Result<Self> {
             Ok(Abi {
-                extern_: input.parse()?,
-                name: input.parse()?,
+                extern_: x.parse()?,
+                name: x.parse()?,
             })
         }
     }
     impl Parse for Option<Abi> {
-        fn parse(input: ParseStream) -> Result<Self> {
-            if input.peek(Token![extern]) {
-                input.parse().map(Some)
+        fn parse(x: ParseStream) -> Result<Self> {
+            if x.peek(Token![extern]) {
+                x.parse().map(Some)
             } else {
                 Ok(None)
             }

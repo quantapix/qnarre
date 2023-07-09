@@ -261,7 +261,7 @@ impl Meta {
 ast_struct! {
     pub struct MetaList {
         pub path: Path,
-        pub delim: MacroDelimiter,
+        pub delim: MacroDelim,
         pub toks: TokenStream,
     }
 }
@@ -1014,7 +1014,7 @@ ast_struct! {
 ast_struct! {
     pub struct PatReference {
         pub attrs: Vec<Attribute>,
-        pub and_: Token![&],
+        pub and: Token![&],
         pub mutability: Option<Token![mut]>,
         pub pat: Box<Pat>,
     }
@@ -2082,55 +2082,56 @@ mod lookahead {
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
 }
 
+ast_enum! {
+    pub enum MacroDelim {
+        Paren(tok::Paren),
+        Brace(tok::Brace),
+        Bracket(tok::Bracket),
+    }
+}
+impl MacroDelim {
+    pub fn span(&self) -> &DelimSpan {
+        use MacroDelim::*;
+        match self {
+            Paren(x) => &x.span,
+            Brace(x) => &x.span,
+            Bracket(x) => &x.span,
+        }
+    }
+}
+
 ast_struct! {
     pub struct Macro {
         pub path: Path,
         pub bang: Token![!],
-        pub delim: MacroDelimiter,
+        pub delim: MacroDelim,
         pub toks: TokenStream,
-    }
-}
-ast_enum! {
-    pub enum MacroDelimiter {
-        Paren(Paren),
-        Brace(Brace),
-        Bracket(Bracket),
-    }
-}
-impl MacroDelimiter {
-    pub fn span(&self) -> &DelimSpan {
-        match self {
-            MacroDelimiter::Paren(token) => &token.span,
-            MacroDelimiter::Brace(token) => &token.span,
-            MacroDelimiter::Bracket(token) => &token.span,
-        }
     }
 }
 impl Macro {
     pub fn parse_body<T: Parse>(&self) -> Result<T> {
         self.parse_body_with(T::parse)
     }
-
     pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
         let scope = self.delim.span().close();
         parse::parse_scoped(parser, scope, self.toks.clone())
     }
 }
-fn mac_parse_delimiter(input: ParseStream) -> Result<(MacroDelimiter, TokenStream)> {
-    input.step(|cursor| {
-        if let Some((TokenTree::Group(g), rest)) = cursor.token_tree() {
-            let span = g.delim_span();
-            let delimiter = match g.delimiter() {
-                Delimiter::Parenthesis => MacroDelimiter::Paren(Paren(span)),
-                Delimiter::Brace => MacroDelimiter::Brace(Brace(span)),
-                Delimiter::Bracket => MacroDelimiter::Bracket(Bracket(span)),
+fn mac_parse_delimiter(x: ParseStream) -> Result<(MacroDelim, TokenStream)> {
+    x.step(|c| {
+        if let Some((TokenTree::Group(g), rest)) = c.token_tree() {
+            let s = g.delim_span();
+            let delim = match g.delimiter() {
+                Delimiter::Parenthesis => MacroDelim::Paren(Paren(s)),
+                Delimiter::Brace => MacroDelim::Brace(Brace(s)),
+                Delimiter::Bracket => MacroDelim::Bracket(Bracket(s)),
                 Delimiter::None => {
-                    return Err(cursor.error("expected delimiter"));
+                    return Err(c.error("expected delimiter"));
                 },
             };
-            Ok(((delimiter, g.stream()), rest))
+            Ok(((delim, g.stream()), rest))
         } else {
-            Err(cursor.error("expected delimiter"))
+            Err(c.error("expected delimiter"))
         }
     })
 }

@@ -1520,19 +1520,19 @@ impl Hash for Macro {
         TokenStreamHelper(&self.toks).hash(state);
     }
 }
-impl Hash for MacroDelimiter {
+impl Hash for MacroDelim {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            MacroDelimiter::Paren(_) => {
+            MacroDelim::Paren(_) => {
                 state.write_u8(0u8);
             },
-            MacroDelimiter::Brace(_) => {
+            MacroDelim::Brace(_) => {
                 state.write_u8(1u8);
             },
-            MacroDelimiter::Bracket(_) => {
+            MacroDelim::Bracket(_) => {
                 state.write_u8(2u8);
             },
         }
