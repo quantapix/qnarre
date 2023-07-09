@@ -210,7 +210,7 @@ impl Hash for ConstParam {
     {
         self.attrs.hash(state);
         self.ident.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
         self.eq.hash(state);
         self.default.hash(state);
     }
@@ -536,7 +536,7 @@ impl Hash for ExprCast {
     {
         self.attrs.hash(state);
         self.expr.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for ExprClosure {
@@ -841,7 +841,7 @@ impl Hash for Field {
         self.mutability.hash(state);
         self.ident.hash(state);
         self.colon.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for FieldMut {
@@ -856,7 +856,7 @@ impl Hash for FieldMut {
         }
     }
 }
-impl Hash for FieldPat {
+impl Hash for patt::Field {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -864,7 +864,7 @@ impl Hash for FieldPat {
         self.attrs.hash(state);
         self.member.hash(state);
         self.colon.hash(state);
-        self.pat.hash(state);
+        self.patt.hash(state);
     }
 }
 impl Hash for FieldValue {
@@ -999,7 +999,7 @@ impl Hash for ForeignItemStatic {
         self.vis.hash(state);
         self.mut_.hash(state);
         self.ident.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for ForeignItemType {
@@ -1117,7 +1117,7 @@ impl Hash for ImplItemConst {
         self.default_.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
         self.expr.hash(state);
     }
 }
@@ -1153,7 +1153,7 @@ impl Hash for ImplItemType {
         self.default_.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for ImplRestriction {
@@ -1246,7 +1246,7 @@ impl Hash for ItemConst {
         self.vis.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
         self.expr.hash(state);
     }
 }
@@ -1305,7 +1305,7 @@ impl Hash for ItemImpl {
         self.unsafe_.hash(state);
         self.gens.hash(state);
         self.trait_.hash(state);
-        self.self_ty.hash(state);
+        self.typ.hash(state);
         self.items.hash(state);
     }
 }
@@ -1342,7 +1342,7 @@ impl Hash for ItemStatic {
         self.vis.hash(state);
         self.mut_.hash(state);
         self.ident.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
         self.expr.hash(state);
     }
 }
@@ -1397,7 +1397,7 @@ impl Hash for ItemType {
         self.vis.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for ItemUnion {
@@ -1587,84 +1587,84 @@ impl Hash for ParenthesizedArgs {
         self.out.hash(state);
     }
 }
-impl Hash for Pat {
+impl Hash for patt::Patt {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Pat::Const(v0) => {
+            patt::Patt::Const(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            Pat::Ident(v0) => {
+            patt::Patt::Ident(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Pat::Lit(v0) => {
+            patt::Patt::Lit(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            Pat::Macro(v0) => {
+            patt::Patt::Mac(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            Pat::Or(v0) => {
+            patt::Patt::Or(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            Pat::Paren(v0) => {
+            patt::Patt::Paren(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
-            Pat::Path(v0) => {
+            patt::Patt::Path(v0) => {
                 state.write_u8(6u8);
                 v0.hash(state);
             },
-            Pat::Range(v0) => {
+            patt::Patt::Range(v0) => {
                 state.write_u8(7u8);
                 v0.hash(state);
             },
-            Pat::Reference(v0) => {
+            patt::Patt::Ref(v0) => {
                 state.write_u8(8u8);
                 v0.hash(state);
             },
-            Pat::Rest(v0) => {
+            patt::Patt::Rest(v0) => {
                 state.write_u8(9u8);
                 v0.hash(state);
             },
-            Pat::Slice(v0) => {
+            patt::Patt::Slice(v0) => {
                 state.write_u8(10u8);
                 v0.hash(state);
             },
-            Pat::Struct(v0) => {
+            patt::Patt::Struct(v0) => {
                 state.write_u8(11u8);
                 v0.hash(state);
             },
-            Pat::Tuple(v0) => {
+            patt::Patt::Tuple(v0) => {
                 state.write_u8(12u8);
                 v0.hash(state);
             },
-            Pat::TupleStruct(v0) => {
+            patt::Patt::TupleStruct(v0) => {
                 state.write_u8(13u8);
                 v0.hash(state);
             },
-            Pat::Type(v0) => {
+            patt::Patt::Type(v0) => {
                 state.write_u8(14u8);
                 v0.hash(state);
             },
-            Pat::Verbatim(v0) => {
+            patt::Patt::Verbatim(v0) => {
                 state.write_u8(15u8);
                 TokenStreamHelper(v0).hash(state);
             },
-            Pat::Wild(v0) => {
+            patt::Patt::Wild(v0) => {
                 state.write_u8(16u8);
                 v0.hash(state);
             },
         }
     }
 }
-impl Hash for PatIdent {
+impl Hash for patt::Ident {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1673,39 +1673,39 @@ impl Hash for PatIdent {
         self.ref_.hash(state);
         self.mut_.hash(state);
         self.ident.hash(state);
-        self.subpat.hash(state);
+        self.sub.hash(state);
     }
 }
-impl Hash for PatOr {
+impl Hash for patt::Or {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.leading_vert.hash(state);
+        self.vert.hash(state);
         self.cases.hash(state);
     }
 }
-impl Hash for PatParen {
+impl Hash for patt::Paren {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.pat.hash(state);
+        self.patt.hash(state);
     }
 }
-impl Hash for PatReference {
+impl Hash for patt::Ref {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.mutability.hash(state);
-        self.pat.hash(state);
+        self.mut_.hash(state);
+        self.patt.hash(state);
     }
 }
-impl Hash for PatRest {
+impl Hash for patt::Rest {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1713,16 +1713,16 @@ impl Hash for PatRest {
         self.attrs.hash(state);
     }
 }
-impl Hash for PatSlice {
+impl Hash for patt::Slice {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.elems.hash(state);
+        self.patts.hash(state);
     }
 }
-impl Hash for PatStruct {
+impl Hash for patt::Struct {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1734,16 +1734,16 @@ impl Hash for PatStruct {
         self.rest.hash(state);
     }
 }
-impl Hash for PatTuple {
+impl Hash for patt::Tuple {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.elems.hash(state);
+        self.patts.hash(state);
     }
 }
-impl Hash for PatTupleStruct {
+impl Hash for patt::TupleStruct {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1751,20 +1751,20 @@ impl Hash for PatTupleStruct {
         self.attrs.hash(state);
         self.qself.hash(state);
         self.path.hash(state);
-        self.elems.hash(state);
+        self.patts.hash(state);
     }
 }
-impl Hash for PatType {
+impl Hash for patt::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.pat.hash(state);
-        self.ty.hash(state);
+        self.patt.hash(state);
+        self.typ.hash(state);
     }
 }
-impl Hash for PatWild {
+impl Hash for patt::Wild {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1863,7 +1863,7 @@ impl Hash for Receiver {
         self.reference.hash(state);
         self.mut_.hash(state);
         self.colon.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for ty::Ret {
@@ -2012,7 +2012,7 @@ impl Hash for TraitItemConst {
         self.attrs.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
         self.default.hash(state);
     }
 }
@@ -2050,69 +2050,69 @@ impl Hash for TraitItemType {
         self.default.hash(state);
     }
 }
-impl Hash for Ty {
+impl Hash for ty::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Ty::Array(v0) => {
+            ty::Type::Array(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            Ty::BareFn(v0) => {
+            ty::Type::BareFn(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Ty::Group(v0) => {
+            ty::Type::Group(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            Ty::Impl(v0) => {
+            ty::Type::Impl(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            Ty::Infer(v0) => {
+            ty::Type::Infer(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            Ty::Mac(v0) => {
+            ty::Type::Mac(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
-            Ty::Never(v0) => {
+            ty::Type::Never(v0) => {
                 state.write_u8(6u8);
                 v0.hash(state);
             },
-            Ty::Paren(v0) => {
+            ty::Type::Paren(v0) => {
                 state.write_u8(7u8);
                 v0.hash(state);
             },
-            Ty::Path(v0) => {
+            ty::Type::Path(v0) => {
                 state.write_u8(8u8);
                 v0.hash(state);
             },
-            Ty::Ptr(v0) => {
+            ty::Type::Ptr(v0) => {
                 state.write_u8(9u8);
                 v0.hash(state);
             },
-            Ty::Ref(v0) => {
+            ty::Type::Ref(v0) => {
                 state.write_u8(10u8);
                 v0.hash(state);
             },
-            Ty::Slice(v0) => {
+            ty::Type::Slice(v0) => {
                 state.write_u8(11u8);
                 v0.hash(state);
             },
-            Ty::TraitObj(v0) => {
+            ty::Type::TraitObj(v0) => {
                 state.write_u8(12u8);
                 v0.hash(state);
             },
-            Ty::Tuple(v0) => {
+            ty::Type::Tuple(v0) => {
                 state.write_u8(13u8);
                 v0.hash(state);
             },
-            Ty::Verbatim(v0) => {
+            ty::Type::Verbatim(v0) => {
                 state.write_u8(14u8);
                 TokenStreamHelper(v0).hash(state);
             },

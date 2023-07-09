@@ -196,7 +196,7 @@ pub trait Fold {
     fn fold_field_mutability(&mut self, i: FieldMut) -> FieldMut {
         fold_field_mutability(self, i)
     }
-    fn fold_field_pat(&mut self, i: FieldPat) -> FieldPat {
+    fn fold_field_pat(&mut self, i: patt::Fieldeld) patt::Field:Field {
         fold_field_pat(self, i)
     }
     fn fold_field_value(&mut self, i: FieldValue) -> FieldValue {
@@ -373,40 +373,40 @@ pub trait Fold {
     fn fold_parenthesized_generic_arguments(&mut self, i: ParenthesizedArgs) -> ParenthesizedArgs {
         fold_parenthesized_generic_arguments(self, i)
     }
-    fn fold_pat(&mut self, i: Pat) -> Pat {
+    fn fold_pat(&mut self, i: patt::Patt) -> patt::Patt {
         fold_pat(self, i)
     }
-    fn fold_pat_ident(&mut self, i: PatIdent) -> PatIdent {
+    fn fold_pat_ident(&mut self, i: patt::Ident) -> patt::Ident {
         fold_pat_ident(self, i)
     }
-    fn fold_pat_or(&mut self, i: PatOr) -> PatOr {
+    fn fold_pat_or(&mut self, i: patt::Or) -> patt::Or {
         fold_pat_or(self, i)
     }
-    fn fold_pat_paren(&mut self, i: PatParen) -> PatParen {
+    fn fold_pat_paren(&mut self, i: patt::Paren) -> patt::Paren {
         fold_pat_paren(self, i)
     }
-    fn fold_pat_reference(&mut self, i: PatReference) -> PatReference {
+    fn fold_pat_reference(&mut self, i: patt::Ref) -> patt::Ref {
         fold_pat_reference(self, i)
     }
-    fn fold_pat_rest(&mut self, i: PatRest) -> PatRest {
+    fn fold_pat_rest(&mut self, i: patt::Restest) patt::Rest::Rest {
         fold_pat_rest(self, i)
     }
-    fn fold_pat_slice(&mut self, i: PatSlice) -> PatSlice {
+    fn fold_pat_slice(&mut self, i: patt::Slice) -> patt::Slice {
         fold_pat_slice(self, i)
     }
-    fn fold_pat_struct(&mut self, i: PatStruct) -> PatStruct {
+    fn fold_pat_struct(&mut self, i: patt::Struct) -> patt::Struct {
         fold_pat_struct(self, i)
     }
-    fn fold_pat_tuple(&mut self, i: PatTuple) -> PatTuple {
+    fn fold_pat_tuple(&mut self, i: patt::Tuple) -> patt::Tuple {
         fold_pat_tuple(self, i)
     }
-    fn fold_pat_tuple_struct(&mut self, i: PatTupleStruct) -> PatTupleStruct {
+    fn fold_pat_tuple_struct(&mut self, i: patt::TupleStructuct) patt::TupleStructStruct {
         fold_pat_tuple_struct(self, i)
     }
-    fn fold_pat_type(&mut self, i: PatType) -> PatType {
+    fn fold_pat_type(&mut self, i: patt::Type) -> patt::Type {
         fold_pat_type(self, i)
     }
-    fn fold_pat_wild(&mut self, i: PatWild) -> PatWild {
+    fn fold_pat_wild(&mut self, i: patt::Wild) -> patt::Wild {
         fold_pat_wild(self, i)
     }
     fn fold_path(&mut self, i: Path) -> Path {
@@ -472,7 +472,7 @@ pub trait Fold {
     fn fold_trait_item_type(&mut self, i: TraitItemType) -> TraitItemType {
         fold_trait_item_type(self, i)
     }
-    fn fold_type(&mut self, i: Ty) -> Ty {
+    fn fold_type(&mut self, i: ty::Type) -> ty::Type {
         fold_type(self, i)
     }
     fn fold_type_array(&mut self, i: ty::Array) -> ty::Array {
@@ -723,7 +723,7 @@ where
         const_: node.const_,
         ident: f.fold_ident(node.ident),
         colon: node.colon,
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
         eq: node.eq,
         default: (node.default).map(|it| f.fold_expr(it)),
     }
@@ -930,7 +930,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
         as_: node.as_,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
     }
 }
 pub fn fold_expr_closure<F>(f: &mut F, node: ExprClosure) -> ExprClosure
@@ -1265,7 +1265,7 @@ where
         mutability: f.fold_field_mutability(node.mutability),
         ident: (node.ident).map(|it| f.fold_ident(it)),
         colon: node.colon,
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
     }
 }
 pub fn fold_field_mutability<F>(f: &mut F, node: FieldMut) -> FieldMut
@@ -1276,11 +1276,11 @@ where
         FieldMut::None => FieldMut::None,
     }
 }
-pub fn fold_field_pat<F>(f: &mut F, node: FieldPat) -> FieldPat
+pub fn fold_field_pat<F>(f: &mut F, node: patt::Fieldeld) patt::Field:Field
 where
     F: Fold + ?Sized,
 {
-    FieldPat {
+    patt::Fieldeld {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         member: f.fold_member(node.member),
         colon: node.colon,
@@ -1389,7 +1389,7 @@ where
         mut_: f.fold_static_mutability(node.mut_),
         ident: f.fold_ident(node.ident),
         colon: node.colon,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
         semi: node.semi,
     }
 }
@@ -1473,7 +1473,7 @@ where
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         colon: node.colon,
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
         eq: node.eq,
         expr: f.fold_expr(node.expr),
         semi: node.semi,
@@ -1513,7 +1513,7 @@ where
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         eq: node.eq,
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
         semi: node.semi,
     }
 }
@@ -1566,7 +1566,7 @@ where
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         colon: node.colon,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
         eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
         semi: node.semi,
@@ -1634,7 +1634,7 @@ where
         impl_: node.impl_,
         gens: f.fold_generics(node.gens),
         trait_: (node.trait_).map(|it| ((it).0, f.fold_path((it).1), (it).2)),
-        self_ty: Box::new(f.fold_type(*node.self_ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
         brace: node.brace,
         items: FoldHelper::lift(node.items, |it| f.fold_impl_item(it)),
     }
@@ -1675,7 +1675,7 @@ where
         mut_: f.fold_static_mutability(node.mut_),
         ident: f.fold_ident(node.ident),
         colon: node.colon,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
         eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
         semi: node.semi,
@@ -1740,7 +1740,7 @@ where
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         eq: node.eq,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
         semi: node.semi,
     }
 }
@@ -1969,97 +1969,97 @@ where
         out: f.fold_return_type(node.out),
     }
 }
-pub fn fold_pat<F>(f: &mut F, node: Pat) -> Pat
+pub fn fold_pat<F>(f: &mut F, node: patt::Patt) -> patt::Patt
 where
     F: Fold + ?Sized,
 {
     match node {
-        Pat::Const(_binding_0) => Pat::Const(f.fold_expr_const(_binding_0)),
-        Pat::Ident(_binding_0) => Pat::Ident(f.fold_pat_ident(_binding_0)),
-        Pat::Lit(_binding_0) => Pat::Lit(f.fold_expr_lit(_binding_0)),
-        Pat::Macro(_binding_0) => Pat::Macro(f.fold_expr_macro(_binding_0)),
-        Pat::Or(_binding_0) => Pat::Or(f.fold_pat_or(_binding_0)),
-        Pat::Paren(_binding_0) => Pat::Paren(f.fold_pat_paren(_binding_0)),
-        Pat::Path(_binding_0) => Pat::Path(f.fold_expr_path(_binding_0)),
-        Pat::Range(_binding_0) => Pat::Range(f.fold_expr_range(_binding_0)),
-        Pat::Reference(_binding_0) => Pat::Reference(f.fold_pat_reference(_binding_0)),
-        Pat::Rest(_binding_0) => Pat::Rest(f.fold_pat_rest(_binding_0)),
-        Pat::Slice(_binding_0) => Pat::Slice(f.fold_pat_slice(_binding_0)),
-        Pat::Struct(_binding_0) => Pat::Struct(f.fold_pat_struct(_binding_0)),
-        Pat::Tuple(_binding_0) => Pat::Tuple(f.fold_pat_tuple(_binding_0)),
-        Pat::TupleStruct(_binding_0) => Pat::TupleStruct(f.fold_pat_tuple_struct(_binding_0)),
-        Pat::Type(_binding_0) => Pat::Type(f.fold_pat_type(_binding_0)),
-        Pat::Verbatim(_binding_0) => Pat::Verbatim(_binding_0),
-        Pat::Wild(_binding_0) => Pat::Wild(f.fold_pat_wild(_binding_0)),
+        patt::Patt::Const(_binding_0) => patt::Patt::Const(f.fold_expr_const(_binding_0)),
+        patt::Patt::Ident(_binding_0) => patt::Patt::Ident(f.fold_pat_ident(_binding_0)),
+        patt::Patt::Lit(_binding_0) => patt::Patt::Lit(f.fold_expr_lit(_binding_0)),
+        patt::Patt::Mac(_binding_0) => patt::Patt::Mac(f.fold_expr_macro(_binding_0)),
+        patt::Patt::Or(_binding_0) => patt::Patt::Or(f.fold_pat_or(_binding_0)),
+        patt::Patt::Paren(_binding_0) => patt::Patt::Paren(f.fold_pat_paren(_binding_0)),
+        patt::Patt::Path(_binding_0) => patt::Patt::Path(f.fold_expr_path(_binding_0)),
+        patt::Patt::Range(_binding_0) => patt::Patt::Range(f.fold_expr_range(_binding_0)),
+        patt::Patt::Ref(_binding_0) => patt::Patt::Ref(f.fold_pat_reference(_binding_0)),
+        patt::Patt::Rest(_binding_0) => patt::Patt::Rest(f.fold_pat_rest(_binding_0)),
+        patt::Patt::Slice(_binding_0) => patt::Patt::Slice(f.fold_pat_slice(_binding_0)),
+        patt::Patt::Struct(_binding_0) => patt::Patt::Struct(f.fold_pat_struct(_binding_0)),
+        patt::Patt::Tuple(_binding_0) => patt::Patt::Tuple(f.fold_pat_tuple(_binding_0)),
+        patt::Patt::TupleStruct(_binding_0) => patt::Patt::TupleStruct(f.fold_pat_tuple_struct(_binding_0)),
+        patt::Patt::Type(_binding_0) => patt::Patt::Type(f.fold_pat_type(_binding_0)),
+        patt::Patt::Verbatim(_binding_0) => patt::Patt::Verbatim(_binding_0),
+        patt::Patt::Wild(_binding_0) => patt::Patt::Wild(f.fold_pat_wild(_binding_0)),
     }
 }
-pub fn fold_pat_ident<F>(f: &mut F, node: PatIdent) -> PatIdent
+pub fn fold_pat_ident<F>(f: &mut F, node: patt::Ident) -> patt::Ident
 where
     F: Fold + ?Sized,
 {
-    PatIdent {
+    patt::Ident {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         ref_: node.ref_,
         mut_: node.mut_,
         ident: f.fold_ident(node.ident),
-        subpat: (node.subpat).map(|it| ((it).0, Box::new(f.fold_pat(*(it).1)))),
+        sub: (node.sub).map(|it| ((it).0, Box::new(f.fold_pat(*(it).1)))),
     }
 }
-pub fn fold_pat_or<F>(f: &mut F, node: PatOr) -> PatOr
+pub fn fold_pat_or<F>(f: &mut F, node: patt::Or) -> patt::Or
 where
     F: Fold + ?Sized,
 {
-    PatOr {
+    patt::Or {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        leading_vert: node.leading_vert,
+        vert: node.vert,
         cases: FoldHelper::lift(node.cases, |it| f.fold_pat(it)),
     }
 }
-pub fn fold_pat_paren<F>(f: &mut F, node: PatParen) -> PatParen
+pub fn fold_pat_paren<F>(f: &mut F, node: patt::Paren) -> patt::Paren
 where
     F: Fold + ?Sized,
 {
-    PatParen {
+    patt::Paren {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         paren: node.paren,
-        pat: Box::new(f.fold_pat(*node.pat)),
+        patt: Box::new(f.fold_pat(*node.patt)),
     }
 }
-pub fn fold_pat_reference<F>(f: &mut F, node: PatReference) -> PatReference
+pub fn fold_pat_reference<F>(f: &mut F, node: patt::Ref) -> patt::Ref
 where
     F: Fold + ?Sized,
 {
-    PatReference {
+    patt::Ref {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         and: node.and,
-        mutability: node.mutability,
-        pat: Box::new(f.fold_pat(*node.pat)),
+        mut_: node.mut_,
+        patt: Box::new(f.fold_pat(*node.patt)),
     }
 }
-pub fn fold_pat_rest<F>(f: &mut F, node: PatRest) -> PatRest
+pub fn fold_pat_rest<F>(f: &mut F, node: patt::Restest) patt::Rest::Rest
 where
     F: Fold + ?Sized,
 {
-    PatRest {
+    patt::Restest {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         dot2: node.dot2,
     }
 }
-pub fn fold_pat_slice<F>(f: &mut F, node: PatSlice) -> PatSlice
+pub fn fold_pat_slice<F>(f: &mut F, node: patt::Slice) -> patt::Slice
 where
     F: Fold + ?Sized,
 {
-    PatSlice {
+    patt::Slice {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         bracket: node.bracket,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
+        patts: FoldHelper::lift(node.patts, |it| f.fold_pat(it)),
     }
 }
-pub fn fold_pat_struct<F>(f: &mut F, node: PatStruct) -> PatStruct
+pub fn fold_pat_struct<F>(f: &mut F, node: patt::Struct) -> patt::Struct
 where
     F: Fold + ?Sized,
 {
-    PatStruct {
+    patt::Struct {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
@@ -2068,21 +2068,21 @@ where
         rest: (node.rest).map(|it| f.fold_pat_rest(it)),
     }
 }
-pub fn fold_pat_tuple<F>(f: &mut F, node: PatTuple) -> PatTuple
+pub fn fold_pat_tuple<F>(f: &mut F, node: patt::Tuple) -> patt::Tuple
 where
     F: Fold + ?Sized,
 {
-    PatTuple {
+    patt::Tuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         paren: node.paren,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
+        patts: FoldHelper::lift(node.patts, |it| f.fold_pat(it)),
     }
 }
-pub fn fold_pat_tuple_struct<F>(f: &mut F, node: PatTupleStruct) -> PatTupleStruct
+pub fn fold_pat_tuple_struct<F>(f: &mut F, node: patt::TupleStructuct) patt::TupleStructStruct
 where
     F: Fold + ?Sized,
 {
-    PatTupleStruct {
+    patt::TupleStructuct {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
@@ -2090,22 +2090,22 @@ where
         elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
-pub fn fold_pat_type<F>(f: &mut F, node: PatType) -> PatType
+pub fn fold_pat_type<F>(f: &mut F, node: patt::Type) -> patt::Type
 where
     F: Fold + ?Sized,
 {
-    PatType {
+    patt::Type {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        pat: Box::new(f.fold_pat(*node.pat)),
+        patt: Box::new(f.fold_pat(*node.patt)),
         colon: node.colon,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
     }
 }
-pub fn fold_pat_wild<F>(f: &mut F, node: PatWild) -> PatWild
+pub fn fold_pat_wild<F>(f: &mut F, node: patt::Wild) -> patt::Wild
 where
     F: Fold + ?Sized,
 {
-    PatWild {
+    patt::Wild {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         underscore: node.underscore,
     }
@@ -2190,7 +2190,7 @@ where
         mut_: node.mut_,
         self_: node.self_,
         colon: node.colon,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
     }
 }
 pub fn fold_return_type<F>(f: &mut F, node: ty::Ret) -> ty::Ret
@@ -2298,7 +2298,7 @@ where
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         colon: node.colon,
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
         default: (node.default).map(|it| ((it).0, f.fold_expr((it).1))),
         semi: node.semi,
     }
@@ -2339,26 +2339,26 @@ where
         semi: node.semi,
     }
 }
-pub fn fold_type<F>(f: &mut F, node: Ty) -> Ty
+pub fn fold_type<F>(f: &mut F, node: ty::Type) -> ty::Type
 where
     F: Fold + ?Sized,
 {
     match node {
-        Ty::Array(_binding_0) => Ty::Array(f.fold_type_array(_binding_0)),
-        Ty::BareFn(_binding_0) => Ty::BareFn(f.fold_type_bare_fn(_binding_0)),
-        Ty::Group(_binding_0) => Ty::Group(f.fold_type_group(_binding_0)),
-        Ty::Impl(_binding_0) => Ty::Impl(f.fold_type_impl_trait(_binding_0)),
-        Ty::Infer(_binding_0) => Ty::Infer(f.fold_type_infer(_binding_0)),
-        Ty::Mac(_binding_0) => Ty::Mac(f.fold_type_macro(_binding_0)),
-        Ty::Never(_binding_0) => Ty::Never(f.fold_type_never(_binding_0)),
-        Ty::Paren(_binding_0) => Ty::Paren(f.fold_type_paren(_binding_0)),
-        Ty::Path(_binding_0) => Ty::Path(f.fold_type_path(_binding_0)),
-        Ty::Ptr(_binding_0) => Ty::Ptr(f.fold_type_ptr(_binding_0)),
-        Ty::Ref(_binding_0) => Ty::Ref(f.fold_type_reference(_binding_0)),
-        Ty::Slice(_binding_0) => Ty::Slice(f.fold_type_slice(_binding_0)),
-        Ty::TraitObj(_binding_0) => Ty::TraitObj(f.fold_type_trait_object(_binding_0)),
-        Ty::Tuple(_binding_0) => Ty::Tuple(f.fold_type_tuple(_binding_0)),
-        Ty::Verbatim(_binding_0) => Ty::Verbatim(_binding_0),
+        ty::Type::Array(_binding_0) => ty::Type::Array(f.fold_type_array(_binding_0)),
+        ty::Type::BareFn(_binding_0) => ty::Type::BareFn(f.fold_type_bare_fn(_binding_0)),
+        ty::Type::Group(_binding_0) => ty::Type::Group(f.fold_type_group(_binding_0)),
+        ty::Type::Impl(_binding_0) => ty::Type::Impl(f.fold_type_impl_trait(_binding_0)),
+        ty::Type::Infer(_binding_0) => ty::Type::Infer(f.fold_type_infer(_binding_0)),
+        ty::Type::Mac(_binding_0) => ty::Type::Mac(f.fold_type_macro(_binding_0)),
+        ty::Type::Never(_binding_0) => ty::Type::Never(f.fold_type_never(_binding_0)),
+        ty::Type::Paren(_binding_0) => ty::Type::Paren(f.fold_type_paren(_binding_0)),
+        ty::Type::Path(_binding_0) => ty::Type::Path(f.fold_type_path(_binding_0)),
+        ty::Type::Ptr(_binding_0) => ty::Type::Ptr(f.fold_type_ptr(_binding_0)),
+        ty::Type::Ref(_binding_0) => ty::Type::Ref(f.fold_type_reference(_binding_0)),
+        ty::Type::Slice(_binding_0) => ty::Type::Slice(f.fold_type_slice(_binding_0)),
+        ty::Type::TraitObj(_binding_0) => ty::Type::TraitObj(f.fold_type_trait_object(_binding_0)),
+        ty::Type::Tuple(_binding_0) => ty::Type::Tuple(f.fold_type_tuple(_binding_0)),
+        ty::Type::Verbatim(_binding_0) => ty::Type::Verbatim(_binding_0),
     }
 }
 pub fn fold_type_array<F>(f: &mut F, node: ty::Array) -> ty::Array

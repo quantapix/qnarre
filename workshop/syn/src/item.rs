@@ -31,7 +31,7 @@ ast_struct! {
         pub ident: Ident,
         pub gens: Generics,
         pub colon: Token![:],
-        pub ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
         pub eq: Token![=],
         pub expr: Box<Expr>,
         pub semi: Token![;],
@@ -84,7 +84,7 @@ ast_struct! {
         pub impl_: Token![impl],
         pub gens: Generics,
         pub trait_: Option<(Option<Token![!]>, Path, Token![for])>,
-        pub self_ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
         pub brace: tok::Brace,
         pub items: Vec<ImplItem>,
     }
@@ -116,7 +116,7 @@ ast_struct! {
         pub mut_: StaticMut,
         pub ident: Ident,
         pub colon: Token![:],
-        pub ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
         pub eq: Token![=],
         pub expr: Box<Expr>,
         pub semi: Token![;],
@@ -169,7 +169,7 @@ ast_struct! {
         pub ident: Ident,
         pub gens: Generics,
         pub eq: Token![=],
-        pub ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
         pub semi: Token![;],
     }
 }
@@ -355,7 +355,7 @@ ast_struct! {
         pub mut_: StaticMut,
         pub ident: Ident,
         pub colon: Token![:],
-        pub ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
         pub semi: Token![;],
     }
 }
@@ -392,7 +392,7 @@ ast_struct! {
         pub ident: Ident,
         pub gens: Generics,
         pub colon: Token![:],
-        pub ty: Ty,
+        pub typ: ty::Type,
         pub default: Option<(Token![=], Expr)>,
         pub semi: Token![;],
     }
@@ -413,7 +413,7 @@ ast_struct! {
         pub gens: Generics,
         pub colon: Option<Token![:]>,
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
-        pub default: Option<(Token![=], Ty)>,
+        pub default: Option<(Token![=], ty::Type)>,
         pub semi: Token![;],
     }
 }
@@ -442,7 +442,7 @@ ast_struct! {
         pub ident: Ident,
         pub gens: Generics,
         pub colon: Token![:],
-        pub ty: Ty,
+        pub typ: ty::Type,
         pub eq: Token![=],
         pub expr: Expr,
         pub semi: Token![;],
@@ -466,7 +466,7 @@ ast_struct! {
         pub ident: Ident,
         pub gens: Generics,
         pub eq: Token![=],
-        pub ty: Ty,
+        pub typ: ty::Type,
         pub semi: Token![;],
     }
 }
@@ -504,7 +504,7 @@ impl Signature {
 ast_enum_of_structs! {
     pub enum FnArg {
         Receiver(Receiver),
-        Typed(PatType),
+        Typed(patt::Type),
     }
 }
 ast_struct! {
@@ -514,7 +514,7 @@ ast_struct! {
         pub mut_: Option<Token![mut]>,
         pub self_: Token![self],
         pub colon: Option<Token![:]>,
-        pub ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
     }
 }
 impl Receiver {
@@ -525,7 +525,7 @@ impl Receiver {
 ast_struct! {
     pub struct Variadic {
         pub attrs: Vec<Attribute>,
-        pub pat: Option<(Box<Pat>, Token![:])>,
+        pub pat: Option<(Box<patt::Patt>, Token![:])>,
         pub dots: Token![...],
         pub comma: Option<Token![,]>,
     }

@@ -4,18 +4,18 @@ mod macros;
 use proc_macro2::{Delimiter, Group, TokenStream, TokenTree};
 use quote::quote;
 use syn::parse::Parser;
-use syn::{Item, Pat, Stmt};
+use syn::{patt::Patt, Item, Stmt};
 #[test]
 fn test_pat_ident() {
-    match Pat::parse_single.parse2(quote!(self)).unwrap() {
-        Pat::Ident(_) => (),
-        value => panic!("expected PatIdent, got {:?}", value),
+    match patt::Patt::parse_single.parse2(quote!(self)).unwrap() {
+        patt::Patt::Ident(_) => (),
+        value => panic!("expected patt::Ident, got {:?}", value),
     }
 }
 #[test]
 fn test_pat_path() {
-    match Pat::parse_single.parse2(quote!(self::CONST)).unwrap() {
-        Pat::Path(_) => (),
+    match patt::Patt::parse_single.parse2(quote!(self::CONST)).unwrap() {
+        patt::Patt::Path(_) => (),
         value => panic!("expected PatPath, got {:?}", value),
     }
 }
@@ -39,9 +39,9 @@ fn test_leading_vert() {
 fn test_group() {
     let group = Group::new(Delimiter::None, quote!(Some(_)));
     let tokens = TokenStream::from_iter(vec![TokenTree::Group(group)]);
-    let pat = Pat::parse_single.parse2(tokens).unwrap();
+    let pat = patt::Patt::parse_single.parse2(tokens).unwrap();
     snapshot!(pat, @r###"
-    Pat::TupleStruct {
+    patt::Patt::TupleStruct {
         path: Path {
             segments: [
                 path::Segment {
@@ -50,33 +50,33 @@ fn test_group() {
             ],
         },
         elems: [
-            Pat::Wild,
+            patt::Patt::Wild,
         ],
     }
     "###);
 }
 #[test]
 fn test_ranges() {
-    Pat::parse_single.parse_str("..").unwrap();
-    Pat::parse_single.parse_str("..hi").unwrap();
-    Pat::parse_single.parse_str("lo..").unwrap();
-    Pat::parse_single.parse_str("lo..hi").unwrap();
-    Pat::parse_single.parse_str("..=").unwrap_err();
-    Pat::parse_single.parse_str("..=hi").unwrap();
-    Pat::parse_single.parse_str("lo..=").unwrap_err();
-    Pat::parse_single.parse_str("lo..=hi").unwrap();
-    Pat::parse_single.parse_str("...").unwrap_err();
-    Pat::parse_single.parse_str("...hi").unwrap_err();
-    Pat::parse_single.parse_str("lo...").unwrap_err();
-    Pat::parse_single.parse_str("lo...hi").unwrap();
-    Pat::parse_single.parse_str("[lo..]").unwrap_err();
-    Pat::parse_single.parse_str("[..=hi]").unwrap_err();
-    Pat::parse_single.parse_str("[(lo..)]").unwrap();
-    Pat::parse_single.parse_str("[(..=hi)]").unwrap();
-    Pat::parse_single.parse_str("[lo..=hi]").unwrap();
-    Pat::parse_single.parse_str("[_, lo.., _]").unwrap_err();
-    Pat::parse_single.parse_str("[_, ..=hi, _]").unwrap_err();
-    Pat::parse_single.parse_str("[_, (lo..), _]").unwrap();
-    Pat::parse_single.parse_str("[_, (..=hi), _]").unwrap();
-    Pat::parse_single.parse_str("[_, lo..=hi, _]").unwrap();
+    patt::Patt::parse_single.parse_str("..").unwrap();
+    patt::Patt::parse_single.parse_str("..hi").unwrap();
+    patt::Patt::parse_single.parse_str("lo..").unwrap();
+    patt::Patt::parse_single.parse_str("lo..hi").unwrap();
+    patt::Patt::parse_single.parse_str("..=").unwrap_err();
+    patt::Patt::parse_single.parse_str("..=hi").unwrap();
+    patt::Patt::parse_single.parse_str("lo..=").unwrap_err();
+    patt::Patt::parse_single.parse_str("lo..=hi").unwrap();
+    patt::Patt::parse_single.parse_str("...").unwrap_err();
+    patt::Patt::parse_single.parse_str("...hi").unwrap_err();
+    patt::Patt::parse_single.parse_str("lo...").unwrap_err();
+    patt::Patt::parse_single.parse_str("lo...hi").unwrap();
+    patt::Patt::parse_single.parse_str("[lo..]").unwrap_err();
+    patt::Patt::parse_single.parse_str("[..=hi]").unwrap_err();
+    patt::Patt::parse_single.parse_str("[(lo..)]").unwrap();
+    patt::Patt::parse_single.parse_str("[(..=hi)]").unwrap();
+    patt::Patt::parse_single.parse_str("[lo..=hi]").unwrap();
+    patt::Patt::parse_single.parse_str("[_, lo.., _]").unwrap_err();
+    patt::Patt::parse_single.parse_str("[_, ..=hi, _]").unwrap_err();
+    patt::Patt::parse_single.parse_str("[_, (lo..), _]").unwrap();
+    patt::Patt::parse_single.parse_str("[_, (..=hi), _]").unwrap();
+    patt::Patt::parse_single.parse_str("[_, lo..=hi, _]").unwrap();
 }

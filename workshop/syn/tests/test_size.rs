@@ -1,6 +1,6 @@
 #![cfg(target_pointer_width = "64")]
 use std::mem;
-use syn::{Expr, Item, Lit, Pat, Ty};
+use syn::{patt::Patt, ty::Type, Expr, Item, Lit};
 #[rustversion::attr(before(2022-11-24), ignore)]
 #[test]
 fn test_expr_size() {
@@ -14,12 +14,12 @@ fn test_item_size() {
 #[rustversion::attr(before(2023-04-29), ignore)]
 #[test]
 fn test_type_size() {
-    assert_eq!(mem::size_of::<Ty>(), 232);
+    assert_eq!(mem::size_of::<ty::Type>(), 232);
 }
 #[rustversion::attr(before(2023-04-29), ignore)]
 #[test]
 fn test_pat_size() {
-    assert_eq!(mem::size_of::<Pat>(), 184);
+    assert_eq!(mem::size_of::<patt::Patt>(), 184);
 }
 #[rustversion::attr(before(2022-09-09), ignore)]
 #[test]

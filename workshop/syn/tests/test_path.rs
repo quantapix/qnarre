@@ -3,7 +3,7 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use syn::{parse_quote, ty::Path, Expr, Ty};
+use syn::{parse_quote, ty::Path, ty::Type, Expr};
 #[test]
 fn parse_interpolated_leading_component() {
     let tokens = TokenStream::from_iter(vec![
@@ -26,7 +26,7 @@ fn parse_interpolated_leading_component() {
         },
     }
     "###);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -43,55 +43,55 @@ fn parse_interpolated_leading_component() {
 }
 #[test]
 fn print_incomplete_qpath() {
-    let mut ty: ty::Path = parse_quote!(<Self as A>::Q);
-    snapshot!(ty.to_token_stream(), @r###"
+    let mut typ: ty::Path = parse_quote!(<Self as A>::Q);
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`< Self as A > :: Q`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`< Self as A > ::`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`< Self >`)
     "###);
-    assert!(ty.path.segs.pop().is_none());
-    let mut ty: ty::Path = parse_quote!(<Self>::A::B);
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_none());
+    let mut typ: ty::Path = parse_quote!(<Self>::A::B);
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`< Self > :: A :: B`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`< Self > :: A ::`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`< Self > ::`)
     "###);
-    assert!(ty.path.segs.pop().is_none());
-    let mut ty: ty::Path = parse_quote!(Self::A::B);
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_none());
+    let mut typ: ty::Path = parse_quote!(Self::A::B);
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`Self :: A :: B`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`Self :: A ::`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(`Self ::`)
     "###);
-    assert!(ty.path.segs.pop().is_some());
-    snapshot!(ty.to_token_stream(), @r###"
+    assert!(typ.path.segs.pop().is_some());
+    snapshot!(typ.to_token_stream(), @r###"
     TokenStream(``)
     "###);
-    assert!(ty.path.segs.pop().is_none());
+    assert!(typ.path.segs.pop().is_none());
 }
 #[test]
 fn parse_parenthesized_path_arguments_with_disambiguator() {
     #[rustfmt::skip]
     let tokens = quote!(dyn FnOnce::() -> !);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [

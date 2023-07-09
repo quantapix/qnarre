@@ -115,7 +115,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub expr: Box<Expr>,
         pub as_: Token![as],
-        pub ty: Box<Ty>,
+        pub typ: Box<ty::Type>,
     }
 }
 ast_struct! {
@@ -127,7 +127,7 @@ ast_struct! {
         pub async_: Option<Token![async]>,
         pub move_: Option<Token![move]>,
         pub or1: Token![|],
-        pub inputs: Punctuated<Pat, Token![,]>,
+        pub inputs: Punctuated<patt::Patt, Token![,]>,
         pub or2: Token![|],
         pub ret: ty::Ret,
         pub body: Box<Expr>,
@@ -160,7 +160,7 @@ ast_struct! {
         pub attrs: Vec<Attribute>,
         pub label: Option<Label>,
         pub for_: Token![for],
-        pub pat: Box<Pat>,
+        pub pat: Box<patt::Patt>,
         pub in_: Token![in],
         pub expr: Box<Expr>,
         pub body: Block,
@@ -200,7 +200,7 @@ ast_struct! {
     pub struct ExprLet #full {
         pub attrs: Vec<Attribute>,
         pub let_: Token![let],
-        pub pat: Box<Pat>,
+        pub pat: Box<patt::Patt>,
         pub eq: Token![=],
         pub expr: Box<Expr>,
     }
@@ -510,7 +510,7 @@ ast_struct! {
 ast_struct! {
     pub struct Arm {
         pub attrs: Vec<Attribute>,
-        pub pat: Pat,
+        pub pat: patt::Patt,
         pub guard: Option<(Token![if], Box<Expr>)>,
         pub fat_arrow: Token![=>],
         pub body: Box<Expr>,

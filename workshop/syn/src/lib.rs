@@ -639,11 +639,10 @@ impl TokBuff {
 mod expr;
 pub use expr::{
     Arm, Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock, ExprBreak, ExprCall, ExprCast,
-    ExprClosure, ExprConst, ExprConst as PatConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf, ExprIndex,
-    ExprInfer, ExprLet, ExprLit, ExprLit as PatLit, ExprLoop, ExprMacro, ExprMacro as PatMacro, ExprMatch,
-    ExprMethodCall, ExprParen, ExprPath, ExprPath as PatPath, ExprRange, ExprRange as PatRange, ExprReference,
-    ExprRepeat, ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield,
-    FieldValue, Index, Label, Member, RangeLimits,
+    ExprClosure, ExprConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf, ExprIndex, ExprInfer, ExprLet,
+    ExprLit, ExprLoop, ExprMacro, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprRange, ExprReference, ExprRepeat,
+    ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, FieldValue,
+    Index, Label, Member, RangeLimits,
 };
 
 ast_struct! {
@@ -661,7 +660,7 @@ ast_struct! {
         pub colon: Option<Token![:]>,
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
         pub eq: Option<Token![=]>,
-        pub default: Option<Ty>,
+        pub default: Option<ty::Type>,
     }
 }
 ast_struct! {
@@ -670,7 +669,7 @@ ast_struct! {
         pub const_: Token![const],
         pub ident: Ident,
         pub colon: Token![:],
-        pub ty: Ty,
+        pub typ: ty::Type,
         pub eq: Option<Token![=]>,
         pub default: Option<Expr>,
     }
@@ -948,7 +947,7 @@ ast_struct! {
 ast_struct! {
     pub struct PredType {
         pub lifes: Option<BoundLifetimes>,
-        pub bounded: Ty,
+        pub bounded: ty::Type,
         pub colon: Token![:],
         pub bounds: Punctuated<TypeParamBound, Token![+]>,
     }
@@ -967,120 +966,128 @@ use punct::Punctuated;
 pub mod lit;
 pub mod tok;
 
-ast_enum_of_structs! {
-    pub enum Pat {
-        Const(PatConst),
-        Ident(PatIdent),
-        Lit(PatLit),
-        Macro(PatMacro),
-        Or(PatOr),
-        Paren(PatParen),
-        Path(PatPath),
-        Range(PatRange),
-        Reference(PatReference),
-        Rest(PatRest),
-        Slice(PatSlice),
-        Struct(PatStruct),
-        Tuple(PatTuple),
-        TupleStruct(PatTupleStruct),
-        Type(PatType),
-        Verbatim(TokenStream),
-        Wild(PatWild),
-    }
-}
-ast_struct! {
-    pub struct PatIdent {
-        pub attrs: Vec<Attribute>,
-        pub ref_: Option<Token![ref]>,
-        pub mut_: Option<Token![mut]>,
-        pub ident: Ident,
-        pub subpat: Option<(Token![@], Box<Pat>)>,
-    }
-}
-ast_struct! {
-    pub struct PatOr {
-        pub attrs: Vec<Attribute>,
-        pub leading_vert: Option<Token![|]>,
-        pub cases: Punctuated<Pat, Token![|]>,
-    }
-}
-ast_struct! {
-    pub struct PatParen {
-        pub attrs: Vec<Attribute>,
-        pub paren: tok::Paren,
-        pub pat: Box<Pat>,
-    }
-}
-ast_struct! {
-    pub struct PatReference {
-        pub attrs: Vec<Attribute>,
-        pub and: Token![&],
-        pub mutability: Option<Token![mut]>,
-        pub pat: Box<Pat>,
-    }
-}
-ast_struct! {
-    pub struct PatRest {
-        pub attrs: Vec<Attribute>,
-        pub dot2: Token![..],
-    }
-}
-ast_struct! {
-    pub struct PatSlice {
-        pub attrs: Vec<Attribute>,
-        pub bracket: tok::Bracket,
-        pub elems: Punctuated<Pat, Token![,]>,
-    }
-}
-ast_struct! {
-    pub struct PatStruct {
-        pub attrs: Vec<Attribute>,
-        pub qself: Option<QSelf>,
-        pub path: Path,
-        pub brace: tok::Brace,
-        pub fields: Punctuated<FieldPat, Token![,]>,
-        pub rest: Option<PatRest>,
-    }
-}
-ast_struct! {
-    pub struct PatTuple {
-        pub attrs: Vec<Attribute>,
-        pub paren: tok::Paren,
-        pub elems: Punctuated<Pat, Token![,]>,
-    }
-}
-ast_struct! {
-    pub struct PatTupleStruct {
-        pub attrs: Vec<Attribute>,
-        pub qself: Option<QSelf>,
-        pub path: Path,
-        pub paren: tok::Paren,
-        pub elems: Punctuated<Pat, Token![,]>,
-    }
-}
-ast_struct! {
-    pub struct PatType {
-        pub attrs: Vec<Attribute>,
-        pub pat: Box<Pat>,
-        pub colon: Token![:],
-        pub ty: Box<Ty>,
-    }
-}
-ast_struct! {
-    pub struct PatWild {
-        pub attrs: Vec<Attribute>,
-        pub underscore: Token![_],
-    }
-}
-ast_struct! {
-    pub struct FieldPat {
-        pub attrs: Vec<Attribute>,
-        pub member: Member,
-        pub colon: Option<Token![:]>,
-        pub pat: Box<Pat>,
-    }
-}
+pub mod patt {
+    use super::{punct::Punctuated, *};
 
+    ast_enum_of_structs! {
+        pub enum Patt {
+            Const(Const),
+            Ident(Ident),
+            Lit(Lit),
+            Mac(Mac),
+            Or(Or),
+            Paren(Paren),
+            Path(Path),
+            Range(Range),
+            Ref(Ref),
+            Rest(Rest),
+            Slice(Slice),
+            Struct(Struct),
+            Tuple(Tuple),
+            TupleStruct(TupleStruct),
+            Type(Type),
+            Verbatim(TokenStream),
+            Wild(Wild),
+        }
+    }
+    use expr::Const;
+    ast_struct! {
+        pub struct Ident {
+            pub attrs: Vec<Attribute>,
+            pub ref_: Option<Token![ref]>,
+            pub mut_: Option<Token![mut]>,
+            pub ident: Ident,
+            pub sub: Option<(Token![@], Box<Patt>)>,
+        }
+    }
+    use expr::Lit;
+    use expr::Macro as Mac;
+    ast_struct! {
+        pub struct Or {
+            pub attrs: Vec<Attribute>,
+            pub vert: Option<Token![|]>,
+            pub cases: Punctuated<Patt, Token![|]>,
+        }
+    }
+    ast_struct! {
+        pub struct Paren {
+            pub attrs: Vec<Attribute>,
+            pub paren: tok::Paren,
+            pub patt: Box<Patt>,
+        }
+    }
+    use expr::Path;
+    use expr::Range;
+    ast_struct! {
+        pub struct Ref {
+            pub attrs: Vec<Attribute>,
+            pub and: Token![&],
+            pub mut_: Option<Token![mut]>,
+            pub patt: Box<Patt>,
+        }
+    }
+    ast_struct! {
+        pub struct Rest {
+            pub attrs: Vec<Attribute>,
+            pub dot2: Token![..],
+        }
+    }
+    ast_struct! {
+        pub struct Slice {
+            pub attrs: Vec<Attribute>,
+            pub bracket: tok::Bracket,
+            pub patts: Punctuated<Patt, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct Struct {
+            pub attrs: Vec<Attribute>,
+            pub qself: Option<QSelf>,
+            pub path: Path,
+            pub brace: tok::Brace,
+            pub fields: Punctuated<Field, Token![,]>,
+            pub rest: Option<Rest>,
+        }
+    }
+    ast_struct! {
+        pub struct Tuple {
+            pub attrs: Vec<Attribute>,
+            pub paren: tok::Paren,
+            pub patts: Punctuated<Patt, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct TupleStruct {
+            pub attrs: Vec<Attribute>,
+            pub qself: Option<QSelf>,
+            pub path: Path,
+            pub paren: tok::Paren,
+            pub patts: Punctuated<Patt, Token![,]>,
+        }
+    }
+    ast_struct! {
+        pub struct Type {
+            pub attrs: Vec<Attribute>,
+            pub patt: Box<Patt>,
+            pub colon: Token![:],
+            pub typ: Box<ty::Type>,
+        }
+    }
+    ast_struct! {
+        pub struct Wild {
+            pub attrs: Vec<Attribute>,
+            pub underscore: Token![_],
+        }
+    }
+    ast_struct! {
+        pub struct Field {
+            pub attrs: Vec<Attribute>,
+            pub member: Member,
+            pub colon: Option<Token![:]>,
+            pub patt: Box<Patt>,
+        }
+    }
+}
 pub mod path {
     use super::{punct::Punctuated, *};
     ast_struct! {
@@ -1172,7 +1179,7 @@ pub mod path {
     ast_enum! {
         pub enum Arg {
             Lifetime(Lifetime),
-            Type(Ty),
+            Type(ty::Type),
             Const(Expr),
             AssocType(AssocType),
             AssocConst(AssocConst),
@@ -1192,7 +1199,7 @@ pub mod path {
             pub ident: Ident,
             pub args: Option<AngledArgs>,
             pub eq: Token![=],
-            pub ty: Ty,
+            pub typ: ty::Type,
         }
     }
     ast_struct! {
@@ -1214,14 +1221,14 @@ pub mod path {
     ast_struct! {
         pub struct ParenthesizedArgs {
             pub paren: tok::Paren,
-            pub args: Punctuated<Ty, Token![,]>,
+            pub args: Punctuated<ty::Type, Token![,]>,
             pub ret: Ret,
         }
     }
     ast_struct! {
         pub struct QSelf {
             pub lt: Token![<],
-            pub ty: Box<Ty>,
+            pub typ: Box<ty::Type>,
             pub pos: usize,
             pub as_: Option<Token![as]>,
             pub gt: Token![>],
@@ -1247,7 +1254,7 @@ ast_struct! {
     pub struct Local {
         pub attrs: Vec<Attribute>,
         pub let_: Token![let],
-        pub pat: Pat,
+        pub pat: patt::Patt,
         pub init: Option<LocalInit>,
         pub semi: Token![;],
     }
@@ -1272,7 +1279,7 @@ mod ty {
     use proc_macro2::TokenStream;
 
     ast_enum_of_structs! {
-        pub enum Ty {
+        pub enum Type {
             Array(Array),
             BareFn(BareFn),
             Group(Group),
@@ -1293,7 +1300,7 @@ mod ty {
     ast_struct! {
         pub struct Array {
             pub bracket: tok::Bracket,
-            pub elem: Box<Ty>,
+            pub elem: Box<Type>,
             pub semi: Token![;],
             pub len: Expr,
         }
@@ -1313,7 +1320,7 @@ mod ty {
     ast_struct! {
         pub struct Group {
             pub group: tok::Group,
-            pub elem: Box<Ty>,
+            pub elem: Box<Type>,
         }
     }
     ast_struct! {
@@ -1340,7 +1347,7 @@ mod ty {
     ast_struct! {
         pub struct Paren {
             pub paren: tok::Paren,
-            pub elem: Box<Ty>,
+            pub elem: Box<Type>,
         }
     }
     ast_struct! {
@@ -1354,7 +1361,7 @@ mod ty {
             pub star: Token![*],
             pub const_: Option<Token![const]>,
             pub mut_: Option<Token![mut]>,
-            pub elem: Box<Ty>,
+            pub elem: Box<Type>,
         }
     }
     ast_struct! {
@@ -1362,13 +1369,13 @@ mod ty {
             pub and: Token![&],
             pub life: Option<Lifetime>,
             pub mut_: Option<Token![mut]>,
-            pub elem: Box<Ty>,
+            pub elem: Box<Type>,
         }
     }
     ast_struct! {
         pub struct Slice {
             pub bracket: tok::Bracket,
-            pub elem: Box<Ty>,
+            pub elem: Box<Type>,
         }
     }
     ast_struct! {
@@ -1380,7 +1387,7 @@ mod ty {
     ast_struct! {
         pub struct Tuple {
             pub paren: tok::Paren,
-            pub elems: Punctuated<Ty, Token![,]>,
+            pub elems: Punctuated<Type, Token![,]>,
         }
     }
     ast_struct! {
@@ -1393,7 +1400,7 @@ mod ty {
         pub struct BareFnArg {
             pub attrs: Vec<Attribute>,
             pub name: Option<(Ident, Token![:])>,
-            pub ty: Ty,
+            pub ty: Type,
         }
     }
     ast_struct! {
@@ -1407,7 +1414,7 @@ mod ty {
     ast_enum! {
         pub enum Ret {
             Default,
-            Type(Token![->], Box<Ty>),
+            Type(Token![->], Box<Type>),
         }
     }
 }
@@ -1552,7 +1559,7 @@ ast_struct! {
         pub mutability: FieldMut,
         pub ident: Option<Ident>,
         pub colon: Option<Token![:]>,
-        pub ty: Ty,
+        pub typ: ty::Type,
     }
 }
 ast_struct! {
@@ -2613,14 +2620,14 @@ impl ParseQuote for Attribute {
         }
     }
 }
-impl ParseQuote for Pat {
+impl ParseQuote for patt::Patt {
     fn parse(x: ParseStream) -> Result<Self> {
-        Pat::parse_multi_with_leading_vert(x)
+        patt::Patt::parse_multi_with_leading_vert(x)
     }
 }
-impl ParseQuote for Box<Pat> {
+impl ParseQuote for Box<patt::Patt> {
     fn parse(x: ParseStream) -> Result<Self> {
-        <Pat as ParseQuote>::parse(x).map(Box::new)
+        <patt::Patt as ParseQuote>::parse(x).map(Box::new)
     }
 }
 impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {

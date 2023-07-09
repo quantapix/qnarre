@@ -3,15 +3,15 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::quote;
-use syn::Ty;
+use syn::ty::Type;
 #[test]
 fn test_mut_self() {
-    syn::parse_str::<Ty>("fn(mut self)").unwrap();
-    syn::parse_str::<Ty>("fn(mut self,)").unwrap();
-    syn::parse_str::<Ty>("fn(mut self: ())").unwrap();
-    syn::parse_str::<Ty>("fn(mut self: ...)").unwrap_err();
-    syn::parse_str::<Ty>("fn(mut self: mut self)").unwrap_err();
-    syn::parse_str::<Ty>("fn(mut self::T)").unwrap_err();
+    syn::parse_str::<ty::Type>("fn(mut self)").unwrap();
+    syn::parse_str::<ty::Type>("fn(mut self,)").unwrap();
+    syn::parse_str::<ty::Type>("fn(mut self: ())").unwrap();
+    syn::parse_str::<ty::Type>("fn(mut self: ...)").unwrap_err();
+    syn::parse_str::<ty::Type>("fn(mut self: mut self)").unwrap_err();
+    syn::parse_str::<ty::Type>("fn(mut self::T)").unwrap_err();
 }
 #[test]
 fn test_macro_variable_type() {
@@ -21,7 +21,7 @@ fn test_macro_variable_type() {
         TokenTree::Ident(Ident::new("T", Span::call_site())),
         TokenTree::Punct(Punct::new('>', Spacing::Alone)),
     ]);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -53,7 +53,7 @@ fn test_macro_variable_type() {
         TokenTree::Ident(Ident::new("T", Span::call_site())),
         TokenTree::Punct(Punct::new('>', Spacing::Alone)),
     ]);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -87,7 +87,7 @@ fn test_group_angle_brackets() {
         TokenTree::Group(Group::new(Delimiter::None, quote! { Vec<u8> })),
         TokenTree::Punct(Punct::new('>', Spacing::Alone)),
     ]);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -135,7 +135,7 @@ fn test_group_colons() {
         TokenTree::Punct(Punct::new(':', Spacing::Alone)),
         TokenTree::Ident(Ident::new("Item", Span::call_site())),
     ]);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -168,7 +168,7 @@ fn test_group_colons() {
         TokenTree::Punct(Punct::new(':', Spacing::Alone)),
         TokenTree::Ident(Ident::new("Element", Span::call_site())),
     ]);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::Path {
         qself: Some(QSelf {
             ty: Type::Slice {
@@ -198,7 +198,7 @@ fn test_group_colons() {
 #[test]
 fn test_trait_object() {
     let tokens = quote!(dyn for<'a> Trait<'a> + 'static);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -234,7 +234,7 @@ fn test_trait_object() {
     }
     "###);
     let tokens = quote!(dyn 'a + Trait);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -253,14 +253,14 @@ fn test_trait_object() {
         ],
     }
     "###);
-    syn::parse_str::<Ty>("for<'a> dyn Trait<'a>").unwrap_err();
-    syn::parse_str::<Ty>("dyn for<'a> 'a + Trait").unwrap_err();
+    syn::parse_str::<ty::Type>("for<'a> dyn Trait<'a>").unwrap_err();
+    syn::parse_str::<ty::Type>("dyn for<'a> 'a + Trait").unwrap_err();
 }
 #[test]
 fn test_trailing_plus() {
     #[rustfmt::skip]
     let tokens = quote!(impl Trait +);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::ImplTrait {
         bounds: [
             TypeParamBound::Trait(TraitBound {
@@ -277,7 +277,7 @@ fn test_trailing_plus() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(dyn Trait +);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -295,7 +295,7 @@ fn test_trailing_plus() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(Trait +);
-    snapshot!(tokens as Ty, @r###"
+    snapshot!(tokens as ty::Type, @r###"
     Type::TraitObject {
         bounds: [
             TypeParamBound::Trait(TraitBound {

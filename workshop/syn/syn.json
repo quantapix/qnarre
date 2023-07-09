@@ -64,7 +64,7 @@
           }
         },
         "pat": {
-          "syn": "Pat"
+          "syn": "patt::Patt"
         },
         "guard": {
           "option": {
@@ -1131,7 +1131,7 @@
         "inputs": {
           "punctuated": {
             "element": {
-              "syn": "Pat"
+              "syn": "patt::Patt"
             },
             "punct": "Comma"
           }
@@ -1243,7 +1243,7 @@
         },
         "pat": {
           "box": {
-            "syn": "Pat"
+            "syn": "patt::Patt"
           }
         },
         "in_": {
@@ -1388,7 +1388,7 @@
         },
         "pat": {
           "box": {
-            "syn": "Pat"
+            "syn": "patt::Patt"
           }
         },
         "eq": {
@@ -1968,7 +1968,7 @@
       "exhaustive": false
     },
     {
-      "ident": "FieldPat",
+      "ident": "patt::Field",
       "features": {
         "any": [
           "full"
@@ -1990,7 +1990,7 @@
         },
         "pat": {
           "box": {
-            "syn": "Pat"
+            "syn": "patt::Patt"
           }
         }
       }
@@ -2127,7 +2127,7 @@
         ],
         "Typed": [
           {
-            "syn": "PatType"
+            "syn": "patt::Type"
           }
         ]
       }
@@ -3462,7 +3462,7 @@
           "token": "Let"
         },
         "pat": {
-          "syn": "Pat"
+          "syn": "patt::Patt"
         },
         "init": {
           "option": {
@@ -3668,7 +3668,7 @@
       }
     },
     {
-      "ident": "Pat",
+      "ident": "patt::Patt",
       "features": {
         "any": [
           "full"
@@ -3682,7 +3682,7 @@
         ],
         "Ident": [
           {
-            "syn": "PatIdent"
+            "syn": "patt::Ident"
           }
         ],
         "Lit": [
@@ -3697,12 +3697,12 @@
         ],
         "Or": [
           {
-            "syn": "PatOr"
+            "syn": "patt::Or"
           }
         ],
         "Paren": [
           {
-            "syn": "PatParen"
+            "syn": "patt::Paren"
           }
         ],
         "Path": [
@@ -3717,37 +3717,37 @@
         ],
         "Reference": [
           {
-            "syn": "PatReference"
+            "syn": "patt::Ref"
           }
         ],
         "Rest": [
           {
-            "syn": "PatRest"
+            "syn": "patt::Rest"
           }
         ],
         "Slice": [
           {
-            "syn": "PatSlice"
+            "syn": "patt::Slice"
           }
         ],
         "Struct": [
           {
-            "syn": "PatStruct"
+            "syn": "patt::Struct"
           }
         ],
         "Tuple": [
           {
-            "syn": "PatTuple"
+            "syn": "patt::Tuple"
           }
         ],
         "TupleStruct": [
           {
-            "syn": "PatTupleStruct"
+            "syn": "patt::TupleStruct"
           }
         ],
         "Type": [
           {
-            "syn": "PatType"
+            "syn": "patt::Type"
           }
         ],
         "Verbatim": [
@@ -3757,14 +3757,14 @@
         ],
         "Wild": [
           {
-            "syn": "PatWild"
+            "syn": "patt::Wild"
           }
         ]
       },
       "exhaustive": false
     },
     {
-      "ident": "PatIdent",
+      "ident": "patt::Ident",
       "features": {
         "any": [
           "full"
@@ -3797,7 +3797,7 @@
               },
               {
                 "box": {
-                  "syn": "Pat"
+                  "syn": "patt::Patt"
                 }
               }
             ]
@@ -3806,7 +3806,7 @@
       }
     },
     {
-      "ident": "PatOr",
+      "ident": "patt::Or",
       "features": {
         "any": [
           "full"
@@ -3826,7 +3826,7 @@
         "cases": {
           "punctuated": {
             "element": {
-              "syn": "Pat"
+              "syn": "patt::Patt"
             },
             "punct": "Or"
           }
@@ -3834,7 +3834,7 @@
       }
     },
     {
-      "ident": "PatParen",
+      "ident": "patt::Paren",
       "features": {
         "any": [
           "full"
@@ -3851,13 +3851,13 @@
         },
         "pat": {
           "box": {
-            "syn": "Pat"
+            "syn": "patt::Patt"
           }
         }
       }
     },
     {
-      "ident": "PatReference",
+      "ident": "patt::Ref",
       "features": {
         "any": [
           "full"
@@ -3879,13 +3879,13 @@
         },
         "pat": {
           "box": {
-            "syn": "Pat"
+            "syn": "patt::Patt"
           }
         }
       }
     },
     {
-      "ident": "PatRest",
+      "ident": "patt::Rest",
       "features": {
         "any": [
           "full"
@@ -3903,7 +3903,7 @@
       }
     },
     {
-      "ident": "PatSlice",
+      "ident": "patt::Slice",
       "features": {
         "any": [
           "full"
@@ -3921,7 +3921,7 @@
         "elems": {
           "punctuated": {
             "element": {
-              "syn": "Pat"
+              "syn": "patt::Patt"
             },
             "punct": "Comma"
           }
@@ -3929,7 +3929,7 @@
       }
     },
     {
-      "ident": "PatStruct",
+      "ident": "patt::Struct",
       "features": {
         "any": [
           "full"
@@ -3955,20 +3955,20 @@
         "fields": {
           "punctuated": {
             "element": {
-              "syn": "FieldPat"
+              "syn": "patt::Field"
             },
             "punct": "Comma"
           }
         },
         "rest": {
           "option": {
-            "syn": "PatRest"
+            "syn": "patt::Rest"
           }
         }
       }
     },
     {
-      "ident": "PatTuple",
+      "ident": "patt::Tuple",
       "features": {
         "any": [
           "full"
@@ -3986,7 +3986,7 @@
         "elems": {
           "punctuated": {
             "element": {
-              "syn": "Pat"
+              "syn": "patt::Patt"
             },
             "punct": "Comma"
           }
@@ -3994,7 +3994,7 @@
       }
     },
     {
-      "ident": "PatTupleStruct",
+      "ident": "patt::TupleStruct",
       "features": {
         "any": [
           "full"
@@ -4020,7 +4020,7 @@
         "elems": {
           "punctuated": {
             "element": {
-              "syn": "Pat"
+              "syn": "patt::Patt"
             },
             "punct": "Comma"
           }
@@ -4028,7 +4028,7 @@
       }
     },
     {
-      "ident": "PatType",
+      "ident": "patt::Type",
       "features": {
         "any": [
           "full"
@@ -4042,7 +4042,7 @@
         },
         "pat": {
           "box": {
-            "syn": "Pat"
+            "syn": "patt::Patt"
           }
         },
         "colon": {
@@ -4056,7 +4056,7 @@
       }
     },
     {
-      "ident": "PatWild",
+      "ident": "patt::Wild",
       "features": {
         "any": [
           "full"
@@ -5311,7 +5311,7 @@
             "tuple": [
               {
                 "box": {
-                  "syn": "Pat"
+                  "syn": "patt::Patt"
                 }
               },
               {

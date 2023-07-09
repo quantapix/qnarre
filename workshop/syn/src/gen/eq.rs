@@ -115,7 +115,7 @@ impl PartialEq for ConstParam {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident
-            && self.ty == other.ty
+            && self.typ == other.typ
             && self.eq == other.eq
             && self.default == other.default
     }
@@ -263,7 +263,7 @@ impl PartialEq for ExprCall {
 impl Eq for ExprCast {}
 impl PartialEq for ExprCast {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.expr == other.expr && self.ty == other.ty
+        self.attrs == other.attrs && self.expr == other.expr && self.typ == other.typ
     }
 }
 impl Eq for ExprClosure {}
@@ -472,7 +472,7 @@ impl PartialEq for Field {
             && self.mutability == other.mutability
             && self.ident == other.ident
             && self.colon == other.colon
-            && self.ty == other.ty
+            && self.typ == other.typ
     }
 }
 impl Eq for FieldMut {}
@@ -483,10 +483,10 @@ impl PartialEq for FieldMut {
         }
     }
 }
-impl Eq for FieldPat {}
-impl PartialEq for FieldPat {
+impl Eq for patt::Field {}
+impl PartialEq for patt::Field {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.pat == other.pat
+        self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.patt == other.patt
     }
 }
 impl Eq for FieldValue {}
@@ -568,7 +568,7 @@ impl PartialEq for ForeignItemStatic {
             && self.vis == other.vis
             && self.mut_ == other.mut_
             && self.ident == other.ident
-            && self.ty == other.ty
+            && self.typ == other.typ
     }
 }
 impl Eq for ForeignItemType {}
@@ -631,7 +631,7 @@ impl PartialEq for ImplItemConst {
             && self.default_ == other.default_
             && self.ident == other.ident
             && self.gens == other.gens
-            && self.ty == other.ty
+            && self.typ == other.typ
             && self.expr == other.expr
     }
 }
@@ -659,7 +659,7 @@ impl PartialEq for ImplItemType {
             && self.default_ == other.default_
             && self.ident == other.ident
             && self.gens == other.gens
-            && self.ty == other.ty
+            && self.typ == other.typ
     }
 }
 impl Eq for ImplRestriction {}
@@ -699,7 +699,7 @@ impl PartialEq for ItemConst {
             && self.vis == other.vis
             && self.ident == other.ident
             && self.gens == other.gens
-            && self.ty == other.ty
+            && self.typ == other.typ
             && self.expr == other.expr
     }
 }
@@ -739,7 +739,7 @@ impl PartialEq for ItemImpl {
             && self.unsafe_ == other.unsafe_
             && self.gens == other.gens
             && self.trait_ == other.trait_
-            && self.self_ty == other.self_ty
+            && self.typ == other.typ
             && self.items == other.items
     }
 }
@@ -767,7 +767,7 @@ impl PartialEq for ItemStatic {
             && self.vis == other.vis
             && self.mut_ == other.mut_
             && self.ident == other.ident
-            && self.ty == other.ty
+            && self.typ == other.typ
             && self.expr == other.expr
     }
 }
@@ -814,7 +814,7 @@ impl PartialEq for ItemType {
             && self.vis == other.vis
             && self.ident == other.ident
             && self.gens == other.gens
-            && self.ty == other.ty
+            && self.typ == other.typ
     }
 }
 impl Eq for ItemUnion {}
@@ -938,73 +938,75 @@ impl PartialEq for ParenthesizedArgs {
         self.ins == other.ins && self.out == other.out
     }
 }
-impl Eq for Pat {}
-impl PartialEq for Pat {
+impl Eq for patt::Patt {}
+impl PartialEq for patt::Patt {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Pat::Const(self0), Pat::Const(other0)) => self0 == other0,
-            (Pat::Ident(self0), Pat::Ident(other0)) => self0 == other0,
-            (Pat::Lit(self0), Pat::Lit(other0)) => self0 == other0,
-            (Pat::Macro(self0), Pat::Macro(other0)) => self0 == other0,
-            (Pat::Or(self0), Pat::Or(other0)) => self0 == other0,
-            (Pat::Paren(self0), Pat::Paren(other0)) => self0 == other0,
-            (Pat::Path(self0), Pat::Path(other0)) => self0 == other0,
-            (Pat::Range(self0), Pat::Range(other0)) => self0 == other0,
-            (Pat::Reference(self0), Pat::Reference(other0)) => self0 == other0,
-            (Pat::Rest(self0), Pat::Rest(other0)) => self0 == other0,
-            (Pat::Slice(self0), Pat::Slice(other0)) => self0 == other0,
-            (Pat::Struct(self0), Pat::Struct(other0)) => self0 == other0,
-            (Pat::Tuple(self0), Pat::Tuple(other0)) => self0 == other0,
-            (Pat::TupleStruct(self0), Pat::TupleStruct(other0)) => self0 == other0,
-            (Pat::Type(self0), Pat::Type(other0)) => self0 == other0,
-            (Pat::Verbatim(self0), Pat::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
-            (Pat::Wild(self0), Pat::Wild(other0)) => self0 == other0,
+            (patt::Patt::Const(self0), patt::Patt::Const(other0)) => self0 == other0,
+            (patt::Patt::Ident(self0), patt::Patt::Ident(other0)) => self0 == other0,
+            (patt::Patt::Lit(self0), patt::Patt::Lit(other0)) => self0 == other0,
+            (patt::Patt::Mac(self0), patt::Patt::Mac(other0)) => self0 == other0,
+            (patt::Patt::Or(self0), patt::Patt::Or(other0)) => self0 == other0,
+            (patt::Patt::Paren(self0), patt::Patt::Paren(other0)) => self0 == other0,
+            (patt::Patt::Path(self0), patt::Patt::Path(other0)) => self0 == other0,
+            (patt::Patt::Range(self0), patt::Patt::Range(other0)) => self0 == other0,
+            (patt::Patt::Ref(self0), patt::Patt::Ref(other0)) => self0 == other0,
+            (patt::Patt::Rest(self0), patt::Patt::Rest(other0)) => self0 == other0,
+            (patt::Patt::Slice(self0), patt::Patt::Slice(other0)) => self0 == other0,
+            (patt::Patt::Struct(self0), patt::Patt::Struct(other0)) => self0 == other0,
+            (patt::Patt::Tuple(self0), patt::Patt::Tuple(other0)) => self0 == other0,
+            (patt::Patt::TupleStruct(self0), patt::Patt::TupleStruct(other0)) => self0 == other0,
+            (patt::Patt::Type(self0), patt::Patt::Type(other0)) => self0 == other0,
+            (patt::Patt::Verbatim(self0), patt::Patt::Verbatim(other0)) => {
+                TokenStreamHelper(self0) == TokenStreamHelper(other0)
+            },
+            (patt::Patt::Wild(self0), patt::Patt::Wild(other0)) => self0 == other0,
             _ => false,
         }
     }
 }
-impl Eq for PatIdent {}
-impl PartialEq for PatIdent {
+impl Eq for patt::Ident {}
+impl PartialEq for patt::Ident {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ref_ == other.ref_
             && self.mut_ == other.mut_
             && self.ident == other.ident
-            && self.subpat == other.subpat
+            && self.sub == other.sub
     }
 }
-impl Eq for PatOr {}
-impl PartialEq for PatOr {
+impl Eq for patt::Or {}
+impl PartialEq for patt::Or {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.leading_vert == other.leading_vert && self.cases == other.cases
+        self.attrs == other.attrs && self.vert == other.vert && self.cases == other.cases
     }
 }
-impl Eq for PatParen {}
-impl PartialEq for PatParen {
+impl Eq for patt::Paren {}
+impl PartialEq for patt::Paren {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.pat == other.pat
+        self.attrs == other.attrs && self.patt == other.patt
     }
 }
-impl Eq for PatReference {}
-impl PartialEq for PatReference {
+impl Eq for patt::Ref {}
+impl PartialEq for patt::Ref {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.mutability == other.mutability && self.pat == other.pat
+        self.attrs == other.attrs && self.mut_ == other.mut_ && self.patt == other.patt
     }
 }
-impl Eq for PatRest {}
-impl PartialEq for PatRest {
+impl Eq for patt::Rest {}
+impl PartialEq for patt::Rest {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
     }
 }
-impl Eq for PatSlice {}
-impl PartialEq for PatSlice {
+impl Eq for patt::Slice {}
+impl PartialEq for patt::Slice {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.elems == other.elems
+        self.attrs == other.attrs && self.patts == other.patts
     }
 }
-impl Eq for PatStruct {}
-impl PartialEq for PatStruct {
+impl Eq for patt::Struct {}
+impl PartialEq for patt::Struct {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.qself == other.qself
@@ -1013,26 +1015,26 @@ impl PartialEq for PatStruct {
             && self.rest == other.rest
     }
 }
-impl Eq for PatTuple {}
-impl PartialEq for PatTuple {
+impl Eq for patt::Tuple {}
+impl PartialEq for patt::Tuple {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.elems == other.elems
+        self.attrs == other.attrs && self.patts == other.patts
     }
 }
-impl Eq for PatTupleStruct {}
-impl PartialEq for PatTupleStruct {
+impl Eq for patt::TupleStruct {}
+impl PartialEq for patt::TupleStruct {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.elems == other.elems
+        self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.patts == other.patts
     }
 }
-impl Eq for PatType {}
-impl PartialEq for PatType {
+impl Eq for patt::Type {}
+impl PartialEq for patt::Type {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.pat == other.pat && self.ty == other.ty
+        self.attrs == other.attrs && self.patt == other.patt && self.typ == other.typ
     }
 }
-impl Eq for PatWild {}
-impl PartialEq for PatWild {
+impl Eq for patt::Wild {}
+impl PartialEq for patt::Wild {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
     }
@@ -1095,7 +1097,7 @@ impl PartialEq for Receiver {
             && self.reference == other.reference
             && self.mut_ == other.mut_
             && self.colon == other.colon
-            && self.ty == other.ty
+            && self.typ == other.typ
     }
 }
 impl Eq for ty::Ret {}
@@ -1190,7 +1192,7 @@ impl PartialEq for TraitItemConst {
         self.attrs == other.attrs
             && self.ident == other.ident
             && self.gens == other.gens
-            && self.ty == other.ty
+            && self.typ == other.typ
             && self.default == other.default
     }
 }
@@ -1217,25 +1219,27 @@ impl PartialEq for TraitItemType {
             && self.default == other.default
     }
 }
-impl Eq for Ty {}
-impl PartialEq for Ty {
+impl Eq for ty::Type {}
+impl PartialEq for ty::Type {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Ty::Array(self0), Ty::Array(other0)) => self0 == other0,
-            (Ty::BareFn(self0), Ty::BareFn(other0)) => self0 == other0,
-            (Ty::Group(self0), Ty::Group(other0)) => self0 == other0,
-            (Ty::Impl(self0), Ty::Impl(other0)) => self0 == other0,
-            (Ty::Infer(self0), Ty::Infer(other0)) => self0 == other0,
-            (Ty::Mac(self0), Ty::Mac(other0)) => self0 == other0,
-            (Ty::Never(self0), Ty::Never(other0)) => self0 == other0,
-            (Ty::Paren(self0), Ty::Paren(other0)) => self0 == other0,
-            (Ty::Path(self0), Ty::Path(other0)) => self0 == other0,
-            (Ty::Ptr(self0), Ty::Ptr(other0)) => self0 == other0,
-            (Ty::Ref(self0), Ty::Ref(other0)) => self0 == other0,
-            (Ty::Slice(self0), Ty::Slice(other0)) => self0 == other0,
-            (Ty::TraitObj(self0), Ty::TraitObj(other0)) => self0 == other0,
-            (Ty::Tuple(self0), Ty::Tuple(other0)) => self0 == other0,
-            (Ty::Verbatim(self0), Ty::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
+            (ty::Type::Array(self0), ty::Type::Array(other0)) => self0 == other0,
+            (ty::Type::BareFn(self0), ty::Type::BareFn(other0)) => self0 == other0,
+            (ty::Type::Group(self0), ty::Type::Group(other0)) => self0 == other0,
+            (ty::Type::Impl(self0), ty::Type::Impl(other0)) => self0 == other0,
+            (ty::Type::Infer(self0), ty::Type::Infer(other0)) => self0 == other0,
+            (ty::Type::Mac(self0), ty::Type::Mac(other0)) => self0 == other0,
+            (ty::Type::Never(self0), ty::Type::Never(other0)) => self0 == other0,
+            (ty::Type::Paren(self0), ty::Type::Paren(other0)) => self0 == other0,
+            (ty::Type::Path(self0), ty::Type::Path(other0)) => self0 == other0,
+            (ty::Type::Ptr(self0), ty::Type::Ptr(other0)) => self0 == other0,
+            (ty::Type::Ref(self0), ty::Type::Ref(other0)) => self0 == other0,
+            (ty::Type::Slice(self0), ty::Type::Slice(other0)) => self0 == other0,
+            (ty::Type::TraitObj(self0), ty::Type::TraitObj(other0)) => self0 == other0,
+            (ty::Type::Tuple(self0), ty::Type::Tuple(other0)) => self0 == other0,
+            (ty::Type::Verbatim(self0), ty::Type::Verbatim(other0)) => {
+                TokenStreamHelper(self0) == TokenStreamHelper(other0)
+            },
             _ => false,
         }
     }

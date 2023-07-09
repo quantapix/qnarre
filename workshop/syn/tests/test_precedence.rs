@@ -119,8 +119,8 @@ fn librustc_parse_and_rewrite(input: &str) -> Option<P<ast::Expr>> {
 }
 fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
     use rustc_ast::ast::{
-        Attribute, BinOpKind, Block, BorrowKind, Expr, ExprField, ExprKind, GenericArg, GenericBound, Local, LocalKind,
-        Pat, Stmt, StmtKind, StructExpr, StructRest, TraitBoundModifier, Ty,
+        patt::Patt, ty::Type, Attribute, BinOpKind, Block, BorrowKind, Expr, ExprField, ExprKind, GenericArg,
+        GenericBound, Local, LocalKind, Stmt, StmtKind, StructExpr, StructRest, TraitBoundModifier,
     };
     use rustc_ast::mut_visit::{noop_visit_generic_arg, noop_visit_local, noop_visit_param_bound, MutVisitor};
     use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -229,10 +229,10 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
                 _ => noop_visit_local(local, self),
             }
         }
-        fn visit_pat(&mut self, pat: &mut P<Pat>) {
+        fn visit_pat(&mut self, pat: &mut P<patt::Patt>) {
             let _ = pat;
         }
-        fn visit_ty(&mut self, ty: &mut P<Ty>) {
+        fn visit_ty(&mut self, ty: &mut P<ty::Type>) {
             let _ = ty;
         }
         fn visit_attribute(&mut self, attr: &mut Attribute) {
@@ -249,7 +249,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
 }
 fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     use syn::fold::{fold_expr, fold_generic_argument, Fold};
-    use syn::{tok, Arg, BinOp, Expr, ExprParen, MetaNameValue, Pat, Stmt, Ty};
+    use syn::{patt::Patt, tok, ty::Type, Arg, BinOp, Expr, ExprParen, MetaNameValue, Stmt};
     struct ParenthesizeEveryExpr;
     fn needs_paren(expr: &Expr) -> bool {
         match expr {
@@ -290,14 +290,14 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
                 s => s,
             }
         }
-        fn fold_meta_name_value(&mut self, meta: MetaNameValue) -> MetaNameValue {
-            meta
+        fn fold_meta_name_value(&mut self, x: MetaNameValue) -> MetaNameValue {
+            x
         }
-        fn fold_pat(&mut self, pat: Pat) -> Pat {
-            pat
+        fn fold_pat(&mut self, x: patt::Patt) -> patt::Patt {
+            x
         }
-        fn fold_type(&mut self, ty: Ty) -> Ty {
-            ty
+        fn fold_type(&mut self, x: ty::Type) -> ty::Type {
+            x
         }
     }
     let mut folder = ParenthesizeEveryExpr;
@@ -306,7 +306,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
 fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
     use syn::fold::Fold;
     use syn::punct::Punctuated;
-    use syn::{tok, ConstParam, Expr, ExprTuple, Pat, Path};
+    use syn::{patt::Patt, tok, ConstParam, Expr, ExprTuple, Path};
     struct CollectExprs(Vec<Expr>);
     impl Fold for CollectExprs {
         fn fold_expr(&mut self, expr: Expr) -> Expr {
@@ -320,7 +320,7 @@ fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
                 paren: tok::Paren::default(),
             })
         }
-        fn fold_pat(&mut self, pat: Pat) -> Pat {
+        fn fold_pat(&mut self, pat: patt::Patt) -> patt::Patt {
             pat
         }
         fn fold_path(&mut self, path: Path) -> Path {
