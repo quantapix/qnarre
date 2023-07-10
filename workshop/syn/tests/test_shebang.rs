@@ -13,7 +13,7 @@ fn test_basic() {
                 vis: Visibility::Inherited,
                 sig: item::Sig {
                     ident: "main",
-                    gens: Generics,
+                    gens: gen::Gens,
                     ret: ty::Ret::Default,
                 },
                 block: Block,
@@ -49,7 +49,7 @@ fn test_comment() {
                 vis: Visibility::Inherited,
                 sig: item::Sig {
                     ident: "main",
-                    gens: Generics,
+                    gens: gen::Gens,
                     ret: ty::Ret::Default,
                 },
                 block: Block,

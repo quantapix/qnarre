@@ -99,7 +99,7 @@ fn test_empty_group_vis() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Named {
                 named: [

@@ -99,9 +99,9 @@ impl Clone for Block {
         }
     }
 }
-impl Clone for BoundLifetimes {
+impl Clone for Bgen::bound::Lifes {
     fn clone(&self) -> Self {
-        BoundLifetimes {
+        Bgen::bound::Lifes {
             for_: self.for_.clone(),
             lt: self.lt.clone(),
             lifes: self.lifes.clone(),
@@ -764,9 +764,9 @@ impl Clone for gen::Param {
         }
     }
 }
-impl Clone for Generics {
+impl Clone for gen::Gens {
     fn clone(&self) -> Self {
-        Generics {
+        gen::Gens {
             lt: self.lt.clone(),
             params: self.params.clone(),
             gt: self.gt.clone(),
@@ -1349,18 +1349,18 @@ impl Clone for Segment {
         }
     }
 }
-impl Clone for PredLifetime {
+impl Clone for gen::Where::Life {
     fn clone(&self) -> Self {
-        PredLifetime {
+        gen::Where::Life {
             life: self.life.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
         }
     }
 }
-impl Clone for PredType {
+impl Clone for gen::Where::Type {
     fn clone(&self) -> Self {
-        PredType {
+        gen::Where::Type {
             lifes: self.lifes.clone(),
             bounded: self.bounded.clone(),
             colon: self.colon.clone(),
@@ -1449,9 +1449,9 @@ impl Clone for stmt::Mac {
         }
     }
 }
-impl Clone for TraitBound {
+impl Clone for gen::bound::Trait {
     fn clone(&self) -> Self {
-        TraitBound {
+        gen::bound::Trait {
             paren: self.paren.clone(),
             modifier: self.modifier.clone(),
             lifes: self.lifes.clone(),
@@ -1459,8 +1459,8 @@ impl Clone for TraitBound {
         }
     }
 }
-impl Copy for TraitBoundModifier {}
-impl Clone for TraitBoundModifier {
+impl Copy for gen::bound::Modifier {}
+impl Clone for gen::bound::Modifier {
     fn clone(&self) -> Self {
         *self
     }
@@ -1615,12 +1615,12 @@ impl Clone for gen::param::Type {
         }
     }
 }
-impl Clone for TypeParamBound {
+impl Clone for gen::bound::Type {
     fn clone(&self) -> Self {
         match self {
-            TypeParamBound::Trait(v0) => TypeParamBound::Trait(v0.clone()),
-            TypeParamBound::Lifetime(v0) => TypeParamBound::Lifetime(v0.clone()),
-            TypeParamBound::Verbatim(v0) => TypeParamBound::Verbatim(v0.clone()),
+            gen::bound::Type::Trait(v0) => gen::bound::Type::Trait(v0.clone()),
+            gen::bound::Type::Lifetime(v0) => gen::bound::Type::Lifetime(v0.clone()),
+            gen::bound::Type::Verbatim(v0) => gen::bound::Type::Verbatim(v0.clone()),
         }
     }
 }
@@ -1780,19 +1780,19 @@ impl Clone for Visibility {
         }
     }
 }
-impl Clone for WhereClause {
+impl Clone for gen::Where {
     fn clone(&self) -> Self {
-        WhereClause {
+        gen::Where {
             where_: self.where_.clone(),
             preds: self.preds.clone(),
         }
     }
 }
-impl Clone for WherePred {
+impl Clone for gen::Where::Pred {
     fn clone(&self) -> Self {
         match self {
-            WherePred::Lifetime(v0) => WherePred::Lifetime(v0.clone()),
-            WherePred::Type(v0) => WherePred::Type(v0.clone()),
+            gen::Where::Pred::Life(v0) => gen::Where::Pred::Life(v0.clone()),
+            gen::Where::Pred::Type(v0) => gen::Where::Pred::Type(v0.clone()),
         }
     }
 }

@@ -95,7 +95,7 @@ fn parse_parenthesized_path_arguments_with_disambiguator() {
     Type::TraitObject {
         dyn_: Some,
         bounds: [
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {

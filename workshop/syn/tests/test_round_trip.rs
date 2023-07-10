@@ -21,7 +21,7 @@ extern crate rustc_span;
 use crate::common::eq::SpanlessEq;
 use quote::quote;
 use rustc_ast::ast::{
-    AngleBracketedArg, AngleBracketedArgs, Crate, GenericArg, GenericParamKind, Generics, WhereClause,
+    gen::Gens, gen::Where, AngleBracketedArg, AngleBracketedArgs, Crate, GenericArg, GenericParamKind,
 };
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast_pretty::pprust;
@@ -190,7 +190,7 @@ fn normalize(krate: &mut Crate) {
             });
             mut_visit::noop_visit_angle_bracketed_parameter_data(e, self);
         }
-        fn visit_generics(&mut self, e: &mut Generics) {
+        fn visit_generics(&mut self, e: &mut gen::Gens) {
             #[derive(Ord, PartialOrd, Eq, PartialEq)]
             enum Group {
                 Lifetimes,
@@ -202,7 +202,7 @@ fn normalize(krate: &mut Crate) {
             });
             mut_visit::noop_visit_generics(e, self);
         }
-        fn visit_where_clause(&mut self, e: &mut WhereClause) {
+        fn visit_where_clause(&mut self, e: &mut gen::Where) {
             if e.predicates.is_empty() {
                 e.has_where_token = false;
             }

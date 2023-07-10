@@ -109,10 +109,10 @@ impl<'a> Display for DisplayPath<'a> {
     }
 }
 
-impl Parse for Generics {
+impl Parse for gen::Gens {
     fn parse(input: ParseStream) -> Result<Self> {
         if !input.peek(Token![<]) {
-            return Ok(Generics::default());
+            return Ok(gen::Gens::default());
         }
         let lt: Token![<] = input.parse()?;
         let mut params = Punctuated::new();
@@ -156,7 +156,7 @@ impl Parse for Generics {
             params.push_punct(punct);
         }
         let gt: Token![>] = input.parse()?;
-        Ok(Generics {
+        Ok(gen::Gens {
             lt: Some(lt),
             params,
             gt: Some(gt),
@@ -224,9 +224,9 @@ impl Parse for gen::param::Life {
         })
     }
 }
-impl Parse for BoundLifetimes {
+impl Parse for Bgen::bound::Lifes {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(BoundLifetimes {
+        Ok(Bgen::bound::Lifes {
             for_: input.parse()?,
             lt: input.parse()?,
             lifes: {
@@ -251,7 +251,7 @@ impl Parse for BoundLifetimes {
         })
     }
 }
-impl Parse for Option<BoundLifetimes> {
+impl Parse for Option<Bgen::bound::Lifes> {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Token![for]) {
             input.parse().map(Some)
@@ -271,7 +271,7 @@ impl Parse for gen::param::Type {
                 if input.peek(Token![,]) || input.peek(Token![>]) || input.peek(Token![=]) {
                     break;
                 }
-                let value: TypeParamBound = input.parse()?;
+                let value: gen::bound::Type = input.parse()?;
                 bounds.push_value(value);
                 if !input.peek(Token![+]) {
                     break;
@@ -296,10 +296,10 @@ impl Parse for gen::param::Type {
         })
     }
 }
-impl Parse for TypeParamBound {
+impl Parse for gen::bound::Type {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Lifetime) {
-            return input.parse().map(TypeParamBound::Lifetime);
+            return input.parse().map(gen::bound::Type::Lifetime);
         }
         let begin = input.fork();
         let content;
@@ -313,17 +313,17 @@ impl Parse for TypeParamBound {
             content.parse::<Token![~]>()?;
             content.parse::<Token![const]>()?;
         }
-        let mut bound: TraitBound = content.parse()?;
+        let mut bound: gen::bound::Trait = content.parse()?;
         bound.paren = paren;
         if is_tilde_const {
-            Ok(TypeParamBound::Verbatim(verbatim_between(&begin, input)))
+            Ok(gen::bound::Type::Verbatim(verbatim_between(&begin, input)))
         } else {
-            Ok(TypeParamBound::Trait(bound))
+            Ok(gen::bound::Type::Trait(bound))
         }
     }
 }
 
-impl TypeParamBound {
+impl gen::bound::Type {
     pub fn parse_multiple(input: ParseStream, allow_plus: bool) -> Result<Punctuated<Self, Token![+]>> {
         let mut bounds = Punctuated::new();
         loop {
@@ -346,10 +346,10 @@ impl TypeParamBound {
     }
 }
 
-impl Parse for TraitBound {
+impl Parse for gen::bound::Trait {
     fn parse(input: ParseStream) -> Result<Self> {
-        let modifier: TraitBoundModifier = input.parse()?;
-        let lifetimes: Option<BoundLifetimes> = input.parse()?;
+        let modifier: gen::bound::Modifier = input.parse()?;
+        let lifetimes: Option<Bgen::bound::Lifes> = input.parse()?;
         let mut path: Path = input.parse()?;
         if path.segs.last().unwrap().args.is_empty()
             && (input.peek(tok::Paren) || input.peek(Token![::]) && input.peek3(tok::Paren))
@@ -359,7 +359,7 @@ impl Parse for TraitBound {
             let parenthesized = Args::Parenthesized(args);
             path.segs.last_mut().unwrap().args = parenthesized;
         }
-        Ok(TraitBound {
+        Ok(gen::bound::Trait {
             paren: None,
             modifier,
             lifes: lifetimes,
@@ -367,12 +367,12 @@ impl Parse for TraitBound {
         })
     }
 }
-impl Parse for TraitBoundModifier {
+impl Parse for gen::bound::Modifier {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Token![?]) {
-            input.parse().map(TraitBoundModifier::Maybe)
+            input.parse().map(gen::bound::Modifier::Maybe)
         } else {
-            Ok(TraitBoundModifier::None)
+            Ok(gen::bound::Modifier::None)
         }
     }
 }
@@ -398,9 +398,9 @@ impl Parse for gen::param::Const {
         })
     }
 }
-impl Parse for WhereClause {
+impl Parse for gen::Where {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(WhereClause {
+        Ok(gen::Where {
             where_: input.parse()?,
             preds: {
                 let mut predicates = Punctuated::new();
@@ -427,7 +427,7 @@ impl Parse for WhereClause {
         })
     }
 }
-impl Parse for Option<WhereClause> {
+impl Parse for Option<gen::Where> {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Token![where]) {
             input.parse().map(Some)
@@ -436,10 +436,10 @@ impl Parse for Option<WhereClause> {
         }
     }
 }
-impl Parse for WherePred {
+impl Parse for gen::Where::Pred {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.peek(Lifetime) && input.peek2(Token![:]) {
-            Ok(WherePred::Lifetime(PredLifetime {
+            Ok(gen::Where::Pred::Life(gen::Where::Life {
                 life: input.parse()?,
                 colon: input.parse()?,
                 bounds: {
@@ -466,7 +466,7 @@ impl Parse for WherePred {
                 },
             }))
         } else {
-            Ok(WherePred::Type(PredType {
+            Ok(gen::Where::Pred::Type(gen::Where::Type {
                 lifes: input.parse()?,
                 bounded: input.parse()?,
                 colon: input.parse()?,
@@ -1371,7 +1371,7 @@ impl Parse for expr::Yield {
     }
 }
 fn expr_closure(input: ParseStream, allow_struct: AllowStruct) -> Result<expr::Closure> {
-    let lifetimes: Option<BoundLifetimes> = input.parse()?;
+    let lifetimes: Option<Bgen::bound::Lifes> = input.parse()?;
     let constness: Option<Token![const]> = input.parse()?;
     let movability: Option<Token![static]> = input.parse()?;
     let asyncness: Option<Token![async]> = input.parse()?;
@@ -1922,7 +1922,7 @@ pub fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<attr::Attr>, input:
                 vis,
                 const_,
                 ident,
-                gens: Generics::default(),
+                gens: gen::Gens::default(),
                 colon,
                 typ: ty,
                 eq: input.parse()?,
@@ -1993,9 +1993,9 @@ struct FlexibleItemType {
     default_: Option<Token![default]>,
     type_: Token![type],
     ident: Ident,
-    gens: Generics,
+    gens: gen::Gens,
     colon: Option<Token![:]>,
-    bounds: Punctuated<TypeParamBound, Token![+]>,
+    bounds: Punctuated<gen::bound::Type, Token![+]>,
     ty: Option<(Token![=], ty::Type)>,
     semi: Token![;],
 }
@@ -2021,7 +2021,7 @@ impl FlexibleItemType {
         };
         let type_: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
-        let mut gens: Generics = input.parse()?;
+        let mut gens: gen::Gens = input.parse()?;
         let (colon, bounds) = Self::parse_optional_bounds(input)?;
         match where_clause_location {
             WhereClauseLocation::BeforeEq | WhereClauseLocation::Both => {
@@ -2049,7 +2049,9 @@ impl FlexibleItemType {
             semi,
         })
     }
-    fn parse_optional_bounds(input: ParseStream) -> Result<(Option<Token![:]>, Punctuated<TypeParamBound, Token![+]>)> {
+    fn parse_optional_bounds(
+        input: ParseStream,
+    ) -> Result<(Option<Token![:]>, Punctuated<gen::bound::Type, Token![+]>)> {
         let colon: Option<Token![:]> = input.parse()?;
         let mut bounds = Punctuated::new();
         if colon.is_some() {
@@ -2057,7 +2059,7 @@ impl FlexibleItemType {
                 if input.peek(Token![where]) || input.peek(Token![=]) || input.peek(Token![;]) {
                     break;
                 }
-                bounds.push_value(input.parse::<TypeParamBound>()?);
+                bounds.push_value(input.parse::<gen::bound::Type>()?);
                 if input.peek(Token![where]) || input.peek(Token![=]) || input.peek(Token![;]) {
                     break;
                 }
@@ -2282,7 +2284,7 @@ impl Parse for item::Const {
                     return Err(lookahead.error());
                 }
             },
-            gens: Generics::default(),
+            gens: gen::Gens::default(),
             colon: input.parse()?,
             typ: input.parse()?,
             eq: input.parse()?,
@@ -2307,7 +2309,7 @@ impl Parse for item::Sig {
         let abi: Option<Abi> = x.parse()?;
         let fn_: Token![fn] = x.parse()?;
         let ident: Ident = x.parse()?;
-        let mut gens: Generics = x.parse()?;
+        let mut gens: gen::Gens = x.parse()?;
         let gist;
         let paren = parenthesized!(gist in x);
         let (args, vari) = parse_fn_args(&gist)?;
@@ -2662,7 +2664,7 @@ impl Parse for item::Foreign::Type {
             type_: input.parse()?,
             ident: input.parse()?,
             gens: {
-                let mut gens: Generics = input.parse()?;
+                let mut gens: gen::Gens = input.parse()?;
                 gens.where_ = input.parse()?;
                 gens
             },
@@ -2715,7 +2717,7 @@ impl Parse for item::Type {
             type_: input.parse()?,
             ident: input.parse()?,
             gens: {
-                let mut gens: Generics = input.parse()?;
+                let mut gens: gen::Gens = input.parse()?;
                 gens.where_ = input.parse()?;
                 gens
             },
@@ -2758,14 +2760,14 @@ impl Parse for item::Struct {
         let vis = input.parse::<Visibility>()?;
         let struct_ = input.parse::<Token![struct]>()?;
         let ident = input.parse::<Ident>()?;
-        let gens = input.parse::<Generics>()?;
+        let gens = input.parse::<gen::Gens>()?;
         let (where_clause, fields, semi) = data_struct(input)?;
         Ok(item::Struct {
             attrs,
             vis,
             struct_,
             ident,
-            gens: Generics {
+            gens: gen::Gens {
                 where_: where_clause,
                 ..gens
             },
@@ -2780,14 +2782,14 @@ impl Parse for item::Enum {
         let vis = input.parse::<Visibility>()?;
         let enum_ = input.parse::<Token![enum]>()?;
         let ident = input.parse::<Ident>()?;
-        let gens = input.parse::<Generics>()?;
+        let gens = input.parse::<gen::Gens>()?;
         let (where_clause, brace, variants) = data_enum(input)?;
         Ok(item::Enum {
             attrs,
             vis,
             enum_,
             ident,
-            gens: Generics {
+            gens: gen::Gens {
                 where_: where_clause,
                 ..gens
             },
@@ -2802,14 +2804,14 @@ impl Parse for item::Union {
         let vis = input.parse::<Visibility>()?;
         let union_ = input.parse::<Token![union]>()?;
         let ident = input.parse::<Ident>()?;
-        let gens = input.parse::<Generics>()?;
+        let gens = input.parse::<gen::Gens>()?;
         let (where_clause, fields) = data_union(input)?;
         Ok(item::Union {
             attrs,
             vis,
             union_,
             ident,
-            gens: Generics {
+            gens: gen::Gens {
                 where_: where_clause,
                 ..gens
             },
@@ -2838,7 +2840,7 @@ impl Parse for item::Trait {
         let auto_: Option<Token![auto]> = input.parse()?;
         let trait_: Token![trait] = input.parse()?;
         let ident: Ident = input.parse()?;
-        let gens: Generics = input.parse()?;
+        let gens: gen::Gens = input.parse()?;
         parse_rest_of_trait(input, outer_attrs, vis, unsafety, auto_, trait_, ident, gens)
     }
 }
@@ -2850,7 +2852,7 @@ fn parse_rest_of_trait(
     auto_: Option<Token![auto]>,
     trait_: Token![trait],
     ident: Ident,
-    mut gens: Generics,
+    mut gens: gen::Gens,
 ) -> Result<item::Trait> {
     let colon: Option<Token![:]> = input.parse()?;
     let mut supertraits = Punctuated::new();
@@ -2897,12 +2899,12 @@ impl Parse for item::TraitAlias {
 }
 fn parse_start_of_trait_alias(
     input: ParseStream,
-) -> Result<(Vec<attr::Attr>, Visibility, Token![trait], Ident, Generics)> {
+) -> Result<(Vec<attr::Attr>, Visibility, Token![trait], Ident, gen::Gens)> {
     let attrs = input.call(attr::Attr::parse_outer)?;
     let vis: Visibility = input.parse()?;
     let trait_: Token![trait] = input.parse()?;
     let ident: Ident = input.parse()?;
-    let gens: Generics = input.parse()?;
+    let gens: gen::Gens = input.parse()?;
     Ok((attrs, vis, trait_, ident, gens))
 }
 fn parse_rest_of_trait_alias(
@@ -2911,7 +2913,7 @@ fn parse_rest_of_trait_alias(
     vis: Visibility,
     trait_: Token![trait],
     ident: Ident,
-    mut gens: Generics,
+    mut gens: gen::Gens,
 ) -> Result<item::TraitAlias> {
     let eq: Token![=] = input.parse()?;
     let mut bounds = Punctuated::new();
@@ -3005,7 +3007,7 @@ impl Parse for item::Trait::Const {
                     return Err(lookahead.error());
                 }
             },
-            gens: Generics::default(),
+            gens: gen::Gens::default(),
             colon: input.parse()?,
             typ: input.parse()?,
             default: {
@@ -3051,7 +3053,7 @@ impl Parse for item::Trait::Type {
         let attrs = input.call(attr::Attr::parse_outer)?;
         let type_: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
-        let mut gens: Generics = input.parse()?;
+        let mut gens: gen::Gens = input.parse()?;
         let (colon, bounds) = FlexibleItemTy::parse_optional_bounds(input)?;
         let default = FlexibleItemTy::parse_optional_definition(input)?;
         gens.where_ = input.parse()?;
@@ -3128,10 +3130,10 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<it
                     || input.peek3(Token![>])
                     || input.peek3(Token![=]))
             || input.peek2(Token![const]));
-    let mut gens: Generics = if has_generics {
+    let mut gens: gen::Gens = if has_generics {
         input.parse()?
     } else {
-        Generics::default()
+        gen::Gens::default()
     };
     let is_const_impl =
         allow_verbatim_impl && (input.peek(Token![const]) || input.peek(Token![?]) && input.peek2(Token![const]));
@@ -3241,7 +3243,7 @@ impl Parse for item::Impl::Item {
                     default_,
                     const_,
                     ident,
-                    gens: Generics::default(),
+                    gens: gen::Gens::default(),
                     colon,
                     typ,
                     eq,
@@ -3295,7 +3297,7 @@ impl Parse for item::Impl::Const {
                     return Err(lookahead.error());
                 }
             },
-            gens: Generics::default(),
+            gens: gen::Gens::default(),
             colon: input.parse()?,
             typ: input.parse()?,
             eq: input.parse()?,
@@ -3340,7 +3342,7 @@ impl Parse for item::Impl::Type {
         let default_: Option<Token![default]> = x.parse()?;
         let type_: Token![type] = x.parse()?;
         let ident: Ident = x.parse()?;
-        let mut gens: Generics = x.parse()?;
+        let mut gens: gen::Gens = x.parse()?;
         let eq: Token![=] = x.parse()?;
         let typ: ty::Type = x.parse()?;
         gens.where_ = x.parse()?;
@@ -3723,37 +3725,37 @@ mod parsing {
             if lookahead.peek(Token![struct]) {
                 let struct_ = input.parse::<Token![struct]>()?;
                 let ident = input.parse::<Ident>()?;
-                let gens = input.parse::<Generics>()?;
+                let gens = input.parse::<gen::Gens>()?;
                 let (where_clause, fields, semi) = data_struct(input)?;
                 Ok(DeriveInput {
                     attrs,
                     vis,
                     ident,
-                    gens: Generics { where_clause, ..gens },
+                    gens: gen::Gens { where_clause, ..gens },
                     data: Data::Struct(DataStruct { struct_, fields, semi }),
                 })
             } else if lookahead.peek(Token![enum]) {
                 let enum_ = input.parse::<Token![enum]>()?;
                 let ident = input.parse::<Ident>()?;
-                let gens = input.parse::<Generics>()?;
+                let gens = input.parse::<gen::Gens>()?;
                 let (where_clause, brace, variants) = data_enum(input)?;
                 Ok(DeriveInput {
                     attrs,
                     vis,
                     ident,
-                    gens: Generics { where_clause, ..gens },
+                    gens: gen::Gens { where_clause, ..gens },
                     data: Data::Enum(DataEnum { enum_, brace, variants }),
                 })
             } else if lookahead.peek(Token![union]) {
                 let union_ = input.parse::<Token![union]>()?;
                 let ident = input.parse::<Ident>()?;
-                let gens = input.parse::<Generics>()?;
+                let gens = input.parse::<gen::Gens>()?;
                 let (where_clause, fields) = data_union(input)?;
                 Ok(DeriveInput {
                     attrs,
                     vis,
                     ident,
-                    gens: Generics { where_clause, ..gens },
+                    gens: gen::Gens { where_clause, ..gens },
                     data: Data::Union(DataUnion { union_, fields }),
                 })
             } else {
@@ -3761,7 +3763,7 @@ mod parsing {
             }
         }
     }
-    pub fn data_struct(input: ParseStream) -> Result<(Option<WhereClause>, Fields, Option<Token![;]>)> {
+    pub fn data_struct(input: ParseStream) -> Result<(Option<gen::Where>, Fields, Option<Token![;]>)> {
         let mut lookahead = input.lookahead1();
         let mut where_clause = None;
         if lookahead.peek(Token![where]) {
@@ -3791,14 +3793,14 @@ mod parsing {
             Err(lookahead.error())
         }
     }
-    pub fn data_enum(input: ParseStream) -> Result<(Option<WhereClause>, tok::Brace, Punctuated<Variant, Token![,]>)> {
+    pub fn data_enum(input: ParseStream) -> Result<(Option<gen::Where>, tok::Brace, Punctuated<Variant, Token![,]>)> {
         let where_clause = input.parse()?;
         let content;
         let brace = braced!(content in input);
         let variants = content.parse_terminated(Variant::parse, Token![,])?;
         Ok((where_clause, brace, variants))
     }
-    pub fn data_union(input: ParseStream) -> Result<(Option<WhereClause>, FieldsNamed)> {
+    pub fn data_union(input: ParseStream) -> Result<(Option<gen::Where>, FieldsNamed)> {
         let where_clause = input.parse()?;
         let fields = input.parse()?;
         Ok((where_clause, fields))
@@ -4765,7 +4767,7 @@ pub mod path {
                                     if x.peek(Token![,]) || x.peek(Token![>]) {
                                         break;
                                     }
-                                    let y: TypeParamBound = x.parse()?;
+                                    let y: gen::bound::Type = x.parse()?;
                                     ys.push_value(y);
                                     if !x.peek(Token![+]) {
                                         break;
@@ -4973,7 +4975,7 @@ pub mod ty {
             }
             return Ok(Type::Group(y));
         }
-        let mut lifes = None::<BoundLifetimes>;
+        let mut lifes = None::<Bgen::bound::Lifes>;
         let mut look = x.lookahead1();
         if look.peek(Token![for]) {
             lifes = x.parse()?;
@@ -5011,7 +5013,7 @@ pub mod ty {
                     dyn_: None,
                     bounds: {
                         let mut ys = Punctuated::new();
-                        ys.push_value(TypeParamBound::Trait(TraitBound {
+                        ys.push_value(gen::bound::Type::Trait(gen::bound::Trait {
                             paren: Some(paren),
                             ..gist.parse()?
                         }));
@@ -5045,9 +5047,9 @@ pub mod ty {
             if allow_plus && x.peek(Token![+]) {
                 loop {
                     let first = match first {
-                        Type::Path(Path { qself: None, path }) => TypeParamBound::Trait(TraitBound {
+                        Type::Path(Path { qself: None, path }) => gen::bound::Type::Trait(gen::bound::Trait {
                             paren: Some(paren),
-                            modifier: TraitBoundModifier::None,
+                            modifier: gen::bound::Modifier::None,
                             lifetimes: None,
                             path,
                         }),
@@ -5057,11 +5059,11 @@ pub mod ty {
                                 break;
                             }
                             match bounds.into_iter().next().unwrap() {
-                                TypeParamBound::Trait(trait_bound) => TypeParamBound::Trait(TraitBound {
+                                gen::bound::Type::Trait(trait_bound) => gen::bound::Type::Trait(gen::bound::Trait {
                                     paren: Some(paren),
                                     ..trait_bound
                                 }),
-                                other @ (TypeParamBound::Lifetime(_) | TypeParamBound::Verbatim(_)) => other,
+                                other @ (gen::bound::Type::Lifetime(_) | gen::bound::Type::Verbatim(_)) => other,
                             }
                         },
                         _ => break,
@@ -5114,9 +5116,9 @@ pub mod ty {
             }
             if lifes.is_some() || allow_plus && x.peek(Token![+]) {
                 let mut bounds = Punctuated::new();
-                bounds.push_value(TypeParamBound::Trait(TraitBound {
+                bounds.push_value(gen::bound::Type::Trait(gen::bound::Trait {
                     paren: None,
-                    modifier: TraitBoundModifier::None,
+                    modifier: gen::bound::Modifier::None,
                     lifetimes: lifes,
                     path: ty.path,
                 }));
@@ -5362,17 +5364,17 @@ pub mod ty {
             let bounds = Self::parse_bounds(span, x, plus)?;
             Ok(TraitObj { dyn_, bounds })
         }
-        fn parse_bounds(s: Span, x: ParseStream, plus: bool) -> Result<Punctuated<TypeParamBound, Token![+]>> {
-            let ys = TypeParamBound::parse_multiple(x, plus)?;
+        fn parse_bounds(s: Span, x: ParseStream, plus: bool) -> Result<Punctuated<gen::bound::Type, Token![+]>> {
+            let ys = gen::bound::Type::parse_multiple(x, plus)?;
             let mut last = None;
             let mut one = false;
             for y in &ys {
                 match y {
-                    TypeParamBound::Trait(_) | TypeParamBound::Verbatim(_) => {
+                    gen::bound::Type::Trait(_) | gen::bound::Type::Verbatim(_) => {
                         one = true;
                         break;
                     },
-                    TypeParamBound::Lifetime(x) => {
+                    gen::bound::Type::Lifetime(x) => {
                         last = Some(x.ident.span());
                     },
                 }
@@ -5397,16 +5399,16 @@ pub mod ty {
         }
         pub fn parse(x: ParseStream, plus: bool) -> Result<Self> {
             let impl_: Token![impl] = x.parse()?;
-            let bounds = TypeParamBound::parse_multiple(x, plus)?;
+            let bounds = gen::bound::Type::parse_multiple(x, plus)?;
             let mut last = None;
             let mut one = false;
             for x in &bounds {
                 match x {
-                    TypeParamBound::Trait(_) | TypeParamBound::Verbatim(_) => {
+                    gen::bound::Type::Trait(_) | gen::bound::Type::Verbatim(_) => {
                         one = true;
                         break;
                     },
-                    TypeParamBound::Lifetime(x) => {
+                    gen::bound::Type::Lifetime(x) => {
                         last = Some(x.ident.span());
                     },
                 }

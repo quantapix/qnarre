@@ -195,7 +195,7 @@ impl Hash for Block {
         self.stmts.hash(state);
     }
 }
-impl Hash for BoundLifetimes {
+impl Hash for Bgen::bound::Lifes {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1067,7 +1067,7 @@ impl Hash for gen::Param {
         }
     }
 }
-impl Hash for Generics {
+impl Hash for gen::Gens {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1810,7 +1810,7 @@ impl Hash for Segment {
         self.args.hash(state);
     }
 }
-impl Hash for PredLifetime {
+impl Hash for gen::Where::Life {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1819,7 +1819,7 @@ impl Hash for PredLifetime {
         self.bounds.hash(state);
     }
 }
-impl Hash for PredType {
+impl Hash for gen::Where::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1949,7 +1949,7 @@ impl Hash for stmt::Mac {
         self.semi.hash(state);
     }
 }
-impl Hash for TraitBound {
+impl Hash for gen::bound::Trait {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1960,16 +1960,16 @@ impl Hash for TraitBound {
         self.path.hash(state);
     }
 }
-impl Hash for TraitBoundModifier {
+impl Hash for gen::bound::Modifier {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            TraitBoundModifier::None => {
+            gen::bound::Modifier::None => {
                 state.write_u8(0u8);
             },
-            TraitBoundModifier::Maybe(_) => {
+            gen::bound::Modifier::Maybe(_) => {
                 state.write_u8(1u8);
             },
         }
@@ -2192,21 +2192,21 @@ impl Hash for gen::param::Type {
         self.default.hash(state);
     }
 }
-impl Hash for TypeParamBound {
+impl Hash for gen::bound::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            TypeParamBound::Trait(v0) => {
+            gen::bound::Type::Trait(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            TypeParamBound::Lifetime(v0) => {
+            gen::bound::Type::Lifetime(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            TypeParamBound::Verbatim(v0) => {
+            gen::bound::Type::Verbatim(v0) => {
                 state.write_u8(2u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -2412,7 +2412,7 @@ impl Hash for Visibility {
         }
     }
 }
-impl Hash for WhereClause {
+impl Hash for gen::Where {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2420,17 +2420,17 @@ impl Hash for WhereClause {
         self.preds.hash(state);
     }
 }
-impl Hash for WherePred {
+impl Hash for gen::Where::Pred {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            WherePred::Lifetime(v0) => {
+            gen::Where::Pred::Life(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            WherePred::Type(v0) => {
+            gen::Where::Pred::Type(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },

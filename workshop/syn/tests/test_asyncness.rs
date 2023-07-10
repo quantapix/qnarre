@@ -11,7 +11,7 @@ fn test_async_fn() {
         sig: item::Sig {
             async_: Some,
             ident: "process",
-            gens: Generics,
+            gens: gen::Gens,
             ret: ty::Ret::Default,
         },
         block: Block,

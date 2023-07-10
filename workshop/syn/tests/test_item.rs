@@ -30,7 +30,7 @@ fn test_macro_variable_attr() {
         vis: Visibility::Inherited,
         sig: item::Sig {
             ident: "f",
-            gens: Generics,
+            gens: gen::Gens,
             ret: ty::Ret::Default,
         },
         block: Block,
@@ -46,7 +46,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        gens: Generics,
+        gens: gen::Gens,
         self_ty: Type::Never,
     }
     "###);
@@ -58,7 +58,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        gens: Generics,
+        gens: gen::Gens,
         self_ty: Type::Verbatim(`! Trait`),
     }
     "###);
@@ -69,7 +69,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        gens: Generics,
+        gens: gen::Gens,
         trait_: Some((
             Some,
             Path {
@@ -99,7 +99,7 @@ fn test_negative_impl() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        gens: Generics,
+        gens: gen::Gens,
         self_ty: Type::Verbatim(`! !`),
     }
     "###);
@@ -115,7 +115,7 @@ fn test_macro_variable_impl() {
     ]);
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        gens: Generics,
+        gens: gen::Gens,
         trait_: Some((
             None,
             Path {
@@ -148,8 +148,8 @@ fn test_supertraits() {
     item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        gens: Generics {
-            where_clause: Some(WhereClause),
+        gens: gen::Gens {
+            where_clause: Some(gen::Where),
         },
     }
     "###);
@@ -159,8 +159,8 @@ fn test_supertraits() {
     item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        gens: Generics {
-            where_clause: Some(WhereClause),
+        gens: gen::Gens {
+            where_clause: Some(gen::Where),
         },
         colon: Some,
     }
@@ -171,12 +171,12 @@ fn test_supertraits() {
     item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        gens: Generics {
-            where_clause: Some(WhereClause),
+        gens: gen::Gens {
+            where_clause: Some(gen::Where),
         },
         colon: Some,
         supertraits: [
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -194,12 +194,12 @@ fn test_supertraits() {
     item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
-        gens: Generics {
-            where_clause: Some(WhereClause),
+        gens: gen::Gens {
+            where_clause: Some(gen::Where),
         },
         colon: Some,
         supertraits: [
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -224,11 +224,11 @@ fn test_type_empty_bounds() {
     item::Trait {
         vis: Visibility::Inherited,
         ident: "Foo",
-        gens: Generics,
+        gens: gen::Gens,
         items: [
             item::Trait::Item::Type {
                 ident: "Bar",
-                gens: Generics,
+                gens: gen::Gens,
                 colon: Some,
             },
         ],
@@ -251,7 +251,7 @@ fn test_impl_type_parameter_defaults() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Impl {
-        gens: Generics {
+        gens: gen::Gens {
             lt: Some,
             params: [
                 gen::Param::Type(gen::param::Type {
@@ -276,11 +276,11 @@ fn test_impl_trait_trailing_plus() {
         vis: Visibility::Inherited,
         sig: item::Sig {
             ident: "f",
-            gens: Generics,
+            gens: gen::Gens,
             ret: ty::Ret::Type(
                 Type::ImplTrait {
                     bounds: [
-                        TypeParamBound::Trait(TraitBound {
+                        gen::bound::Type::Trait(gen::bound::Trait {
                             path: Path {
                                 segments: [
                                     path::Segment {

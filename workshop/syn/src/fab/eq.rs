@@ -104,8 +104,8 @@ impl PartialEq for Block {
         self.stmts == other.stmts
     }
 }
-impl Eq for BoundLifetimes {}
-impl PartialEq for BoundLifetimes {
+impl Eq for Bgen::bound::Lifes {}
+impl PartialEq for Bgen::bound::Lifes {
     fn eq(&self, other: &Self) -> bool {
         self.lifes == other.lifes
     }
@@ -602,8 +602,8 @@ impl PartialEq for gen::Param {
         }
     }
 }
-impl Eq for Generics {}
-impl PartialEq for Generics {
+impl Eq for gen::Gens {}
+impl PartialEq for gen::Gens {
     fn eq(&self, other: &Self) -> bool {
         self.lt == other.lt && self.params == other.params && self.gt == other.gt && self.where_ == other.where_
     }
@@ -1059,14 +1059,14 @@ impl PartialEq for Segment {
         self.ident == other.ident && self.args == other.args
     }
 }
-impl Eq for PredLifetime {}
-impl PartialEq for PredLifetime {
+impl Eq for gen::Where::Life {}
+impl PartialEq for gen::Where::Life {
     fn eq(&self, other: &Self) -> bool {
         self.life == other.life && self.bounds == other.bounds
     }
 }
-impl Eq for PredType {}
-impl PartialEq for PredType {
+impl Eq for gen::Where::Type {}
+impl PartialEq for gen::Where::Type {
     fn eq(&self, other: &Self) -> bool {
         self.lifes == other.lifes && self.bounded == other.bounded && self.bounds == other.bounds
     }
@@ -1149,8 +1149,8 @@ impl PartialEq for stmt::Mac {
         self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
-impl Eq for TraitBound {}
-impl PartialEq for TraitBound {
+impl Eq for gen::bound::Trait {}
+impl PartialEq for gen::bound::Trait {
     fn eq(&self, other: &Self) -> bool {
         self.paren == other.paren
             && self.modifier == other.modifier
@@ -1158,12 +1158,12 @@ impl PartialEq for TraitBound {
             && self.path == other.path
     }
 }
-impl Eq for TraitBoundModifier {}
-impl PartialEq for TraitBoundModifier {
+impl Eq for gen::bound::Modifier {}
+impl PartialEq for gen::bound::Modifier {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (TraitBoundModifier::None, TraitBoundModifier::None) => true,
-            (TraitBoundModifier::Maybe(_), TraitBoundModifier::Maybe(_)) => true,
+            (gen::bound::Modifier::None, gen::bound::Modifier::None) => true,
+            (gen::bound::Modifier::Maybe(_), gen::bound::Modifier::Maybe(_)) => true,
             _ => false,
         }
     }
@@ -1299,13 +1299,13 @@ impl PartialEq for gen::param::Type {
             && self.default == other.default
     }
 }
-impl Eq for TypeParamBound {}
-impl PartialEq for TypeParamBound {
+impl Eq for gen::bound::Type {}
+impl PartialEq for gen::bound::Type {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (TypeParamBound::Trait(self0), TypeParamBound::Trait(other0)) => self0 == other0,
-            (TypeParamBound::Lifetime(self0), TypeParamBound::Lifetime(other0)) => self0 == other0,
-            (TypeParamBound::Verbatim(self0), TypeParamBound::Verbatim(other0)) => {
+            (gen::bound::Type::Trait(self0), gen::bound::Type::Trait(other0)) => self0 == other0,
+            (gen::bound::Type::Lifetime(self0), gen::bound::Type::Lifetime(other0)) => self0 == other0,
+            (gen::bound::Type::Verbatim(self0), gen::bound::Type::Verbatim(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
@@ -1440,18 +1440,18 @@ impl PartialEq for Visibility {
         }
     }
 }
-impl Eq for WhereClause {}
-impl PartialEq for WhereClause {
+impl Eq for gen::Where {}
+impl PartialEq for gen::Where {
     fn eq(&self, other: &Self) -> bool {
         self.preds == other.preds
     }
 }
-impl Eq for WherePred {}
-impl PartialEq for WherePred {
+impl Eq for gen::Where::Pred {}
+impl PartialEq for gen::Where::Pred {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (WherePred::Lifetime(self0), WherePred::Lifetime(other0)) => self0 == other0,
-            (WherePred::Type(self0), WherePred::Type(other0)) => self0 == other0,
+            (gen::Where::Pred::Life(self0), gen::Where::Pred::Life(other0)) => self0 == other0,
+            (gen::Where::Pred::Type(self0), gen::Where::Pred::Type(other0)) => self0 == other0,
             _ => false,
         }
     }

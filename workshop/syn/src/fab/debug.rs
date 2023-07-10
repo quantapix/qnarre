@@ -252,9 +252,9 @@ impl Debug for Block {
         formatter.finish()
     }
 }
-impl Debug for BoundLifetimes {
+impl Debug for Bgen::bound::Lifes {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("BoundLifetimes");
+        let mut formatter = formatter.debug_struct("Bgen::bound::Lifes");
         formatter.field("for_", &self.for_);
         formatter.field("lt", &self.lt);
         formatter.field("lifetimes", &self.lifes);
@@ -1212,9 +1212,9 @@ impl Debug for gen::Param {
         }
     }
 }
-impl Debug for Generics {
+impl Debug for gen::Gens {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Generics");
+        let mut formatter = formatter.debug_struct("gen::Gens");
         formatter.field("lt", &self.lt);
         formatter.field("params", &self.params);
         formatter.field("gt", &self.gt);
@@ -2021,7 +2021,7 @@ impl Debug for Segment {
         formatter.finish()
     }
 }
-impl Debug for PredLifetime {
+impl Debug for gen::Where::Life {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateLifetime");
         formatter.field("lifetime", &self.life);
@@ -2030,7 +2030,7 @@ impl Debug for PredLifetime {
         formatter.finish()
     }
 }
-impl Debug for PredType {
+impl Debug for gen::Where::Type {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateType");
         formatter.field("lifetimes", &self.lifes);
@@ -2158,9 +2158,9 @@ impl Debug for stmt::Mac {
         self.debug(formatter, "stmt::Mac")
     }
 }
-impl Debug for TraitBound {
+impl Debug for gen::bound::Trait {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TraitBound");
+        let mut formatter = formatter.debug_struct("gen::bound::Trait");
         formatter.field("paren", &self.paren);
         formatter.field("modifier", &self.modifier);
         formatter.field("lifetimes", &self.lifes);
@@ -2168,12 +2168,12 @@ impl Debug for TraitBound {
         formatter.finish()
     }
 }
-impl Debug for TraitBoundModifier {
+impl Debug for gen::bound::Modifier {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("TraitBoundModifier::")?;
+        formatter.write_str("gen::bound::Modifier::")?;
         match self {
-            TraitBoundModifier::None => formatter.write_str("None"),
-            TraitBoundModifier::Maybe(v0) => {
+            gen::bound::Modifier::None => formatter.write_str("None"),
+            gen::bound::Modifier::Maybe(v0) => {
                 let mut formatter = formatter.debug_tuple("Maybe");
                 formatter.field(v0);
                 formatter.finish()
@@ -2398,17 +2398,17 @@ impl Debug for gen::param::Type {
         formatter.finish()
     }
 }
-impl Debug for TypeParamBound {
+impl Debug for gen::bound::Type {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("TypeParamBound::")?;
+        formatter.write_str("gen::bound::Type::")?;
         match self {
-            TypeParamBound::Trait(v0) => {
+            gen::bound::Type::Trait(v0) => {
                 let mut formatter = formatter.debug_tuple("Trait");
                 formatter.field(v0);
                 formatter.finish()
             },
-            TypeParamBound::Lifetime(v0) => v0.debug(formatter, "Lifetime"),
-            TypeParamBound::Verbatim(v0) => {
+            gen::bound::Type::Lifetime(v0) => v0.debug(formatter, "Lifetime"),
+            gen::bound::Type::Verbatim(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
                 formatter.finish()
@@ -2654,24 +2654,24 @@ impl Debug for Visibility {
         }
     }
 }
-impl Debug for WhereClause {
+impl Debug for gen::Where {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("WhereClause");
+        let mut formatter = formatter.debug_struct("gen::Where");
         formatter.field("where_", &self.where_);
         formatter.field("predicates", &self.preds);
         formatter.finish()
     }
 }
-impl Debug for WherePred {
+impl Debug for gen::Where::Pred {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("WherePredicate::")?;
         match self {
-            WherePred::Lifetime(v0) => {
+            gen::Where::Pred::Life(v0) => {
                 let mut formatter = formatter.debug_tuple("Lifetime");
                 formatter.field(v0);
                 formatter.finish()
             },
-            WherePred::Type(v0) => {
+            gen::Where::Pred::Type(v0) => {
                 let mut formatter = formatter.debug_tuple("Type");
                 formatter.field(v0);
                 formatter.finish()

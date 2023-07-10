@@ -51,7 +51,7 @@ pub trait VisitMut {
     fn visit_block_mut(&mut self, i: &mut Block) {
         visit_block_mut(self, i);
     }
-    fn visit_bound_lifetimes_mut(&mut self, i: &mut BoundLifetimes) {
+    fn visit_bound_lifetimes_mut(&mut self, i: &mut Bgen::bound::Lifes) {
         visit_bound_lifetimes_mut(self, i);
     }
     fn visit_const_param_mut(&mut self, i: &mut gen::param::Const) {
@@ -240,7 +240,7 @@ pub trait VisitMut {
     fn visit_generic_param_mut(&mut self, i: &mut gen::Param) {
         visit_generic_param_mut(self, i);
     }
-    fn visit_generics_mut(&mut self, i: &mut Generics) {
+    fn visit_generics_mut(&mut self, i: &mut gen::Gens) {
         visit_generics_mut(self, i);
     }
     fn visit_ident_mut(&mut self, i: &mut Ident) {
@@ -420,10 +420,10 @@ pub trait VisitMut {
     fn visit_path_segment_mut(&mut self, i: &mut Segment) {
         visit_path_segment_mut(self, i);
     }
-    fn visit_predicate_lifetime_mut(&mut self, i: &mut PredLifetime) {
+    fn visit_predicate_lifetime_mut(&mut self, i: &mut gen::Where::Life) {
         visit_predicate_lifetime_mut(self, i);
     }
-    fn visit_predicate_type_mut(&mut self, i: &mut PredType) {
+    fn visit_predicate_type_mut(&mut self, i: &mut gen::Where::Type) {
         visit_predicate_type_mut(self, i);
     }
     fn visit_qself_mut(&mut self, i: &mut QSelf) {
@@ -453,10 +453,10 @@ pub trait VisitMut {
     fn visit_stmt_macro_mut(&mut self, i: &mut stmt::Mac) {
         visit_stmt_macro_mut(self, i);
     }
-    fn visit_trait_bound_mut(&mut self, i: &mut TraitBound) {
+    fn visit_trait_bound_mut(&mut self, i: &mut gen::bound::Trait) {
         visit_trait_bound_mut(self, i);
     }
-    fn visit_trait_bound_modifier_mut(&mut self, i: &mut TraitBoundModifier) {
+    fn visit_trait_bound_modifier_mut(&mut self, i: &mut gen::bound::Modifier) {
         visit_trait_bound_modifier_mut(self, i);
     }
     fn visit_trait_item_mut(&mut self, i: &mut item::Trait::Item) {
@@ -501,7 +501,7 @@ pub trait VisitMut {
     fn visit_type_param_mut(&mut self, i: &mut gen::param::Type) {
         visit_type_param_mut(self, i);
     }
-    fn visit_type_param_bound_mut(&mut self, i: &mut TypeParamBound) {
+    fn visit_type_param_bound_mut(&mut self, i: &mut gen::bound::Type) {
         visit_type_param_bound_mut(self, i);
     }
     fn visit_type_paren_mut(&mut self, i: &mut ty::Paren) {
@@ -558,10 +558,10 @@ pub trait VisitMut {
     fn visit_visibility_mut(&mut self, i: &mut Visibility) {
         visit_visibility_mut(self, i);
     }
-    fn visit_where_clause_mut(&mut self, i: &mut WhereClause) {
+    fn visit_where_clause_mut(&mut self, i: &mut gen::Where) {
         visit_where_clause_mut(self, i);
     }
-    fn visit_where_predicate_mut(&mut self, i: &mut WherePred) {
+    fn visit_where_predicate_mut(&mut self, i: &mut gen::Where::Pred) {
         visit_where_predicate_mut(self, i);
     }
 }
@@ -771,7 +771,7 @@ where
         v.visit_stmt_mut(it);
     }
 }
-pub fn visit_bound_lifetimes_mut<V>(v: &mut V, node: &mut BoundLifetimes)
+pub fn visit_bound_lifetimes_mut<V>(v: &mut V, node: &mut Bgen::bound::Lifes)
 where
     V: VisitMut + ?Sized,
 {
@@ -1681,7 +1681,7 @@ where
         },
     }
 }
-pub fn visit_generics_mut<V>(v: &mut V, node: &mut Generics)
+pub fn visit_generics_mut<V>(v: &mut V, node: &mut gen::Gens)
 where
     V: VisitMut + ?Sized,
 {
@@ -2527,7 +2527,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_path_arguments_mut(&mut node.args);
 }
-pub fn visit_predicate_lifetime_mut<V>(v: &mut V, node: &mut PredLifetime)
+pub fn visit_predicate_lifetime_mut<V>(v: &mut V, node: &mut gen::Where::Life)
 where
     V: VisitMut + ?Sized,
 {
@@ -2538,7 +2538,7 @@ where
         v.visit_lifetime_mut(it);
     }
 }
-pub fn visit_predicate_type_mut<V>(v: &mut V, node: &mut PredType)
+pub fn visit_predicate_type_mut<V>(v: &mut V, node: &mut gen::Where::Type)
 where
     V: VisitMut + ?Sized,
 {
@@ -2674,7 +2674,7 @@ where
     v.visit_macro_mut(&mut node.mac);
     skip!(node.semi);
 }
-pub fn visit_trait_bound_mut<V>(v: &mut V, node: &mut TraitBound)
+pub fn visit_trait_bound_mut<V>(v: &mut V, node: &mut gen::bound::Trait)
 where
     V: VisitMut + ?Sized,
 {
@@ -2685,13 +2685,13 @@ where
     }
     v.visit_path_mut(&mut node.path);
 }
-pub fn visit_trait_bound_modifier_mut<V>(v: &mut V, node: &mut TraitBoundModifier)
+pub fn visit_trait_bound_modifier_mut<V>(v: &mut V, node: &mut gen::bound::Modifier)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        TraitBoundModifier::None => {},
-        TraitBoundModifier::Maybe(_binding_0) => {
+        gen::bound::Modifier::None => {},
+        gen::bound::Modifier::Maybe(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -2916,18 +2916,18 @@ where
         v.visit_type_mut(it);
     }
 }
-pub fn visit_type_param_bound_mut<V>(v: &mut V, node: &mut TypeParamBound)
+pub fn visit_type_param_bound_mut<V>(v: &mut V, node: &mut gen::bound::Type)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        TypeParamBound::Trait(_binding_0) => {
+        gen::bound::Type::Trait(_binding_0) => {
             v.visit_trait_bound_mut(_binding_0);
         },
-        TypeParamBound::Lifetime(_binding_0) => {
+        gen::bound::Type::Lifetime(_binding_0) => {
             v.visit_lifetime_mut(_binding_0);
         },
-        TypeParamBound::Verbatim(_binding_0) => {
+        gen::bound::Type::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -3122,7 +3122,7 @@ where
         Visibility::Inherited => {},
     }
 }
-pub fn visit_where_clause_mut<V>(v: &mut V, node: &mut WhereClause)
+pub fn visit_where_clause_mut<V>(v: &mut V, node: &mut gen::Where)
 where
     V: VisitMut + ?Sized,
 {
@@ -3132,15 +3132,15 @@ where
         v.visit_where_predicate_mut(it);
     }
 }
-pub fn visit_where_predicate_mut<V>(v: &mut V, node: &mut WherePred)
+pub fn visit_where_predicate_mut<V>(v: &mut V, node: &mut gen::Where::Pred)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        WherePred::Lifetime(_binding_0) => {
+        gen::Where::Pred::Life(_binding_0) => {
             v.visit_predicate_lifetime_mut(_binding_0);
         },
-        WherePred::Type(_binding_0) => {
+        gen::Where::Pred::Type(_binding_0) => {
             v.visit_predicate_type_mut(_binding_0);
         },
     }

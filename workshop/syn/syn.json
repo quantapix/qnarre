@@ -423,7 +423,7 @@
       }
     },
     {
-      "ident": "BoundLifetimes",
+      "ident": "Bgen::bound::Lifes",
       "features": {
         "any": [
           "derive",
@@ -511,7 +511,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -624,7 +624,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "data": {
           "syn": "Data"
@@ -1102,7 +1102,7 @@
         },
         "lifetimes": {
           "option": {
-            "syn": "BoundLifetimes"
+            "syn": "Bgen::bound::Lifes"
           }
         },
         "constness": {
@@ -2276,7 +2276,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "semi": {
           "token": "Semi"
@@ -2352,7 +2352,7 @@
       }
     },
     {
-      "ident": "Generics",
+      "ident": "gen::Gens",
       "features": {
         "any": [
           "derive",
@@ -2380,7 +2380,7 @@
         },
         "where_clause": {
           "option": {
-            "syn": "WhereClause"
+            "syn": "gen::Where"
           }
         }
       }
@@ -2449,7 +2449,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "colon": {
           "token": "Colon"
@@ -2548,7 +2548,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "eq": {
           "token": "Eq"
@@ -2702,7 +2702,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "colon": {
           "token": "Colon"
@@ -2748,7 +2748,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "brace": {
           "group": "Brace"
@@ -2889,7 +2889,7 @@
           "token": "Impl"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "trait_": {
           "option": {
@@ -3068,7 +3068,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "fields": {
           "syn": "Fields"
@@ -3118,7 +3118,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "colon": {
           "option": {
@@ -3128,7 +3128,7 @@
         "supertraits": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -3166,7 +3166,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "eq": {
           "token": "Eq"
@@ -3174,7 +3174,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -3207,7 +3207,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "eq": {
           "token": "Eq"
@@ -3245,7 +3245,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "fields": {
           "syn": "FieldsNamed"
@@ -4172,7 +4172,7 @@
       "fields": {
         "lifetimes": {
           "option": {
-            "syn": "BoundLifetimes"
+            "syn": "Bgen::bound::Lifes"
           }
         },
         "bounded_ty": {
@@ -4184,7 +4184,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -4345,7 +4345,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "paren": {
           "group": "Paren"
@@ -4444,7 +4444,7 @@
       }
     },
     {
-      "ident": "TraitBound",
+      "ident": "gen::bound::Trait",
       "features": {
         "any": [
           "derive",
@@ -4458,11 +4458,11 @@
           }
         },
         "modifier": {
-          "syn": "TraitBoundModifier"
+          "syn": "gen::bound::Modifier"
         },
         "lifetimes": {
           "option": {
-            "syn": "BoundLifetimes"
+            "syn": "Bgen::bound::Lifes"
           }
         },
         "path": {
@@ -4471,7 +4471,7 @@
       }
     },
     {
-      "ident": "TraitBoundModifier",
+      "ident": "gen::bound::Modifier",
       "features": {
         "any": [
           "derive",
@@ -4543,7 +4543,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "colon": {
           "token": "Colon"
@@ -4639,7 +4639,7 @@
           "proc_macro2": "Ident"
         },
         "gens": {
-          "syn": "Generics"
+          "syn": "gen::Gens"
         },
         "colon": {
           "option": {
@@ -4649,7 +4649,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -4794,7 +4794,7 @@
       "fields": {
         "lifetimes": {
           "option": {
-            "syn": "BoundLifetimes"
+            "syn": "Bgen::bound::Lifes"
           }
         },
         "unsafety": {
@@ -4865,7 +4865,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -4939,7 +4939,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -4957,7 +4957,7 @@
       }
     },
     {
-      "ident": "TypeParamBound",
+      "ident": "gen::bound::Type",
       "features": {
         "any": [
           "derive",
@@ -4967,7 +4967,7 @@
       "variants": {
         "Trait": [
           {
-            "syn": "TraitBound"
+            "syn": "gen::bound::Trait"
           }
         ],
         "Lifetime": [
@@ -5115,7 +5115,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "TypeParamBound"
+              "syn": "gen::bound::Type"
             },
             "punct": "Plus"
           }
@@ -5414,7 +5414,7 @@
       }
     },
     {
-      "ident": "WhereClause",
+      "ident": "gen::Where",
       "features": {
         "any": [
           "derive",

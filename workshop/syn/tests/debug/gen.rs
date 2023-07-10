@@ -303,9 +303,9 @@ impl Debug for Lite<syn::Block> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::BoundLifetimes> {
+impl Debug for Lite<syn::Bgen::bound::Lifes> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("BoundLifetimes");
+        let mut formatter = formatter.debug_struct("Bgen::bound::Lifes");
         if !self.value.lifes.is_empty() {
             formatter.field("lifetimes", Lite(&self.value.lifes));
         }
@@ -565,7 +565,7 @@ impl Debug for Lite<syn::Expr> {
                 if let Some(val) = &_val.lifes {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print(syn::BoundLifetimes);
+                    struct Print(syn::Bgen::bound::Lifes);
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;
@@ -1187,7 +1187,7 @@ impl Debug for Lite<syn::expr::Closure> {
         if let Some(val) = &self.value.lifes {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::BoundLifetimes);
+            struct Print(syn::Bgen::bound::Lifes);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -2048,9 +2048,9 @@ impl Debug for Lite<syn::gen::Param> {
         }
     }
 }
-impl Debug for Lite<syn::Generics> {
+impl Debug for Lite<syn::gen::Gens> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Generics");
+        let mut formatter = formatter.debug_struct("gen::Gens");
         if self.value.lt.is_some() {
             formatter.field("lt", &Present);
         }
@@ -2063,7 +2063,7 @@ impl Debug for Lite<syn::Generics> {
         if let Some(val) = &self.value.where_ {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::WhereClause);
+            struct Print(syn::gen::Where);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -3522,7 +3522,7 @@ impl Debug for Lite<syn::Segment> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::PredLifetime> {
+impl Debug for Lite<syn::gen::Where::Life> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateLifetime");
         formatter.field("lifetime", Lite(&self.value.life));
@@ -3532,13 +3532,13 @@ impl Debug for Lite<syn::PredLifetime> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::PredType> {
+impl Debug for Lite<syn::gen::Where::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateType");
         if let Some(val) = &self.value.lifes {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::BoundLifetimes);
+            struct Print(syn::Bgen::bound::Lifes);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -3770,14 +3770,14 @@ impl Debug for Lite<syn::stmt::Mac> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TraitBound> {
+impl Debug for Lite<syn::gen::bound::Trait> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TraitBound");
+        let mut formatter = formatter.debug_struct("gen::bound::Trait");
         if self.value.paren.is_some() {
             formatter.field("paren", &Present);
         }
         match self.value.modifier {
-            syn::TraitBoundModifier::None => {},
+            syn::gen::bound::Modifier::None => {},
             _ => {
                 formatter.field("modifier", Lite(&self.value.modifier));
             },
@@ -3785,7 +3785,7 @@ impl Debug for Lite<syn::TraitBound> {
         if let Some(val) = &self.value.lifes {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::BoundLifetimes);
+            struct Print(syn::Bgen::bound::Lifes);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -3800,12 +3800,12 @@ impl Debug for Lite<syn::TraitBound> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TraitBoundModifier> {
+impl Debug for Lite<syn::gen::bound::Modifier> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::TraitBoundModifier::None => formatter.write_str("TraitBoundModifier::None"),
-            syn::TraitBoundModifier::Maybe(_val) => {
-                formatter.write_str("TraitBoundModifier::Maybe")?;
+            syn::gen::bound::Modifier::None => formatter.write_str("gen::bound::Modifier::None"),
+            syn::gen::bound::Modifier::Maybe(_val) => {
+                formatter.write_str("gen::bound::Modifier::Maybe")?;
                 Ok(())
             },
         }
@@ -4025,7 +4025,7 @@ impl Debug for Lite<syn::ty::Type> {
                 if let Some(val) = &_val.lifes {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print(syn::BoundLifetimes);
+                    struct Print(syn::Bgen::bound::Lifes);
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;
@@ -4202,7 +4202,7 @@ impl Debug for Lite<syn::ty::Fn> {
         if let Some(val) = &self.value.lifes {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::BoundLifetimes);
+            struct Print(syn::Bgen::bound::Lifes);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -4319,23 +4319,23 @@ impl Debug for Lite<syn::gen::param::Type> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TypeParamBound> {
+impl Debug for Lite<syn::gen::bound::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::TypeParamBound::Trait(_val) => {
-                formatter.write_str("TypeParamBound::Trait")?;
+            syn::gen::bound::Type::Trait(_val) => {
+                formatter.write_str("gen::bound::Type::Trait")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::TypeParamBound::Lifetime(_val) => {
-                let mut formatter = formatter.debug_struct("TypeParamBound::Lifetime");
+            syn::gen::bound::Type::Lifetime(_val) => {
+                let mut formatter = formatter.debug_struct("gen::bound::Type::Lifetime");
                 formatter.field("ident", Lite(&_val.ident));
                 formatter.finish()
             },
-            syn::TypeParamBound::Verbatim(_val) => {
-                formatter.write_str("TypeParamBound::Verbatim")?;
+            syn::gen::bound::Type::Verbatim(_val) => {
+                formatter.write_str("gen::bound::Type::Verbatim")?;
                 formatter.write_str("(`")?;
                 Display::fmt(_val, formatter)?;
                 formatter.write_str("`)")?;
@@ -4616,26 +4616,26 @@ impl Debug for Lite<syn::Visibility> {
         }
     }
 }
-impl Debug for Lite<syn::WhereClause> {
+impl Debug for Lite<syn::gen::Where> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("WhereClause");
+        let mut formatter = formatter.debug_struct("gen::Where");
         if !self.value.preds.is_empty() {
             formatter.field("predicates", Lite(&self.value.preds));
         }
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::WherePred> {
+impl Debug for Lite<syn::gen::Where::Pred> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::WherePred::Lifetime(_val) => {
+            syn::gen::Where::Pred::Life(_val) => {
                 formatter.write_str("WherePredicate::Lifetime")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::WherePred::Type(_val) => {
+            syn::gen::Where::Pred::Type(_val) => {
                 formatter.write_str("WherePredicate::Type")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;

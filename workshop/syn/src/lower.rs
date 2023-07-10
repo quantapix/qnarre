@@ -27,7 +27,7 @@ impl ToTokens for meta::NameValue {
     }
 }
 
-impl ToTokens for Generics {
+impl ToTokens for gen::Gens {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if self.params.is_empty() {
             return;
@@ -55,7 +55,7 @@ impl ToTokens for Generics {
         TokensOrDefault(&self.gt).to_tokens(tokens);
     }
 }
-impl<'a> ToTokens for ImplGenerics<'a> {
+impl<'a> ToTokens for gen::Impl<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if self.0.params.is_empty() {
             return;
@@ -99,7 +99,7 @@ impl<'a> ToTokens for ImplGenerics<'a> {
         TokensOrDefault(&self.0.gt).to_tokens(tokens);
     }
 }
-impl<'a> ToTokens for TypeGenerics<'a> {
+impl<'a> ToTokens for gen::Type<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if self.0.params.is_empty() {
             return;
@@ -135,15 +135,15 @@ impl<'a> ToTokens for TypeGenerics<'a> {
         TokensOrDefault(&self.0.gt).to_tokens(tokens);
     }
 }
-impl<'a> ToTokens for Turbofish<'a> {
+impl<'a> ToTokens for gen::Turbofish<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if !self.0.params.is_empty() {
             <Token![::]>::default().to_tokens(tokens);
-            TypeGenerics(self.0).to_tokens(tokens);
+            gen::Type(self.0).to_tokens(tokens);
         }
     }
 }
-impl ToTokens for BoundLifetimes {
+impl ToTokens for Bgen::bound::Lifes {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.for_.to_tokens(tokens);
         self.lt.to_tokens(tokens);
@@ -175,7 +175,7 @@ impl ToTokens for gen::param::Type {
         }
     }
 }
-impl ToTokens for TraitBound {
+impl ToTokens for gen::bound::Trait {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let to_tokens = |tokens: &mut TokenStream| {
             self.modifier.to_tokens(tokens);
@@ -188,11 +188,11 @@ impl ToTokens for TraitBound {
         }
     }
 }
-impl ToTokens for TraitBoundModifier {
+impl ToTokens for gen::bound::Modifier {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            TraitBoundModifier::None => {},
-            TraitBoundModifier::Maybe(x) => x.to_tokens(tokens),
+            gen::bound::Modifier::None => {},
+            gen::bound::Modifier::Maybe(x) => x.to_tokens(tokens),
         }
     }
 }
@@ -209,7 +209,7 @@ impl ToTokens for gen::param::Const {
         }
     }
 }
-impl ToTokens for WhereClause {
+impl ToTokens for gen::Where {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if !self.preds.is_empty() {
             self.where_.to_tokens(tokens);
@@ -217,14 +217,14 @@ impl ToTokens for WhereClause {
         }
     }
 }
-impl ToTokens for PredLifetime {
+impl ToTokens for gen::Where::Life {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.life.to_tokens(tokens);
         self.colon.to_tokens(tokens);
         self.bounds.to_tokens(tokens);
     }
 }
-impl ToTokens for PredType {
+impl ToTokens for gen::Where::Type {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.lifes.to_tokens(tokens);
         self.bounded.to_tokens(tokens);

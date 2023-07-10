@@ -17,7 +17,7 @@ fn test_unit() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "Unit",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unit,
             semi: Some,
@@ -54,7 +54,7 @@ fn test_struct() {
         ],
         vis: Visibility::Public,
         ident: "Item",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Named {
                 named: [
@@ -130,7 +130,7 @@ fn test_union() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "MaybeUninit",
-        gens: Generics {
+        gens: gen::Gens {
             lt: Some,
             params: [
                 gen::Param::Type(gen::param::Type {
@@ -210,7 +210,7 @@ fn test_enum() {
         ],
         vis: Visibility::Public,
         ident: "Result",
-        gens: Generics {
+        gens: gen::Gens {
             lt: Some,
             params: [
                 gen::Param::Type(gen::param::Type {
@@ -350,7 +350,7 @@ fn test_attr_with_mod_style_path_with_self() {
         ],
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unit,
             semi: Some,
@@ -388,7 +388,7 @@ fn test_pub_restricted() {
             },
         },
         ident: "Z",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 unnamed: [
@@ -440,7 +440,7 @@ fn test_pub_restricted_crate() {
             },
         },
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unit,
             semi: Some,
@@ -465,7 +465,7 @@ fn test_pub_restricted_super() {
             },
         },
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unit,
             semi: Some,
@@ -491,7 +491,7 @@ fn test_pub_restricted_in_super() {
             },
         },
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unit,
             semi: Some,
@@ -508,7 +508,7 @@ fn test_fields_on_unit_struct() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unit,
             semi: Some,
@@ -533,7 +533,7 @@ fn test_fields_on_named_struct() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Named {
                 named: [
@@ -616,7 +616,7 @@ fn test_fields_on_tuple_struct() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 unnamed: [
@@ -692,7 +692,7 @@ fn test_ambiguous_crate() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics,
+        gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 unnamed: [

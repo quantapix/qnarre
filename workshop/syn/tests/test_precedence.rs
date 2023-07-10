@@ -119,8 +119,8 @@ fn librustc_parse_and_rewrite(input: &str) -> Option<P<ast::Expr>> {
 }
 fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
     use rustc_ast::ast::{
-        attr::Attr, expr::Field, patt::Patt, stmt::Local, stmt::Stmt, ty::Type, BinOpKind, Block, BorrowKind, Expr,
-        ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest, TraitBoundModifier,
+        attr::Attr, expr::Field, gen::bound::Modifier, patt::Patt, stmt::Local, stmt::Stmt, ty::Type, BinOpKind, Block,
+        BorrowKind, Expr, ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest,
     };
     use rustc_ast::mut_visit::{noop_visit_generic_arg, noop_visit_local, noop_visit_param_bound, MutVisitor};
     use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -214,7 +214,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         }
         fn visit_param_bound(&mut self, bound: &mut GenericBound) {
             match bound {
-                GenericBound::Trait(_, TraitBoundModifier::MaybeConst | TraitBoundModifier::MaybeConstMaybe) => {},
+                GenericBound::Trait(_, gen::bound::Modifier::MaybeConst | gen::bound::Modifier::MaybeConstMaybe) => {},
                 _ => noop_visit_param_bound(bound, self),
             }
         }

@@ -49,7 +49,7 @@ pub trait Fold {
     fn fold_block(&mut self, i: Block) -> Block {
         fold_block(self, i)
     }
-    fn fold_bound_lifetimes(&mut self, i: BoundLifetimes) -> BoundLifetimes {
+    fn fold_bound_lifetimes(&mut self, i: Bgen::bound::Lifes) -> Bgen::bound::Lifes {
         fold_bound_lifetimes(self, i)
     }
     fn fold_const_param(&mut self, i: gen::param::Const) -> gen::param::Const {
@@ -238,7 +238,7 @@ pub trait Fold {
     fn fold_generic_param(&mut self, i: gen::Param) -> gen::Param {
         fold_generic_param(self, i)
     }
-    fn fold_generics(&mut self, i: Generics) -> Generics {
+    fn fold_generics(&mut self, i: gen::Gens) -> gen::Gens {
         fold_generics(self, i)
     }
     fn fold_ident(&mut self, i: Ident) -> Ident {
@@ -418,10 +418,10 @@ pub trait Fold {
     fn fold_path_segment(&mut self, i: Segment) -> Segment {
         fold_path_segment(self, i)
     }
-    fn fold_predicate_lifetime(&mut self, i: PredLifetime) -> PredLifetime {
+    fn fold_predicate_lifetime(&mut self, i: gen::Where::Life) -> gen::Where::Life {
         fold_predicate_lifetime(self, i)
     }
-    fn fold_predicate_type(&mut self, i: PredType) -> PredType {
+    fn fold_predicate_type(&mut self, i: gen::Where::Type) -> gen::Where::Type {
         fold_predicate_type(self, i)
     }
     fn fold_qself(&mut self, i: QSelf) -> QSelf {
@@ -451,10 +451,10 @@ pub trait Fold {
     fn fold_stmt_macro(&mut self, i: stmt::Mac) -> stmt::Mac {
         fold_stmt_macro(self, i)
     }
-    fn fold_trait_bound(&mut self, i: TraitBound) -> TraitBound {
+    fn fold_trait_bound(&mut self, i: gen::bound::Trait) -> gen::bound::Trait {
         fold_trait_bound(self, i)
     }
-    fn fold_trait_bound_modifier(&mut self, i: TraitBoundModifier) -> TraitBoundModifier {
+    fn fold_trait_bound_modifier(&mut self, i: gen::bound::Modifier) -> gen::bound::Modifier {
         fold_trait_bound_modifier(self, i)
     }
     fn fold_trait_item(&mut self, i: item::Trait::Item) -> item::Trait::Item {
@@ -499,7 +499,7 @@ pub trait Fold {
     fn fold_type_param(&mut self, i: gen::param::Type) -> gen::param::Type {
         fold_type_param(self, i)
     }
-    fn fold_type_param_bound(&mut self, i: TypeParamBound) -> TypeParamBound {
+    fn fold_type_param_bound(&mut self, i: gen::bound::Type) -> gen::bound::Type {
         fold_type_param_bound(self, i)
     }
     fn fold_type_paren(&mut self, i: ty::Paren) -> ty::Paren {
@@ -556,10 +556,10 @@ pub trait Fold {
     fn fold_visibility(&mut self, i: Visibility) -> Visibility {
         fold_visibility(self, i)
     }
-    fn fold_where_clause(&mut self, i: WhereClause) -> WhereClause {
+    fn fold_where_clause(&mut self, i: gen::Where) -> gen::Where {
         fold_where_clause(self, i)
     }
-    fn fold_where_predicate(&mut self, i: WherePred) -> WherePred {
+    fn fold_where_predicate(&mut self, i: gen::Where::Pred) -> gen::Where::Pred {
         fold_where_predicate(self, i)
     }
 }
@@ -703,11 +703,11 @@ where
         stmts: FoldHelper::lift(node.stmts, |it| f.fold_stmt(it)),
     }
 }
-pub fn fold_bound_lifetimes<F>(f: &mut F, node: BoundLifetimes) -> BoundLifetimes
+pub fn fold_bound_lifetimes<F>(f: &mut F, node: Bgen::bound::Lifes) -> Bgen::bound::Lifes
 where
     F: Fold + ?Sized,
 {
-    BoundLifetimes {
+    Bgen::bound::Lifes {
         for_: node.for_,
         lt: node.lt,
         lifes: FoldHelper::lift(node.lifes, |it| f.fold_generic_param(it)),
@@ -1429,11 +1429,11 @@ where
         gen::Param::Const(_binding_0) => gen::Param::Const(f.fold_const_param(_binding_0)),
     }
 }
-pub fn fold_generics<F>(f: &mut F, node: Generics) -> Generics
+pub fn fold_generics<F>(f: &mut F, node: gen::Gens) -> gen::Gens
 where
     F: Fold + ?Sized,
 {
-    Generics {
+    gen::Gens {
         lt: node.lt,
         params: FoldHelper::lift(node.params, |it| f.fold_generic_param(it)),
         gt: node.gt,
@@ -2138,21 +2138,21 @@ where
         args: f.fold_path_arguments(node.args),
     }
 }
-pub fn fold_predicate_lifetime<F>(f: &mut F, node: PredLifetime) -> PredLifetime
+pub fn fold_predicate_lifetime<F>(f: &mut F, node: gen::Where::Life) -> gen::Where::Life
 where
     F: Fold + ?Sized,
 {
-    PredLifetime {
+    gen::Where::Life {
         life: f.fold_lifetime(node.life),
         colon: node.colon,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
     }
 }
-pub fn fold_predicate_type<F>(f: &mut F, node: PredType) -> PredType
+pub fn fold_predicate_type<F>(f: &mut F, node: gen::Where::Type) -> gen::Where::Type
 where
     F: Fold + ?Sized,
 {
-    PredType {
+    gen::Where::Type {
         lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         bounded: f.fold_type(node.bounded),
         colon: node.colon,
@@ -2256,24 +2256,24 @@ where
         semi: node.semi,
     }
 }
-pub fn fold_trait_bound<F>(f: &mut F, node: TraitBound) -> TraitBound
+pub fn fold_trait_bound<F>(f: &mut F, node: gen::bound::Trait) -> gen::bound::Trait
 where
     F: Fold + ?Sized,
 {
-    TraitBound {
+    gen::bound::Trait {
         paren: node.paren,
         modifier: f.fold_trait_bound_modifier(node.modifier),
         lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         path: f.fold_path(node.path),
     }
 }
-pub fn fold_trait_bound_modifier<F>(f: &mut F, node: TraitBoundModifier) -> TraitBoundModifier
+pub fn fold_trait_bound_modifier<F>(f: &mut F, node: gen::bound::Modifier) -> gen::bound::Modifier
 where
     F: Fold + ?Sized,
 {
     match node {
-        TraitBoundModifier::None => TraitBoundModifier::None,
-        TraitBoundModifier::Maybe(_binding_0) => TraitBoundModifier::Maybe(_binding_0),
+        gen::bound::Modifier::None => gen::bound::Modifier::None,
+        gen::bound::Modifier::Maybe(_binding_0) => gen::bound::Modifier::Maybe(_binding_0),
     }
 }
 pub fn fold_trait_item<F>(f: &mut F, node: item::Trait::Item) -> item::Trait::Item
@@ -2440,14 +2440,14 @@ where
         default: (node.default).map(|it| f.fold_type(it)),
     }
 }
-pub fn fold_type_param_bound<F>(f: &mut F, node: TypeParamBound) -> TypeParamBound
+pub fn fold_type_param_bound<F>(f: &mut F, node: gen::bound::Type) -> gen::bound::Type
 where
     F: Fold + ?Sized,
 {
     match node {
-        TypeParamBound::Trait(_binding_0) => TypeParamBound::Trait(f.fold_trait_bound(_binding_0)),
-        TypeParamBound::Lifetime(_binding_0) => TypeParamBound::Lifetime(f.fold_lifetime(_binding_0)),
-        TypeParamBound::Verbatim(_binding_0) => TypeParamBound::Verbatim(_binding_0),
+        gen::bound::Type::Trait(_binding_0) => gen::bound::Type::Trait(f.fold_trait_bound(_binding_0)),
+        gen::bound::Type::Lifetime(_binding_0) => gen::bound::Type::Lifetime(f.fold_lifetime(_binding_0)),
+        gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
     }
 }
 pub fn fold_type_paren<F>(f: &mut F, node: ty::Paren) -> ty::Paren
@@ -2627,21 +2627,21 @@ where
         Visibility::Inherited => Visibility::Inherited,
     }
 }
-pub fn fold_where_clause<F>(f: &mut F, node: WhereClause) -> WhereClause
+pub fn fold_where_clause<F>(f: &mut F, node: gen::Where) -> gen::Where
 where
     F: Fold + ?Sized,
 {
-    WhereClause {
+    gen::Where {
         where_: node.where_,
         preds: FoldHelper::lift(node.preds, |it| f.fold_where_predicate(it)),
     }
 }
-pub fn fold_where_predicate<F>(f: &mut F, node: WherePred) -> WherePred
+pub fn fold_where_predicate<F>(f: &mut F, node: gen::Where::Pred) -> gen::Where::Pred
 where
     F: Fold + ?Sized,
 {
     match node {
-        WherePred::Lifetime(_binding_0) => WherePred::Lifetime(f.fold_predicate_lifetime(_binding_0)),
-        WherePred::Type(_binding_0) => WherePred::Type(f.fold_predicate_type(_binding_0)),
+        gen::Where::Pred::Life(_binding_0) => gen::Where::Pred::Life(f.fold_predicate_lifetime(_binding_0)),
+        gen::Where::Pred::Type(_binding_0) => gen::Where::Pred::Type(f.fold_predicate_type(_binding_0)),
     }
 }

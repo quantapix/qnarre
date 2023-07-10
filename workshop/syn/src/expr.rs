@@ -106,7 +106,7 @@ pub struct Cast {
 }
 pub struct Closure {
     pub attrs: Vec<attr::Attr>,
-    pub lifes: Option<BoundLifetimes>,
+    pub lifes: Option<Bgen::bound::Lifes>,
     pub const_: Option<Token![const]>,
     pub static_: Option<Token![static]>,
     pub async_: Option<Token![async]>,

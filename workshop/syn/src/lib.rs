@@ -695,6 +695,8 @@ mod ident {
     }
 }
 pub use ident::{Ident, Lifetime};
+pub mod punct;
+use punct::Punctuated;
 
 pub struct Parens<'a> {
     pub tok: tok::Paren,
@@ -757,70 +759,42 @@ fn parse_delimited<'a>(x: &ParseBuffer<'a>, d: Delimiter) -> Result<(DelimSpan, 
     })
 }
 
-mod expr;
-
 pub mod gen {
-    pub struct BoundLifetimes {
-        pub for_: Token![for],
-        pub lt: Token![<],
-        pub lifes: Punctuated<Param, Token![,]>,
-        pub gt: Token![>],
-    }
-    impl Default for BoundLifetimes {
-        fn default() -> Self {
-            BoundLifetimes {
-                for_: Default::default(),
-                lt: Default::default(),
-                lifes: Punctuated::new(),
-                gt: Default::default(),
+    pub mod bound {
+        ast_enum_of_structs! {
+            pub enum Type {
+                Trait(Trait),
+                Lifetime(Lifetime),
+                Verbatim(TokenStream),
+            }
+        }
+        pub struct Trait {
+            pub paren: Option<tok::Paren>,
+            pub modifier: Modifier,
+            pub lifes: Option<Lifes>,
+            pub path: path::Path,
+        }
+        pub enum Modifier {
+            None,
+            Maybe(Token![?]),
+        }
+        pub struct Lifes {
+            pub for_: Token![for],
+            pub lt: Token![<],
+            pub lifes: Punctuated<Param, Token![,]>,
+            pub gt: Token![>],
+        }
+        impl Default for Lifes {
+            fn default() -> Self {
+                Lifes {
+                    for_: Default::default(),
+                    lt: Default::default(),
+                    lifes: Punctuated::new(),
+                    gt: Default::default(),
+                }
             }
         }
     }
-
-    pub struct WhereClause {
-        pub where_: Token![where],
-        pub preds: Punctuated<WherePred, Token![,]>,
-    }
-
-    ast_enum_of_structs! {
-        pub enum WherePred {
-            Lifetime(PredLifetime),
-            Type(PredType),
-        }
-    }
-
-    pub struct PredLifetime {
-        pub life: Lifetime,
-        pub colon: Token![:],
-        pub bounds: Punctuated<Lifetime, Token![+]>,
-    }
-    pub struct PredType {
-        pub lifes: Option<BoundLifetimes>,
-        pub bounded: ty::Type,
-        pub colon: Token![:],
-        pub bounds: Punctuated<TypeParamBound, Token![+]>,
-    }
-
-    ast_enum_of_structs! {
-        pub enum TypeParamBound {
-            Trait(TraitBound),
-            Lifetime(Lifetime),
-            Verbatim(TokenStream),
-        }
-    }
-
-    pub struct TraitBound {
-        pub paren: Option<tok::Paren>,
-        pub modifier: TraitBoundModifier,
-        pub lifes: Option<BoundLifetimes>,
-        pub path: path::Path,
-    }
-
-    pub enum TraitBoundModifier {
-        None,
-        Maybe(Token![?]),
-    }
-
     pub mod param {
         ast_enum_of_structs! {
             pub enum Param {
@@ -879,7 +853,7 @@ pub mod gen {
             pub attrs: Vec<attr::Attr>,
             pub ident: Ident,
             pub colon: Option<Token![:]>,
-            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+            pub bounds: Punctuated<bound::Type, Token![+]>,
             pub eq: Option<Token![=]>,
             pub default: Option<ty::Type>,
         }
@@ -966,58 +940,78 @@ pub mod gen {
         }
     }
     use param::Param;
-
-    pub struct Generics {
-        pub lt: Option<Token![<]>,
-        pub params: Punctuated<Param, Token![,]>,
-        pub gt: Option<Token![>]>,
-        pub where_: Option<WhereClause>,
+    pub struct Where {
+        pub where_: Token![where],
+        pub preds: Punctuated<Where::Pred, Token![,]>,
     }
-    impl Generics {
-        pub fn lifetimes(&self) -> param::Lifes {
-            param::Lifes(self.params.iter())
+    pub mod Where {
+        ast_enum_of_structs! {
+            pub enum Pred {
+                Life(Life),
+                Type(Type),
+            }
         }
-        pub fn lifetimes_mut(&mut self) -> param::LifesMut {
-            param::LifesMut(self.params.iter_mut())
+        pub struct Life {
+            pub life: Lifetime,
+            pub colon: Token![:],
+            pub bounds: Punctuated<Lifetime, Token![+]>,
         }
-        pub fn type_params(&self) -> param::Types {
-            param::Types(self.params.iter())
+        pub struct Type {
+            pub lifes: Option<bound::Lifes>,
+            pub bounded: ty::Type,
+            pub colon: Token![:],
+            pub bounds: Punctuated<bound::Type, Token![+]>,
         }
-        pub fn type_params_mut(&mut self) -> param::TypesMut {
-            param::TypesMut(self.params.iter_mut())
+    }
+    pub struct Gens {
+        pub lt: Option<Token![<]>,
+        pub ps: Punctuated<Param, Token![,]>,
+        pub gt: Option<Token![>]>,
+        pub where_: Option<Where>,
+    }
+    impl Gens {
+        pub fn life_ps(&self) -> param::Lifes {
+            param::Lifes(self.ps.iter())
         }
-        pub fn const_params(&self) -> param::Consts {
-            param::Consts(self.params.iter())
+        pub fn life_ps_mut(&mut self) -> param::LifesMut {
+            param::LifesMut(self.ps.iter_mut())
         }
-        pub fn const_params_mut(&mut self) -> param::ConstsMut {
-            param::ConstsMut(self.params.iter_mut())
+        pub fn type_ps(&self) -> param::Types {
+            param::Types(self.ps.iter())
         }
-        pub fn make_where_clause(&mut self) -> &mut WhereClause {
-            self.where_.get_or_insert_with(|| WhereClause {
+        pub fn type_ps_mut(&mut self) -> param::TypesMut {
+            param::TypesMut(self.ps.iter_mut())
+        }
+        pub fn const_ps(&self) -> param::Consts {
+            param::Consts(self.ps.iter())
+        }
+        pub fn const_ps_mut(&mut self) -> param::ConstsMut {
+            param::ConstsMut(self.ps.iter_mut())
+        }
+        pub fn make_where_clause(&mut self) -> &mut Where {
+            self.where_.get_or_insert_with(|| Where {
                 where_: <Token![where]>::default(),
                 preds: Punctuated::new(),
             })
         }
-        pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
-            (ImplGenerics(self), TypeGenerics(self), self.where_.as_ref())
+        pub fn split_for_impl(&self) -> (Impl, Type, Option<&Where>) {
+            (Impl(self), Type(self), self.where_.as_ref())
         }
     }
-    impl Default for Generics {
+    impl Default for Gens {
         fn default() -> Self {
-            Generics {
+            Gens {
                 lt: None,
-                params: Punctuated::new(),
+                ps: Punctuated::new(),
                 gt: None,
                 where_: None,
             }
         }
     }
-
-    pub struct ImplGenerics<'a>(pub &'a Generics);
-    pub struct TypeGenerics<'a>(pub &'a Generics);
-    pub struct Turbofish<'a>(pub &'a Generics);
-
-    macro_rules! generics_wrapper_impls {
+    pub struct Impl<'a>(pub &'a Gens);
+    pub struct Type<'a>(pub &'a Gens);
+    pub struct Turbofish<'a>(pub &'a Gens);
+    macro_rules! gens_impls {
         ($ty:ident) => {
             impl<'a> Clone for $ty<'a> {
                 fn clone(&self) -> Self {
@@ -1042,20 +1036,17 @@ pub mod gen {
             }
         };
     }
-    generics_wrapper_impls!(ImplGenerics);
-    generics_wrapper_impls!(TypeGenerics);
-    generics_wrapper_impls!(Turbofish);
-
-    impl<'a> TypeGenerics<'a> {
+    gens_impls!(Impl);
+    gens_impls!(Type);
+    gens_impls!(Turbofish);
+    impl<'a> Type<'a> {
         pub fn as_turbofish(&self) -> Turbofish {
             Turbofish(self.0)
         }
     }
 }
-
+pub mod expr;
 pub mod item;
-pub mod punct;
-use punct::Punctuated;
 pub mod lit;
 pub mod tok;
 
@@ -1267,7 +1258,7 @@ mod path {
         pub ident: Ident,
         pub args: Option<AngledArgs>,
         pub colon: Token![:],
-        pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        pub bounds: Punctuated<gen::bound::Type, Token![+]>,
     }
     pub struct ParenthesizedArgs {
         pub paren: tok::Paren,
@@ -1338,7 +1329,7 @@ mod ty {
         pub len: Expr,
     }
     pub struct Fn {
-        pub lifes: Option<BoundLifetimes>,
+        pub lifes: Option<gen::bound::Lifes>,
         pub unsafe_: Option<Token![unsafe]>,
         pub abi: Option<Abi>,
         pub fn_: Token![fn],
@@ -1353,7 +1344,7 @@ mod ty {
     }
     pub struct Impl {
         pub impl_: Token![impl],
-        pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        pub bounds: Punctuated<gen::bound::Type, Token![+]>,
     }
     pub struct Infer {
         pub underscore: Token![_],
@@ -1390,7 +1381,7 @@ mod ty {
     }
     pub struct TraitObj {
         pub dyn_: Option<Token![dyn]>,
-        pub bounds: Punctuated<TypeParamBound, Token![+]>,
+        pub bounds: Punctuated<gen::bound::Type, Token![+]>,
     }
     pub struct Tuple {
         pub paren: tok::Paren,
@@ -1557,7 +1548,7 @@ pub struct DeriveInput {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub ident: Ident,
-    pub gens: Generics,
+    pub gens: gen::Gens,
     pub data: Data,
 }
 
@@ -2817,7 +2808,7 @@ fn is_whitespace(x: char) -> bool {
     x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
 }
 
-mod gen {
+mod fab {
     #[rustfmt::skip]
     pub mod fold;
     #[rustfmt::skip]
@@ -2865,7 +2856,7 @@ mod gen {
         }
     }
 }
-pub use gen::*;
+pub use fab::*;
 pub mod __private {
     pub use super::{
         lower::punct as print_punct,

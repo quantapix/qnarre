@@ -202,8 +202,8 @@ fn test_trait_object() {
     Type::TraitObject {
         dyn_: Some,
         bounds: [
-            TypeParamBound::Trait(TraitBound {
-                lifetimes: Some(BoundLifetimes {
+            gen::bound::Type::Trait(gen::bound::Trait {
+                lifetimes: Some(Bgen::bound::Lifes {
                     lifetimes: [
                         gen::Param::Life(gen::param::Life {
                             lifetime: Lifetime {
@@ -227,7 +227,7 @@ fn test_trait_object() {
                     ],
                 },
             }),
-            TypeParamBound::Lifetime {
+            gen::bound::Type::Lifetime {
                 ident: "static",
             },
         ],
@@ -238,10 +238,10 @@ fn test_trait_object() {
     Type::TraitObject {
         dyn_: Some,
         bounds: [
-            TypeParamBound::Lifetime {
+            gen::bound::Type::Lifetime {
                 ident: "a",
             },
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -263,7 +263,7 @@ fn test_trailing_plus() {
     snapshot!(tokens as ty::Type, @r###"
     Type::ImplTrait {
         bounds: [
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -281,7 +281,7 @@ fn test_trailing_plus() {
     Type::TraitObject {
         dyn_: Some,
         bounds: [
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -298,7 +298,7 @@ fn test_trailing_plus() {
     snapshot!(tokens as ty::Type, @r###"
     Type::TraitObject {
         bounds: [
-            TypeParamBound::Trait(TraitBound {
+            gen::bound::Type::Trait(gen::bound::Trait {
                 path: Path {
                     segments: [
                         path::Segment {

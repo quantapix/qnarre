@@ -2,7 +2,7 @@
 #[macro_use]
 mod macros;
 use quote::quote;
-use syn::{item::Fn, DeriveInput, TypeParamBound, WhereClause, WherePred};
+use syn::{gen::bound::Type, gen::Where, gen::Where::Pred, item::Fn, DeriveInput};
 #[test]
 fn test_split_for_impl() {
     let input = quote! {
@@ -12,7 +12,7 @@ fn test_split_for_impl() {
     DeriveInput {
         vis: Visibility::Inherited,
         ident: "S",
-        gens: Generics {
+        gens: gen::Gens {
             lt: Some,
             params: [
                 gen::Param::Life(gen::param::Life {
@@ -47,7 +47,7 @@ fn test_split_for_impl() {
                     ident: "T",
                     colon: Some,
                     bounds: [
-                        TypeParamBound::Lifetime {
+                        gen::bound::Type::Lifetime {
                             ident: "a",
                         },
                     ],
@@ -56,7 +56,7 @@ fn test_split_for_impl() {
                 }),
             ],
             gt: Some,
-            where_clause: Some(WhereClause {
+            where_clause: Some(gen::Where {
                 predicates: [
                     WherePredicate::Type(PredicateType {
                         bounded: Type::Path {
@@ -69,7 +69,7 @@ fn test_split_for_impl() {
                             },
                         },
                         bounds: [
-                            TypeParamBound::Trait(TraitBound {
+                            gen::bound::Type::Trait(gen::bound::Trait {
                                 path: Path {
                                     segments: [
                                         path::Segment {
@@ -114,20 +114,20 @@ fn test_split_for_impl() {
 #[test]
 fn test_ty_param_bound() {
     let tokens = quote!('a);
-    snapshot!(tokens as TypeParamBound, @r###"
-    TypeParamBound::Lifetime {
+    snapshot!(tokens as gen::bound::Type, @r###"
+    gen::bound::Type::Lifetime {
         ident: "a",
     }
     "###);
     let tokens = quote!('_);
-    snapshot!(tokens as TypeParamBound, @r###"
-    TypeParamBound::Lifetime {
+    snapshot!(tokens as gen::bound::Type, @r###"
+    gen::bound::Type::Lifetime {
         ident: "_",
     }
     "###);
     let tokens = quote!(Debug);
-    snapshot!(tokens as TypeParamBound, @r###"
-    TypeParamBound::Trait(TraitBound {
+    snapshot!(tokens as gen::bound::Type, @r###"
+    gen::bound::Type::Trait(gen::bound::Trait {
         path: Path {
             segments: [
                 path::Segment {
@@ -138,9 +138,9 @@ fn test_ty_param_bound() {
     })
     "###);
     let tokens = quote!(?Sized);
-    snapshot!(tokens as TypeParamBound, @r###"
-    TypeParamBound::Trait(TraitBound {
-        modifier: TraitBoundModifier::Maybe,
+    snapshot!(tokens as gen::bound::Type, @r###"
+    gen::bound::Type::Trait(gen::bound::Trait {
+        modifier: gen::bound::Modifier::Maybe,
         path: Path {
             segments: [
                 path::Segment {
@@ -165,7 +165,7 @@ fn test_fn_precedence_in_where_clause() {
         vis: Visibility::Inherited,
         sig: item::Sig {
             ident: "f",
-            gens: Generics {
+            gens: gen::Gens {
                 lt: Some,
                 params: [
                     gen::Param::Type(gen::param::Type {
@@ -173,7 +173,7 @@ fn test_fn_precedence_in_where_clause() {
                     }),
                 ],
                 gt: Some,
-                where_clause: Some(WhereClause {
+                where_clause: Some(gen::Where {
                     predicates: [
                         WherePredicate::Type(PredicateType {
                             bounded: Type::Path {
@@ -186,7 +186,7 @@ fn test_fn_precedence_in_where_clause() {
                                 },
                             },
                             bounds: [
-                                TypeParamBound::Trait(TraitBound {
+                                gen::bound::Type::Trait(gen::bound::Trait {
                                     path: Path {
                                         segments: [
                                             path::Segment {
@@ -208,7 +208,7 @@ fn test_fn_precedence_in_where_clause() {
                                         ],
                                     },
                                 }),
-                                TypeParamBound::Trait(TraitBound {
+                                gen::bound::Type::Trait(gen::bound::Trait {
                                     path: Path {
                                         segments: [
                                             path::Segment {
@@ -230,7 +230,7 @@ fn test_fn_precedence_in_where_clause() {
     let where_clause = input.sig.gens.where_clause.as_ref().unwrap();
     assert_eq!(where_clause.predicates.len(), 1);
     let predicate = match &where_clause.predicates[0] {
-        WherePred::Type(pred) => pred,
+        gen::Where::Pred::Type(pred) => pred,
         _ => panic!("wrong predicate kind"),
     };
     assert_eq!(predicate.bounds.len(), 2, "{:#?}", predicate.bounds);
@@ -244,6 +244,6 @@ fn test_where_clause_at_end_of_input() {
     let input = quote! {
         where
     };
-    snapshot!(input as WhereClause, @"WhereClause");
+    snapshot!(input as gen::Where, @"gen::Where");
     assert_eq!(input.predicates.len(), 0);
 }

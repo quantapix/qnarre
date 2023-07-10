@@ -64,7 +64,7 @@ fn test_none_group() {
         sig: item::Sig {
             asyncness: Some,
             ident: "f",
-            gens: Generics,
+            gens: gen::Gens,
             ret: ty::Ret::Default,
         },
         block: Block,
@@ -151,7 +151,7 @@ fn test_macros() {
         vis: Visibility::Inherited,
         sig: item::Sig {
             ident: "main",
-            gens: Generics,
+            gens: gen::Gens,
             ret: ty::Ret::Default,
         },
         block: Block {
