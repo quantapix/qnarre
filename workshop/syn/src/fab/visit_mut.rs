@@ -63,13 +63,13 @@ pub trait VisitMut {
     fn visit_data_mut(&mut self, i: &mut Data) {
         visit_data_mut(self, i);
     }
-    fn visit_data_enum_mut(&mut self, i: &mut DataEnum) {
+    fn visit_data_enum_mut(&mut self, i: &mut data::Enum) {
         visit_data_enum_mut(self, i);
     }
-    fn visit_data_struct_mut(&mut self, i: &mut DataStruct) {
+    fn visit_data_struct_mut(&mut self, i: &mut data::Struct) {
         visit_data_struct_mut(self, i);
     }
-    fn visit_data_union_mut(&mut self, i: &mut DataUnion) {
+    fn visit_data_union_mut(&mut self, i: &mut data::Union) {
         visit_data_union_mut(self, i);
     }
     fn visit_derive_input_mut(&mut self, i: &mut DeriveInput) {
@@ -829,18 +829,18 @@ where
         },
     }
 }
-pub fn visit_data_enum_mut<V>(v: &mut V, node: &mut DataEnum)
+pub fn visit_data_enum_mut<V>(v: &mut V, node: &mut data::Enum)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.enum_);
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.variants) {
+    for mut el in Punctuated::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_variant_mut(it);
     }
 }
-pub fn visit_data_struct_mut<V>(v: &mut V, node: &mut DataStruct)
+pub fn visit_data_struct_mut<V>(v: &mut V, node: &mut data::Struct)
 where
     V: VisitMut + ?Sized,
 {
@@ -848,7 +848,7 @@ where
     v.visit_fields_mut(&mut node.fields);
     skip!(node.semi);
 }
-pub fn visit_data_union_mut<V>(v: &mut V, node: &mut DataUnion)
+pub fn visit_data_union_mut<V>(v: &mut V, node: &mut data::Union)
 where
     V: VisitMut + ?Sized,
 {

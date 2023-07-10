@@ -1,6 +1,5 @@
 use super::{
     err::Result,
-    lit,
     parse::{Parse, ParseStream},
 };
 use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
@@ -439,7 +438,7 @@ def_delims! {
 }
 impl Tok for Paren {
     fn peek(x: Cursor) -> bool {
-        lookahead::is_delimiter(x, Delimiter::Parenthesis)
+        look::is_delimiter(x, Delimiter::Parenthesis)
     }
     fn display() -> &'static str {
         "parentheses"
@@ -447,7 +446,7 @@ impl Tok for Paren {
 }
 impl Tok for Brace {
     fn peek(x: Cursor) -> bool {
-        lookahead::is_delimiter(x, Delimiter::Brace)
+        look::is_delimiter(x, Delimiter::Brace)
     }
     fn display() -> &'static str {
         "curly braces"
@@ -455,7 +454,7 @@ impl Tok for Brace {
 }
 impl Tok for Bracket {
     fn peek(x: Cursor) -> bool {
-        lookahead::is_delimiter(x, Delimiter::Bracket)
+        look::is_delimiter(x, Delimiter::Bracket)
     }
     fn display() -> &'static str {
         "square brackets"
@@ -505,7 +504,7 @@ impl Hash for Group {
 impl private::Sealed for Group {}
 impl Tok for Group {
     fn peek(x: Cursor) -> bool {
-        lookahead::is_delimiter(x, Delimiter::None)
+        look::is_delimiter(x, Delimiter::None)
     }
     fn display() -> &'static str {
         "invisible group"

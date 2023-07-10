@@ -686,11 +686,11 @@ mod ident {
     }
 
     #[allow(non_snake_case)]
-    pub fn Ident(x: lookahead::TokenMarker) -> Ident {
+    pub fn Ident(x: look::TokenMarker) -> Ident {
         match x {}
     }
     #[allow(non_snake_case)]
-    pub fn Lifetime(x: lookahead::TokenMarker) -> Lifetime {
+    pub fn Lifetime(x: look::TokenMarker) -> Lifetime {
         match x {}
     }
 }
@@ -1544,34 +1544,36 @@ pub struct Field {
     pub colon: Option<Token![:]>,
     pub typ: ty::Type,
 }
-pub struct DeriveInput {
-    pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
-    pub ident: Ident,
-    pub gens: gen::Gens,
-    pub data: Data,
-}
 
-pub enum Data {
-    Struct(DataStruct),
-    Enum(DataEnum),
-    Union(DataUnion),
+pub mod data {
+    pub struct DeriveInput {
+        pub attrs: Vec<attr::Attr>,
+        pub vis: Visibility,
+        pub ident: Ident,
+        pub gens: gen::Gens,
+        pub data: Data,
+    }
+    pub enum Data {
+        Enum(Enum),
+        Struct(Struct),
+        Union(Union),
+    }
+    pub struct Enum {
+        pub enum_: Token![enum],
+        pub brace: tok::Brace,
+        pub elems: Punctuated<Variant, Token![,]>,
+    }
+    pub struct Struct {
+        pub struct_: Token![struct],
+        pub fields: Fields,
+        pub semi: Option<Token![;]>,
+    }
+    pub struct Union {
+        pub union_: Token![union],
+        pub fields: FieldsNamed,
+    }
 }
-
-pub struct DataStruct {
-    pub struct_: Token![struct],
-    pub fields: Fields,
-    pub semi: Option<Token![;]>,
-}
-pub struct DataEnum {
-    pub enum_: Token![enum],
-    pub brace: tok::Brace,
-    pub variants: Punctuated<Variant, Token![,]>,
-}
-pub struct DataUnion {
-    pub union_: Token![union],
-    pub fields: FieldsNamed,
-}
+use data::DeriveInput;
 
 mod err {
     use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
@@ -1805,7 +1807,7 @@ pub use err::{Err, Result};
 pub mod ext {
     use super::{
         parse::{ParseStream, Peek, Result},
-        sealed::lookahead,
+        sealed::look,
         tok::Custom,
     };
     use proc_macro2::Ident;
@@ -1842,7 +1844,7 @@ pub mod ext {
             "identifier"
         }
     }
-    impl lookahead::Sealed for private::PeekFn {}
+    impl look::Sealed for private::PeekFn {}
     mod private {
         use proc_macro2::Ident;
         pub trait Sealed {}
@@ -1864,10 +1866,10 @@ pub struct File {
     pub items: Vec<Item>,
 }
 
-mod lookahead {
+mod look {
     use super::{
         err::{self, Err},
-        sealed::lookahead::Sealed,
+        sealed::look::Sealed,
         tok::Tok,
     };
     use std::cell::RefCell;
@@ -2035,7 +2037,7 @@ pub enum UnOp {
 pub mod parse {
     use super::{
         err::{self, Err, Result},
-        lookahead::{self, Lookahead1, Peek},
+        look::{self, Lookahead1, Peek},
         proc_macro,
         punct::Punctuated,
         tok::Tok,
@@ -2269,7 +2271,7 @@ pub mod parse {
             self.cursor().eof()
         }
         pub fn lookahead1(&self) -> Lookahead1<'a> {
-            lookahead::new(self.scope, self.cursor())
+            look::new(self.scope, self.cursor())
         }
         pub fn fork(&self) -> Self {
             ParseBuffer {
@@ -2527,7 +2529,7 @@ pub enum FieldMut {
 }
 
 mod sealed {
-    pub mod lookahead {
+    pub mod look {
         pub trait Sealed: Copy {}
     }
 }

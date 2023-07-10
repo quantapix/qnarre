@@ -61,13 +61,13 @@ pub trait Fold {
     fn fold_data(&mut self, i: Data) -> Data {
         fold_data(self, i)
     }
-    fn fold_data_enum(&mut self, i: DataEnum) -> DataEnum {
+    fn fold_data_enum(&mut self, i: data::Enum) -> data::Enum {
         fold_data_enum(self, i)
     }
-    fn fold_data_struct(&mut self, i: DataStruct) -> DataStruct {
+    fn fold_data_struct(&mut self, i: data::Struct) -> data::Struct {
         fold_data_struct(self, i)
     }
-    fn fold_data_union(&mut self, i: DataUnion) -> DataUnion {
+    fn fold_data_union(&mut self, i: data::Union) -> data::Union {
         fold_data_union(self, i)
     }
     fn fold_derive_input(&mut self, i: DeriveInput) -> DeriveInput {
@@ -749,31 +749,31 @@ where
         Data::Union(_binding_0) => Data::Union(f.fold_data_union(_binding_0)),
     }
 }
-pub fn fold_data_enum<F>(f: &mut F, node: DataEnum) -> DataEnum
+pub fn fold_data_enum<F>(f: &mut F, node: data::Enum) -> data::Enum
 where
     F: Fold + ?Sized,
 {
-    DataEnum {
+    data::Enum {
         enum_: node.enum_,
         brace: node.brace,
-        variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
+        elems: FoldHelper::lift(node.elems, |it| f.fold_variant(it)),
     }
 }
-pub fn fold_data_struct<F>(f: &mut F, node: DataStruct) -> DataStruct
+pub fn fold_data_struct<F>(f: &mut F, node: data::Struct) -> data::Struct
 where
     F: Fold + ?Sized,
 {
-    DataStruct {
+    data::Struct {
         struct_: node.struct_,
         fields: f.fold_fields(node.fields),
         semi: node.semi,
     }
 }
-pub fn fold_data_union<F>(f: &mut F, node: DataUnion) -> DataUnion
+pub fn fold_data_union<F>(f: &mut F, node: data::Union) -> data::Union
 where
     F: Fold + ?Sized,
 {
-    DataUnion {
+    data::Union {
         union_: node.union_,
         fields: f.fold_fields_named(node.fields),
     }

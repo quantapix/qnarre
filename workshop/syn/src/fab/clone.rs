@@ -141,27 +141,27 @@ impl Clone for Data {
         }
     }
 }
-impl Clone for DataEnum {
+impl Clone for data::Enum {
     fn clone(&self) -> Self {
-        DataEnum {
+        data::Enum {
             enum_: self.enum_.clone(),
             brace: self.brace.clone(),
-            variants: self.variants.clone(),
+            elems: self.elems.clone(),
         }
     }
 }
-impl Clone for DataStruct {
+impl Clone for data::Struct {
     fn clone(&self) -> Self {
-        DataStruct {
+        data::Struct {
             struct_: self.struct_.clone(),
             fields: self.fields.clone(),
             semi: self.semi.clone(),
         }
     }
 }
-impl Clone for DataUnion {
+impl Clone for data::Union {
     fn clone(&self) -> Self {
-        DataUnion {
+        data::Union {
             union_: self.union_.clone(),
             fields: self.fields.clone(),
         }

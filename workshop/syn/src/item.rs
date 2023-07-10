@@ -106,7 +106,7 @@ impl From<Enum> for DeriveInput {
             vis: x.vis,
             ident: x.ident,
             gens: x.gens,
-            data: Data::Enum(DataEnum {
+            data: Data::Enum(data::Enum {
                 enum_: x.enum_,
                 brace: x.brace,
                 variants: x.elems,
@@ -192,7 +192,7 @@ impl From<Struct> for DeriveInput {
             vis: x.vis,
             ident: x.ident,
             gens: x.gens,
-            data: Data::Struct(DataStruct {
+            data: Data::Struct(data::Struct {
                 struct_: x.struct_,
                 fields: x.fields,
                 semi: x.semi,
@@ -251,7 +251,7 @@ impl From<Union> for DeriveInput {
             vis: x.vis,
             ident: x.ident,
             gens: x.gens,
-            data: Data::Union(DataUnion {
+            data: Data::Union(data::Union {
                 union_: x.union_,
                 fields: x.fields,
             }),

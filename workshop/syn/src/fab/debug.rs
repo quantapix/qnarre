@@ -295,23 +295,23 @@ impl Debug for Data {
         }
     }
 }
-impl Debug for DataEnum {
+impl Debug for data::Enum {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl DataEnum {
+        impl data::Enum {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("enum_", &self.enum_);
                 formatter.field("brace", &self.brace);
-                formatter.field("variants", &self.variants);
+                formatter.field("variants", &self.elems);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "DataEnum")
+        self.debug(formatter, "data::Enum")
     }
 }
-impl Debug for DataStruct {
+impl Debug for data::Struct {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl DataStruct {
+        impl data::Struct {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("struct_", &self.struct_);
@@ -320,12 +320,12 @@ impl Debug for DataStruct {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "DataStruct")
+        self.debug(formatter, "data::Struct")
     }
 }
-impl Debug for DataUnion {
+impl Debug for data::Union {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl DataUnion {
+        impl data::Union {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("union_", &self.union_);
@@ -333,7 +333,7 @@ impl Debug for DataUnion {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "DataUnion")
+        self.debug(formatter, "data::Union")
     }
 }
 impl Debug for DeriveInput {

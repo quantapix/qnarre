@@ -1,5 +1,5 @@
 use super::{
-    ident, lookahead,
+    ident, look,
     parse::{Parse, Parser},
     Err, Result,
 };
@@ -120,7 +120,7 @@ impl Lit {
     }
 }
 #[allow(non_snake_case)]
-pub fn Lit(x: lookahead::TokenMarker) -> Lit {
+pub fn Lit(x: look::TokenMarker) -> Lit {
     match x {}
 }
 
@@ -227,7 +227,7 @@ macro_rules! extra_traits {
             }
         }
         #[allow(non_snake_case)]
-        pub fn $ty(x: lookahead::TokenMarker) -> $ty {
+        pub fn $ty(x: look::TokenMarker) -> $ty {
             match x {}
         }
     };
@@ -573,7 +573,7 @@ impl Debug for Bool {
     }
 }
 #[allow(non_snake_case)]
-pub fn Bool(x: lookahead::TokenMarker) -> Bool {
+pub fn Bool(x: look::TokenMarker) -> Bool {
     match x {}
 }
 

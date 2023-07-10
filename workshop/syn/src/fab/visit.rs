@@ -63,13 +63,13 @@ pub trait Visit<'ast> {
     fn visit_data(&mut self, i: &'ast Data) {
         visit_data(self, i);
     }
-    fn visit_data_enum(&mut self, i: &'ast DataEnum) {
+    fn visit_data_enum(&mut self, i: &'ast data::Enum) {
         visit_data_enum(self, i);
     }
-    fn visit_data_struct(&mut self, i: &'ast DataStruct) {
+    fn visit_data_struct(&mut self, i: &'ast data::Struct) {
         visit_data_struct(self, i);
     }
-    fn visit_data_union(&mut self, i: &'ast DataUnion) {
+    fn visit_data_union(&mut self, i: &'ast data::Union) {
         visit_data_union(self, i);
     }
     fn visit_derive_input(&mut self, i: &'ast DeriveInput) {
@@ -829,18 +829,18 @@ where
         },
     }
 }
-pub fn visit_data_enum<'ast, V>(v: &mut V, node: &'ast DataEnum)
+pub fn visit_data_enum<'ast, V>(v: &mut V, node: &'ast data::Enum)
 where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.enum_);
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.variants) {
+    for el in Punctuated::pairs(&node.elems) {
         let it = el.value();
         v.visit_variant(it);
     }
 }
-pub fn visit_data_struct<'ast, V>(v: &mut V, node: &'ast DataStruct)
+pub fn visit_data_struct<'ast, V>(v: &mut V, node: &'ast data::Struct)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -848,7 +848,7 @@ where
     v.visit_fields(&node.fields);
     skip!(node.semi);
 }
-pub fn visit_data_union<'ast, V>(v: &mut V, node: &'ast DataUnion)
+pub fn visit_data_union<'ast, V>(v: &mut V, node: &'ast data::Union)
 where
     V: Visit<'ast> + ?Sized,
 {

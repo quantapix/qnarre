@@ -246,15 +246,15 @@ impl Hash for Data {
         }
     }
 }
-impl Hash for DataEnum {
+impl Hash for data::Enum {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.variants.hash(state);
+        self.elems.hash(state);
     }
 }
-impl Hash for DataStruct {
+impl Hash for data::Struct {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -263,7 +263,7 @@ impl Hash for DataStruct {
         self.semi.hash(state);
     }
 }
-impl Hash for DataUnion {
+impl Hash for data::Union {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

@@ -3732,7 +3732,7 @@ mod parsing {
                     vis,
                     ident,
                     gens: gen::Gens { where_clause, ..gens },
-                    data: Data::Struct(DataStruct { struct_, fields, semi }),
+                    data: Data::Struct(data::Struct { struct_, fields, semi }),
                 })
             } else if lookahead.peek(Token![enum]) {
                 let enum_ = input.parse::<Token![enum]>()?;
@@ -3744,7 +3744,7 @@ mod parsing {
                     vis,
                     ident,
                     gens: gen::Gens { where_clause, ..gens },
-                    data: Data::Enum(DataEnum { enum_, brace, variants }),
+                    data: Data::Enum(data::Enum { enum_, brace, variants }),
                 })
             } else if lookahead.peek(Token![union]) {
                 let union_ = input.parse::<Token![union]>()?;
@@ -3756,7 +3756,7 @@ mod parsing {
                     vis,
                     ident,
                     gens: gen::Gens { where_clause, ..gens },
-                    data: Data::Union(DataUnion { union_, fields }),
+                    data: Data::Union(data::Union { union_, fields }),
                 })
             } else {
                 Err(lookahead.error())

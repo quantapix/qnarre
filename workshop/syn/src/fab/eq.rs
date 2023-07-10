@@ -137,20 +137,20 @@ impl PartialEq for Data {
         }
     }
 }
-impl Eq for DataEnum {}
-impl PartialEq for DataEnum {
+impl Eq for data::Enum {}
+impl PartialEq for data::Enum {
     fn eq(&self, other: &Self) -> bool {
-        self.variants == other.variants
+        self.elems == other.elems
     }
 }
-impl Eq for DataStruct {}
-impl PartialEq for DataStruct {
+impl Eq for data::Struct {}
+impl PartialEq for data::Struct {
     fn eq(&self, other: &Self) -> bool {
         self.fields == other.fields && self.semi == other.semi
     }
 }
-impl Eq for DataUnion {}
-impl PartialEq for DataUnion {
+impl Eq for data::Union {}
+impl PartialEq for data::Union {
     fn eq(&self, other: &Self) -> bool {
         self.fields == other.fields
     }
