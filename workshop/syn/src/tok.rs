@@ -2,7 +2,6 @@ use super::{
     err::Result,
     lit,
     parse::{Parse, ParseStream},
-    *,
 };
 use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};

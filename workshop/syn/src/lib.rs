@@ -2872,7 +2872,7 @@ mod gen {
 pub use gen::*;
 pub mod __private {
     pub use super::{
-        dump::punct as print_punct,
+        lower::punct as print_punct,
         parse_quote_fn,
         parsing::{peek_punct, punct as parse_punct},
     };
@@ -2931,5 +2931,5 @@ pub fn parse_file(mut content: &str) -> Result<File> {
     Ok(file)
 }
 
-pub mod dump;
+pub mod lower;
 pub mod parsing;

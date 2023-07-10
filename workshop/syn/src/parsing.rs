@@ -3,7 +3,6 @@ use super::{
     ext::IdentExt,
     parse::{discouraged::Speculative, Parse, ParseBuffer, ParseStream, Result},
     tok::Tok,
-    *,
 };
 use proc_macro2::{Ident, Punct, Spacing, Span, Span, TokenStream};
 use std::{
